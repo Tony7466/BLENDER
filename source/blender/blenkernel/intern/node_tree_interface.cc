@@ -43,13 +43,13 @@ static const char *try_get_supported_socket_type(const StringRef socket_type)
 {
   /* Make a copy of the string for `.c_str()` until the socket type map uses C++ types. */
   const std::string idname(socket_type);
-  const bNodeSocketType *typeinfo = blender::bke::nodeSocketTypeFind(idname.c_str());
+  const bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(idname.c_str());
   if (typeinfo == nullptr) {
     return nullptr;
   }
   /* For builtin socket types only the base type is supported. */
   if (nodeIsStaticSocketType(typeinfo)) {
-    return blender::bke::nodeStaticSocketType(typeinfo->type, PROP_NONE);
+    return bke::nodeStaticSocketType(typeinfo->type, PROP_NONE);
   }
   return typeinfo->idname;
 }

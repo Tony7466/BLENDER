@@ -239,7 +239,7 @@ void depsgraph_tag_to_component_opcode(const ID *id,
 void id_tag_update_ntree_special(
     Main *bmain, Depsgraph *graph, ID *id, uint flags, eUpdateSource update_source)
 {
-  bNodeTree *ntree = blender::bke::ntreeFromID(id);
+  bNodeTree *ntree = bke::ntreeFromID(id);
   if (ntree == nullptr) {
     return;
   }

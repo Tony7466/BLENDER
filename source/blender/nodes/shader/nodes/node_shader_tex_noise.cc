@@ -145,10 +145,10 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
 
 static void node_shader_update_tex_noise(bNodeTree *ntree, bNode *node)
 {
-  bNodeSocket *sockVector = blender::bke::nodeFindSocket(node, SOCK_IN, "Vector");
-  bNodeSocket *sockW = blender::bke::nodeFindSocket(node, SOCK_IN, "W");
-  bNodeSocket *inOffsetSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Offset");
-  bNodeSocket *inGainSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Gain");
+  bNodeSocket *sockVector = bke::nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *sockW = bke::nodeFindSocket(node, SOCK_IN, "W");
+  bNodeSocket *inOffsetSock = bke::nodeFindSocket(node, SOCK_IN, "Offset");
+  bNodeSocket *inGainSock = bke::nodeFindSocket(node, SOCK_IN, "Gain");
 
   const NodeTexNoise &storage = node_storage(*node);
   bke::nodeSetSocketAvailability(ntree, sockVector, storage.dimensions != 1);

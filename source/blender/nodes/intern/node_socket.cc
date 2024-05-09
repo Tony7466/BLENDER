@@ -49,7 +49,7 @@ bNodeSocket *node_add_socket_from_template(bNodeTree *ntree,
                                            bNodeSocketTemplate *stemp,
                                            eNodeSocketInOut in_out)
 {
-  bNodeSocket *sock = blender::bke::nodeAddStaticSocket(
+  bNodeSocket *sock = bke::nodeAddStaticSocket(
       ntree, node, in_out, stemp->type, stemp->subtype, stemp->identifier, stemp->name);
 
   sock->flag |= stemp->flag;
@@ -112,7 +112,7 @@ static bNodeSocket *verify_socket_template(bNodeTree *ntree,
   }
   if (sock) {
     if (sock->type != stemp->type) {
-      blender::bke::nodeModifySocketTypeStatic(ntree, node, sock, stemp->type, stemp->subtype);
+      bke::nodeModifySocketTypeStatic(ntree, node, sock, stemp->type, stemp->subtype);
     }
     sock->flag |= stemp->flag;
   }
@@ -141,7 +141,7 @@ static void verify_socket_template_list(bNodeTree *ntree,
   if (stemp_first == nullptr) {
     for (sock = (bNodeSocket *)socklist->first; sock; sock = nextsock) {
       nextsock = sock->next;
-      blender::bke::nodeRemoveSocket(ntree, node, sock);
+      bke::nodeRemoveSocket(ntree, node, sock);
     }
   }
   else {
@@ -154,7 +154,7 @@ static void verify_socket_template_list(bNodeTree *ntree,
     /* leftovers are removed */
     for (sock = (bNodeSocket *)socklist->first; sock; sock = nextsock) {
       nextsock = sock->next;
-      blender::bke::nodeRemoveSocket(ntree, node, sock);
+      bke::nodeRemoveSocket(ntree, node, sock);
     }
 
     /* and we put back the verified sockets */
@@ -849,9 +849,9 @@ void ED_init_standard_node_socket_type(bNodeSocketType *);
 
 static bNodeSocketType *make_standard_socket_type(int type, int subtype)
 {
-  const char *socket_idname = blender::bke::nodeStaticSocketType(type, subtype);
-  const char *interface_idname = blender::bke::nodeStaticSocketInterfaceTypeNew(type, subtype);
-  const char *socket_label = blender::bke::nodeStaticSocketLabel(type, subtype);
+  const char *socket_idname = bke::nodeStaticSocketType(type, subtype);
+  const char *interface_idname = bke::nodeStaticSocketInterfaceTypeNew(type, subtype);
+  const char *socket_label = bke::nodeStaticSocketLabel(type, subtype);
   const char *socket_subtype_label = blender::bke::nodeSocketSubTypeLabel(subtype);
   bNodeSocketType *stype;
   StructRNA *srna;
@@ -1155,52 +1155,52 @@ void register_standard_node_socket_types()
 {
   /* Draw callbacks are set in `drawnode.cc` to avoid bad-level calls. */
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_NONE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_UNSIGNED));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_PERCENTAGE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_FACTOR));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_ANGLE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_TIME));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_TIME_ABSOLUTE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_DISTANCE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_float(PROP_WAVELENGTH));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_NONE));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_UNSIGNED));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_PERCENTAGE));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_FACTOR));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_ANGLE));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_TIME));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_TIME_ABSOLUTE));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_DISTANCE));
+  bke::nodeRegisterSocketType(make_socket_type_float(PROP_WAVELENGTH));
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_int(PROP_NONE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_int(PROP_UNSIGNED));
-  blender::bke::nodeRegisterSocketType(make_socket_type_int(PROP_PERCENTAGE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_int(PROP_FACTOR));
+  bke::nodeRegisterSocketType(make_socket_type_int(PROP_NONE));
+  bke::nodeRegisterSocketType(make_socket_type_int(PROP_UNSIGNED));
+  bke::nodeRegisterSocketType(make_socket_type_int(PROP_PERCENTAGE));
+  bke::nodeRegisterSocketType(make_socket_type_int(PROP_FACTOR));
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_bool());
-  blender::bke::nodeRegisterSocketType(make_socket_type_rotation());
-  blender::bke::nodeRegisterSocketType(make_socket_type_matrix());
+  bke::nodeRegisterSocketType(make_socket_type_bool());
+  bke::nodeRegisterSocketType(make_socket_type_rotation());
+  bke::nodeRegisterSocketType(make_socket_type_matrix());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_NONE));
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_TRANSLATION));
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_DIRECTION));
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_VELOCITY));
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_ACCELERATION));
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_EULER));
-  blender::bke::nodeRegisterSocketType(make_socket_type_vector(PROP_XYZ));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_NONE));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_TRANSLATION));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_DIRECTION));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_VELOCITY));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_ACCELERATION));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_EULER));
+  bke::nodeRegisterSocketType(make_socket_type_vector(PROP_XYZ));
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_rgba());
+  bke::nodeRegisterSocketType(make_socket_type_rgba());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_string());
+  bke::nodeRegisterSocketType(make_socket_type_string());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_menu());
+  bke::nodeRegisterSocketType(make_socket_type_menu());
 
-  blender::bke::nodeRegisterSocketType(make_standard_socket_type(SOCK_SHADER, PROP_NONE));
+  bke::nodeRegisterSocketType(make_standard_socket_type(SOCK_SHADER, PROP_NONE));
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_object());
+  bke::nodeRegisterSocketType(make_socket_type_object());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_geometry());
+  bke::nodeRegisterSocketType(make_socket_type_geometry());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_collection());
+  bke::nodeRegisterSocketType(make_socket_type_collection());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_texture());
+  bke::nodeRegisterSocketType(make_socket_type_texture());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_image());
+  bke::nodeRegisterSocketType(make_socket_type_image());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_material());
+  bke::nodeRegisterSocketType(make_socket_type_material());
 
-  blender::bke::nodeRegisterSocketType(make_socket_type_virtual());
+  bke::nodeRegisterSocketType(make_socket_type_virtual());
 }

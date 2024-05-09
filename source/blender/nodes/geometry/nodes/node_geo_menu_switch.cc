@@ -231,8 +231,8 @@ class LazyFunctionForMenuSwitchNode : public LazyFunction {
     const NodeMenuSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
     can_be_field_ = socket_type_supports_fields(data_type);
-    const bNodeSocketType *socket_type = blender::bke::nodeSocketTypeFind(
-        blender::bke::nodeStaticSocketType(data_type, PROP_NONE));
+    const bNodeSocketType *socket_type = bke::nodeSocketTypeFind(
+        bke::nodeStaticSocketType(data_type, PROP_NONE));
     BLI_assert(socket_type != nullptr);
     cpp_type_ = socket_type->geometry_nodes_cpp_type;
     field_base_type_ = socket_type->base_cpp_type;

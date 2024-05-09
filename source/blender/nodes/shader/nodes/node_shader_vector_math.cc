@@ -163,10 +163,10 @@ static void node_shader_update_vector_math(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *sockB = (bNodeSocket *)BLI_findlink(&node->inputs, 1);
   bNodeSocket *sockC = (bNodeSocket *)BLI_findlink(&node->inputs, 2);
-  bNodeSocket *sockScale = blender::bke::nodeFindSocket(node, SOCK_IN, "Scale");
+  bNodeSocket *sockScale = bke::nodeFindSocket(node, SOCK_IN, "Scale");
 
-  bNodeSocket *sockVector = blender::bke::nodeFindSocket(node, SOCK_OUT, "Vector");
-  bNodeSocket *sockValue = blender::bke::nodeFindSocket(node, SOCK_OUT, "Value");
+  bNodeSocket *sockVector = bke::nodeFindSocket(node, SOCK_OUT, "Vector");
+  bNodeSocket *sockValue = bke::nodeFindSocket(node, SOCK_OUT, "Value");
 
   bke::nodeSetSocketAvailability(ntree,
                                  sockB,

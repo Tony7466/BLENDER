@@ -383,10 +383,10 @@ static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
   const int sss_method = node->custom2;
 
   bke::nodeSetSocketAvailability(ntree,
-                                 blender::bke::nodeFindSocket(node, SOCK_IN, "Subsurface IOR"),
+                                 bke::nodeFindSocket(node, SOCK_IN, "Subsurface IOR"),
                                  sss_method == SHD_SUBSURFACE_RANDOM_WALK_SKIN);
   bke::nodeSetSocketAvailability(ntree,
-                                 blender::bke::nodeFindSocket(node, SOCK_IN, "Subsurface Anisotropy"),
+                                 bke::nodeFindSocket(node, SOCK_IN, "Subsurface Anisotropy"),
                                  sss_method != SHD_SUBSURFACE_BURLEY);
 }
 

@@ -55,8 +55,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
 {
   NodeGeometryMeshToVolume &data = node_storage(*node);
 
-  bNodeSocket *voxel_size_socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Voxel Size");
-  bNodeSocket *voxel_amount_socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Voxel Amount");
+  bNodeSocket *voxel_size_socket = bke::nodeFindSocket(node, SOCK_IN, "Voxel Size");
+  bNodeSocket *voxel_amount_socket = bke::nodeFindSocket(node, SOCK_IN, "Voxel Amount");
   bke::nodeSetSocketAvailability(ntree,
                                  voxel_amount_socket,
                                  data.resolution_mode ==

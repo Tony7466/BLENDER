@@ -59,8 +59,8 @@ static int gpu_shader_tex_white_noise(GPUMaterial *mat,
 
 static void node_shader_update_tex_white_noise(bNodeTree *ntree, bNode *node)
 {
-  bNodeSocket *sockVector = blender::bke::nodeFindSocket(node, SOCK_IN, "Vector");
-  bNodeSocket *sockW = blender::bke::nodeFindSocket(node, SOCK_IN, "W");
+  bNodeSocket *sockVector = bke::nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *sockW = bke::nodeFindSocket(node, SOCK_IN, "W");
 
   bke::nodeSetSocketAvailability(ntree, sockVector, node->custom1 != 1);
   bke::nodeSetSocketAvailability(ntree, sockW, node->custom1 == 1 || node->custom1 == 4);

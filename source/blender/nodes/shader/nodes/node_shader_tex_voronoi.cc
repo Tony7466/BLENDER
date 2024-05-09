@@ -168,19 +168,19 @@ static int node_shader_gpu_tex_voronoi(GPUMaterial *mat,
 
 static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
 {
-  bNodeSocket *inVectorSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Vector");
-  bNodeSocket *inWSock = blender::bke::nodeFindSocket(node, SOCK_IN, "W");
-  bNodeSocket *inDetailSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Detail");
-  bNodeSocket *inRoughnessSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Roughness");
-  bNodeSocket *inLacunaritySock = blender::bke::nodeFindSocket(node, SOCK_IN, "Lacunarity");
-  bNodeSocket *inSmoothnessSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Smoothness");
-  bNodeSocket *inExponentSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Exponent");
+  bNodeSocket *inVectorSock = bke::nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *inWSock = bke::nodeFindSocket(node, SOCK_IN, "W");
+  bNodeSocket *inDetailSock = bke::nodeFindSocket(node, SOCK_IN, "Detail");
+  bNodeSocket *inRoughnessSock = bke::nodeFindSocket(node, SOCK_IN, "Roughness");
+  bNodeSocket *inLacunaritySock = bke::nodeFindSocket(node, SOCK_IN, "Lacunarity");
+  bNodeSocket *inSmoothnessSock = bke::nodeFindSocket(node, SOCK_IN, "Smoothness");
+  bNodeSocket *inExponentSock = bke::nodeFindSocket(node, SOCK_IN, "Exponent");
 
-  bNodeSocket *outDistanceSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Distance");
-  bNodeSocket *outColorSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Color");
-  bNodeSocket *outPositionSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Position");
-  bNodeSocket *outWSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "W");
-  bNodeSocket *outRadiusSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Radius");
+  bNodeSocket *outDistanceSock = bke::nodeFindSocket(node, SOCK_OUT, "Distance");
+  bNodeSocket *outColorSock = bke::nodeFindSocket(node, SOCK_OUT, "Color");
+  bNodeSocket *outPositionSock = bke::nodeFindSocket(node, SOCK_OUT, "Position");
+  bNodeSocket *outWSock = bke::nodeFindSocket(node, SOCK_OUT, "W");
+  bNodeSocket *outRadiusSock = bke::nodeFindSocket(node, SOCK_OUT, "Radius");
 
   const NodeTexVoronoi &storage = node_storage(*node);
 
