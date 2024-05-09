@@ -35,8 +35,11 @@
 
 #include "UI_resources.hh"
 
-static void texture_get_from_context(
-    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+static void texture_get_from_context(const bContext *C,
+                                     blender::bke::bNodeTreeType * /*treetype*/,
+                                     bNodeTree **r_ntree,
+                                     ID **r_id,
+                                     ID **r_from)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   Scene *scene = CTX_data_scene(C);
@@ -77,7 +80,9 @@ static void texture_get_from_context(
   }
 }
 
-static void foreach_nodeclass(Scene * /*scene*/, void *calldata, bNodeClassCallback func)
+static void foreach_nodeclass(Scene * /*scene*/,
+                              void *calldata,
+                              blender::bke::bNodeClassCallback func)
 {
   func(calldata, NODE_CLASS_INPUT, N_("Input"));
   func(calldata, NODE_CLASS_OUTPUT, N_("Output"));
@@ -129,7 +134,8 @@ blender::bke::bNodeTreeType *ntreeType_Texture;
 
 void register_node_tree_type_tex()
 {
-  blender::bke::bNodeTreeType *tt = ntreeType_Texture = MEM_cnew<blender::bke::bNodeTreeType>("texture node tree type");
+  blender::bke::bNodeTreeType *tt = ntreeType_Texture = MEM_cnew<blender::bke::bNodeTreeType>(
+      "texture node tree type");
 
   tt->type = NTREE_TEXTURE;
   STRNCPY(tt->idname, "TextureNodeTree");

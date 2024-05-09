@@ -29,8 +29,11 @@
 
 blender::bke::bNodeTreeType *ntreeType_Geometry;
 
-static void geometry_node_tree_get_from_context(
-    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+static void geometry_node_tree_get_from_context(const bContext *C,
+                                                blender::bke::bNodeTreeType * /*treetype*/,
+                                                bNodeTree **r_ntree,
+                                                ID **r_id,
+                                                ID **r_from)
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
   if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
@@ -71,7 +74,9 @@ static void geometry_node_tree_update(bNodeTree *ntree)
   ntree_update_reroute_nodes(ntree);
 }
 
-static void foreach_nodeclass(Scene * /*scene*/, void *calldata, bNodeClassCallback func)
+static void foreach_nodeclass(Scene * /*scene*/,
+                              void *calldata,
+                              blender::bke::bNodeClassCallback func)
 {
   func(calldata, NODE_CLASS_INPUT, N_("Input"));
   func(calldata, NODE_CLASS_GEOMETRY, N_("Geometry"));
@@ -135,8 +140,9 @@ static bool geometry_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /
 
 void register_node_tree_type_geo()
 {
-  blender::bke::bNodeTreeType *tt = ntreeType_Geometry = static_cast<blender::bke::bNodeTreeType *>(
-      MEM_callocN(sizeof(blender::bke::bNodeTreeType), "geometry node tree type"));
+  blender::bke::bNodeTreeType *tt = ntreeType_Geometry =
+      static_cast<blender::bke::bNodeTreeType *>(
+          MEM_callocN(sizeof(blender::bke::bNodeTreeType), "geometry node tree type"));
   tt->type = NTREE_GEOMETRY;
   STRNCPY(tt->idname, "GeometryNodeTree");
   STRNCPY(tt->group_idname, "GeometryNodeGroup");

@@ -412,9 +412,10 @@ enum class NodeGroupColorTag {
 
 struct bNodeTreeExec;
 
+namespace blender::bke {
+
 using bNodeClassCallback = void (*)(void *calldata, int nclass, const char *name);
 
-namespace blender::bke {
 struct bNodeTreeType {
   int type;        /* type identifier */
   char idname[64]; /* identifier name */

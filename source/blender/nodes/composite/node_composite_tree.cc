@@ -36,8 +36,11 @@
 #  include "COM_compositor.hh"
 #endif
 
-static void composite_get_from_context(
-    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+static void composite_get_from_context(const bContext *C,
+                                       blender::bke::bNodeTreeType * /*treetype*/,
+                                       bNodeTree **r_ntree,
+                                       ID **r_id,
+                                       ID **r_from)
 {
   Scene *scene = CTX_data_scene(C);
 
@@ -46,7 +49,9 @@ static void composite_get_from_context(
   *r_ntree = scene->nodetree;
 }
 
-static void foreach_nodeclass(Scene * /*scene*/, void *calldata, bNodeClassCallback func)
+static void foreach_nodeclass(Scene * /*scene*/,
+                              void *calldata,
+                              blender::bke::bNodeClassCallback func)
 {
   func(calldata, NODE_CLASS_INPUT, N_("Input"));
   func(calldata, NODE_CLASS_OUTPUT, N_("Output"));
@@ -149,7 +154,8 @@ blender::bke::bNodeTreeType *ntreeType_Composite;
 
 void register_node_tree_type_cmp()
 {
-  blender::bke::bNodeTreeType *tt = ntreeType_Composite = MEM_cnew<blender::bke::bNodeTreeType>(__func__);
+  blender::bke::bNodeTreeType *tt = ntreeType_Composite = MEM_cnew<blender::bke::bNodeTreeType>(
+      __func__);
 
   tt->type = NTREE_COMPOSIT;
   STRNCPY(tt->idname, "CompositorNodeTree");
