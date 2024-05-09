@@ -110,7 +110,7 @@ static void wm_ply_export_draw(bContext *C, wmOperator *op)
     if (CTX_wm_space_file(C)) {
       sub = uiLayoutColumnWithHeading(col, false, IFACE_("Include"));
       uiItemR(
-          sub, ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
+          sub, ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
     }
 
     uiItemR(col, ptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);

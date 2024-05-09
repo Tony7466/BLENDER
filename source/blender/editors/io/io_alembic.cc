@@ -158,9 +158,8 @@ static void ui_alembic_export_settings(const bContext *C, uiLayout *layout, Poin
     col = uiLayoutColumn(panel, false);
     if (CTX_wm_space_file(C)) {
       uiLayout *sub = uiLayoutColumnWithHeading(col, true, IFACE_("Include"));
-      uiItemR(sub, ptr, "selected", UI_ITEM_NONE, IFACE_("Selected Objects"), ICON_NONE);
-      uiItemR(
-          sub, ptr, "visible_objects_only", UI_ITEM_NONE, IFACE_("Visible Objects"), ICON_NONE);
+      uiItemR(sub, ptr, "selected", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
+      uiItemR(sub, ptr, "visible_objects_only", UI_ITEM_NONE, IFACE_("Visible Only"), ICON_NONE);
     }
   }
 

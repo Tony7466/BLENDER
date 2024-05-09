@@ -131,7 +131,7 @@ static void ui_obj_export_settings(const bContext *C, uiLayout *layout, PointerR
     if (CTX_wm_space_file(C)) {
       uiLayout *sub = uiLayoutColumnWithHeading(col, false, IFACE_("Include"));
       uiItemR(
-          sub, ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
+          sub, ptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selection Only"), ICON_NONE);
     }
 
     uiItemR(col, ptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
