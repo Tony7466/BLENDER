@@ -46,71 +46,92 @@ static void fill_loose_points_ibo(const IndexMask &visible,
 
 static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
 {
+  const Span<int> corner_verts = mr.corner_verts;
+
   IndexMaskMemory memory;
+  const IndexMask visible_verts = calc_mesh_vert_visibility(mr, IndexMask(mr.verts_num), memory);
+
   const BoundedBitSpan loose_verts_bits = mr.mesh->verts_no_face().is_loose_bits;
-  const IndexMask all_loose_verts = IndexMask::from_bits(loose_verts_bits, memory);
-  const IndexMask visible_loose_verts = calc_mesh_vert_visibility(mr, all_loose_verts, memory);
-  const int max_index = mr.corners_num + visible_loose_verts.size() * 2;
+  const IndexMask all_loose_verts = loose_verts_bits.is_empty() ?
+                                        IndexMask() :
+                                        IndexMask::from_bits(
+                                            visible_verts, loose_verts_bits, memory);
 
   const IndexMask non_loose_verts = all_loose_verts.complement(IndexRange(mr.verts_num), memory);
   const IndexMask visible_non_loose_verts = calc_mesh_vert_visibility(mr, non_loose_verts, memory);
 
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder,
-                    GPU_PRIM_LINES,
-                    visible_non_loose_verts.size() + visible_loose_verts.size(),
-                    max_index);
+  const int max_index = mr.corners_num + mr.loose_edges.size() * 2 + mr.loose_verts.size();
+  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible_verts.size(), max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
 
   /* This code fills the index buffer in a non-deterministic way, with non-atomic access to
    * `used`/`map`. This is okay because any of the possible face corner indices are correct, since
    * they all correspond to the same #Mesh vertex. The separate arrays exist as a performance
    * optimization to avoid writing to the VBO. */
-  const OffsetIndices faces = mr.faces;
-  const Span<int> corner_verts = mr.corner_verts;
-  if (visible_non_loose_verts.size() == mr.verts_num) {
+  if (visible_verts.size() == mr.verts_num && mr.loose_edges.is_empty()) {
     Array<bool> used(mr.verts_num, false);
     threading::memory_bandwidth_bound_task(
         used.as_span().size_in_bytes() + data.size_in_bytes() + corner_verts.size_in_bytes(),
         [&]() {
-          threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
-            for (const int face_index : range) {
-              const IndexRange face = faces[face_index];
-              for (const int corner : face) {
-                const int vert = corner_verts[corner];
-                if (!used[vert]) {
-                  data[vert] = corner;
-                  used[vert] = true;
-                }
+          threading::parallel_for(corner_verts.index_range(), 4096, [&](const IndexRange range) {
+            for (const int corner : range) {
+              const int vert = corner_verts[corner];
+              if (!used[vert]) {
+                data[vert] = corner;
+                used[vert] = true;
               }
             }
           });
         });
-  }
-  else {
-    /* Used to compress the vertex indices into the smaller range of visible vertices. */
-    Array<int> map(mr.corners_num, -1);
-    threading::memory_bandwidth_bound_task(
-        map.as_span().size_in_bytes() + data.size_in_bytes() + corner_verts.size_in_bytes(),
-        [&]() {
-          index_mask::build_reverse_map(visible_non_loose_verts, map.as_mutable_span());
-          threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
-            for (const int face_index : range) {
-              const IndexRange face = faces[face_index];
-              for (const int corner : face) {
-                const int vert = corner_verts[corner];
-                if (!map[vert] == -1) {
-                  data[map[vert]] = corner;
-                  map[vert] = -1;
-                }
-              }
-            }
-          });
-        });
+    GPU_indexbuf_build_in_place_ex(&builder, 0, max_index, false, &points);
+    return;
   }
 
-  // TODO: Needs a reverse map or something
-  fill_loose_points_ibo(mr.corners_num, data.take_back(visible_loose_verts.size()));
+  /* Compresses the vertex indices into the smaller range of visible vertices in the IBO. */
+  Array<int> map(mr.verts_num, -1);
+  threading::memory_bandwidth_bound_task(
+      map.as_span().size_in_bytes() + data.size_in_bytes() + corner_verts.size_in_bytes(), [&]() {
+        index_mask::build_reverse_map(visible_verts, map.as_mutable_span());
+        threading::parallel_for(corner_verts.index_range(), 2048, [&](const IndexRange range) {
+          for (const int corner : range) {
+            const int vert = corner_verts[corner];
+            if (map[vert] != -1) {
+              data[map[vert]] = corner;
+              map[vert] = -1;
+            }
+          }
+        });
+      });
+
+  const int loose_edges_start = mr.corners_num;
+  const Span<int2> edges = mr.edges;
+  const Span<int> loose_edges = mr.loose_edges;
+  threading::parallel_for(loose_edges.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int2 edge = edges[loose_edges[i]];
+      if (map[edge[0]] != -1) {
+        data[map[edge[0]]] = loose_edges_start + i;
+        map[edge[0]] = -1;
+      }
+      if (map[edge[1]] != -1) {
+        data[map[edge[1]]] = loose_edges_start + i;
+        map[edge[1]] = -1;
+      }
+    }
+  });
+
+  const int loose_verts_start = mr.corners_num + loose_edges.size() * 2;
+  const Span<int> loose_verts = mr.loose_verts;
+  threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int vert = loose_verts[i];
+      if (map[vert] != -1) {
+        data[map[vert]] = loose_verts_start + i;
+        map[vert] = -1;
+      }
+    }
+  });
 
   GPU_indexbuf_build_in_place_ex(&builder, 0, max_index, false, &points);
 }
