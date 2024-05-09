@@ -44,6 +44,19 @@ struct ScreenTraceHitData {
   bool valid;
 };
 
+struct ScreenTraceState {
+  /* Surface depth and time at previous valid depth sample. */
+  vec2 surface_history;
+  /* Time slope between previous valid sample (N-1) and the one before that (N-2). */
+  float surface_slope;
+  /* Multiplier and bias to the ray step quickly compute ray time. */
+  float ray_step_mul;
+  float ray_step_bias;
+  /* State of the trace. */
+  float ray_time;
+  bool hit;
+};
+
 /**
  * Ray-trace against the given HIZ-buffer height-field.
  *
@@ -98,54 +111,60 @@ METAL_ATTR ScreenTraceHitData raytrace_screen(RayTraceData rt_data,
   float lod_fac = saturate(sqrt_fast(roughness) * 2.0 - 0.4);
 
   /* Cross at least one pixel. */
-  float t = 1.001, time = 1.001;
+  float t = 1.001;
   bool hit = false;
 #ifdef METAL_AMD_RAYTRACE_WORKAROUND
   bool hit_failsafe = true;
 #endif
+
+  ScreenTraceState state;
+  state.surface_history = vec2(depth_sample, 0.0);
+  state.surface_slope = 0.0;
+  state.ray_time = 1.001; /* Cross at least one pixel. */
+  state.hit = false;
+
   const int max_steps = 255;
-  for (int iter = 1; !hit && (time < ssray.max_time) && (iter < max_steps); iter++) {
+  for (int iter = 1; !state.hit && (state.ray_time < ssray.max_time) && (iter < max_steps); iter++)
+  {
     float stride = 1.0 + float(iter) * rt_data.quality;
     float lod = log2(stride) * lod_fac;
 
-    prev_time = time;
+    prev_time = state.ray_time;
     prev_delta = delta;
 
-    time = min(t + stride * stride_rand, ssray.max_time);
+    state.ray_time = min(t + stride * stride_rand, ssray.max_time);
     t += stride;
 
-    vec4 ss_p = ssray.origin + ssray.direction * time;
+    vec4 ss_p = ssray.origin + ssray.direction * state.ray_time;
     depth_sample = textureLod(hiz_tx, ss_p.xy * hiz_data.uv_scale, floor(lod)).r;
 
-    delta = depth_sample - ss_p.z;
-    /* Check if the ray is below the surface ... */
-    hit = (delta < 0.0);
-    /* ... and above it with the added thickness. */
-    hit = hit && (delta > ss_p.z - ss_p.w || abs(delta) < abs(ssray.direction.z * stride * 2.0));
+    vec2 samp_surface = vec2(depth_sample, state.ray_time);
+    bool is_behind_surface = samp_surface.x < ss_p.z;
 
-#ifdef METAL_AMD_RAYTRACE_WORKAROUND
-    /* For workaround, perform discard back-face and background check only within
-     * the iteration where the first successful ray intersection is registered.
-     * We flag failures to discard ray hits later. */
-    bool hit_valid = !(discard_backface && prev_delta < 0.0) && (depth_sample != 1.0);
-    if (hit && !hit_valid) {
-      hit_failsafe = false;
+    if (is_behind_surface) {
+      /* Extrapolate last known valid occluder and check if it crossed the ray. */
+      float delta_time = state.ray_time - state.surface_history.y;
+      float extrapolated_occluder_depth = state.surface_history.x +
+                                          state.surface_slope * delta_time;
+      state.hit = extrapolated_occluder_depth < ss_p.z;
     }
-#endif
+    else {
+      /* Compute current occluder slope and record history for when the ray goes behind a surface.
+       */
+      vec2 delta = samp_surface - state.surface_history;
+      state.surface_slope = delta.x / delta.y;
+      state.surface_history = samp_surface;
+      /* Intersection test. Intersect if above the ray time. */
+      state.hit = samp_surface.x < ss_p.z;
+    }
   }
-#ifndef METAL_AMD_RAYTRACE_WORKAROUND
-  /* Discard back-face hits. */
-  hit = hit && !(discard_backface && prev_delta < 0.0);
-  /* Reject hit if background. */
-  hit = hit && (depth_sample != 1.0);
-#endif
   /* Refine hit using intersection between the sampled height-field and the ray.
    * This simplifies nicely to this single line. */
-  time = mix(prev_time, time, saturate(prev_delta / (prev_delta - delta)));
+  // time = mix(prev_time, time, saturate(prev_delta / (prev_delta - delta)));
 
   ScreenTraceHitData result;
-  result.valid = hit;
-  result.ss_hit_P = ssray.origin.xyz + ssray.direction.xyz * time;
+  result.valid = state.hit;
+  result.ss_hit_P = ssray.origin.xyz + ssray.direction.xyz * state.ray_time;
   result.v_hit_P = drw_point_screen_to_view(result.ss_hit_P);
   /* Convert to world space ray time. */
   result.time = length(result.v_hit_P - ray.origin) / length(ray.direction);
