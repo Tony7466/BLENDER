@@ -231,7 +231,19 @@ typedef struct View3DOverlay {
 
   /** Curves sculpt mode settings. */
   float sculpt_curves_cage_opacity;
+  int show_panel_flags;
+  char _pad1[4];
 } View3DOverlay;
+
+/** #View3DOverlay.show_panel_flags */
+typedef enum eView3DOverlayShowPanel {
+  V3D_OVERLAY_SHOW_PANEL_GUIDES = (1 << 0),
+  V3D_OVERLAY_SHOW_PANEL_OBJECTS = (1 << 1),
+  V3D_OVERLAY_SHOW_PANEL_GEOMETRY = (1 << 2),
+  V3D_OVERLAY_SHOW_PANEL_VIEWER_NODE = (1 << 3),
+  V3D_OVERLAY_SHOW_PANEL_MOTION_TRACKING = (1 << 4),
+  V3D_OVERLAY_SHOW_PANEL_VIEWPORT_DEBUG = (1 << 5),
+} eView3DOverlayShowPanel;
 
 /** #View3DOverlay.handle_display */
 typedef enum eHandleDisplay {

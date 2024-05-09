@@ -5025,6 +5025,36 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "debug_flag", V3D_DEBUG_FREEZE_CULLING);
   RNA_def_property_ui_text(prop, "Freeze Culling", "Freeze view culling bounds");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "show_panel_guides", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "overlay.show_panel_flags", V3D_OVERLAY_SHOW_PANEL_GUIDES);
+  RNA_def_property_ui_text(prop, "Show Guides Panel", "");
+
+  prop = RNA_def_property(srna, "show_panel_objects", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "overlay.show_panel_flags", V3D_OVERLAY_SHOW_PANEL_OBJECTS);
+  RNA_def_property_ui_text(prop, "Show Objects Panel", "");
+
+  prop = RNA_def_property(srna, "show_panel_geometry", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "overlay.show_panel_flags", V3D_OVERLAY_SHOW_PANEL_GEOMETRY);
+  RNA_def_property_ui_text(prop, "Show Geometry Panel", "");
+
+  prop = RNA_def_property(srna, "show_panel_viewer_node", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "overlay.show_panel_flags", V3D_OVERLAY_SHOW_PANEL_VIEWER_NODE);
+  RNA_def_property_ui_text(prop, "Show Viewer Panel", "");
+
+  prop = RNA_def_property(srna, "show_panel_motion_tracking", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "overlay.show_panel_flags", V3D_OVERLAY_SHOW_PANEL_MOTION_TRACKING);
+  RNA_def_property_ui_text(prop, "Show Motion Tracking Panel", "");
+
+  prop = RNA_def_property(srna, "show_panel_viewport_debug", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "overlay.show_panel_flags", V3D_OVERLAY_SHOW_PANEL_VIEWPORT_DEBUG);
+  RNA_def_property_ui_text(prop, "Show Motion Viewport Debug panel", "");
 }
 
 static void rna_def_space_view3d(BlenderRNA *brna)

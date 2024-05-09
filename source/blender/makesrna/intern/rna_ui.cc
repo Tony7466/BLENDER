@@ -1891,6 +1891,15 @@ static void rna_def_panel(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "", "The category (tab) in which the panel will be displayed, when applicable");
 
+  prop = RNA_def_property(srna, "show_open_prop_path", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "type->show_open_prop_path");
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+  RNA_def_property_ui_text(prop,
+                           "",
+                           "When panels are drawn in popovers this set a path from context to a "
+                           "bool property to store panel open/close state, otherwise the panel "
+                           "will not support to be collapsed in popovers.");
+
   prop = RNA_def_property(srna, "bl_owner_id", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "type->owner_id");
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);

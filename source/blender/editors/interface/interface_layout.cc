@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <fmt/format.h>
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
@@ -32,9 +34,11 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_idprop.hh"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
@@ -6153,9 +6157,10 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
     ui_block_add_dynamic_listener(block, pt->listener);
   }
 
+  const bool support_layout_panel = block->handle && block->handle->region;
   /* This check may be paranoid, this function might run outside the context of a popup or can run
    * in popovers that are not supposed to support refreshing, see #ui_popover_create_block. */
-  if (block->handle && block->handle->region) {
+  if (support_layout_panel) {
     /* Allow popovers to contain collapsible sections, see #uiItemPopoverPanel. */
     UI_popup_dummy_panel_set(block->handle->region, block);
   }
@@ -6164,9 +6169,33 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
 
   /* Draw main panel. */
   if (show_header) {
-    uiLayout *row = uiLayoutRow(layout, false);
+    uiLayout *header_layout = nullptr;
+    if (support_layout_panel && pt->show_open_prop_path[0]) {
+      PointerRNA ptr;
+      PropertyRNA *prop = nullptr;
+      PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
+      if (RNA_path_resolve_property(&ctx_ptr, pt->show_open_prop_path, &ptr, &prop)) {
+        const char *identifier = RNA_property_identifier(prop);
+        PanelLayout layout_panel = uiLayoutPanelProp(C, layout, &ptr, identifier);
+        header_layout = layout_panel.header;
+        /* Use the layout panel body to draw panel content. */
+        layout = layout_panel.body;
+      }
+      else {
+        /* Cannot resolve property path. */
+        const std::string error = fmt::format("{}: Cannot resolve property path from context: {}",
+                                              pt->idname,
+                                              pt->show_open_prop_path);
+        BKE_report(CTX_wm_reports(C), RPT_ERROR, error.c_str());
+        BKE_panel_free(panel);
+        return;
+      }
+    }
+    else {
+      header_layout = uiLayoutRow(layout, false);
+    }
     if (pt->draw_header) {
-      panel->layout = row;
+      panel->layout = header_layout;
       pt->draw_header(C, panel);
       panel->layout = nullptr;
     }
@@ -6174,11 +6203,15 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
     /* draw_header() is often used to add a checkbox to the header. If we add the label like below
      * the label is disconnected from the checkbox, adding a weird looking gap. As workaround, let
      * the checkbox add the label instead. */
-    if (!ui_layout_has_panel_label(row, pt)) {
-      uiItemL(row, CTX_IFACE_(pt->translation_context, pt->label), ICON_NONE);
+    if (!ui_layout_has_panel_label(header_layout, pt)) {
+      uiItemL(header_layout, CTX_IFACE_(pt->translation_context, pt->label), ICON_NONE);
     }
   }
-
+  /* Avoid drawing when layout panel is closed. */
+  if (!layout) {
+    BKE_panel_free(panel);
+    return;
+  }
   panel->layout = layout;
   pt->draw(C, panel);
   panel->layout = nullptr;
@@ -6192,13 +6225,14 @@ static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout,
 
     if (child_pt->poll == nullptr || child_pt->poll(C, child_pt)) {
       /* Add space if something was added to the layout. */
-      if (last_item != layout->items.last) {
+      const bool use_layout_panel = support_layout_panel && child_pt->show_open_prop_path[0];
+      if (!use_layout_panel && last_item != layout->items.last) {
         uiItemS(static_cast<uiLayout *>(layout));
         last_item = static_cast<uiLayout *>(layout->items.last);
       }
 
-      uiLayout *col = uiLayoutColumn(layout, false);
-      ui_paneltype_draw_impl(C, child_pt, col, true);
+      uiLayout *child_layout = use_layout_panel ? layout : uiLayoutColumn(layout, false);
+      ui_paneltype_draw_impl(C, child_pt, child_layout, true);
     }
   }
 }

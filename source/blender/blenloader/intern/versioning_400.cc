@@ -3426,4 +3426,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
     blender::bke::mesh_sculpt_mask_to_generic(*mesh);
   }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 31)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
+          if (space->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = reinterpret_cast<View3D *>(space);
+            v3d->overlay.show_panel_flags = V3D_OVERLAY_SHOW_PANEL_GUIDES |
+                                            V3D_OVERLAY_SHOW_PANEL_OBJECTS |
+                                            V3D_OVERLAY_SHOW_PANEL_GEOMETRY |
+                                            V3D_OVERLAY_SHOW_PANEL_VIEWER_NODE;
+          }
+        }
+      }
+    }
+  }
 }

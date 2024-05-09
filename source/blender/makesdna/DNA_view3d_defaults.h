@@ -63,6 +63,10 @@
     .gpencil_grid_opacity = 0.9f, \
     .gpencil_vertex_paint_opacity = 1.0f, \
     .normals_constant_screen_size = 7.0f, \
+    .show_panel_flags = V3D_OVERLAY_SHOW_PANEL_GUIDES |\
+                        V3D_OVERLAY_SHOW_PANEL_OBJECTS |\
+                        V3D_OVERLAY_SHOW_PANEL_GEOMETRY |\
+                        V3D_OVERLAY_SHOW_PANEL_VIEWER_NODE,\
   }
 
 #define _DNA_DEFAULT_View3DCursor \
