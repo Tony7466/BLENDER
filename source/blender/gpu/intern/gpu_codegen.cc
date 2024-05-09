@@ -102,6 +102,8 @@ struct GPUPass {
   uint32_t hash;
   /** Did we already tried to compile the attached GPUShader. */
   bool compiled;
+  /** If this pass is already being_compiled (A GPUPass can be shader by multiple GPUMaterials). */
+  bool compilation_requested;
   /** Hint that an optimized variant of this pass should be created based on a complexity heuristic
    * during pass code generation. */
   bool should_optimize;
@@ -805,6 +807,7 @@ GPUPass *GPU_generate_pass(GPUMaterial *material,
     pass->engine = engine;
     pass->hash = codegen.hash_get();
     pass->compiled = false;
+    pass->compilation_requested = false;
     pass->cached = false;
     /* Only flag pass optimization hint if this is the first generated pass for a material.
      * Optimized passes cannot be optimized further, even if the heuristic is still not
@@ -883,7 +886,8 @@ static bool gpu_pass_shader_validate(GPUPass *pass, GPUShader *shader)
 
 GPUShaderCreateInfo *GPU_pass_get_info(GPUPass *pass, const char *shname)
 {
-  if (!pass->compiled) {
+  if (!pass->compilation_requested) {
+    pass->compilation_requested = true;
     pass->create_info->name_ = shname;
     GPUShaderCreateInfo *info = reinterpret_cast<GPUShaderCreateInfo *>(
         static_cast<ShaderCreateInfo *>(pass->create_info));
