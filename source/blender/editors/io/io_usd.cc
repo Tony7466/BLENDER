@@ -131,12 +131,12 @@ const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
 
 const EnumPropertyItem rna_enum_usd_xform_op_mode_items[] = {
     {USD_XFORM_OP_TRS,
-     "SRT",
+     "TRS",
      0,
      "Translate, Rotate, Scale",
      "Export with translate, rotate, and scale Xform operators"},
     {USD_XFORM_OP_TOS,
-     "SOT",
+     "TOS",
      0,
      "Translate, Orient, Scale",
      "Export with translate, orient quaternion, and scale Xform operators"},
