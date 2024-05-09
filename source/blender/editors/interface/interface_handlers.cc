@@ -11438,12 +11438,12 @@ static int ui_handle_menus_recursive(bContext *C,
         if (header) {
           ED_region_tag_redraw(menu->region);
           ED_region_tag_refresh_ui(menu->region);
-          ARegion *menu_region = CTX_wm_menu(C);
+          ARegion *prev_menu_region = CTX_wm_menu(C);
           /* Set the current context menu region so the handler context can access to it. */
           CTX_wm_menu_set(C, menu->region);
           UI_panel_drag_collapse_handler_add(C, !UI_layout_panel_toggle_open(C, header));
-          /* Retore previos menu region. */
-          CTX_wm_menu_set(C, menu_region);
+          /* Restore previous menu region. */
+          CTX_wm_menu_set(C, prev_menu_region);
           retval = WM_UI_HANDLER_BREAK;
         }
       }
