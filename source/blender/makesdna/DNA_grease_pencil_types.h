@@ -550,6 +550,7 @@ typedef struct GreasePencil {
   void rename_node(blender::bke::greasepencil::TreeNode &node, blender::StringRefNull new_name);
 
   void remove_layer(blender::bke::greasepencil::Layer &layer);
+  void remove_group(blender::bke::greasepencil::TreeNode &group);
 
   /* Frames API functions. */
 

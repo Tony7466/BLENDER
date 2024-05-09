@@ -2957,6 +2957,12 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
   MEM_delete(&layer);
 }
 
+void GreasePencil::remove_group(blender::bke::greasepencil::TreeNode &group)
+{
+  group.parent_group()->unlink_node(group);
+  MEM_delete(&group.as_group());
+}
+
 void GreasePencil::print_layer_tree()
 {
   using namespace blender::bke::greasepencil;
