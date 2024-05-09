@@ -454,7 +454,7 @@ static void rna_CollectionExport_friendly_name(const CollectionExport *data, cha
 {
   blender::bke::FileHandlerType *fh = blender::bke::file_handler_find(data->fh_idname);
   if (!fh) {
-    BLI_strncpy(value, IFACE_("Undefined"), OP_MAX_TYPENAME);
+    BLI_strncpy(value, DATA_("Undefined"), OP_MAX_TYPENAME);
   }
   else {
     BLI_strncpy(value, fh->label, OP_MAX_TYPENAME);
