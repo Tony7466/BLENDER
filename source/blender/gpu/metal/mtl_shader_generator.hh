@@ -268,6 +268,12 @@ struct MSLTextureResource {
   /* Atomic fallback buffer information. */
   int atomic_fallback_buffer_ssbo_id = -1;
 
+  /* Raster order group can be specified to synchronize pixel read and write operations between
+   * subsequent draws. If a subsequent draw requires reading data from a GBuffer, raster order
+   * groups should be used to ensure all writes occur before reading.
+   * `-1` means raster order groups are not used. */
+  int raster_order_group = -1;
+
   eGPUTextureType get_texture_binding_type() const;
   eGPUSamplerFormat get_sampler_format() const;
 
@@ -843,6 +849,27 @@ inline const char *to_string(const shader::Type &type)
       BLI_assert(false);
       return "unkown";
   }
+}
+
+inline shader::ImageType strip_atomic_image_type(shader::ImageType type)
+{
+  switch (type) {
+    case shader::ImageType::UINT_2D_ATOMIC:
+      return shader::ImageType::UINT_2D;
+    case shader::ImageType::UINT_2D_ARRAY_ATOMIC:
+      return shader::ImageType::UINT_2D_ARRAY;
+    case shader::ImageType::UINT_3D_ATOMIC:
+      return shader::ImageType::UINT_3D;
+    case shader::ImageType::INT_2D_ATOMIC:
+      return shader::ImageType::INT_2D;
+    case shader::ImageType::INT_2D_ARRAY_ATOMIC:
+      return shader::ImageType::INT_2D_ARRAY;
+    case shader::ImageType::INT_3D_ATOMIC:
+      return shader::ImageType::INT_3D;
+    default:
+      return type;
+  }
+  return type;
 }
 
 inline char *next_symbol_in_range(char *begin, char *end, char symbol)

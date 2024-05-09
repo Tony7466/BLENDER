@@ -269,6 +269,10 @@ enum class BuiltinBits {
 
   /* Texture atomics requires usage options to alter compilation flag. */
   TEXTURE_ATOMIC = (1 << 18),
+  /* Special case for spatially coherent atomic operations which can skip atomic operations by
+   * instead guaranteeing fragment execution order on some implementations.
+   * See `GPU_TEXTURE_USAGE_LOCAL_ATOMIC` for details. */
+  TEXTURE_LOCAL_ATOMIC = (1 << 19),
 
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
   USE_DEBUG_DRAW = (1 << 29),

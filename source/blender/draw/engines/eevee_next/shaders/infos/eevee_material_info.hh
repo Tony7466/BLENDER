@@ -250,7 +250,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_ATOMIC_RASTER")
-    .builtins(BuiltinBits::TEXTURE_ATOMIC)
+    .builtins(BuiltinBits::TEXTURE_LOCAL_ATOMIC)
     .vertex_out(eevee_surf_shadow_atomic_iface)
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,

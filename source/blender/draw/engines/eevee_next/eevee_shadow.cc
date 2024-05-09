@@ -663,10 +663,13 @@ void ShadowModule::init()
    * NOTE(Metal): Metal utilizes a tile-optimized approach for Apple Silicon's architecture. */
   const bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
   const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+#if 0
   if (is_metal_backend && is_tile_based_arch) {
     ShadowModule::shadow_technique = ShadowTechnique::TILE_COPY;
   }
-  else {
+  else
+#endif
+  {
     ShadowModule::shadow_technique = ShadowTechnique::ATOMIC_RASTER;
   }
 
@@ -698,7 +701,7 @@ void ShadowModule::init()
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   if (ShadowModule::shadow_technique == ShadowTechnique::ATOMIC_RASTER) {
-    tex_usage |= GPU_TEXTURE_USAGE_ATOMIC;
+    tex_usage |= GPU_TEXTURE_USAGE_LOCAL_ATOMIC;
   }
   if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
     /* Global update. */

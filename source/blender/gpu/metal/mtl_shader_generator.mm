@@ -51,6 +51,7 @@ char *MSLGeneratorInterface::msl_patch_default = nullptr;
 #define FRAGMENT_TILE_IN_STRUCT_NAME "FragmentTileIn"
 
 #define ATOMIC_DEFINE_STR "#define MTL_SUPPORTS_TEXTURE_ATOMICS 1\n"
+#define LOCAL_ATOMIC_ROG_FASTPATH_STR "#define MTL_USE_LOCAL_ROG_ATOMIC_FASTPATH 1\n"
 
 /* -------------------------------------------------------------------- */
 /** \name Shader Translation utility functions.
@@ -1074,6 +1075,13 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     ss_fragment << ATOMIC_DEFINE_STR;
   }
 
+  /* Set define to skip atomic operations and instead use
+   * RasterOrderGroup(ROG) optimized access.*/
+  if (bool(info->builtins_ & BuiltinBits::TEXTURE_LOCAL_ATOMIC)) {
+    ss_vertex << LOCAL_ATOMIC_ROG_FASTPATH_STR;
+    ss_fragment << LOCAL_ATOMIC_ROG_FASTPATH_STR;
+  }
+
   /* Generate specialization constants. */
   generate_specialization_constant_declarations(info, ss_vertex);
   generate_specialization_constant_declarations(info, ss_fragment);
@@ -1544,6 +1552,12 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
     ss_compute << ATOMIC_DEFINE_STR;
   }
 
+  /* Set define to skip atomic operations and instead use
+   * RasterOrderGroup(ROG) optimized access. */
+  if (bool(info->builtins_ & BuiltinBits::TEXTURE_LOCAL_ATOMIC)) {
+    ss_compute << LOCAL_ATOMIC_ROG_FASTPATH_STR;
+  }
+
   generate_specialization_constant_declarations(info, ss_compute);
 
 #ifndef NDEBUG
@@ -1875,19 +1889,25 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
       switch (res.bind_type) {
         case shader::ShaderCreateInfo::Resource::BindType::SAMPLER: {
 
+          MSLTextureResource msl_tex;
+
+          /* If TEXTURE_LOCAL_ATOMIC flag is enabled, reset atomic texture types to default. */
+          ImageType sampler_type = res.sampler.type;
+          if (bool(info->builtins_ & BuiltinBits::TEXTURE_LOCAL_ATOMIC)) {
+            sampler_type = strip_atomic_image_type(sampler_type);
+          }
+
           /* Samplers to have access::sample by default. */
           MSLTextureSamplerAccess access = MSLTextureSamplerAccess::TEXTURE_ACCESS_SAMPLE;
           /* TextureBuffers must have read/write/read-write access pattern. */
-          if (res.sampler.type == ImageType::FLOAT_BUFFER ||
-              res.sampler.type == ImageType::INT_BUFFER ||
-              res.sampler.type == ImageType::UINT_BUFFER)
+          if (sampler_type == ImageType::FLOAT_BUFFER || sampler_type == ImageType::INT_BUFFER ||
+              sampler_type == ImageType::UINT_BUFFER)
           {
             access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
           }
 
-          MSLTextureResource msl_tex;
           msl_tex.stage = ShaderStage::ANY;
-          msl_tex.type = res.sampler.type;
+          msl_tex.type = sampler_type;
           msl_tex.name = res.sampler.name;
           msl_tex.access = access;
           msl_tex.slot = texture_slot_id++;
@@ -1912,10 +1932,23 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
             access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
           }
 
-          /* Writeable image targets only assigned to Fragment and compute shaders. */
           MSLTextureResource msl_image;
+
+          /* If TEXTURE_LOCAL_ATOMIC flag is enabled, reset atomic texture types to default. */
+          ImageType image_type = res.image.type;
+          if (bool(info->builtins_ & BuiltinBits::TEXTURE_LOCAL_ATOMIC)) {
+            image_type = strip_atomic_image_type(image_type);
+            /* Assign raster order group to ensure access is well-ordered between spatially local
+             * fragment invocations. Using texture slot ID as dependencies are local to each
+             * texture. NOTE: Only applies to writeable textures. */
+            if (bool(res.image.qualifiers & Qualifier::WRITE)) {
+              msl_image.raster_order_group = texture_slot_id;
+            }
+          }
+
+          /* Writeable image targets only assigned to Fragment and compute shaders. */
           msl_image.stage = ShaderStage::FRAGMENT | ShaderStage::COMPUTE;
-          msl_image.type = res.image.type;
+          msl_image.type = image_type;
           msl_image.name = res.image.name;
           msl_image.access = access;
           msl_image.slot = texture_slot_id++;
@@ -2514,8 +2547,14 @@ void MSLGeneratorInterface::generate_msl_textures_input_string(std::stringstream
   BLI_assert(this->texture_samplers.size() <= GPU_max_textures_vert());
   for (const MSLTextureResource &tex : this->texture_samplers) {
     if (bool(tex.stage & stage)) {
-      out << parameter_delimiter(is_first_parameter) << "\n\t" << tex.get_msl_typestring(false)
-          << " [[texture(" << tex.slot << ")]]";
+      out << parameter_delimiter(is_first_parameter) << "\n\t" << tex.get_msl_typestring(false);
+      if (stage == ShaderStage::FRAGMENT && tex.raster_order_group >= 0) {
+        out << " [[texture(" << tex.slot << "), raster_order_group(" << tex.raster_order_group
+            << ")]]";
+      }
+      else {
+        out << " [[texture(" << tex.slot << ")]]";
+      }
     }
   }
 

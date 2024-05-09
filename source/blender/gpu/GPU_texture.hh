@@ -534,10 +534,15 @@ enum eGPUTextureUsage {
   GPU_TEXTURE_USAGE_MEMORYLESS = (1 << 5),
   /* Whether a texture can support atomic operations. */
   GPU_TEXTURE_USAGE_ATOMIC = (1 << 6),
+  /* Special case where atomic operations are required but are always spatially local between
+   * fragent invocations. E.g. two subsequent draw calls execute atomic operations on the same
+   * texel from the same fragment coordinate. Some implementations are able to avoid atomic
+   * operations by guaranteeing execution order of fragments. */
+  GPU_TEXTURE_USAGE_LOCAL_ATOMIC = (1 << 7),
   /* Create a texture whose usage cannot be defined prematurely.
    * This is unoptimized and should not be used. */
-  GPU_TEXTURE_USAGE_GENERAL = (0xFF &
-                               (~(GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_ATOMIC))),
+  GPU_TEXTURE_USAGE_GENERAL = (0xFF & (~(GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_ATOMIC |
+                                         GPU_TEXTURE_USAGE_LOCAL_ATOMIC))),
 };
 
 ENUM_OPERATORS(eGPUTextureUsage, GPU_TEXTURE_USAGE_GENERAL);

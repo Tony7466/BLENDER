@@ -320,8 +320,10 @@ struct SStruct {
 #define isamplerCube thread _mtl_combined_image_sampler_cube<int>
 #define isamplerCubeArray thread _mtl_combined_image_sampler_cube_array<int>
 
-#ifndef MTL_SUPPORTS_TEXTURE_ATOMICS
-/* If texture atomics are unsupported, map atomic types to internal atomic fallback type. */
+#if !defined(MTL_SUPPORTS_TEXTURE_ATOMICS) && !defined(MTL_USE_LOCAL_ROG_ATOMIC_FASTPATH)
+/* If texture atomics are unsupported, map atomic types to internal atomic fallback type.
+ * If the `TEXTURE_LOCAL_ATOMIC` flag is specified, the shader will also treat all atomic textures
+ * as regular. */
 #  define usampler2DArrayAtomic _mtl_combined_image_sampler_2d_array_atomic_fallback<uint>
 #  define usampler2DAtomic _mtl_combined_image_sampler_2d_atomic_fallback<uint>
 #  define usampler3DAtomic _mtl_combined_image_sampler_3d_atomic_fallback<uint>
@@ -1107,15 +1109,46 @@ inline void _texture_write_internal_fast(thread _mtl_combined_image_sampler_3d<S
 }
 
 /* Texture atomic operations are only supported in Metal 3.1 and onward (macOS 14.0 Sonoma). */
-#ifdef MTL_SUPPORTS_TEXTURE_ATOMICS
+
+#ifdef MTL_USE_LOCAL_ROG_ATOMIC_FASTPATH
+/* If the shader uses the flag: `BuiltinBits::TEXTURE_LOCAL_ATOMIC', we skip all atomic
+ * texture operations but instead expose the atomic operators utilising existing,
+ * read-write utility functions. Dependency between spatially local threads is guaranteed
+ * by raster-order-group execution ordering. */
 
 /* Image atomic operations. */
-#  define imageAtomicMin(tex, coord, data) _texture_image_atomic_min_internal(tex, coord, data)
-#  define imageAtomicAdd(tex, coord, data) _texture_image_atomic_add_internal(tex, coord, data)
-#  define imageAtomicExchange(tex, coord, data) \
-    _texture_image_atomic_exchange_internal(tex, coord, data)
-#  define imageAtomicXor(tex, coord, data) _texture_image_atomic_xor_internal(tex, coord, data)
-#  define imageAtomicOr(tex, coord, data) _texture_image_atomic_or_internal(tex, coord, data)
+#  define imageAtomicMin(tex, coord, data) \
+    { \
+      uint read_val_ = _texelFetch_internal_fast(tex, coord, 0).r; \
+      _texture_write_internal_fast(tex, coord, uvec4(min(read_val_, data))); \
+    }
+#  define imageAtomicAdd(tex, coord, data) \
+    { \
+      uint read_val_ = _texelFetch_internal_fast(tex, coord, 0).r; \
+      _texture_write_internal_fast(tex, coord, uvec4(read_val_ + data)); \
+    }
+#  define imageAtomicExchange(tex, coord, data) "UNSUPPORTED WITH LOCAL_ATOMIC"
+#  define imageAtomicXor(tex, coord, data) \
+    { \
+      uint read_val_ = _texelFetch_internal_fast(tex, coord, 0).r; \
+      _texture_write_internal_fast(tex, coord, uvec4(read_val_ ^ data)); \
+    }
+#  define imageAtomicOr(tex, coord, data) \
+    { \
+      uint read_val_ = _texelFetch_internal_fast(tex, coord, 0).r; \
+      _texture_write_internal_fast(tex, coord, uvec4(read_val_ | data)); \
+    }
+
+#else
+#  ifdef MTL_SUPPORTS_TEXTURE_ATOMICS
+
+/* Image atomic operations. */
+#    define imageAtomicMin(tex, coord, data) _texture_image_atomic_min_internal(tex, coord, data)
+#    define imageAtomicAdd(tex, coord, data) _texture_image_atomic_add_internal(tex, coord, data)
+#    define imageAtomicExchange(tex, coord, data) \
+      _texture_image_atomic_exchange_internal(tex, coord, data)
+#    define imageAtomicXor(tex, coord, data) _texture_image_atomic_xor_internal(tex, coord, data)
+#    define imageAtomicOr(tex, coord, data) _texture_image_atomic_or_internal(tex, coord, data)
 
 /* Atomic OR. */
 template<typename S, access A>
@@ -1322,7 +1355,7 @@ S _texture_image_atomic_exchange_internal(thread _mtl_combined_image_sampler_3d<
   return tex.texture->atomic_exchange(uint3(coord), vec<S, 4>(data)).x;
 }
 
-#else
+#  else
 
 /**
  * Texture atomic fallback function entry points.
@@ -1332,16 +1365,16 @@ S _texture_image_atomic_exchange_internal(thread _mtl_combined_image_sampler_3d<
  */
 
 /* Image atomic operations. */
-#  define imageAtomicMin(tex, coord, data) \
-    _texture_image_atomic_min_internal_fallback(tex, coord, data)
-#  define imageAtomicAdd(tex, coord, data) \
-    _texture_image_atomic_add_internal_fallack(tex, coord, data)
-#  define imageAtomicExchange(tex, coord, data) \
-    _texture_image_atomic_exchange_internal_fallack(tex, coord, data)
-#  define imageAtomicXor(tex, coord, data) \
-    _texture_image_atomic_xor_internal_fallack(tex, coord, data)
-#  define imageAtomicOr(tex, coord, data) \
-    _texture_image_atomic_or_internal_fallack(tex, coord, data)
+#    define imageAtomicMin(tex, coord, data) \
+      _texture_image_atomic_min_internal_fallback(tex, coord, data)
+#    define imageAtomicAdd(tex, coord, data) \
+      _texture_image_atomic_add_internal_fallack(tex, coord, data)
+#    define imageAtomicExchange(tex, coord, data) \
+      _texture_image_atomic_exchange_internal_fallack(tex, coord, data)
+#    define imageAtomicXor(tex, coord, data) \
+      _texture_image_atomic_xor_internal_fallack(tex, coord, data)
+#    define imageAtomicOr(tex, coord, data) \
+      _texture_image_atomic_or_internal_fallack(tex, coord, data)
 
 /** Pixel address location remapping. */
 
@@ -1776,6 +1809,7 @@ inline void _texture_write_internal_fast(
   tex.texture->write(value, tex_coord_3d_to_2d(tex, uint3(_coord)));
 }
 
+#  endif
 #endif
 
 /* Matrix compare operators. */
