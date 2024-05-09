@@ -293,7 +293,7 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
     build_layer_group_buttons(*sub);
   }
 
-   std::optional<bool> should_be_active() const override
+  std::optional<bool> should_be_active() const override
   {
     if (this->grease_pencil_.active_node->wrap().is_group()) {
       return reinterpret_cast<LayerGroup *>(&group_) ==
