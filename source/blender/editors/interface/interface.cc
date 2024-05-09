@@ -1617,6 +1617,7 @@ enum PredefinedExtraOpIconType {
   PREDEFINED_EXTRA_OP_ICON_NONE = 1,
   PREDEFINED_EXTRA_OP_ICON_CLEAR,
   PREDEFINED_EXTRA_OP_ICON_EYEDROPPER,
+  PREDEFINED_EXTRA_OP_ICON_BONE_EYEDROPPER
 };
 
 static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
@@ -1708,6 +1709,23 @@ static bool ui_but_icon_extra_is_visible_search_eyedropper(uiBut *but)
   return ((but->editstr == nullptr) && (idcode == ID_OB || OB_DATA_SUPPORT_ID(idcode)));
 }
 
+static bool ui_but_icon_extra_is_visible_bone_eyedropper(uiBut *but)
+{
+  if (but->type != UI_BTYPE_SEARCH_MENU) {
+    return false;
+  }
+  if (but->rnaprop == nullptr) {
+    return false;
+  }
+  if (but->editstr != nullptr) {
+    return false;
+  }
+  uiButSearch *search_but = (uiButSearch *)but;
+  StructRNA *type = RNA_property_pointer_type(&search_but->rnasearchpoin,
+                                              search_but->rnasearchprop);
+  return type == &RNA_Bone;
+}
+
 static PredefinedExtraOpIconType ui_but_icon_extra_get(uiBut *but)
 {
   switch (but->type) {
@@ -1725,6 +1743,9 @@ static PredefinedExtraOpIconType ui_but_icon_extra_get(uiBut *but)
       }
       else if (ui_but_icon_extra_is_visible_search_eyedropper(but)) {
         return PREDEFINED_EXTRA_OP_ICON_EYEDROPPER;
+      }
+      else if (ui_but_icon_extra_is_visible_bone_eyedropper(but)) {
+        return PREDEFINED_EXTRA_OP_ICON_BONE_EYEDROPPER;
       }
       break;
     default:
@@ -1756,6 +1777,17 @@ static void ui_but_predefined_extra_operator_icons_add(uiBut *but)
       optype = id_eyedropper_ot;
       icon = ICON_EYEDROPPER;
 
+      break;
+    }
+    case PREDEFINED_EXTRA_OP_ICON_BONE_EYEDROPPER: {
+      static wmOperatorType *id_eyedropper_ot = nullptr;
+      if (!id_eyedropper_ot) {
+        id_eyedropper_ot = WM_operatortype_find("UI_OT_eyedropper_bone", false);
+      }
+      BLI_assert(id_eyedropper_ot);
+
+      optype = id_eyedropper_ot;
+      icon = ICON_EYEDROPPER;
       break;
     }
     case PREDEFINED_EXTRA_OP_ICON_CLEAR: {
