@@ -58,7 +58,7 @@ struct DRWPatchMap {
 struct DRWSubdivLooseGeom {
 
   /** For every subdivided edge, there are two coarse vertices. */
-  // int verts_per_coarse_edge;
+  int verts_per_coarse_edge;
   /** For every coarse edge, there are `resolution - 1` subdivided edges. */
   int edges_per_coarse_edge;
 
@@ -153,7 +153,7 @@ struct DRWSubdivCache {
 
   DRWPatchMap gpu_patch_map;
 
-  DRWSubdivLooseGeom loose_geom;
+  DRWSubdivLooseGeom loose_info;
 
   /* UBO to store settings for the various compute shaders. */
   GPUUniformBuf *ubo;

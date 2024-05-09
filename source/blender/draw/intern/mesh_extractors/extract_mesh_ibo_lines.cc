@@ -219,8 +219,8 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
     return;
   }
 
-  const DRWSubdivLooseGeom &subdiv_info = subdiv_cache.loose_geom;
-  const int edges_per_coarse_edge = subdiv_info.edges_per_coarse_edge;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
   const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
 
   /* Update flags for loose edges, points are already handled. */
@@ -304,7 +304,8 @@ void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire)
 {
-  const int loose_num = mr.loose_edges.size() * 2;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int loose_num = mr.loose_edges.size() * loose_info.edges_per_coarse_edge;
   no_loose_wire = loose_num == 0;
 
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {

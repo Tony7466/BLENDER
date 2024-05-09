@@ -686,8 +686,7 @@ void draw_subdiv_cache_free(DRWSubdivCache &cache)
     GPU_uniformbuf_free(cache.ubo);
     cache.ubo = nullptr;
   }
-  std::destroy_at(&cache.loose_geom);
-  new (&cache.loose_geom) DRWSubdivLooseGeom();
+  cache.loose_info = {};
 }
 
 /* Flags used in #DRWSubdivCache.extra_coarse_face_data. The flags are packed in the upper bits of
@@ -2213,7 +2212,7 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCach
     return;
   }
 
-  DRWSubdivLooseGeom &result = subdiv_cache->loose_geom;
+  DRWSubdivLooseGeom &result = subdiv_cache->loose_info;
   if (!result.edge_vert_positions.is_empty()) {
     /* Already processed. */
     return;
@@ -2228,13 +2227,8 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCach
   const int edges_per_coarse_edge = resolution - 2;
   result.edges_per_coarse_edge = edges_per_coarse_edge;
 
-  const int num_subdivided_edge = loose_edges.size() * (edges_per_coarse_edge + 1);
-
-  const int num_subdivided_verts = num_subdivided_edge * 2;
-
   result.edge_vert_positions.reinitialize(loose_edges.size() * verts_per_coarse_edge);
 
-  /* Subdivide each loose coarse edge. */
   const Span<float3> coarse_positions = coarse_mesh->vert_positions();
   const Span<int2> coarse_edges = coarse_mesh->edges();
 
@@ -2243,31 +2237,23 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCach
   const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
       coarse_edges, coarse_mesh->verts_num, vert_to_edge_offsets, vert_to_edge_indices);
 
-  MutableSpan<int> coarse_verts = result.coarse_vert_indices;
-  for (const int i : loose_edges.index_range()) {
-    const int2 coarse_edge = coarse_edges[loose_edges[i]];
-    MutableSpan<int> edge_coarse_verts = coarse_verts.slice(i * edges_per_coarse_edge,
-                                                            edges_per_coarse_edge);
-    edge_coarse_verts.first() = coarse_edge[0];
-    edge_coarse_verts.slice(IndexRange::from_begin_size(1, edges_per_coarse_edge - 2)).fill(-1);
-    edge_coarse_verts.last() = coarse_edge[1];
-  }
-
-  for (const int i : loose_edges.index_range()) {
-    const int coarse_edge_index = loose_edges[i];
-    const int2 &coarse_edge = coarse_edges[loose_edges[i]];
-    MutableSpan<float3> edge_positions = edge_positions.slice(i * edges_per_coarse_edge,
-                                                              edges_per_coarse_edge);
-    for (const int j : IndexRange(verts_per_coarse_edge)) {
-      bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
-                                                     coarse_edges,
-                                                     vert_to_edge_map,
-                                                     coarse_edge_index,
-                                                     is_simple,
-                                                     j * inv_resolution_1,
-                                                     edge_positions[j * 2 + 0]);
+  threading::parallel_for(loose_edges.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int coarse_edge_index = loose_edges[i];
+      const int2 &coarse_edge = coarse_edges[coarse_edge_index];
+      MutableSpan<float3> edge_positions = edge_positions.slice(i * verts_per_coarse_edge,
+                                                                verts_per_coarse_edge);
+      for (const int j : IndexRange(verts_per_coarse_edge)) {
+        bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
+                                                       coarse_edges,
+                                                       vert_to_edge_map,
+                                                       coarse_edge_index,
+                                                       is_simple,
+                                                       j * inv_resolution_1,
+                                                       edge_positions[j * 2 + 0]);
+      }
     }
-  }
+  });
 }
 
 static OpenSubdiv_EvaluatorCache *g_evaluator_cache = nullptr;

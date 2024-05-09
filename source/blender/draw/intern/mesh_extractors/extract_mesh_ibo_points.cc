@@ -36,10 +36,12 @@ static IndexMask calc_mesh_vert_visibility(const MeshRenderData &mr,
   return visible;
 }
 
-static void fill_loose_points_ibo(const uint corners_num, MutableSpan<uint> data)
+static void fill_loose_points_ibo(const IndexMask &visible,
+                                  const uint start,
+                                  MutableSpan<uint> data)
 {
-  threading::memory_bandwidth_bound_task(
-      data.size_in_bytes(), [&]() { array_utils::fill_index_range(data, corners_num); });
+  IndexMaskMemory memory;
+  visible.shift(start, memory).to_indices(data.cast<int32_t>());
 }
 
 static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
@@ -86,6 +88,7 @@ static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
         });
   }
   else {
+    /* Used to compress the vertex indices into the smaller range of visible vertices. */
     Array<int> map(mr.corners_num, -1);
     threading::memory_bandwidth_bound_task(
         map.as_span().size_in_bytes() + data.size_in_bytes() + corner_verts.size_in_bytes(),
@@ -106,6 +109,7 @@ static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
         });
   }
 
+  // TODO: Needs a reverse map or something
   fill_loose_points_ibo(mr.corners_num, data.take_back(visible_loose_verts.size()));
 
   GPU_indexbuf_build_in_place_ex(&builder, 0, max_index, false, &points);
@@ -168,6 +172,7 @@ static void extract_points_subdiv(const MeshRenderData &mr,
                                   const DRWSubdivCache &subdiv_cache,
                                   gpu::IndexBuf &points)
 {
+  const Span<bool> hide_vert = mr.hide_vert;
   const Span<int> subdiv_corner_orig_verts{
       static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache.verts_orig_index)),
       subdiv_cache.num_subdiv_loops};
@@ -177,30 +182,37 @@ static void extract_points_subdiv(const MeshRenderData &mr,
       subdiv_corner_orig_verts.index_range(), GrainSize(4096), memory, [&](const int i) {
         return subdiv_corner_orig_verts[i] != -1;
       });
-  if (!mr.hide_vert.is_empty()) {
-    const Span<bool> hide_vert = mr.hide_vert;
+  if (!hide_vert.is_empty()) {
     visible_non_loose = IndexMask::from_predicate(
         visible_non_loose, GrainSize(4096), memory, [&](const int subdiv_corner) {
-          return !hide_vert[subdiv_corner_orig_verts[subdiv_corner]];
+          const int vert = subdiv_corner_orig_verts[subdiv_corner];
+          return !hide_vert[vert];
         });
   }
   if (mr.v_origindex) {
     const int *orig_index = mr.v_origindex;
     visible_non_loose = IndexMask::from_predicate(
         visible_non_loose, GrainSize(4096), memory, [&](const int subdiv_corner) {
-          return orig_index[subdiv_corner_orig_verts[subdiv_corner]] != -1;
+          const int vert = subdiv_corner_orig_verts[subdiv_corner];
+          return orig_index[vert] != -1;
         });
   }
 
+  const Span<int> loose_edges = mr.loose_edges;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
+  const int verts_per_coarse_edge = edges_per_coarse_edge * 2;
+  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
+
   // TODO: Loose edges
   IndexMask visible_non_loose = IndexMask::from_predicate(
-      subdiv_corner_orig_verts.index_range(), GrainSize(4096), memory, [&](const int i) {
+      loose_edges.index_range(), GrainSize(4096), memory, [&](const int i) {
         return subdiv_corner_orig_verts[i] != -1;
       });
   const Span<DRWSubdivLooseEdge> loose_edges = draw_subdiv_cache_get_loose_edges(subdiv_cache);
   for (const DRWSubdivLooseEdge &loose_edge : loose_edges) {
-    const DRWSubdivLooseVertex &v1 = loose_geom.verts[loose_edge.loose_subdiv_v1_index];
-    const DRWSubdivLooseVertex &v2 = loose_geom.verts[loose_edge.loose_subdiv_v2_index];
+    const DRWSubdivLooseVertex &v1 = loose_info.verts[loose_edge.loose_subdiv_v1_index];
+    const DRWSubdivLooseVertex &v2 = loose_info.verts[loose_edge.loose_subdiv_v2_index];
     if (v1.coarse_vertex_index != -1u) {
       vert_set_mesh(elb, mr, v1.coarse_vertex_index, offset);
     }
@@ -210,20 +222,37 @@ static void extract_points_subdiv(const MeshRenderData &mr,
 
     offset += 2;
   }
+
+  const Span<int> loose_verts = mr.loose_verts;
+  IndexMask visible_loose(loose_verts.size());
+  if (!hide_vert.is_empty()) {
+    visible_loose = IndexMask::from_predicate(
+        visible_loose, GrainSize(4096), memory, [&](const int i) {
+          const int vert = loose_verts[i];
+          return !hide_vert[vert] != -1;
+        });
+  }
+  if (mr.v_origindex) {
+    const int *orig_index = mr.v_origindex;
+    visible_loose = IndexMask::from_predicate(
+        visible_loose, GrainSize(4096), memory, [&](const int i) {
+          const int vert = loose_verts[i];
+          return orig_index[vert] != -1;
+        });
+  }
+
   Span<DRWSubdivLooseVertex> loose_verts = draw_subdiv_cache_get_loose_verts(subdiv_cache);
 
-  for (const DRWSubdivLooseVertex &loose_vert : loose_verts) {
-    vert_set_mesh(elb, mr, loose_vert.coarse_vertex_index, offset);
-    offset += 1;
-  }
+  const IndexMask all_loose_verts = IndexMask::from_bits(loose_verts_bits, memory);
+  const IndexMask visible_loose_verts = calc_mesh_vert_visibility(mr, all_loose_verts, memory);
 
   GPUIndexBufBuilder builder;
   GPU_indexbuf_init(&builder,
                     GPU_PRIM_POINTS,
-                    visible_points.size(),
+                    visible_non_loose.size(),
                     visible_points.size() +
-                        subdiv_cache.loose_geom.coarse_edge_indices.size() * 2 +
-                        subdiv_cache.loose_geom.coarse_vert_indices.size());
+                        subdiv_cache.loose_info.coarse_edge_indices.size() * 2 +
+                        subdiv_cache.loose_info.coarse_vert_indices.size());
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
   visible_points.to_indices<int32_t>(data.take_front(visible_points.size()).cast<int32_t>());
 
@@ -235,8 +264,8 @@ static void extract_points_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
                                              void * /*buffer*/,
                                              void *data)
 {
-  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
-  const int loose_indices_num = loose_geom.loop_len;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int loose_indices_num = loose_info.loop_len;
   if (loose_indices_num == 0) {
     return;
   }
@@ -251,8 +280,8 @@ static void extract_points_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
     Span<DRWSubdivLooseEdge> loose_edges = draw_subdiv_cache_get_loose_edges(subdiv_cache);
 
     for (const DRWSubdivLooseEdge &loose_edge : loose_edges) {
-      const DRWSubdivLooseVertex &v1 = loose_geom.verts[loose_edge.loose_subdiv_v1_index];
-      const DRWSubdivLooseVertex &v2 = loose_geom.verts[loose_edge.loose_subdiv_v2_index];
+      const DRWSubdivLooseVertex &v1 = loose_info.verts[loose_edge.loose_subdiv_v1_index];
+      const DRWSubdivLooseVertex &v2 = loose_info.verts[loose_edge.loose_subdiv_v2_index];
       if (v1.coarse_vertex_index != -1u) {
         BMVert *eve = mr.v_origindex ? bm_original_vert_get(mr, v1.coarse_vertex_index) :
                                        BM_vert_at_index(mr.bm, v1.coarse_vertex_index);

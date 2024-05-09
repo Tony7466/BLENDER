@@ -244,12 +244,13 @@ static void extract_edit_data_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                           void *buf,
                                           void *data)
 {
-  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int subdiv_loose_edges_num = mr.loose_edges.size() * loose_info.edges_per_coarse_edge;
+
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   GPU_vertbuf_init_with_format(vbo, get_edit_data_format());
-  GPU_vertbuf_data_alloc(vbo,
-                         subdiv_cache.num_subdiv_loops +
-                             loose_geom.coarse_edge_indices.size() * 2 + mr.loose_verts.size());
+  GPU_vertbuf_data_alloc(
+      vbo, subdiv_cache.num_subdiv_loops + subdiv_loose_edges_num * 2 + mr.loose_verts.size());
   EditLoopData *vbo_data = (EditLoopData *)GPU_vertbuf_get_data(vbo);
   *(EditLoopData **)data = vbo_data;
 }
@@ -307,42 +308,45 @@ static void extract_edit_data_iter_subdiv_mesh(const DRWSubdivCache &subdiv_cach
 
 static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
                                                 const MeshRenderData &mr,
-                                                void * /*buffer*/,
-                                                void *_data)
+                                                void *buffer,
+                                                void * /*data*/)
 {
-  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
-  if (loose_geom.coarse_edge_indices.is_empty()) {
+  const Span<int> loose_edges = mr.loose_edges;
+  if (loose_edges.is_empty()) {
     return;
   }
 
-  const Span<int> coarse_edges = subdiv_cache.loose_geom.coarse_edge_indices;
-  const Span<int2> edge_verts = subdiv_cache.loose_geom.edge_loose_verts;
+  const Span<int2> coarse_edges = mr.edges;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
+  const int verts_per_coarse_edge = edges_per_coarse_edge * 2;
+  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
+  MutableSpan<EditLoopData> vbo_data(static_cast<EditLoopData *>(GPU_vertbuf_get_data(vbo)),
+                                     subdiv_cache.num_subdiv_loops + subdiv_loose_edges_num * 2 +
+                                         mr.loose_verts.size());
 
-  const Span<int> coarse_verts = subdiv_cache.loose_geom.coarse_vert_indices;
+  MutableSpan<EditLoopData> loose_edge_vert_data = vbo_data.drop_front(
+      subdiv_cache.num_subdiv_loops);
 
-  EditLoopData *vbo_data = *(EditLoopData **)_data;
-  int loose_edge_i = 0;
+  for (const int i : loose_edges.index_range()) {
+    const int coarse_edge_index = loose_edges[i];
+    const int2 coarse_edge = coarse_edges[loose_edges[i]];
+    const IndexRange edge_vert_range(i * verts_per_coarse_edge, verts_per_coarse_edge);
+    MutableSpan<EditLoopData> edge_data = loose_edge_vert_data.slice(edge_vert_range);
 
-  for (const int i : edge_verts.index_range()) {
-    const int offset = subdiv_cache.num_subdiv_loops + loose_edge_i++ * 2;
-    EditLoopData *data = &vbo_data[offset];
-    memset(data, 0, sizeof(EditLoopData));
-    const int edge_index = coarse_edges[i];
-    BMEdge *eed = mr.e_origindex ? bm_original_edge_get(mr, edge_index) :
-                                   BM_edge_at_index(mr.bm, edge_index);
-    if (eed) {
-      mesh_render_data_edge_flag(mr, eed, &data[0]);
-      data[1] = data[0];
+    if (BMEdge *eed = mr.e_origindex ? bm_original_edge_get(mr, coarse_edge_index) :
+                                       BM_edge_at_index(mr.bm, coarse_edge_index))
+    {
+      EditLoopData data{};
+      mesh_render_data_edge_flag(mr, eed, &data);
+      edge_data.fill(data);
 
-      if (coarse_verts[edge_verts[i][0]] != -1) {
-        mesh_render_data_vert_flag(mr, eed->v1, &data[0]);
-      }
-      if (coarse_verts[edge_verts[i][1]] != -1) {
-        mesh_render_data_vert_flag(mr, eed->v2, &data[1]);
-      }
+      mesh_render_data_vert_flag(mr, eed->v1, &edge_data.first());
+      mesh_render_data_vert_flag(mr, eed->v2, &edge_data.last());
     }
     else {
-      memset(&data[1], 0, sizeof(EditLoopData));
+      edge_data.fill({});
     }
   }
 }
