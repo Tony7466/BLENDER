@@ -472,6 +472,13 @@ static void detect_workarounds()
     GLContext::multi_bind_image_support = false;
   }
 
+  if (strstr(version, "Mesa")) {
+    /* It's reported as supported, but it isn't and makes things slower in practice. */
+    GLContext::khr_parallel_shader_compile_support = false;
+    GLContext::arb_parallel_shader_compile_support = false;
+    GLContext::parallel_shader_compile_support = false;
+  }
+
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
@@ -603,6 +610,8 @@ void GLBackend::capabilities_init()
   GLContext::framebuffer_fetch_support = false;
 
   detect_workarounds();
+
+  GCaps.use_parallel_compilation = GLContext::parallel_shader_compile_support;
 
   /* Disable this feature entirely when not debugging. */
   if ((G.debug & G_DEBUG_GPU) == 0) {

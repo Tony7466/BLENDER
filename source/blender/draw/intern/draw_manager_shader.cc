@@ -80,6 +80,8 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     GPU_context_main_lock();
   }
 
+  const bool use_parallel_compilation = GPU_use_parallel_compilation();
+
   WM_system_gpu_context_activate(system_gpu_context);
   GPU_context_active_set(blender_gpu_context);
 
@@ -108,7 +110,13 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     }
 
     if (mat) {
-      compilation_batch.append(mat);
+      if (use_parallel_compilation) {
+        compilation_batch.append(mat);
+      }
+      else {
+        GPU_material_compile(mat);
+        GPU_material_release(mat);
+      }
     }
     else if (!compilation_batch.is_empty()) {
       if (!batch_handle) {
