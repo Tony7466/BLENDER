@@ -405,10 +405,10 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
   }
 
   bke::nodeAddLink(treepath.first()->nodetree,
-              nested_node_iter,
-              nested_socket_iter,
-              &final_node,
-              &final_socket);
+                   nested_node_iter,
+                   nested_socket_iter,
+                   &final_node,
+                   &final_socket);
 }
 
 /* Connect the node to the output of the first nodetree from `treepath`. Last element of `treepath`
@@ -531,10 +531,10 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
       job_data->mat_output_copy, SOCK_IN, "Displacement");
   if (job_data->mat_displacement_copy.first != nullptr && displacement_socket->link == nullptr) {
     bke::nodeAddLink(job_data->treepath_copy.first()->nodetree,
-                job_data->mat_displacement_copy.first,
-                job_data->mat_displacement_copy.second,
-                job_data->mat_output_copy,
-                displacement_socket);
+                     job_data->mat_displacement_copy.first,
+                     job_data->mat_displacement_copy.second,
+                     job_data->mat_output_copy,
+                     displacement_socket);
   }
   connect_node_to_surface_output(job_data->treepath_copy, nodesocket, *job_data->mat_output_copy);
 
@@ -820,7 +820,7 @@ static void ensure_nodetree_previews(const bContext &C,
     bNodeTreePath *new_path = MEM_cnew<bNodeTreePath>(__func__);
     memcpy(new_path, original_path, sizeof(bNodeTreePath));
     bNode *parent = bke::nodeFindNodebyName(job_data->treepath_copy.last()->nodetree,
-                                       original_path->node_name);
+                                            original_path->node_name);
     new_path->nodetree = reinterpret_cast<bNodeTree *>(parent->id);
     job_data->treepath_copy.append(new_path);
   }

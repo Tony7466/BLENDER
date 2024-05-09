@@ -35,7 +35,7 @@ namespace aal = anonymous_attribute_lifetime;
 namespace blender::bke {
 struct bNodeType;
 class bNodeTreeZones;
-}
+}  // namespace blender::bke
 namespace blender::bke::anonymous_attribute_inferencing {
 struct AnonymousAttributeInferencingResult;
 };
