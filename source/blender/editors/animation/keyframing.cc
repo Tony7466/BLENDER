@@ -224,18 +224,16 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
-static bool is_idproperty_keyable(IDProperty *prop, PointerRNA *ptr)
+static bool is_idproperty_keyable(IDProperty *id_prop, PointerRNA *ptr, PropertyRNA *prop)
 {
-  // BLI_assert((PropertyRNA *)ptr->data == (PropertyRNA *)prop);
-  /* if (RNA_property_is_runtime((PropertyRNA *)prop)) {
-    return false;
-  } */
-
-  if (!RNA_property_anim_editable(ptr, (PropertyRNA *)prop)) {
+  /* While you can cast the IDProperty* to a PropertyRNA* and pass it to the functions, this
+   * does not work because it will not have the right flags set. Instead the resolved
+   * PointerRNA and PropertyRNA need to be passed. */
+  if (!RNA_property_anim_editable(ptr, prop)) {
     return false;
   }
 
-  if (ELEM(prop->type,
+  if (ELEM(id_prop->type,
            eIDPropertyType::IDP_BOOLEAN,
            eIDPropertyType::IDP_INT,
            eIDPropertyType::IDP_FLOAT,
@@ -244,8 +242,8 @@ static bool is_idproperty_keyable(IDProperty *prop, PointerRNA *ptr)
     return true;
   }
 
-  if (prop->type == eIDPropertyType::IDP_ARRAY) {
-    if (ELEM(prop->subtype,
+  if (id_prop->type == eIDPropertyType::IDP_ARRAY) {
+    if (ELEM(id_prop->subtype,
              eIDPropertyType::IDP_BOOLEAN,
              eIDPropertyType::IDP_INT,
              eIDPropertyType::IDP_FLOAT,
@@ -310,15 +308,18 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
   }
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     if (properties) {
-      LISTBASE_FOREACH (IDProperty *, prop, &properties->data.group) {
+      LISTBASE_FOREACH (IDProperty *, id_prop, &properties->data.group) {
         PointerRNA resolved_ptr;
         PropertyRNA *resolved_prop;
-        std::string path = prop->name;
+        std::string path = id_prop->name;
+        /* Resolving the path twice, once without square brackets and once with. This is required
+         * to support IDProperties that have been defined as part of an addon. Those need to be
+         * animated through an RNA path without the brackets. */
         bool is_resolved = RNA_path_resolve_property(
             ptr, path.c_str(), &resolved_ptr, &resolved_prop);
         if (!is_resolved) {
           char name_escaped[MAX_IDPROP_NAME * 2];
-          BLI_str_escape(name_escaped, prop->name, sizeof(name_escaped));
+          BLI_str_escape(name_escaped, id_prop->name, sizeof(name_escaped));
           path = fmt::format("[\"{}\"]", name_escaped);
           is_resolved = RNA_path_resolve_property(
               ptr, path.c_str(), &resolved_ptr, &resolved_prop);
@@ -326,7 +327,7 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
         if (!is_resolved) {
           continue;
         }
-        if (is_idproperty_keyable(prop, &resolved_ptr)) {
+        if (is_idproperty_keyable(id_prop, &resolved_ptr, resolved_prop)) {
           paths.append(path);
         }
       }
