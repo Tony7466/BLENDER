@@ -303,24 +303,20 @@ static int grease_pencil_layer_group_remove_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   TreeNode *active_group = &grease_pencil.active_node->wrap();
 
-  for (TreeNode *node : active_group->as_group().nodes_for_write()) {
-    if (remove_childeren) {
-      if (node->is_layer()) {
-        grease_pencil.remove_layer(node->as_layer());
-      }
-      else {
-        grease_pencil.remove_group(*node);
-      }
-    }
-    else if (active_group == node->parent_node()) {
-      /* When active_group is direct parent of the node, move this node into the parent of active
-       * group. */
-      grease_pencil.move_node_into(*node, *active_group->parent_group());
-      grease_pencil.active_node = node;
-    }
+  if (remove_childeren) {
+    grease_pencil.remove_group(*active_group);
   }
-  LayerGroup *parent_group = active_group->parent_group();
-  grease_pencil.remove_group(*active_group);
+  else {
+    for (TreeNode *node : active_group->as_group().nodes_for_write()) {
+      if (active_group == node->parent_node()) {
+        /* When active_group is direct parent of the node, move this node into the parent of active
+         * group. */
+        grease_pencil.move_node_into(*node, *active_group->parent_group());
+        grease_pencil.active_node = node;
+      }
+    }
+    grease_pencil.remove_group(*active_group);
+  }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
