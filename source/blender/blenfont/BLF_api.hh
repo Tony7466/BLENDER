@@ -28,7 +28,7 @@ struct ResultBLF;
 struct rcti;
 
 enum class FontShadowType {
-  Simple = 0,
+  None = 0,
   Blur3x3 = 3,
   Blur5x5 = 5,
   Outline = 6,
@@ -326,7 +326,7 @@ void BLF_draw_default_shadowed(float x,
                                float z,
                                const char *str,
                                size_t str_len,
-                               const float shadow_color[4] = nullptr) ATTR_NONNULL(3);
+                               const float shadow_color[4] = nullptr) ATTR_NONNULL(4);
 /**
  * Set size and DPI, and return default font ID.
  */

@@ -1459,7 +1459,7 @@ void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, const int x, 
   rcti rect;
   blf_glyph_calc_rect(&rect, g, x, y);
   blf_texture_draw(
-      g, font->color, FontShadowType::Simple, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
+      g, font->color, FontShadowType::None, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
 }
 
 /* -------------------------------------------------------------------- */
