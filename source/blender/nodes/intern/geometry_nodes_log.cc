@@ -9,6 +9,8 @@
 #include "BKE_curves.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_volume.hh"
+#include "BKE_volume_openvdb.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
@@ -125,17 +127,28 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         break;
       }
       case bke::GeometryComponent::Type::Volume: {
-        break;
-      }
-      case bke::GeometryComponent::Type::GreasePencil: {
-        const auto &grease_pencil_component = *static_cast<const bke::GreasePencilComponent *>(
+        const auto &volume_component = *static_cast<const bke::VolumeComponent *>(
             component);
-        GreasePencilInfo &info = this->grease_pencil_info.emplace();
-        info.layers_num = grease_pencil_component.attribute_domain_size(bke::AttrDomain::Layer);
+        if (const Volume *volume = volume_component.get()) {
+          VolumeInfo &info = this->volume_info.emplace();
+          info.grids_num = BKE_volume_num_grids(volume);
+        }
         break;
       }
     }
   }
+}
+
+GeometryInfoLog::GeometryInfoLog(const bke::GVolumeGrid &grid)
+{
+  GridInfo &info = this->grid_info.emplace();
+#ifdef WITH_OPENVDB
+  bke::VolumeTreeAccessToken token;
+  const openvdb::GridBase &vdb_grid = grid->grid(token);
+  info.voxels_num = vdb_grid.activeVoxelCount();
+#else
+  info.voxels_num = 0;
+#endif
 }
 
 /* Avoid generating these in every translation unit. */
@@ -186,6 +199,10 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
     if (value_variant.is_context_dependent_field()) {
       const GField field = value_variant.extract<GField>();
       store_logged_value(this->allocator->construct<FieldInfoLog>(field));
+    }
+    else if (value_variant.is_volume_grid()) {
+      const bke::GVolumeGrid grid = value_variant.extract<bke::GVolumeGrid>();
+      store_logged_value(this->allocator->construct<GeometryInfoLog>(grid));
     }
     else {
       value_variant.convert_to_single();
