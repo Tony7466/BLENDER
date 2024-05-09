@@ -79,8 +79,8 @@ enum eSubdivExportMode {
 };
 
 typedef enum eUSDXformOpMode {
-  USD_XFORM_OP_SRT = 0,
-  USD_XFORM_OP_SOT = 1,
+  USD_XFORM_OP_TRS = 0,
+  USD_XFORM_OP_TOS = 1,
   USD_XFORM_OP_MAT = 2,
 } eUSDXformOpMode;
 
@@ -108,7 +108,7 @@ struct USDExportParams {
   bool convert_orientation = false;
   enum eIOAxis forward_axis = eIOAxis::IO_AXIS_NEGATIVE_Z;
   enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
-  eUSDXformOpMode xform_op_mode = eUSDXformOpMode::USD_XFORM_OP_SRT;
+  eUSDXformOpMode xform_op_mode = eUSDXformOpMode::USD_XFORM_OP_TRS;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 

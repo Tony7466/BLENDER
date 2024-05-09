@@ -130,16 +130,16 @@ const EnumPropertyItem rna_enum_usd_export_subdiv_mode_items[] = {
 };
 
 const EnumPropertyItem rna_enum_usd_xform_op_mode_items[] = {
-    {USD_XFORM_OP_SRT,
+    {USD_XFORM_OP_TRS,
      "SRT",
      0,
-     "Scale, Rotate, Translate",
-     "Export scale, rotate, and translate Xform operators"},
-    {USD_XFORM_OP_SOT,
+     "Translate, Rotate, Scale",
+     "Export with translate, rotate, and scale Xform operators"},
+    {USD_XFORM_OP_TOS,
      "SOT",
      0,
-     "Scale, Orient, Translate",
-     "Export scale, orient, and translate Xform operators"},
+     "Translate, Orient, Scale",
+     "Export with translate, orient quaternion, and scale Xform operators"},
     {USD_XFORM_OP_MAT, "MAT", 0, "Matrix", "Export matrix operator"},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -547,7 +547,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "xform_op_mode",
                rna_enum_usd_xform_op_mode_items,
-               USD_XFORM_OP_SRT,
+               USD_XFORM_OP_TRS,
                "Xform Ops",
                "The type of transform operators to write");
 

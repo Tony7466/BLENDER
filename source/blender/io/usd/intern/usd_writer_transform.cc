@@ -132,13 +132,13 @@ void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXforma
 
   if (xformOps_.empty()) {
     switch (xfOpMode) {
-      case USD_XFORM_OP_SRT:
+      case USD_XFORM_OP_TRS:
         xformOps_.push_back(xf.AddTranslateOp());
         xformOps_.push_back(xf.AddRotateXYZOp());
         xformOps_.push_back(xf.AddScaleOp());
 
         break;
-      case USD_XFORM_OP_SOT:
+      case USD_XFORM_OP_TOS:
         xformOps_.push_back(xf.AddTranslateOp());
         xformOps_.push_back(xf.AddOrientOp());
         xformOps_.push_back(xf.AddScaleOp());
@@ -172,7 +172,7 @@ void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXforma
 
     mat4_decompose(loc, quat, scale, xf_matrix);
 
-    if (xfOpMode == USD_XFORM_OP_SRT) {
+    if (xfOpMode == USD_XFORM_OP_TRS) {
       float rot[3];
       quat_to_eul(rot, quat);
       rot[0] *= 180.0 / M_PI;
@@ -188,7 +188,7 @@ void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXforma
       pxr::GfVec3f scale_val(scale);
       usd_value_writer_.SetAttribute(xformOps_[2].GetAttr(), scale_val, time_code);
     }
-    else if (xfOpMode == USD_XFORM_OP_SOT) {
+    else if (xfOpMode == USD_XFORM_OP_TOS) {
       pxr::GfVec3d loc_val(loc);
       usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), loc_val, time_code);
 
