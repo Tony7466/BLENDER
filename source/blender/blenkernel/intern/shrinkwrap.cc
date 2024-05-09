@@ -320,7 +320,7 @@ static void shrinkwrap_calc_nearest_vertex_cb_ex(void *__restrict userdata,
   float tmp_co[3];
   float weight = BKE_defvert_array_find_weight_safe(calc->dvert, i, calc->vgroup);
 
-  if (calc->invert_vgroup) {
+  if (calc->invert_vgroup && calc->vgroup != -1) {
     weight = 1.0f - weight;
   }
 
@@ -484,7 +484,7 @@ static void shrinkwrap_calc_normal_projection_cb_ex(void *__restrict userdata,
   const float *tmp_co, *tmp_no;
   float weight = BKE_defvert_array_find_weight_safe(calc->dvert, i, calc->vgroup);
 
-  if (calc->invert_vgroup) {
+  if (calc->invert_vgroup && calc->vgroup != -1) {
     weight = 1.0f - weight;
   }
 
@@ -1095,7 +1095,7 @@ static void shrinkwrap_calc_nearest_surface_point_cb_ex(void *__restrict userdat
   float tmp_co[3];
   float weight = BKE_defvert_array_find_weight_safe(calc->dvert, i, calc->vgroup);
 
-  if (calc->invert_vgroup) {
+  if (calc->invert_vgroup && calc->vgroup != -1) {
     weight = 1.0f - weight;
   }
 
