@@ -386,6 +386,8 @@ struct bNodeType {
 #define NODE_CLASS_ATTRIBUTE 42
 #define NODE_CLASS_LAYOUT 100
 
+namespace blender::bke {
+
 /**
  * Color tag stored per node group. This affects the header color of group nodes.
  * Note that these values are written to DNA.
@@ -409,6 +411,7 @@ enum class NodeGroupColorTag {
   Texture = 12,
   Vector = 13,
 };
+}  // namespace blender::bke
 
 struct bNodeTreeExec;
 

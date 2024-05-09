@@ -86,34 +86,34 @@ int node_group_ui_class(const bNode *node)
   if (!group) {
     return NODE_CLASS_GROUP;
   }
-  switch (NodeGroupColorTag(group->color_tag)) {
-    case NodeGroupColorTag::None:
+  switch (blender::bke::NodeGroupColorTag(group->color_tag)) {
+    case blender::bke::NodeGroupColorTag::None:
       return NODE_CLASS_GROUP;
-    case NodeGroupColorTag::Attribute:
+    case blender::bke::NodeGroupColorTag::Attribute:
       return NODE_CLASS_ATTRIBUTE;
-    case NodeGroupColorTag::Color:
+    case blender::bke::NodeGroupColorTag::Color:
       return NODE_CLASS_OP_COLOR;
-    case NodeGroupColorTag::Converter:
+    case blender::bke::NodeGroupColorTag::Converter:
       return NODE_CLASS_CONVERTER;
-    case NodeGroupColorTag::Distort:
+    case blender::bke::NodeGroupColorTag::Distort:
       return NODE_CLASS_DISTORT;
-    case NodeGroupColorTag::Filter:
+    case blender::bke::NodeGroupColorTag::Filter:
       return NODE_CLASS_OP_FILTER;
-    case NodeGroupColorTag::Geometry:
+    case blender::bke::NodeGroupColorTag::Geometry:
       return NODE_CLASS_GEOMETRY;
-    case NodeGroupColorTag::Input:
+    case blender::bke::NodeGroupColorTag::Input:
       return NODE_CLASS_INPUT;
-    case NodeGroupColorTag::Matte:
+    case blender::bke::NodeGroupColorTag::Matte:
       return NODE_CLASS_MATTE;
-    case NodeGroupColorTag::Output:
+    case blender::bke::NodeGroupColorTag::Output:
       return NODE_CLASS_OUTPUT;
-    case NodeGroupColorTag::Script:
+    case blender::bke::NodeGroupColorTag::Script:
       return NODE_CLASS_SCRIPT;
-    case NodeGroupColorTag::Shader:
+    case blender::bke::NodeGroupColorTag::Shader:
       return NODE_CLASS_SHADER;
-    case NodeGroupColorTag::Texture:
+    case blender::bke::NodeGroupColorTag::Texture:
       return NODE_CLASS_TEXTURE;
-    case NodeGroupColorTag::Vector:
+    case blender::bke::NodeGroupColorTag::Vector:
       return NODE_CLASS_OP_VECTOR;
   }
   return NODE_CLASS_GROUP;
@@ -151,8 +151,8 @@ std::string node_group_ui_description(const bNode &node)
 }
 
 bool blender::bke::nodeGroupPoll(const bNodeTree *nodetree,
-                   const bNodeTree *grouptree,
-                   const char **r_disabled_hint)
+                                 const bNodeTree *grouptree,
+                                 const char **r_disabled_hint)
 {
   /* unspecified node group, generally allowed
    * (if anything, should be avoided on operator level)
@@ -551,7 +551,8 @@ void register_node_type_frame()
 
   blender::bke::node_type_base(ntype, NODE_FRAME, "Frame", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_frame_init;
-  blender::bke::node_type_storage(ntype, "NodeFrame", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(
+      ntype, "NodeFrame", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_type_size(ntype, 150, 100, 0);
   ntype->flag |= NODE_BACKGROUND;
 
@@ -570,7 +571,8 @@ static void node_reroute_init(bNodeTree *ntree, bNode *node)
    * on each file read via the template verification procedure.
    */
   blender::bke::nodeAddStaticSocket(ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, "Input", "Input");
-  blender::bke::nodeAddStaticSocket(ntree, node, SOCK_OUT, SOCK_RGBA, PROP_NONE, "Output", "Output");
+  blender::bke::nodeAddStaticSocket(
+      ntree, node, SOCK_OUT, SOCK_RGBA, PROP_NONE, "Output", "Output");
 }
 
 void register_node_type_reroute()
