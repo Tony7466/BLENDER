@@ -187,7 +187,8 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
 
     if (input_spec.input_name == usdtokens::emissive_color) {
       /* Don't export emission color if strength is zero. */
-      bNodeSocket *emission_strength_sock = bke::nodeFindSocket(node, SOCK_IN, "Emission Strength");
+      bNodeSocket *emission_strength_sock = bke::nodeFindSocket(
+          node, SOCK_IN, "Emission Strength");
 
       if (!emission_strength_sock) {
         continue;

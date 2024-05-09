@@ -298,7 +298,8 @@ static void node_register()
   ntype.no_muting = true;
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.register_operators = node_operators;
-  blender::bke::node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
+  blender::bke::node_type_storage(
+      &ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
   blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

@@ -226,9 +226,9 @@ static void node_register()
 
   geo_node_type_base(&ntype, GEO_NODE_POINTS_TO_VOLUME, "Points to Volume", NODE_CLASS_GEOMETRY);
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometryPointsToVolume",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometryPointsToVolume",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   bke::node_type_size(&ntype, 170, 120, 700);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;

@@ -540,7 +540,8 @@ void BKE_lib_id_make_local_generic(Main *bmain, ID *id, const int flags)
       if (key && key_new) {
         ID_NEW_SET(key, key_new);
       }
-      bNodeTree *ntree = blender::bke::ntreeFromID(id), *ntree_new = blender::bke::ntreeFromID(id_new);
+      bNodeTree *ntree = blender::bke::ntreeFromID(id),
+                *ntree_new = blender::bke::ntreeFromID(id_new);
       if (ntree && ntree_new) {
         ID_NEW_SET(ntree, ntree_new);
       }

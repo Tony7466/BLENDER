@@ -40,8 +40,9 @@ DefaultSurfaceNodeTree::DefaultSurfaceNodeTree()
       (bNodeSocketValueFloat *)bke::nodeFindSocket(bsdf, SOCK_IN, "Metallic")->default_value;
   roughness_socket_ =
       (bNodeSocketValueFloat *)bke::nodeFindSocket(bsdf, SOCK_IN, "Roughness")->default_value;
-  specular_socket_ =
-      (bNodeSocketValueFloat *)bke::nodeFindSocket(bsdf, SOCK_IN, "Specular IOR Level")->default_value;
+  specular_socket_ = (bNodeSocketValueFloat *)bke::nodeFindSocket(
+                         bsdf, SOCK_IN, "Specular IOR Level")
+                         ->default_value;
   ntree_ = ntree;
 }
 
@@ -87,10 +88,10 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
     bNode *output = bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_MATERIAL);
 
     bke::nodeAddLink(ntree,
-                bsdf,
-                bke::nodeFindSocket(bsdf, SOCK_OUT, "BSDF"),
-                output,
-                bke::nodeFindSocket(output, SOCK_IN, "Surface"));
+                     bsdf,
+                     bke::nodeFindSocket(bsdf, SOCK_OUT, "BSDF"),
+                     output,
+                     bke::nodeFindSocket(output, SOCK_IN, "Surface"));
 
     bke::nodeSetActive(ntree, output);
   }
@@ -110,10 +111,10 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
     bNode *output = bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_MATERIAL);
 
     bke::nodeAddLink(ntree,
-                bsdf,
-                bke::nodeFindSocket(bsdf, SOCK_OUT, "BSDF"),
-                output,
-                bke::nodeFindSocket(output, SOCK_IN, "Surface"));
+                     bsdf,
+                     bke::nodeFindSocket(bsdf, SOCK_OUT, "BSDF"),
+                     output,
+                     bke::nodeFindSocket(output, SOCK_IN, "Surface"));
 
     bke::nodeSetActive(ntree, output);
   }
@@ -131,10 +132,10 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
     bNode *output = bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_MATERIAL);
 
     bke::nodeAddLink(ntree,
-                bsdf,
-                bke::nodeFindSocket(bsdf, SOCK_OUT, "Emission"),
-                output,
-                bke::nodeFindSocket(output, SOCK_IN, "Surface"));
+                     bsdf,
+                     bke::nodeFindSocket(bsdf, SOCK_OUT, "Emission"),
+                     output,
+                     bke::nodeFindSocket(output, SOCK_IN, "Surface"));
 
     bke::nodeSetActive(ntree, output);
   }

@@ -27,7 +27,8 @@ namespace blender::eevee {
 
 LookdevWorld::LookdevWorld()
 {
-  bNodeTree *ntree = bke::ntreeAddTree(nullptr, "Lookdev World Nodetree", ntreeType_Shader->idname);
+  bNodeTree *ntree = bke::ntreeAddTree(
+      nullptr, "Lookdev World Nodetree", ntreeType_Shader->idname);
 
   bNode *coordinate = bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_TEX_COORD);
   bNodeSocket *coordinate_out = bke::nodeFindSocket(coordinate, SOCK_OUT, "Generated");

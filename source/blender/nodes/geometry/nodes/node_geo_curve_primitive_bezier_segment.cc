@@ -147,9 +147,9 @@ static void node_register()
       &ntype, GEO_NODE_CURVE_PRIMITIVE_BEZIER_SEGMENT, "Bézier Segment", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometryCurvePrimitiveBezierSegment",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometryCurvePrimitiveBezierSegment",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
