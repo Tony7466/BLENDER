@@ -1024,10 +1024,9 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
 
         PointerRNA id_ptr = RNA_id_pointer_create(ptr.owner_id);
         const float scene_frame = BKE_scene_frame_get(scene);
-        const blender::Vector paths = {real_path};
         const CombinedKeyingResult result = insert_key_rna(
             &id_ptr,
-            paths.as_span(),
+            {std::move(real_path)},
             scene_frame,
             flag,
             eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
