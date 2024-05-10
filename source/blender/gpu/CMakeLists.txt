@@ -169,6 +169,8 @@ set(OPENGL_SRC
   opengl/gl_vertex_array.cc
   opengl/gl_vertex_buffer.cc
 
+  opengl/ipc.cc
+  
   opengl/gl_backend.hh
   opengl/gl_batch.hh
   opengl/gl_compute.hh
@@ -188,6 +190,8 @@ set(OPENGL_SRC
   opengl/gl_uniform_buffer.hh
   opengl/gl_vertex_array.hh
   opengl/gl_vertex_buffer.hh
+
+  opengl/ipc.hh
 )
 
 set(VULKAN_SRC
