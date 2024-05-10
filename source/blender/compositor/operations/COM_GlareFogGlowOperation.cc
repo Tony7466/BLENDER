@@ -85,10 +85,9 @@ class CachedFogGlowKernel {
         FFTW_ESTIMATE);
 
     /* Compute the kernel while zero padding to match the padded image size. */
-    memset(kernel_spatial_domain, 0, sizeof(float) * spatial_size.x * spatial_size.y);
-    threading::parallel_for(IndexRange(kernel_size), 1, [&](const IndexRange sub_y_range) {
+    threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
       for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(kernel_size)) {
+        for (const int64_t x : IndexRange(spatial_size.x)) {
           /* We offset the computed kernel with wrap around such that it is centered at the zero
            * point, which is the expected format for doing circular convolutions in the frequency
            * domain. */
@@ -96,8 +95,14 @@ class CachedFogGlowKernel {
           int64_t output_x = mod_i(x - half_kernel_size, spatial_size.x);
           int64_t output_y = mod_i(y - half_kernel_size, spatial_size.y);
 
-          const float kernel_value = compute_fog_glow_kernel_value(x, y, kernel_size);
-          kernel_spatial_domain[output_x + output_y * spatial_size.x] = kernel_value;
+          const bool is_inside_kernel = x < kernel_size && y < kernel_size;
+          if (is_inside_kernel) {
+            const float kernel_value = compute_fog_glow_kernel_value(x, y, kernel_size);
+            kernel_spatial_domain[output_x + output_y * spatial_size.x] = kernel_value;
+          }
+          else {
+            kernel_spatial_domain[output_x + output_y * spatial_size.x] = 0.0f;
+          }
         }
       }
     });
