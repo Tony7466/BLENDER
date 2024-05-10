@@ -39,19 +39,16 @@ class ScopedTimerAveraged {
   int64_t &total_count_;
   Nanoseconds &total_time_;
   Nanoseconds &min_time_;
-  Nanoseconds &max_time_;
 
  public:
   ScopedTimerAveraged(std::string name,
                       int64_t &total_count,
                       Nanoseconds &total_time,
-                      Nanoseconds &min_time,
-                      Nanoseconds &max_time)
+                      Nanoseconds &min_time)
       : name_(std::move(name)),
         total_count_(total_count),
         total_time_(total_time),
-        min_time_(min_time),
-        max_time_(max_time)
+        min_time_(min_time)
   {
     start_ = Clock::now();
   }
@@ -71,6 +68,4 @@ class ScopedTimerAveraged {
   static int64_t total_count_; \
   static blender::timeit::Nanoseconds total_time_; \
   static blender::timeit::Nanoseconds min_time_ = blender::timeit::Nanoseconds::max(); \
-  static blender::timeit::Nanoseconds max_time_ = blender::timeit::Nanoseconds::min(); \
-  blender::timeit::ScopedTimerAveraged scoped_timer( \
-      name, total_count_, total_time_, min_time_, max_time_)
+  blender::timeit::ScopedTimerAveraged scoped_timer(name, total_count_, total_time_, min_time_)
