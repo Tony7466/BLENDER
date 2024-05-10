@@ -114,10 +114,14 @@ class VKDevice : public NonCopyable {
   render_graph::VKResourceStateTracker resources;
   VKPipelinePool pipelines;
 
+  /**
+   * This struct contains the functions pointer to extension provided functions.
+   */
   struct {
+    /* Extension: VK_KHR_dynamic_rendering */
     PFN_vkCmdBeginRendering vkCmdBeginRendering = nullptr;
     PFN_vkCmdEndRendering vkCmdEndRendering = nullptr;
-  } extension_functions;
+  } functions;
 
   VkPhysicalDevice physical_device_get() const
   {
@@ -196,7 +200,6 @@ class VKDevice : public NonCopyable {
 
   bool is_initialized() const;
   void init(void *ghost_context);
-  void init_extension_functions();
   /**
    * Initialize a dummy buffer that can be bound for missing attributes.
    *
@@ -272,6 +275,10 @@ class VKDevice : public NonCopyable {
   void init_debug_callbacks();
   void init_memory_allocator();
   void init_pipeline_cache();
+  /**
+   * Initialize the functions struct with extension specific function pointer.
+   */
+  void init_functions();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

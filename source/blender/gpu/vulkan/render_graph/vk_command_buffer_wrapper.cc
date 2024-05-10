@@ -318,14 +318,14 @@ void VKCommandBufferWrapper::push_constants(VkPipelineLayout layout,
 void VKCommandBufferWrapper::begin_rendering(const VkRenderingInfo *p_rendering_info)
 {
   const VKDevice &device = VKBackend::get().device_get();
-  BLI_assert(device.extension_functions.vkCmdBeginRendering);
-  device.extension_functions.vkCmdBeginRendering(vk_command_buffer_, p_rendering_info);
+  BLI_assert(device.functions.vkCmdBeginRendering);
+  device.functions.vkCmdBeginRendering(vk_command_buffer_, p_rendering_info);
 }
 
 void VKCommandBufferWrapper::end_rendering()
 {
   const VKDevice &device = VKBackend::get().device_get();
-  BLI_assert(device.extension_functions.vkCmdEndRendering);
-  device.extension_functions.vkCmdEndRendering(vk_command_buffer_);
+  BLI_assert(device.functions.vkCmdEndRendering);
+  device.functions.vkCmdEndRendering(vk_command_buffer_);
 }
 }  // namespace blender::gpu::render_graph
