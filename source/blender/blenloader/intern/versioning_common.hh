@@ -66,6 +66,22 @@ void version_node_output_socket_name(bNodeTree *ntree,
                                      const char *new_name);
 
 /**
+ * Adds a new node for versioning purposes. This is intended to be used to create raw dna that
+ * might have been read from a file. This can be used instead of #nodeAddNode when the node has
+ * changed too much.
+ *
+ * TODO: Improve description.
+ */
+bNode &version_node_add_empty(bNodeTree &ntree, const char *idname);
+bNodeSocket &version_node_add_socket(bNodeTree &ntree,
+                                     bNode &node,
+                                     eNodeSocketInOut in_out,
+                                     const char *idname,
+                                     const char *identifier);
+bNodeLink &version_node_add_link(
+    bNodeTree &ntree, bNode &node_a, bNodeSocket &socket_a, bNode &node_b, bNodeSocket &socket_b);
+
+/**
  * Adjust animation data for newly added node sockets.
  *
  * Node sockets are addressed by their index (in their RNA path, and thus FCurves/drivers), and
