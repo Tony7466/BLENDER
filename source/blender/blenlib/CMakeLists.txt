@@ -456,7 +456,6 @@ if(WITH_FFTW3)
   )
   list(APPEND LIB
     ${FFTW3_LIBRARIES}
-    /home/omar/projects/blender/blender/lib/linux_x64/fftw3/lib/libfftw3f_threads.a
   )
   add_definitions(-DWITH_FFTW3)
 endif()
