@@ -698,8 +698,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
     VKTexture *color_texture = unwrap(unwrap(color_tex(color_slot)));
     if (color_texture != nullptr) {
       VkRenderingAttachmentInfo &attachment_info =
-          begin_rendering.node_data
-              .color_attachments[begin_rendering.node_data.vk_rendering_info.colorAttachmentCount];
+          begin_rendering.node_data.color_attachments[begin_rendering.node_data.vk_rendering_info
+                                                          .colorAttachmentCount++];
       attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
       /* TODO attachment mip/layer */
       attachment_info.imageView = color_texture->image_view_get().vk_handle();
@@ -713,7 +713,6 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
            VK_IMAGE_ASPECT_COLOR_BIT});
 
-      begin_rendering.node_data.vk_rendering_info.colorAttachmentCount += 1;
       begin_rendering.node_data.vk_rendering_info.pColorAttachments =
           begin_rendering.node_data.color_attachments;
     }
