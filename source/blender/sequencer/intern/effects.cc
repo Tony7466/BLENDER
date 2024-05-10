@@ -2423,7 +2423,7 @@ static void gaussian_blur_x(const blender::Array<float> &gausstab,
                             const T *rect,
                             T *dst)
 {
-  dst += start_line * width * 4;
+  dst += int64_t(start_line) * width * 4;
   for (int y = start_line; y < start_line + height; y++) {
     for (int x = 0; x < width; x++) {
       float4 accum(0.0f);
@@ -2457,7 +2457,7 @@ static void gaussian_blur_y(const blender::Array<float> &gausstab,
                             const T *rect,
                             T *dst)
 {
-  dst += start_line * width * 4;
+  dst += int64_t(start_line) * width * 4;
   for (int y = start_line; y < start_line + height; y++) {
     for (int x = 0; x < width; x++) {
       float4 accum(0.0f);
@@ -2722,7 +2722,7 @@ static void text_gaussian_blur_x(const blender::Array<float> &gausstab,
                                  uchar *dst,
                                  const rcti &shadow_rect)
 {
-  dst += start_line * width * 4;
+  dst += int64_t(start_line) * width * 4;
   for (int y = start_line; y < start_line + height; y++) {
     for (int x = 0; x < width; x++) {
       float accum(0.0f);
@@ -2754,7 +2754,7 @@ static void text_gaussian_blur_y(const blender::Array<float> &gausstab,
                                  uchar *dst,
                                  const rcti &shadow_rect)
 {
-  dst += start_line * width * 4;
+  dst += int64_t(start_line) * width * 4;
   for (int y = start_line; y < start_line + height; y++) {
     for (int x = 0; x < width; x++) {
       float accum(0.0f);
