@@ -68,18 +68,19 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
   {
     const wmDragGreasePencilLayer *drag_grease_pencil =
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
-    Layer &drag_layer = drag_grease_pencil->node->wrap().as_layer();
+    TreeNode &drag_node = drag_grease_pencil->node->wrap();
 
-    const StringRef drag_name = drag_layer.name();
+    const StringRef drag_name = drag_node.name();
     const StringRef drop_name = drop_tree_node_.name();
+    const StringRef node_type = drag_node.is_layer() ? "layer" : "group";
 
     switch (drag_info.drop_location) {
       case DropLocation::Into:
-        return fmt::format(TIP_("Move layer {} into {}"), drag_name, drop_name);
+        return fmt::format(TIP_("Move {} {} into {}"), node_type, drag_name, drop_name);
       case DropLocation::Before:
-        return fmt::format(TIP_("Move layer {} above {}"), drag_name, drop_name);
+        return fmt::format(TIP_("Move {} {} above {}"), node_type, drag_name, drop_name);
       case DropLocation::After:
-        return fmt::format(TIP_("Move layer {} below {}"), drag_name, drop_name);
+        return fmt::format(TIP_("Move {} {} below {}"), node_type, drag_name, drop_name);
       default:
         BLI_assert_unreachable();
         break;
