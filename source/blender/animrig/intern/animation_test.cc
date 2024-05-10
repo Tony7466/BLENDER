@@ -437,7 +437,6 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
 
   const KeyframeSettings settings = get_keyframe_settings(false);
-
   SingleKeyingResult result_loc_a = key_strip.keyframe_insert(
       binding, "location", 0, {1.0f, 47.0f}, settings);
   ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)
@@ -452,7 +451,6 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   SingleKeyingResult result_loc_b = key_strip.keyframe_insert(
       binding, "location", 0, {5.0f, 47.1f}, settings);
   EXPECT_EQ(SingleKeyingResult::SUCCESS, result_loc_b);
-
   ASSERT_EQ(1, channels->fcurves().size()) << "Expect insertion with the same (binding/rna "
                                               "path/array index) tuple to go into the same FCurve";
   EXPECT_EQ(2, channels->fcurves()[0]->totvert)

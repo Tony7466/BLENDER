@@ -880,8 +880,9 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
     return SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE;
   }
 
+  /* TODO: Handle the eInsertKeyFlags. */
   const SingleKeyingResult insert_vert_result = insert_vert_fcurve(
-      &fcurve, time_value, settings, INSERTKEY_NOFLAGS);
+      &fcurve, time_value, settings, eInsertKeyFlags(0));
 
   if (insert_vert_result != SingleKeyingResult::SUCCESS) {
     std::fprintf(stderr,

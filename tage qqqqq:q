@@ -1,0 +1,35 @@
+[1mdiff --git a/source/blender/animrig/intern/animation.cc b/source/blender/animrig/intern/animation.cc[m
+[1mindex 25dc0fd74b1..023962f7154 100644[m
+[1m--- a/source/blender/animrig/intern/animation.cc[m
+[1m+++ b/source/blender/animrig/intern/animation.cc[m
+[36m@@ -880,8 +880,9 @@[m [mSingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,[m
+     return SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE;[m
+   }[m
+ [m
+[32m+[m[32m  /* TODO: Handle the eInsertKeyFlags. */[m
+   const SingleKeyingResult insert_vert_result = insert_vert_fcurve([m
+[31m-      &fcurve, time_value, settings, INSERTKEY_NOFLAGS);[m
+[32m+[m[32m      &fcurve, time_value, settings, eInsertKeyFlags(0));[m
+ [m
+   if (insert_vert_result != SingleKeyingResult::SUCCESS) {[m
+     std::fprintf(stderr,[m
+[1mdiff --git a/source/blender/animrig/intern/animation_test.cc b/source/blender/animrig/intern/animation_test.cc[m
+[1mindex 094d9f2d7f2..43e07b14d29 100644[m
+[1m--- a/source/blender/animrig/intern/animation_test.cc[m
+[1m+++ b/source/blender/animrig/intern/animation_test.cc[m
+[36m@@ -437,7 +437,6 @@[m [mTEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)[m
+   KeyframeStrip &key_strip = strip.as<KeyframeStrip>();[m
+ [m
+   const KeyframeSettings settings = get_keyframe_settings(false);[m
+[31m-[m
+   SingleKeyingResult result_loc_a = key_strip.keyframe_insert([m
+       binding, "location", 0, {1.0f, 47.0f}, settings);[m
+   ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)[m
+[36m@@ -452,7 +451,6 @@[m [mTEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)[m
+   SingleKeyingResult result_loc_b = key_strip.keyframe_insert([m
+       binding, "location", 0, {5.0f, 47.1f}, settings);[m
+   EXPECT_EQ(SingleKeyingResult::SUCCESS, result_loc_b);[m
+[31m-[m
+   ASSERT_EQ(1, channels->fcurves().size()) << "Expect insertion with the same (binding/rna "[m
+                                               "path/array index) tuple to go into the same FCurve";[m
+   EXPECT_EQ(2, channels->fcurves()[0]->totvert)[m
