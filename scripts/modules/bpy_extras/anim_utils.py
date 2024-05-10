@@ -256,7 +256,9 @@ def bake_action_iter(
             try:
                 obj.keyframe_insert(rna_path, frame=frame, group=group_name)
             except TypeError:
-                # Non animatable properties (datablocks, etc) cannot be keyed.
+                # The is_animatable check above is per property. A property in isolation
+                # may be considered animatable, but it could be owned by a data-block that
+                # itself cannot be animated.
                 continue
 
     def pose_frame_info(obj):
