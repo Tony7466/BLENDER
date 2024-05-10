@@ -328,4 +328,5 @@ void VKCommandBufferWrapper::end_rendering()
   BLI_assert(device.functions.vkCmdEndRendering);
   device.functions.vkCmdEndRendering(vk_command_buffer_);
 }
+
 }  // namespace blender::gpu::render_graph
