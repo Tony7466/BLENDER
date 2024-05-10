@@ -225,10 +225,10 @@ void RNA_def_world(BlenderRNA *brna)
   /* Flags */
   prop = RNA_def_property(srna, "use_eevee_finite_volume", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", WO_USE_EEVEE_FINITE_VOLUME);
-  RNA_def_property_ui_text(
-      prop,
-      "Finite Volume",
-      "The world's volume used to be rendered by EEVEE Legacy. Conversion is needed for it to render properly");
+  RNA_def_property_ui_text(prop,
+                           "Finite Volume",
+                           "The world's volume used to be rendered by EEVEE Legacy. Conversion is "
+                           "needed for it to render properly");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /* colors */
