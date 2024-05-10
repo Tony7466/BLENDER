@@ -35,11 +35,12 @@ static void node_declare(NodeDeclarationBuilder &b)
          Span{storage.capture_items, storage.capture_items_num})
     {
       const eCustomDataType data_type = eCustomDataType(item.data_type);
-      const std::string identifier = CaptureAttributeItemsAccessor::socket_identifier_for_item(
-          item);
-      b.add_input(data_type, identifier).field_on_all();
-      /* TODO: Compatibility identifier. */
-      b.add_output(data_type, identifier).field_on_all().align_with_previous();
+      const std::string input_identifier =
+          CaptureAttributeItemsAccessor::input_socket_identifier_for_item(item);
+      const std::string output_identifier =
+          CaptureAttributeItemsAccessor::output_socket_identifier_for_item(item);
+      b.add_input(data_type, input_identifier).field_on_all();
+      b.add_output(data_type, output_identifier).field_on_all().align_with_previous();
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
@@ -111,9 +112,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   for (const NodeGeometryAttributeCaptureItem &item :
        Span{storage.capture_items, storage.capture_items_num})
   {
-    const std::string input_identifier = CaptureAttributeItemsAccessor::socket_identifier_for_item(
-        item);
-    const std::string output_identifier = input_identifier;
+    const std::string input_identifier =
+        CaptureAttributeItemsAccessor::input_socket_identifier_for_item(item);
+    const std::string output_identifier =
+        CaptureAttributeItemsAccessor::output_socket_identifier_for_item(item);
     AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
         output_identifier);
     if (!attribute_id) {
@@ -133,9 +135,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const auto capture_on = [&](GeometryComponent &component) {
     for (const int i : fields.index_range()) {
-      const std::string input_identifier =
-          CaptureAttributeItemsAccessor::socket_identifier_for_item(*used_items[i]);
-      const std::string output_identifier = input_identifier;
       const AnonymousAttributeID &attribute_id = *attribute_ids[i];
       const GField &field = fields[i];
 

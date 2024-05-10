@@ -68,13 +68,23 @@ struct CaptureAttributeItemsAccessor {
     socket_items::set_item_name_and_make_unique<CaptureAttributeItemsAccessor>(node, item, name);
   }
 
-  static std::string socket_identifier_for_item(const NodeGeometryAttributeCaptureItem &item)
+  static std::string input_socket_identifier_for_item(const NodeGeometryAttributeCaptureItem &item)
   {
     if (item.identifier == 0) {
       /* This special case exists for compatibility. */
       return "Value";
     }
     return "Value_" + std::to_string(item.identifier);
+  }
+
+  static std::string output_socket_identifier_for_item(
+      const NodeGeometryAttributeCaptureItem &item)
+  {
+    if (item.identifier == 0) {
+      /* This special case exists for compatibility. */
+      return "Attribute";
+    }
+    return "Attribute_" + std::to_string(item.identifier);
   }
 };
 
