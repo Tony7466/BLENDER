@@ -1445,11 +1445,53 @@ int64_t LayerGroup::num_nodes_total() const
   return this->runtime->nodes_cache_.size();
 }
 
-bool LayerGroup::unlink_node(TreeNode &link)
+bool LayerGroup::unlink_node(TreeNode &link, const bool keep_children)
 {
-  if (BLI_remlink_safe(&this->children, &link)) {
-    this->tag_nodes_cache_dirty();
+  if (link.is_group() && !link.as_group().is_empty() && keep_children) {
+    if (BLI_findindex(&this->children, &link) == -1) {
+      return false;
+    }
+
+    /* Take ownership of the children of `link` by replacing the node with the listbase of its
+     * children. */
+    ListBase link_children = link.as_group().children;
+    GreasePencilLayerTreeNode *first = static_cast<GreasePencilLayerTreeNode *>(
+        link_children.first);
+    GreasePencilLayerTreeNode *last = static_cast<GreasePencilLayerTreeNode *>(link_children.last);
+
+    /* Rewrite the parent pointers. */
+    LISTBASE_FOREACH (GreasePencilLayerTreeNode *, child, &link_children) {
+      child->parent = this;
+    }
+
+    /* Update previous and/or next link(s). */
+    if (link.next != nullptr) {
+      link.next->prev = last;
+      last->next = link.next;
+    }
+    if (link.prev != nullptr) {
+      link.prev->next = first;
+      first->prev = link.prev;
+    }
+
+    /* Update first and/or last link(s). */
+    if (this->children.last == &link) {
+      this->children.last = last;
+    }
+    if (this->children.first == &link) {
+      this->children.first = first;
+    }
+
+    /* Listbase has been inserted in `this->children` we can clear the pointers in `link`. */
+    BLI_listbase_clear(&link.as_group().children);
     link.parent = nullptr;
+
+    this->tag_nodes_cache_dirty();
+    return true;
+  }
+  else if (BLI_remlink_safe(&this->children, &link)) {
+    link.parent = nullptr;
+    this->tag_nodes_cache_dirty();
     return true;
   }
   return false;
@@ -2974,6 +3016,7 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
   for (const GreasePencilFrame frame : layer.frames().values()) {
     GreasePencilDrawingBase *drawing_base = this->drawing(frame.drawing_index);
     if (drawing_base->type != GP_DRAWING) {
+      /* TODO: Remove drawing reference. */
       continue;
     }
     GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
@@ -2983,6 +3026,26 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
 
   /* Delete the layer. */
   MEM_delete(&layer);
+}
+
+void GreasePencil::remove_group(blender::bke::greasepencil::LayerGroup &group,
+                                const bool keep_children)
+{
+  using namespace blender::bke::greasepencil;
+  if (!keep_children) {
+    /* Recursively remove all the layers and groups. */
+    for (Layer *layer : group.layers_for_write()) {
+      this->remove_layer(*layer);
+    }
+    for (LayerGroup *sub_group : group.groups_for_write()) {
+      this->remove_group(*sub_group, false);
+    }
+  }
+  /* Unlink the group. Keep the children if we want to keep them. */
+  group.as_node().parent_group()->unlink_node(group.as_node(), keep_children);
+
+  /* Delete the group. */
+  MEM_delete(&group);
 }
 
 void GreasePencil::print_layer_tree()
