@@ -1133,7 +1133,7 @@ typedef struct AnimData {
    *
    * \see #ActionBinding::name
    */
-  char binding_name[66];
+  char binding_name[66]; /* MAX_ID_NAME */
   uint8_t _pad0[2];
 
   /**

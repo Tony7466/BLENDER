@@ -20,6 +20,10 @@
 #include "DNA_vec_types.h"
 #include "DNA_view2d_types.h"
 
+#ifdef __cplusplus
+#  include <type_traits>
+#endif
+
 struct AnimData;
 struct Collection;
 struct FCurve;
