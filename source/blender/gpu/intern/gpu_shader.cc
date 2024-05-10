@@ -780,13 +780,7 @@ void Shader::set_framebuffer_srgb_target(int use_srgb_to_linear)
 /** \name ShaderCompiler
  * \{ */
 
-ShaderCompiler::~ShaderCompiler()
-{
-  /* Ensure all the requested batches have been retrieved. */
-  BLI_assert(batches.is_empty());
-}
-
-Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
+Shader *ShaderCompilerBase::compile(const shader::ShaderCreateInfo &info)
 {
   using namespace blender::gpu::shader;
   const_cast<ShaderCreateInfo &>(info).finalize();
@@ -912,6 +906,12 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
 
   GPU_debug_group_end();
   return shader;
+}
+
+ShaderCompiler::~ShaderCompiler()
+{
+  /* Ensure all the requested batches have been retrieved. */
+  BLI_assert(batches.is_empty());
 }
 
 BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)

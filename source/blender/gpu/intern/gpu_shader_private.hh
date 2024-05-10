@@ -161,8 +161,25 @@ static inline const Shader *unwrap(const GPUShader *vert)
   return reinterpret_cast<const Shader *>(vert);
 }
 
-class ShaderCompiler {
+class ShaderCompilerBase {
  protected:
+  struct Sources {
+    std::string vert;
+    std::string geom;
+    std::string frag;
+    std::string comp;
+  };
+
+ public:
+  virtual Shader *compile(const shader::ShaderCreateInfo &info);
+
+  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) = 0;
+  virtual bool batch_is_ready(BatchHandle handle) = 0;
+  virtual Vector<Shader *> batch_finalize(BatchHandle &handle) = 0;
+};
+
+class ShaderCompiler : public ShaderCompilerBase {
+ private:
   struct Batch {
     Vector<Shader *> shaders;
     Vector<shader::ShaderCreateInfo *> infos;
@@ -174,10 +191,9 @@ class ShaderCompiler {
  public:
   ~ShaderCompiler();
 
-  virtual Shader *compile(const shader::ShaderCreateInfo &info);
-  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos);
-  virtual bool batch_is_ready(BatchHandle handle);
-  virtual Vector<Shader *> batch_finalize(BatchHandle &handle);
+  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
+  virtual bool batch_is_ready(BatchHandle handle) override;
+  virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };
 
 enum class Severity {

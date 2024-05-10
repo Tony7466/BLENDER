@@ -91,15 +91,6 @@ GLContext::GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list
   static_cast<GLStateManager *>(state_manager)->active_fb = static_cast<GLFrameBuffer *>(
       active_fb);
 
-  if (GLContext::khr_parallel_shader_compile_support) {
-    /*Request the max number of threads available.*/
-    glMaxShaderCompilerThreadsKHR(0xFFFFFFFF);
-  }
-  else if (GLContext::arb_parallel_shader_compile_support) {
-    /*Request the max number of threads available.*/
-    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
-  }
-
   compiler = global_compiler();
 }
 
@@ -170,7 +161,7 @@ void GLContext::deactivate()
 
 void GLContext::begin_frame()
 {
-  static_cast<GLShaderCompiler *>(compiler)->process();
+  /* No-op. */
 }
 
 void GLContext::end_frame()

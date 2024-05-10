@@ -12,6 +12,7 @@
 
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_time.h"
@@ -66,6 +67,8 @@ struct DRWShaderCompiler {
 static void drw_deferred_shader_compilation_exec(void *custom_data,
                                                  wmJobWorkerStatus *worker_status)
 {
+  using namespace blender;
+
   GPU_render_begin();
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
   void *system_gpu_context = comp->system_gpu_context;
@@ -85,52 +88,54 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   WM_system_gpu_context_activate(system_gpu_context);
   GPU_context_active_set(blender_gpu_context);
 
-  BatchHandle batch_handle = 0;
-  blender::Vector<GPUMaterial *> compilation_batch;
-  const int max_batch_size = 32;
+  Vector<GPUMaterial *> next_batch;
+  Map<BatchHandle, Vector<GPUMaterial *>> batches;
 
   while (true) {
     if (worker_status->stop != 0) {
       break;
     }
 
-    GPUMaterial *mat = nullptr;
-    if (compilation_batch.size() < max_batch_size) {
-      BLI_spin_lock(&comp->list_lock);
-      /* Pop tail because it will be less likely to lock the main thread
-       * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-      LinkData *link = (LinkData *)BLI_poptail(&comp->queue);
-      mat = link ? (GPUMaterial *)link->data : nullptr;
-      if (mat) {
-        /* Avoid another thread freeing the material mid compilation. */
-        GPU_material_acquire(mat);
-        MEM_freeN(link);
-      }
-      BLI_spin_unlock(&comp->list_lock);
+    BLI_spin_lock(&comp->list_lock);
+    /* Pop tail because it will be less likely to lock the main thread
+     * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
+    LinkData *link = (LinkData *)BLI_poptail(&comp->queue);
+    GPUMaterial *mat = link ? (GPUMaterial *)link->data : nullptr;
+    if (mat) {
+      /* Avoid another thread freeing the material mid compilation. */
+      GPU_material_acquire(mat);
+      MEM_freeN(link);
     }
+    BLI_spin_unlock(&comp->list_lock);
 
     if (mat) {
       if (use_parallel_compilation) {
-        compilation_batch.append(mat);
+        next_batch.append(mat);
       }
       else {
         GPU_material_compile(mat);
         GPU_material_release(mat);
       }
     }
-    else if (!compilation_batch.is_empty()) {
-      if (!batch_handle) {
-        batch_handle = GPU_material_batch_compile(compilation_batch);
+    else if (!next_batch.is_empty()) {
+      printf("COMPILE BATCH\n");
+      BatchHandle batch_handle = GPU_material_batch_compile(next_batch);
+      batches.add(batch_handle, next_batch);
+      next_batch.clear();
+    }
+    else if (!batches.is_empty()) {
+      Vector<BatchHandle> ready_handles;
+      for (BatchHandle handle : batches.keys()) {
+        if (GPU_material_batch_is_ready(handle)) {
+          ready_handles.append(handle);
+        }
       }
-      if (GPU_material_batch_is_ready(batch_handle)) {
-        GPU_material_batch_finalize(batch_handle, compilation_batch);
-        for (GPUMaterial *mat : compilation_batch) {
+      for (BatchHandle handle : ready_handles) {
+        Vector<GPUMaterial *> batch = batches.pop(handle);
+        GPU_material_batch_finalize(handle, batch);
+        for (GPUMaterial *mat : batch) {
           GPU_material_release(mat);
         }
-        compilation_batch.clear();
-      }
-      else {
-        BLI_time_sleep_ms(1);
       }
     }
     else {
@@ -164,12 +169,10 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     }
   }
 
-  if (!compilation_batch.is_empty()) {
-    if (!batch_handle) {
-      batch_handle = GPU_material_batch_compile(compilation_batch);
-    }
-    GPU_material_batch_finalize(batch_handle, compilation_batch);
-    for (GPUMaterial *mat : compilation_batch) {
+  for (BatchHandle handle : batches.keys()) {
+    Vector<GPUMaterial *> &batch = batches.lookup(handle);
+    GPU_material_batch_finalize(handle, batch);
+    for (GPUMaterial *mat : batch) {
       GPU_material_release(mat);
     }
   }

@@ -472,13 +472,6 @@ static void detect_workarounds()
     GLContext::multi_bind_image_support = false;
   }
 
-  if (strstr(version, "Mesa")) {
-    /* It's reported as supported, but it isn't and makes things slower in practice. */
-    GLContext::khr_parallel_shader_compile_support = false;
-    GLContext::arb_parallel_shader_compile_support = false;
-    GLContext::parallel_shader_compile_support = false;
-  }
-
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
@@ -508,9 +501,6 @@ bool GLContext::shader_draw_parameters_support = false;
 bool GLContext::stencil_texturing_support = false;
 bool GLContext::texture_barrier_support = false;
 bool GLContext::texture_filter_anisotropic_support = false;
-bool GLContext::arb_parallel_shader_compile_support = false;
-bool GLContext::khr_parallel_shader_compile_support = false;
-bool GLContext::parallel_shader_compile_support = false;
 
 /** Workarounds. */
 
@@ -599,19 +589,12 @@ void GLBackend::capabilities_init()
   GLContext::texture_filter_anisotropic_support = epoxy_has_gl_extension(
       "GL_EXT_texture_filter_anisotropic");
 
-  GLContext::arb_parallel_shader_compile_support = epoxy_has_gl_extension(
-      "GL_ARB_parallel_shader_compile");
-  GLContext::khr_parallel_shader_compile_support = epoxy_has_gl_extension(
-      "GL_KHR_parallel_shader_compile");
-  GLContext::parallel_shader_compile_support = GLContext::khr_parallel_shader_compile_support ||
-                                               GLContext::arb_parallel_shader_compile_support;
-
   /* Disabled until it is proven to work. */
   GLContext::framebuffer_fetch_support = false;
 
   detect_workarounds();
 
-  GCaps.use_parallel_compilation = GLContext::parallel_shader_compile_support;
+  GCaps.use_parallel_compilation = true;
 
   /* Disable this feature entirely when not debugging. */
   if ((G.debug & G_DEBUG_GPU) == 0) {

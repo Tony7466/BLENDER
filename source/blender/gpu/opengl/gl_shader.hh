@@ -19,6 +19,8 @@
 
 #include <functional>
 
+#include "ipc.hh"
+
 namespace blender::gpu {
 
 /**
@@ -50,6 +52,7 @@ class GLSources : public Vector<GLSource> {
 class GLShader : public Shader {
   friend shader::ShaderCreateInfo;
   friend shader::StageInterfaceInfo;
+  friend class GLShaderCompiler;
 
  private:
   struct GLProgram {
@@ -86,6 +89,8 @@ class GLShader : public Shader {
    * setup.
    */
   GLProgram *program_active_ = nullptr;
+
+  bool async_compilation_ = false;
 
   /**
    * When the shader uses Specialization Constants these attribute contains the sources to
@@ -142,7 +147,6 @@ class GLShader : public Shader {
   void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
   void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
-  bool is_ready();
   bool post_finalize(const shader::ShaderCreateInfo *info = nullptr);
   void warm_cache(int /*limit*/) override{};
 
@@ -196,7 +200,7 @@ class GLShader : public Shader {
   /** Create, compile and attach the shader stage to the shader program. */
   GLuint create_shader_stage(GLenum gl_stage,
                              MutableSpan<const char *> sources,
-                             const GLSources &gl_sources);
+                             GLSources &gl_sources);
 
   /**
    * \brief features available on newer implementation such as native barycentric coordinates
@@ -209,13 +213,57 @@ class GLShader : public Shader {
   MEM_CXX_CLASS_ALLOC_FUNCS("GLShader");
 };
 
-class GLShaderCompiler : public ShaderCompiler {
- private:
-  std::mutex mutex;
-  void process_batch(Batch &batch, bool block, std::function<bool()> timeout);
+class GLCompilerWorker {
+  friend class GLShaderCompiler;
+
+ protected:
+  FILE *compiler_ = nullptr;
+  ipc_sharedmemory_ pipe_ = {0};
+  ipc_sharedsemaphore start_semaphore_ = {0};
+  ipc_sharedsemaphore end_semaphore_ = {0};
+  enum eState { COMPILATION_REQUESTED, COMPILATION_READY, COMPILATION_FINISHED, AVAILABLE };
+  eState state_ = AVAILABLE;
 
  public:
-  void process(bool block = false);
+  bool poll();
+  bool load_program_binary(GLint program);
+
+ private:
+  GLCompilerWorker(size_t max_size);
+  ~GLCompilerWorker();
+  void compile(StringRefNull vert, StringRefNull frag);
+  void release();
+};
+
+class GLShaderCompiler : public ShaderCompilerBase {
+ private:
+  std::mutex mutex_;
+  Vector<GLCompilerWorker *> workers_;
+
+  struct CompilationWork {
+    GLCompilerWorker *worker;
+    GLShader *shader;
+    shader::ShaderCreateInfo *info;
+
+    std::string vertex_src;
+    std::string fragment_src;
+
+    bool is_ready = false;
+  };
+
+  struct Batch {
+    Vector<CompilationWork> items;
+    bool is_ready = false;
+  };
+
+  BatchHandle next_batch_handle = 1;
+  Map<BatchHandle, Batch> batches;
+
+  GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag);
+  void print_workers();
+
+ public:
+  ~GLShaderCompiler();
 
   virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;
