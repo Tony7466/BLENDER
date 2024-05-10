@@ -7,11 +7,11 @@
  *
  * Eyedropper (bones)
  */
-
 #include "BKE_context.hh"
 #include "BKE_idtype.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
+#include <iostream>
 
 #include "BLT_translation.hh"
 
@@ -59,43 +59,39 @@ static void datadropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, vo
 
 static int bonedropper_init(bContext *C, wmOperator *op)
 {
+  SpaceType *space_type = BKE_spacetype_from_id(SPACE_VIEW3D);
+  ARegionType *area_region_type = BKE_regiontype_from_id(space_type, RGN_TYPE_WINDOW);
+
+  BoneDropper *bone_dropper = MEM_cnew<BoneDropper>(__func__);
+
   int index_dummy;
-  StructRNA *type;
+  uiBut *button = UI_context_active_but_prop_get(
+      C, &bone_dropper->ptr, &bone_dropper->prop, &index_dummy);
 
-  SpaceType *space_type;
-  ARegionType *area_region_type;
-
-  space_type = BKE_spacetype_from_id(SPACE_VIEW3D);
-  area_region_type = BKE_regiontype_from_id(space_type, RGN_TYPE_WINDOW);
-
-  BoneDropper *ddr = MEM_cnew<BoneDropper>(__func__);
-
-  uiBut *button = UI_context_active_but_prop_get(C, &ddr->ptr, &ddr->prop, &index_dummy);
-
-  if ((ddr->ptr.data == nullptr) || (ddr->prop == nullptr) ||
-      (RNA_property_editable(&ddr->ptr, ddr->prop) == false) ||
-      (RNA_property_type(ddr->prop) != PROP_POINTER))
+  if ((bone_dropper->ptr.data == nullptr) || (bone_dropper->prop == nullptr) ||
+      (RNA_property_editable(&bone_dropper->ptr, bone_dropper->prop) == false) ||
+      (RNA_property_type(bone_dropper->prop) != PROP_POINTER))
   {
-    MEM_freeN(ddr);
+    MEM_freeN(bone_dropper);
     return false;
   }
-  op->customdata = ddr;
+  op->customdata = bone_dropper;
 
-  ddr->is_undo = UI_but_flag_is_set(button, UI_BUT_UNDO);
+  bone_dropper->is_undo = UI_but_flag_is_set(button, UI_BUT_UNDO);
 
-  ddr->cursor_area = CTX_wm_area(C);
-  ddr->area_region_type = area_region_type;
-  ddr->draw_handle_pixel = ED_region_draw_cb_activate(
-      area_region_type, datadropper_draw_cb, ddr, REGION_DRAW_POST_PIXEL);
+  bone_dropper->cursor_area = CTX_wm_area(C);
+  bone_dropper->area_region_type = area_region_type;
+  bone_dropper->draw_handle_pixel = ED_region_draw_cb_activate(
+      area_region_type, datadropper_draw_cb, bone_dropper, REGION_DRAW_POST_PIXEL);
 
-  type = RNA_property_pointer_type(&ddr->ptr, ddr->prop);
-  ddr->idcode = RNA_type_to_ID_code(type);
-  BLI_assert(ddr->idcode != 0);
+  StructRNA *type = RNA_property_pointer_type(&bone_dropper->ptr, bone_dropper->prop);
+  bone_dropper->idcode = RNA_type_to_ID_code(type);
+  BLI_assert(bone_dropper->idcode != 0);
   /* Note we can translate here (instead of on draw time),
    * because this struct has very short lifetime. */
-  ddr->idcode_name = TIP_(BKE_idtype_idcode_to_name(ddr->idcode));
+  bone_dropper->idcode_name = TIP_(BKE_idtype_idcode_to_name(bone_dropper->idcode));
 
-  const PointerRNA ptr = RNA_property_pointer_get(&ddr->ptr, ddr->prop);
+  const PointerRNA ptr = RNA_property_pointer_get(&bone_dropper->ptr, bone_dropper->prop);
   // ddr->init_id = ptr.owner_id;
 
   return true;
@@ -296,7 +292,6 @@ static int bonedropper_invoke(bContext *C, wmOperator *op, const wmEvent * /*eve
 
     /* add temp handler */
     WM_event_add_modal_handler(C, op);
-
     return OPERATOR_RUNNING_MODAL;
   }
   return OPERATOR_CANCELLED;
