@@ -5,32 +5,27 @@
 #include <complex>
 #include <cstring>
 #include <memory>
+#include <numeric>
 
 #if defined(WITH_FFTW3)
 #  include <fftw3.h>
 #endif
 
-#include "BLI_assert.h"
-#include "BLI_cache_mutex.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_fftw.hh"
 #include "BLI_index_range.hh"
-#include "BLI_map.hh"
-#include "BLI_math_base.h"
-#include "BLI_math_vector.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "COM_GlareFogGlowOperation.h"
 
 namespace blender::compositor {
 
-#if defined(WITH_FFTW3)
-
 /* Given the x and y location in the range from 0 to kernel_size - 1, where kernel_size is odd,
  * compute the fog glow kernel value. The equations are arbitrary and were chosen using visual
  * judgement. The kernel is not normalized and need normalization. */
-static float compute_fog_glow_kernel_value(int x, int y, int kernel_size)
+[[maybe_unused]] static float compute_fog_glow_kernel_value(int x, int y, int kernel_size)
 {
   const int half_kernel_size = kernel_size / 2;
   const float scale = 0.25f * math::sqrt(math::square(kernel_size));
@@ -46,89 +41,6 @@ static float compute_fog_glow_kernel_value(int x, int y, int kernel_size)
 
   return windowed_kernel_value;
 }
-
-/* A class that stores cached kernels for Fog Glow in the frequency domain. */
-class CachedFogGlowKernel {
- private:
-  /* Global cache to store cached kernels. There is no mechanism for freeing the cache for the
-   * moment, but there are only 4 possible kernel sizes, the smallest of which is 32x64 and the
-   * largest of which is 256x512, so it will not occupy a lot of memory. */
-  inline static CacheMutex cached_kernels_mutex_;
-  inline static Map<int, std::unique_ptr<CachedFogGlowKernel>> cached_kernels_;
-
-  /* The computed kernel in frequency domain, see the implementation for more information. */
-  std::complex<float> *kernel_frequency_domain_ = nullptr;
-
- public:
-  /* Computes a Fog Glow kernel of the given size in the frequency domain, zero padding it to the
-   * given spatial size. */
-  CachedFogGlowKernel(int kernel_size, int2 spatial_size)
-  {
-    fftw::initialize_float();
-
-    /* The FFTW real to complex transforms utilizes the hermitian symmetry of real transforms and
-     * stores only half the output since the other half is redundant, so we only allocate half of
-     * the first dimension. See Section 4.3.4 Real-data DFT Array Format in the FFTW manual for
-     * more information. */
-    const int2 frequency_size = int2(spatial_size.x / 2 + 1, spatial_size.y);
-
-    float *kernel_spatial_domain = fftwf_alloc_real(spatial_size.x * spatial_size.y);
-    kernel_frequency_domain_ = reinterpret_cast<std::complex<float> *>(
-        fftwf_alloc_complex(frequency_size.x * frequency_size.y));
-
-    /* Create a real to complex plan to transform the kernel to the frequency domain. */
-    fftwf_plan kernel_forward_plan = fftwf_plan_dft_r2c_2d(
-        spatial_size.y,
-        spatial_size.x,
-        kernel_spatial_domain,
-        reinterpret_cast<fftwf_complex *>(kernel_frequency_domain_),
-        FFTW_ESTIMATE);
-
-    /* Compute the kernel while zero padding to match the padded image size. */
-    threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
-      for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(spatial_size.x)) {
-          /* We offset the computed kernel with wrap around such that it is centered at the zero
-           * point, which is the expected format for doing circular convolutions in the frequency
-           * domain. */
-          const int half_kernel_size = kernel_size / 2;
-          int64_t output_x = mod_i(x - half_kernel_size, spatial_size.x);
-          int64_t output_y = mod_i(y - half_kernel_size, spatial_size.y);
-
-          const bool is_inside_kernel = x < kernel_size && y < kernel_size;
-          if (is_inside_kernel) {
-            const float kernel_value = compute_fog_glow_kernel_value(x, y, kernel_size);
-            kernel_spatial_domain[output_x + output_y * spatial_size.x] = kernel_value;
-          }
-          else {
-            kernel_spatial_domain[output_x + output_y * spatial_size.x] = 0.0f;
-          }
-        }
-      }
-    });
-
-    fftwf_execute(kernel_forward_plan);
-
-    fftwf_destroy_plan(kernel_forward_plan);
-    fftwf_free(kernel_spatial_domain);
-  }
-
-  ~CachedFogGlowKernel()
-  {
-    fftwf_free(kernel_frequency_domain_);
-  }
-
-  static std::complex<float> *get_in_frequency_domain(int kernel_size, int2 spatial_size)
-  {
-    cached_kernels_mutex_.ensure([&]() {
-      cached_kernels_.lookup_or_add_cb(kernel_size, [&]() {
-        return std::make_unique<CachedFogGlowKernel>(kernel_size, spatial_size);
-      });
-    });
-    return cached_kernels_.lookup(kernel_size)->kernel_frequency_domain_;
-  }
-};
-#endif
 
 void GlareFogGlowOperation::generate_glare(float *output,
                                            MemoryBuffer *image,
@@ -155,8 +67,55 @@ void GlareFogGlowOperation::generate_glare(float *output,
    * information. */
   const int2 frequency_size = int2(spatial_size.x / 2 + 1, spatial_size.y);
 
-  std::complex<float> *kernel_frequency_domain = CachedFogGlowKernel::get_in_frequency_domain(
-      kernel_size, spatial_size);
+  float *kernel_spatial_domain = fftwf_alloc_real(spatial_size.x * spatial_size.y);
+  std::complex<float> *kernel_frequency_domain = reinterpret_cast<std::complex<float> *>(
+      fftwf_alloc_complex(frequency_size.x * frequency_size.y));
+
+  /* Create a real to complex plan to transform the kernel to the frequency domain, but the same
+   * plan will be used for the image since they both have the same dimensions. */
+  fftwf_plan forward_plan = fftwf_plan_dft_r2c_2d(
+      spatial_size.y,
+      spatial_size.x,
+      kernel_spatial_domain,
+      reinterpret_cast<fftwf_complex *>(kernel_frequency_domain),
+      FFTW_ESTIMATE);
+
+  /* Use a double to sum the kernel since floats are not stable with threaded summation. */
+  threading::EnumerableThreadSpecific<double> sum_by_thread([]() { return 0.0; });
+
+  /* Compute the kernel while zero padding to match the padded image size. */
+  threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(spatial_size.x)) {
+        /* We offset the computed kernel with wrap around such that it is centered at the zero
+         * point, which is the expected format for doing circular convolutions in the frequency
+         * domain. */
+        const int half_kernel_size = kernel_size / 2;
+        int64_t output_x = mod_i(x - half_kernel_size, spatial_size.x);
+        int64_t output_y = mod_i(y - half_kernel_size, spatial_size.y);
+
+        const bool is_inside_kernel = x < kernel_size && y < kernel_size;
+        if (is_inside_kernel) {
+          const float kernel_value = compute_fog_glow_kernel_value(x, y, kernel_size);
+          kernel_spatial_domain[output_x + output_y * spatial_size.x] = kernel_value;
+          sum_by_thread.local() += kernel_value;
+        }
+        else {
+          kernel_spatial_domain[output_x + output_y * spatial_size.x] = 0.0f;
+        }
+      }
+    }
+  });
+
+  /* Instead of normalizing the kernel now, we normalize it in the frequency domain since we will
+   * be doing sample normalization anyways. This is okay since the Fourier transform is linear. */
+  const float kernel_normalization_factor = float(
+      std::accumulate(sum_by_thread.begin(), sum_by_thread.end(), 0.0));
+
+  fftwf_execute_dft_r2c(forward_plan,
+                        kernel_spatial_domain,
+                        reinterpret_cast<fftwf_complex *>(kernel_frequency_domain));
+  fftwf_free(kernel_spatial_domain);
 
   /* We only process the color channels, the alpha channel is written to the output as is. */
   const int channels_count = 3;
@@ -169,109 +128,92 @@ void GlareFogGlowOperation::generate_glare(float *output,
   std::complex<float> *image_frequency_domain = reinterpret_cast<std::complex<float> *>(
       fftwf_alloc_complex(frequency_pixels_count));
 
-  fftwf_plan image_forward_plan = fftwf_plan_dft_r2c_2d(
-      spatial_size.y,
-      spatial_size.x,
-      image_spatial_domain,
-      reinterpret_cast<fftwf_complex *>(image_frequency_domain),
-      FFTW_ESTIMATE);
-  fftwf_plan image_backward_plan = fftwf_plan_dft_c2r_2d(
-      spatial_size.y,
-      spatial_size.x,
-      reinterpret_cast<fftwf_complex *>(image_frequency_domain),
-      image_spatial_domain,
-      FFTW_ESTIMATE);
-
-  /* Zero pad the image to the required spatial domain size, storing each channel in planner
+  /* Zero pad the image to the required spatial domain size, storing each channel in planar
    * format for better cache locality, that is, RRRR...GGGG...BBBB. */
-  {
-    SCOPED_TIMER_AVERAGED("Zero pad input.");
-    threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
-      for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(spatial_size.x)) {
-          const bool is_inside_image = x < image_size.x && y < image_size.y;
-          for (const int64_t channel : IndexRange(channels_count)) {
-            const int64_t base_index = x + y * spatial_size.x;
-            const int64_t output_index = base_index + spatial_pixels_per_channel * channel;
-            if (is_inside_image) {
-              image_spatial_domain[output_index] = image->get_elem(x, y)[channel];
-            }
-            else {
-              image_spatial_domain[output_index] = 0.0f;
-            }
+  threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(spatial_size.x)) {
+        const bool is_inside_image = x < image_size.x && y < image_size.y;
+        for (const int64_t channel : IndexRange(channels_count)) {
+          const int64_t base_index = x + y * spatial_size.x;
+          const int64_t output_index = base_index + spatial_pixels_per_channel * channel;
+          if (is_inside_image) {
+            image_spatial_domain[output_index] = image->get_elem(x, y)[channel];
+          }
+          else {
+            image_spatial_domain[output_index] = 0.0f;
           }
         }
       }
-    });
-  }
+    }
+  });
 
-  {
-    SCOPED_TIMER_AVERAGED("Execute forward.");
-    threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
-      for (const int64_t channel : sub_range) {
-        fftwf_execute_dft_r2c(image_forward_plan,
-                              image_spatial_domain + spatial_pixels_per_channel * channel,
-                              reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
-                                  frequency_pixels_per_channel * channel);
-      }
-    });
-  }
+  threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+    for (const int64_t channel : sub_range) {
+      fftwf_execute_dft_r2c(forward_plan,
+                            image_spatial_domain + spatial_pixels_per_channel * channel,
+                            reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                frequency_pixels_per_channel * channel);
+    }
+  });
 
   /* Multiply the kernel and the image in the frequency domain to perform the convolution. The
    * FFT is not normalized, meaning the result of the FFT followed by an inverse FFT will result
    * in an image that is scaled by a factor of the product of the width and height, so we take
-   * that into account by dividing by that scale. See the FFTW manual for more information. */
-  {
-    SCOPED_TIMER_AVERAGED("Multiply in frequency domain.");
-    const float normalization_scale = float(spatial_size.x) * spatial_size.y;
-    threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
+   * that into account by dividing by that scale. See Section 4.8.6 Multi-dimensional Transforms of
+   * the FFTW manual for more information. */
+  const float normalization_scale = float(spatial_size.x) * spatial_size.y *
+                                    kernel_normalization_factor;
+  threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t channel : IndexRange(channels_count)) {
       for (const int64_t y : sub_y_range) {
         for (const int64_t x : IndexRange(frequency_size.x)) {
-          for (const int64_t channel : IndexRange(channels_count)) {
-            const int64_t base_index = x + y * frequency_size.x;
-            const int64_t output_index = base_index + frequency_pixels_per_channel * channel;
-            const std::complex<float> kernel_value = kernel_frequency_domain[base_index];
-            image_frequency_domain[output_index] *= kernel_value / normalization_scale;
-          }
+          const int64_t base_index = x + y * frequency_size.x;
+          const int64_t output_index = base_index + frequency_pixels_per_channel * channel;
+          const std::complex<float> kernel_value = kernel_frequency_domain[base_index];
+          image_frequency_domain[output_index] *= kernel_value / normalization_scale;
         }
       }
-    });
-  }
+    }
+  });
 
-  {
-    SCOPED_TIMER_AVERAGED("Execute backward.");
-    threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
-      for (const int64_t channel : sub_range) {
-        fftwf_execute_dft_c2r(image_backward_plan,
-                              reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
-                                  frequency_pixels_per_channel * channel,
-                              image_spatial_domain + spatial_pixels_per_channel * channel);
-      }
-    });
-  }
+  /* Create a complex to real plan to transform the image to the real domain. */
+  fftwf_plan backward_plan = fftwf_plan_dft_c2r_2d(
+      spatial_size.y,
+      spatial_size.x,
+      reinterpret_cast<fftwf_complex *>(image_frequency_domain),
+      image_spatial_domain,
+      FFTW_ESTIMATE);
 
-  /* Copy the result of the convolution to the output channel. */
-  {
-    SCOPED_TIMER_AVERAGED("Copy to output.");
-    threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
-      for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(image_size.x)) {
-          for (const int64_t channel : IndexRange(channels_count)) {
-            const int64_t output_index = (x + y * image_size.x) * image->get_num_channels();
-            const int64_t base_index = x + y * spatial_size.x;
-            const int64_t input_index = base_index + spatial_pixels_per_channel * channel;
-            output[output_index + channel] = image_spatial_domain[input_index];
-            output[output_index + 3] = image->get_buffer()[output_index + 3];
-          }
+  threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+    for (const int64_t channel : sub_range) {
+      fftwf_execute_dft_c2r(backward_plan,
+                            reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                frequency_pixels_per_channel * channel,
+                            image_spatial_domain + spatial_pixels_per_channel * channel);
+    }
+  });
+
+  /* Copy the result to the output. */
+  threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(image_size.x)) {
+        for (const int64_t channel : IndexRange(channels_count)) {
+          const int64_t output_index = (x + y * image_size.x) * image->get_num_channels();
+          const int64_t base_index = x + y * spatial_size.x;
+          const int64_t input_index = base_index + spatial_pixels_per_channel * channel;
+          output[output_index + channel] = image_spatial_domain[input_index];
+          output[output_index + 3] = image->get_buffer()[output_index + 3];
         }
       }
-    });
-  }
+    }
+  });
 
+  fftwf_destroy_plan(forward_plan);
+  fftwf_destroy_plan(backward_plan);
   fftwf_free(image_spatial_domain);
-  fftwf_destroy_plan(image_forward_plan);
-  fftwf_destroy_plan(image_backward_plan);
   fftwf_free(image_frequency_domain);
+  fftwf_free(kernel_frequency_domain);
 #else
   UNUSED_VARS(output, image, settings);
 #endif
