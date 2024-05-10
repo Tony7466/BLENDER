@@ -72,19 +72,16 @@ static void depthdropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, v
   eyedropper_draw_cursor_text_region(ddr->name_pos, ddr->name);
 }
 
-static int depthdropper_get_path(PointerRNA *ctx_ptr,
-                                 wmOperator *op,
-                                 const char *prop_path,
-                                 PointerRNA *r_ptr,
-                                 PropertyRNA **r_prop)
+static bool depthdropper_get_path(PointerRNA *ctx_ptr,
+                                  wmOperator *op,
+                                  const char *prop_path,
+                                  PointerRNA *r_ptr,
+                                  PropertyRNA **r_prop)
 {
   PropertyRNA *unused_prop;
 
   if (prop_path[0] == '\0') {
-    if (r_prop) {
-      *r_prop = nullptr;
-    }
-    return 1;
+    return false;
   }
 
   if (!r_prop) {
@@ -94,18 +91,18 @@ static int depthdropper_get_path(PointerRNA *ctx_ptr,
   /* Get rna from path. */
   if (!RNA_path_resolve(ctx_ptr, prop_path, r_ptr, r_prop)) {
     BKE_reportf(op->reports, RPT_ERROR, "Could not resolve path '%s'", prop_path);
-    return 0;
+    return false;
   }
 
   /* Check property type. */
   PropertyType prop_type = RNA_property_type(*r_prop);
   if (prop_type != PROP_FLOAT) {
     BKE_reportf(op->reports, RPT_ERROR, "Property from path '%s' is not a float", prop_path);
-    return 0;
+    return false;
   }
 
   /* Success. */
-  return 1;
+  return true;
 }
 
 static bool depthdropper_test(bContext *C, wmOperator *op)
