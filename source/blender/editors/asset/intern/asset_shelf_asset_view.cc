@@ -252,7 +252,8 @@ void AssetViewItem::on_activate(bContext & /*C*/)
 std::optional<bool> AssetViewItem::should_be_active() const
 {
   const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
-  if (!shelf.type->get_active_asset) {
+  const AssetShelfType &shelf_type = *asset_view.shelf_.type;
+  if (!shelf_type.get_active_asset) {
     return {};
   }
   if (!asset_view.active_asset_) {
