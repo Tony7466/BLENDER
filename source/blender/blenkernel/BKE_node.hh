@@ -194,6 +194,8 @@ struct bNodeSocketType {
 
 }  // namespace blender::bke
 
+namespace blender::bke {
+
 using NodeInitExecFunction = void *(*)(bNodeExecContext *context,
                                        bNode *node,
                                        bNodeInstanceKey key);
@@ -203,6 +205,8 @@ using NodeExecFunction = void (*)(
 using NodeGPUExecFunction = int (*)(
     GPUMaterial *mat, bNode *node, bNodeExecData *execdata, GPUNodeStack *in, GPUNodeStack *out);
 using NodeMaterialXFunction = void (*)(void *data, bNode *node, bNodeSocket *out);
+
+}  // namespace blender::bke
 
 struct bNodeTreeExec;
 
