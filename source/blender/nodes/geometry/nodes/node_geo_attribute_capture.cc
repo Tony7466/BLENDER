@@ -15,6 +15,8 @@
 
 #include "BLO_read_write.hh"
 
+#include "BKE_screen.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_attribute_capture_cc {
@@ -59,6 +61,98 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   NodeGeometryAttributeCapture *data = MEM_cnew<NodeGeometryAttributeCapture>(__func__);
   data->domain = int8_t(AttrDomain::Point);
   node->storage = data;
+}
+
+static void draw_item(uiList * /*ui_list*/,
+                      const bContext *C,
+                      uiLayout *layout,
+                      PointerRNA * /*idataptr*/,
+                      PointerRNA *itemptr,
+                      int /*icon*/,
+                      PointerRNA * /*active_dataptr*/,
+                      const char * /*active_propname*/,
+                      int /*index*/,
+                      int /*flt_flag*/)
+{
+  uiLayout *row = uiLayoutRow(layout, true);
+  float4 color;
+  RNA_float_get_array(itemptr, "color", color);
+  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  static const uiListType *items_list = []() {
+    uiListType *list = MEM_new<uiListType>(__func__);
+    STRNCPY(list->idname, "NODE_UL_capture_items_list");
+    list->draw_item = draw_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
+
+  if (uiLayout *panel = uiLayoutPanel(
+          C, layout, "capture_attribute_items", false, TIP_("Capture Items")))
+  {
+    uiLayout *row = uiLayoutRow(panel, false);
+    uiTemplateList(row,
+                   C,
+                   items_list->idname,
+                   "",
+                   ptr,
+                   "capture_items",
+                   ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+    {
+      uiLayout *ops_col = uiLayoutColumn(row, false);
+      {
+        uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+        uiItemO(add_remove_col, "", ICON_ADD, "node.capture_attribute_item_add");
+        uiItemO(add_remove_col, "", ICON_REMOVE, "node.capture_attribute_item_remove");
+      }
+      {
+        uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+        uiItemEnumO(
+            up_down_col, "node.capture_attribute_item_move", "", ICON_TRIA_UP, "direction", 0);
+        uiItemEnumO(
+            up_down_col, "node.capture_attribute_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+    }
+  }
+}
+
+static void NODE_OT_capture_attribute_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<CaptureAttributeItemsAccessor>(
+      ot, "Add Capture Attribute Item", __func__, "Add capture attribute item");
+}
+
+static void NODE_OT_capture_attribute_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_active_item<CaptureAttributeItemsAccessor>(
+      ot, "Remove Capture Attribute Item", __func__, "Remove active capture attribute item");
+}
+
+static void NODE_OT_capture_attribute_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_active_item<CaptureAttributeItemsAccessor>(
+      ot, "Move Capture Attribute Item", __func__, "Move active capture attribute item");
+}
+
+static void node_operators()
+{
+  WM_operatortype_append(NODE_OT_capture_attribute_item_add);
+  WM_operatortype_append(NODE_OT_capture_attribute_item_remove);
+  WM_operatortype_append(NODE_OT_capture_attribute_item_move);
 }
 
 static void clean_unused_attributes(const AnonymousAttributePropagationInfo &propagation_info,
@@ -193,19 +287,6 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   socket_items::copy_array<CaptureAttributeItemsAccessor>(*src_node, *dst_node);
 }
 
-static void node_rna(StructRNA *srna)
-{
-  RNA_def_node_enum(srna,
-                    "domain",
-                    "Domain",
-                    "Which domain to store the data in",
-                    rna_enum_attribute_domain_items,
-                    NOD_storage_enum_accessors(domain),
-                    int8_t(AttrDomain::Point),
-                    enums::domain_experimental_grease_pencil_version3_fn,
-                    true);
-}
-
 static void node_register()
 {
   static bNodeType ntype;
@@ -218,15 +299,18 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
+  ntype.register_operators = node_operators;
   nodeRegisterType(&ntype);
-
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_geo_attribute_capture_cc
 
 namespace blender::nodes {
+
+StructRNA *CaptureAttributeItemsAccessor::item_srna = &RNA_NodeGeometryCaptureAttributeItem;
+int CaptureAttributeItemsAccessor::node_type = GEO_NODE_CAPTURE_ATTRIBUTE;
 
 void CaptureAttributeItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
 {
