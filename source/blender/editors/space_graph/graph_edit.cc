@@ -3326,7 +3326,7 @@ static int graph_driver_delete_invalid_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    ok |= ANIM_remove_driver(op->reports, ale->id, fcu->rna_path, fcu->array_index, 0);
+    ok |= ANIM_remove_driver(ale->id, fcu->rna_path, fcu->array_index);
     if (!ok) {
       break;
     }
