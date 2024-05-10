@@ -22,6 +22,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "ED_armature.hh"
 #include "ED_outliner.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -40,15 +41,17 @@ namespace blender::ui {
 struct BoneDropper {
   PointerRNA ptr;
   PropertyRNA *prop;
-  short idcode;
-  const char *idcode_name;
+  PointerRNA search_ptr;
+  PropertyRNA *search_prop;
+
   bool is_undo;
 
   ScrArea *cursor_area; /* Area under the cursor */
   ARegionType *area_region_type;
   void *draw_handle_pixel;
   int name_pos[2];
-  char name[200];
+  /* Bone max char count. */
+  char name[64];
 };
 
 static void datadropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, void *arg)
@@ -57,41 +60,56 @@ static void datadropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, vo
   eyedropper_draw_cursor_text_region(ddr->name_pos, ddr->name);
 }
 
+static bool is_bone_dropper_valid(BoneDropper *bone_dropper)
+{
+  if ((bone_dropper->ptr.data == nullptr) || (bone_dropper->prop == nullptr)) {
+    return false;
+  }
+  if (!RNA_property_editable(&bone_dropper->ptr, bone_dropper->prop)) {
+    return false;
+  }
+  StructRNA *foo = RNA_property_pointer_type(&bone_dropper->search_ptr, bone_dropper->search_prop);
+  if (RNA_property_pointer_type(&bone_dropper->search_ptr, bone_dropper->search_prop) != &RNA_Bone)
+  {
+    return false;
+  }
+  return true;
+}
+
 static int bonedropper_init(bContext *C, wmOperator *op)
 {
-  SpaceType *space_type = BKE_spacetype_from_id(SPACE_VIEW3D);
-  ARegionType *area_region_type = BKE_regiontype_from_id(space_type, RGN_TYPE_WINDOW);
+  int index_dummy;
+  PointerRNA button_ptr;
+  PropertyRNA *button_prop;
+  uiBut *button = UI_context_active_but_prop_get(C, &button_ptr, &button_prop, &index_dummy);
+
+  if (!button || button->type != UI_BTYPE_SEARCH_MENU) {
+    return false;
+  }
 
   BoneDropper *bone_dropper = MEM_cnew<BoneDropper>(__func__);
-
-  int index_dummy;
-  uiBut *button = UI_context_active_but_prop_get(
-      C, &bone_dropper->ptr, &bone_dropper->prop, &index_dummy);
-
-  if ((bone_dropper->ptr.data == nullptr) || (bone_dropper->prop == nullptr) ||
-      (RNA_property_editable(&bone_dropper->ptr, bone_dropper->prop) == false) ||
-      (RNA_property_type(bone_dropper->prop) != PROP_POINTER))
-  {
+  uiButSearch *search_button = (uiButSearch *)button;
+  bone_dropper->ptr = button_ptr;
+  bone_dropper->prop = button_prop;
+  bone_dropper->search_ptr = search_button->rnasearchpoin;
+  bone_dropper->search_prop = search_button->rnasearchprop;
+  if (!is_bone_dropper_valid(bone_dropper)) {
     MEM_freeN(bone_dropper);
     return false;
   }
+
   op->customdata = bone_dropper;
 
   bone_dropper->is_undo = UI_but_flag_is_set(button, UI_BUT_UNDO);
 
+  SpaceType *space_type = BKE_spacetype_from_id(SPACE_VIEW3D);
+  ARegionType *area_region_type = BKE_regiontype_from_id(space_type, RGN_TYPE_WINDOW);
   bone_dropper->cursor_area = CTX_wm_area(C);
   bone_dropper->area_region_type = area_region_type;
   bone_dropper->draw_handle_pixel = ED_region_draw_cb_activate(
       area_region_type, datadropper_draw_cb, bone_dropper, REGION_DRAW_POST_PIXEL);
 
-  StructRNA *type = RNA_property_pointer_type(&bone_dropper->ptr, bone_dropper->prop);
-  bone_dropper->idcode = RNA_type_to_ID_code(type);
-  BLI_assert(bone_dropper->idcode != 0);
-  /* Note we can translate here (instead of on draw time),
-   * because this struct has very short lifetime. */
-  bone_dropper->idcode_name = TIP_(BKE_idtype_idcode_to_name(bone_dropper->idcode));
-
-  const PointerRNA ptr = RNA_property_pointer_get(&bone_dropper->ptr, bone_dropper->prop);
+  // const PointerRNA ptr = RNA_property_pointer_get(&bone_dropper->ptr, bone_dropper->prop);
   // ddr->init_id = ptr.owner_id;
 
   return true;
@@ -168,7 +186,6 @@ static void bonedropper_id_sample_pt(
   bdr.name[0] = '\0';
 
   const int mval[2] = {event_xy[0] - region->winrct.xmin, event_xy[1] - region->winrct.ymin};
-  Base *base;
 
   CTX_wm_window_set(C, &win);
   CTX_wm_area_set(C, &area);
@@ -177,11 +194,17 @@ static void bonedropper_id_sample_pt(
   /* Unfortunately it's necessary to always draw else we leave stale text. */
   ED_region_tag_redraw(region);
 
+  Bone *bone;
+  Base *base;
+  Base *foo;
+
   switch (area.spacetype) {
     case SPACE_VIEW3D:
+      bone = ED_armature_pick_bone(C, mval, false, &foo);
       base = ED_view3d_give_base_under_cursor(C, mval);
       break;
     case SPACE_OUTLINER:
+      bone = ED_armature_pick_bone(C, mval, false, &foo);
       base = ED_outliner_give_base_under_cursor(C, mval);
       break;
 
@@ -190,27 +213,10 @@ static void bonedropper_id_sample_pt(
       break;
   }
 
-  if (base) {
+  if (bone) {
     Object *ob = base->object;
-    ID *id = nullptr;
-    if (bdr.idcode == ID_OB) {
-      id = (ID *)ob;
-    }
-    else if (ob->data) {
-      if (GS(((ID *)ob->data)->name) == bdr.idcode) {
-        id = (ID *)ob->data;
-      }
-      else {
-        SNPRINTF(bdr.name, "Incompatible, expected a %s", bdr.idcode_name);
-      }
-    }
-
-    PointerRNA idptr = RNA_id_pointer_create(id);
-
-    if (id && RNA_property_pointer_poll(&bdr.ptr, bdr.prop, &idptr)) {
-      SNPRINTF(bdr.name, "%s: %s", bdr.idcode_name, id->name + 2);
-      *r_id = id;
-    }
+    SNPRINTF(bdr.name, "%s", bone->name);
+    // PointerRNA idptr = RNA_id_pointer_create(id);
 
     copy_v2_v2_int(bdr.name_pos, mval);
   }
@@ -228,6 +234,9 @@ static bool bonedropper_id_sample(bContext *C, BoneDropper &ddr, const int event
   eyedropper_win_area_find(C, event_xy, event_xy_win, &win, &area);
 
   if (!win || !area) {
+    return false;
+  }
+  if (area->spacetype != SPACE_VIEW3D) {
     return false;
   }
 
