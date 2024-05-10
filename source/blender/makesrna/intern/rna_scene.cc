@@ -7455,7 +7455,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "compositor_device", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, compositor_device_items);
-  RNA_def_property_ui_text(prop, "Compositor Execution Mode", "Set how compositing is executed");
+  RNA_def_property_ui_text(prop, "Compositor Device", "Set how compositing is executed");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
 
   prop = RNA_def_property(srna, "compositor_precision", PROP_ENUM, PROP_NONE);
