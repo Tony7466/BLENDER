@@ -667,7 +667,7 @@ void RE_FreeUnusedGPUResources()
       /* Detect if scene is using GPU compositing, and if either a node editor is
        * showing the nodes, or an image editor is showing the render result or viewer. */
       if (!(scene->use_nodes && scene->nodetree &&
-            scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_GPU))
+            scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU))
       {
         continue;
       }
@@ -1692,7 +1692,7 @@ static int check_compositor_output(Scene *scene)
 static bool is_compositing_possible_on_gpu(Scene *scene, ReportList *reports)
 {
   /* CPU compositor can always run. */
-  if (scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU) {
+  if (scene->r.compositor_device != SCE_COMPOSITOR_DEVICE_GPU) {
     return true;
   }
 

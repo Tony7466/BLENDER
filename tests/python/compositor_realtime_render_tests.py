@@ -16,7 +16,7 @@ except ImportError:
     inside_blender = False
 
 ENABLE_REALTIME_COMPOSITOR_SCRIPT = "import bpy; " \
-    "bpy.data.scenes[0].node_tree.execution_mode = 'GPU'"
+    "bpy.data.scenes[0].render.compositor_device = 'GPU'"
 
 
 def get_arguments(filepath, output_filepath):
