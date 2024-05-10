@@ -64,9 +64,27 @@ ClosureLight closure_light_get(ClosureLightStack stack, int index)
 #  error
 #endif
   }
-
   ClosureLight closure_null;
   return closure_null;
+}
+
+void closure_light_set(inout ClosureLightStack stack, int index, ClosureLight cl_light)
+{
+  switch (index) {
+    case 0:
+      stack.cl[0] = cl_light;
+#if LIGHT_CLOSURE_EVAL_COUNT > 1
+    case 1:
+      stack.cl[1] = cl_light;
+#endif
+#if LIGHT_CLOSURE_EVAL_COUNT > 2
+    case 2:
+      stack.cl[2] = cl_light;
+#endif
+#if LIGHT_CLOSURE_EVAL_COUNT > 3
+#  error
+#endif
+  }
 }
 
 ClosureLight closure_light_new_ex(ClosureUndetermined cl,
