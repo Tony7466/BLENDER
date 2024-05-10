@@ -236,7 +236,6 @@ static void extract_pos_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
 
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
   const Span<float3> edge_vert_positions = loose_info.edge_vert_positions;
-  const int verts_per_coarse_edge = loose_info.edges_per_coarse_edge;
   const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
 
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
@@ -251,6 +250,8 @@ static void extract_pos_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
 
   /* Make sure buffer is active for sending loose data. */
   GPU_vertbuf_use(vbo);
+
+  const int verts_per_coarse_edge = loose_info.edges_per_coarse_edge + 1;
 
   SubdivPosNorLoop edge_data[2];
   memset(edge_data, 0, sizeof(SubdivPosNorLoop) * 2);
