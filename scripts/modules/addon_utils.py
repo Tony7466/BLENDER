@@ -586,7 +586,7 @@ def disable_all():
     # Use direct `__dict__` access to bypass `__getattr__`, see: #111649.
     modules = sys.modules.copy()
     addon_modules = [
-        item for item in modules
+        item for item in modules.items()
         if type(mod_dict := getattr(item[1], "__dict__", None)) is dict
         if mod_dict.get("__addon_enabled__")
     ]
