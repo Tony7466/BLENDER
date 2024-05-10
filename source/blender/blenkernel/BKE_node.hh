@@ -47,6 +47,7 @@ struct World;
 struct bContext;
 struct bNode;
 struct bNodeExecContext;
+struct bNodeTreeExec;
 struct bNodeExecData;
 struct bNodeInstanceHash;
 struct bNodeLink;
@@ -57,11 +58,35 @@ struct bNodeTreeExec;
 struct bNodeTreeType;
 struct uiLayout;
 
+namespace blender {
+class CPPType;
+namespace nodes {
+class DNode;
+class NodeMultiFunctionBuilder;
+class GeoNodeExecParams;
+class NodeDeclaration;
+class NodeDeclarationBuilder;
+class GatherAddNodeSearchParams;
+class GatherLinkSearchOpParams;
+struct NodeExtraInfoParams;
+}  // namespace nodes
+namespace realtime_compositor {
+class Context;
+class NodeOperation;
+class ShaderNode;
+}  // namespace realtime_compositor
+}  // namespace blender
+
+namespace blender::bke {
+
 /* -------------------------------------------------------------------- */
 /** \name Node Type Definitions
  * \{ */
 
-namespace blender::bke {
+/* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
+ * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.
+ * However, achieving this requires quite a few changes currently. */
+
 /**
  * \brief Compact definition of a node socket.
  *
@@ -84,31 +109,6 @@ struct bNodeSocketTemplate {
   bNodeSocket *sock;   /* used to hold verified socket */
   char identifier[64]; /* generated from name */
 };
-}  // namespace blender::bke
-
-/* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
- * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.
- * However, achieving this requires quite a few changes currently. */
-namespace blender {
-class CPPType;
-namespace nodes {
-class DNode;
-class NodeMultiFunctionBuilder;
-class GeoNodeExecParams;
-class NodeDeclaration;
-class NodeDeclarationBuilder;
-class GatherAddNodeSearchParams;
-class GatherLinkSearchOpParams;
-struct NodeExtraInfoParams;
-}  // namespace nodes
-namespace realtime_compositor {
-class Context;
-class NodeOperation;
-class ShaderNode;
-}  // namespace realtime_compositor
-}  // namespace blender
-
-namespace blender::bke {
 
 using NodeMultiFunctionBuildFunction = void (*)(blender::nodes::NodeMultiFunctionBuilder &builder);
 using NodeGeometryExecFunction = void (*)(blender::nodes::GeoNodeExecParams params);
@@ -133,9 +133,6 @@ using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
 using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
 
-}  // namespace blender::bke
-
-namespace blender::bke {
 /**
  * \brief Defines a socket type.
  *
@@ -192,10 +189,6 @@ struct bNodeSocketType {
   const void *geometry_nodes_default_cpp_value;
 };
 
-}  // namespace blender::bke
-
-namespace blender::bke {
-
 using NodeInitExecFunction = void *(*)(bNodeExecContext *context,
                                        bNode *node,
                                        bNodeInstanceKey key);
@@ -205,12 +198,6 @@ using NodeExecFunction = void (*)(
 using NodeGPUExecFunction = int (*)(
     GPUMaterial *mat, bNode *node, bNodeExecData *execdata, GPUNodeStack *in, GPUNodeStack *out);
 using NodeMaterialXFunction = void (*)(void *data, bNode *node, bNodeSocket *out);
-
-}  // namespace blender::bke
-
-struct bNodeTreeExec;
-
-namespace blender::bke {
 
 /**
  * \brief Defines a node type.
