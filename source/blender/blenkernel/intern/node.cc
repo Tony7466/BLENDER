@@ -3658,7 +3658,7 @@ void ntreeSetOutput(bNodeTree *ntree)
   /* find the active outputs, might become tree type dependent handler */
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     /* Typeinfos aren't available when versioning code runs. */
-    if (node->typeinfo && node->typeinfo->nclass == NODE_CLASS_OUTPUT) {
+    if (node->typeinfo->nclass == NODE_CLASS_OUTPUT) {
       /* we need a check for which output node should be tagged like this, below an exception */
       if (ELEM(node->type, CMP_NODE_OUTPUT_FILE, GEO_NODE_VIEWER)) {
         continue;
