@@ -1473,9 +1473,12 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
 
   if (value_log.grid_info) {
     const geo_log::GeometryInfoLog::GridInfo &grid_info = *value_log.grid_info;
-    char line[256];
-    SNPRINTF(line, TIP_("\u2022 Grid: %s voxels"), to_string(grid_info.voxels_num).c_str());
-    ss << line;
+    if (grid_info.is_empty) {
+      ss << TIP_("\u2022 Empty Grid");
+    }
+    else {
+      ss << TIP_("\u2022 Grid");
+    }
     return;
   }
 

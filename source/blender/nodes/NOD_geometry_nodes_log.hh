@@ -150,7 +150,7 @@ class GeometryInfoLog : public ValueLog {
     int grids_num;
   };
   struct GridInfo {
-    int voxels_num;
+    bool is_empty;
   };
 
   std::optional<MeshInfo> mesh_info;
