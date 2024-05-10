@@ -19,6 +19,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.hh"
+#include "BLI_timeit.hh"
 
 #include "COM_GlareFogGlowOperation.h"
 
@@ -178,69 +179,89 @@ void GlareFogGlowOperation::generate_glare(float *output,
 
   /* Zero pad the image to the required spatial domain size, storing each channel in planner
    * format for better cache locality, that is, RRRR...GGGG...BBBB. */
-  memset(image_spatial_domain, 0, sizeof(float) * spatial_pixels_count);
-  threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
-    for (const int64_t y : sub_y_range) {
-      for (const int64_t x : IndexRange(image_size.x)) {
-        for (const int64_t channel : IndexRange(channels_count)) {
-          const int64_t output_index = x + y * spatial_size.x +
-                                       spatial_pixels_per_channel * channel;
-          image_spatial_domain[output_index] = image->get_elem(x, y)[channel];
+  {
+    SCOPED_TIMER_AVERAGED("Zero pad input.");
+    threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t y : sub_y_range) {
+        for (const int64_t x : IndexRange(spatial_size.x)) {
+          const bool is_inside_image = x < image_size.x && y < image_size.y;
+          for (const int64_t channel : IndexRange(channels_count)) {
+            const int64_t base_index = x + y * spatial_size.x;
+            const int64_t output_index = base_index + spatial_pixels_per_channel * channel;
+            if (is_inside_image) {
+              image_spatial_domain[output_index] = image->get_elem(x, y)[channel];
+            }
+            else {
+              image_spatial_domain[output_index] = 0.0f;
+            }
+          }
         }
       }
-    }
-  });
+    });
+  }
 
-  threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
-    for (const int64_t channel : sub_range) {
-      fftwf_execute_dft_r2c(image_forward_plan,
-                            image_spatial_domain + spatial_pixels_per_channel * channel,
-                            reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
-                                frequency_pixels_per_channel * channel);
-    }
-  });
+  {
+    SCOPED_TIMER_AVERAGED("Execute forward.");
+    threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+      for (const int64_t channel : sub_range) {
+        fftwf_execute_dft_r2c(image_forward_plan,
+                              image_spatial_domain + spatial_pixels_per_channel * channel,
+                              reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                  frequency_pixels_per_channel * channel);
+      }
+    });
+  }
 
   /* Multiply the kernel and the image in the frequency domain to perform the convolution. The
    * FFT is not normalized, meaning the result of the FFT followed by an inverse FFT will result
    * in an image that is scaled by a factor of the product of the width and height, so we take
    * that into account by dividing by that scale. See the FFTW manual for more information. */
-  const float normalization_scale = float(spatial_size.x) * spatial_size.y;
-  threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
-    for (const int64_t y : sub_y_range) {
-      for (const int64_t x : IndexRange(frequency_size.x)) {
-        for (const int64_t channel : IndexRange(channels_count)) {
-          const int64_t base_index = x + y * frequency_size.x;
-          const int64_t channel_index = base_index + frequency_pixels_per_channel * channel;
-          const std::complex<float> kernel_value = kernel_frequency_domain[base_index];
-          image_frequency_domain[channel_index] *= kernel_value / normalization_scale;
+  {
+    SCOPED_TIMER_AVERAGED("Multiply in frequency domain.");
+    const float normalization_scale = float(spatial_size.x) * spatial_size.y;
+    threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t y : sub_y_range) {
+        for (const int64_t x : IndexRange(frequency_size.x)) {
+          for (const int64_t channel : IndexRange(channels_count)) {
+            const int64_t base_index = x + y * frequency_size.x;
+            const int64_t output_index = base_index + frequency_pixels_per_channel * channel;
+            const std::complex<float> kernel_value = kernel_frequency_domain[base_index];
+            image_frequency_domain[output_index] *= kernel_value / normalization_scale;
+          }
         }
       }
-    }
-  });
+    });
+  }
 
-  threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
-    for (const int64_t channel : sub_range) {
-      fftwf_execute_dft_c2r(image_backward_plan,
-                            reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
-                                frequency_pixels_per_channel * channel,
-                            image_spatial_domain + spatial_pixels_per_channel * channel);
-    }
-  });
+  {
+    SCOPED_TIMER_AVERAGED("Execute backward.");
+    threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+      for (const int64_t channel : sub_range) {
+        fftwf_execute_dft_c2r(image_backward_plan,
+                              reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                  frequency_pixels_per_channel * channel,
+                              image_spatial_domain + spatial_pixels_per_channel * channel);
+      }
+    });
+  }
 
   /* Copy the result of the convolution to the output channel. */
-  threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
-    for (const int64_t y : sub_y_range) {
-      for (const int64_t x : IndexRange(image_size.x)) {
-        for (const int64_t channel : IndexRange(channels_count)) {
-          const int64_t output_index = (x + y * image_size.x) * image->get_num_channels();
-          const int64_t input_index = x + y * spatial_size.x +
-                                      spatial_pixels_per_channel * channel;
-          output[output_index + channel] = image_spatial_domain[input_index];
-          output[output_index + 3] = image->get_buffer()[output_index + 3];
+  {
+    SCOPED_TIMER_AVERAGED("Copy to output.");
+    threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t y : sub_y_range) {
+        for (const int64_t x : IndexRange(image_size.x)) {
+          for (const int64_t channel : IndexRange(channels_count)) {
+            const int64_t output_index = (x + y * image_size.x) * image->get_num_channels();
+            const int64_t base_index = x + y * spatial_size.x;
+            const int64_t input_index = base_index + spatial_pixels_per_channel * channel;
+            output[output_index + channel] = image_spatial_domain[input_index];
+            output[output_index + 3] = image->get_buffer()[output_index + 3];
+          }
         }
       }
-    }
-  });
+    });
+  }
 
   fftwf_free(image_spatial_domain);
   fftwf_destroy_plan(image_forward_plan);
