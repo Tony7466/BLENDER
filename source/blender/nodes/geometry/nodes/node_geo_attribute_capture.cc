@@ -41,8 +41,8 @@ static void node_declare(NodeDeclarationBuilder &b)
           CaptureAttributeItemsAccessor::input_socket_identifier_for_item(item);
       const std::string output_identifier =
           CaptureAttributeItemsAccessor::output_socket_identifier_for_item(item);
-      b.add_input(data_type, input_identifier).field_on_all();
-      b.add_output(data_type, output_identifier).field_on_all().align_with_previous();
+      b.add_input(data_type, item.name, input_identifier).field_on_all();
+      b.add_output(data_type, item.name, output_identifier).field_on_all().align_with_previous();
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
