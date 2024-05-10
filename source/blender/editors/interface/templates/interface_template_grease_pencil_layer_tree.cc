@@ -57,7 +57,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
     }
 
     LayerGroup &group = active_drag_node->node->wrap().as_group();
-    if (group.nodes_for_write().contains(&const_cast<TreeNode &>(drop_tree_node_))) {
+    if (drop_tree_node_.is_child_of(group)) {
       /* Don't drop group node into its child node. */
       return false;
     }
