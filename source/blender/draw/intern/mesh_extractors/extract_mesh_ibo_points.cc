@@ -76,7 +76,7 @@ static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
   const IndexMask visible_verts = calc_vert_visibility_mesh(mr, IndexMask(mr.verts_num), memory);
 
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible_verts.size(), max_index);
+  GPU_indexbuf_init(&builder, GPU_PRIM_POINTS, visible_verts.size(), max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
 
   threading::memory_bandwidth_bound_task(corner_verts.size_in_bytes(), [&]() {
@@ -110,20 +110,22 @@ static void process_ibo_verts_bm(const MeshRenderData &mr, const Fn &process_ver
 {
   BMesh &bm = *mr.bm;
 
-  threading::parallel_for(corner_verts.index_range(), 2048, [&](const IndexRange range) {
-    for (const int corner : range) {
-      process_vert_fn(corner, corner_verts[corner]);
+  threading::parallel_for(IndexRange(mr.verts_num), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      BMVert &vert = *BM_vert_at_index(&bm, i);
+      if (const BMLoop *loop = BM_vert_find_first_loop(&vert)) {
+        process_vert_fn(BM_elem_index_get(loop), i);
+      }
     }
   });
 
   const int loose_edges_start = mr.corners_num;
-  const Span<int2> edges = mr.edges;
   const Span<int> loose_edges = mr.loose_edges;
   threading::parallel_for(loose_edges.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
-      const BMEdge &edge = BM_edge_at_index(&bm, loose_edges[i]);
-      process_vert_fn(loose_edges_start + i + 0, BM_elem_index_get(edge.v1));
-      process_vert_fn(loose_edges_start + i + 1, BM_elem_index_get(edge.v2));
+      const BMEdge &edge = *BM_edge_at_index(&bm, loose_edges[i]);
+      process_vert_fn(loose_edges_start + i * 2 + 0, BM_elem_index_get(edge.v1));
+      process_vert_fn(loose_edges_start + i * 2 + 1, BM_elem_index_get(edge.v2));
     }
   });
 
@@ -150,15 +152,15 @@ static void extract_points_bm(const MeshRenderData &mr, gpu::IndexBuf &points)
   const int max_index = mr.corners_num + mr.loose_edges.size() * 2 + mr.loose_verts.size();
 
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible_verts.size(), max_index);
+  GPU_indexbuf_init(&builder, GPU_PRIM_POINTS, visible_verts.size(), max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
 
   if (mr.loose_verts.is_empty() && mr.loose_edges.is_empty()) {
     /* Make use of BMesh's vertex to loop topology knowledge to iterate over verts instead of
      * iterating over faces and defining points implicitly as done in the #Mesh extraction. */
     visible_verts.foreach_index(GrainSize(4096), [&](const int i, const int pos) {
-      const BMVert &vert = *BM_vert_at_index(&bm, i);
-      data[pos] = BM_elem_index_get(vert.e->l);
+      BMVert &vert = *BM_vert_at_index(&bm, i);
+      data[pos] = BM_elem_index_get(BM_vert_find_first_loop(&vert));
     });
   }
   else if (visible_verts.size() == bm.totvert) {

@@ -306,18 +306,18 @@ void extract_lines_subdiv(const MeshRenderData &mr,
                           bool &no_loose_wire)
 {
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  const int loose_num = mr.loose_edges.size() * loose_info.edges_per_coarse_edge;
-  no_loose_wire = loose_num == 0;
+  const int indices_num = mr.loose_edges.size() * loose_info.edges_per_coarse_edge * 2;
+  no_loose_wire = indices_num == 0;
 
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
-    GPU_indexbuf_init_build_on_device(lines_loose, loose_num);
+    GPU_indexbuf_init_build_on_device(lines_loose, indices_num);
     extract_lines_loose_geom_subdiv(subdiv_cache, mr, 0, lines_loose);
     return;
   }
 
   const int non_loose_num = subdiv_cache.num_subdiv_loops * 2;
 
-  GPU_indexbuf_init_build_on_device(lines, non_loose_num + loose_num);
+  GPU_indexbuf_init_build_on_device(lines, non_loose_num + indices_num);
   if (non_loose_num > 0) {
     draw_subdiv_build_lines_buffer(subdiv_cache, lines);
   }
@@ -325,7 +325,7 @@ void extract_lines_subdiv(const MeshRenderData &mr,
 
   if (DRW_ibo_requested(lines_loose)) {
     /* Multiply by 2 because these are edges indices. */
-    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, non_loose_num, loose_num);
+    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, non_loose_num, indices_num);
   }
 }
 

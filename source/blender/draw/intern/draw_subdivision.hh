@@ -58,13 +58,13 @@ struct DRWPatchMap {
  * and in the buffer extractors. Although it duplicates memory (and work), the buffers also store
  * duplicate values. */
 struct DRWSubdivLooseGeom {
-  int vbo_size;
-  int loose_edge_verts_start;
-  int loose_verts_start;
-  /** For every subdivided edge, there are two coarse vertices. */
-  int verts_per_coarse_edge;
+  // int vbo_size;
+  // int loose_edge_verts_start;
+  // int loose_verts_start;
   /** For every coarse edge, there are `resolution - 1` subdivided edges. */
   int edges_per_coarse_edge;
+  /** For every subdivided edge, there are two coarse vertices. */
+  // int verts_per_coarse_edge;
 
   /** Subdivided vertices of loose*/
   Array<float3> edge_vert_positions;
@@ -187,7 +187,7 @@ void DRW_create_subdivision(Object *ob,
                             const ToolSettings *ts,
                             bool use_hide);
 
-void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, MeshBufferCache *cache);
+void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCache &cache);
 
 void DRW_subdiv_cache_free(bke::subdiv::Subdiv *subdiv);
 

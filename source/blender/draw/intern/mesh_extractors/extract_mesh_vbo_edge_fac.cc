@@ -280,7 +280,7 @@ static gpu::VertBuf *build_poly_other_map_vbo(const DRWSubdivCache &subdiv_cache
 }
 
 static void extract_edge_fac_init_subdiv(const DRWSubdivCache &subdiv_cache,
-                                         const MeshRenderData & /*mr*/,
+                                         const MeshRenderData &mr,
                                          MeshBatchCache &cache,
                                          void *buffer,
                                          void * /*data*/)
@@ -288,8 +288,11 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache &subdiv_cache,
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  GPU_vertbuf_init_build_on_device(
-      vbo, get_subdiv_edge_fac_format(), subdiv_cache.num_subdiv_loops + loose_info.loop_len);
+  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
+  const int subdiv_loose_edges_num = mr.loose_edges.size() * edges_per_coarse_edge;
+  GPU_vertbuf_init_build_on_device(vbo,
+                                   get_subdiv_edge_fac_format(),
+                                   subdiv_cache.num_subdiv_loops + subdiv_loose_edges_num * 2);
 
   gpu::VertBuf *pos_nor = cache.final.buff.vbo.pos;
   gpu::VertBuf *poly_other_map = build_poly_other_map_vbo(subdiv_cache);
@@ -301,32 +304,36 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache &subdiv_cache,
 }
 
 static void extract_edge_fac_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
-                                               const MeshRenderData & /*mr*/,
+                                               const MeshRenderData &mr,
                                                void *buffer,
                                                void * /*data*/)
 {
-  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  if (loose_info.edge_len == 0) {
+  const Span<int> loose_edges = mr.loose_edges;
+  if (loose_edges.is_empty()) {
     return;
   }
+
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
+  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
 
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
   /* Make sure buffer is active for sending loose data. */
   GPU_vertbuf_use(vbo);
 
-  uint offset = subdiv_cache.num_subdiv_loops;
-  for (int i = 0; i < loose_info.edge_len; i++) {
-    if (GPU_crappy_amd_driver() || GPU_minimum_per_vertex_stride() > 1) {
-      float loose_edge_fac[2] = {1.0f, 1.0f};
-      GPU_vertbuf_update_sub(vbo, offset * sizeof(float), sizeof(loose_edge_fac), loose_edge_fac);
+  const int offset = subdiv_cache.num_subdiv_loops;
+  if (GPU_crappy_amd_driver() || GPU_minimum_per_vertex_stride() > 1) {
+    const float values[2] = {1.0f, 1.0f};
+    for (const int i : IndexRange(subdiv_loose_edges_num)) {
+      GPU_vertbuf_update_sub(vbo, (offset + i * 2) * sizeof(float), sizeof(values), values);
     }
-    else {
-      char loose_edge_fac[2] = {255, 255};
-      GPU_vertbuf_update_sub(vbo, offset * sizeof(char), sizeof(loose_edge_fac), loose_edge_fac);
+  }
+  else {
+    const char values[2] = {255, 255};
+    for (const int i : IndexRange(subdiv_loose_edges_num)) {
+      GPU_vertbuf_update_sub(vbo, (offset + i * 2) * sizeof(char), sizeof(values), values);
     }
-
-    offset += 2;
   }
 }
 

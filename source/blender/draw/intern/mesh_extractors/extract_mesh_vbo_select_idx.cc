@@ -6,6 +6,8 @@
  * \ingroup draw
  */
 
+#include "BLI_array_utils.hh"
+
 #include "draw_subdivision.hh"
 #include "extract_mesh.hh"
 
@@ -232,9 +234,12 @@ static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache &subdiv_cach
     edge_vert_indices.last() = mr.v_origindex ? mr.v_origindex[coarse_edge[1]] : coarse_edge[1];
   }
 
-  MutableSpan<int32_t> loose_edge_vert_data = vbo_data.take_back(loose_verts.size());
-  for (const int i : loose_verts.index_range()) {
-    loose_edge_vert_data[i] = mr.v_origindex ? mr.v_origindex[loose_verts[i]] : loose_verts[i];
+  MutableSpan<int32_t> loose_vert_data = vbo_data.take_back(loose_verts.size());
+  if (mr.v_origindex) {
+    array_utils::gather(Span(mr.v_origindex, mr.verts_num), loose_verts, loose_vert_data);
+  }
+  else {
+    array_utils::copy(loose_verts, loose_vert_data);
   }
 }
 

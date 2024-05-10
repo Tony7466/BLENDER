@@ -877,7 +877,7 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   mesh_render_data_update_normals(mr, MR_DATA_TAN_LOOP_NOR);
   mesh_render_data_update_loose_geom(
       mr, mbc, MR_ITER_LOOSE_EDGE | MR_ITER_LOOSE_VERT, MR_DATA_LOOSE_GEOM);
-  DRW_subdivide_loose_geom(&subdiv_cache, &mbc);
+  DRW_subdivide_loose_geom(subdiv_cache, mbc);
 
   if (DRW_ibo_requested(buffers.ibo.lines) || DRW_ibo_requested(buffers.ibo.lines_loose)) {
     extract_lines_subdiv(

@@ -316,7 +316,6 @@ static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache &subdiv_cac
     return;
   }
 
-  const Span<int2> coarse_edges = mr.edges;
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
   const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
   const int verts_per_coarse_edge = edges_per_coarse_edge * 2;
@@ -331,7 +330,6 @@ static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache &subdiv_cac
 
   for (const int i : loose_edges.index_range()) {
     const int coarse_edge_index = loose_edges[i];
-    const int2 coarse_edge = coarse_edges[loose_edges[i]];
     const IndexRange edge_vert_range(i * verts_per_coarse_edge, verts_per_coarse_edge);
     MutableSpan<EditLoopData> edge_data = loose_edge_vert_data.slice(edge_vert_range);
 

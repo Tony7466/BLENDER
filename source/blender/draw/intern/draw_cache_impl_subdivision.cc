@@ -2205,22 +2205,22 @@ static bool draw_subdiv_create_requested_buffers(Object *ob,
   return true;
 }
 
-void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCache &cache)
+void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCache &cache)
 {
   const Span<int> loose_edges = cache.loose_geom.edges;
   if (cache.loose_geom.verts.is_empty() && loose_edges.is_empty()) {
     return;
   }
 
-  DRWSubdivLooseGeom &result = subdiv_cache->loose_info;
+  DRWSubdivLooseGeom &result = subdiv_cache.loose_info;
   if (!result.edge_vert_positions.is_empty()) {
     /* Already processed. */
     return;
   }
 
-  const Mesh *coarse_mesh = subdiv_cache->mesh;
-  const bool is_simple = subdiv_cache->subdiv->settings.is_simple;
-  const int resolution = subdiv_cache->resolution;
+  const Mesh *coarse_mesh = subdiv_cache.mesh;
+  const bool is_simple = subdiv_cache.subdiv->settings.is_simple;
+  const int resolution = subdiv_cache.resolution;
   const int resolution_1 = resolution - 1;
   const float inv_resolution_1 = 1.0f / float(resolution_1);
   const int verts_per_coarse_edge = resolution - 1;
@@ -2228,8 +2228,6 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCach
   result.edges_per_coarse_edge = edges_per_coarse_edge;
 
   result.edge_vert_positions.reinitialize(loose_edges.size() * verts_per_coarse_edge);
-
-  result.vbo_size = loose_edges.size() * edges_per_coarse_edge * 2 + cache.loose_geom.verts.size();
 
   const Span<float3> coarse_positions = coarse_mesh->vert_positions();
   const Span<int2> coarse_edges = coarse_mesh->edges();
@@ -2242,7 +2240,6 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCach
   threading::parallel_for(loose_edges.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       const int coarse_edge_index = loose_edges[i];
-      const int2 &coarse_edge = coarse_edges[coarse_edge_index];
       MutableSpan<float3> edge_positions = edge_positions.slice(i * verts_per_coarse_edge,
                                                                 verts_per_coarse_edge);
       for (const int j : IndexRange(verts_per_coarse_edge)) {
