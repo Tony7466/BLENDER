@@ -28,6 +28,7 @@
 
 #include "util/foreach.h"
 #include "util/log.h"
+#include "util/octahedral_normal.h"
 #include "util/progress.h"
 #include "util/task.h"
 
@@ -284,6 +285,8 @@ void GeometryManager::update_attribute_element_offset(Geometry *geom,
                                                       size_t &attr_float4_offset,
                                                       device_vector<uchar4> &attr_uchar4,
                                                       size_t &attr_uchar4_offset,
+                                                      device_vector<uint> &attr_uint,
+                                                      size_t &attr_uint_offset,
                                                       Attribute *mattr,
                                                       AttributePrimitive prim,
                                                       TypeDesc &type,
@@ -318,6 +321,20 @@ void GeometryManager::update_attribute_element_offset(Geometry *geom,
         attr_uchar4.tag_modified();
       }
       attr_uchar4_offset += size;
+    }
+    else if (mattr->std == ATTR_STD_MOTION_VERTEX_NORMAL) {
+      /* octahedral motion vertex normal, float3 but store into uint */
+      float3 *data = mattr->data_float3();
+      offset = attr_uint_offset;
+
+      assert(attr_uint.size() >= offset + size);
+      if (mattr->modified) {
+        for (size_t k = 0; k < size; k++) {
+          attr_uint[offset + k] = octahedral_encode(data[k]);
+        }
+        attr_uint.tag_modified();
+      }
+      attr_uint_offset += size;
     }
     else if (mattr->type == TypeDesc::TypeFloat) {
       float *data = mattr->data_float();
@@ -453,7 +470,8 @@ static void update_attribute_element_size(Geometry *geom,
                                           size_t *attr_float2_size,
                                           size_t *attr_float3_size,
                                           size_t *attr_float4_size,
-                                          size_t *attr_uchar4_size)
+                                          size_t *attr_uchar4_size,
+                                          size_t *attr_uint_size)
 {
   if (mattr) {
     size_t size = mattr->element_size(geom, prim);
@@ -463,6 +481,9 @@ static void update_attribute_element_size(Geometry *geom,
     }
     else if (mattr->element == ATTR_ELEMENT_CORNER_BYTE) {
       *attr_uchar4_size += size;
+    }
+    else if (mattr->std == ATTR_STD_MOTION_VERTEX_NORMAL) {
+      *attr_uint_size += size;
     }
     else if (mattr->type == TypeDesc::TypeFloat) {
       *attr_float_size += size;
@@ -555,6 +576,7 @@ void GeometryManager::device_update_attributes(Device *device,
   size_t attr_float3_size = 0;
   size_t attr_float4_size = 0;
   size_t attr_uchar4_size = 0;
+  size_t attr_uint_size = 0;
 
   for (size_t i = 0; i < scene->geometry.size(); i++) {
     Geometry *geom = scene->geometry[i];
@@ -569,7 +591,8 @@ void GeometryManager::device_update_attributes(Device *device,
                                     &attr_float2_size,
                                     &attr_float3_size,
                                     &attr_float4_size,
-                                    &attr_uchar4_size);
+                                    &attr_uchar4_size,
+                                    &attr_uint_size);
 
       if (geom->is_mesh()) {
         Mesh *mesh = static_cast<Mesh *>(geom);
@@ -582,7 +605,8 @@ void GeometryManager::device_update_attributes(Device *device,
                                       &attr_float2_size,
                                       &attr_float3_size,
                                       &attr_float4_size,
-                                      &attr_uchar4_size);
+                                      &attr_uchar4_size,
+                                      &attr_uint_size);
       }
     }
   }
@@ -598,7 +622,8 @@ void GeometryManager::device_update_attributes(Device *device,
                                     &attr_float2_size,
                                     &attr_float3_size,
                                     &attr_float4_size,
-                                    &attr_uchar4_size);
+                                    &attr_uchar4_size,
+                                    &attr_uint_size);
     }
   }
 
@@ -607,6 +632,7 @@ void GeometryManager::device_update_attributes(Device *device,
   dscene->attributes_float3.alloc(attr_float3_size);
   dscene->attributes_float4.alloc(attr_float4_size);
   dscene->attributes_uchar4.alloc(attr_uchar4_size);
+  dscene->attributes_uint.alloc(attr_uint_size);
 
   /* The order of those flags needs to match that of AttrKernelDataType. */
   const bool attributes_need_realloc[AttrKernelDataType::NUM] = {
@@ -615,6 +641,7 @@ void GeometryManager::device_update_attributes(Device *device,
       dscene->attributes_float3.need_realloc(),
       dscene->attributes_float4.need_realloc(),
       dscene->attributes_uchar4.need_realloc(),
+      dscene->attributes_uint.need_realloc()
   };
 
   size_t attr_float_offset = 0;
@@ -622,6 +649,7 @@ void GeometryManager::device_update_attributes(Device *device,
   size_t attr_float3_offset = 0;
   size_t attr_float4_offset = 0;
   size_t attr_uchar4_offset = 0;
+  size_t attr_uint_offset = 0;
 
   /* Fill in attributes. */
   for (size_t i = 0; i < scene->geometry.size(); i++) {
@@ -649,6 +677,8 @@ void GeometryManager::device_update_attributes(Device *device,
                                       attr_float4_offset,
                                       dscene->attributes_uchar4,
                                       attr_uchar4_offset,
+                                      dscene->attributes_uint,
+                                      attr_uint_offset,
                                       attr,
                                       ATTR_PRIM_GEOMETRY,
                                       req.type,
@@ -674,6 +704,8 @@ void GeometryManager::device_update_attributes(Device *device,
                                         attr_float4_offset,
                                         dscene->attributes_uchar4,
                                         attr_uchar4_offset,
+                                        dscene->attributes_uint,
+                                        attr_uint_offset,
                                         subd_attr,
                                         ATTR_PRIM_SUBD,
                                         req.subd_type,
@@ -709,6 +741,8 @@ void GeometryManager::device_update_attributes(Device *device,
                                       attr_float4_offset,
                                       dscene->attributes_uchar4,
                                       attr_uchar4_offset,
+                                      dscene->attributes_uint,
+                                      attr_uint_offset,
                                       attr,
                                       ATTR_PRIM_GEOMETRY,
                                       req.type,
@@ -743,6 +777,7 @@ void GeometryManager::device_update_attributes(Device *device,
   dscene->attributes_float3.copy_to_device_if_modified();
   dscene->attributes_float4.copy_to_device_if_modified();
   dscene->attributes_uchar4.copy_to_device_if_modified();
+  dscene->attributes_uint.copy_to_device_if_modified();
 
   if (progress.get_cancel()) {
     return;

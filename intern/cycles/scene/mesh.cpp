@@ -18,6 +18,7 @@
 
 #include "util/foreach.h"
 #include "util/log.h"
+#include "util/octahedral_normal.h"
 #include "util/progress.h"
 #include "util/set.h"
 
@@ -732,7 +733,7 @@ void Mesh::pack_shaders(Scene *scene, uint *tri_shader)
   }
 }
 
-void Mesh::pack_normals(packed_float3 *vnormal)
+void Mesh::pack_normals(uint *vnormal)
 {
   Attribute *attr_vN = attributes.find(ATTR_STD_VERTEX_NORMAL);
   if (attr_vN == NULL) {
@@ -748,12 +749,12 @@ void Mesh::pack_normals(packed_float3 *vnormal)
 
   if (do_transform) {
     for (size_t i = 0; i < verts_size; i++) {
-      vnormal[i] = safe_normalize(transform_direction(&ntfm, vN[i]));
+      vnormal[i] = octahedral_encode(safe_normalize(transform_direction(&ntfm, vN[i])));
     }
   }
   else {
     for (size_t i = 0; i < verts_size; i++) {
-      vnormal[i] = vN[i];
+      vnormal[i] = octahedral_encode(vN[i]);
     }
   }
 }

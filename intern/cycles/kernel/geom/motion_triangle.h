@@ -16,6 +16,7 @@
 #pragma once
 
 #include "kernel/bvh/util.h"
+#include "util/octahedral_normal.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -59,9 +60,9 @@ ccl_device_inline void motion_triangle_normals_for_step(KernelGlobals kg,
 {
   if (step == numsteps) {
     /* center step: regular vertex location */
-    normals[0] = kernel_data_fetch(tri_vnormal, tri_vindex.x);
-    normals[1] = kernel_data_fetch(tri_vnormal, tri_vindex.y);
-    normals[2] = kernel_data_fetch(tri_vnormal, tri_vindex.z);
+    normals[0] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+    normals[1] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+    normals[2] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
   }
   else {
     /* center step is not stored in this array */
@@ -71,9 +72,9 @@ ccl_device_inline void motion_triangle_normals_for_step(KernelGlobals kg,
 
     offset += step * numverts;
 
-    normals[0] = kernel_data_fetch(attributes_float3, offset + tri_vindex.x);
-    normals[1] = kernel_data_fetch(attributes_float3, offset + tri_vindex.y);
-    normals[2] = kernel_data_fetch(attributes_float3, offset + tri_vindex.z);
+    normals[0] = octahedral_decode(kernel_data_fetch(attributes_uint, offset + tri_vindex.x));
+    normals[1] = octahedral_decode(kernel_data_fetch(attributes_uint, offset + tri_vindex.y));
+    normals[2] = octahedral_decode(kernel_data_fetch(attributes_uint, offset + tri_vindex.z));
   }
 }
 

@@ -243,6 +243,10 @@ static void update_device_flags_attribute(uint32_t &device_update_flags,
         device_update_flags |= ATTR_UCHAR4_MODIFIED;
         break;
       }
+      case AttrKernelDataType::UINT: {
+        device_update_flags |= ATTR_UINT_MODIFIED;
+        break;
+      }
       case AttrKernelDataType::NUM: {
         break;
       }
@@ -267,6 +271,9 @@ static void update_attribute_realloc_flags(uint32_t &device_update_flags,
   }
   if (attributes.modified(AttrKernelDataType::UCHAR4)) {
     device_update_flags |= ATTR_UCHAR4_NEEDS_REALLOC;
+  }
+  if (attributes.modified(AttrKernelDataType::UINT)) {
+    device_update_flags |= ATTR_UINT_NEEDS_REALLOC;
   }
 }
 
@@ -581,6 +588,9 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
   }
   else if (device_update_flags & ATTR_UCHAR4_MODIFIED) {
     dscene->attributes_uchar4.tag_modified();
+  }
+  else if (device_update_flags & ATTR_UINT_MODIFIED) {
+    dscene->attributes_uint.tag_modified();
   }
 
   if (device_update_flags & DEVICE_MESH_DATA_MODIFIED) {

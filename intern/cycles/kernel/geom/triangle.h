@@ -11,6 +11,7 @@
 #pragma once
 
 #include "util/color.h"
+#include "util/octahedral_normal.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -86,9 +87,9 @@ ccl_device_inline void triangle_vertices_and_normals(KernelGlobals kg,
   P[1] = kernel_data_fetch(tri_verts, tri_vindex.y);
   P[2] = kernel_data_fetch(tri_verts, tri_vindex.z);
 
-  N[0] = kernel_data_fetch(tri_vnormal, tri_vindex.x);
-  N[1] = kernel_data_fetch(tri_vnormal, tri_vindex.y);
-  N[2] = kernel_data_fetch(tri_vnormal, tri_vindex.z);
+  N[0] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+  N[1] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+  N[2] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
 }
 
 /* Interpolate smooth vertex normal from vertices */
@@ -99,9 +100,9 @@ triangle_smooth_normal(KernelGlobals kg, float3 Ng, int prim, float u, float v)
   /* load triangle vertices */
   const uint3 tri_vindex = kernel_data_fetch(tri_vindex, prim);
 
-  float3 n0 = kernel_data_fetch(tri_vnormal, tri_vindex.x);
-  float3 n1 = kernel_data_fetch(tri_vnormal, tri_vindex.y);
-  float3 n2 = kernel_data_fetch(tri_vnormal, tri_vindex.z);
+  float3 n0 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+  float3 n1 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+  float3 n2 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
 
   float3 N = safe_normalize((1.0f - u - v) * n0 + u * n1 + v * n2);
 
@@ -114,9 +115,9 @@ ccl_device_inline float3 triangle_smooth_normal_unnormalized(
   /* load triangle vertices */
   const uint3 tri_vindex = kernel_data_fetch(tri_vindex, prim);
 
-  float3 n0 = kernel_data_fetch(tri_vnormal, tri_vindex.x);
-  float3 n1 = kernel_data_fetch(tri_vnormal, tri_vindex.y);
-  float3 n2 = kernel_data_fetch(tri_vnormal, tri_vindex.z);
+  float3 n0 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+  float3 n1 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+  float3 n2 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
 
   /* ensure that the normals are in object space */
   if (sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED) {

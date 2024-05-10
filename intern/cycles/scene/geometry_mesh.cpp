@@ -91,7 +91,7 @@ void GeometryManager::device_update_mesh(Device *,
 
     packed_float3 *tri_verts = dscene->tri_verts.alloc(vert_size);
     uint *tri_shader = dscene->tri_shader.alloc(tri_size);
-    packed_float3 *vnormal = dscene->tri_vnormal.alloc(vert_size);
+    uint *vnormal = dscene->tri_vnormal.alloc(vert_size);
     packed_uint3 *tri_vindex = dscene->tri_vindex.alloc(tri_size);
     uint *tri_patch = dscene->tri_patch.alloc(tri_size);
     float2 *tri_patch_uv = dscene->tri_patch_uv.alloc(vert_size);

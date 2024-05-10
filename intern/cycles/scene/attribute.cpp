@@ -437,6 +437,10 @@ AttrKernelDataType Attribute::kernel_type(const Attribute &attr)
     return AttrKernelDataType::FLOAT4;
   }
 
+  if (attr.std == ATTR_STD_MOTION_VERTEX_NORMAL) {
+    return AttrKernelDataType::UINT;
+  }
+
   return AttrKernelDataType::FLOAT3;
 }
 

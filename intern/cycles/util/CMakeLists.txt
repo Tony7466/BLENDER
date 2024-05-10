@@ -73,6 +73,7 @@ set(SRC_HEADERS
   math_matrix.h
   md5.h
   murmurhash.h
+  octahedral_normal.h
   openimagedenoise.h
   openvdb.h
   optimization.h

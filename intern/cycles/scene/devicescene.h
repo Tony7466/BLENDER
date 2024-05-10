@@ -28,7 +28,7 @@ class DeviceScene {
   /* mesh */
   device_vector<packed_float3> tri_verts;
   device_vector<uint> tri_shader;
-  device_vector<packed_float3> tri_vnormal;
+  device_vector<uint> tri_vnormal;
   device_vector<packed_uint3> tri_vindex;
   device_vector<uint> tri_patch;
   device_vector<float2> tri_patch_uv;
@@ -61,6 +61,7 @@ class DeviceScene {
   device_vector<packed_float3> attributes_float3;
   device_vector<float4> attributes_float4;
   device_vector<uchar4> attributes_uchar4;
+  device_vector<uint> attributes_uint;
 
   /* lights */
   device_vector<KernelLightDistribution> light_distribution;
