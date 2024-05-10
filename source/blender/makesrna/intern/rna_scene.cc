@@ -4365,47 +4365,57 @@ static void rna_def_curve_paint_settings(BlenderRNA *brna)
   };
 
   prop = RNA_def_property(srna, "curve_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_sdna(prop, nullptr, "curve_type");
   RNA_def_property_enum_items(prop, curve_type_items);
   RNA_def_property_ui_text(prop, "Type", "Type of curve to use for new strokes");
 
   prop = RNA_def_property(srna, "use_corners_detect", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CURVE_PAINT_FLAG_CORNERS_DETECT);
   RNA_def_property_ui_text(prop, "Detect Corners", "Detect corners and use non-aligned handles");
 
   prop = RNA_def_property(srna, "use_pressure_radius", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CURVE_PAINT_FLAG_PRESSURE_RADIUS);
   RNA_def_property_ui_icon(prop, ICON_STYLUS_PRESSURE, 0);
   RNA_def_property_ui_text(prop, "Use Pressure", "Map tablet pressure to curve radius");
 
   prop = RNA_def_property(srna, "use_stroke_endpoints", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CURVE_PAINT_FLAG_DEPTH_STROKE_ENDPOINTS);
   RNA_def_property_ui_text(prop, "Only First", "Use the start of the stroke for the depth");
 
   prop = RNA_def_property(srna, "use_offset_absolute", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CURVE_PAINT_FLAG_DEPTH_STROKE_OFFSET_ABS);
   RNA_def_property_ui_text(
       prop, "Absolute Offset", "Apply a fixed offset (don't scale by the radius)");
 
   prop = RNA_def_property(srna, "use_project_only_selected", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CURVE_PAINT_FLAG_DEPTH_ONLY_SELECTED);
   RNA_def_property_ui_text(
       prop, "Project Onto Selected", "Project the strokes only onto selected objects");
 
   prop = RNA_def_property(srna, "error_threshold", PROP_INT, PROP_PIXEL);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_text(prop, "Tolerance", "Allow deviation for a smoother, less precise line");
 
   prop = RNA_def_property(srna, "fit_method", PROP_ENUM, PROP_PIXEL);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_sdna(prop, nullptr, "fit_method");
   RNA_def_property_enum_items(prop, rna_enum_curve_fit_method_items);
   RNA_def_property_ui_text(prop, "Method", "Curve fitting method");
 
   prop = RNA_def_property(srna, "corner_angle", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, 0, M_PI);
   RNA_def_property_ui_text(prop, "Corner Angle", "Angles above this are considered corners");
 
   prop = RNA_def_property(srna, "radius_min", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, 0.0, 100.0);
   RNA_def_property_ui_range(prop, 0.0f, 10.0, 10, 2);
   RNA_def_property_ui_text(
@@ -4414,6 +4424,7 @@ static void rna_def_curve_paint_settings(BlenderRNA *brna)
       "Minimum radius when the minimum pressure is applied (also the minimum when tapering)");
 
   prop = RNA_def_property(srna, "radius_max", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, 0.0, 100.0);
   RNA_def_property_ui_range(prop, 0.0f, 10.0, 10, 2);
   RNA_def_property_ui_text(
@@ -4422,18 +4433,21 @@ static void rna_def_curve_paint_settings(BlenderRNA *brna)
       "Radius to use when the maximum pressure is applied (or when a tablet isn't used)");
 
   prop = RNA_def_property(srna, "radius_taper_start", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_range(prop, 0.0f, 1.0, 1, 2);
   RNA_def_property_ui_text(
       prop, "Radius Min", "Taper factor for the radius of each point along the curve");
 
   prop = RNA_def_property(srna, "radius_taper_end", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, 0.0, 10.0);
   RNA_def_property_ui_range(prop, 0.0f, 1.0, 1, 2);
   RNA_def_property_ui_text(
       prop, "Radius Max", "Taper factor for the radius of each point along the curve");
 
   prop = RNA_def_property(srna, "surface_offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_range(prop, -10.0, 10.0);
   RNA_def_property_ui_range(prop, -1.0f, 1.0, 1, 2);
   RNA_def_property_ui_text(prop, "Offset", "Offset the stroke from the surface");
@@ -4445,6 +4459,7 @@ static void rna_def_curve_paint_settings(BlenderRNA *brna)
   };
 
   prop = RNA_def_property(srna, "depth_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_sdna(prop, nullptr, "depth_mode");
   RNA_def_property_enum_items(prop, depth_mode_items);
   RNA_def_property_ui_text(prop, "Depth", "Method of projecting depth");
@@ -4469,6 +4484,7 @@ static void rna_def_curve_paint_settings(BlenderRNA *brna)
   };
 
   prop = RNA_def_property(srna, "surface_plane", PROP_ENUM, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_sdna(prop, nullptr, "surface_plane");
   RNA_def_property_enum_items(prop, surface_plane_items);
   RNA_def_property_ui_text(prop, "Plane", "Plane for projected stroke");
