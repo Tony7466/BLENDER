@@ -240,7 +240,7 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
   const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
   const int verts_per_coarse_edge = edges_per_coarse_edge * 2;
-  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
+  const int loose_edge_verts_start = subdiv_cache.num_subdiv_loops;
 
   int loose_edge_verts_num;
   Vector<int> visible_loose_edge_verts;
@@ -252,7 +252,7 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
       if (!hide_vert.is_empty() && hide_vert[vert]) {
         return false;
       }
-      if (mr.v_origindex && mr.v_origindex[vert] != ORIGINDEX_NONE) {
+      if (mr.v_origindex && mr.v_origindex[vert] == ORIGINDEX_NONE) {
         return false;
       }
       return true;
@@ -261,7 +261,8 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
     visible_loose_edge_verts.reserve(mr.loose_edges.size() * 2);
     for (const int i : loose_edges.index_range()) {
       const int2 coarse_edge = coarse_edges[loose_edges[i]];
-      const IndexRange edge_verts_range(i * verts_per_coarse_edge, verts_per_coarse_edge);
+      const IndexRange edge_verts_range(loose_edge_verts_start + i * verts_per_coarse_edge,
+                                        verts_per_coarse_edge);
 
       if (show_vert(coarse_edge[0])) {
         visible_loose_edge_verts.append(edge_verts_range.first());
@@ -275,21 +276,28 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
 
   const Span<int> loose_verts = mr.loose_verts;
   const IndexMask visible_loose = calc_vert_visibility_mapped_mesh(
-      mr, visible_corners, loose_verts, memory);
+      mr, IndexMask(loose_verts.size()), loose_verts, memory);
 
-  const int max_index = subdiv_cache.num_subdiv_loops + subdiv_loose_edges_num +
-                        loose_verts.size();
+  const int max_index = subdiv_cache.num_subdiv_loops +
+                        loose_edges.size() * verts_per_coarse_edge + loose_verts.size();
 
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_POINTS, visible_corners.size(), max_index);
+  GPU_indexbuf_init(&builder,
+                    GPU_PRIM_POINTS,
+                    visible_corners.size() + visible_loose_edge_verts.size() + loose_verts.size(),
+                    max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
   visible_corners.to_indices<int32_t>(data.take_front(visible_corners.size()).cast<int32_t>());
 
-  const int loose_verts_start = visible_corners.size() + loose_edge_verts_num;
+  data.drop_front(visible_corners.size())
+      .drop_back(loose_verts.size())
+      .copy_from(visible_loose_edge_verts.as_span().cast<uint>());
+
+  const int loose_verts_start = loose_edge_verts_start + loose_edge_verts_num;
   visible_loose.shift(loose_verts_start, memory)
       .to_indices<int32_t>(data.take_back(visible_loose.size()).cast<int32_t>());
 
-  GPU_indexbuf_build_in_place(&builder, &points);
+  GPU_indexbuf_build_in_place_ex(&builder, 0, max_index, false, &points);
 }
 
 void extract_points_subdiv(const MeshRenderData &mr,
