@@ -791,8 +791,6 @@ typedef struct RenderData {
   float simplify_particles;
   float simplify_particles_render;
   float simplify_volumes;
-  float simplify_shadows;
-  float simplify_shadows_render;
 
   /** Freestyle line thickness options. */
   int line_thickness_mode;
@@ -827,6 +825,12 @@ typedef struct RenderData {
   float motion_blur_shutter;
   int motion_blur_position;
   struct CurveMapping mblur_shutter_curve;
+
+  /** Device to use for compositor engine. */
+  int compositor_device; /* eCompositorDevice */
+
+  /** Precision used by the GPU execution of the compositor tree. */
+  int compositor_precision; /* eCompositorPrecision */
 } RenderData;
 
 /** #RenderData::quality_flag */
@@ -846,6 +850,18 @@ enum {
   SCE_MB_START = 1,
   SCE_MB_END = 2,
 };
+
+/** #RenderData::compositor_device */
+typedef enum eCompositorDevice {
+  SCE_COMPOSITOR_DEVICE_CPU = 0,
+  SCE_COMPOSITOR_DEVICE_GPU = 1,
+} eCompositorDevice;
+
+/** #RenderData::compositor_precision */
+typedef enum eCompositorPrecision {
+  SCE_COMPOSITOR_PRECISION_AUTO = 0,
+  SCE_COMPOSITOR_PRECISION_FULL = 1,
+} eCompositorPrecision;
 
 /** \} */
 
@@ -1873,12 +1889,14 @@ typedef struct SceneEEVEE {
   int shadow_pool_size;
   int shadow_ray_count;
   int shadow_step_count;
-  float shadow_normal_bias;
+  float shadow_resolution_scale;
 
+  float clamp_world;
   float clamp_surface_direct;
   float clamp_surface_indirect;
   float clamp_volume_direct;
   float clamp_volume_indirect;
+  char _pad[4];
 
   int ray_tracing_method;
 

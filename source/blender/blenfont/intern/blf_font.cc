@@ -233,7 +233,7 @@ void blf_batch_draw_begin(FontBLF *font)
   }
 
   const bool font_changed = (g_batch.font != font);
-  const bool simple_shader = ((font->flags & (BLF_ROTATION | BLF_MATRIX | BLF_ASPECT)) == 0);
+  const bool simple_shader = ((font->flags & (BLF_ROTATION | BLF_ASPECT)) == 0);
   const bool shader_changed = (simple_shader != g_batch.simple_shader);
 
   g_batch.active = g_batch.enabled && simple_shader;
@@ -587,14 +587,14 @@ static void blf_glyph_draw_buffer(FontBufInfoBLF *buf_info,
   if (buf_info->fbuf) {
     int yb = yb_start;
     for (int y = ((chy >= 0) ? 0 : -chy); y < height_clip; y++) {
-      for (int x = ((chx >= 0) ? 0 : -chx); x < width_clip; x++) {
-        const char a_byte = *(g->bitmap + x + (yb * g->pitch));
+      const int x_start = (chx >= 0) ? 0 : -chx;
+      const uchar *a_ptr = g->bitmap + x_start + (yb * g->pitch);
+      const int64_t buf_ofs = (int64_t(buf_info->dims[0]) * (pen_y_px + y) + (chx + x_start)) * 4;
+      float *fbuf = buf_info->fbuf + buf_ofs;
+      for (int x = x_start; x < width_clip; x++, a_ptr++, fbuf += 4) {
+        const char a_byte = *a_ptr;
         if (a_byte) {
           const float a = (a_byte / 255.0f) * b_col_float[3];
-          const size_t buf_ofs = ((size_t(chx + x) +
-                                   (size_t(pen_y_px + y) * size_t(buf_info->dims[0]))) *
-                                  size_t(buf_info->ch));
-          float *fbuf = buf_info->fbuf + buf_ofs;
 
           float font_pixel[4];
           font_pixel[0] = b_col_float[0] * a;
@@ -617,15 +617,15 @@ static void blf_glyph_draw_buffer(FontBufInfoBLF *buf_info,
   if (buf_info->cbuf) {
     int yb = yb_start;
     for (int y = ((chy >= 0) ? 0 : -chy); y < height_clip; y++) {
-      for (int x = ((chx >= 0) ? 0 : -chx); x < width_clip; x++) {
-        const char a_byte = *(g->bitmap + x + (yb * g->pitch));
+      const int x_start = (chx >= 0) ? 0 : -chx;
+      const uchar *a_ptr = g->bitmap + x_start + (yb * g->pitch);
+      const int64_t buf_ofs = (int64_t(buf_info->dims[0]) * (pen_y_px + y) + (chx + x_start)) * 4;
+      uchar *cbuf = buf_info->cbuf + buf_ofs;
+      for (int x = x_start; x < width_clip; x++, a_ptr++, cbuf += 4) {
+        const char a_byte = *a_ptr;
 
         if (a_byte) {
           const float a = (a_byte / 255.0f) * b_col_float[3];
-          const size_t buf_ofs = ((size_t(chx + x) +
-                                   (size_t(pen_y_px + y) * size_t(buf_info->dims[0]))) *
-                                  size_t(buf_info->ch));
-          uchar *cbuf = buf_info->cbuf + buf_ofs;
 
           uchar font_pixel[4];
           font_pixel[0] = b_col_char[0];
@@ -1445,10 +1445,6 @@ static void blf_font_fill(FontBLF *font)
   font->pos[1] = 0;
   font->angle = 0.0f;
 
-  for (int i = 0; i < 16; i++) {
-    font->m[i] = 0;
-  }
-
   /* Use an easily identifiable bright color (yellow)
    * so its clear when #BLF_color calls are missing. */
   font->color[0] = 255;
@@ -1468,16 +1464,12 @@ static void blf_font_fill(FontBLF *font)
   font->char_spacing = 0.0f;
 
   font->kerning_cache = nullptr;
-#if BLF_BLUR_ENABLE
-  font->blur = 0;
-#endif
   font->tex_size_max = -1;
 
   font->buf_info.fbuf = nullptr;
   font->buf_info.cbuf = nullptr;
   font->buf_info.dims[0] = 0;
   font->buf_info.dims[1] = 0;
-  font->buf_info.ch = 0;
   font->buf_info.col_init[0] = 0;
   font->buf_info.col_init[1] = 0;
   font->buf_info.col_init[2] = 0;

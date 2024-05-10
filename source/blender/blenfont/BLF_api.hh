@@ -22,9 +22,6 @@
 /* File name of the default fixed-pitch font. */
 #define BLF_DEFAULT_MONOSPACED_FONT "DejaVuSansMono.woff2"
 
-/* enable this only if needed (unused circa 2016) */
-#define BLF_BLUR_ENABLE 0
-
 struct ColorManagedDisplay;
 struct ListBase;
 struct ResultBLF;
@@ -117,21 +114,6 @@ void BLF_color4fv(int fontid, const float rgba[4]);
 void BLF_color3f(int fontid, float r, float g, float b);
 void BLF_color3fv_alpha(int fontid, const float rgb[3], float alpha);
 /* Also available: `UI_FontThemeColor(fontid, colorid)`. */
-
-/**
- * Set a 4x4 matrix to be multiplied before draw the text.
- * Remember that you need call `BLF_enable(BLF_MATRIX)`
- * to enable this.
- *
- * The order of the matrix is column major (following the GPU module):
- * \code{.unparsed}
- *  | m[0]  m[4]  m[8]  m[12] |
- *  | m[1]  m[5]  m[9]  m[13] |
- *  | m[2]  m[6]  m[10] m[14] |
- *  | m[3]  m[7]  m[11] m[15] |
- * \endcode
- */
-void BLF_matrix(int fontid, const float m[16]);
 
 /**
  * Batch draw-calls together as long as
@@ -260,10 +242,6 @@ blender::Vector<blender::StringRef> BLF_string_wrap(int fontid,
                                                     blender::StringRef str,
                                                     const int max_pixel_width);
 
-#if BLF_BLUR_ENABLE
-void BLF_blur(int fontid, int size);
-#endif
-
 void BLF_enable(int fontid, int option);
 void BLF_disable(int fontid, int option);
 
@@ -283,23 +261,12 @@ void BLF_shadow(int fontid, int level, const float rgba[4]) ATTR_NONNULL(3);
 void BLF_shadow_offset(int fontid, int x, int y);
 
 /**
- * Set the buffer, size and number of channels to draw, one thing to take care is call
- * this function with NULL pointer when we finish, for example:
- * \code{.c}
- * BLF_buffer(my_fbuf, my_cbuf, 100, 100, 4, true, NULL);
- *
- * ... set color, position and draw ...
- *
- * BLF_buffer(NULL, NULL, NULL, 0, 0, false, NULL);
- * \endcode
+ * Make font be rasterized into a given memory image/buffer.
+ * The image is assumed to have 4 color channels (RGBA) per pixel.
+ * When done, call this function with null buffer pointers.
  */
-void BLF_buffer(int fontid,
-                float *fbuf,
-                unsigned char *cbuf,
-                int w,
-                int h,
-                int nch,
-                ColorManagedDisplay *display);
+void BLF_buffer(
+    int fontid, float *fbuf, unsigned char *cbuf, int w, int h, ColorManagedDisplay *display);
 
 /**
  * Set the color to be used for text.
@@ -361,7 +328,7 @@ enum {
   BLF_CLIPPING = 1 << 1,
   BLF_SHADOW = 1 << 2,
   // BLF_FLAG_UNUSED_3 = 1 << 3, /* dirty */
-  BLF_MATRIX = 1 << 4,
+  // BLF_MATRIX = 1 << 4,
   BLF_ASPECT = 1 << 5,
   BLF_WORD_WRAP = 1 << 6,
   /** No anti-aliasing. */

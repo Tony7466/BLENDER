@@ -190,9 +190,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     }
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
-      blender_mat = (is_volume) ? BKE_material_default_volume() : BKE_material_default_surface();
-      matpass.gpumat = inst_.shaders.material_shader_get(
-          blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
+      matpass.gpumat = inst_.shaders.material_default_shader_get(pipeline_type, geometry_type);
       break;
     case GPU_MAT_FAILED:
     default:
@@ -205,13 +203,26 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
 
   inst_.manager->register_layer_attributes(matpass.gpumat);
 
-  if (GPU_material_recalc_flag_get(matpass.gpumat)) {
+  const bool is_transparent = GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_TRANSPARENT);
+
+  if (use_deferred_compilation && GPU_material_recalc_flag_get(matpass.gpumat)) {
     /* TODO(Miguel Pozo): This is broken, it consumes the flag,
      * but GPUMats can be shared across viewports. */
     inst_.sampling.reset();
+
+    const bool has_displacement = GPU_material_has_displacement_output(matpass.gpumat) &&
+                                  (blender_mat->displacement_method != MA_DISPLACEMENT_BUMP);
+    const bool has_volume = GPU_material_has_volume_output(matpass.gpumat);
+
+    if (((pipeline_type == MAT_PIPE_SHADOW) && (is_transparent || has_displacement)) || has_volume)
+    {
+      /* WORKAROUND: This is to avoid lingering shadows from default material.
+       * Ideally, we should tag the caster object to update only the needed areas but that's a bit
+       * more involved. */
+      inst_.shadows.reset();
+    }
   }
 
-  const bool is_transparent = GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_TRANSPARENT);
   if (is_volume || (is_forward && is_transparent)) {
     /* Sub pass is generated later. */
     matpass.sub_pass = nullptr;

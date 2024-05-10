@@ -1209,7 +1209,7 @@ static void test_eevee_shadow_tilemap_amend()
   tilemap_data.fill(0);
 
   auto pixel_get = [&](int x, int y, int tilemap_index) -> uint32_t & {
-    /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+    /* NOTE: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
     return tilemap_data[y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
                         tilemap_index * SHADOW_TILEMAP_RES];
   };
@@ -1281,7 +1281,7 @@ static void test_eevee_shadow_tilemap_amend()
       std::string result = "";
       for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
         for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
-          /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+          /* NOTE: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
           int tile_ofs = y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
                          tilemap_index * SHADOW_TILEMAP_RES;
           ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
@@ -1302,7 +1302,7 @@ static void test_eevee_shadow_tilemap_amend()
       std::string result = "";
       for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
         for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
-          /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+          /* NOTE: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
           int tile_ofs = y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
                          tilemap_index * SHADOW_TILEMAP_RES;
           ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
@@ -1323,7 +1323,7 @@ static void test_eevee_shadow_tilemap_amend()
       std::string result = "";
       for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
         for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
-          /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+          /* NOTE: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
           int tile_ofs = y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
                          tilemap_index * SHADOW_TILEMAP_RES;
           ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
