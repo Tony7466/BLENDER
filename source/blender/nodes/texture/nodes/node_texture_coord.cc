@@ -9,7 +9,7 @@
 #include "BLI_math_vector.h"
 #include "node_texture_util.hh"
 
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_VECTOR, N_("Coordinates")},
     {-1, ""},
 };

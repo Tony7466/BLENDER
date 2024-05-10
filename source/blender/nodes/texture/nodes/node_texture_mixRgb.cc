@@ -14,13 +14,13 @@
 #include "BLI_math_vector.h"
 
 /* **************** MIX RGB ******************** */
-static bNodeSocketTemplate inputs[] = {
+static blender::bke::bNodeSocketTemplate inputs[] = {
     {SOCK_FLOAT, N_("Factor"), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_NONE},
     {SOCK_RGBA, N_("Color1"), 0.5f, 0.5f, 0.5f, 1.0f},
     {SOCK_RGBA, N_("Color2"), 0.5f, 0.5f, 0.5f, 1.0f},
     {-1, ""},
 };
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_RGBA, N_("Color")},
     {-1, ""},
 };

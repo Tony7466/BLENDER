@@ -8,13 +8,13 @@
 
 #include "node_texture_util.hh"
 
-static bNodeSocketTemplate inputs[] = {
+static blender::bke::bNodeSocketTemplate inputs[] = {
     {SOCK_FLOAT, N_("Val"), 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, PROP_NONE},
     {SOCK_FLOAT, N_("Nabla"), 0.025f, 0.0f, 0.0f, 0.0f, 0.001f, 0.1f, PROP_UNSIGNED},
     {-1, ""},
 };
 
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_VECTOR, N_("Normal")},
     {-1, ""},
 };

@@ -61,6 +61,7 @@ struct uiLayout;
 /** \name Node Type Definitions
  * \{ */
 
+namespace blender::bke {
 /**
  * \brief Compact definition of a node socket.
  *
@@ -83,6 +84,7 @@ struct bNodeSocketTemplate {
   bNodeSocket *sock;   /* used to hold verified socket */
   char identifier[64]; /* generated from name */
 };
+}  // namespace blender::bke
 
 /* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
  * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.

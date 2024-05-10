@@ -15,7 +15,7 @@
 /* **************** CURVE Time  ******************** */
 
 /* custom1 = start-frame, custom2 = end-frame. */
-static bNodeSocketTemplate time_outputs[] = {{SOCK_FLOAT, N_("Value")}, {-1, ""}};
+static blender::bke::bNodeSocketTemplate time_outputs[] = {{SOCK_FLOAT, N_("Value")}, {-1, ""}};
 
 static void time_colorfn(
     float *out, TexParams *p, bNode *node, bNodeStack ** /*in*/, short /*thread*/)
@@ -66,12 +66,12 @@ void register_node_type_tex_curve_time()
 }
 
 /* **************** CURVE RGB  ******************** */
-static bNodeSocketTemplate rgb_inputs[] = {
+static blender::bke::bNodeSocketTemplate rgb_inputs[] = {
     {SOCK_RGBA, N_("Color"), 0.0f, 0.0f, 0.0f, 1.0f},
     {-1, ""},
 };
 
-static bNodeSocketTemplate rgb_outputs[] = {
+static blender::bke::bNodeSocketTemplate rgb_outputs[] = {
     {SOCK_RGBA, N_("Color")},
     {-1, ""},
 };

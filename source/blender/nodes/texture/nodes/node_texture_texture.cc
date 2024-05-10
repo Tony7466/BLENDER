@@ -17,13 +17,13 @@
 
 #include "RE_texture.h"
 
-static bNodeSocketTemplate inputs[] = {
+static blender::bke::bNodeSocketTemplate inputs[] = {
     {SOCK_RGBA, N_("Color1"), 1.0f, 1.0f, 1.0f, 1.0f},
     {SOCK_RGBA, N_("Color2"), 0.0f, 0.0f, 0.0f, 1.0f},
     {-1, ""},
 };
 
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_RGBA, N_("Color")},
     {-1, ""},
 };

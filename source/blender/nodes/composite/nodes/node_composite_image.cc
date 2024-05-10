@@ -43,7 +43,7 @@
 
 /* **************** IMAGE (and RenderResult, multi-layer image) ******************** */
 
-static bNodeSocketTemplate cmp_node_rlayers_out[] = {
+static blender::bke::bNodeSocketTemplate cmp_node_rlayers_out[] = {
     {SOCK_RGBA, N_("Image"), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
     {SOCK_FLOAT, N_("Alpha"), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},
     {SOCK_FLOAT, N_(RE_PASSNAME_Z), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f},

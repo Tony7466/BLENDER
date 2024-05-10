@@ -382,9 +382,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
     }
   }
   else {
-    bNodeSocketTemplate *socket_templates = (in_out == SOCK_IN ? arg->node_type->inputs :
-                                                                 arg->node_type->outputs);
-    bNodeSocketTemplate *stemp;
+    bke::bNodeSocketTemplate *socket_templates = (in_out == SOCK_IN ? arg->node_type->inputs :
+                                                                      arg->node_type->outputs);
+    bke::bNodeSocketTemplate *stemp;
     int i;
 
     i = 0;
@@ -506,8 +506,10 @@ static void ui_node_menu_column(NodeLinkArg *arg, int nclass, const char *cname)
   }
   NODE_TYPES_END;
 
-  qsort(
-      sorted_ntypes.data(), sorted_ntypes.size(), sizeof(bke::bNodeType *), ui_node_item_name_compare);
+  qsort(sorted_ntypes.data(),
+        sorted_ntypes.size(),
+        sizeof(bke::bNodeType *),
+        ui_node_item_name_compare);
 
   /* generate UI */
   for (int j = 0; j < sorted_ntypes.size(); j++) {

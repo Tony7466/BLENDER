@@ -421,7 +421,7 @@ namespace blender::nodes::node_composite_cryptomatte_cc {
 
 NODE_STORAGE_FUNCS(NodeCryptomatte)
 
-static bNodeSocketTemplate cmp_node_cryptomatte_out[] = {
+static bke::bNodeSocketTemplate cmp_node_cryptomatte_out[] = {
     {SOCK_RGBA, N_("Image")},
     {SOCK_FLOAT, N_("Matte")},
     {SOCK_RGBA, N_("Pick")},

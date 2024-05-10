@@ -10,7 +10,7 @@
 #include "BLI_math_vector.h"
 #include "node_texture_util.hh"
 
-static bNodeSocketTemplate inputs[] = {
+static blender::bke::bNodeSocketTemplate inputs[] = {
     {SOCK_FLOAT, N_("Hue"), 0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.5f, PROP_NONE},
     {SOCK_FLOAT, N_("Saturation"), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f, PROP_NONE},
     {SOCK_FLOAT, N_("Value"), 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f, PROP_NONE},
@@ -18,7 +18,7 @@ static bNodeSocketTemplate inputs[] = {
     {SOCK_RGBA, N_("Color"), 0.8f, 0.8f, 0.8f, 1.0f},
     {-1, ""},
 };
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_RGBA, N_("Color")},
     {-1, ""},
 };

@@ -1072,7 +1072,8 @@ static void node_property_update_default(Main *bmain, Scene * /*scene*/, Pointer
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-static void node_socket_template_properties_update(blender::bke::bNodeType *ntype, bNodeSocketTemplate *stemp)
+static void node_socket_template_properties_update(blender::bke::bNodeType *ntype,
+                                                   blender::bke::bNodeSocketTemplate *stemp)
 {
   StructRNA *srna = ntype->rna_ext.srna;
   PropertyRNA *prop = RNA_struct_type_find_property(srna, stemp->identifier);
@@ -1084,7 +1085,7 @@ static void node_socket_template_properties_update(blender::bke::bNodeType *ntyp
 
 static void node_template_properties_update(blender::bke::bNodeType *ntype)
 {
-  bNodeSocketTemplate *stemp;
+  blender::bke::bNodeSocketTemplate *stemp;
 
   if (ntype->inputs) {
     for (stemp = ntype->inputs; stemp->type >= 0; stemp++) {
@@ -1584,7 +1585,8 @@ static void node_socket_virtual_draw_color(bContext * /*C*/,
   copy_v4_v4(r_color, virtual_node_socket_color);
 }
 
-static void node_socket_virtual_draw_color_simple(const bke::bNodeSocketType * /*type*/, float *r_color)
+static void node_socket_virtual_draw_color_simple(const bke::bNodeSocketType * /*type*/,
+                                                  float *r_color)
 {
   copy_v4_v4(r_color, virtual_node_socket_color);
 }

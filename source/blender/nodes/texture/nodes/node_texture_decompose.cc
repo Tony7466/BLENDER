@@ -9,11 +9,11 @@
 #include "node_texture_util.hh"
 #include <cmath>
 
-static bNodeSocketTemplate inputs[] = {
+static blender::bke::bNodeSocketTemplate inputs[] = {
     {SOCK_RGBA, N_("Color"), 0.0f, 0.0f, 0.0f, 1.0f},
     {-1, ""},
 };
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_FLOAT, N_("Red")},
     {SOCK_FLOAT, N_("Green")},
     {SOCK_FLOAT, N_("Blue")},

@@ -13,7 +13,7 @@
 
 #include <cmath>
 
-static bNodeSocketTemplate inputs[] = {
+static blender::bke::bNodeSocketTemplate inputs[] = {
     {SOCK_RGBA, N_("Bricks 1"), 0.596f, 0.282f, 0.0f, 1.0f},
     {SOCK_RGBA, N_("Bricks 2"), 0.632f, 0.504f, 0.05f, 1.0f},
     {SOCK_RGBA, N_("Mortar"), 0.0f, 0.0f, 0.0f, 1.0f},
@@ -23,7 +23,7 @@ static bNodeSocketTemplate inputs[] = {
     {SOCK_FLOAT, N_("Row Height"), 0.25f, 0.0f, 0.0f, 0.0f, 0.001f, 99.0f, PROP_UNSIGNED},
     {-1, ""},
 };
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_RGBA, N_("Color")},
     {-1, ""},
 };

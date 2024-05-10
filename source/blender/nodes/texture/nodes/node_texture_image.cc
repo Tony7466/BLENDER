@@ -13,7 +13,7 @@
 #include "node_texture_util.hh"
 #include "node_util.hh"
 
-static bNodeSocketTemplate outputs[] = {
+static blender::bke::bNodeSocketTemplate outputs[] = {
     {SOCK_RGBA, N_("Image")},
     {-1, ""},
 };

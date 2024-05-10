@@ -46,7 +46,7 @@ using blender::nodes::SocketDeclarationPtr;
 
 bNodeSocket *node_add_socket_from_template(bNodeTree *ntree,
                                            bNode *node,
-                                           bNodeSocketTemplate *stemp,
+                                           bke::bNodeSocketTemplate *stemp,
                                            eNodeSocketInOut in_out)
 {
   bNodeSocket *sock = bke::nodeAddStaticSocket(
@@ -101,7 +101,7 @@ static bNodeSocket *verify_socket_template(bNodeTree *ntree,
                                            bNode *node,
                                            eNodeSocketInOut in_out,
                                            ListBase *socklist,
-                                           bNodeSocketTemplate *stemp)
+                                           bke::bNodeSocketTemplate *stemp)
 {
   bNodeSocket *sock;
 
@@ -132,10 +132,10 @@ static void verify_socket_template_list(bNodeTree *ntree,
                                         bNode *node,
                                         eNodeSocketInOut in_out,
                                         ListBase *socklist,
-                                        bNodeSocketTemplate *stemp_first)
+                                        bke::bNodeSocketTemplate *stemp_first)
 {
   bNodeSocket *sock, *nextsock;
-  bNodeSocketTemplate *stemp;
+  bke::bNodeSocketTemplate *stemp;
 
   /* no inputs anymore? */
   if (stemp_first == nullptr) {

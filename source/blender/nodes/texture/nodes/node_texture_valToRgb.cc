@@ -12,11 +12,11 @@
 #include "node_util.hh"
 
 /* **************** VALTORGB ******************** */
-static bNodeSocketTemplate valtorgb_in[] = {
+static blender::bke::bNodeSocketTemplate valtorgb_in[] = {
     {SOCK_FLOAT, N_("Fac"), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, PROP_FACTOR},
     {-1, ""},
 };
-static bNodeSocketTemplate valtorgb_out[] = {
+static blender::bke::bNodeSocketTemplate valtorgb_out[] = {
     {SOCK_RGBA, N_("Color")},
     {-1, ""},
 };
@@ -60,11 +60,11 @@ void register_node_type_tex_valtorgb()
 }
 
 /* **************** RGBTOBW ******************** */
-static bNodeSocketTemplate rgbtobw_in[] = {
+static blender::bke::bNodeSocketTemplate rgbtobw_in[] = {
     {SOCK_RGBA, N_("Color"), 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 1.0f},
     {-1, ""},
 };
-static bNodeSocketTemplate rgbtobw_out[] = {
+static blender::bke::bNodeSocketTemplate rgbtobw_out[] = {
     {SOCK_FLOAT, N_("Val"), 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f},
     {-1, ""},
 };
