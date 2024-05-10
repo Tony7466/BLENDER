@@ -6708,9 +6708,9 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem compositor_execution_mode_items[] = {
-      {SCE_COMPOSITOR_EXECUTION_MODE_CPU, "CPU", 0, "CPU", ""},
-      {SCE_COMPOSITOR_EXECUTION_MODE_GPU, "GPU", 0, "GPU", ""},
+  static const EnumPropertyItem compositor_device_items[] = {
+      {SCE_COMPOSITOR_DEVICE_CPU, "CPU", 0, "CPU", ""},
+      {SCE_COMPOSITOR_DEVICE_GPU, "GPU", 0, "GPU", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -7453,8 +7453,8 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
 
   /* Compositor. */
 
-  prop = RNA_def_property(srna, "compositor_execution_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, compositor_execution_mode_items);
+  prop = RNA_def_property(srna, "compositor_device", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, compositor_device_items);
   RNA_def_property_ui_text(prop, "Compositor Execution Mode", "Set how compositing is executed");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
 

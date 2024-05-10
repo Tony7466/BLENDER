@@ -3132,6 +3132,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 3)) {
+    constexpr int NTREE_EXECUTION_MODE_CPU = 0;
     constexpr int NTREE_EXECUTION_MODE_FULL_FRAME = 1;
 
     constexpr int NTREE_COM_GROUPNODE_BUFFER = 1 << 3;
@@ -3417,9 +3418,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 32)) {
+    constexpr int NTREE_EXECUTION_MODE_GPU = 2;
+
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->nodetree) {
-        scene->r.compositor_execution_mode = scene->nodetree->execution_mode;
+        if (scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_GPU) {
+          scene->r.compositor_device = SCE_COMPOSITOR_DEVICE_GPU;
+        }
         scene->r.compositor_precision = scene->nodetree->precision;
       }
     }

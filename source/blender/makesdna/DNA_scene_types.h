@@ -826,8 +826,8 @@ typedef struct RenderData {
   int motion_blur_position;
   struct CurveMapping mblur_shutter_curve;
 
-  /** Execution mode to use for compositor engine. */
-  int compositor_execution_mode; /* eCompositorExecutionMode */
+  /** Device to use for compositor engine. */
+  int compositor_device; /* eCompositorDevice */
 
   /** Precision used by the GPU execution of the compositor tree. */
   int compositor_precision; /* eCompositorPrecision */
@@ -851,11 +851,11 @@ enum {
   SCE_MB_END = 2,
 };
 
-/** #RenderData::compositor_execution_mode */
-typedef enum eCompositorExecutionMode {
-  SCE_COMPOSITOR_EXECUTION_MODE_CPU = 0,
-  SCE_COMPOSITOR_EXECUTION_MODE_GPU = 2,
-} eCompositorExecutionMode;
+/** #RenderData::compositor_device */
+typedef enum eCompositorDevice {
+  SCE_COMPOSITOR_DEVICE_CPU = 0,
+  SCE_COMPOSITOR_DEVICE_GPU = 1,
+} eCompositorDevice;
 
 /** #RenderData::compositor_precision */
 typedef enum eCompositorPrecision {

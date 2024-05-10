@@ -842,12 +842,6 @@ enum {
   // NTREE_IS_LOCALIZED = 1 << 5,
 };
 
-/* tree->execution_mode */
-typedef enum eNodeTreeExecutionMode {
-  NTREE_EXECUTION_MODE_CPU = 0,
-  NTREE_EXECUTION_MODE_GPU = 2,
-} eNodeTreeExecutionMode;
-
 typedef enum eNodeTreeRuntimeFlag {
   /** There is a node that references an image with animation. */
   NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION = 1 << 0,

@@ -828,7 +828,7 @@ class NODE_PT_quality(bpy.types.Panel):
 
         col = layout.column()
         if prefs.experimental.use_experimental_compositors:
-            col.prop(rd, "compositor_execution_mode")
+            col.prop(rd, "compositor_device")
         col.prop(rd, "compositor_precision")
 
         col = layout.column()
