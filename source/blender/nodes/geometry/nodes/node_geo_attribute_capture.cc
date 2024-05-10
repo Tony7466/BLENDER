@@ -104,22 +104,48 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometryAttributeCapture &storage = node_storage(params.node());
   const AttrDomain domain = AttrDomain(storage.domain);
 
-  AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Attribute");
-  if (!attribute_id) {
+  Vector<const NodeGeometryAttributeCaptureItem *> used_items;
+  Vector<GField> fields;
+  Vector<AnonymousAttributeIDPtr> attribute_ids;
+  Set<AttributeIDRef> used_attribute_ids_set;
+  for (const NodeGeometryAttributeCaptureItem &item :
+       Span{storage.capture_items, storage.capture_items_num})
+  {
+    const std::string input_identifier = CaptureAttributeItemsAccessor::socket_identifier_for_item(
+        item);
+    const std::string output_identifier = input_identifier;
+    AnonymousAttributeIDPtr attribute_id = params.get_output_anonymous_attribute_id_if_needed(
+        output_identifier);
+    if (!attribute_id) {
+      continue;
+    }
+    used_attribute_ids_set.add(*attribute_id);
+    fields.append(params.extract_input<GField>(input_identifier));
+    attribute_ids.append(std::move(attribute_id));
+    used_items.append(&item);
+  }
+
+  if (fields.is_empty()) {
     params.set_output("Geometry", geometry_set);
     params.set_default_remaining_outputs();
     return;
   }
 
-  const GField field = params.extract_input<GField>("Value");
-
   const auto capture_on = [&](GeometryComponent &component) {
-    bke::try_capture_field_on_geometry(component, *attribute_id, domain, field);
+    for (const int i : fields.index_range()) {
+      const std::string input_identifier =
+          CaptureAttributeItemsAccessor::socket_identifier_for_item(*used_items[i]);
+      const std::string output_identifier = input_identifier;
+      const AnonymousAttributeID &attribute_id = *attribute_ids[i];
+      const GField &field = fields[i];
+
+      /* TODO: Capture all fields at once. */
+      bke::try_capture_field_on_geometry(component, attribute_id, domain, field);
+    }
     /* Changing of the anonymous attributes may require removing attributes that are no longer
      * needed. */
     clean_unused_attributes(
-        params.get_output_propagation_info("Geometry"), {*attribute_id}, component);
+        params.get_output_propagation_info("Geometry"), used_attribute_ids_set, component);
   };
 
   /* Run on the instances component separately to only affect the top level of instances. */
