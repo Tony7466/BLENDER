@@ -32,8 +32,8 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
 
         # Add World Volume Mesh object to scene
         mesh = bpy.data.meshes.new(name)
-        volume = bpy.data.objects.new(name, mesh)
-        volume.display.show_shadows = False
+        object = bpy.data.objects.new(name, mesh)
+        object.display.show_shadows = False
 
         bm = bmesh.new()
         bmesh.ops.create_icosphere(bm, subdivisions=0, radius=1e5)
@@ -76,9 +76,9 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         for link in world_output.inputs['Volume'].links:
             world_tree.links.remove(link)
 
-        collection.objects.link(volume)
-        volume.select_set(True)
-        view_layer.objects.active = volume
+        collection.objects.link(object)
+        object.select_set(True)
+        view_layer.objects.active = object
 
         world.use_eevee_finite_volume = False
 
