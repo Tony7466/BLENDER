@@ -1081,7 +1081,7 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
 
   /* TODO: morph key data based on Layer position in stack and Strip offset. */
   return strip->as<KeyframeStrip>().keyframe_insert(
-      binding, rna_path, key_data.array_index, key_data.position, insert_key_flags, key_settings);
+      binding, rna_path, key_data.array_index, key_data.position, key_settings, insert_key_flags);
 }
 
 static CombinedKeyingResult insert_key_anim(Animation &anim,

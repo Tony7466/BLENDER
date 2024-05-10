@@ -140,12 +140,12 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
   KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
 
   /* Set some keys. */
-  key_strip.keyframe_insert(*binding, "location", 0, {1.0f, 47.1f}, INSERTKEY_NOFLAGS, settings);
-  key_strip.keyframe_insert(*binding, "location", 0, {5.0f, 47.5f}, INSERTKEY_NOFLAGS, settings);
+  key_strip.keyframe_insert(*binding, "location", 0, {1.0f, 47.1f}, settings, INSERTKEY_NOFLAGS);
+  key_strip.keyframe_insert(*binding, "location", 0, {5.0f, 47.5f}, settings, INSERTKEY_NOFLAGS);
   key_strip.keyframe_insert(
-      *binding, "rotation_euler", 1, {1.0f, 0.0f}, INSERTKEY_NOFLAGS, settings);
+      *binding, "rotation_euler", 1, {1.0f, 0.0f}, settings, INSERTKEY_NOFLAGS);
   key_strip.keyframe_insert(
-      *binding, "rotation_euler", 1, {5.0f, 3.14f}, INSERTKEY_NOFLAGS, settings);
+      *binding, "rotation_euler", 1, {5.0f, 3.14f}, settings, INSERTKEY_NOFLAGS);
 
   /* Set the animated properties to some values. These should not be overwritten
    * by the evaluation itself. */
@@ -183,9 +183,9 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__single_strip)
 
   /* Set some keys. */
   KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
-  key_strip.keyframe_insert(*binding, "location", 0, {1.0f, 47.0f}, INSERTKEY_NOFLAGS, settings);
-  key_strip.keyframe_insert(*binding, "location", 0, {5.0f, 327.0f}, INSERTKEY_NOFLAGS, settings);
-  key_strip.keyframe_insert(*binding, "location", 0, {10.0f, 48.0f}, INSERTKEY_NOFLAGS, settings);
+  key_strip.keyframe_insert(*binding, "location", 0, {1.0f, 47.0f}, settings, INSERTKEY_NOFLAGS);
+  key_strip.keyframe_insert(*binding, "location", 0, {5.0f, 327.0f}, settings, INSERTKEY_NOFLAGS);
+  key_strip.keyframe_insert(*binding, "location", 0, {10.0f, 48.0f}, settings, INSERTKEY_NOFLAGS);
 
   /* Evaluate the layer to see how it handles the boundaries + something in between. */
   EXPECT_TRUE(test_evaluate_layer("location", 0, {1.0f, 47.0f}));
@@ -208,20 +208,20 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__nonoverlapping)
   {
     KeyframeStrip &key_strip1 = strip1.as<KeyframeStrip>();
     key_strip1.keyframe_insert(
-        *binding, "location", 0, {1.0f, 47.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {1.0f, 47.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip1.keyframe_insert(
-        *binding, "location", 0, {5.0f, 327.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {5.0f, 327.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip1.keyframe_insert(
-        *binding, "location", 0, {10.0f, 48.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {10.0f, 48.0f}, settings, INSERTKEY_NOFLAGS);
   }
   {
     KeyframeStrip &key_strip2 = strip2.as<KeyframeStrip>();
     key_strip2.keyframe_insert(
-        *binding, "location", 0, {1.0f, 47.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {1.0f, 47.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip2.keyframe_insert(
-        *binding, "location", 0, {5.0f, 327.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {5.0f, 327.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip2.keyframe_insert(
-        *binding, "location", 0, {10.0f, 48.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {10.0f, 48.0f}, settings, INSERTKEY_NOFLAGS);
   }
 
   /* Check Strip 1. */
@@ -254,20 +254,20 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__overlapping_edge)
   {
     KeyframeStrip &key_strip1 = strip1.as<KeyframeStrip>();
     key_strip1.keyframe_insert(
-        *binding, "location", 0, {1.0f, 47.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {1.0f, 47.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip1.keyframe_insert(
-        *binding, "location", 0, {5.0f, 327.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {5.0f, 327.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip1.keyframe_insert(
-        *binding, "location", 0, {10.0f, 48.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {10.0f, 48.0f}, settings, INSERTKEY_NOFLAGS);
   }
   {
     KeyframeStrip &key_strip2 = strip2.as<KeyframeStrip>();
     key_strip2.keyframe_insert(
-        *binding, "location", 0, {1.0f, 47.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {1.0f, 47.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip2.keyframe_insert(
-        *binding, "location", 0, {5.0f, 327.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {5.0f, 327.0f}, settings, INSERTKEY_NOFLAGS);
     key_strip2.keyframe_insert(
-        *binding, "location", 0, {10.0f, 48.0f}, INSERTKEY_NOFLAGS, settings);
+        *binding, "location", 0, {10.0f, 48.0f}, settings, INSERTKEY_NOFLAGS);
   }
 
   /* Check Strip 1. */

@@ -866,23 +866,47 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
                                                   const StringRefNull rna_path,
                                                   const int array_index,
                                                   const float2 time_value,
-                                                  const eInsertKeyFlags insert_key_flags,
-                                                  const KeyframeSettings &settings)
+                                                  const KeyframeSettings &settings,
+                                                  const eInsertKeyFlags insert_key_flags)
 {
   /* Get the fcurve, or if one doesn't exist and the keying flags allow then
    * create one. */
-  FCurve *fcu = can_create_fcurve(insert_key_flags) ?
-                    &this->fcurve_find_or_create(binding, rna_path, array_index) :
-                    this->fcurve_find(binding, rna_path, array_index);
-  if (!fcu) {
+  FCurve *fcurve = can_create_fcurve(insert_key_flags) ?
+                       &this->fcurve_find_or_create(binding, rna_path, array_index) :
+                       this->fcurve_find(binding, rna_path, array_index);
+  if (!fcurve) {
+    std::fprintf(stderr,
+                 "FCurve %s[%d] for binding %s was not created due to either the Only Insert "
+                 "Available setting or Replace keyframing mode.\n",
+                 rna_path.c_str(),
+                 array_index,
+                 binding.name);
     return SingleKeyingResult::CANNOT_CREATE_FCURVE;
   }
 
-  if (!BKE_fcurve_is_keyframable(fcu)) {
+  if (!BKE_fcurve_is_keyframable(fcurve)) {
+    /* TODO: handle this properly, in a way that can be communicated to the user. */
+    std::fprintf(stderr,
+                 "FCurve %s[%d] for binding %s doesn't allow inserting keys.\n",
+                 rna_path.c_str(),
+                 array_index,
+                 binding.name);
     return SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE;
   }
 
-  return insert_vert_fcurve(fcu, time_value, settings, insert_key_flags);
+  const SingleKeyingResult insert_vert_result = insert_vert_fcurve(
+      fcurve, time_value, settings, insert_key_flags);
+
+  if (insert_vert_result != SingleKeyingResult::SUCCESS) {
+    std::fprintf(stderr,
+                 "Could not insert key into FCurve %s[%d] for binding %s.\n",
+                 rna_path.c_str(),
+                 array_index,
+                 binding.name);
+    return insert_vert_result;
+  }
+
+  return SingleKeyingResult::SUCCESS;
 }
 
 /* AnimationChannelBag implementation. */

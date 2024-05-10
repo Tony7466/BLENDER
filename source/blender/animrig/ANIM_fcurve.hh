@@ -16,6 +16,8 @@
 
 #include "DNA_anim_types.h"
 
+#include "ANIM_keyframing.hh"
+
 struct AnimData;
 struct FCurve;
 

@@ -137,19 +137,6 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
     return;
   }
 
-  /* Optimization: if there's no animation at all and "Only Insert Available" is
-   * enabled, we know nothing will get keyed anyway, so return early. */
-  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) &&
-      (!ob->adt || (!ob->adt->action && !ob->adt->animation)))
-  {
-    /* TODO: account for multi-element properties in the report. E.g. right now
-     * location will be reported as a single channel in the report. */
-    CombinedKeyingResult result;
-    result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
-    result.generate_reports(reports);
-    return;
-  }
-
   const float scene_frame = BKE_scene_frame_get(scene);
   Main *bmain = CTX_data_main(C);
 
@@ -221,9 +208,6 @@ void autokeyframe_pose_channel(bContext *C,
 
   Main *bmain = CTX_data_main(C);
   ID *id = &ob->id;
-  AnimData *adt = ob->adt;
-  bAction *act = (adt) ? adt->action : nullptr;
-  ::Animation *animation = (adt) ? adt->animation : nullptr;
 
   if (!blender::animrig::autokeyframe_cfra_can_key(scene, id)) {
     return;
@@ -256,17 +240,6 @@ void autokeyframe_pose_channel(bContext *C,
     /* Run the active Keying Set on the current data-source. */
     ANIM_apply_keyingset(
         C, &sources, active_ks, ModifyKeyMode::INSERT, anim_eval_context.eval_time);
-    return;
-  }
-
-  /* Optimization: if there's no animation at all and "Only Insert Available" is
-   * enabled, we know nothing will get keyed anyway, so return early. */
-  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) && !act && !animation) {
-    /* TODO: account for multi-element properties in the report. E.g. right now
-     * location will be reported as a single channel in the report. */
-    CombinedKeyingResult result;
-    result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
-    result.generate_reports(reports);
     return;
   }
 

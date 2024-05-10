@@ -1073,6 +1073,7 @@ static BezTriple *rna_FKeyframe_points_insert(
 
     bool replace;
     const int index = BKE_fcurve_bezt_binarysearch_index(fcu->bezt, frame, fcu->totvert, &replace);
+
     return fcu->bezt + index;
   }
 
