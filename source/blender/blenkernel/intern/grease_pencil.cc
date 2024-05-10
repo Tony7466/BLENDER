@@ -115,12 +115,12 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
   grease_pencil_dst->root_group_ptr = MEM_new<bke::greasepencil::LayerGroup>(
       __func__, grease_pencil_src->root_group());
 
-  /* Set active layer. */
-  if (grease_pencil_src->has_active_layer()) {
+  /* Set active node. */
+  if (grease_pencil_src->active_node) {
     bke::greasepencil::TreeNode *active_node = grease_pencil_dst->find_node_by_name(
         grease_pencil_src->active_node->wrap().name());
-    BLI_assert(active_node && active_node->is_layer());
-    grease_pencil_dst->set_active_layer(&active_node->as_layer());
+    BLI_assert(active_node);
+    grease_pencil_dst->active_node = active_node;
   }
 
   CustomData_copy(&grease_pencil_src->layers_data,
@@ -315,16 +315,6 @@ Drawing::Drawing(const Drawing &other)
   this->runtime->curve_texture_matrices = other.runtime->curve_texture_matrices;
 }
 
-Drawing &Drawing::operator=(const Drawing &other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) Drawing(other);
-  return *this;
-}
-
 Drawing::Drawing(Drawing &&other)
 {
   this->base.type = GP_DRAWING;
@@ -336,6 +326,16 @@ Drawing::Drawing(Drawing &&other)
 
   this->runtime = other.runtime;
   other.runtime = nullptr;
+}
+
+Drawing &Drawing::operator=(const Drawing &other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) Drawing(other);
+  return *this;
 }
 
 Drawing &Drawing::operator=(Drawing &&other)
@@ -1165,10 +1165,16 @@ int Layer::get_frame_duration_at(const int frame_number) const
   if (!frame_key) {
     return -1;
   }
+  /* For frames that are implicitly held, we return a duration of 0. */
+  if (this->frames().lookup_ptr(*frame_key)->is_implicit_hold()) {
+    return 0;
+  }
   SortedKeysIterator frame_number_it = std::next(this->sorted_keys().begin(), *frame_key);
+  /* The last key has no duration. */
   if (*frame_number_it == this->sorted_keys().last()) {
     return -1;
   }
+  /* Compute the difference in frames between this key and the next key. */
   const int next_frame_number = *(std::next(frame_number_it));
   return next_frame_number - frame_number;
 }
@@ -2173,9 +2179,7 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
    * If we want to make an instance of the source frame, the drawing index gets copied from the
    * source frame. Otherwise, we set the drawing index to the size of the drawings array, since we
    * are going to add a new drawing copied from the source drawing. */
-  const int duration = src_frame.is_implicit_hold() ?
-                           0 :
-                           layer.get_frame_duration_at(src_frame_number);
+  const int duration = layer.get_frame_duration_at(src_frame_number);
   GreasePencilFrame *dst_frame = layer.add_frame(dst_frame_number, duration);
   if (dst_frame == nullptr) {
     return false;
@@ -2375,9 +2379,7 @@ void GreasePencil::move_duplicate_frames(
   /* Copy frames durations. */
   Map<int, int> src_layer_frames_durations;
   for (const auto [frame_number, frame] : layer.frames().items()) {
-    if (!frame.is_implicit_hold()) {
-      src_layer_frames_durations.add(frame_number, layer.get_frame_duration_at(frame_number));
-    }
+    src_layer_frames_durations.add(frame_number, layer.get_frame_duration_at(frame_number));
   }
 
   /* Remove original frames for duplicates before inserting any frames.
@@ -3114,7 +3116,7 @@ static void read_layer_tree(GreasePencil &grease_pencil, BlendDataReader *reader
     return;
   }
   /* Read active layer. */
-  BLO_read_struct(reader, GreasePencilLayer, &grease_pencil.active_node);
+  BLO_read_struct(reader, GreasePencilLayerTreeNode, &grease_pencil.active_node);
   read_layer_tree_group(reader, grease_pencil.root_group_ptr, nullptr);
 
   grease_pencil.root_group_ptr->wrap().update_from_dna_read();
