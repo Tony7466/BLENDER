@@ -228,8 +228,7 @@ void RNA_def_world(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Finite Volume",
-      "World uses EEVEE Classic volumes. These volumes are finite by view bounds and needs to be "
-      "converted to render correctly in newer files");
+      "The world's volume used to be rendered by EEVEE Legacy. Conversion is needed for it to render properly");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /* colors */
