@@ -969,12 +969,11 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
       bNode *capture_node = geometry_in_link->fromnode;
       const NodeGeometryAttributeCapture &capture_storage =
           *static_cast<const NodeGeometryAttributeCapture *>(capture_node->storage);
-      /* TODO */
-      // if (capture_storage.data_type != CD_PROP_BOOL ||
-      //     bke::AttrDomain(capture_storage.domain) != bke::AttrDomain::Face)
-      // {
-      //   return false;
-      // }
+      if (capture_storage.data_type_legacy != CD_PROP_BOOL ||
+          bke::AttrDomain(capture_storage.domain) != bke::AttrDomain::Face)
+      {
+        return false;
+      }
       bNodeSocket *capture_in_socket = nodeFindSocket(capture_node, SOCK_IN, "Value_003");
       bNodeLink *capture_in_link = in_links_per_socket.lookup_default(capture_in_socket, nullptr);
       if (!capture_in_link) {
@@ -1006,13 +1005,13 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     }
 
     bNode *capture_node = nodeAddNode(nullptr, &ntree, "GeometryNodeCaptureAttribute");
+    /* TODO: Add sockets. */
     capture_node->parent = node->parent;
     capture_node->locx = node->locx - 25;
     capture_node->locy = node->locy;
     new_nodes.append(capture_node);
-    /* TODO */
-    // static_cast<NodeGeometryAttributeCapture *>(capture_node->storage)->data_type =
-    // CD_PROP_BOOL;
+    static_cast<NodeGeometryAttributeCapture *>(capture_node->storage)->data_type_legacy =
+        CD_PROP_BOOL;
     static_cast<NodeGeometryAttributeCapture *>(capture_node->storage)->domain = int8_t(
         bke::AttrDomain::Face);
 

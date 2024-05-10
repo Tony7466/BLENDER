@@ -1797,8 +1797,8 @@ typedef struct NodeGeometryAttributeCaptureItem {
 } NodeGeometryAttributeCaptureItem;
 
 typedef struct NodeGeometryAttributeCapture {
-  /** #eCustomDataType (legacy). */
-  int8_t data_type;
+  /** #eCustomDataType. */
+  int8_t data_type_legacy;
   /** #AttrDomain. */
   int8_t domain;
   char _pad[2];

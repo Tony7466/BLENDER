@@ -84,6 +84,7 @@
 #include "NOD_common.h"
 #include "NOD_composite.hh"
 #include "NOD_geo_bake.hh"
+#include "NOD_geo_capture_attribute.hh"
 #include "NOD_geo_index_switch.hh"
 #include "NOD_geo_menu_switch.hh"
 #include "NOD_geo_repeat.hh"
@@ -887,6 +888,9 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     if (node->type == GEO_NODE_MENU_SWITCH) {
       blender::nodes::MenuSwitchItemsAccessor::blend_write(writer, *node);
     }
+    if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
+      blender::nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
+    }
   }
 
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
@@ -1164,6 +1168,10 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         }
         case GEO_NODE_MENU_SWITCH: {
           blender::nodes::MenuSwitchItemsAccessor::blend_read_data(reader, *node);
+          break;
+        }
+        case GEO_NODE_CAPTURE_ATTRIBUTE: {
+          blender::nodes::CaptureAttributeItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
