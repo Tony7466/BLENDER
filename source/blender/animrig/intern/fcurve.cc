@@ -320,7 +320,7 @@ SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
 {
   BLI_assert(fcu != nullptr);
 
-  if (flag & INSERTKEY_NEEDED && !new_key_needed(*fcu, position[0], position[1])) {
+  if ((flag & INSERTKEY_NEEDED) && !new_key_needed(*fcu, position[0], position[1])) {
     return SingleKeyingResult::NO_KEY_NEEDED;
   }
 
