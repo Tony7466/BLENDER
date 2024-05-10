@@ -1004,16 +1004,18 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
       continue;
     }
 
+    /* TODO: more safe socket handling */
     bNode *capture_node = nodeAddNode(nullptr, &ntree, "GeometryNodeCaptureAttribute");
-    /* TODO: Add sockets. */
+    NodeGeometryAttributeCapture *capture_node_storage =
+        static_cast<NodeGeometryAttributeCapture *>(capture_node->storage);
     capture_node->parent = node->parent;
     capture_node->locx = node->locx - 25;
     capture_node->locy = node->locy;
     new_nodes.append(capture_node);
-    static_cast<NodeGeometryAttributeCapture *>(capture_node->storage)->data_type_legacy =
-        CD_PROP_BOOL;
-    static_cast<NodeGeometryAttributeCapture *>(capture_node->storage)->domain = int8_t(
-        bke::AttrDomain::Face);
+    capture_node_storage->data_type_legacy = CD_PROP_BOOL;
+    capture_node_storage->domain = int8_t(bke::AttrDomain::Face);
+    nodeAddSocket(&ntree, capture_node, SOCK_IN, "NodeSocketBool", "Value", "Value");
+    nodeAddSocket(&ntree, capture_node, SOCK_OUT, "NodeSocketBool", "Attribute", "Attribute");
 
     bNode *is_smooth_node = nodeAddNode(nullptr, &ntree, "GeometryNodeInputShadeSmooth");
     is_smooth_node->parent = node->parent;

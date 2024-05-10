@@ -3465,6 +3465,30 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+    if (ntree->type != NTREE_GEOMETRY) {
+      continue;
+    }
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+      if (node->type != GEO_NODE_CAPTURE_ATTRIBUTE) {
+        continue;
+      }
+      NodeGeometryAttributeCapture *storage = static_cast<NodeGeometryAttributeCapture *>(
+          node->storage);
+      if (storage->next_identifier > 0) {
+        continue;
+      }
+      storage->capture_items_num = 1;
+      storage->capture_items = MEM_cnew_array<NodeGeometryAttributeCaptureItem>(
+          storage->capture_items_num, __func__);
+      NodeGeometryAttributeCaptureItem &item = storage->capture_items[0];
+      item.data_type = storage->data_type_legacy;
+      item.identifier = storage->next_identifier++;
+      item.name = BLI_strdup("Value");
+      /* TODO: missing declaration update */
+    }
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
