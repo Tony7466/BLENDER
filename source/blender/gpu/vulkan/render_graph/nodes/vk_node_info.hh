@@ -69,7 +69,6 @@ class VKNodeInfo : public NonCopyable {
    * Which pipeline stage does this command belongs to. The pipeline stage is used when generating
    * pipeline barriers.
    */
-  /* TODO: Consider to make this a function to create more precise barriers. */
   static constexpr VkPipelineStageFlags pipeline_stage = PipelineStage;
 
   /**
