@@ -14,10 +14,6 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         if not world or not world.use_nodes:
             return False
 
-        camera = context.scene.camera
-        if not camera:
-            return False
-
         ntree = world.node_tree
         node = ntree.get_output_node('EEVEE')
         return bool(node.inputs['Volume'].links)
@@ -25,7 +21,6 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
     def execute(self, context):
         cls = self.__class__
         world = cls._world_get(context)
-        camera = context.scene.camera
         view_layer = context.view_layer
 
         world_tree = world.node_tree
