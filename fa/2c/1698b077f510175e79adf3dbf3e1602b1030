@@ -1,3 +1,4 @@
 Referenced by issue #91694, Crash when switching to video editing workspace in new scene
 Referenced by issue #91698, VSE: Tool option Drag options exposed in Annotation & Sample Tool
 Referenced by issue #90156, VSE image transformation in preview
+Referenced by pull request #121652, VSE: Preview region translate/grab tool rounds resulting position
