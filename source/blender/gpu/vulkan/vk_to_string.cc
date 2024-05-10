@@ -843,7 +843,7 @@ std::string to_string(const VkRenderingAttachmentInfo &vk_rendering_attachment_i
   ss << "image_view=" << to_string(vk_rendering_attachment_info.imageView);
   ss << ", image_layout=" << to_string(vk_rendering_attachment_info.imageLayout);
   ss << ", resolve_mode=" << to_string(vk_rendering_attachment_info.resolveMode);
-  ss << ", resolve_image_view=" << vk_rendering_attachment_info.resolveImageView;
+  ss << ", resolve_image_view=" << to_string(vk_rendering_attachment_info.resolveImageView);
   ss << ", resolve_image_layout=" << to_string(vk_rendering_attachment_info.resolveImageLayout);
   ss << ", load_op=" << to_string(vk_rendering_attachment_info.loadOp);
   ss << ", store_op=" << to_string(vk_rendering_attachment_info.storeOp);
