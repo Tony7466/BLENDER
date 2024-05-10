@@ -19,7 +19,6 @@ struct CaptureAttributeItemsAccessor {
   static constexpr const char *node_idname = "GeometryNodeCaptureAttribute";
   static constexpr bool has_type = true;
   static constexpr bool has_name = true;
-  static constexpr bool has_derived_type = true;
 
   static socket_items::SocketItemsRef<NodeGeometryAttributeCaptureItem> get_items_from_node(
       bNode &node)
@@ -43,14 +42,9 @@ struct CaptureAttributeItemsAccessor {
   static void blend_write(BlendWriter *writer, const bNode &node);
   static void blend_read_data(BlendDataReader *reader, bNode &node);
 
-  static eNodeSocketDatatype get_derived_socket_type(const NodeGeometryAttributeCaptureItem &item)
+  static eNodeSocketDatatype get_socket_type(const NodeGeometryAttributeCaptureItem &item)
   {
     return *bke::custom_data_type_to_socket_type(eCustomDataType(item.data_type));
-  }
-
-  static int8_t *get_custom_data_type(NodeGeometryAttributeCaptureItem &item)
-  {
-    return &item.data_type;
   }
 
   static char **get_name(NodeGeometryAttributeCaptureItem &item)
