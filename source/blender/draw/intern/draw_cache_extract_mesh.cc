@@ -881,7 +881,7 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
 
   if (DRW_ibo_requested(buffers.ibo.lines) || DRW_ibo_requested(buffers.ibo.lines_loose)) {
     extract_lines_subdiv(
-        subdiv_cache, mr, buffers.ibo.lines, buffers.ibo.lines_loose, cache.no_loose_wire);
+        mr, subdiv_cache, buffers.ibo.lines, buffers.ibo.lines_loose, cache.no_loose_wire);
   }
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);

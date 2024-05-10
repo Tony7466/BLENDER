@@ -2207,8 +2207,8 @@ static bool draw_subdiv_create_requested_buffers(Object *ob,
 
 void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCache &cache)
 {
-  const Span<int> loose_edges = cache.loose_geom.verts;
-  if (loose_edges.is_empty()) {
+  const Span<int> loose_edges = cache.loose_geom.edges;
+  if (cache.loose_geom.verts.is_empty() && loose_edges.is_empty()) {
     return;
   }
 
@@ -2228,6 +2228,8 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCach
   result.edges_per_coarse_edge = edges_per_coarse_edge;
 
   result.edge_vert_positions.reinitialize(loose_edges.size() * verts_per_coarse_edge);
+
+  result.vbo_size = loose_edges.size() * edges_per_coarse_edge * 2 + cache.loose_geom.verts.size();
 
   const Span<float3> coarse_positions = coarse_mesh->vert_positions();
   const Span<int2> coarse_edges = coarse_mesh->edges();

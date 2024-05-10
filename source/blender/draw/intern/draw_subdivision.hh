@@ -4,7 +4,9 @@
 
 #pragma once
 
+#include "BLI_array.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_sys_types.h"
 
@@ -56,7 +58,9 @@ struct DRWPatchMap {
  * and in the buffer extractors. Although it duplicates memory (and work), the buffers also store
  * duplicate values. */
 struct DRWSubdivLooseGeom {
-
+  int vbo_size;
+  int loose_edge_verts_start;
+  int loose_verts_start;
   /** For every subdivided edge, there are two coarse vertices. */
   int verts_per_coarse_edge;
   /** For every coarse edge, there are `resolution - 1` subdivided edges. */

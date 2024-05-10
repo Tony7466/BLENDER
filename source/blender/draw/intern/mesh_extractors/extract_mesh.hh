@@ -356,13 +356,16 @@ void extract_lines(const MeshRenderData &mr,
                    gpu::IndexBuf *lines,
                    gpu::IndexBuf *lines_loose,
                    bool &no_loose_wire);
-void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
-                          const MeshRenderData &mr,
+void extract_lines_subdiv(const MeshRenderData &mr,
+                          const DRWSubdivCache &subdiv_cache,
                           gpu::IndexBuf *lines,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire);
 
 void extract_points(const MeshRenderData &mr, gpu::IndexBuf &points);
+void extract_points_subdiv(const MeshRenderData &mr,
+                           const DRWSubdivCache &subdiv_cache,
+                           gpu::IndexBuf &points);
 
 extern const MeshExtract extract_tris;
 extern const MeshExtract extract_fdots;

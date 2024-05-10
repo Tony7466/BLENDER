@@ -299,8 +299,8 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   GPU_vertbuf_discard(flags);
 }
 
-void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
-                          const MeshRenderData &mr,
+void extract_lines_subdiv(const MeshRenderData &mr,
+                          const DRWSubdivCache &subdiv_cache,
                           gpu::IndexBuf *lines,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire)

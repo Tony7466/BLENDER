@@ -287,9 +287,9 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache &subdiv_cache,
 {
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
-  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
   GPU_vertbuf_init_build_on_device(
-      vbo, get_subdiv_edge_fac_format(), subdiv_cache.num_subdiv_loops + loose_geom.loop_len);
+      vbo, get_subdiv_edge_fac_format(), subdiv_cache.num_subdiv_loops + loose_info.loop_len);
 
   gpu::VertBuf *pos_nor = cache.final.buff.vbo.pos;
   gpu::VertBuf *poly_other_map = build_poly_other_map_vbo(subdiv_cache);
@@ -305,8 +305,8 @@ static void extract_edge_fac_loose_geom_subdiv(const DRWSubdivCache &subdiv_cach
                                                void *buffer,
                                                void * /*data*/)
 {
-  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
-  if (loose_geom.edge_len == 0) {
+  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
+  if (loose_info.edge_len == 0) {
     return;
   }
 
@@ -316,7 +316,7 @@ static void extract_edge_fac_loose_geom_subdiv(const DRWSubdivCache &subdiv_cach
   GPU_vertbuf_use(vbo);
 
   uint offset = subdiv_cache.num_subdiv_loops;
-  for (int i = 0; i < loose_geom.edge_len; i++) {
+  for (int i = 0; i < loose_info.edge_len; i++) {
     if (GPU_crappy_amd_driver() || GPU_minimum_per_vertex_stride() > 1) {
       float loose_edge_fac[2] = {1.0f, 1.0f};
       GPU_vertbuf_update_sub(vbo, offset * sizeof(float), sizeof(loose_edge_fac), loose_edge_fac);
