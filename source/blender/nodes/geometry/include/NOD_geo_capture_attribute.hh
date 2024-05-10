@@ -19,6 +19,7 @@ struct CaptureAttributeItemsAccessor {
   static constexpr const char *node_idname = "GeometryNodeCaptureAttribute";
   static constexpr bool has_type = true;
   static constexpr bool has_name = true;
+  static constexpr bool has_single_identifier_str = false;
 
   static socket_items::SocketItemsRef<NodeGeometryAttributeCaptureItem> get_items_from_node(
       bNode &node)
