@@ -435,6 +435,7 @@ static void action_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_d
 static AssetTypeInfo AssetType_AC = {
     /*pre_save_fn*/ action_asset_metadata_ensure,
     /*on_mark_asset_fn*/ action_asset_metadata_ensure,
+    /*on_clear_asset_fn*/ nullptr,
 };
 
 }  // namespace blender::bke

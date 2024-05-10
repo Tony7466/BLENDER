@@ -884,7 +884,19 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
   }
 
   /* TODO: Handle the eInsertKeyFlags. */
-  return insert_vert_fcurve(&fcurve, time_value, settings, eInsertKeyFlags(0));
+  const SingleKeyingResult insert_vert_result = insert_vert_fcurve(
+      &fcurve, time_value, settings, eInsertKeyFlags(0));
+
+  if (insert_vert_result != SingleKeyingResult::SUCCESS) {
+    std::fprintf(stderr,
+                 "Could not insert key into FCurve %s[%d] for binding %s.\n",
+                 rna_path.c_str(),
+                 array_index,
+                 binding.name);
+    return insert_vert_result;
+  }
+
+  return SingleKeyingResult::SUCCESS;
 }
 
 /* ActionChannelBag implementation. */

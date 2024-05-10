@@ -439,8 +439,8 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
   const KeyframeSettings settings = get_keyframe_settings(false);
   SingleKeyingResult result_loc_a = key_strip.keyframe_insert(
       binding, "location", 0, {1.0f, 47.0f}, settings);
-  EXPECT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)
-      << "Expect all the necessary data structures to be created on insertion of a key";
+  ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)
+      << "Expected keyframe insertion to be successful";
 
   /* Check the strip was created correctly, with the channels for the binding. */
   ASSERT_EQ(1, key_strip.channelbags().size());
@@ -450,23 +450,23 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
   /* Insert a second key, should insert into the same FCurve as before. */
   SingleKeyingResult result_loc_b = key_strip.keyframe_insert(
       binding, "location", 0, {5.0f, 47.1f}, settings);
-  EXPECT_EQ(SingleKeyingResult::SUCCESS, result_loc_b)
-      << "Expect same (binding/rna path/array index) tuple to return the same FCurve.";
+  EXPECT_EQ(SingleKeyingResult::SUCCESS, result_loc_b);
   ASSERT_EQ(1, channels->fcurves().size()) << "Expect insertion with the same (binding/rna "
                                               "path/array index) tuple to go into the same FCurve";
-  ASSERT_EQ(2, channels->fcurves()[0]->totvert)
+  EXPECT_EQ(2, channels->fcurves()[0]->totvert)
       << "Expect insertion with the same (binding/rna path/array index) tuple to go into the same "
          "FCurve";
+
   EXPECT_EQ(47.0f, evaluate_fcurve(channels->fcurves()[0], 1.0f));
   EXPECT_EQ(47.1f, evaluate_fcurve(channels->fcurves()[0], 5.0f));
 
   /* Insert another key for another property, should create another FCurve. */
   SingleKeyingResult result_rot = key_strip.keyframe_insert(
       binding, "rotation_quaternion", 0, {1.0f, 0.25f}, settings);
-  ASSERT_EQ(SingleKeyingResult::SUCCESS, result_rot);
+  EXPECT_EQ(SingleKeyingResult::SUCCESS, result_rot);
   ASSERT_EQ(2, channels->fcurves().size()) << "Expected a second FCurve to be created.";
-  ASSERT_EQ(2, channels->fcurves()[0]->totvert);
-  ASSERT_EQ(1, channels->fcurves()[1]->totvert);
+  EXPECT_EQ(2, channels->fcurves()[0]->totvert);
+  EXPECT_EQ(1, channels->fcurves()[1]->totvert);
 }
 
 }  // namespace blender::animrig::tests
