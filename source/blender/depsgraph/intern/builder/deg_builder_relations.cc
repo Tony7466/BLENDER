@@ -1666,6 +1666,7 @@ void DepsgraphRelationBuilder::build_animdata_action_targets(ID *id,
     return;
   }
 
+#ifdef WITH_ANIM_BAKLAVA
   const animrig::Binding *binding = action.binding_for_handle(binding_handle);
   if (binding == nullptr) {
     /* If there's no matching binding, there's no Action dependency. */
@@ -1692,6 +1693,7 @@ void DepsgraphRelationBuilder::build_animdata_action_targets(ID *id,
       }
     }
   }
+#endif
 }
 
 void DepsgraphRelationBuilder::build_animdata_nlastrip_targets(ID *id,
