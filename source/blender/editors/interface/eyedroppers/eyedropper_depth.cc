@@ -431,6 +431,43 @@ static int depthdropper_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
+static bool depthdropper_poll(bContext *C)
+{
+  PointerRNA ptr;
+  PropertyRNA *prop;
+  int index_dummy;
+  uiBut *but;
+
+  /* check if there's an active button taking depth value */
+  if ((CTX_wm_window(C) != nullptr) &&
+      (but = UI_context_active_but_prop_get(C, &ptr, &prop, &index_dummy)))
+  {
+    if (but->icon == ICON_EYEDROPPER) {
+      return true;
+    }
+    if ((but->type == UI_BTYPE_NUM) && (prop != nullptr) &&
+        (RNA_property_type(prop) == PROP_FLOAT) &&
+        (RNA_property_subtype(prop) & PROP_UNIT_LENGTH) &&
+        (RNA_property_array_check(prop) == false))
+    {
+      return true;
+    }
+  }
+  else {
+    RegionView3D *rv3d = CTX_wm_region_view3d(C);
+    if (rv3d && rv3d->persp == RV3D_CAMOB) {
+      View3D *v3d = CTX_wm_view3d(C);
+      if (v3d->camera && v3d->camera->data &&
+          BKE_id_is_editable(CTX_data_main(C), static_cast<const ID *>(v3d->camera->data)))
+      {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 void UI_OT_eyedropper_depth(wmOperatorType *ot)
 {
   /* identifiers */
@@ -443,6 +480,7 @@ void UI_OT_eyedropper_depth(wmOperatorType *ot)
   ot->modal = depthdropper_modal;
   ot->cancel = depthdropper_cancel;
   ot->exec = depthdropper_exec;
+  ot->poll = depthdropper_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_INTERNAL;
