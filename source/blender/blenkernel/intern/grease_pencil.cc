@@ -2982,28 +2982,45 @@ static void shrink_customdata(CustomData &data, const int index_to_remove, const
   data = new_data;
 }
 
+static void update_active_node(GreasePencil &grease_pencil,
+                               const blender::bke::greasepencil::TreeNode &node)
+{
+  using namespace blender::bke::greasepencil;
+  if (grease_pencil.active_node == nullptr) {
+    return;
+  }
+  const TreeNode &active_node = grease_pencil.active_node->wrap();
+  if (&active_node != &node) {
+    return;
+  }
+
+  if (node.is_group()) {
+    grease_pencil.set_active_layer(nullptr);
+    return;
+  }
+
+  Span<const Layer *> layers = grease_pencil.layers();
+  /* If there is no other layer available, unset the active layer. */
+  if (layers.size() == 1) {
+    grease_pencil.set_active_layer(nullptr);
+  }
+  else {
+    /* Make the layer below active (if possible). */
+    if (&active_node.as_layer() == layers.first()) {
+      grease_pencil.set_active_layer(layers[1]);
+    }
+    else {
+      int64_t active_index = layers.first_index(&active_node.as_layer());
+      grease_pencil.set_active_layer(layers[active_index - 1]);
+    }
+  }
+}
+
 void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
 {
   using namespace blender::bke::greasepencil;
   /* If the layer is active, update the active layer. */
-  const Layer *active_layer = this->get_active_layer();
-  if (active_layer == &layer) {
-    Span<const Layer *> layers = this->layers();
-    /* If there is no other layer available, unset the active layer. */
-    if (layers.size() == 1) {
-      this->set_active_layer(nullptr);
-    }
-    else {
-      /* Make the layer below active (if possible). */
-      if (active_layer == layers.first()) {
-        this->set_active_layer(layers[1]);
-      }
-      else {
-        int64_t active_index = layers.first_index(active_layer);
-        this->set_active_layer(layers[active_index - 1]);
-      }
-    }
-  }
+  update_active_node(*this, layer.as_node());
 
   /* Remove all the layer attributes and shrink the `CustomData`. */
   const int64_t layer_index = this->layers().first_index(&layer);
@@ -3032,13 +3049,18 @@ void GreasePencil::remove_group(blender::bke::greasepencil::LayerGroup &group,
                                 const bool keep_children)
 {
   using namespace blender::bke::greasepencil;
+  /* If the group is active, update the active layer. */
+  update_active_node(*this, group.as_node());
+
   if (!keep_children) {
-    /* Recursively remove all the layers and groups. */
-    for (Layer *layer : group.layers_for_write()) {
-      this->remove_layer(*layer);
-    }
+    /* Recursively remove sub groups. */
     for (LayerGroup *sub_group : group.groups_for_write()) {
       this->remove_group(*sub_group, false);
+    }
+
+    /* Remove all the layers. */
+    for (Layer *layer : group.layers_for_write()) {
+      this->remove_layer(*layer);
     }
   }
   /* Unlink the group. Keep the children if we want to keep them. */
