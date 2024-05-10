@@ -162,12 +162,10 @@ class VKFrameBuffer : public FrameBuffer {
       eGPUFrameBufferBits buffers,
       float clear_depth,
       uint32_t clear_stencil,
-      render_graph::VKResourceAccessInfo &access_info,
       render_graph::VKClearAttachmentsNode::CreateInfo &clear_attachments) const;
   void build_clear_attachments_color(
       const float (*clear_colors)[4],
       const bool multi_clear_colors,
-      render_graph::VKResourceAccessInfo &access_info,
       render_graph::VKClearAttachmentsNode::CreateInfo &clear_attachments) const;
   void clear(render_graph::VKClearAttachmentsNode::CreateInfo &clear_attachments);
 };

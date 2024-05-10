@@ -99,18 +99,10 @@ void VKFrameBuffer::build_clear_attachments_depth_stencil(
     const eGPUFrameBufferBits buffers,
     float clear_depth,
     uint32_t clear_stencil,
-    render_graph::VKResourceAccessInfo &access_info,
     render_graph::VKClearAttachmentsNode::CreateInfo &clear_attachments) const
 {
   VkImageAspectFlags aspect_mask = (buffers & GPU_DEPTH_BIT ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
                                    (buffers & GPU_STENCIL_BIT ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-
-  VKTexture &texture = *unwrap(unwrap(depth_tex()));
-  access_info.images.append({
-      texture.vk_image_handle(),
-      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-      aspect_mask,
-  });
 
   VkClearAttachment &clear_attachment =
       clear_attachments.attachments[clear_attachments.attachment_count++];
@@ -123,7 +115,6 @@ void VKFrameBuffer::build_clear_attachments_depth_stencil(
 void VKFrameBuffer::build_clear_attachments_color(
     const float (*clear_colors)[4],
     const bool multi_clear_colors,
-    render_graph::VKResourceAccessInfo &access_info,
     render_graph::VKClearAttachmentsNode::CreateInfo &clear_attachments) const
 {
   int color_index = 0;
@@ -132,12 +123,6 @@ void VKFrameBuffer::build_clear_attachments_color(
     if (attachment.tex == nullptr) {
       continue;
     }
-    VKTexture &texture = *unwrap(unwrap(attachment.tex));
-    access_info.images.append({
-        texture.vk_image_handle(),
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-    });
     VkClearAttachment &clear_attachment =
         clear_attachments.attachments[clear_attachments.attachment_count++];
     clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -174,7 +159,6 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
                           float clear_depth,
                           uint clear_stencil)
 {
-  render_graph::VKResourceAccessInfo access_info;
   render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments = {};
   clear_attachments.vk_clear_rect.rect = vk_render_areas_get()[0];
   clear_attachments.vk_clear_rect.baseArrayLayer = 0;
@@ -194,7 +178,7 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
      * enabled. When not enabled, clearing should be done via texture directly. */
     if ((context.state_manager_get().state.write_mask & needed_mask) == needed_mask) {
       build_clear_attachments_depth_stencil(
-          buffers, clear_depth, clear_stencil, access_info, clear_attachments);
+          buffers, clear_depth, clear_stencil, clear_attachments);
     }
     else {
       VKTexture *depth_texture = unwrap(unwrap(depth_tex()));
@@ -212,7 +196,7 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
   if (buffers & GPU_COLOR_BIT) {
     float clear_color_single[4];
     copy_v4_v4(clear_color_single, clear_color);
-    build_clear_attachments_color(&clear_color_single, false, access_info, clear_attachments);
+    build_clear_attachments_color(&clear_color_single, false, clear_attachments);
   }
 
   if (clear_attachments.attachment_count) {
@@ -222,13 +206,12 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
 
 void VKFrameBuffer::clear_multi(const float (*clear_color)[4])
 {
-  render_graph::VKResourceAccessInfo access_info;
   render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments = {};
   clear_attachments.vk_clear_rect.rect = vk_render_areas_get()[0];
   clear_attachments.vk_clear_rect.baseArrayLayer = 0;
   clear_attachments.vk_clear_rect.layerCount = 1;
 
-  build_clear_attachments_color(clear_color, true, access_info, clear_attachments);
+  build_clear_attachments_color(clear_color, true, clear_attachments);
   if (clear_attachments.attachment_count) {
     clear(clear_attachments);
   }
