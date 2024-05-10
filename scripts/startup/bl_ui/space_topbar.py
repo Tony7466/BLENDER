@@ -664,9 +664,6 @@ class TOPBAR_MT_help(Menu):
             layout.operator("wm.url_open_preset", text="Python API Reference").type = 'API'
             layout.operator("wm.operator_cheat_sheet", icon='TEXT')
 
-        if context.scene.world.use_eevee_finite_volume:
-            layout.operator("world.convert_volume_to_mesh")
-
         layout.separator()
 
         layout.operator("wm.url_open_preset", text="Report a Bug", icon='URL').type = 'BUG'
