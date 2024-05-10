@@ -688,9 +688,9 @@ typedef struct bNodeTree {
   /** Tile size for compositor engine. */
   int chunksize DNA_DEPRECATED;
   /** Execution mode to use for compositor engine. */
-  int execution_mode;
-  /** Execution mode to use for compositor engine. */
-  int precision;
+  int execution_mode DNA_DEPRECATED;
+  /** Precision used by the GPU execution of the compositor tree. */
+  int precision DNA_DEPRECATED;
 
   /** #blender::bke::NodeGroupColorTag. */
   int color_tag;
@@ -851,18 +851,6 @@ enum {
    */
   // NTREE_IS_LOCALIZED = 1 << 5,
 };
-
-/* tree->execution_mode */
-typedef enum eNodeTreeExecutionMode {
-  NTREE_EXECUTION_MODE_CPU = 0,
-  NTREE_EXECUTION_MODE_GPU = 2,
-} eNodeTreeExecutionMode;
-
-/* tree->precision */
-typedef enum eNodeTreePrecision {
-  NODE_TREE_COMPOSITOR_PRECISION_AUTO = 0,
-  NODE_TREE_COMPOSITOR_PRECISION_FULL = 1,
-} eNodeTreePrecision;
 
 typedef enum eNodeTreeRuntimeFlag {
   /** There is a node that references an image with animation. */

@@ -49,9 +49,7 @@ static void composite_get_from_context(const bContext *C,
   *r_ntree = scene->nodetree;
 }
 
-static void foreach_nodeclass(Scene * /*scene*/,
-                              void *calldata,
-                              blender::bke::bNodeClassCallback func)
+static void foreach_nodeclass(void *calldata, blender::bke::bNodeClassCallback func)
 {
   func(calldata, NODE_CLASS_INPUT, N_("Input"));
   func(calldata, NODE_CLASS_OUTPUT, N_("Output"));
