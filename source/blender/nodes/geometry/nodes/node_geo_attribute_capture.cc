@@ -177,6 +177,22 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       *ntree, *node, *node, *link);
 }
 
+static void node_free_storage(bNode *node)
+{
+  socket_items::destruct_array<CaptureAttributeItemsAccessor>(*node);
+  MEM_freeN(node->storage);
+}
+
+static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
+{
+  const NodeGeometryAttributeCapture &src_storage = node_storage(*src_node);
+  NodeGeometryAttributeCapture *dst_storage = MEM_new<NodeGeometryAttributeCapture>(__func__,
+                                                                                    src_storage);
+  dst_node->storage = dst_storage;
+
+  socket_items::copy_array<CaptureAttributeItemsAccessor>(*src_node, *dst_node);
+}
+
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
@@ -196,10 +212,7 @@ static void node_register()
 
   geo_node_type_base(
       &ntype, GEO_NODE_CAPTURE_ATTRIBUTE, "Capture Attribute", NODE_CLASS_ATTRIBUTE);
-  node_type_storage(&ntype,
-                    "NodeGeometryAttributeCapture",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  node_type_storage(&ntype, "NodeGeometryAttributeCapture", node_free_storage, node_copy_storage);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
