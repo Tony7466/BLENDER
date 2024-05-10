@@ -2,10 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#if defined(WITH_FFTW3)
-#  include <fftw3.h>
-#endif
-
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.hh"
