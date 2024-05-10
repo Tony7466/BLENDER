@@ -2,8 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_attribute.hh"
 #include "BLI_virtual_array.hh"
+
+#include "BKE_attribute.hh"
+
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
@@ -39,7 +41,6 @@ using blender::bke::SpanAttributeWriter;
 struct OrderedAttributes {
   VectorSet<AttributeIDRef> ids;
   Vector<AttributeKind> kinds;
-  Vector<GPointer> init_values;
 
   int size() const
   {
@@ -945,20 +946,20 @@ static void execute_instances_tasks(
   for (const int attribute_index : all_instances_attributes.index_range()) {
     bke::AttrDomain domain = bke::AttrDomain::Instance;
     bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
-    eCustomDataType type = all_instances_attributes.kinds[attribute_index].data_type;
-    const GPointer init_value = all_instances_attributes.kinds[attribute_index].init_value;
-    if (init_value.get()) {
+    eCustomDataType data_type = all_instances_attributes.kinds[attribute_index].data_type;
+    const void *init_value = all_instances_attributes.kinds[attribute_index].init_value;
+    if (init_value) {
       const int domain_size = dst_instances->attributes().domain_size(domain);
-      const GVArray init_varray = GVArray::ForSingle(
-          *init_value.type(), domain_size, init_value.get());
+      const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
+      const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_instances->attributes_for_write()
           .lookup_or_add_for_write_only_span(
-              id, domain, type, bke::AttributeInitVArray(init_varray))
+              id, domain, data_type, bke::AttributeInitVArray(init_varray))
           .finish();
     }
     else {
       dst_instances->attributes_for_write()
-          .lookup_or_add_for_write_only_span(id, domain, type)
+          .lookup_or_add_for_write_only_span(id, domain, data_type)
           .finish();
     }
   }
@@ -1206,11 +1207,11 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
   for (const int attribute_index : ordered_attributes.index_range()) {
     const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
     const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
-    const GPointer init_value = ordered_attributes.kinds[attribute_index].init_value;
-    if (init_value.get()) {
+    const void *init_value = ordered_attributes.kinds[attribute_index].init_value;
+    if (init_value) {
       const int domain_size = dst_attributes.domain_size(bke::AttrDomain::Point);
-      const GVArray init_varray = GVArray::ForSingle(
-          *init_value.type(), domain_size, init_value.get());
+      const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
+      const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
           attribute_id, bke::AttrDomain::Point, data_type, bke::AttributeInitVArray(init_varray)));
     }
@@ -1561,12 +1562,12 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
     const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
     const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
     const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
-    const GPointer init_value = ordered_attributes.kinds[attribute_index].init_value;
-    if (init_value.get()) {
+    const void *init_value = ordered_attributes.kinds[attribute_index].init_value;
+    if (init_value) {
       const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
       const int domain_size = dst_attributes.domain_size(domain);
-      const GVArray init_varray = GVArray::ForSingle(
-          *init_value.type(), domain_size, init_value.get());
+      const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
+      const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
           attribute_id, domain, data_type, bke::AttributeInitVArray(init_varray)));
     }
@@ -1895,12 +1896,12 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
     const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
     const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
     const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
-    const GPointer init_value = ordered_attributes.kinds[attribute_index].init_value;
-    if (init_value.get()) {
+    const void *init_value = ordered_attributes.kinds[attribute_index].init_value;
+    if (init_value) {
       const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
       const int domain_size = dst_attributes.domain_size(domain);
-      const GVArray init_varray = GVArray::ForSingle(
-          *init_value.type(), domain_size, init_value.get());
+      const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
+      const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
           attribute_id, domain, data_type, bke::AttributeInitVArray(init_varray)));
     }
