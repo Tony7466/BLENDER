@@ -956,7 +956,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     }
 
     LISTBASE_FOREACH (const bDeformGroup *, group, &mesh->vertex_group_names) {
-      if (!callback(group->name, {AttrDomain::Point, CD_PROP_FLOAT})) {
+      if (!callback(group->name, {AttrDomain::Point, CD_PROP_FLOAT, nullptr})) {
         return false;
       }
     }

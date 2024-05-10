@@ -562,7 +562,7 @@ bool CustomDataAttributeProvider::foreach_attribute(const void *owner,
   for (const CustomDataLayer &layer : Span(custom_data->layers, custom_data->totlayer)) {
     const eCustomDataType data_type = (eCustomDataType)layer.type;
     if (this->type_is_supported(data_type)) {
-      AttributeMetaData meta_data{domain_, data_type};
+      AttributeMetaData meta_data{domain_, data_type, nullptr};
       const AttributeIDRef attribute_id = attribute_id_from_custom_data_layer(layer);
       if (!callback(attribute_id, meta_data)) {
         return false;
@@ -736,10 +736,13 @@ GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_span(
 }
 
 GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_only_span(
-    const AttributeIDRef &attribute_id, const AttrDomain domain, const eCustomDataType data_type)
+    const AttributeIDRef &attribute_id,
+    const AttrDomain domain,
+    const eCustomDataType data_type,
+    const AttributeInit &initializer)
 {
   GAttributeWriter attribute = this->lookup_or_add_for_write(
-      attribute_id, domain, data_type, AttributeInitConstruct());
+      attribute_id, domain, data_type, initializer);
   if (attribute) {
     return GSpanAttributeWriter{std::move(attribute), false};
   }

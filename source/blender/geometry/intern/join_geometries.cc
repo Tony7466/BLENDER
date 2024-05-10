@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BLI_array_utils.hh"
 
 #include "GEO_join_geometries.hh"
@@ -38,6 +39,9 @@ static Map<AttributeIDRef, AttributeMetaData> get_final_attribute_info(
                     {meta_data_final->data_type, meta_data.data_type});
                 meta_data_final->domain = bke::attribute_domain_highest_priority(
                     {meta_data_final->domain, meta_data.domain});
+                if (meta_data_final->init_value.get() == nullptr) {
+                  meta_data_final->init_value = meta_data.init_value;
+                }
               });
           return true;
         });
@@ -84,9 +88,18 @@ void join_attributes(const Span<const GeometryComponent *> src_components,
     const AttributeIDRef attribute_id = item.key;
     const AttributeMetaData &meta_data = item.value;
 
-    bke::GSpanAttributeWriter write_attribute =
-        result.attributes_for_write()->lookup_or_add_for_write_only_span(
-            attribute_id, meta_data.domain, meta_data.data_type);
+    bke::GSpanAttributeWriter write_attribute;
+    if (meta_data.init_value.get()) {
+      const int domain_size = result.attributes()->domain_size(meta_data.domain);
+      const bke::AttributeInitVArray initializer(GVArray::ForSingle(
+          *meta_data.init_value.type(), domain_size, meta_data.init_value.get()));
+      write_attribute = result.attributes_for_write()->lookup_or_add_for_write_only_span(
+          attribute_id, meta_data.domain, meta_data.data_type, initializer);
+    }
+    else {
+      write_attribute = result.attributes_for_write()->lookup_or_add_for_write_only_span(
+          attribute_id, meta_data.domain, meta_data.data_type);
+    }
     if (!write_attribute) {
       continue;
     }

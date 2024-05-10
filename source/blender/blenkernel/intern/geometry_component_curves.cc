@@ -427,7 +427,7 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       return true;
     }
     LISTBASE_FOREACH (const bDeformGroup *, group, &curves->vertex_group_names) {
-      if (!callback(group->name, {AttrDomain::Point, CD_PROP_FLOAT})) {
+      if (!callback(group->name, {AttrDomain::Point, CD_PROP_FLOAT, nullptr})) {
         return false;
       }
     }

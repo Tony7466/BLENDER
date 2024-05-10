@@ -8,7 +8,7 @@
 #include <optional>
 
 #include "BLI_function_ref.hh"
-#include "BLI_generic_span.hh"
+#include "BLI_generic_pointer.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
@@ -88,6 +88,7 @@ eCustomDataType cpp_type_to_custom_data_type(const CPPType &type);
 struct AttributeMetaData {
   AttrDomain domain;
   eCustomDataType data_type;
+  GPointer init_value;
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(AttributeMetaData, domain, data_type)
 };
@@ -95,6 +96,7 @@ struct AttributeMetaData {
 struct AttributeKind {
   AttrDomain domain;
   eCustomDataType data_type;
+  GPointer init_value;
 };
 
 /**
@@ -780,19 +782,23 @@ class MutableAttributeAccessor : public AttributeAccessor {
    *
    * For trivial types, the values in a newly created attribute will not be initialized.
    */
-  GSpanAttributeWriter lookup_or_add_for_write_only_span(const AttributeIDRef &attribute_id,
-                                                         const AttrDomain domain,
-                                                         const eCustomDataType data_type);
+  GSpanAttributeWriter lookup_or_add_for_write_only_span(
+      const AttributeIDRef &attribute_id,
+      const AttrDomain domain,
+      const eCustomDataType data_type,
+      const AttributeInit &initializer = AttributeInitConstruct());
 
   /**
    * Same as above, but should be used when the type is known at compile time.
    */
   template<typename T>
-  SpanAttributeWriter<T> lookup_or_add_for_write_only_span(const AttributeIDRef &attribute_id,
-                                                           const AttrDomain domain)
+  SpanAttributeWriter<T> lookup_or_add_for_write_only_span(
+      const AttributeIDRef &attribute_id,
+      const AttrDomain domain,
+      const AttributeInit &initializer = AttributeInitConstruct())
   {
     AttributeWriter<T> attribute = this->lookup_or_add_for_write<T>(
-        attribute_id, domain, AttributeInitConstruct());
+        attribute_id, domain, initializer);
 
     if (attribute) {
       return SpanAttributeWriter<T>{std::move(attribute), false};

@@ -82,6 +82,11 @@ class BuiltinAttributeProvider {
     return data_type_;
   }
 
+  GPointer init_value() const
+  {
+    return nullptr;
+  }
+
   AttributeValidator validator() const
   {
     return validator_;
@@ -289,7 +294,8 @@ inline bool for_all(const void *owner,
   for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
   {
     if (provider->exists(owner)) {
-      AttributeMetaData meta_data{provider->domain(), provider->data_type()};
+      AttributeMetaData meta_data{
+          provider->domain(), provider->data_type(), provider->init_value()};
       if (!fn(provider->name(), meta_data)) {
         return false;
       }
