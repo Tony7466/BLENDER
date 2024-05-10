@@ -3295,7 +3295,7 @@ void GRAPH_OT_driver_variables_paste(wmOperatorType *ot)
 /** \name Delete Invalid Drivers Operator
  * \{ */
 
-static int graph_driver_delete_invalid_exec(bContext *C, wmOperator *op)
+static int graph_driver_delete_invalid_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   ListBase anim_data = {nullptr, nullptr};

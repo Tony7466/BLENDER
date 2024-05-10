@@ -529,7 +529,7 @@ bool ANIM_remove_driver(ID *id, const char rna_path[], int array_index)
 
   if (array_index >= 0) {
     /* Simple case: Find the matching driver and remove it. */
-    FCurve fcu = verify_driver_fcurve(id, rna_path, array_index, DRIVER_FCURVE_LOOKUP_ONLY);
+    FCurve *fcu = verify_driver_fcurve(id, rna_path, array_index, DRIVER_FCURVE_LOOKUP_ONLY);
     if (!fcu) {
       return false;
     }
@@ -542,7 +542,8 @@ bool ANIM_remove_driver(ID *id, const char rna_path[], int array_index)
   /* Step through all drivers, removing all of those with the same RNA path. */
   bool any_driver_removed = false;
   FCurve *fcu_iter = static_cast<FCurve *>(adt->drivers.first);
-  while ((FCurve *fcu = BKE_fcurve_iter_step(fcu_iter, rna_path)) != nullptr) {
+  FCurve *fcu;
+  while ((fcu = BKE_fcurve_iter_step(fcu_iter, rna_path)) != nullptr) {
     /* Store the next fcurve for looping. */
     fcu_iter = fcu->next;
 
