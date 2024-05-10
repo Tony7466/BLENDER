@@ -1073,24 +1073,15 @@ class CompositorPerformanceButtonsPanel:
     def draw(self, context):
         layout = self.layout
         scene = context.scene
+        rd = scene.render
 
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        tree = scene.node_tree
-        if not tree:
-            return
-
-        use_realtime = tree.execution_mode == 'REALTIME'
         col = layout.column()
         row = col.row()
-        row.prop(tree, "execution_mode", expand=True)
-        col.prop(tree, "precision")
-
-        col = layout.column()
-        col.active = not use_realtime
-        col.prop(tree, "render_quality", text="Render")
-        col.prop(tree, "edit_quality", text="Edit")
+        row.prop(rd, "compositor_device", text="Device", expand=True)
+        col.prop(rd, "compositor_precision", text="Precision")
 
 
 class RENDER_PT_eevee_performance_compositor(RenderButtonsPanel, CompositorPerformanceButtonsPanel, Panel):
