@@ -19,8 +19,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.hh"
-#include "BLI_threads.h"
-#include "BLI_timeit.hh"
 
 #include "COM_GlareFogGlowOperation.h"
 
@@ -154,10 +152,16 @@ void GlareFogGlowOperation::generate_glare(float *output,
   std::complex<float> *kernel_frequency_domain = CachedFogGlowKernel::get_in_frequency_domain(
       kernel_size, spatial_size);
 
-  const int64_t spatial_memory_size = int64_t(spatial_size.x) * spatial_size.y;
-  float *image_spatial_domain = fftwf_alloc_real(spatial_memory_size);
+  /* We only process the color channels, the alpha channel is written to the output as is. */
+  const int channels_count = 3;
+  const int64_t spatial_pixels_per_channel = int64_t(spatial_size.x) * spatial_size.y;
+  const int64_t frequency_pixels_per_channel = int64_t(spatial_size.x) * spatial_size.y;
+  const int64_t spatial_pixels_count = spatial_pixels_per_channel * channels_count;
+  const int64_t frequency_pixels_count = frequency_pixels_per_channel * channels_count;
+
+  float *image_spatial_domain = fftwf_alloc_real(spatial_pixels_count);
   std::complex<float> *image_frequency_domain = reinterpret_cast<std::complex<float> *>(
-      fftwf_alloc_complex(frequency_size.x * frequency_size.y));
+      fftwf_alloc_complex(frequency_pixels_count));
 
   fftwf_plan image_forward_plan = fftwf_plan_dft_r2c_2d(
       spatial_size.y,
@@ -172,68 +176,76 @@ void GlareFogGlowOperation::generate_glare(float *output,
       image_spatial_domain,
       FFTW_ESTIMATE);
 
-  /* Convolve each channel of the input. We only process the color channels, the alpha channel is
-   * written to the output as is. */
-  const int channels_count = 3;
-  BLI_assert(image->get_num_channels() == COM_DATA_TYPE_COLOR_CHANNELS);
-  for (const int64_t channel : IndexRange(channels_count)) {
-    /* Zero pad the image to the required spatial domain size. */
-    memset(image_spatial_domain, 0, sizeof(float) * spatial_memory_size);
-    threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
-      for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(image_size.x)) {
-          const int64_t output_index = x + y * spatial_size.x;
+  /* Zero pad the image to the required spatial domain size, storing each channel in planner
+   * format for better cache locality, that is, RRRR...GGGG...BBBB. */
+  memset(image_spatial_domain, 0, sizeof(float) * spatial_pixels_count);
+  threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(image_size.x)) {
+        for (const int64_t channel : IndexRange(channels_count)) {
+          const int64_t output_index = x + y * spatial_size.x +
+                                       spatial_pixels_per_channel * channel;
           image_spatial_domain[output_index] = image->get_elem(x, y)[channel];
         }
       }
-    });
+    }
+  });
 
-    fftwf_execute(image_forward_plan);
+  threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+    for (const int64_t channel : sub_range) {
+      fftwf_execute_dft_r2c(image_forward_plan,
+                            image_spatial_domain + spatial_pixels_per_channel * channel,
+                            reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                frequency_pixels_per_channel * channel);
+    }
+  });
 
-    /* Multiply the kernel and the image in the frequency domain to perform the convolution. The
-     * FFT is not normalized, meaning the result of the FFT followed by an inverse FFT will result
-     * in an image that is scaled by a factor of the product of the width and height, so we take
-     * that into account by dividing by that scale. See the FFTW manual for more information. */
-    const float normalization_scale = float(spatial_size.x) * spatial_size.y;
-    threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
-      for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(frequency_size.x)) {
-          const int64_t index = x + y * frequency_size.x;
-          const std::complex<float> image_value = image_frequency_domain[index];
-          const std::complex<float> kernel_value = kernel_frequency_domain[index];
-          image_frequency_domain[index] = (image_value * kernel_value) / normalization_scale;
+  /* Multiply the kernel and the image in the frequency domain to perform the convolution. The
+   * FFT is not normalized, meaning the result of the FFT followed by an inverse FFT will result
+   * in an image that is scaled by a factor of the product of the width and height, so we take
+   * that into account by dividing by that scale. See the FFTW manual for more information. */
+  const float normalization_scale = float(spatial_size.x) * spatial_size.y;
+  threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(frequency_size.x)) {
+        for (const int64_t channel : IndexRange(channels_count)) {
+          const int64_t base_index = x + y * frequency_size.x;
+          const int64_t channel_index = base_index + frequency_pixels_per_channel * channel;
+          const std::complex<float> kernel_value = kernel_frequency_domain[base_index];
+          image_frequency_domain[channel_index] *= kernel_value / normalization_scale;
         }
       }
-    });
+    }
+  });
 
-    fftwf_execute(image_backward_plan);
+  threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+    for (const int64_t channel : sub_range) {
+      fftwf_execute_dft_c2r(image_backward_plan,
+                            reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                frequency_pixels_per_channel * channel,
+                            image_spatial_domain + spatial_pixels_per_channel * channel);
+    }
+  });
 
-    /* Copy the result of the convolution to the output channel. */
-    threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
-      for (const int64_t y : sub_y_range) {
-        for (const int64_t x : IndexRange(image_size.x)) {
+  /* Copy the result of the convolution to the output channel. */
+  threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(image_size.x)) {
+        for (const int64_t channel : IndexRange(channels_count)) {
           const int64_t output_index = (x + y * image_size.x) * image->get_num_channels();
-          const int64_t input_index = x + y * spatial_size.x;
+          const int64_t input_index = x + y * spatial_size.x +
+                                      spatial_pixels_per_channel * channel;
           output[output_index + channel] = image_spatial_domain[input_index];
+          output[output_index + 3] = image->get_buffer()[output_index + 3];
         }
       }
-    });
-  }
+    }
+  });
 
   fftwf_free(image_spatial_domain);
   fftwf_destroy_plan(image_forward_plan);
   fftwf_destroy_plan(image_backward_plan);
   fftwf_free(image_frequency_domain);
-
-  /* Copy the alpha channel. */
-  threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
-    for (const int64_t y : sub_y_range) {
-      for (const int64_t x : IndexRange(image_size.x)) {
-        const int64_t index = (x + y * image_size.x) * image->get_num_channels();
-        output[index + 3] = image->get_buffer()[index + 3];
-      }
-    }
-  });
 #else
   UNUSED_VARS(output, image, settings);
 #endif
