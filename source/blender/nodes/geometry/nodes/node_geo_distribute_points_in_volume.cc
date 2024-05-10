@@ -295,9 +295,9 @@ static void node_register()
                      "Distribute Points in Volume",
                      NODE_CLASS_GEOMETRY);
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometryDistributePointsInVolume",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometryDistributePointsInVolume",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   blender::bke::node_type_size(&ntype, 170, 100, 320);

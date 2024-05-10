@@ -1073,9 +1073,9 @@ static void node_register()
       &ntype, GEO_NODE_DUPLICATE_ELEMENTS, "Duplicate Elements", NODE_CLASS_GEOMETRY);
 
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometryDuplicateElements",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometryDuplicateElements",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
 
   ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;

@@ -193,9 +193,9 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_CAPTURE_ATTRIBUTE, "Capture Attribute", NODE_CLASS_ATTRIBUTE);
   blender::bke::node_type_storage(&ntype,
-                    "NodeGeometryAttributeCapture",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+                                  "NodeGeometryAttributeCapture",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;

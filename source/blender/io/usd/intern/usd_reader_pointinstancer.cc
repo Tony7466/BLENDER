@@ -175,7 +175,8 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
   group_output->locx = 500.0f;
   group_output->flag |= NODE_DO_OUTPUT;
 
-  bNode *instance_on_points_node = bke::nodeAddStaticNode(nullptr, ntree, GEO_NODE_INSTANCE_ON_POINTS);
+  bNode *instance_on_points_node = bke::nodeAddStaticNode(
+      nullptr, ntree, GEO_NODE_INSTANCE_ON_POINTS);
   instance_on_points_node->locx = 300.0f;
   bNodeSocket *socket = bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Pick Instance");
   socket->default_value_typed<bNodeSocketValueBoolean>()->value = true;
@@ -204,46 +205,46 @@ void USDPointInstancerReader::read_object_data(Main *bmain, const double motionS
   scale_attrib_node->locy = -900.0f;
 
   bke::nodeAddLink(ntree,
-              group_input,
-              static_cast<bNodeSocket *>(group_input->outputs.first),
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Points"));
+                   group_input,
+                   static_cast<bNodeSocket *>(group_input->outputs.first),
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Points"));
 
   bke::nodeAddLink(ntree,
-              mask_attrib_node,
-              bke::nodeFindSocket(mask_attrib_node, SOCK_OUT, "Attribute"),
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Selection"));
+                   mask_attrib_node,
+                   bke::nodeFindSocket(mask_attrib_node, SOCK_OUT, "Attribute"),
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Selection"));
 
   bke::nodeAddLink(ntree,
-              indices_attrib_node,
-              bke::nodeFindSocket(indices_attrib_node, SOCK_OUT, "Attribute"),
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Instance Index"));
+                   indices_attrib_node,
+                   bke::nodeFindSocket(indices_attrib_node, SOCK_OUT, "Attribute"),
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Instance Index"));
 
   bke::nodeAddLink(ntree,
-              scale_attrib_node,
-              bke::nodeFindSocket(scale_attrib_node, SOCK_OUT, "Attribute"),
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Scale"));
+                   scale_attrib_node,
+                   bke::nodeFindSocket(scale_attrib_node, SOCK_OUT, "Attribute"),
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Scale"));
 
   bke::nodeAddLink(ntree,
-              rotation_attrib_node,
-              bke::nodeFindSocket(rotation_attrib_node, SOCK_OUT, "Attribute"),
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Rotation"));
+                   rotation_attrib_node,
+                   bke::nodeFindSocket(rotation_attrib_node, SOCK_OUT, "Attribute"),
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Rotation"));
 
   bke::nodeAddLink(ntree,
-              collection_info_node,
-              bke::nodeFindSocket(collection_info_node, SOCK_OUT, "Instances"),
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Instance"));
+                   collection_info_node,
+                   bke::nodeFindSocket(collection_info_node, SOCK_OUT, "Instances"),
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_IN, "Instance"));
 
   bke::nodeAddLink(ntree,
-              instance_on_points_node,
-              bke::nodeFindSocket(instance_on_points_node, SOCK_OUT, "Instances"),
-              group_output,
-              static_cast<bNodeSocket *>(group_output->inputs.first));
+                   instance_on_points_node,
+                   bke::nodeFindSocket(instance_on_points_node, SOCK_OUT, "Instances"),
+                   group_output,
+                   static_cast<bNodeSocket *>(group_output->inputs.first));
 
   BKE_ntree_update_main_tree(bmain, ntree, nullptr);
 
