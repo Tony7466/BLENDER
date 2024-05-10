@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BLI_map.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -66,6 +67,7 @@ class BuiltinAttributeProvider {
   virtual bool try_delete(void *owner) const = 0;
   virtual bool try_create(void *onwer, const AttributeInit &initializer) const = 0;
   virtual bool exists(const void *owner) const = 0;
+  virtual const void *init_value(const void *owner) const = 0;
 
   StringRefNull name() const
   {
@@ -80,11 +82,6 @@ class BuiltinAttributeProvider {
   eCustomDataType data_type() const
   {
     return data_type_;
-  }
-
-  GPointer init_value() const
-  {
-    return nullptr;
   }
 
   AttributeValidator validator() const
@@ -195,6 +192,7 @@ class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
   bool try_delete(void *owner) const final;
   bool try_create(void *owner, const AttributeInit &initializer) const final;
   bool exists(const void *owner) const final;
+  const void *init_value(const void *owner) const final;
 
  private:
   bool layer_exists(const CustomData &custom_data) const;
@@ -295,7 +293,7 @@ inline bool for_all(const void *owner,
   {
     if (provider->exists(owner)) {
       AttributeMetaData meta_data{
-          provider->domain(), provider->data_type(), provider->init_value()};
+          provider->domain(), provider->data_type(), provider->init_value(owner)};
       if (!fn(provider->name(), meta_data)) {
         return false;
       }

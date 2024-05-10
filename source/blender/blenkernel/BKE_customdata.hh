@@ -646,6 +646,12 @@ void CustomData_validate_layer_name(const CustomData *data,
                                     char *outname);
 
 /**
+ * Set the value used to initialize new elements.
+ * Can be null, in which case the type-based default value is used (typically zero).
+ */
+void CustomData_layer_set_init_value(CustomDataLayer *layer, const void *init_value);
+
+/**
  * For file reading compatibility, returns false if the layer was freed,
  * only after this test passes, `layer->data` should be assigned.
  */

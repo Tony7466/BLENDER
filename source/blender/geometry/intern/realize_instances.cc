@@ -878,7 +878,7 @@ static void gather_attributes_for_propagation(
                             {attribute_kind->domain, domain});
                         attribute_kind->data_type = bke::attribute_data_type_highest_complexity(
                             {attribute_kind->data_type, meta_data.data_type});
-                        if (!attribute_kind->init_value.get()) {
+                        if (!attribute_kind->init_value) {
                           attribute_kind->init_value = meta_data.init_value;
                         }
                       };
@@ -1104,7 +1104,7 @@ static AllPointCloudsInfo preprocess_pointclouds(const bke::GeometrySet &geometr
         GVArray attribute = *attributes.lookup_or_default(attribute_id,
                                                           attribute_kind.domain,
                                                           attribute_kind.data_type,
-                                                          attribute_kind.init_value.get());
+                                                          attribute_kind.init_value);
         pointcloud_info.attributes[attribute_index].emplace(std::move(attribute));
       }
     }
@@ -1359,7 +1359,7 @@ static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
         GVArray attribute = *attributes.lookup_or_default(attribute_id,
                                                           attribute_kind.domain,
                                                           attribute_kind.data_type,
-                                                          attribute_kind.init_value.get());
+                                                          attribute_kind.init_value);
         mesh_info.attributes[attribute_index].emplace(std::move(attribute));
       }
     }
@@ -1710,7 +1710,7 @@ static AllCurvesInfo preprocess_curves(const bke::GeometrySet &geometry_set,
         GVArray attribute = *attributes.lookup_or_default(attribute_id,
                                                           attribute_kind.domain,
                                                           attribute_kind.data_type,
-                                                          attribute_kind.init_value.get());
+                                                          attribute_kind.init_value);
         curve_info.attributes[attribute_index].emplace(std::move(attribute));
       }
     }

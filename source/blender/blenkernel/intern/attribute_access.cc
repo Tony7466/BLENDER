@@ -10,6 +10,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_type_conversions.hh"
 
+#include "DNA_customdata_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BLI_array_utils.hh"
@@ -270,7 +271,7 @@ static void *add_generic_custom_data_layer(CustomData &custom_data,
       &custom_data, data_type, alloctype, domain_size, &anonymous_id);
 }
 
-static const void *add_generic_custom_data_layer_with_existing_data(
+static int add_generic_custom_data_layer_with_existing_data(
     CustomData &custom_data,
     const eCustomDataType data_type,
     const AttributeIDRef &attribute_id,
@@ -278,13 +279,19 @@ static const void *add_generic_custom_data_layer_with_existing_data(
     void *layer_data,
     const ImplicitSharingInfo *sharing_info)
 {
+
   if (attribute_id.is_anonymous()) {
     const AnonymousAttributeID &anonymous_id = attribute_id.anonymous_id();
-    return CustomData_add_layer_anonymous_with_data(
+    CustomData_add_layer_anonymous_with_data(
         &custom_data, data_type, &anonymous_id, domain_size, layer_data, sharing_info);
+
+    return CustomData_get_named_layer_index(&custom_data, data_type, anonymous_id.name());
   }
-  return CustomData_add_layer_named_with_data(
+
+  CustomData_add_layer_named_with_data(
       &custom_data, data_type, layer_data, domain_size, attribute_id.name(), sharing_info);
+
+  return CustomData_get_named_layer_index(&custom_data, data_type, attribute_id.name());
 }
 
 static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attribute_id,
@@ -294,15 +301,18 @@ static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attr
                                                       const AttributeInit &initializer)
 {
   const int old_layer_num = custom_data.totlayer;
+  int layer_index = -1;
   switch (initializer.type) {
     case AttributeInit::Type::Construct: {
       add_generic_custom_data_layer(
           custom_data, data_type, CD_CONSTRUCT, domain_num, attribute_id);
+      layer_index = CustomData_get_named_layer_index(&custom_data, data_type, attribute_id.name());
       break;
     }
     case AttributeInit::Type::DefaultValue: {
       add_generic_custom_data_layer(
           custom_data, data_type, CD_SET_DEFAULT, domain_num, attribute_id);
+      layer_index = CustomData_get_named_layer_index(&custom_data, data_type, attribute_id.name());
       break;
     }
     case AttributeInit::Type::VArray: {
@@ -312,25 +322,32 @@ static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attr
         const GVArray &varray = static_cast<const AttributeInitVArray &>(initializer).varray;
         varray.materialize_to_uninitialized(varray.index_range(), data);
       }
+      layer_index = CustomData_get_named_layer_index(&custom_data, data_type, attribute_id.name());
       break;
     }
     case AttributeInit::Type::MoveArray: {
       void *data = static_cast<const AttributeInitMoveArray &>(initializer).data;
-      add_generic_custom_data_layer_with_existing_data(
+      layer_index = add_generic_custom_data_layer_with_existing_data(
           custom_data, data_type, attribute_id, domain_num, data, nullptr);
       break;
     }
     case AttributeInit::Type::Shared: {
       const AttributeInitShared &init = static_cast<const AttributeInitShared &>(initializer);
-      add_generic_custom_data_layer_with_existing_data(custom_data,
-                                                       data_type,
-                                                       attribute_id,
-                                                       domain_num,
-                                                       const_cast<void *>(init.data),
-                                                       init.sharing_info);
+      layer_index = add_generic_custom_data_layer_with_existing_data(custom_data,
+                                                                     data_type,
+                                                                     attribute_id,
+                                                                     domain_num,
+                                                                     const_cast<void *>(init.data),
+                                                                     init.sharing_info);
       break;
     }
   }
+
+  if (initializer.init_value) {
+    CustomDataLayer &layer = custom_data.layers[layer_index];
+    CustomData_layer_set_init_value(&layer, initializer.init_value);
+  }
+
   return old_layer_num < custom_data.totlayer;
 }
 
@@ -459,6 +476,21 @@ bool BuiltinCustomDataLayerProvider::exists(const void *owner) const
   return CustomData_has_layer_named(custom_data, data_type_, name_);
 }
 
+const void *BuiltinCustomDataLayerProvider::init_value(const void *owner) const
+{
+  const CustomData *custom_data = custom_data_access_.get_const_custom_data(owner);
+  if (custom_data == nullptr) {
+    return nullptr;
+  }
+
+  const int index = CustomData_get_named_layer_index(custom_data, data_type_, name_);
+  if (index == -1) {
+    return nullptr;
+  }
+  const CustomDataLayer &layer = custom_data->layers[index];
+  return layer.init_value;
+}
+
 GAttributeReader CustomDataAttributeProvider::try_get_for_read(
     const void *owner, const AttributeIDRef &attribute_id) const
 {
@@ -562,7 +594,7 @@ bool CustomDataAttributeProvider::foreach_attribute(const void *owner,
   for (const CustomDataLayer &layer : Span(custom_data->layers, custom_data->totlayer)) {
     const eCustomDataType data_type = (eCustomDataType)layer.type;
     if (this->type_is_supported(data_type)) {
-      AttributeMetaData meta_data{domain_, data_type, nullptr};
+      AttributeMetaData meta_data{domain_, data_type, layer.init_value};
       const AttributeIDRef attribute_id = attribute_id_from_custom_data_layer(layer);
       if (!callback(attribute_id, meta_data)) {
         return false;

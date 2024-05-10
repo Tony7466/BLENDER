@@ -39,7 +39,7 @@ static Map<AttributeIDRef, AttributeMetaData> get_final_attribute_info(
                     {meta_data_final->data_type, meta_data.data_type});
                 meta_data_final->domain = bke::attribute_domain_highest_priority(
                     {meta_data_final->domain, meta_data.domain});
-                if (meta_data_final->init_value.get() == nullptr) {
+                if (meta_data_final->init_value == nullptr) {
                   meta_data_final->init_value = meta_data.init_value;
                 }
               });
@@ -89,10 +89,11 @@ void join_attributes(const Span<const GeometryComponent *> src_components,
     const AttributeMetaData &meta_data = item.value;
 
     bke::GSpanAttributeWriter write_attribute;
-    if (meta_data.init_value.get()) {
+    if (meta_data.init_value) {
       const int domain_size = result.attributes()->domain_size(meta_data.domain);
-      const bke::AttributeInitVArray initializer(GVArray::ForSingle(
-          *meta_data.init_value.type(), domain_size, meta_data.init_value.get()));
+      const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(meta_data.data_type);
+      const bke::AttributeInitVArray initializer(
+          GVArray::ForSingle(cpp_type, domain_size, meta_data.init_value));
       write_attribute = result.attributes_for_write()->lookup_or_add_for_write_only_span(
           attribute_id, meta_data.domain, meta_data.data_type, initializer);
     }

@@ -88,7 +88,7 @@ eCustomDataType cpp_type_to_custom_data_type(const CPPType &type);
 struct AttributeMetaData {
   AttrDomain domain;
   eCustomDataType data_type;
-  GPointer init_value;
+  const void *init_value;
 
   BLI_STRUCT_EQUALITY_OPERATORS_2(AttributeMetaData, domain, data_type)
 };
@@ -96,7 +96,7 @@ struct AttributeMetaData {
 struct AttributeKind {
   AttrDomain domain;
   eCustomDataType data_type;
-  GPointer init_value;
+  const void *init_value;
 };
 
 /**
@@ -116,7 +116,13 @@ struct AttributeInit {
     Shared,
   };
   Type type;
-  AttributeInit(const Type type) : type(type) {}
+  /* Single value that is set as the init value for the attribute.
+   * This isn't necessarily the same as any value in the initial data. */
+  const void *init_value;
+  AttributeInit(const Type type, const void *init_value = nullptr)
+      : type(type), init_value(init_value)
+  {
+  }
 };
 
 /**
@@ -124,14 +130,20 @@ struct AttributeInit {
  * if all attribute element values will be set by the caller after creating the attribute.
  */
 struct AttributeInitConstruct : public AttributeInit {
-  AttributeInitConstruct() : AttributeInit(Type::Construct) {}
+  AttributeInitConstruct(const void *init_value = nullptr)
+      : AttributeInit(Type::Construct, init_value)
+  {
+  }
 };
 
 /**
  * Create an attribute using the default value for the data type (almost always "zero").
  */
 struct AttributeInitDefaultValue : public AttributeInit {
-  AttributeInitDefaultValue() : AttributeInit(Type::DefaultValue) {}
+  AttributeInitDefaultValue(const void *init_value = nullptr)
+      : AttributeInit(Type::DefaultValue, init_value)
+  {
+  }
 };
 
 /**
@@ -141,7 +153,10 @@ struct AttributeInitDefaultValue : public AttributeInit {
 struct AttributeInitVArray : public AttributeInit {
   GVArray varray;
 
-  AttributeInitVArray(GVArray varray) : AttributeInit(Type::VArray), varray(std::move(varray)) {}
+  AttributeInitVArray(GVArray varray, const void *init_value = nullptr)
+      : AttributeInit(Type::VArray, init_value), varray(std::move(varray))
+  {
+  }
 };
 
 /**
@@ -155,7 +170,10 @@ struct AttributeInitVArray : public AttributeInit {
 struct AttributeInitMoveArray : public AttributeInit {
   void *data = nullptr;
 
-  AttributeInitMoveArray(void *data) : AttributeInit(Type::MoveArray), data(data) {}
+  AttributeInitMoveArray(void *data, const void *init_value = nullptr)
+      : AttributeInit(Type::MoveArray, init_value), data(data)
+  {
+  }
 };
 
 /**
@@ -166,8 +184,10 @@ struct AttributeInitShared : public AttributeInit {
   const void *data = nullptr;
   const ImplicitSharingInfo *sharing_info = nullptr;
 
-  AttributeInitShared(const void *data, const ImplicitSharingInfo &sharing_info)
-      : AttributeInit(Type::Shared), data(data), sharing_info(&sharing_info)
+  AttributeInitShared(const void *data,
+                      const ImplicitSharingInfo &sharing_info,
+                      const void *init_value = nullptr)
+      : AttributeInit(Type::Shared, init_value), data(data), sharing_info(&sharing_info)
   {
   }
 };

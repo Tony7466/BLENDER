@@ -2327,6 +2327,9 @@ static CustomDataLayer *customData_add_layer__internal(
     int totelem,
     const StringRef name);
 
+static void customData_layer_set_init_value__internal(CustomDataLayer *layer,
+                                                      const void *init_value);
+
 void CustomData_update_typemap(CustomData *data)
 {
   int lasttype = -1;
@@ -2356,6 +2359,10 @@ static bool customdata_typemap_is_valid(const CustomData *data)
 
 static void *copy_layer_data(const eCustomDataType type, const void *data, const int totelem)
 {
+  if (data == nullptr) {
+    return nullptr;
+  }
+
   const LayerTypeInfo &type_info = *layerType_getInfo(type);
   const int64_t size_in_bytes = int64_t(totelem) * type_info.size;
   void *new_data = MEM_mallocN_aligned(size_in_bytes, type_info.alignment, __func__);
@@ -2370,6 +2377,10 @@ static void *copy_layer_data(const eCustomDataType type, const void *data, const
 
 static void free_layer_data(const eCustomDataType type, const void *data, const int totelem)
 {
+  if (data == nullptr) {
+    return;
+  }
+
   const LayerTypeInfo &type_info = *layerType_getInfo(type);
   if (type_info.free) {
     type_info.free(const_cast<void *>(data), totelem);
@@ -2433,16 +2444,19 @@ static bool customdata_merge_internal(const CustomData *source,
     }
 
     void *layer_data_to_assign = nullptr;
+    void *layer_init_value_to_assign = nullptr;
     const ImplicitSharingInfo *sharing_info_to_assign = nullptr;
     if (!alloctype.has_value()) {
       if (src_layer.data != nullptr) {
         if (src_layer.sharing_info == nullptr) {
           /* Can't share the layer, duplicate it instead. */
           layer_data_to_assign = copy_layer_data(type, src_layer.data, totelem);
+          layer_init_value_to_assign = copy_layer_data(type, src_layer.init_value, 1);
         }
         else {
           /* Share the layer. */
           layer_data_to_assign = src_layer.data;
+          layer_init_value_to_assign = src_layer.init_value;
           sharing_info_to_assign = src_layer.sharing_info;
         }
       }
@@ -2468,6 +2482,8 @@ static bool customdata_merge_internal(const CustomData *source,
       new_layer->anonymous_id = src_layer.anonymous_id;
       new_layer->anonymous_id->add_user();
     }
+
+    customData_layer_set_init_value__internal(new_layer, layer_init_value_to_assign);
   }
 
   CustomData_update_typemap(dest);
@@ -2525,25 +2541,29 @@ class CustomDataLayerImplicitSharing : public ImplicitSharingInfo {
   const void *data_;
   int totelem_;
   const eCustomDataType type_;
+  const void *init_value_;
 
  public:
-  CustomDataLayerImplicitSharing(const void *data, const int totelem, const eCustomDataType type)
-      : ImplicitSharingInfo(), data_(data), totelem_(totelem), type_(type)
+  CustomDataLayerImplicitSharing(const void *data,
+                                 const int totelem,
+                                 const eCustomDataType type,
+                                 const void *init_value = nullptr)
+      : ImplicitSharingInfo(), data_(data), totelem_(totelem), type_(type), init_value_(init_value)
   {
   }
 
  private:
   void delete_self_with_data() override
   {
-    if (data_ != nullptr) {
-      free_layer_data(type_, data_, totelem_);
-    }
+    free_layer_data(type_, data_, totelem_);
+    free_layer_data(type_, init_value_, 1);
     MEM_delete(this);
   }
 
   void delete_data_only() override
   {
     free_layer_data(type_, data_, totelem_);
+    free_layer_data(type_, init_value_, 1);
     data_ = nullptr;
     totelem_ = 0;
   }
@@ -2574,10 +2594,10 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   }
   else {
     const eCustomDataType type = eCustomDataType(layer.type);
-    const void *old_data = layer.data;
     /* Copy the layer before removing the user because otherwise the data might be freed while
      * we're still copying from it here. */
-    layer.data = copy_layer_data(type, old_data, totelem);
+    layer.data = copy_layer_data(type, layer.data, totelem);
+    layer.init_value = copy_layer_data(type, layer.init_value, 1);
     layer.sharing_info->remove_user_and_delete_if_last();
     layer.sharing_info = make_implicit_sharing_info_for_layer(type, layer.data, totelem);
   }
@@ -2697,13 +2717,39 @@ static void customData_free_layer__internal(CustomDataLayer *layer, const int to
   }
   const eCustomDataType type = eCustomDataType(layer->type);
   if (layer->sharing_info == nullptr) {
-    if (layer->data) {
-      free_layer_data(type, layer->data, totelem);
-    }
+    free_layer_data(type, layer->data, totelem);
+    free_layer_data(type, layer->init_value, 1);
   }
   else {
     layer->sharing_info->remove_user_and_delete_if_last();
     layer->sharing_info = nullptr;
+  }
+}
+
+static void customData_layer_set_init_value__internal(CustomDataLayer *layer,
+                                                      const void *init_value)
+{
+  const LayerTypeInfo &type_info = *layerType_getInfo(eCustomDataType(layer->type));
+
+  if (init_value) {
+    layer->init_value = MEM_mallocN_aligned(type_info.size, type_info.alignment, __func__);
+    if (type_info.copy) {
+      type_info.copy(init_value, layer->init_value, 1);
+    }
+    else {
+      memcpy(layer->init_value, init_value, type_info.size);
+    }
+  }
+  else {
+    if (layer->init_value) {
+      if (type_info.free) {
+        type_info.free(layer->init_value, 1);
+      }
+      else {
+        MEM_freeN(layer->init_value);
+      }
+    }
+    layer->init_value = nullptr;
   }
 }
 
@@ -4611,6 +4657,11 @@ void CustomData_validate_layer_name(const CustomData *data,
   }
 }
 
+void CustomData_layer_set_init_value(CustomDataLayer *layer, const void *init_value)
+{
+  customData_layer_set_init_value__internal(layer, init_value);
+}
+
 bool CustomData_verify_versions(CustomData *data, const int index)
 {
   const LayerTypeInfo *typeInfo;
@@ -4740,6 +4791,9 @@ void CustomData_external_reload(CustomData *data, ID * /*id*/, eCustomDataMask m
     else if ((layer->flag & CD_FLAG_EXTERNAL) && (layer->flag & CD_FLAG_IN_MEMORY)) {
       if (typeInfo->free) {
         typeInfo->free(layer->data, totelem);
+        if (layer->init_value != nullptr) {
+          typeInfo->free(layer->init_value, 1);
+        }
       }
       layer->flag &= ~CD_FLAG_IN_MEMORY;
     }

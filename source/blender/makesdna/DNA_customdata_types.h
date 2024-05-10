@@ -47,6 +47,8 @@ typedef struct CustomDataLayer {
   char _pad1[4];
   /** Layer data. */
   void *data;
+  /** Value assigned to new elements. */
+  void *init_value;
   /**
    * Run-time identifier for this layer. Can be used to retrieve information about where this
    * attribute was created.
