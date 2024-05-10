@@ -682,6 +682,10 @@ typedef struct bNodeTree {
   /** Precision used by the GPU execution of the compositor tree. */
   int precision DNA_DEPRECATED;
 
+  /** #NodeGroupColorTag. */
+  int color_tag;
+  char _pad[4];
+
   rctf viewer_border;
 
   /**
@@ -2859,3 +2863,8 @@ typedef enum NodeCombSepColorMode {
   NODE_COMBSEP_COLOR_HSV = 1,
   NODE_COMBSEP_COLOR_HSL = 2,
 } NodeCombSepColorMode;
+
+typedef enum NodeGeometryTransformMode {
+  GEO_NODE_TRANSFORM_MODE_COMPONENTS = 0,
+  GEO_NODE_TRANSFORM_MODE_MATRIX = 1,
+} NodeGeometryTransformMode;
