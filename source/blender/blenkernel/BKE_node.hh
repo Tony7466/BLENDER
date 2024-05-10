@@ -83,10 +83,6 @@ namespace blender::bke {
 /** \name Node Type Definitions
  * \{ */
 
-/* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
- * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.
- * However, achieving this requires quite a few changes currently. */
-
 /**
  * \brief Compact definition of a node socket.
  *
@@ -110,6 +106,9 @@ struct bNodeSocketTemplate {
   char identifier[64]; /* generated from name */
 };
 
+/* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
+ * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.
+ * However, achieving this requires quite a few changes currently. */
 using NodeMultiFunctionBuildFunction = void (*)(blender::nodes::NodeMultiFunctionBuilder &builder);
 using NodeGeometryExecFunction = void (*)(blender::nodes::GeoNodeExecParams params);
 using NodeDeclareFunction = void (*)(blender::nodes::NodeDeclarationBuilder &builder);
