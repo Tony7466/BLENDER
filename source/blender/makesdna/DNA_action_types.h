@@ -1068,18 +1068,6 @@ typedef struct bActionChannel {
 /* ************************************************ */
 /* Layered Animation data-types. */
 
-/* Declarations of C++ wrappers. See ANIM_action.hh for the actual classes. */
-#ifdef __cplusplus
-namespace blender::animrig {
-class Action;
-class ChannelBag;
-class KeyframeStrip;
-class Layer;
-class Binding;
-class Strip;
-}  // namespace blender::animrig
-#endif
-
 /**
  * \see #blender::animrig::Layer
  */
