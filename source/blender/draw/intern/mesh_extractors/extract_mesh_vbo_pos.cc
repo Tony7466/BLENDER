@@ -251,24 +251,26 @@ static void extract_pos_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   /* Make sure buffer is active for sending loose data. */
   GPU_vertbuf_use(vbo);
 
-  const int verts_per_coarse_edge = loose_info.edges_per_coarse_edge + 1;
+  const int cache_verts_per_edge = edges_per_coarse_edge + 1;
+
+  const int vbo_verts_per_edge = edges_per_coarse_edge * 2;
 
   SubdivPosNorLoop edge_data[2];
   memset(edge_data, 0, sizeof(SubdivPosNorLoop) * 2);
   for (const int i : IndexRange(loose_edges_num)) {
-    const int edge_start = loose_geom_start + i;
-    const Span<float3> subdiv_positions = edge_vert_positions.slice(i * verts_per_coarse_edge,
-                                                                    verts_per_coarse_edge);
+    const int vbo_start = loose_geom_start + i * vbo_verts_per_edge;
+    const Span<float3> subdiv_positions = edge_vert_positions.slice(i * cache_verts_per_edge,
+                                                                    cache_verts_per_edge);
     for (const int edge : IndexRange(edges_per_coarse_edge)) {
-      const int start = edge_start + edge * 2;
+      const int offset = vbo_start + edge * 2;
       copy_v3_v3(edge_data[0].pos, subdiv_positions[edge + 0]);
       copy_v3_v3(edge_data[1].pos, subdiv_positions[edge + 1]);
       GPU_vertbuf_update_sub(
-          vbo, start * sizeof(SubdivPosNorLoop), sizeof(SubdivPosNorLoop) * 2, &edge_data);
+          vbo, offset * sizeof(SubdivPosNorLoop), sizeof(SubdivPosNorLoop) * 2, &edge_data);
     }
   }
 
-  const int loose_verts_start = loose_geom_start + loose_edges_num * 2;
+  const int loose_verts_start = loose_geom_start + loose_edges_num * vbo_verts_per_edge;
   const Span<float3> positions = mr.vert_positions;
 
   SubdivPosNorLoop vert_data;

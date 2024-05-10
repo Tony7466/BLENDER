@@ -306,7 +306,9 @@ void extract_lines_subdiv(const MeshRenderData &mr,
                           bool &no_loose_wire)
 {
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  const int indices_num = mr.loose_edges.size() * loose_info.edges_per_coarse_edge * 2;
+  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
+  const int subdiv_loose_edges_num = mr.loose_edges.size() * edges_per_coarse_edge;
+  const int indices_num = subdiv_loose_edges_num * 2;
   no_loose_wire = indices_num == 0;
 
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {

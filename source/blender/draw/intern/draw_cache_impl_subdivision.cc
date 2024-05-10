@@ -2234,16 +2234,16 @@ void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCach
       coarse_edges, coarse_mesh->verts_num, vert_to_edge_offsets, vert_to_edge_indices);
 
   /* Also store the last vertex to simplify copying the positions to the VBO. */
-  const int stored_verts_per_coarse_edge = edges_per_coarse_edge + 1;
-  result.edge_vert_positions.reinitialize(loose_edges.size() * stored_verts_per_coarse_edge);
+  const int cache_verts_per_edge = edges_per_coarse_edge + 1;
+  result.edge_vert_positions.reinitialize(loose_edges.size() * cache_verts_per_edge);
   MutableSpan<float3> edge_vert_positions = result.edge_vert_positions;
 
   threading::parallel_for(loose_edges.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       const int coarse_edge = loose_edges[i];
-      MutableSpan edge_positions = edge_vert_positions.slice(i * stored_verts_per_coarse_edge,
-                                                             stored_verts_per_coarse_edge);
-      for (const int j : IndexRange(stored_verts_per_coarse_edge)) {
+      MutableSpan edge_positions = edge_vert_positions.slice(i * cache_verts_per_edge,
+                                                             cache_verts_per_edge);
+      for (const int j : IndexRange(cache_verts_per_edge)) {
         bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
                                                        coarse_edges,
                                                        vert_to_edge_map,
