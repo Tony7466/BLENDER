@@ -403,7 +403,7 @@ static bool rna_KeyframeAnimationStrip_key_insert(ID *id,
   const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
   animrig::SingleKeyingResult result = key_strip.keyframe_insert(
-      binding, rna_path, array_index, {time, value}, settings, INSERTKEY_NOFLAGS);
+      binding, rna_path, array_index, {time, value}, settings);
 
   if (result == animrig::SingleKeyingResult::SUCCESS) {
     DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION);

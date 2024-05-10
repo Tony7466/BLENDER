@@ -464,8 +464,7 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
                                      StringRefNull rna_path,
                                      int array_index,
                                      float2 time_value,
-                                     const KeyframeSettings &settings,
-                                     eInsertKeyFlags insert_key_flags);
+                                     const KeyframeSettings &settings);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
