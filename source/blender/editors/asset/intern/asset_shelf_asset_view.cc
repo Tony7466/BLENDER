@@ -252,8 +252,11 @@ void AssetViewItem::on_activate(bContext & /*C*/)
 std::optional<bool> AssetViewItem::should_be_active() const
 {
   const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
-  if (!asset_view.active_asset_) {
+  if (!shelf.type->get_active_asset) {
     return {};
+  }
+  if (!asset_view.active_asset_) {
+    return false;
   }
   const asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
   AssetWeakReference weak_ref = asset->make_weak_reference();
