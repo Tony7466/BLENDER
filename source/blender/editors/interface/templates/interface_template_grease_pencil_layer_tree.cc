@@ -346,7 +346,7 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
     return group_.name();
   }
 
-   std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override
+  std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override
   {
     return std::make_unique<LayerViewItemDragController>(
         static_cast<LayerTreeView &>(get_tree_view()), grease_pencil_, group_.base);
