@@ -7461,7 +7461,8 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "compositor_precision", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "compositor_precision");
   RNA_def_property_enum_items(prop, compositor_precision_items);
-  RNA_def_property_ui_text(prop, "Precision", "The precision of compositor intermediate result");
+  RNA_def_property_ui_text(
+      prop, "Compositor Precision", "The precision of compositor intermediate result");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
 
   /* Nestled Data. */
