@@ -411,11 +411,13 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   /** Light position. */
   float3 position_;
   /** Used to compute near and far clip distances. */
-  float max_distance_, light_radius_;
+  float max_distance_;
   /** Number of tile-maps needed to cover the light angular extents. */
   int tilemaps_needed_;
   /** Shadow LOD bias calculated based on global and light shadow resolution scale. */
   float lod_bias_;
+  /** Shadow LOD max calculated based light shadow max resolution. */
+  float lod_max_;
 
  public:
   ShadowPunctual(ShadowModule &module) : shadows_(module){};
@@ -433,9 +435,7 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   void sync(eLightType light_type,
             const float4x4 &object_mat,
             float cone_aperture,
-            float light_shape_radius,
-            float max_distance,
-            float shadow_resolution_scale);
+            float max_distance);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -462,8 +462,6 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   ShadowModule &shadows_;
   /** Tile-map for each clip-map level. */
   Vector<ShadowTileMap *> tilemaps_;
-  /** User minimum resolution. */
-  float min_resolution_;
   /** Copy of object matrix. Normalized. */
   float4x4 object_mat_;
   /** Current range of clip-map / cascades levels covered by this shadow. */
@@ -486,10 +484,7 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Sync shadow parameters but do not allocate any shadow tile-maps.
    */
-  void sync(const float4x4 &object_mat,
-            float min_resolution,
-            float shadow_disk_angle,
-            float shadow_resolution_scale);
+  void sync(const float4x4 &object_mat, float shadow_disk_angle);
 
   /**
    * Release the tile-maps that will not be used in the current frame.

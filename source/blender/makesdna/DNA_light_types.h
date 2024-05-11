@@ -81,6 +81,8 @@ typedef struct Light {
   float att_dist;
   float shadow_filter_radius;
   float shadow_resolution_scale;
+  float shadow_local_maximum_resolution;
+  float shadow_directional_maximum_resolution;
 
   /* Preview */
   struct PreviewImage *preview;

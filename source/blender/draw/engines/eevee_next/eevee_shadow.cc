@@ -230,9 +230,7 @@ void ShadowTileMapPool::end_sync(ShadowModule &module)
 void ShadowPunctual::sync(eLightType light_type,
                           const float4x4 &object_mat,
                           float cone_aperture,
-                          float light_shape_radius,
-                          float max_distance,
-                          float shadow_resolution_scale)
+                          float max_distance)
 {
   if (is_spot_light(light_type)) {
     tilemaps_needed_ = (cone_aperture > DEG2RADF(90.0f)) ? 5 : 1;
@@ -244,16 +242,11 @@ void ShadowPunctual::sync(eLightType light_type,
     tilemaps_needed_ = 6;
   }
 
+  light_type_ = light_type;
   /* Clamp for near/far clip distance calculation. */
   max_distance_ = max_ff(max_distance, 4e-4f);
-  light_radius_ = min_ff(light_shape_radius, max_distance_ - 1e-4f);
-  light_type_ = light_type;
 
   position_ = float3(object_mat[3]);
-
-  float resolution_scale = clamp_f(shadow_resolution_scale, 0.0f, 2.0f);
-  lod_bias_ = (resolution_scale < 1.0) ? -log2(resolution_scale) : -(resolution_scale - 1.0f);
-  lod_bias_ += shadows_.get_global_lod_bias();
 }
 
 void ShadowPunctual::release_excess_tilemaps()
@@ -318,7 +311,6 @@ void ShadowPunctual::end_sync(Light &light)
   light.clip_far = as_int.i;
   light.local.clip_side = side;
   light.local.shadow_projection_shift = shift;
-  light.lod_bias = lod_bias_;
 
   for (ShadowTileMap *tilemap : tilemaps_) {
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */
@@ -461,37 +453,27 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
    * the scaling. */
   light.sun.clipmap_lod_min = levels_range.first();
   light.sun.clipmap_lod_max = levels_range.last();
-
-  /* The bias is applied in cascade_level_range().
-   * Using clipmap_lod_min here simplify code in shadow_directional_level().
-   * Minus 1 because of the ceil(). */
-  light.lod_bias = light.sun.clipmap_lod_min - 1;
 }
 
 /************************************************************************
  *                         Clip-map Distribution                        *
  ************************************************************************/
 
-IndexRange ShadowDirectional::clipmap_level_range(const Camera &camera)
+IndexRange ShadowDirectional::clipmap_level_range(const Camera &cam)
 {
   using namespace blender::math;
-
-  /* 32 to be able to pack offset into two single int2. */
-  const int max_tilemap_per_shadows = 32;
-
-  int user_min_level = floorf(log2(min_resolution_));
   /* Covers the farthest points of the view. */
-  int max_level = ceil(
-      log2(camera.bound_radius() + distance(camera.bound_center(), camera.position())));
+  int max_level = ceil(log2(cam.bound_radius() + distance(cam.bound_center(), cam.position())));
   /* We actually need to cover a bit more because of clipmap origin snapping. */
   max_level += 1;
   /* Covers the closest points of the view. */
-  int min_level = floor(log2(abs(camera.data_get().clip_near)));
-  min_level = clamp_i(user_min_level, min_level, max_level);
-
+  /* FIXME: IndexRange does not support negative range. Clamp to 1 for now. */
+  int min_level = max(0.0f, floor(log2(abs(cam.data_get().clip_near))));
   IndexRange range(min_level, max_level - min_level + 1);
-  /* The maximum level count is bounded by the mantissa of a 32bit float. Take top-most level to
-   * still cover the whole view. */
+  /* 32 to be able to pack offset into a single int2.
+   * The maximum level count is bounded by the mantissa of a 32bit float.  */
+  const int max_tilemap_per_shadows = 24;
+  /* Take top-most level to still cover the whole view. */
   range = range.take_back(max_tilemap_per_shadows);
 
   return range;
@@ -553,28 +535,15 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera
 
   light.sun.clipmap_lod_min = levels_range.first();
   light.sun.clipmap_lod_max = levels_range.last();
-
-  light.lod_bias = lod_bias_;
 }
 
-void ShadowDirectional::sync(const float4x4 &object_mat,
-                             float min_resolution,
-                             float shadow_disk_angle,
-                             float shadow_resolution_scale)
+void ShadowDirectional::sync(const float4x4 &object_mat, float shadow_disk_angle)
 {
   object_mat_ = object_mat;
-  /* Clear embedded custom data. */
-  object_mat_[0][3] = object_mat_[1][3] = object_mat_[2][3] = 0.0f;
-  object_mat_[3][3] = 1.0f;
   /* Remove translation. */
   object_mat_.location() = float3(0.0f);
 
-  min_resolution_ = min_resolution;
   disk_shape_angle_ = min_ff(shadow_disk_angle, DEG2RADF(179.9f)) / 2.0f;
-
-  float resolution_scale = clamp_f(shadow_resolution_scale, 0.0f, 2.0f);
-  lod_bias_ = (resolution_scale < 1.0) ? -log2(resolution_scale) : -(resolution_scale - 1.0f);
-  lod_bias_ += shadows_.get_global_lod_bias();
 }
 
 void ShadowDirectional::release_excess_tilemaps(const Camera &camera)

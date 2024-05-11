@@ -127,7 +127,7 @@ float shadow_directional_level_fractional(LightData light, vec3 lP)
     float lod_min_half_size = exp2(float(light_sun_data_get(light).clipmap_lod_min - 1));
     lod = length(lP.xy) * narrowing / lod_min_half_size;
   }
-  float clipmap_lod = lod + light.lod_bias;
+  float clipmap_lod = max(lod + light.lod_bias, light.lod_min);
   return clamp(clipmap_lod,
                float(light_sun_data_get(light).clipmap_lod_min),
                float(light_sun_data_get(light).clipmap_lod_max));
@@ -185,8 +185,9 @@ float shadow_punctual_level_fractional(LightData light,
       light, lP, is_perspective, distance_to_camera, film_pixel_radius);
   /* NOTE: Bias by one to counteract the ceil in the `int` variant. This is done because this
    * function should return an upper bound. */
-  float lod = -log2(ratio) - 1.0 + light.lod_bias;
-  lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
+  float lod = -log2(ratio) - 1.0;
+  lod = max(lod + light.lod_bias, light.lod_min);
+  lod = min(lod, float(SHADOW_TILEMAP_LOD));
   return lod;
 }
 
