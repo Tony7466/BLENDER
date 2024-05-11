@@ -214,7 +214,7 @@ void ED_node_tag_update_id(ID *id)
 
 namespace blender::ed::space_node {
 
-static bool node_socket_get_tooltip(const SpaceNode *snode,
+static void node_socket_get_tooltip(const SpaceNode *snode,
                                     const bNodeTree &ntree,
                                     const bNodeSocket &socket,
                                     Vector<nodes::NodeTooltipTextLine> &r_lines,
@@ -1190,6 +1190,32 @@ static void node_socket_draw(const bNodeSocket &sock,
   immVertex2f(pos_id, locx, locy);
 }
 
+static void trim_space_items(Vector<nodes::NodeTooltipTextLine> &list)
+{
+  if (list.is_empty()) {
+    return;
+  }
+  Vector<nodes::NodeTooltipTextLine> new_list;
+  new_list.reserve(list.size());
+  bool is_after_space = true;
+  for (nodes::NodeTooltipTextLine item : list) {
+    if (item.type == nodes::NodeTooltipTextLine::Type::Space) {
+      if (!is_after_space) {
+        new_list.append(item);
+      }
+      is_after_space = true;
+    }
+    else {
+      new_list.append(item);
+      is_after_space = false;
+    }
+  }
+  if (new_list.last().type == nodes::NodeTooltipTextLine::Type::Space) {
+    new_list.pop_last();
+  }
+  list = std::move(new_list);
+}
+
 static void node_socket_tooltip_set(uiBlock &block,
                                     const int socket_index_in_tree,
                                     const float2 location,
@@ -1224,9 +1250,35 @@ static void node_socket_tooltip_set(uiBlock &block,
         Vector<nodes::NodeTooltipTextLine> info_list;
         node_socket_get_tooltip(
             &snode, ntree, *ntree.all_sockets()[index_in_tree], info_list, allocator);
+        trim_space_items(info_list);
 
-        for (nodes::NodeTooltipTextLine &info : info_list) {
-          UI_tooltip_text_field_add(tip, info.line, {}, UI_TIP_STYLE_NORMAL, info.color);
+        for (const int i : info_list.index_range()) {
+          nodes::NodeTooltipTextLine &info = info_list[i];
+          // std::cout << "Item: ";
+          switch (info.type) {
+            case nodes::NodeTooltipTextLine::Type::Line: {
+              // std::cout << "Line";
+              if (&info_list.last() != &info) {
+                const nodes::NodeTooltipTextLine &next = info_list[i + 1];
+                if (next.type == nodes::NodeTooltipTextLine::Type::Space) {
+                  UI_tooltip_text_field_add(
+                      tip, std::string(info.line) + ".", {}, UI_TIP_STYLE_NORMAL, info.color);
+                  break;
+                }
+              }
+              UI_tooltip_text_field_add(tip, info.line, {}, UI_TIP_STYLE_NORMAL, info.color);
+              break;
+            }
+            case nodes::NodeTooltipTextLine::Type::Space:
+              // std::cout << "Space";
+              UI_tooltip_text_field_add(tip, "\n", {}, UI_TIP_STYLE_NORMAL, info.color);
+              break;
+            case nodes::NodeTooltipTextLine::Type::Image:
+              // std::cout << "Image";
+              break;
+          }
+          //  std::cout << ";\n" << "Text: " << info.line << ";\n";
+
           /*
                     if (info.image != nullptr) {
                       Image *image = info.image;
@@ -1694,7 +1746,7 @@ static bool create_description_inspection_string(const bNodeSocket &socket,
   }
 
   const StringRef translated_string = allocator.copy_string(TIP_(description.c_str()));
-  r_lines.append(nodes::NodeTooltipTextLine{translated_string, UI_TIP_LC_MAIN});
+  r_lines.append_as(translated_string);
 
   return true;
 }
@@ -1748,7 +1800,7 @@ static bool create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log,
   }
 
   for (const StringRef line : lines_of_text(str, allocator)) {
-    r_lines.append(nodes::NodeTooltipTextLine{line, UI_TIP_LC_MAIN});
+    r_lines.append_as(line);
   }
 
   return true;
@@ -1770,7 +1822,7 @@ static bool create_declaration_inspection_string(const bNodeSocket &socket,
     return false;
   }
 
-  r_lines.append(nodes::NodeTooltipTextLine{allocator.copy_string(str), UI_TIP_LC_MAIN});
+  r_lines.append_as(allocator.copy_string(str));
   return true;
 }
 
@@ -1832,11 +1884,12 @@ static bool create_multi_input_log_inspection_string(const bNodeTree &ntree,
 
     /* TODO: Error (red text) in the sub lists. */
     const std::string new_line = fmt::format("{}. {}", connection_number, sub_lines.first().line);
-    r_lines.append(nodes::NodeTooltipTextLine{allocator.copy_string(new_line), UI_TIP_LC_MAIN});
+    r_lines.append_as(allocator.copy_string(new_line));
     for (nodes::NodeTooltipTextLine item : sub_lines.as_span().drop_front(1)) {
       item.indentation++;
       r_lines.append(item);
     }
+    r_lines.append(nodes::NodeTooltipTextLine::empty_space());
   }
 
   return input_size != r_lines.size();
@@ -1853,7 +1906,7 @@ static bool create_default_value_inspection_string(const bNodeSocket &socket,
   if (str.empty()) {
     return false;
   }
-  r_lines.append(nodes::NodeTooltipTextLine{allocator.copy_string(str), UI_TIP_LC_MAIN});
+  r_lines.append_as(allocator.copy_string(str));
   return true;
 }
 
@@ -1897,18 +1950,17 @@ static bool create_dangling_reroute_inspection_string(const bNodeTree &ntree,
 
   if (target_socket == nullptr) {
     if (!output_socket.directly_linked_sockets().is_empty()) {
-      r_lines.append(nodes::NodeTooltipTextLine{
-          allocator.copy_string(TIP_("Dangling reroute is ignored by all targets")),
-          UI_TIP_LC_NORMAL});
+      r_lines.append_as(allocator.copy_string(TIP_("Dangling reroute is ignored by all targets")),
+                        UI_TIP_LC_NORMAL);
       return true;
     }
     return false;
   }
 
   if (target_socket->is_multi_input()) {
-    r_lines.append(nodes::NodeTooltipTextLine{
+    r_lines.append_as(
         allocator.copy_string(TIP_("Dangling reroute branch is ignored by multi input socket")),
-        UI_TIP_LC_NORMAL});
+        UI_TIP_LC_NORMAL);
     return true;
   }
 
@@ -1916,21 +1968,28 @@ static bool create_dangling_reroute_inspection_string(const bNodeTree &ntree,
   create_inspection_string_for_default_socket_value(*target_socket, buf);
   std::string str = fmt::to_string(buf);
   if (str.empty()) {
-    r_lines.append(nodes::NodeTooltipTextLine{
-        allocator.copy_string(TIP_("Dangling reroute is ignored")), UI_TIP_LC_NORMAL});
+    r_lines.append_as(allocator.copy_string(TIP_("Dangling reroute is ignored")),
+                      UI_TIP_LC_NORMAL);
     return true;
   }
 
-  r_lines.append(nodes::NodeTooltipTextLine{allocator.copy_string(str), UI_TIP_LC_NORMAL});
-  r_lines.append(nodes::NodeTooltipTextLine{"", UI_TIP_LC_NORMAL});
-  r_lines.append(nodes::NodeTooltipTextLine{
-      allocator.copy_string(
-          TIP_("Dangling reroute is ignored, default value of target socket is used")),
-      UI_TIP_LC_NORMAL});
+  r_lines.append_as(allocator.copy_string(str), UI_TIP_LC_NORMAL);
+  r_lines.append(nodes::NodeTooltipTextLine::empty_space());
+  r_lines.append_as(allocator.copy_string(TIP_(
+                        "Dangling reroute is ignored, default value of target socket is used")),
+                    UI_TIP_LC_NORMAL);
   return true;
 }
 
-static bool node_socket_get_tooltip(const SpaceNode *snode,
+static bool any_real_line(const Span<nodes::NodeTooltipTextLine> lines)
+{
+  return std::any_of(
+      lines.begin(), lines.end(), [](const nodes::NodeTooltipTextLine &item) -> bool {
+        return item.type != nodes::NodeTooltipTextLine::Type::Space;
+      });
+}
+
+static void node_socket_get_tooltip(const SpaceNode *snode,
                                     const bNodeTree &ntree,
                                     const bNodeSocket &socket,
                                     Vector<nodes::NodeTooltipTextLine> &r_lines,
@@ -1946,9 +2005,9 @@ static bool node_socket_get_tooltip(const SpaceNode *snode,
 
   geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(ntree, socket, tree_draw_ctx);
 
-  const int64_t input_size = r_lines.size();
-
   create_description_inspection_string(socket, allocator, r_lines);
+
+  r_lines.append(nodes::NodeTooltipTextLine::empty_space());
 
   if (create_log_inspection_string(geo_tree_log, socket, allocator, r_lines)) {
   }
@@ -1961,24 +2020,30 @@ static bool node_socket_get_tooltip(const SpaceNode *snode,
   {
   }
 
+  r_lines.append(nodes::NodeTooltipTextLine::empty_space());
+
   create_declaration_inspection_string(socket, allocator, r_lines);
 
-  if (r_lines.is_empty()) {
+  r_lines.append(nodes::NodeTooltipTextLine::empty_space());
+
+  if (!any_real_line(r_lines)) {
     const bNode &node = socket.owner_node();
     if (node.is_reroute()) {
       char reroute_name[MAX_NAME];
       bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
-      r_lines.append({allocator.copy_string(reroute_name), UI_TIP_LC_MAIN});
+      r_lines.append_as(allocator.copy_string(reroute_name));
     }
     else {
-      r_lines.append({allocator.copy_string(bke::nodeSocketLabel(&socket)), UI_TIP_LC_MAIN});
+      r_lines.append_as(allocator.copy_string(bke::nodeSocketLabel(&socket)));
     }
 
+    r_lines.append(nodes::NodeTooltipTextLine::empty_space());
+
     if (ntree.type == NTREE_GEOMETRY) {
-      r_lines.append(
-          {allocator.copy_string(TIP_("Unknown socket value. Either the socket was not used or "
-                                      "its value was not logged during the last evaluation")),
-           UI_TIP_LC_NORMAL});
+      r_lines.append_as(
+          allocator.copy_string(TIP_("Unknown socket value. Either the socket was not used or "
+                                     "its value was not logged during the last evaluation")),
+          UI_TIP_LC_NORMAL);
     }
   }
   /*
@@ -1989,7 +2054,6 @@ static bool node_socket_get_tooltip(const SpaceNode *snode,
       }
     }
   */
-  return input_size != r_lines.size();
 }
 
 static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout)

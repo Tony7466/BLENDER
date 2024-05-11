@@ -83,6 +83,7 @@ set(SRC
   intern/node_common.cc
   intern/node_declaration.cc
   intern/node_exec.cc
+  intern/node_extra_info
   intern/node_geometry_exec.cc
   intern/node_multi_function.cc
   intern/node_register.cc

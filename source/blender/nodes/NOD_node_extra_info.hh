@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 #include "UI_interface_c.hh"
@@ -34,9 +35,26 @@ struct NodeExtraInfoParams {
 
 struct NodeTooltipTextLine {
   StringRef line;
-  uiTooltipColorID color;
+  uiTooltipColorID color = UI_TIP_LC_MAIN;
   int indentation = 0;
   Image *image = nullptr;
+
+  enum class Type : int8_t {
+    Line = 0,
+    Space = 1,
+    Image = 2,
+  };
+
+  Type type = Type::Line;
+
+  NodeTooltipTextLine() = default;
+  NodeTooltipTextLine(StringRef src_line) : line(src_line) {}
+  NodeTooltipTextLine(StringRef src_line, uiTooltipColorID src_color)
+      : line(src_line), color(src_color)
+  {
+  }
+
+  static NodeTooltipTextLine empty_space();
 };
 
 }  // namespace blender::nodes
