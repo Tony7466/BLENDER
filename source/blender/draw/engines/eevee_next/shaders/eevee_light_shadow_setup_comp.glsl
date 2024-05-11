@@ -60,7 +60,7 @@ void orthographic_sync(int tilemap_id,
       1.0);
 }
 
-void cascade_sync(inout LightData light, int tilemap_id)
+void cascade_sync(inout LightData light)
 {
   int level_min = light_sun_data_get(light).clipmap_lod_min;
   int level_max = light_sun_data_get(light).clipmap_lod_max;
