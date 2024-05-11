@@ -11536,6 +11536,10 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
   ARegion *region = CTX_wm_region(C);
   int retval = WM_UI_HANDLER_CONTINUE;
 
+  if (event->type == LEFTMOUSE && event->val == KM_DBL_CLICK) {
+    int a = 0;
+  }
+
   if (region == nullptr || BLI_listbase_is_empty(&region->uiblocks)) {
     return retval;
   }

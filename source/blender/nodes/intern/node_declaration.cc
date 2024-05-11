@@ -734,6 +734,14 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
   return *this;
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder ::socket_name_ptr(
+    PointerRNA owner_data, StringRef name_property_name)
+{
+  decl_base_->socket_name_owner = owner_data;
+  decl_base_->socket_name_property = name_property_name;
+  return *this;
+}
+
 OutputFieldDependency OutputFieldDependency::ForFieldSource()
 {
   OutputFieldDependency field_dependency;

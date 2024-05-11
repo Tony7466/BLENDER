@@ -16,6 +16,8 @@
 
 #include "DNA_node_types.h"
 
+#include "RNA_access.hh"
+
 struct bContext;
 struct bNode;
 struct PointerRNA;
@@ -207,6 +209,9 @@ class SocketDeclaration : public ItemDeclaration {
    * callback computes the default input of a values in geometry nodes when nothing is linked. */
   std::unique_ptr<ImplicitInputValueFn> implicit_input_fn;
 
+  PointerRNA socket_name_owner = PointerRNA_NULL;
+  std::string socket_name_property;
+
   friend NodeDeclarationBuilder;
   friend class BaseSocketDeclarationBuilder;
   template<typename SocketDecl> friend class SocketDeclarationBuilder;
@@ -362,6 +367,13 @@ class BaseSocketDeclarationBuilder {
    * an input and the other is an output.
    */
   BaseSocketDeclarationBuilder &align_with_previous(bool value = true);
+
+  /**
+   * Set a function that retrieves an RNA pointer to the name of the socket. This can be used to be
+   * able to rename the socket within the node.
+   */
+  BaseSocketDeclarationBuilder &socket_name_ptr(PointerRNA owner_data,
+                                                StringRef name_property_name);
 
   /** Index in the list of inputs or outputs. */
   int index() const;
