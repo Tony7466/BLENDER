@@ -369,7 +369,7 @@ static void stats_object_sculpt(const Object *ob, SceneStats *stats)
     return;
   }
 
-  switch (BKE_pbvh_type(ss->pbvh)) {
+  switch (BKE_pbvh_type(*ss->pbvh)) {
     case PBVH_FACES:
       stats->totvertsculpt = ss->totvert;
       stats->totfacesculpt = ss->totfaces;
@@ -379,8 +379,8 @@ static void stats_object_sculpt(const Object *ob, SceneStats *stats)
       stats->tottri = ob->sculpt->bm->totface;
       break;
     case PBVH_GRIDS:
-      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(ss->pbvh);
-      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(ss->pbvh);
+      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(*ss->pbvh);
+      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(*ss->pbvh);
       break;
   }
 }
@@ -768,8 +768,6 @@ void ED_info_draw_stats(
   Object *obedit = OBEDIT_FROM_OBACT(ob);
   eObjectMode object_mode = ob ? (eObjectMode)ob->mode : OB_MODE_OBJECT;
   const int font_id = BLF_default();
-
-  UI_FontThemeColor(font_id, TH_TEXT_HI);
 
   /* Translated labels for each stat row. */
   enum {

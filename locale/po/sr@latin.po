@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'7b7e9f224c89')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-22 07:36+0000\n"
+"POT-Creation-Date: 2024-05-06 10:38+0000\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -277,6 +277,10 @@ msgstr "Uticaj akcije"
 
 msgid "Animation"
 msgstr "Animacija"
+
+
+msgid "New"
+msgstr "Novo"
 
 
 msgid "Drivers"
@@ -5587,10 +5591,6 @@ msgid "Restore Mesh"
 msgstr "Vrati"
 
 
-msgid "Relax"
-msgstr "Opusti"
-
-
 msgid "Vertex Paint Tool"
 msgstr "Alatka za bojenje čvorova"
 
@@ -9047,6 +9047,10 @@ msgid "Show/Hide"
 msgstr "Prikaži/sakrij"
 
 
+msgid "Zoom"
+msgstr "Uvećanje"
+
+
 msgid "Console"
 msgstr "Konzola"
 
@@ -9164,10 +9168,6 @@ msgid "Movie Strip"
 msgstr "Traka filma"
 
 
-msgid "Cache"
-msgstr "Ostava"
-
-
 msgid "Texture Specials"
 msgstr "Kontrole tekstura"
 
@@ -9182,6 +9182,10 @@ msgstr "Otvoreni jezik senčenja OSL"
 
 msgid "Python"
 msgstr "Python"
+
+
+msgid "Cache"
+msgstr "Ostava"
 
 
 msgid "System"
@@ -9670,10 +9674,6 @@ msgstr "Modifikator iskošavanja"
 
 msgid "Angle above which to bevel edges"
 msgstr "Ugao iznad kog se iskosi ivice"
-
-
-msgid "New"
-msgstr "Novo"
 
 
 msgid "Limit Method"
@@ -11088,10 +11088,6 @@ msgid "Center Y"
 msgstr "Centar Y"
 
 
-msgid "Zoom"
-msgstr "Uvećanje"
-
-
 msgid "Octagonal"
 msgstr "Oktogonalno"
 
@@ -11466,14 +11462,6 @@ msgstr "Min. brzina"
 
 msgid "Minimum speed for a pixel to be blurred (used to separate background from foreground)"
 msgstr "Minimalna brzina piksela da bi bio zamućen (koristi se za razdvajanje prednjegi i zadnjeg plana)"
-
-
-msgid "Tile Order"
-msgstr "Redosled pločica"
-
-
-msgid "Random tiles"
-msgstr "Nasumično popločenje"
 
 
 msgid "Z Combine"
@@ -13518,6 +13506,10 @@ msgid "Add Circle"
 msgstr "Dodaj krug"
 
 
+msgid "Handles"
+msgstr "Ručke"
+
+
 msgid "Duplicate"
 msgstr "Dupliraj"
 
@@ -13782,10 +13774,6 @@ msgstr "Postavi vrstu krive"
 
 msgid "Set type of active spline"
 msgstr "Postavlja vrstu aktivne krive linije"
-
-
-msgid "Handles"
-msgstr "Ručke"
 
 
 msgid "Split off selected points from connected unselected points"
@@ -18376,6 +18364,10 @@ msgid "Falloff Type"
 msgstr "Vrsta opadanja"
 
 
+msgid "Relax"
+msgstr "Opusti"
+
+
 msgid "Sharpen"
 msgstr "Izoštreno"
 
@@ -18399,9 +18391,8 @@ msgid "Set Persistent Base"
 msgstr "Postavi trajnu osnovu"
 
 
-msgctxt "Operator"
-msgid "Sculpt UVs"
-msgstr "UV vajanje"
+msgid "Use Laplacian method for relaxation"
+msgstr "Koristi Laplasov metod za opuštanje"
 
 
 msgctxt "Operator"
@@ -22471,10 +22462,6 @@ msgid "All Sequences"
 msgstr "Sve sekvence"
 
 
-msgid "Show Cache"
-msgstr "Prikaži keš"
-
-
 msgid "Sequence Element"
 msgstr "Element sekvence"
 
@@ -22501,6 +22488,10 @@ msgstr "Maskiraj traku"
 
 msgid "Sequence Transform"
 msgstr "Transformacija sekvence"
+
+
+msgid "Show Cache"
+msgstr "Prikaži keš"
 
 
 msgid "Show Grid"
@@ -23808,10 +23799,6 @@ msgid "Snap during transform"
 msgstr "Lepi prilikom transformacije"
 
 
-msgid "Use Laplacian method for relaxation"
-msgstr "Koristi Laplasov metod za opuštanje"
-
-
 msgid "UV Sculpt"
 msgstr "UV vajanje"
 
@@ -24794,10 +24781,6 @@ msgid "Unlock Tracks"
 msgstr "Otključaj staze"
 
 
-msgid "Zoom %d:%d"
-msgstr "Približi %d:%d"
-
-
 msgctxt "Operator"
 msgid "Autocomplete"
 msgstr "Samodopunjavanje"
@@ -24986,10 +24969,6 @@ msgid "Online Manual"
 msgstr "Uputstvo na internetu"
 
 
-msgid "Slot %d"
-msgstr "Slot %d"
-
-
 msgctxt "Operator"
 msgid "Make"
 msgstr "Napravi"
@@ -25101,10 +25080,6 @@ msgstr "Tekst: spoljašnji"
 
 msgid "Text: Internal"
 msgstr "Tekst: unutrašnji"
-
-
-msgid "File: %s"
-msgstr "Datoteka: %s"
 
 
 msgctxt "Operator"
@@ -25703,10 +25678,6 @@ msgid "<No ID pointer>"
 msgstr "<Bez ID pokazivača>"
 
 
-msgid "<Missing ID block>"
-msgstr "<Nedostaje ID blok>"
-
-
 msgid "No F-Curve to add keyframes to"
 msgstr "Kadar za ibacivanje ključnog kadra"
 
@@ -25738,6 +25709,10 @@ msgstr "Generator"
 
 msgid "Stepped"
 msgstr "Koračanje"
+
+
+msgid "Slot %d"
+msgstr "Slot %d"
 
 
 msgid "Key %d"
@@ -26623,6 +26598,10 @@ msgstr "Kadar: %d / %d"
 
 msgid "Frame: - / %d"
 msgstr "Kadar: - / %d"
+
+
+msgid "File: %s"
+msgstr "Datoteka: %s"
 
 
 msgid "unsupported movie clip format"
