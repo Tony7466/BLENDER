@@ -10,6 +10,10 @@
 
 struct Image;
 
+namespace blender {
+class StringRef;
+}  // namespace blender
+
 namespace blender::nodes {
 
 struct NodeExtraInfoRow {
@@ -28,9 +32,10 @@ struct NodeExtraInfoParams {
   const bContext &C;
 };
 
-struct NodeTooltipRow {
-  std::string text;
-  uiTooltipColorID color = UI_TIP_LC_MAIN;
+struct NodeTooltipTextLine {
+  StringRef line;
+  uiTooltipColorID color;
+  int indentation = 0;
   Image *image = nullptr;
 };
 
