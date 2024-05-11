@@ -14,22 +14,21 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_image.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -46,7 +45,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "screen_intern.h" /* own module include */
+#include "screen_intern.hh" /* own module include */
 
 /* adds no space data */
 static ScrArea *screen_addarea_ex(ScrAreaMap *area_map,
@@ -286,8 +285,8 @@ eScreenDir area_getorientation(ScrArea *sa_a, ScrArea *sa_b)
   short overlapy = std::min(top_a, top_b) - std::max(bottom_a, bottom_b);
 
   /* Minimum overlap required. */
-  const short minx = MIN3(AREAJOINTOLERANCEX, right_a - left_a, right_b - left_b);
-  const short miny = MIN3(AREAJOINTOLERANCEY, top_a - bottom_a, top_b - bottom_b);
+  const short minx = std::min({int(AREAJOINTOLERANCEX), right_a - left_a, right_b - left_b});
+  const short miny = std::min({int(AREAJOINTOLERANCEY), top_a - bottom_a, top_b - bottom_b});
 
   if (top_a == bottom_b && overlapx >= minx) {
     return eScreenDir(1); /* sa_a to bottom of sa_b = N */
@@ -755,6 +754,9 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
       CTX_wm_region_set(C, region);
       if (region_poll(C, screen, area, region) == false) {
         region->flag |= RGN_FLAG_POLL_FAILED;
+      }
+      else if (region->type && region->type->on_poll_success) {
+        region->type->on_poll_success(C, region);
       }
 
       if (old_region_flag != region->flag) {
@@ -1796,7 +1798,7 @@ void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph)
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       BKE_screen_view3d_scene_sync(screen, scene);
     }
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 #endif
 

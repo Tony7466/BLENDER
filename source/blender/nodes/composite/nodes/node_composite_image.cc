@@ -15,11 +15,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -35,8 +35,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -745,6 +745,11 @@ class RenderLayerOperation : public NodeOperation {
       return;
     }
 
+    if (!context().is_valid_compositing_region()) {
+      result.allocate_invalid();
+      return;
+    }
+
     GPUShader *shader = context().get_shader(shader_name);
     GPU_shader_bind(shader);
 
@@ -756,6 +761,11 @@ class RenderLayerOperation : public NodeOperation {
 
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(pass_texture, input_unit);
+
+    /* Depth passes always need to be stored in full precision. */
+    if (GPU_texture_has_depth_format(pass_texture)) {
+      result.set_precision(ResultPrecision::Full);
+    }
 
     const int2 compositing_region_size = context().get_compositing_region_size();
     result.allocate_texture(Domain(compositing_region_size));
@@ -795,7 +805,7 @@ void register_node_type_cmp_rlayers()
       &ntype, nullptr, file_ns::node_composit_free_rlayers, file_ns::node_composit_copy_rlayers);
   ntype.updatefunc = file_ns::cmp_node_rlayers_update;
   ntype.initfunc = node_cmp_rlayers_outputs;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Large);
 
   nodeRegisterType(&ntype);
 }

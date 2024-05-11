@@ -5,7 +5,6 @@
 #include "FN_multi_function_builder.hh"
 #include "NOD_multi_function.hh"
 #include "node_shader_util.hh"
-#include "node_util.hh"
 
 #include "BLI_color.hh"
 #include "IMB_colormanagement.hh"
@@ -49,16 +48,10 @@ static void sh_node_blackbody_build_multi_function(nodes::NodeMultiFunctionBuild
 NODE_SHADER_MATERIALX_BEGIN
 #ifdef WITH_MATERIALX
 {
-  /* TODO: This node doesn't have an implementation in MaterialX 1.38.6.
-   * It's added in MaterialX 1.38.8. Uncomment this code after switching to 1.38.8. */
-#  if 0
   NodeItem temperature = get_input_value("Temperature", NodeItem::Type::Float);
 
   NodeItem res = create_node("blackbody", NodeItem::Type::Color3);
   res.set_input("temperature", temperature);
-  return res;
-#  endif
-  NodeItem res = empty();
   return res;
 }
 #endif
@@ -75,7 +68,7 @@ void register_node_type_sh_blackbody()
 
   sh_fn_node_type_base(&ntype, SH_NODE_BLACKBODY, "Blackbody", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.gpu_fn = file_ns::node_shader_gpu_blackbody;
   ntype.build_multi_function = file_ns::sh_node_blackbody_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;

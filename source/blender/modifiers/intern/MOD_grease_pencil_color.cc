@@ -30,7 +30,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_types.hh"
 
@@ -136,14 +136,13 @@ static void modify_stroke_color(Object &ob,
 
 static void modify_fill_color(Object &ob,
                               const GreasePencilColorModifierData &cmd,
-                              bke::CurvesGeometry &curves,
+                              Drawing &drawing,
                               const IndexMask &curves_mask)
 {
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const bke::AttributeAccessor attributes = curves.attributes();
   /* Fill color per stroke. */
-  bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
-                                                               bke::AttrDomain::Curve);
+  MutableSpan<ColorGeometry4f> fill_colors = drawing.fill_colors_for_write();
   const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
       "material_index", bke::AttrDomain::Curve, 0);
 
@@ -153,10 +152,8 @@ static void modify_fill_color(Object &ob,
     const ColorGeometry4f material_color = (gp_style ? ColorGeometry4f(gp_style->fill_rgba) :
                                                        ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 
-    apply_color_factor(fill_colors.span[curve_i], material_color, cmd.hsv);
+    apply_color_factor(fill_colors[curve_i], material_color, cmd.hsv);
   });
-
-  fill_colors.finish();
 }
 
 static void modify_drawing(ModifierData &md, const ModifierEvalContext &ctx, Drawing &drawing)
@@ -174,12 +171,12 @@ static void modify_drawing(ModifierData &md, const ModifierEvalContext &ctx, Dra
           *ctx.object, cmd, curves, curves_mask, drawing.vertex_colors_for_write());
       break;
     case MOD_GREASE_PENCIL_COLOR_FILL:
-      modify_fill_color(*ctx.object, cmd, curves, curves_mask);
+      modify_fill_color(*ctx.object, cmd, drawing, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_BOTH:
       modify_stroke_color(
           *ctx.object, cmd, curves, curves_mask, drawing.vertex_colors_for_write());
-      modify_fill_color(*ctx.object, cmd, curves, curves_mask);
+      modify_fill_color(*ctx.object, cmd, drawing, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_HARDNESS:
       BLI_assert_unreachable();
@@ -217,41 +214,17 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  const GreasePencilModifierColorMode color_mode = GreasePencilModifierColorMode(
-      RNA_enum_get(ptr, "color_mode"));
-
   uiItemR(layout, ptr, "color_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  if (color_mode == MOD_GREASE_PENCIL_COLOR_HARDNESS) {
-    uiItemR(layout, ptr, "hardness_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
-  else {
-    const bool use_uniform_opacity = RNA_boolean_get(ptr, "use_uniform_opacity");
-    const bool use_weight_as_factor = RNA_boolean_get(ptr, "use_weight_as_factor");
+  uiItemR(layout, ptr, "hue", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "saturation", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "value", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
-    uiItemR(layout, ptr, "use_uniform_opacity", UI_ITEM_NONE, nullptr, ICON_NONE);
-    const char *text = (use_uniform_opacity) ? IFACE_("Opacity") : IFACE_("Opacity Factor");
-
-    uiLayout *row = uiLayoutRow(layout, true);
-    uiLayoutSetActive(row, !use_weight_as_factor || use_uniform_opacity);
-    uiItemR(row, ptr, "color_factor", UI_ITEM_NONE, text, ICON_NONE);
-    if (!use_uniform_opacity) {
-      uiLayout *sub = uiLayoutRow(row, true);
-      uiLayoutSetActive(sub, true);
-      uiItemR(row, ptr, "use_weight_as_factor", UI_ITEM_NONE, "", ICON_MOD_VERTEX_WEIGHT);
-    }
-  }
-
-  LayoutPanelState *influence_panel_state = BKE_panel_layout_panel_state_ensure(
-      panel, "influence", true);
-  PointerRNA influence_state_ptr = RNA_pointer_create(
-      nullptr, &RNA_LayoutPanelState, influence_panel_state);
-  if (uiLayout *influence_panel = uiLayoutPanel(
-          C, layout, "Influence", &influence_state_ptr, "is_open"))
+  if (uiLayout *influence_panel = uiLayoutPanelProp(
+          C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
-    modifier::greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
     modifier::greasepencil::draw_custom_curve_settings(C, influence_panel, ptr);
   }
 

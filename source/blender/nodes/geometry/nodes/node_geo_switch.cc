@@ -190,7 +190,8 @@ class LazyFunctionForSwitchNode : public LazyFunction {
                                    float3,
                                    ColorGeometry4f,
                                    std::string,
-                                   math::Quaternion>([&](auto type_tag) {
+                                   math::Quaternion,
+                                   float4x4>([&](auto type_tag) {
       using T = typename decltype(type_tag)::type;
       if constexpr (std::is_void_v<T>) {
         BLI_assert_unreachable();
@@ -227,6 +228,7 @@ static void node_rna(StructRNA *srna)
                                                SOCK_INT,
                                                SOCK_BOOLEAN,
                                                SOCK_ROTATION,
+                                               SOCK_MATRIX,
                                                SOCK_VECTOR,
                                                SOCK_STRING,
                                                SOCK_RGBA,
@@ -234,7 +236,8 @@ static void node_rna(StructRNA *srna)
                                                SOCK_OBJECT,
                                                SOCK_COLLECTION,
                                                SOCK_MATERIAL,
-                                               SOCK_IMAGE);
+                                               SOCK_IMAGE,
+                                               SOCK_MENU);
                                  });
       });
 }

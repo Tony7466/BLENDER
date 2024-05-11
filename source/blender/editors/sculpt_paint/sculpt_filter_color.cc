@@ -10,19 +10,19 @@
 
 #include "BLI_math_color.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_vector.hh"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "IMB_colormanagement.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -88,11 +88,13 @@ static void color_filter_task(Object *ob,
       *ob, ss->filter_cache->automasking.get(), *node);
 
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
     auto_mask::node_update(automask_data, vd);
 
-    float orig_color[3], final_color[4], hsv_color[3];
+    float3 orig_color;
+    float4 final_color;
+    float3 hsv_color;
     int hue;
     float brightness, contrast, gain, delta, offset;
     float fade = vd.mask;
@@ -209,7 +211,7 @@ static void color_filter_task(Object *ob,
           blend_color_interpolate_float(final_color, col, smooth_color, fade);
         }
 
-        CLAMP4(final_color, 0.0f, 1.0f);
+        final_color = math::clamp(final_color, 0.0f, 1.0f);
 
         /* Prevent accumulated numeric error from corrupting alpha. */
         if (copy_alpha) {
@@ -236,7 +238,7 @@ static void sculpt_color_presmooth_init(SculptSession *ss)
 
   for (int i = 0; i < totvert; i++) {
     SCULPT_vertex_color_get(
-        ss, BKE_pbvh_index_to_vertex(ss->pbvh, i), ss->filter_cache->pre_smoothed_color[i]);
+        ss, BKE_pbvh_index_to_vertex(*ss->pbvh, i), ss->filter_cache->pre_smoothed_color[i]);
   }
 
   for (int iteration = 0; iteration < 2; iteration++) {
@@ -245,7 +247,7 @@ static void sculpt_color_presmooth_init(SculptSession *ss)
       int total = 0;
 
       SculptVertexNeighborIter ni;
-      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, BKE_pbvh_index_to_vertex(ss->pbvh, i), ni) {
+      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, BKE_pbvh_index_to_vertex(*ss->pbvh, i), ni) {
         float col[4] = {0};
 
         copy_v4_v4(col, ss->filter_cache->pre_smoothed_color[ni.index]);
@@ -329,6 +331,11 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   SculptSession *ss = ob->sculpt;
   View3D *v3d = CTX_wm_view3d(C);
 
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   int mval[2];
   RNA_int_get_array(op->ptr, "start_mouse", mval);
   float mval_fl[2] = {float(mval[0]), float(mval[1])};
@@ -368,7 +375,7 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
                      RNA_float_get(op->ptr, "strength"));
   filter::Cache *filter_cache = ss->filter_cache;
   filter_cache->active_face_set = SCULPT_FACE_SET_NONE;
-  filter_cache->automasking = auto_mask::cache_init(sd, nullptr, ob);
+  filter_cache->automasking = auto_mask::cache_init(sd, ob);
 
   return OPERATOR_PASS_THROUGH;
 }

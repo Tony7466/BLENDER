@@ -17,7 +17,6 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -26,13 +25,12 @@
 #include "BKE_cdderivedmesh.h"
 #include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 
@@ -41,8 +39,6 @@
 #include "CCGSubSurf.h"
 
 #include "DEG_depsgraph_query.hh"
-
-#include "multires_reshape.hh"
 
 #include <cmath>
 #include <cstring>
@@ -67,8 +63,7 @@ static void multiresModifier_disp_run(
 
 void multires_customdata_delete(Mesh *mesh)
 {
-  if (mesh->edit_mesh) {
-    BMEditMesh *em = mesh->edit_mesh;
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     /* CustomData_external_remove is used here only to mark layer
      * as non-external for further freeing, so zero element count
      * looks safer than `em->bm->totface`. */
@@ -358,11 +353,11 @@ void multires_set_tot_level(Object *ob, MultiresModifierData *mmd, int lvl)
   mmd->totlvl = lvl;
 
   if (ob->mode != OB_MODE_SCULPT) {
-    mmd->lvl = CLAMPIS(MAX2(mmd->lvl, lvl), 0, mmd->totlvl);
+    mmd->lvl = std::clamp<char>(std::max<char>(mmd->lvl, lvl), 0, mmd->totlvl);
   }
 
-  mmd->sculptlvl = CLAMPIS(MAX2(mmd->sculptlvl, lvl), 0, mmd->totlvl);
-  mmd->renderlvl = CLAMPIS(MAX2(mmd->renderlvl, lvl), 0, mmd->totlvl);
+  mmd->sculptlvl = std::clamp<char>(std::max<char>(mmd->sculptlvl, lvl), 0, mmd->totlvl);
+  mmd->renderlvl = std::clamp<char>(std::max<char>(mmd->renderlvl, lvl), 0, mmd->totlvl);
 }
 
 static void multires_ccg_mark_as_modified(SubdivCCG *subdiv_ccg, MultiresModifiedFlags flags)
@@ -403,7 +398,7 @@ void multires_flush_sculpt_updates(Object *object)
   }
 
   SculptSession *sculpt_session = object->sculpt;
-  if (BKE_pbvh_type(sculpt_session->pbvh) != PBVH_GRIDS || !sculpt_session->multires.active ||
+  if (BKE_pbvh_type(*sculpt_session->pbvh) != PBVH_GRIDS || !sculpt_session->multires.active ||
       sculpt_session->multires.modifier == nullptr)
   {
     return;
@@ -459,11 +454,7 @@ void multires_force_sculpt_rebuild(Object *object)
   }
 
   SculptSession *ss = object->sculpt;
-
-  if (ss->pbvh != nullptr) {
-    bke::pbvh::free(ss->pbvh);
-    object->sculpt->pbvh = nullptr;
-  }
+  bke::pbvh::free(ss->pbvh);
 }
 
 void multires_force_external_reload(Object *object)
@@ -517,9 +508,8 @@ void multiresModifier_set_levels_from_disps(MultiresModifierData *mmd, Object *o
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   const MDisps *mdisp;
 
-  if (mesh->edit_mesh) {
-    mdisp = static_cast<const MDisps *>(
-        CustomData_get_layer(&mesh->edit_mesh->bm->ldata, CD_MDISPS));
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
+    mdisp = static_cast<const MDisps *>(CustomData_get_layer(&em->bm->ldata, CD_MDISPS));
   }
   else {
     mdisp = static_cast<const MDisps *>(CustomData_get_layer(&mesh->corner_data, CD_MDISPS));
@@ -527,7 +517,7 @@ void multiresModifier_set_levels_from_disps(MultiresModifierData *mmd, Object *o
 
   if (mdisp) {
     mmd->totlvl = get_levels_from_disps(ob);
-    mmd->lvl = std::min(mmd->sculptlvl, mmd->totlvl);
+    mmd->lvl = std::min(mmd->lvl, mmd->totlvl);
     mmd->sculptlvl = std::min(mmd->sculptlvl, mmd->totlvl);
     mmd->renderlvl = std::min(mmd->renderlvl, mmd->totlvl);
   }
@@ -934,7 +924,7 @@ static void multires_disp_run_cb(void *__restrict userdata,
             case CALC_DISPLACEMENTS:
               /* Copy mask from DM to gpm */
               mask = *CCG_grid_elem_mask(key, grid, x, y);
-              gpm->data[y * gridSize + x] = CLAMPIS(mask, 0, 1);
+              gpm->data[y * gridSize + x] = std::clamp(mask, 0.0f, 1.0f);
               break;
             case ADD_DISPLACEMENTS:
               /* Add mask displacement to gpm */
@@ -1214,7 +1204,7 @@ void multires_stitch_grids(Object *ob)
   if (subdiv_ccg == nullptr) {
     return;
   }
-  BLI_assert(sculpt_session->pbvh && BKE_pbvh_type(sculpt_session->pbvh) == PBVH_GRIDS);
+  BLI_assert(sculpt_session->pbvh && BKE_pbvh_type(*sculpt_session->pbvh) == PBVH_GRIDS);
   BKE_subdiv_ccg_average_stitch_faces(*subdiv_ccg, IndexMask(subdiv_ccg->faces.size()));
 }
 
@@ -1347,7 +1337,7 @@ void old_mdisps_bilinear(float out[3], float (*disps)[3], const int st, float u,
 }
 
 void multiresModifier_sync_levels_ex(Object *ob_dst,
-                                     MultiresModifierData *mmd_src,
+                                     const MultiresModifierData *mmd_src,
                                      MultiresModifierData *mmd_dst)
 {
   if (mmd_src->totlvl == mmd_dst->totlvl) {

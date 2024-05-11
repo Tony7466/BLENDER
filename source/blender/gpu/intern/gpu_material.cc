@@ -8,6 +8,7 @@
  * Manages materials, lights and textures.
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -25,19 +26,19 @@
 
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "NOD_shader.h"
 
-#include "GPU_material.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_material.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
+#include "GPU_uniform_buffer.hh"
 
 #include "DRW_engine.hh"
 
-#include "gpu_codegen.h"
-#include "gpu_node_graph.h"
+#include "gpu_codegen.hh"
+#include "gpu_node_graph.hh"
 
 #include "atomic_ops.h"
 
@@ -269,6 +270,9 @@ void GPU_material_free_single(GPUMaterial *material)
   if (material->ubo != nullptr) {
     GPU_uniformbuf_free(material->ubo);
   }
+  if (material->coba_builder != nullptr) {
+    MEM_freeN(material->coba_builder);
+  }
   if (material->coba_tex != nullptr) {
     GPU_texture_free(material->coba_tex);
   }
@@ -433,8 +437,8 @@ static void compute_sss_kernel(GPUSssKernelData *kd, const float radii[3], int s
 {
   float rad[3];
   /* Minimum radius */
-  rad[0] = MAX2(radii[0], 1e-15f);
-  rad[1] = MAX2(radii[1], 1e-15f);
+  rad[0] = std::max(radii[0], 1e-15f);
+  rad[1] = std::max(radii[1], 1e-15f);
   rad[2] = std::max(radii[2], 1e-15f);
 
   kd->avg_inv_radius = 3.0f / (rad[0] + rad[1] + rad[2]);
@@ -448,7 +452,7 @@ static void compute_sss_kernel(GPUSssKernelData *kd, const float radii[3], int s
   /* XXX 0.6f Out of nowhere to match cycles! Empirical! Can be tweak better. */
   mul_v3_v3fl(d, l, 0.6f / s);
   mul_v3_v3fl(rad, d, BURLEY_TRUNCATE);
-  kd->max_radius = MAX3(rad[0], rad[1], rad[2]);
+  kd->max_radius = std::max({rad[0], rad[1], rad[2]});
 
   copy_v3_v3(kd->param, d);
 
@@ -746,7 +750,7 @@ void GPU_material_optimization_status_set(GPUMaterial *mat, eGPUMaterialOptimiza
   mat->optimization_status = status;
   if (mat->optimization_status == GPU_MAT_OPTIMIZATION_READY) {
     /* Reset creation timer to delay optimization pass. */
-    mat->creation_time = BLI_check_seconds_timer();
+    mat->creation_time = BLI_time_now_seconds();
   }
 }
 
@@ -760,7 +764,7 @@ bool GPU_material_optimization_ready(GPUMaterial *mat)
    * to do this quickly to avoid build-up and improve runtime performance.
    * The threshold just prevents compilations being queued frame after frame. */
   const double optimization_time_threshold_s = 1.2;
-  return ((BLI_check_seconds_timer() - mat->creation_time) >= optimization_time_threshold_s);
+  return ((BLI_time_now_seconds() - mat->creation_time) >= optimization_time_threshold_s);
 }
 
 void GPU_material_set_default(GPUMaterial *material, GPUMaterial *default_material)
@@ -789,6 +793,10 @@ bool GPU_material_has_displacement_output(GPUMaterial *mat)
 
 void GPU_material_flag_set(GPUMaterial *mat, eGPUMaterialFlag flag)
 {
+  if ((flag & GPU_MATFLAG_GLOSSY) && (mat->flag & GPU_MATFLAG_GLOSSY)) {
+    /* Tag material using multiple glossy BSDF as using clear coat. */
+    mat->flag |= GPU_MATFLAG_COAT;
+  }
   mat->flag |= flag;
 }
 
@@ -826,7 +834,8 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         bool is_volume_shader,
                                         bool is_lookdev,
                                         GPUCodegenCallbackFn callback,
-                                        void *thunk)
+                                        void *thunk,
+                                        GPUMaterialCanUseDefaultCallbackFn can_use_default_cb)
 {
   /* Search if this material is not already compiled. */
   LISTBASE_FOREACH (LinkData *, link, gpumaterials) {
@@ -854,13 +863,16 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   }
 
   /* Localize tree to create links for reroute and mute. */
-  bNodeTree *localtree = ntreeLocalize(ntree);
+  bNodeTree *localtree = ntreeLocalize(ntree, nullptr);
   ntreeGPUMaterialNodes(localtree, mat);
 
-  gpu_material_ramp_texture_build(mat);
-  gpu_material_sky_texture_build(mat);
+  if (can_use_default_cb && can_use_default_cb(mat)) {
+    mat->status = GPU_MAT_USE_DEFAULT;
+  }
+  else {
+    gpu_material_ramp_texture_build(mat);
+    gpu_material_sky_texture_build(mat);
 
-  {
     /* Create source code and search pass cache for an already compiled version. */
     mat->pass = GPU_generate_pass(mat, &mat->graph, engine, callback, thunk, false);
 

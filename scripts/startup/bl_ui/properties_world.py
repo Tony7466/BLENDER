@@ -121,7 +121,7 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
     bl_label = "Volume"
     bl_translation_context = i18n_contexts.id_id
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     @classmethod
     def poll(cls, context):
@@ -137,6 +137,9 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
         node = ntree.get_output_node('EEVEE')
 
         layout.use_property_split = True
+
+        if world.use_eevee_finite_volume:
+            layout.operator("world.convert_volume_to_mesh", icon='WORLD', text="Convert Volume")
 
         if node:
             input = find_node_input(node, "Volume")

@@ -173,7 +173,11 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
       blender_mat, ntree, pipeline_type, geometry_type, use_deferred_compilation);
 
   const bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_OCCUPANCY, MAT_PIPE_VOLUME_MATERIAL);
-  const bool is_forward = ELEM(pipeline_type, MAT_PIPE_FORWARD, MAT_PIPE_PREPASS_OVERLAP);
+  const bool is_forward = ELEM(pipeline_type,
+                               MAT_PIPE_FORWARD,
+                               MAT_PIPE_PREPASS_FORWARD,
+                               MAT_PIPE_PREPASS_FORWARD_VELOCITY,
+                               MAT_PIPE_PREPASS_OVERLAP);
 
   switch (GPU_material_status(matpass.gpumat)) {
     case GPU_MAT_SUCCESS: {
@@ -186,9 +190,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     }
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
-      blender_mat = (is_volume) ? BKE_material_default_volume() : BKE_material_default_surface();
-      matpass.gpumat = inst_.shaders.material_shader_get(
-          blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
+      matpass.gpumat = inst_.shaders.material_default_shader_get(pipeline_type, geometry_type);
       break;
     case GPU_MAT_FAILED:
     default:
@@ -201,13 +203,26 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
 
   inst_.manager->register_layer_attributes(matpass.gpumat);
 
-  if (GPU_material_recalc_flag_get(matpass.gpumat)) {
+  const bool is_transparent = GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_TRANSPARENT);
+
+  if (use_deferred_compilation && GPU_material_recalc_flag_get(matpass.gpumat)) {
     /* TODO(Miguel Pozo): This is broken, it consumes the flag,
      * but GPUMats can be shared across viewports. */
     inst_.sampling.reset();
+
+    const bool has_displacement = GPU_material_has_displacement_output(matpass.gpumat) &&
+                                  (blender_mat->displacement_method != MA_DISPLACEMENT_BUMP);
+    const bool has_volume = GPU_material_has_volume_output(matpass.gpumat);
+
+    if (((pipeline_type == MAT_PIPE_SHADOW) && (is_transparent || has_displacement)) || has_volume)
+    {
+      /* WORKAROUND: This is to avoid lingering shadows from default material.
+       * Ideally, we should tag the caster object to update only the needed areas but that's a bit
+       * more involved. */
+      inst_.shadows.reset();
+    }
   }
 
-  const bool is_transparent = GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_TRANSPARENT);
   if (is_volume || (is_forward && is_transparent)) {
     /* Sub pass is generated later. */
     matpass.sub_pass = nullptr;
@@ -247,7 +262,7 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.volume_occupancy = material_pass_get(
           ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_VOLUME);
       mat.volume_material = material_pass_get(
-          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME);
       return mat;
     });
 
@@ -334,7 +349,7 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.volume_occupancy = material_pass_get(
             ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, geometry_type);
         mat.volume_material = material_pass_get(
-            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, geometry_type);
       }
       else {
         mat.volume_occupancy = MaterialPass();
@@ -352,6 +367,10 @@ Material &MaterialModule::material_sync(Object *ob,
     mat.is_alpha_blend_transparent = use_forward_pipeline &&
                                      GPU_material_flag_get(mat.shading.gpumat,
                                                            GPU_MATFLAG_TRANSPARENT);
+    mat.has_transparent_shadows = blender_mat->blend_flag & MA_BL_TRANSPARENT_SHADOW &&
+                                  GPU_material_flag_get(mat.shading.gpumat,
+                                                        GPU_MATFLAG_TRANSPARENT);
+
     return mat;
   });
 
@@ -407,7 +426,7 @@ MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
   for (auto i : IndexRange(materials_len)) {
     ::Material *blender_mat = material_from_slot(ob, i);
     Material &mat = material_sync(ob, blender_mat, to_material_geometry(ob), has_motion);
-    /* \note: Perform a whole copy since next material_sync() can move the Material memory location
+    /* \note Perform a whole copy since next material_sync() can move the Material memory location
      * (i.e: because of its container growing) */
     material_array_.materials.append(mat);
     material_array_.gpu_materials.append(mat.shading.gpumat);

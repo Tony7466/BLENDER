@@ -6,6 +6,7 @@ __all__ = (
     "paths",
     "modules",
     "check",
+    "check_extension",
     "enable",
     "disable",
     "disable_all",
@@ -31,6 +32,8 @@ def _initialize_once():
 
     for addon in _preferences.addons:
         enable(addon.module)
+
+    _initialize_ensure_extensions_addon()
 
 
 def paths():
@@ -69,7 +72,7 @@ def _paths_with_extension_repos():
             dirpath = repo.directory
             if not os.path.isdir(dirpath):
                 continue
-            addon_paths.append((dirpath, "%s.%s" % (_ext_base_pkg_idname, repo.module)))
+            addon_paths.append((dirpath, "{:s}.{:s}".format(_ext_base_pkg_idname, repo.module)))
 
     return addon_paths
 
@@ -80,6 +83,10 @@ def _fake_module(mod_name, mod_path, speedy=True, force_support=None):
 
     if _bpy.app.debug_python:
         print("fake_module", mod_path, mod_name)
+
+    if mod_name.startswith(_ext_base_pkg_idname_with_dot):
+        return _fake_module_from_extension(mod_name, mod_path, force_support=force_support)
+
     import ast
     ModuleType = type(ast)
     try:
@@ -155,11 +162,7 @@ def _fake_module(mod_name, mod_path, speedy=True, force_support=None):
 
         return mod
     else:
-        print(
-            "fake_module: addon missing 'bl_info' "
-            "gives bad performance!:",
-            repr(mod_path),
-        )
+        print("Warning: add-on missing 'bl_info', this can cause poor performance!:", repr(mod_path))
         return None
 
 
@@ -180,23 +183,21 @@ def modules_refresh(*, module_cache=addons_fake_modules):
         for mod_name, mod_path in _bpy.path.module_names(path, package=pkg_id):
             modules_stale.discard(mod_name)
             mod = module_cache.get(mod_name)
-            if mod:
+            if mod is not None:
                 if mod.__file__ != mod_path:
                     print(
                         "multiple addons with the same name:\n"
-                        "  %r\n"
-                        "  %r" % (mod.__file__, mod_path)
+                        "  {!r}\n"
+                        "  {!r}".format(mod.__file__, mod_path)
                     )
                     error_duplicates.append((mod.bl_info["name"], mod.__file__, mod_path))
 
-                elif mod.__time__ != os.path.getmtime(mod_path):
-                    print(
-                        "reloading addon:",
-                        mod_name,
-                        mod.__time__,
-                        os.path.getmtime(mod_path),
-                        repr(mod_path),
-                    )
+                elif (
+                        (mod.__time__ != os.path.getmtime(metadata_path := mod_path)) if not pkg_id else
+                        # Check the manifest time as this is the source of the cache.
+                        (mod.__time_manifest__ != os.path.getmtime(metadata_path := mod.__file_manifest__))
+                ):
+                    print("reloading addon meta-data:", mod_name, repr(metadata_path), "(time-stamp change detected)")
                     del module_cache[mod_name]
                     mod = None
 
@@ -266,6 +267,14 @@ def check(module_name):
 
     return loaded_default, loaded_state
 
+
+def check_extension(module_name):
+    """
+    Return true if the module is an extension.
+    """
+    return module_name.startswith(_ext_base_pkg_idname_with_dot)
+
+
 # utility functions
 
 
@@ -307,15 +316,32 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
     import importlib
     from bpy_restrict_state import RestrictBlend
 
+    is_extension = module_name.startswith(_ext_base_pkg_idname_with_dot)
+
     if handle_error is None:
-        def handle_error(_ex):
+        def handle_error(ex):
+            if isinstance(ex, ImportError):
+                # NOTE: checking "Add-on " prefix is rather weak,
+                # it's just a way to avoid the noise of a full trace-back when
+                # an add-on is simply missing on the file-system.
+                if (type(msg := ex.msg) is str) and msg.startswith("Add-on "):
+                    print(msg)
+                    return
             import traceback
             traceback.print_exc()
 
     # reload if the mtime changes
     mod = sys.modules.get(module_name)
     # chances of the file _not_ existing are low, but it could be removed
-    if mod and os.path.exists(mod.__file__):
+
+    # Set to `mod.__file__` or None.
+    mod_file = None
+
+    if (
+            (mod is not None) and
+            (mod_file := mod.__file__) is not None and
+            os.path.exists(mod_file)
+    ):
 
         if getattr(mod, "__addon_enabled__", False):
             # This is an unlikely situation,
@@ -325,18 +351,15 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             try:
                 mod.unregister()
             except BaseException as ex:
-                print(
-                    "Exception in module unregister():",
-                    repr(getattr(mod, "__file__", module_name)),
-                )
+                print("Exception in module unregister():", (mod_file or module_name))
                 handle_error(ex)
                 return None
 
         mod.__addon_enabled__ = False
         mtime_orig = getattr(mod, "__time__", 0)
-        mtime_new = os.path.getmtime(mod.__file__)
+        mtime_new = os.path.getmtime(mod_file)
         if mtime_orig != mtime_new:
-            print("module changed on disk:", repr(mod.__file__), "reloading...")
+            print("module changed on disk:", repr(mod_file), "reloading...")
 
             try:
                 importlib.reload(mod)
@@ -363,11 +386,20 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             # Use instead of `__import__` so that sub-modules can eventually be supported.
             # This is also documented to be the preferred way to import modules.
             mod = importlib.import_module(module_name)
-            if mod.__file__ is None:
-                # This can happen when the addon has been removed but there are
-                # residual `.pyc` files left behind.
-                raise ImportError(name=module_name)
-            mod.__time__ = os.path.getmtime(mod.__file__)
+            if (mod_file := mod.__file__) is None:
+                # This can happen when:
+                # - The add-on has been removed but there are residual `.pyc` files left behind.
+                # - An extension is a directory that doesn't contain an `__init__.py` file.
+                #
+                # Include a message otherwise the "cause:" for failing to load the module is left blank.
+                # Include the `__path__` when available so there is a reference to the location that failed to load.
+                raise ImportError(
+                    "module loaded with no associated file, __path__={!r}, aborting!".format(
+                        getattr(mod, "__path__", None)
+                    ),
+                    name=module_name
+                )
+            mod.__time__ = os.path.getmtime(mod_file)
             mod.__addon_enabled__ = False
         except BaseException as ex:
             # If the add-on doesn't exist, don't print full trace-back because the back-trace is in this case
@@ -375,44 +407,55 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             # Account for `ImportError` & `ModuleNotFoundError`.
             if isinstance(ex, ImportError):
                 if ex.name == module_name:
-                    print("Add-on not loaded: \"%s\", cause: %s" % (module_name, str(ex)))
+                    ex.msg = "Add-on not loaded: \"{:s}\", cause: {:s}".format(module_name, str(ex))
 
                 # Issue with an add-on from an extension repository, report a useful message.
-                elif module_name.startswith(ex.name + ".") and module_name.startswith(_ext_base_pkg_idname + "."):
-                    repo_id = module_name[len(_ext_base_pkg_idname) + 1:].rpartition(".")[0]
+                elif is_extension and module_name.startswith(ex.name + "."):
+                    repo_id = module_name[len(_ext_base_pkg_idname_with_dot):].rpartition(".")[0]
                     repo = next(
                         (repo for repo in _preferences.filepaths.extension_repos if repo.module == repo_id),
                         None,
                     )
                     if repo is None:
-                        print(
-                            "Add-on not loaded: \"%s\", cause: extension repository \"%s\" doesn't exist" %
-                            (module_name, repo_id)
+                        ex.msg = (
+                            "Add-on not loaded: \"{:s}\", cause: extension repository \"{:s}\" doesn't exist".format(
+                                module_name, repo_id,
+                            )
                         )
                     elif not repo.enabled:
-                        print(
-                            "Add-on not loaded: \"%s\", cause: extension repository \"%s\" is disabled" %
-                            (module_name, repo_id)
+                        ex.msg = (
+                            "Add-on not loaded: \"{:s}\", cause: extension repository \"{:s}\" is disabled".format(
+                                module_name, repo_id,
+                            )
                         )
                     else:
                         # The repository exists and is enabled, it should have imported.
-                        print("Add-on not loaded: \"%s\", cause: %s" % (module_name, str(ex)))
-                else:
-                    handle_error(ex)
-            else:
-                handle_error(ex)
+                        ex.msg = "Add-on not loaded: \"{:s}\", cause: {:s}".format(module_name, str(ex))
+
+            handle_error(ex)
 
             if default_set:
                 _addon_remove(module_name)
             return None
 
-        # 1.1) Fail when add-on is too old.
-        # This is a temporary 2.8x migration check, so we can manage addons that are supported.
-
-        if mod.bl_info.get("blender", (0, 0, 0)) < (2, 80, 0):
-            if _bpy.app.debug:
-                print("Warning: Add-on '%s' was not upgraded for 2.80, ignoring" % module_name)
-            return None
+        if is_extension:
+            # Handle the case the an extension has `bl_info` (which is not used for extensions).
+            # Note that internally a `bl_info` is added based on the extensions manifest - for compatibility.
+            # So it's important not to use this one.
+            bl_info = getattr(mod, "bl_info", None)
+            if bl_info is not None:
+                # Use `_init` to detect when `bl_info` was generated from the manifest, see: `_bl_info_from_extension`.
+                if type(bl_info) is dict and "_init" not in bl_info:
+                    # This print is noisy, hide behind a debug flag.
+                    # Once `bl_info` is fully deprecated this should be changed to always print a warning.
+                    if _bpy.app.debug_python:
+                        print(
+                            "Add-on \"{:s}\" has a \"bl_info\" which will be ignored in favor of \"{:s}\"".format(
+                                module_name, _ext_manifest_filename_toml,
+                            )
+                        )
+                # Always remove as this is not expected to exist and will be lazily initialized.
+                del mod.bl_info
 
         # 2) Try register collected modules.
         # Removed register_module, addons need to handle their own registration now.
@@ -425,10 +468,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
         try:
             mod.register()
         except BaseException as ex:
-            print(
-                "Exception in module register():",
-                getattr(mod, "__file__", module_name),
-            )
+            print("Exception in module register():", (mod_file or module_name))
             handle_error(ex)
             del sys.modules[module_name]
             if default_set:
@@ -472,7 +512,7 @@ def disable(module_name, *, default_set=False, handle_error=None):
     # the add-on in the user preferences.
     if mod and getattr(mod, "__addon_enabled__", False) is not False:
         mod.__addon_enabled__ = False
-        mod.__addon_persistent = False
+        mod.__addon_persistent__ = False
 
         try:
             mod.unregister()
@@ -483,9 +523,10 @@ def disable(module_name, *, default_set=False, handle_error=None):
             handle_error(ex)
     else:
         print(
-            "addon_utils.disable: %s not %s" % (
+            "addon_utils.disable: {:s} not {:s}".format(
                 module_name,
-                "disabled" if mod is None else "loaded")
+                "loaded" if mod is None else "enabled",
+            )
         )
 
     # could be in more than once, unlikely but better do this just in case.
@@ -543,8 +584,9 @@ def disable_all():
     #
     # Either way, running 3rd party logic here can cause undefined behavior.
     # Use direct `__dict__` access to bypass `__getattr__`, see: #111649.
+    modules = sys.modules.copy()
     addon_modules = [
-        item for item in sys.modules.items()
+        item for item in modules.items()
         if type(mod_dict := getattr(item[1], "__dict__", None)) is dict
         if mod_dict.get("__addon_enabled__")
     ]
@@ -556,24 +598,31 @@ def disable_all():
 
 
 def _blender_manual_url_prefix():
-    return "https://docs.blender.org/manual/%s/%d.%d" % (_bpy.utils.manual_language_code(), *_bpy.app.version[:2])
+    return "https://docs.blender.org/manual/{:s}/{:d}.{:d}".format(
+        _bpy.utils.manual_language_code(),
+        *_bpy.app.version[:2],
+    )
+
+
+def _bl_info_basis():
+    return {
+        "name": "",
+        "author": "",
+        "version": (),
+        "blender": (),
+        "location": "",
+        "description": "",
+        "doc_url": "",
+        "support": 'COMMUNITY',
+        "category": "",
+        "warning": "",
+        "show_expanded": False,
+    }
 
 
 def module_bl_info(mod, *, info_basis=None):
     if info_basis is None:
-        info_basis = {
-            "name": "",
-            "author": "",
-            "version": (),
-            "blender": (),
-            "location": "",
-            "description": "",
-            "doc_url": "",
-            "support": 'COMMUNITY',
-            "category": "",
-            "warning": "",
-            "show_expanded": False,
-        }
+        info_basis = _bl_info_basis()
 
     addon_info = getattr(mod, "bl_info", {})
 
@@ -582,6 +631,14 @@ def module_bl_info(mod, *, info_basis=None):
         return addon_info
 
     if not addon_info:
+        if mod.__name__.startswith(_ext_base_pkg_idname_with_dot):
+            addon_info, filepath_toml = _bl_info_from_extension(mod.__name__, mod.__file__)
+            if addon_info is None:
+                # Unexpected, this is a malformed extension if meta-data can't be loaded.
+                print("module_bl_info: failed to extract meta-data from", filepath_toml)
+                # Continue to initialize dummy data.
+                addon_info = {}
+
         mod.bl_info = addon_info
 
     for key, value in info_basis.items():
@@ -604,7 +661,106 @@ def module_bl_info(mod, *, info_basis=None):
 
 
 # -----------------------------------------------------------------------------
+# Extension Utilities
+
+def _bl_info_from_extension(mod_name, mod_path, force_support=None):
+    # Extract the `bl_info` from an extensions manifest.
+    # This is returned as a module which has a `bl_info` variable.
+    # When support for non-extension add-ons is dropped (Blender v5.0 perhaps)
+    # this can be updated not to use a fake module.
+    import os
+    import tomllib
+
+    bl_info = _bl_info_basis()
+
+    filepath_toml = os.path.join(os.path.dirname(mod_path), _ext_manifest_filename_toml)
+    try:
+        with open(filepath_toml, "rb") as fh:
+            data = tomllib.load(fh)
+    except FileNotFoundError:
+        print("Warning: add-on missing manifest, this can cause poor performance!:", repr(filepath_toml))
+        return None, filepath_toml
+    except BaseException as ex:
+        print("Error:", str(ex), "in", filepath_toml)
+        return None, filepath_toml
+
+    # This isn't a full validation which happens on package install/update.
+    if (value := data.get("name", None)) is None:
+        print("Error: missing \"name\" from in", filepath_toml)
+        return None, filepath_toml
+    if type(value) is not str:
+        print("Error: \"name\" is not a string in", filepath_toml)
+        return None, filepath_toml
+    bl_info["name"] = value
+
+    if (value := data.get("version", None)) is None:
+        print("Error: missing \"version\" from in", filepath_toml)
+        return None, filepath_toml
+    if type(value) is not str:
+        print("Error: \"version\" is not a string in", filepath_toml)
+        return None, filepath_toml
+    bl_info["version"] = value
+
+    if (value := data.get("blender_version_min", None)) is None:
+        print("Error: missing \"blender_version_min\" from in", filepath_toml)
+        return None, filepath_toml
+    if type(value) is not str:
+        print("Error: \"blender_version_min\" is not a string in", filepath_toml)
+        return None, filepath_toml
+    try:
+        value = tuple(int(x) for x in value.split("."))
+    except BaseException as ex:
+        print("Error:", str(ex), "in \"blender_version_min\"", filepath_toml)
+        return None, filepath_toml
+    bl_info["blender"] = value
+
+    if (value := data.get("maintainer", None)) is None:
+        print("Error: missing \"author\" from in", filepath_toml)
+        return None, filepath_toml
+    if type(value) is not str:
+        print("Error: \"maintainer\" is not a string", filepath_toml)
+        return None, filepath_toml
+    bl_info["author"] = value
+
+    bl_info["category"] = "Development"  # Dummy, will be removed.
+
+    if force_support is not None:
+        bl_info["support"] = force_support
+    return bl_info, filepath_toml
+
+
+def _fake_module_from_extension(mod_name, mod_path, force_support=None):
+    import os
+
+    bl_info, filepath_toml = _bl_info_from_extension(mod_name, mod_path, force_support=force_support)
+    if bl_info is None:
+        return None
+
+    ModuleType = type(os)
+    mod = ModuleType(mod_name)
+    mod.bl_info = bl_info
+    mod.__file__ = mod_path
+    mod.__time__ = os.path.getmtime(mod_path)
+
+    # NOTE(@ideasman42): Add non-standard manifest variables to the "fake" module,
+    # this isn't ideal as it moves further away from the return value being minimal fake-module
+    # (where `__name__` and `__file__` are typically used).
+    # A custom type could be used, however this needs to be done carefully
+    # as all users of `addon_utils.modules(..)` need to be updated.
+    mod.__file_manifest__ = filepath_toml
+    mod.__time_manifest__ = os.path.getmtime(filepath_toml)
+    return mod
+
+
+# -----------------------------------------------------------------------------
 # Extensions
+
+def _initialize_ensure_extensions_addon():
+    if _preferences.experimental.use_extension_repos:
+        module_name = "bl_pkg"
+        if module_name not in _preferences.addons:
+            enable(module_name, default_set=True, persistent=True)
+
 
 # Module-like class, store singletons.
 class _ext_global:
@@ -623,6 +779,8 @@ class _ext_global:
 
 # The name (in `sys.modules`) keep this short because it's stored as part of add-on modules name.
 _ext_base_pkg_idname = "bl_ext"
+_ext_base_pkg_idname_with_dot = _ext_base_pkg_idname + "."
+_ext_manifest_filename_toml = "blender_manifest.toml"
 
 
 def _extension_preferences_idmap():
@@ -683,12 +841,11 @@ def _initialize_extension_repos_post_addons_prepare(
     # All preferences info.
     # Map: `repo_id -> {submodule_id -> addon, ...}`.
     addon_userdef_info = {}
-    module_prefix = _ext_base_pkg_idname + "."
     for addon in _preferences.addons:
         module = addon.module
-        if not module.startswith(module_prefix):
+        if not module.startswith(_ext_base_pkg_idname_with_dot):
             continue
-        module_id, submodule_id = module[len(module_prefix):].partition(".")[0::2]
+        module_id, submodule_id = module[len(_ext_base_pkg_idname_with_dot):].partition(".")[0::2]
         try:
             addon_userdef_info[module_id][submodule_id] = addon
         except KeyError:
@@ -719,7 +876,7 @@ def _initialize_extension_repos_post_addons_prepare(
             repo_runtime = addon_runtime_info.get(module_id, {})
 
             for submodule_id, addon in repo_userdef.items():
-                module_name_next = "%s.%s.%s" % (_ext_base_pkg_idname, module_id, submodule_id)
+                module_name_next = "{:s}.{:s}.{:s}".format(_ext_base_pkg_idname, module_id, submodule_id)
                 # Only default & persistent add-ons are kept for re-activation.
                 default_set = True
                 persistent = True
@@ -731,8 +888,8 @@ def _initialize_extension_repos_post_addons_prepare(
         for submodule_id, mod in repo_runtime.items():
             if not getattr(mod, "__addon_enabled__", False):
                 continue
-            module_name_prev = "%s.%s.%s" % (_ext_base_pkg_idname, module_id_prev, submodule_id)
-            module_name_next = "%s.%s.%s" % (_ext_base_pkg_idname, module_id_next, submodule_id)
+            module_name_prev = "{:s}.{:s}.{:s}".format(_ext_base_pkg_idname, module_id_prev, submodule_id)
+            module_name_next = "{:s}.{:s}.{:s}".format(_ext_base_pkg_idname, module_id_next, submodule_id)
             disable(module_name_prev, default_set=False)
             addon = repo_userdef.get(submodule_id)
             default_set = addon is not None
@@ -748,7 +905,7 @@ def _initialize_extension_repos_post_addons_prepare(
                 continue
             # Either there is no run-time data or the module wasn't enabled.
             # Rename the add-on without enabling it so the next time it's enabled it's preferences are kept.
-            module_name_next = "%s.%s.%s" % (_ext_base_pkg_idname, module_id_next, submodule_id)
+            module_name_next = "{:s}.{:s}.{:s}".format(_ext_base_pkg_idname, module_id_next, submodule_id)
             addon.module = module_name_next
 
     if submodules_del:
@@ -765,7 +922,7 @@ def _initialize_extension_repos_post_addons_prepare(
                 default_set = False
 
             for submodule_id, mod in repo_runtime.items():
-                module_name_prev = "%s.%s.%s" % (_ext_base_pkg_idname, module_id, submodule_id)
+                module_name_prev = "{:s}.{:s}.{:s}".format(_ext_base_pkg_idname, module_id, submodule_id)
                 disable(module_name_prev, default_set=default_set)
             del repo
         del repo_module_map
@@ -774,7 +931,7 @@ def _initialize_extension_repos_post_addons_prepare(
         for module_id_prev in submodules_del_disabled:
             repo_userdef = addon_userdef_info.get(module_id_prev, {})
             for submodule_id in repo_userdef.keys():
-                module_name_prev = "%s.%s.%s" % (_ext_base_pkg_idname, module_id_prev, submodule_id)
+                module_name_prev = "{:s}.{:s}.{:s}".format(_ext_base_pkg_idname, module_id_prev, submodule_id)
                 disable(module_name_prev, default_set=True)
 
     return addons_to_enable
@@ -805,6 +962,10 @@ def _initialize_extension_repos_pre(*_):
 
 @_bpy.app.handlers.persistent
 def _initialize_extension_repos_post(*_, is_first=False):
+
+    # When enabling extensions for the first time, ensure the add-on is enabled.
+    _initialize_ensure_extensions_addon()
+
     do_addons = not is_first
 
     # Map `module_id` -> `dirpath`.
@@ -923,11 +1084,64 @@ def _initialize_extension_repos_post(*_, is_first=False):
         modules._is_first = True
 
 
+def _initialize_extensions_site_packages(*, create=False):
+    # Add extension site-packages to `sys.path` (if it exists).
+    # Use for wheels.
+    import os
+    import sys
+
+    # NOTE: follow the structure of `~/.local/lib/python#.##/site-packages`
+    # because some wheels contain paths pointing to parent directories,
+    # referencing `../../../bin` for example - to install binaries into `~/.local/bin`,
+    # so this can't simply be treated as a module directory unless those files would be excluded
+    # which may interfere with the wheels functionality.
+    site_packages = os.path.join(
+        _bpy.utils.user_resource('EXTENSIONS'),
+        ".local",
+        "lib",
+        "python{:d}.{:d}".format(sys.version_info.major, sys.version_info.minor),
+        "site-packages",
+    )
+    if create:
+        if not os.path.exists(site_packages):
+            os.makedirs(site_packages)
+        found = True
+    else:
+        found = os.path.exists(site_packages)
+
+    if found:
+        # Ensure the wheels `site-packages` are added before all other site-packages.
+        # This is important for extensions modules get priority over system modules.
+        # Without this, installing a module into the systems site-packages (`/usr/lib/python#.##/site-packages`)
+        # could break an extension which already had a different version of this module installed locally.
+        from site import getsitepackages
+        index = None
+        if builtin_site_packages := set(getsitepackages()):
+            for i, dirpath in enumerate(sys.path):
+                if dirpath in builtin_site_packages:
+                    index = i
+                    break
+        if index is None:
+            sys.path.append(site_packages)
+        else:
+            sys.path.insert(index, site_packages)
+    else:
+        try:
+            sys.path.remove(site_packages)
+        except ValueError:
+            pass
+
+    return site_packages if found else None
+
+
 def _initialize_extensions_repos_once():
     from bpy_extras.extensions.junction_module import JunctionModuleHandle
     module_handle = JunctionModuleHandle(_ext_base_pkg_idname)
     module_handle.register_module()
     _ext_global.module_handle = module_handle
+
+    # Ensure extensions wheels can be loaded (when found).
+    _initialize_extensions_site_packages()
 
     # Setup repositories for the first time.
     # Intentionally don't call `_initialize_extension_repos_pre` as this is the first time,

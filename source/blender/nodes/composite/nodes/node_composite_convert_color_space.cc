@@ -6,8 +6,6 @@
  * \ingroup cmpnodes
  */
 
-#include "RNA_access.hh"
-
 #include "BLI_string.h"
 
 #include "UI_interface.hh"
@@ -15,7 +13,7 @@
 
 #include "IMB_colormanagement.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_ocio_color_space_conversion_shader.hh"
@@ -161,7 +159,7 @@ void register_node_type_cmp_convert_color_space()
       &ntype, CMP_NODE_CONVERT_COLOR_SPACE, "Convert Colorspace", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::CMP_NODE_CONVERT_COLOR_SPACE_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_convert_colorspace;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.initfunc = file_ns::node_composit_init_convert_colorspace;
   node_type_storage(
       &ntype, "NodeConvertColorSpace", node_free_standard_storage, node_copy_standard_storage);

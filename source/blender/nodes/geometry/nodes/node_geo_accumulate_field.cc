@@ -43,7 +43,7 @@ static void node_declare(NodeDeclarationBuilder &b)
         BLI_assert_unreachable();
         break;
     }
-    value_declaration->supports_field().description(N_("The values to be accumulated"));
+    value_declaration->supports_field().description("The values to be accumulated");
   }
 
   b.add_input<decl::Int>("Group ID", "Group Index")
@@ -54,15 +54,14 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
     b.add_output(data_type, "Leading")
         .field_source_reference_all()
-        .description(N_("The running total of values in the corresponding group, starting at the "
-                        "first value"));
+        .description(
+            "The running total of values in the corresponding group, starting at the first value");
     b.add_output(data_type, "Trailing")
         .field_source_reference_all()
-        .description(
-            N_("The running total of values in the corresponding group, starting at zero"));
+        .description("The running total of values in the corresponding group, starting at zero");
     b.add_output(data_type, "Total")
         .field_source_reference_all()
-        .description(N_("The total of all of the values in the corresponding group"));
+        .description("The total of all of the values in the corresponding group");
   }
 }
 
@@ -232,7 +231,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_4(input_, group_index_, source_domain_, accumulation_mode_);
+    return get_default_hash(input_, group_index_, source_domain_, accumulation_mode_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
@@ -320,7 +319,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_3(input_, group_index_, source_domain_);
+    return get_default_hash(input_, group_index_, source_domain_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
@@ -389,7 +388,8 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_items,
                     NOD_storage_enum_accessors(domain),
                     int(AttrDomain::Point),
-                    enums::domain_experimental_grease_pencil_version3_fn);
+                    enums::domain_experimental_grease_pencil_version3_fn,
+                    true);
 }
 
 static void node_register()

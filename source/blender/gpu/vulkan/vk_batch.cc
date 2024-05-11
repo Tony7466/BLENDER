@@ -29,7 +29,8 @@ void VKBatch::draw_setup()
   VKIndexBuffer *index_buffer = index_buffer_get();
   const bool draw_indexed = index_buffer != nullptr;
   state_manager.apply_state();
-  state_manager.apply_bindings();
+  render_graph::VKResourceAccessInfo resource_access_info = {};
+  state_manager.apply_bindings(context, resource_access_info);
   /*
    * The next statements are order dependent. VBOs and IBOs must be uploaded, before resources can
    * be bound. Uploading device located buffers flush the graphics pipeline and already bound
@@ -74,13 +75,21 @@ void VKBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
 }
 
 void VKBatch::multi_draw_indirect(GPUStorageBuf *indirect_buf,
-                                  int count,
-                                  intptr_t offset,
-                                  intptr_t stride)
+                                  const int count,
+                                  const intptr_t offset,
+                                  const intptr_t stride)
+{
+  VKStorageBuffer &indirect_buffer = *unwrap(unwrap(indirect_buf));
+  multi_draw_indirect(indirect_buffer.vk_handle(), count, offset, stride);
+}
+
+void VKBatch::multi_draw_indirect(const VkBuffer indirect_buffer,
+                                  const int count,
+                                  const intptr_t offset,
+                                  const intptr_t stride)
 {
   draw_setup();
 
-  VKStorageBuffer &indirect_buffer = *unwrap(unwrap(indirect_buf));
   VKContext &context = *VKContext::get();
   VKIndexBuffer *index_buffer = index_buffer_get();
   const bool draw_indexed = index_buffer != nullptr;

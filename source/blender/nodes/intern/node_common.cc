@@ -9,11 +9,11 @@
 #include <cstddef>
 #include <cstring>
 
+#include "DNA_asset_types.h"
 #include "DNA_node_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
-#include "BLI_math_euler.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -21,14 +21,11 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.hh"
-
-#include "RNA_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -83,6 +80,45 @@ void node_group_label(const bNodeTree * /*ntree*/,
       label, (node->id) ? node->id->name + 2 : IFACE_("Missing Data-Block"), label_maxncpy);
 }
 
+int node_group_ui_class(const bNode *node)
+{
+  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+  if (!group) {
+    return NODE_CLASS_GROUP;
+  }
+  switch (NodeGroupColorTag(group->color_tag)) {
+    case NodeGroupColorTag::None:
+      return NODE_CLASS_GROUP;
+    case NodeGroupColorTag::Attribute:
+      return NODE_CLASS_ATTRIBUTE;
+    case NodeGroupColorTag::Color:
+      return NODE_CLASS_OP_COLOR;
+    case NodeGroupColorTag::Converter:
+      return NODE_CLASS_CONVERTER;
+    case NodeGroupColorTag::Distort:
+      return NODE_CLASS_DISTORT;
+    case NodeGroupColorTag::Filter:
+      return NODE_CLASS_OP_FILTER;
+    case NodeGroupColorTag::Geometry:
+      return NODE_CLASS_GEOMETRY;
+    case NodeGroupColorTag::Input:
+      return NODE_CLASS_INPUT;
+    case NodeGroupColorTag::Matte:
+      return NODE_CLASS_MATTE;
+    case NodeGroupColorTag::Output:
+      return NODE_CLASS_OUTPUT;
+    case NodeGroupColorTag::Script:
+      return NODE_CLASS_SCRIPT;
+    case NodeGroupColorTag::Shader:
+      return NODE_CLASS_SHADER;
+    case NodeGroupColorTag::Texture:
+      return NODE_CLASS_TEXTURE;
+    case NodeGroupColorTag::Vector:
+      return NODE_CLASS_OP_VECTOR;
+  }
+  return NODE_CLASS_GROUP;
+}
+
 bool node_group_poll_instance(const bNode *node,
                               const bNodeTree *nodetree,
                               const char **disabled_hint)
@@ -95,6 +131,23 @@ bool node_group_poll_instance(const bNode *node,
     return true;
   }
   return nodeGroupPoll(nodetree, grouptree, disabled_hint);
+}
+
+std::string node_group_ui_description(const bNode &node)
+{
+  if (!node.id) {
+    return "";
+  }
+  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id);
+  if (group->id.asset_data) {
+    if (group->id.asset_data->description) {
+      return group->id.asset_data->description;
+    }
+  }
+  if (!group->description) {
+    return "";
+  }
+  return group->description;
 }
 
 bool nodeGroupPoll(const bNodeTree *nodetree,
@@ -249,6 +302,11 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       dst = std::move(decl);
       break;
     }
+    case SOCK_MATRIX: {
+      std::unique_ptr<decl::Matrix> decl = std::make_unique<decl::Matrix>();
+      dst = std::move(decl);
+      break;
+    }
     case SOCK_INT: {
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueInt>(io_socket);
       std::unique_ptr<decl::Int> decl = std::make_unique<decl::Int>();
@@ -262,6 +320,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     case SOCK_STRING: {
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueString>(io_socket);
       std::unique_ptr<decl::String> decl = std::make_unique<decl::String>();
+      decl->default_value = value.value;
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_MENU: {
+      const auto &value = node_interface::get_socket_data_as<bNodeSocketValueMenu>(io_socket);
+      std::unique_ptr<decl::Menu> decl = std::make_unique<decl::Menu>();
       decl->default_value = value.value;
       dst = std::move(decl);
       break;
@@ -310,6 +375,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
   dst->name = io_socket.name ? io_socket.name : "";
   dst->identifier = io_socket.identifier;
   dst->in_out = in_out;
+  dst->socket_type = datatype;
   dst->description = io_socket.description ? io_socket.description : "";
   dst->hide_value = io_socket.flag & NODE_INTERFACE_SOCKET_HIDE_VALUE;
   dst->compact = io_socket.flag & NODE_INTERFACE_SOCKET_COMPACT;
@@ -360,7 +426,7 @@ static PanelDeclarationPtr declaration_for_interface_panel(const bNodeTree & /*n
 
 static void set_default_input_field(const bNodeTreeInterfaceSocket &input, SocketDeclaration &decl)
 {
-  if (dynamic_cast<decl::Vector *>(&decl)) {
+  if (decl.socket_type == SOCK_VECTOR) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL_FIELD) {
       decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::normal);
@@ -372,7 +438,7 @@ static void set_default_input_field(const bNodeTreeInterfaceSocket &input, Socke
       decl.hide_value = true;
     }
   }
-  else if (dynamic_cast<decl::Int *>(&decl)) {
+  else if (decl.socket_type == SOCK_INT) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_INDEX_FIELD) {
       decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::index);

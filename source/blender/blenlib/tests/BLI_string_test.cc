@@ -53,7 +53,7 @@ TEST(string, StrCopyUTF8_ASCII_Truncate)
     char dst[sizeof(src)]; \
     memset(dst, 0xff, sizeof(dst)); \
     BLI_strncpy_utf8(dst, src, maxncpy); \
-    int len_expect = MIN2(sizeof(src), maxncpy) - 1; \
+    int len_expect = std::min<int>(sizeof(src), maxncpy) - 1; \
     src[len_expect] = '\0'; /* To be able to use `EXPECT_STREQ`. */ \
     EXPECT_EQ(strlen(dst), len_expect); \
     EXPECT_STREQ(dst, src); \
@@ -1081,6 +1081,56 @@ TEST_F(StringFindSplitWords, LimitChars)
   testStringFindSplitWords(words, words_len - 5, {{0, 3}, {4, 4}, {-1, -1}});
   testStringFindSplitWords(words, 1, {{0, 1}, {-1, -1}});
   testStringFindSplitWords(words, 0, {{-1, -1}});
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name String Element
+ * \{ */
+
+/* #BLI_string_elem_split_by_delim */
+
+TEST(string, StringElemEmpty)
+{
+  EXPECT_FALSE(BLI_string_elem_split_by_delim("A", ':', ""));
+
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("", ':', ""));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim(":", ':', ""));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("::", ':', ""));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("A:", ':', ""));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim(":A", ':', ""));
+}
+
+TEST(string, StringElemSingle)
+{
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("A", ':', "A"));
+  EXPECT_FALSE(BLI_string_elem_split_by_delim("A", ':', "B"));
+
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("B", 'A', "B"));
+  EXPECT_FALSE(BLI_string_elem_split_by_delim("A", 'A', "A"));
+}
+
+TEST(string, StringElemComplex)
+{
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("TEST", ':', "TEST"));
+
+  EXPECT_TRUE(BLI_string_elem_split_by_delim(":TEST", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("TEST:", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim(":TEST:", ':', "TEST"));
+
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("::TEST", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("TEST::", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("::TEST::", ':', "TEST"));
+
+  EXPECT_FALSE(BLI_string_elem_split_by_delim(":TEST ", ':', "TEST"));
+  EXPECT_FALSE(BLI_string_elem_split_by_delim(" TEST:", ':', "TEST"));
+  EXPECT_FALSE(BLI_string_elem_split_by_delim(": TEST :", ':', "TEST"));
+
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("A:B:TEST", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("TEST:A:B", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim("A:TEST:B", ':', "TEST"));
+  EXPECT_TRUE(BLI_string_elem_split_by_delim(":A:TEST:B:", ':', "TEST"));
 }
 
 /** \} */

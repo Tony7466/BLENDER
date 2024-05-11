@@ -47,11 +47,23 @@ ccl_device_forceinline bool osl_closure_skip(KernelGlobals kg,
                                              uint32_t path_flag,
                                              int scattering)
 {
-  /* caustic options */
+  /* Caustic options */
   if ((scattering & LABEL_GLOSSY) && (path_flag & PATH_RAY_DIFFUSE)) {
-    if ((!kernel_data.integrator.caustics_reflective && (scattering & LABEL_REFLECT)) ||
-        (!kernel_data.integrator.caustics_refractive && (scattering & LABEL_TRANSMIT)))
-    {
+    const bool has_reflect = (scattering & LABEL_REFLECT);
+    const bool has_transmit = (scattering & LABEL_TRANSMIT);
+    const bool reflect_caustics_disabled = !kernel_data.integrator.caustics_reflective;
+    const bool refract_caustics_disabled = !kernel_data.integrator.caustics_refractive;
+
+    /* Reflective Caustics */
+    if (reflect_caustics_disabled && has_reflect && !has_transmit) {
+      return true;
+    }
+    /* Refractive Caustics */
+    if (refract_caustics_disabled && has_transmit && !has_reflect) {
+      return true;
+    }
+    /* Glass Caustics */
+    if (reflect_caustics_disabled && refract_caustics_disabled) {
       return true;
     }
   }
@@ -185,6 +197,17 @@ ccl_device void osl_closure_transparent_setup(KernelGlobals kg,
   bsdf_transparent_setup(sd, rgb_to_spectrum(weight), path_flag);
 }
 
+ccl_device void osl_closure_ray_portal_bsdf_setup(KernelGlobals kg,
+                                                  ccl_private ShaderData *sd,
+                                                  uint32_t path_flag,
+                                                  float3 weight,
+                                                  ccl_private const RayPortalBSDFClosure *closure,
+                                                  float3 *layer_albedo)
+{
+  bsdf_ray_portal_setup(
+      sd, rgb_to_spectrum(weight), path_flag, closure->position, closure->direction);
+}
+
 /* MaterialX closures */
 ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,
@@ -251,6 +274,8 @@ ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
 
   fresnel->reflection_tint = rgb_to_spectrum(closure->reflection_tint);
   fresnel->transmission_tint = rgb_to_spectrum(closure->transmission_tint);
+  fresnel->thin_film.thickness = 0.0f;
+  fresnel->thin_film.ior = 0.0f;
   bsdf_microfacet_setup_fresnel_dielectric_tint(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL) {
@@ -322,7 +347,12 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
   const bool has_reflection = !is_zero(closure->reflection_tint);
   const bool has_transmission = !is_zero(closure->transmission_tint);
 
-  if (osl_closure_skip(kg, sd, path_flag, LABEL_GLOSSY | LABEL_REFLECT)) {
+  int label = LABEL_GLOSSY | LABEL_REFLECT;
+  if (has_transmission) {
+    label |= LABEL_TRANSMIT;
+  }
+
+  if (osl_closure_skip(kg, sd, path_flag, label)) {
     return;
   }
 
@@ -383,11 +413,20 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
     preserve_energy = (closure->distribution == make_string("multi_ggx", 16842698693386468366ull));
   }
 
-  fresnel->reflection_tint = rgb_to_spectrum(closure->reflection_tint);
-  fresnel->transmission_tint = rgb_to_spectrum(closure->transmission_tint);
+  const bool reflective_caustics = (kernel_data.integrator.caustics_reflective ||
+                                    (path_flag & PATH_RAY_DIFFUSE) == 0);
+  const bool refractive_caustics = (kernel_data.integrator.caustics_refractive ||
+                                    (path_flag & PATH_RAY_DIFFUSE) == 0);
+
+  fresnel->reflection_tint = reflective_caustics ? rgb_to_spectrum(closure->reflection_tint) :
+                                                   zero_spectrum();
+  fresnel->transmission_tint = refractive_caustics ? rgb_to_spectrum(closure->transmission_tint) :
+                                                     zero_spectrum();
   fresnel->f0 = rgb_to_spectrum(closure->f0);
   fresnel->f90 = rgb_to_spectrum(closure->f90);
   fresnel->exponent = closure->exponent;
+  fresnel->thin_film.thickness = 0.0f;
+  fresnel->thin_film.ior = 0.0f;
   bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL) {
@@ -963,6 +1002,21 @@ ccl_device void osl_closure_hair_huang_setup(KernelGlobals kg,
   bsdf->extra->R = closure->r_lobe;
   bsdf->extra->TT = closure->tt_lobe;
   bsdf->extra->TRT = closure->trt_lobe;
+
+  bsdf->extra->pixel_coverage = 1.0f;
+
+  /* For camera ray, check if the hair covers more than one pixel, in which case a nearfield model
+   * is needed to prevent ribbon-like appearance. */
+  if ((path_flag & PATH_RAY_CAMERA) && (sd->type & PRIMITIVE_CURVE)) {
+    /* Interpolate radius between curve keys. */
+    const KernelCurve kcurve = kernel_data_fetch(curves, sd->prim);
+    const int k0 = kcurve.first_key + PRIMITIVE_UNPACK_SEGMENT(sd->type);
+    const int k1 = k0 + 1;
+    const float radius = mix(
+        kernel_data_fetch(curve_keys, k0).w, kernel_data_fetch(curve_keys, k1).w, sd->u);
+
+    bsdf->extra->pixel_coverage = 0.5f * sd->dP / radius;
+  }
 
   sd->flag |= bsdf_hair_huang_setup(sd, bsdf, path_flag);
 #endif

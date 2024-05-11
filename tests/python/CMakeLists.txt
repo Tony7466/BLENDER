@@ -8,7 +8,7 @@
 # and don't give deterministic results
 set(USE_EXPERIMENTAL_TESTS FALSE)
 
-set(TEST_SRC_DIR ${CMAKE_SOURCE_DIR}/../lib/tests)
+set(TEST_SRC_DIR ${CMAKE_SOURCE_DIR}/tests/data)
 set(TEST_PYTHON_DIR ${CMAKE_SOURCE_DIR}/tests/python)
 set(TEST_OUT_DIR ${CMAKE_BINARY_DIR}/tests)
 
@@ -109,7 +109,7 @@ endfunction()
 
 # Run Python render test.
 function(add_render_test testname testscript)
-  set(_args ${ARGN} -blender "${TEST_BLENDER_EXE}" -idiff "${OPENIMAGEIO_IDIFF}")
+  set(_args ${ARGN} -blender "${TEST_BLENDER_EXE}" -oiiotool "${OPENIMAGEIO_TOOL}")
   if(WITH_TESTS_BATCHED)
     list(APPEND _args --batch)
   endif()
@@ -211,14 +211,23 @@ add_blender_test(
   --output-dir ${TEST_OUT_DIR}/blendfile_io/
 )
 
-add_blender_test(
-  blendfile_versioning
-  --log "*blendfile*"
-  --debug-memory
-  --debug
-  --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_versioning.py --
-  --src-test-dir ${TEST_SRC_DIR}/
-)
+# This test can be extremely long, especially in debug builds.
+# Generate BLENDFILE_VERSIONING_SPLIT_RANGE instances of the test,
+# each processing their own subset of the whole set of blendfiles.
+set(BLENDFILE_VERSIONING_SPLIT_RANGE 8)
+math(EXPR BLENDFILE_VERSIONING_SPLIT_RANGE_CMAKE "${BLENDFILE_VERSIONING_SPLIT_RANGE} - 1")
+foreach(idx RANGE ${BLENDFILE_VERSIONING_SPLIT_RANGE_CMAKE})
+  add_blender_test(
+    "blendfile_versioning_${idx}_over_${BLENDFILE_VERSIONING_SPLIT_RANGE}"
+    --log "*blendfile*"
+    --debug-memory
+    --debug
+    --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_versioning.py --
+    --src-test-dir ${TEST_SRC_DIR}/
+    --slice-range ${BLENDFILE_VERSIONING_SPLIT_RANGE}
+    --slice-index ${idx}
+  )
+endforeach()
 
 add_blender_test(
   blendfile_liblink
@@ -385,6 +394,14 @@ add_blender_test(
   --
   --testdir "${TEST_SRC_DIR}/animation"
 )
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  # Only run with Project Baklava enabled.
+  add_blender_test(
+    bl_animation_id
+    --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_id.py
+  )
+endif()
 
 add_blender_test(
   bl_animation_keyframing
@@ -584,8 +601,8 @@ endif()
 
 # SVG Import
 if(TRUE)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling SVG tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling SVG tests because OIIO oiiotool does not exist")
   else()
     set(_svg_render_tests complex path)
 
@@ -603,8 +620,8 @@ if(TRUE)
 endif()
 
 if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling render tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling render tests because OIIO oiiotool does not exist")
   elseif(NOT EXISTS "${TEST_SRC_DIR}/render/shader")
     message(WARNING "Disabling render tests because tests folder does not exist at ${TEST_SRC_DIR}")
   elseif(NOT WITH_COMPOSITOR_CPU)
@@ -648,9 +665,10 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
       list(APPEND render_tests openvdb)
     endif()
 
-    if(WITH_OPENIMAGEDENOISE)
-      list(APPEND render_tests denoise)
-    endif()
+    # Temporarily disabled until all platforms upgrade to OIDN 2.3.
+    #if(WITH_OPENIMAGEDENOISE)
+    #  list(APPEND render_tests denoise)
+    #endif()
 
     # Disabled until new OpenGL version with deterministic results.
     #if(WITH_CYCLES_PATH_GUIDING)
@@ -694,65 +712,79 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
     endif()
 
     if(WITH_GPU_RENDER_TESTS)
+      list(APPEND gpu_render_tests ${render_tests})
+      list(FILTER gpu_render_tests EXCLUDE REGEX light_group|light_linking|shadow_catcher|denoise|guiding|reports)
+
+      set(_gpu_render_tests_arguments)
+      if(WITH_GPU_RENDER_TESTS_SILENT)
+        list(APPEND _gpu_render_tests_arguments --fail-silently)
+      endif()
+
       # Eevee
-      foreach(render_test ${render_tests})
+      foreach(render_test ${gpu_render_tests})
         add_render_test(
           eevee_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/eevee_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/eevee"
+          ${_gpu_render_tests_arguments}
         )
       endforeach()
 
       # Eevee Next
-      foreach(render_test ${render_tests})
+      foreach(render_test ${gpu_render_tests})
         add_render_test(
           eevee_next_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/eevee_next_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/eevee_next"
+          ${_gpu_render_tests_arguments}
         )
       endforeach()
 
-      foreach(render_test ${render_tests})
+      foreach(render_test ${gpu_render_tests})
         # Workbench
         add_render_test(
           workbench_${render_test}
           ${CMAKE_CURRENT_LIST_DIR}/workbench_render_tests.py
           -testdir "${TEST_SRC_DIR}/render/${render_test}"
           -outdir "${TEST_OUT_DIR}/workbench"
+          ${_gpu_render_tests_arguments}
         )
       endforeach()
 
       if(WITH_HYDRA)
         # Hydra Storm
-        foreach(render_test ${render_tests})
+        foreach(render_test ${gpu_render_tests})
           add_render_test(
             storm_hydra_${render_test}
             ${CMAKE_CURRENT_LIST_DIR}/storm_render_tests.py
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
             -outdir "${TEST_OUT_DIR}/storm_hydra"
             -export_method "HYDRA"
+            ${_gpu_render_tests_arguments}
           )
         endforeach()
 
-        foreach(render_test ${render_tests})
+        foreach(render_test ${gpu_render_tests})
           add_render_test(
             storm_usd_${render_test}
             ${CMAKE_CURRENT_LIST_DIR}/storm_render_tests.py
             -testdir "${TEST_SRC_DIR}/render/${render_test}"
             -outdir "${TEST_OUT_DIR}/storm_usd"
             -export_method "USD"
+            ${_gpu_render_tests_arguments}
           )
         endforeach()
       endif()
+    unset(_gpu_render_tests_arguments)
     endif()
   endif()
 endif()
 
 if(WITH_COMPOSITOR_CPU)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling Compositor CPU tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling Compositor CPU tests because OIIO oiiotool does not exist")
   else()
     set(compositor_tests
       color
@@ -783,8 +815,8 @@ endif()
 
 # NOTE: WITH_COMPOSITOR_CPU is needed for rendering.
 if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(WARNING "Disabling realtime compositor tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(WARNING "Disabling realtime compositor tests because OIIO oiiotool does not exist")
   else()
     set(compositor_tests
         color
@@ -876,8 +908,8 @@ endif()
 
 
 if(WITH_GPU_DRAW_TESTS)
-  if(NOT OPENIMAGEIO_IDIFF)
-    message(STATUS "Disabling OpenGL draw tests because OIIO idiff does not exist")
+  if(NOT OPENIMAGEIO_TOOL)
+    message(STATUS "Disabling OpenGL draw tests because OIIO oiiotool does not exist")
   elseif(NOT EXISTS "${TEST_SRC_DIR}/opengl")
     message(STATUS "Disabling OpenGL draw tests because tests folder does not exist at ${TEST_SRC_DIR}")
   else()
@@ -950,8 +982,8 @@ if(WITH_CODEC_FFMPEG)
   )
 endif()
 
-if(NOT OPENIMAGEIO_IDIFF)
-  message(STATUS "Disabling ImBuf image format tests because OIIO idiff does not exist")
+if(NOT OPENIMAGEIO_TOOL)
+  message(STATUS "Disabling ImBuf image format tests because OIIO oiiotool does not exist")
 else()
   set(OPTIONAL_FORMATS "")
   if(WITH_IMAGE_CINEON)
@@ -973,7 +1005,7 @@ else()
     --
     -test_dir "${TEST_SRC_DIR}/imbuf_io"
     -output_dir "${TEST_OUT_DIR}/imbuf_io/save"
-    -idiff "${OPENIMAGEIO_IDIFF}"
+    -oiiotool "${OPENIMAGEIO_TOOL}"
     -optional_formats "${OPTIONAL_FORMATS}"
   )
 
@@ -983,7 +1015,7 @@ else()
     --
     -test_dir "${TEST_SRC_DIR}/imbuf_io"
     -output_dir "${TEST_OUT_DIR}/imbuf_io/load"
-    -idiff "${OPENIMAGEIO_IDIFF}"
+    -oiiotool "${OPENIMAGEIO_TOOL}"
     -optional_formats "${OPTIONAL_FORMATS}"
   )
 endif()
@@ -991,10 +1023,12 @@ endif()
 # ------------------------------------------------------------------------------
 # SEQUENCER RENDER TESTS
 
-if(NOT OPENIMAGEIO_IDIFF)
-  message(STATUS "Disabling sequencer render tests because OIIO idiff does not exist")
+if(NOT OPENIMAGEIO_TOOL)
+  message(STATUS "Disabling sequencer render tests because OIIO oiiotool does not exist")
 else()
   set(render_tests
+    effects
+    filter
     transform
   )
 

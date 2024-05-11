@@ -19,48 +19,41 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_collection_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_legacy_types.h"
-#include "DNA_mask_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
-#include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
-#include "BLI_mempool.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_gpencil_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
-#include "BKE_node.h"
 #include "BKE_preview_image.hh"
 #include "BKE_screen.hh"
-#include "BKE_viewer_path.hh"
-#include "BKE_workspace.h"
 
 #include "BLO_read_write.hh"
 
 /* TODO(@JulianEisel): For asset shelf region reading/writing. Region read/write should be done via
  * a #ARegionType callback. */
-#include "../editors/asset/ED_asset_shelf.h"
+#include "../editors/asset/ED_asset_shelf.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
+
+using blender::Span;
+using blender::Vector;
 
 /* -------------------------------------------------------------------- */
 /** \name ID Type Implementation
@@ -141,7 +134,7 @@ bool BKE_screen_blend_read_data(BlendDataReader *reader, bScreen *screen)
   screen->tool_tip = nullptr;
   screen->scrubbing = false;
 
-  BLO_read_data_address(reader, &screen->preview);
+  BLO_read_struct(reader, PreviewImage, &screen->preview);
   BKE_previewimg_blend_read(reader, screen->preview);
 
   if (!BKE_screen_area_map_blend_read_data(reader, AREAMAP_FROM_SCREEN(screen))) {
@@ -166,6 +159,9 @@ static void screen_blend_read_after_liblink(BlendLibReader *reader, ID *id)
 IDTypeInfo IDType_ID_SCR = {
     /*id_code*/ ID_SCR,
     /*id_filter*/ FILTER_ID_SCR,
+    /* NOTE: Can actually link to any ID type through UI (e.g. Outliner Editor).
+     * This is handled separately though. */
+    /*dependencies_id_types*/ FILTER_ID_SCE,
     /*main_listbase_index*/ INDEX_ID_SCR,
     /*struct_size*/ sizeof(bScreen),
     /*name*/ "Screen",
@@ -201,12 +197,16 @@ IDTypeInfo IDType_ID_SCR = {
  * \{ */
 
 /** Keep global; this has to be accessible outside of window-manager. */
-static ListBase spacetypes = {nullptr, nullptr};
+static Vector<std::unique_ptr<SpaceType>> &get_space_types()
+{
+  static Vector<std::unique_ptr<SpaceType>> space_types;
+  return space_types;
+}
 
 /* not SpaceType itself */
-static void spacetype_free(SpaceType *st)
+SpaceType::~SpaceType()
 {
-  LISTBASE_FOREACH (ARegionType *, art, &st->regiontypes) {
+  LISTBASE_FOREACH (ARegionType *, art, &this->regiontypes) {
 #ifdef WITH_PYTHON
     BPY_callback_screen_free(art);
 #endif
@@ -230,24 +230,19 @@ static void spacetype_free(SpaceType *st)
     BLI_freelistN(&art->headertypes);
   }
 
-  BLI_freelistN(&st->regiontypes);
-  BLI_freelistN(&st->asset_shelf_types);
+  BLI_freelistN(&this->regiontypes);
 }
 
 void BKE_spacetypes_free()
 {
-  LISTBASE_FOREACH (SpaceType *, st, &spacetypes) {
-    spacetype_free(st);
-  }
-
-  BLI_freelistN(&spacetypes);
+  get_space_types().clear_and_shrink();
 }
 
 SpaceType *BKE_spacetype_from_id(int spaceid)
 {
-  LISTBASE_FOREACH (SpaceType *, st, &spacetypes) {
+  for (std::unique_ptr<SpaceType> &st : get_space_types()) {
     if (st->spaceid == spaceid) {
-      return st;
+      return st.get();
     }
   }
   return nullptr;
@@ -263,22 +258,21 @@ ARegionType *BKE_regiontype_from_id(const SpaceType *st, int regionid)
   return nullptr;
 }
 
-const ListBase *BKE_spacetypes_list()
+Span<std::unique_ptr<SpaceType>> BKE_spacetypes_list()
 {
-  return &spacetypes;
+  return get_space_types();
 }
 
-void BKE_spacetype_register(SpaceType *st)
+void BKE_spacetype_register(std::unique_ptr<SpaceType> st)
 {
   /* sanity check */
   SpaceType *stype = BKE_spacetype_from_id(st->spaceid);
   if (stype) {
     printf("error: redefinition of spacetype %s\n", stype->name);
-    spacetype_free(stype);
-    MEM_freeN(stype);
+    return;
   }
 
-  BLI_addtail(&spacetypes, st);
+  get_space_types().append(std::move(st));
 }
 
 bool BKE_spacetype_exists(int spaceid)
@@ -408,7 +402,7 @@ void BKE_spacedata_copylist(ListBase *lb_dst, ListBase *lb_src)
 
 void BKE_spacedata_draw_locks(bool set)
 {
-  LISTBASE_FOREACH (SpaceType *, st, &spacetypes) {
+  for (std::unique_ptr<SpaceType> &st : get_space_types()) {
     LISTBASE_FOREACH (ARegionType *, art, &st->regiontypes) {
       if (set) {
         art->do_lock = art->lock;
@@ -1029,7 +1023,7 @@ void BKE_screen_view3d_shading_blend_write(BlendWriter *writer, View3DShading *s
 void BKE_screen_view3d_shading_blend_read_data(BlendDataReader *reader, View3DShading *shading)
 {
   if (shading->prop) {
-    BLO_read_data_address(reader, &shading->prop);
+    BLO_read_struct(reader, IDProperty, &shading->prop);
     IDP_BlendDataRead(reader, &shading->prop);
   }
 }
@@ -1044,7 +1038,7 @@ static void write_region(BlendWriter *writer, ARegion *region, int spacetype)
     }
 
     if (region->regiontype == RGN_TYPE_ASSET_SHELF) {
-      ED_asset_shelf_region_blend_write(writer, region);
+      blender::ed::asset::shelf::region_blend_write(writer, region);
       return;
     }
 
@@ -1142,7 +1136,7 @@ void BKE_screen_area_map_blend_write(BlendWriter *writer, ScrAreaMap *area_map)
 
 static void direct_link_panel_list(BlendDataReader *reader, ListBase *lb)
 {
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, Panel, lb);
 
   LISTBASE_FOREACH (Panel *, panel, lb) {
     panel->runtime = MEM_new<Panel_Runtime>(__func__);
@@ -1150,9 +1144,9 @@ static void direct_link_panel_list(BlendDataReader *reader, ListBase *lb)
     panel->activedata = nullptr;
     panel->type = nullptr;
     panel->drawname = nullptr;
-    BLO_read_list(reader, &panel->layout_panel_states);
+    BLO_read_struct_list(reader, LayoutPanelState, &panel->layout_panel_states);
     LISTBASE_FOREACH (LayoutPanelState *, state, &panel->layout_panel_states) {
-      BLO_read_data_address(reader, &state->idname);
+      BLO_read_string(reader, &state->idname);
     }
     direct_link_panel_list(reader, &panel->children);
   }
@@ -1164,9 +1158,9 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
 
   direct_link_panel_list(reader, &region->panels);
 
-  BLO_read_list(reader, &region->panels_category_active);
+  BLO_read_struct_list(reader, PanelCategoryStack, &region->panels_category_active);
 
-  BLO_read_list(reader, &region->ui_lists);
+  BLO_read_struct_list(reader, uiList, &region->ui_lists);
 
   /* The area's search filter is runtime only, so we need to clear the active flag on read. */
   /* Clear runtime flags (e.g. search filter is runtime only). */
@@ -1175,11 +1169,11 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
   LISTBASE_FOREACH (uiList *, ui_list, &region->ui_lists) {
     ui_list->type = nullptr;
     ui_list->dyn_data = nullptr;
-    BLO_read_data_address(reader, &ui_list->properties);
+    BLO_read_struct(reader, IDProperty, &ui_list->properties);
     IDP_BlendDataRead(reader, &ui_list->properties);
   }
 
-  BLO_read_list(reader, &region->ui_previews);
+  BLO_read_struct_list(reader, uiPreview, &region->ui_previews);
 
   if (spacetype == SPACE_EMPTY) {
     /* unknown space type, don't leak regiondata */
@@ -1194,10 +1188,15 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
       if (region->regiontype == RGN_TYPE_WINDOW) {
         BLO_read_data_address(reader, &region->regiondata);
 
+        if (region->regiondata == nullptr) {
+          /* To avoid crashing on some old files. */
+          region->regiondata = MEM_cnew<RegionView3D>("region view3d");
+        }
+
         RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
-        BLO_read_data_address(reader, &rv3d->localvd);
-        BLO_read_data_address(reader, &rv3d->clipbb);
+        BLO_read_struct(reader, RegionView3D, &rv3d->localvd);
+        BLO_read_struct(reader, BoundBox, &rv3d->clipbb);
 
         rv3d->view_render = nullptr;
         rv3d->sms = nullptr;
@@ -1208,7 +1207,7 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
       }
     }
     if (region->regiontype == RGN_TYPE_ASSET_SHELF) {
-      ED_asset_shelf_region_blend_read_data(reader, region);
+      blender::ed::asset::shelf::region_blend_read_data(reader, region);
     }
   }
 
@@ -1251,8 +1250,8 @@ void BKE_screen_view3d_do_versions_250(View3D *v3d, ListBase *regions)
 
 static void direct_link_area(BlendDataReader *reader, ScrArea *area)
 {
-  BLO_read_list(reader, &(area->spacedata));
-  BLO_read_list(reader, &(area->regionbase));
+  BLO_read_struct_list(reader, SpaceLink, &(area->spacedata));
+  BLO_read_struct_list(reader, ARegion, &(area->regionbase));
 
   BLI_listbase_clear(&area->handlers);
   area->type = nullptr; /* spacetype callbacks */
@@ -1266,7 +1265,7 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
 
   area->flag &= ~AREA_FLAG_ACTIVE_TOOL_UPDATE;
 
-  BLO_read_data_address(reader, &area->global);
+  BLO_read_struct(reader, ScrGlobalAreaData, &area->global);
 
   /* if we do not have the spacetype registered we cannot
    * free it, so don't allocate any new memory for such spacetypes. */
@@ -1295,7 +1294,7 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
   }
 
   LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-    BLO_read_list(reader, &(sl->regionbase));
+    BLO_read_struct_list(reader, ARegion, &(sl->regionbase));
 
     /* if we do not have the spacetype registered we cannot
      * free it, so don't allocate any new memory for such spacetypes. */
@@ -1315,25 +1314,25 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
 
   BLI_listbase_clear(&area->actionzones);
 
-  BLO_read_data_address(reader, &area->v1);
-  BLO_read_data_address(reader, &area->v2);
-  BLO_read_data_address(reader, &area->v3);
-  BLO_read_data_address(reader, &area->v4);
+  BLO_read_struct(reader, ScrVert, &area->v1);
+  BLO_read_struct(reader, ScrVert, &area->v2);
+  BLO_read_struct(reader, ScrVert, &area->v3);
+  BLO_read_struct(reader, ScrVert, &area->v4);
 }
 
 bool BKE_screen_area_map_blend_read_data(BlendDataReader *reader, ScrAreaMap *area_map)
 {
-  BLO_read_list(reader, &area_map->vertbase);
-  BLO_read_list(reader, &area_map->edgebase);
-  BLO_read_list(reader, &area_map->areabase);
+  BLO_read_struct_list(reader, ScrVert, &area_map->vertbase);
+  BLO_read_struct_list(reader, ScrEdge, &area_map->edgebase);
+  BLO_read_struct_list(reader, ScrArea, &area_map->areabase);
   LISTBASE_FOREACH (ScrArea *, area, &area_map->areabase) {
     direct_link_area(reader, area);
   }
 
   /* edges */
   LISTBASE_FOREACH (ScrEdge *, se, &area_map->edgebase) {
-    BLO_read_data_address(reader, &se->v1);
-    BLO_read_data_address(reader, &se->v2);
+    BLO_read_struct(reader, ScrVert, &se->v1);
+    BLO_read_struct(reader, ScrVert, &se->v2);
     BKE_screen_sort_scrvert(&se->v1, &se->v2);
 
     if (se->v1 == nullptr) {

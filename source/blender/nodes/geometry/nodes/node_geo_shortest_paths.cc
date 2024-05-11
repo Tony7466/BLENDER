@@ -160,7 +160,7 @@ class ShortestPathsNextVertFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_2(positions_, end_selection_);
+    return get_default_hash(positions_, end_selection_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override

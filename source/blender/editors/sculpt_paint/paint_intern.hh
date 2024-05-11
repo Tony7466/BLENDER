@@ -79,17 +79,17 @@ void paint_stroke_free(bContext *C, wmOperator *op, PaintStroke *stroke);
 /**
  * Returns zero if the stroke dots should not be spaced, non-zero otherwise.
  */
-bool paint_space_stroke_enabled(Brush *br, enum ePaintMode mode);
+bool paint_space_stroke_enabled(Brush *br, PaintMode mode);
 /**
  * Return true if the brush size can change during paint (normally used for pressure).
  */
-bool paint_supports_dynamic_size(Brush *br, enum ePaintMode mode);
+bool paint_supports_dynamic_size(Brush *br, PaintMode mode);
 /**
  * Return true if the brush size can change during paint (normally used for pressure).
  */
-bool paint_supports_dynamic_tex_coords(Brush *br, enum ePaintMode mode);
-bool paint_supports_smooth_stroke(Brush *br, enum ePaintMode mode);
-bool paint_supports_texture(enum ePaintMode mode);
+bool paint_supports_dynamic_tex_coords(Brush *br, PaintMode mode);
+bool paint_supports_smooth_stroke(Brush *br, PaintMode mode);
+bool paint_supports_texture(PaintMode mode);
 
 /**
  * Called in paint_ops.cc, on each regeneration of key-maps.
@@ -320,7 +320,9 @@ void paint_curve_mask_cache_update(CurveMaskCache *curve_mask_cache,
 
 /* `sculpt_uv.cc` */
 
-void SCULPT_OT_uv_sculpt_stroke(wmOperatorType *ot);
+void SCULPT_OT_uv_sculpt_grab(wmOperatorType *ot);
+void SCULPT_OT_uv_sculpt_relax(wmOperatorType *ot);
+void SCULPT_OT_uv_sculpt_pinch(wmOperatorType *ot);
 
 /* paint_utils.cc */
 
@@ -467,7 +469,13 @@ void mesh_show_all(Object &object, Span<PBVHNode *> nodes);
 void grids_show_all(Depsgraph &depsgraph, Object &object, Span<PBVHNode *> nodes);
 void tag_update_visibility(const bContext &C);
 
+void PAINT_OT_hide_show_masked(wmOperatorType *ot);
+void PAINT_OT_hide_show_all(wmOperatorType *ot);
 void PAINT_OT_hide_show(wmOperatorType *ot);
+void PAINT_OT_hide_show_lasso_gesture(wmOperatorType *ot);
+void PAINT_OT_hide_show_line_gesture(wmOperatorType *ot);
+void PAINT_OT_hide_show_polyline_gesture(wmOperatorType *ot);
+
 void PAINT_OT_visibility_invert(wmOperatorType *ot);
 }  // namespace blender::ed::sculpt_paint::hide
 
@@ -548,7 +556,8 @@ void get_brush_alpha_data(const Scene *scene,
 
 void init_stroke(Depsgraph *depsgraph, Object *ob);
 void init_session_data(const ToolSettings *ts, Object *ob);
-void init_session(Depsgraph *depsgraph, Scene *scene, Object *ob, eObjectMode object_mode);
+void init_session(
+    Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, eObjectMode object_mode);
 
 Vector<PBVHNode *> pbvh_gather_generic(Object *ob, VPaint *wp, Brush *brush);
 

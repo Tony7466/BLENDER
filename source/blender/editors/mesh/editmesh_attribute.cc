@@ -13,9 +13,9 @@
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_type_conversions.hh"
 
 #include "WM_api.hh"
@@ -32,7 +32,7 @@
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_object_types.h"
 
@@ -44,7 +44,9 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "mesh_intern.h"
+#include "mesh_intern.hh"
+
+using blender::Vector;
 
 /* -------------------------------------------------------------------- */
 /** \name Delete Operator
@@ -75,13 +77,7 @@ static bool mesh_active_attribute_poll(bContext *C)
     return false;
   }
   const Mesh *mesh = ED_mesh_context(C);
-  const CustomDataLayer *layer = BKE_id_attributes_active_get(&const_cast<ID &>(mesh->id));
-  if (!layer) {
-    CTX_wm_operator_poll_msg_set(C, "No active attribute");
-    return false;
-  }
-  if (layer->type == CD_PROP_STRING) {
-    CTX_wm_operator_poll_msg_set(C, "Active string attribute not supported");
+  if (!geometry::attribute_set_poll(*C, mesh->id)) {
     return false;
   }
   return true;
@@ -149,9 +145,8 @@ static int mesh_set_attribute_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
   Mesh *mesh = ED_mesh_context(C);
   CustomDataLayer *active_attribute = BKE_id_attributes_active_get(&mesh->id);
@@ -166,8 +161,7 @@ static int mesh_set_attribute_exec(bContext *C, wmOperator *op)
   const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
 
   bool changed = false;
-  for (const int i : IndexRange(objects_len)) {
-    Object *object = objects[i];
+  for (Object *object : objects) {
     Mesh *mesh = static_cast<Mesh *>(object->data);
     BMEditMesh *em = BKE_editmesh_from_object(object);
     BMesh *bm = em->bm;
@@ -216,15 +210,13 @@ static int mesh_set_attribute_exec(bContext *C, wmOperator *op)
     EDBM_update(mesh, &update);
   }
 
-  MEM_freeN(objects);
-
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 static int mesh_set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Mesh *mesh = ED_mesh_context(C);
-  BMesh *bm = mesh->edit_mesh->bm;
+  BMesh *bm = mesh->runtime->edit_mesh->bm;
 
   const CustomDataLayer *layer = BKE_id_attributes_active_get(&mesh->id);
   const eCustomDataType data_type = eCustomDataType(layer->type);

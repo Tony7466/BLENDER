@@ -2,16 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_collection_types.h"
-
 #include "BLI_array_utils.hh"
-#include "BLI_hash.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
-
-#include "UI_interface.hh"
-#include "UI_resources.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
@@ -85,8 +79,10 @@ static void add_instances_from_component(
   const int select_len = selection.index_range().size();
   dst_component.resize(start_len + select_len);
 
-  MutableSpan<int> dst_handles = dst_component.reference_handles().slice(start_len, select_len);
-  MutableSpan<float4x4> dst_transforms = dst_component.transforms().slice(start_len, select_len);
+  MutableSpan<int> dst_handles = dst_component.reference_handles_for_write().slice(start_len,
+                                                                                   select_len);
+  MutableSpan<float4x4> dst_transforms = dst_component.transforms_for_write().slice(start_len,
+                                                                                    select_len);
 
   const VArraySpan positions = *src_attributes.lookup<float3>("position");
 
@@ -213,6 +209,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                    propagation_info,
                                                    attributes_to_propagate);
     attributes_to_propagate.remove("position");
+    attributes_to_propagate.remove(".reference_index");
 
     for (const GeometryComponent::Type type : types) {
       if (geometry_set.has(type)) {
@@ -230,7 +227,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
       for (const int layer_index : grease_pencil.layers().index_range()) {
-        const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil, layer_index);
+        const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
         if (drawing == nullptr) {
           continue;
         }

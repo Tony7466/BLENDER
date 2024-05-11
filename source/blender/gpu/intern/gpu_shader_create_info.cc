@@ -12,15 +12,17 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_platform.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "BKE_global.hh"
+
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
+#include "GPU_platform.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_create_info_private.hh"
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
 #undef GPU_SHADER_INTERFACE_INFO
 #undef GPU_SHADER_CREATE_INFO
@@ -270,7 +272,16 @@ std::string ShaderCreateInfo::check_error() const
     }
   }
 
-#ifndef NDEBUG
+  if ((G.debug & G_DEBUG_GPU) == 0) {
+    return error;
+  }
+
+  /*
+   * The next check has been disabled. 'eevee_legacy_surface_common_iface' is known to fail.
+   * The check was added to validate if shader would be able to compile on Vulkan.
+   * TODO(jbakker): Enable the check after EEVEE is replaced by EEVEE-Next.
+   */
+#if 0
   if (bool(this->builtins_ &
            (BuiltinBits::BARYCENTRIC_COORD | BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)))
   {
@@ -282,6 +293,7 @@ std::string ShaderCreateInfo::check_error() const
       }
     }
   }
+#endif
 
   if (!this->is_vulkan_compatible()) {
     error += this->name_ +
@@ -298,7 +310,6 @@ std::string ShaderCreateInfo::check_error() const
       }
     }
   }
-#endif
 
   return error;
 }
@@ -413,6 +424,15 @@ void ShaderCreateInfo::validate_vertex_attributes(const ShaderCreateInfo *other_
 
 using namespace blender::gpu::shader;
 
+#ifdef _MSC_VER
+/* Disable optimization for this function with MSVC. It does not like the fact
+ * shaders info are declared in the same function (same basic block or not does
+ * not change anything).
+ * Since it is just a function called to register shaders (once),
+ * the fact it's optimized or not does not matter, it's not on any hot
+ * code path. */
+#  pragma optimize("", off)
+#endif
 void gpu_shader_create_info_init()
 {
   g_create_infos = new CreateInfoDictionnary();
@@ -447,7 +467,6 @@ void gpu_shader_create_info_init()
                           GPU_OS_ANY,
                           GPU_DRIVER_ANY,
                           GPU_BACKEND_OPENGL) ||
-      GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
       GPU_crappy_amd_driver())
   {
     draw_modelmat = draw_modelmat_legacy;
@@ -525,11 +544,15 @@ void gpu_shader_create_info_init()
 
     /* NOTE: As atomic data types can alter shader gen if native atomics are unsupported, we need
      * to use differing create info's to handle the tile optimized check. This does prevent
-     * the shadow techniques from being dynamically switchable . */
+     * the shadow techniques from being dynamically switchable. */
+#  if 0
+    /* Temp: Disable TILE_COPY path while efficient solution for parameter buffer overflow is
+     * identified. This path can be re-enabled in future. */
     const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
     if (is_tile_based_arch) {
       eevee_shadow_data = eevee_shadow_data_non_atomic;
     }
+#  endif
   }
 #endif
 
@@ -553,6 +576,9 @@ void gpu_shader_create_info_init()
   /* TEST */
   // gpu_shader_create_info_compile(nullptr);
 }
+#ifdef _MSC_VER
+#  pragma optimize("", on)
+#endif
 
 void gpu_shader_create_info_exit()
 {
@@ -584,9 +610,7 @@ bool gpu_shader_create_info_compile(const char *name_starts_with_filter)
         continue;
       }
       if ((info->metal_backend_only_ && GPU_backend_get_type() != GPU_BACKEND_METAL) ||
-          (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
-          (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
           (GPU_transform_feedback_support() == false && info->tf_type_ != GPU_SHADER_TFB_NONE))
       {
         skipped++;

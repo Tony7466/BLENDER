@@ -11,7 +11,7 @@
 
 #include "RNA_define.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_lightprobe_types.h"
 #include "DNA_material_types.h"
@@ -25,7 +25,7 @@
 #  include "MEM_guardedalloc.h"
 
 #  include "BKE_context.hh"
-#  include "BKE_layer.h"
+#  include "BKE_layer.hh"
 #  include "BKE_main.hh"
 #  include "BKE_texture.h"
 
@@ -211,7 +211,7 @@ void RNA_def_world(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static float default_world_color[] = {0.05f, 0.05f, 0.05f};
+  static const float default_world_color[] = {0.05f, 0.05f, 0.05f};
 
   srna = RNA_def_struct(brna, "World", "ID");
   RNA_def_struct_ui_text(
@@ -221,6 +221,15 @@ void RNA_def_world(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_WORLD_DATA);
 
   rna_def_animdata_common(srna);
+
+  /* Flags */
+  prop = RNA_def_property(srna, "use_eevee_finite_volume", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", WO_USE_EEVEE_FINITE_VOLUME);
+  RNA_def_property_ui_text(prop,
+                           "Finite Volume",
+                           "The world's volume used to be rendered by EEVEE Legacy. Conversion is "
+                           "needed for it to render properly");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /* colors */
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
