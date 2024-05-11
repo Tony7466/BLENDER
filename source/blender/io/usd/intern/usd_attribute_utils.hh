@@ -7,6 +7,7 @@
 
 #include "BLI_color.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_map.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -122,14 +123,16 @@ void copy_blender_buffer_to_primvar(const VArray<BlenderT> &buffer,
   if (const std::optional<BlenderT> value = buffer.get_if_single()) {
     usd_data.assign(buffer.size(), detail::convert_value<BlenderT, USDT>(*value));
   }
-  else if (buffer.is_span() && (is_same || is_compatible)) {
-    Span<USDT> data = buffer.get_internal_span().cast<USDT>();
-    usd_data.assign(data.begin(), data.end());
-  }
   else {
-    usd_data.resize(buffer.size());
-    for (const int i : buffer.index_range()) {
-      usd_data[i] = detail::convert_value<BlenderT, USDT>(buffer[i]);
+    const VArraySpan<BlenderT> data(buffer);
+    if constexpr (is_same || is_compatible) {
+      usd_data.assign(data.cast<USDT>().begin(), data.cast<USDT>().end());
+    }
+    else {
+      usd_data.resize(data.size());
+      for (const int i : data.index_range()) {
+        usd_data[i] = detail::convert_value<BlenderT, USDT>(data[i]);
+      }
     }
   }
 
@@ -186,8 +189,8 @@ inline void copy_blender_attribute_to_primvar(const GVArray &attribute,
 inline std::optional<eCustomDataType> convert_usd_type_to_blender(
     const pxr::SdfValueTypeName usd_type)
 {
-  static const blender::Map<pxr::SdfValueTypeName, eCustomDataType> type_map = []() {
-    blender::Map<pxr::SdfValueTypeName, eCustomDataType> map;
+  static const Map<pxr::SdfValueTypeName, eCustomDataType> type_map = []() {
+    Map<pxr::SdfValueTypeName, eCustomDataType> map;
     map.add_new(pxr::SdfValueTypeNames->FloatArray, CD_PROP_FLOAT);
     map.add_new(pxr::SdfValueTypeNames->Double, CD_PROP_FLOAT);
     map.add_new(pxr::SdfValueTypeNames->IntArray, CD_PROP_INT32);
@@ -246,10 +249,9 @@ pxr::VtArray<T> get_primvar_array(const pxr::UsdGeomPrimvar &primvar,
 template<typename USDT, typename BlenderT>
 void copy_primvar_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
                                     const pxr::UsdTimeCode timecode,
-                                    const blender::OffsetIndices<int> face_indices,
+                                    const OffsetIndices<int> faces,
                                     MutableSpan<BlenderT> attribute)
 {
-  const pxr::TfToken interp = primvar.GetInterpolation();
   pxr::VtArray<USDT> usd_data = get_primvar_array<USDT>(primvar, timecode);
   if (usd_data.empty()) {
     return;
@@ -258,14 +260,14 @@ void copy_primvar_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
   constexpr bool is_same = std::is_same_v<USDT, BlenderT>;
   constexpr bool is_compatible = detail::is_layout_compatible<USDT, BlenderT>::value;
 
-  if (interp == pxr::UsdGeomTokens->constant) {
+  const pxr::TfToken pv_interp = primvar.GetInterpolation();
+  if (pv_interp == pxr::UsdGeomTokens->constant) {
     /* For situations where there's only a single item, flood fill the object. */
     attribute.fill(detail::convert_value<USDT, BlenderT>(usd_data[0]));
   }
-  else if (interp == pxr::UsdGeomTokens->faceVarying) {
-    if (!face_indices.is_empty()) {
+  else if (pv_interp == pxr::UsdGeomTokens->faceVarying) {
+    if (!faces.is_empty()) {
       /* Reverse the index order. */
-      const OffsetIndices faces = face_indices;
       for (const int i : faces.index_range()) {
         const IndexRange face = faces[i];
         for (int j : face.index_range()) {
@@ -306,21 +308,13 @@ inline void copy_primvar_to_blender_attribute(const pxr::UsdGeomPrimvar &primvar
                                               const pxr::UsdTimeCode timecode,
                                               const eCustomDataType data_type,
                                               const bke::AttrDomain domain,
-                                              const blender::OffsetIndices<int> face_indices,
+                                              const OffsetIndices<int> face_indices,
                                               bke::MutableAttributeAccessor attributes)
 {
-  const pxr::SdfValueTypeName sdf_type = primvar.GetTypeName();
-  const pxr::TfToken varying_type = primvar.GetInterpolation();
-  const pxr::TfToken name = pxr::UsdGeomPrimvar::StripPrimvarsName(primvar.GetPrimvarName());
-
-  const std::optional<eCustomDataType> type = convert_usd_type_to_blender(sdf_type);
-
-  if (!type.has_value()) {
-    return;
-  }
+  const pxr::TfToken pv_name = pxr::UsdGeomPrimvar::StripPrimvarsName(primvar.GetPrimvarName());
 
   bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
-      name.GetText(), domain, data_type);
+      pv_name.GetText(), domain, data_type);
 
   switch (data_type) {
     case CD_PROP_FLOAT:

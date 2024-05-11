@@ -159,7 +159,7 @@ USDMeshReader::USDMeshReader(const pxr::UsdPrim &prim,
 }
 
 static const std::optional<bke::AttrDomain> convert_usd_varying_to_blender(
-    const pxr::TfToken usd_domain, ReportList *reports)
+    const pxr::TfToken usd_domain)
 {
   static const blender::Map<pxr::TfToken, bke::AttrDomain> domain_map = []() {
     blender::Map<pxr::TfToken, bke::AttrDomain> map;
@@ -178,8 +178,6 @@ static const std::optional<bke::AttrDomain> convert_usd_varying_to_blender(
   const bke::AttrDomain *value = domain_map.lookup_ptr(usd_domain);
 
   if (value == nullptr) {
-    BKE_reportf(
-        reports, RPT_WARNING, "Unsupported domain for mesh data type %s", usd_domain.GetText());
     return std::nullopt;
   }
 
@@ -237,7 +235,7 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
   }
 
   USDXformReader::read_object_data(bmain, motionSampleTime);
-}  // namespace blender::io::usd
+}
 
 bool USDMeshReader::valid() const
 {
@@ -382,26 +380,30 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
                                               const pxr::UsdGeomPrimvar &primvar,
                                               const double motionSampleTime)
 {
-  const pxr::SdfValueTypeName sdf_type = primvar.GetTypeName();
-  const pxr::TfToken varying_type = primvar.GetInterpolation();
-  const pxr::TfToken name = pxr::UsdGeomPrimvar::StripPrimvarsName(primvar.GetPrimvarName());
+  const pxr::SdfValueTypeName pv_type = primvar.GetTypeName();
+  const pxr::TfToken pv_interp = primvar.GetInterpolation();
 
-  const std::optional<bke::AttrDomain> domain = convert_usd_varying_to_blender(varying_type,
-                                                                               reports());
-  const std::optional<eCustomDataType> type = convert_usd_type_to_blender(sdf_type);
+  const std::optional<bke::AttrDomain> domain = convert_usd_varying_to_blender(pv_interp);
+  const std::optional<eCustomDataType> type = convert_usd_type_to_blender(pv_type);
 
   if (!domain.has_value() || !type.has_value()) {
+    const pxr::TfToken pv_name = primvar.StripPrimvarsName(primvar.GetPrimvarName());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "Primvar '%s' (interpolation %s, type %s) cannot be converted to Blender",
+                pv_name.GetText(),
+                pv_interp.GetText(),
+                pv_type.GetAsToken().GetText());
     return;
   }
 
-  OffsetIndices<int> face_indices;
+  OffsetIndices<int> faces;
   if (is_left_handed_) {
-    face_indices = mesh->faces();
+    faces = mesh->faces();
   }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  copy_primvar_to_blender_attribute(
-      primvar, motionSampleTime, *type, *domain, face_indices, attributes);
+  copy_primvar_to_blender_attribute(primvar, motionSampleTime, *type, *domain, faces, attributes);
 }
 
 void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTime)

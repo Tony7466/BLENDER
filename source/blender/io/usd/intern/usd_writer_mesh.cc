@@ -220,7 +220,7 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
   if (!pv_interp || !pv_type) {
     BKE_reportf(reports(),
                 RPT_WARNING,
-                "Mesh %s, Attribute '%s' (Domain %d, Type %d) cannot be converted to USD",
+                "Mesh %s, Attribute '%s' (domain %d, type %d) cannot be converted to USD",
                 &mesh->id.name[2],
                 attribute_id.name().data(),
                 meta_data.domain,
