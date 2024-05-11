@@ -120,9 +120,15 @@ ccl_device_forceinline float4 primitive_surface_attribute_float4(KernelGlobals k
 {
   if (sd->type & PRIMITIVE_TRIANGLE) {
     if (subd_triangle_patch(kg, sd->prim) == ~0)
-      return triangle_attribute_float4(kg, sd, desc, dx, dy);
+      if (desc.flags & ATTR_TANGENT)
+        return triangle_tangent(kg, sd, desc);
+      else
+        return triangle_attribute_float4(kg, sd, desc, dx, dy);
     else
-      return subd_triangle_attribute_float4(kg, sd, desc, dx, dy);
+      if (desc.flags & ATTR_TANGENT)
+        return subd_triangle_tangent(kg, sd, desc);
+      else
+        return subd_triangle_attribute_float4(kg, sd, desc, dx, dy);
   }
 #ifdef __HAIR__
   else if (sd->type & PRIMITIVE_CURVE) {

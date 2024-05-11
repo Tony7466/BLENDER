@@ -287,17 +287,16 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
 
     /* first try to get tangent attribute */
     const AttributeDescriptor attr = find_attribute(kg, sd, node.z);
-    const AttributeDescriptor attr_sign = find_attribute(kg, sd, node.w);
 
-    if (attr.offset == ATTR_STD_NOT_FOUND || attr_sign.offset == ATTR_STD_NOT_FOUND) {
+    if (attr.offset == ATTR_STD_NOT_FOUND) {
       /* Fallback to unperturbed normal. */
       stack_store_float3(stack, normal_offset, sd->N);
       return;
     }
 
     /* get _unnormalized_ interpolated normal and tangent */
-    float3 tangent = primitive_surface_attribute_float3(kg, sd, attr, NULL, NULL);
-    float sign = primitive_surface_attribute_float(kg, sd, attr_sign, NULL, NULL);
+    float4 tangent_data = primitive_surface_attribute_float4(kg, sd, attr, NULL, NULL);
+    float3 tangent = float4_to_float3(tangent_data);
     float3 normal;
 
     if (sd->shader & SHADER_SMOOTH_NORMAL) {
@@ -319,7 +318,7 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
     color.z = mix(1.0f, color.z, saturatef(strength));
 
     /* apply normal map */
-    float3 B = sign * cross(normal, tangent);
+    float3 B = tangent_data.w * cross(normal, tangent);
     N = safe_normalize(color.x * tangent + color.y * B + color.z * normal);
 
     /* transform to world space */

@@ -322,7 +322,8 @@ void GeometryManager::update_attribute_element_offset(Geometry *geom,
       }
       attr_uchar4_offset += size;
     }
-    else if (mattr->std == ATTR_STD_MOTION_VERTEX_NORMAL) {
+    else if (mattr->std == ATTR_STD_MOTION_VERTEX_NORMAL ||
+             mattr->std == ATTR_STD_FACE_NORMAL) {
       /* octahedral motion vertex normal, float3 but store into uint */
       float3 *data = mattr->data_float3();
       offset = attr_uint_offset;
@@ -330,7 +331,21 @@ void GeometryManager::update_attribute_element_offset(Geometry *geom,
       assert(attr_uint.size() >= offset + size);
       if (mattr->modified) {
         for (size_t k = 0; k < size; k++) {
-          attr_uint[offset + k] = octahedral_encode(data[k]);
+          attr_uint[offset + k] = encode_normal(data[k]);
+        }
+        attr_uint.tag_modified();
+      }
+      attr_uint_offset += size;
+    }
+    else if (desc.flags & ATTR_TANGENT) {
+      /* octahedral tangent, float4 but store into uint */
+      float4 *data = mattr->data_float4();
+      offset = attr_uint_offset;
+
+      assert(attr_uint.size() >= offset + size);
+      if (mattr->modified) {
+        for (size_t k = 0; k < size; k++) {
+          attr_uint[offset + k] = encode_tangent(data[k]);
         }
         attr_uint.tag_modified();
       }
@@ -482,7 +497,9 @@ static void update_attribute_element_size(Geometry *geom,
     else if (mattr->element == ATTR_ELEMENT_CORNER_BYTE) {
       *attr_uchar4_size += size;
     }
-    else if (mattr->std == ATTR_STD_MOTION_VERTEX_NORMAL) {
+    else if (mattr->std == ATTR_STD_MOTION_VERTEX_NORMAL ||
+             mattr->std == ATTR_STD_FACE_NORMAL ||
+             mattr->flags & ATTR_TANGENT) {
       *attr_uint_size += size;
     }
     else if (mattr->type == TypeDesc::TypeFloat) {
@@ -641,7 +658,7 @@ void GeometryManager::device_update_attributes(Device *device,
       dscene->attributes_float3.need_realloc(),
       dscene->attributes_float4.need_realloc(),
       dscene->attributes_uchar4.need_realloc(),
-      dscene->attributes_uint.need_realloc()
+      dscene->attributes_uint.need_realloc(),
   };
 
   size_t attr_float_offset = 0;

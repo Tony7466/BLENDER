@@ -347,8 +347,6 @@ const char *Attribute::standard_name(AttributeStandard std)
       return "generated_transform";
     case ATTR_STD_UV_TANGENT:
       return "tangent";
-    case ATTR_STD_UV_TANGENT_SIGN:
-      return "tangent_sign";
     case ATTR_STD_VERTEX_COLOR:
       return "vertex_color";
     case ATTR_STD_POSITION_UNDEFORMED:
@@ -437,7 +435,10 @@ AttrKernelDataType Attribute::kernel_type(const Attribute &attr)
     return AttrKernelDataType::FLOAT4;
   }
 
-  if (attr.std == ATTR_STD_MOTION_VERTEX_NORMAL) {
+  if (attr.std == ATTR_STD_VERTEX_NORMAL ||
+      attr.std == ATTR_STD_MOTION_VERTEX_NORMAL ||
+      attr.std == ATTR_STD_FACE_NORMAL ||
+      attr.flags & ATTR_TANGENT) {
     return AttrKernelDataType::UINT;
   }
 
@@ -550,10 +551,8 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
         attr = add(name, TypeFloat2, ATTR_ELEMENT_CORNER);
         break;
       case ATTR_STD_UV_TANGENT:
-        attr = add(name, TypeDesc::TypeVector, ATTR_ELEMENT_CORNER);
-        break;
-      case ATTR_STD_UV_TANGENT_SIGN:
-        attr = add(name, TypeDesc::TypeFloat, ATTR_ELEMENT_CORNER);
+        attr = add(name, TypeDesc::TypeFloat4, ATTR_ELEMENT_CORNER);
+        attr->flags |= ATTR_TANGENT;
         break;
       case ATTR_STD_VERTEX_COLOR:
         attr = add(name, TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);

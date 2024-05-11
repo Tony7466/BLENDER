@@ -8,16 +8,14 @@ shader node_normal_map(float Strength = 1.0,
                        color Color = color(0.5, 0.5, 1.0),
                        string space = "tangent",
                        string attr_name = "geom:tangent",
-                       string attr_sign_name = "geom:tangent_sign",
                        output normal Normal = N)
 {
   color mcolor = 2.0 * color(Color[0] - 0.5, Color[1] - 0.5, Color[2] - 0.5);
   int is_backfacing = backfacing();
 
   if (space == "tangent") {
-    vector tangent;
+    float tangent_data[4];
     vector ninterp;
-    float tangent_sign;
     float is_smooth = 0.0;
 
     getattribute("geom:is_smooth", is_smooth);
@@ -31,11 +29,12 @@ shader node_normal_map(float Strength = 1.0,
     }
 
     // get _unnormalized_ interpolated normal and tangent
-    if (getattribute(attr_name, tangent) && getattribute(attr_sign_name, tangent_sign) &&
+    if (getattribute(attr_name, tangent_data) &&
         (!is_smooth || getattribute("geom:normal_map_normal", ninterp)))
     {
+      vector tangent = vector(tangent_data[0], tangent_data[1], tangent_data[2]);
       /* apply normal map */
-      vector B = tangent_sign * cross(ninterp, tangent);
+      vector B = tangent_data[3] * cross(ninterp, tangent);
 
       /* apply strength */
       mcolor[0] *= Strength;

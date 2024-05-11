@@ -12,7 +12,9 @@ shader node_tangent(string attr_name = "geom:tangent",
   vector T = vector(0.0, 0.0, 0.0);
 
   if (direction_type == "uv_map") {
-    getattribute(attr_name, T);
+    float tangent_data[4];
+    getattribute(attr_name, tangent_data);
+    T = vector(tangent_data[0], tangent_data[1], tangent_data[2]);
   }
   else if (direction_type == "radial") {
     point generated;

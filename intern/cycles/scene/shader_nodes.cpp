@@ -7204,11 +7204,9 @@ void NormalMapNode::attributes(Shader *shader, AttributeRequestSet *attributes)
   if (shader->has_surface_link() && space == NODE_NORMAL_MAP_TANGENT) {
     if (attribute.empty()) {
       attributes->add(ATTR_STD_UV_TANGENT);
-      attributes->add(ATTR_STD_UV_TANGENT_SIGN);
     }
     else {
       attributes->add(ustring((string(attribute.c_str()) + ".tangent").c_str()));
-      attributes->add(ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
     }
   }
 
@@ -7220,17 +7218,14 @@ void NormalMapNode::compile(SVMCompiler &compiler)
   ShaderInput *color_in = input("Color");
   ShaderInput *strength_in = input("Strength");
   ShaderOutput *normal_out = output("Normal");
-  int attr = 0, attr_sign = 0;
+  int attr = 0;
 
   if (space == NODE_NORMAL_MAP_TANGENT) {
     if (attribute.empty()) {
       attr = compiler.attribute(ATTR_STD_UV_TANGENT);
-      attr_sign = compiler.attribute(ATTR_STD_UV_TANGENT_SIGN);
     }
     else {
       attr = compiler.attribute(ustring((string(attribute.c_str()) + ".tangent").c_str()));
-      attr_sign = compiler.attribute(
-          ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
     }
   }
 
@@ -7240,7 +7235,7 @@ void NormalMapNode::compile(SVMCompiler &compiler)
                                            compiler.stack_assign(normal_out),
                                            space),
                     attr,
-                    attr_sign);
+                    0);
 }
 
 void NormalMapNode::compile(OSLCompiler &compiler)
@@ -7248,12 +7243,9 @@ void NormalMapNode::compile(OSLCompiler &compiler)
   if (space == NODE_NORMAL_MAP_TANGENT) {
     if (attribute.empty()) {
       compiler.parameter("attr_name", ustring("geom:tangent"));
-      compiler.parameter("attr_sign_name", ustring("geom:tangent_sign"));
     }
     else {
       compiler.parameter("attr_name", ustring((string(attribute.c_str()) + ".tangent").c_str()));
-      compiler.parameter("attr_sign_name",
-                         ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
     }
   }
 
@@ -7477,11 +7469,9 @@ void VectorDisplacementNode::attributes(Shader *shader, AttributeRequestSet *att
   if (shader->has_surface_link() && space == NODE_NORMAL_MAP_TANGENT) {
     if (attribute.empty()) {
       attributes->add(ATTR_STD_UV_TANGENT);
-      attributes->add(ATTR_STD_UV_TANGENT_SIGN);
     }
     else {
       attributes->add(ustring((string(attribute.c_str()) + ".tangent").c_str()));
-      attributes->add(ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
     }
   }
 
@@ -7494,17 +7484,14 @@ void VectorDisplacementNode::compile(SVMCompiler &compiler)
   ShaderInput *midlevel_in = input("Midlevel");
   ShaderInput *scale_in = input("Scale");
   ShaderOutput *displacement_out = output("Displacement");
-  int attr = 0, attr_sign = 0;
+  int attr = 0;
 
   if (space == NODE_NORMAL_MAP_TANGENT) {
     if (attribute.empty()) {
       attr = compiler.attribute(ATTR_STD_UV_TANGENT);
-      attr_sign = compiler.attribute(ATTR_STD_UV_TANGENT_SIGN);
     }
     else {
       attr = compiler.attribute(ustring((string(attribute.c_str()) + ".tangent").c_str()));
-      attr_sign = compiler.attribute(
-          ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
     }
   }
 
@@ -7514,7 +7501,7 @@ void VectorDisplacementNode::compile(SVMCompiler &compiler)
                                            compiler.stack_assign(scale_in),
                                            compiler.stack_assign(displacement_out)),
                     attr,
-                    attr_sign);
+                    0);
 
   compiler.add_node(space);
 }
@@ -7524,12 +7511,9 @@ void VectorDisplacementNode::compile(OSLCompiler &compiler)
   if (space == NODE_NORMAL_MAP_TANGENT) {
     if (attribute.empty()) {
       compiler.parameter("attr_name", ustring("geom:tangent"));
-      compiler.parameter("attr_sign_name", ustring("geom:tangent_sign"));
     }
     else {
       compiler.parameter("attr_name", ustring((string(attribute.c_str()) + ".tangent").c_str()));
-      compiler.parameter("attr_sign_name",
-                         ustring((string(attribute.c_str()) + ".tangent_sign").c_str()));
     }
   }
 

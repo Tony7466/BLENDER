@@ -41,9 +41,8 @@ template<bool is_subd> struct MikkMeshWrapper {
   MikkMeshWrapper(const ::Mesh &b_mesh,
                   const char *layer_name,
                   const Mesh *mesh,
-                  float3 *tangent,
-                  float *tangent_sign)
-      : mesh(mesh), uv(NULL), orco(NULL), tangent(tangent), tangent_sign(tangent_sign)
+                  float4 *tangent)
+      : mesh(mesh), uv(NULL), orco(NULL), tangent(tangent)
   {
     const AttributeSet &attributes = is_subd ? mesh->subd_attributes : mesh->attributes;
 
@@ -164,10 +163,8 @@ template<bool is_subd> struct MikkMeshWrapper {
   void SetTangentSpace(const int face_num, const int vert_num, mikk::float3 T, bool orientation)
   {
     const int corner_index = CornerIndex(face_num, vert_num);
-    tangent[corner_index] = make_float3(T.x, T.y, T.z);
-    if (tangent_sign != NULL) {
-      tangent_sign[corner_index] = orientation ? 1.0f : -1.0f;
-    }
+    tangent[corner_index] = make_float4(T.x, T.y, T.z, 1.0f);
+    tangent[corner_index].w = orientation ? 1.0f : -1.0f;
   }
 
   const Mesh *mesh;
@@ -179,12 +176,11 @@ template<bool is_subd> struct MikkMeshWrapper {
   float3 *orco;
   float3 orco_loc, inv_orco_size;
 
-  float3 *tangent;
-  float *tangent_sign;
+  float4 *tangent;
 };
 
 static void mikk_compute_tangents(
-    const ::Mesh &b_mesh, const char *layer_name, Mesh *mesh, bool need_sign, bool active_render)
+    const ::Mesh &b_mesh, const char *layer_name, Mesh *mesh, bool active_render)
 {
   /* Create tangent attributes. */
   const bool is_subd = mesh->get_num_subd_faces();
@@ -201,38 +197,20 @@ static void mikk_compute_tangents(
     attr = attributes.add(ATTR_STD_UV_TANGENT, name);
   }
   else {
-    attr = attributes.add(name, TypeDesc::TypeVector, ATTR_ELEMENT_CORNER);
+    attr = attributes.add(name, TypeDesc::TypeFloat4, ATTR_ELEMENT_CORNER);
+    attr->flags |= ATTR_TANGENT;
   }
-  float3 *tangent = attr->data_float3();
-  /* Create bitangent sign attribute. */
-  float *tangent_sign = NULL;
-  if (need_sign) {
-    Attribute *attr_sign;
-    ustring name_sign;
-    if (layer_name != NULL) {
-      name_sign = ustring((string(layer_name) + ".tangent_sign").c_str());
-    }
-    else {
-      name_sign = ustring("orco.tangent_sign");
-    }
 
-    if (active_render) {
-      attr_sign = attributes.add(ATTR_STD_UV_TANGENT_SIGN, name_sign);
-    }
-    else {
-      attr_sign = attributes.add(name_sign, TypeDesc::TypeFloat, ATTR_ELEMENT_CORNER);
-    }
-    tangent_sign = attr_sign->data_float();
-  }
+  float4 *tangent = attr->data_float4();
 
   /* Setup userdata. */
   if (is_subd) {
-    MikkMeshWrapper<true> userdata(b_mesh, layer_name, mesh, tangent, tangent_sign);
+    MikkMeshWrapper<true> userdata(b_mesh, layer_name, mesh, tangent);
     /* Compute tangents. */
     mikk::Mikktspace(userdata).genTangSpace();
   }
   else {
-    MikkMeshWrapper<false> userdata(b_mesh, layer_name, mesh, tangent, tangent_sign);
+    MikkMeshWrapper<false> userdata(b_mesh, layer_name, mesh, tangent);
     /* Compute tangents. */
     mikk::Mikktspace(userdata).genTangSpace();
   }
@@ -487,11 +465,7 @@ static void attr_create_uv_map(Scene *scene,
 
       /* UV tangent */
       if (need_tangent) {
-        AttributeStandard sign_std = (active_render) ? ATTR_STD_UV_TANGENT_SIGN : ATTR_STD_NONE;
-        ustring sign_name = ustring((string(uv_name) + ".tangent_sign").c_str());
-        bool need_sign = (mesh->need_attribute(scene, sign_name) ||
-                          mesh->need_attribute(scene, sign_std));
-        mikk_compute_tangents(b_mesh, uv_name.c_str(), mesh, need_sign, active_render);
+        mikk_compute_tangents(b_mesh, uv_name.c_str(), mesh, active_render);
       }
       /* Remove temporarily created UV attribute. */
       if (!need_uv && uv_attr != NULL) {
@@ -500,8 +474,7 @@ static void attr_create_uv_map(Scene *scene,
     }
   }
   else if (mesh->need_attribute(scene, ATTR_STD_UV_TANGENT)) {
-    bool need_sign = mesh->need_attribute(scene, ATTR_STD_UV_TANGENT_SIGN);
-    mikk_compute_tangents(b_mesh, NULL, mesh, need_sign, true);
+    mikk_compute_tangents(b_mesh, NULL, mesh, true);
     if (!mesh->need_attribute(scene, ATTR_STD_GENERATED)) {
       mesh->attributes.remove(ATTR_STD_GENERATED);
     }
@@ -565,11 +538,7 @@ static void attr_create_subd_uv_map(Scene *scene,
 
       /* UV tangent */
       if (need_tangent) {
-        AttributeStandard sign_std = (active_render) ? ATTR_STD_UV_TANGENT_SIGN : ATTR_STD_NONE;
-        ustring sign_name = ustring((string(uv_name) + ".tangent_sign").c_str());
-        bool need_sign = (mesh->need_attribute(scene, sign_name) ||
-                          mesh->need_attribute(scene, sign_std));
-        mikk_compute_tangents(b_mesh, uv_name.c_str(), mesh, need_sign, active_render);
+        mikk_compute_tangents(b_mesh, uv_name.c_str(), mesh, active_render);
       }
       /* Remove temporarily created UV attribute. */
       if (!need_uv && uv_attr != NULL) {
@@ -578,8 +547,7 @@ static void attr_create_subd_uv_map(Scene *scene,
     }
   }
   else if (mesh->need_attribute(scene, ATTR_STD_UV_TANGENT)) {
-    bool need_sign = mesh->need_attribute(scene, ATTR_STD_UV_TANGENT_SIGN);
-    mikk_compute_tangents(b_mesh, NULL, mesh, need_sign, true);
+    mikk_compute_tangents(b_mesh, NULL, mesh, true);
     if (!mesh->need_attribute(scene, ATTR_STD_GENERATED)) {
       mesh->subd_attributes.remove(ATTR_STD_GENERATED);
     }

@@ -87,9 +87,9 @@ ccl_device_inline void triangle_vertices_and_normals(KernelGlobals kg,
   P[1] = kernel_data_fetch(tri_verts, tri_vindex.y);
   P[2] = kernel_data_fetch(tri_verts, tri_vindex.z);
 
-  N[0] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
-  N[1] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
-  N[2] = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
+  N[0] = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+  N[1] = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+  N[2] = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.z));
 }
 
 /* Interpolate smooth vertex normal from vertices */
@@ -100,9 +100,9 @@ triangle_smooth_normal(KernelGlobals kg, float3 Ng, int prim, float u, float v)
   /* load triangle vertices */
   const uint3 tri_vindex = kernel_data_fetch(tri_vindex, prim);
 
-  float3 n0 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
-  float3 n1 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
-  float3 n2 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
+  float3 n0 = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+  float3 n1 = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+  float3 n2 = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.z));
 
   float3 N = safe_normalize((1.0f - u - v) * n0 + u * n1 + v * n2);
 
@@ -115,9 +115,9 @@ ccl_device_inline float3 triangle_smooth_normal_unnormalized(
   /* load triangle vertices */
   const uint3 tri_vindex = kernel_data_fetch(tri_vindex, prim);
 
-  float3 n0 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.x));
-  float3 n1 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.y));
-  float3 n2 = octahedral_decode(kernel_data_fetch(tri_vnormal, tri_vindex.z));
+  float3 n0 = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.x));
+  float3 n1 = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.y));
+  float3 n2 = decode_normal(kernel_data_fetch(tri_vnormal, tri_vindex.z));
 
   /* ensure that the normals are in object space */
   if (sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED) {
@@ -364,6 +364,33 @@ ccl_device float4 triangle_attribute_float4(KernelGlobals kg,
     else {
       return zero_float4();
     }
+  }
+}
+
+ccl_device float4 triangle_tangent(KernelGlobals kg,
+                                   ccl_private const ShaderData *sd,
+                                   const AttributeDescriptor desc)
+{
+  if (desc.element & (ATTR_ELEMENT_VERTEX | ATTR_ELEMENT_VERTEX_MOTION | ATTR_ELEMENT_CORNER)) {
+    float4 f0, f1, f2;
+
+    if (desc.element & (ATTR_ELEMENT_VERTEX | ATTR_ELEMENT_VERTEX_MOTION)) {
+      const uint3 tri_vindex = kernel_data_fetch(tri_vindex, sd->prim);
+
+      f0 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + tri_vindex.x));
+      f1 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + tri_vindex.y));
+      f2 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + tri_vindex.z));
+    }
+    else {
+      const int tri = desc.offset + sd->prim * 3;
+      f0 = decode_tangent(kernel_data_fetch(attributes_uint, tri + 0));
+      f1 = decode_tangent(kernel_data_fetch(attributes_uint, tri + 1));
+      f2 = decode_tangent(kernel_data_fetch(attributes_uint, tri + 2));
+    }
+    return sd->u * f1 + sd->v * f2 + (1.0f - sd->u - sd->v) * f0;
+  }
+  else {
+    return make_float4(0.0f, 0.0f, 0.0f, 1.0f);
   }
 }
 

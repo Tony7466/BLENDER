@@ -820,7 +820,6 @@ typedef enum AttributeStandard {
   ATTR_STD_FACE_NORMAL,
   ATTR_STD_UV,
   ATTR_STD_UV_TANGENT,
-  ATTR_STD_UV_TANGENT_SIGN,
   ATTR_STD_VERTEX_COLOR,
   ATTR_STD_GENERATED,
   ATTR_STD_GENERATED_TRANSFORM,
@@ -855,6 +854,7 @@ typedef enum AttributeStandard {
 typedef enum AttributeFlag {
   ATTR_FINAL_SIZE = (1 << 0),
   ATTR_SUBDIVIDED = (1 << 1),
+  ATTR_TANGENT = (1 << 2), /* needed for octahedral decoding */
 } AttributeFlag;
 
 typedef struct AttributeDescriptor {

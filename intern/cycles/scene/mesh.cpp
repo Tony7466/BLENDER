@@ -749,12 +749,12 @@ void Mesh::pack_normals(uint *vnormal)
 
   if (do_transform) {
     for (size_t i = 0; i < verts_size; i++) {
-      vnormal[i] = octahedral_encode(safe_normalize(transform_direction(&ntfm, vN[i])));
+      vnormal[i] = encode_normal(safe_normalize(transform_direction(&ntfm, vN[i])));
     }
   }
   else {
     for (size_t i = 0; i < verts_size; i++) {
-      vnormal[i] = octahedral_encode(vN[i]);
+      vnormal[i] = encode_normal(vN[i]);
     }
   }
 }

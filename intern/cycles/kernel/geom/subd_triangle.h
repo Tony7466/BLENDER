@@ -666,4 +666,84 @@ ccl_device_noinline float4 subd_triangle_attribute_float4(KernelGlobals kg,
     }
 }
 
+ccl_device_noinline float4 subd_triangle_tangent(KernelGlobals kg,
+                                                 ccl_private const ShaderData *sd,
+                                                 const AttributeDescriptor desc)
+{
+  int patch = subd_triangle_patch(kg, sd->prim);
+
+#ifdef __PATCH_EVAL__
+  if (desc.flags & ATTR_SUBDIVIDED) {
+    float2 uv[3];
+    subd_triangle_patch_uv(kg, sd, uv);
+
+    float2 dpdu = uv[1] - uv[0];
+    float2 dpdv = uv[2] - uv[0];
+
+    /* p is [s, t] */
+    float2 p = dpdu * sd->u + dpdv * sd->v + uv[0];
+
+    float4 a, dads, dadt;
+    a = patch_eval_float4(kg, sd, desc.offset, patch, p.x, p.y, 0, &dads, &dadt);
+
+    return a;
+  }
+  else
+#endif /* __PATCH_EVAL__ */
+    if (desc.element == ATTR_ELEMENT_FACE) {
+      return decode_tangent(kernel_data_fetch(attributes_uint,
+                               desc.offset + subd_triangle_patch_face(kg, patch)));
+    }
+    else if (desc.element == ATTR_ELEMENT_VERTEX || desc.element == ATTR_ELEMENT_VERTEX_MOTION) {
+      float2 uv[3];
+      subd_triangle_patch_uv(kg, sd, uv);
+
+      uint4 v = subd_triangle_patch_indices(kg, patch);
+
+      float4 f0 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + v.x));
+      float4 f1 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + v.y));
+      float4 f2 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + v.z));
+      float4 f3 = decode_tangent(kernel_data_fetch(attributes_uint, desc.offset + v.w));
+
+      if (subd_triangle_patch_num_corners(kg, patch) != 4) {
+        f1 = (f1 + f0) * 0.5f;
+        f3 = (f3 + f0) * 0.5f;
+      }
+
+      float4 a = mix(mix(f0, f1, uv[0].x), mix(f3, f2, uv[0].x), uv[0].y);
+      float4 b = mix(mix(f0, f1, uv[1].x), mix(f3, f2, uv[1].x), uv[1].y);
+      float4 c = mix(mix(f0, f1, uv[2].x), mix(f3, f2, uv[2].x), uv[2].y);
+
+      return sd->u * b + sd->v * c + (1.0f - sd->u - sd->v) * a;
+    }
+    else if (desc.element == ATTR_ELEMENT_CORNER) {
+      float2 uv[3];
+      subd_triangle_patch_uv(kg, sd, uv);
+
+      int corners[4];
+      subd_triangle_patch_corners(kg, patch, corners);
+
+      float4 f0, f1, f2, f3;
+
+      f0 = decode_tangent(kernel_data_fetch(attributes_uint, corners[0] + desc.offset));
+      f1 = decode_tangent(kernel_data_fetch(attributes_uint, corners[1] + desc.offset));
+      f2 = decode_tangent(kernel_data_fetch(attributes_uint, corners[2] + desc.offset));
+      f3 = decode_tangent(kernel_data_fetch(attributes_uint, corners[3] + desc.offset));
+
+      if (subd_triangle_patch_num_corners(kg, patch) != 4) {
+        f1 = (f1 + f0) * 0.5f;
+        f3 = (f3 + f0) * 0.5f;
+      }
+
+      float4 a = mix(mix(f0, f1, uv[0].x), mix(f3, f2, uv[0].x), uv[0].y);
+      float4 b = mix(mix(f0, f1, uv[1].x), mix(f3, f2, uv[1].x), uv[1].y);
+      float4 c = mix(mix(f0, f1, uv[2].x), mix(f3, f2, uv[2].x), uv[2].y);
+
+      return sd->u * b + sd->v * c + (1.0f - sd->u - sd->v) * a;
+    }
+    else {
+      return make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
 CCL_NAMESPACE_END
