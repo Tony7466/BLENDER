@@ -1216,8 +1216,8 @@ struct ShadowTileMapData {
   int tiles_index;
   /** Index of persistent data in the persistent data buffer. */
   int clip_data_index;
-  /** Bias LOD to tag for usage to lower the amount of tile used. */
-  float lod_bias;
+
+  float _pad0;
   /** Light type this tilemap is from. */
   eLightType light_type;
   /** True if the tilemap is part of area light shadow and is one of the side projections. */

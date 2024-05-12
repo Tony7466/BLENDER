@@ -100,7 +100,6 @@ struct ShadowTileMap : public ShadowTileMapData {
   void sync_orthographic(const float4x4 &object_mat_,
                          int2 origin_offset,
                          int clipmap_level,
-                         float lod_bias_,
                          eShadowProjectionType projection_type_);
 
   void sync_cubeface(eLightType light_type_,
@@ -109,8 +108,7 @@ struct ShadowTileMap : public ShadowTileMapData {
                      float far,
                      float side,
                      float shift,
-                     eCubeFace face,
-                     float lod_bias_);
+                     eCubeFace face);
 
   void debug_draw() const;
 
@@ -323,8 +321,6 @@ class ShadowModule {
 
   /** For now, needs to be hardcoded. */
   int shadow_page_size_ = SHADOW_PAGE_RES;
-  /** Amount of bias to apply to the LOD computed at the tile usage tagging stage. */
-  float lod_bias_ = 0.0f;
   /** Maximum number of allocated pages. Maximum value is SHADOW_MAX_TILEMAP. */
   int shadow_page_len_ = SHADOW_MAX_TILEMAP;
   /** Global switch. */
@@ -368,11 +364,6 @@ class ShadowModule {
     return data_;
   }
 
-  float get_global_lod_bias()
-  {
-    return lod_bias_;
-  }
-
   /* Set all shadows to update. To be called before `end_sync`. */
   void reset()
   {
@@ -414,10 +405,6 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   float max_distance_;
   /** Number of tile-maps needed to cover the light angular extents. */
   int tilemaps_needed_;
-  /** Shadow LOD bias calculated based on global and light shadow resolution scale. */
-  float lod_bias_;
-  /** Shadow LOD max calculated based light shadow max resolution. */
-  float lod_max_;
 
  public:
   ShadowPunctual(ShadowModule &module) : shadows_(module){};
@@ -468,8 +455,6 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   IndexRange levels_range;
   /** Angle of the shadowed light shape. Might be scaled compared to the shading disk. */
   float disk_shape_angle_;
-  /** Shadow LOD bias calculated based on global and light shadow resolution scale. */
-  float lod_bias_;
 
  public:
   ShadowDirectional(ShadowModule &module) : shadows_(module){};
