@@ -386,6 +386,30 @@ struct bNodeType {
 #define NODE_CLASS_ATTRIBUTE 42
 #define NODE_CLASS_LAYOUT 100
 
+/**
+ * Color tag stored per node group. This affects the header color of group nodes.
+ * Note that these values are written to DNA.
+ *
+ * This is separate from the `NODE_CLASS_*` enum, because those have some additional items and are
+ * not purely color tags. Some classes also have functional effects (e.g. `NODE_CLASS_INPUT`).
+ */
+enum class NodeGroupColorTag {
+  None = 0,
+  Attribute = 1,
+  Color = 2,
+  Converter = 3,
+  Distort = 4,
+  Filter = 5,
+  Geometry = 6,
+  Input = 7,
+  Matte = 8,
+  Output = 9,
+  Script = 10,
+  Shader = 11,
+  Texture = 12,
+  Vector = 13,
+};
+
 struct bNodeTreeExec;
 
 using bNodeClassCallback = void (*)(void *calldata, int nclass, const char *name);
@@ -402,7 +426,7 @@ struct bNodeTreeType {
 
   /* callbacks */
   /* Iteration over all node classes. */
-  void (*foreach_nodeclass)(Scene *scene, void *calldata, bNodeClassCallback func);
+  void (*foreach_nodeclass)(void *calldata, bNodeClassCallback func);
   /* Check visibility in the node editor */
   bool (*poll)(const bContext *C, bNodeTreeType *ntreetype);
   /* Select a node tree from the context */
@@ -1358,6 +1382,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define FN_NODE_COMBINE_MATRIX 1241
 #define FN_NODE_SEPARATE_MATRIX 1242
 #define FN_NODE_INPUT_ROTATION 1243
+#define FN_NODE_AXES_TO_ROTATION 1244
 
 /** \} */
 
