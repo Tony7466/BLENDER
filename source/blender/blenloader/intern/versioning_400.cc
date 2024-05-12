@@ -3484,13 +3484,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     float shadow_max_res_local = 0.001f;
     bool shadow_resolution_absolute = false;
     /* Try to get default resolution from scene setting. */
-    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool is_eevee = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
-    if (is_eevee) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       shadow_max_res_local = (2.0f * M_SQRT2) / scene->eevee.shadow_cube_size;
       /* Round to avoid weird numbers in the UI. */
       shadow_max_res_local = ceil(shadow_max_res_local * 1000.0f) / 1000.0f;
       shadow_resolution_absolute = true;
+      break;
     }
 
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
