@@ -103,6 +103,37 @@ ShadowSamplingTile shadow_tile_load(usampler2D tilemaps_tx, uvec2 tile_co, int t
   return shadow_sampling_tile_unpack(tile_data);
 }
 
+#if 0 /* TODO(fclem): Finish. We can simplify sampling logic and only tag radially. */
+
+/**
+ * Return the tilemap at a given point.
+ *
+ * This function should be the inverse of ShadowDirectional::coverage_get().
+ *
+ * \a lP shading point position in light space, relative to the to camera position snapped to
+ * the smallest clip-map level (`shadow_world_to_local(light, P) - light_position_get(light)`).
+ */
+int shadow_directional_tilemap_index(LightData light, vec3 lP)
+{
+  LightSunData sun = light_sun_data_get(light);
+  int lvl;
+  if (light.type == LIGHT_SUN) {
+    /* We need to hide one tile worth of data to hide the moving transition. */
+    const float narrowing = float(SHADOW_TILEMAP_RES) / (float(SHADOW_TILEMAP_RES) - 1.0001);
+    /* Avoid using log2 when we can just get the exponent from the floating point. */
+    frexp(reduce_max(abs(lP)) * narrowing * 2.0, lvl);
+  }
+  else {
+    /* Since we want half of the size, bias the level by -1. */
+    /* TODO(fclem): Precompute. */
+    float lod_min_half_size = exp2(float(sun.clipmap_lod_min - 1));
+    lvl = reduce_max(lP.xy) / lod_min_half_size;
+  }
+  return light.clamp(lvl, sun.clipmap_lod_min, sun.clipmap_lod_max);
+}
+
+#endif
+
 /**
  * This function should be the inverse of ShadowDirectional::coverage_get().
  *
