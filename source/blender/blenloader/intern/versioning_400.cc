@@ -3489,7 +3489,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     if (is_eevee) {
       shadow_max_res_local = (2.0f * M_SQRT2) / scene->eevee.shadow_cube_size;
       /* Round to avoid weird numbers in the UI. */
-      shadow_max_res_local = floor(shadow_max_res_local * 10000.0f) / 10000.0f;
+      shadow_max_res_local = ceil(shadow_max_res_local * 1000.0f) / 1000.0f;
       shadow_resolution_absolute = true;
     }
 
