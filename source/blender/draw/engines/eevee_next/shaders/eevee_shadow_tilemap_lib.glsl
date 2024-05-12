@@ -169,11 +169,6 @@ int shadow_directional_level(LightData light, vec3 lP)
   return int(ceil(shadow_directional_level_fractional(light, lP)));
 }
 
-float shadow_punctual_frustum_padding_get(LightData light)
-{
-  return light_local_data_get(light).clip_side / orderedIntBitsToFloat(light.clip_near);
-}
-
 /**
  * Returns the ratio of radius between shadow map pixels and screen pixels.
  * `distance_to_camera` is Z distance to the camera origin.
@@ -184,22 +179,24 @@ float shadow_punctual_pixel_ratio(LightData light,
                                   float distance_to_camera,
                                   float film_pixel_radius)
 {
+  film_pixel_radius *= exp2(light.lod_bias);
+
+  float distance_to_light = reduce_max(abs(lP));
   /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
    * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
    * This gives a good approximation of what LOD to select to get a somewhat uniform shadow map
    * resolution in screen space. */
-  float film_footprint = (is_perspective) ? film_pixel_radius * distance_to_camera :
-                                            film_pixel_radius;
-  /* Compute approximate screen pixel world space radius at 1 unit away of the light. */
-  float shadow_pixel_footprint = 2.0 * M_SQRT2 / SHADOW_MAP_MAX_RES;
-  /* Take the frustum padding into account. */
-  shadow_pixel_footprint *= shadow_punctual_frustum_padding_get(light);
-
-  float distance_to_light = reduce_max(abs(lP));
-  float shadow_footprint = shadow_pixel_footprint * distance_to_light;
-  /* TODO(fclem): Ideally, this should be modulated by N.L. */
-  float ratio = shadow_footprint / film_footprint;
-  return ratio;
+  float film_pixel_footprint = (is_perspective) ? film_pixel_radius * distance_to_camera :
+                                                  film_pixel_radius;
+  /* Clamp in world space. */
+  film_pixel_footprint = max(film_pixel_footprint, light.lod_min);
+  /* Project onto light's unit plane (per cubeface). */
+  film_pixel_footprint /= distance_to_light;
+  /* Clamp in shadow space. */
+  film_pixel_footprint = max(film_pixel_footprint, -light.lod_min);
+  /* Cube-face diagonal divided by LOD0 resolution. */
+  const float shadow_pixel_radius = (2.0 * M_SQRT2) / SHADOW_MAP_MAX_RES;
+  return shadow_pixel_radius / film_pixel_footprint;
 }
 
 /**
@@ -217,7 +214,6 @@ float shadow_punctual_level_fractional(LightData light,
   /* NOTE: Bias by one to counteract the ceil in the `int` variant. This is done because this
    * function should return an upper bound. */
   float lod = -log2(ratio) - 1.0;
-  lod = max(lod + light.lod_bias, light.lod_min);
   lod = min(lod, float(SHADOW_TILEMAP_LOD));
   return lod;
 }

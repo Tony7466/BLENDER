@@ -963,6 +963,7 @@ struct LightData {
 
   /* Shadow Map resolution bias. */
   float lod_bias;
+  /* Shadow Map resolution maximum resolution. */
   float lod_min;
   float _pad1;
   float _pad2;

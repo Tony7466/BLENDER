@@ -108,10 +108,13 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
 float Light::shadow_lod_min_get(const ::Light *la)
 {
+  /* Property is in mm. Convert to unit. */
+  float max_res_unit = la->shadow_maximum_resolution;
   if (is_sun_light(this->type)) {
-    return log2f(la->shadow_directional_maximum_resolution * SHADOW_MAP_MAX_RES) - 1.0f;
+    return log2f(max_res_unit * SHADOW_MAP_MAX_RES) - 1.0f;
   }
-  return la->shadow_local_maximum_resolution;
+  /* Store absolute mode as negative. */
+  return (la->mode & LA_SHAD_RES_ABSOLUTE) ? -max_res_unit : max_res_unit;
 }
 
 void Light::shadow_discard_safe(ShadowModule &shadows)

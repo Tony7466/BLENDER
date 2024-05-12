@@ -3480,10 +3480,27 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 34)) {
-    /* TODO(fclem): Good default from EEVEE-Legacy settings. */
+    float shadow_max_res_sun = 0.001f;
+    float shadow_max_res_local = 0.001f;
+    bool shadow_resolution_absolute = false;
+    /* Try to get default resolution from scene setting. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_eevee = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+    if (is_eevee) {
+      shadow_max_res_local = ((2.0f * M_SQRT2) / scene->eevee.shadow_cube_size);
+      shadow_resolution_absolute = true;
+    }
+
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-      light->shadow_directional_maximum_resolution = 0.001f;
-      light->shadow_local_maximum_resolution = 0.001f;
+      if (light->type == LA_SUN) {
+        /* Sun are too complex to convert. Need user interaction. */
+        light->shadow_maximum_resolution = shadow_max_res_sun;
+        SET_FLAG_FROM_TEST(light->mode, false, LA_SHAD_RES_ABSOLUTE);
+      }
+      else {
+        light->shadow_maximum_resolution = shadow_max_res_local;
+        SET_FLAG_FROM_TEST(light->mode, shadow_resolution_absolute, LA_SHAD_RES_ABSOLUTE);
+      }
     }
   }
 

@@ -373,8 +373,7 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
                                         uniform_buf.shadow.film_pixel_radius);
     /* This gives the size of pixels at Z = 1. */
     scale = 0.5 / scale;
-    scale = max(scale * exp2(light.lod_bias), exp2(light.lod_min));
-    scale = min(scale, float(1 << SHADOW_TILEMAP_LOD));
+    scale = min(scale, float(1 << (SHADOW_TILEMAP_LOD - 1)));
     /* Now scale by distance to the light. */
     scale *= reduce_max(abs(lP));
   }
