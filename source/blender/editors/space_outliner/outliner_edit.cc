@@ -1832,8 +1832,7 @@ static void do_outliner_drivers_editop(SpaceOutliner *space_outliner,
             break;
           }
           case DRIVERS_EDITMODE_REMOVE: {
-            /* remove driver matching the information obtained (only if valid) */
-            ANIM_remove_driver(reports, id, path, array_index, dflags);
+            ANIM_remove_driver(id, path, array_index);
             break;
           }
         }
@@ -2216,7 +2215,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   return WM_operator_props_dialog_popup(C,
                                         op,
                                         unused_message_popup_width_compute(C),
-                                        IFACE_("Purge Unused Data From This File"),
+                                        IFACE_("Purge Unused Data from This File"),
                                         IFACE_("Delete"));
 }
 
