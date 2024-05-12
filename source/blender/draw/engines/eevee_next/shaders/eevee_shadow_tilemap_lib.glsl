@@ -196,7 +196,7 @@ float shadow_punctual_pixel_ratio(LightData light,
   film_pixel_footprint = max(film_pixel_footprint, -light.lod_min);
   /* Cube-face diagonal divided by LOD0 resolution. */
   const float shadow_pixel_radius = (2.0 * M_SQRT2) / SHADOW_MAP_MAX_RES;
-  return shadow_pixel_radius / film_pixel_footprint;
+  return saturate(shadow_pixel_radius / film_pixel_footprint);
 }
 
 /**
