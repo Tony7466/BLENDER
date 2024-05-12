@@ -350,7 +350,7 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
     prop = RNA_def_property(srna, "shadow_maximum_resolution", PROP_FLOAT, PROP_DISTANCE);
     RNA_def_property_float_sdna(prop, nullptr, "shadow_directional_maximum_resolution");
     RNA_def_property_range(prop, 0.0f, FLT_MAX);
-    RNA_def_property_ui_range(prop, 0.0001f, 0.01f, 0.001f, 3);
+    RNA_def_property_ui_range(prop, 0.0001f, 0.01f, 0.001f, 4);
     RNA_def_property_ui_text(
         prop,
         "Shadows Maximum Resolution",
@@ -361,9 +361,10 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
     RNA_def_property_update(prop, 0, "rna_Light_update");
   }
   else {
-    prop = RNA_def_property(srna, "shadow_maximum_resolution", PROP_FLOAT, PROP_FACTOR);
+    prop = RNA_def_property(srna, "shadow_maximum_resolution", PROP_FLOAT, PROP_DISTANCE);
     RNA_def_property_float_sdna(prop, nullptr, "shadow_local_maximum_resolution");
-    RNA_def_property_range(prop, 0.0f, 1.0f);
+    RNA_def_property_range(prop, 0.0f, FLT_MAX);
+    RNA_def_property_ui_range(prop, 0.0001f, 0.01f, 0.001f, 4);
     RNA_def_property_ui_text(
         prop,
         "Shadows Maximum Resolution",

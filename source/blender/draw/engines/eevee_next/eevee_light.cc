@@ -111,7 +111,7 @@ float Light::shadow_lod_min_get(const ::Light *la)
   if (is_sun_light(this->type)) {
     return log2f(la->shadow_directional_maximum_resolution * SHADOW_MAP_MAX_RES) - 1.0f;
   }
-  return (1.0f - la->shadow_local_maximum_resolution) * SHADOW_TILEMAP_LOD;
+  return la->shadow_local_maximum_resolution;
 }
 
 void Light::shadow_discard_safe(ShadowModule &shadows)

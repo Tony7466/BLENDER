@@ -3482,8 +3482,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 34)) {
     /* TODO(fclem): Good default from EEVEE-Legacy settings. */
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-      light->shadow_directional_maximum_resolution = 0.01f;
-      light->shadow_local_maximum_resolution = 0.8f;
+      light->shadow_directional_maximum_resolution = 0.001f;
+      light->shadow_local_maximum_resolution = 0.001f;
     }
   }
 
