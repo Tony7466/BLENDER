@@ -2906,7 +2906,7 @@ class VIEW3D_MT_object(Menu):
 
         layout.operator("object.shade_smooth")
         if ob and ob.type == 'MESH':
-            layout.operator("object.shade_smooth_by_angle")
+            layout.operator("object.shade_auto_smooth")
         layout.operator("object.shade_flat")
 
         layout.separator()
@@ -3154,7 +3154,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             if obj.type in {'MESH', 'CURVE', 'SURFACE'}:
                 layout.operator("object.shade_smooth")
                 if obj.type == 'MESH':
-                    layout.operator("object.shade_smooth_by_angle")
+                    layout.operator("object.shade_auto_smooth")
                 layout.operator("object.shade_flat")
 
                 layout.separator()
@@ -6023,6 +6023,7 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout = self.layout
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
+        layout.menu("GREASE_PENCIL_MT_snap")
 
         layout.separator()
 
