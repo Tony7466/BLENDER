@@ -263,6 +263,7 @@ class NODE_MT_geometry_node_GEO_INPUT_CONSTANT(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputImage")
         node_add_menu.add_node_type(layout, "FunctionNodeInputInt")
         node_add_menu.add_node_type(layout, "GeometryNodeInputMaterial")
+        node_add_menu.add_node_type(layout, "FunctionNodeInputRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeInputString")
         node_add_menu.add_node_type(layout, "ShaderNodeValue")
         node_add_menu.add_node_type(layout, "FunctionNodeInputVector")
@@ -595,6 +596,7 @@ class NODE_MT_category_GEO_UTILITIES_ROTATION(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeAlignRotationToVector")
+        node_add_menu.add_node_type(layout, "FunctionNodeAxesToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeAxisAngleToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeEulerToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertRotation")
@@ -717,6 +719,7 @@ class NODE_MT_geometry_node_volume_sample(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeSampleGrid")
+        node_add_menu.add_node_type(layout, "GeometryNodeSampleGridIndex")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Sample")
 
 

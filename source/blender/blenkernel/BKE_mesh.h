@@ -210,7 +210,7 @@ void BKE_mesh_mselect_validate(Mesh *mesh);
 /**
  * \return the index within `me->mselect`, or -1
  */
-int BKE_mesh_mselect_find(Mesh *mesh, int index, int type);
+int BKE_mesh_mselect_find(const Mesh *mesh, int index, int type);
 /**
  * \return The index of the active element.
  */
@@ -464,7 +464,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
                               unsigned int edges_num,
                               MFace *legacy_faces,
                               unsigned int legacy_faces_num,
-                              int *corner_verts,
+                              const int *corner_verts,
                               int *corner_edges,
                               unsigned int corners_num,
                               const int *face_offsets,

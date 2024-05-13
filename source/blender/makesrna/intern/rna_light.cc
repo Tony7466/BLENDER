@@ -297,17 +297,21 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
       prop, "Contact Shadow Thickness", "Pixel thickness used to detect occlusion");
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
-  prop = RNA_def_property(srna, "shadow_softness_factor", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(
-      prop, "Shadow Softness Factor", "Scale light shape for smaller penumbra");
-  RNA_def_property_update(prop, 0, "rna_Light_update");
-
   prop = RNA_def_property(srna, "shadow_filter_radius", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0f, 5.0f, 1.0f, 2);
   RNA_def_property_ui_text(
       prop, "Shadow Filter Radius", "Blur shadow aliasing using Percentage Closer Filtering");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, 0, "rna_Light_update");
+
+  prop = RNA_def_property(srna, "shadow_maximum_resolution", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0001f, 0.020f, 0.0005f, 4);
+  RNA_def_property_ui_text(
+      prop,
+      "Shadows Maximum Resolution",
+      "Lower values will reduce the cost of the shadow map in close-up regions");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
@@ -352,13 +356,15 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
     RNA_def_property_ui_text(
         prop, "Cascade Fade", "How smooth is the transition between each cascade");
     RNA_def_property_update(prop, 0, "rna_Light_update");
-
-    prop = RNA_def_property(srna, "shadow_trace_distance", PROP_FLOAT, PROP_DISTANCE);
-    RNA_def_property_range(prop, 0.0f, FLT_MAX);
-    RNA_def_property_ui_range(prop, 0, 100, 0.1, 3);
+  }
+  else {
+    prop = RNA_def_property(srna, "use_absolute_resolution", PROP_BOOLEAN, PROP_NONE);
+    RNA_def_property_boolean_sdna(prop, nullptr, "mode", LA_SHAD_RES_ABSOLUTE);
     RNA_def_property_ui_text(prop,
-                             "Shadow Tracing Max Distance",
-                             "Maximum distance a shadow map tracing ray can travel");
+                             "Absolute Maximum Resolution",
+                             "Set maximum resolution at 1 unit from the light instead of relative "
+                             "to the shaded pixel distance");
+    RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
     RNA_def_property_update(prop, 0, "rna_Light_update");
   }
 }
