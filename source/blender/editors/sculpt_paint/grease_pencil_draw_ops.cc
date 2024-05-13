@@ -22,6 +22,7 @@
 
 #include "ANIM_keyframing.hh"
 
+#include "MEM_guardedalloc.h"
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
@@ -773,10 +774,17 @@ enum GreasePencilInterpolateFlipMode {
 //   gpencil_interpolate_update_strokes(C, tgpi);
 // }
 
-// /* ----------------------- */
+struct GreasePencilInterpolateOpData {};
+
+static bool grease_pencil_interpolate_init(bContext &C, wmOperator &op)
+{
+  op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__,
+                                                         GreasePencilInterpolateOpData{});
+  return true;
+}
 
 /* Exit and free memory. */
-static void grease_pencil_interpolate_exit(bContext *C, wmOperator *op)
+static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
 {
   //   tGPDinterpolate *tgpi = static_cast<tGPDinterpolate *>(op->customdata);
   //   bGPdata *gpd = tgpi->gpd;
@@ -819,11 +827,14 @@ static void grease_pencil_interpolate_exit(bContext *C, wmOperator *op)
 
   //     MEM_SAFE_FREE(tgpi);
   //   }
-  //   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  //   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
-  //   /* clear pointer */
-  //   op->customdata = nullptr;
+  if (op.customdata) {
+    MEM_delete(static_cast<GreasePencilInterpolateOpData *>(op.customdata));
+    op.customdata = nullptr;
+  }
+
+  // DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
 // /* Init new temporary interpolation data */
@@ -885,24 +896,6 @@ static void grease_pencil_interpolate_exit(bContext *C, wmOperator *op)
 //   return tgpi;
 // }
 
-// /* Init interpolation: Allocate memory and set init values */
-// static int gpencil_interpolate_init(bContext *C, wmOperator *op)
-// {
-//   tGPDinterpolate *tgpi;
-
-//   /* check context */
-//   tgpi = static_cast<tGPDinterpolate *>(
-//       op->customdata = gpencil_session_init_interpolation(C, op));
-//   if (tgpi == nullptr) {
-//     /* something wasn't set correctly in context */
-//     gpencil_interpolate_exit(C, op);
-//     return 0;
-//   }
-
-//   /* everything is now setup ok */
-//   return 1;
-// }
-
 /* ----------------------- */
 
 static bool grease_pencil_interpolate_poll(bContext *C)
@@ -923,7 +916,7 @@ static bool grease_pencil_interpolate_poll(bContext *C)
 /* Invoke handler: Initialize the operator */
 static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  // wmWindow *win = CTX_wm_window(C);
+  wmWindow &win = *CTX_wm_window(C);
   // bGPdata *gpd = CTX_data_gpencil_data(C);
   // bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
   // Scene *scene = CTX_data_scene(C);
@@ -942,26 +935,18 @@ static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const w
   //   return OPERATOR_CANCELLED;
   // }
 
-  // if (GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd)) {
-  //   BKE_report(op->reports, RPT_ERROR, "Cannot interpolate in curve edit mode");
-  //   return OPERATOR_CANCELLED;
-  // }
-  // /* try to initialize context data needed */
-  // if (!gpencil_interpolate_init(C, op)) {
-  //   if (op->customdata) {
-  //     MEM_freeN(op->customdata);
-  //   }
-  //   return OPERATOR_CANCELLED;
-  // }
-  // tgpi = static_cast<tGPDinterpolate *>(op->customdata);
+  if (!grease_pencil_interpolate_init(*C, *op)) {
+    grease_pencil_interpolate_exit(*C, *op);
+    return OPERATOR_CANCELLED;
+  }
 
-  // /* set cursor to indicate modal */
-  // WM_cursor_modal_set(win, WM_CURSOR_EW_SCROLL);
+  /* Set cursor to indicate modal operator. */
+  WM_cursor_modal_set(&win, WM_CURSOR_EW_SCROLL);
 
   // /* update shift indicator in header */
   // gpencil_interpolate_status_indicators(C, tgpi);
   // DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  // WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+  WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
   WM_event_add_modal_handler(C, op);
 
@@ -992,7 +977,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           //     ED_area_status_text(tgpi->area, nullptr);
           //     ED_workspace_status_text(C, nullptr);
           //     WM_cursor_modal_restore(win);
-          grease_pencil_interpolate_exit(C, op);
+          grease_pencil_interpolate_exit(*C, *op);
           return OPERATOR_CANCELLED;
         case InterpolateToolModalEvent::Confirm:
           //     /* return to normal cursor and header status */
@@ -1021,7 +1006,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           //         BLI_addtail(&gpf_dst->strokes, gps_dst);
           //       }
           //     }
-          grease_pencil_interpolate_exit(C, op);
+          grease_pencil_interpolate_exit(*C, *op);
           return OPERATOR_FINISHED;
         case InterpolateToolModalEvent::Increase:
           //     tgpi->shift = tgpi->shift + 0.01f;
@@ -1084,7 +1069,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
 
 static void grease_pencil_interpolate_cancel(bContext *C, wmOperator *op)
 {
-  grease_pencil_interpolate_exit(C, op);
+  grease_pencil_interpolate_exit(*C, *op);
 }
 
 static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
