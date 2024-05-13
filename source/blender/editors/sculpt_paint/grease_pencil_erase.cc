@@ -290,7 +290,7 @@ struct EraseOperationExecutor {
           const int64_t squared_distance = math::distance_squared(
               this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
 
-          /* Note: We don't account for boundaries here, since we are not going to split any
+          /* NOTE: We don't account for boundaries here, since we are not going to split any
            * curve. */
           r_point_side[src_point] = (squared_distance <= this->eraser_squared_radius_pixels) ?
                                         PointCircleSide::Inside :
@@ -521,7 +521,7 @@ struct EraseOperationExecutor {
     const auto execute_eraser_on_drawing = [&](const int layer_index,
                                                const int frame_number,
                                                Drawing &drawing) {
-      const Layer &layer = *grease_pencil.layers()[layer_index];
+      const Layer &layer = *grease_pencil.layer(layer_index);
       const bke::CurvesGeometry &src = drawing.strokes();
 
       /* Evaluated geometry. */
