@@ -5152,7 +5152,6 @@ static void slim_flush_uvs(ParamHandle *phandle,
           v->uv[1] = 0.0f;
         }
       }
-
     }
   }
 }
@@ -5166,8 +5165,8 @@ static void slim_free_matrix_transfer(ParamHandle *phandle)
 
 static void slim_get_pinned_vertex_data(ParamHandle *phandle,
                                         PChart *chart,
-                                        slim::MatrixTransferChart& mt_chart,
-                                        slim::PinnedVertexData& pinned_vertex_data)
+                                        slim::MatrixTransferChart &mt_chart,
+                                        slim::PinnedVertexData &pinned_vertex_data)
 {
   auto &pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
   auto &pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
@@ -5176,7 +5175,6 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
   pinned_vertex_indices.clear();
   pinned_vertex_positions_2D.clear();
   selected_pins.clear();
-
 
   /* Boundary vertices have lower slim_ids, process them first. */
   PEdge *outer;
@@ -5288,16 +5286,13 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
   /* Do one iteration and tranfer UVs */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    slim::MatrixTransferChart& mt_chart = mt->charts[i];
+    slim::MatrixTransferChart &mt_chart = mt->charts[i];
 
     if (!mt_chart.data) {
       continue;
     }
 
-    slim_get_pinned_vertex_data(phandle,
-                                chart,
-                                mt_chart,
-                                mt->pinned_vertex_data);
+    slim_get_pinned_vertex_data(phandle, chart, mt_chart, mt->pinned_vertex_data);
 
     mt->parametrize_live(mt_chart, mt->pinned_vertex_data);
   }
