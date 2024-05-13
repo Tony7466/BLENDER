@@ -169,6 +169,9 @@ class EEVEE_WORLD_PT_settings(WorldButtonsPanel, Panel):
 
         layout.use_property_split = True
         layout.prop(world, "sun_threshold")
+        layout.prop(world, "sun_angle")
+        layout.prop(world, "use_sun_shadow")
+        layout.prop(world, "sun_shadow_maximum_resolution")
         layout.prop(world, "probe_resolution")
 
 

@@ -9,6 +9,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_node.hh"
 #include "BKE_world.h"
+#include "BLI_math_rotation.h"
 #include "DEG_depsgraph_query.hh"
 #include "NOD_shader.h"
 
@@ -85,9 +86,15 @@ void World::sync()
     WorldHandle wo_handle = inst_.sync.sync_world();
     has_update = wo_handle.recalc != 0;
     sun_threshold_ = inst_.scene->world->sun_threshold;
+    sun_shadow_max_resolution_ = inst_.scene->world->sun_shadow_maximum_resolution;
+    sun_angle_ = inst_.scene->world->sun_angle;
+    use_sun_shadow_ = inst_.scene->world->flag & WO_USE_SUN_SHADOW;
   }
   else {
     sun_threshold_ = 10.0f;
+    sun_shadow_max_resolution_ = 0.001f;
+    sun_angle_ = DEG2RADF(0.526f);
+    use_sun_shadow_ = true;
   }
 
   /* Sync volume first since its result can override the surface world. */
@@ -130,6 +137,10 @@ void World::sync()
 
   if (inst_.use_studio_light()) {
     sun_threshold_ *= lookdev_world_.intensity_get();
+  }
+
+  if (sun_threshold_ == 0.0f) {
+    sun_threshold_ = 1e20;
   }
 
   inst_.light_probes.sync_world(bl_world, has_update);

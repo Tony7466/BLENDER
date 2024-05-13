@@ -3417,10 +3417,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       MovieClipProxy proxy = clip->proxy;
       versioning_update_timecode(&proxy.tc);
     }
-
-    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
-      world->sun_threshold = 10.0f;
-    }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 29)) {
@@ -3535,6 +3531,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         light->shadow_maximum_resolution = shadow_max_res_local;
         SET_FLAG_FROM_TEST(light->mode, shadow_resolution_absolute, LA_SHAD_RES_ABSOLUTE);
       }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 35)) {
+    const World *default_world = DNA_struct_default_get(World);
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      world->sun_threshold = default_world->sun_threshold;
+      world->sun_angle = default_world->sun_angle;
+      world->sun_shadow_maximum_resolution = default_world->sun_shadow_maximum_resolution;
+      world->flag |= WO_USE_SUN_SHADOW;
     }
   }
 

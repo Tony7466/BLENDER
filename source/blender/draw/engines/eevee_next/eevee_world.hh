@@ -70,6 +70,12 @@ class World {
   bool has_volume_absorption_ = false;
   /* Is true if the volume shader has scattering. */
   bool has_volume_scatter_ = false;
+  /* Is true if the extracted sun from world should cast shadows. */
+  bool use_sun_shadow_ = false;
+  /* Max resolution for extracted sun shadows. */
+  float sun_shadow_max_resolution_ = 0.001f;
+  /* Sun light angle. */
+  float sun_angle_ = 0.0f;
   /* Sunlight radiance split threshold. */
   float sun_threshold_ = 10.0f;
 
@@ -99,6 +105,21 @@ class World {
   float sun_threshold() const
   {
     return sun_threshold_;
+  }
+
+  float sun_angle() const
+  {
+    return sun_angle_;
+  }
+
+  float sun_shadow_max_resolution() const
+  {
+    return sun_shadow_max_resolution_;
+  }
+
+  bool use_sun_shadow() const
+  {
+    return use_sun_shadow_;
   }
 
  private:

@@ -69,6 +69,10 @@ typedef struct World {
   int probe_resolution;
   /** Threshold for sun extraction. */
   float sun_threshold;
+  /** Angle for sun extraction. */
+  float sun_angle;
+  /** Maximum resolution for extracted sun shadow. */
+  float sun_shadow_maximum_resolution;
   char _pad4[4];
 
   /** Old animation system, deprecated for 2.5. */
@@ -123,6 +127,10 @@ enum {
    * converted manually. (Ref: #119734).
    */
   WO_USE_EEVEE_FINITE_VOLUME = 1 << 3,
+  /**
+   * Use shadowing from the extracted sun light.
+   */
+  WO_USE_SUN_SHADOW = 1 << 4,
 };
 
 /** #World::probe_resolution. */

@@ -56,8 +56,6 @@ void main()
      * the sun light. */
     float len;
     vec3 direction = normalize_and_get_length(local_direction[0].xyz / local_direction[0].w, len);
-    float sun_angle_cos = 2.0 * len - 1.0;
-    float sun_angle = acos(sun_angle_cos);
 
     mat3x3 tx = transpose(from_up_axis(direction));
     /* Convert to transform. */
@@ -65,6 +63,9 @@ void main()
     sunlight_buf.object_to_world.y = vec4(tx[1], 0.0);
     sunlight_buf.object_to_world.z = vec4(tx[2], 0.0);
 
+    /* Auto sun angle. */
+    float sun_angle_cos = 2.0 * len - 1.0;
+    float sun_angle = acos(sun_angle_cos);
     /* Compute tangent from cosine.  */
     float sun_angle_tan = sqrt(-1.0 + 1.0 / square(sun_angle_cos));
     /* Clamp value to avoid float imprecision artifacts. */
