@@ -116,7 +116,6 @@ enum eGPUMaterialStatus {
   GPU_MAT_CREATED,
   GPU_MAT_QUEUED,
   GPU_MAT_SUCCESS,
-  GPU_MAT_USE_DEFAULT,
 };
 
 /* GPU_MAT_OPTIMIZATION_SKIP for cases where we do not
@@ -147,8 +146,10 @@ struct GPUCodegenOutput {
 };
 
 using GPUCodegenCallbackFn = void (*)(void *thunk, GPUMaterial *mat, GPUCodegenOutput *codegen);
-/* Should return true if the pass is functionally equivalent to the default Material one. */
-using GPUMaterialCanUseDefaultCallbackFn = bool (*)(GPUMaterial *mat);
+/**
+ *  Should return the default pass pass if it's functionally equivalent to the one being compiled.
+ */
+using GPUMaterialCanUseDefaultCallbackFn = GPUPass *(*)(void *thunk, GPUMaterial *mat);
 
 GPUNodeLink *GPU_constant(const float *num);
 GPUNodeLink *GPU_uniform(const float *num);
