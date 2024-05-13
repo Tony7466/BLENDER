@@ -7,10 +7,10 @@ add_subdirectory(realtime_compositor)
 if(WITH_COMPOSITOR_CPU)
   set(INC
     .
+    algorithms
     intern
     nodes
     operations
-    algorithms
     realtime_compositor
     ../blenkernel
     ../blentranslation
@@ -84,9 +84,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_WorkScheduler.h
     intern/COM_compositor.cc
     intern/COM_profile.cc
-
-    operations/COM_QualityStepHelper.cc
-    operations/COM_QualityStepHelper.h
 
     # Internal nodes
     nodes/COM_SocketProxyNode.cc
@@ -482,8 +479,6 @@ if(WITH_COMPOSITOR_CPU)
     # Distort operation
     operations/COM_DisplaceOperation.cc
     operations/COM_DisplaceOperation.h
-    operations/COM_DisplaceSimpleOperation.cc
-    operations/COM_DisplaceSimpleOperation.h
     operations/COM_FlipOperation.cc
     operations/COM_FlipOperation.h
     operations/COM_MapUVOperation.cc
@@ -579,24 +574,6 @@ if(WITH_COMPOSITOR_CPU)
     bf_realtime_compositor
     PRIVATE bf::intern::atomic
   )
-
-  list(APPEND INC
-    ${CMAKE_CURRENT_BINARY_DIR}/operations
-  )
-
-  set(GENSRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/operations)
-  set(GENSRC ${GENSRC_DIR}/COM_SMAAAreaTexture.h)
-  add_custom_command(
-    OUTPUT ${GENSRC}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${GENSRC_DIR}
-    COMMAND "$<TARGET_FILE:smaa_areatex>" ${GENSRC}
-    DEPENDS smaa_areatex
-  )
-  list(APPEND SRC
-    ${GENSRC}
-  )
-  unset(GENSRC)
-  unset(GENSRC_DIR)
 
   if(WITH_OPENIMAGEDENOISE)
     add_definitions(-DWITH_OPENIMAGEDENOISE)

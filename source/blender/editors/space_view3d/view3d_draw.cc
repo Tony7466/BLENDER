@@ -57,14 +57,14 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_batch.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
+#include "GPU_batch.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
 #include "GPU_material.hh"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
-#include "GPU_viewport.h"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
+#include "GPU_viewport.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -79,7 +79,7 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "view3d_intern.h" /* own include */
+#include "view3d_intern.hh" /* own include */
 
 using blender::float4;
 
@@ -920,7 +920,7 @@ float ED_view3d_grid_view_scale(const Scene *scene,
                                 const char **r_grid_unit)
 {
   float grid_scale;
-  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  const RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   if (!rv3d->is_persp && RV3D_VIEW_IS_AXIS(rv3d->view)) {
     /* Decrease the distance between grid snap points depending on zoom. */
     float dist = 12.0f / (region->sizex * rv3d->winmat[0][0]);
@@ -1284,11 +1284,7 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
     BLI_string_join_array(tmpstr, sizeof(tmpstr), name_array, name_array_len);
     name = tmpstr;
   }
-
-  UI_FontThemeColor(BLF_default(), TH_TEXT_HI);
-
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
-
   BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, name, sizeof(tmpstr));
 }
 
@@ -1400,17 +1396,11 @@ static void draw_selected_name(
     else if (ED_gpencil_has_keyframe_v3d(scene, ob, cfra)) {
       UI_FontThemeColor(font_id, TH_TIME_GP_KEYFRAME);
     }
-    else {
-      UI_FontThemeColor(font_id, TH_TEXT_HI);
-    }
   }
   else {
     /* no object */
     if (ED_gpencil_has_keyframe_v3d(scene, nullptr, cfra)) {
       UI_FontThemeColor(font_id, TH_TIME_GP_KEYFRAME);
-    }
-    else {
-      UI_FontThemeColor(font_id, TH_TEXT_HI);
     }
   }
 
@@ -1442,12 +1432,10 @@ static void draw_grid_unit_name(
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   if (!rv3d->is_persp && RV3D_VIEW_IS_AXIS(rv3d->view)) {
     const char *grid_unit = nullptr;
-    int font_id = BLF_default();
     ED_view3d_grid_view_scale(scene, v3d, region, &grid_unit);
 
     if (grid_unit) {
       char numstr[32] = "";
-      UI_FontThemeColor(font_id, TH_TEXT_HI);
       if (v3d->grid != 1.0f) {
         SNPRINTF(numstr, "%s " BLI_STR_UTF8_MULTIPLICATION_SIGN " %.4g", grid_unit, v3d->grid);
       }
@@ -1506,12 +1494,21 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
   if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
     int xoffset = rect->xmin + (0.5f * U.widget_unit);
     int yoffset = rect->ymax - (0.1f * U.widget_unit);
-    BLF_default_size(UI_style_get()->widgetlabel.points);
+
+    const uiFontStyle *fstyle = UI_FSTYLE_WIDGET_LABEL;
+    UI_fontstyle_set(fstyle);
+    BLF_default_size(fstyle->points);
     BLF_set_default();
+
+    float text_color[4], shadow_color[4];
+    ED_view3d_text_colors_get(scene, v3d, text_color, shadow_color);
+    BLF_color4fv(BLF_default(), text_color);
+    BLF_shadow(BLF_default(), FontShadowType::Outline, shadow_color);
 
     if ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
       if ((U.uiflag & USER_SHOW_FPS) && ED_screen_animation_no_scrub(wm)) {
         ED_scene_draw_fps(scene, xoffset, &yoffset);
+        BLF_color4fv(BLF_default(), text_color);
       }
       else if (U.uiflag & USER_SHOW_VIEWPORTNAME) {
         draw_viewport_name(region, v3d, xoffset, &yoffset);
@@ -1521,6 +1518,7 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
         BKE_view_layer_synced_ensure(scene, view_layer);
         Object *ob = BKE_view_layer_active_object_get(view_layer);
         draw_selected_name(v3d, scene, view_layer, ob, xoffset, &yoffset);
+        BLF_color4fv(BLF_default(), text_color);
       }
 
       if (v3d->gridflag & (V3D_SHOW_FLOOR | V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_Z)) {
@@ -2089,8 +2087,14 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
 
   v3d.flag2 = V3D_HIDE_OVERLAYS;
   /* HACK: When rendering gpencil objects this opacity is used to mix vertex colors in when not in
-   * render mode. */
+   * render mode (e.g. in the sequencer). */
   v3d.overlay.gpencil_vertex_paint_opacity = 1.0f;
+
+  /* Also initialize wire-frame properties to the default so it renders properly in sequencer.
+   * Should find some way to use the viewport's current opacity and threshold,
+   * but this is a start. */
+  v3d.overlay.wireframe_opacity = 1.0f;
+  v3d.overlay.wireframe_threshold = 0.5f;
 
   if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
     v3d.flag2 |= V3D_SHOW_ANNOTATION;
@@ -2401,8 +2405,12 @@ void ED_view3d_depth_override(Depsgraph *depsgraph,
    * yet available. */
   if (viewport != nullptr) {
     switch (mode) {
-      case V3D_DEPTH_NO_GPENCIL:
+      case V3D_DEPTH_NO_OVERLAYS:
         DRW_draw_depth_loop(depsgraph, region, v3d, viewport, false, true, false);
+        break;
+      case V3D_DEPTH_NO_GPENCIL:
+        DRW_draw_depth_loop(
+            depsgraph, region, v3d, viewport, false, true, (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
         break;
       case V3D_DEPTH_GPENCIL_ONLY:
         DRW_draw_depth_loop(depsgraph, region, v3d, viewport, true, false, false);
@@ -2610,9 +2618,6 @@ void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset)
     /* Always show fractional when under performing. */
     show_fractional = true;
     UI_FontThemeColor(font_id, TH_REDALERT);
-  }
-  else {
-    UI_FontThemeColor(font_id, TH_TEXT_HI);
   }
 
   if (show_fractional) {

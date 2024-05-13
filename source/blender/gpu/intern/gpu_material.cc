@@ -31,14 +31,14 @@
 #include "NOD_shader.h"
 
 #include "GPU_material.hh"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 #include "GPU_uniform_buffer.hh"
 
 #include "DRW_engine.hh"
 
-#include "gpu_codegen.h"
-#include "gpu_node_graph.h"
+#include "gpu_codegen.hh"
+#include "gpu_node_graph.hh"
 
 #include "atomic_ops.h"
 
@@ -269,6 +269,9 @@ void GPU_material_free_single(GPUMaterial *material)
   }
   if (material->ubo != nullptr) {
     GPU_uniformbuf_free(material->ubo);
+  }
+  if (material->coba_builder != nullptr) {
+    MEM_freeN(material->coba_builder);
   }
   if (material->coba_tex != nullptr) {
     GPU_texture_free(material->coba_tex);
@@ -831,7 +834,8 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         bool is_volume_shader,
                                         bool is_lookdev,
                                         GPUCodegenCallbackFn callback,
-                                        void *thunk)
+                                        void *thunk,
+                                        GPUMaterialCanUseDefaultCallbackFn can_use_default_cb)
 {
   /* Search if this material is not already compiled. */
   LISTBASE_FOREACH (LinkData *, link, gpumaterials) {
@@ -859,13 +863,16 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   }
 
   /* Localize tree to create links for reroute and mute. */
-  bNodeTree *localtree = ntreeLocalize(ntree);
+  bNodeTree *localtree = blender::bke::ntreeLocalize(ntree, nullptr);
   ntreeGPUMaterialNodes(localtree, mat);
 
-  gpu_material_ramp_texture_build(mat);
-  gpu_material_sky_texture_build(mat);
+  if (can_use_default_cb && can_use_default_cb(mat)) {
+    mat->status = GPU_MAT_USE_DEFAULT;
+  }
+  else {
+    gpu_material_ramp_texture_build(mat);
+    gpu_material_sky_texture_build(mat);
 
-  {
     /* Create source code and search pass cache for an already compiled version. */
     mat->pass = GPU_generate_pass(mat, &mat->graph, engine, callback, thunk, false);
 
@@ -918,7 +925,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   }
 
   /* Only free after GPU_pass_shader_get where GPUUniformBuf read data from the local tree. */
-  ntreeFreeLocalTree(localtree);
+  blender::bke::ntreeFreeLocalTree(localtree);
   BLI_assert(!localtree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
   MEM_freeN(localtree);
 

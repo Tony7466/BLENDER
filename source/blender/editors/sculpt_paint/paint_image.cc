@@ -901,7 +901,7 @@ void ED_object_texture_paint_mode_enter_ex(Main *bmain,
 
   BKE_paint_init(bmain, scene, PaintMode::Texture3D, PAINT_CURSOR_TEXTURE_PAINT);
 
-  BKE_paint_toolslots_brush_validate(bmain, &imapaint->paint);
+  BKE_paint_brush_validate(bmain, &imapaint->paint);
 
   if (U.glreslimit != 0) {
     BKE_image_free_all_gputextures(bmain);
@@ -973,6 +973,7 @@ static bool texture_paint_toggle_poll(bContext *C)
 
 static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender::ed;
   wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -981,7 +982,7 @@ static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, static_cast<eObjectMode>(mode_flag), op->reports)) {
+    if (!object::mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
