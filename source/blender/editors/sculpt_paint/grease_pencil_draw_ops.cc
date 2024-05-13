@@ -8,29 +8,31 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.hh"
 
+#include "BLT_translation.hh"
+
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
-
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
+
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
+#include "ED_numinput.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 
-#include "ANIM_keyframing.hh"
-
 #include "MEM_guardedalloc.h"
+
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include "UI_interface.hh"
+
 #include "WM_api.hh"
-#include "WM_message.hh"
 #include "WM_toolsystem.hh"
 
-#include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 #include "wm_event_types.hh"
@@ -480,6 +482,13 @@ enum GreasePencilInterpolateFlipMode {
   FlipAuto = 2,
 };
 
+struct GreasePencilInterpolateOpData {
+  /* Interpolation factor. */
+  float factor;
+
+  NumInput num; /* numeric input */
+};
+
 // /* Helper: free all temp strokes for display. */
 // static void gpencil_interpolate_free_tagged_strokes(bGPDframe *gpf)
 // {
@@ -739,42 +748,40 @@ enum GreasePencilInterpolateFlipMode {
 //   RNA_float_set(op->ptr, "shift", tgpi->shift);
 // }
 
-// /* Helper: Draw status message while the user is running the operator */
-// static void gpencil_interpolate_status_indicators(bContext *C, tGPDinterpolate *p)
-// {
-//   Scene *scene = p->scene;
-//   char status_str[UI_MAX_DRAW_STR];
-//   char msg_str[UI_MAX_DRAW_STR];
+static void grease_pencil_interpolate_status_indicators(
+    bContext &C, const GreasePencilInterpolateOpData &opdata)
+{
+  Scene &scene = *CTX_data_scene(&C);
+  ScrArea &area = *CTX_wm_area(&C);
 
-//   STRNCPY(msg_str, IFACE_("GPencil Interpolation: "));
+  const StringRef msg = IFACE_("GPencil Interpolation: ");
 
-//   if (hasNumInput(&p->num)) {
-//     char str_ofs[NUM_STR_REP_LEN];
+  std::string status;
+  if (hasNumInput(&opdata.num)) {
+    char str_ofs[NUM_STR_REP_LEN];
+    outputNumInput(&const_cast<NumInput &>(opdata.num), str_ofs, &scene.unit);
+    status = msg + std::string(str_ofs);
+  }
+  else {
+    status = msg + std::to_string(int(opdata.factor * 100.0f)) + " %";
+  }
 
-//     outputNumInput(&p->num, str_ofs, &scene->unit);
-//     SNPRINTF(status_str, "%s%s", msg_str, str_ofs);
-//   }
-//   else {
-//     SNPRINTF(status_str, "%s%d %%", msg_str, int((p->init_factor + p->shift) * 100.0f));
-//   }
+  ED_area_status_text(&area, status.c_str());
+  ED_workspace_status_text(
+      &C, IFACE_("ESC/RMB to cancel, Enter/LMB to confirm, WHEEL/MOVE to adjust factor"));
+}
 
-//   ED_area_status_text(p->area, status_str);
-//   ED_workspace_status_text(
-//       C, IFACE_("ESC/RMB to cancel, Enter/LMB to confirm, WHEEL/MOVE to adjust factor"));
-// }
+static void grease_pencil_interpolate_update(bContext &C,
+                                             const wmOperator &op,
+                                             const GreasePencilInterpolateOpData &opdata)
+{
+  grease_pencil_interpolate_status_indicators(C, opdata);
 
-// /* Update screen and stroke */
-// static void gpencil_interpolate_update(bContext *C, wmOperator *op, tGPDinterpolate *tgpi)
-// {
-//   /* update shift indicator in header */
-//   gpencil_interpolate_status_indicators(C, tgpi);
-//   /* apply... */
-//   tgpi->shift = RNA_float_get(op->ptr, "shift");
-//   /* update points position */
-//   gpencil_interpolate_update_strokes(C, tgpi);
-// }
-
-struct GreasePencilInterpolateOpData {};
+  //   /* apply... */
+  //   tgpi->shift = RNA_float_get(op->ptr, "shift");
+  //   /* update points position */
+  //   gpencil_interpolate_update_strokes(C, tgpi);
+}
 
 static bool grease_pencil_interpolate_init(bContext &C, wmOperator &op)
 {
@@ -896,8 +903,6 @@ static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
 //   return tgpi;
 // }
 
-/* ----------------------- */
-
 static bool grease_pencil_interpolate_poll(bContext *C)
 {
   if (!ed::greasepencil::grease_pencil_painting_poll(C)) {
@@ -939,12 +944,14 @@ static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const w
     grease_pencil_interpolate_exit(*C, *op);
     return OPERATOR_CANCELLED;
   }
+  GreasePencilInterpolateOpData &opdata = *static_cast<GreasePencilInterpolateOpData *>(
+      op->customdata);
 
   /* Set cursor to indicate modal operator. */
   WM_cursor_modal_set(&win, WM_CURSOR_EW_SCROLL);
 
-  // /* update shift indicator in header */
-  // gpencil_interpolate_status_indicators(C, tgpi);
+  grease_pencil_interpolate_status_indicators(*C, opdata);
+
   // DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
@@ -963,27 +970,25 @@ enum class InterpolateToolModalEvent : int8_t {
 /* Modal handler: Events handling during interactive part */
 static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  // tGPDinterpolate *tgpi = static_cast<tGPDinterpolate *>(op->customdata);
-  // wmWindow *win = CTX_wm_window(C);
-  // bGPDframe *gpf_dst;
-  // bGPDstroke *gps_dst;
-  // const bool has_numinput = hasNumInput(&tgpi->num);
+  wmWindow &win = *CTX_wm_window(C);
+  ScrArea &area = *CTX_wm_area(C);
+  GreasePencilInterpolateOpData &opdata = *static_cast<GreasePencilInterpolateOpData *>(
+      op->customdata);
+  const bool has_numinput = hasNumInput(&opdata.num);
 
   switch (event->type) {
     case EVT_MODAL_MAP: {
       switch (InterpolateToolModalEvent(event->val)) {
         case InterpolateToolModalEvent::Cancel:
-          //     /* return to normal cursor and header status */
-          //     ED_area_status_text(tgpi->area, nullptr);
-          //     ED_workspace_status_text(C, nullptr);
-          //     WM_cursor_modal_restore(win);
+          ED_area_status_text(&area, nullptr);
+          ED_workspace_status_text(C, nullptr);
+          WM_cursor_modal_restore(&win);
           grease_pencil_interpolate_exit(*C, *op);
           return OPERATOR_CANCELLED;
         case InterpolateToolModalEvent::Confirm:
-          //     /* return to normal cursor and header status */
-          //     ED_area_status_text(tgpi->area, nullptr);
-          //     ED_workspace_status_text(C, nullptr);
-          //     WM_cursor_modal_restore(win);
+          ED_area_status_text(&area, nullptr);
+          ED_workspace_status_text(C, nullptr);
+          WM_cursor_modal_restore(&win);
 
           //     /* insert keyframes as required... */
           //     LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
@@ -1013,52 +1018,46 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
           //     RNA_float_set(op->ptr, "shift", tgpi->shift);
 
-          //     /* update screen */
-          //     gpencil_interpolate_update(C, op, tgpi);
+          grease_pencil_interpolate_update(*C, *op, opdata);
           break;
         case InterpolateToolModalEvent::Decrease:
           //     tgpi->shift = tgpi->shift - 0.01f;
           //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
           //     RNA_float_set(op->ptr, "shift", tgpi->shift);
 
-          //     /* update screen */
-          //     gpencil_interpolate_update(C, op, tgpi);
+          grease_pencil_interpolate_update(*C, *op, opdata);
           break;
       }
       break;
     }
     case MOUSEMOVE:
       /* calculate new position */
-      //     /* Only handle mouse-move if not doing numeric-input. */
-      //     if (has_numinput == false) {
-      //       /* Update shift based on position of mouse. */
-      //       gpencil_mouse_update_shift(tgpi, op, event);
+      /* Only handle mouse-move if not doing numeric-input. */
+      if (!has_numinput) {
+        //       /* Update shift based on position of mouse. */
+        //       gpencil_mouse_update_shift(tgpi, op, event);
 
-      //       /* update screen */
-      //       gpencil_interpolate_update(C, op, tgpi);
-      //     }
+        grease_pencil_interpolate_update(*C, *op, opdata);
+      }
       break;
     default: {
-      //     if ((event->val == KM_PRESS) && handleNumInput(C, &tgpi->num, event)) {
-      //       const float factor = tgpi->init_factor;
-      //       float value;
+      if ((event->val == KM_PRESS) && handleNumInput(C, &opdata.num, event)) {
+        //       const float factor = tgpi->init_factor;
+        //       float value;
 
-      //       /* Grab shift from numeric input, and store this new value (the user see an int) */
-      //       value = (factor + tgpi->shift) * 100.0f;
-      //       applyNumInput(&tgpi->num, &value);
-      //       tgpi->shift = value / 100.0f;
+        //       /* Grab shift from numeric input, and store this new value (the user see an int)
+        //       */ value = (factor + tgpi->shift) * 100.0f; applyNumInput(&tgpi->num, &value);
+        //       tgpi->shift = value / 100.0f;
 
-      //       /* recalculate the shift to get the right value in the frame scale */
-      //       tgpi->shift = tgpi->shift - factor;
+        //       /* recalculate the shift to get the right value in the frame scale */
+        //       tgpi->shift = tgpi->shift - factor;
 
-      //       CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-      //       RNA_float_set(op->ptr, "shift", tgpi->shift);
+        //       CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
+        //       RNA_float_set(op->ptr, "shift", tgpi->shift);
 
-      //       /* update screen */
-      //       gpencil_interpolate_update(C, op, tgpi);
-
-      //       break;
-      //     }
+        grease_pencil_interpolate_update(*C, *op, opdata);
+        break;
+      }
       /* Unhandled event, allow to pass through. */
       return OPERATOR_RUNNING_MODAL | OPERATOR_PASS_THROUGH;
     }
