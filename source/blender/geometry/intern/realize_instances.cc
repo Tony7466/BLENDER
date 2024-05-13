@@ -399,6 +399,7 @@ static void copy_generic_attributes_to_result(
       dst_attribute_writers.index_range(), 10, [&](const IndexRange attribute_range) {
         for (const int attribute_index : attribute_range) {
           const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
+          const void *init_value = ordered_attributes.kinds[attribute_index].init_value;
           const IndexRange element_slice = range_fn(domain);
 
           GMutableSpan dst_span = dst_attribute_writers[attribute_index].span.slice(element_slice);
@@ -407,10 +408,12 @@ static void copy_generic_attributes_to_result(
           }
           else {
             const CPPType &cpp_type = dst_span.type();
-            const void *fallback = attribute_fallbacks.array[attribute_index] == nullptr ?
-                                       cpp_type.default_value() :
-                                       attribute_fallbacks.array[attribute_index];
-            threaded_fill({cpp_type, fallback}, dst_span);
+            const void *fallback_value = attribute_fallbacks.array[attribute_index];
+            const void *value = (fallback_value != nullptr ?
+                                     fallback_value :
+                                     (init_value != nullptr ? init_value :
+                                                              cpp_type.default_value()));
+            threaded_fill({cpp_type, value}, dst_span);
           }
         }
       });
@@ -954,12 +957,13 @@ static void execute_instances_tasks(
       const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_instances->attributes_for_write()
           .lookup_or_add_for_write_only_span(
-              id, domain, data_type, bke::AttributeInitVArray(init_varray))
+              id, domain, data_type, bke::AttributeInitVArray(init_varray, init_value))
           .finish();
     }
     else {
       dst_instances->attributes_for_write()
-          .lookup_or_add_for_write_only_span(id, domain, data_type)
+          .lookup_or_add_for_write_only_span(
+              id, domain, data_type, bke::AttributeInitConstruct(init_value))
           .finish();
     }
   }
@@ -1213,11 +1217,17 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
       const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
       const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
-          attribute_id, bke::AttrDomain::Point, data_type, bke::AttributeInitVArray(init_varray)));
+          attribute_id,
+          bke::AttrDomain::Point,
+          data_type,
+          bke::AttributeInitVArray(init_varray, init_value)));
     }
     else {
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
-          attribute_id, bke::AttrDomain::Point, data_type));
+          attribute_id,
+          bke::AttrDomain::Point,
+          data_type,
+          bke::AttributeInitConstruct(init_value)));
     }
   }
 
@@ -1569,11 +1579,11 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
       const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
       const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
-          attribute_id, domain, data_type, bke::AttributeInitVArray(init_varray)));
+          attribute_id, domain, data_type, bke::AttributeInitVArray(init_varray, init_value)));
     }
     else {
-      dst_attribute_writers.append(
-          dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
+      dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
+          attribute_id, domain, data_type, bke::AttributeInitConstruct(init_value)));
     }
   }
   const char *active_layer = CustomData_get_active_layer_name(&first_mesh.corner_data,
@@ -1903,11 +1913,11 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
       const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
       const GVArray init_varray = GVArray::ForSingle(cpp_type, domain_size, init_value);
       dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
-          attribute_id, domain, data_type, bke::AttributeInitVArray(init_varray)));
+          attribute_id, domain, data_type, bke::AttributeInitVArray(init_varray, init_value)));
     }
     else {
-      dst_attribute_writers.append(
-          dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
+      dst_attribute_writers.append(dst_attributes.lookup_or_add_for_write_only_span(
+          attribute_id, domain, data_type, bke::AttributeInitConstruct(init_value)));
     }
   }
 
