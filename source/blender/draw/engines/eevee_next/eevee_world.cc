@@ -84,6 +84,10 @@ void World::sync()
     /* Detect world update before overriding it. */
     WorldHandle wo_handle = inst_.sync.sync_world();
     has_update = wo_handle.recalc != 0;
+    sun_threshold_ = inst_.scene->world->sun_threshold;
+  }
+  else {
+    sun_threshold_ = 10.0f;
   }
 
   /* Sync volume first since its result can override the surface world. */
@@ -124,7 +128,6 @@ void World::sync()
     has_update = true;
   }
 
-  sun_threshold_ = bl_world->sun_threshold;
   if (inst_.use_studio_light()) {
     sun_threshold_ *= lookdev_world_.intensity_get();
   }
