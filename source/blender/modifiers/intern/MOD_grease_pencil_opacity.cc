@@ -159,10 +159,12 @@ static void modify_hardness(const GreasePencilOpacityModifierData &omd,
                             const IndexMask &curves_mask)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const float hardness_default = 1.0f;
   bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
       "hardness",
       bke::AttrDomain::Curve,
-      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curve_num)));
+      bke::AttributeInitVArray(VArray<float>::ForSingle(hardness_default, curves.curve_num),
+                               &hardness_default));
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     hardnesses.span[curve_i] = std::clamp(

@@ -362,10 +362,12 @@ struct PaintOperationExecutor {
         "material_index", bke::AttrDomain::Curve);
     bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
         "cyclic", bke::AttrDomain::Curve);
+    const float hardness_default = 1.0f;
     bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
         "hardness",
         bke::AttrDomain::Curve,
-        bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
+        bke::AttributeInitVArray(VArray<float>::ForSingle(hardness_default, curves.curves_num()),
+                                 &hardness_default));
     cyclic.span[active_curve] = false;
     materials.span[active_curve] = material_index;
     hardnesses.span[active_curve] = hardness_;
