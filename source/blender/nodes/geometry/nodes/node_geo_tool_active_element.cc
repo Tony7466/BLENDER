@@ -68,15 +68,15 @@ static void node_exec(GeoNodeExecParams params)
   switch (static_cast<AttrDomain>(node_storage(params.node()).domain)) {
     case AttrDomain::Point:
       params.set_output("Exists", operator_data->active_point_index >= 0);
-      params.set_output("Index", operator_data->active_point_index);
+      params.set_output("Index", std::max(0, operator_data->active_point_index));
       break;
     case AttrDomain::Edge:
       params.set_output("Exists", operator_data->active_edge_index >= 0);
-      params.set_output("Index", operator_data->active_edge_index);
+      params.set_output("Index", std::max(0, operator_data->active_edge_index));
       break;
     case AttrDomain::Face:
       params.set_output("Exists", operator_data->active_face_index >= 0);
-      params.set_output("Index", operator_data->active_face_index);
+      params.set_output("Index", std::max(0, operator_data->active_face_index));
       break;
     default:
       params.set_default_remaining_outputs();
@@ -87,7 +87,7 @@ static void node_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_TOOL_ACTIVE_ELEMENT, "Active Element", NODE_CLASS_INPUT);
   node_type_storage(&ntype,
                     "NodeGeometryToolActiveElement",
@@ -98,7 +98,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = search_link_ops_for_tool_node;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
