@@ -653,6 +653,7 @@ typedef enum eUserExtensionRepo_Flag {
   USER_EXTENSION_REPO_FLAG_DISABLED = 1 << 1,
   USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
   USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH = 1 << 3,
+  USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP = 1 << 4,
 } eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
@@ -755,6 +756,20 @@ typedef struct bUserScriptDirectory {
 } bUserScriptDirectory;
 
 /**
+ * Settings for an asset shelf, stored in the Preferences. Most settings are still stored in the
+ * asset shelf instance in #AssetShelfSettings. This is just for the options that should be shared
+ * as Preferences.
+ */
+typedef struct bUserAssetShelfSettings {
+  struct bUserAssetShelfSettings *next, *prev;
+
+  /** Identifier that matches the #AssetShelfType.idname of the shelf these settings apply to. */
+  char shelf_idname[64]; /* MAX_NAME */
+
+  ListBase enabled_catalog_paths; /* #AssetCatalogPathLink */
+} bUserAssetShelfSettings;
+
+/**
  * Main user preferences data, typically accessed from #U.
  * See: #BKE_blendfile_userdef_from_defaults & #BKE_blendfile_userdef_read.
  *
@@ -774,7 +789,12 @@ typedef struct UserDef {
   char pref_flag;
   char savetime;
   char mouse_emulate_3_button_modifier;
-  char _pad4[1];
+  /**
+   * Workaround for WAYLAND (at time of writing compositors don't support this info).
+   * #eUserpref_TrackpadScrollDir type
+   * TODO: Remove this once this API is better supported by Wayland compositors, see #107676.
+   */
+  char trackpad_scroll_direction;
   /** FILE_MAXDIR length. */
   char tempdir[768];
   char fontdir[768];
@@ -886,6 +906,7 @@ typedef struct UserDef {
   struct ListBase asset_libraries;
   /** #bUserExtensionRepo */
   struct ListBase extension_repos;
+  struct ListBase asset_shelves_settings; /* #bUserAssetShelfSettings */
 
   char keyconfigstr[64];
 
@@ -1517,6 +1538,11 @@ typedef enum eUserpref_EmulateMMBMod {
   USER_EMU_MMB_MOD_ALT = 0,
   USER_EMU_MMB_MOD_OSKEY = 1,
 } eUserpref_EmulateMMBMod;
+
+typedef enum eUserpref_TrackpadScrollDir {
+  USER_TRACKPAD_SCROLL_DIR_TRADITIONAL = 0,
+  USER_TRACKPAD_SCROLL_DIR_NATURAL = 1,
+} eUserpref_TrackpadScrollDir;
 
 typedef enum eUserpref_DiskCacheCompression {
   USER_SEQ_DISK_CACHE_COMPRESSION_NONE = 0,

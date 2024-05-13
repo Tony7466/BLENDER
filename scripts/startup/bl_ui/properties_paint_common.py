@@ -5,6 +5,23 @@
 from bpy.types import Menu
 
 
+class BrushAssetShelf:
+    bl_options = {'DEFAULT_VISIBLE', 'NO_ASSET_DRAG', 'STORE_ENABLED_CATALOGS_IN_PREFERENCES'}
+    bl_default_preview_size = 48
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        if not prefs.experimental.use_extended_asset_browser:
+            return False
+
+        return context.mode == 'SCULPT'
+
+    @classmethod
+    def asset_poll(cls, asset):
+        return asset.id_type == 'BRUSH'
+
+
 class UnifiedPaintPanel:
     # subclass must set
     # bl_space_type = 'IMAGE_EDITOR'
@@ -37,8 +54,6 @@ class UnifiedPaintPanel:
         if space_data:
             space_type = space_data.type
             if space_type == 'IMAGE_EDITOR':
-                if space_data.show_uvedit:
-                    return 'UV_SCULPT'
                 return 'PAINT_2D'
             elif space_type in {'VIEW_3D', 'PROPERTIES'}:
                 if mode == 'PAINT_TEXTURE':
@@ -69,8 +84,6 @@ class UnifiedPaintPanel:
         # 2D paint settings
         elif mode == 'PAINT_2D':
             return tool_settings.image_paint
-        elif mode == 'UV_SCULPT':
-            return tool_settings.uv_sculpt
         # Grease Pencil settings
         elif mode == 'PAINT_GPENCIL':
             return tool_settings.gpencil_paint
@@ -86,6 +99,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_paint
         elif mode == 'SCULPT_GREASE_PENCIL':
             return tool_settings.gpencil_sculpt_paint
+        elif mode == 'WEIGHT_GREASE_PENCIL':
+            return tool_settings.gpencil_weight_paint
         return None
 
     @staticmethod
@@ -892,11 +907,6 @@ def brush_shared_settings(layout, context, brush, popover=False):
         if brush.weight_tool == 'DRAW':
             blend_mode = True
 
-    # UV Sculpt #
-    if mode == 'UV_SCULPT':
-        size = True
-        strength = True
-
     # Sculpt Curves #
     if mode == 'SCULPT_CURVES':
         size = True
@@ -1510,7 +1520,7 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
             row.prop(gp_settings, "caps_type", text="Caps Type")
     elif grease_pencil_tool == 'ERASE':
         layout.prop(gp_settings, "eraser_mode", expand=True)
-        if gp_settings.eraser_mode == "HARD":
+        if gp_settings.eraser_mode == 'HARD':
             layout.prop(gp_settings, "use_keep_caps_eraser")
         layout.prop(gp_settings, "use_active_layer_only")
     elif grease_pencil_tool == 'TINT':
@@ -1578,6 +1588,46 @@ def brush_basic_gpencil_vertex_settings(layout, _context, brush, *, compact=Fals
     if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
         row = layout.row(align=True)
         row.prop(gp_settings, "vertex_mode", text="Mode")
+
+
+def brush_basic_grease_pencil_weight_settings(layout, context, brush, *, compact=False):
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "size",
+        pressure_name="use_pressure_size",
+        unified_name="use_unified_size",
+        text="Radius",
+        slider=True,
+        header=compact,
+    )
+
+    capabilities = brush.sculpt_capabilities
+    pressure_name = "use_pressure_strength" if capabilities.has_strength_pressure else None
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "strength",
+        pressure_name=pressure_name,
+        unified_name="use_unified_strength",
+        text="Strength",
+        header=compact,
+    )
+
+    if brush.gpencil_weight_tool in {'WEIGHT'}:
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "weight",
+            unified_name="use_unified_weight",
+            text="Weight",
+            slider=True,
+            header=compact,
+        )
+        layout.prop(brush, "direction", expand=True, text="" if compact else "Direction")
 
 
 classes = (

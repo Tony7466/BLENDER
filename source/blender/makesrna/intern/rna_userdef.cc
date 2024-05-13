@@ -1393,9 +1393,9 @@ static void rna_def_userdef_theme_ui_font_style(BlenderRNA *brna)
       prop, "Character Weight", "Weight of the characters. 100-900, 400 is normal");
   RNA_def_property_update(prop, 0, "rna_userdef_text_update");
 
-  prop = RNA_def_property(srna, "shadow", PROP_INT, PROP_PIXEL);
-  RNA_def_property_range(prop, 0, 5);
-  RNA_def_property_ui_text(prop, "Shadow Size", "Shadow size (0, 3 and 5 supported)");
+  prop = RNA_def_property(srna, "shadow", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 6);
+  RNA_def_property_ui_text(prop, "Shadow Size", "Shadow type (0 none, 3, 5 blur, 6 outline)");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_text_style_update");
 
   prop = RNA_def_property(srna, "shadow_offset_x", PROP_INT, PROP_PIXEL);
@@ -6570,6 +6570,20 @@ static void rna_def_userdef_input(BlenderRNA *brna)
   prop = RNA_def_property(srna, "invert_zoom_wheel", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_WHEELZOOMDIR);
   RNA_def_property_ui_text(prop, "Wheel Invert Zoom", "Swap the Mouse Wheel zoom direction");
+
+  static const EnumPropertyItem touchpad_scroll_direction_items[] = {
+      {USER_TRACKPAD_SCROLL_DIR_TRADITIONAL,
+       "TRADITIONAL",
+       0,
+       "Traditional",
+       "Traditional scroll direction"},
+      {USER_TRACKPAD_SCROLL_DIR_NATURAL, "NATURAL", 0, "Natural", "Natural scroll direction"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  prop = RNA_def_property(srna, "touchpad_scroll_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "trackpad_scroll_direction");
+  RNA_def_property_enum_items(prop, touchpad_scroll_direction_items);
+  RNA_def_property_ui_text(prop, "Touchpad Scroll Direction", "Scroll direction (Wayland only)");
 }
 
 static void rna_def_userdef_keymap(BlenderRNA *brna)
@@ -6703,6 +6717,12 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_DISABLED);
   RNA_def_property_ui_text(prop, "Enabled", "Enable the repository");
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_userdef_extension_repo_enabled_set");
+
+  prop = RNA_def_property(srna, "use_sync_on_startup", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(
+      prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP);
+  RNA_def_property_ui_text(
+      prop, "Check for Updates on Startup", "Allow Blender to check for updates upon launch");
 
   prop = RNA_def_property(srna, "use_custom_directory", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
