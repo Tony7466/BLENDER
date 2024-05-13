@@ -3861,13 +3861,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Stroke Snap", "");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 
-  prop = RNA_def_property(srna, "use_gpencil_stroke_endpoints", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "gpencil_v3d_align", GP_PROJECT_DEPTH_STROKE_ENDPOINTS);
-  RNA_def_property_ui_text(
-      prop, "Only Endpoints", "Only use the first and last parts of the stroke for snapping");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
-
   prop = RNA_def_property(srna, "gpencil_surface_offset", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, nullptr, "gpencil_surface_offset");
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
@@ -3983,6 +3976,13 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Annotation Stroke Placement (3D View)",
                            "How annotation strokes are orientated in 3D space");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
+
+  prop = RNA_def_property(srna, "use_annotation_stroke_endpoints", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "annotate_v3d_align", GP_PROJECT_DEPTH_STROKE_ENDPOINTS);
+  RNA_def_property_ui_text(
+      prop, "Only Endpoints", "Only use the first and last parts of the stroke for snapping");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 
   /* Annotations - Stroke Thickness */

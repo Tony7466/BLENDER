@@ -199,12 +199,13 @@ class _defs_annotate:
         tool_settings = context.tool_settings
 
         if space_type == 'VIEW_3D':
-            row = layout.row(align=True)
+            if region_type == 'TOOL_HEADER':
+                row = layout.row(align=True)
+            else:
+                row = layout.row().column(align=True)
             row.prop(tool_settings, "annotation_stroke_placement_view3d", text="Placement")
-            if tool_settings.gpencil_stroke_placement_view3d == 'CURSOR':
-                row.prop(tool_settings.gpencil_sculpt, "lockaxis")
-            elif tool_settings.gpencil_stroke_placement_view3d in {'SURFACE', 'STROKE'}:
-                row.prop(tool_settings, "use_gpencil_stroke_endpoints")
+            if tool_settings.annotation_stroke_placement_view3d in {'SURFACE', 'STROKE'}:
+                row.prop(tool_settings, "use_annotation_stroke_endpoints")
 
         elif space_type in {'IMAGE_EDITOR', 'NODE_EDITOR', 'SEQUENCE_EDITOR', 'CLIP_EDITOR'}:
             row = layout.row(align=True)
