@@ -13,7 +13,7 @@
 #include "DNA_node_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -25,7 +25,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "ED_node.hh" /* own include */
 #include "ED_screen.hh"
@@ -245,11 +245,13 @@ static void node_socket_toggle(bNode *node, bNodeSocket &sock, bool deselect_nod
   }
 }
 
-void node_deselect_all(bNodeTree &node_tree)
+bool node_deselect_all(bNodeTree &node_tree)
 {
+  bool changed = false;
   for (bNode *node : node_tree.all_nodes()) {
-    nodeSetSelected(node, false);
+    changed |= nodeSetSelected(node, false);
   }
+  return changed;
 }
 
 void node_deselect_all_input_sockets(bNodeTree &node_tree, const bool deselect_nodes)
@@ -530,7 +532,7 @@ void node_select_single(bContext &C, bNode &node)
 
   tree_draw_order_update(node_tree);
   if (active_texture_changed && has_workbench_in_texture_color(wm, scene, ob)) {
-    DEG_id_tag_update(&node_tree.id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&node_tree.id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   WM_event_add_notifier(&C, NC_NODE | NA_SELECTED, nullptr);
@@ -631,8 +633,7 @@ static bool node_mouse_select(bContext *C,
       }
       else if (found || params->deselect_all) {
         /* Deselect everything. */
-        node_deselect_all(node_tree);
-        changed = true;
+        changed = node_deselect_all(node_tree);
       }
     }
 
@@ -690,7 +691,7 @@ static bool node_mouse_select(bContext *C,
   if ((active_texture_changed && has_workbench_in_texture_color(wm, scene, ob)) ||
       viewer_node_changed)
   {
-    DEG_id_tag_update(&snode.edittree->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&snode.edittree->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
@@ -964,10 +965,7 @@ static int node_lasso_select_invoke(bContext *C, wmOperator *op, const wmEvent *
   return WM_gesture_lasso_invoke(C, op, event);
 }
 
-static bool do_lasso_select_node(bContext *C,
-                                 const int mcoords[][2],
-                                 const int mcoords_len,
-                                 eSelectOp sel_op)
+static bool do_lasso_select_node(bContext *C, const Span<int2> mcoords, eSelectOp sel_op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   bNodeTree &node_tree = *snode->edittree;
@@ -984,7 +982,7 @@ static bool do_lasso_select_node(bContext *C,
   }
 
   /* Get rectangle from operator. */
-  BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
+  BLI_lasso_boundbox(&rect, mcoords);
 
   for (bNode *node : node_tree.all_nodes()) {
     if (select && (node->flag & NODE_SELECT)) {
@@ -1016,7 +1014,7 @@ static bool do_lasso_select_node(bContext *C,
         if (UI_view2d_view_to_region_clip(
                 &region->v2d, center.x, center.y, &screen_co.x, &screen_co.y) &&
             BLI_rcti_isect_pt(&rect, screen_co.x, screen_co.y) &&
-            BLI_lasso_is_point_inside(mcoords, mcoords_len, screen_co.x, screen_co.y, INT_MAX))
+            BLI_lasso_is_point_inside(mcoords, screen_co.x, screen_co.y, INT_MAX))
         {
           nodeSetSelected(node, select);
           changed = true;
@@ -1035,19 +1033,17 @@ static bool do_lasso_select_node(bContext *C,
 
 static int node_lasso_select_exec(bContext *C, wmOperator *op)
 {
-  int mcoords_len;
-  const int(*mcoords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcoords_len);
+  const Array<int2> mcoords = WM_gesture_lasso_path_to_array(C, op);
 
-  if (mcoords) {
-    const eSelectOp sel_op = (eSelectOp)RNA_enum_get(op->ptr, "mode");
-
-    do_lasso_select_node(C, mcoords, mcoords_len, sel_op);
-
-    MEM_freeN((void *)mcoords);
-
-    return OPERATOR_FINISHED;
+  if (mcoords.is_empty()) {
+    return OPERATOR_PASS_THROUGH;
   }
-  return OPERATOR_PASS_THROUGH;
+
+  const eSelectOp sel_op = (eSelectOp)RNA_enum_get(op->ptr, "mode");
+
+  do_lasso_select_node(C, mcoords, sel_op);
+
+  return OPERATOR_FINISHED;
 }
 
 void NODE_OT_select_lasso(wmOperatorType *ot)
@@ -1266,7 +1262,11 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
   const bool prev = RNA_boolean_get(op->ptr, "prev");
-  bNode &active_node = *nodeGetActive(snode->edittree);
+  bNode *active_node = nodeGetActive(snode->edittree);
+
+  if (active_node == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
 
   bNodeTree &node_tree = *snode->edittree;
   node_tree.ensure_topology_cache();
@@ -1275,7 +1275,7 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
   }
 
   const Span<const bNode *> toposort = node_tree.toposort_left_to_right();
-  const int index = toposort.first_index(&active_node);
+  const int index = toposort.first_index(active_node);
 
   int new_index = index;
   while (true) {
@@ -1283,13 +1283,13 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
     if (!toposort.index_range().contains(new_index)) {
       return OPERATOR_CANCELLED;
     }
-    if (nodes_are_same_type_for_select(*toposort[new_index], active_node)) {
+    if (nodes_are_same_type_for_select(*toposort[new_index], *active_node)) {
       break;
     }
   }
 
   bNode *new_active_node = node_tree.all_nodes()[toposort[new_index]->index()];
-  if (new_active_node == &active_node) {
+  if (new_active_node == active_node) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1399,8 +1399,6 @@ static uiBlock *node_find_menu(bContext *C, ARegion *region, void *arg_op)
                        10,
                        UI_searchbox_size_x(),
                        UI_UNIT_Y,
-                       0,
-                       0,
                        "");
   UI_but_func_search_set(
       but, nullptr, node_find_update_fn, op->type, false, nullptr, node_find_exec_fn, nullptr);
@@ -1416,8 +1414,6 @@ static uiBlock *node_find_menu(bContext *C, ARegion *region, void *arg_op)
            UI_searchbox_size_x(),
            UI_searchbox_size_y(),
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);

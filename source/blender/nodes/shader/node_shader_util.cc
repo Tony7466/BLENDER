@@ -96,7 +96,8 @@ bool object_eevee_shader_nodes_poll(const bContext *C)
     return false;
   }
   const RenderEngineType *engine_type = CTX_data_engine_type(C);
-  return STREQ(engine_type->idname, "BLENDER_EEVEE");
+  return STREQ(engine_type->idname, "BLENDER_EEVEE") ||
+         STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
 }
 
 /* ****** */
@@ -305,7 +306,7 @@ bNode *nodeGetActivePaintCanvas(bNodeTree *ntree)
 }
 }  // namespace blender::bke
 
-void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node)
+void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node, int *depth_level)
 {
   bNodeExec *nodeexec;
   bNode *node;
@@ -321,6 +322,10 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node
   for (n = 0, nodeexec = exec->nodeexec; n < exec->totnodes; n++, nodeexec++) {
     node = nodeexec->node;
 
+    if (depth_level && node->runtime->tmp_flag != *depth_level) {
+      continue;
+    }
+
     do_it = false;
     /* for groups, only execute outputs for edited group */
     if (node->typeinfo->nclass == NODE_CLASS_OUTPUT) {
@@ -334,6 +339,7 @@ void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node
     }
 
     if (do_it) {
+      BLI_assert(!depth_level || node->runtime->tmp_flag >= 0);
       if (node->typeinfo->gpu_fn) {
         node_get_stack(node, stack, nsin, nsout);
         gpu_stack_from_data_list(gpuin, &node->inputs, nsin);

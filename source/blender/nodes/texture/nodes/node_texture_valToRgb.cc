@@ -8,7 +8,6 @@
 
 #include "BKE_colorband.hh"
 #include "IMB_colormanagement.hh"
-#include "NOD_texture.h"
 #include "node_texture_util.hh"
 #include "node_util.hh"
 
@@ -52,7 +51,7 @@ void register_node_type_tex_valtorgb()
 
   tex_node_type_base(&ntype, TEX_NODE_VALTORGB, "Color Ramp", NODE_CLASS_CONVERTER);
   blender::bke::node_type_socket_templates(&ntype, valtorgb_in, valtorgb_out);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Large);
   ntype.initfunc = valtorgb_init;
   node_type_storage(&ntype, "ColorBand", node_free_standard_storage, node_copy_standard_storage);
   ntype.exec_fn = valtorgb_exec;

@@ -8,17 +8,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_set.hh"
 
-#include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "ED_select_utils.hh"
 #include "ED_sequencer.hh"
@@ -32,14 +29,10 @@
 #include "SEQ_transform.hh"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.hh"
 
 #include "RNA_define.hh"
 
-#include "UI_interface.hh"
 #include "UI_view2d.hh"
-
-#include "DEG_depsgraph.hh"
 
 /* Own include. */
 #include "sequencer_intern.hh"
@@ -48,8 +41,7 @@ using blender::MutableSpan;
 
 bool sequencer_retiming_mode_is_active(const bContext *C)
 {
-  const Scene *scene = CTX_data_scene(C);
-  Editing *ed = SEQ_editing_get(scene);
+  Editing *ed = SEQ_editing_get(CTX_data_scene(C));
   if (ed == nullptr) {
     return false;
   }
@@ -139,7 +131,7 @@ static bool retiming_poll(bContext *C)
     return false;
   }
   if (!SEQ_retiming_is_allowed(seq)) {
-    CTX_wm_operator_poll_msg_set(C, "This strip type can not be retimed");
+    CTX_wm_operator_poll_msg_set(C, "This strip type cannot be retimed");
     return false;
   }
   return true;
@@ -205,7 +197,7 @@ static bool retiming_key_add_new_for_seq(bContext *C,
   const SeqRetimingKey *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
 
   if (key != nullptr && SEQ_retiming_key_is_transition_start(key)) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create key inside of speed transition");
+    BKE_report(op->reports, RPT_WARNING, "Cannot create key inside of speed transition");
     return false;
   }
 
@@ -266,7 +258,7 @@ static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
   }
 
   int ret_val;
-  blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+  blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
   if (!strips.is_empty()) {
     ret_val = retiming_key_add_from_selection(C, op, strips, timeline_frame);
   }
@@ -325,18 +317,18 @@ static bool freeze_frame_add_new_for_seq(const bContext *C,
   }
 
   if (SEQ_retiming_key_is_transition_start(key)) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create key inside of speed transition");
+    BKE_report(op->reports, RPT_WARNING, "Cannot create key inside of speed transition");
     return false;
   }
   if (key == nullptr) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    BKE_report(op->reports, RPT_WARNING, "Cannot create freeze frame");
     return false;
   }
 
   SeqRetimingKey *freeze = SEQ_retiming_add_freeze_frame(scene, seq, key, duration);
 
   if (freeze == nullptr) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    BKE_report(op->reports, RPT_WARNING, "Cannot create freeze frame");
     return false;
   }
 
@@ -352,7 +344,7 @@ static bool freeze_frame_add_from_strip_selection(bContext *C,
                                                   const int duration)
 {
   Scene *scene = CTX_data_scene(C);
-  blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+  blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
   const int timeline_frame = BKE_scene_frame_get(scene);
   bool success = false;
 
@@ -449,14 +441,14 @@ static bool transition_add_new_for_seq(const bContext *C,
   }
 
   if (SEQ_retiming_is_last_key(seq, key) || key->strip_frame_index == 0) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create transition from first or last key");
+    BKE_report(op->reports, RPT_WARNING, "Cannot create transition from first or last key");
     return false;
   }
 
   SeqRetimingKey *transition = SEQ_retiming_add_transition(scene, seq, key, duration);
 
   if (transition == nullptr) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create transition");
+    BKE_report(op->reports, RPT_WARNING, "Cannot create transition");
     return false;
   }
 
@@ -550,7 +542,7 @@ static float strip_speed_get(bContext *C, const wmOperator * /* op */)
 {
   /* Strip mode. */
   if (!sequencer_retiming_mode_is_active(C)) {
-    blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+    blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
     if (strips.size() == 1) {
       Sequence *seq = strips[0];
       SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
@@ -573,7 +565,7 @@ static float strip_speed_get(bContext *C, const wmOperator * /* op */)
 static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
-  blender::VectorSet<Sequence *> strips = selected_strips_from_context(C);
+  blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
 
   for (Sequence *seq : strips) {
     SeqRetimingKey *key = ensure_left_and_right_keys(C, seq);
@@ -676,7 +668,7 @@ void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "keep_retiming",
                   true,
-                  "Preserve Current retiming",
+                  "Preserve Current Retiming",
                   "Keep speed of other segments unchanged, change strip length instead");
 }
 
@@ -745,7 +737,7 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
 
   /* Try to realize "fake" key, since it is clicked on. */
   if (key == nullptr && seq_key_owner != nullptr) {
-    key = try_to_realize_virtual_key(C, seq_key_owner, mval);
+    key = try_to_realize_virtual_keys(C, seq_key_owner, mval);
   }
 
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
@@ -776,7 +768,7 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void realize_fake_keys_in_rect(bContext *C, Sequence *seq, rctf &rectf)
+static void realize_fake_keys_in_rect(bContext *C, Sequence *seq, const rctf &rectf)
 {
   const Scene *scene = CTX_data_scene(C);
 

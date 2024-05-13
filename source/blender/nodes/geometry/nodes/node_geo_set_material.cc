@@ -4,7 +4,6 @@
 
 #include "node_geometry_util.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "DNA_curves_types.h"
@@ -117,8 +116,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       using namespace blender::bke::greasepencil;
       Vector<Mesh *> mesh_by_layer(grease_pencil->layers().size(), nullptr);
       for (const int layer_index : grease_pencil->layers().index_range()) {
-        Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(*grease_pencil,
-                                                                          layer_index);
+        Drawing *drawing = grease_pencil->get_eval_drawing(*grease_pencil->layer(layer_index));
         if (drawing == nullptr) {
           continue;
         }
@@ -147,17 +145,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (volume_selection_warning) {
     params.error_message_add(
         NodeWarningType::Info,
-        TIP_("Volumes only support a single material; selection input can not be a field"));
+        TIP_("Volumes only support a single material; selection input cannot be a field"));
   }
   if (point_selection_warning) {
     params.error_message_add(
         NodeWarningType::Info,
-        TIP_("Point clouds only support a single material; selection input can not be a field"));
+        TIP_("Point clouds only support a single material; selection input cannot be a field"));
   }
   if (curves_selection_warning) {
     params.error_message_add(
         NodeWarningType::Info,
-        TIP_("Curves only support a single material; selection input can not be a field"));
+        TIP_("Curves only support a single material; selection input cannot be a field"));
   }
 
   params.set_output("Geometry", std::move(geometry_set));

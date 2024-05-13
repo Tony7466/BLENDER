@@ -99,7 +99,7 @@ static void fillet_grease_pencil(GreasePencil &grease_pencil,
 {
   using namespace blender::bke::greasepencil;
   for (const int layer_index : grease_pencil.layers().index_range()) {
-    Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil, layer_index);
+    Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
     if (drawing == nullptr) {
       continue;
     }
@@ -171,13 +171,13 @@ static void node_rna(StructRNA *srna)
       {GEO_NODE_CURVE_FILLET_BEZIER,
        "BEZIER",
        0,
-       "Bezier",
-       "Align Bezier handles to create circular arcs at each control point"},
+       "Bézier",
+       "Align Bézier handles to create circular arcs at each control point"},
       {GEO_NODE_CURVE_FILLET_POLY,
        "POLY",
        0,
        "Poly",
-       "Add control points along a circular arc (handle type is vector if Bezier Spline)"},
+       "Add control points along a circular arc (handle type is vector if Bézier Spline)"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

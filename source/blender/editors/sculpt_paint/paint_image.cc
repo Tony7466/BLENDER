@@ -18,7 +18,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -42,7 +42,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "NOD_texture.h"
 
@@ -631,9 +631,10 @@ static void sample_color_update_header(SampleColorData *data, bContext *C)
 
   if (area) {
     SNPRINTF(msg,
-             RPT_("Sample color for %s"),
-             !data->sample_palette ? RPT_("Brush. Use Left Click to sample for palette instead") :
-                                     RPT_("Palette. Use Left Click to sample more colors"));
+             IFACE_("Sample color for %s"),
+             !data->sample_palette ?
+                 IFACE_("Brush. Use Left Click to sample for palette instead") :
+                 IFACE_("Palette. Use Left Click to sample more colors"));
     ED_workspace_status_text(C, msg);
   }
 }
@@ -802,12 +803,12 @@ void PAINT_OT_sample_color(wmOperatorType *ot)
 static blender::float3 paint_init_pivot_mesh(Object *ob)
 {
   using namespace blender;
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
-  if (!me_eval) {
-    me_eval = (const Mesh *)ob->data;
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
+  if (!mesh_eval) {
+    mesh_eval = (const Mesh *)ob->data;
   }
 
-  const std::optional<Bounds<float3>> bounds = me_eval->bounds_min_max();
+  const std::optional<Bounds<float3>> bounds = mesh_eval->bounds_min_max();
   if (!bounds) {
     return float3(0.0f);
   }
@@ -858,7 +859,7 @@ void paint_init_pivot(Object *ob, Scene *scene)
       return;
   }
 
-  mul_m4_v3(ob->object_to_world, location);
+  mul_m4_v3(ob->object_to_world().ptr(), location);
 
   ups->last_stroke_valid = true;
   ups->average_stroke_counter = 1;
@@ -900,7 +901,7 @@ void ED_object_texture_paint_mode_enter_ex(Main *bmain,
 
   BKE_paint_init(bmain, scene, PaintMode::Texture3D, PAINT_CURSOR_TEXTURE_PAINT);
 
-  BKE_paint_toolslots_brush_validate(bmain, &imapaint->paint);
+  BKE_paint_brush_validate(bmain, &imapaint->paint);
 
   if (U.glreslimit != 0) {
     BKE_image_free_all_gputextures(bmain);
@@ -911,7 +912,7 @@ void ED_object_texture_paint_mode_enter_ex(Main *bmain,
 
   Mesh *mesh = BKE_mesh_from_object(ob);
   BLI_assert(mesh != nullptr);
-  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_SYNC_TO_EVAL);
 
   /* Ensure we have evaluated data for bounding box. */
   BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
@@ -945,7 +946,7 @@ void ED_object_texture_paint_mode_exit_ex(Main *bmain, Scene *scene, Object *ob)
 
   Mesh *mesh = BKE_mesh_from_object(ob);
   BLI_assert(mesh != nullptr);
-  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_SCENE | ND_MODE, scene);
 }
 
@@ -972,6 +973,7 @@ static bool texture_paint_toggle_poll(bContext *C)
 
 static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender::ed;
   wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -980,7 +982,7 @@ static int texture_paint_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, static_cast<eObjectMode>(mode_flag), op->reports)) {
+    if (!object::mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }

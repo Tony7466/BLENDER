@@ -10,7 +10,6 @@
 #include "BKE_texture.h"
 #include "BLI_math_vector.h"
 #include "DNA_material_types.h"
-#include "NOD_texture.h"
 #include "node_texture_util.hh"
 #include "node_util.hh"
 
@@ -258,7 +257,7 @@ static void init(bNodeTree * /*ntree*/, bNode *node)
 \
     tex_node_type_base(&ntype, TEX_NODE_PROC + TEXTYPE, Name, NODE_CLASS_TEXTURE); \
     blender::bke::node_type_socket_templates(&ntype, name##_inputs, outputs); \
-    blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE); \
+    blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle); \
     ntype.initfunc = init; \
     node_type_storage(&ntype, "Tex", node_free_standard_storage, node_copy_standard_storage); \
     ntype.exec_fn = name##_exec; \

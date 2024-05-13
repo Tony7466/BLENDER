@@ -184,7 +184,13 @@ void device_hip_info(vector<DeviceInfo> &devices)
 
     info.denoisers = 0;
 #  if defined(WITH_OPENIMAGEDENOISE)
-    if (OIDNDenoiserGPU::is_device_supported(info)) {
+    /* Check first if OIDN supports it, not doing so can crash the HIP driver with
+     * "hipErrorNoBinaryForGpu: Unable to find code object for all current devices". */
+#    if OIDN_VERSION >= 20300
+    if (hipSupportsDeviceOIDN(num) && oidnIsHIPDeviceSupported(num)) {
+#    else
+    if (hipSupportsDeviceOIDN(num) && OIDNDenoiserGPU::is_device_supported(info)) {
+#    endif
       info.denoisers |= DENOISER_OPENIMAGEDENOISE;
     }
 #  endif
@@ -206,7 +212,11 @@ void device_hip_info(vector<DeviceInfo> &devices)
       devices.push_back(info);
     }
 
-    VLOG_INFO << "Added device \"" << name << "\" with id \"" << info.id << "\".";
+    VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
+
+    if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
+                << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 
   if (!display_devices.empty())

@@ -30,13 +30,6 @@ class CompositorContext {
    */
   bool rendering_;
 
-  /**
-   * \brief The quality of the composite.
-   * This field is initialized in ExecutionSystem and must only be read from that point on.
-   * \see ExecutionSystem
-   */
-  eCompositorQuality quality_;
-
   Scene *scene_;
 
   /**
@@ -58,16 +51,6 @@ class CompositorContext {
    * This field is initialized in ExecutionSystem and must only be read from that point on.
    */
   bNodeInstanceHash *previews_;
-
-  /**
-   * \brief does this system have active opencl devices?
-   */
-  bool hasActiveOpenCLDevices_;
-
-  /**
-   * \brief Skip slow nodes
-   */
-  bool fast_calculation_;
 
   /**
    * \brief active rendering view name
@@ -160,41 +143,9 @@ class CompositorContext {
   }
 
   /**
-   * \brief set the quality
-   */
-  void set_quality(eCompositorQuality quality)
-  {
-    quality_ = quality;
-  }
-
-  /**
-   * \brief get the quality
-   */
-  eCompositorQuality get_quality() const
-  {
-    return quality_;
-  }
-
-  /**
    * \brief get the current frame-number of the scene in this context
    */
   int get_framenumber() const;
-
-  /**
-   * \brief has this system active opencl_devices?
-   */
-  bool get_has_active_opencl_devices() const
-  {
-    return hasActiveOpenCLDevices_;
-  }
-
-  /**
-   * \brief set has this system active opencl_devices?
-   */
-  void setHasActiveOpenCLDevices(bool hasAvtiveOpenCLDevices)
-  {
-    hasActiveOpenCLDevices_ = hasAvtiveOpenCLDevices;
-  }
 
   /** Whether it has a view with a specific name and not the default one. */
   bool has_explicit_view() const
@@ -234,24 +185,6 @@ class CompositorContext {
     view_name_ = view_name;
   }
 
-  int get_chunksize() const
-  {
-    return this->get_bnodetree()->chunksize;
-  }
-
-  void set_fast_calculation(bool fast_calculation)
-  {
-    fast_calculation_ = fast_calculation;
-  }
-  bool is_fast_calculation() const
-  {
-    return fast_calculation_;
-  }
-  bool is_groupnode_buffer_enabled() const
-  {
-    return (this->get_bnodetree()->flag & NTREE_COM_GROUPNODE_BUFFER) != 0;
-  }
-
   /**
    * \brief Get the render percentage as a factor.
    * The compositor uses a factor i.o. a percentage.
@@ -262,11 +195,6 @@ class CompositorContext {
   }
 
   Size2f get_render_size() const;
-
-  /**
-   * Get active execution model.
-   */
-  eExecutionModel get_execution_model() const;
 };
 
 }  // namespace blender::compositor

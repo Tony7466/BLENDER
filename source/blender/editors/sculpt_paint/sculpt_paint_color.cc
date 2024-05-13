@@ -19,7 +19,6 @@
 #include "BKE_brush.hh"
 #include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
-#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -51,7 +50,7 @@ static void do_color_smooth_task(Object *ob, const Brush *brush, PBVHNode *node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       *ob, ss->cache->automasking.get(), *node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -131,7 +130,7 @@ static void do_paint_brush_task(Object *ob,
     }
   }
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
 
     bool affect_vertex = false;
@@ -191,7 +190,8 @@ static void do_paint_brush_task(Object *ob,
      * at this point to avoid washing out non-binary masking modes like cavity masking. */
     float automasking = auto_mask::factor_get(
         ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
-    mul_v4_v4fl(buffer_color, color_buffer->color[vd.i], brush->alpha * automasking);
+    const float alpha = BKE_brush_alpha_get(ss->scene, brush);
+    mul_v4_v4fl(buffer_color, color_buffer->color[vd.i], alpha * automasking);
 
     float4 col;
     SCULPT_vertex_color_get(ss, vd.vertex, col);
@@ -221,7 +221,7 @@ static void do_sample_wet_paint_task(SculptSession *ss,
   test.radius *= brush->wet_paint_radius_factor;
   test.radius_squared = test.radius * test.radius;
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -354,7 +354,7 @@ static void do_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       *ob, ss->cache->automasking.get(), *node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -374,8 +374,6 @@ static void do_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 
     float current_disp[3];
     float current_disp_norm[3];
-    float interp_color[4];
-    copy_v4_v4(interp_color, ss->cache->prev_colors[vd.index]);
 
     float no[3];
     SCULPT_vertex_normal_get(ss, vd.vertex, no);
@@ -468,11 +466,9 @@ static void do_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
       mul_v4_fl(accum, 1.0f / totw);
     }
 
-    blend_color_mix_float(interp_color, interp_color, accum);
-
     float col[4];
     SCULPT_vertex_color_get(ss, vd.vertex, col);
-    blend_color_interpolate_float(col, ss->cache->prev_colors[vd.index], interp_color, fade);
+    blend_color_interpolate_float(col, ss->cache->prev_colors[vd.index], accum, fade);
     SCULPT_vertex_color_set(ss, vd.vertex, col);
   }
   BKE_pbvh_vertex_iter_end;
@@ -483,7 +479,7 @@ static void do_smear_store_prev_colors_task(SculptSession *ss,
                                             float (*prev_colors)[4])
 {
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_vertex_color_get(ss, vd.vertex, prev_colors[vd.index]);
   }
   BKE_pbvh_vertex_iter_end;
@@ -503,7 +499,7 @@ void do_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   if (!ss->cache->prev_colors) {
     ss->cache->prev_colors = MEM_cnew_array<float[4]>(totvert, __func__);
     for (int i = 0; i < totvert; i++) {
-      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
 
       SCULPT_vertex_color_get(ss, vertex, ss->cache->prev_colors[i]);
     }

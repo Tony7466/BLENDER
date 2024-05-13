@@ -19,15 +19,9 @@
 
 #include "ED_screen.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
-#include "GPU_vertex_buffer.h"
-#include "GPU_viewport.h"
+#include "GPU_matrix.hh"
+#include "GPU_vertex_buffer.hh"
 
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "SEQ_channels.hh"
@@ -126,8 +120,6 @@ static float draw_channel_widget_mute(const SeqChannelDrawContext *context,
                                   0,
                                   0,
                                   0,
-                                  0,
-                                  0,
                                   nullptr);
 
   char *tooltip = BLI_sprintfN(
@@ -166,8 +158,6 @@ static float draw_channel_widget_lock(const SeqChannelDrawContext *context,
                                   0,
                                   0,
                                   0,
-                                  0,
-                                  0,
                                   "");
 
   char *tooltip = BLI_sprintfN(
@@ -200,7 +190,8 @@ static rctf label_rect_init(const SeqChannelDrawContext *context,
   float margin_x = icon_width_get(context) * 0.65;
   float width = max_ff(0.0f, context->v2d->cur.xmax / context->scale - used_width);
 
-  /* Text input has own margin. Prevent text jumping around and use as much space as possible. */
+  /* Text input has its own margin. Prevent text jumping around and use as much space as possible.
+   */
   if (channel_is_being_renamed(CTX_wm_space_seq(context->C), channel_index)) {
     float input_box_margin = icon_width_get(context) * 0.5f;
     margin_x -= input_box_margin;
@@ -244,8 +235,6 @@ static void draw_channel_labels(const SeqChannelDrawContext *context,
                            -1,
                            0,
                            0,
-                           0,
-                           0,
                            nullptr);
     UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
@@ -266,8 +255,6 @@ static void draw_channel_labels(const SeqChannelDrawContext *context,
              rect.xmax - rect.xmin,
              (rect.ymax - rect.ymin),
              nullptr,
-             0,
-             0,
              0,
              0,
              nullptr);

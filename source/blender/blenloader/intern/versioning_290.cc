@@ -25,7 +25,6 @@
 #include "DNA_cachefile_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
-#include "DNA_curves_types.h"
 #include "DNA_fluid_types.h"
 #include "DNA_genfile.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -48,15 +47,13 @@
 
 #undef DNA_GENFILE_VERSIONING_MACROS
 
-#include "BKE_animsys.h"
 #include "BKE_armature.hh"
-#include "BKE_attribute.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
@@ -68,15 +65,11 @@
 #include "IMB_imbuf.hh"
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.hh"
-
 #include "SEQ_proxy.hh"
-#include "SEQ_render.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
-#include "SEQ_transform.hh"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "readfile.hh"
 #include "versioning_common.hh"
 
@@ -838,10 +831,10 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
               (MFace *)CustomData_get_layer_for_write(
                   &me->fdata_legacy, CD_MFACE, me->totface_legacy),
               me->totface_legacy,
-              me->corner_verts_for_write().data(),
+              me->corner_verts().data(),
               me->corner_edges_for_write().data(),
               me->corners_num,
-              me->face_offsets_for_write().data(),
+              me->face_offsets().data(),
               me->faces_num,
               me->deform_verts_for_write().data(),
               false,
@@ -936,7 +929,8 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       IDProperty *cscene = version_cycles_properties_from_ID(&scene->id);
 
-      /* Check if any view layers had (optix) denoising enabled. */
+      /* Check if any view layers had (optix) denoising enabled.
+       * Both view and render layers because conversion only happens after linking. */
       bool use_optix = false;
       bool use_denoising = false;
       LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
@@ -946,6 +940,15 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
                           version_cycles_property_boolean(cview_layer, "use_denoising", false);
           use_optix = use_optix ||
                       version_cycles_property_boolean(cview_layer, "use_optix_denoising", false);
+        }
+      }
+      LISTBASE_FOREACH (SceneRenderLayer *, render_layer, &scene->r.layers) {
+        IDProperty *crender_layer = version_cycles_properties_from_render_layer(render_layer);
+        if (crender_layer) {
+          use_denoising = use_denoising ||
+                          version_cycles_property_boolean(crender_layer, "use_denoising", false);
+          use_optix = use_optix ||
+                      version_cycles_property_boolean(crender_layer, "use_optix_denoising", false);
         }
       }
 
@@ -975,6 +978,12 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
           IDProperty *cview_layer = version_cycles_properties_from_view_layer(view_layer);
           if (cview_layer) {
             version_cycles_property_boolean_set(cview_layer, "use_denoising", true);
+          }
+        }
+        LISTBASE_FOREACH (SceneRenderLayer *, render_layer, &scene->r.layers) {
+          IDProperty *crender_layer = version_cycles_properties_from_render_layer(render_layer);
+          if (crender_layer) {
+            version_cycles_property_boolean_set(crender_layer, "use_denoising", true);
           }
         }
       }
@@ -1197,7 +1206,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
         if (md->type == eModifierType_Boolean) {
           BooleanModifierData *bmd = (BooleanModifierData *)md;
-          bmd->solver = eBooleanModifierSolver_Fast;
+          bmd->solver = eBooleanModifierSolver_Float;
           bmd->flag = eBooleanModifierFlag_Object;
         }
       }
@@ -1342,8 +1351,9 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
               }
             }
             if (relation->parentid == 0) {
-              BLI_assert(
-                  !"Found a valid parent for workspace data relation, but no valid parent id.");
+              BLI_assert_msg(
+                  false,
+                  "Found a valid parent for workspace data relation, but no valid parent id.");
             }
           }
           if (relation->parentid == 0) {

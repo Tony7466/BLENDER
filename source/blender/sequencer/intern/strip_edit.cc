@@ -16,15 +16,11 @@
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_main.hh"
-#include "BKE_movieclip.h"
-#include "BKE_scene.h"
 #include "BKE_sound.h"
 
 #include "strip_time.hh"
-#include "utils.hh"
 
 #include "SEQ_add.hh"
 #include "SEQ_animation.hh"
@@ -220,12 +216,12 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
   ListBase *seqbase = SEQ_get_seqbase_by_seq(scene, src_seq);
 
   if (dst_seqm->type != SEQ_TYPE_META) {
-    *error_str = N_("Can not move strip to non-meta strip");
+    *error_str = N_("Cannot move strip to non-meta strip");
     return false;
   }
 
   if (src_seq == dst_seqm) {
-    *error_str = N_("Strip can not be moved into itself");
+    *error_str = N_("Strip cannot be moved into itself");
     return false;
   }
 
@@ -240,7 +236,7 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
   }
 
   if (!SEQ_exists_in_seqbase(dst_seqm, &ed->seqbase)) {
-    *error_str = N_("Can not move strip to different scene");
+    *error_str = N_("Cannot move strip to different scene");
     return false;
   }
 
@@ -437,13 +433,13 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   SEQ_animation_backup_original(scene, &animation_backup);
 
   ListBase left_strips = {nullptr, nullptr};
-  for (Sequence *seq : strips) {
+  for (Sequence *seq_iter : strips) {
     /* Move strips in collection from seqbase to new ListBase. */
-    BLI_remlink(seqbase, seq);
-    BLI_addtail(&left_strips, seq);
+    BLI_remlink(seqbase, seq_iter);
+    BLI_addtail(&left_strips, seq_iter);
 
     /* Duplicate curves from backup, so they can be renamed along with split strips. */
-    SEQ_animation_duplicate_backup_to_scene(scene, seq, &animation_backup);
+    SEQ_animation_duplicate_backup_to_scene(scene, seq_iter, &animation_backup);
   }
 
   /* Duplicate ListBase. */

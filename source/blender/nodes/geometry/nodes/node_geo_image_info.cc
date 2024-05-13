@@ -4,12 +4,9 @@
 
 #include "BKE_image.h"
 
-#include "BLI_path_util.h"
-
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
@@ -85,7 +82,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_IMAGE_INFO, "Image Info", NODE_CLASS_INPUT);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Large);
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

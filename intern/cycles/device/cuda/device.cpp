@@ -165,7 +165,11 @@ void device_cuda_info(vector<DeviceInfo> &devices)
                             (unsigned int)pci_location[2]);
 
 #  if defined(WITH_OPENIMAGEDENOISE)
+#    if OIDN_VERSION >= 20300
+    if (oidnIsCUDADeviceSupported(num)) {
+#    else
     if (OIDNDenoiserGPU::is_device_supported(info)) {
+#    endif
       info.denoisers |= DENOISER_OPENIMAGEDENOISE;
     }
 #  endif
@@ -195,7 +199,11 @@ void device_cuda_info(vector<DeviceInfo> &devices)
       VLOG_INFO << "Device has compute preemption or is not used for display.";
       devices.push_back(info);
     }
-    VLOG_INFO << "Added device \"" << name << "\" with id \"" << info.id << "\".";
+    VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
+
+    if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
+                << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 
   if (!display_devices.empty()) {

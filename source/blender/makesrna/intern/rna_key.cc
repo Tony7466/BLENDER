@@ -18,7 +18,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -635,7 +635,7 @@ static PointerRNA rna_ShapeKey_data_get(CollectionPropertyIterator *iter)
   return rna_pointer_inherit_refine(&iter->parent, type, ptr);
 }
 
-int rna_ShapeKey_data_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+bool rna_ShapeKey_data_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   Key *key = rna_ShapeKey_find_key(ptr->owner_id);
   KeyBlock *kb = (KeyBlock *)ptr->data;
@@ -696,7 +696,7 @@ static int rna_ShapeKey_points_length(PointerRNA *ptr)
   return tot;
 }
 
-int rna_ShapeKey_points_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+bool rna_ShapeKey_points_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   Key *key = rna_ShapeKey_find_key(ptr->owner_id);
   KeyBlock *kb = (KeyBlock *)ptr->data;
@@ -897,7 +897,7 @@ static void rna_def_keydata(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Key_update_data");
 
   srna = RNA_def_struct(brna, "ShapeKeyBezierPoint", nullptr);
-  RNA_def_struct_ui_text(srna, "Shape Key Bezier Point", "Point in a shape key for Bezier curves");
+  RNA_def_struct_ui_text(srna, "Shape Key Bézier Point", "Point in a shape key for Bézier curves");
   /* there's nothing type specific here, so this is fine for now */
   RNA_def_struct_path_func(srna, "rna_ShapeKeyPoint_path");
 

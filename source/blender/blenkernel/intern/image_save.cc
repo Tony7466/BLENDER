@@ -15,7 +15,7 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_image_types.h"
 
@@ -27,13 +27,13 @@
 #include "IMB_openexr.hh"
 
 #include "BKE_colortools.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "RE_pipeline.h"
 
@@ -105,7 +105,6 @@ bool BKE_image_save_options_init(ImageSaveOptions *opts,
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
 
   if (ibuf) {
-    Scene *scene = opts->scene;
     bool is_depth_set = false;
     const char *ima_colorspace = ima->colorspace_settings.name;
 
@@ -896,7 +895,9 @@ static void image_render_print_save_message(ReportList *reports,
 {
   if (ok) {
     /* no need to report, just some helpful console info */
-    printf("Saved: '%s'\n", filepath);
+    if (!G.quiet) {
+      printf("Saved: '%s'\n", filepath);
+    }
   }
   else {
     /* report on error since users will want to know what failed */
