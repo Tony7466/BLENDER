@@ -3555,6 +3555,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_grease_pencil_paint.curve,
             _defs_grease_pencil_paint.box,
             _defs_grease_pencil_paint.circle,
+            None,
+            _defs_grease_pencil_paint.interpolate,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
