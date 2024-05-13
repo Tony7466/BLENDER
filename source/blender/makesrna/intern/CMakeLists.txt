@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -12,9 +12,18 @@ if(HAVE_MALLOC_STATS_H)
   add_definitions(-DHAVE_MALLOC_STATS_H)
 endif()
 
-# files rna_access.cc rna_define.c makesrna.c intentionally excluded.
+# There is some code in `makesrna.cc` that forces files to be regenerated even if they have not
+# changed to keep make out of some dependency problem. Ninja and VisualStudios `msbuild` do not
+# appear to be requiring this and much time can be saved by not rebuilding hundreds of files
+# when not required, both generators have been whitelisted here not to take this code-path,
+# all other generators will take the conservative route and regenerate.
+if(CMAKE_GENERATOR MATCHES ".*Unix Makefiles")
+  add_definitions(-DUSE_MAKEFILE_WORKAROUND)
+endif()
+
+# files rna_access.cc rna_define.cc makesrna.cc intentionally excluded.
 set(DEFSRC
-  rna_ID.c
+  rna_ID.cc
   rna_action.cc
   rna_animation.cc
   rna_animviz.cc
@@ -54,6 +63,8 @@ set(DEFSRC
   rna_modifier.cc
   rna_movieclip.cc
   rna_nla.cc
+  rna_node_socket.cc
+  rna_node_tree_interface.cc
   rna_nodetree.cc
   rna_object.cc
   rna_object_force.cc
@@ -63,8 +74,8 @@ set(DEFSRC
   rna_pointcloud.cc
   rna_pose.cc
   rna_render.cc
-  rna_rigidbody.c
-  rna_rna.c
+  rna_rigidbody.cc
+  rna_rna.cc
   rna_scene.cc
   rna_screen.cc
   rna_sculpt_paint.cc
@@ -73,7 +84,7 @@ set(DEFSRC
   rna_sound.cc
   rna_space.cc
   rna_speaker.cc
-  rna_test.c
+  rna_test.cc
   rna_text.cc
   rna_texture.cc
   rna_timeline.cc
@@ -89,10 +100,19 @@ set(DEFSRC
   rna_xr.cc
 )
 
+if(WITH_USD)
+  list(APPEND DEFSRC
+    rna_usd.cc
+  )
+  add_definitions(-DWITH_USD)
+endif()
+
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
   list(APPEND DEFSRC
+    rna_animation_id.cc
     rna_grease_pencil.cc
   )
 endif()
@@ -177,7 +197,7 @@ unset(GENSRC_CXXFLAGS)
 
 
 # NOTE: Disable clang-tidy because generated files are stored outside of the source,
-# so the clang-tidy can not find our .clang-tidy and fall-backs to own set of rules
+# so the clang-tidy can not find our .clang-tidy and fall-backs to its own set of rules
 # which are too noisy for Blender.
 #
 # In the future clang-tidy would either need to be inlined checks and passed via the
@@ -187,27 +207,21 @@ unset(CMAKE_C_CLANG_TIDY)
 unset(CMAKE_CXX_CLANG_TIDY)
 
 set(SRC_RNA_INC
-  ../RNA_access.h
-  ../RNA_define.h
-  ../RNA_documentation.h
-  ../RNA_enum_items.h
-  ../RNA_enum_types.h
-  ../RNA_path.h
-  ../RNA_types.h
+  ../RNA_access.hh
+  ../RNA_define.hh
+  ../RNA_documentation.hh
+  ../RNA_enum_items.hh
+  ../RNA_enum_types.hh
+  ../RNA_path.hh
+  ../RNA_types.hh
 )
 
 set(SRC
-  makesrna.c
-  rna_define.c
+  makesrna.cc
+  rna_define.cc
   ${DEFSRC}
   ${APISRC}
   ../../../../intern/clog/clog.c
-  ../../../../intern/guardedalloc/intern/leak_detector.cc
-  ../../../../intern/guardedalloc/intern/mallocn.c
-  ../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
-  ../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
-  ../../../../intern/guardedalloc/intern/memory_usage.cc
-
   # Needed for defaults.
   ../../../../release/datafiles/userdef/userdef_default.c
   ../../../../release/datafiles/userdef/userdef_default_theme.c
@@ -216,6 +230,7 @@ set(SRC
 set(INC
   .
   ..
+  ../../animrig
   ../../asset_system
   ../../blenfont
   ../../blenkernel
@@ -228,15 +243,19 @@ set(INC
   ../../gpu
   ../../ikplugin
   ../../imbuf
+  ../../io/usd
   ../../modifiers
   ../../nodes
+  ../../nodes/geometry/include
   ../../sequencer
   ../../simulation
   ../../windowmanager
+  ../../editors/asset
   ../../editors/include
   ../../render
   ../../../../intern/clog
   ../../../../intern/cycles/blender
+  ../../../../extern/fmtlib/include
   ../../../../intern/memutil
   ../../../../intern/mantaflow/extern
 
@@ -459,13 +478,15 @@ set(SRC
 
   ${SRC_RNA_INC}
   rna_access_internal.h
-  rna_internal.h
-  rna_internal_types.h
+  rna_internal.hh
+  rna_internal_types.hh
   rna_mesh_utils.hh
 )
 
 set(LIB
+  PRIVATE bf::animrig
   PRIVATE bf::dna
+  PRIVATE extern_fmtlib
   bf_editor_space_api
 
   bf_editor_animation
@@ -489,4 +510,3 @@ set(LIB
 )
 
 blender_add_lib(bf_rna "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

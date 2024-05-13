@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup edanimation
  */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "BLI_sys_types.h"
 
@@ -16,31 +16,34 @@
 
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_anim_data.hh"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_anim_api.h"
-#include "ED_screen.h"
-#include "ED_sequencer.h"
-#include "ED_time_scrub_ui.h"
+#include "ED_anim_api.hh"
+#include "ED_screen.hh"
+#include "ED_sequencer.hh"
+#include "ED_time_scrub_ui.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "SEQ_iterator.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
-#include "anim_intern.h"
+#include "ANIM_animation.hh"
+
+#include "anim_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Frame Change Operator
@@ -107,18 +110,15 @@ static int seq_frame_apply_snap(bContext *C, Scene *scene, const int timeline_fr
 {
 
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
-  SeqCollection *strips = SEQ_query_all_strips(seqbase);
 
   int best_frame = 0;
   int best_distance = MAXFRAME;
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, strips) {
+  for (Sequence *seq : SEQ_query_all_strips(seqbase)) {
     seq_frame_snap_update_best(
         SEQ_time_left_handle_frame_get(scene, seq), timeline_frame, &best_frame, &best_distance);
     seq_frame_snap_update_best(
         SEQ_time_right_handle_frame_get(scene, seq), timeline_frame, &best_frame, &best_distance);
   }
-  SEQ_collection_free(strips);
 
   if (best_distance < seq_snap_threshold_get_frame_distance(C)) {
     return best_frame;
@@ -650,6 +650,63 @@ static void ANIM_OT_previewrange_clear(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Bindings
+ * \{ */
+
+static bool binding_unassign_object_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return false;
+  }
+
+  AnimData *adt = BKE_animdata_from_id(&object->id);
+  if (!adt) {
+    return false;
+  }
+
+  return adt->binding_handle != blender::animrig::Binding::unassigned;
+}
+
+static int binding_unassign_object_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return OPERATOR_CANCELLED;
+  }
+
+  AnimData *adt = BKE_animdata_from_id(&object->id);
+  if (!adt) {
+    return OPERATOR_CANCELLED;
+  }
+
+  animrig::unassign_binding(*adt);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_binding_unassign_object(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Unassign Binding";
+  ot->idname = "ANIM_OT_binding_unassign_object";
+  ot->description =
+      "Clear the assigned animation binding, effectively making this data-block non-animated";
+
+  /* api callbacks */
+  ot->exec = binding_unassign_object_exec;
+  ot->poll = binding_unassign_object_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Registration
  * \{ */
 
@@ -691,11 +748,13 @@ void ED_operatortypes_anim()
   WM_operatortype_append(ANIM_OT_keying_set_path_remove);
 
   WM_operatortype_append(ANIM_OT_keying_set_active_set);
+
+  WM_operatortype_append(ANIM_OT_binding_unassign_object);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Animation", 0, 0);
+  WM_keymap_ensure(keyconf, "Animation", SPACE_EMPTY, RGN_TYPE_WINDOW);
 }
 
 /** \} */

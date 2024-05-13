@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,28 +8,33 @@
 
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BLT_translation.hh"
+
+#include "BKE_context.hh"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "UI_interface_icons.hh"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "UI_view2d.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "clip_intern.h" /* own include */
+#include "UI_view2d.hh"
+
+#include "clip_intern.hh" /* own include */
 
 /******************** common graph-editing utilities ********************/
 
@@ -54,9 +59,9 @@ static bool clip_graph_knots_poll(bContext *C)
   return false;
 }
 
-typedef struct {
+struct SelectUserData {
   int action;
-} SelectUserData;
+};
 
 static void toggle_selection_cb(void *userdata, MovieTrackingMarker *marker)
 {
@@ -77,7 +82,7 @@ static void toggle_selection_cb(void *userdata, MovieTrackingMarker *marker)
 
 /******************** mouse select operator ********************/
 
-typedef struct {
+struct MouseSelectUserData {
   SpaceClip *sc;
   eClipCurveValueSource value_source;
   bool has_prev; /* if there's valid coordinate of previous point of curve segment */
@@ -89,7 +94,7 @@ typedef struct {
 
   MovieTrackingTrack *track;   /* nearest found track */
   MovieTrackingMarker *marker; /* nearest found marker */
-} MouseSelectUserData;
+};
 
 static void find_nearest_tracking_segment_cb(void *userdata,
                                              MovieTrackingTrack *track,
@@ -339,7 +344,7 @@ void CLIP_OT_graph_select(wmOperatorType *ot)
                        100.0f);
   prop = RNA_def_boolean(ot->srna,
                          "extend",
-                         0,
+                         false,
                          "Extend",
                          "Extend selection rather than clearing the existing selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -525,6 +530,20 @@ static int delete_curve_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int delete_curve_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete track corresponding to the selected curve?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return delete_curve_exec(C, op);
+}
+
 void CLIP_OT_graph_delete_curve(wmOperatorType *ot)
 {
   /* identifiers */
@@ -533,7 +552,7 @@ void CLIP_OT_graph_delete_curve(wmOperatorType *ot)
   ot->idname = "CLIP_OT_graph_delete_curve";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = delete_curve_invoke;
   ot->exec = delete_curve_exec;
   ot->poll = clip_graph_knots_poll;
 
@@ -586,9 +605,9 @@ void CLIP_OT_graph_delete_knot(wmOperatorType *ot)
 
 /******************** view all operator ********************/
 
-typedef struct {
+struct ViewAllUserData {
   float min, max;
-} ViewAllUserData;
+};
 
 static void view_all_cb(void *userdata,
                         MovieTrackingTrack * /*track*/,

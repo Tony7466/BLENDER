@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2008 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,7 @@
  * -- Joshua Leung, Dec 2008 (Last revision July 2009)
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -62,34 +62,36 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_alloca.h"
-#include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
-#include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_fcurve.h"
+#include "BKE_anim_data.hh"
+#include "BKE_collection.hh"
+#include "BKE_context.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
-#include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_material.h"
-#include "BKE_modifier.h"
-#include "BKE_node.h"
+#include "BKE_modifier.hh"
+#include "BKE_node.hh"
 
-#include "ED_anim_api.h"
-#include "ED_markers.h"
+#include "ED_anim_api.hh"
+#include "ED_markers.hh"
 
-#include "SEQ_sequencer.h"
-#include "SEQ_utils.h"
+#include "SEQ_sequencer.hh"
+#include "SEQ_utils.hh"
 
-#include "UI_resources.h" /* for TH_KEYFRAME_SCALE lookup */
+#include "ANIM_animation.hh"
+#include "ANIM_bone_collections.hh"
+
+using namespace blender;
 
 /* ************************************************************ */
 /* Blender Context <-> Animation Context mapping */
@@ -97,7 +99,7 @@
 /* ----------- Private Stuff - Action Editor ------------- */
 
 /* Get shapekey data being edited (for Action Editor -> ShapeKey mode) */
-/* NOTE: there's a similar function in key.c #BKE_key_from_object. */
+/* NOTE: there's a similar function in `key.cc` #BKE_key_from_object. */
 static Key *actedit_get_shapekeys(bAnimContext *ac)
 {
   Scene *scene = ac->scene;
@@ -136,7 +138,7 @@ static bool actedit_get_context(bAnimContext *ac, SpaceAction *saction)
   switch (saction->mode) {
     case SACTCONT_ACTION: /* 'Action Editor' */
       /* if not pinned, sync with active object */
-      if (/*saction->pin == 0*/ true) {
+      if (/* `saction->pin == 0` */ true) {
         if (ac->obact && ac->obact->adt) {
           saction->action = ac->obact->adt->action;
         }
@@ -156,7 +158,7 @@ static bool actedit_get_context(bAnimContext *ac, SpaceAction *saction)
       ac->data = actedit_get_shapekeys(ac);
 
       /* if not pinned, sync with active object */
-      if (/*saction->pin == 0*/ true) {
+      if (/* `saction->pin == 0` */ true) {
         Key *key = (Key *)ac->data;
 
         if (key && key->adt) {
@@ -447,14 +449,14 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
 
 /* ............................... */
 
-/* quick macro to test if AnimData is usable */
-#define ANIMDATA_HAS_KEYS(id) ((id)->adt && (id)->adt->action)
+/* Test whether AnimData has a usable Action. */
+#define ANIMDATA_HAS_ACTION(id) ((id)->adt && !(id)->adt->animation && (id)->adt->action)
 
 /* quick macro to test if AnimData is usable for drivers */
 #define ANIMDATA_HAS_DRIVERS(id) ((id)->adt && (id)->adt->drivers.first)
 
 /* quick macro to test if AnimData is usable for NLA */
-#define ANIMDATA_HAS_NLA(id) ((id)->adt && (id)->adt->nla_tracks.first)
+#define ANIMDATA_HAS_NLA(id) ((id)->adt && !(id)->adt->animation && (id)->adt->nla_tracks.first)
 
 /**
  * Quick macro to test for all three above usability tests, performing the appropriate provided
@@ -479,6 +481,7 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
  * - driversOk: line or block of code to execute for Drivers case
  * - nlaKeysOk: line or block of code for NLA Strip Keyframes case
  * - keysOk: line or block of code for Keyframes case
+ * - animOk: line or block of code for Keyframes from Animation data blocks case
  *
  * The checks for the various cases are as follows:
  * 0) top level: checks for animdata and also that all the F-Curves for the block will be visible
@@ -490,8 +493,9 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
  * 3) drivers: include drivers from animdata block (for Drivers mode in Graph Editor)
  * 4A) nla strip keyframes: these are the per-strip controls for time and influence
  * 4B) normal keyframes: only when there is an active action
+ * 4C) normal keyframes: only when there is an Animation assigned
  */
-#define ANIMDATA_FILTER_CASES(id, adtOk, nlaOk, driversOk, nlaKeysOk, keysOk) \
+#define ANIMDATA_FILTER_CASES(id, adtOk, nlaOk, driversOk, nlaKeysOk, keysOk, animOk) \
   { \
     if ((id)->adt) { \
       if (!(filter_mode & ANIMFILTER_CURVE_VISIBLE) || \
@@ -503,7 +507,7 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
           if (ANIMDATA_HAS_NLA(id)) { \
             nlaOk \
           } \
-          else if (!(ads->filterflag & ADS_FILTER_NLA_NOACT) || ANIMDATA_HAS_KEYS(id)) { \
+          else if (!(ads->filterflag & ADS_FILTER_NLA_NOACT) || ANIMDATA_HAS_ACTION(id)) { \
             nlaOk \
           } \
         } \
@@ -512,11 +516,14 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
             driversOk \
           } \
         } \
+        else if ((id)->adt->animation) { \
+          animOk \
+        } \
         else { \
           if (ANIMDATA_HAS_NLA(id)) { \
             nlaKeysOk \
           } \
-          if (ANIMDATA_HAS_KEYS(id)) { \
+          if (ANIMDATA_HAS_ACTION(id)) { \
             keysOk \
           } \
         } \
@@ -581,6 +588,36 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
 
 /* ----------- 'Private' Stuff --------------- */
 
+/**
+ * Set `ale` so that it points to the top-most 'summary' channel of the given `adt`.
+ * So this is either the Animation or the Action, or empty.
+ */
+static void key_data_from_adt(bAnimListElem &ale, AnimData *adt)
+{
+  ale.adt = adt;
+
+  if (!adt) {
+    ale.key_data = nullptr;
+    ale.datatype = ALE_NONE;
+    return;
+  }
+
+  if (adt->animation) {
+    ale.key_data = adt->animation;
+    ale.datatype = ALE_ANIM;
+    return;
+  }
+
+  if (adt->action) {
+    ale.key_data = adt->action;
+    ale.datatype = ALE_ACT;
+    return;
+  }
+
+  ale.key_data = nullptr;
+  ale.datatype = ALE_NONE;
+}
+
 /* this function allocates memory for a new bAnimListElem struct for the
  * provided animation channel-data.
  */
@@ -635,6 +672,15 @@ static bAnimListElem *make_new_animlistelem(void *data,
         ale->adt = BKE_animdata_from_id(&ob->id);
         break;
       }
+      case ANIMTYPE_FILLANIM: {
+        Animation *anim = (Animation *)data;
+
+        ale->flag = anim->flag;
+
+        ale->key_data = anim;
+        ale->datatype = ALE_ANIM;
+        break;
+      }
       case ANIMTYPE_FILLACTD: {
         bAction *act = (bAction *)data;
 
@@ -656,244 +702,125 @@ static bAnimListElem *make_new_animlistelem(void *data,
       }
       case ANIMTYPE_DSMAT: {
         Material *ma = (Material *)data;
-        AnimData *adt = ma->adt;
-
         ale->flag = FILTER_MAT_OBJD(ma);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, ma->adt);
         break;
       }
       case ANIMTYPE_DSLAM: {
         Light *la = (Light *)data;
-        AnimData *adt = la->adt;
-
         ale->flag = FILTER_LAM_OBJD(la);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, la->adt);
         break;
       }
       case ANIMTYPE_DSCAM: {
         Camera *ca = (Camera *)data;
-        AnimData *adt = ca->adt;
-
         ale->flag = FILTER_CAM_OBJD(ca);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, ca->adt);
         break;
       }
       case ANIMTYPE_DSCACHEFILE: {
         CacheFile *cache_file = (CacheFile *)data;
-        AnimData *adt = cache_file->adt;
-
         ale->flag = FILTER_CACHEFILE_OBJD(cache_file);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, cache_file->adt);
         break;
       }
       case ANIMTYPE_DSCUR: {
         Curve *cu = (Curve *)data;
-        AnimData *adt = cu->adt;
-
         ale->flag = FILTER_CUR_OBJD(cu);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, cu->adt);
         break;
       }
       case ANIMTYPE_DSARM: {
         bArmature *arm = (bArmature *)data;
-        AnimData *adt = arm->adt;
-
         ale->flag = FILTER_ARM_OBJD(arm);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, arm->adt);
         break;
       }
       case ANIMTYPE_DSMESH: {
-        Mesh *me = (Mesh *)data;
-        AnimData *adt = me->adt;
-
-        ale->flag = FILTER_MESH_OBJD(me);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        Mesh *mesh = (Mesh *)data;
+        ale->flag = FILTER_MESH_OBJD(mesh);
+        key_data_from_adt(*ale, mesh->adt);
         break;
       }
       case ANIMTYPE_DSLAT: {
         Lattice *lt = (Lattice *)data;
-        AnimData *adt = lt->adt;
-
         ale->flag = FILTER_LATTICE_OBJD(lt);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, lt->adt);
         break;
       }
       case ANIMTYPE_DSSPK: {
         Speaker *spk = (Speaker *)data;
-        AnimData *adt = spk->adt;
-
         ale->flag = FILTER_SPK_OBJD(spk);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, spk->adt);
         break;
       }
       case ANIMTYPE_DSHAIR: {
         Curves *curves = (Curves *)data;
-        AnimData *adt = curves->adt;
-
         ale->flag = FILTER_CURVES_OBJD(curves);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, curves->adt);
         break;
       }
       case ANIMTYPE_DSPOINTCLOUD: {
         PointCloud *pointcloud = (PointCloud *)data;
-        AnimData *adt = pointcloud->adt;
-
         ale->flag = FILTER_POINTS_OBJD(pointcloud);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, pointcloud->adt);
         break;
       }
       case ANIMTYPE_DSVOLUME: {
         Volume *volume = (Volume *)data;
-        AnimData *adt = volume->adt;
-
         ale->flag = FILTER_VOLUME_OBJD(volume);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, volume->adt);
         break;
       }
       case ANIMTYPE_DSSKEY: {
         Key *key = (Key *)data;
-        AnimData *adt = key->adt;
-
         ale->flag = FILTER_SKE_OBJD(key);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, key->adt);
         break;
       }
       case ANIMTYPE_DSWOR: {
         World *wo = (World *)data;
-        AnimData *adt = wo->adt;
-
         ale->flag = FILTER_WOR_SCED(wo);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, wo->adt);
         break;
       }
       case ANIMTYPE_DSNTREE: {
         bNodeTree *ntree = (bNodeTree *)data;
-        AnimData *adt = ntree->adt;
-
         ale->flag = FILTER_NTREE_DATA(ntree);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, ntree->adt);
         break;
       }
       case ANIMTYPE_DSLINESTYLE: {
         FreestyleLineStyle *linestyle = (FreestyleLineStyle *)data;
-        AnimData *adt = linestyle->adt;
-
         ale->flag = FILTER_LS_SCED(linestyle);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, linestyle->adt);
         break;
       }
       case ANIMTYPE_DSPART: {
         ParticleSettings *part = (ParticleSettings *)ale->data;
-        AnimData *adt = part->adt;
-
         ale->flag = FILTER_PART_OBJD(part);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, part->adt);
         break;
       }
       case ANIMTYPE_DSTEX: {
         Tex *tex = (Tex *)data;
-        AnimData *adt = tex->adt;
-
         ale->flag = FILTER_TEX_DATA(tex);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, tex->adt);
         break;
       }
       case ANIMTYPE_DSGPENCIL: {
         bGPdata *gpd = (bGPdata *)data;
-        AnimData *adt = gpd->adt;
-
         /* NOTE: we just reuse the same expand filter for this case */
         ale->flag = EXPANDED_GPD(gpd);
 
         /* XXX: currently, this is only used for access to its animation data */
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, gpd->adt);
         break;
       }
       case ANIMTYPE_DSMCLIP: {
         MovieClip *clip = (MovieClip *)data;
-        AnimData *adt = clip->adt;
-
         ale->flag = EXPANDED_MCLIP(clip);
-
-        ale->key_data = (adt) ? adt->action : nullptr;
-        ale->datatype = ALE_ACT;
-
-        ale->adt = BKE_animdata_from_id(static_cast<ID *>(data));
+        key_data_from_adt(*ale, clip->adt);
         break;
       }
       case ANIMTYPE_NLACONTROLS: {
@@ -940,14 +867,9 @@ static bAnimListElem *make_new_animlistelem(void *data,
           /* the corresponding keyframes are from the animdata */
           if (ale->adt && ale->adt->action) {
             bAction *act = ale->adt->action;
-            char *rna_path = BKE_keyblock_curval_rnapath_get(key, kb);
-
-            /* try to find the F-Curve which corresponds to this exactly,
-             * then free the MEM_alloc'd string
-             */
-            if (rna_path) {
-              ale->key_data = (void *)BKE_fcurve_find(&act->curves, rna_path, 0);
-              MEM_freeN(rna_path);
+            /* Try to find the F-Curve which corresponds to this exactly. */
+            if (std::optional<std::string> rna_path = BKE_keyblock_curval_rnapath_get(key, kb)) {
+              ale->key_data = (void *)BKE_fcurve_find(&act->curves, rna_path->c_str(), 0);
             }
           }
           ale->datatype = (ale->key_data) ? ALE_FCURVE : ALE_NONE;
@@ -964,12 +886,30 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *layer = (GreasePencilLayer *)data;
+        GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(data);
 
         ale->flag = layer->base.flag;
 
         ale->key_data = nullptr;
-        ale->datatype = ALE_GREASE_PENCIL_CELS;
+        ale->datatype = ALE_GREASE_PENCIL_CEL;
+        break;
+      }
+      case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP: {
+        GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(data);
+
+        ale->flag = layer_group->base.flag;
+
+        ale->key_data = nullptr;
+        ale->datatype = ALE_GREASE_PENCIL_GROUP;
+        break;
+      }
+      case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
+        GreasePencil *grease_pencil = static_cast<GreasePencil *>(data);
+
+        ale->flag = grease_pencil->flag;
+
+        ale->key_data = nullptr;
+        ale->datatype = ALE_GREASE_PENCIL_DATA;
         break;
       }
       case ANIMTYPE_MASKLAYER: {
@@ -1038,7 +978,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
           bArmature *arm = (bArmature *)ob->data;
 
           /* skipping - not visible on currently visible layers */
-          if ((arm->layer & pchan->bone->layer) == 0) {
+          if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
             return true;
           }
           /* skipping - is currently hidden */
@@ -1088,7 +1028,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
          * since data-paths that point to missing strips are not shown.
          * If this is an important difference, the nullptr case could perform a global lookup,
          * only returning `true` if the sequence strip exists elsewhere
-         * (ignoring it's selection state). */
+         * (ignoring its selection state). */
         if (seq == nullptr) {
           return true;
         }
@@ -1106,7 +1046,8 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
 
     /* Check for selected nodes. */
     if (fcu->rna_path &&
-        BLI_str_quoted_substr(fcu->rna_path, "nodes[", node_name, sizeof(node_name))) {
+        BLI_str_quoted_substr(fcu->rna_path, "nodes[", node_name, sizeof(node_name)))
+    {
       /* Get strip name, and check if this strip is selected. */
       node = nodeFindNodebyName(ntree, node_name);
 
@@ -1125,7 +1066,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
 }
 
 /* Helper for name-based filtering - Perform "partial/fuzzy matches" (as in 80a7efd) */
-static bool name_matches_dopesheet_filter(bDopeSheet *ads, char *name)
+static bool name_matches_dopesheet_filter(bDopeSheet *ads, const char *name)
 {
   if (ads->flag & ADS_FLAG_FUZZY_NAMES) {
     /* full fuzzy, multi-word, case insensitive matches */
@@ -1191,7 +1132,7 @@ static bool skip_fcurve_with_name(
  *
  * \return true if F-Curve has errors/is disabled
  */
-static bool fcurve_has_errors(const FCurve *fcu)
+static bool fcurve_has_errors(const FCurve *fcu, bDopeSheet *ads)
 {
   /* F-Curve disabled (path evaluation error). */
   if (fcu->flag & FCURVE_DISABLED) {
@@ -1215,6 +1156,12 @@ static bool fcurve_has_errors(const FCurve *fcu)
     LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
       DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
         if (dtar->flag & DTAR_FLAG_INVALID) {
+          return true;
+        }
+
+        if ((dtar->flag & DTAR_FLAG_FALLBACK_USED) &&
+            (ads->filterflag2 & ADS_FILTER_DRIVER_FALLBACK_AS_ERROR))
+        {
           return true;
         }
       }
@@ -1256,7 +1203,8 @@ static FCurve *animfilter_fcurve_next(bDopeSheet *ads,
     if (ads && owner_id) {
       if ((filter_mode & ANIMFILTER_TMP_IGNORE_ONLYSEL) == 0) {
         if ((ads->filterflag & ADS_FILTER_ONLYSEL) ||
-            (ads->filterflag & ADS_FILTER_INCL_HIDDEN) == 0) {
+            (ads->filterflag & ADS_FILTER_INCL_HIDDEN) == 0)
+        {
           if (skip_fcurve_selected_data(ads, fcu, owner_id, filter_mode)) {
             continue;
           }
@@ -1283,7 +1231,7 @@ static FCurve *animfilter_fcurve_next(bDopeSheet *ads,
             /* error-based filtering... */
             if ((ads) && (ads->filterflag & ADS_FILTER_ONLY_ERRORS)) {
               /* skip if no errors... */
-              if (fcurve_has_errors(fcu) == false) {
+              if (!fcurve_has_errors(fcu, ads)) {
                 continue;
               }
             }
@@ -1344,6 +1292,37 @@ static size_t animfilter_fcurves(ListBase *anim_data,
 
   /* return the number of items added to the list */
   return items;
+}
+
+static size_t animfilter_fcurves_span(ListBase * /*bAnimListElem*/ anim_data,
+                                      bDopeSheet * /*ads*/,
+                                      Span<FCurve *> fcurves,
+                                      const int filter_mode,
+                                      ID *owner_id,
+                                      ID *fcurve_owner_id)
+{
+  size_t num_items = 0;
+  BLI_assert(owner_id);
+
+  for (FCurve *fcu : fcurves) {
+    /* make_new_animlistelem will return nullptr when fcu == nullptr, and that's
+     * going to cause problems. */
+    BLI_assert(fcu);
+
+    /* TODO: deal with `filter_mode` and `ads->filterflag`.
+     * See `animfilter_fcurve_next()`. */
+
+    if (filter_mode & ANIMFILTER_TMP_PEEK) {
+      /* Found an animation channel, which is good enough for the 'TMP_PEEK' mode. */
+      return 1;
+    }
+
+    bAnimListElem *ale = make_new_animlistelem(fcu, ANIMTYPE_FCURVE, owner_id, fcurve_owner_id);
+    BLI_addtail(anim_data, ale);
+    num_items++;
+  }
+
+  return num_items;
 }
 
 static size_t animfilter_act_group(bAnimContext *ac,
@@ -1479,6 +1458,32 @@ static size_t animfilter_action(bAnimContext *ac,
 
   /* return the number of items added to the list */
   return items;
+}
+
+/**
+ * Add animation list elements for FCurves in an Animation data-block.
+ */
+static size_t animfilter_animation_fcurves(
+    ListBase *anim_data, bDopeSheet *ads, AnimData *adt, const int filter_mode, ID *owner_id)
+{
+  /* If this ID is not bound, there is nothing to show. */
+  if (adt->binding_handle == 0) {
+    return 0;
+  }
+
+  BLI_assert(adt->animation); /* Otherwise this function wouldn't be called. */
+  animrig::Animation &anim = adt->animation->wrap();
+
+  /* Don't include anything from this animation if it is linked in from another
+   * file, and we're getting stuff for editing... */
+  if ((filter_mode & ANIMFILTER_FOREDIT) && (ID_IS_LINKED(&anim) || ID_IS_OVERRIDE_LIBRARY(&anim)))
+  {
+    return 0;
+  }
+
+  /* For now we don't show layers anywhere, just the contained F-Curves. */
+  Span<FCurve *> fcurves = animrig::fcurves_for_animation(anim, adt->binding_handle);
+  return animfilter_fcurves_span(anim_data, ads, fcurves, filter_mode, owner_id, &anim.id);
 }
 
 /* Include NLA-Data for NLA-Editor:
@@ -1672,8 +1677,11 @@ static size_t animfilter_block_data(
         { /* NLA Control Keyframes */
           items += animfilter_nla_controls(anim_data, ads, adt, filter_mode, id);
         },
-        { /* Keyframes */
+        { /* Keyframes from Action. */
           items += animfilter_action(ac, anim_data, ads, adt->action, filter_mode, id);
+        },
+        { /* Keyframes from Animation. */
+          items += animfilter_animation_fcurves(anim_data, ads, adt, filter_mode, id);
         });
   }
 
@@ -1740,10 +1748,119 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
 }
 
 /* Helper for Grease Pencil - layers within a data-block. */
-static size_t animdata_filter_gpencil_layers_data(ListBase *anim_data,
-                                                  bDopeSheet *ads,
-                                                  bGPdata *gpd,
+
+static size_t animdata_filter_grease_pencil_layer(ListBase *anim_data,
+                                                  bDopeSheet * /*ads*/,
+                                                  GreasePencil *grease_pencil,
+                                                  blender::bke::greasepencil::Layer &layer,
                                                   int filter_mode)
+{
+
+  size_t items = 0;
+
+  /* Only if the layer is selected. */
+  if (!ANIMCHANNEL_SELOK(layer.is_selected())) {
+    return items;
+  }
+
+  /* Only if the layer is editable. */
+  if ((filter_mode & ANIMFILTER_FOREDIT) && layer.is_locked()) {
+    return items;
+  }
+
+  /* Only if the layer is active. */
+  if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(&layer)) {
+    return items;
+  }
+
+  /* Skip empty layers. */
+  if (layer.is_empty()) {
+    return items;
+  }
+
+  /* Add layer channel. */
+  ANIMCHANNEL_NEW_CHANNEL(
+      static_cast<void *>(&layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+
+  return items;
+}
+
+static size_t animdata_filter_grease_pencil_layer_node_recursive(
+    ListBase *anim_data,
+    bDopeSheet *ads,
+    GreasePencil *grease_pencil,
+    blender::bke::greasepencil::TreeNode &node,
+    int filter_mode)
+{
+  using namespace blender::bke::greasepencil;
+  size_t items = 0;
+
+  /* Skip node if the name doesn't match the filter string. */
+  const bool name_search = (ads->searchstr[0] != '\0');
+  const bool skip_node = name_search && !name_matches_dopesheet_filter(ads, node.name().c_str());
+
+  if (node.is_layer() && !skip_node) {
+    items += animdata_filter_grease_pencil_layer(
+        anim_data, ads, grease_pencil, node.as_layer(), filter_mode);
+  }
+  else if (node.is_group()) {
+    const LayerGroup &layer_group = node.as_group();
+
+    ListBase tmp_data = {nullptr, nullptr};
+    size_t tmp_items = 0;
+
+    /* Add grease pencil layer channels. */
+    BEGIN_ANIMFILTER_SUBCHANNELS (layer_group.base.flag &GP_LAYER_TREE_NODE_EXPANDED) {
+      LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
+        tmp_items += animdata_filter_grease_pencil_layer_node_recursive(
+            &tmp_data, ads, grease_pencil, node_->wrap(), filter_mode);
+      }
+    }
+    END_ANIMFILTER_SUBCHANNELS;
+
+    if ((tmp_items == 0) && !name_search) {
+      /* If no sub-channels, return early.
+       * Except if the search by name is on, because we might want to display the layer group alone
+       * in that case. */
+      return items;
+    }
+
+    if ((filter_mode & ANIMFILTER_LIST_CHANNELS) && !skip_node) {
+      /* Add data block container (if for drawing, and it contains sub-channels). */
+      ANIMCHANNEL_NEW_CHANNEL(
+          static_cast<void *>(&node), ANIMTYPE_GREASE_PENCIL_LAYER_GROUP, grease_pencil, nullptr);
+    }
+
+    /* Add the list of collected channels. */
+    BLI_movelisttolist(anim_data, &tmp_data);
+    BLI_assert(BLI_listbase_is_empty(&tmp_data));
+    items += tmp_items;
+  }
+  return items;
+}
+
+static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
+                                                        bDopeSheet *ads,
+                                                        GreasePencil *grease_pencil,
+                                                        int filter_mode)
+{
+  size_t items = 0;
+
+  LISTBASE_FOREACH_BACKWARD (
+      GreasePencilLayerTreeNode *, node, &grease_pencil->root_group_ptr->children)
+  {
+    items += animdata_filter_grease_pencil_layer_node_recursive(
+        anim_data, ads, grease_pencil, node->wrap(), filter_mode);
+  }
+
+  return items;
+}
+
+/* Helper for Grease Pencil - layers within a data-block. */
+static size_t animdata_filter_gpencil_layers_data_legacy(ListBase *anim_data,
+                                                         bDopeSheet *ads,
+                                                         bGPdata *gpd,
+                                                         int filter_mode)
 {
   size_t items = 0;
 
@@ -1784,7 +1901,7 @@ static size_t animdata_filter_gpencil_layers_data(ListBase *anim_data,
 }
 
 static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
-                                                 bDopeSheet * /*ads*/,
+                                                 bDopeSheet *ads,
                                                  GreasePencil *grease_pencil,
                                                  int filter_mode)
 {
@@ -1792,21 +1909,44 @@ static size_t animdata_filter_grease_pencil_data(ListBase *anim_data,
 
   size_t items = 0;
 
-  /* Add data block container */
-  ANIMCHANNEL_NEW_CHANNEL(grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
-
-  Span<bke::greasepencil::Layer *> layers = grease_pencil->layers_for_write();
-
-  BEGIN_ANIMFILTER_SUBCHANNELS (grease_pencil->flag &GREASE_PENCIL_ANIM_CHANNEL_EXPANDED) {
-    for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
-      bke::greasepencil::Layer *layer = layers[layer_index];
-
-      /* Add layer channel */
-      ANIMCHANNEL_NEW_CHANNEL(
-          static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
-    }
+  /* When asked from "AnimData" blocks (i.e. the top-level containers for normal animation),
+   * for convenience, this will return grease pencil data-blocks instead.
+   * This may cause issues down the track, but for now, this will do.
+   */
+  if (filter_mode & ANIMFILTER_ANIMDATA) {
+    /* Just add data block container. */
+    ANIMCHANNEL_NEW_CHANNEL(
+        grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
   }
-  END_ANIMFILTER_SUBCHANNELS;
+  else {
+    ListBase tmp_data = {nullptr, nullptr};
+    size_t tmp_items = 0;
+
+    if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
+      /* Add grease pencil layer channels. */
+      BEGIN_ANIMFILTER_SUBCHANNELS (grease_pencil->flag &GREASE_PENCIL_ANIM_CHANNEL_EXPANDED) {
+        tmp_items += animdata_filter_grease_pencil_layers_data(
+            &tmp_data, ads, grease_pencil, filter_mode);
+      }
+      END_ANIMFILTER_SUBCHANNELS;
+    }
+
+    if (tmp_items == 0) {
+      /* If no sub-channels, return early. */
+      return items;
+    }
+
+    if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
+      /* Add data block container (if for drawing, and it contains sub-channels). */
+      ANIMCHANNEL_NEW_CHANNEL(
+          grease_pencil, ANIMTYPE_GREASE_PENCIL_DATABLOCK, grease_pencil, nullptr);
+    }
+
+    /* Add the list of collected channels. */
+    BLI_movelisttolist(anim_data, &tmp_data);
+    BLI_assert(BLI_listbase_is_empty(&tmp_data));
+    items += tmp_items;
+  }
 
   return items;
 }
@@ -1834,7 +1974,7 @@ static size_t animdata_filter_gpencil_legacy_data(ListBase *anim_data,
     if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
       /* add gpencil animation channels */
       BEGIN_ANIMFILTER_SUBCHANNELS (EXPANDED_GPD(gpd)) {
-        tmp_items += animdata_filter_gpencil_layers_data(&tmp_data, ads, gpd, filter_mode);
+        tmp_items += animdata_filter_gpencil_layers_data_legacy(&tmp_data, ads, gpd, filter_mode);
       }
       END_ANIMFILTER_SUBCHANNELS;
     }
@@ -2004,7 +2144,7 @@ static size_t animdata_filter_ds_gpencil(
 
     /* add Grease Pencil layers */
     if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
-      tmp_items += animdata_filter_gpencil_layers_data(&tmp_data, ads, gpd, filter_mode);
+      tmp_items += animdata_filter_gpencil_layers_data_legacy(&tmp_data, ads, gpd, filter_mode);
     }
 
     /* TODO: do these need a separate expander?
@@ -2647,14 +2787,14 @@ static size_t animdata_filter_ds_obdata(
     }
     case OB_MESH: /* ------- Mesh ---------- */
     {
-      Mesh *me = (Mesh *)ob->data;
+      Mesh *mesh = (Mesh *)ob->data;
 
       if (ads->filterflag & ADS_FILTER_NOMESH) {
         return 0;
       }
 
       type = ANIMTYPE_DSMESH;
-      expanded = FILTER_MESH_OBJD(me);
+      expanded = FILTER_MESH_OBJD(mesh);
       break;
     }
     case OB_LATTICE: /* ---- Lattice ---- */
@@ -2816,10 +2956,15 @@ static size_t animdata_filter_ds_obanim(
         expanded = EXPANDED_DRVD(adt);
       },
       {/* NLA Strip Controls - no dedicated channel for now (XXX) */},
-      { /* Keyframes */
+      { /* Keyframes from Action. */
         type = ANIMTYPE_FILLACTD;
         cdata = adt->action;
         expanded = EXPANDED_ACTC(adt->action);
+      },
+      { /* Keyframes from Animation. */
+        type = ANIMTYPE_FILLANIM;
+        cdata = adt->animation;
+        expanded = EXPANDED_ADT(adt);
       });
 
   /* add object-level animation channels */
@@ -2995,10 +3140,15 @@ static size_t animdata_filter_ds_scene(
         expanded = EXPANDED_DRVD(adt);
       },
       {/* NLA Strip Controls - no dedicated channel for now (XXX) */},
-      { /* Keyframes */
+      { /* Keyframes from Action. */
         type = ANIMTYPE_FILLACTD;
         cdata = adt->action;
         expanded = EXPANDED_ACTC(adt->action);
+      },
+      { /* Keyframes from Animation. */
+        type = ANIMTYPE_FILLANIM;
+        cdata = adt->animation;
+        expanded = EXPANDED_ADT(adt);
       });
 
   /* add scene-level animation channels */
@@ -3522,138 +3672,136 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
                             void *data,
                             eAnimCont_Types datatype)
 {
+  if (!data || !anim_data) {
+    return 0;
+  }
+
   size_t items = 0;
+  switch (datatype) {
+    /* Action-Editing Modes */
+    case ANIMCONT_ACTION: /* 'Action Editor' */
+    {
+      Object *obact = ac->obact;
+      SpaceAction *saction = (SpaceAction *)ac->sl;
+      bDopeSheet *ads = (saction) ? &saction->ads : nullptr;
 
-  /* only filter data if there's somewhere to put it */
-  if (data && anim_data) {
-    /* firstly filter the data */
-    switch (datatype) {
-      /* Action-Editing Modes */
-      case ANIMCONT_ACTION: /* 'Action Editor' */
-      {
-        Object *obact = ac->obact;
-        SpaceAction *saction = (SpaceAction *)ac->sl;
-        bDopeSheet *ads = (saction) ? &saction->ads : nullptr;
-
-        /* specially check for AnimData filter, see #36687. */
-        if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
-          /* all channels here are within the same AnimData block, hence this special case */
-          if (LIKELY(obact->adt)) {
-            ANIMCHANNEL_NEW_CHANNEL(obact->adt, ANIMTYPE_ANIMDATA, (ID *)obact, nullptr);
-          }
+      /* specially check for AnimData filter, see #36687. */
+      if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
+        /* all channels here are within the same AnimData block, hence this special case */
+        if (LIKELY(obact->adt)) {
+          ANIMCHANNEL_NEW_CHANNEL(obact->adt, ANIMTYPE_ANIMDATA, (ID *)obact, nullptr);
         }
-        else {
-          /* The check for the DopeSheet summary is included here
-           * since the summary works here too. */
-          if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-            items += animfilter_action(
-                ac, anim_data, ads, static_cast<bAction *>(data), filter_mode, (ID *)obact);
-          }
-        }
-
-        break;
       }
-      case ANIMCONT_SHAPEKEY: /* 'ShapeKey Editor' */
-      {
-        Key *key = (Key *)data;
-
-        /* specially check for AnimData filter, see #36687. */
-        if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
-          /* all channels here are within the same AnimData block, hence this special case */
-          if (LIKELY(key->adt)) {
-            ANIMCHANNEL_NEW_CHANNEL(key->adt, ANIMTYPE_ANIMDATA, (ID *)key, nullptr);
-          }
-        }
-        else {
-          /* The check for the DopeSheet summary is included here
-           * since the summary works here too. */
-          if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-            items = animdata_filter_shapekey(ac, anim_data, key, filter_mode);
-          }
-        }
-
-        break;
-      }
-
-      /* Modes for Specialty Data Types (i.e. not keyframes) */
-      case ANIMCONT_GPENCIL: {
+      else {
+        /* The check for the DopeSheet summary is included here
+         * since the summary works here too. */
         if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-          if (U.experimental.use_grease_pencil_version3) {
-            items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
-          }
-          else {
-            items = animdata_filter_gpencil_legacy(ac, anim_data, data, filter_mode);
-          }
+          items += animfilter_action(
+              ac, anim_data, ads, static_cast<bAction *>(data), filter_mode, (ID *)obact);
         }
-        break;
       }
-      case ANIMCONT_MASK: {
+
+      break;
+    }
+    case ANIMCONT_SHAPEKEY: /* 'ShapeKey Editor' */
+    {
+      Key *key = (Key *)data;
+
+      /* specially check for AnimData filter, see #36687. */
+      if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
+        /* all channels here are within the same AnimData block, hence this special case */
+        if (LIKELY(key->adt)) {
+          ANIMCHANNEL_NEW_CHANNEL(key->adt, ANIMTYPE_ANIMDATA, (ID *)key, nullptr);
+        }
+      }
+      else {
+        /* The check for the DopeSheet summary is included here
+         * since the summary works here too. */
         if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-          items = animdata_filter_mask(ac->bmain, anim_data, data, filter_mode);
+          items = animdata_filter_shapekey(ac, anim_data, key, filter_mode);
         }
-        break;
       }
 
-      /* DopeSheet Based Modes */
-      case ANIMCONT_DOPESHEET: /* 'DopeSheet Editor' */
-      {
-        /* the DopeSheet editor is the primary place where the DopeSheet summaries are useful */
-        if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-          items += animdata_filter_dopesheet(
-              ac, anim_data, static_cast<bDopeSheet *>(data), filter_mode);
-        }
-        break;
-      }
-      case ANIMCONT_FCURVES: /* Graph Editor -> F-Curves/Animation Editing */
-      case ANIMCONT_DRIVERS: /* Graph Editor -> Drivers Editing */
-      case ANIMCONT_NLA:     /* NLA Editor */
-      {
-        /* all of these editors use the basic DopeSheet data for filtering options,
-         * but don't have all the same features */
-        items = animdata_filter_dopesheet(
-            ac, anim_data, static_cast<bDopeSheet *>(data), filter_mode);
-        break;
-      }
-
-      /* Timeline Mode - Basically the same as dopesheet,
-       * except we only have the summary for now */
-      case ANIMCONT_TIMELINE: {
-        /* the DopeSheet editor is the primary place where the DopeSheet summaries are useful */
-        if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-          items += animdata_filter_dopesheet(
-              ac, anim_data, static_cast<bDopeSheet *>(data), filter_mode);
-        }
-        break;
-      }
-
-      /* Special/Internal Use */
-      case ANIMCONT_CHANNEL: /* animation channel */
-      {
-        bDopeSheet *ads = ac->ads;
-
-        /* based on the channel type, filter relevant data for this */
-        items = animdata_filter_animchan(
-            ac, anim_data, ads, static_cast<bAnimListElem *>(data), filter_mode);
-        break;
-      }
-
-      /* unhandled */
-      default: {
-        printf("ANIM_animdata_filter() - Invalid datatype argument %i\n", datatype);
-        break;
-      }
+      break;
     }
 
-    /* remove any 'weedy' entries */
-    items = animdata_filter_remove_invalid(anim_data);
+    /* Modes for Specialty Data Types (i.e. not keyframes) */
+    case ANIMCONT_GPENCIL: {
+      if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+        if (U.experimental.use_grease_pencil_version3) {
+          items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
+        }
+        else {
+          items = animdata_filter_gpencil_legacy(ac, anim_data, data, filter_mode);
+        }
+      }
+      break;
+    }
+    case ANIMCONT_MASK: {
+      if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+        items = animdata_filter_mask(ac->bmain, anim_data, data, filter_mode);
+      }
+      break;
+    }
 
-    /* remove duplicates (if required) */
-    if (filter_mode & ANIMFILTER_NODUPLIS) {
-      items = animdata_filter_remove_duplis(anim_data);
+    /* DopeSheet Based Modes */
+    case ANIMCONT_DOPESHEET: /* 'DopeSheet Editor' */
+    {
+      /* the DopeSheet editor is the primary place where the DopeSheet summaries are useful */
+      if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+        items += animdata_filter_dopesheet(
+            ac, anim_data, static_cast<bDopeSheet *>(data), filter_mode);
+      }
+      break;
+    }
+    case ANIMCONT_FCURVES: /* Graph Editor -> F-Curves/Animation Editing */
+    case ANIMCONT_DRIVERS: /* Graph Editor -> Drivers Editing */
+    case ANIMCONT_NLA:     /* NLA Editor */
+    {
+      /* all of these editors use the basic DopeSheet data for filtering options,
+       * but don't have all the same features */
+      items = animdata_filter_dopesheet(
+          ac, anim_data, static_cast<bDopeSheet *>(data), filter_mode);
+      break;
+    }
+
+    /* Timeline Mode - Basically the same as dopesheet,
+     * except we only have the summary for now */
+    case ANIMCONT_TIMELINE: {
+      /* the DopeSheet editor is the primary place where the DopeSheet summaries are useful */
+      if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+        items += animdata_filter_dopesheet(
+            ac, anim_data, static_cast<bDopeSheet *>(data), filter_mode);
+      }
+      break;
+    }
+
+    /* Special/Internal Use */
+    case ANIMCONT_CHANNEL: /* animation channel */
+    {
+      bDopeSheet *ads = ac->ads;
+
+      /* based on the channel type, filter relevant data for this */
+      items = animdata_filter_animchan(
+          ac, anim_data, ads, static_cast<bAnimListElem *>(data), filter_mode);
+      break;
+    }
+
+    /* unhandled */
+    default: {
+      printf("ANIM_animdata_filter() - Invalid datatype argument %i\n", datatype);
+      break;
     }
   }
 
-  /* return the number of items in the list */
+  /* remove any 'weedy' entries */
+  items = animdata_filter_remove_invalid(anim_data);
+
+  /* remove duplicates (if required) */
+  if (filter_mode & ANIMFILTER_NODUPLIS) {
+    items = animdata_filter_remove_duplis(anim_data);
+  }
+
   return items;
 }
 

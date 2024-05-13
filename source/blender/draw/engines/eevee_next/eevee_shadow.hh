@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,11 +13,13 @@
 #include "BLI_pool.hh"
 #include "BLI_vector.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
+#include "eevee_camera.hh"
 #include "eevee_material.hh"
 #include "eevee_shader.hh"
 #include "eevee_shader_shared.hh"
+#include "eevee_sync.hh"
 
 namespace blender::eevee {
 
@@ -52,6 +54,20 @@ constexpr static const float shadow_clipmap_scale_mat[4][4] = {{SHADOW_TILEMAP_R
                                                                {0, 0, 0.5, 0},
                                                                {0, 0, 0.5, 1}};
 
+/* Technique used for updating the virtual shadow map contents. */
+enum class ShadowTechnique {
+  /* Default virtual shadow map update using large virtual framebuffer to rasterize geometry with
+   * per-fragment textureAtomicMin to perform depth-test and indirectly store nearest depth value
+   * in the shadow atlas. */
+  ATOMIC_RASTER = 0,
+
+  /* Tile-architecture optimized virtual shadow map update, leveraging on-tile memory for clearing
+   * and depth-testing during geometry rasterization to avoid atomic operations, simplify mesh
+   * depth shader and only perform a single storage operation per pixel. This technique performs
+   * a 3-pass solution, first clearing tiles, updating depth and storing final results. */
+  TILE_COPY = 1,
+};
+
 /* -------------------------------------------------------------------- */
 /** \name Tile-Map
  *
@@ -71,8 +87,6 @@ struct ShadowTileMap : public ShadowTileMapData {
   eCubeFace cubeface = Z_NEG;
   /** Cached, used for detecting updates. */
   float4x4 object_mat;
-  /** Near and far clip distances. For clip-map, computed on the GPU using casters BBoxes. */
-  float near, far;
 
  public:
   ShadowTileMap(int tiles_index_)
@@ -89,8 +103,14 @@ struct ShadowTileMap : public ShadowTileMapData {
                          float lod_bias_,
                          eShadowProjectionType projection_type_);
 
-  void sync_cubeface(
-      const float4x4 &object_mat, float near, float far, eCubeFace face, float lod_bias_);
+  void sync_cubeface(eLightType light_type_,
+                     const float4x4 &object_mat,
+                     float near,
+                     float far,
+                     float side,
+                     float shift,
+                     eCubeFace face,
+                     float lod_bias_);
 
   void debug_draw() const;
 
@@ -177,6 +197,9 @@ class ShadowModule {
   friend ShadowTileMapPool;
 
  public:
+  /* Shadowing technique. */
+  static ShadowTechnique shadow_technique;
+
   /** Need to be first because of destructor order. */
   ShadowTileMapPool tilemap_pool;
 
@@ -186,8 +209,15 @@ class ShadowModule {
  private:
   Instance &inst_;
 
+  ShadowSceneData &data_;
+
   /** Map of shadow casters to track deletion & update of intersected shadows. */
   Map<ObjectKey, ShadowObject> objects_;
+
+  /* Used to call caster_update_ps_ only once per sync (Initialized on begin_sync). */
+  bool update_casters_ = false;
+
+  bool jittered_transparency_ = false;
 
   /* -------------------------------------------------------------------- */
   /** \name Tile-map Management
@@ -198,27 +228,39 @@ class ShadowModule {
   PassSimple tilemap_update_ps_ = {"TilemapUpdate"};
 
   PassMain::Sub *tilemap_usage_transparent_ps_ = nullptr;
-  GPUBatch *box_batch_ = nullptr;
+  gpu::Batch *box_batch_ = nullptr;
+  /* Source texture for depth buffer analysis. */
+  GPUTexture *src_depth_tx_ = nullptr;
 
   Framebuffer usage_tag_fb;
 
+  PassSimple caster_update_ps_ = {"CasterUpdate"};
+  PassSimple jittered_transparent_caster_update_ps_ = {"TransparentCasterUpdate"};
   /** List of Resource IDs (to get bounds) for tagging passes. */
   StorageVectorBuffer<uint, 128> past_casters_updated_ = {"PastCastersUpdated"};
   StorageVectorBuffer<uint, 128> curr_casters_updated_ = {"CurrCastersUpdated"};
+  StorageVectorBuffer<uint, 128> jittered_transparent_casters_ = {"JitteredTransparentCasters"};
   /** List of Resource IDs (to get bounds) for getting minimum clip-maps bounds. */
   StorageVectorBuffer<uint, 128> curr_casters_ = {"CurrCasters"};
 
   /** Indirect arguments for page clearing. */
-  StorageBuffer<DispatchCommand> clear_dispatch_buf_;
-  /** Pages to clear. */
-  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_page_buf_ = {"clear_page_buf"};
+  DispatchIndirectBuf clear_dispatch_buf_ = {"clear_dispatch_buf"};
+  /** Indirect arguments for TBDR Tile Page passes. */
+  DrawIndirectBuf tile_draw_buf_ = {"tile_draw_buf"};
+  /** A compact stream of rendered tile coordinates in the shadow atlas. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> dst_coord_buf_ = {"dst_coord_buf"};
+  /** A compact stream of rendered tile coordinates in the framebuffer. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> src_coord_buf_ = {"src_coord_buf"};
+  /** Same as dst_coord_buf_ but is not compact. More like a linear texture. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> render_map_buf_ = {"render_map_buf"};
+  /** View to viewport index mapping and other render-only related data. */
+  ShadowRenderViewBuf render_view_buf_ = {"render_view_buf"};
 
   int3 dispatch_depth_scan_size_;
-  /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
-  float tilemap_projection_ratio_;
-  float pixel_world_radius_;
   int2 usage_tag_fb_resolution_;
   int usage_tag_fb_lod_ = 5;
+  int max_view_per_tilemap_ = 1;
+  int2 input_depth_extent_;
 
   /* Statistics that are read back to CPU after a few frame (to avoid stall). */
   SwapChain<ShadowStatisticsBuf, 5> statistics_buf_;
@@ -244,7 +286,7 @@ class ShadowModule {
   int3 scan_dispatch_size_;
   int rendering_tilemap_;
   int rendering_lod_;
-  bool do_full_update = true;
+  bool do_full_update_ = true;
 
   /** \} */
 
@@ -254,17 +296,17 @@ class ShadowModule {
 
   /** Multi-View containing a maximum of 64 view to be rendered with the shadow pipeline. */
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
-  /** Tile to physical page mapping. This is an array texture with one layer per view. */
-  Texture render_map_tx_ = {"ShadowRenderMap",
-                            GPU_R32UI,
-                            GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                            int2(SHADOW_TILEMAP_RES),
-                            64,
-                            nullptr,
-                            SHADOW_TILEMAP_LOD + 1};
-  /** An empty frame-buffer (no attachment) the size of a whole tile-map. */
-  Framebuffer render_fb_;
+  /** Framebuffer with the atlas_tx attached. */
+  Framebuffer render_fb_ = {"shadow_write_framebuffer"};
+
+  /* NOTE(Metal): Metal requires memoryless textures to be created which represent attachments in
+   * the shadow write frame-buffer. These textures do not occupy any physical memory, but require a
+   * Texture object containing its parameters. */
+  Texture shadow_depth_fb_tx_ = {"shadow_depth_fb_tx_"};
+  Texture shadow_depth_accum_tx_ = {"shadow_depth_accum_tx_"};
+
+  /** Arrays of viewports to rendering each tile to. */
+  std::array<int4, 16> multi_viewports_;
 
   /** \} */
 
@@ -289,40 +331,66 @@ class ShadowModule {
   bool enabled_ = true;
 
  public:
-  ShadowModule(Instance &inst);
+  ShadowModule(Instance &inst, ShadowSceneData &data);
   ~ShadowModule(){};
 
   void init();
 
   void begin_sync();
   /** Register a shadow caster or receiver. */
-  void sync_object(const ObjectHandle &handle,
+  void sync_object(const Object *ob,
+                   const ObjectHandle &handle,
                    const ResourceHandle &resource_handle,
-                   bool is_shadow_caster,
-                   bool is_alpha_blend);
+                   bool is_alpha_blend,
+                   bool has_transparent_shadows);
   void end_sync();
 
   void set_lights_data();
 
-  void set_view(View &view);
+  /* Update all shadow regions visible inside the view.
+   * If called multiple time for the same view, it will only do the depth buffer scanning
+   * to check any new opaque surfaces.
+   * Expect the HiZ buffer to be up to date.
+   * Needs to be called after `LightModule::set_view();`. */
+  void set_view(View &view, int2 extent);
 
   void debug_end_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  template<typename PassType> void bind_resources(PassType &pass)
   {
-    pass->bind_texture(SHADOW_ATLAS_TEX_SLOT, &atlas_tx_);
-    pass->bind_texture(SHADOW_TILEMAPS_TEX_SLOT, &tilemap_pool.tilemap_tx);
+    pass.bind_texture(SHADOW_ATLAS_TEX_SLOT, &atlas_tx_);
+    pass.bind_texture(SHADOW_TILEMAPS_TEX_SLOT, &tilemap_pool.tilemap_tx);
+  }
+
+  const ShadowSceneData &get_data()
+  {
+    return data_;
+  }
+
+  float get_global_lod_bias()
+  {
+    return lod_bias_;
+  }
+
+  /* Set all shadows to update. To be called before `end_sync`. */
+  void reset()
+  {
+    do_full_update_ = true;
   }
 
  private:
   void remove_unused();
   void debug_page_map_call(DRWPass *pass);
+  bool shadow_update_finished();
 
   /** Compute approximate screen pixel space radius. */
   float screen_pixel_radius(const View &view, const int2 &extent);
   /** Compute approximate punctual shadow pixel world space radius, 1 unit away of the light. */
   float tilemap_pixel_radius();
+
+  /* Returns the maximum number of view per shadow projection for a single update loop. */
+  int max_view_per_tilemap();
 };
 
 /** \} */
@@ -338,16 +406,16 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   ShadowModule &shadows_;
   /** Tile-map for each cube-face needed (in eCubeFace order). */
   Vector<ShadowTileMap *> tilemaps_;
-  /** Area light size. */
-  float size_x_, size_y_;
   /** Shape type. */
   eLightType light_type_;
   /** Light position. */
   float3 position_;
-  /** Near and far clip distances. */
-  float far_, near_;
+  /** Used to compute near and far clip distances. */
+  float max_distance_, light_radius_;
   /** Number of tile-maps needed to cover the light angular extents. */
   int tilemaps_needed_;
+  /** Shadow LOD bias calculated based on global and light shadow resolution scale. */
+  float lod_bias_;
 
  public:
   ShadowPunctual(ShadowModule &module) : shadows_(module){};
@@ -365,8 +433,9 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   void sync(eLightType light_type,
             const float4x4 &object_mat,
             float cone_aperture,
-            float near_clip,
-            float far_clip);
+            float light_shape_radius,
+            float max_distance,
+            float shadow_resolution_scale);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -376,7 +445,16 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, float lod_bias);
+  void end_sync(Light &light);
+
+ private:
+  /**
+   * Compute the projection matrix inputs.
+   * Make sure that the projection encompass all possible rays that can start in the projection
+   * quadrant.
+   */
+  void compute_projection_boundaries(
+      float max_lit_distance, float &near, float &far, float &side, float &back_shift);
 };
 
 class ShadowDirectional : public NonCopyable, NonMovable {
@@ -390,6 +468,10 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   float4x4 object_mat_;
   /** Current range of clip-map / cascades levels covered by this shadow. */
   IndexRange levels_range;
+  /** Angle of the shadowed light shape. Might be scaled compared to the shading disk. */
+  float disk_shape_angle_;
+  /** Shadow LOD bias calculated based on global and light shadow resolution scale. */
+  float lod_bias_;
 
  public:
   ShadowDirectional(ShadowModule &module) : shadows_(module){};
@@ -404,23 +486,26 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Sync shadow parameters but do not allocate any shadow tile-maps.
    */
-  void sync(const float4x4 &object_mat, float min_resolution);
+  void sync(const float4x4 &object_mat,
+            float min_resolution,
+            float shadow_disk_angle,
+            float shadow_resolution_scale);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
    */
-  void release_excess_tilemaps(const Camera &camera, float lod_bias);
+  void release_excess_tilemaps(const Camera &camera);
 
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, const Camera &camera, float lod_bias);
+  void end_sync(Light &light, const Camera &camera);
 
   /* Return coverage of the whole tile-map in world unit. */
   static float coverage_get(int lvl)
   {
     /* This function should be kept in sync with shadow_directional_level(). */
-    /* \note: If we would to introduce a global scaling option it would be here. */
+    /* \note If we would to introduce a global scaling option it would be here. */
     return exp2(lvl);
   }
 
@@ -432,10 +517,10 @@ class ShadowDirectional : public NonCopyable, NonMovable {
 
  private:
   IndexRange clipmap_level_range(const Camera &camera);
-  IndexRange cascade_level_range(const Camera &camera, float lod_bias);
+  IndexRange cascade_level_range(const Camera &camera);
 
   void cascade_tilemaps_distribution(Light &light, const Camera &camera);
-  void clipmap_tilemaps_distribution(Light &light, const Camera &camera, float lod_bias);
+  void clipmap_tilemaps_distribution(Light &light, const Camera &camera);
 
   void cascade_tilemaps_distribution_near_far_points(const Camera &camera,
                                                      float3 &near_point,

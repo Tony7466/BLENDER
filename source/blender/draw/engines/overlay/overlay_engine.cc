@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,20 +8,20 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BKE_duplilist.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_duplilist.hh"
+#include "BKE_object.hh"
+#include "BKE_paint.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "DNA_space_types.h"
 
@@ -182,7 +182,9 @@ static void OVERLAY_cache_init(void *vedata)
       OVERLAY_edit_lattice_cache_init(data);
       break;
     case CTX_MODE_PAINT_GREASE_PENCIL:
+    case CTX_MODE_SCULPT_GREASE_PENCIL:
     case CTX_MODE_EDIT_GREASE_PENCIL:
+    case CTX_MODE_WEIGHT_GREASE_PENCIL:
       OVERLAY_edit_grease_pencil_cache_init(data);
       break;
     case CTX_MODE_PARTICLE:
@@ -238,10 +240,10 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_volume_cache_init(data);
 }
 
-BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *do_init)
+BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *r_do_init)
 {
   OVERLAY_DupliData **dupli_data = (OVERLAY_DupliData **)DRW_duplidata_get(vedata);
-  *do_init = false;
+  *r_do_init = false;
   if (!ELEM(ob->type, OB_MESH, OB_SURF, OB_LATTICE, OB_CURVES_LEGACY, OB_FONT)) {
     return nullptr;
   }
@@ -250,11 +252,11 @@ BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bo
     if (*dupli_data == nullptr) {
       *dupli_data = static_cast<OVERLAY_DupliData *>(
           MEM_callocN(sizeof(OVERLAY_DupliData), __func__));
-      *do_init = true;
+      *r_do_init = true;
     }
     else if ((*dupli_data)->base_flag != ob->base_flag) {
       /* Select state might have change, reinitialize. */
-      *do_init = true;
+      *r_do_init = true;
     }
     return *dupli_data;
   }
@@ -291,6 +293,14 @@ static bool overlay_object_is_edit_mode(const OVERLAY_PrivateData *pd, const Obj
     }
   }
   return false;
+}
+
+static bool overlay_object_is_paint_mode(const DRWContextState *draw_ctx, const Object *ob)
+{
+  if (ob->type == OB_GREASE_PENCIL && draw_ctx->object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) {
+    return true;
+  }
+  return (ob == draw_ctx->obact) && (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
 }
 
 static bool overlay_should_fade_object(Object *ob, Object *active_object)
@@ -335,10 +345,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
                                                 false;
   const bool in_particle_edit_mode = (ob->mode == OB_MODE_PARTICLE_EDIT) &&
                                      (pd->ctx_mode == CTX_MODE_PARTICLE);
-  const bool in_paint_mode = (ob == draw_ctx->obact) &&
-                             (draw_ctx->object_mode & OB_MODE_ALL_PAINT);
+  const bool in_paint_mode = overlay_object_is_paint_mode(draw_ctx, ob);
   const bool in_sculpt_curve_mode = (ob == draw_ctx->obact ||
-                                     (is_preview && dupli_parent == draw_ctx->obact)) &&
+                                     (is_preview && dupli_parent == draw_ctx->obact &&
+                                      ob->type == OB_CURVES)) &&
                                     (draw_ctx->object_mode & OB_MODE_SCULPT_CURVES);
   const bool in_sculpt_mode = (ob == draw_ctx->obact) && (ob->sculpt != nullptr) &&
                               (ob->sculpt->mode_type == OB_MODE_SCULPT);
@@ -404,6 +414,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     }
   }
 
+  if (is_preview && (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) != 0) {
+    OVERLAY_viewer_attribute_text(*ob);
+  }
+
   if (ob->type == OB_VOLUME) {
     OVERLAY_volume_cache_populate(data, ob);
   }
@@ -440,9 +454,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_edit_curves_cache_populate(data, ob);
         break;
       case OB_GREASE_PENCIL:
-        if (U.experimental.use_grease_pencil_version3) {
-          OVERLAY_edit_grease_pencil_cache_populate(data, ob);
-        }
+        OVERLAY_edit_grease_pencil_cache_populate(data, ob);
         break;
     }
   }
@@ -459,6 +471,9 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         break;
       case OB_MODE_TEXTURE_PAINT:
         OVERLAY_paint_texture_cache_populate(data, ob);
+        break;
+      case OB_MODE_WEIGHT_GPENCIL_LEGACY:
+        OVERLAY_weight_grease_pencil_cache_populate(data, ob);
         break;
       default:
         break;
@@ -746,6 +761,7 @@ static void OVERLAY_draw_scene(void *vedata)
       OVERLAY_edit_curves_draw(data);
       break;
     case CTX_MODE_EDIT_GREASE_PENCIL:
+    case CTX_MODE_WEIGHT_GREASE_PENCIL:
       OVERLAY_edit_grease_pencil_draw(data);
       break;
     default:
@@ -763,7 +779,7 @@ static void OVERLAY_engine_free()
 
 static void OVERLAY_instance_free(void *instance_)
 {
-  auto *instance = (Instance *)instance_;
+  Instance *instance = (Instance *)instance_;
   if (instance != nullptr) {
     delete instance;
   }
@@ -776,21 +792,21 @@ static void OVERLAY_instance_free(void *instance_)
 static const DrawEngineDataSize overlay_data_size = DRW_VIEWPORT_DATA_SIZE(OVERLAY_Data);
 
 DrawEngineType draw_engine_overlay_type = {
-    nullptr,
-    nullptr,
-    N_("Overlay"),
-    &overlay_data_size,
-    &OVERLAY_engine_init,
-    &OVERLAY_engine_free,
-    &OVERLAY_instance_free,
-    &OVERLAY_cache_init,
-    &OVERLAY_cache_populate,
-    &OVERLAY_cache_finish,
-    &OVERLAY_draw_scene,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
+    /*idname*/ N_("Overlay"),
+    /*vedata_size*/ &overlay_data_size,
+    /*engine_init*/ &OVERLAY_engine_init,
+    /*engine_free*/ &OVERLAY_engine_free,
+    /*instance_free*/ &OVERLAY_instance_free,
+    /*cache_init*/ &OVERLAY_cache_init,
+    /*cache_populate*/ &OVERLAY_cache_populate,
+    /*cache_finish*/ &OVERLAY_cache_finish,
+    /*draw_scene*/ &OVERLAY_draw_scene,
+    /*view_update*/ nullptr,
+    /*id_update*/ nullptr,
+    /*render_to_image*/ nullptr,
+    /*store_metadata*/ nullptr,
 };
 
 /** \} */

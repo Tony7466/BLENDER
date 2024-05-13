@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -28,7 +28,7 @@ class WORLD_PT_context_world(WorldButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     @classmethod
     def poll(cls, context):
@@ -77,7 +77,7 @@ class WORLD_PT_custom_props(WorldButtonsPanel, PropertyPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
     _context_path = "world"
     _property_type = bpy.types.World
 
@@ -121,7 +121,7 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
     bl_label = "Volume"
     bl_translation_context = i18n_contexts.id_id
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
     @classmethod
     def poll(cls, context):
@@ -138,6 +138,9 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
 
         layout.use_property_split = True
 
+        if world.use_eevee_finite_volume:
+            layout.operator("world.convert_volume_to_mesh", icon='WORLD', text="Convert Volume")
+
         if node:
             input = find_node_input(node, "Volume")
             if input:
@@ -149,7 +152,7 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
 
 
 class EEVEE_WORLD_PT_probe(WorldButtonsPanel, Panel):
-    bl_label = "Probe"
+    bl_label = "Light Probe"
     bl_translation_context = i18n_contexts.id_id
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}

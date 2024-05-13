@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
  * Utilities for stand-alone `makesdna.cc` and Blender to share.
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -158,6 +158,7 @@ char *DNA_elem_id_rename(MemArena *mem_arena,
     i += elem_full_tail_len;
   }
   BLI_assert((strlen(elem_dst_full) == elem_final_len) && (i == elem_final_len));
+  UNUSED_VARS_NDEBUG(i);
   return elem_dst_full;
 }
 

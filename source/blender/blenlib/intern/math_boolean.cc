@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,6 @@
  * \ingroup bli
  */
 
-#include "BLI_hash.hh"
 #include "BLI_math_boolean.hh"
 #include "BLI_math_mpq.hh"
 #include "BLI_math_vector_types.hh"

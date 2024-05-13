@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation All rights reserved.
+/* SPDX-FileCopyrightText: 2023 Blender Authors All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,13 +7,13 @@
  */
 #pragma once
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
+#include "BLI_compiler_attrs.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 
 #include "vk_common.hh"
 
-#include <mutex>
 #include <typeindex>
 
 namespace blender::gpu {
@@ -45,17 +45,12 @@ class VKDebuggingTools {
   ~VKDebuggingTools();
   void init(VkInstance vk_instance);
   void deinit(VkInstance vk_instance);
-  bool is_ignore(int32_t id_number);
   VkResult init_messenger(VkInstance vk_instance);
   void destroy_messenger(VkInstance vk_instance);
   void print_labels(const VkDebugUtilsMessengerCallbackDataEXT *callback_data);
 
  private:
   VkDebugUtilsMessengerEXT vk_debug_utils_messenger = nullptr;
-  Set<int32_t> vk_message_id_number_ignored;
-  std::mutex ignore_mutex;
-  void add_group(int32_t id_number);
-  void remove_group(int32_t id_number);
 };
 
 void object_label(VkObjectType vk_object_type, uint64_t object_handle, const char *name);
@@ -78,6 +73,7 @@ void pop_marker(VkCommandBuffer vk_command_buffer);
 void push_marker(const VKDevice &device, const char *name);
 void set_marker(const VKDevice &device, const char *name);
 void pop_marker(const VKDevice &device);
+
 /**
  * How to use:
  * \code{.cc}
@@ -88,6 +84,6 @@ void pop_marker(const VKDevice &device);
 void raise_message(int32_t id_number,
                    VkDebugUtilsMessageSeverityFlagBitsEXT vk_severity_flag_bits,
                    const char *fmt,
-                   ...);
+                   ...) ATTR_PRINTF_FORMAT(3, 4);
 }  // namespace debug
 }  // namespace blender::gpu

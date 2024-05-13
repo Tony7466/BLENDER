@@ -1,12 +1,12 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../makesrna
   ../../windowmanager
@@ -29,14 +29,16 @@ set(SRC
   graph_view.cc
   space_graph.cc
 
-  graph_intern.h
+  graph_intern.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
 )
 
 if(WITH_AUDASPACE)

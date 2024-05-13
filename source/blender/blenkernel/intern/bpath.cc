@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 
 #include <sys/stat.h>
 
-#include <string.h>
+#include <cstring>
 
 /* path/file handling stuff */
 #ifndef WIN32
@@ -54,25 +54,25 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_library.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
-#include "BKE_report.h"
-#include "BKE_vfont.h"
+#include "BKE_lib_id.hh"
+#include "BKE_library.hh"
+#include "BKE_main.hh"
+#include "BKE_node.hh"
+#include "BKE_report.hh"
+#include "BKE_vfont.hh"
 
-#include "BKE_bpath.h" /* own include */
+#include "BKE_bpath.hh" /* own include */
 
 #include "CLG_log.h"
 
-#include "SEQ_iterator.h"
+#include "SEQ_iterator.hh"
 
 #ifndef _MSC_VER
-#  include "BLI_strict_flags.h"
+#  include "BLI_strict_flags.h" /* Keep last. */
 #endif
 
 static CLG_LogRef LOG = {"bke.bpath"};
@@ -96,7 +96,8 @@ void BKE_bpath_foreach_path_id(BPathForeachPathData *bpath_data, ID *id)
   }
 
   if (id->library_weak_reference != nullptr &&
-      (flag & BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES) == 0) {
+      (flag & BKE_BPATH_TRAVERSE_SKIP_WEAK_REFERENCES) == 0)
+  {
     BKE_bpath_foreach_path_fixed_process(bpath_data,
                                          id->library_weak_reference->library_filepath,
                                          sizeof(id->library_weak_reference->library_filepath));
@@ -117,7 +118,7 @@ void BKE_bpath_foreach_path_id(BPathForeachPathData *bpath_data, ID *id)
   id_type->foreach_path(id, bpath_data);
 
   if (bpath_data->is_path_modified) {
-    DEG_id_tag_update(id, ID_RECALC_SOURCE | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(id, ID_RECALC_SOURCE | ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -182,7 +183,8 @@ bool BKE_bpath_foreach_path_dirfile_fixed_process(BPathForeachPathData *bpath_da
   }
 
   if (bpath_data->callback_function(
-          bpath_data, path_dst, sizeof(path_dst), (const char *)path_src)) {
+          bpath_data, path_dst, sizeof(path_dst), (const char *)path_src))
+  {
     BLI_path_split_dir_file(path_dst, path_dir, path_dir_maxncpy, path_file, path_file_maxncpy);
     bpath_data->is_path_modified = true;
     return true;
@@ -302,7 +304,7 @@ static bool missing_files_find__recursive(const char *search_directory,
     *r_filesize = 0; /* The directory opened fine. */
   }
 
-  for (struct dirent *de = readdir(dir); de != nullptr; de = readdir(dir)) {
+  for (dirent *de = readdir(dir); de != nullptr; de = readdir(dir)) {
     if (FILENAME_IS_CURRPAR(de->d_name)) {
       continue;
     }
@@ -627,7 +629,7 @@ void BKE_bpath_absolute_convert(Main *bmain, const char *basedir, ReportList *re
  * \{ */
 
 struct PathStore {
-  struct PathStore *next, *prev;
+  PathStore *next, *prev;
   /** Over allocate. */
   char filepath[0];
 };
@@ -641,8 +643,8 @@ static bool bpath_list_append(BPathForeachPathData *bpath_data,
   size_t path_size = strlen(path_src) + 1;
 
   /* NOTE: the PathStore and its string are allocated together in a single alloc. */
-  struct PathStore *path_store = static_cast<PathStore *>(
-      MEM_mallocN(sizeof(struct PathStore) + path_size, __func__));
+  PathStore *path_store = static_cast<PathStore *>(
+      MEM_mallocN(sizeof(PathStore) + path_size, __func__));
 
   char *filepath = path_store->filepath;
 
@@ -662,7 +664,7 @@ static bool bpath_list_restore(BPathForeachPathData *bpath_data,
    * If this happens, there is a bug in caller code. */
   BLI_assert(!BLI_listbase_is_empty(path_list));
 
-  struct PathStore *path_store = static_cast<PathStore *>(path_list->first);
+  PathStore *path_store = static_cast<PathStore *>(path_list->first);
   const char *filepath = path_store->filepath;
   bool is_path_changed = false;
 

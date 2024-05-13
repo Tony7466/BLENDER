@@ -2,12 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_reader_light.h"
+#include "usd_reader_light.hh"
 
 #include "BLI_math_rotation.h"
 
 #include "BKE_light.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_light_types.h"
 #include "DNA_object_types.h"
@@ -18,11 +18,9 @@
 #include <pxr/usd/usdLux/shapingAPI.h>
 #include <pxr/usd/usdLux/sphereLight.h>
 
-#include <iostream>
-
 namespace blender::io::usd {
 
-void USDLightReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDLightReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   Light *blight = static_cast<Light *>(BKE_light_add(bmain, name_.c_str()));
 
@@ -104,7 +102,8 @@ void USDLightReader::read_object_data(Main *bmain, const double motionSampleTime
       pxr::UsdAttribute treatAsPoint_attr = sphere_light.GetTreatAsPointAttr();
       bool treatAsPoint;
       if (treatAsPoint_attr && treatAsPoint_attr.Get(&treatAsPoint, motionSampleTime) &&
-          treatAsPoint) {
+          treatAsPoint)
+      {
         blight->radius = 0.0f;
       }
       else if (pxr::UsdAttribute radius_attr = sphere_light.GetRadiusAttr()) {
@@ -135,16 +134,16 @@ void USDLightReader::read_object_data(Main *bmain, const double motionSampleTime
         }
       }
     }
-    else if (prim_.IsA<pxr::UsdLuxDistantLight>()) {
-      blight->type = LA_SUN;
+  }
+  else if (prim_.IsA<pxr::UsdLuxDistantLight>()) {
+    blight->type = LA_SUN;
 
-      pxr::UsdLuxDistantLight distant_light(prim_);
-      if (distant_light) {
-        if (pxr::UsdAttribute angle_attr = distant_light.GetAngleAttr()) {
-          float angle = 0.0f;
-          if (angle_attr.Get(&angle, motionSampleTime)) {
-            blight->sun_angle = DEG2RADF(angle) * 2.0f;
-          }
+    pxr::UsdLuxDistantLight distant_light(prim_);
+    if (distant_light) {
+      if (pxr::UsdAttribute angle_attr = distant_light.GetAngleAttr()) {
+        float angle = 0.0f;
+        if (angle_attr.Get(&angle, motionSampleTime)) {
+          blight->sun_angle = DEG2RADF(angle * 2.0f);
         }
       }
     }

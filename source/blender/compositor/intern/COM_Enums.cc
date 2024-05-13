@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,25 +37,6 @@ std::ostream &operator<<(std::ostream &os, const eCompositorPriority &priority)
     }
     case eCompositorPriority::Low: {
       os << "Priority::Low";
-      break;
-    }
-  }
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const eWorkPackageState &execution_state)
-{
-  switch (execution_state) {
-    case eWorkPackageState::NotScheduled: {
-      os << "ExecutionState::NotScheduled";
-      break;
-    }
-    case eWorkPackageState::Scheduled: {
-      os << "ExecutionState::Scheduled";
-      break;
-    }
-    case eWorkPackageState::Executed: {
-      os << "ExecutionState::Executed";
       break;
     }
   }

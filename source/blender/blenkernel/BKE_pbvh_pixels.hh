@@ -1,23 +1,19 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include <functional>
-
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_vector.hh"
 
 #include "DNA_image_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "BKE_image.h"
 #include "BKE_image_wrappers.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 namespace blender::bke::pbvh::pixels {
 
@@ -201,7 +197,7 @@ struct NodeData {
   {
     undo_regions.clear();
     for (UDIMTilePixels &tile : tiles) {
-      if (tile.pixel_rows.size() == 0) {
+      if (tile.pixel_rows.is_empty()) {
         continue;
       }
 
@@ -420,14 +416,11 @@ struct PBVHData {
   }
 };
 
-NodeData &BKE_pbvh_pixels_node_data_get(PBVHNode &node);
-void BKE_pbvh_pixels_mark_image_dirty(PBVHNode &node, Image &image, ImageUser &image_user);
-PBVHData &BKE_pbvh_pixels_data_get(PBVH &pbvh);
-void BKE_pbvh_pixels_collect_dirty_tiles(PBVHNode &node, Vector<image::TileNumber> &r_dirty_tiles);
+NodeData &node_data_get(PBVHNode &node);
+void mark_image_dirty(PBVHNode &node, Image &image, ImageUser &image_user);
+PBVHData &data_get(PBVH &pbvh);
+void collect_dirty_tiles(PBVHNode &node, Vector<image::TileNumber> &r_dirty_tiles);
 
-void BKE_pbvh_pixels_copy_pixels(PBVH &pbvh,
-                                 Image &image,
-                                 ImageUser &image_user,
-                                 image::TileNumber tile_number);
+void copy_pixels(PBVH &pbvh, Image &image, ImageUser &image_user, image::TileNumber tile_number);
 
 }  // namespace blender::bke::pbvh::pixels

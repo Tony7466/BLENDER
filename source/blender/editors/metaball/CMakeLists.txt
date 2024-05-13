@@ -1,15 +1,15 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
-  ../../depsgraph
+  ../../blenkernel
+  ../../blentranslation
   ../../gpu
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/clog
 )
 
 set(INC_SYS
@@ -21,13 +21,14 @@ set(SRC
   mball_edit.cc
   mball_ops.cc
 
-  mball_intern.h
+  mball_intern.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 

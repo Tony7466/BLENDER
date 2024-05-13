@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,7 @@
 
 #include "BKE_animsys.h"
 
-#include "RNA_path.h"
+#include "RNA_path.hh"
 
 namespace blender::deg {
 
@@ -81,7 +81,8 @@ void animated_property_cb(ID * /*id*/, FCurve *fcurve, void *data_v)
   PointerRNA pointer_rna;
   PropertyRNA *property_rna = nullptr;
   if (!RNA_path_resolve_property(
-          &data->pointer_rna, fcurve->rna_path, &pointer_rna, &property_rna)) {
+          &data->pointer_rna, fcurve->rna_path, &pointer_rna, &property_rna))
+  {
     return;
   }
   /* Get storage for the ID.
@@ -102,7 +103,7 @@ AnimatedPropertyStorage::AnimatedPropertyStorage() : is_fully_initialized(false)
 void AnimatedPropertyStorage::initializeFromID(DepsgraphBuilderCache *builder_cache, const ID *id)
 {
   AnimatedPropertyCallbackData data;
-  RNA_id_pointer_create(const_cast<ID *>(id), &data.pointer_rna);
+  data.pointer_rna = RNA_id_pointer_create(const_cast<ID *>(id));
   data.animated_property_storage = this;
   data.builder_cache = builder_cache;
   BKE_fcurves_id_cb(const_cast<ID *>(id), animated_property_cb, &data);
@@ -141,7 +142,8 @@ bool AnimatedPropertyStorage::isAnyPropertyAnimated(const PointerRNA *pointer_rn
 DepsgraphBuilderCache::~DepsgraphBuilderCache()
 {
   for (AnimatedPropertyStorage *animated_property_storage :
-       animated_property_storage_map_.values()) {
+       animated_property_storage_map_.values())
+  {
     delete animated_property_storage;
   }
 }

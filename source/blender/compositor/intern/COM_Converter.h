@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,13 +29,6 @@ class NodeOperationBuilder;
  * \see Node
  */
 Node *COM_convert_bnode(bNode *b_node);
-
-/**
- * \brief True if the node is considered 'fast'.
- *
- * Slow nodes will be skipped if fast execution is required.
- */
-bool COM_bnode_is_fast_node(const bNode &b_node);
 
 /**
  * \brief This function will add a date-type conversion rule when the to-socket does not support

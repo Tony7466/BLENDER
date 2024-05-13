@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,6 +15,13 @@ void StaticCacheManager::reset()
   cached_masks.reset();
   smaa_precomputed_textures.reset();
   ocio_color_space_conversion_shaders.reset();
+  distortion_grids.reset();
+  keying_screens.reset();
+  cached_shaders.reset();
+  bokeh_kernels.reset();
+  cached_images.reset();
+  deriche_gaussian_coefficients.reset();
+  van_vliet_gaussian_coefficients.reset();
 }
 
 }  // namespace blender::realtime_compositor

@@ -1,13 +1,19 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
+#include "BKE_texture.h"
+
+#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "NOD_multi_function.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_tex_brick_cc {
 
@@ -277,7 +283,7 @@ void register_node_type_sh_tex_brick()
   sh_fn_node_type_base(&ntype, SH_NODE_TEX_BRICK, "Brick Texture", NODE_CLASS_TEXTURE);
   ntype.declare = file_ns::sh_node_tex_brick_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_tex_brick;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.initfunc = file_ns::node_shader_init_tex_brick;
   node_type_storage(
       &ntype, "NodeTexBrick", node_free_standard_storage, node_copy_standard_storage);

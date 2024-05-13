@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,14 @@
  * \ingroup bli
  */
 
-#include "MEM_guardedalloc.h"
+#include "BLI_math_base.h"
+#include "BLI_math_statistics.h"
+#include "BLI_math_vector.h"
 
-#include "BLI_math.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /********************************** Covariance Matrices *********************************/
 

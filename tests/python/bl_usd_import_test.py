@@ -1,7 +1,8 @@
-# SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import math
 import pathlib
 import sys
 import unittest
@@ -12,6 +13,8 @@ from pxr import UsdGeom
 from pxr import Sdf
 
 import bpy
+
+from mathutils import Matrix, Vector, Quaternion, Euler
 
 args = None
 
@@ -44,8 +47,12 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
 
         infile = str(self.testdir / "this_file_doesn't_exist.usda")
-        res = bpy.ops.wm.usd_import(filepath=infile)
-        self.assertEqual({'CANCELLED'}, res, "Was somehow able to import a non-existent USD file!")
+        # RPT_ERROR Reports from operators generate `RuntimeError` python exceptions.
+        try:
+            res = bpy.ops.wm.usd_import(filepath=infile)
+            self.assertEqual({'CANCELLED'}, res, "Was somehow able to import a non-existent USD file!")
+        except RuntimeError as e:
+            self.assertTrue(e.args[0].startswith("Error: USD Import: unable to open stage to read"))
 
     def test_import_prim_hierarchy(self):
         """Test importing a simple object hierarchy from a USDA file."""
@@ -181,8 +188,8 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(43.12, test_cam.lens, 2)
         self.assertAlmostEqual(24.89, test_cam.sensor_width, 2)
         self.assertAlmostEqual(14.00, test_cam.sensor_height, 2)
-        self.assertAlmostEqual(12.34, test_cam.shift_x, 2)
-        self.assertAlmostEqual(56.78, test_cam.shift_y, 2)
+        self.assertAlmostEqual(2.281, test_cam.shift_x, 2)
+        self.assertAlmostEqual(0.496, test_cam.shift_y, 2)
 
         bpy.ops.object.select_all(action='SELECT')
         bpy.ops.object.delete()
@@ -198,8 +205,8 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(4.312, test_cam.lens, 3)
         self.assertAlmostEqual(2.489, test_cam.sensor_width, 3)
         self.assertAlmostEqual(1.400, test_cam.sensor_height, 3)
-        self.assertAlmostEqual(1.234, test_cam.shift_x, 3)
-        self.assertAlmostEqual(5.678, test_cam.shift_y, 3)
+        self.assertAlmostEqual(2.281, test_cam.shift_x, 3)
+        self.assertAlmostEqual(0.496, test_cam.shift_y, 3)
 
     def test_import_shader_varname_with_connection(self):
         """Test importing USD shader where uv primvar is a connection"""
@@ -301,6 +308,434 @@ class USDImportTest(AbstractUSDTest):
                     num_uvmaps_found += 1
 
         self.assertEqual(4, num_uvmaps_found, "One or more test materials failed to import")
+
+    def test_import_usd_blend_shapes(self):
+        """Test importing USD blend shapes with animated weights."""
+
+        infile = str(self.testdir / "usd_blend_shape_test.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res)
+
+        obj = bpy.data.objects["Plane"]
+
+        obj.active_shape_key_index = 1
+
+        key = obj.active_shape_key
+        self.assertEqual(key.name, "Key_1", "Unexpected shape key name")
+
+        # Verify the number of shape key points.
+        self.assertEqual(len(key.data), 4, "Unexpected number of shape key point")
+
+        # Verify shape key point coordinates
+
+        # Reference point values.
+        refs = ((-2.51, -1.92, 0.20), (0.86, -1.46, -0.1),
+                (-1.33, 1.29, .84), (1.32, 2.20, -0.42))
+
+        for i in range(4):
+            co = key.data[i].co
+            ref = refs[i]
+            # Compare coordinates.
+            for j in range(3):
+                self.assertAlmostEqual(co[j], ref[j], 2)
+
+        # Verify the shape key values.
+        bpy.context.scene.frame_set(1)
+        self.assertAlmostEqual(key.value, .002, 1)
+        bpy.context.scene.frame_set(30)
+        self.assertAlmostEqual(key.value, .900, 3)
+        bpy.context.scene.frame_set(60)
+        self.assertAlmostEqual(key.value, .100, 3)
+
+    def test_import_usd_skel_joints(self):
+        """Test importing USD animated skeleton joints."""
+
+        infile = str(self.testdir / "arm.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res)
+
+        # Verify armature was imported.
+        arm_obj = bpy.data.objects["Skel"]
+        self.assertEqual(arm_obj.type, "ARMATURE", "'Skel' object is not an armature")
+
+        arm = arm_obj.data
+        bones = arm.bones
+
+        # Verify bone parenting.
+        self.assertIsNone(bones['Shoulder'].parent, "Shoulder bone should not be parented")
+        self.assertEqual(bones['Shoulder'], bones['Elbow'].parent, "Elbow bone should be child of Shoulder bone")
+        self.assertEqual(bones['Elbow'], bones['Hand'].parent, "Hand bone should be child of Elbow bone")
+
+        # Verify armature modifier was created on the mesh.
+        mesh_obj = bpy.data.objects['Arm']
+        # Get all the armature modifiers on the mesh.
+        arm_mods = [m for m in mesh_obj.modifiers if m.type == "ARMATURE"]
+        self.assertEqual(len(arm_mods), 1, "Didn't get expected armatrue modifier")
+        self.assertEqual(arm_mods[0].object, arm_obj, "Armature modifier does not reference the imported armature")
+
+        # Verify expected deform groups.
+        # There are 4 points in each group.
+        for i in range(4):
+            self.assertAlmostEqual(mesh_obj.vertex_groups['Hand'].weight(
+                i), 1.0, 2, "Unexpected weight for Hand deform vert")
+            self.assertAlmostEqual(mesh_obj.vertex_groups['Shoulder'].weight(
+                4 + i), 1.0, 2, "Unexpected weight for Shoulder deform vert")
+            self.assertAlmostEqual(mesh_obj.vertex_groups['Elbow'].weight(
+                8 + i), 1.0, 2, "Unexpected weight for Elbow deform vert")
+
+        action = bpy.data.actions['SkelAction']
+
+        # Verify the Elbow joint rotation animation.
+        curve_path = 'pose.bones["Elbow"].rotation_quaternion'
+
+        # Quat W
+        f = action.fcurves.find(curve_path, index=0)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion W curve")
+        self.assertAlmostEqual(f.evaluate(0), 1.0, 2, "Unexpected value for rotation quaternion W curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.707, 2, "Unexpected value for rotation quaternion W curve at frame 10")
+
+        # Quat X
+        f = action.fcurves.find(curve_path, index=1)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion X curve")
+        self.assertAlmostEqual(f.evaluate(0), 0.0, 2, "Unexpected value for rotation quaternion X curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.707, 2, "Unexpected value for rotation quaternion X curve at frame 10")
+
+        # Quat Y
+        f = action.fcurves.find(curve_path, index=2)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion Y curve")
+        self.assertAlmostEqual(f.evaluate(0), 0.0, 2, "Unexpected value for rotation quaternion Y curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.0, 2, "Unexpected value for rotation quaternion Y curve at frame 10")
+
+        # Quat Z
+        f = action.fcurves.find(curve_path, index=3)
+        self.assertIsNotNone(f, "Couldn't find Elbow rotation quaternion Z curve")
+        self.assertAlmostEqual(f.evaluate(0), 0.0, 2, "Unexpected value for rotation quaternion Z curve at frame 0")
+        self.assertAlmostEqual(f.evaluate(10), 0.0, 2, "Unexpected value for rotation quaternion Z curve at frame 10")
+
+    def check_curve(self, blender_curve, usd_curve):
+        curve_type_map = {"linear": 1, "cubic": 2}
+        cyclic_map = {"nonperiodic": False, "periodic": True}
+
+        # Check correct spline count.
+        blender_spline_count = len(blender_curve.attributes["curve_type"].data)
+        usd_spline_count = len(usd_curve.GetCurveVertexCountsAttr().Get())
+        self.assertEqual(blender_spline_count, usd_spline_count)
+
+        # Check correct type of curve. All splines should have the same type and periodicity.
+        usd_curve_type = usd_curve.GetTypeAttr().Get()
+        usd_cyclic = usd_curve.GetWrapAttr().Get()
+        expected_curve_type = curve_type_map[usd_curve_type]
+        expected_cyclic = cyclic_map[usd_cyclic]
+
+        for i in range(0, blender_spline_count):
+            blender_curve_type = blender_curve.attributes["curve_type"].data[i].value
+            blender_cyclic = False
+            if "cyclic" in blender_curve.attributes:
+                blender_cyclic = blender_curve.attributes["cyclic"].data[i].value
+
+            self.assertEqual(blender_curve_type, expected_curve_type)
+            self.assertEqual(blender_cyclic, expected_cyclic)
+
+        # Check position data.
+        usd_positions = usd_curve.GetPointsAttr().Get()
+        blender_positions = blender_curve.attributes["position"].data
+
+        point_count = 0
+        if usd_curve_type == "linear":
+            point_count = len(usd_positions)
+            self.assertEqual(len(blender_positions), point_count)
+        elif usd_curve_type == "cubic":
+            control_point_count = 0
+            usd_vert_counts = usd_curve.GetCurveVertexCountsAttr().Get()
+            for i in range(0, usd_spline_count):
+                if usd_cyclic == "nonperiodic":
+                    control_point_count += (int(usd_vert_counts[i] / 3) + 1)
+                else:
+                    control_point_count += (int(usd_vert_counts[i] / 3))
+
+            point_count = control_point_count
+            self.assertEqual(len(blender_positions), point_count)
+
+        # Check radius data.
+        usd_width_interpolation = usd_curve.GetWidthsInterpolation()
+        usd_radius = [w / 2 for w in usd_curve.GetWidthsAttr().Get()]
+        blender_radius = [r.value for r in blender_curve.attributes["radius"].data]
+        if usd_curve_type == "linear":
+            if usd_width_interpolation == "constant":
+                usd_radius = usd_radius * point_count
+
+            for i in range(0, len(blender_radius)):
+                self.assertAlmostEqual(blender_radius[i], usd_radius[i], 2)
+
+        elif usd_curve_type == "cubic":
+            if usd_width_interpolation == "constant":
+                usd_radius = usd_radius * point_count
+
+                for i in range(0, len(blender_radius)):
+                    self.assertAlmostEqual(blender_radius[i], usd_radius[i], 2)
+            elif usd_width_interpolation == "varying":
+                # Do a quick min/max sanity check instead of reimplementing width interpolation
+                usd_min = min(usd_radius)
+                usd_max = max(usd_radius)
+                blender_min = min(blender_radius)
+                blender_max = max(blender_radius)
+
+                self.assertAlmostEqual(blender_min, usd_min, 2)
+                self.assertAlmostEqual(blender_max, usd_max, 2)
+            elif usd_width_interpolation == "vertex":
+                # Do a quick check to ensure radius has been set at all
+                self.assertEqual(True, all([r > 0 and r < 1 for r in blender_radius]))
+
+    def test_import_curves_linear(self):
+        """Test importing linear curve variations."""
+
+        infile = str(self.testdir / "usd_curve_linear_all.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
+
+        curves = [o for o in bpy.data.objects if o.type == 'CURVES']
+        self.assertEqual(8, len(curves), f"Test scene {infile} should have 8 curves; found {len(curves)}")
+
+        stage = Usd.Stage.Open(infile)
+
+        blender_curve = bpy.data.objects["linear_nonperiodic_single_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_nonperiodic/single/linear_nonperiodic_single_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_nonperiodic_single_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_nonperiodic/single/linear_nonperiodic_single_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_nonperiodic_multiple_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_nonperiodic/multiple/linear_nonperiodic_multiple_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_nonperiodic_multiple_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_nonperiodic/multiple/linear_nonperiodic_multiple_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_periodic_single_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_periodic/single/linear_periodic_single_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_periodic_single_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_periodic/single/linear_periodic_single_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_periodic_multiple_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_periodic/multiple/linear_periodic_multiple_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["linear_periodic_multiple_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/linear_periodic/multiple/linear_periodic_multiple_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+    def test_import_curves_bezier(self):
+        """Test importing bezier curve variations."""
+
+        infile = str(self.testdir / "usd_curve_bezier_all.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
+
+        curves = [o for o in bpy.data.objects if o.type == 'CURVES']
+        self.assertEqual(12, len(curves), f"Test scene {infile} should have 12 curves; found {len(curves)}")
+
+        stage = Usd.Stage.Open(infile)
+
+        blender_curve = bpy.data.objects["bezier_nonperiodic_single_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_nonperiodic/single/bezier_nonperiodic_single_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_nonperiodic_single_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_nonperiodic/single/bezier_nonperiodic_single_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_nonperiodic_single_vertex"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_nonperiodic/single/bezier_nonperiodic_single_vertex")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_nonperiodic_multiple_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_nonperiodic/multiple/bezier_nonperiodic_multiple_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_nonperiodic_multiple_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_nonperiodic/multiple/bezier_nonperiodic_multiple_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_nonperiodic_multiple_vertex"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_nonperiodic/multiple/bezier_nonperiodic_multiple_vertex")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_periodic_single_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_periodic/single/bezier_periodic_single_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_periodic_single_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_periodic/single/bezier_periodic_single_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_periodic_single_vertex"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_periodic/single/bezier_periodic_single_vertex")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_periodic_multiple_constant"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_periodic/multiple/bezier_periodic_multiple_constant")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_periodic_multiple_varying"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_periodic/multiple/bezier_periodic_multiple_varying")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+        blender_curve = bpy.data.objects["bezier_periodic_multiple_vertex"].data
+        usd_prim = stage.GetPrimAtPath("/root/bezier_periodic/multiple/bezier_periodic_multiple_vertex")
+        self.check_curve(blender_curve, UsdGeom.BasisCurves(usd_prim))
+
+    def test_import_point_instancer(self):
+        """Test importing a typical point instancer setup."""
+
+        infile = str(self.testdir / "usd_nested_point_instancer.usda")
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
+
+        pointclouds = [o for o in bpy.data.objects if o.type == 'POINTCLOUD']
+        self.assertEqual(
+            2,
+            len(pointclouds),
+            f"Test scene {infile} should have 2 pointclouds; found {len(pointclouds)}")
+
+        vertical_points = len(bpy.data.pointclouds['verticalpoints'].attributes["position"].data)
+        horizontal_points = len(bpy.data.pointclouds['horizontalpoints'].attributes["position"].data)
+        self.assertEqual(3, vertical_points)
+        self.assertEqual(2, horizontal_points)
+
+    def test_import_light_types(self):
+        """Test importing light types and attributes."""
+
+        # Use the current scene to first create and export the lights
+        bpy.ops.object.light_add(type='POINT', align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+        bpy.context.active_object.data.energy = 2
+        bpy.context.active_object.data.shadow_soft_size = 2.2
+
+        bpy.ops.object.light_add(type='SPOT', align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+        bpy.context.active_object.data.energy = 3
+        bpy.context.active_object.data.shadow_soft_size = 3.3
+        bpy.context.active_object.data.spot_blend = 0.25
+        bpy.context.active_object.data.spot_size = math.radians(60)
+
+        bpy.ops.object.light_add(type='SUN', align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+        bpy.context.active_object.data.energy = 4
+        bpy.context.active_object.data.angle = math.radians(1)
+
+        bpy.ops.object.light_add(type='AREA', align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+        bpy.context.active_object.data.energy = 5
+        bpy.context.active_object.data.shape = 'RECTANGLE'
+        bpy.context.active_object.data.size = 0.5
+        bpy.context.active_object.data.size_y = 1.5
+
+        bpy.ops.object.light_add(type='AREA', align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+        bpy.context.active_object.data.energy = 6
+        bpy.context.active_object.data.shape = 'DISK'
+        bpy.context.active_object.data.size = 2
+
+        test_path = self.tempdir / "temp_lights.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(test_path), evaluation_mode="RENDER")
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {test_path}")
+
+        # Reload the empty file and import back in
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+        infile = str(test_path)
+        res = bpy.ops.wm.usd_import(filepath=infile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
+
+        lights = [o for o in bpy.data.objects if o.type == 'LIGHT']
+        self.assertEqual(5, len(lights), f"Test scene {infile} should have 5 lights; found {len(lights)}")
+
+        blender_light = bpy.data.lights["Point"]
+        self.assertAlmostEqual(blender_light.energy, 2, 3)
+        self.assertAlmostEqual(blender_light.shadow_soft_size, 2.2, 3)
+
+        blender_light = bpy.data.lights["Spot"]
+        self.assertAlmostEqual(blender_light.energy, 3, 3)
+        self.assertAlmostEqual(blender_light.shadow_soft_size, 3.3, 3)
+        self.assertAlmostEqual(blender_light.spot_blend, 0.25, 3)
+        self.assertAlmostEqual(blender_light.spot_size, math.radians(60), 3)
+
+        blender_light = bpy.data.lights["Sun"]
+        self.assertAlmostEqual(blender_light.energy, 4, 3)
+        self.assertAlmostEqual(blender_light.angle, math.radians(1), 3)
+
+        blender_light = bpy.data.lights["Area"]
+        self.assertAlmostEqual(blender_light.energy, 5, 3)
+        self.assertEqual(blender_light.shape, 'RECTANGLE')
+        self.assertAlmostEqual(blender_light.size, 0.5, 3)
+        self.assertAlmostEqual(blender_light.size_y, 1.5, 3)
+
+        blender_light = bpy.data.lights["Area_001"]
+        self.assertAlmostEqual(blender_light.energy, 6, 3)
+        self.assertEqual(blender_light.shape, 'DISK')
+        self.assertAlmostEqual(blender_light.size, 2, 3)
+
+    def check_attribute(self, blender_data, attribute_name, domain, data_type, elements_len):
+        attr = blender_data.attributes[attribute_name]
+        self.assertEqual(attr.domain, domain)
+        self.assertEqual(attr.data_type, data_type)
+        self.assertEqual(len(attr.data), elements_len)
+
+    def check_attribute_missing(self, blender_data, attribute_name):
+        self.assertFalse(attribute_name in blender_data.attributes)
+
+    def test_import_attributes(self):
+        testfile = str(self.tempdir / "usd_attribute_test.usda")
+
+        # Use the existing attributes file to create the USD test file
+        # for import. It is validated as part of the bl_usd_export test.
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_attribute_test.blend"))
+        res = bpy.ops.wm.usd_export(filepath=testfile, evaluation_mode="RENDER")
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {testfile}")
+
+        # Reload the empty file and import back in
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+        res = bpy.ops.wm.usd_import(filepath=testfile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {testfile}")
+
+        # Verify all attributes on the Mesh
+        # Note: USD does not support signed 8-bit types so there is
+        #       currently no equivalent to Blender's INT8 data type
+        # TODO: Blender is missing support for reading USD quat/matrix data types
+        mesh = bpy.data.objects["Mesh"].data
+
+        self.check_attribute(mesh, "p_bool", 'POINT', 'BOOLEAN', 4)
+        self.check_attribute(mesh, "p_int8", 'POINT', 'INT', 4)
+        self.check_attribute(mesh, "p_int32", 'POINT', 'INT', 4)
+        self.check_attribute(mesh, "p_float", 'POINT', 'FLOAT', 4)
+        self.check_attribute(mesh, "p_byte_color", 'POINT', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "p_color", 'POINT', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "p_vec2", 'CORNER', 'FLOAT2', 4)  # TODO: Bug - wrong domain
+        self.check_attribute(mesh, "p_vec3", 'POINT', 'FLOAT_VECTOR', 4)
+        self.check_attribute_missing(mesh, "p_quat")
+        self.check_attribute_missing(mesh, "p_mat4x4")
+
+        self.check_attribute(mesh, "f_bool", 'FACE', 'BOOLEAN', 1)
+        self.check_attribute(mesh, "f_int8", 'FACE', 'INT', 1)
+        self.check_attribute(mesh, "f_int32", 'FACE', 'INT', 1)
+        self.check_attribute(mesh, "f_float", 'FACE', 'FLOAT', 1)
+        self.check_attribute_missing(mesh, "f_byte_color")  # Not supported?
+        self.check_attribute_missing(mesh, "f_color")  # Not supported?
+        self.check_attribute(mesh, "f_vec2", 'FACE', 'FLOAT2', 1)
+        self.check_attribute(mesh, "f_vec3", 'FACE', 'FLOAT_VECTOR', 1)
+        self.check_attribute_missing(mesh, "f_quat")
+        self.check_attribute_missing(mesh, "f_mat4x4")
+
+        self.check_attribute(mesh, "fc_bool", 'CORNER', 'BOOLEAN', 4)
+        self.check_attribute(mesh, "fc_int8", 'CORNER', 'INT', 4)
+        self.check_attribute(mesh, "fc_int32", 'CORNER', 'INT', 4)
+        self.check_attribute(mesh, "fc_float", 'CORNER', 'FLOAT', 4)
+        self.check_attribute(mesh, "fc_byte_color", 'CORNER', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "fc_color", 'CORNER', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "fc_vec2", 'CORNER', 'FLOAT2', 4)
+        self.check_attribute(mesh, "fc_vec3", 'CORNER', 'FLOAT_VECTOR', 4)
+        self.check_attribute_missing(mesh, "fc_quat")
+        self.check_attribute_missing(mesh, "fc_mat4x4")
 
 
 def main():

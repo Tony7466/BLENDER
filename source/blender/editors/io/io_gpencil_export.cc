@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,31 +9,24 @@
 #ifdef WITH_IO_GPENCIL
 
 #  include "BLI_path_util.h"
-#  include "BLI_string.h"
 
-#  include "DNA_gpencil_legacy_types.h"
 #  include "DNA_space_types.h"
 
-#  include "BKE_gpencil_legacy.h"
-#  include "BKE_main.h"
-#  include "BKE_report.h"
-#  include "BKE_screen.h"
+#  include "BKE_report.hh"
+#  include "BKE_screen.hh"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
-#  include "ED_fileselect.h"
+#  include "ED_fileselect.hh"
 
-#  include "RNA_access.h"
-#  include "RNA_define.h"
+#  include "RNA_access.hh"
+#  include "RNA_define.hh"
 
-#  include "UI_interface.h"
-#  include "UI_resources.h"
+#  include "UI_interface.hh"
+#  include "UI_resources.hh"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
-
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_query.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 #  include "io_gpencil.hh"
 
@@ -175,17 +168,17 @@ static void ui_gpencil_export_svg_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemL(row, IFACE_("Scene Options"), ICON_NONE);
 
   row = uiLayoutRow(box, false);
-  uiItemR(row, imfptr, "selected_object_type", 0, nullptr, ICON_NONE);
+  uiItemR(row, imfptr, "selected_object_type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
   uiItemL(row, IFACE_("Export Options"), ICON_NONE);
 
   uiLayout *col = uiLayoutColumn(box, false);
-  uiItemR(col, imfptr, "stroke_sample", 0, nullptr, ICON_NONE);
-  uiItemR(col, imfptr, "use_fill", 0, nullptr, ICON_NONE);
-  uiItemR(col, imfptr, "use_normalized_thickness", 0, nullptr, ICON_NONE);
-  uiItemR(col, imfptr, "use_clip_camera", 0, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "stroke_sample", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "use_fill", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "use_normalized_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "use_clip_camera", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void wm_gpencil_export_svg_draw(bContext * /*C*/, wmOperator *op)
@@ -329,7 +322,7 @@ static void ui_gpencil_export_pdf_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemL(row, IFACE_("Scene Options"), ICON_NONE);
 
   row = uiLayoutRow(box, false);
-  uiItemR(row, imfptr, "selected_object_type", 0, nullptr, ICON_NONE);
+  uiItemR(row, imfptr, "selected_object_type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
   row = uiLayoutRow(box, false);
@@ -337,14 +330,14 @@ static void ui_gpencil_export_pdf_settings(uiLayout *layout, PointerRNA *imfptr)
 
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumn(col, true);
-  uiItemR(sub, imfptr, "frame_mode", 0, IFACE_("Frame"), ICON_NONE);
+  uiItemR(sub, imfptr, "frame_mode", UI_ITEM_NONE, IFACE_("Frame"), ICON_NONE);
 
   uiLayoutSetPropSep(box, true);
 
   sub = uiLayoutColumn(col, true);
-  uiItemR(sub, imfptr, "stroke_sample", 0, nullptr, ICON_NONE);
-  uiItemR(sub, imfptr, "use_fill", 0, nullptr, ICON_NONE);
-  uiItemR(sub, imfptr, "use_normalized_thickness", 0, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "stroke_sample", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "use_fill", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "use_normalized_thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void wm_gpencil_export_pdf_draw(bContext * /*C*/, wmOperator *op)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,12 @@
  * \ingroup ply
  */
 
+#include <iostream>
+
 #include "BLI_timeit.hh"
 
 #include "DNA_windowmanager_types.h"
-#include "IO_ply.h"
+#include "IO_ply.hh"
 #include "ply_export.hh"
 #include "ply_import.hh"
 
@@ -30,9 +32,9 @@ void PLY_export(bContext *C, const PLYExportParams *export_params)
   report_duration("export", start_time, export_params->filepath);
 }
 
-void PLY_import(bContext *C, const PLYImportParams *import_params, wmOperator *op)
+void PLY_import(bContext *C, const PLYImportParams *import_params)
 {
   TimePoint start_time = Clock::now();
-  blender::io::ply::importer_main(C, *import_params, op);
+  blender::io::ply::importer_main(C, *import_params);
   report_duration("import", start_time, import_params->filepath);
 }

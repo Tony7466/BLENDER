@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "testing/testing.h"
@@ -9,8 +9,7 @@
 
 namespace blender::io::usd {
 
-class USDImagingTest : public testing::Test {
-};
+class USDImagingTest : public testing::Test {};
 
 TEST_F(USDImagingTest, CapsuleAdapterTest)
 {

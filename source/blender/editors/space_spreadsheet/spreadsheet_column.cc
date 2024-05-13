@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -59,6 +59,9 @@ eSpreadsheetColumnValueType cpp_type_to_column_type(const CPPType &type)
   }
   if (type.is<math::Quaternion>()) {
     return SPREADSHEET_VALUE_TYPE_QUATERNION;
+  }
+  if (type.is<float4x4>()) {
+    return SPREADSHEET_VALUE_TYPE_FLOAT4X4;
   }
 
   return SPREADSHEET_VALUE_TYPE_UNKNOWN;

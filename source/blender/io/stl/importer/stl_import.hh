@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,14 +8,19 @@
 
 #pragma once
 
-#include "IO_stl.h"
+#include "IO_stl.hh"
+
+struct bContext;
+struct Main;
+struct Scene;
+struct ViewLayer;
 
 namespace blender::io::stl {
 
 void stl_import_report_error(FILE *file);
 
 /* Main import function used from within Blender. */
-void importer_main(bContext *C, const STLImportParams &import_params);
+void importer_main(const bContext *C, const STLImportParams &import_params);
 
 /* Used from tests, where full bContext does not exist. */
 void importer_main(Main *bmain,

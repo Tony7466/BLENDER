@@ -1,9 +1,10 @@
-# SPDX-FileCopyrightText: 2008 Blender Foundation
+# SPDX-FileCopyrightText: 2008 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  .
+  PUBLIC .
+  ../blenkernel
   ../blentranslation
   ../gpu
   ../imbuf
@@ -15,22 +16,19 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/blf.c
-  intern/blf_default.c
-  intern/blf_dir.c
-  intern/blf_font.c
-  intern/blf_font_default.c
-  intern/blf_glyph.c
-  intern/blf_thumbs.c
-  intern/blf_util.c
-
-  BLF_api.h
-  intern/blf_internal.h
-  intern/blf_internal_types.h
+  intern/blf.cc
+  intern/blf_default.cc
+  intern/blf_dir.cc
+  intern/blf_font.cc
+  intern/blf_font_default.cc
+  intern/blf_glyph.cc
+  intern/blf_thumbs.cc
+  BLF_api.hh
+  intern/blf_internal.hh
+  intern/blf_internal_types.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_gpu
@@ -41,7 +39,7 @@ set(LIB
 
 if(WIN32)
   list(APPEND SRC
-    intern/blf_font_win32_compat.c
+    intern/blf_font_win32_compat.cc
   )
 endif()
 
@@ -54,3 +52,4 @@ endif()
 
 
 blender_add_lib(bf_blenfont "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::blenfont ALIAS bf_blenfont)

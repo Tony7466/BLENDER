@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,7 +34,8 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
 }
 
 ShaderModule::ShaderPtr ShaderModule::selectable_shader(
-    const char *create_info_name, std::function<void(gpu::shader::ShaderCreateInfo &info)> patch)
+    const char *create_info_name,
+    const FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch)
 {
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
       GPU_shader_create_info_get(create_info_name));

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,9 @@
  * \ingroup texnodes
  */
 
-#include "NOD_texture.h"
+#include "BKE_material.h"
+#include "BLI_math_vector.h"
+#include "DNA_material_types.h"
 #include "node_texture_util.hh"
 
 #include <cmath>
@@ -107,7 +109,7 @@ void register_node_type_tex_bricks()
 
   tex_node_type_base(&ntype, TEX_NODE_BRICKS, "Bricks", NODE_CLASS_PATTERN);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.initfunc = init;
   ntype.exec_fn = exec;
   ntype.flag |= NODE_PREVIEW;

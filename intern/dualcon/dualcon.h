@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,7 +26,7 @@ typedef struct DualConInput {
   int co_stride;
   int totco;
 
-  DualConTri looptri;
+  DualConTri corner_tris;
   int tri_stride;
   int tottri;
 

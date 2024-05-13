@@ -15,6 +15,7 @@ CCL_NAMESPACE_BEGIN
 struct GuidingRISSample {
   float3 rand;
   float2 sampled_roughness;
+  /* The relative IOR of the outgoing media and the incoming media. */
   float eta{1.0f};
   int label;
   float3 wo;
@@ -471,10 +472,7 @@ ccl_device_forceinline void guiding_write_debug_passes(KernelGlobals kg,
     return;
   }
 
-  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
-  const uint64_t render_buffer_offset = (uint64_t)render_pixel_index *
-                                        kernel_data.film.pass_stride;
-  ccl_global float *buffer = render_buffer + render_buffer_offset;
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
   if (kernel_data.film.pass_guiding_probability != PASS_UNUSED) {
     float guiding_prob = state->guiding.surface_guiding_sampling_prob;
@@ -512,7 +510,8 @@ ccl_device_forceinline bool guiding_bsdf_init(KernelGlobals kg,
 {
 #if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4
   if (kg->opgl_surface_sampling_distribution->Init(
-          kg->opgl_guiding_field, guiding_point3f(P), rand)) {
+          kg->opgl_guiding_field, guiding_point3f(P), rand))
+  {
     kg->opgl_surface_sampling_distribution->ApplyCosineProduct(guiding_point3f(N));
     return true;
   }
@@ -575,7 +574,8 @@ ccl_device_forceinline bool guiding_phase_init(KernelGlobals kg,
   }
 
   if (kg->opgl_volume_sampling_distribution->Init(
-          kg->opgl_guiding_field, guiding_point3f(P), rand)) {
+          kg->opgl_guiding_field, guiding_point3f(P), rand))
+  {
     kg->opgl_volume_sampling_distribution->ApplySingleLobeHenyeyGreensteinProduct(guiding_vec3f(D),
                                                                                   g);
     return true;

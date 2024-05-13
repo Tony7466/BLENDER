@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,27 +6,30 @@
  * \ingroup edobj
  */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "DNA_object_types.h"
+#include "DNA_space_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
-#include "object_intern.h"
+#include "object_intern.hh"
 
 #include "MOD_gpencil_legacy_lineart.h"
 
 /* ************************** registration **********************************/
 
-void ED_operatortypes_object()
+namespace blender::ed::object {
+
+void operatortypes_object()
 {
   WM_operatortype_append(OBJECT_OT_location_clear);
   WM_operatortype_append(OBJECT_OT_rotation_clear);
@@ -43,6 +46,8 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_editmode_toggle);
   WM_operatortype_append(OBJECT_OT_posemode_toggle);
   WM_operatortype_append(OBJECT_OT_shade_smooth);
+  WM_operatortype_append(OBJECT_OT_shade_smooth_by_angle);
+  WM_operatortype_append(OBJECT_OT_shade_auto_smooth);
   WM_operatortype_append(OBJECT_OT_shade_flat);
   WM_operatortype_append(OBJECT_OT_paths_calculate);
   WM_operatortype_append(OBJECT_OT_paths_update);
@@ -88,7 +93,7 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_armature_add);
   WM_operatortype_append(OBJECT_OT_empty_add);
   WM_operatortype_append(OBJECT_OT_lightprobe_add);
-  WM_operatortype_append(OBJECT_OT_drop_named_image);
+  WM_operatortype_append(OBJECT_OT_empty_image_add);
   WM_operatortype_append(OBJECT_OT_gpencil_add);
   WM_operatortype_append(OBJECT_OT_grease_pencil_add);
   WM_operatortype_append(OBJECT_OT_light_add);
@@ -115,6 +120,7 @@ void ED_operatortypes_object()
 
   WM_operatortype_append(OBJECT_OT_modifier_add);
   WM_operatortype_append(OBJECT_OT_modifier_remove);
+  WM_operatortype_append(OBJECT_OT_modifiers_clear);
   WM_operatortype_append(OBJECT_OT_modifier_move_up);
   WM_operatortype_append(OBJECT_OT_modifier_move_down);
   WM_operatortype_append(OBJECT_OT_modifier_move_to_index);
@@ -123,6 +129,7 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_modifier_convert);
   WM_operatortype_append(OBJECT_OT_modifier_copy);
   WM_operatortype_append(OBJECT_OT_modifier_copy_to_selected);
+  WM_operatortype_append(OBJECT_OT_modifiers_copy_to_selected);
   WM_operatortype_append(OBJECT_OT_modifier_set_active);
   WM_operatortype_append(OBJECT_OT_multires_subdivide);
   WM_operatortype_append(OBJECT_OT_multires_reshape);
@@ -138,6 +145,12 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_skin_armature_create);
   WM_operatortype_append(OBJECT_OT_geometry_nodes_input_attribute_toggle);
   WM_operatortype_append(OBJECT_OT_geometry_node_tree_copy_assign);
+  WM_operatortype_append(OBJECT_OT_grease_pencil_dash_modifier_segment_add);
+  WM_operatortype_append(OBJECT_OT_grease_pencil_dash_modifier_segment_remove);
+  WM_operatortype_append(OBJECT_OT_grease_pencil_dash_modifier_segment_move);
+  WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_add);
+  WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_remove);
+  WM_operatortype_append(OBJECT_OT_grease_pencil_time_modifier_segment_move);
 
   /* grease pencil modifiers */
   WM_operatortype_append(OBJECT_OT_gpencil_modifier_add);
@@ -237,6 +250,7 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_shape_key_retime);
   WM_operatortype_append(OBJECT_OT_shape_key_mirror);
   WM_operatortype_append(OBJECT_OT_shape_key_move);
+  WM_operatortype_append(OBJECT_OT_shape_key_lock);
 
   WM_operatortype_append(OBJECT_OT_collection_add);
   WM_operatortype_append(OBJECT_OT_collection_link);
@@ -254,9 +268,11 @@ void ED_operatortypes_object()
 
   WM_operatortype_append(OBJECT_OT_bake_image);
   WM_operatortype_append(OBJECT_OT_bake);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_calculate_to_frame);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_bake);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_delete);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_simulation_nodes_cache_calculate_to_frame);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_simulation_nodes_cache_bake);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_simulation_nodes_cache_delete);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_geometry_node_bake_single);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_geometry_node_bake_delete_single);
   WM_operatortype_append(OBJECT_OT_drop_named_material);
   WM_operatortype_append(OBJECT_OT_drop_geometry_nodes);
   WM_operatortype_append(OBJECT_OT_unlink_data);
@@ -288,9 +304,12 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_light_linking_blockers_link);
 
   WM_operatortype_append(OBJECT_OT_light_linking_unlink_from_collection);
+
+  object_modifier_add_asset_register();
+  collection_exporter_register();
 }
 
-void ED_operatormacros_object()
+void operatormacros_object()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -324,15 +343,17 @@ static bool object_mode_poll(bContext *C)
   return (!ob || ob->mode == OB_MODE_OBJECT);
 }
 
-void ED_keymap_object(wmKeyConfig *keyconf)
+void keymap_object(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap;
 
   /* Objects, Regardless of Mode -------------------------------------------------- */
-  keymap = WM_keymap_ensure(keyconf, "Object Non-modal", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Object Non-modal", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
   /* Object Mode ---------------------------------------------------------------- */
   /* NOTE: this keymap gets disabled in non-object-mode. */
-  keymap = WM_keymap_ensure(keyconf, "Object Mode", 0, 0);
+  keymap = WM_keymap_ensure(keyconf, "Object Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = object_mode_poll;
 }
+
+}  // namespace blender::ed::object

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2022-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -434,8 +434,7 @@ class RandomizeUVTransform(Operator):
     )
     loc: FloatVectorProperty(
         name="Location",
-        description=("Maximum distance the objects "
-                     "can spread over each axis"),
+        description="Maximum distance the objects can spread over each axis",
         min=-100.0,
         max=100.0,
         size=2,

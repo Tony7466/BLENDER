@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #include "BLI_math_base.h"
 #include "BLI_math_bits.h"
 
-#include "GPU_framebuffer.h"
+#include "GPU_framebuffer.hh"
 
 #include "mtl_context.hh"
 #include "mtl_framebuffer.hh"
@@ -143,7 +143,7 @@ void MTLStateManager::set_mutable_state(const GPUStateMutable &state)
     pipeline_state.dirty_flags |= MTL_PIPELINE_STATE_PSO_FLAG;
   }
 
-  if (changed.depth_range[0] != 0 || changed.depth_range[1] != 0) {
+  if (float_as_uint(changed.depth_range[0]) != 0 || float_as_uint(changed.depth_range[1]) != 0) {
     /* TODO remove, should modify the projection matrix instead. */
     mtl_depth_range(state.depth_range[0], state.depth_range[1]);
   }
@@ -327,7 +327,7 @@ void MTLStateManager::set_stencil_test(const eGPUStencilTest test, const eGPUSte
   pipeline_state.dirty_flags |= MTL_PIPELINE_STATE_DEPTHSTENCIL_FLAG;
 }
 
-void MTLStateManager::set_stencil_mask(const eGPUStencilTest test, const GPUStateMutable state)
+void MTLStateManager::set_stencil_mask(const eGPUStencilTest test, const GPUStateMutable &state)
 {
   if (test == GPU_STENCIL_NONE) {
     mtl_stencil_mask(0x00);
@@ -442,10 +442,10 @@ void MTLStateManager::set_blend(const eGPUBlend value)
   /**
    * Factors to the equation.
    * SRC is fragment shader output.
-   * DST is framebuffer color.
+   * DST is frame-buffer color.
    * final.rgb = SRC.rgb * src_rgb + DST.rgb * dst_rgb;
    * final.a = SRC.a * src_alpha + DST.a * dst_alpha;
-   **/
+   */
   MTLBlendFactor src_rgb;
   MTLBlendFactor dst_rgb;
   MTLBlendFactor src_alpha;

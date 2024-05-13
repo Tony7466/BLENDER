@@ -1,12 +1,12 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_shader_builtin.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_shader_builtin.hh"
 #include "gpu_testing.hh"
 
 #include "BLI_math_vector.hh"

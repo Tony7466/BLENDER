@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -249,7 +249,7 @@ typedef struct PTCacheEdit {
   struct ParticleSystemModifierData *psmd;
   struct ParticleSystemModifierData *psmd_eval;
   struct KDTree_3d *emitter_field;
-  /* Localspace face centers and normals (average of its verts), from the derived mesh. */
+  /** Local-space face centers and normals (average of its verts), from the derived mesh. */
   float *emitter_cosnos;
   int *mirror_cache;
 
@@ -296,9 +296,9 @@ bool BKE_ptcache_object_has(struct Scene *scene, struct Object *ob, int duplis);
 
 /************ ID specific functions ************************/
 
-void BKE_ptcache_id_clear(PTCacheID *id, int mode, unsigned int cfra);
-bool BKE_ptcache_id_exist(PTCacheID *id, int cfra);
-int BKE_ptcache_id_reset(struct Scene *scene, PTCacheID *id, int mode);
+void BKE_ptcache_id_clear(PTCacheID *pid, int mode, unsigned int cfra);
+bool BKE_ptcache_id_exist(PTCacheID *pid, int cfra);
+int BKE_ptcache_id_reset(struct Scene *scene, PTCacheID *pid, int mode);
 void BKE_ptcache_id_time(PTCacheID *pid,
                          struct Scene *scene,
                          float cfra,

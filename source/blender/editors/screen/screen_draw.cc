@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,30 +6,27 @@
  * \ingroup edscr
  */
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "GPU_batch_presets.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_platform.h"
-#include "GPU_state.h"
+#include "GPU_batch_presets.hh"
+#include "GPU_immediate.hh"
+#include "GPU_platform.hh"
+#include "GPU_state.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "screen_intern.h"
+#include "screen_intern.hh"
 
 #define CORNER_RESOLUTION 3
 
-static void do_vert_pair(GPUVertBuf *vbo, uint pos, uint *vidx, int corner, int i)
+static void do_vert_pair(blender::gpu::VertBuf *vbo, uint pos, uint *vidx, int corner, int i)
 {
   float inter[2];
   inter[0] = cosf(corner * M_PI_2 + (i * M_PI_2 / (CORNER_RESOLUTION - 1.0f)));
@@ -74,15 +71,15 @@ static void do_vert_pair(GPUVertBuf *vbo, uint pos, uint *vidx, int corner, int 
   GPU_vertbuf_attr_set(vbo, pos, (*vidx)++, exter);
 }
 
-static GPUBatch *batch_screen_edges_get(int *corner_len)
+static blender::gpu::Batch *batch_screen_edges_get(int *corner_len)
 {
-  static GPUBatch *screen_edges_batch = nullptr;
+  static blender::gpu::Batch *screen_edges_batch = nullptr;
 
   if (screen_edges_batch == nullptr) {
     GPUVertFormat format = {0};
     uint pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, CORNER_RESOLUTION * 2 * 4 + 2);
 
     uint vidx = 0;
@@ -132,7 +129,7 @@ static void drawscredge_area_draw(
     rect.ymin -= edge_thickness * 0.5f;
   }
 
-  GPUBatch *batch = batch_screen_edges_get(nullptr);
+  blender::gpu::Batch *batch = batch_screen_edges_get(nullptr);
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_AREA_BORDERS);
   GPU_batch_uniform_4fv(batch, "rect", (float *)&rect);
   GPU_batch_draw(batch);
@@ -200,7 +197,7 @@ void ED_screen_draw_edges(wmWindow *win)
 
   GPU_blend(GPU_BLEND_ALPHA);
 
-  GPUBatch *batch = batch_screen_edges_get(&verts_per_corner);
+  blender::gpu::Batch *batch = batch_screen_edges_get(&verts_per_corner);
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_AREA_BORDERS);
   GPU_batch_uniform_1i(batch, "cornerLen", verts_per_corner);
   GPU_batch_uniform_1f(batch, "scale", corner_scale);
@@ -227,14 +224,14 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
   /* Rect of the combined areas. */
   const bool vertical = SCREEN_DIR_IS_VERTICAL(dir);
   rctf combined{};
-  combined.xmin = vertical ? MAX2(sa1->totrct.xmin, sa2->totrct.xmin) :
-                             MIN2(sa1->totrct.xmin, sa2->totrct.xmin);
-  combined.xmax = vertical ? MIN2(sa1->totrct.xmax, sa2->totrct.xmax) :
-                             MAX2(sa1->totrct.xmax, sa2->totrct.xmax);
-  combined.ymin = vertical ? MIN2(sa1->totrct.ymin, sa2->totrct.ymin) :
-                             MAX2(sa1->totrct.ymin, sa2->totrct.ymin);
-  combined.ymax = vertical ? MAX2(sa1->totrct.ymax, sa2->totrct.ymax) :
-                             MIN2(sa1->totrct.ymax, sa2->totrct.ymax);
+  combined.xmin = vertical ? std::max(sa1->totrct.xmin, sa2->totrct.xmin) :
+                             std::min(sa1->totrct.xmin, sa2->totrct.xmin);
+  combined.xmax = vertical ? std::min(sa1->totrct.xmax, sa2->totrct.xmax) :
+                             std::max(sa1->totrct.xmax, sa2->totrct.xmax);
+  combined.ymin = vertical ? std::min(sa1->totrct.ymin, sa2->totrct.ymin) :
+                             std::max(sa1->totrct.ymin, sa2->totrct.ymin);
+  combined.ymax = vertical ? std::max(sa1->totrct.ymax, sa2->totrct.ymax) :
+                             std::min(sa1->totrct.ymax, sa2->totrct.ymax);
 
   uint pos_id = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -244,18 +241,18 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
   /* Highlight source (sa1) within combined area. */
   immUniformColor4fv(blender::float4{1.0f, 1.0f, 1.0f, 0.10f});
   immRectf(pos_id,
-           MAX2(sa1->totrct.xmin, combined.xmin),
-           MAX2(sa1->totrct.ymin, combined.ymin),
-           MIN2(sa1->totrct.xmax, combined.xmax),
-           MIN2(sa1->totrct.ymax, combined.ymax));
+           std::max(float(sa1->totrct.xmin), combined.xmin),
+           std::max(float(sa1->totrct.ymin), combined.ymin),
+           std::min(float(sa1->totrct.xmax), combined.xmax),
+           std::min(float(sa1->totrct.ymax), combined.ymax));
 
   /* Highlight destination (sa2) within combined area. */
   immUniformColor4fv(blender::float4{0.0f, 0.0f, 0.0f, 0.25f});
   immRectf(pos_id,
-           MAX2(sa2->totrct.xmin, combined.xmin),
-           MAX2(sa2->totrct.ymin, combined.ymin),
-           MIN2(sa2->totrct.xmax, combined.xmax),
-           MIN2(sa2->totrct.ymax, combined.ymax));
+           std::max(float(sa2->totrct.xmin), combined.xmin),
+           std::max(float(sa2->totrct.ymin), combined.ymin),
+           std::min(float(sa2->totrct.xmax), combined.xmax),
+           std::min(float(sa2->totrct.ymax), combined.ymax));
 
   int offset1;
   int offset2;
@@ -352,96 +349,4 @@ void screen_draw_split_preview(ScrArea *area, const eScreenAxis dir_axis, const 
   GPU_blend(GPU_BLEND_NONE);
 
   immUnbindProgram();
-}
-
-/* -------------------------------------------------------------------- */
-/* Screen Thumbnail Preview */
-
-/**
- * Calculates a scale factor to squash the preview for \a screen into a rectangle
- * of given size and aspect.
- */
-static void screen_preview_scale_get(
-    const bScreen *screen, float size_x, float size_y, const float asp[2], float r_scale[2])
-{
-  float max_x = 0, max_y = 0;
-
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    max_x = MAX2(max_x, area->totrct.xmax);
-    max_y = MAX2(max_y, area->totrct.ymax);
-  }
-  r_scale[0] = (size_x * asp[0]) / max_x;
-  r_scale[1] = (size_y * asp[1]) / max_y;
-}
-
-static void screen_preview_draw_areas(const bScreen *screen,
-                                      const float scale[2],
-                                      const float col[4],
-                                      const float ofs_between_areas)
-{
-  const float ofs_h = ofs_between_areas * 0.5f;
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor4fv(col);
-
-  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-    rctf rect{};
-    rect.xmin = area->totrct.xmin * scale[0] + ofs_h;
-    rect.xmax = area->totrct.xmax * scale[0] - ofs_h;
-    rect.ymin = area->totrct.ymin * scale[1] + ofs_h;
-    rect.ymax = area->totrct.ymax * scale[1] - ofs_h;
-
-    immBegin(GPU_PRIM_TRI_FAN, 4);
-    immVertex2f(pos, rect.xmin, rect.ymin);
-    immVertex2f(pos, rect.xmax, rect.ymin);
-    immVertex2f(pos, rect.xmax, rect.ymax);
-    immVertex2f(pos, rect.xmin, rect.ymax);
-    immEnd();
-  }
-
-  immUnbindProgram();
-}
-
-static void screen_preview_draw(const bScreen *screen, int size_x, int size_y)
-{
-  const float asp[2] = {1.0f, 0.8f}; /* square previews look a bit ugly */
-  /* could use theme color (tui.wcol_menu_item.text),
-   * but then we'd need to regenerate all previews when changing. */
-  const float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  float scale[2];
-
-  wmOrtho2(0.0f, size_x, 0.0f, size_y);
-  /* center */
-  GPU_matrix_push();
-  GPU_matrix_identity_set();
-  GPU_matrix_translate_2f(size_x * (1.0f - asp[0]) * 0.5f, size_y * (1.0f - asp[1]) * 0.5f);
-
-  screen_preview_scale_get(screen, size_x, size_y, asp, scale);
-  screen_preview_draw_areas(screen, scale, col, 1.5f);
-
-  GPU_matrix_pop();
-}
-
-void ED_screen_preview_render(const bScreen *screen, int size_x, int size_y, uint *r_rect)
-{
-  char err_out[256] = "unknown";
-  GPUOffScreen *offscreen = GPU_offscreen_create(size_x,
-                                                 size_y,
-                                                 true,
-                                                 GPU_RGBA8,
-                                                 GPU_TEXTURE_USAGE_SHADER_READ |
-                                                     GPU_TEXTURE_USAGE_HOST_READ,
-                                                 err_out);
-
-  GPU_offscreen_bind(offscreen, true);
-  GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
-  GPU_clear_depth(1.0f);
-
-  screen_preview_draw(screen, size_x, size_y);
-
-  GPU_offscreen_read_color(offscreen, GPU_DATA_UBYTE, r_rect);
-  GPU_offscreen_unbind(offscreen, true);
-
-  GPU_offscreen_free(offscreen);
 }

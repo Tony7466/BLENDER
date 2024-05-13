@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,20 +6,18 @@
  * \ingroup bke
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "CLG_log.h"
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
+#include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -27,21 +25,18 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_collection.hh"
+#include "BKE_curve.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_object.h"
 
 extern "C" {
 #include "curve_fit_nd.h"
 }
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #define COORD_FITTING_INFLUENCE 20.0f
 
@@ -141,9 +136,9 @@ static Material *gpencil_add_from_curve_material(Main *bmain,
                                                  const float fill_color[4],
                                                  const bool stroke,
                                                  const bool fill,
-                                                 int *r_idx)
+                                                 int *r_index)
 {
-  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, "Material", r_idx);
+  Material *mat_gp = BKE_gpencil_object_material_new(bmain, ob_gp, "Material", r_index);
   MaterialGPencilStyle *gp_style = mat_gp->gp_style;
 
   /* Stroke color. */
@@ -180,7 +175,7 @@ static void gpencil_add_new_points(bGPDstroke *gps,
 {
   BLI_assert(totpoints > 0);
 
-  const float step = 1.0f / ((float)totpoints - 1.0f);
+  const float step = 1.0f / (float(totpoints) - 1.0f);
   float factor = 0.0f;
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt = &gps->points[i + init];
@@ -218,7 +213,7 @@ static Collection *gpencil_get_parent_collection(Scene *scene, Object *ob)
   return mycol;
 }
 static int gpencil_get_stroke_material_fromcurve(
-    Main *bmain, Object *ob_gp, Object *ob_cu, bool *do_stroke, bool *do_fill)
+    Main *bmain, Object *ob_gp, Object *ob_cu, bool *r_do_stroke, bool *r_do_fill)
 {
   Curve *cu = (Curve *)ob_cu->data;
 
@@ -233,21 +228,21 @@ static int gpencil_get_stroke_material_fromcurve(
    * If the has only one material, if the name contains "_stroke",
    * it's used as a stroke, otherwise as fill. */
   if (ob_cu->totcol >= 2) {
-    *do_stroke = true;
-    *do_fill = true;
+    *r_do_stroke = true;
+    *r_do_fill = true;
     mat_curve_fill = BKE_object_material_get(ob_cu, 1);
     mat_curve_stroke = BKE_object_material_get(ob_cu, 2);
   }
   else if (ob_cu->totcol == 1) {
     mat_curve_stroke = BKE_object_material_get(ob_cu, 1);
     if ((mat_curve_stroke) && (strstr(mat_curve_stroke->id.name, "_stroke") != nullptr)) {
-      *do_stroke = true;
-      *do_fill = false;
+      *r_do_stroke = true;
+      *r_do_fill = false;
       mat_curve_fill = nullptr;
     }
     else {
-      *do_stroke = false;
-      *do_fill = true;
+      *r_do_stroke = false;
+      *r_do_fill = true;
       /* Invert materials. */
       mat_curve_fill = mat_curve_stroke;
       mat_curve_stroke = nullptr;
@@ -255,7 +250,7 @@ static int gpencil_get_stroke_material_fromcurve(
   }
   else {
     /* No materials in the curve. */
-    *do_fill = false;
+    *r_do_fill = false;
     return -1;
   }
 
@@ -266,12 +261,12 @@ static int gpencil_get_stroke_material_fromcurve(
     copy_v4_v4(color_fill, &mat_curve_fill->r);
   }
 
-  int r_idx = gpencil_check_same_material_color(
-      ob_gp, color_stroke, color_fill, *do_stroke, *do_fill, &mat_gp);
+  int index = gpencil_check_same_material_color(
+      ob_gp, color_stroke, color_fill, *r_do_stroke, *r_do_fill, &mat_gp);
 
-  if ((ob_gp->totcol < r_idx) || (r_idx < 0)) {
+  if ((ob_gp->totcol < index) || (index < 0)) {
     mat_gp = gpencil_add_from_curve_material(
-        bmain, ob_gp, color_stroke, color_fill, *do_stroke, *do_fill, &r_idx);
+        bmain, ob_gp, color_stroke, color_fill, *r_do_stroke, *r_do_fill, &index);
   }
 
   /* Set fill and stroke depending of curve type (3D or 2D). */
@@ -284,7 +279,7 @@ static int gpencil_get_stroke_material_fromcurve(
     mat_gp->gp_style->flag |= GP_MATERIAL_FILL_SHOW;
   }
 
-  return r_idx;
+  return index;
 }
 
 /* Helper: Convert one spline to grease pencil stroke. */
@@ -303,7 +298,7 @@ static void gpencil_convert_spline(Main *bmain,
   bGPDstroke *gps = static_cast<bGPDstroke *>(MEM_callocN(sizeof(bGPDstroke), "bGPDstroke"));
   gps->thickness = 1.0f;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   gps->uv_scale = 1.0f;
 
   ARRAY_SET_ITEMS(gps->aspect_ratio, 1.0f, 1.0f);
@@ -332,11 +327,11 @@ static void gpencil_convert_spline(Main *bmain,
    * Notice: The color of the material is the color of viewport and not the final shader color.
    */
   bool do_stroke, do_fill;
-  int r_idx = gpencil_get_stroke_material_fromcurve(bmain, ob_gp, ob_cu, &do_stroke, &do_fill);
-  CLAMP_MIN(r_idx, 0);
+  int index = gpencil_get_stroke_material_fromcurve(bmain, ob_gp, ob_cu, &do_stroke, &do_fill);
+  CLAMP_MIN(index, 0);
 
   /* Assign material index to stroke. */
-  gps->mat_nr = r_idx;
+  gps->mat_nr = index;
 
   /* Add stroke to frame. */
   BLI_addtail(&gpf->strokes, gps);
@@ -379,7 +374,7 @@ static void gpencil_convert_spline(Main *bmain,
         int inext = (s + 1) % nu->pntsu;
         BezTriple *prevbezt = &nu->bezt[s];
         BezTriple *bezt = &nu->bezt[inext];
-        bool last = (bool)(s == segments - 1);
+        bool last = bool(s == segments - 1);
 
         float *coord_array = static_cast<float *>(
             MEM_callocN(sizeof(float[3]) * resolu, __func__));
@@ -478,7 +473,8 @@ void BKE_gpencil_convert_curve(Main *bmain,
                                const float sample)
 {
   if (ELEM(nullptr, ob_gp, ob_cu) || (ob_gp->type != OB_GPENCIL_LEGACY) ||
-      (ob_gp->data == nullptr)) {
+      (ob_gp->data == nullptr))
+  {
     return;
   }
 
@@ -538,7 +534,7 @@ void BKE_gpencil_convert_curve(Main *bmain,
   ob_gp->actcol = actcol;
 
   /* Tag for recalculation */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   DEG_id_tag_update(&ob_gp->id, ID_RECALC_GEOMETRY);
 }
 
@@ -566,7 +562,7 @@ static bGPDcurve *gpencil_stroke_editcurve_generate_edgecases(bGPDstroke *gps,
     for (int j = 0; j < 3; j++) {
       copy_v3_v3(tmp_vec, &pt->x);
       /* Move handles along the x-axis away from the control point */
-      tmp_vec[0] += (float)(j - 1) * offset;
+      tmp_vec[0] += float(j - 1) * offset;
       copy_v3_v3(bezt->vec[j], tmp_vec);
     }
 
@@ -600,7 +596,7 @@ static bGPDcurve *gpencil_stroke_editcurve_generate_edgecases(bGPDstroke *gps,
       float tmp_vec[3];
       for (int j = 0; j < 3; j++) {
         copy_v3_v3(tmp_vec, dir);
-        normalize_v3_length(tmp_vec, (float)(j - 1) * offset);
+        normalize_v3_length(tmp_vec, float(j - 1) * offset);
         add_v3_v3v3(bezt->vec[j], &pt->x, tmp_vec);
       }
 
@@ -853,7 +849,7 @@ static void gpencil_interpolate_fl_from_to(
   /* smooth interpolation */
   float *r = point_offset;
   for (int i = 0; i <= it; i++) {
-    float fac = (float)i / (float)it;
+    float fac = float(i) / float(it);
     fac = 3.0f * fac * fac - 2.0f * fac * fac * fac; /* Smooth. */
     *r = interpf(to, from, fac);
     r = static_cast<float *>(POINTER_OFFSET(r, stride));
@@ -866,7 +862,7 @@ static void gpencil_interpolate_v4_from_to(
   /* smooth interpolation */
   float *r = point_offset;
   for (int i = 0; i <= it; i++) {
-    float fac = (float)i / (float)it;
+    float fac = float(i) / float(it);
     fac = 3.0f * fac * fac - 2.0f * fac * fac * fac; /* Smooth. */
     interp_v4_v4v4(r, from, to, fac);
     r = static_cast<float *>(POINTER_OFFSET(r, stride));
@@ -898,7 +894,7 @@ static void gpencil_calculate_stroke_points_curve_segment(
         cpt_next->bezt.vec[0][axis],
         cpt_next->bezt.vec[1][axis],
         static_cast<float *>(POINTER_OFFSET(points_offset, sizeof(float) * axis)),
-        (int)resolu,
+        int(resolu),
         stride);
   }
 
@@ -942,7 +938,7 @@ static float *gpencil_stroke_points_from_editcurve_adaptive_resolu(
     bGPDcurve_point *cpt = &curve_point_array[i];
     bGPDcurve_point *cpt_next = &curve_point_array[i + 1];
     float arclen = gpencil_approximate_curve_segment_arclength(cpt, cpt_next);
-    int segment_resolu = (int)floorf(arclen * resolution);
+    int segment_resolu = int(floorf(arclen * resolution));
     CLAMP_MIN(segment_resolu, 1);
 
     segment_point_lengths[i] = segment_resolu;
@@ -953,7 +949,7 @@ static float *gpencil_stroke_points_from_editcurve_adaptive_resolu(
     bGPDcurve_point *cpt = &curve_point_array[cpt_last];
     bGPDcurve_point *cpt_next = &curve_point_array[0];
     float arclen = gpencil_approximate_curve_segment_arclength(cpt, cpt_next);
-    int segment_resolu = (int)floorf(arclen * resolution);
+    int segment_resolu = int(floorf(arclen * resolution));
     CLAMP_MIN(segment_resolu, 1);
 
     segment_point_lengths[cpt_last] = segment_resolu;
@@ -1331,7 +1327,7 @@ void BKE_gpencil_editcurve_subdivide(bGPDstroke *gps, const int cuts)
 
 void BKE_gpencil_strokes_selected_update_editcurve(bGPdata *gpd)
 {
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   /* For all selected strokes, update edit curve. */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (!BKE_gpencil_layer_is_editable(gpl)) {
@@ -1371,7 +1367,7 @@ void BKE_gpencil_strokes_selected_update_editcurve(bGPdata *gpd)
 
 void BKE_gpencil_strokes_selected_sync_selection_editcurve(bGPdata *gpd)
 {
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   /* Sync selection for all strokes with editcurve. */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (!BKE_gpencil_layer_is_editable(gpl)) {

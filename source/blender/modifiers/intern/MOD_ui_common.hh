@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 /* so modifier types match their defines */
 #include "MOD_modifiertypes.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 struct ARegionType;
 struct Panel;
@@ -31,6 +31,9 @@ void modifier_vgroup_ui(uiLayout *layout,
                         const char *vgroup_prop,
                         const char *invert_vgroup_prop,
                         const char *text);
+
+void modifier_grease_pencil_curve_header_draw(const bContext * /*C*/, Panel *panel);
+void modifier_grease_pencil_curve_panel_draw(const bContext * /*C*/, Panel *panel);
 
 /**
  * Draw modifier error message.

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -21,7 +21,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_keyconfig.h" /* own include */
 
 #include "MEM_guardedalloc.h"
@@ -42,8 +42,8 @@ wmKeyConfigPref *BKE_keyconfig_pref_ensure(UserDef *userdef, const char *kc_idna
     BLI_addtail(&userdef->user_keyconfig_prefs, kpt);
   }
   if (kpt->prop == nullptr) {
-    IDPropertyTemplate val = {0};
-    kpt->prop = IDP_New(IDP_GROUP, &val, kc_idname); /* name is unimportant. */
+    /* name is unimportant. */
+    kpt->prop = blender::bke::idprop::create_group(kc_idname).release();
   }
   return kpt;
 }
@@ -92,13 +92,13 @@ void BKE_keyconfig_pref_type_remove(const wmKeyConfigPrefType_Runtime *kpt_rt)
   BLI_ghash_remove(global_keyconfigpreftype_hash, kpt_rt->idname, nullptr, MEM_freeN);
 }
 
-void BKE_keyconfig_pref_type_init(void)
+void BKE_keyconfig_pref_type_init()
 {
   BLI_assert(global_keyconfigpreftype_hash == nullptr);
   global_keyconfigpreftype_hash = BLI_ghash_str_new(__func__);
 }
 
-void BKE_keyconfig_pref_type_free(void)
+void BKE_keyconfig_pref_type_free()
 {
   BLI_ghash_free(global_keyconfigpreftype_hash, nullptr, MEM_freeN);
   global_keyconfigpreftype_hash = nullptr;
@@ -115,9 +115,7 @@ void BKE_keyconfig_pref_set_select_mouse(UserDef *userdef, int value, bool overr
   wmKeyConfigPref *kpt = BKE_keyconfig_pref_ensure(userdef, WM_KEYCONFIG_STR_DEFAULT);
   IDProperty *idprop = IDP_GetPropertyFromGroup(kpt->prop, "select_mouse");
   if (!idprop) {
-    IDPropertyTemplate tmp{};
-    tmp.i = value;
-    IDP_AddToGroup(kpt->prop, IDP_New(IDP_INT, &tmp, "select_mouse"));
+    IDP_AddToGroup(kpt->prop, blender::bke::idprop::create("select_mouse", value).release());
   }
   else if (override) {
     IDP_Int(idprop) = value;
@@ -145,7 +143,7 @@ static void keymap_diff_item_free(wmKeyMapDiffItem *kmdi)
 }
 
 void BKE_keyconfig_keymap_filter_item(wmKeyMap *keymap,
-                                      const struct wmKeyConfigFilterItemParams *params,
+                                      const wmKeyConfigFilterItemParams *params,
                                       bool (*filter_fn)(wmKeyMapItem *kmi, void *user_data),
                                       void *user_data)
 {
@@ -195,7 +193,7 @@ void BKE_keyconfig_keymap_filter_item(wmKeyMap *keymap,
 }
 
 void BKE_keyconfig_pref_filter_items(UserDef *userdef,
-                                     const struct wmKeyConfigFilterItemParams *params,
+                                     const wmKeyConfigFilterItemParams *params,
                                      bool (*filter_fn)(wmKeyMapItem *kmi, void *user_data),
                                      void *user_data)
 {

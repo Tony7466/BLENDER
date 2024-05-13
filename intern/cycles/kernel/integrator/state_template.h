@@ -75,6 +75,7 @@ KERNEL_STRUCT_MEMBER(ray, float, tmax, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER(ray, float, time, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER(ray, float, dP, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER(ray, float, dD, KERNEL_FEATURE_PATH_TRACING)
+KERNEL_STRUCT_MEMBER(ray, float, previous_dt, KERNEL_FEATURE_LIGHT_TREE)
 KERNEL_STRUCT_END(ray)
 
 /*************************** Intersection result ******************************/
@@ -95,7 +96,7 @@ KERNEL_STRUCT_BEGIN(subsurface)
 KERNEL_STRUCT_MEMBER(subsurface, PackedSpectrum, albedo, KERNEL_FEATURE_SUBSURFACE)
 KERNEL_STRUCT_MEMBER(subsurface, PackedSpectrum, radius, KERNEL_FEATURE_SUBSURFACE)
 KERNEL_STRUCT_MEMBER(subsurface, float, anisotropy, KERNEL_FEATURE_SUBSURFACE)
-KERNEL_STRUCT_MEMBER(subsurface, packed_float3, Ng, KERNEL_FEATURE_SUBSURFACE)
+KERNEL_STRUCT_MEMBER(subsurface, packed_float3, N, KERNEL_FEATURE_SUBSURFACE)
 KERNEL_STRUCT_END(subsurface)
 
 /********************************** Volume Stack ******************************/

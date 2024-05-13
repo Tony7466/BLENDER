@@ -1,13 +1,12 @@
-# SPDX-FileCopyrightText: 2011 Blender Foundation
+# SPDX-FileCopyrightText: 2011 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
-  ../../blenfont
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../imbuf
   ../../makesrna
@@ -41,13 +40,15 @@ set(SRC
   tracking_ops_utils.cc
   tracking_select.cc
 
-  clip_intern.h
-  tracking_ops_intern.h
+  clip_intern.hh
+  tracking_ops_intern.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::blenfont
+  bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )

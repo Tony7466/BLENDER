@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,18 +8,21 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "DNA_object_types.h"
 
-#include "ED_mesh.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_view3d.hh"
+
+using blender::float3;
+using blender::Span;
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Element Pre-Select
@@ -33,21 +36,21 @@
  *
  * \{ */
 
-static void vcos_get(BMVert *v, float r_co[3], const float (*coords)[3])
+static void vcos_get(BMVert *v, float r_co[3], const Span<float3> vert_positions)
 {
-  if (coords) {
-    copy_v3_v3(r_co, coords[BM_elem_index_get(v)]);
+  if (!vert_positions.is_empty()) {
+    copy_v3_v3(r_co, vert_positions[BM_elem_index_get(v)]);
   }
   else {
     copy_v3_v3(r_co, v->co);
   }
 }
 
-static void vcos_get_pair(BMVert *v[2], float r_cos[2][3], const float (*coords)[3])
+static void vcos_get_pair(BMVert *v[2], float r_cos[2][3], const Span<float3> vert_positions)
 {
-  if (coords) {
+  if (!vert_positions.is_empty()) {
     for (int j = 0; j < 2; j++) {
-      copy_v3_v3(r_cos[j], coords[BM_elem_index_get(v[j])]);
+      copy_v3_v3(r_cos[j], vert_positions[BM_elem_index_get(v[j])]);
     }
   }
   else {
@@ -72,33 +75,32 @@ struct EditMesh_PreSelElem {
   eEditMesh_PreSelPreviewAction preview_action;
 };
 
-void EDBM_preselect_action_set(struct EditMesh_PreSelElem *psel,
-                               eEditMesh_PreSelPreviewAction action)
+void EDBM_preselect_action_set(EditMesh_PreSelElem *psel, eEditMesh_PreSelPreviewAction action)
 {
   psel->preview_action = action;
 }
 
-eEditMesh_PreSelPreviewAction EDBM_preselect_action_get(struct EditMesh_PreSelElem *psel)
+eEditMesh_PreSelPreviewAction EDBM_preselect_action_get(EditMesh_PreSelElem *psel)
 {
   return psel->preview_action;
 }
 
-struct EditMesh_PreSelElem *EDBM_preselect_elem_create()
+EditMesh_PreSelElem *EDBM_preselect_elem_create()
 {
-  struct EditMesh_PreSelElem *psel = static_cast<EditMesh_PreSelElem *>(
+  EditMesh_PreSelElem *psel = static_cast<EditMesh_PreSelElem *>(
       MEM_callocN(sizeof(*psel), __func__));
   psel->preview_action = PRESELECT_ACTION_TRANSFORM;
   return psel;
 }
 
-void EDBM_preselect_elem_destroy(struct EditMesh_PreSelElem *psel)
+void EDBM_preselect_elem_destroy(EditMesh_PreSelElem *psel)
 {
   EDBM_preselect_elem_clear(psel);
   EDBM_preselect_preview_clear(psel);
   MEM_freeN(psel);
 }
 
-void EDBM_preselect_preview_clear(struct EditMesh_PreSelElem *psel)
+void EDBM_preselect_preview_clear(EditMesh_PreSelElem *psel)
 {
   MEM_SAFE_FREE(psel->preview_tris);
   psel->preview_tris_len = 0;
@@ -107,7 +109,7 @@ void EDBM_preselect_preview_clear(struct EditMesh_PreSelElem *psel)
   psel->preview_lines_len = 0;
 }
 
-void EDBM_preselect_elem_clear(struct EditMesh_PreSelElem *psel)
+void EDBM_preselect_elem_clear(EditMesh_PreSelElem *psel)
 {
   MEM_SAFE_FREE(psel->edges);
   psel->edges_len = 0;
@@ -116,7 +118,7 @@ void EDBM_preselect_elem_clear(struct EditMesh_PreSelElem *psel)
   psel->verts_len = 0;
 }
 
-void EDBM_preselect_elem_draw(struct EditMesh_PreSelElem *psel, const float matrix[4][4])
+void EDBM_preselect_elem_draw(EditMesh_PreSelElem *psel, const float matrix[4][4])
 {
   if ((psel->edges_len == 0) && (psel->verts_len == 0)) {
     return;
@@ -196,33 +198,30 @@ void EDBM_preselect_elem_draw(struct EditMesh_PreSelElem *psel, const float matr
   GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
 }
 
-static void view3d_preselect_mesh_elem_update_from_vert(struct EditMesh_PreSelElem *psel,
+static void view3d_preselect_mesh_elem_update_from_vert(EditMesh_PreSelElem *psel,
                                                         BMesh * /*bm*/,
                                                         BMVert *eve,
-                                                        const float (*coords)[3])
+                                                        const Span<float3> vert_positions)
 {
   float(*verts)[3] = static_cast<float(*)[3]>(MEM_mallocN(sizeof(*psel->verts), __func__));
-  vcos_get(eve, verts[0], coords);
+  vcos_get(eve, verts[0], vert_positions);
   psel->verts = verts;
   psel->verts_len = 1;
 }
 
-static void view3d_preselect_mesh_elem_update_from_edge(struct EditMesh_PreSelElem *psel,
+static void view3d_preselect_mesh_elem_update_from_edge(EditMesh_PreSelElem *psel,
                                                         BMesh * /*bm*/,
                                                         BMEdge *eed,
-                                                        const float (*coords)[3])
+                                                        const Span<float3> vert_positions)
 {
   float(*edges)[2][3] = static_cast<float(*)[2][3]>(MEM_mallocN(sizeof(*psel->edges), __func__));
-  vcos_get_pair(&eed->v1, edges[0], coords);
+  vcos_get_pair(&eed->v1, edges[0], vert_positions);
   psel->edges = edges;
   psel->edges_len = 1;
 }
 
-static void view3d_preselect_update_preview_triangle_from_vert(struct EditMesh_PreSelElem *psel,
-                                                               ViewContext *vc,
-                                                               BMesh * /*bm*/,
-                                                               BMVert *eed,
-                                                               const int mval[2])
+static void view3d_preselect_update_preview_triangle_from_vert(
+    EditMesh_PreSelElem *psel, ViewContext *vc, BMesh * /*bm*/, BMVert *eed, const int mval[2])
 {
   BMVert *v_act = eed;
   BMEdge *e_pair[2] = {nullptr};
@@ -247,9 +246,9 @@ static void view3d_preselect_update_preview_triangle_from_vert(struct EditMesh_P
   }
 
   if (e_pair[1] != nullptr) {
-    mul_v3_m4v3(center, vc->obedit->object_to_world, v_act->co);
+    mul_v3_m4v3(center, vc->obedit->object_to_world().ptr(), v_act->co);
     ED_view3d_win_to_3d_int(vc->v3d, vc->region, center, mval, center);
-    mul_m4_v3(vc->obedit->world_to_object, center);
+    mul_m4_v3(vc->obedit->world_to_object().ptr(), center);
 
     psel->preview_tris = static_cast<float(*)[3][3]>(
         MEM_mallocN(sizeof(*psel->preview_tris) * 2, __func__));
@@ -290,7 +289,7 @@ static void view3d_preselect_update_preview_triangle_from_vert(struct EditMesh_P
   }
 }
 
-static void view3d_preselect_update_preview_triangle_from_face(struct EditMesh_PreSelElem *psel,
+static void view3d_preselect_update_preview_triangle_from_face(EditMesh_PreSelElem *psel,
                                                                ViewContext * /*vc*/,
                                                                BMesh * /*bm*/,
                                                                BMFace *efa,
@@ -302,17 +301,14 @@ static void view3d_preselect_update_preview_triangle_from_face(struct EditMesh_P
   l_iter = l_first = BM_FACE_FIRST_LOOP(efa);
   int i = 0;
   do {
-    vcos_get_pair(&l_iter->e->v1, preview_lines[i++], nullptr);
+    vcos_get_pair(&l_iter->e->v1, preview_lines[i++], {});
   } while ((l_iter = l_iter->next) != l_first);
   psel->preview_lines = preview_lines;
   psel->preview_lines_len = efa->len;
 }
 
-static void view3d_preselect_update_preview_triangle_from_edge(struct EditMesh_PreSelElem *psel,
-                                                               ViewContext *vc,
-                                                               BMesh * /*bm*/,
-                                                               BMEdge *eed,
-                                                               const int mval[2])
+static void view3d_preselect_update_preview_triangle_from_edge(
+    EditMesh_PreSelElem *psel, ViewContext *vc, BMesh * /*bm*/, BMEdge *eed, const int mval[2])
 {
   float center[3];
   psel->preview_tris = static_cast<float(*)[3][3]>(
@@ -320,9 +316,9 @@ static void view3d_preselect_update_preview_triangle_from_edge(struct EditMesh_P
   psel->preview_lines = static_cast<float(*)[2][3]>(
       MEM_mallocN(sizeof(*psel->preview_lines) * 3, __func__));
   mid_v3_v3v3(center, eed->v1->co, eed->v2->co);
-  mul_m4_v3(vc->obedit->object_to_world, center);
+  mul_m4_v3(vc->obedit->object_to_world().ptr(), center);
   ED_view3d_win_to_3d_int(vc->v3d, vc->region, center, mval, center);
-  mul_m4_v3(vc->obedit->world_to_object, center);
+  mul_m4_v3(vc->obedit->world_to_object().ptr(), center);
 
   copy_v3_v3(psel->preview_tris[0][0], eed->v1->co);
   copy_v3_v3(psel->preview_tris[0][1], eed->v2->co);
@@ -340,10 +336,10 @@ static void view3d_preselect_update_preview_triangle_from_edge(struct EditMesh_P
   psel->preview_lines_len = 3;
 }
 
-static void view3d_preselect_mesh_elem_update_from_face(struct EditMesh_PreSelElem *psel,
+static void view3d_preselect_mesh_elem_update_from_face(EditMesh_PreSelElem *psel,
                                                         BMesh * /*bm*/,
                                                         BMFace *efa,
-                                                        const float (*coords)[3])
+                                                        const Span<float3> vert_positions)
 {
   float(*edges)[2][3] = static_cast<float(*)[2][3]>(
       MEM_mallocN(sizeof(*psel->edges) * efa->len, __func__));
@@ -351,32 +347,32 @@ static void view3d_preselect_mesh_elem_update_from_face(struct EditMesh_PreSelEl
   l_iter = l_first = BM_FACE_FIRST_LOOP(efa);
   int i = 0;
   do {
-    vcos_get_pair(&l_iter->e->v1, edges[i++], coords);
+    vcos_get_pair(&l_iter->e->v1, edges[i++], vert_positions);
   } while ((l_iter = l_iter->next) != l_first);
   psel->edges = edges;
   psel->edges_len = efa->len;
 }
 
-void EDBM_preselect_elem_update_from_single(struct EditMesh_PreSelElem *psel,
+void EDBM_preselect_elem_update_from_single(EditMesh_PreSelElem *psel,
                                             BMesh *bm,
                                             BMElem *ele,
-                                            const float (*coords)[3])
+                                            const Span<float3> vert_positions)
 {
   EDBM_preselect_elem_clear(psel);
 
-  if (coords) {
+  if (!vert_positions.is_empty()) {
     BM_mesh_elem_index_ensure(bm, BM_VERT);
   }
 
   switch (ele->head.htype) {
     case BM_VERT:
-      view3d_preselect_mesh_elem_update_from_vert(psel, bm, (BMVert *)ele, coords);
+      view3d_preselect_mesh_elem_update_from_vert(psel, bm, (BMVert *)ele, vert_positions);
       break;
     case BM_EDGE:
-      view3d_preselect_mesh_elem_update_from_edge(psel, bm, (BMEdge *)ele, coords);
+      view3d_preselect_mesh_elem_update_from_edge(psel, bm, (BMEdge *)ele, vert_positions);
       break;
     case BM_FACE:
-      view3d_preselect_mesh_elem_update_from_face(psel, bm, (BMFace *)ele, coords);
+      view3d_preselect_mesh_elem_update_from_face(psel, bm, (BMFace *)ele, vert_positions);
       break;
     default:
       BLI_assert(0);
@@ -384,7 +380,7 @@ void EDBM_preselect_elem_update_from_single(struct EditMesh_PreSelElem *psel,
 }
 
 void EDBM_preselect_elem_update_preview(
-    struct EditMesh_PreSelElem *psel, ViewContext *vc, BMesh *bm, BMElem *ele, const int mval[2])
+    EditMesh_PreSelElem *psel, ViewContext *vc, BMesh *bm, BMElem *ele, const int mval[2])
 {
   EDBM_preselect_preview_clear(psel);
 

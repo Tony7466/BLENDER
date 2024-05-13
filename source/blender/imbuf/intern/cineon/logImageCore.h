@@ -9,7 +9,7 @@
  * Cineon and DPX common structures.
  *
  * This header file contains private details.
- * User code should generally use cineonlib.h and dpxlib.h only.
+ * User code should generally use `cineonlib.h` and `dpxlib.h` only.
  * Hmm. I thought the two formats would have more in common!
  */
 
@@ -192,7 +192,7 @@ LogImageFile *logImageCreate(const char *filepath,
 void logImageClose(LogImageFile *logImage);
 
 /* Data handling */
-size_t getRowLength(size_t width, LogImageElement logElement);
+size_t getRowLength(size_t width, const LogImageElement *logElement);
 int logImageSetDataRGBA(LogImageFile *logImage, float *data, int dataIsLinearRGB);
 int logImageGetDataRGBA(LogImageFile *logImage, float *data, int dataIsLinearRGB);
 

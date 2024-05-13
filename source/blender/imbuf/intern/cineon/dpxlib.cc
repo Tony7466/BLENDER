@@ -11,12 +11,12 @@
 #include "dpxlib.h"
 #include "logmemfile.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <sys/types.h>
-#include <time.h>
 
 #include "BLI_fileops.h"
 #include "BLI_string.h"
@@ -54,7 +54,7 @@ static void fillDpxMainHeader(LogImageFile *dpx,
   header->fileHeader.offset = swap_uint(dpx->element[0].dataOffset, dpx->isMSB);
   STRNCPY(header->fileHeader.version, "V2.0");
   header->fileHeader.file_size = swap_uint(
-      dpx->element[0].dataOffset + dpx->height * getRowLength(dpx->width, dpx->element[0]),
+      dpx->element[0].dataOffset + dpx->height * getRowLength(dpx->width, &dpx->element[0]),
       dpx->isMSB);
   header->fileHeader.ditto_key = 0;
   header->fileHeader.gen_hdr_size = swap_uint(

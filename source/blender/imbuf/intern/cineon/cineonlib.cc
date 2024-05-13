@@ -11,12 +11,12 @@
 #include "cineonlib.h"
 #include "logmemfile.h"
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <sys/types.h>
-#include <time.h>
 
 #include "BLI_fileops.h"
 #include "BLI_string.h"
@@ -54,10 +54,10 @@ static void fillCineonMainHeader(LogImageFile *cineon,
       cineon->isMSB);
   header->fileHeader.ind_hdr_size = 0;
   header->fileHeader.user_data_size = 0;
-  header->fileHeader.file_size = swap_uint(cineon->element[0].dataOffset +
-                                               cineon->height *
-                                                   getRowLength(cineon->width, cineon->element[0]),
-                                           cineon->isMSB);
+  header->fileHeader.file_size = swap_uint(
+      cineon->element[0].dataOffset +
+          cineon->height * getRowLength(cineon->width, &cineon->element[0]),
+      cineon->isMSB);
   STRNCPY(header->fileHeader.version, "v4.5");
   STRNCPY(header->fileHeader.file_name, filepath);
   fileClock = time(nullptr);
@@ -301,13 +301,13 @@ LogImageFile *cineonOpen(const uchar *byteStuff, int fromMemory, size_t bufferSi
     }
 
     if (cineon->element[i].refLowQuantity == CINEON_UNDEFINED_R32 ||
-        isnan(cineon->element[i].refLowQuantity))
+        std::isnan(cineon->element[i].refLowQuantity))
     {
       cineon->element[i].refLowQuantity = 0.0f;
     }
 
     if (cineon->element[i].refHighQuantity == CINEON_UNDEFINED_R32 ||
-        isnan(cineon->element[i].refHighQuantity))
+        std::isnan(cineon->element[i].refHighQuantity))
     {
       if (cineon->element[i].transfer == transfer_PrintingDensity) {
         cineon->element[i].refHighQuantity = 2.048f;
@@ -318,7 +318,7 @@ LogImageFile *cineonOpen(const uchar *byteStuff, int fromMemory, size_t bufferSi
     }
 
     cineon->element[i].dataOffset = dataOffset;
-    dataOffset += cineon->height * getRowLength(cineon->width, cineon->element[i]);
+    dataOffset += cineon->height * getRowLength(cineon->width, &cineon->element[i]);
   }
 
   cineon->referenceBlack = 95.0f / 1023.0f * cineon->element[0].maxValue;
@@ -356,7 +356,7 @@ LogImageFile *cineonCreate(
 {
   CineonMainHeader header;
   const char *shortFilename = nullptr;
-  /* uchar pad[6044]; */
+  // uchar pad[6044];
 
   LogImageFile *cineon = (LogImageFile *)MEM_mallocN(sizeof(LogImageFile), __func__);
   if (cineon == nullptr) {

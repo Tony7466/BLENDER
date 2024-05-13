@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,37 +8,37 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_scene.h"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_scene.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_channels.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "MEM_guardedalloc.h"
 
 /* Own include. */
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 struct ThumbnailDrawJob {
   SeqRenderData context;
   GHash *sequences_ghash;
   Scene *scene;
-  rctf *view_area;
+  const rctf *view_area;
   float pixelx;
   float pixely;
   float thumb_height;
@@ -60,7 +60,7 @@ static void thumbnail_freejob(void *data)
 {
   ThumbnailDrawJob *tj = static_cast<ThumbnailDrawJob *>(data);
   BLI_ghash_free(tj->sequences_ghash, nullptr, thumbnail_hash_data_free);
-  MEM_freeN(tj->view_area);
+  MEM_freeN((void *)tj->view_area);
   MEM_freeN(tj);
 }
 
@@ -70,7 +70,7 @@ static void thumbnail_endjob(void *data)
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, tj->scene);
 }
 
-static bool check_seq_need_thumbnails(const Scene *scene, Sequence *seq, rctf *view_area)
+static bool check_seq_need_thumbnails(const Scene *scene, Sequence *seq, const rctf *view_area)
 {
   if (!ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
     return false;
@@ -134,7 +134,7 @@ static void seq_get_thumb_image_dimensions(Sequence *seq,
   }
 }
 
-static void thumbnail_start_job(void *data, bool *stop, bool * /*do_update*/, float * /*progress*/)
+static void thumbnail_start_job(void *data, wmJobWorkerStatus *worker_status)
 {
   ThumbnailDrawJob *tj = static_cast<ThumbnailDrawJob *>(data);
   const Scene *scene = tj->scene;
@@ -144,7 +144,7 @@ static void thumbnail_start_job(void *data, bool *stop, bool * /*do_update*/, fl
 
   /* First pass: render visible images. */
   BLI_ghashIterator_init(&gh_iter, tj->sequences_ghash);
-  while (!BLI_ghashIterator_done(&gh_iter) & !*stop) {
+  while (!BLI_ghashIterator_done(&gh_iter) && !worker_status->stop) {
     Sequence *seq_orig = static_cast<Sequence *>(BLI_ghashIterator_getKey(&gh_iter));
     ThumbDataItem *val = static_cast<ThumbDataItem *>(
         BLI_ghash_lookup(tj->sequences_ghash, seq_orig));
@@ -153,7 +153,7 @@ static void thumbnail_start_job(void *data, bool *stop, bool * /*do_update*/, fl
       seq_get_thumb_image_dimensions(
           val->seq_dupli, tj->pixelx, tj->pixely, &frame_step, tj->thumb_height, nullptr, nullptr);
       SEQ_render_thumbnails(
-          &tj->context, val->seq_dupli, seq_orig, frame_step, tj->view_area, stop);
+          &tj->context, val->seq_dupli, seq_orig, frame_step, tj->view_area, &worker_status->stop);
       SEQ_relations_sequence_free_anim(val->seq_dupli);
     }
     BLI_ghashIterator_step(&gh_iter);
@@ -161,7 +161,7 @@ static void thumbnail_start_job(void *data, bool *stop, bool * /*do_update*/, fl
 
   /* Second pass: render "guaranteed" set of images. */
   BLI_ghashIterator_init(&gh_iter, tj->sequences_ghash);
-  while (!BLI_ghashIterator_done(&gh_iter) & !*stop) {
+  while (!BLI_ghashIterator_done(&gh_iter) && !worker_status->stop) {
     Sequence *seq_orig = static_cast<Sequence *>(BLI_ghashIterator_getKey(&gh_iter));
     ThumbDataItem *val = static_cast<ThumbDataItem *>(
         BLI_ghash_lookup(tj->sequences_ghash, seq_orig));
@@ -169,7 +169,8 @@ static void thumbnail_start_job(void *data, bool *stop, bool * /*do_update*/, fl
     if (check_seq_need_thumbnails(scene, seq_orig, tj->view_area)) {
       seq_get_thumb_image_dimensions(
           val->seq_dupli, tj->pixelx, tj->pixely, &frame_step, tj->thumb_height, nullptr, nullptr);
-      SEQ_render_thumbnails_base_set(&tj->context, val->seq_dupli, seq_orig, tj->view_area, stop);
+      SEQ_render_thumbnails_base_set(
+          &tj->context, val->seq_dupli, seq_orig, tj->view_area, &worker_status->stop);
       SEQ_relations_sequence_free_anim(val->seq_dupli);
     }
     BLI_ghashIterator_step(&gh_iter);
@@ -182,13 +183,14 @@ static SeqRenderData sequencer_thumbnail_context_init(const bContext *C)
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Scene *scene = CTX_data_scene(C);
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  SeqRenderData context = {0};
+  SeqRenderData context = {nullptr};
 
   /* Taking rectx and recty as 0 as dimensions not known here, and context is used to calculate
    * hash key but not necessary as other variables of SeqRenderData are unique enough. */
   SEQ_render_new_render_data(bmain, depsgraph, scene, 0, 0, sseq->render_size, false, &context);
   context.view_id = BKE_scene_multiview_view_id_get(&scene->r, STEREO_LEFT_NAME);
   context.use_proxies = false;
+  context.ignore_missing_media = true;
   context.scene = scene;
 
   return context;
@@ -295,21 +297,21 @@ static void sequencer_thumbnail_start_job_if_necessary(
 
   /* Job start requested, but over area which has been processed. Unless `thumbnail_is_missing` is
    * true, ignore this request as all images are in view. */
-  if (v2d->cur.xmax == sseq->runtime.last_thumbnail_area.xmax &&
-      v2d->cur.ymax == sseq->runtime.last_thumbnail_area.ymax && !thumbnail_is_missing)
+  if (v2d->cur.xmax == sseq->runtime->last_thumbnail_area.xmax &&
+      v2d->cur.ymax == sseq->runtime->last_thumbnail_area.ymax && !thumbnail_is_missing)
   {
     return;
   }
 
   /* Stop the job first as view has changed. Pointless to continue old job. */
-  if (v2d->cur.xmax != sseq->runtime.last_thumbnail_area.xmax ||
-      v2d->cur.ymax != sseq->runtime.last_thumbnail_area.ymax)
+  if (v2d->cur.xmax != sseq->runtime->last_thumbnail_area.xmax ||
+      v2d->cur.ymax != sseq->runtime->last_thumbnail_area.ymax)
   {
-    WM_jobs_stop(CTX_wm_manager(C), nullptr, reinterpret_cast<void *>(thumbnail_start_job));
+    WM_jobs_stop(CTX_wm_manager(C), nullptr, thumbnail_start_job);
   }
 
   sequencer_thumbnail_init_job(C, v2d, ed, thumb_height);
-  sseq->runtime.last_thumbnail_area = v2d->cur;
+  sseq->runtime->last_thumbnail_area = v2d->cur;
 }
 
 void last_displayed_thumbnails_list_free(void *val)
@@ -320,15 +322,15 @@ void last_displayed_thumbnails_list_free(void *val)
 static GSet *last_displayed_thumbnails_list_ensure(const bContext *C, Sequence *seq)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (sseq->runtime.last_displayed_thumbnails == nullptr) {
-    sseq->runtime.last_displayed_thumbnails = BLI_ghash_ptr_new(__func__);
+  if (sseq->runtime->last_displayed_thumbnails == nullptr) {
+    sseq->runtime->last_displayed_thumbnails = BLI_ghash_ptr_new(__func__);
   }
 
   GSet *displayed_thumbnails = static_cast<GSet *>(
-      BLI_ghash_lookup(sseq->runtime.last_displayed_thumbnails, seq));
+      BLI_ghash_lookup(sseq->runtime->last_displayed_thumbnails, seq));
   if (displayed_thumbnails == nullptr) {
     displayed_thumbnails = BLI_gset_int_new(__func__);
-    BLI_ghash_insert(sseq->runtime.last_displayed_thumbnails, seq, displayed_thumbnails);
+    BLI_ghash_insert(sseq->runtime->last_displayed_thumbnails, seq, displayed_thumbnails);
   }
 
   return displayed_thumbnails;
@@ -436,6 +438,14 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               float pixelx,
                               float pixely)
 {
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  if ((sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
+      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_THUMBNAILS) == 0 ||
+      !ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE))
+  {
+    return;
+  }
+
   bool clipped = false;
   float image_height, image_width, thumb_width;
   rcti crop;
@@ -456,6 +466,9 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     return;
   }
 
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
+
   const float thumb_height = y2 - y1;
   seq_get_thumb_image_dimensions(
       seq, pixelx, pixely, &thumb_width, thumb_height, &image_width, &image_height);
@@ -471,7 +484,6 @@ void draw_seq_strip_thumbnail(View2D *v2d,
   }
 
   float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, thumb_width, &v2d->cur);
-  float thumb_x_end;
 
   GSet *last_displayed_thumbnails = last_displayed_thumbnails_list_ensure(C, seq);
   /* Cleanup thumbnail list outside of rendered range, which is cleaned up one by one to prevent
@@ -482,7 +494,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
 
   /* Start drawing. */
   while (timeline_frame < upper_thumb_bound) {
-    thumb_x_end = timeline_frame + thumb_width;
+    float thumb_x_end = timeline_frame + thumb_width;
     clipped = false;
 
     /* Checks to make sure that thumbs are loaded only when in view and within the confines of the
@@ -502,20 +514,17 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     if (thumb_x_end > (upper_thumb_bound)) {
       thumb_x_end = upper_thumb_bound;
       clipped = true;
-      if (thumb_x_end - timeline_frame < 1) {
-        break;
-      }
     }
 
     float zoom_x = thumb_width / image_width;
     float zoom_y = thumb_height / image_height;
 
-    float cropx_min = (cut_off / pixelx) / (zoom_y / pixely);
-    float cropx_max = ((thumb_x_end - timeline_frame) / pixelx) / (zoom_y / pixely);
-    if (cropx_max == (thumb_x_end - timeline_frame)) {
-      cropx_max = cropx_max + 1;
+    int cropx_min = int((cut_off / pixelx) / (zoom_y / pixely));
+    int cropx_max = int(((thumb_x_end - timeline_frame) / pixelx) / (zoom_y / pixely));
+    if (cropx_max < 1) {
+      break;
     }
-    BLI_rcti_init(&crop, int(cropx_min), int(cropx_max), 0, int(image_height) - 1);
+    BLI_rcti_init(&crop, cropx_min, cropx_max - 1, 0, int(image_height) - 1);
 
     /* Get the image. */
     ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
@@ -540,19 +549,21 @@ void draw_seq_strip_thumbnail(View2D *v2d,
       break;
     }
 
-    /* Transparency on overlap. */
-    if (seq->flag & SEQ_OVERLAP) {
+    /* Transparency on mute. */
+    bool muted = channels ? SEQ_render_is_muted(channels, seq) : false;
+    if (muted) {
+      const uchar alpha = 120;
       GPU_blend(GPU_BLEND_ALPHA);
       if (ibuf->byte_buffer.data) {
         uchar *buf = ibuf->byte_buffer.data;
         for (int pixel = ibuf->x * ibuf->y; pixel--; buf += 4) {
-          buf[3] = OVERLAP_ALPHA;
+          buf[3] = alpha;
         }
       }
       else if (ibuf->float_buffer.data) {
         float *buf = ibuf->float_buffer.data;
         for (int pixel = ibuf->x * ibuf->y; pixel--; buf += ibuf->channels) {
-          buf[3] = (OVERLAP_ALPHA / 255.0f);
+          buf[3] = (alpha / 255.0f);
         }
       }
     }

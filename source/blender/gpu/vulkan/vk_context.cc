@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "vk_immediate.hh"
 #include "vk_memory.hh"
 #include "vk_shader.hh"
+#include "vk_shader_interface.hh"
 #include "vk_state_manager.hh"
 #include "vk_texture.hh"
 
@@ -20,7 +21,10 @@
 
 namespace blender::gpu {
 
-VKContext::VKContext(void *ghost_window, void *ghost_context)
+VKContext::VKContext(void *ghost_window,
+                     void *ghost_context,
+                     render_graph::VKResourceStateTracker &resources)
+    : render_graph(std::make_unique<render_graph::VKCommandBufferWrapper>(), resources)
 {
   ghost_window_ = ghost_window;
   ghost_context_ = ghost_context;
@@ -36,6 +40,10 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
 VKContext::~VKContext()
 {
+  if (surface_texture_) {
+    GPU_texture_free(surface_texture_);
+    surface_texture_ = nullptr;
+  }
   VKBackend::get().device_.context_unregister(*this);
 
   delete imm;
@@ -44,40 +52,48 @@ VKContext::~VKContext()
 
 void VKContext::sync_backbuffer()
 {
-  if (ghost_window_) {
-    VkImage vk_image;
-    VkFramebuffer vk_framebuffer;
-    VkRenderPass render_pass;
-    VkExtent2D extent;
-    uint32_t fb_id;
-
-    GHOST_GetVulkanBackbuffer((GHOST_WindowHandle)ghost_window_,
-                              &vk_image,
-                              &vk_framebuffer,
-                              &render_pass,
-                              &extent,
-                              &fb_id);
-
-    /* Recreate the gpu::VKFrameBuffer wrapper after every swap. */
-    if (has_active_framebuffer()) {
-      deactivate_framebuffer();
+  if (ghost_context_) {
+    VKDevice &device = VKBackend::get().device_;
+    if (!command_buffers_.is_initialized()) {
+      command_buffers_.init(device);
+      descriptor_pools_.init(device);
+      device.init_dummy_buffer(*this);
+      device.init_dummy_color_attachment();
     }
-    delete back_left;
-
-    VKFrameBuffer *framebuffer = new VKFrameBuffer(
-        "back_left", vk_image, vk_framebuffer, render_pass, extent);
-    back_left = framebuffer;
-    back_left->bind(false);
+    descriptor_pools_.reset();
   }
 
-  if (ghost_context_) {
-    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
-    GHOST_GetVulkanCommandBuffer(static_cast<GHOST_ContextHandle>(ghost_context_),
-                                 &command_buffer);
-    VKDevice &device = VKBackend::get().device_;
-    command_buffer_.init(device.device_get(), device.queue_get(), command_buffer);
-    command_buffer_.begin_recording();
-    device.descriptor_pools_get().reset();
+  if (ghost_window_) {
+    GHOST_VulkanSwapChainData swap_chain_data = {};
+    GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &swap_chain_data);
+
+    const bool reset_framebuffer = swap_chain_format_ != swap_chain_data.format ||
+                                   vk_extent_.width != swap_chain_data.extent.width ||
+                                   vk_extent_.height != swap_chain_data.extent.height;
+    if (reset_framebuffer) {
+      if (has_active_framebuffer()) {
+        deactivate_framebuffer();
+      }
+      if (surface_texture_) {
+        GPU_texture_free(surface_texture_);
+        surface_texture_ = nullptr;
+      }
+      surface_texture_ = GPU_texture_create_2d("back-left",
+                                               swap_chain_data.extent.width,
+                                               swap_chain_data.extent.height,
+                                               1,
+                                               to_gpu_format(swap_chain_data.format),
+                                               GPU_TEXTURE_USAGE_ATTACHMENT,
+                                               nullptr);
+
+      back_left->attachment_set(GPU_FB_COLOR_ATTACHMENT0,
+                                GPU_ATTACHMENT_TEXTURE(surface_texture_));
+
+      back_left->bind(false);
+
+      swap_chain_format_ = swap_chain_data.format;
+      vk_extent_ = swap_chain_data.extent;
+    }
   }
 }
 
@@ -99,27 +115,29 @@ void VKContext::deactivate()
   is_active_ = false;
 }
 
-void VKContext::begin_frame()
-{
-  sync_backbuffer();
-}
+void VKContext::begin_frame() {}
 
 void VKContext::end_frame()
 {
-  command_buffer_.end_recording();
+  VKDevice &device = VKBackend::get().device_get();
+  device.destroy_discarded_resources();
 }
 
 void VKContext::flush()
 {
-  command_buffer_.submit();
+  command_buffers_.submit();
 }
 
 void VKContext::finish()
 {
-  command_buffer_.submit();
+  command_buffers_.finish();
 }
 
-void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/) {}
+void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)
+{
+  const VKDevice &device = VKBackend::get().device_get();
+  device.memory_statistics_get(r_total_mem_kb, r_free_mem_kb);
+}
 
 /* -------------------------------------------------------------------- */
 /** \name State manager
@@ -129,6 +147,16 @@ VKStateManager &VKContext::state_manager_get() const
 {
   return *static_cast<VKStateManager *>(state_manager);
 }
+
+void VKContext::debug_unbind_all_ubo()
+{
+  state_manager_get().uniform_buffer_unbind_all();
+};
+
+void VKContext::debug_unbind_all_ssbo()
+{
+  state_manager_get().storage_buffer_unbind_all();
+};
 
 /** \} */
 
@@ -144,7 +172,14 @@ void VKContext::activate_framebuffer(VKFrameBuffer &framebuffer)
 
   BLI_assert(active_fb == nullptr);
   active_fb = &framebuffer;
-  command_buffer_.begin_render_pass(framebuffer);
+  framebuffer.update_size();
+  framebuffer.update_srgb();
+  if (use_render_graph) {
+    framebuffer.rendering_reset();
+  }
+  else {
+    command_buffers_get().begin_render_pass(framebuffer);
+  }
 }
 
 VKFrameBuffer *VKContext::active_framebuffer_get() const
@@ -161,10 +196,21 @@ void VKContext::deactivate_framebuffer()
 {
   VKFrameBuffer *framebuffer = active_framebuffer_get();
   BLI_assert(framebuffer != nullptr);
-  if (framebuffer->is_valid()) {
-    command_buffer_.end_render_pass(*framebuffer);
+  if (use_render_graph) {
+    framebuffer->rendering_end(*this);
+  }
+  else {
+    command_buffers_get().end_render_pass(*framebuffer);
   }
   active_fb = nullptr;
+}
+
+void VKContext::rendering_end()
+{
+  VKFrameBuffer *framebuffer = active_framebuffer_get();
+  if (framebuffer) {
+    framebuffer->rendering_end(*this);
+  }
 }
 
 /** \} */
@@ -178,8 +224,43 @@ void VKContext::bind_compute_pipeline()
   VKShader *shader = unwrap(this->shader);
   BLI_assert(shader);
   VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.update_and_bind(
-      *this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_COMPUTE);
+  pipeline.bind(*this, VK_PIPELINE_BIND_POINT_COMPUTE);
+  shader->push_constants.update(*this);
+  if (shader->has_descriptor_set()) {
+    descriptor_set_.bind(*this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_COMPUTE);
+  }
+}
+
+void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data)
+{
+  VKShader &vk_shader = unwrap(*shader);
+  pipeline_data.vk_pipeline_layout = vk_shader.vk_pipeline_layout_get();
+  pipeline_data.vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();
+
+  /* Update descriptor set. */
+  pipeline_data.vk_descriptor_set = VK_NULL_HANDLE;
+  if (vk_shader.has_descriptor_set()) {
+    descriptor_set_.update(*this);
+    pipeline_data.vk_descriptor_set = descriptor_set_get().active_descriptor_set()->vk_handle();
+  }
+
+  /* Update push constants. */
+  pipeline_data.push_constants_data = nullptr;
+  pipeline_data.push_constants_size = 0;
+  const VKPushConstants::Layout &push_constants_layout =
+      vk_shader.interface_get().push_constants_layout_get();
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
+    vk_shader.push_constants.update(*this);
+    pipeline_data.push_constants_size = push_constants_layout.size_in_bytes();
+    pipeline_data.push_constants_data = vk_shader.push_constants.data();
+  }
+}
+
+render_graph::VKResourceAccessInfo &VKContext::update_and_get_access_info()
+{
+  access_info_.reset();
+  state_manager_get().apply_bindings(*this, access_info_);
+  return access_info_;
 }
 
 /** \} */
@@ -193,11 +274,88 @@ void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
 {
   VKShader *shader = unwrap(this->shader);
   BLI_assert(shader);
+  BLI_assert_msg(
+      prim_type != GPU_PRIM_POINTS || shader->interface_get().is_point_shader(),
+      "GPU_PRIM_POINTS is used with a shader that doesn't set point size before "
+      "drawing fragments. Calling code should be adapted to use a shader that sets the "
+      "gl_PointSize before entering the fragment stage. For example `GPU_SHADER_3D_POINT_*`.");
+
   shader->update_graphics_pipeline(*this, prim_type, vertex_attribute_object);
 
   VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.update_and_bind(
-      *this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
+  pipeline.bind(*this, VK_PIPELINE_BIND_POINT_GRAPHICS);
+  shader->push_constants.update(*this);
+  if (shader->has_descriptor_set()) {
+    descriptor_set_.bind(*this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Graphics pipeline
+ * \{ */
+
+void VKContext::swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *swap_chain_data)
+{
+  VKContext *context = VKContext::get();
+  BLI_assert(context);
+  context->swap_buffers_pre_handler(*swap_chain_data);
+}
+
+void VKContext::swap_buffers_post_callback()
+{
+  VKContext *context = VKContext::get();
+  BLI_assert(context);
+  context->swap_buffers_post_handler();
+}
+
+void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_chain_data)
+{
+  /*
+   * Ensure no graphics/compute commands are scheduled. They could use the back buffer, which
+   * layout is altered here.
+   */
+  command_buffers_get().submit();
+
+  VKFrameBuffer &framebuffer = *unwrap(back_left);
+
+  VKTexture wrapper("display_texture");
+  wrapper.init(swap_chain_data.image,
+               VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+               to_gpu_format(swap_chain_data.format));
+  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  framebuffer.color_attachment_layout_ensure(*this, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
+
+  VkImageBlit image_blit = {};
+  image_blit.srcOffsets[0] = {0, color_attachment->height_get() - 1, 0};
+  image_blit.srcOffsets[1] = {color_attachment->width_get(), 0, 1};
+  image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.srcSubresource.mipLevel = 0;
+  image_blit.srcSubresource.baseArrayLayer = 0;
+  image_blit.srcSubresource.layerCount = 1;
+
+  image_blit.dstOffsets[0] = {0, 0, 0};
+  image_blit.dstOffsets[1] = {
+      int32_t(swap_chain_data.extent.width), int32_t(swap_chain_data.extent.height), 1};
+  image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.dstSubresource.mipLevel = 0;
+  image_blit.dstSubresource.baseArrayLayer = 0;
+  image_blit.dstSubresource.layerCount = 1;
+
+  command_buffers_get().blit(wrapper,
+                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                             *color_attachment,
+                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                             Span<VkImageBlit>(&image_blit, 1));
+  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  command_buffers_get().submit();
+}
+
+void VKContext::swap_buffers_post_handler()
+{
+  sync_backbuffer();
 }
 
 /** \} */

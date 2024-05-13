@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_object_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 using namespace blender::bke;
 
@@ -34,14 +34,14 @@ void pose_apply_restore_fcurves(bAction *action);
 
 void pose_apply(Object *ob,
                 bAction *action,
-                AnimationEvalContext *anim_eval_context,
+                const AnimationEvalContext *anim_eval_context,
                 ActionApplier applier);
 
 }  // namespace
 
 void BKE_pose_apply_action_selected_bones(Object *ob,
                                           bAction *action,
-                                          AnimationEvalContext *anim_eval_context)
+                                          const AnimationEvalContext *anim_eval_context)
 {
   auto evaluate_and_apply =
       [](PointerRNA *ptr, bAction *act, const AnimationEvalContext *anim_eval_context) {
@@ -53,16 +53,15 @@ void BKE_pose_apply_action_selected_bones(Object *ob,
 
 void BKE_pose_apply_action_all_bones(Object *ob,
                                      bAction *action,
-                                     AnimationEvalContext *anim_eval_context)
+                                     const AnimationEvalContext *anim_eval_context)
 {
-  PointerRNA pose_owner_ptr;
-  RNA_id_pointer_create(&ob->id, &pose_owner_ptr);
+  PointerRNA pose_owner_ptr = RNA_id_pointer_create(&ob->id);
   animsys_evaluate_action(&pose_owner_ptr, action, anim_eval_context, false);
 }
 
 void BKE_pose_apply_action_blend(Object *ob,
                                  bAction *action,
-                                 AnimationEvalContext *anim_eval_context,
+                                 const AnimationEvalContext *anim_eval_context,
                                  const float blend_factor)
 {
   auto evaluate_and_blend = [blend_factor](PointerRNA *ptr,
@@ -77,7 +76,7 @@ void BKE_pose_apply_action_blend(Object *ob,
 namespace {
 void pose_apply(Object *ob,
                 bAction *action,
-                AnimationEvalContext *anim_eval_context,
+                const AnimationEvalContext *anim_eval_context,
                 ActionApplier applier)
 {
   bPose *pose = ob->pose;
@@ -96,8 +95,7 @@ void pose_apply(Object *ob,
   }
 
   /* Apply the Action. */
-  PointerRNA pose_owner_ptr;
-  RNA_id_pointer_create(&ob->id, &pose_owner_ptr);
+  PointerRNA pose_owner_ptr = RNA_id_pointer_create(&ob->id);
 
   applier(&pose_owner_ptr, action, anim_eval_context);
 

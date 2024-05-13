@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,12 +13,13 @@
 #include "BLI_math_base.h"
 
 #include "gpu_backend.hh"
-#include "gpu_node_graph.h"
+#include "gpu_node_graph.hh"
 
-#include "GPU_context.h"
-#include "GPU_material.h"
+#include "GPU_context.hh"
+#include "GPU_material.hh"
 
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
+#include "gpu_context_private.hh"
 #include "gpu_uniform_buffer_private.hh"
 
 /* -------------------------------------------------------------------- */
@@ -101,7 +102,7 @@ static void buffer_from_list_inputs_sort(ListBase *inputs)
     return;
   }
 
-  /* Creates a lookup table for the different types; */
+  /* Creates a lookup table for the different types. */
   LinkData *inputs_lookup[MAX_UBO_GPU_TYPE + 1] = {nullptr};
   eGPUType cur_type = static_cast<eGPUType>(MAX_UBO_GPU_TYPE + 1);
 
@@ -240,9 +241,9 @@ void GPU_uniformbuf_unbind(GPUUniformBuf *ubo)
   unwrap(ubo)->unbind();
 }
 
-void GPU_uniformbuf_unbind_all()
+void GPU_uniformbuf_debug_unbind_all()
 {
-  /* FIXME */
+  Context::get()->debug_unbind_all_ubo();
 }
 
 void GPU_uniformbuf_clear_to_zero(GPUUniformBuf *ubo)

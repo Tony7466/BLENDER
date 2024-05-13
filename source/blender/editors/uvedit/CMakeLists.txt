@@ -1,12 +1,12 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../geometry
   ../../gpu
   ../../makesrna
@@ -33,13 +33,13 @@ set(SRC
   uvedit_unwrap_ops.cc
 
   uvedit_clipboard_graph_iso.hh
-  uvedit_intern.h
+  uvedit_intern.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   bf_bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )

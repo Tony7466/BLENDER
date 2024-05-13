@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_base.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_context.hh"
 #include "COM_result.hh"
@@ -25,7 +25,7 @@ static const char *get_shader_name(int distance)
 
 void morphological_distance(Context &context, Result &input, Result &output, int distance)
 {
-  GPUShader *shader = context.shader_manager().get(get_shader_name(distance));
+  GPUShader *shader = context.get_shader(get_shader_name(distance));
   GPU_shader_bind(shader);
 
   /* Pass the absolute value of the distance. We have specialized shaders for each sign. */

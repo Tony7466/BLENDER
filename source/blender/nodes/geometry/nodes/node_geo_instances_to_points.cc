@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_instances.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "node_geometry_util.hh"
 
@@ -33,7 +33,7 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
                                         Field<bool> selection_field,
                                         const AnonymousAttributePropagationInfo &propagation_info)
 {
-  const bke::Instances &instances = *geometry_set.get_instances_for_read();
+  const bke::Instances &instances = *geometry_set.get_instances();
 
   const bke::InstancesFieldContext context{instances};
   fn::FieldEvaluator evaluator{context, instances.instances_num()};
@@ -54,7 +54,7 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
 
   bke::MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
   bke::SpanAttributeWriter<float> point_radii =
-      dst_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
+      dst_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
   array_utils::gather(radii, selection, point_radii.span);
   point_radii.finish();
 
@@ -78,11 +78,11 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
     {
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
-      dst_attributes.add(id, ATTR_DOMAIN_POINT, type, init);
+      dst_attributes.add(id, AttrDomain::Point, type, init);
     }
     else {
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, ATTR_DOMAIN_POINT, type);
+          id, AttrDomain::Point, type);
       array_utils::gather(src.varray, selection, dst.span);
       dst.finish();
     }
@@ -107,17 +107,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 }
 
-}  // namespace blender::nodes::node_geo_instances_to_points_cc
-
-void register_node_type_geo_instances_to_points()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_instances_to_points_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_INSTANCES_TO_POINTS, "Instances to Points", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_instances_to_points_cc
