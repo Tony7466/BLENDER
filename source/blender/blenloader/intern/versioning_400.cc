@@ -3132,6 +3132,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 3)) {
+    constexpr int NTREE_EXECUTION_MODE_CPU = 0;
     constexpr int NTREE_EXECUTION_MODE_FULL_FRAME = 1;
 
     constexpr int NTREE_COM_GROUPNODE_BUFFER = 1 << 3;
@@ -3461,6 +3462,45 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             }
           }
         }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 33)) {
+    constexpr int NTREE_EXECUTION_MODE_GPU = 2;
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->nodetree) {
+        if (scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_GPU) {
+          scene->r.compositor_device = SCE_COMPOSITOR_DEVICE_GPU;
+        }
+        scene->r.compositor_precision = scene->nodetree->precision;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 34)) {
+    float shadow_max_res_sun = 0.001f;
+    float shadow_max_res_local = 0.001f;
+    bool shadow_resolution_absolute = false;
+    /* Try to get default resolution from scene setting. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      shadow_max_res_local = (2.0f * M_SQRT2) / scene->eevee.shadow_cube_size;
+      /* Round to avoid weird numbers in the UI. */
+      shadow_max_res_local = ceil(shadow_max_res_local * 1000.0f) / 1000.0f;
+      shadow_resolution_absolute = true;
+      break;
+    }
+
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      if (light->type == LA_SUN) {
+        /* Sun are too complex to convert. Need user interaction. */
+        light->shadow_maximum_resolution = shadow_max_res_sun;
+        SET_FLAG_FROM_TEST(light->mode, false, LA_SHAD_RES_ABSOLUTE);
+      }
+      else {
+        light->shadow_maximum_resolution = shadow_max_res_local;
+        SET_FLAG_FROM_TEST(light->mode, shadow_resolution_absolute, LA_SHAD_RES_ABSOLUTE);
       }
     }
   }
