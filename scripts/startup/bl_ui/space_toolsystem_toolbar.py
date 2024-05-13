@@ -3440,7 +3440,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_transform.shear,
                 _defs_edit_mesh.tosphere,
             ),
-            _defs_grease_pencil_edit,
+            _defs_grease_pencil_edit.interpolate,
             None,
             *_tools_annotate,
         ],
