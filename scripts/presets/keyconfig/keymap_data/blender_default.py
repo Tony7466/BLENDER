@@ -4592,7 +4592,7 @@ def km_grease_pencil_paint_mode(params):
 
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
-            (op_tool_cycle, "builtin.interpolate"), params)
+            (op_tool_cycle, "builtin.interpolate"), params),
         ("grease_pencil.interpolate", params.tool_maybe_tweak_event, {"properties": [("release_confirm", True)]}),
     ])
 
@@ -4689,7 +4689,7 @@ def km_grease_pencil_edit_mode(params):
 
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
-            (op_tool_cycle, "builtin.interpolate"), params)
+            (op_tool_cycle, "builtin.interpolate"), params),
         ("grease_pencil.interpolate", params.tool_maybe_tweak_event, {"properties": [("release_confirm", True)]}),
     ])
 
