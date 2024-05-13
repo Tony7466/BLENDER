@@ -33,7 +33,8 @@ class VKTexture : public Texture, public VKBindableResource {
   VmaAllocation allocation_ = VK_NULL_HANDLE;
 
   /* Image view when used in a shader. */
-  std::optional<VKImageView> image_view_;
+  [[deprecated]] std::optional<VKImageView> image_view_;
+  Vector<VKImageView> image_views_;
 
   /* Last image layout of the texture. Frame-buffer and barriers can alter/require the actual
    * layout to be changed. During this it requires to set the current layout in order to know which
