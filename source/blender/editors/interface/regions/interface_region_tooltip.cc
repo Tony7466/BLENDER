@@ -1048,12 +1048,10 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     float color[4];
     ui_but_v3_get(but, color);
     color[3] = 1.0f;
-    bool has_alpha = false;
 
     if (but->rnaprop) {
       BLI_assert(but->rnaindex == -1);
       if (RNA_property_array_length(&but->rnapoin, but->rnaprop) == 4) {
-        has_alpha = true;
         color[3] = RNA_property_float_get_index(&but->rnapoin, but->rnaprop, 3);
       }
     }
