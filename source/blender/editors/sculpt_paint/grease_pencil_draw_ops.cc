@@ -482,9 +482,14 @@ enum GreasePencilInterpolateFlipMode {
   FlipAuto = 2,
 };
 
+constexpr const float interpolate_shift_min = -1.0f;
+constexpr const float interpolate_shift_max = 2.0f;
+
 struct GreasePencilInterpolateOpData {
-  /* Interpolation factor. */
-  float factor;
+  /* Initial factor value. */
+  float init_factor;
+  /* Interpolation factor bias. */
+  float shift;
 
   NumInput num; /* numeric input */
 };
@@ -763,7 +768,7 @@ static void grease_pencil_interpolate_status_indicators(
     status = msg + std::string(str_ofs);
   }
   else {
-    status = msg + std::to_string(int(opdata.factor * 100.0f)) + " %";
+    status = msg + std::to_string(int((opdata.init_factor + opdata.shift) * 100.0f)) + " %";
   }
 
   ED_area_status_text(&area, status.c_str());
@@ -777,8 +782,6 @@ static void grease_pencil_interpolate_update(bContext &C,
 {
   grease_pencil_interpolate_status_indicators(C, opdata);
 
-  //   /* apply... */
-  //   tgpi->shift = RNA_float_get(op->ptr, "shift");
   //   /* update points position */
   //   gpencil_interpolate_update_strokes(C, tgpi);
 }
@@ -1011,20 +1014,24 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           //         BLI_addtail(&gpf_dst->strokes, gps_dst);
           //       }
           //     }
+
+          /* Write current factor to properties for the next execution. */
+          RNA_float_set(op->ptr, "shift", opdata.shift);
+
           grease_pencil_interpolate_exit(*C, *op);
           return OPERATOR_FINISHED;
         case InterpolateToolModalEvent::Increase:
-          //     tgpi->shift = tgpi->shift + 0.01f;
-          //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-          //     RNA_float_set(op->ptr, "shift", tgpi->shift);
-
+          opdata.shift = std::clamp(opdata.init_factor + opdata.shift + 0.01f,
+                                    interpolate_shift_min,
+                                    interpolate_shift_max) -
+                         opdata.init_factor;
           grease_pencil_interpolate_update(*C, *op, opdata);
           break;
         case InterpolateToolModalEvent::Decrease:
-          //     tgpi->shift = tgpi->shift - 0.01f;
-          //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-          //     RNA_float_set(op->ptr, "shift", tgpi->shift);
-
+          opdata.shift = std::clamp(opdata.init_factor + opdata.shift - 0.01f,
+                                    interpolate_shift_min,
+                                    interpolate_shift_max) -
+                         opdata.init_factor;
           grease_pencil_interpolate_update(*C, *op, opdata);
           break;
       }
