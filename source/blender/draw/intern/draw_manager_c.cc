@@ -1146,7 +1146,6 @@ void DRW_draw_region_engine_info(int xoffset, int *yoffset, int line_height)
 {
   DRW_ENABLED_ENGINE_ITER (DST.view_data_active, engine, data) {
     if (data->info[0] != '\0') {
-      const int font_id = BLF_default();
       const char *buf_step = IFACE_(data->info);
       do {
         const char *buf = buf_step;
