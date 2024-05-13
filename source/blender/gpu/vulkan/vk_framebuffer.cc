@@ -447,7 +447,7 @@ void VKFrameBuffer::render_pass_create()
   bool has_depth_attachment = false;
   bool found_attachment = false;
   const VKImageView &dummy_attachment =
-      VKBackend::get().device_get().dummy_color_attachment_get().get_image_view();
+      VKBackend::get().device_get().dummy_color_attachment_get().image_view_get();
   int depth_location = -1;
 
   for (int type = GPU_FB_MAX_ATTACHMENT - 1; type >= 0; type--) {
@@ -487,7 +487,7 @@ void VKFrameBuffer::render_pass_create()
                                          {'r', 'g', 'b', 'a'},
                                          false,
                                          srgb_ && enabled_srgb_};
-      const VKImageView &image_view = texture.get_or_create_image_view(image_view_info);
+      const VKImageView &image_view = texture.image_view_get(image_view_info);
       image_views[attachment_location] = image_view.vk_handle();
 
       VkAttachmentDescription &attachment_description =
@@ -707,8 +707,7 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                        {'r', 'g', 'b', 'a'},
                                        false,
                                        srgb_ && enabled_srgb_};
-    attachment_info.imageView =
-        color_texture.get_or_create_image_view(image_view_info).vk_handle();
+    attachment_info.imageView = color_texture.image_view_get(image_view_info).vk_handle();
     attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     /* TODO add load store ops. */

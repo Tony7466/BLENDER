@@ -34,7 +34,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
   /**
    * Image views are owned by VKTexture. When a specific image view is needed it will be created
-   * and stored here. Image view can be requested by calling `get_or_create_image_view` method.
+   * and stored here. Image view can be requested by calling `image_view_get` method.
    */
   Vector<VKImageView> image_views_;
 
@@ -109,12 +109,12 @@ class VKTexture : public Texture, public VKBindableResource {
    * Get a specific image view for this texture. The specification of the image view are passed
    * inside the `info` parameter.
    */
-  const VKImageView &get_or_create_image_view(const VKImageViewInfo &info);
+  const VKImageView &image_view_get(const VKImageViewInfo &info);
 
   /**
    * Get the current image view for this texture.
    */
-  const VKImageView &get_image_view();
+  const VKImageView &image_view_get();
 
  protected:
   bool init_internal() override;

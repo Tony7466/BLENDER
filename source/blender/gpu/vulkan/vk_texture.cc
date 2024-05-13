@@ -760,7 +760,7 @@ VkExtent3D VKTexture::vk_extent_3d(int mip_level) const
   return result;
 }
 
-const VKImageView &VKTexture::get_or_create_image_view(const VKImageViewInfo &info)
+const VKImageView &VKTexture::image_view_get(const VKImageViewInfo &info)
 {
   BLI_assert_msg(!is_texture_view(), "Image views must be requested at the source texture.");
   for (const VKImageView &image_view : image_views_) {
@@ -773,16 +773,16 @@ const VKImageView &VKTexture::get_or_create_image_view(const VKImageViewInfo &in
   return image_views_.last();
 }
 
-const VKImageView &VKTexture::get_image_view()
+const VKImageView &VKTexture::image_view_get()
 {
   image_view_info_.layer_range = layer_range();
   image_view_info_.mip_range = mip_map_range();
   image_view_info_.use_srgb = true;
 
   if (is_texture_view()) {
-    return source_texture_->get_or_create_image_view(image_view_info_);
+    return source_texture_->image_view_get(image_view_info_);
   }
-  return get_or_create_image_view(image_view_info_);
+  return image_view_get(image_view_info_);
 }
 
 /** \} */
