@@ -1010,7 +1010,7 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-CombinedKeyingResult insert_legacy_key_action(Main *bmain,
+CombinedKeyingResult insert_key_legacy_action(Main *bmain,
                                               bAction *action,
                                               PointerRNA *ptr,
                                               PropertyRNA *prop,
@@ -1225,7 +1225,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                           &anim_eval_context,
                                           nullptr,
                                           successful_remaps);
-    const CombinedKeyingResult result = insert_legacy_key_action(bmain,
+    const CombinedKeyingResult result = insert_key_legacy_action(bmain,
                                                                  action,
                                                                  rna_pointer,
                                                                  prop,
