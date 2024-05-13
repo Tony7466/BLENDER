@@ -22,22 +22,13 @@ struct bAction;
 
 namespace blender::animrig {
 
-class Animation;
+class Action;
 
 /**
  * Get (or add relevant data to be able to do so) the Active Action for the given
  * Animation Data block, given an ID block where the Animation Data should reside.
  */
 bAction *id_action_ensure(Main *bmain, ID *id);
-
-/**
- * Get the animation datablock for the given ID, creating one if it doesn't
- * already exist.
- *
- * Note: this does NOT touch bindings (e.g. it doesn't ensure a binding for the
- * given ID).
- */
-Animation *id_animation_ensure(Main *bmain, ID *id);
 
 /**
  * Delete the F-Curve from the given AnimData block (if possible),
@@ -75,7 +66,7 @@ bool animdata_remove_empty_action(AnimData *adt);
  * Again, this is just to hook up the new Animation data-block to the old
  * Blender UI code.
  */
-const FCurve *fcurve_find_by_rna_path(const Animation &anim,
+const FCurve *fcurve_find_by_rna_path(const Action &anim,
                                       const ID &animated_id,
                                       StringRefNull rna_path,
                                       int array_index);

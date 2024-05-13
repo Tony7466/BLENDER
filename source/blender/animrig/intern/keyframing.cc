@@ -12,7 +12,6 @@
 #include <fmt/format.h>
 
 #include "ANIM_action.hh"
-#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -1011,19 +1010,20 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-CombinedKeyingResult insert_key_action(Main *bmain,
-                                       bAction *action,
-                                       PointerRNA *ptr,
-                                       PropertyRNA *prop,
-                                       const std::string &rna_path,
-                                       const float frame,
-                                       const Span<float> values,
-                                       eInsertKeyFlags insert_key_flag,
-                                       eBezTriple_KeyframeType key_type,
-                                       const BitSpan keying_mask)
+CombinedKeyingResult insert_legacy_key_action(Main *bmain,
+                                              bAction *action,
+                                              PointerRNA *ptr,
+                                              PropertyRNA *prop,
+                                              const std::string &rna_path,
+                                              const float frame,
+                                              const Span<float> values,
+                                              eInsertKeyFlags insert_key_flag,
+                                              eBezTriple_KeyframeType key_type,
+                                              const BitSpan keying_mask)
 {
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
+  BLI_assert(action->wrap().is_action_legacy());
 
   std::string group;
   if (ptr->type == &RNA_PoseBone) {
@@ -1084,20 +1084,22 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
       binding, rna_path, key_data.array_index, key_data.position, key_settings, insert_key_flags);
 }
 
-static CombinedKeyingResult insert_key_anim(Animation &anim,
-                                            PointerRNA *rna_pointer,
-                                            const blender::Span<std::string> rna_paths,
-                                            const float scene_frame,
-                                            const eInsertKeyFlags insert_key_flags,
-                                            const KeyframeSettings &key_settings)
+static CombinedKeyingResult insert_key_layered_action(Action &action,
+                                                      PointerRNA *rna_pointer,
+                                                      const blender::Span<std::string> rna_paths,
+                                                      const float scene_frame,
+                                                      const eInsertKeyFlags insert_key_flags,
+                                                      const KeyframeSettings &key_settings)
 {
+  BLI_assert(action.is_action_layered());
+
   ID *id = rna_pointer->owner_id;
   CombinedKeyingResult combined_result;
 
-  Binding *binding = anim.binding_for_id(*id);
+  Binding *binding = action.binding_for_id(*id);
   if (binding == nullptr) {
-    binding = &anim.binding_add();
-    const bool success = anim.assign_id(binding, *id);
+    binding = &action.binding_add();
+    const bool success = action.assign_id(binding, *id);
     if (!success) {
       /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
       combined_result.add(SingleKeyingResult::NO_VALID_BINDING, rna_paths.size());
@@ -1106,11 +1108,11 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
   }
 
   Layer *layer;
-  if (anim.layers().size() == 0) {
-    layer = &anim.layer_add("Layer 0");
+  if (action.layers().size() == 0) {
+    layer = &action.layer_add("Layer 0");
   }
   else {
-    layer = anim.layer(0);
+    layer = action.layer(0);
   }
 
   if (layer == nullptr) {
@@ -1143,7 +1145,7 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
     }
   }
 
-  DEG_id_tag_update(&anim.id, ID_RECALC_ANIMATION_NO_FLUSH);
+  DEG_id_tag_update(&action.id, ID_RECALC_ANIMATION_NO_FLUSH);
 
   return combined_result;
 }
@@ -1167,27 +1169,6 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     return combined_result;
   }
 
-  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && (adt->animation || !adt->action)) {
-    Animation *anim = id_animation_ensure(bmain, id);
-    if (anim == nullptr) {
-      /* TODO: count the rna paths properly (e.g. accounting for multi-element
-       * properties). */
-      /* TODO: is ID_NOT_ANIMATABLE the right result?  If that were the case,
-       * presumably we would have returned on the failed attempt to get the
-       * AnimData above.  But what *does* cause this case? */
-      combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
-      return combined_result;
-    }
-
-    /* TODO: Don't hardcode key settings. */
-    KeyframeSettings key_settings;
-    key_settings.keyframe_type = key_type;
-    key_settings.handle = HD_AUTO_ANIM;
-    key_settings.interpolation = BEZT_IPO_BEZ;
-    return insert_key_anim(
-        *anim, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
-  }
-
   bAction *action = id_action_ensure(bmain, id);
   if (action == nullptr) {
     /* TODO: count the rna paths properly (e.g. accounting for multi-element
@@ -1197,6 +1178,16 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
      * AnimData above.  But what *does* cause this case? */
     combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
     return combined_result;
+  }
+
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action->wrap().is_action_layered()) {
+    /* TODO: Don't hardcode key settings. */
+    KeyframeSettings key_settings;
+    key_settings.keyframe_type = key_type;
+    key_settings.handle = HD_AUTO_ANIM;
+    key_settings.interpolation = BEZT_IPO_BEZ;
+    return insert_key_layered_action(
+        action->wrap(), rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
   }
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
@@ -1234,16 +1225,16 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                           &anim_eval_context,
                                           nullptr,
                                           successful_remaps);
-    const CombinedKeyingResult result = insert_key_action(bmain,
-                                                          action,
-                                                          rna_pointer,
-                                                          prop,
-                                                          rna_path_id_to_prop->c_str(),
-                                                          nla_frame,
-                                                          rna_values.as_span(),
-                                                          insert_key_flags,
-                                                          key_type,
-                                                          successful_remaps);
+    const CombinedKeyingResult result = insert_legacy_key_action(bmain,
+                                                                 action,
+                                                                 rna_pointer,
+                                                                 prop,
+                                                                 rna_path_id_to_prop->c_str(),
+                                                                 nla_frame,
+                                                                 rna_values.as_span(),
+                                                                 insert_key_flags,
+                                                                 key_type,
+                                                                 successful_remaps);
     combined_result.merge(result);
   }
   BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);

@@ -582,6 +582,11 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   TreeNode &as_node();
 
   /**
+   * Returns true if the group is empty.
+   */
+  bool is_empty() const;
+
+  /**
    * Returns the number of direct nodes in this group.
    */
   int64_t num_direct_nodes() const;
@@ -669,7 +674,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
    * Unlink the node from the list of nodes in this group.
    * \returns true, if the node was successfully unlinked.
    */
-  bool unlink_node(TreeNode &link);
+  bool unlink_node(TreeNode &link, bool keep_children = false);
 
  private:
   void ensure_nodes_cache() const;
@@ -764,6 +769,10 @@ inline const TreeNode &LayerGroup::as_node() const
 inline TreeNode &LayerGroup::as_node()
 {
   return *reinterpret_cast<TreeNode *>(this);
+}
+inline bool LayerGroup::is_empty() const
+{
+  return BLI_listbase_is_empty(&this->children);
 }
 
 inline const TreeNode &Layer::as_node() const
@@ -940,6 +949,11 @@ inline blender::bke::greasepencil::LayerGroup &GreasePencil::root_group()
 inline bool GreasePencil::has_active_layer() const
 {
   return (this->active_node != nullptr) && (this->active_node->wrap().is_layer());
+}
+
+inline bool GreasePencil::has_active_group() const
+{
+  return (this->active_node != nullptr) && (this->active_node->wrap().is_group());
 }
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name);

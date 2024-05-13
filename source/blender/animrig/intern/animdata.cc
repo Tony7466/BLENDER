@@ -6,12 +6,11 @@
  * \ingroup animrig
  */
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
-#include "BKE_animation.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 
@@ -75,33 +74,6 @@ bAction *id_action_ensure(Main *bmain, ID *id)
   return adt->action;
 }
 
-Animation *id_animation_ensure(Main *bmain, ID *id)
-{
-  BLI_assert(id != nullptr);
-
-  AnimData *adt = BKE_animdata_ensure_id(id);
-  if (adt == nullptr) {
-    /* TODO: this printf is copied from the corresponding code in
-     * `id_action_ensure()`.  Is this really the right way to handle reporting
-     * this?  If it's never supposed to happen, an assert would be better.  If
-     * it *is* supposed to happen, then printf doesn't seem like the right way
-     * to report it, if it should be reported at all. */
-    printf("ERROR: Couldn't add AnimData (ID = %s)\n", (id) ? (id->name) : "<None>");
-    return nullptr;
-  }
-
-  if (adt->animation != nullptr) {
-    return &adt->animation->wrap();
-  }
-
-  /* TODO: translate the default name. */
-  ::Animation *anim = BKE_animation_add(bmain, "Animation");
-
-  DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&anim->id, ID_RECALC_ANIMATION_NO_FLUSH);
-  return &anim->wrap();
-}
-
 void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
 {
   /* - If no AnimData, we've got nowhere to remove the F-Curve from
@@ -122,38 +94,40 @@ void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
     BLI_remlink(&adt->drivers, fcu);
   }
   else if (adt->action) {
-    bAction *act = adt->action;
+    Action &action = adt->action->wrap();
 
-    /* Remove from group or action, whichever one "owns" the F-Curve. */
-    if (fcu->grp) {
-      bActionGroup *agrp = fcu->grp;
+    if (action.is_action_legacy()) {
+      /* Remove from group or action, whichever one "owns" the F-Curve. */
+      if (fcu->grp) {
+        bActionGroup *agrp = fcu->grp;
 
-      /* Remove F-Curve from group+action. */
-      action_groups_remove_channel(act, fcu);
+        /* Remove F-Curve from group+action. */
+        action_groups_remove_channel(&action, fcu);
 
-      /* If group has no more channels, remove it too,
-       * otherwise can have many dangling groups #33541.
-       */
-      if (BLI_listbase_is_empty(&agrp->channels)) {
-        BLI_freelinkN(&act->groups, agrp);
+        /* If group has no more channels, remove it too,
+         * otherwise can have many dangling groups #33541.
+         */
+        if (BLI_listbase_is_empty(&agrp->channels)) {
+          BLI_freelinkN(&action.groups, agrp);
+        }
       }
+      else {
+        BLI_remlink(&action.curves, fcu);
+      }
+
+      /* If action has no more F-Curves as a result of this, unlink it from
+       * AnimData if it did not come from a NLA Strip being tweaked.
+       *
+       * This is done so that we don't have dangling Object+Action entries in
+       * channel list that are empty, and linger around long after the data they
+       * are for has disappeared (and probably won't come back).
+       */
+      animdata_remove_empty_action(adt);
     }
     else {
-      BLI_remlink(&act->curves, fcu);
+      /* TODO: support deleting FCurves from Animation data-blocks. */
+      return;
     }
-
-    /* If action has no more F-Curves as a result of this, unlink it from
-     * AnimData if it did not come from a NLA Strip being tweaked.
-     *
-     * This is done so that we don't have dangling Object+Action entries in
-     * channel list that are empty, and linger around long after the data they
-     * are for has disappeared (and probably won't come back).
-     */
-    animdata_remove_empty_action(adt);
-  }
-  else if (adt->animation) {
-    /* TODO: support deleting FCurves from Animation data-blocks. */
-    return;
   }
   else {
     BLI_assert_unreachable();
@@ -210,7 +184,7 @@ void reevaluate_fcurve_errors(bAnimContext *ac)
   }
 }
 
-const FCurve *fcurve_find_by_rna_path(const Animation &anim,
+const FCurve *fcurve_find_by_rna_path(const Action &anim,
                                       const ID &animated_id,
                                       const StringRefNull rna_path,
                                       const int array_index)
