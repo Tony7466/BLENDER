@@ -4558,7 +4558,7 @@ def km_gpencil_legacy_stroke_vertex_replace(_params):
 
 
 # Grease Pencil v3
-def km_grease_pencil_paint_mode(_params):
+def km_grease_pencil_paint_mode(params):
     items = []
     keymap = (
         "Grease Pencil Paint Mode",
@@ -4589,6 +4589,11 @@ def km_grease_pencil_paint_mode(_params):
 
         # Isolate Layer
         ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
+
+        op_tool_optional(
+            ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
+            (op_tool_cycle, "builtin.interpolate"), params)
+        ("grease_pencil.interpolate", params.tool_maybe_tweak_event, {"properties": [("release_confirm", True)]}),
     ])
 
     return keymap
@@ -4682,6 +4687,10 @@ def km_grease_pencil_edit_mode(params):
         ("grease_pencil.set_selection_mode", {"type": 'ONE', "value": 'PRESS'}, {"properties": [("mode", 'POINT')]}),
         ("grease_pencil.set_selection_mode", {"type": 'TWO', "value": 'PRESS'}, {"properties": [("mode", 'STROKE')]}),
 
+        op_tool_optional(
+            ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
+            (op_tool_cycle, "builtin.interpolate"), params)
+        ("grease_pencil.interpolate", params.tool_maybe_tweak_event, {"properties": [("release_confirm", True)]}),
     ])
 
     return keymap
