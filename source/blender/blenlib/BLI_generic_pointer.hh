@@ -29,7 +29,10 @@ class GMutablePointer {
 
   GMutablePointer(const CPPType &type, void *data = nullptr) : GMutablePointer(&type, data) {}
 
-  template<typename T> GMutablePointer(T *data) : GMutablePointer(&CPPType::get<T>(), data) {}
+  template<typename T, BLI_ENABLE_IF(!std::is_void_v<T>)>
+  GMutablePointer(T *data) : GMutablePointer(&CPPType::get<T>(), data)
+  {
+  }
 
   void *get() const
   {

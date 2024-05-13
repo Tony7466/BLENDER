@@ -8,23 +8,27 @@
 
 #pragma once
 
+#include "render_graph/vk_resource_access_info.hh"
 #include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
+
 /**
  * Information stored inside the render graph node. See `VKRenderGraphNode`.
  */
-struct VKFillBufferData {
-  VkBuffer vk_buffer;
-  VkDeviceSize size;
-  uint32_t data;
+struct VKClearAttachmentsData {
+  uint32_t attachment_count;
+  VkClearAttachment attachments[8];
+  VkClearRect vk_clear_rect;
 };
 
-class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
-                                           VKFillBufferData,
-                                           VKFillBufferData,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                           VKResourceType::BUFFER> {
+class VKClearAttachmentsNode : public VKNodeInfo<VKNodeType::CLEAR_ATTACHMENTS,
+                                                 VKClearAttachmentsData,
+                                                 VKClearAttachmentsData,
+                                                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                                                     VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                                                     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                                                 VKResourceType::IMAGE> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -35,7 +39,7 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
    */
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.fill_buffer = create_info;
+    node.clear_attachments = create_info;
   }
 
   /**
@@ -45,8 +49,7 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
                    VKRenderGraphNodeLinks &node_links,
                    const CreateInfo &create_info) override
   {
-    ResourceWithStamp resource = resources.get_buffer_and_increase_version(create_info.vk_buffer);
-    node_links.outputs.append({resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED});
+    UNUSED_VARS(resources, node_links, create_info);
   }
 
   /**
@@ -56,7 +59,8 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
                       Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
-    command_buffer.fill_buffer(data.vk_buffer, 0, data.size, data.data);
+    command_buffer.clear_attachments(
+        data.attachment_count, data.attachments, 1, &data.vk_clear_rect);
   }
 };
 }  // namespace blender::gpu::render_graph
