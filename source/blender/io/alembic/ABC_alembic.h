@@ -70,7 +70,8 @@ struct AlembicImportParams {
 
   blender::Vector<std::string> paths;
 
-  /* Number of consecutive files to expect if the cached animation is split in a sequence. */
+  /* Last frame number of consecutive files to expect if the cached animation is split in a
+   * sequence. */
   int sequence_max_frame;
   /* Start frame of the sequence, offset from 0. */
   int sequence_min_frame;
