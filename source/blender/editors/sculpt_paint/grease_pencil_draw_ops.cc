@@ -32,6 +32,7 @@
 #include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
+#include "wm_event_types.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -967,6 +968,13 @@ static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const w
   return OPERATOR_RUNNING_MODAL;
 }
 
+enum class InterpolateToolModalEvent : int8_t {
+  Cancel = 1,
+  Confirm,
+  Increase,
+  Decrease,
+};
+
 /* Modal handler: Events handling during interactive part */
 static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -976,117 +984,102 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
   // bGPDstroke *gps_dst;
   // const bool has_numinput = hasNumInput(&tgpi->num);
 
-  // switch (event->type) {
-  //   case LEFTMOUSE: /* confirm */
-  //   case EVT_PADENTER:
-  //   case EVT_RETKEY: {
-  //     /* return to normal cursor and header status */
-  //     ED_area_status_text(tgpi->area, nullptr);
-  //     ED_workspace_status_text(C, nullptr);
-  //     WM_cursor_modal_restore(win);
+  switch (event->type) {
+    case EVT_MODAL_MAP: {
+      switch (InterpolateToolModalEvent(event->val)) {
+        case InterpolateToolModalEvent::Cancel:
+          //     /* return to normal cursor and header status */
+          //     ED_area_status_text(tgpi->area, nullptr);
+          //     ED_workspace_status_text(C, nullptr);
+          //     WM_cursor_modal_restore(win);
+          grease_pencil_interpolate_exit(C, op);
+          return OPERATOR_CANCELLED;
+        case InterpolateToolModalEvent::Confirm:
+          //     /* return to normal cursor and header status */
+          //     ED_area_status_text(tgpi->area, nullptr);
+          //     ED_workspace_status_text(C, nullptr);
+          //     WM_cursor_modal_restore(win);
 
-  //     /* insert keyframes as required... */
-  //     LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
-  //       gpf_dst = BKE_gpencil_layer_frame_get(tgpil->gpl, tgpi->cframe, GP_GETFRAME_ADD_NEW);
-  //       gpf_dst->key_type = BEZT_KEYTYPE_BREAKDOWN;
+          //     /* insert keyframes as required... */
+          //     LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
+          //       gpf_dst = BKE_gpencil_layer_frame_get(tgpil->gpl, tgpi->cframe,
+          //       GP_GETFRAME_ADD_NEW); gpf_dst->key_type = BEZT_KEYTYPE_BREAKDOWN;
 
-  //       /* Copy strokes. */
-  //       LISTBASE_FOREACH (bGPDstroke *, gps_src, &tgpil->interFrame->strokes) {
-  //         if (gps_src->totpoints == 0) {
-  //           continue;
-  //         }
+          //       /* Copy strokes. */
+          //       LISTBASE_FOREACH (bGPDstroke *, gps_src, &tgpil->interFrame->strokes) {
+          //         if (gps_src->totpoints == 0) {
+          //           continue;
+          //         }
 
-  //         /* make copy of source stroke, then adjust pointer to points too */
-  //         gps_dst = BKE_gpencil_stroke_duplicate(gps_src, true, true);
-  //         gps_dst->flag &= ~GP_STROKE_TAG;
+          //         /* make copy of source stroke, then adjust pointer to points too */
+          //         gps_dst = BKE_gpencil_stroke_duplicate(gps_src, true, true);
+          //         gps_dst->flag &= ~GP_STROKE_TAG;
 
-  //         /* Calc geometry data. */
-  //         BKE_gpencil_stroke_geometry_update(tgpi->gpd, gps_dst);
+          //         /* Calc geometry data. */
+          //         BKE_gpencil_stroke_geometry_update(tgpi->gpd, gps_dst);
 
-  //         BLI_addtail(&gpf_dst->strokes, gps_dst);
-  //       }
-  //     }
+          //         BLI_addtail(&gpf_dst->strokes, gps_dst);
+          //       }
+          //     }
+          grease_pencil_interpolate_exit(C, op);
+          return OPERATOR_FINISHED;
+        case InterpolateToolModalEvent::Increase:
+          //     tgpi->shift = tgpi->shift + 0.01f;
+          //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
+          //     RNA_float_set(op->ptr, "shift", tgpi->shift);
 
-  //     /* clean up temp data */
-  //     gpencil_interpolate_exit(C, op);
+          //     /* update screen */
+          //     gpencil_interpolate_update(C, op, tgpi);
+          break;
+        case InterpolateToolModalEvent::Decrease:
+          //     tgpi->shift = tgpi->shift - 0.01f;
+          //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
+          //     RNA_float_set(op->ptr, "shift", tgpi->shift);
 
-  //     /* done! */
-  //     return OPERATOR_FINISHED;
-  //   }
+          //     /* update screen */
+          //     gpencil_interpolate_update(C, op, tgpi);
+          break;
+      }
+      break;
+    }
+    case MOUSEMOVE:
+      /* calculate new position */
+      //     /* Only handle mouse-move if not doing numeric-input. */
+      //     if (has_numinput == false) {
+      //       /* Update shift based on position of mouse. */
+      //       gpencil_mouse_update_shift(tgpi, op, event);
 
-  //   case EVT_ESCKEY: /* cancel */
-  //   case RIGHTMOUSE: {
-  //     /* return to normal cursor and header status */
-  //     ED_area_status_text(tgpi->area, nullptr);
-  //     ED_workspace_status_text(C, nullptr);
-  //     WM_cursor_modal_restore(win);
+      //       /* update screen */
+      //       gpencil_interpolate_update(C, op, tgpi);
+      //     }
+      break;
+    default: {
+      //     if ((event->val == KM_PRESS) && handleNumInput(C, &tgpi->num, event)) {
+      //       const float factor = tgpi->init_factor;
+      //       float value;
 
-  //     /* clean up temp data */
-  //     gpencil_interpolate_exit(C, op);
+      //       /* Grab shift from numeric input, and store this new value (the user see an int) */
+      //       value = (factor + tgpi->shift) * 100.0f;
+      //       applyNumInput(&tgpi->num, &value);
+      //       tgpi->shift = value / 100.0f;
 
-  //     /* canceled! */
-  //     return OPERATOR_CANCELLED;
-  //   }
+      //       /* recalculate the shift to get the right value in the frame scale */
+      //       tgpi->shift = tgpi->shift - factor;
 
-  //   case WHEELUPMOUSE: {
-  //     tgpi->shift = tgpi->shift + 0.01f;
-  //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-  //     RNA_float_set(op->ptr, "shift", tgpi->shift);
+      //       CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
+      //       RNA_float_set(op->ptr, "shift", tgpi->shift);
 
-  //     /* update screen */
-  //     gpencil_interpolate_update(C, op, tgpi);
-  //     break;
-  //   }
-  //   case WHEELDOWNMOUSE: {
-  //     tgpi->shift = tgpi->shift - 0.01f;
-  //     CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-  //     RNA_float_set(op->ptr, "shift", tgpi->shift);
+      //       /* update screen */
+      //       gpencil_interpolate_update(C, op, tgpi);
 
-  //     /* update screen */
-  //     gpencil_interpolate_update(C, op, tgpi);
-  //     break;
-  //   }
-  //   case MOUSEMOVE: /* calculate new position */
-  //   {
-  //     /* Only handle mouse-move if not doing numeric-input. */
-  //     if (has_numinput == false) {
-  //       /* Update shift based on position of mouse. */
-  //       gpencil_mouse_update_shift(tgpi, op, event);
+      //       break;
+      //     }
+      /* Unhandled event, allow to pass through. */
+      return OPERATOR_RUNNING_MODAL | OPERATOR_PASS_THROUGH;
+    }
+  }
 
-  //       /* update screen */
-  //       gpencil_interpolate_update(C, op, tgpi);
-  //     }
-  //     break;
-  //   }
-  //   default: {
-  //     if ((event->val == KM_PRESS) && handleNumInput(C, &tgpi->num, event)) {
-  //       const float factor = tgpi->init_factor;
-  //       float value;
-
-  //       /* Grab shift from numeric input, and store this new value (the user see an int) */
-  //       value = (factor + tgpi->shift) * 100.0f;
-  //       applyNumInput(&tgpi->num, &value);
-  //       tgpi->shift = value / 100.0f;
-
-  //       /* recalculate the shift to get the right value in the frame scale */
-  //       tgpi->shift = tgpi->shift - factor;
-
-  //       CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-  //       RNA_float_set(op->ptr, "shift", tgpi->shift);
-
-  //       /* update screen */
-  //       gpencil_interpolate_update(C, op, tgpi);
-
-  //       break;
-  //     }
-  //     /* unhandled event - allow to pass through */
-  //     return OPERATOR_RUNNING_MODAL | OPERATOR_PASS_THROUGH;
-  //   }
-  // }
-
-  /* still running... */
-  // return OPERATOR_RUNNING_MODAL;
-  return OPERATOR_CANCELLED;
+  return OPERATOR_RUNNING_MODAL;
 }
 
 static void grease_pencil_interpolate_cancel(bContext *C, wmOperator *op)
@@ -1202,6 +1195,29 @@ void ED_operatortypes_grease_pencil_draw()
   WM_operatortype_append(GREASE_PENCIL_OT_sculpt_paint);
   WM_operatortype_append(GREASE_PENCIL_OT_weight_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_interpolate);
+}
+
+void ED_interpolatetool_modal_keymap(wmKeyConfig *keyconf)
+{
+  using namespace blender::ed::sculpt_paint;
+  static const EnumPropertyItem modal_items[] = {
+      {int(InterpolateToolModalEvent::Cancel), "CANCEL", 0, "Cancel", ""},
+      {int(InterpolateToolModalEvent::Confirm), "CONFIRM", 0, "Confirm", ""},
+      {int(InterpolateToolModalEvent::Increase), "INCREASE", 0, "Increase", ""},
+      {int(InterpolateToolModalEvent::Decrease), "DECREASE", 0, "Decrease", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Interpolate Tool Modal Map");
+
+  /* This function is called for each space-type, only needs to add map once. */
+  if (keymap && keymap->modal_items) {
+    return;
+  }
+
+  keymap = WM_modalkeymap_ensure(keyconf, "Interpolate Tool Modal Map", modal_items);
+
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_interpolate");
 }
 
 /** \} */

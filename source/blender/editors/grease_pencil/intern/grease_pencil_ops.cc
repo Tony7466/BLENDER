@@ -199,4 +199,5 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
   keymap_grease_pencil_sculpt_mode(keyconf);
   keymap_grease_pencil_weight_paint_mode(keyconf);
   ED_primitivetool_modal_keymap(keyconf);
+  ED_interpolatetool_modal_keymap(keyconf);
 }
