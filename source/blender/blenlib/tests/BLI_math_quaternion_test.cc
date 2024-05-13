@@ -4,8 +4,8 @@
 
 #include "testing/testing.h"
 
-#include "BLI_math_quaternion_types.hh"
 #include "BLI_math_quaternion.hh"
+#include "BLI_math_quaternion_types.hh"
 
 namespace blender::tests {
 
