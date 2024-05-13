@@ -105,9 +105,16 @@ class VKTexture : public Texture, public VKBindableResource {
     return device_format_;
   }
 
+  /**
+   * Get a specific image view for this texture. The specification of the image view are passed
+   * inside the `info` parameter.
+   */
   const VKImageView &get_or_create_image_view(const VKImageViewInfo &info);
+
+  /**
+   * Get the current image view for this texture.
+   */
   const VKImageView &get_image_view();
-  const VKImageView &get_image_view(IndexRange layers, IndexRange mips);
 
  protected:
   bool init_internal() override;
@@ -123,8 +130,6 @@ class VKTexture : public Texture, public VKBindableResource {
    * on the device.
    */
   bool allocate();
-
-  VkImageViewType vk_image_view_type() const;
 
   /**
    * Determine the layerCount for vulkan based on the texture type. Will pass the
@@ -194,8 +199,6 @@ class VKTexture : public Texture, public VKBindableResource {
  private:
   IndexRange mip_map_range() const;
   IndexRange layer_range() const;
-  void image_view_ensure();
-  void image_view_update();
 
   /** \} */
 };

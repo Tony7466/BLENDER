@@ -689,32 +689,38 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   begin_rendering.node_data.vk_rendering_info.layerCount = 1;
   begin_rendering.node_data.vk_rendering_info.renderArea = vk_render_areas_get()[0];
 
-  for (int color_slot : IndexRange(GPU_FB_MAX_COLOR_ATTACHMENT)) {
-    VKTexture *color_texture = unwrap(unwrap(color_tex(color_slot)));
-    if (color_texture != nullptr) {
-      VkRenderingAttachmentInfo &attachment_info =
-          begin_rendering.node_data.color_attachments[begin_rendering.node_data.vk_rendering_info
-                                                          .colorAttachmentCount++];
-      attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-      /* TODO attachment mip/layer */
-      attachment_info.imageView = color_texture
-                                      ->get_image_view(
-
-                                          )
-                                      .vk_handle();
-      attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-      /* TODO add load store ops. */
-      attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      access_info.images.append(
-          {color_texture->vk_image_handle(),
-           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-           VK_IMAGE_ASPECT_COLOR_BIT});
-
-      begin_rendering.node_data.vk_rendering_info.pColorAttachments =
-          begin_rendering.node_data.color_attachments;
+  for (const GPUAttachment &attachment :
+       Span<GPUAttachment>(&attachments_[GPU_FB_COLOR_ATTACHMENT0], GPU_FB_MAX_COLOR_ATTACHMENT))
+  {
+    if (attachment.tex == nullptr) {
+      continue;
     }
+    VKTexture &color_texture = *unwrap(unwrap(attachment.tex));
+    VkRenderingAttachmentInfo &attachment_info =
+        begin_rendering.node_data
+            .color_attachments[begin_rendering.node_data.vk_rendering_info.colorAttachmentCount++];
+    attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+
+    VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
+                                       IndexRange(max_ii(attachment.layer, 0), 1),
+                                       IndexRange(attachment.mip, 1),
+                                       {'r', 'g', 'b', 'a'},
+                                       false,
+                                       srgb_ && enabled_srgb_};
+    attachment_info.imageView =
+        color_texture.get_or_create_image_view(image_view_info).vk_handle();
+    attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    /* TODO add load store ops. */
+    attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    access_info.images.append(
+        {color_texture.vk_image_handle(),
+         VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+         VK_IMAGE_ASPECT_COLOR_BIT});
+
+    begin_rendering.node_data.vk_rendering_info.pColorAttachments =
+        begin_rendering.node_data.color_attachments;
   }
 
   context.render_graph.add_node(begin_rendering);

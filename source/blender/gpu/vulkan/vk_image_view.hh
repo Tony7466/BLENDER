@@ -24,7 +24,7 @@ struct VKImageViewInfo {
   bool use_stencil;
   bool use_srgb;
 
-  bool operator==(const VKImageViewInfo &other)const
+  bool operator==(const VKImageViewInfo &other) const
   {
     return usage == other.usage && layer_range == other.layer_range &&
            mip_range == other.mip_range && swizzle == other.swizzle &&
