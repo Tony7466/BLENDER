@@ -32,8 +32,10 @@ class VKTexture : public Texture, public VKBindableResource {
   VkImage vk_image_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
 
-  /* Image view when used in a shader. */
-  [[deprecated]] std::optional<VKImageView> image_view_;
+  /**
+   * Image views are owned by VKTexture. When a specific image view is needed it will be created
+   * and stored here. Image view can be requested by calling `get_or_create_image_view` method.
+   */
   Vector<VKImageView> image_views_;
 
   /* Last image layout of the texture. Frame-buffer and barriers can alter/require the actual
@@ -45,16 +47,12 @@ class VKTexture : public Texture, public VKBindableResource {
   int layer_offset_ = 0;
   bool use_stencil_ = false;
 
-  VkComponentMapping vk_component_mapping_ = {VK_COMPONENT_SWIZZLE_IDENTITY,
-                                              VK_COMPONENT_SWIZZLE_IDENTITY,
-                                              VK_COMPONENT_SWIZZLE_IDENTITY,
-                                              VK_COMPONENT_SWIZZLE_IDENTITY};
-
-  enum eDirtyFlags {
-    IMAGE_VIEW_DIRTY = (1 << 0),
-  };
-
-  int flags_ = IMAGE_VIEW_DIRTY;
+  VKImageViewInfo image_view_info_ = {eImageViewUsage::ShaderBinding,
+                                      IndexRange(0, VK_REMAINING_ARRAY_LAYERS),
+                                      IndexRange(0, VK_REMAINING_MIP_LEVELS),
+                                      {'r', 'g', 'b', 'a'},
+                                      false,
+                                      false};
 
  public:
   VKTexture(const char *name) : Texture(name) {}
@@ -106,6 +104,10 @@ class VKTexture : public Texture, public VKBindableResource {
   {
     return device_format_;
   }
+
+  const VKImageView &get_or_create_image_view(const VKImageViewInfo &info);
+  const VKImageView &get_image_view();
+  const VKImageView &get_image_view(IndexRange layers, IndexRange mips);
 
  protected:
   bool init_internal() override;
@@ -188,17 +190,6 @@ class VKTexture : public Texture, public VKBindableResource {
   /* -------------------------------------------------------------------- */
   /** \name Image Views
    * \{ */
- public:
-  VKImageView &image_view_get()
-  {
-    image_view_ensure();
-    return *image_view_;
-  }
-
-  const VkComponentMapping &vk_component_mapping_get() const
-  {
-    return vk_component_mapping_;
-  }
 
  private:
   IndexRange mip_map_range() const;

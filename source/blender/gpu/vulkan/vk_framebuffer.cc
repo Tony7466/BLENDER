@@ -443,12 +443,11 @@ void VKFrameBuffer::render_pass_create()
   std::array<VkAttachmentDescription, GPU_FB_MAX_ATTACHMENT> attachment_descriptions;
   std::array<VkImageView, GPU_FB_MAX_ATTACHMENT> image_views;
   std::array<VkAttachmentReference, GPU_FB_MAX_ATTACHMENT> attachment_references;
-  image_views_.clear();
 
   bool has_depth_attachment = false;
   bool found_attachment = false;
   const VKImageView &dummy_attachment =
-      VKBackend::get().device_get().dummy_color_attachment_get().image_view_get();
+      VKBackend::get().device_get().dummy_color_attachment_get().get_image_view();
   int depth_location = -1;
 
   for (int type = GPU_FB_MAX_ATTACHMENT - 1; type >= 0; type--) {
@@ -482,16 +481,13 @@ void VKFrameBuffer::render_pass_create()
 
       /* Ensure texture is allocated to ensure the image view. */
       VKTexture &texture = *static_cast<VKTexture *>(unwrap(attachment.tex));
-      const bool use_stencil = false;
-      const bool use_srgb = srgb_ && enabled_srgb_;
-      image_views_.append(VKImageView(texture,
-                                      eImageViewUsage::Attachment,
-                                      IndexRange(max_ii(attachment.layer, 0), 1),
-                                      IndexRange(attachment.mip, 1),
-                                      use_stencil,
-                                      use_srgb,
-                                      name_));
-      const VKImageView &image_view = image_views_.last();
+      VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
+                                         IndexRange(max_ii(attachment.layer, 0), 1),
+                                         IndexRange(attachment.mip, 1),
+                                         {'r', 'g', 'b', 'a'},
+                                         false,
+                                         srgb_ && enabled_srgb_};
+      const VKImageView &image_view = texture.get_or_create_image_view(image_view_info);
       image_views[attachment_location] = image_view.vk_handle();
 
       VkAttachmentDescription &attachment_description =
@@ -584,7 +580,7 @@ void VKFrameBuffer::render_pass_create()
 
   vkCreateFramebuffer(
       device.device_get(), &framebuffer_create_info, vk_allocation_callbacks, &vk_framebuffer_);
-}
+}  // namespace blender::gpu
 
 void VKFrameBuffer::render_pass_free()
 {
@@ -597,7 +593,6 @@ void VKFrameBuffer::render_pass_free()
     device.discard_render_pass(vk_render_pass_);
     device.discard_frame_buffer(vk_framebuffer_);
   }
-  image_views_.clear();
   vk_render_pass_ = VK_NULL_HANDLE;
   vk_framebuffer_ = VK_NULL_HANDLE;
 }
@@ -702,7 +697,11 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                                           .colorAttachmentCount++];
       attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
       /* TODO attachment mip/layer */
-      attachment_info.imageView = color_texture->image_view_get().vk_handle();
+      attachment_info.imageView = color_texture
+                                      ->get_image_view(
+
+                                          )
+                                      .vk_handle();
       attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       /* TODO add load store ops. */
