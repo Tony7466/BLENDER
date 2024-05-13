@@ -350,26 +350,24 @@ void Instance::render_sync()
   DRW_curves_update();
 }
 
+bool Instance::needs_reflection_probe_passes() const
+{
+  return sphere_probes.update_probes_this_sample_;
+}
+
 bool Instance::do_reflection_probe_sync() const
 {
-  if (!sphere_probes.update_probes_this_sample_) {
-    return false;
-  }
-  if (materials.queued_shaders_count > 0) {
-    return false;
-  }
-  return true;
+  return (materials.queued_shaders_count == 0) && needs_reflection_probe_passes();
+}
+
+bool Instance::needs_planar_probe_passes() const
+{
+  return planar_probes.update_probes_;
 }
 
 bool Instance::do_planar_probe_sync() const
 {
-  if (!planar_probes.update_probes_) {
-    return false;
-  }
-  if (materials.queued_shaders_count > 0) {
-    return false;
-  }
-  return true;
+  return (materials.queued_shaders_count == 0) && needs_planar_probe_passes();
 }
 
 /** \} */
