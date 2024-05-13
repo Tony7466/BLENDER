@@ -1090,11 +1090,18 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     image_data.height = int(w / 4.0f);
     image_data.ibuf = IMB_allocImBuf(image_data.width, image_data.height, 32, IB_rect);
     image_data.border = true;
-    image_data.background = uiTooltipImageBackground::Checkerboard_Fixed;
     image_data.premultiplied = false;
 
     ColorManagedDisplay *display = ui_block_cm_display_get(but->block);
-    if (color[3]) {
+    if (color[3] == 1.0f) {
+      /* No transparency so draw the entire area solid without checkerboard. */
+      image_data.background = uiTooltipImageBackground::None;
+      IMB_rectfill_area(
+          image_data.ibuf, color, 1, 1, image_data.width, image_data.height, display);
+    }
+    else {
+      image_data.background = uiTooltipImageBackground::Checkerboard_Fixed;
+      /* Draw one half with transparency. */
       IMB_rectfill_area(image_data.ibuf,
                         color,
                         image_data.width / 2,
@@ -1102,14 +1109,10 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
                         image_data.width,
                         image_data.height,
                         display);
+      /* Draw the other half with a solid color. */
       color[3] = 1.0f;
       IMB_rectfill_area(
           image_data.ibuf, color, 1, 1, image_data.width / 2, image_data.height, display);
-    }
-    else {
-      color[3] = 1.0f;
-      IMB_rectfill_area(
-          image_data.ibuf, color, 1, 1, image_data.width, image_data.height, display);
     }
 
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
