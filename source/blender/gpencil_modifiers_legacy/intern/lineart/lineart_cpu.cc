@@ -5416,7 +5416,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
     BKE_gpencil_dvert_ensure(gps);
     gps->mat_nr = max_ii(material_nr, 0);
 
-    if (source_vgname && vgname) {
+    if (source_vgname && vgname && source_vgname[0] && vgname[0]) {
       Object *eval_ob = DEG_get_evaluated_object(depsgraph, ec->object_ref);
       int gpdg = -1;
       if (match_output || (gpdg = BKE_object_defgroup_name_index(gpencil_object, vgname)) >= 0) {
