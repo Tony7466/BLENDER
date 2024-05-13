@@ -465,8 +465,17 @@ static void GREASE_PENCIL_OT_weight_brush_stroke(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Weight Brush Stroke Operator
+/** \name Interpolate Operator
  * \{ */
+
+enum GreasePencilInterpolateFlipMode {
+  /* No flip. */
+  None = 0,
+  /* Flip always. */
+  Flip = 1,
+  /* Flip if needed. */
+  FlipAuto = 2,
+};
 
 // /* Helper: free all temp strokes for display. */
 // static void gpencil_interpolate_free_tagged_strokes(bGPDframe *gpf)
@@ -1088,12 +1097,12 @@ static void grease_pencil_interpolate_cancel(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
 {
-  // static const EnumPropertyItem flip_modes[] = {
-  //     {GP_INTERPOLATE_NOFLIP, "NOFLIP", 0, "No Flip", ""},
-  //     {GP_INTERPOLATE_FLIP, "FLIP", 0, "Flip", ""},
-  //     {GP_INTERPOLATE_FLIPAUTO, "AUTO", 0, "Automatic", ""},
-  //     {0, nullptr, 0, nullptr, nullptr},
-  // };
+  static const EnumPropertyItem flip_modes[] = {
+      {GreasePencilInterpolateFlipMode::None, "NONE", 0, "No Flip", ""},
+      {GreasePencilInterpolateFlipMode::Flip, "FLIP", 0, "Flip", ""},
+      {GreasePencilInterpolateFlipMode::FlipAuto, "AUTO", 0, "Automatic", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
   PropertyRNA *prop;
 
@@ -1111,69 +1120,69 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING;
 
-  // static const EnumPropertyItem gpencil_interpolation_layer_items[] = {
-  //     {0, "ACTIVE", 0, "Active", ""},
-  //     {1, "ALL", 0, "All Layers", ""},
-  //     {0, nullptr, 0, nullptr, nullptr},
-  // };
+  static const EnumPropertyItem gpencil_interpolation_layer_items[] = {
+      {0, "ACTIVE", 0, "Active", ""},
+      {1, "ALL", 0, "All Layers", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
-  // /* properties */
-  // RNA_def_float_factor(
-  //     ot->srna,
-  //     "shift",
-  //     0.0f,
-  //     -1.0f,
-  //     1.0f,
-  //     "Shift",
-  //     "Bias factor for which frame has more influence on the interpolated strokes",
-  //     -0.9f,
-  //     0.9f);
+  /* properties */
+  RNA_def_float_factor(
+      ot->srna,
+      "shift",
+      0.0f,
+      -1.0f,
+      1.0f,
+      "Shift",
+      "Bias factor for which frame has more influence on the interpolated strokes",
+      -0.9f,
+      0.9f);
 
-  // RNA_def_enum(ot->srna,
-  //              "layers",
-  //              gpencil_interpolation_layer_items,
-  //              0,
-  //              "Layer",
-  //              "Layers included in the interpolation");
+  RNA_def_enum(ot->srna,
+               "layers",
+               gpencil_interpolation_layer_items,
+               0,
+               "Layer",
+               "Layers included in the interpolation");
 
-  // RNA_def_boolean(ot->srna,
-  //                 "interpolate_selected_only",
-  //                 false,
-  //                 "Only Selected",
-  //                 "Interpolate only selected strokes");
+  RNA_def_boolean(ot->srna,
+                  "interpolate_selected_only",
+                  false,
+                  "Only Selected",
+                  "Interpolate only selected strokes");
 
-  // RNA_def_boolean(ot->srna,
-  //                 "exclude_breakdowns",
-  //                 false,
-  //                 "Exclude Breakdowns",
-  //                 "Exclude existing Breakdowns keyframes as interpolation extremes");
+  RNA_def_boolean(ot->srna,
+                  "exclude_breakdowns",
+                  false,
+                  "Exclude Breakdowns",
+                  "Exclude existing Breakdowns keyframes as interpolation extremes");
 
-  // RNA_def_enum(ot->srna,
-  //              "flip",
-  //              flip_modes,
-  //              GP_INTERPOLATE_FLIPAUTO,
-  //              "Flip Mode",
-  //              "Invert destination stroke to match start and end with source stroke");
+  RNA_def_enum(ot->srna,
+               "flip",
+               flip_modes,
+               GreasePencilInterpolateFlipMode::FlipAuto,
+               "Flip Mode",
+               "Invert destination stroke to match start and end with source stroke");
 
-  // RNA_def_int(ot->srna,
-  //             "smooth_steps",
-  //             1,
-  //             1,
-  //             3,
-  //             "Iterations",
-  //             "Number of times to smooth newly created strokes",
-  //             1,
-  //             3);
+  RNA_def_int(ot->srna,
+              "smooth_steps",
+              1,
+              1,
+              3,
+              "Iterations",
+              "Number of times to smooth newly created strokes",
+              1,
+              3);
 
-  // RNA_def_float(ot->srna,
-  //               "smooth_factor",
-  //               0.0f,
-  //               0.0f,
-  //               2.0f,
-  //               "Smooth",
-  //               "Amount of smoothing to apply to interpolated strokes, to reduce jitter/noise",
-  //               0.0f,
-  //               2.0f);
+  RNA_def_float(ot->srna,
+                "smooth_factor",
+                0.0f,
+                0.0f,
+                2.0f,
+                "Smooth",
+                "Amount of smoothing to apply to interpolated strokes, to reduce jitter/noise",
+                0.0f,
+                2.0f);
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", false, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
