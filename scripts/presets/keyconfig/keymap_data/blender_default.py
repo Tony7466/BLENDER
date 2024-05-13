@@ -4593,7 +4593,6 @@ def km_grease_pencil_paint_mode(params):
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
             (op_tool_cycle, "builtin.interpolate"), params),
-        ("grease_pencil.interpolate", params.tool_maybe_tweak_event, {"properties": [("release_confirm", True)]}),
     ])
 
     return keymap
@@ -4690,7 +4689,6 @@ def km_grease_pencil_edit_mode(params):
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
             (op_tool_cycle, "builtin.interpolate"), params),
-        ("grease_pencil.interpolate", params.tool_maybe_tweak_event, {"properties": [("release_confirm", True)]}),
     ])
 
     return keymap
@@ -8540,6 +8538,28 @@ def km_3d_view_tool_paint_gpencil_interpolate(params):
     )
 
 
+def km_grease_pencil_edit_interpolate(params):
+    return (
+        "3D View Tool: Edit Grease Pencil, Interpolate",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.interpolate", params.tool_maybe_tweak_event,
+             {"properties": [("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_grease_pencil_paint_interpolate(params):
+    return (
+        "3D View Tool: Paint Grease Pencil, Interpolate",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.interpolate", params.tool_maybe_tweak_event,
+             {"properties": [("release_confirm", True)]}),
+        ]},
+    )
+
+
 # ------------------------------------------------------------------------------
 # Tool System (3D View, Grease Pencil, Edit)
 
@@ -8986,6 +9006,8 @@ def generate_keymaps(params=None):
         km_curve_pen_modal_map(params),
         km_node_link_modal_map(params),
         km_grease_pencil_primitive_tool_modal_map(params),
+        km_grease_pencil_edit_interpolate(params),
+        km_grease_pencil_paint_interpolate(params),
 
         # Gizmos.
         km_generic_gizmo(params),
