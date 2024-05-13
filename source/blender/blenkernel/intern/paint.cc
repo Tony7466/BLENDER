@@ -885,39 +885,6 @@ bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush)
   return true;
 }
 
-static void paint_eraser_brush_asset_update(Paint &paint,
-                                            Brush *brush,
-                                            const AssetWeakReference &brush_asset_reference)
-{
-  BLI_assert(&brush_asset_reference != paint.eraser_brush_asset_reference);
-  MEM_delete(paint.eraser_brush_asset_reference);
-  paint.eraser_brush_asset_reference = nullptr;
-
-  if (brush == nullptr || brush != paint.eraser_brush ||
-      !(brush->id.tag & LIB_TAG_ASSET_EDIT_MAIN))
-  {
-    return;
-  }
-
-  paint.eraser_brush_asset_reference = MEM_new<AssetWeakReference>(__func__,
-                                                                   brush_asset_reference);
-}
-
-bool BKE_paint_eraser_brush_asset_set(Paint *paint,
-                                      Brush *brush,
-                                      const AssetWeakReference &weak_asset_reference)
-{
-  /* Should not happen for users if brush assets are properly filtered by mode, but still protect
-   * against it in case of invalid API usage. */
-  if (brush && paint->runtime.ob_mode != brush->ob_mode) {
-    return false;
-  }
-
-  BKE_paint_eraser_brush_set(paint, brush);
-  paint_eraser_brush_asset_update(*paint, brush, weak_asset_reference);
-  return true;
-}
-
 Brush *BKE_paint_eraser_brush_from_essentials(Main *bmain, const char *name)
 {
   AssetWeakReference weak_ref;
