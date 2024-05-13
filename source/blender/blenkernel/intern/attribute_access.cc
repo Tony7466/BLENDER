@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
@@ -794,13 +795,16 @@ bool MutableAttributeAccessor::rename(const AttributeIDRef &old_attribute_id,
   if (!old_attribute) {
     return false;
   }
+  const std::optional<AttributeMetaData> old_meta_data = this->lookup_meta_data(old_attribute_id);
+  const void *old_init_value = old_meta_data ? old_meta_data->init_value : nullptr;
   const eCustomDataType type = cpp_type_to_custom_data_type(old_attribute.varray.type());
   if (old_attribute.sharing_info != nullptr && old_attribute.varray.is_span()) {
     if (!this->add(new_attribute_id,
                    old_attribute.domain,
                    type,
                    AttributeInitShared{old_attribute.varray.get_internal_span().data(),
-                                       *old_attribute.sharing_info}))
+                                       *old_attribute.sharing_info,
+                                       old_init_value}))
     {
       return false;
     }
@@ -809,7 +813,7 @@ bool MutableAttributeAccessor::rename(const AttributeIDRef &old_attribute_id,
     if (!this->add(new_attribute_id,
                    old_attribute.domain,
                    type,
-                   AttributeInitVArray{old_attribute.varray}))
+                   AttributeInitVArray{old_attribute.varray, old_init_value}))
     {
       return false;
     }
@@ -847,8 +851,10 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
     }
 
     GVArray src = *src_attributes.lookup(id, meta_data.domain);
+    const std::optional<AttributeMetaData> src_meta_data = src_attributes.lookup_meta_data(id);
+    const void *src_init_value = src_meta_data ? src_meta_data->init_value : nullptr;
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, meta_data.domain, meta_data.data_type);
+        id, meta_data.domain, meta_data.data_type, AttributeInitConstruct(src_init_value));
     attributes.append({std::move(src), meta_data, std::move(dst)});
 
     return true;
@@ -880,14 +886,17 @@ void gather_attributes(const AttributeAccessor src_attributes,
       return true;
     }
     const GAttributeReader src = src_attributes.lookup(id, domain);
+    const std::optional<AttributeMetaData> src_meta_data = src_attributes.lookup_meta_data(id);
+    const void *src_init_value = src_meta_data ? src_meta_data->init_value : nullptr;
     if (selection.size() == src_size && src.sharing_info && src.varray.is_span()) {
-      const AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
+      const AttributeInitShared init(
+          src.varray.get_internal_span().data(), *src.sharing_info, src_init_value);
       if (dst_attributes.add(id, domain, meta_data.data_type, init)) {
         return true;
       }
     }
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
+        id, domain, meta_data.data_type, AttributeInitConstruct(src_init_value));
     if (!dst) {
       return true;
     }
@@ -922,8 +931,10 @@ void gather_attributes(const AttributeAccessor src_attributes,
         return true;
       }
       const GAttributeReader src = src_attributes.lookup(id, domain);
+      const std::optional<AttributeMetaData> src_meta_data = src_attributes.lookup_meta_data(id);
+      const void *src_init_value = src_meta_data ? src_meta_data->init_value : nullptr;
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, domain, meta_data.data_type);
+          id, domain, meta_data.data_type, AttributeInitConstruct(src_init_value));
       if (!dst) {
         return true;
       }
@@ -957,8 +968,10 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, domain);
+    const std::optional<AttributeMetaData> src_meta_data = src_attributes.lookup_meta_data(id);
+    const void *src_init_value = src_meta_data ? src_meta_data->init_value : nullptr;
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
+        id, domain, meta_data.data_type, AttributeInitConstruct(src_init_value));
     if (!dst) {
       return true;
     }
@@ -990,8 +1003,10 @@ void gather_attributes_to_groups(const AttributeAccessor src_attributes,
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, domain);
+    const std::optional<AttributeMetaData> src_meta_data = src_attributes.lookup_meta_data(id);
+    const void *src_init_value = src_meta_data ? src_meta_data->init_value : nullptr;
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
+        id, domain, meta_data.data_type, AttributeInitConstruct(src_init_value));
     if (!dst) {
       return true;
     }
@@ -1042,8 +1057,10 @@ void copy_attributes_group_to_group(const AttributeAccessor src_attributes,
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, domain);
+    const std::optional<AttributeMetaData> src_meta_data = src_attributes.lookup_meta_data(id);
+    const void *src_init_value = src_meta_data ? src_meta_data->init_value : nullptr;
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
+        id, domain, meta_data.data_type, AttributeInitConstruct(src_init_value));
     if (!dst) {
       return true;
     }
