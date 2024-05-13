@@ -329,7 +329,7 @@ Vector<bke::greasepencil::Drawing *> get_drawings_for_write(GreasePencil &grease
       drawings.add(drawing);
     }
   });
-  return Vector(drawings.as_span());
+  return Vector<Drawing *>(drawings.as_span());
 }
 
 Vector<LayerDrawingInfo> get_drawing_infos_by_layer(GreasePencil &grease_pencil,
@@ -348,7 +348,7 @@ Vector<LayerDrawingInfo> get_drawing_infos_by_layer(GreasePencil &grease_pencil,
 
     if (!drawings.contains(drawing)) {
       drawings.add_new(drawing);
-      drawing_infos.append({drawing, layer_i});
+      drawing_infos.append({drawing, int(layer_i)});
     }
   });
   return drawing_infos;
