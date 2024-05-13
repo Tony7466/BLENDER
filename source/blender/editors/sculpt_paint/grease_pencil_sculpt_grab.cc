@@ -146,7 +146,6 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
     PointWeights &data = this->drawing_data[i];
 
     const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
-    BLI_assert(layer.drawing_index_at(info.frame_number) >= 0);
     BLI_assert(grease_pencil.get_drawing_at(layer, info.frame_number) == &info.drawing);
 
     ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
