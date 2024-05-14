@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
 #include "BLI_rect.h"
 #include "BLI_string_ref.hh"
@@ -184,7 +185,7 @@ int BLF_str_offset_to_cursor(
  * Return bounds of selection boxes. There is just one normally but there could
  * be more for multi-line and when containing text of differing directions.
  */
-blender::Vector<rcti> BLF_str_selection_boxes(
+blender::Vector<blender::Bounds<int>> BLF_str_selection_boxes(
     int fontid, const char *str, size_t str_len, size_t sel_start, size_t sel_length);
 
 /**

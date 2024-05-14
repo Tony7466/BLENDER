@@ -1945,18 +1945,21 @@ static void widget_draw_text(const uiFontStyle *fstyle,
           immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
       immUniformColor4ubv(wcol->item);
-      blender::Vector<rcti> boxes = BLF_str_selection_boxes(fstyle->uifont_id,
-                                                            drawstr,
-                                                            strlen(drawstr),
-                                                            but->ofs + but->selsta,
-                                                            but->selend - but->selsta);
-      for (rcti box : boxes) {
+      blender::Vector<blender::Bounds<int>> boxes = BLF_str_selection_boxes(fstyle->uifont_id,
+                                                                            drawstr,
+                                                                            strlen(drawstr),
+                                                                            but->ofs + but->selsta,
+                                                                            but->selend -
+                                                                                but->selsta);
+
+      for (blender::Bounds<int> bounds : boxes) {
         immRecti(pos,
-                 rect->xmin + box.xmin,
+                 rect->xmin + bounds.min,
                  rect->ymin + U.pixelsize,
-                 min_ii(rect->xmin + box.xmax, rect->xmax - 2),
+                 std::min(rect->xmin + bounds.max, rect->xmax - 2),
                  rect->ymax - U.pixelsize);
       }
+
       immUnbindProgram();
       GPU_blend(GPU_BLEND_NONE);
 
@@ -1964,7 +1967,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       /* IME candidate window uses selection position. */
       if (!ime_reposition_window && boxes.size() > 0) {
         ime_reposition_window = true;
-        ime_win_x = rect->xmin + boxes[0].xmin;
+        ime_win_x = rect->xmin + boxes[0].min;
         ime_win_y = rect->ymin + U.pixelsize;
       }
 #endif

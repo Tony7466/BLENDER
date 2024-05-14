@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_bounds_types.hh"
 #include "BLI_rect.h"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -145,7 +146,7 @@ void blf_str_offset_to_glyph_bounds(FontBLF *font,
                                     size_t str_offset,
                                     rcti *glyph_bounds);
 
-blender::Vector<rcti> blf_str_selection_boxes(
+blender::Vector<blender::Bounds<int>> blf_str_selection_boxes(
     FontBLF *font, const char *str, size_t str_len, size_t sel_start, size_t sel_length);
 
 int blf_str_offset_to_cursor(
