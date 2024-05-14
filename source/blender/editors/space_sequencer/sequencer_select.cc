@@ -645,10 +645,10 @@ static void sequencer_select_linked_handle(const bContext *C,
      */
     int sel_side;
     if (handle_clicked == SEQ_HANDLE_LEFT) {
-      int sel_side = SEQ_SIDE_LEFT;
+      sel_side = SEQ_SIDE_LEFT;
     }
     else if (handle_clicked == SEQ_HANDLE_RIGHT) {
-      int sel_side = SEQ_SIDE_RIGHT;
+      sel_side = SEQ_SIDE_RIGHT;
     }
 
     Sequence *neighbor = find_neighboring_sequence(scene, seq, sel_side, -1);
