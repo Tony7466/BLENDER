@@ -1258,6 +1258,9 @@ bool GLShader::post_finalize(const shader::ShaderCreateInfo *info)
     return false;
   }
 
+  /* Reset for specialization constants variations. */
+  async_compilation_ = false;
+
   GLuint program_id = program_get();
   if (info != nullptr && info->legacy_resource_location_ == false) {
     interface = new GLShaderInterface(program_id, *info);
@@ -1732,8 +1735,7 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
 
   for (const shader::ShaderCreateInfo *info : infos) {
     const_cast<ShaderCreateInfo *>(info)->finalize();
-    const bool do_batch_compilation = info->specialization_constants_.is_empty() &&
-                                      !info->vertex_source_.is_empty() &&
+    const bool do_batch_compilation = !info->vertex_source_.is_empty() &&
                                       !info->fragment_source_.is_empty() &&
                                       info->compute_source_.is_empty() &&
                                       info->geometry_source_.is_empty();
