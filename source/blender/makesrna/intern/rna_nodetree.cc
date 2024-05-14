@@ -4841,11 +4841,6 @@ static void def_sh_tex_gabor(StructRNA *srna)
        "2D",
        "Use the 2D vector (X, Y) as input. The Z component is ignored"},
       {SHD_GABOR_TYPE_3D, "3D", 0, "3D", "Use the 3D vector (X, Y, Z) as input"},
-      {SHD_GABOR_TYPE_SURFACE,
-       "SURFACE",
-       0,
-       "Surface",
-       "Evaluates the noise on the surface along its tangent space"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

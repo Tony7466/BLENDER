@@ -19,20 +19,24 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Vector").implicit_field(implicit_field_inputs::position);
   b.add_input<decl::Float>("Scale").default_value(6.4f);
   b.add_input<decl::Float>("Impulses").default_value(64.0f);
-  b.add_input<decl::Float>("Orientation").default_value(0.7f).subtype(PROP_ANGLE);
   b.add_input<decl::Float>("Frequency").default_value(1.25f);
   b.add_input<decl::Float>("Anisotropy")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
+  b.add_input<decl::Float>("Orientation", "Orientation_2D")
+      .default_value(0.7f)
+      .subtype(PROP_ANGLE);
+  b.add_input<decl::Vector>("Orientation", "Orientation_3D")
+      .default_value({0.0f, 0.0f, 1.0f})
+      .subtype(PROP_DIRECTION);
   b.add_output<decl::Float>("Value");
 }
 
 static void node_shader_buts_tex_gabor(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiLayout *split = uiLayoutSplit(layout, 0.33f, true);
-  uiItemR(split, ptr, "gabor_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+  uiItemR(layout, ptr, "gabor_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 }
 
 static void node_shader_init_tex_gabor(bNodeTree * /*ntree*/, bNode *node)

@@ -2187,11 +2187,8 @@ enum {
 };
 
 typedef enum NodeGaborType {
-  SHD_GABOR_TYPE_1D = 0,
   SHD_GABOR_TYPE_2D = 1,
   SHD_GABOR_TYPE_3D = 2,
-  SHD_GABOR_TYPE_4D = 3,
-  SHD_GABOR_TYPE_SURFACE = 4,
 } NodeGaborType;
 
 enum {

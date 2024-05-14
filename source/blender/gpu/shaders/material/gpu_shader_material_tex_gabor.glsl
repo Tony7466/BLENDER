@@ -3,85 +3,63 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 
-#define SHD_GABOR_TYPE_1D 0.0
 #define SHD_GABOR_TYPE_2D 1.0
 #define SHD_GABOR_TYPE_3D 2.0
-#define SHD_GABOR_TYPE_4D 3.0
-#define SHD_GABOR_TYPE_SURFACE 4.0
 
-#define M_PI 3.14159265358979323846 /* pi */
-
-float square(float v)
+float compute_2d_gabor_kernel(vec2 position, float frequency, float orientation)
 {
-  return v * v;
-}
-
-int poisson(vec2 cell, float mean)
-{
-  int k = 0;
-  float t = hash_vec3_to_float(vec3(cell, k));
-  float threshold = exp(-mean);
-  while (t > threshold) {
-    k++;
-    t *= hash_vec3_to_float(vec3(cell, k));
+  float distance_squared = length_squared(position);
+  if (distance_squared >= 1.0) {
+    return 0.0;
   }
-  return k;
+
+  float hann_window = 0.5 + 0.5 * cos(M_PI * distance_squared);
+  float gaussian_envelop = exp(-M_PI * distance_squared);
+  float windowed_gaussian_envelope = gaussian_envelop * hann_window;
+
+  vec2 frequency_vector = frequency * vec2(cos(orientation), sin(orientation));
+  float sinusoidal_wave = sin(2.0 * M_PI * dot(position, frequency_vector));
+
+  return windowed_gaussian_envelope * sinusoidal_wave;
 }
 
-float compute_gabor_kernel(float frequency, float orientation, vec2 position)
+int compute_impulses_count_for_2d_cell(vec2 cell, float impulses_count)
 {
-  float gaussian_envelop = exp(-M_PI * dot(position, position));
-  float sinusoidal_wave = cos(2.0 * M_PI * frequency *
-                              ((position.x * cos(orientation)) + (position.y * sin(orientation))));
-  return gaussian_envelop * sinusoidal_wave;
+  return int(impulses_count) + (hash_vec2_to_float(cell) < fract(impulses_count) ? 1 : 0);
 }
 
 float compute_2d_gabor_noise_cell(vec2 cell,
                                   vec2 position,
-                                  float impulse_density,
-                                  float kernel_radius,
-                                  float orientation,
+                                  float impulses_count,
                                   float frequency,
-                                  float isotropy)
+                                  float isotropy,
+                                  float base_orientation)
 
 {
-  float number_of_impulses_per_cell = impulse_density * square(kernel_radius);
-  int number_of_impulses = poisson(cell, number_of_impulses_per_cell);
+  int impulses_count_for_cell = compute_impulses_count_for_2d_cell(cell, impulses_count);
+
   float noise = 0.0;
-  for (int i = 0; i < number_of_impulses; ++i) {
-    float weight = hash_vec3_to_float(vec3(cell, i * 2));
-    float orientation_sector = orientation +
-                               hash_vec3_to_float(vec3(cell, i * 2 + 1)) * 2.0 * M_PI * isotropy;
+  for (int i = 0; i < impulses_count_for_cell; ++i) {
+    float random_orientation = hash_vec3_to_float(vec3(cell, i * 2 + 1)) * 2.0 * M_PI;
+    float orientation = base_orientation + random_orientation * isotropy;
     vec2 kernel_center = position - hash_vec3_to_vec2(vec3(cell, i));
-    if (dot(kernel_center, kernel_center) < 1.0) {
-      noise += weight *
-               compute_gabor_kernel(frequency, orientation_sector, kernel_center * kernel_radius);
-    }
+    float weight = hash_vec3_to_float(vec3(cell, i * 2)) < 0.5 ? -1.0 : 1.0;
+    noise += weight * compute_2d_gabor_kernel(kernel_center, frequency, orientation);
   }
   return noise;
 }
 
-float variance(float frequency, float impulse_density)
-{
-  float integral_gabor_filter_squared = (1.0 / 4.0) *
-                                        (1.0 + exp(-(2.0 * M_PI * square(frequency))));
-  return impulse_density * (1.0 / 3.0) * integral_gabor_filter_squared;
-}
-
 float compute_2d_gabor_noise(vec2 coordinates,
-                             float number_of_impulses_per_kernel,
-                             float orientation,
+                             float impulses_count,
                              float frequency,
-                             float isotropy)
+                             float isotropy,
+                             float base_orientation)
 {
-  float kernel_radius = sqrt(-log(0.05) / M_PI);
-  float impulse_density = number_of_impulses_per_kernel / (M_PI * square(kernel_radius));
-
-  vec2 scaled_coordinates = coordinates / kernel_radius;
-
-  vec2 cell_position = floor(scaled_coordinates);
-  vec2 local_position = scaled_coordinates - cell_position;
+  vec2 cell_position = floor(coordinates);
+  vec2 local_position = coordinates - cell_position;
 
   float sum = 0.0;
   for (int j = -1; j <= 1; j++) {
@@ -91,48 +69,118 @@ float compute_2d_gabor_noise(vec2 coordinates,
       vec2 intra_cell_position = local_position - cell_offset;
       sum += compute_2d_gabor_noise_cell(current_cell_position,
                                          intra_cell_position,
-                                         impulse_density,
-                                         kernel_radius,
-                                         orientation,
+                                         impulses_count,
                                          frequency,
-                                         isotropy);
+                                         isotropy,
+                                         base_orientation);
     }
   }
 
-  float scale = 3.0 * sqrt(variance(frequency, impulse_density));
-  return (sum / scale) * 0.5 + 0.5;
+  return sum;
+}
+
+float compute_3d_gabor_kernel(vec3 position, float frequency, vec3 orientation)
+{
+  float distance_squared = length_squared(position);
+  if (distance_squared >= 1.0) {
+    return 0.0;
+  }
+
+  float hann_window = 0.5 + 0.5 * cos(M_PI * distance_squared);
+  float gaussian_envelop = exp(-M_PI * distance_squared);
+  float windowed_gaussian_envelope = gaussian_envelop * hann_window;
+
+  vec3 frequency_vector = frequency * orientation;
+  float sinusoidal_wave = sin(2.0 * M_PI * dot(position, frequency_vector));
+
+  return windowed_gaussian_envelope * sinusoidal_wave;
+}
+
+int compute_impulses_count_for_3d_cell(vec3 cell, float impulses_count)
+{
+  return int(impulses_count) + (hash_vec3_to_float(cell) < fract(impulses_count) ? 1 : 0);
+}
+
+vec3 compute_3d_orientation(vec3 cell, int seed, vec3 orientation, float isotropy)
+{
+  if (isotropy == 0.0) {
+    return orientation;
+  }
+
+  float inclination = acos(orientation.z);
+  float azimuth = sign(orientation.y) * acos(orientation.x / length(orientation.xy));
+  vec2 random_angles = hash_vec4_to_vec2(vec4(cell, seed)) * 2.0 * M_PI;
+  inclination += random_angles.x * isotropy;
+  azimuth += random_angles.y * isotropy;
+  return vec3(sin(inclination) * cos(azimuth), sin(inclination) * sin(azimuth), cos(inclination));
+}
+
+float compute_3d_gabor_noise_cell(vec3 cell,
+                                  vec3 position,
+                                  float impulses_count,
+                                  float frequency,
+                                  float isotropy,
+                                  vec3 base_orientation)
+
+{
+  int impulses_count_for_cell = compute_impulses_count_for_3d_cell(cell, impulses_count);
+
+  float noise = 0.0;
+  for (int i = 0; i < impulses_count_for_cell; ++i) {
+    vec3 orientation = compute_3d_orientation(cell, i * 2 + 1, base_orientation, isotropy);
+    vec3 kernel_center = position - hash_vec4_to_vec3(vec4(cell, i));
+    float weight = hash_vec4_to_float(vec4(cell, i * 2)) < 0.5 ? -1.0 : 1.0;
+    noise += weight * compute_3d_gabor_kernel(kernel_center, frequency, orientation);
+  }
+  return noise;
+}
+
+float compute_3d_gabor_noise(
+    vec3 coordinates, float impulses_count, float frequency, float isotropy, vec3 base_orientation)
+{
+  vec3 cell_position = floor(coordinates);
+  vec3 local_position = coordinates - cell_position;
+
+  float sum = 0.0;
+  for (int k = -1; k <= 1; k++) {
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec3 cell_offset = vec3(i, j, k);
+        vec3 current_cell_position = cell_position + cell_offset;
+        vec3 intra_cell_position = local_position - cell_offset;
+        sum += compute_3d_gabor_noise_cell(current_cell_position,
+                                           intra_cell_position,
+                                           impulses_count,
+                                           frequency,
+                                           isotropy,
+                                           base_orientation);
+      }
+    }
+  }
+
+  return sum;
 }
 
 void node_tex_gabor(vec3 coordinates,
                     float scale,
-                    float impulses,
-                    float orientation,
+                    float impulses_count,
                     float frequency,
                     float anisotropy,
+                    float orientation_2d,
+                    vec3 orientation_3d,
                     float type,
                     out float output_value)
 {
   vec3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0 - clamp(anisotropy, 0.0, 1.0);
 
-  if (type == SHD_GABOR_TYPE_1D) {
-    /* Not yet implemented. */
-    output_value = 0.0;
-  }
-  else if (type == SHD_GABOR_TYPE_2D) {
+  if (type == SHD_GABOR_TYPE_2D) {
     output_value = compute_2d_gabor_noise(
-        scaled_coordinates.xy, impulses, orientation, frequency, isotropy);
+        scaled_coordinates.xy, impulses_count, frequency, isotropy, orientation_2d);
   }
   else if (type == SHD_GABOR_TYPE_3D) {
-    /* Not yet implemented. */
-    output_value = 0.0;
-  }
-  else if (type == SHD_GABOR_TYPE_4D) {
-    /* Not yet implemented. */
-    output_value = 0.0;
-  }
-  else if (type == SHD_GABOR_TYPE_SURFACE) {
-    /* Not yet implemented. */
-    output_value = 0.0;
+    vec3 orientation = normalize(orientation_3d);
+    output_value = compute_3d_gabor_noise(
+        scaled_coordinates, impulses_count, frequency, isotropy, orientation);
   }
 }
