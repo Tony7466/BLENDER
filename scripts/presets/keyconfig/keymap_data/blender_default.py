@@ -8551,7 +8551,7 @@ def km_grease_pencil_interpolate_tool_modal_map(params):
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
         ("INCREASE", {"type": 'WHEELUPMOUSE', "value": 'PRESS'}, None),
         ("DECREASE", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'}, None),
     ])
@@ -8865,7 +8865,7 @@ def km_3d_view_tool_edit_grease_pencil_interpolate(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("grease_pencil.interpolate", params.tool_maybe_tweak_event,
-             {"properties": [("release_confirm", True)]}),
+             None),
         ]},
     )
 
@@ -8876,7 +8876,7 @@ def km_3d_view_tool_paint_grease_pencil_interpolate(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("grease_pencil.interpolate", params.tool_maybe_tweak_event,
-             {"properties": [("release_confirm", True)]}),
+             None),
         ]},
     )
 

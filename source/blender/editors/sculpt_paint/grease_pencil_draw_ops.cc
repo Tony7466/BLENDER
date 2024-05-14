@@ -1094,9 +1094,6 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
                 "Amount of smoothing to apply to interpolated strokes, to reduce jitter/noise",
                 0.0f,
                 2.0f);
-
-  prop = RNA_def_boolean(ot->srna, "release_confirm", false, "Confirm on Release", "");
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 /** \} */
