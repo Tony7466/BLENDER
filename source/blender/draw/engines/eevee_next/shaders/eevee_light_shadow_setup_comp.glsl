@@ -11,7 +11,7 @@
 
 int shadow_directional_coverage_get(int level)
 {
-  return float(1 << level);
+  return 1 << level;
 }
 
 void orthographic_sync(int tilemap_id,
@@ -69,8 +69,8 @@ void cascade_sync(inout LightData light)
 
   vec3 ws_camera_position = uniform_buf.camera.viewinv[3].xyz;
   vec3 ws_camera_forward = uniform_buf.camera.viewinv[2].xyz;
-  vec3 camera_clip_near = uniform_buf.camera.clip_near;
-  vec3 camera_clip_far = uniform_buf.camera.clip_far;
+  float camera_clip_near = uniform_buf.camera.clip_near;
+  float camera_clip_far = uniform_buf.camera.clip_far;
 
   /* All tile-maps use the first level size. */
   float level_size = shadow_directional_coverage_get(level_min);
