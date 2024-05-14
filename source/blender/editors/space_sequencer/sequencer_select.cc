@@ -1276,7 +1276,8 @@ static int sequencer_select_linked_pick_invoke(bContext *C, wmOperator *op, cons
   bool extend = RNA_boolean_get(op->ptr, "extend");
 
   Sequence *mouse_seq;
-  int selected, hand;
+  eSeqHandle hand;
+  int selected;
 
   /* This works like UV, not mesh. */
   mouse_seq = find_nearest_seq(scene, v2d, event->mval, &hand);
@@ -1786,7 +1787,7 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
   const bool tweak = RNA_boolean_get(op->ptr, "tweak");
 
   if (tweak) {
-    int hand_dummy;
+    eSeqHandle hand_dummy;
     int mval[2];
     WM_event_drag_start_mval(event, region, mval);
     Sequence *seq = find_nearest_seq(scene, v2d, mval, &hand_dummy);
