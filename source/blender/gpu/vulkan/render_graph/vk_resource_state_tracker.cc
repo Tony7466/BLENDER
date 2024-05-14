@@ -122,7 +122,8 @@ ResourceWithStamp VKResourceStateTracker::get_and_increase_stamp(ResourceHandle 
 
 ResourceWithStamp VKResourceStateTracker::get_image_and_increase_stamp(VkImage vk_image)
 {
-  validate(); ResourceHandle handle = image_resources_.lookup(vk_image);
+  validate();
+  ResourceHandle handle = image_resources_.lookup(vk_image);
   Resource &resource = resources_.lookup(handle);
   return get_and_increase_stamp(handle, resource);
 }
