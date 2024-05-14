@@ -118,14 +118,13 @@ static int bonedropper_init(bContext *C, wmOperator *op)
 static void bonedropper_exit(bContext *C, wmOperator *op)
 {
   wmWindow *win = CTX_wm_window(C);
-
   WM_cursor_modal_restore(win);
 
   if (op->customdata) {
-    BoneDropper *ddr = (BoneDropper *)op->customdata;
+    BoneDropper *bdr = (BoneDropper *)op->customdata;
 
-    if (ddr->area_region_type) {
-      ED_region_draw_cb_exit(ddr->area_region_type, ddr->draw_handle_pixel);
+    if (bdr->area_region_type) {
+      ED_region_draw_cb_exit(bdr->area_region_type, bdr->draw_handle_pixel);
     }
 
     MEM_freeN(op->customdata);
@@ -138,7 +137,7 @@ static void bonedropper_exit(bContext *C, wmOperator *op)
 
 static void bonedropper_cancel(bContext *C, wmOperator *op)
 {
-  BoneDropper *ddr = static_cast<BoneDropper *>(op->customdata);
+  BoneDropper *bdr = static_cast<BoneDropper *>(op->customdata);
   // bonedropper_id_set(C, ddr, ddr->init_id);
   bonedropper_exit(C, op);
 }
@@ -166,17 +165,17 @@ static void bonedropper_set_draw_callback_region(ScrArea &area, BoneDropper &bdr
       art, datadropper_draw_cb, &bdr, REGION_DRAW_POST_PIXEL);
 }
 
-static void bonedropper_id_sample_pt(
-    bContext *C, wmWindow &win, ScrArea &area, BoneDropper &bdr, const int event_xy[2], ID **r_id)
+static Bone *bonedropper_sample_pt(
+    bContext *C, wmWindow &win, ScrArea &area, BoneDropper &bdr, const int event_xy[2])
 {
   if (!ELEM(area.spacetype, SPACE_VIEW3D, SPACE_OUTLINER)) {
-    return;
+    return nullptr;
   }
 
   ARegion *region = BKE_area_find_region_xy(&area, RGN_TYPE_WINDOW, event_xy);
 
   if (!region) {
-    return;
+    return nullptr;
   }
 
   wmWindow *win_prev = CTX_wm_window(C);
@@ -194,19 +193,18 @@ static void bonedropper_id_sample_pt(
   /* Unfortunately it's necessary to always draw else we leave stale text. */
   ED_region_tag_redraw(region);
 
-  Bone *bone;
-  Base *base;
-  Base *foo;
+  Bone *bone = nullptr;
+  Base *base = nullptr;
 
   switch (area.spacetype) {
-    case SPACE_VIEW3D:
-      bone = ED_armature_pick_bone(C, mval, false, &foo);
-      base = ED_view3d_give_base_under_cursor(C, mval);
+    case SPACE_VIEW3D: {
+      bone = ED_armature_pick_bone(C, mval, true, &base);
       break;
-    case SPACE_OUTLINER:
-      bone = ED_armature_pick_bone(C, mval, false, &foo);
-      base = ED_outliner_give_base_under_cursor(C, mval);
+    }
+    case SPACE_OUTLINER: {
+      // bone = ED_armature_pick_bone(C, mval, false, &base);
       break;
+    }
 
     default:
       BLI_assert_unreachable();
@@ -214,23 +212,30 @@ static void bonedropper_id_sample_pt(
   }
 
   if (bone) {
-    Object *ob = base->object;
     SNPRINTF(bdr.name, "%s", bone->name);
-    // PointerRNA idptr = RNA_id_pointer_create(id);
-
     copy_v2_v2_int(bdr.name_pos, mval);
   }
 
   CTX_wm_window_set(C, win_prev);
   CTX_wm_area_set(C, area_prev);
   CTX_wm_region_set(C, region_prev);
+
+  return bone;
 }
 
-static bool bonedropper_id_sample(bContext *C, BoneDropper &ddr, const int event_xy[2])
+static bool bonedropper_bone_set(bContext *C, BoneDropper &bdr, Bone *bone)
+{
+  PointerRNA bone_ptr = RNA_pointer_create(bdr.ptr.owner_id, &RNA_Bone, bone);
+  RNA_property_pointer_set(&bdr.ptr, bdr.prop, bone_ptr, nullptr);
+  RNA_property_update(C, &bdr.ptr, bdr.prop);
+  return true;
+}
+
+static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy[2])
 {
   int event_xy_win[2];
-  wmWindow *win;
-  ScrArea *area;
+  wmWindow *win = nullptr;
+  ScrArea *area = nullptr;
   eyedropper_win_area_find(C, event_xy, event_xy_win, &win, &area);
 
   if (!win || !area) {
@@ -240,10 +245,11 @@ static bool bonedropper_id_sample(bContext *C, BoneDropper &ddr, const int event
     return false;
   }
 
-  ID *id = nullptr;
-  bonedropper_id_sample_pt(C, *win, *area, ddr, event_xy_win, &id);
-  // return bonedropper_id_set(C, ddr, id);
-  return true;
+  Bone *bone = bonedropper_sample_pt(C, *win, *area, bdr, event_xy_win);
+  if (!bone) {
+    return false;
+  }
+  return bonedropper_bone_set(C, bdr, bone);
 }
 
 /* main modal status check */
@@ -262,7 +268,7 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
         return OPERATOR_CANCELLED;
       case EYE_MODAL_SAMPLE_CONFIRM: {
         const bool is_undo = bdr->is_undo;
-        const bool success = bonedropper_id_sample(C, *bdr, event->xy);
+        const bool success = bonedropper_sample(C, *bdr, event->xy);
         bonedropper_exit(C, op);
         if (success) {
           /* Could support finished & undo-skip. */
@@ -274,17 +280,15 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
   else if (event->type == MOUSEMOVE) {
-    ID *id = nullptr;
-
     int event_xy_win[2];
-    wmWindow *win;
-    ScrArea *area;
+    wmWindow *win = nullptr;
+    ScrArea *area = nullptr;
     eyedropper_win_area_find(C, event->xy, event_xy_win, &win, &area);
 
     if (win && area) {
       /* Set the region for eyedropper cursor text drawing */
       bonedropper_set_draw_callback_region(*area, *bdr);
-      bonedropper_id_sample_pt(C, *win, *area, *bdr, event_xy_win, &id);
+      bonedropper_sample_pt(C, *win, *area, *bdr, event->xy);
     }
   }
 
