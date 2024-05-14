@@ -1442,12 +1442,6 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("paint.hide_show_line_gesture")
             layout.prop(props, "use_limit_to_segment", expand=False)
-            layout.popover(
-                panel="VIEW3D_PT_tool_snapping",
-                icon="SNAP_INCREMENT",
-                text="",
-                translate=False,
-            )
 
         return dict(
             idname="builtin.line_hide",
@@ -1509,12 +1503,6 @@ class _defs_sculpt:
             props = tool.operator_properties("paint.mask_line_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
             layout.prop(props, "use_limit_to_segment", expand=False)
-            layout.popover(
-                panel="VIEW3D_PT_tool_snapping",
-                icon="SNAP_INCREMENT",
-                text="",
-                translate=False,
-            )
 
         return dict(
             idname="builtin.line_mask",
@@ -1599,12 +1587,6 @@ class _defs_sculpt:
             layout.prop(props, "trim_orientation", expand=False)
             layout.prop(props, "use_cursor_depth", expand=False)
             layout.prop(props, "use_limit_to_segment", expand=False)
-            layout.popover(
-                panel="VIEW3D_PT_tool_snapping",
-                icon="SNAP_INCREMENT",
-                text="",
-                translate=False,
-            )
         return dict(
             idname="builtin.line_trim",
             label="Line Trim",
@@ -1619,12 +1601,6 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.project_line_gesture")
             layout.prop(props, "use_limit_to_segment", expand=False)
-            layout.popover(
-                panel="VIEW3D_PT_tool_snapping",
-                icon="SNAP_INCREMENT",
-                text="",
-                translate=False,
-            )
 
         return dict(
             idname="builtin.line_project",
@@ -1864,12 +1840,6 @@ class _defs_weight_paint:
             props = tool.operator_properties("paint.weight_gradient")
             layout.prop(props, "type", expand=True)
             layout.popover("VIEW3D_PT_tools_weight_gradient")
-            layout.popover(
-                panel="VIEW3D_PT_tool_snapping",
-                icon="SNAP_INCREMENT",
-                text="",
-                translate=False,
-            )
 
         return dict(
             idname="builtin.gradient",

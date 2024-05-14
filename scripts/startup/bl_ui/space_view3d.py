@@ -1086,6 +1086,13 @@ class VIEW3D_HT_header(Header):
                 row.popover(panel="VIEW3D_PT_slots_color_attributes", icon='GROUP_VCOL')
 
             layout.popover(
+                panel="VIEW3D_PT_sculpt_snapping",
+                icon="SNAP_INCREMENT",
+                text="",
+                translate=False,
+            )
+
+            layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
                 text="",
                 icon=VIEW3D_HT_header._sculpt_automasking_icon(tool_settings.sculpt)
@@ -7836,10 +7843,10 @@ class VIEW3D_PT_snapping(Panel):
         row.prop(tool_settings, "snap_angle_increment_3d_precision", text="")
 
 
-class VIEW3D_PT_tool_snapping(Panel):
+class VIEW3D_PT_sculpt_snapping(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "Angle Snapping"
+    bl_label = "Snapping"
 
     def draw(self, context):
         layout = self.layout
@@ -9350,7 +9357,7 @@ classes = (
     VIEW3D_PT_overlay_sculpt,
     VIEW3D_PT_overlay_sculpt_curves,
     VIEW3D_PT_snapping,
-    VIEW3D_PT_tool_snapping,
+    VIEW3D_PT_sculpt_snapping,
     VIEW3D_PT_proportional_edit,
     VIEW3D_PT_gpencil_origin,
     VIEW3D_PT_gpencil_lock,
