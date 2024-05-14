@@ -125,7 +125,7 @@ void copy_blender_buffer_to_primvar(const VArray<BlenderT> &buffer,
   else {
     const VArraySpan<BlenderT> data(buffer);
     if constexpr (is_same || is_compatible) {
-      usd_data.assign(data.cast<USDT>().begin(), data.cast<USDT>().end());
+      usd_data.assign(data.template cast<USDT>().begin(), data.template cast<USDT>().end());
     }
     else {
       usd_data.resize(data.size());
@@ -200,7 +200,7 @@ void copy_primvar_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
     else {
       if constexpr (is_same || is_compatible) {
         const Span<USDT> src(usd_data.data(), usd_data.size());
-        attribute.copy_from(src.cast<BlenderT>());
+        attribute.copy_from(src.template cast<BlenderT>());
       }
       else {
         for (const int64_t i : attribute.index_range()) {
@@ -214,7 +214,7 @@ void copy_primvar_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
     if (usd_data.size() == attribute.size()) {
       if constexpr (is_same || is_compatible) {
         const Span<USDT> src(usd_data.data(), usd_data.size());
-        attribute.copy_from(src.cast<BlenderT>());
+        attribute.copy_from(src.template cast<BlenderT>());
       }
       else {
         for (const int64_t i : attribute.index_range()) {
