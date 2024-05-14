@@ -52,7 +52,8 @@ class SeparateTransformFunction : public mf::MultiFunction {
     }
     else if (!rotation.is_empty() && scale.is_empty()) {
       mask.foreach_index([&](const int64_t i) {
-        rotation[i] = math::normalized_to_quaternion_safe(math::normalize(transforms[i]));
+        rotation[i] = math::normalized_to_quaternion_safe(
+            math::normalize(float3x3(transforms[i])));
       });
     }
     else if (!rotation.is_empty() && !scale.is_empty()) {
@@ -73,12 +74,12 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   fn_node_type_base(
       &ntype, FN_NODE_SEPARATE_TRANSFORM, "Separate Transform", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

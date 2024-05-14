@@ -153,21 +153,21 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         layout.active = context.scene.eevee.use_shadows and light.use_shadow
 
         col = layout.column()
-        col.prop(light, "shadow_softness_factor", text="Softness")
-        if light.type == 'SUN':
-            col.prop(light, "shadow_trace_distance", text="Distance")
-
-        col.separator()
-
         col.prop(light, "shadow_filter_radius", text="Filter")
-        col.prop(light, "shadow_resolution_scale", text="Resolution")
+
+        sub = col.column(align=True)
+        row = sub.row(align=True)
+        row.prop(light, "shadow_maximum_resolution", text="Resolution Limit")
+        if light.type != 'SUN':
+            row.prop(light, "use_absolute_resolution", text="", icon='DRIVER_DISTANCE')
+        sub.prop(light, "shadow_resolution_scale", text="Scale")
 
 
 class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
     bl_label = "Influence"
     bl_parent_id = "DATA_PT_EEVEE_light"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'}
 
     def draw(self, context):
         layout = self.layout
@@ -175,21 +175,23 @@ class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
         light = context.light
         layout.use_property_split = True
 
-        col = layout.column()
-        col.active = ob.visible_diffuse
-        col.prop(light, "diffuse_factor", text="Diffuse")
+        col = layout.column(align=True)
 
-        col = layout.column()
-        col.active = ob.visible_glossy
-        col.prop(light, "specular_factor", text="Glossy")
+        sub = col.column(align=True)
+        sub.active = ob.visible_diffuse
+        sub.prop(light, "diffuse_factor", text="Diffuse")
 
-        col = layout.column()
-        col.active = ob.visible_transmission
-        col.prop(light, "transmission_factor", text="Transmission")
+        sub = col.column(align=True)
+        sub.active = ob.visible_glossy
+        sub.prop(light, "specular_factor", text="Glossy")
 
-        col = layout.column()
-        col.active = ob.visible_volume_scatter
-        col.prop(light, "volume_factor", text="Volume Scatter", text_ctxt=i18n_contexts.id_id)
+        sub = col.column(align=True)
+        sub.active = ob.visible_transmission
+        sub.prop(light, "transmission_factor", text="Transmission")
+
+        sub = col.column(align=True)
+        sub.active = ob.visible_volume_scatter
+        sub.prop(light, "volume_factor", text="Volume Scatter", text_ctxt=i18n_contexts.id_id)
 
 
 class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):

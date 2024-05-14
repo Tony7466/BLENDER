@@ -362,6 +362,9 @@ enum {
 
   /** Drawn in a way that indicates that the state/value is unknown. */
   UI_BUT_INDETERMINATE = 1 << 26,
+
+  /** Draw icon inverted to indicate a special state. */
+  UI_BUT_ICON_INVERT = 1 << 27,
 };
 
 /**
@@ -783,6 +786,11 @@ using uiBlockCreateFunc = uiBlock *(*)(bContext *C, ARegion *region, void *arg1)
 using uiBlockCancelFunc = void (*)(bContext *C, void *arg1);
 
 void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free);
+/**
+ * \param can_refresh: When true, the popup may be refreshed (updated after creation).
+ * \note It can be useful to disable refresh (even though it will work)
+ * as this exits text fields which can be disruptive if refresh isn't needed.
+ */
 void UI_popup_block_invoke_ex(
     bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free, bool can_refresh);
 void UI_popup_block_ex(bContext *C,
@@ -1679,7 +1687,7 @@ int UI_searchbox_size_x();
 /**
  * Check if a string is in an existing search box.
  */
-int UI_search_items_find_index(uiSearchItems *items, const char *name);
+int UI_search_items_find_index(const uiSearchItems *items, const char *name);
 
 /**
  * Adds a hint to the button which draws right aligned, grayed out and never clipped.
@@ -2550,6 +2558,12 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const wmKeyMapItem *kmi,
                                    bool text_fallback);
 
+/* Draw keymap item for status bar. Returns number of items consumed,
+ * as X/Y/Z items may get merged to use less space. */
+int uiTemplateStatusBarModalItem(uiLayout *layout,
+                                 const wmKeyMap *keymap,
+                                 const EnumPropertyItem *item);
+
 void uiTemplateComponentMenu(uiLayout *layout,
                              PointerRNA *ptr,
                              const char *propname,
@@ -3080,11 +3094,10 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
 /* Helpers for Operators */
 uiBut *UI_context_active_but_get(const bContext *C);
 /**
- * Version of #UI_context_active_get() that uses the result of #CTX_wm_menu()
- * if set. Does not traverse into parent menus, which may be wanted in some
- * cases.
+ * Version of #UI_context_active_get() that uses the result of #CTX_wm_region_popup() if set.
+ * Does not traverse into parent menus, which may be wanted in some cases.
  */
-uiBut *UI_context_active_but_get_respect_menu(const bContext *C);
+uiBut *UI_context_active_but_get_respect_popup(const bContext *C);
 /**
  * Version of #UI_context_active_but_get that also returns RNA property info.
  * Helper function for insert keyframe, reset to default, etc operators.

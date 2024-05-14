@@ -155,6 +155,11 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated_select);
   }
 
+  if (!USER_VERSION_ATLEAST(402, 21)) {
+    FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.back);
+    FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.header_back);
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
@@ -938,11 +943,15 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(402, 6)) {
-    if (BLI_listbase_is_empty(&userdef->extension_repos)) {
-      BKE_preferences_extension_repo_add_default(userdef);
-      BKE_preferences_extension_repo_add_default_user(userdef);
+  if (!USER_VERSION_ATLEAST(402, 36)) {
+    /* Reset repositories. */
+    while (!BLI_listbase_is_empty(&userdef->extension_repos)) {
+      BKE_preferences_extension_repo_remove(
+          userdef, static_cast<bUserExtensionRepo *>(userdef->extension_repos.first));
     }
+
+    BKE_preferences_extension_repo_add_default(userdef);
+    BKE_preferences_extension_repo_add_default_user(userdef);
   }
 
   /**

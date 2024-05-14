@@ -67,6 +67,7 @@
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_readfile.hh"
 
@@ -1120,8 +1121,6 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Armature data to be linked");
       case ID_AC:
         return N_("Browse Action to be linked");
-      case ID_AN:
-        return N_("Browse Animation to be linked");
       case ID_NT:
         return N_("Browse Node Tree to be linked");
       case ID_BR:
@@ -2990,7 +2989,6 @@ static void draw_export_controls(
     uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
     uiItemPopoverPanel(row, C, "WM_PT_operator_presets", "", ICON_PRESET);
     uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_exporter_export", "index", index);
-    uiItemIntO(row, "", ICON_X, "COLLECTION_OT_exporter_remove", "index", index);
   }
 }
 
@@ -3013,43 +3011,100 @@ static void draw_export_properties(bContext *C,
       C, op, layout, UI_BUT_LABEL_ALIGN_NONE, UI_TEMPLATE_OP_PROPS_HIDE_PRESETS);
 }
 
+static void draw_exporter_item(uiList * /*ui_list*/,
+                               const bContext * /*C*/,
+                               uiLayout *layout,
+                               PointerRNA * /*idataptr*/,
+                               PointerRNA *itemptr,
+                               int /*icon*/,
+                               PointerRNA * /*active_dataptr*/,
+                               const char * /*active_propname*/,
+                               int /*index*/,
+                               int /*flt_flag*/)
+{
+  char name[MAX_IDPROP_NAME];
+  RNA_string_get(itemptr, "name", name);
+
+  uiLayout *row = uiLayoutRow(layout, false);
+  uiItemS(row);
+  uiItemL(row, name, ICON_NONE);
+}
+
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
 {
   Collection *collection = CTX_data_collection(C);
   ListBase *exporters = &collection->exporters;
+  const int index = collection->active_exporter_index;
 
-  /* Draw all the IO handlers. */
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (CollectionExport *, data, exporters, index) {
-    using namespace blender;
-    PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_CollectionExport, data);
-    PanelLayout panel = uiLayoutPanelProp(C, layout, &exporter_ptr, "is_open");
+  /* Register the exporter list type on first use. */
+  static const uiListType *exporter_item_list = []() {
+    uiListType *lt = MEM_cnew<uiListType>(__func__);
+    STRNCPY(lt->idname, "COLLECTION_UL_exporter_list");
+    lt->draw_item = draw_exporter_item;
+    WM_uilisttype_add(lt);
+    return lt;
+  }();
 
-    bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
-    if (!fh) {
-      std::string label = std::string(IFACE_("Undefined")) + " " + data->fh_idname;
-      draw_export_controls(C, panel.header, label, index, false);
-      continue;
-    }
+  /* Draw exporter list and controls. */
+  PointerRNA collection_ptr = RNA_pointer_create(&collection->id, &RNA_Collection, collection);
+  uiLayout *row = uiLayoutRow(layout, false);
+  uiTemplateList(row,
+                 C,
+                 exporter_item_list->idname,
+                 "",
+                 &collection_ptr,
+                 "exporters",
+                 &collection_ptr,
+                 "active_exporter_index",
+                 nullptr,
+                 3,
+                 5,
+                 UILST_LAYOUT_DEFAULT,
+                 1,
+                 UI_TEMPLATE_LIST_FLAG_NONE);
 
-    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
-    if (!ot) {
-      std::string label = std::string(IFACE_("Undefined")) + " " + fh->export_operator;
-      draw_export_controls(C, panel.header, label, index, false);
-      continue;
-    }
+  uiLayout *col = uiLayoutColumn(row, true);
+  uiItemM(col, "COLLECTION_MT_exporter_add", "", ICON_ADD);
+  uiItemIntO(col, "", ICON_REMOVE, "COLLECTION_OT_exporter_remove", "index", index);
 
-    /* Assign temporary operator to uiBlock, which takes ownership. */
-    PointerRNA properties = RNA_pointer_create(&collection->id, ot->srna, data->export_properties);
-    wmOperator *op = minimal_operator_create(ot, &properties);
-    UI_block_set_active_operator(uiLayoutGetBlock(panel.header), op, true);
+  col = uiLayoutColumn(layout, true);
+  uiItemO(col, nullptr, ICON_EXPORT, "COLLECTION_OT_export_all");
+  uiLayoutSetEnabled(col, !BLI_listbase_is_empty(exporters));
 
-    /* Draw panel header and contents. */
-    std::string label(fh->label);
-    draw_export_controls(C, panel.header, label, index, true);
-    if (panel.body) {
-      draw_export_properties(C, panel.body, op, fh->get_default_filename(collection->id.name + 2));
-    }
+  /* Draw the active exporter. */
+  CollectionExport *data = (CollectionExport *)BLI_findlink(exporters, index);
+  if (!data) {
+    return;
+  }
+
+  using namespace blender;
+  PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_CollectionExport, data);
+  PanelLayout panel = uiLayoutPanelProp(C, layout, &exporter_ptr, "is_open");
+
+  bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+  if (!fh) {
+    std::string label = std::string(IFACE_("Undefined")) + " " + data->fh_idname;
+    draw_export_controls(C, panel.header, label, index, false);
+    return;
+  }
+
+  wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+  if (!ot) {
+    std::string label = std::string(IFACE_("Undefined")) + " " + fh->export_operator;
+    draw_export_controls(C, panel.header, label, index, false);
+    return;
+  }
+
+  /* Assign temporary operator to uiBlock, which takes ownership. */
+  PointerRNA properties = RNA_pointer_create(&collection->id, ot->srna, data->export_properties);
+  wmOperator *op = minimal_operator_create(ot, &properties);
+  UI_block_set_active_operator(uiLayoutGetBlock(panel.header), op, true);
+
+  /* Draw panel header and contents. */
+  std::string label(fh->label);
+  draw_export_controls(C, panel.header, label, index, true);
+  if (panel.body) {
+    draw_export_properties(C, panel.body, op, fh->get_default_filename(collection->id.name + 2));
   }
 }
 
@@ -6313,8 +6368,19 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   WorkSpace *workspace = CTX_wm_workspace(C);
 
   /* Workspace status text has priority. */
-  if (workspace->status_text) {
-    uiItemL(layout, workspace->status_text, ICON_NONE);
+  if (!workspace->runtime->status.is_empty()) {
+    uiLayout *row = uiLayoutRow(layout, true);
+    for (const blender::bke::WorkSpaceStatusItem &item : workspace->runtime->status) {
+      if (item.space_factor != 0.0f) {
+        uiItemS_ex(row, item.space_factor);
+      }
+      else {
+        uiBut *but = uiItemL_ex(row, item.text.c_str(), item.icon, false, false);
+        if (item.inverted) {
+          but->drawflag |= UI_BUT_ICON_INVERT;
+        }
+      }
+    }
     return;
   }
 
@@ -6559,6 +6625,90 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 /* -------------------------------------------------------------------- */
 /** \name Event Icon Template
  * \{ */
+
+static const wmKeyMapItem *keymap_item_from_enum_item(const wmKeyMap *keymap,
+                                                      const EnumPropertyItem *item)
+{
+  if (item == nullptr) {
+    return nullptr;
+  }
+
+  for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi; kmi = kmi->next)
+  {
+    if (kmi->propvalue == item->value) {
+      return kmi;
+    }
+  }
+
+  return nullptr;
+}
+
+static bool keymap_item_can_collapse(const wmKeyMapItem *kmi_a, const wmKeyMapItem *kmi_b)
+{
+  return (kmi_a->shift == kmi_b->shift && kmi_a->ctrl == kmi_b->ctrl && kmi_a->alt == kmi_b->alt &&
+          kmi_a->oskey == kmi_b->oskey);
+}
+
+int uiTemplateStatusBarModalItem(uiLayout *layout,
+                                 const wmKeyMap *keymap,
+                                 const EnumPropertyItem *item)
+{
+  const wmKeyMapItem *kmi = keymap_item_from_enum_item(keymap, item);
+  if (kmi == nullptr) {
+    return 0;
+  }
+
+  if (kmi->val == KM_RELEASE) {
+    /* Assume release events just disable something which was toggled on. */
+    return 1;
+  }
+
+  /* Try to merge some known XYZ items to save horizontal space. */
+  const EnumPropertyItem *item_y = (item[1].identifier) ? item + 1 : nullptr;
+  const EnumPropertyItem *item_z = (item_y && item[2].identifier) ? item + 2 : nullptr;
+  const wmKeyMapItem *kmi_y = keymap_item_from_enum_item(keymap, item_y);
+  const wmKeyMapItem *kmi_z = keymap_item_from_enum_item(keymap, item_z);
+
+  if (kmi_y && kmi_z && keymap_item_can_collapse(kmi, kmi_y) &&
+      keymap_item_can_collapse(kmi_y, kmi_z))
+  {
+    const char *xyz_label = nullptr;
+
+    if (STREQ(item->identifier, "AXIS_X") && STREQ(item_y->identifier, "AXIS_Y") &&
+        STREQ(item_z->identifier, "AXIS_Z"))
+    {
+      xyz_label = IFACE_("Axis");
+    }
+    else if (STREQ(item->identifier, "PLANE_X") && STREQ(item_y->identifier, "PLANE_Y") &&
+             STREQ(item_z->identifier, "PLANE_Z"))
+    {
+      xyz_label = IFACE_("Plane");
+    }
+
+    if (xyz_label) {
+      int icon_mod[4];
+      int icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+        uiItemL(layout, "", icon_mod[j]);
+      }
+      uiItemL(layout, "", icon);
+
+      icon = UI_icon_from_keymap_item(kmi_y, icon_mod);
+      uiItemL(layout, "", icon);
+
+      icon = UI_icon_from_keymap_item(kmi_z, icon_mod);
+      uiItemL(layout, "", icon);
+
+      uiItemS_ex(layout, 0.6f);
+      uiItemL(layout, xyz_label, ICON_NONE);
+      uiItemS_ex(layout, 0.7f);
+      return 3;
+    }
+  }
+
+  /* Single item without merging. */
+  return uiTemplateEventFromKeymapItem(layout, item->name, kmi, false) ? 1 : 0;
+}
 
 bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const char *text,

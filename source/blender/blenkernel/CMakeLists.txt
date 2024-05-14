@@ -17,6 +17,7 @@ set(INC
   ../makesrna
   ../modifiers
   ../nodes
+  ../nodes/geometry/include
   ../render
   ../sequencer
   ../shader_fx
@@ -55,7 +56,6 @@ set(SRC
   intern/anim_path.cc
   intern/anim_sys.cc
   intern/anim_visualization.cc
-  intern/animation.cc
   intern/anonymous_attribute_id.cc
   intern/appdir.cc
   intern/armature.cc
@@ -328,7 +328,6 @@ set(SRC
   BKE_anim_data.hh
   BKE_anim_path.h
   BKE_anim_visualization.h
-  BKE_animation.hh
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
   BKE_appdir.hh
@@ -849,6 +848,7 @@ if(WITH_GTESTS)
     intern/layer_test.cc
     intern/lib_id_remapper_test.cc
     intern/lib_id_test.cc
+    intern/lib_query_test.cc
     intern/lib_remap_test.cc
     intern/main_test.cc
     intern/nla_test.cc

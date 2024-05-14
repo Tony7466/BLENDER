@@ -641,7 +641,7 @@ typedef struct bUserExtensionRepo {
    * When unset, use `{BLENDER_USER_EXTENSIONS}/{bUserExtensionRepo::module}`.
    */
   char custom_dirpath[1024]; /* FILE_MAX */
-  char remote_path[1024];    /* FILE_MAX */
+  char remote_url[1024];     /* FILE_MAX */
 
   int flag;
   char _pad0[4];
@@ -652,7 +652,8 @@ typedef enum eUserExtensionRepo_Flag {
   USER_EXTENSION_REPO_FLAG_NO_CACHE = 1 << 0,
   USER_EXTENSION_REPO_FLAG_DISABLED = 1 << 1,
   USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
-  USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH = 1 << 3,
+  USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL = 1 << 3,
+  USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP = 1 << 4,
 } eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
@@ -724,7 +725,6 @@ typedef struct UserDef_Experimental {
    * when the release cycle is not alpha. */
   char use_new_curves_tools;
   char use_new_point_cloud_type;
-  char use_full_frame_compositor;
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
   char use_sculpt_texture_paint;
@@ -736,7 +736,7 @@ typedef struct UserDef_Experimental {
   char use_extension_utils;
   char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
-  char _pad[1];
+  char _pad[2];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -753,6 +753,20 @@ typedef struct bUserScriptDirectory {
   char name[64];      /* MAX_NAME */
   char dir_path[768]; /* FILE_MAXDIR */
 } bUserScriptDirectory;
+
+/**
+ * Settings for an asset shelf, stored in the Preferences. Most settings are still stored in the
+ * asset shelf instance in #AssetShelfSettings. This is just for the options that should be shared
+ * as Preferences.
+ */
+typedef struct bUserAssetShelfSettings {
+  struct bUserAssetShelfSettings *next, *prev;
+
+  /** Identifier that matches the #AssetShelfType.idname of the shelf these settings apply to. */
+  char shelf_idname[64]; /* MAX_NAME */
+
+  ListBase enabled_catalog_paths; /* #AssetCatalogPathLink */
+} bUserAssetShelfSettings;
 
 /**
  * Main user preferences data, typically accessed from #U.
@@ -774,7 +788,12 @@ typedef struct UserDef {
   char pref_flag;
   char savetime;
   char mouse_emulate_3_button_modifier;
-  char _pad4[1];
+  /**
+   * Workaround for WAYLAND (at time of writing compositors don't support this info).
+   * #eUserpref_TrackpadScrollDir type
+   * TODO: Remove this once this API is better supported by Wayland compositors, see #107676.
+   */
+  char trackpad_scroll_direction;
   /** FILE_MAXDIR length. */
   char tempdir[768];
   char fontdir[768];
@@ -886,6 +905,7 @@ typedef struct UserDef {
   struct ListBase asset_libraries;
   /** #bUserExtensionRepo */
   struct ListBase extension_repos;
+  struct ListBase asset_shelves_settings; /* #bUserAssetShelfSettings */
 
   char keyconfigstr[64];
 
@@ -894,8 +914,10 @@ typedef struct UserDef {
 
   /** Index of the extension repo in the Preferences UI. */
   short active_extension_repo;
+  /** Flag for all extensions (#eUserPref_ExtensionFlag).  */
+  char extension_flag;
 
-  char _pad14[6];
+  char _pad14[5];
 
   short undosteps;
   int undomemory;
@@ -1147,6 +1169,11 @@ typedef enum eUserPref_Flag {
   USER_TOOLTIPS_PYTHON = (1 << 26),
   USER_FLAG_UNUSED_27 = (1 << 27), /* dirty */
 } eUserPref_Flag;
+
+/** #UserDef.extension_flag */
+typedef enum eUserPref_ExtensionFlag {
+  USER_EXTENSION_FLAG_ONLINE_ACCESS_HANDLED = 1 << 0,
+} eUserPref_ExtensionFlag;
 
 /** #UserDef.file_preview_type */
 typedef enum eUserpref_File_Preview_Type {
@@ -1517,6 +1544,11 @@ typedef enum eUserpref_EmulateMMBMod {
   USER_EMU_MMB_MOD_ALT = 0,
   USER_EMU_MMB_MOD_OSKEY = 1,
 } eUserpref_EmulateMMBMod;
+
+typedef enum eUserpref_TrackpadScrollDir {
+  USER_TRACKPAD_SCROLL_DIR_TRADITIONAL = 0,
+  USER_TRACKPAD_SCROLL_DIR_NATURAL = 1,
+} eUserpref_TrackpadScrollDir;
 
 typedef enum eUserpref_DiskCacheCompression {
   USER_SEQ_DISK_CACHE_COMPRESSION_NONE = 0,

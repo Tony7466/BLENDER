@@ -34,23 +34,22 @@ void SphereProbeModule::begin_sync()
   LightProbeModule &light_probes = instance_.light_probes;
   SphereProbeData &world_data = *static_cast<SphereProbeData *>(&light_probes.world_sphere_);
   {
-    const RaytraceEEVEE &options = instance_.scene->eevee.ray_tracing_options;
-    float probe_brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
-
     GPUShader *shader = instance_.shaders.static_shader_get(SPHERE_PROBE_REMAP);
 
     PassSimple &pass = remap_ps_;
     pass.init();
     pass.specialize_constant(shader, "extract_sh", &extract_sh_);
+    pass.specialize_constant(shader, "extract_sun", &extract_sh_);
     pass.shader_set(shader);
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_texture("atlas_tx", &probes_tx_);
     pass.bind_image("atlas_img", &probes_tx_);
     pass.bind_ssbo("out_sh", &tmp_spherical_harmonics_);
+    pass.bind_ssbo("out_sun", &tmp_sunlight_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
-    pass.push_constant("probe_brightness_clamp", probe_brightness_clamp);
+    pass.bind_resources(instance_.uniform_data);
     pass.dispatch(&dispatch_probe_pack_);
   }
   {
@@ -78,6 +77,17 @@ void SphereProbeModule::begin_sync()
     pass.dispatch(1);
   }
   {
+    PassSimple &pass = sum_sun_ps_;
+    pass.init();
+    pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_SUNLIGHT));
+    pass.push_constant("probe_remap_dispatch_size", &dispatch_probe_pack_);
+    pass.bind_ssbo("in_sun", &tmp_sunlight_);
+    pass.bind_ssbo("sunlight_buf", &instance_.world.sunlight);
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+    pass.dispatch(1);
+    pass.barrier(GPU_BARRIER_UNIFORM);
+  }
+  {
     PassSimple &pass = select_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_SELECT));
@@ -85,6 +95,7 @@ void SphereProbeModule::begin_sync()
     pass.bind_ssbo("reflection_probe_buf", &data_buf_);
     instance_.volume_probes.bind_resources(pass);
     instance_.sampling.bind_resources(pass);
+    pass.bind_resources(instance_.uniform_data);
     pass.dispatch(&dispatch_probe_select_);
     pass.barrier(GPU_BARRIER_UNIFORM);
   }
@@ -229,6 +240,7 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
 
   if (extract_spherical_harmonics) {
     instance_.manager->submit(sum_sh_ps_);
+    instance_.manager->submit(sum_sun_ps_);
     /* All volume probe that needs to composite the world probe need to be updated. */
     instance_.volume_probes.update_world_irradiance();
   }

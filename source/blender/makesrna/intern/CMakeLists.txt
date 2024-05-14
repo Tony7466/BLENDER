@@ -112,7 +112,6 @@ if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
   add_definitions(-DWITH_ANIM_BAKLAVA)
   list(APPEND DEFSRC
-    rna_animation_id.cc
     rna_grease_pencil.cc
   )
 endif()
@@ -246,6 +245,7 @@ set(INC
   ../../io/usd
   ../../modifiers
   ../../nodes
+  ../../nodes/geometry/include
   ../../sequencer
   ../../simulation
   ../../windowmanager

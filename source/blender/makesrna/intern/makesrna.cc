@@ -3619,6 +3619,8 @@ static const char *rna_property_subtypename(PropertySubType type)
       return "PROP_POWER";
     case PROP_TEMPERATURE:
       return "PROP_TEMPERATURE";
+    case PROP_WAVELENGTH:
+      return "PROP_WAVELENGTH";
     default: {
       /* in case we don't have a type preset that includes the subtype */
       if (RNA_SUBTYPE_UNIT(type)) {
@@ -3658,6 +3660,8 @@ static const char *rna_property_subtype_unit(PropertySubType type)
       return "PROP_UNIT_POWER";
     case PROP_UNIT_TEMPERATURE:
       return "PROP_UNIT_TEMPERATURE";
+    case PROP_UNIT_WAVELENGTH:
+      return "PROP_UNIT_WAVELENGTH";
     default:
       return "PROP_UNIT_UNKNOWN";
   }
@@ -4765,9 +4769,6 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_texture.cc", "rna_texture_api.cc", RNA_def_texture},
     {"rna_action.cc", "rna_action_api.cc", RNA_def_action},
     {"rna_animation.cc", "rna_animation_api.cc", RNA_def_animation},
-#ifdef WITH_ANIM_BAKLAVA
-    {"rna_animation_id.cc", nullptr, RNA_def_animation_id},
-#endif
     {"rna_animviz.cc", nullptr, RNA_def_animviz},
     {"rna_armature.cc", "rna_armature_api.cc", RNA_def_armature},
     {"rna_attribute.cc", nullptr, RNA_def_attribute},

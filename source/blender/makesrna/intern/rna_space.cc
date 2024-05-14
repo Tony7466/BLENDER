@@ -1804,6 +1804,18 @@ static void rna_SpaceImageEditor_zoom_get(PointerRNA *ptr, float *values)
   }
 }
 
+static float rna_SpaceImageEditor_zoom_percentage_get(PointerRNA *ptr)
+{
+  SpaceImage *sima = (SpaceImage *)ptr->data;
+  return sima->zoom * 100.0f;
+}
+
+static void rna_SpaceImageEditor_zoom_percentage_set(PointerRNA *ptr, const float value)
+{
+  SpaceImage *sima = (SpaceImage *)ptr->data;
+  sima->zoom = value / 100.0f;
+}
+
 static void rna_SpaceImageEditor_cursor_location_get(PointerRNA *ptr, float *values)
 {
   SpaceImage *sima = (SpaceImage *)ptr->data;
@@ -2500,6 +2512,46 @@ static std::optional<std::string> rna_SpaceSequencerTimelineOverlay_path(
   return "timeline_overlay";
 }
 
+static std::optional<std::string> rna_SpaceSequencerCacheOverlay_path(const PointerRNA * /*ptr*/)
+{
+  return "cache_overlay";
+}
+
+static float rna_SpaceSequenceEditor_zoom_percentage_get(PointerRNA *ptr)
+{
+  ScrArea *area = rna_area_from_space(ptr);
+  if (area == nullptr) {
+    return 100.0f;
+  }
+  ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_PREVIEW);
+  if (region == nullptr) {
+    return 100.0f;
+  }
+
+  View2D *v2d = &region->v2d;
+  const float zoom = 1.0f / (BLI_rctf_size_x(&v2d->cur) / float(BLI_rcti_size_x(&v2d->mask))) *
+                     +100.0f;
+  return zoom;
+}
+
+static void rna_SpaceSequenceEditor_zoom_percentage_set(PointerRNA *ptr, const float value)
+{
+  ScrArea *area = rna_area_from_space(ptr);
+  if (area == nullptr) {
+    return;
+  }
+  ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_PREVIEW);
+  if (region == nullptr) {
+    return;
+  }
+
+  View2D *v2d = &region->v2d;
+  BLI_rctf_resize(&v2d->cur,
+                  float(BLI_rcti_size_x(&v2d->mask)) / (value / 100.0f),
+                  float(BLI_rcti_size_y(&v2d->mask)) / (value / 100.0f));
+  ED_region_tag_redraw(region);
+}
+
 /* Space Node Editor */
 static PointerRNA rna_SpaceNode_overlay_get(PointerRNA *ptr)
 {
@@ -2605,7 +2657,7 @@ static void rna_SpaceNodeEditor_tree_type_set(PointerRNA *ptr, int value)
   SpaceNode *snode = (SpaceNode *)ptr->data;
   ED_node_set_tree_type(snode, rna_node_tree_type_from_enum(value));
 }
-static bool rna_SpaceNodeEditor_tree_type_poll(void *Cv, bNodeTreeType *type)
+static bool rna_SpaceNodeEditor_tree_type_poll(void *Cv, blender::bke::bNodeTreeType *type)
 {
   bContext *C = (bContext *)Cv;
   if (type->poll) {
@@ -2758,6 +2810,18 @@ static void rna_SpaceClipEditor_view_type_update(Main * /*bmain*/,
 {
   ScrArea *area = rna_area_from_space(ptr);
   ED_area_tag_refresh(area);
+}
+
+static float rna_SpaceClipEditor_zoom_percentage_get(PointerRNA *ptr)
+{
+  SpaceClip *sc = (SpaceClip *)ptr->data;
+  return sc->zoom * 100.0f;
+}
+
+static void rna_SpaceClipEditor_zoom_percentage_set(PointerRNA *ptr, const float value)
+{
+  SpaceClip *sc = (SpaceClip *)ptr->data;
+  sc->zoom = value / 100.0f;
 }
 
 /* File browser. */
@@ -3441,11 +3505,7 @@ static const EnumPropertyItem dt_uv_items[] = {
 static IDFilterEnumPropertyItem rna_enum_space_file_id_filter_categories[] = {
     /* Categories */
     {FILTER_ID_SCE, "category_scene", ICON_SCENE_DATA, "Scenes", "Show scenes"},
-    {FILTER_ID_AC | FILTER_ID_AN,
-     "category_animation",
-     ICON_ANIM_DATA,
-     "Animations",
-     "Show animation data"},
+    {FILTER_ID_AC, "category_animation", ICON_ANIM_DATA, "Animations", "Show animation data"},
     {FILTER_ID_OB | FILTER_ID_GR,
      "category_object",
      ICON_OUTLINER_COLLECTION,
@@ -5568,7 +5628,8 @@ static void rna_def_space_image(BlenderRNA *brna)
 
   rna_def_space_generic_show_region_toggles(srna,
                                             ((1 << RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_TOOLS) |
-                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD)));
+                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) |
+                                             (1 << RGN_TYPE_ASSET_SHELF)));
 
   /* image */
   prop = RNA_def_property(srna, "image", PROP_POINTER, PROP_NONE);
@@ -5614,6 +5675,16 @@ static void rna_def_space_image(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_float_funcs(prop, "rna_SpaceImageEditor_zoom_get", nullptr, nullptr);
   RNA_def_property_ui_text(prop, "Zoom", "Zoom factor");
+
+  prop = RNA_def_property(srna, "zoom_percentage", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_funcs(prop,
+                               "rna_SpaceImageEditor_zoom_percentage_get",
+                               "rna_SpaceImageEditor_zoom_percentage_set",
+                               nullptr);
+  RNA_def_property_float_default(prop, 100.0);
+  RNA_def_property_range(prop, .4, 80000);
+  RNA_def_property_ui_range(prop, 25, 400, 100, 0);
+  RNA_def_property_ui_text(prop, "Zoom", "Zoom percentage");
 
   /* image draw */
   prop = RNA_def_property(srna, "show_repeat", PROP_BOOLEAN, PROP_NONE);
@@ -5888,6 +5959,43 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 }
 
+static void rna_def_space_sequencer_cache_overlay(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "SequencerCacheOverlay", nullptr);
+  RNA_def_struct_sdna(srna, "SequencerCacheOverlay");
+  RNA_def_struct_nested(brna, srna, "SpaceSequenceEditor");
+  RNA_def_struct_path_func(srna, "rna_SpaceSequencerCacheOverlay_path");
+  RNA_def_struct_ui_text(srna, "Cache Overlay Settings", "");
+
+  prop = RNA_def_property(srna, "show_cache", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_CACHE_SHOW);
+  RNA_def_property_ui_text(prop, "Show Cache", "Visualize cached images on the timeline");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_cache_final_out", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_CACHE_SHOW_FINAL_OUT);
+  RNA_def_property_ui_text(prop, "Final Images", "Visualize cached complete frames");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_cache_raw", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_CACHE_SHOW_RAW);
+  RNA_def_property_ui_text(prop, "Raw Images", "Visualize cached raw images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_CACHE_SHOW_PREPROCESSED);
+  RNA_def_property_ui_text(prop, "Preprocessed Images", "Visualize cached pre-processed images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_cache_composite", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_CACHE_SHOW_COMPOSITE);
+  RNA_def_property_ui_text(prop, "Composite Images", "Visualize cached composite images");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
+}
+
 static void rna_def_space_sequencer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -6094,8 +6202,14 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, nullptr, "timeline_overlay");
   RNA_def_property_ui_text(prop, "Timeline Overlay Settings", "Settings for display of overlays");
 
+  prop = RNA_def_property(srna, "cache_overlay", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_struct_type(prop, "SequencerCacheOverlay");
+  RNA_def_property_pointer_sdna(prop, nullptr, "cache_overlay");
+  RNA_def_property_ui_text(prop, "Cache Overlay Settings", "Settings for display of overlays");
   rna_def_space_sequencer_preview_overlay(brna);
   rna_def_space_sequencer_timeline_overlay(brna);
+  rna_def_space_sequencer_cache_overlay(brna);
 
   /* transform */
   prop = RNA_def_property(srna, "cursor_location", PROP_FLOAT, PROP_XYZ);
@@ -6103,6 +6217,17 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
   RNA_def_property_array(prop, 2);
   RNA_def_property_ui_text(prop, "2D Cursor Location", "2D cursor location for this view");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+
+  /* Zoom. */
+  prop = RNA_def_property(srna, "zoom_percentage", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_funcs(prop,
+                               "rna_SpaceSequenceEditor_zoom_percentage_get",
+                               "rna_SpaceSequenceEditor_zoom_percentage_set",
+                               nullptr);
+  RNA_def_property_float_default(prop, 100.0);
+  RNA_def_property_range(prop, .4, 80000);
+  RNA_def_property_ui_range(prop, 25, 400, 100, 0);
+  RNA_def_property_ui_text(prop, "Zoom", "Zoom percentage");
 }
 
 static void rna_def_space_text(BlenderRNA *brna)
@@ -8014,6 +8139,17 @@ static void rna_def_space_clip(BlenderRNA *brna)
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "gizmo_flag", SCLIP_GIZMO_HIDE_NAVIGATE);
   RNA_def_property_ui_text(prop, "Navigate Gizmo", "Viewport navigation gizmo");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CLIP, nullptr);
+
+  /* Zoom. */
+  prop = RNA_def_property(srna, "zoom_percentage", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_funcs(prop,
+                               "rna_SpaceClipEditor_zoom_percentage_get",
+                               "rna_SpaceClipEditor_zoom_percentage_set",
+                               nullptr);
+  RNA_def_property_float_default(prop, 100.0);
+  RNA_def_property_range(prop, .4f, 80000);
+  RNA_def_property_ui_range(prop, 25, 400, 100, 0);
+  RNA_def_property_ui_text(prop, "Zoom", "Zoom percentage");
 }
 
 static void rna_def_spreadsheet_column_id(BlenderRNA *brna)
