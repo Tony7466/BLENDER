@@ -1046,12 +1046,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
   else {
     layer = action.layer(0);
   }
-
-  if (layer == nullptr) {
-    /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-    combined_result.add(SingleKeyingResult::NO_VALID_LAYER, rna_paths.size());
-    return combined_result;
-  }
+  BLI_assert(layer != nullptr);
 
   for (const std::string &rna_path : rna_paths) {
     const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
