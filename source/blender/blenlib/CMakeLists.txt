@@ -535,6 +535,7 @@ if(WITH_GTESTS)
     tests/BLI_linklist_lockfree_test.cc
     tests/BLI_listbase_test.cc
     tests/BLI_map_test.cc
+    tests/BLI_math_axis_angle_test.cc
     tests/BLI_math_base_safe_test.cc
     tests/BLI_math_base_test.cc
     tests/BLI_math_bits_test.cc
@@ -543,7 +544,6 @@ if(WITH_GTESTS)
     tests/BLI_math_interp_test.cc
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
-    tests/BLI_math_quaternion_test.cc
     tests/BLI_math_rotation_test.cc
     tests/BLI_math_rotation_types_test.cc
     tests/BLI_math_solvers_test.cc
