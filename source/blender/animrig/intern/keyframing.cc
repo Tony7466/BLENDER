@@ -1064,6 +1064,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
     }
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
                                                                                         prop);
+    BLI_assert(rna_path_id_to_prop.has_value());
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, use_visual_keyframing);
 
     for (int property_index : rna_values.index_range()) {
