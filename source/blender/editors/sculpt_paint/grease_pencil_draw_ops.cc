@@ -513,6 +513,9 @@ struct GreasePencilInterpolateOpData {
   float shift;
   /* Interpolation base factor for the active layer. */
   float init_factor;
+  GreasePencilInterpolateFlipMode flipmode;
+  float smooth_factor;
+  int smooth_steps;
 
   NumInput num;
   Array<LayerData> layer_data;
@@ -799,6 +802,9 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
   data.shift = RNA_float_get(op.ptr, "shift");
   data.interpolate_selected_only = RNA_boolean_get(op.ptr, "interpolate_selected_only");
   data.exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
+  data.flipmode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
+  data.smooth_factor = RNA_float_get(op.ptr, "smooth_factor");
+  data.smooth_steps = RNA_int_get(op.ptr, "smooth_steps");
   data.active_layer_index = *grease_pencil.get_layer_index(*grease_pencil.get_active_layer());
 
   const auto layer_mode = GreasePencilInterpolateLayerMode(RNA_enum_get(op.ptr, "layers"));
@@ -869,52 +875,6 @@ static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
   // WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
-// /* Init new temporary interpolation data */
-// static bool gpencil_interpolate_set_init_values(bContext *C, wmOperator *op, tGPDinterpolate
-// *tgpi)
-// {
-//   /* set current scene and window */
-//   tgpi->depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-//   tgpi->scene = CTX_data_scene(C);
-//   tgpi->area = CTX_wm_area(C);
-//   tgpi->region = CTX_wm_region(C);
-//   tgpi->ob = CTX_data_active_object(C);
-//   /* Setup space conversions. */
-//   gpencil_point_conversion_init(C, &tgpi->gsc);
-
-//   /* set current frame number */
-//   tgpi->cframe = tgpi->scene->r.cfra;
-
-//   /* set GP datablock */
-//   tgpi->gpd = static_cast<bGPdata *>(tgpi->ob->data);
-//   /* set interpolation weight */
-//   tgpi->shift = RNA_float_get(op->ptr, "shift");
-//   SET_FLAG_FROM_TEST(
-//       tgpi->flag, (RNA_enum_get(op->ptr, "layers") == 1), GP_TOOLFLAG_INTERPOLATE_ALL_LAYERS);
-//   SET_FLAG_FROM_TEST(
-//       tgpi->flag,
-//       (GPENCIL_EDIT_MODE(tgpi->gpd) && RNA_boolean_get(op->ptr, "interpolate_selected_only")),
-//       GP_TOOLFLAG_INTERPOLATE_ONLY_SELECTED);
-//   SET_FLAG_FROM_TEST(tgpi->flag,
-//                      RNA_boolean_get(op->ptr, "exclude_breakdowns"),
-//                      GP_TOOLFLAG_INTERPOLATE_EXCLUDE_BREAKDOWNS);
-
-//   tgpi->flipmode = RNA_enum_get(op->ptr, "flip");
-
-//   tgpi->smooth_factor = RNA_float_get(op->ptr, "smooth_factor");
-//   tgpi->smooth_steps = RNA_int_get(op->ptr, "smooth_steps");
-
-//   /* Untag strokes to be sure nothing is pending due any canceled process. */
-//   LISTBASE_FOREACH (bGPDlayer *, gpl, &tgpi->gpd->layers) {
-//     gpencil_interpolate_untag_strokes(gpl);
-//   }
-
-//   /* Set layers */
-//   gpencil_interpolate_set_points(C, tgpi);
-
-//   return true;
-// }
-
 static bool grease_pencil_interpolate_poll(bContext *C)
 {
   if (!ed::greasepencil::grease_pencil_painting_poll(C)) {
@@ -934,22 +894,6 @@ static bool grease_pencil_interpolate_poll(bContext *C)
 static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   wmWindow &win = *CTX_wm_window(C);
-  // bGPdata *gpd = CTX_data_gpencil_data(C);
-  // bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-  // tGPDinterpolate *tgpi = nullptr;
-
-  // /* Cannot interpolate if not between 2 frames. */
-  // int cfra = scene->r.cfra;
-  // const bool exclude_breakdowns = RNA_boolean_get(op->ptr, "exclude_breakdowns");
-  // bGPDframe *gpf_prv = gpencil_get_previous_keyframe(gpl, cfra, exclude_breakdowns);
-  // bGPDframe *gpf_next = gpencil_get_next_keyframe(gpl, cfra, exclude_breakdowns);
-  // if (ELEM(nullptr, gpf_prv, gpf_next)) {
-  //   BKE_report(
-  //       op->reports,
-  //       RPT_ERROR,
-  //       "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
-  //   return OPERATOR_CANCELLED;
-  // }
 
   if (!grease_pencil_interpolate_init(*C, *op)) {
     grease_pencil_interpolate_exit(*C, *op);
