@@ -725,7 +725,6 @@ typedef struct UserDef_Experimental {
    * when the release cycle is not alpha. */
   char use_new_curves_tools;
   char use_new_point_cloud_type;
-  char use_full_frame_compositor;
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
   char use_sculpt_texture_paint;
@@ -737,7 +736,7 @@ typedef struct UserDef_Experimental {
   char use_extension_utils;
   char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
-  char _pad[1];
+  char _pad[2];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -915,8 +914,10 @@ typedef struct UserDef {
 
   /** Index of the extension repo in the Preferences UI. */
   short active_extension_repo;
+  /** Flag for all extensions (#eUserPref_ExtensionFlag).  */
+  char extension_flag;
 
-  char _pad14[6];
+  char _pad14[5];
 
   short undosteps;
   int undomemory;
@@ -1168,6 +1169,11 @@ typedef enum eUserPref_Flag {
   USER_TOOLTIPS_PYTHON = (1 << 26),
   USER_FLAG_UNUSED_27 = (1 << 27), /* dirty */
 } eUserPref_Flag;
+
+/** #UserDef.extension_flag */
+typedef enum eUserPref_ExtensionFlag {
+  USER_EXTENSION_FLAG_ONLINE_ACCESS_HANDLED = 1 << 0,
+} eUserPref_ExtensionFlag;
 
 /** #UserDef.file_preview_type */
 typedef enum eUserpref_File_Preview_Type {
