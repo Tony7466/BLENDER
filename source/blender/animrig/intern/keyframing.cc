@@ -1033,11 +1033,10 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
   if (binding == nullptr) {
     binding = &action.binding_add();
     const bool success = action.assign_id(binding, *id);
-    if (!success) {
-      /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-      combined_result.add(SingleKeyingResult::NO_VALID_BINDING, rna_paths.size());
-      return combined_result;
-    }
+    BLI_assert_msg(
+        success,
+        "With a new Binding, the only reason this could fail is that the ID itself cannot be "
+        "animated, which should have been caught and handled by higher-level functions.");
   }
 
   Layer *layer;
