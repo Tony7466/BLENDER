@@ -1323,14 +1323,11 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_POINTS_TO_SDF_GRID 2128
 #define GEO_NODE_GRID_TO_MESH 2129
 #define GEO_NODE_DISTRIBUTE_POINTS_IN_GRID 2130
-<<<<<<< HEAD
-#define GEO_NODE_SAMPLE_BY_ID 2131
-=======
 #define GEO_NODE_SDF_GRID_BOOLEAN 2131
 #define GEO_NODE_TOOL_VIEWPORT_TRANSFORM 2132
 #define GEO_NODE_TOOL_MOUSE_POSITION 2133
 #define GEO_NODE_SAMPLE_GRID_INDEX 2134
->>>>>>> main
+#define GEO_NODE_SAMPLE_BY_ID 2135
 
 /** \} */
 
