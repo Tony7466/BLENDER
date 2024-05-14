@@ -1010,10 +1010,9 @@ static void wm_gesture_straightline_do_angle_snap(rcti *rect, float snap_angle)
   sub_v2_v2v2(line_direction, line_end, line_start);
   const float line_length = normalize_v2(line_direction);
 
-  const float angle = angle_signed_v2v2(x_axis, line_direction);
-  const float angle_deg = angle + (snap_angle / 2.0f);
-  const float angle_snapped_deg = -floorf(angle_deg / snap_angle) * snap_angle;
-  const float angle_snapped = angle_snapped_deg;
+  const float current_angle = angle_signed_v2v2(x_axis, line_direction);
+  const float adjusted_angle = current_angle + (snap_angle / 2.0f);
+  const float angle_snapped = -floorf(adjusted_angle / snap_angle) * snap_angle;
 
   float line_snapped_end[2];
   rotate_v2_v2fl(line_snapped_end, x_axis, angle_snapped);
