@@ -109,9 +109,6 @@ static int bonedropper_init(bContext *C, wmOperator *op)
   bone_dropper->draw_handle_pixel = ED_region_draw_cb_activate(
       area_region_type, datadropper_draw_cb, bone_dropper, REGION_DRAW_POST_PIXEL);
 
-  // const PointerRNA ptr = RNA_property_pointer_get(&bone_dropper->ptr, bone_dropper->prop);
-  // ddr->init_id = ptr.owner_id;
-
   return true;
 }
 
@@ -137,8 +134,6 @@ static void bonedropper_exit(bContext *C, wmOperator *op)
 
 static void bonedropper_cancel(bContext *C, wmOperator *op)
 {
-  BoneDropper *bdr = static_cast<BoneDropper *>(op->customdata);
-  // bonedropper_id_set(C, ddr, ddr->init_id);
   bonedropper_exit(C, op);
 }
 
@@ -223,14 +218,6 @@ static Bone *bonedropper_sample_pt(
   return bone;
 }
 
-static bool bonedropper_bone_set(bContext *C, BoneDropper &bdr, Bone *bone)
-{
-  PointerRNA bone_ptr = RNA_pointer_create(bdr.ptr.owner_id, &RNA_Bone, bone);
-  RNA_property_pointer_set(&bdr.ptr, bdr.prop, bone_ptr, nullptr);
-  RNA_property_update(C, &bdr.ptr, bdr.prop);
-  return true;
-}
-
 static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy[2])
 {
   int event_xy_win[2];
@@ -249,7 +236,11 @@ static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy
   if (!bone) {
     return false;
   }
-  return bonedropper_bone_set(C, bdr, bone);
+
+  RNA_property_string_set(&bdr.ptr, bdr.prop, bone->name);
+  RNA_property_update(C, &bdr.ptr, bdr.prop);
+
+  return true;
 }
 
 /* main modal status check */
@@ -365,8 +356,6 @@ void UI_OT_eyedropper_bone(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_INTERNAL;
-
-  /* properties */
 }
 
 }  // namespace blender::ui
