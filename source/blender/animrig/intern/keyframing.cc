@@ -1060,6 +1060,10 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
     const bool path_resolved = RNA_path_resolve_property(
         rna_pointer, rna_path.c_str(), &ptr, &prop);
     if (!path_resolved) {
+      std::fprintf(stderr,
+                   "Failed to insert key on binding %s due to unresolved RNA path: %s\n",
+                   binding->name,
+                   rna_path.c_str());
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
     }
