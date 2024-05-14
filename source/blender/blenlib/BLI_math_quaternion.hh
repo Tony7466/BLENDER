@@ -10,7 +10,6 @@
 
 #include "BLI_math_axis_angle_types.hh"
 #include "BLI_math_euler_types.hh"
-#include "BLI_math_numbers.hh"
 #include "BLI_math_quaternion_types.hh"
 
 #include "BLI_math_matrix.hh"
