@@ -68,7 +68,10 @@ static bool is_bone_dropper_valid(BoneDropper *bone_dropper)
   if (!RNA_property_editable(&bone_dropper->ptr, bone_dropper->prop)) {
     return false;
   }
-  StructRNA *foo = RNA_property_pointer_type(&bone_dropper->search_ptr, bone_dropper->search_prop);
+  PointerRNA owner_ptr = RNA_id_pointer_create(bone_dropper->search_ptr.owner_id);
+  if (RNA_type_to_ID_code(owner_ptr.type) != ID_AR) {
+    return false;
+  }
   if (RNA_property_pointer_type(&bone_dropper->search_ptr, bone_dropper->search_prop) != &RNA_Bone)
   {
     return false;
