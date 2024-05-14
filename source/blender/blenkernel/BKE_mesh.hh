@@ -336,6 +336,13 @@ void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
 void mesh_smooth_set(Mesh &mesh, bool use_smooth, bool keep_sharp_edges = false);
 void mesh_sharp_edges_set_from_angle(Mesh &mesh, float angle, bool keep_sharp_edges = false);
 
+/**
+ * Calculate edge visibility based on vertex visibility, hides an edge when either of its
+ * vertices are hidden. */
+void edge_hide_from_vert(const Span<int2> edges,
+                         const Span<bool> hide_vert,
+                         MutableSpan<bool> hide_edge);
+
 /** Make edge and face visibility consistent with vertices. */
 void mesh_hide_vert_flush(Mesh &mesh);
 /** Make vertex and edge visibility consistent with faces. */

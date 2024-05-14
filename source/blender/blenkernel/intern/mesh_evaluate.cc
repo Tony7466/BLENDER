@@ -505,10 +505,9 @@ void BKE_mesh_mdisp_flip(MDisps *md, const bool use_loop_mdisp_flip)
 
 namespace blender::bke {
 
-/* Hide edges when either of their vertices are hidden. */
-static void edge_hide_from_vert(const Span<int2> edges,
-                                const Span<bool> hide_vert,
-                                MutableSpan<bool> hide_edge)
+void edge_hide_from_vert(const Span<int2> edges,
+                         const Span<bool> hide_vert,
+                         MutableSpan<bool> hide_edge)
 {
   using namespace blender;
   threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {

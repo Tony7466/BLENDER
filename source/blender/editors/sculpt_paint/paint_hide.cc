@@ -204,17 +204,10 @@ static void calc_face_hide(const Span<int> node_faces,
                            const Span<bool> hide_vert,
                            MutableSpan<bool> hide_face)
 {
-  for (const int face_idx : node_faces.index_range()) {
-    int face = node_faces[face_idx];
-    Span<int> face_verts = corner_verts.slice(faces[face]);
-    if (std::any_of(
-            face_verts.begin(), face_verts.end(), [&](const int i) { return hide_vert[i]; }))
-    {
-      hide_face[face_idx] = true;
-    }
-    else {
-      hide_face[face_idx] = false;
-    }
+  for (const int i : node_faces.index_range()) {
+    Span<int> face_verts = corner_verts.slice(faces[node_faces[i]]);
+    hide_face[i] = std::any_of(
+        face_verts.begin(), face_verts.end(), [&](const int v) { return hide_vert[v]; });
   }
 }
 
@@ -266,11 +259,7 @@ static void flush_edge_changes(Mesh &mesh, Span<bool> hide_vert)
   bke::SpanAttributeWriter<bool> hide_edge = attributes.lookup_or_add_for_write_only_span<bool>(
       ".hide_edge", bke::AttrDomain::Edge);
   Span<int2> edges = mesh.edges();
-  threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      hide_edge.span[i] = hide_vert[edges[i][0]] || hide_vert[edges[i][1]];
-    }
-  });
+  bke::edge_hide_from_vert(edges, hide_vert, hide_edge.span);
   hide_edge.finish();
 }
 
