@@ -288,7 +288,7 @@ void RNA_def_world(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Sun Threshold",
                            "If non-zero, the maximum value for world contribution that will be "
-                           "recorded inside the world light probe. The excess contribution is"
+                           "recorded inside the world light probe. The excess contribution is "
                            "converted to a sun light. This reduces the light bleeding caused by "
                            "very bright light sources");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
