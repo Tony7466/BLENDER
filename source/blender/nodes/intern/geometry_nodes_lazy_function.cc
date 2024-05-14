@@ -546,7 +546,7 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
 
     /* Store the new fields in the output. */
     for (const int i : output_values.index_range()) {
-      if (output_values[i] != nullptr) {
+      if (output_values[i] == nullptr) {
         continue;
       }
       output_values[i]->set(GField{operation, i});
