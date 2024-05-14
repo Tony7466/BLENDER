@@ -499,6 +499,30 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
 
 void DeferredLayer::begin_sync()
 {
+  if (true) {
+    /* Pre-compile specialization constants in parallel. */
+    Vector<ShaderSpecialization> specializations;
+    for (int i = 0; i < 3; i++) {
+      GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
+      for (bool use_split_indirect : {false, true}) {
+        for (bool use_lightprobe_eval : {false, true}) {
+          for (bool use_transmission : {false, true}) {
+            specializations.append(
+                {sh,
+                 {{"render_pass_shadow_id", inst_.render_buffers.data.shadow_id},
+                  {"use_split_indirect", use_split_indirect},
+                  {"use_lightprobe_eval", use_lightprobe_eval},
+                  {"use_transmission", use_transmission},
+                  {"shadow_ray_count", inst_.shadows.get_data().ray_count},
+                  {"shadow_ray_step_count", inst_.shadows.get_data().step_count}}});
+          }
+        }
+      }
+    }
+
+    GPU_shaders_precompile_specializations(specializations);
+  }
+
   {
     prepass_ps_.init();
     /* Textures. */
@@ -617,8 +641,10 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
         sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
       }
       {
+        const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
         const bool use_transmission = (closure_bits_ & CLOSURE_TRANSMISSION) != 0;
         const bool use_split_indirect = !use_raytracing_ && use_split_radiance_;
+
         PassSimple::Sub &sub = pass.sub("Eval.Light");
         /* Use depth test to reject background pixels which have not been stencil cleared. */
         /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
@@ -638,7 +664,6 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
           sub.specialize_constant(sh, "use_split_indirect", use_split_indirect);
           sub.specialize_constant(sh, "use_lightprobe_eval", !use_raytracing_);
           sub.specialize_constant(sh, "use_transmission", false);
-          const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
           sub.specialize_constant(sh, "shadow_ray_count", &shadow_scene.ray_count);
           sub.specialize_constant(sh, "shadow_ray_step_count", &shadow_scene.step_count);
           sub.shader_set(sh);
