@@ -49,24 +49,29 @@ void VKBatch::draw_setup()
 
 void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int instance_count)
 {
-  draw_setup();
-
-  VKContext &context = *VKContext::get();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  VKIndexBuffer *index_buffer = index_buffer_get();
-  const bool draw_indexed = index_buffer != nullptr;
-  if (draw_indexed) {
-    command_buffers.draw_indexed(vertex_count,
-                                 instance_count,
-                                 vertex_first,
-                                 index_buffer->index_start_get(),
-                                 instance_first);
+  if (use_render_graph) {
+    NOT_YET_IMPLEMENTED
   }
   else {
-    command_buffers.draw(vertex_first, vertex_count, instance_first, instance_count);
-  }
+    draw_setup();
 
-  command_buffers.submit();
+    VKContext &context = *VKContext::get();
+    VKCommandBuffers &command_buffers = context.command_buffers_get();
+    VKIndexBuffer *index_buffer = index_buffer_get();
+    const bool draw_indexed = index_buffer != nullptr;
+    if (draw_indexed) {
+      command_buffers.draw_indexed(vertex_count,
+                                   instance_count,
+                                   vertex_first,
+                                   index_buffer->index_start_get(),
+                                   instance_first);
+    }
+    else {
+      command_buffers.draw(vertex_first, vertex_count, instance_first, instance_count);
+    }
+
+    command_buffers.submit();
+  }
 }
 
 void VKBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
@@ -88,20 +93,25 @@ void VKBatch::multi_draw_indirect(const VkBuffer indirect_buffer,
                                   const intptr_t offset,
                                   const intptr_t stride)
 {
-  draw_setup();
-
-  VKContext &context = *VKContext::get();
-  VKIndexBuffer *index_buffer = index_buffer_get();
-  const bool draw_indexed = index_buffer != nullptr;
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  if (draw_indexed) {
-    command_buffers.draw_indexed_indirect(indirect_buffer, offset, count, stride);
+  if (use_render_graph) {
+    NOT_YET_IMPLEMENTED
   }
   else {
-    command_buffers.draw_indirect(indirect_buffer, offset, count, stride);
-  }
+    draw_setup();
 
-  command_buffers.submit();
+    VKContext &context = *VKContext::get();
+    VKIndexBuffer *index_buffer = index_buffer_get();
+    const bool draw_indexed = index_buffer != nullptr;
+    VKCommandBuffers &command_buffers = context.command_buffers_get();
+    if (draw_indexed) {
+      command_buffers.draw_indexed_indirect(indirect_buffer, offset, count, stride);
+    }
+    else {
+      command_buffers.draw_indirect(indirect_buffer, offset, count, stride);
+    }
+
+    command_buffers.submit();
+  }
 }
 
 VKVertexBuffer *VKBatch::vertex_buffer_get(int index)
