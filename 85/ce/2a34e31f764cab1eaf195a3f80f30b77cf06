@@ -1,1 +1,2 @@
 Referenced by issue #121734, GPv3: Inverted layer order compared to gpv2 for strokes
+Referenced by pull request #121780, GPv3: Disable mask property for default layers of primitives
