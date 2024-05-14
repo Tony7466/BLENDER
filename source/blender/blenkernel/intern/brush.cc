@@ -741,7 +741,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_AIRBRUSH: {
       brush->size = 300.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
@@ -767,7 +768,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_INK_PEN: {
       brush->size = 60.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
@@ -805,7 +807,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_INK_PEN_ROUGH: {
       brush->size = 60.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
@@ -845,7 +848,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_MARKER_BOLD: {
       brush->size = 150.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
 
@@ -885,7 +889,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_MARKER_CHISEL: {
       brush->size = 150.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
@@ -929,7 +934,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_PEN: {
       brush->size = 25.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag &= ~GP_BRUSH_USE_PRESSURE;
 
@@ -963,7 +969,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_PENCIL_SOFT: {
       brush->size = 80.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
@@ -1000,7 +1007,8 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
     case GP_BRUSH_PRESET_PENCIL: {
       brush->size = 20.0f;
       if (U.experimental.use_grease_pencil_version3) {
-        brush->unprojected_radius = brush->size * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+        brush->unprojected_radius = brush->size *
+                                    bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
       brush->gpencil_settings->flag |= GP_BRUSH_USE_PRESSURE;
 
