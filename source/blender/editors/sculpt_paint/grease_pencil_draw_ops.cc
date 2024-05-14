@@ -492,8 +492,8 @@ enum class GreasePencilInterpolateLayerMode : int8_t {
   All,
 };
 
-constexpr const float interpolate_shift_min = -1.0f;
-constexpr const float interpolate_shift_max = 2.0f;
+constexpr const float interpolate_factor_min = -1.0f;
+constexpr const float interpolate_factor_max = 2.0f;
 
 struct GreasePencilInterpolateOpData {
   struct LayerData {
@@ -517,7 +517,7 @@ struct GreasePencilInterpolateOpData {
   float smooth_factor;
   int smooth_steps;
 
-  NumInput num;
+  NumInput numeric_input;
   Array<LayerData> layer_data;
   int active_layer_index;
 };
@@ -715,9 +715,9 @@ static void grease_pencil_interpolate_status_indicators(
   const StringRef msg = IFACE_("GPencil Interpolation: ");
 
   std::string status;
-  if (hasNumInput(&opdata.num)) {
+  if (hasNumInput(&opdata.numeric_input)) {
     char str_ofs[NUM_STR_REP_LEN];
-    outputNumInput(&const_cast<NumInput &>(opdata.num), str_ofs, &scene.unit);
+    outputNumInput(&const_cast<NumInput &>(opdata.numeric_input), str_ofs, &scene.unit);
     status = msg + std::string(str_ofs);
   }
   else {
@@ -929,7 +929,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
   ScrArea &area = *CTX_wm_area(C);
   GreasePencilInterpolateOpData &opdata = *static_cast<GreasePencilInterpolateOpData *>(
       op->customdata);
-  const bool has_numinput = hasNumInput(&opdata.num);
+  const bool has_numinput = hasNumInput(&opdata.numeric_input);
 
   switch (event->type) {
     case EVT_MODAL_MAP: {
@@ -975,15 +975,15 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           return OPERATOR_FINISHED;
         case InterpolateToolModalEvent::Increase:
           opdata.shift = std::clamp(opdata.init_factor + opdata.shift + 0.01f,
-                                    interpolate_shift_min,
-                                    interpolate_shift_max) -
+                                    interpolate_factor_min,
+                                    interpolate_factor_max) -
                          opdata.init_factor;
           grease_pencil_interpolate_update(*C, *op, opdata);
           break;
         case InterpolateToolModalEvent::Decrease:
           opdata.shift = std::clamp(opdata.init_factor + opdata.shift - 0.01f,
-                                    interpolate_shift_min,
-                                    interpolate_shift_max) -
+                                    interpolate_factor_min,
+                                    interpolate_factor_max) -
                          opdata.init_factor;
           grease_pencil_interpolate_update(*C, *op, opdata);
           break;
@@ -1001,19 +1001,11 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
       }
       break;
     default: {
-      if ((event->val == KM_PRESS) && handleNumInput(C, &opdata.num, event)) {
-        //       const float factor = tgpi->init_factor;
-        //       float value;
-
-        //       /* Grab shift from numeric input, and store this new value (the user see an int)
-        //       */ value = (factor + tgpi->shift) * 100.0f; applyNumInput(&tgpi->num, &value);
-        //       tgpi->shift = value / 100.0f;
-
-        //       /* recalculate the shift to get the right value in the frame scale */
-        //       tgpi->shift = tgpi->shift - factor;
-
-        //       CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-        //       RNA_float_set(op->ptr, "shift", tgpi->shift);
+      if ((event->val == KM_PRESS) && handleNumInput(C, &opdata.numeric_input, event)) {
+        float value = (opdata.init_factor + opdata.shift) * 100.0f;
+        applyNumInput(&opdata.numeric_input, &value);
+        opdata.shift = std::clamp(value * 0.01f, interpolate_factor_min, interpolate_factor_max) -
+                       opdata.init_factor;
 
         grease_pencil_interpolate_update(*C, *op, opdata);
         break;
