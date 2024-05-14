@@ -1013,7 +1013,10 @@ ccl_device int integrate_surface(KernelGlobals kg,
 
       /* Write emission. */
       if (sd.flag & SD_EMISSION) {
-        integrate_surface_emission(kg, state, &sd, render_buffer);
+        /* TODO(weizhen): `min_bounce` is only for debugging, revert after finishing the branch. */
+        if (INTEGRATOR_STATE(state, path, bounce) >= kernel_data.integrator.min_bounce) {
+          integrate_surface_emission(kg, state, &sd, render_buffer);
+        }
       }
 
       /* Perform path termination. Most paths have already been terminated in
@@ -1046,7 +1049,10 @@ ccl_device int integrate_surface(KernelGlobals kg,
 #endif
     /* Direct light. */
     PROFILING_EVENT(PROFILING_SHADE_SURFACE_DIRECT_LIGHT);
-    integrate_surface_direct_light<node_feature_mask>(kg, state, &sd, &rng_state, render_buffer);
+    if (INTEGRATOR_STATE(state, path, bounce) + 1 >= kernel_data.integrator.min_bounce) {
+      /* TODO(weizhen): `min_bounce` is only for debugging, revert after finishing the branch. */
+      integrate_surface_direct_light<node_feature_mask>(kg, state, &sd, &rng_state, render_buffer);
+    }
 
 #if defined(__AO__)
     /* Ambient occlusion pass. */

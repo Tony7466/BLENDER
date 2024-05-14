@@ -68,7 +68,10 @@ ccl_device void integrator_shade_light(KernelGlobals kg,
 {
   PROFILING_INIT(kg, PROFILING_SHADE_LIGHT_SETUP);
 
-  integrate_light(kg, state, render_buffer);
+  if (INTEGRATOR_STATE(state, path, bounce) >= kernel_data.integrator.min_bounce) {
+    /* TODO(weizhen): `min_bounce` is only for debugging, revert after finishing the branch. */
+    integrate_light(kg, state, render_buffer);
+  }
 
   /* TODO: we could get stuck in an infinite loop if there are precision issues
    * and the same light is hit again.

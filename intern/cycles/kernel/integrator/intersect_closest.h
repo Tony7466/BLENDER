@@ -280,7 +280,10 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
   }
   else {
     /* Nothing hit, continue with background kernel. */
-    if (integrator_intersect_skip_lights(kg, state)) {
+    if (integrator_intersect_skip_lights(kg, state) ||
+        (INTEGRATOR_STATE(state, path, bounce) < kernel_data.integrator.min_bounce))
+    {
+      /* TODO(weizhen): `min_bounce` is only for debugging, revert after finishing the branch. */
       integrator_path_terminate(kg, state, current_kernel);
     }
     else {

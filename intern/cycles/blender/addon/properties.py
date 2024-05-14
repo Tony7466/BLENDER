@@ -660,10 +660,10 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     min_light_bounces: IntProperty(
         name="Min Light Bounces",
-        description="Minimum number of light bounces. Setting this higher reduces noise in the first bounces, "
-        "but can also be less efficient for more complex geometry like curves and volumes",
-        min=0, max=1024,
-        default=0,
+        description="Minimum number of light bounces. Only paths with equal or more bounces are rendered "
+        "(TODO(weizhen): revert to previous definition)",
+        min=-1, max=1024,
+        default=-1,
     )
     min_transparent_bounces: IntProperty(
         name="Min Transparent Bounces",
