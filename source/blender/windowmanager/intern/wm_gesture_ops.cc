@@ -933,12 +933,12 @@ static SnapAngle get_snap_angle(const ScrArea &area, const ToolSettings &tool_se
 {
   SnapAngle snap_angle;
   if (area.spacetype == SPACE_VIEW3D) {
-    snap_angle.increment = RAD2DEGF(tool_settings.snap_angle_increment_3d);
-    snap_angle.precise_increment = RAD2DEGF(tool_settings.snap_angle_increment_3d_precision);
+    snap_angle.increment = tool_settings.snap_angle_increment_3d;
+    snap_angle.precise_increment = tool_settings.snap_angle_increment_3d_precision;
   }
   else {
-    snap_angle.increment = RAD2DEGF(tool_settings.snap_angle_increment_2d);
-    snap_angle.precise_increment = RAD2DEGF(tool_settings.snap_angle_increment_2d_precision);
+    snap_angle.increment = tool_settings.snap_angle_increment_2d;
+    snap_angle.precise_increment = tool_settings.snap_angle_increment_2d_precision;
   }
 
   return snap_angle;
@@ -1011,9 +1011,9 @@ static void wm_gesture_straightline_do_angle_snap(rcti *rect, float snap_angle)
   const float line_length = normalize_v2(line_direction);
 
   const float angle = angle_signed_v2v2(x_axis, line_direction);
-  const float angle_deg = RAD2DEG(angle) + (snap_angle / 2.0f);
+  const float angle_deg = angle + (snap_angle / 2.0f);
   const float angle_snapped_deg = -floorf(angle_deg / snap_angle) * snap_angle;
-  const float angle_snapped = DEG2RAD(angle_snapped_deg);
+  const float angle_snapped = angle_snapped_deg;
 
   float line_snapped_end[2];
   rotate_v2_v2fl(line_snapped_end, x_axis, angle_snapped);
