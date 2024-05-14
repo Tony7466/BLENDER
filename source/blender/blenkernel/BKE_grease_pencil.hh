@@ -491,6 +491,13 @@ class Layer : public ::GreasePencilLayer {
    */
   void update_from_dna_read();
 
+  float4x4 parent_inverse() const;
+
+  /**
+   * The local transform of the layer (in layer space, not object space).
+   */
+  float4x4 local_transform() const;
+
   /**
    * Returns the transformation from layer space to object space.
    */
@@ -528,13 +535,6 @@ class Layer : public ::GreasePencilLayer {
    */
   SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin,
                                                          SortedKeysIterator end);
-
-  float4x4 parent_inverse() const;
-
-  /**
-   * The local transform of the layer (in layer space, not object space).
-   */
-  float4x4 local_transform() const;
 
   /**
    * Get the parent to world matrix for this layer.
