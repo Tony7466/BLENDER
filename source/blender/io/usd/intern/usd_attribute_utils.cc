@@ -19,6 +19,30 @@
 
 namespace blender::io::usd {
 
+std::optional<pxr::SdfValueTypeName> convert_blender_type_to_usd(
+    const eCustomDataType blender_type)
+{
+  switch (blender_type) {
+    case CD_PROP_FLOAT:
+      return pxr::SdfValueTypeNames->FloatArray;
+    case CD_PROP_INT8:
+    case CD_PROP_INT32:
+      return pxr::SdfValueTypeNames->IntArray;
+    case CD_PROP_FLOAT2:
+      return pxr::SdfValueTypeNames->Float2Array;
+    case CD_PROP_FLOAT3:
+      return pxr::SdfValueTypeNames->Float3Array;
+    case CD_PROP_STRING:
+      return pxr::SdfValueTypeNames->StringArray;
+    case CD_PROP_BOOL:
+      return pxr::SdfValueTypeNames->BoolArray;
+    case CD_PROP_QUATERNION:
+      return pxr::SdfValueTypeNames->QuatfArray;
+    default:
+      return std::nullopt;
+  }
+}
+
 std::optional<eCustomDataType> convert_usd_type_to_blender(const pxr::SdfValueTypeName usd_type)
 {
   static const Map<pxr::SdfValueTypeName, eCustomDataType> type_map = []() {
