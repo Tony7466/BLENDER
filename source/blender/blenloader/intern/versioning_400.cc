@@ -2067,9 +2067,9 @@ static void image_settings_avi_to_ffmpeg(Scene *scene)
   }
 }
 
-/* The Hue Correct curve now wraps around by specifiying CUMA_USE_WRAPPING, it follows that it no
- * longer makes sense to have curve maps outside of the [0, 1] range, so enable clipping and reset
- * the clip and view ranges. */
+/* The Hue Correct curve now wraps around by specifying CUMA_USE_WRAPPING, which means it no longer
+ * makes sense to have curve maps outside of the [0, 1] range, so enable clipping and reset the
+ * clip and view ranges. */
 static void hue_correct_set_wrapping(CurveMapping *curve_mapping)
 {
   curve_mapping->flag |= CUMA_DO_CLIP;
