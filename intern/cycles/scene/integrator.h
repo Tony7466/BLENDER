@@ -91,7 +91,6 @@ class Integrator : public Node {
   NODE_SOCKET_API(int, use_restir)
   NODE_SOCKET_API(bool, restir_unbiased)
   NODE_SOCKET_API(int, restir_light_samples)
-  NODE_SOCKET_API(int, restir_bsdf_samples)
   NODE_SOCKET_API(int, restir_spatial_radius)
   NODE_SOCKET_API(int, restir_spatial_neighbors)
   NODE_SOCKET_API(int, restir_spatial_iterations)

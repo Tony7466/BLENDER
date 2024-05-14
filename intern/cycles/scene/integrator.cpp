@@ -122,7 +122,6 @@ NODE_DEFINE(Integrator)
   SOCKET_INT(use_restir, "Initial and Spatial Resampling", 0b111);
   SOCKET_BOOLEAN(restir_unbiased, "Unbiased", true);
   SOCKET_INT(restir_light_samples, "Light", 4);
-  SOCKET_INT(restir_bsdf_samples, "BSDF", 1);
   SOCKET_INT(restir_spatial_radius, "Radius", 10);
   SOCKET_INT(restir_spatial_neighbors, "Samples", 6);
   SOCKET_INT(restir_spatial_iterations, "Iterations", 2);
@@ -337,7 +336,6 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   kintegrator->use_spatial_resampling = (use_restir >> 1) & 1;
   kintegrator->restir_unbiased = restir_unbiased;
   kintegrator->restir_light_samples = restir_light_samples;
-  kintegrator->restir_bsdf_samples = restir_bsdf_samples;
   kintegrator->restir_spatial_radius = restir_spatial_radius;
   kintegrator->restir_spatial_neighbors = restir_spatial_neighbors;
   kintegrator->restir_spatial_iterations = restir_spatial_iterations;

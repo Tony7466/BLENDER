@@ -366,7 +366,7 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
   bool use_spatial_resampling = get_boolean(cscene, "use_spatial_resampling");
   const bool restir_unbiased = get_boolean(cscene, "restir_unbiased");
   int light_samples = get_int(cscene, "restir_light_samples");
-  int bsdf_samples = get_int(cscene, "restir_bsdf_samples");
+  int bsdf_samples = 1;
 
   if (light_samples == 1 && bsdf_samples == 1 && !(use_spatial_resampling && restir_unbiased)) {
     use_initial_resampling = false;
@@ -387,7 +387,6 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
                              (pairwise_mis << 2));
   integrator->set_restir_unbiased(restir_unbiased);
   integrator->set_restir_light_samples(light_samples);
-  integrator->set_restir_bsdf_samples(bsdf_samples);
   integrator->set_restir_spatial_radius(get_int(cscene, "restir_spatial_radius"));
   integrator->set_restir_spatial_neighbors(get_int(cscene, "restir_spatial_neighbors"));
   integrator->set_restir_spatial_iterations(get_int(cscene, "restir_spatial_iterations"));

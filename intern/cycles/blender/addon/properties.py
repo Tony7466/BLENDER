@@ -616,13 +616,6 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=4,
     )
 
-    restir_bsdf_samples: IntProperty(
-        name="BSDF",
-        description="Number of BSDF samples",
-        min=1, max=8,
-        default=1,
-    )
-
     restir_spatial_iterations: IntProperty(
         name="Iterations",
         description="Perform multiple iterations of spatial resampling, at the cost of increased correlation",

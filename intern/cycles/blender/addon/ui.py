@@ -526,7 +526,6 @@ class CYCLES_RENDER_PT_sampling_lights_restir_initial(CyclesButtonsPanel, Panel)
         col = layout.column(align=True)
         col.active = cscene.use_initial_resampling
         col.prop(cscene, "restir_light_samples")
-        col.prop(cscene, "restir_bsdf_samples")
 
 
 class CYCLES_RENDER_PT_sampling_lights_restir_spatial(CyclesButtonsPanel, Panel):

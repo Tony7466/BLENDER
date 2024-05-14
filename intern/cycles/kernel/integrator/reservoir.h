@@ -11,7 +11,7 @@ struct Reservoir {
   float total_weight = 0.0f;
 
   int num_light_samples;
-  int num_bsdf_samples;
+  int num_bsdf_samples = 1;
   int max_samples;
   float3 rgb_to_y;
 
@@ -35,7 +35,6 @@ struct Reservoir {
   {
     /* TODO(weizhen): maybe find optimal values automatically. */
     num_light_samples = use_ris ? kernel_data.integrator.restir_light_samples : 1;
-    num_bsdf_samples = use_ris ? kernel_data.integrator.restir_bsdf_samples : 1;
     max_samples = num_light_samples + num_bsdf_samples;
     rgb_to_y = float4_to_float3(kernel_data.film.rgb_to_y);
     direct_sampling_method = kernel_data.integrator.direct_light_sampling_type;
