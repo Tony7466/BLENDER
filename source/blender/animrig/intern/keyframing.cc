@@ -57,7 +57,7 @@ void CombinedKeyingResult::add(const SingleKeyingResult result)
   result_counter[int(result)]++;
 }
 
-void CombinedKeyingResult::add(const SingleKeyingResult result, int count)
+void CombinedKeyingResult::add(const SingleKeyingResult result, const int count)
 {
   result_counter[int(result)] += count;
 }

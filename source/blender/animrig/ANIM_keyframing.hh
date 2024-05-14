@@ -66,12 +66,12 @@ class CombinedKeyingResult {
   /**
    * Increment the count of the given `SingleKeyingResult` by one.
    */
-  void add(const SingleKeyingResult result);
+  void add(SingleKeyingResult result);
 
   /**
    * Increase the count of the given `SingleKeyingResult` by `count`.
    */
-  void add(const SingleKeyingResult result, int count);
+  void add(SingleKeyingResult result, int count);
 
   /* Add values of the given result to this result. */
   void merge(const CombinedKeyingResult &combined_result);
