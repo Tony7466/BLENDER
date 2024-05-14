@@ -86,10 +86,13 @@ class CombinedKeyingResult {
 /* -------------------------------------------------------------------- */
 
 /**
- * Return whether a new fcurve can be created according to the given keyframing
- * flags.
+ * Return whether key insertion functions are allowed to create new fcurves,
+ * according to the given flags.
+ *
+ * Specifically, both `INSERTKEY_REPLACE` and `INSERTKEY_AVAILABLE` prohibit the
+ * creation of new F-Curves.
  */
-bool can_create_fcurve(eInsertKeyFlags insert_key_flags);
+bool key_insertion_may_create_fcurve(eInsertKeyFlags insert_key_flags);
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Framing Management

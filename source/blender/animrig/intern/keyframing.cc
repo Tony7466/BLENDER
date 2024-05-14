@@ -240,7 +240,7 @@ eInsertKeyFlags get_keyframing_flags(Scene *scene)
   return flag;
 }
 
-bool can_create_fcurve(const eInsertKeyFlags insert_key_flags)
+bool key_insertion_may_create_fcurve(const eInsertKeyFlags insert_key_flags)
 {
   return (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) == 0;
 }
@@ -549,7 +549,7 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
    *   but still try to get the F-Curve if it exists...
    */
 
-  FCurve *fcu = can_create_fcurve(flag) ?
+  FCurve *fcu = key_insertion_may_create_fcurve(flag) ?
                     action_fcurve_ensure(bmain, act, group, ptr, rna_path, array_index) :
                     action_fcurve_find(act, rna_path, array_index);
 
