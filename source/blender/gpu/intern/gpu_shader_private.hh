@@ -177,8 +177,7 @@ class ShaderCompilerBase {
   virtual bool batch_is_ready(BatchHandle handle) = 0;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) = 0;
 
-  virtual void precompile_specializations(Shader * /*shader*/,
-                                          Vector<Vector<SpecializationConstant>> /*variations*/){};
+  virtual void precompile_specializations(Vector<ShaderSpecialization> /*specializations*/){};
 };
 
 class ShaderCompiler : public ShaderCompilerBase {

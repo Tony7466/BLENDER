@@ -269,8 +269,7 @@ class GLShaderCompiler : public ShaderCompilerBase {
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 
-  virtual void precompile_specializations(
-      Shader *shader, Vector<Vector<SpecializationConstant>> variations) override;
+  virtual void precompile_specializations(Vector<ShaderSpecialization> specializations) override;
 };
 
 class GLLogParser : public GPULogParser {

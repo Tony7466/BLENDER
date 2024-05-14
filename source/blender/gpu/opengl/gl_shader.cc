@@ -1841,25 +1841,22 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
   return result;
 }
 
-void GLShaderCompiler::precompile_specializations(
-    Shader *shader, Vector<Vector<SpecializationConstant>> variations)
+void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> specializations)
 {
   std::scoped_lock lock(mutex_);
-
-  GLShader *sh = static_cast<GLShader *>(shader);
-  sh->async_compilation_ = true;
 
   struct SpecializationWork {
     GLCompilerWorker *worker = nullptr;
     bool is_ready = false;
-    GLint program;
+    GLuint program;
   };
 
   Vector<SpecializationWork> items;
-  items.reserve(variations.size());
+  items.reserve(specializations.size());
 
-  for (auto &variation : variations) {
-    for (auto &constant : variation) {
+  for (auto &specialization : specializations) {
+    GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
+    for (auto &constant : specialization.constants) {
       int location = sh->interface->constant_get(constant.name)->location;
       // BLI_assert(sh->constants.types[location] == constant.type);
       sh->constants.values[location].u = constant.value.u;
@@ -1871,7 +1868,9 @@ void GLShaderCompiler::precompile_specializations(
     }
     items.append({});
     SpecializationWork &item = items.last();
+    sh->async_compilation_ = true;
     item.program = sh->program_get();
+    sh->async_compilation_ = false;
     std::string vertex_src;
     std::string fragment_src;
     for (const char *src : sh->vertex_sources_.sources_get()) {
