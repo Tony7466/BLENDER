@@ -739,20 +739,46 @@ static void grease_pencil_interpolate_update(bContext &C,
 using FramesMapKeyInterval = std::pair<int, int>;
 
 static std::optional<FramesMapKeyInterval> find_frames_interval(
-    const bke::greasepencil::Layer &layer, const int frame_number)
+    const bke::greasepencil::Layer &layer, const int frame_number, const bool exclude_breakdowns)
 {
   using bke::greasepencil::FramesMapKey;
   using SortedKeysIterator = Span<FramesMapKey>::iterator;
 
   const Span<FramesMapKey> sorted_keys = layer.sorted_keys();
-  const SortedKeysIterator next_key_it = std::upper_bound(
+  SortedKeysIterator next_key_it = std::upper_bound(
       sorted_keys.begin(), sorted_keys.end(), frame_number);
-
   if (next_key_it == sorted_keys.end() || next_key_it == sorted_keys.begin()) {
     return std::nullopt;
   }
+  SortedKeysIterator prev_key_it = next_key_it - 1;
 
-  return std::make_pair(*(next_key_it - 1), *next_key_it);
+  /* Skip over invalid keyframes on either side. */
+  auto is_valid_keyframe = [&](const FramesMapKey key) {
+    const GreasePencilFrame &frame = *layer.frame_at(key);
+    if (frame.is_null()) {
+      return false;
+    }
+    if (exclude_breakdowns && frame.type == BEZT_KEYTYPE_BREAKDOWN) {
+      return false;
+    }
+    return true;
+  };
+
+  for (; next_key_it != sorted_keys.end(); ++next_key_it) {
+    if (is_valid_keyframe(*next_key_it)) {
+      break;
+    }
+  }
+  for (; prev_key_it != sorted_keys.begin(); --prev_key_it) {
+    if (is_valid_keyframe(*prev_key_it)) {
+      break;
+    }
+  }
+  if (next_key_it == sorted_keys.end() || !is_valid_keyframe(*prev_key_it)) {
+    return std::nullopt;
+  }
+
+  return std::make_pair(*prev_key_it, *next_key_it);
 }
 
 static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
@@ -791,13 +817,13 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
       break;
   }
 
-  data.layer_data.reinitialize(grease_pencil.layers().size());
-  data.layer_mask.foreach_index([&](const int layer_index) {
+  data.layer_data.reinitialize(data.layer_mask.size());
+  data.layer_mask.foreach_index([&](const int layer_index, const int index) {
     const Layer &layer = *grease_pencil.layers()[layer_index];
-    GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
+    GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[index];
 
-    if (const std::optional<FramesMapKeyInterval> interval = find_frames_interval(layer,
-                                                                                  current_frame))
+    if (const std::optional<FramesMapKeyInterval> interval = find_frames_interval(
+            layer, current_frame, data.exclude_breakdowns))
     {
       layer_data.prev_frame = interval->first;
       layer_data.next_frame = interval->second;
