@@ -8,6 +8,7 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.hh"
 
+#include "BLI_math_vector.hh"
 #include "BLT_translation.hh"
 
 #include "DEG_depsgraph_query.hh"
@@ -686,26 +687,6 @@ struct GreasePencilInterpolateOpData {
 //   }
 // }
 
-// /* Helper: calculate shift based on position of mouse (we only use x-axis for now.
-//  * since this is more convenient for users to do), and store new shift value
-//  */
-// static void gpencil_mouse_update_shift(tGPDinterpolate *tgpi, wmOperator *op, const wmEvent
-// *event)
-// {
-//   float mid = float(tgpi->region->winx - tgpi->region->winrct.xmin) / 2.0f;
-//   float mpos = event->xy[0] - tgpi->region->winrct.xmin;
-
-//   if (mpos >= mid) {
-//     tgpi->shift = ((mpos - mid) * tgpi->high_limit) / mid;
-//   }
-//   else {
-//     tgpi->shift = tgpi->low_limit - ((mpos * tgpi->low_limit) / mid);
-//   }
-
-//   CLAMP(tgpi->shift, tgpi->low_limit, tgpi->high_limit);
-//   RNA_float_set(op->ptr, "shift", tgpi->shift);
-// }
-
 static void grease_pencil_interpolate_status_indicators(
     bContext &C, const GreasePencilInterpolateOpData &opdata)
 {
@@ -926,6 +907,7 @@ enum class InterpolateToolModalEvent : int8_t {
 static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow &win = *CTX_wm_window(C);
+  const ARegion &region = *CTX_wm_region(C);
   ScrArea &area = *CTX_wm_area(C);
   GreasePencilInterpolateOpData &opdata = *static_cast<GreasePencilInterpolateOpData *>(
       op->customdata);
@@ -991,11 +973,12 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
       break;
     }
     case MOUSEMOVE:
-      /* calculate new position */
       /* Only handle mouse-move if not doing numeric-input. */
       if (!has_numinput) {
-        //       /* Update shift based on position of mouse. */
-        //       gpencil_mouse_update_shift(tgpi, op, event);
+        const float mouse_pos = event->mval[0];
+        const float factor = std::clamp(
+            mouse_pos / region.winx, interpolate_factor_min, interpolate_factor_max);
+        opdata.shift = factor - opdata.init_factor;
 
         grease_pencil_interpolate_update(*C, *op, opdata);
       }
