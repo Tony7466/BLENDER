@@ -1483,6 +1483,11 @@ void GLShader::program_link()
     program_active_->program_id = glCreateProgram();
     debug::object_label(GL_PROGRAM, program_active_->program_id, name);
   }
+
+  if (async_compilation_) {
+    return;
+  }
+
   GLuint program_id = program_active_->program_id;
 
   if (program_active_->vert_shader) {
@@ -1694,25 +1699,28 @@ GLShaderCompiler::~GLShaderCompiler()
   }
 }
 
-GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert, const char *frag)
+GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert,
+                                                        const char *frag,
+                                                        bool block)
 {
   GLCompilerWorker *result = nullptr;
-  for (GLCompilerWorker *compiler : workers_) {
-    if (compiler->state_ == GLCompilerWorker::AVAILABLE) {
-      result = compiler;
-      break;
+  do {
+    for (GLCompilerWorker *compiler : workers_) {
+      if (compiler->state_ == GLCompilerWorker::AVAILABLE) {
+        result = compiler;
+        break;
+      }
     }
-  }
-  if (!result && workers_.size() < 16) {
-    result = new GLCompilerWorker(1024 * 1024 * 2); /* 2mB */
-    workers_.append(result);
-  }
+    if (!result && workers_.size() < 16) {
+      result = new GLCompilerWorker(1024 * 1024 * 2); /* 2mB */
+      workers_.append(result);
+    }
+  } while (result == nullptr && block);
+
   if (result) {
     result->compile(vert, frag);
   }
-  else {
-    // printf("NO COMPILER AVAILABLE\n");
-  }
+
   return result;
 }
 
@@ -1804,7 +1812,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
     }
   }
 
-  printf("Size: %d | Ready: %d | Wait: %d\n", batch.items.size(), ready, waiting);
+  // printf("Size: %d | Ready: %d | Wait: %d\n", batch.items.size(), ready, waiting);
 
   int available = 0;
   for (GLCompilerWorker *worker : workers_) {
@@ -1812,7 +1820,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       available++;
     }
   }
-  printf("Busy: %d | Available: %d\n", workers_.size() - available, available);
+  // printf("Busy: %d | Available: %d\n", workers_.size() - available, available);
 
   return batch.is_ready;
 }
@@ -1831,6 +1839,72 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
   }
   handle = 0;
   return result;
+}
+
+void GLShaderCompiler::precompile_specializations(
+    Shader *shader, Vector<Vector<SpecializationConstant>> variations)
+{
+  std::scoped_lock lock(mutex_);
+
+  GLShader *sh = static_cast<GLShader *>(shader);
+  sh->async_compilation_ = true;
+
+  struct SpecializationWork {
+    GLCompilerWorker *worker = nullptr;
+    bool is_ready = false;
+    GLint program;
+  };
+
+  Vector<SpecializationWork> items;
+  items.reserve(variations.size());
+
+  for (auto &variation : variations) {
+    for (auto &constant : variation) {
+      int location = sh->interface->constant_get(constant.name)->location;
+      // BLI_assert(sh->constants.types[location] == constant.type);
+      sh->constants.values[location].u = constant.value.u;
+    }
+    sh->constants.is_dirty = true;
+    if (sh->program_cache_.contains(sh->constants.values)) {
+      /* Already compiled. */
+      continue;
+    }
+    items.append({});
+    SpecializationWork &item = items.last();
+    item.program = sh->program_get();
+    std::string vertex_src;
+    std::string fragment_src;
+    for (const char *src : sh->vertex_sources_.sources_get()) {
+      vertex_src.append(src);
+    }
+    for (const char *src : sh->fragment_sources_.sources_get()) {
+      fragment_src.append(src);
+    }
+    item.worker = get_compiler_worker(vertex_src.c_str(), fragment_src.c_str(), true);
+    BLI_assert(item.worker);
+  }
+
+  bool is_ready = false;
+  while (!is_ready) {
+    is_ready = true;
+
+    for (SpecializationWork &item : items) {
+      if (item.is_ready) {
+        continue;
+      }
+
+      if (item.worker && item.worker->poll()) {
+        BLI_assert(item.worker->load_program_binary(item.program));
+        item.worker->release();
+        item.worker = nullptr;
+        item.is_ready = true;
+      }
+
+      if (!item.is_ready) {
+        is_ready = false;
+      }
+    }
+  }
 }
 
 /** \} */

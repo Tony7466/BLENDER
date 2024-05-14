@@ -241,9 +241,9 @@ class GLShaderCompiler : public ShaderCompilerBase {
   Vector<GLCompilerWorker *> workers_;
 
   struct CompilationWork {
-    GLCompilerWorker *worker;
-    GLShader *shader;
-    const shader::ShaderCreateInfo *info;
+    GLCompilerWorker *worker = nullptr;
+    GLShader *shader = nullptr;
+    const shader::ShaderCreateInfo *info = nullptr;
 
     std::string vertex_src;
     std::string fragment_src;
@@ -259,7 +259,7 @@ class GLShaderCompiler : public ShaderCompilerBase {
   BatchHandle next_batch_handle = 1;
   Map<BatchHandle, Batch> batches;
 
-  GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag);
+  GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag, bool block = false);
   void print_workers();
 
  public:
@@ -268,6 +268,9 @@ class GLShaderCompiler : public ShaderCompilerBase {
   virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
+
+  virtual void precompile_specializations(
+      Shader *shader, Vector<Vector<SpecializationConstant>> variations) override;
 };
 
 class GLLogParser : public GPULogParser {

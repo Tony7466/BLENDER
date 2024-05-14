@@ -218,6 +218,40 @@ void GPU_shader_constant_uint(GPUShader *sh, const char *name, unsigned int valu
 void GPU_shader_constant_float(GPUShader *sh, const char *name, float value);
 void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value);
 
+/* TODO: This is terrible. */
+struct SpecializationConstant {
+  const char *name;
+  union {
+    uint32_t u;
+    int i;
+    float f;
+    bool b;
+  } value;
+
+  SpecializationConstant(const char *name, uint32_t value) : name(name)
+  {
+    this->value.u = value;
+  }
+
+  SpecializationConstant(const char *name, int value) : name(name)
+  {
+    this->value.i = value;
+  }
+
+  SpecializationConstant(const char *name, float value) : name(name)
+  {
+    this->value.f = value;
+  }
+
+  SpecializationConstant(const char *name, bool value) : name(name)
+  {
+    this->value.b = value;
+  }
+};
+
+void GPU_shaders_precompile_specializations(
+    GPUShader *shader, blender::Vector<blender::Vector<SpecializationConstant>> variations);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
