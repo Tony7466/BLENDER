@@ -852,7 +852,7 @@ static void sequencer_select_strip_impl(const Editing *ed,
   const bool is_active = (ed->act_seq == seq);
 
   /* Exception for active strip handles. */
-  if ((handle_clicked != SEQ_SIDE_NONE) && (seq->flag & SELECT) && is_active && toggle) {
+  if ((handle_clicked != SEQ_HANDLE_NONE) && (seq->flag & SELECT) && is_active && toggle) {
     if (handle_clicked == SEQ_HANDLE_LEFT) {
       seq->flag ^= SEQ_LEFTSEL;
     }
