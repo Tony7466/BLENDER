@@ -1048,8 +1048,9 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
   }
   BLI_assert(layer != nullptr);
 
+  const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
+
   for (const std::string &rna_path : rna_paths) {
-    const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
