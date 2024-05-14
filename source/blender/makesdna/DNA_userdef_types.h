@@ -641,7 +641,7 @@ typedef struct bUserExtensionRepo {
    * When unset, use `{BLENDER_USER_EXTENSIONS}/{bUserExtensionRepo::module}`.
    */
   char custom_dirpath[1024]; /* FILE_MAX */
-  char remote_path[1024];    /* FILE_MAX */
+  char remote_url[1024];     /* FILE_MAX */
 
   int flag;
   char _pad0[4];
@@ -652,7 +652,7 @@ typedef enum eUserExtensionRepo_Flag {
   USER_EXTENSION_REPO_FLAG_NO_CACHE = 1 << 0,
   USER_EXTENSION_REPO_FLAG_DISABLED = 1 << 1,
   USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
-  USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH = 1 << 3,
+  USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL = 1 << 3,
   USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP = 1 << 4,
 } eUserExtensionRepo_Flag;
 
@@ -725,7 +725,6 @@ typedef struct UserDef_Experimental {
    * when the release cycle is not alpha. */
   char use_new_curves_tools;
   char use_new_point_cloud_type;
-  char use_full_frame_compositor;
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
   char use_sculpt_texture_paint;
@@ -737,7 +736,7 @@ typedef struct UserDef_Experimental {
   char use_extension_utils;
   char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
-  char _pad[1];
+  char _pad[2];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
