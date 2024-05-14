@@ -1113,13 +1113,12 @@ static void rna_ID_user_remap(ID *id, Main *bmain, ID *new_id)
 static ID *rna_ID_make_local(
     ID *self, Main *bmain, bool clear_asset_data, bool /*clear_proxy*/, bool clear_liboverride)
 {
-  int flags = 0;
-
-  if (clear_asset_data) {
-    flags |= LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR;
-  }
-
   if (ID_IS_LINKED(self)) {
+    int flags = 0;
+    if (clear_asset_data) {
+      flags |= LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR;
+    }
+
     BKE_lib_id_make_local(bmain, self, flags);
   }
   else if (ID_IS_OVERRIDE_LIBRARY_REAL(self)) {
@@ -2460,12 +2459,13 @@ static void rna_def_ID(BlenderRNA *brna)
       "Make this datablock local, return local one "
       "(may be a copy of the original, in case it is also indirectly used)");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
-  RNA_def_boolean(func,
-                  "clear_asset_data",
-                  true,
-                  "",
-                  "Delete asset metadata so that the now local data-block cannot be accessed "
-                  "externally through an asset library");
+  RNA_def_boolean(
+      func,
+      "clear_asset_data",
+      true,
+      "",
+      "Remove potential asset metadata so the newly local data-block is not treated as asset "
+      "data-block and won't show up in asset libraries");
   parm = RNA_def_boolean(func, "clear_proxy", true, "", "Deprecated, has no effect");
   parm = RNA_def_boolean(func,
                          "clear_liboverride",
