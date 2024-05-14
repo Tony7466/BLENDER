@@ -1017,6 +1017,7 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
 }
 
 static CombinedKeyingResult insert_key_layered_action(Action &action,
+                                                      const int32_t binding_handle,
                                                       PointerRNA *rna_pointer,
                                                       const blender::Span<std::string> rna_paths,
                                                       const float scene_frame,
@@ -1028,7 +1029,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
   ID *id = rna_pointer->owner_id;
   CombinedKeyingResult combined_result;
 
-  Binding *binding = action.binding_for_id(*id);
+  Binding *binding = action.binding_for_handle(binding_handle);
   if (binding == nullptr) {
     binding = &action.binding_add();
     const bool success = action.assign_id(binding, *id);
@@ -1118,8 +1119,13 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     key_settings.keyframe_type = key_type;
     key_settings.handle = HD_AUTO_ANIM;
     key_settings.interpolation = BEZT_IPO_BEZ;
-    return insert_key_layered_action(
-        action->wrap(), rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
+    return insert_key_layered_action(action->wrap(),
+                                     adt->binding_handle,
+                                     rna_pointer,
+                                     rna_paths,
+                                     scene_frame,
+                                     insert_key_flags,
+                                     key_settings);
   }
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
