@@ -15,6 +15,13 @@ struct Sequence;
 struct SpaceSeq;
 struct bContext;
 
+enum eSeqHandle {
+  SEQ_HANDLE_NONE,
+  SEQ_HANDLE_LEFT,
+  SEQ_HANDLE_RIGHT,
+  SEQ_HANDLE_BOTH,
+};
+
 void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool deselect_all);
 /**
  * Iterates over a scene's sequences and deselects all of them.
