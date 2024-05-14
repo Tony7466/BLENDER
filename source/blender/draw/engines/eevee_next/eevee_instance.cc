@@ -185,6 +185,9 @@ void Instance::begin_sync()
     return;
   }
 
+  /* Needs to be first for sun light parameters. */
+  world.sync();
+
   materials.begin_sync();
   velocity.begin_sync(); /* NOTE: Also syncs camera. */
   lights.begin_sync();
@@ -202,7 +205,6 @@ void Instance::begin_sync()
   motion_blur.sync();
   hiz_buffer.sync();
   main_view.sync();
-  world.sync();
   film.sync();
   render_buffers.sync();
   ambient_occlusion.sync();
