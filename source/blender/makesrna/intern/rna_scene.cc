@@ -3870,6 +3870,14 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 3);
   RNA_def_property_float_default(prop, 0.150f);
 
+  prop = RNA_def_property(srna, "use_gpencil_project_only_selected", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "gpencil_v3d_align", GP_PROJECT_DEPTH_ONLY_SELECTED);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_ui_text(
+      prop, "Project Onto Selected", "Project the strokes only onto selected objects");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
+
   /* Grease Pencil - Select mode Edit */
   prop = RNA_def_property(srna, "gpencil_selectmode_edit", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "gpencil_selectmode_edit");
@@ -3981,8 +3989,17 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_annotation_stroke_endpoints", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, nullptr, "annotate_v3d_align", GP_PROJECT_DEPTH_STROKE_ENDPOINTS);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop, "Only Endpoints", "Only use the first and last parts of the stroke for snapping");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
+
+  prop = RNA_def_property(srna, "use_annotation_project_only_selected", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "annotate_v3d_align", GP_PROJECT_DEPTH_ONLY_SELECTED);
+  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
+  RNA_def_property_ui_text(
+      prop, "Project Onto Selected", "Project the strokes only onto selected objects");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 
   /* Annotations - Stroke Thickness */

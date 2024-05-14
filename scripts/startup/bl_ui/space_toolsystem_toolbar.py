@@ -206,6 +206,7 @@ class _defs_annotate:
             row.prop(tool_settings, "annotation_stroke_placement_view3d", text="Placement")
             if tool_settings.annotation_stroke_placement_view3d in {'SURFACE', 'STROKE'}:
                 row.prop(tool_settings, "use_annotation_stroke_endpoints")
+                row.prop(tool_settings, "use_annotation_project_only_selected")
 
         elif space_type in {'IMAGE_EDITOR', 'NODE_EDITOR', 'SEQUENCE_EDITOR', 'CLIP_EDITOR'}:
             row = layout.row(align=True)

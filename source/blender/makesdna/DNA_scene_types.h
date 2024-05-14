@@ -2726,6 +2726,9 @@ typedef enum eGPencil_Placement_Flags {
   GP_PROJECT_DEPTH_STROKE_ENDPOINTS = (1 << 4),
   GP_PROJECT_CURSOR = (1 << 5),
   GP_PROJECT_DEPTH_STROKE_FIRST = (1 << 6),
+
+  /** Surface project, "Only project on selected objects". */
+  GP_PROJECT_DEPTH_ONLY_SELECTED = (1 << 7),
 } eGPencil_Placement_Flags;
 
 /** #ToolSettings::gpencil_selectmode */
