@@ -39,7 +39,7 @@ static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float3 &offset,
                        Object &object,
-                       pbvh::mesh::Node &node,
+                       PBVHNode &node,
                        TLS &tls,
                        const MutableSpan<float3> positions_sculpt,
                        const MutableSpan<float3> positions_mesh)
@@ -48,11 +48,11 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const pbvh::Tree pbvh_tree(*ss.pbvh);
+  const PBVH &pbvh = *ss.pbvh;
 
-  const Span<float3> positions_eval = pbvh_tree.vert_positions();
-  const Span<float3> vert_normals = pbvh_tree.vert_normals();
-  const Span<int> verts = node.unique_vert_indices();
+  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
@@ -89,7 +89,7 @@ static void calc_faces(const Sculpt &sd,
   apply_translations(translations, verts, positions_sculpt);
   flush_positions_to_shape_keys(object, verts, positions_sculpt, positions_mesh);
 
-  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
+  BKE_pbvh_node_mark_positions_update(&node);
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
@@ -184,8 +184,7 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         TLS &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node node(*nodes[i]);
-          calc_faces(sd, brush, offset, object, node, tls, positions_sculpt, positions_mesh);
+          calc_faces(sd, brush, offset, object, *nodes[i], tls, positions_sculpt, positions_mesh);
         }
       });
       break;

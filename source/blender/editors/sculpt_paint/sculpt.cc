@@ -6472,13 +6472,13 @@ void calc_front_face(const float3 &view_normal,
 
 void calc_mesh_automask(Object &object,
                         const auto_mask::Cache &cache,
-                        bke::pbvh::mesh::Node &node,
+                        PBVHNode &node,
                         const Span<int> verts,
                         const MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
 
-  auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node.pbvh_node());
+  auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node);
 
   for (const int i : verts.index_range()) {
     if (data.have_orig_data) {

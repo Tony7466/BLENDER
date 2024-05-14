@@ -9,8 +9,6 @@
  * \brief External data structures for PBVH. Does not include internal data structures.
  */
 
-#include "BLI_math_vector_types.hh"
-#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 struct PBVHNode;
@@ -90,41 +88,3 @@ void BKE_pbvh_draw_debug_cb(PBVH &pbvh,
                                             const float bmax[3],
                                             PBVHNodeFlags flag),
                             void *user_data);
-
-namespace blender::bke::pbvh {
-
-namespace mesh {
-class Node;
-}
-
-class Tree {
-  friend class mesh::Node;
-  PBVH &pbvh_;
-
- public:
-  explicit Tree(PBVH &pbvh) : pbvh_(pbvh) {}
-
-  Span<float3> vert_positions() const;
-  Span<float3> vert_normals() const;
-};
-
-namespace mesh {
-
-class Node {
-  PBVHNode &node_;
-
- public:
-  explicit Node(PBVHNode &node) : node_(node) {}
-
-  Span<int> unique_vert_indices() const;
-
-  /* For interfacing with legacy API. */
-  PBVHNode &pbvh_node()
-  {
-    return node_;
-  }
-};
-
-}  // namespace mesh
-
-}  // namespace blender::bke::pbvh

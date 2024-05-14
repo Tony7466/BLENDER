@@ -38,7 +38,7 @@ struct TLS {
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        Object &object,
-                       pbvh::mesh::Node &node,
+                       PBVHNode &node,
                        TLS &tls,
                        MutableSpan<float3> positions_orig,
                        MutableSpan<float3> mesh_positions)
@@ -47,11 +47,11 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  pbvh::Tree pbvh_tree(*ss.pbvh);
+  PBVH &pbvh = *ss.pbvh;
 
-  const Span<float3> positions = pbvh_tree.vert_positions();
-  const Span<float3> vert_normals = pbvh_tree.vert_normals();
-  const Span<int> verts = node.unique_vert_indices();
+  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
@@ -60,7 +60,7 @@ static void calc_faces(const Sculpt &sd,
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, positions, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
@@ -73,7 +73,7 @@ static void calc_faces(const Sculpt &sd,
 
   tls.colors.reinitialize(verts.size());
   const MutableSpan<float4> colors = tls.colors;
-  calc_brush_texture_colors(ss, brush, positions, verts, factors, colors);
+  calc_brush_texture_colors(ss, brush, positions_eval, verts, factors, colors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -81,7 +81,7 @@ static void calc_faces(const Sculpt &sd,
     SCULPT_calc_vertex_displacement(&ss, &brush, colors[i], translations[i]);
   }
 
-  clip_and_lock_translations(sd, ss, positions, verts, translations);
+  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
@@ -90,7 +90,7 @@ static void calc_faces(const Sculpt &sd,
   apply_translations(translations, verts, positions_orig);
   flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
 
-  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
+  BKE_pbvh_node_mark_positions_update(&node);
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -184,8 +184,7 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         TLS &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd, brush, object, face_node, tls, positions_orig, mesh_positions);
+          calc_faces(sd, brush, object, *nodes[i], tls, positions_orig, mesh_positions);
         }
       });
       break;

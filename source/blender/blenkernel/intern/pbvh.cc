@@ -714,7 +714,7 @@ std::unique_ptr<PBVH> build_mesh(Mesh *mesh)
   const Span<int> corner_verts = mesh->corner_verts();
 
   pbvh->corner_tris.reinitialize(corner_tris_num);
-  bke::mesh::corner_tris_calc(vert_positions, faces, corner_verts, pbvh->corner_tris);
+  mesh::corner_tris_calc(vert_positions, faces, corner_verts, pbvh->corner_tris);
   const Span<int3> corner_tris = pbvh->corner_tris;
 
   pbvh->mesh = mesh;
@@ -1130,7 +1130,7 @@ static void normals_calc_faces(const Span<float3> positions,
                                MutableSpan<float3> face_normals)
 {
   for (const int i : face_indices) {
-    face_normals[i] = bke::mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
+    face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
   }
 }
 
@@ -3244,23 +3244,4 @@ Vector<PBVHNode *> gather_proxies(PBVH &pbvh)
 
   return array;
 }
-
-Span<float3> Tree::vert_positions() const
-{
-  return pbvh_.vert_positions;
-}
-Span<float3> Tree::vert_normals() const
-{
-  return pbvh_.vert_normals;
-}
-
-namespace mesh {
-
-Span<int> Node::unique_vert_indices() const
-{
-  return node_.vert_indices.as_span().take_front(node_.uniq_verts);
-}
-
-}  // namespace mesh
-
 }  // namespace blender::bke::pbvh
