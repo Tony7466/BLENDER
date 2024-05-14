@@ -163,16 +163,55 @@ class EEVEE_WORLD_PT_settings(WorldButtonsPanel, Panel):
         return world and (engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
+        pass
+
+
+class EEVEE_WORLD_PT_lightprobe(WorldButtonsPanel, Panel):
+    bl_label = "Light Probe"
+    bl_parent_id = "EEVEE_WORLD_PT_settings"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    def draw(self, context):
         layout = self.layout
 
         world = context.world
 
         layout.use_property_split = True
-        layout.prop(world, "sun_threshold")
-        layout.prop(world, "sun_angle")
-        layout.prop(world, "use_sun_shadow")
-        layout.prop(world, "sun_shadow_maximum_resolution")
-        layout.prop(world, "probe_resolution")
+        layout.prop(world, "probe_resolution", text="Resolution")
+
+
+class EEVEE_WORLD_PT_sun(WorldButtonsPanel, Panel):
+    bl_label = "Sun"
+    bl_parent_id = "EEVEE_WORLD_PT_settings"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        world = context.world
+
+        layout.use_property_split = True
+        layout.prop(world, "sun_threshold", text="Threshold")
+        layout.prop(world, "sun_angle", text="Angle")
+
+
+class EEVEE_WORLD_PT_sun_shadow(WorldButtonsPanel, Panel):
+    bl_label = "Shadow"
+    bl_parent_id = "EEVEE_WORLD_PT_sun"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    def draw_header(self, context):
+        world = context.world
+        self.layout.prop(world, "use_sun_shadow", text="")
+
+    def draw(self, context):
+        layout = self.layout
+
+        world = context.world
+
+        layout.use_property_split = True
+        layout.prop(world, "sun_shadow_maximum_resolution", text="Resolution Limit")
 
 
 class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):
@@ -197,6 +236,9 @@ classes = (
     EEVEE_WORLD_PT_volume,
     EEVEE_WORLD_PT_mist,
     EEVEE_WORLD_PT_settings,
+    EEVEE_WORLD_PT_lightprobe,
+    EEVEE_WORLD_PT_sun,
+    EEVEE_WORLD_PT_sun_shadow,
     WORLD_PT_viewport_display,
     WORLD_PT_custom_props,
 )
