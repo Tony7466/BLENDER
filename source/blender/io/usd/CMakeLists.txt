@@ -89,6 +89,7 @@ set(INC_SYS
 set(SRC
   intern/usd_armature_utils.cc
   intern/usd_asset_utils.cc
+  intern/usd_attribute_utils.cc
   intern/usd_blend_shape_utils.cc
   intern/usd_capi_export.cc
   intern/usd_capi_import.cc
