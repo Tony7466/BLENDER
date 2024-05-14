@@ -107,7 +107,7 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -145,7 +145,7 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -175,7 +175,7 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
-  switch (BKE_pbvh_type(object.sculpt->pbvh)) {
+  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<TLS> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);

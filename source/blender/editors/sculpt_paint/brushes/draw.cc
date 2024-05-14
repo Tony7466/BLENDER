@@ -105,7 +105,7 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -138,7 +138,7 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -175,7 +175,7 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 
   const float3 offset = effective_normal * ss.cache->radius * ss.cache->scale * bstrength;
 
-  switch (BKE_pbvh_type(object.sculpt->pbvh)) {
+  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<TLS> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);

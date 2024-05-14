@@ -2165,9 +2165,9 @@ void calc_front_face(const float3 &view_normal,
                      MutableSpan<float> factors);
 
 void calc_mesh_automask(Object &object,
-                        auto_mask::Cache &automasking,
+                        const auto_mask::Cache &cache,
                         bke::pbvh::mesh::Node &node,
-                        Span<int> vert_indices,
+                        Span<int> verts,
                         MutableSpan<float> factors);
 
 void apply_translations(Span<float3> translations, Span<int> verts, MutableSpan<float3> positions);
