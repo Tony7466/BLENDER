@@ -1096,7 +1096,7 @@ static void rna_ID_user_remap(ID *id, Main *bmain, ID *new_id)
 }
 
 static ID *rna_ID_make_local(
-    ID *self, Main *bmain, bool clear_asset_data, bool /*clear_proxy*/, bool clear_liboverride)
+    ID *self, Main *bmain, bool /*clear_proxy*/, bool clear_liboverride, bool clear_asset_data)
 {
   if (ID_IS_LINKED(self)) {
     int flags = 0;
@@ -2444,6 +2444,12 @@ static void rna_def_ID(BlenderRNA *brna)
       "Make this datablock local, return local one "
       "(may be a copy of the original, in case it is also indirectly used)");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
+  parm = RNA_def_boolean(func, "clear_proxy", true, "", "Deprecated, has no effect");
+  parm = RNA_def_boolean(func,
+                         "clear_liboverride",
+                         false,
+                         "",
+                         "Remove potential library override data from the newly made local data");
   RNA_def_boolean(
       func,
       "clear_asset_data",
@@ -2451,12 +2457,6 @@ static void rna_def_ID(BlenderRNA *brna)
       "",
       "Remove potential asset metadata so the newly local data-block is not treated as asset "
       "data-block and won't show up in asset libraries");
-  parm = RNA_def_boolean(func, "clear_proxy", true, "", "Deprecated, has no effect");
-  parm = RNA_def_boolean(func,
-                         "clear_liboverride",
-                         false,
-                         "",
-                         "Remove potential library override data from the newly made local data");
   parm = RNA_def_pointer(func, "id", "ID", "", "This ID, or the new ID if it was copied");
   RNA_def_function_return(func, parm);
 
