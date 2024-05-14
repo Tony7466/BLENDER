@@ -1912,11 +1912,14 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
       bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
       output << reroute_name;
     }
+    if (socket.type == SOCK_CUSTOM) {
+      output << TIP_("Extension socket. Connect a link to create a new socket");
+    }
     else {
       output << bke::nodeSocketLabel(&socket);
     }
 
-    if (ntree.type == NTREE_GEOMETRY) {
+    if ((ntree.type == NTREE_GEOMETRY) && (socket.type != SOCK_CUSTOM)) {
       output << ".\n\n";
       output << TIP_(
           "Unknown socket value. Either the socket was not used or its value was not logged "
