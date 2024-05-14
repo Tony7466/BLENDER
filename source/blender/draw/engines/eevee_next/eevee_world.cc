@@ -77,6 +77,21 @@ World::~World()
   return default_world_;
 }
 
+::World *World::scene_world_get()
+{
+  return (inst_.scene->world != nullptr) ? inst_.scene->world : default_world_get();
+}
+
+float World::sun_threshold()
+{
+  float sun_threshold = scene_world_get()->sun_threshold;
+  if (inst_.use_studio_light()) {
+    /* Do not call `lookdev_world_.intensity_get()` as it might not be initialized yet. */
+    sun_threshold *= inst_.v3d->shading.studiolight_intensity;
+  }
+  return sun_threshold;
+}
+
 void World::sync()
 {
   bool has_update = false;
@@ -85,16 +100,6 @@ void World::sync()
     /* Detect world update before overriding it. */
     WorldHandle wo_handle = inst_.sync.sync_world();
     has_update = wo_handle.recalc != 0;
-    sun_threshold_ = inst_.scene->world->sun_threshold;
-    sun_shadow_max_resolution_ = inst_.scene->world->sun_shadow_maximum_resolution;
-    sun_angle_ = inst_.scene->world->sun_angle;
-    use_sun_shadow_ = inst_.scene->world->flag & WO_USE_SUN_SHADOW;
-  }
-  else {
-    sun_threshold_ = 10.0f;
-    sun_shadow_max_resolution_ = 0.001f;
-    sun_angle_ = DEG2RADF(0.526f);
-    use_sun_shadow_ = true;
   }
 
   /* Sync volume first since its result can override the surface world. */
@@ -111,11 +116,8 @@ void World::sync()
   else if (has_volume_absorption_) {
     bl_world = default_world_get();
   }
-  else if (inst_.scene->world != nullptr) {
-    bl_world = inst_.scene->world;
-  }
   else {
-    bl_world = default_world_get();
+    bl_world = scene_world_get();
   }
 
   bNodeTree *ntree = (bl_world->nodetree && bl_world->use_nodes) ?
@@ -133,14 +135,6 @@ void World::sync()
   ::World *orig_world = (::World *)DEG_get_original_id(&bl_world->id);
   if (assign_if_different(prev_original_world, orig_world)) {
     has_update = true;
-  }
-
-  if (inst_.use_studio_light()) {
-    sun_threshold_ *= lookdev_world_.intensity_get();
-  }
-
-  if (sun_threshold_ == 0.0f) {
-    sun_threshold_ = 1e20;
   }
 
   inst_.light_probes.sync_world(bl_world, has_update);

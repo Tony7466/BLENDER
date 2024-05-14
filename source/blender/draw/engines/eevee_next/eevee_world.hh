@@ -70,14 +70,6 @@ class World {
   bool has_volume_absorption_ = false;
   /* Is true if the volume shader has scattering. */
   bool has_volume_scatter_ = false;
-  /* Is true if the extracted sun from world should cast shadows. */
-  bool use_sun_shadow_ = false;
-  /* Max resolution for extracted sun shadows. */
-  float sun_shadow_max_resolution_ = 0.001f;
-  /* Sun light angle. */
-  float sun_angle_ = 0.0f;
-  /* Sunlight radiance split threshold. */
-  float sun_threshold_ = 10.0f;
 
   LookdevWorld lookdev_world_;
 
@@ -102,24 +94,21 @@ class World {
     return has_volume_scatter_;
   }
 
-  float sun_threshold() const
+  float sun_threshold();
+
+  float sun_angle()
   {
-    return sun_threshold_;
+    return scene_world_get()->sun_angle;
   }
 
-  float sun_angle() const
+  float sun_shadow_max_resolution()
   {
-    return sun_angle_;
+    return scene_world_get()->sun_shadow_maximum_resolution;
   }
 
-  float sun_shadow_max_resolution() const
+  bool use_sun_shadow()
   {
-    return sun_shadow_max_resolution_;
-  }
-
-  bool use_sun_shadow() const
-  {
-    return use_sun_shadow_;
+    return scene_world_get()->flag & WO_USE_SUN_SHADOW;
   }
 
  private:
@@ -128,6 +117,9 @@ class World {
   /* Returns a dummy black world for when a valid world isn't present or when we want to suppress
    * any light coming from the world. */
   ::World *default_world_get();
+
+  /* Returns either the scene world or the default world if scene has no world. */
+  ::World *scene_world_get();
 };
 
 /** \} */
