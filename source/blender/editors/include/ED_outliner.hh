@@ -28,6 +28,10 @@ void ED_outliner_selected_objects_get(const bContext *C, ListBase *objects);
  */
 Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2]);
 
+/**
+ * Get the bone at the given coordinates. Works for pose bones as well and will just return the
+ * `Bone` that is represented by it. Doesn't work for EditBone yet.
+ */
 Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2]);
 
 /**
