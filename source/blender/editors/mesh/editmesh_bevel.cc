@@ -146,26 +146,25 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 
   PropertyRNA *prop;
   const char *mode_str, *omiter_str, *imiter_str, *vmesh_str, *profile_type_str, *affect_str;
-
   prop = RNA_struct_find_property(op->ptr, "offset_type");
   RNA_property_enum_name_gettexted(
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &mode_str);
 
-  const int segments = RNA_int_get(op->ptr, "segments");
-  const float profile = RNA_float_get(op->ptr, "profile");
+  /* Shown in area header. */
+
   const std::string header_status = fmt::format("{}: {}, {}: {}, {}: {}",
                                                 mode_str,
                                                 offset_str,
                                                 IFACE_("Segments"),
-                                                segments,
+                                                RNA_int_get(op->ptr, "segments"),
                                                 IFACE_("Profile"),
-                                                profile);
-
-  /* Shown in area header. */
+                                                RNA_float_get(op->ptr, "profile"));
 
   ED_area_status_text(CTX_wm_area(C), header_status.c_str());
 
   /* Shown on Status Bar. */
+
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   prop = RNA_struct_find_property(op->ptr, "profile_type");
   RNA_property_enum_name_gettexted(
@@ -183,12 +182,9 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
   RNA_property_enum_name_gettexted(
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &affect_str);
 
-  BevelData *opdata = static_cast<BevelData *>(op->customdata);
-
   WorkspaceStatus status(C);
   status.opmodal(IFACE_("Confirm"), op->type, BEV_MODAL_CONFIRM);
   status.opmodal(IFACE_("Cancel"), op->type, BEV_MODAL_CANCEL);
-
   status.opmodal(IFACE_("Width Type"), op->type, BEV_MODAL_OFFSET_MODE_CHANGE);
 
   status.opmodal(
