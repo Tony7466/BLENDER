@@ -546,6 +546,9 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
 
     /* Store the new fields in the output. */
     for (const int i : output_values.index_range()) {
+      if (output_values[i] != nullptr) {
+        continue;
+      }
       output_values[i]->set(GField{operation, i});
     }
   }
@@ -564,6 +567,10 @@ static void execute_multi_function_on_value_variant(const MultiFunction &fn,
       params.add_readonly_single_input(GPointer{cpp_type, value});
     }
     for (const int i : output_values.index_range()) {
+      if (output_values[i] == nullptr) {
+        params.add_ignored_single_output("");
+        continue;
+      }
       SocketValueVariant &output_variant = *output_values[i];
       const mf::DataType data_type = fn.param_type(params.next_param_index()).data_type();
       const CPPType &cpp_type = data_type.single_type();
@@ -718,12 +725,19 @@ class LazyFunctionForMultiFunctionNode : public LazyFunction {
       input_values[i] = params.try_get_input_data_ptr<SocketValueVariant>(i);
     }
     for (const int i : outputs_.index_range()) {
-      output_values[i] = new (params.get_output_data_ptr(i)) SocketValueVariant();
+      if (params.get_output_usage(i) != lf::ValueUsage::Unused) {
+        output_values[i] = new (params.get_output_data_ptr(i)) SocketValueVariant();
+      }
+      else {
+        output_values[i] = nullptr;
+      }
     }
     execute_multi_function_on_value_variant(
         *fn_item_.fn, fn_item_.owned_fn, input_values, output_values);
     for (const int i : outputs_.index_range()) {
-      params.output_set(i);
+      if (params.get_output_usage(i) != lf::ValueUsage::Unused) {
+        params.output_set(i);
+      }
     }
   }
 };
