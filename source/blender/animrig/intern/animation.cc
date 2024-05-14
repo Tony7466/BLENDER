@@ -872,8 +872,8 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
                                                   const KeyframeSettings &settings,
                                                   const eInsertKeyFlags insert_key_flags)
 {
-  /* Get the fcurve, or if one doesn't exist and the keying flags allow then
-   * create one. */
+  /* Get the fcurve, or create one if it doesn't exist and the keying flags
+   * allow. */
   FCurve *fcurve = can_create_fcurve(insert_key_flags) ?
                        &this->fcurve_find_or_create(binding, rna_path, array_index) :
                        this->fcurve_find(binding, rna_path, array_index);
