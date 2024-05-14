@@ -1122,7 +1122,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
   }
 
   for (const std::string &rna_path : rna_paths) {
-    const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
+    const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
@@ -1133,7 +1133,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
     }
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
                                                                                         prop);
-    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
+    Vector<float> rna_values = get_keyframe_values(&ptr, prop, use_visual_keyframing);
 
     for (int property_index : rna_values.index_range()) {
       KeyInsertData key_data;
