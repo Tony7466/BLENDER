@@ -212,7 +212,9 @@ static void calc_face_hide(const Span<int> node_faces,
 }
 
 /* Updates a node's face's visibility based on the updated vertex visibility. */
-static void flush_face_changes_node(Mesh &mesh, const Span<PBVHNode *> nodes, Span<bool> hide_vert)
+static void flush_face_changes_node(Mesh &mesh,
+                                    const Span<PBVHNode *> nodes,
+                                    const Span<bool> hide_vert)
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
 
@@ -252,14 +254,13 @@ static void flush_face_changes_node(Mesh &mesh, const Span<PBVHNode *> nodes, Sp
 }
 
 /* Updates all of a mesh's edge visibility based on vertex visibility. */
-static void flush_edge_changes(Mesh &mesh, Span<bool> hide_vert)
+static void flush_edge_changes(Mesh &mesh, const Span<bool> hide_vert)
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
 
   bke::SpanAttributeWriter<bool> hide_edge = attributes.lookup_or_add_for_write_only_span<bool>(
       ".hide_edge", bke::AttrDomain::Edge);
-  Span<int2> edges = mesh.edges();
-  bke::edge_hide_from_vert(edges, hide_vert, hide_edge.span);
+  bke::mesh_edge_hide_from_vert(mesh.edges(), hide_vert, hide_edge.span);
   hide_edge.finish();
 }
 
