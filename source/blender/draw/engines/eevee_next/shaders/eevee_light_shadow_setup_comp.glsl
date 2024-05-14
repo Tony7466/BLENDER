@@ -15,7 +15,7 @@ int shadow_directional_coverage_get(int level)
 }
 
 void orthographic_sync(int tilemap_id,
-                       Transform light_tx,
+                       Transform object_to_world,
                        int2 origin_offset,
                        int clipmap_level,
                        eShadowProjectionType projection_type)
@@ -28,9 +28,9 @@ void orthographic_sync(int tilemap_id,
 
   mat3x3 object_to_world_transposed = mat3x3(tilemaps_buf[tilemap_id].viewmat);
 
-  if (!all(equal(object_to_world_transposed[0], light_tx.x.xyz)) ||
-      !all(equal(object_to_world_transposed[1], light_tx.y.xyz)) ||
-      !all(equal(object_to_world_transposed[2], light_tx.z.xyz)))
+  if (!all(equal(object_to_world_transposed[0], object_to_world.x.xyz)) ||
+      !all(equal(object_to_world_transposed[1], object_to_world.y.xyz)) ||
+      !all(equal(object_to_world_transposed[2], object_to_world.z.xyz)))
   {
     tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
   }
@@ -42,9 +42,9 @@ void orthographic_sync(int tilemap_id,
 
   /* object_mat is a rotation matrix. Reduce imprecision by taking the transpose which is also the
    * inverse in this particular case. */
-  tilemaps_buf[tilemap_id].viewmat[0] = vec4(light_tx.x.xyz, 0.0);
-  tilemaps_buf[tilemap_id].viewmat[1] = vec4(light_tx.y.xyz, 0.0);
-  tilemaps_buf[tilemap_id].viewmat[2] = vec4(light_tx.z.xyz, 0.0);
+  tilemaps_buf[tilemap_id].viewmat[0] = vec4(object_to_world.x.xyz, 0.0);
+  tilemaps_buf[tilemap_id].viewmat[1] = vec4(object_to_world.y.xyz, 0.0);
+  tilemaps_buf[tilemap_id].viewmat[2] = vec4(object_to_world.z.xyz, 0.0);
   tilemaps_buf[tilemap_id].viewmat[3] = vec4(0.0, 0.0, 0.0, 1.0);
 
   tilemaps_buf[tilemap_id].projection_type = projection_type;
@@ -193,23 +193,49 @@ void clipmap_sync(inout LightData light)
 #endif
 }
 
-#if 0
-void cubeface_sync(int tilemap_id, vec3 jitter_offset)
+void cubeface_sync(int tilemap_id,
+                   Transform object_to_world,
+                   eCubeFace cubeface,
+                   vec3 jitter_offset)
 {
-  /* Update corners. */
-  viewmat = shadow_face_mat[cubeface] * from_location<float4x4>(float3(0.0, 0.0, -shift)) *
-            invert(object_mat);
+  /* Update View Matrix. */
+  /* TODO(fclem): Could avoid numerical inversion since the transform is a unit matrix. */
+  mat4x4 viewmat = invert(transform_to_matrix(object_to_world));
+  /* Translate by jitter. */
+  viewmat = from_location(-jitter_offset) * viewmat;
+
+  /* Use switch instead of inline array of float3x3. */
+  switch (cubeface) {
+    case Z_NEG:
+      viewmat = mat4x4(mat3x3(+1, +0, +0, +0, +1, +0, +0, +0, +1)) * viewmat;
+      break;
+    case X_POS:
+      viewmat = mat4x4(mat3x3(+0, +0, -1, -1, +0, +0, +0, +1, +0)) * viewmat;
+      break;
+    case X_NEG:
+      viewmat = mat4x4(mat3x3(+0, +0, +1, +1, +0, +0, +0, +1, +0)) * viewmat;
+      break;
+    case Y_POS:
+      viewmat = mat4x4(mat3x3(+1, +0, +0, +0, +0, -1, +0, +1, +0)) * viewmat;
+      break;
+    case Y_NEG:
+      viewmat = mat4x4(mat3x3(-1, +0, +0, +0, +0, +1, +0, +1, +0)) * viewmat;
+      break;
+    case Z_POS:
+      viewmat = mat4x4(mat3x3(+1, +0, +0, +0, -1, +0, +0, +0, -1)) * viewmat;
+      break;
+  }
+
+  tilemaps_buf[tilemap_id].viewmat = viewmat;
 
   /* Update corners. */
-  corners[0] += jitter_offset;
-  corners[1] += jitter_offset;
-  corners[2] += jitter_offset;
-  corners[3] += jitter_offset;
+  tilemaps_buf[tilemap_id].corners[0].xyz += jitter_offset;
+  tilemaps_buf[tilemap_id].corners[1].xyz += jitter_offset;
+  /* Other corners are deltas. They do not change after jitter. */
 
   /* Set dirty. */
-  grid_shift = int2(SHADOW_TILEMAP_RES);
+  tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
 }
-#endif
 
 void main()
 {
@@ -244,30 +270,31 @@ void main()
       clipmap_sync(light);
     }
   }
-#if 0   /* Jittered shadows. */
   else {
     /* Local lights. */
-#  if 0 /* Jittered shadows. */
+#if 0 /* Jittered shadows. */
     vec3 position_on_light = random_position_on_light(light);
     light_buf[l_idx].shadow_position = position_on_light;
+#else
+    vec3 position_on_light = vec3(0.0);
+#endif
 
     int tilemap_count = 0;
     if (is_area_light(light.type)) {
       tilemap_count = 5;
     }
     else if (is_spot_light(light.type)) {
-      tilemap_count = (spot_angle > M_PI * 0.25) ? 5 : 1;
+      tilemap_count = (light_spot_data_get(light).spot_tan > tan(M_PI / 4.0)) ? 5 : 1;
     }
     else {
       tilemap_count = 6;
     }
 
     for (int i = 0; i < tilemap_count; i++) {
-      cubeface_sync(light.tilemap_id + i, position_on_light);
+      cubeface_sync(
+          light.tilemap_index + i, light.object_to_world, eCubeFace(i), position_on_light);
     }
-#  endif
   }
-#endif
 
   light_buf[l_idx] = light;
 }

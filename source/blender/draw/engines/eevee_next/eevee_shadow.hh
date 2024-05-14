@@ -28,24 +28,14 @@ class ShadowModule;
 class ShadowPipeline;
 struct Light;
 
-enum eCubeFace {
-  /* Ordering by culling order. If cone aperture is shallow, we cull the later view. */
-  Z_NEG = 0,
-  X_POS,
-  X_NEG,
-  Y_POS,
-  Y_NEG,
-  Z_POS,
-};
-
 /* To be applied after view matrix. Follow same order as eCubeFace. */
-constexpr static const float shadow_face_mat[6][4][4] = {
-    {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}},   /* Z_NEG */
-    {{0, 0, -1, 0}, {-1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}}, /* X_POS */
-    {{0, 0, 1, 0}, {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}},   /* X_NEG */
-    {{1, 0, 0, 0}, {0, 0, -1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}},  /* Y_POS */
-    {{-1, 0, 0, 0}, {0, 0, 1, 0}, {0, 1, 0, 0}, {0, 0, 0, 1}},  /* Y_NEG */
-    {{1, 0, 0, 0}, {0, -1, 0, 0}, {0, 0, -1, 0}, {0, 0, 0, 1}}, /* Z_POS */
+constexpr static const float shadow_face_mat[6][3][3] = {
+    {{+1, +0, +0}, {+0, +1, +0}, {+0, +0, +1}}, /* Z_NEG */
+    {{+0, +0, -1}, {-1, +0, +0}, {+0, +1, +0}}, /* X_POS */
+    {{+0, +0, +1}, {+1, +0, +0}, {+0, +1, +0}}, /* X_NEG */
+    {{+1, +0, +0}, {+0, +0, -1}, {+0, +1, +0}}, /* Y_POS */
+    {{-1, +0, +0}, {+0, +0, +1}, {+0, +1, +0}}, /* Y_NEG */
+    {{+1, +0, +0}, {+0, -1, +0}, {+0, +0, -1}}, /* Z_POS */
 };
 
 /* Converts to [-SHADOW_TILEMAP_RES / 2..SHADOW_TILEMAP_RES / 2] for XY and [0..1] for Z. */

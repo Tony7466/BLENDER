@@ -41,7 +41,15 @@ constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 #  define IS_CPP 1
 #endif
 
-#define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
+enum eCubeFace : uint32_t {
+  /* Ordering by culling order. If cone aperture is shallow, we cull the later view. */
+  Z_NEG = 0u,
+  X_POS = 1u,
+  X_NEG = 2u,
+  Y_POS = 3u,
+  Y_NEG = 4u,
+  Z_POS = 5u,
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Transform
@@ -68,6 +76,14 @@ struct Transform {
   }
 #endif
 };
+
+static inline float4x4 transform_to_matrix(Transform t)
+{
+  return float4x4(float4(t.x.x, t.y.x, t.z.x, 0.0f),
+                  float4(t.x.y, t.y.y, t.z.y, 0.0f),
+                  float4(t.x.z, t.y.z, t.z.z, 0.0f),
+                  float4(t.x.w, t.y.w, t.z.w, 1.0f));
+}
 
 static inline float3 transform_x_axis(Transform t)
 {

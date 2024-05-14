@@ -102,7 +102,7 @@ void ShadowTileMap::sync_cubeface(eLightType light_type_,
 
   winmat = math::projection::perspective(
       -half_size, half_size, -half_size, half_size, clip_near, clip_far);
-  viewmat = float4x4(shadow_face_mat[cubeface]) *
+  viewmat = float4x4(float3x3(shadow_face_mat[cubeface])) *
             math::from_location<float4x4>(float3(0.0f, 0.0f, -shift)) * math::invert(object_mat);
 
   /* Update corners. */
