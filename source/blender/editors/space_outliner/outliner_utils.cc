@@ -478,3 +478,30 @@ Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2])
 
   return base;
 }
+
+Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2])
+{
+  ARegion *region = CTX_wm_region(C);
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
+
+  float view_mval[2];
+  UI_view2d_region_to_view(&region->v2d, mval[0], mval[1], &view_mval[0], &view_mval[1]);
+
+  TreeElement *te = outliner_find_item_at_y(space_outliner, &space_outliner->tree, view_mval[1]);
+  if (!te) {
+    return nullptr;
+  }
+
+  Bone *bone = nullptr;
+  TreeStoreElem *tselem = TREESTORE(te);
+  if (tselem->type == TSE_BONE) {
+    // Object *ob = (Object *)tselem->id;
+    BKE_view_layer_synced_ensure(scene, view_layer);
+    bone = (Bone *)te->directdata;
+    // base = (te->directdata) ? (Base *)te->directdata : BKE_view_layer_base_find(view_layer, ob);
+  }
+
+  return bone;
+}

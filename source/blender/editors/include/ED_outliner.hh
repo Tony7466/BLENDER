@@ -12,6 +12,7 @@ struct Base;
 struct ListBase;
 struct SpaceOutliner;
 struct bContext;
+struct Bone;
 
 bool ED_outliner_collections_editor_poll(bContext *C);
 
@@ -26,6 +27,8 @@ void ED_outliner_selected_objects_get(const bContext *C, ListBase *objects);
  * Get base of object under cursor. Used for eyedropper tool.
  */
 Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2]);
+
+Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2]);
 
 /**
  * Functions for tagging outliner selection syncing is dirty from operators.

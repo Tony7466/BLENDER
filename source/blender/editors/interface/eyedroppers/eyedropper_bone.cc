@@ -32,6 +32,7 @@
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "eyedropper_intern.hh"
 #include "interface_intern.hh"
@@ -68,14 +69,13 @@ static bool is_bone_dropper_valid(BoneDropper *bone_dropper)
   if (!RNA_property_editable(&bone_dropper->ptr, bone_dropper->prop)) {
     return false;
   }
-  PointerRNA owner_ptr = RNA_id_pointer_create(bone_dropper->search_ptr.owner_id);
-  if (RNA_type_to_ID_code(owner_ptr.type) != ID_AR) {
-    return false;
-  }
   if (RNA_property_pointer_type(&bone_dropper->search_ptr, bone_dropper->search_prop) != &RNA_Bone)
   {
     return false;
   }
+  PointerRNA owner_ptr = RNA_id_pointer_create(bone_dropper->search_ptr.owner_id);
+  BLI_assert(RNA_type_to_ID_code(owner_ptr.type) == ID_AR);
+
   return true;
 }
 
@@ -180,8 +180,6 @@ static Bone *bonedropper_sample_pt(
   ScrArea *area_prev = CTX_wm_area(C);
   ARegion *region_prev = CTX_wm_region(C);
 
-  bdr.name[0] = '\0';
-
   const int mval[2] = {event_xy[0] - region->winrct.xmin, event_xy[1] - region->winrct.ymin};
 
   CTX_wm_window_set(C, &win);
@@ -192,15 +190,15 @@ static Bone *bonedropper_sample_pt(
   ED_region_tag_redraw(region);
 
   Bone *bone = nullptr;
-  Base *base = nullptr;
 
   switch (area.spacetype) {
     case SPACE_VIEW3D: {
+      Base *base = nullptr;
       bone = ED_armature_pick_bone(C, mval, true, &base);
       break;
     }
     case SPACE_OUTLINER: {
-      // bone = ED_armature_pick_bone(C, mval, false, &base);
+      bone = ED_outliner_give_bone_under_cursor(C, mval);
       break;
     }
 
@@ -231,7 +229,7 @@ static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy
   if (!win || !area) {
     return false;
   }
-  if (area->spacetype != SPACE_VIEW3D) {
+  if (!ELEM(area->spacetype, SPACE_VIEW3D, SPACE_OUTLINER)) {
     return false;
   }
 
@@ -274,6 +272,7 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
   else if (event->type == MOUSEMOVE) {
+    bdr->name[0] = '\0';
     int event_xy_win[2];
     wmWindow *win = nullptr;
     ScrArea *area = nullptr;
