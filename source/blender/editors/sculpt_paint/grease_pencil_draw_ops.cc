@@ -660,7 +660,7 @@ static Vector<FillToolTargetInfo> ensure_editable_drawings(const Scene &scene,
               target_layer, *target_layer.frame_key_at(frame_number), frame_number, false);
         }
         else {
-          grease_pencil.insert_blank_frame(target_layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+          grease_pencil.insert_frame(target_layer, frame_number);
         }
       }
     }
