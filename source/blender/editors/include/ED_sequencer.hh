@@ -65,3 +65,4 @@ bool sequencer_retiming_mode_is_active(const bContext *C);
  */
 blender::VectorSet<Sequence *> ED_sequencer_selected_strips_from_context(bContext *C);
 bool ED_sequencer_can_select_handle(const Sequence *seq);
+bool ED_sequencer_handle_is_selected(const Sequence *seq, eSeqHandle handle);
