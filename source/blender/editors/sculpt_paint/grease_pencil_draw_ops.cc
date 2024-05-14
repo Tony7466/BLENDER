@@ -476,13 +476,20 @@ static void GREASE_PENCIL_OT_weight_brush_stroke(wmOperatorType *ot)
 /** \name Interpolate Operator
  * \{ */
 
-enum GreasePencilInterpolateFlipMode {
+enum class GreasePencilInterpolateFlipMode : int8_t {
   /* No flip. */
   None = 0,
   /* Flip always. */
-  Flip = 1,
+  Flip,
   /* Flip if needed. */
-  FlipAuto = 2,
+  FlipAuto,
+};
+
+enum class GreasePencilInterpolateLayerMode : int8_t {
+  /* Only interpolate on the active layer. */
+  Active = 0,
+  /* Interpolate strokes on every layer. */
+  All,
 };
 
 constexpr const float interpolate_shift_min = -1.0f;
@@ -493,6 +500,14 @@ struct GreasePencilInterpolateOpData {
     int prev_frame;
     int next_frame;
   };
+
+  /* Layers to include. */
+  IndexMaskMemory layer_mask_memory;
+  IndexMask layer_mask;
+  /* Interpolate only selected keyframes. */
+  bool interpolate_selected_only;
+  /* Exclude breakdown keyframes when finding intervals. */
+  bool exclude_breakdowns;
 
   /* Interpolation factor bias controlled by the user. */
   float shift;
@@ -751,85 +766,81 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
 
   BLI_assert(grease_pencil.has_active_layer());
 
-  GreasePencilInterpolateOpData data;
+  op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__);
+  GreasePencilInterpolateOpData &data = *static_cast<GreasePencilInterpolateOpData *>(
+      op.customdata);
+
   data.shift = RNA_float_get(op.ptr, "shift");
+  data.interpolate_selected_only = RNA_boolean_get(op.ptr, "interpolate_selected_only");
+  data.exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
   data.active_layer_index = *grease_pencil.get_layer_index(*grease_pencil.get_active_layer());
 
+  const auto layer_mode = GreasePencilInterpolateLayerMode(RNA_enum_get(op.ptr, "layers"));
+  switch (layer_mode) {
+    case GreasePencilInterpolateLayerMode::Active:
+      data.layer_mask = IndexRange::from_single(data.active_layer_index);
+      break;
+    case GreasePencilInterpolateLayerMode::All:
+      data.layer_mask = IndexMask::from_predicate(
+          grease_pencil.layers().index_range(),
+          GrainSize(1024),
+          data.layer_mask_memory,
+          [&](const int layer_index) {
+            return grease_pencil.layers()[layer_index]->is_editable();
+          });
+      break;
+  }
+
   data.layer_data.reinitialize(grease_pencil.layers().size());
-  for (const int i : grease_pencil.layers().index_range()) {
-    const Layer &layer = *grease_pencil.layers()[i];
-    const std::optional<FramesMapKeyInterval> interval = find_frames_interval(layer,
-                                                                              current_frame);
-    if (interval) {
-      data.layer_data[i].prev_frame = interval->first;
-      data.layer_data[i].next_frame = interval->second;
+  data.layer_mask.foreach_index([&](const int layer_index) {
+    const Layer &layer = *grease_pencil.layers()[layer_index];
+    GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
+
+    if (const std::optional<FramesMapKeyInterval> interval = find_frames_interval(layer,
+                                                                                  current_frame))
+    {
+      layer_data.prev_frame = interval->first;
+      layer_data.next_frame = interval->second;
     }
     else {
-      data.layer_data[i].prev_frame = data.layer_data[i].next_frame = 0;
+      layer_data.prev_frame = 0;
+      layer_data.next_frame = 0;
     }
-  }
+  });
 
   const GreasePencilInterpolateOpData::LayerData &active_layer_data =
       data.layer_data[data.active_layer_index];
+  if (active_layer_data.prev_frame == active_layer_data.next_frame) {
+    BKE_report(
+        op.reports,
+        RPT_ERROR,
+        "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
+    MEM_delete(&data);
+    return false;
+  }
   data.init_factor = float(current_frame - active_layer_data.prev_frame) /
                      (active_layer_data.next_frame - active_layer_data.prev_frame + 1);
 
-  op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__, std::move(data));
   return true;
 }
 
 /* Exit and free memory. */
 static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
 {
-  //   tGPDinterpolate *tgpi = static_cast<tGPDinterpolate *>(op->customdata);
-  //   bGPdata *gpd = tgpi->gpd;
+  ScrArea &area = *CTX_wm_area(&C);
 
-  //   /* don't assume that operator data exists at all */
-  //   if (tgpi) {
-  //     /* clear status message area */
-  //     ED_area_status_text(tgpi->area, nullptr);
-  //     ED_workspace_status_text(C, nullptr);
-
-  //     /* Clear any temp stroke. */
-  //     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-  //       LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-  //         gpencil_interpolate_free_tagged_strokes(gpf);
-  //       }
-  //     }
-
-  //     /* finally, free memory used by temp data */
-  //     LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
-  //       BKE_gpencil_free_strokes(tgpil->prevFrame);
-  //       BKE_gpencil_free_strokes(tgpil->nextFrame);
-  //       BKE_gpencil_free_strokes(tgpil->interFrame);
-  //       MEM_SAFE_FREE(tgpil->prevFrame);
-  //       MEM_SAFE_FREE(tgpil->nextFrame);
-  //       MEM_SAFE_FREE(tgpil->interFrame);
-
-  //       /* Free list of strokes. */
-  //       BLI_freelistN(&tgpil->selected_strokes);
-
-  //       /* Free Hash tablets. */
-  //       if (tgpil->used_strokes != nullptr) {
-  //         BLI_ghash_free(tgpil->used_strokes, nullptr, nullptr);
-  //       }
-  //       if (tgpil->pair_strokes != nullptr) {
-  //         BLI_ghash_free(tgpil->pair_strokes, nullptr, nullptr);
-  //       }
-  //     }
-
-  //     BLI_freelistN(&tgpi->ilayers);
-
-  //     MEM_SAFE_FREE(tgpi);
-  //   }
-
-  if (op.customdata) {
-    MEM_delete(static_cast<GreasePencilInterpolateOpData *>(op.customdata));
-    op.customdata = nullptr;
+  if (op.customdata == nullptr) {
+    return;
   }
 
+  ED_area_status_text(&area, nullptr);
+  ED_workspace_status_text(&C, nullptr);
+
+  MEM_delete(static_cast<GreasePencilInterpolateOpData *>(op.customdata));
+  op.customdata = nullptr;
+
   // DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
+  // WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
 // /* Init new temporary interpolation data */
@@ -876,19 +887,6 @@ static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
 //   gpencil_interpolate_set_points(C, tgpi);
 
 //   return true;
-// }
-
-// /* Allocate memory and initialize values */
-// static tGPDinterpolate *gpencil_session_init_interpolation(bContext *C, wmOperator *op)
-// {
-//   tGPDinterpolate *tgpi = static_cast<tGPDinterpolate *>(
-//       MEM_callocN(sizeof(tGPDinterpolate), "GPencil Interpolate Data"));
-
-//   /* define initial values */
-//   gpencil_interpolate_set_init_values(C, op, tgpi);
-
-//   /* return context data for running operator */
-//   return tgpi;
 // }
 
 static bool grease_pencil_interpolate_poll(bContext *C)
@@ -970,6 +968,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           ED_area_status_text(&area, nullptr);
           ED_workspace_status_text(C, nullptr);
           WM_cursor_modal_restore(&win);
+
           grease_pencil_interpolate_exit(*C, *op);
           return OPERATOR_CANCELLED;
         case InterpolateToolModalEvent::Confirm:
@@ -1065,9 +1064,15 @@ static void grease_pencil_interpolate_cancel(bContext *C, wmOperator *op)
 static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
 {
   static const EnumPropertyItem flip_modes[] = {
-      {GreasePencilInterpolateFlipMode::None, "NONE", 0, "No Flip", ""},
-      {GreasePencilInterpolateFlipMode::Flip, "FLIP", 0, "Flip", ""},
-      {GreasePencilInterpolateFlipMode::FlipAuto, "AUTO", 0, "Automatic", ""},
+      {int(GreasePencilInterpolateFlipMode::None), "NONE", 0, "No Flip", ""},
+      {int(GreasePencilInterpolateFlipMode::Flip), "FLIP", 0, "Flip", ""},
+      {int(GreasePencilInterpolateFlipMode::FlipAuto), "AUTO", 0, "Automatic", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem gpencil_interpolation_layer_items[] = {
+      {int(GreasePencilInterpolateLayerMode::Active), "ACTIVE", 0, "Active", ""},
+      {int(GreasePencilInterpolateLayerMode::All), "ALL", 0, "All Layers", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1086,12 +1091,6 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_BLOCKING;
-
-  static const EnumPropertyItem gpencil_interpolation_layer_items[] = {
-      {0, "ACTIVE", 0, "Active", ""},
-      {1, "ALL", 0, "All Layers", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
 
   /* properties */
   RNA_def_float_factor(
@@ -1127,7 +1126,7 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "flip",
                flip_modes,
-               GreasePencilInterpolateFlipMode::FlipAuto,
+               int(GreasePencilInterpolateFlipMode::FlipAuto),
                "Flip Mode",
                "Invert destination stroke to match start and end with source stroke");
 
