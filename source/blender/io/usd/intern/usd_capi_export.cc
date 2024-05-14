@@ -8,6 +8,7 @@
 #include "usd.hh"
 #include "usd_hierarchy_iterator.hh"
 #include "usd_hook.hh"
+#include "usd_light_convert.hh"
 #include "usd_private.hh"
 
 #include <pxr/base/tf/token.h>
@@ -258,6 +259,10 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   wmJobWorkerStatus *worker_status = params.worker_status;
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
+
+  if (!params.selected_objects_only && params.convert_world_material) {
+    world_material_to_dome_light(params, scene, usd_stage);
+  }
 
   SubdivModifierDisabler mod_disabler(depsgraph);
 

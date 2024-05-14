@@ -356,6 +356,10 @@ USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
     }
   }
 
+  if (prim.IsA<pxr::UsdLuxDomeLight>()) {
+    dome_lights_.push_back(pxr::UsdLuxDomeLight(prim));
+  }
+
   pxr::Usd_PrimFlagsConjunction filter_flags = pxr::UsdPrimIsActive && pxr::UsdPrimIsLoaded &&
                                                !pxr::UsdPrimIsAbstract;
   if (defined_prims_only) {
@@ -438,6 +442,7 @@ void USDStageReader::collect_readers()
   }
 
   clear_readers();
+  dome_lights_.clear();
 
   /* Identify paths to point instancer prototypes, as these will be converted
    * in a separate pass over the stage. */

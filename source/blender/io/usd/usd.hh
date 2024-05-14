@@ -102,6 +102,10 @@ struct USDExportParams {
   bool convert_orientation = false;
   enum eIOAxis forward_axis = eIOAxis::IO_AXIS_NEGATIVE_Z;
   enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
+  bool convert_world_material = true;
+  bool use_original_paths = false;
+  float light_intensity_scale = 1.0f;
+  bool convert_light_to_nits = true;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
@@ -145,6 +149,8 @@ struct USDImportParams {
   eUSDTexNameCollisionMode tex_name_collision_mode;
   bool import_all_materials;
   eUSDAttrImportMode attr_import_mode;
+  bool create_background_shader;
+  bool convert_light_from_nits;
 
   /**
    * Communication structure between the wmJob management code and the worker code. Currently used
@@ -188,6 +194,12 @@ bool USD_import(bContext *C,
 int USD_get_version();
 
 /* USD Import and Mesh Cache interface. */
+
+/* Similar to BLI_path_abs(), but also invokes the USD asset resolver
+ * to determine the absolute path. This is necessary for resolving
+ * paths with URIs that BLI_path_abs() would otherwise alter when
+ * attempting to normalize the path. */
+void USD_path_abs(char *path, const char *basepath, bool for_import);
 
 CacheArchiveHandle *USD_create_handle(Main *bmain, const char *filepath, ListBase *object_paths);
 
