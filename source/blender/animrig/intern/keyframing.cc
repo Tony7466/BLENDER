@@ -1003,10 +1003,7 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
                                            const eInsertKeyFlags insert_key_flags,
                                            const KeyframeSettings &key_settings)
 {
-  if (layer.strips().size() == 0) {
-    layer.strip_add(Strip::Type::Keyframe);
-  }
-  Strip *strip = layer.strip(0);
+  Strip *strip = layer.strip_at_time(key_data.position[0]);
   if (strip == nullptr) {
     return SingleKeyingResult::NO_VALID_STRIP;
   }
