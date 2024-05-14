@@ -835,7 +835,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         bool is_lookdev,
                                         GPUCodegenCallbackFn callback,
                                         void *thunk,
-                                        GPUMaterialCanUseDefaultCallbackFn can_use_default_cb)
+                                        GPUMaterialPassReplacementCallbackFn pass_replacement_cb)
 {
   /* Search if this material is not already compiled. */
   LISTBASE_FOREACH (LinkData *, link, gpumaterials) {
@@ -870,7 +870,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   gpu_material_sky_texture_build(mat);
 
   /* Use default material pass when possible. */
-  if (GPUPass *default_pass = can_use_default_cb ? can_use_default_cb(thunk, mat) : nullptr) {
+  if (GPUPass *default_pass = pass_replacement_cb ? pass_replacement_cb(thunk, mat) : nullptr) {
     mat->pass = default_pass;
     GPU_pass_acquire(mat->pass);
   }

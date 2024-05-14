@@ -537,7 +537,7 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                       bool deferred,
                                       GPUCodegenCallbackFn callback,
                                       void *thunk,
-                                      GPUMaterialCanUseDefaultCallbackFn can_use_default_cb)
+                                      GPUMaterialPassReplacementCallbackFn pass_replacement_cb)
 {
   Scene *scene = (Scene *)DEG_get_original_id(&DST.draw_ctx.scene->id);
   GPUMaterial *mat = GPU_material_from_nodetree(scene,
@@ -551,7 +551,7 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                                 false,
                                                 callback,
                                                 thunk,
-                                                can_use_default_cb);
+                                                pass_replacement_cb);
 
   drw_register_shader_vlattrs(mat);
 

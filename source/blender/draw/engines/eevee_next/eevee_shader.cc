@@ -770,7 +770,7 @@ static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *co
   reinterpret_cast<ShaderModule *>(thunk)->material_create_info_ammend(mat, codegen);
 }
 
-static GPUPass *can_use_default_cb(void *thunk, GPUMaterial *mat)
+static GPUPass *pass_replacement_cb(void *thunk, GPUMaterial *mat)
 {
   using namespace blender::gpu::shader;
 
@@ -854,7 +854,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                               deferred_compilation,
                                               codegen_callback,
                                               this,
-                                              is_default_material ? nullptr : can_use_default_cb);
+                                              is_default_material ? nullptr : pass_replacement_cb);
 
   return mat;
 }
