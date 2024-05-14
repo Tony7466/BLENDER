@@ -36,6 +36,9 @@
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 #include "wm_event_types.hh"
+#include <algorithm>
+#include <iterator>
+#include <optional>
 
 namespace blender::ed::sculpt_paint {
 
@@ -486,44 +489,20 @@ constexpr const float interpolate_shift_min = -1.0f;
 constexpr const float interpolate_shift_max = 2.0f;
 
 struct GreasePencilInterpolateOpData {
-  /* Initial factor value. */
-  float init_factor;
-  /* Interpolation factor bias. */
+  struct LayerData {
+    int prev_frame;
+    int next_frame;
+  };
+
+  /* Interpolation factor bias controlled by the user. */
   float shift;
+  /* Interpolation base factor for the active layer. */
+  float init_factor;
 
-  NumInput num; /* numeric input */
+  NumInput num;
+  Array<LayerData> layer_data;
+  int active_layer_index;
 };
-
-// /* Helper: free all temp strokes for display. */
-// static void gpencil_interpolate_free_tagged_strokes(bGPDframe *gpf)
-// {
-//   if (gpf == nullptr) {
-//     return;
-//   }
-
-//   LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
-//     if (gps->flag & GP_STROKE_TAG) {
-//       BLI_remlink(&gpf->strokes, gps);
-//       BKE_gpencil_free_stroke(gps);
-//     }
-//   }
-// }
-
-// /* Helper: Untag all strokes. */
-// static void gpencil_interpolate_untag_strokes(bGPDlayer *gpl)
-// {
-//   if (gpl == nullptr) {
-//     return;
-//   }
-
-//   LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-//     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-//       if (gps->flag & GP_STROKE_TAG) {
-//         gps->flag &= ~GP_STROKE_TAG;
-//       }
-//     }
-//   }
-// }
 
 // /* Helper: Update all strokes interpolated */
 // static void gpencil_interpolate_update_strokes(bContext *C, tGPDinterpolate *tgpi)
@@ -572,50 +551,6 @@ struct GreasePencilInterpolateOpData {
 
 //   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 //   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
-// }
-
-// /* Helper: Get previous keyframe (exclude breakdown type). */
-// static bGPDframe *gpencil_get_previous_keyframe(bGPDlayer *gpl,
-//                                                 int cfra,
-//                                                 const bool exclude_breakdowns)
-// {
-//   if (gpl->actframe != nullptr && gpl->actframe->framenum < cfra) {
-//     if ((!exclude_breakdowns) ||
-//         ((exclude_breakdowns) && (gpl->actframe->key_type != BEZT_KEYTYPE_BREAKDOWN)))
-//     {
-//       return gpl->actframe;
-//     }
-//   }
-
-//   LISTBASE_FOREACH_BACKWARD (bGPDframe *, gpf, &gpl->frames) {
-//     if ((exclude_breakdowns) && (gpf->key_type == BEZT_KEYTYPE_BREAKDOWN)) {
-//       continue;
-//     }
-//     if (gpf->framenum >= cfra) {
-//       continue;
-//     }
-//     return gpf;
-//   }
-
-//   return nullptr;
-// }
-
-// /* Helper: Get next keyframe (exclude breakdown type). */
-// static bGPDframe *gpencil_get_next_keyframe(bGPDlayer *gpl,
-//                                             int cfra,
-//                                             const bool exclude_breakdowns)
-// {
-//   LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-//     if ((exclude_breakdowns) && (gpf->key_type == BEZT_KEYTYPE_BREAKDOWN)) {
-//       continue;
-//     }
-//     if (gpf->framenum <= cfra) {
-//       continue;
-//     }
-//     return gpf;
-//   }
-
-//   return nullptr;
 // }
 
 // /* Helper: Create internal strokes interpolated */
@@ -786,10 +721,60 @@ static void grease_pencil_interpolate_update(bContext &C,
   //   gpencil_interpolate_update_strokes(C, tgpi);
 }
 
-static bool grease_pencil_interpolate_init(bContext &C, wmOperator &op)
+using FramesMapKeyInterval = std::pair<int, int>;
+
+static std::optional<FramesMapKeyInterval> find_frames_interval(
+    const bke::greasepencil::Layer &layer, const int frame_number)
 {
-  op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__,
-                                                         GreasePencilInterpolateOpData{});
+  using bke::greasepencil::FramesMapKey;
+  using SortedKeysIterator = Span<FramesMapKey>::iterator;
+
+  const Span<FramesMapKey> sorted_keys = layer.sorted_keys();
+  const SortedKeysIterator next_key_it = std::upper_bound(
+      sorted_keys.begin(), sorted_keys.end(), frame_number);
+
+  if (next_key_it == sorted_keys.end() || next_key_it == sorted_keys.begin()) {
+    return std::nullopt;
+  }
+
+  return std::make_pair(*(next_key_it - 1), *next_key_it);
+}
+
+static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
+{
+  using bke::greasepencil::Layer;
+
+  const Scene &scene = *CTX_data_scene(&C);
+  const int current_frame = scene.r.cfra;
+  const Object &object = *CTX_data_active_object(&C);
+  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+
+  BLI_assert(grease_pencil.has_active_layer());
+
+  GreasePencilInterpolateOpData data;
+  data.shift = RNA_float_get(op.ptr, "shift");
+  data.active_layer_index = *grease_pencil.get_layer_index(*grease_pencil.get_active_layer());
+
+  data.layer_data.reinitialize(grease_pencil.layers().size());
+  for (const int i : grease_pencil.layers().index_range()) {
+    const Layer &layer = *grease_pencil.layers()[i];
+    const std::optional<FramesMapKeyInterval> interval = find_frames_interval(layer,
+                                                                              current_frame);
+    if (interval) {
+      data.layer_data[i].prev_frame = interval->first;
+      data.layer_data[i].next_frame = interval->second;
+    }
+    else {
+      data.layer_data[i].prev_frame = data.layer_data[i].next_frame = 0;
+    }
+  }
+
+  const GreasePencilInterpolateOpData::LayerData &active_layer_data =
+      data.layer_data[data.active_layer_index];
+  data.init_factor = float(current_frame - active_layer_data.prev_frame) /
+                     (active_layer_data.next_frame - active_layer_data.prev_frame + 1);
+
+  op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__, std::move(data));
   return true;
 }
 
@@ -927,7 +912,6 @@ static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const w
   wmWindow &win = *CTX_wm_window(C);
   // bGPdata *gpd = CTX_data_gpencil_data(C);
   // bGPDlayer *gpl = CTX_data_active_gpencil_layer(C);
-  // Scene *scene = CTX_data_scene(C);
   // tGPDinterpolate *tgpi = nullptr;
 
   // /* Cannot interpolate if not between 2 frames. */
