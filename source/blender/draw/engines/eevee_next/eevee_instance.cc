@@ -65,7 +65,8 @@ void Instance::init(const int2 &output_res,
 
   info = "";
 
-  if (!shaders.is_ready(is_image_render())) {
+  shaders_are_ready_ = shaders.is_ready(is_image_render());
+  if (!shaders_are_ready_) {
     return;
   }
 
@@ -181,7 +182,7 @@ void Instance::view_update()
 
 void Instance::begin_sync()
 {
-  if (!shaders.is_ready()) {
+  if (!shaders_are_ready_) {
     return;
   }
 
@@ -228,7 +229,7 @@ void Instance::begin_sync()
 
 void Instance::object_sync(Object *ob)
 {
-  if (!shaders.is_ready()) {
+  if (!shaders_are_ready_) {
     return;
   }
 
@@ -317,7 +318,7 @@ void Instance::object_sync_render(void *instance_,
 
 void Instance::end_sync()
 {
-  if (!shaders.is_ready()) {
+  if (!shaders_are_ready_) {
     return;
   }
 
@@ -530,7 +531,7 @@ void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
 
 void Instance::draw_viewport()
 {
-  if (!shaders.is_ready()) {
+  if (!shaders_are_ready_) {
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     GPU_framebuffer_clear_color_depth(dfbl->default_fb, float4(0.0f), 1.0f);
     DRW_viewport_request_redraw();
