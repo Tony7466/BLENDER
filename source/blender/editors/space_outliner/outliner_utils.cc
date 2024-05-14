@@ -496,11 +496,20 @@ Bone *ED_outliner_give_bone_under_cursor(bContext *C, const int mval[2])
 
   Bone *bone = nullptr;
   TreeStoreElem *tselem = TREESTORE(te);
-  if (tselem->type == TSE_BONE) {
-    // Object *ob = (Object *)tselem->id;
-    BKE_view_layer_synced_ensure(scene, view_layer);
-    bone = (Bone *)te->directdata;
-    // base = (te->directdata) ? (Base *)te->directdata : BKE_view_layer_base_find(view_layer, ob);
+  switch (tselem->type) {
+    case TSE_BONE: {
+      BKE_view_layer_synced_ensure(scene, view_layer);
+      bone = (Bone *)te->directdata;
+      break;
+    }
+    case TSE_POSE_CHANNEL: {
+      bPoseChannel *pchan = (bPoseChannel *)te->directdata;
+      bone = pchan->bone;
+      break;
+    }
+
+    default:
+      break;
   }
 
   return bone;
