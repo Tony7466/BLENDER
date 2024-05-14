@@ -145,8 +145,10 @@ class StepDrawingGeometry : public StepDrawingGeometryBase {
     drawing_geometry.geometry.wrap() = geometry_;
 
     /* TODO: Check if there is a way to tell if both stored and current geometry are still the
-     * same, to avoid recomputing the cache all the time for all drawings? */
+     * same, to avoid recomputing the caches all the time for all drawings? */
     drawing_geometry.runtime->triangles_cache.tag_dirty();
+    drawing_geometry.runtime->curve_plane_normals_cache.tag_dirty();
+    drawing_geometry.runtime->curve_texture_matrices.tag_dirty();
   }
 };
 
@@ -290,6 +292,11 @@ class StepObject {
   }
 
  public:
+  ~StepObject()
+  {
+    CustomData_free(&layers_data_, layers_num_);
+  }
+
   void encode(Object *ob, StepEncodeStatus &encode_status)
   {
     const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
@@ -332,12 +339,10 @@ static bool step_encode(bContext *C, Main *bmain, UndoStep *us_p)
 
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_num = 0;
-  Object **objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer, &objects_num);
-  BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(objects); })
+  Vector<Object *> objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer);
 
   us->scene_ref.ptr = scene;
-  new (&us->objects) Array<StepObject>(objects_num);
+  new (&us->objects) Array<StepObject>(objects.size());
 
   threading::parallel_for(us->objects.index_range(), 8, [&](const IndexRange range) {
     for (const int64_t i : range) {

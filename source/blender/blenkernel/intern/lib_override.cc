@@ -29,7 +29,7 @@
 #include "BKE_armature.hh"
 #include "BKE_blender.hh"
 #include "BKE_collection.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_key.hh"
@@ -253,11 +253,18 @@ static ID *lib_override_library_create_from(Main *bmain,
                                             const int lib_id_copy_flags)
 {
   /* NOTE: do not copy possible override data from the reference here. */
-  ID *local_id = BKE_id_copy_ex(bmain,
-                                reference_id,
-                                nullptr,
-                                LIB_ID_COPY_DEFAULT | LIB_ID_COPY_NO_LIB_OVERRIDE |
-                                    lib_id_copy_flags);
+  ID *local_id = BKE_id_copy_in_lib(
+      bmain,
+      owner_library,
+      reference_id,
+      nullptr,
+      nullptr,
+      (LIB_ID_COPY_DEFAULT | LIB_ID_COPY_NO_LIB_OVERRIDE | lib_id_copy_flags));
+  if (local_id == nullptr) {
+    return nullptr;
+  }
+  BLI_assert(local_id->lib == owner_library);
+  id_us_min(local_id);
 
   /* In case we could not get an override ID with the exact same name as its linked reference,
    * ensure we at least get a uniquely named override ID over the whole current Main data, to
@@ -271,16 +278,14 @@ static ID *lib_override_library_create_from(Main *bmain,
     id_sort_by_name(which_libbase(bmain, GS(local_id->name)), local_id, nullptr);
   }
 
-  if (local_id == nullptr) {
-    return nullptr;
-  }
-  id_us_min(local_id);
-
-  /* TODO: Handle this properly in LIB_NO_MAIN case as well (i.e. resync case). Or offload to
-   * generic ID copy code? Would probably be better to have a version of #BKE_id_copy_ex that takes
-   * an extra `target_lib` parameter. */
-  local_id->lib = owner_library;
-  if ((lib_id_copy_flags & LIB_ID_CREATE_NO_MAIN) != 0 && owner_library == nullptr) {
+  /* In `NO_MAIN` case, generic `BKE_id_copy` code won't call this.
+   * In liboverride resync case however, the currently not-in-Main new IDs will be added back to
+   * Main later, so ensure that their linked dependencies and paths are properly handled here.
+   *
+   * NOTE: This is likely not the best place to do this. Ideally, #BKE_libblock_management_main_add
+   * e.g. should take care of this. But for the time being, this works and has been battle-proofed.
+   */
+  if ((lib_id_copy_flags & LIB_ID_CREATE_NO_MAIN) != 0 && !ID_IS_LINKED(local_id)) {
     lib_id_copy_ensure_local(bmain, reference_id, local_id, 0);
   }
 
@@ -2205,7 +2210,7 @@ static bool lib_override_library_resync(Main *bmain,
                 reinterpret_cast<Scene *>(reference_id)->master_collection);
             break;
           case ID_NT:
-            reference_id = reinterpret_cast<ID *>(ntreeFromID(id));
+            reference_id = reinterpret_cast<ID *>(blender::bke::ntreeFromID(id));
             break;
           default:
             break;
@@ -2666,7 +2671,7 @@ static bool lib_override_library_resync(Main *bmain,
   return success;
 }
 
-/** Clenup: Remove unused 'place holder' linked IDs. */
+/** Cleanup: Remove unused 'place holder' linked IDs. */
 static void lib_override_cleanup_after_resync(Main *bmain)
 {
   LibQueryUnusedIDsData parameters;
@@ -2757,7 +2762,7 @@ static bool lib_override_resync_id_lib_level_is_valid(ID *id,
                                                       const int library_indirect_level,
                                                       const bool do_strict_equal)
 {
-  const int id_lib_level = (ID_IS_LINKED(id) ? id->lib->temp_index : 0);
+  const int id_lib_level = (ID_IS_LINKED(id) ? id->lib->runtime.temp_index : 0);
   return do_strict_equal ? id_lib_level == library_indirect_level :
                            id_lib_level <= library_indirect_level;
 }
@@ -2790,7 +2795,7 @@ static void lib_override_resync_tagging_finalize_recurse(Main *bmain,
         library_indirect_level,
         id_root->name,
         id_root->lib ? id_root->lib->filepath : "<LOCAL>",
-        id_root->lib ? id_root->lib->temp_index : 0);
+        id_root->lib ? id_root->lib->runtime.temp_index : 0);
     id_root->tag &= ~LIB_TAG_LIBOVERRIDE_NEED_RESYNC;
     return;
   }
@@ -3391,7 +3396,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
         BLI_ghashIterator_getValue(id_roots_iter));
 
     if (ID_IS_LINKED(id_root)) {
-      id_root->lib->tag |= LIBRARY_TAG_RESYNC_REQUIRED;
+      id_root->lib->runtime.tag |= LIBRARY_TAG_RESYNC_REQUIRED;
     }
 
     CLOG_INFO(&LOG_RESYNC,
@@ -3461,7 +3466,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
             "otherwise unchanged linked reference was moved around in the library file (e.g. if "
             "an object was moved into another sub-collection of the same hierarchy).",
             id->name,
-            ID_IS_LINKED(id) ? id->lib->temp_index : 0);
+            ID_IS_LINKED(id) ? id->lib->runtime.temp_index : 0);
         id->tag |= LIB_TAG_DOIT;
       }
       else {
@@ -3472,7 +3477,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
             "otherwise unchanged linked reference was moved around in the library file (e.g. if "
             "an object was moved into another sub-collection of the same hierarchy).",
             id->name,
-            ID_IS_LINKED(id) ? id->lib->temp_index : 0);
+            ID_IS_LINKED(id) ? id->lib->runtime.temp_index : 0);
         id->tag &= ~LIB_TAG_LIBOVERRIDE_NEED_RESYNC;
         id->override_library->runtime->tag &= ~LIBOVERRIDE_TAG_RESYNC_ISOLATED_FROM_ROOT;
       }
@@ -3486,7 +3491,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
                   "RNA/liboverride apply code, this whole level of library needs to be processed "
                   "another time.",
                   id->name,
-                  ID_IS_LINKED(id) ? id->lib->temp_index : 0,
+                  ID_IS_LINKED(id) ? id->lib->runtime.temp_index : 0,
                   library_indirect_level);
         process_lib_level_again = true;
         /* Cleanup tag for now, will be re-set by next iteration of this function. */
@@ -3502,7 +3507,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
                   "tackling library level %d. However, it was not tagged as such by "
                   "RNA/liboverride apply code, so ignoring it",
                   id->name,
-                  ID_IS_LINKED(id) ? id->lib->temp_index : 0,
+                  ID_IS_LINKED(id) ? id->lib->runtime.temp_index : 0,
                   library_indirect_level);
         id->tag &= ~LIB_TAG_LIBOVERRIDE_NEED_RESYNC;
       }
@@ -3517,7 +3522,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
           "ID override %s from library level %d still tagged as isolated from its hierarchy root, "
           "it should have been either properly resynced or removed at that point.",
           id->name,
-          ID_IS_LINKED(id) ? id->lib->temp_index : 0);
+          ID_IS_LINKED(id) ? id->lib->runtime.temp_index : 0);
       id->override_library->runtime->tag &= ~LIBOVERRIDE_TAG_RESYNC_ISOLATED_FROM_ROOT;
     }
   }
@@ -3548,8 +3553,9 @@ static int lib_override_sort_libraries_func(LibraryIDLinkCallbackData *cb_data)
   ID *id_owner = cb_data->owner_id;
   ID *id = *cb_data->id_pointer;
   if (id != nullptr && ID_IS_LINKED(id) && id->lib != id_owner->lib) {
-    const int owner_library_indirect_level = ID_IS_LINKED(id_owner) ? id_owner->lib->temp_index :
-                                                                      0;
+    const int owner_library_indirect_level = ID_IS_LINKED(id_owner) ?
+                                                 id_owner->lib->runtime.temp_index :
+                                                 0;
     if (owner_library_indirect_level > 100) {
       CLOG_ERROR(&LOG_RESYNC,
                  "Levels of indirect usages of libraries is way too high, there are most likely "
@@ -3572,8 +3578,8 @@ static int lib_override_sort_libraries_func(LibraryIDLinkCallbackData *cb_data)
           id->lib->filepath);
     }
 
-    if (owner_library_indirect_level >= id->lib->temp_index) {
-      id->lib->temp_index = owner_library_indirect_level + 1;
+    if (owner_library_indirect_level >= id->lib->runtime.temp_index) {
+      id->lib->runtime.temp_index = owner_library_indirect_level + 1;
       *reinterpret_cast<bool *>(cb_data->user_data) = true;
     }
   }
@@ -3590,7 +3596,7 @@ static int lib_override_libraries_index_define(Main *bmain)
 {
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
     /* index 0 is reserved for local data. */
-    library->temp_index = 1;
+    library->runtime.temp_index = 1;
   }
   bool do_continue = true;
   while (do_continue) {
@@ -3608,8 +3614,8 @@ static int lib_override_libraries_index_define(Main *bmain)
 
   int library_indirect_level_max = 0;
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (library->temp_index > library_indirect_level_max) {
-      library_indirect_level_max = library->temp_index;
+    if (library->runtime.temp_index > library_indirect_level_max) {
+      library_indirect_level_max = library->runtime.temp_index;
     }
   }
   return library_indirect_level_max;
@@ -3704,7 +3710,7 @@ void BKE_lib_override_library_main_resync(Main *bmain,
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (library->tag & LIBRARY_TAG_RESYNC_REQUIRED) {
+    if (library->runtime.tag & LIBRARY_TAG_RESYNC_REQUIRED) {
       CLOG_INFO(&LOG_RESYNC,
                 2,
                 "library '%s' contains some linked overrides that required recursive resync, "
@@ -3791,7 +3797,7 @@ void BKE_lib_override_library_make_local(Main *bmain, ID *id)
     }
   }
 
-  bNodeTree *node_tree = ntreeFromID(id);
+  bNodeTree *node_tree = blender::bke::ntreeFromID(id);
   if (node_tree != nullptr) {
     node_tree->id.flag &= ~LIB_EMBEDDED_DATA_LIB_OVERRIDE;
   }
@@ -4224,48 +4230,71 @@ bool BKE_lib_override_library_property_operation_operands_validate(
   return true;
 }
 
-void BKE_lib_override_library_validate(Main * /*bmain*/, ID *id, ReportList *reports)
+static bool override_library_is_valid(const ID &id,
+                                      const IDOverrideLibrary &liboverride,
+                                      ReportList *reports)
 {
-  if (id->override_library == nullptr) {
-    return;
-  }
-
-  /* NOTE: In code deleting liboverride data below, #BKE_lib_override_library_make_local is used
-   * instead of directly calling #BKE_lib_override_library_free, because the former also handles
-   * properly 'liboverride embedded' IDs, like root node-trees, or shape-keys. */
-
-  if (id->override_library->reference == nullptr) {
+  if (liboverride.reference == nullptr) {
     /* This (probably) used to be a template ID, could be linked or local, not an override. */
     BKE_reportf(reports,
                 RPT_WARNING,
                 "Library override templates have been removed: removing all override data from "
                 "the data-block '%s'",
-                id->name);
-    BKE_lib_override_library_make_local(nullptr, id);
-    return;
+                id.name);
+    return false;
   }
-  if (id->override_library->reference == id) {
+  if (liboverride.reference == &id) {
     /* Very serious data corruption, cannot do much about it besides removing the liboverride data.
      */
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Data corruption: data-block '%s' is using itself as library override reference, "
                 "removing all override data",
-                id->name);
-    BKE_lib_override_library_make_local(nullptr, id);
-    return;
+                id.name);
+    return false;
   }
-  if (!ID_IS_LINKED(id->override_library->reference)) {
+  if (!ID_IS_LINKED(liboverride.reference)) {
     /* Very serious data corruption, cannot do much about it besides removing the liboverride data.
      */
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Data corruption: data-block '%s' is using another local data-block ('%s') as "
                 "library override reference, removing all override data",
-                id->name,
-                id->override_library->reference->name);
-    BKE_lib_override_library_make_local(nullptr, id);
+                id.name,
+                liboverride.reference->name);
+    return false;
+  }
+  return true;
+}
+
+void BKE_lib_override_library_validate(Main *bmain, ID *id, ReportList *reports)
+{
+  /* Do NOT use `ID_IS_OVERRIDE_LIBRARY` here, since this code also needs to fix broken cases (like
+   * null reference pointer), which would be skipped by that macro. */
+  if (id->override_library == nullptr && !ID_IS_OVERRIDE_LIBRARY_VIRTUAL(id)) {
     return;
+  }
+
+  ID *liboverride_id = id;
+  IDOverrideLibrary *liboverride = id->override_library;
+  if (ID_IS_OVERRIDE_LIBRARY_VIRTUAL(id)) {
+    liboverride = BKE_lib_override_library_get(bmain, id, nullptr, &liboverride_id);
+    if (!liboverride || !override_library_is_valid(*liboverride_id, *liboverride, reports)) {
+      /* Happens in case the given ID is a liboverride-embedded one (actual embedded ID like
+       * NodeTree or master collection, or shape-keys), used by a totally not-liboverride owner ID.
+       * Just clear the relevant ID flag.
+       */
+      id->flag &= ~LIB_EMBEDDED_DATA_LIB_OVERRIDE;
+      return;
+    }
+  }
+  BLI_assert(liboverride);
+
+  /* NOTE: In code deleting liboverride data below, #BKE_lib_override_library_make_local is used
+   * instead of directly calling #BKE_lib_override_library_free, because the former also handles
+   * properly 'liboverride embedded' IDs, like root node-trees, or shape-keys. */
+  if (!override_library_is_valid(*liboverride_id, *liboverride, reports)) {
+    BKE_lib_override_library_make_local(nullptr, liboverride_id);
   }
 }
 
@@ -4274,9 +4303,7 @@ void BKE_lib_override_library_main_validate(Main *bmain, ReportList *reports)
   ID *id;
 
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
-    if (id->override_library != nullptr) {
-      BKE_lib_override_library_validate(bmain, id, reports);
-    }
+    BKE_lib_override_library_validate(bmain, id, reports);
   }
   FOREACH_MAIN_ID_END;
 }
@@ -4558,7 +4585,7 @@ void BKE_lib_override_library_main_operations_create(Main *bmain,
         id->tag |= LIB_TAG_LIBOVERRIDE_AUTOREFRESH;
       }
     }
-    if (bNodeTree *ntree = ntreeFromID(id)) {
+    if (bNodeTree *ntree = blender::bke::ntreeFromID(id)) {
       if (ntree->id.tag & LIB_TAG_LIBOVERRIDE_AUTOREFRESH) {
         ntree->id.tag &= ~LIB_TAG_LIBOVERRIDE_AUTOREFRESH;
         id->tag |= LIB_TAG_LIBOVERRIDE_AUTOREFRESH;
@@ -5019,6 +5046,14 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
       }
     }
   }
+
+  /* NLA Tweak Mode is, in a way, an "edit mode" for certain animation data. However, contrary to
+   * mesh/armature edit modes, it doesn't use its own runtime data, but directly changes various
+   * DNA pointers & flags. As these need to be all consistently set for the system to behave in a
+   * well-defined manner, and the values can come from different files (library NLA tracks/strips
+   * vs. override-added NLA tracks/strips), they need to be checked _after_ all overrides have been
+   * applied. */
+  BKE_animdata_liboverride_post_process(local);
 
   if (local->override_library->storage) {
     /* We know this data-block is not used anywhere besides local->override->storage. */

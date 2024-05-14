@@ -104,7 +104,7 @@ class IrradianceBake {
 
   /* Bounding sphere of the scene being baked. In world space. */
   float4 scene_bound_sphere_;
-  /* Surfel per unit distance. */
+  /* Surfel per unit distance in world space. */
   float surfel_density_ = 1.0f;
   /**
    * Minimum distance a grid sample point should have with a surface.
@@ -192,10 +192,6 @@ class VolumeProbeModule {
  public:
   IrradianceBake bake;
 
-  /** True if world irradiance need to be updated. */
-  /* TODO(fclem): move to private once world irradiance extraction is moved to irradiance cache. */
-  bool do_update_world_ = true;
-
  private:
   Instance &inst_;
 
@@ -222,12 +218,22 @@ class VolumeProbeModule {
   bool display_grids_enabled_ = false;
   PassSimple display_grids_ps_ = {"VolumeProbeModule.Display Grids"};
 
+  /** True if world irradiance need to be updated. */
+  bool do_update_world_ = true;
+
  public:
   VolumeProbeModule(Instance &inst) : bake(inst), inst_(inst){};
   ~VolumeProbeModule(){};
 
   void init();
   void sync();
+
+  /* Tag all grids for reupload in set_view and composite them with the world irradiance. */
+  void update_world_irradiance()
+  {
+    do_update_world_ = true;
+  }
+
   void set_view(View &view);
   void viewport_draw(View &view, GPUFrameBuffer *view_fb);
 

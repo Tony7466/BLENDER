@@ -15,7 +15,6 @@ DirectionalBlurOperation::DirectionalBlurOperation()
 
 void DirectionalBlurOperation::init_execution()
 {
-  QualityStepHelper::init_execution(COM_QH_INCREASE);
   const float angle = data_->angle;
   const float zoom = data_->zoom;
   const float spin = data_->spin;
@@ -72,12 +71,12 @@ void DirectionalBlurOperation::update_memory_buffer_partial(MemoryBuffer *output
       const float cs = cosf(lrot), ss = sinf(lrot);
       const float isc = 1.0f / (1.0f + lsc);
 
-      const float v = isc * (y - center_y_pix_) + lty;
-      const float u = isc * (x - center_x_pix_) + ltx;
+      const float v = isc * (y + 0.5f - center_y_pix_) + lty;
+      const float u = isc * (x + 0.5f - center_x_pix_) + ltx;
 
       float color[4];
       input->read_elem_bilinear(
-          cs * u + ss * v + center_x_pix_, cs * v - ss * u + center_y_pix_, color);
+          cs * u + ss * v + center_x_pix_ - 0.5f, cs * v - ss * u + center_y_pix_ - 0.5f, color);
       add_v4_v4(color_accum, color);
 
       /* Double transformations. */

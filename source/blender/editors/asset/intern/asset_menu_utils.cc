@@ -89,7 +89,7 @@ static const asset_system::AssetRepresentation *get_local_asset_from_relative_id
   return matching_asset;
 }
 
-static const asset_system::AssetRepresentation *find_asset_from_weak_ref(
+const asset_system::AssetRepresentation *find_asset_from_weak_ref(
     const bContext &C, const AssetWeakReference &weak_ref, ReportList *reports)
 {
   if (weak_ref.asset_library_type == ASSET_LIBRARY_LOCAL) {
@@ -103,6 +103,7 @@ static const asset_system::AssetRepresentation *find_asset_from_weak_ref(
       asset_system::all_library_reference());
   if (!all_library) {
     BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+    return nullptr;
   }
 
   const std::string full_path = all_library->resolve_asset_weak_reference_to_full_path(weak_ref);

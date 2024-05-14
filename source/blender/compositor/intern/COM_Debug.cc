@@ -2,8 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "COM_Debug.h"
 
+#include "BLI_assert.h"
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -26,9 +29,13 @@ std::string DebugInfo::current_op_name_;
 static std::string operation_class_name(const NodeOperation *op)
 {
   std::string full_name = typeid(*op).name();
-  /* Remove name-spaces. */
+  /* The typeid name is implementation defined, but it is typically a full C++ name that is either
+   * mangled or demangled. In case it was demangled, remove the namespaces, but if it was mangled,
+   * return the entire name, since there is no easy way to demangle it. */
   size_t pos = full_name.find_last_of(':');
-  BLI_assert(pos != std::string::npos);
+  if (pos == std::string::npos) {
+    return full_name;
+  }
   return full_name.substr(pos + 1);
 }
 
@@ -70,7 +77,7 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
   else if (operation->is_output_operation(system->get_context().is_rendering())) {
     fillcolor = "dodgerblue1";
   }
-  else if (operation->get_flags().is_set_operation) {
+  else if (operation->get_flags().is_constant_operation) {
     fillcolor = "khaki1";
   }
 
@@ -99,6 +106,10 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
           break;
         case DataType::Color:
           len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "Color");
+          break;
+        case DataType::Float2:
+          /* An internal type that needn't be handled. */
+          BLI_assert_unreachable();
           break;
       }
     }
@@ -160,6 +171,10 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
           len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "Color");
           break;
         }
+        case DataType::Float2:
+          /* An internal type that needn't be handled. */
+          BLI_assert_unreachable();
+          break;
       }
     }
     len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "}");
@@ -277,6 +292,10 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
           break;
         case DataType::Color:
           color = "orange";
+          break;
+        case DataType::Float2:
+          /* An internal type that needn't be handled. */
+          BLI_assert_unreachable();
           break;
       }
 
