@@ -49,8 +49,7 @@ void main()
 
   barrier();
   if (gl_LocalInvocationIndex == 0u) {
-    /* Divide by 2 to account for conversion between sphere and hemisphere. */
-    sunlight_buf.color = local_radiance[0] * 0.5;
+    sunlight_buf.color = local_radiance[0];
 
     /* Normalize the sum to get the mean direction. The length of the vector gives us the size of
      * the sun light. */
