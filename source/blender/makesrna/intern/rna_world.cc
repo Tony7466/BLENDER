@@ -285,12 +285,12 @@ void RNA_def_world(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_World_draw_update");
 
   prop = RNA_def_property(srna, "sun_threshold", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop,
-      "Sun Threshold",
-      "If non-zero, the maximum value for world contribution to the scene lighting. "
-      "Higher values will be scaled down to avoid too "
-      "much light bleeding at the cost of accuracy");
+  RNA_def_property_ui_text(prop,
+                           "Sun Threshold",
+                           "If non-zero, the maximum value for world contribution that will be "
+                           "recorded inside the world light probe. The excess contribution is"
+                           "converted to a sun light. This reduces the light bleeding caused by "
+                           "very bright light sources");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_update(prop, 0, "rna_World_draw_update");
 
