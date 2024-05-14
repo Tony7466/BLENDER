@@ -580,7 +580,7 @@ void VKFrameBuffer::render_pass_create()
 
   vkCreateFramebuffer(
       device.device_get(), &framebuffer_create_info, vk_allocation_callbacks, &vk_framebuffer_);
-}  // namespace blender::gpu
+}
 
 void VKFrameBuffer::render_pass_free()
 {
