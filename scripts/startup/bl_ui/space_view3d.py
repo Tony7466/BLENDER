@@ -895,7 +895,7 @@ class VIEW3D_HT_header(Header):
                     depress=(domain == 'CURVE'),
                 ).domain = 'CURVE'
 
-        # Grease Pencil
+        # Grease Pencil v3
         if obj and obj.type == 'GREASEPENCIL':
             # Select mode for Editing
             if object_mode == 'EDIT':
@@ -913,11 +913,24 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
 
+                # TODO: Segment selection
+
             if object_mode == 'PAINT_GPENCIL':
                 row = layout.row(align=True)
-                sub.prop(tool_settings, "use_gpencil_draw_onback", text="", icon='MOD_OPACITY')
-                sub.separator(factor=0.4)
+                row.prop(tool_settings, "use_gpencil_draw_onback", text="", icon='MOD_OPACITY')
+                row.separator(factor=0.4)
+                row.prop(tool_settings, "use_gpencil_automerge_strokes", text="")
+                row.separator(factor=0.4)
+                row.prop(tool_settings, "use_gpencil_weight_data_add", text="", icon='WPAINT_HLT')
+                row.separator(factor=0.4)
                 row.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+
+            # Select mode for Sculpt
+            if object_mode == 'SCULPT_GPENCIL':
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
+                row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
+                row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
 
             if object_mode in {'PAINT_GPENCIL', 'EDIT', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL'}:
                 row = layout.row(align=True)
@@ -999,35 +1012,6 @@ class VIEW3D_HT_header(Header):
                     panel="VIEW3D_PT_gpencil_multi_frame",
                     text="Multiframe",
                 )
-
-        # Grease Pencil
-        if obj and obj.type == 'GREASEPENCIL':
-            if object_mode == 'PAINT_GREASE_PENCIL':
-                row = layout.row()
-                sub = row.row(align=True)
-                sub.prop(tool_settings, "use_gpencil_draw_onback", text="", icon='MOD_OPACITY')
-                sub.separator(factor=0.4)
-                sub.prop(tool_settings, "use_gpencil_automerge_strokes", text="")
-                sub.separator(factor=0.4)
-                sub.prop(tool_settings, "use_gpencil_weight_data_add", text="", icon='WPAINT_HLT')
-                sub.separator(factor=0.4)
-                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
-
-            # Select mode for Editing
-            if object_mode == 'EDIT':
-                row = layout.row(align=True)
-                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='POINT')
-                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='STROKE')
-
-                subrow = row.row(align=True)
-                subrow.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='SEGMENT')
-
-            # Select mode for Sculpt
-            if object_mode == 'SCULPT_GPENCIL':
-                row = layout.row(align=True)
-                row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
-                row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
-                row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
 
         overlay = view.overlay
 
@@ -1275,7 +1259,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_select_paint_mask")
             elif mesh.use_paint_mask_vertex and mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
                 layout.menu("VIEW3D_MT_select_paint_mask_vertex")
-        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL'}:
+        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL'}:
             layout.menu("VIEW3D_MT_select_" + mode_string.lower())
 
         if gp_edit:
@@ -1829,17 +1813,17 @@ class VIEW3D_MT_select_object(Menu):
 
         layout.separator()
 
-        layout.operator_menu_enum("object.select_by_type", "type", text="Select All by Type")
         layout.operator("object.select_camera", text="Select Active Camera")
         layout.operator("object.select_mirror")
         layout.operator("object.select_random", text="Select Random")
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_select_object_more_less")
+        layout.menu("VIEW3D_MT_select_object_more_less", text="More/Less")
 
         layout.separator()
 
+        layout.operator_menu_enum("object.select_by_type", "type", text="Select All by Type")
         layout.operator_menu_enum("object.select_grouped", "type", text="Select Grouped")
         layout.operator_menu_enum("object.select_linked", "type", text="Select Linked")
         layout.operator("object.select_pattern", text="Select Pattern...")
@@ -1892,17 +1876,17 @@ class VIEW3D_MT_select_pose(Menu):
 
         layout.separator()
 
-        layout.operator("pose.select_constraint_target", text="Constraint Target")
-        layout.operator("pose.select_linked", text="Linked")
+        layout.menu("VIEW3D_MT_select_pose_more_less", text="More/Less")
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_select_pose_more_less")
-
-        layout.separator()
-
-        layout.operator_menu_enum("pose.select_grouped", "type", text="Grouped")
+        layout.operator_menu_enum("pose.select_grouped", "type", text="Select Grouped")
+        layout.operator("pose.select_linked", text="Select Linked")
         layout.operator("object.select_pattern", text="Select Pattern...")
+
+        layout.separator()
+
+        layout.operator("pose.select_constraint_target", text="Constraint Target")
 
 
 class VIEW3D_MT_select_particle(Menu):
@@ -1923,16 +1907,16 @@ class VIEW3D_MT_select_particle(Menu):
 
         layout.separator()
 
-        layout.operator("particle.select_linked", text="Select Linked")
-
-        layout.separator()
-
-        layout.operator("particle.select_more")
-        layout.operator("particle.select_less")
-
-        layout.separator()
-
         layout.operator("particle.select_random")
+
+        layout.separator()
+
+        layout.operator("particle.select_more", text="More")
+        layout.operator("particle.select_less", text="Less")
+
+        layout.separator()
+
+        layout.operator("particle.select_linked", text="Select Linked")
 
         layout.separator()
 
@@ -2023,51 +2007,36 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.operator("mesh.select_all", text="None").action = 'DESELECT'
         layout.operator("mesh.select_all", text="Invert").action = 'INVERT'
 
+        # gesture
         layout.separator()
-
         layout.operator("view3d.select_box")
         layout.operator("view3d.select_circle")
         layout.operator_menu_enum("view3d.select_lasso", "mode")
 
-        layout.separator()
-
         # numeric
+        layout.separator()
+        layout.operator("mesh.select_mirror")
         layout.operator("mesh.select_random", text="Select Random")
         layout.operator("mesh.select_nth")
 
+        # more/less
         layout.separator()
+        layout.menu("VIEW3D_MT_edit_mesh_select_more_less", text="More/Less")
 
-        # geometric
-        layout.operator("mesh.edges_select_sharp", text="Select Sharp Edges")
-
+        # grouped
         layout.separator()
-
-        # other ...
         layout.menu("VIEW3D_MT_edit_mesh_select_similar")
-
-        layout.separator()
-
         layout.menu("VIEW3D_MT_edit_mesh_select_by_trait")
-
-        layout.separator()
-
-        layout.menu("VIEW3D_MT_edit_mesh_select_more_less")
-
-        layout.separator()
-
+        layout.menu("VIEW3D_MT_edit_mesh_select_linked")
         layout.menu("VIEW3D_MT_edit_mesh_select_loops")
 
+        # geometric
         layout.separator()
-
-        layout.menu("VIEW3D_MT_edit_mesh_select_linked")
-
-        layout.separator()
-
+        layout.operator("mesh.edges_select_sharp", text="Sharp Edges")
         layout.operator("mesh.select_axis", text="Side of Active")
-        layout.operator("mesh.select_mirror")
 
+        # attribute
         layout.separator()
-
         layout.operator("mesh.select_by_attribute", text="By Attribute")
 
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
@@ -2093,8 +2062,16 @@ class VIEW3D_MT_select_edit_curve(Menu):
 
         layout.operator("curve.select_random")
         layout.operator("curve.select_nth")
+
+        layout.separator()
+
+        layout.operator("curve.select_more", text="More")
+        layout.operator("curve.select_less", text="Less")
+
+        layout.separator()
+
         layout.operator("curve.select_linked", text="Select Linked")
-        layout.operator("curve.select_similar", text="Select Similar")
+        layout.operator_menu_enum("curve.select_similar", "type")
 
         layout.separator()
 
@@ -2102,11 +2079,6 @@ class VIEW3D_MT_select_edit_curve(Menu):
         layout.operator("curve.de_select_last")
         layout.operator("curve.select_next")
         layout.operator("curve.select_previous")
-
-        layout.separator()
-
-        layout.operator("curve.select_more")
-        layout.operator("curve.select_less")
 
 
 class VIEW3D_MT_select_edit_surface(Menu):
@@ -2129,17 +2101,20 @@ class VIEW3D_MT_select_edit_surface(Menu):
 
         layout.operator("curve.select_random")
         layout.operator("curve.select_nth")
+
+        layout.separator()
+
+        layout.operator("curve.select_more", text="More")
+        layout.operator("curve.select_less", text="Less")
+
+        layout.separator()
+
         layout.operator("curve.select_linked", text="Select Linked")
-        layout.operator("curve.select_similar", text="Select Similar")
+        layout.operator_menu_enum("curve.select_similar", "type")
 
         layout.separator()
 
-        layout.operator("curve.select_row")
-
-        layout.separator()
-
-        layout.operator("curve.select_more")
-        layout.operator("curve.select_less")
+        layout.operator("curve.select_row", text="Control Point Row")
 
 
 class VIEW3D_MT_select_edit_text(Menu):
@@ -2198,7 +2173,7 @@ class VIEW3D_MT_select_edit_metaball(Menu):
 
         layout.separator()
 
-        layout.operator_menu_enum("mball.select_similar", "type", text="Similar")
+        layout.operator_menu_enum("mball.select_similar", "type")
 
 
 class VIEW3D_MT_edit_lattice_context_menu(Menu):
@@ -2239,8 +2214,8 @@ class VIEW3D_MT_select_edit_lattice(Menu):
 
         layout.separator()
 
-        layout.operator("lattice.select_more")
-        layout.operator("lattice.select_less")
+        layout.operator("lattice.select_more", text="More")
+        layout.operator("lattice.select_less", text="Less")
 
         layout.separator()
 
@@ -2274,7 +2249,9 @@ class VIEW3D_MT_select_edit_armature(Menu):
 
         layout.separator()
 
-        layout.operator("armature.select_linked", text="Linked")
+        layout.operator("armature.select_linked", text="Select Linked")
+        layout.operator_menu_enum("armature.select_similar", "type")
+        layout.operator("object.select_pattern", text="Select Pattern...")
 
         layout.separator()
 
@@ -2286,8 +2263,6 @@ class VIEW3D_MT_select_edit_armature(Menu):
         props.extend = False
         props.direction = 'CHILD'
 
-        layout.separator()
-
         props = layout.operator("armature.select_hierarchy", text="Extend Parent")
         props.extend = True
         props.direction = 'PARENT'
@@ -2295,9 +2270,6 @@ class VIEW3D_MT_select_edit_armature(Menu):
         props = layout.operator("armature.select_hierarchy", text="Extend Child")
         props.extend = True
         props.direction = 'CHILD'
-
-        layout.operator_menu_enum("armature.select_similar", "type", text="Similar")
-        layout.operator("object.select_pattern", text="Select Pattern...")
 
 
 class VIEW3D_MT_select_edit_grease_pencil(Menu):
@@ -2312,9 +2284,17 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
 
         layout.separator()
 
-        layout.operator("grease_pencil.select_linked", text="Linked")
-        layout.operator("grease_pencil.select_alternate", text="Alternated")
-        layout.operator("grease_pencil.select_random", text="Random")
+        layout.operator("grease_pencil.select_random")
+        layout.operator("grease_pencil.select_alternate")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.select_more", text="More")
+        layout.operator("grease_pencil.select_less", text="Less")
+
+        layout.separator()
+
+        layout.operator("grease_pencil.select_linked")
 
         layout.separator()
 
@@ -2324,11 +2304,6 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
         props = layout.operator("grease_pencil.select_ends", text="Last")
         props.amount_start = 0
         props.amount_end = 1
-
-        layout.separator()
-
-        layout.operator("grease_pencil.select_more")
-        layout.operator("grease_pencil.select_less")
 
 
 class VIEW3D_MT_paint_grease_pencil(Menu):
@@ -2382,23 +2357,23 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
 
         layout.separator()
 
-        layout.operator("gpencil.select_linked", text="Linked")
-        layout.operator("gpencil.select_alternate")
-        layout.operator("gpencil.select_random")
-        layout.operator_menu_enum("gpencil.select_grouped", "type", text="Grouped")
-
-        if context.mode == 'VERTEX_GPENCIL':
-            layout.operator("gpencil.select_vertex_color", text="Color Attribute")
+        layout.operator("gpencil.select_random", text="Select Random")
+        layout.operator("gpencil.select_alternate", text="Select Alternated")
 
         layout.separator()
 
-        layout.operator("gpencil.select_first")
-        layout.operator("gpencil.select_last")
+        layout.operator("gpencil.select_more", text="More")
+        layout.operator("gpencil.select_less", text="Less")
 
         layout.separator()
 
-        layout.operator("gpencil.select_more")
-        layout.operator("gpencil.select_less")
+        layout.operator_menu_enum("gpencil.select_grouped", "type")
+        layout.operator("gpencil.select_linked")
+
+        layout.separator()
+
+        layout.operator("gpencil.select_first", text="First")
+        layout.operator("gpencil.select_last", text="Last")
 
 
 class VIEW3D_MT_select_paint_mask(Menu):
@@ -2411,9 +2386,6 @@ class VIEW3D_MT_select_paint_mask(Menu):
         layout.operator("paint.face_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.face_select_all", text="Invert").action = 'INVERT'
 
-        layout.operator("paint.face_select_more")
-        layout.operator("paint.face_select_less")
-
         layout.separator()
 
         layout.operator("view3d.select_box")
@@ -2422,7 +2394,12 @@ class VIEW3D_MT_select_paint_mask(Menu):
 
         layout.separator()
 
-        layout.operator("paint.face_select_linked", text="Linked")
+        layout.operator("paint.face_select_more", text="More")
+        layout.operator("paint.face_select_less", text="Less")
+
+        layout.separator()
+
+        layout.operator("paint.face_select_linked")
 
 
 class VIEW3D_MT_select_paint_mask_vertex(Menu):
@@ -2435,9 +2412,6 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
         layout.operator("paint.vert_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.vert_select_all", text="Invert").action = 'INVERT'
 
-        layout.operator("paint.vert_select_more")
-        layout.operator("paint.vert_select_less")
-
         layout.separator()
 
         layout.operator("view3d.select_box")
@@ -2446,8 +2420,16 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
 
         layout.separator()
 
-        layout.operator("paint.vert_select_ungrouped", text="Ungrouped Vertices")
+        layout.operator("paint.vert_select_more", text="More")
+        layout.operator("paint.vert_select_less", text="Less")
+
+        layout.separator()
+
         layout.operator("paint.vert_select_linked", text="Select Linked")
+
+        layout.separator()
+
+        layout.operator("paint.vert_select_ungrouped", text="Ungrouped Vertices")
 
 
 class VIEW3D_MT_select_edit_point_cloud(Menu):
@@ -2480,13 +2462,19 @@ class VIEW3D_MT_select_edit_curves(Menu):
 
         layout.separator()
 
-        layout.operator("curves.select_random", text="Random")
-        layout.operator("curves.select_ends", text="Endpoints")
-        layout.operator("curves.select_linked", text="Linked")
+        layout.operator("curves.select_random")
 
         layout.separator()
 
-        layout.menu("VIEW3D_MT_edit_curves_select_more_less")
+        layout.menu("VIEW3D_MT_edit_curves_select_more_less", text="More/Less")
+
+        layout.separator()
+
+        layout.operator("curves.select_linked")
+
+        layout.separator()
+
+        layout.operator("curves.select_ends", text="Endpoints")
 
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
@@ -2500,9 +2488,15 @@ class VIEW3D_MT_select_sculpt_curves(Menu):
         layout.operator("curves.select_all", text="All").action = 'SELECT'
         layout.operator("curves.select_all", text="None").action = 'DESELECT'
         layout.operator("curves.select_all", text="Invert").action = 'INVERT'
-        layout.operator("sculpt_curves.select_random", text="Random")
+
+        layout.separator()
+
+        layout.operator("sculpt_curves.select_random")
+
+        layout.separator()
+
         layout.operator("curves.select_ends", text="Endpoints")
-        layout.operator("sculpt_curves.select_grow", text="Grow")
+        layout.operator("sculpt_curves.select_grow", text="Grow Selection")
 
         layout.template_node_operator_asset_menu_items(catalog_path="Select")
 
@@ -2917,7 +2911,7 @@ class VIEW3D_MT_object(Menu):
 
         layout.operator("object.shade_smooth")
         if ob and ob.type == 'MESH':
-            layout.operator("object.shade_smooth_by_angle")
+            layout.operator("object.shade_auto_smooth")
         layout.operator("object.shade_flat")
 
         layout.separator()
@@ -3165,7 +3159,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             if obj.type in {'MESH', 'CURVE', 'SURFACE'}:
                 layout.operator("object.shade_smooth")
                 if obj.type == 'MESH':
-                    layout.operator("object.shade_smooth_by_angle")
+                    layout.operator("object.shade_auto_smooth")
                 layout.operator("object.shade_flat")
 
                 layout.separator()
@@ -5938,6 +5932,13 @@ class VIEW3D_MT_weight_gpencil(Menu):
         layout.menu("VIEW3D_MT_gpencil_autoweights")
 
 
+class VIEW3D_MT_weight_grease_pencil(Menu):
+    bl_label = "Weights"
+
+    def draw(self, _context):
+        pass
+
+
 class VIEW3D_MT_gpencil_animation(Menu):
     bl_label = "Animation"
 
@@ -6034,6 +6035,7 @@ class VIEW3D_MT_edit_greasepencil(Menu):
         layout = self.layout
         layout.menu("VIEW3D_MT_transform")
         layout.menu("VIEW3D_MT_mirror")
+        layout.menu("GREASE_PENCIL_MT_snap")
 
         layout.separator()
 
@@ -9248,6 +9250,7 @@ classes = (
     VIEW3D_MT_edit_gpencil_showhide,
     VIEW3D_MT_edit_greasepencil_showhide,
     VIEW3D_MT_edit_greasepencil_cleanup,
+    VIEW3D_MT_weight_grease_pencil,
     VIEW3D_MT_weight_gpencil,
     VIEW3D_MT_gpencil_animation,
     VIEW3D_MT_gpencil_simplify,
