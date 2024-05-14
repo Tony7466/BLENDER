@@ -124,7 +124,6 @@ static float get_bevel_offset(wmOperator *op)
 static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 {
   Scene *sce = CTX_data_scene(C);
-  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   auto get_modal_key_str = [&](int id) {
     return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
@@ -146,7 +145,8 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
   }
 
   PropertyRNA *prop;
-  const char *mode_str;
+  const char *mode_str, *omiter_str, *imiter_str, *vmesh_str, *profile_type_str, *affect_str;
+
   prop = RNA_struct_find_property(op->ptr, "offset_type");
   RNA_property_enum_name_gettexted(
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &mode_str);
@@ -167,8 +167,6 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 
   /* Shown on Status Bar. */
 
-  const char *omiter_str, *imiter_str, *vmesh_str, *profile_type_str, *affect_str;
-
   prop = RNA_struct_find_property(op->ptr, "profile_type");
   RNA_property_enum_name_gettexted(
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &profile_type_str);
@@ -184,6 +182,8 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
   prop = RNA_struct_find_property(op->ptr, "affect");
   RNA_property_enum_name_gettexted(
       C, op->ptr, prop, RNA_property_enum_get(op->ptr, prop), &affect_str);
+
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   WorkspaceStatus status(C);
   status.opmodal(IFACE_("Confirm"), op->type, BEV_MODAL_CONFIRM);
