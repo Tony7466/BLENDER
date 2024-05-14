@@ -36,7 +36,7 @@ void PlanarProbe::set_view(const draw::View &view, int layer_id)
 
 void PlanarProbeModule::init()
 {
-  /* This triggers the compilation of clipped shader only if we can detect lightprobe planes. */
+  /* This triggers the compilation of clipped shader only if we can detect light-probe planes. */
   if (inst_.is_viewport()) {
     /* This check needs to happen upfront before sync, so we use the previous sync result. */
     update_probes_ = !inst_.light_probes.planar_map_.is_empty();
@@ -150,7 +150,11 @@ void PlanarProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)
                                  DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK);
   viewport_display_ps_.framebuffer_set(&view_fb);
   viewport_display_ps_.shader_set(inst_.shaders.static_shader_get(DISPLAY_PROBE_PLANAR));
-  bind_resources(viewport_display_ps_);
+  SphereProbeData &world_data = *static_cast<SphereProbeData *>(&inst_.light_probes.world_sphere_);
+  viewport_display_ps_.push_constant("world_coord_packed",
+                                     reinterpret_cast<int4 *>(&world_data.atlas_coord));
+  viewport_display_ps_.bind_resources(*this);
+  viewport_display_ps_.bind_resources(inst_.sphere_probes);
   viewport_display_ps_.bind_ssbo("display_data_buf", display_data_buf_);
   viewport_display_ps_.draw_procedural(GPU_PRIM_TRIS, 1, display_data_buf_.size() * 6);
 

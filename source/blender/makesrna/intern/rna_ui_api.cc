@@ -11,7 +11,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -37,6 +37,7 @@ const EnumPropertyItem rna_enum_icon_items[] = {
 
 #  include "DNA_asset_types.h"
 
+#  include "ED_asset_filter.hh"
 #  include "ED_geometry.hh"
 #  include "ED_node.hh"
 #  include "ED_object.hh"
@@ -334,7 +335,8 @@ static PointerRNA rna_uiItemO(uiLayout *layout,
                               int icon,
                               bool emboss,
                               bool depress,
-                              int icon_value)
+                              int icon_value,
+                              const float search_weight)
 {
   wmOperatorType *ot;
 
@@ -358,9 +360,14 @@ static PointerRNA rna_uiItemO(uiLayout *layout,
     flag |= UI_ITEM_O_DEPRESS;
   }
 
+  const float prev_weight = uiLayoutGetSearchWeight(layout);
+  uiLayoutSetSearchWeight(layout, search_weight);
+
   PointerRNA opptr;
   uiItemFullO_ptr(
       layout, ot, name, icon, nullptr, uiLayoutGetOperatorContext(layout), flag, &opptr);
+
+  uiLayoutSetSearchWeight(layout, prev_weight);
   return opptr;
 }
 
@@ -514,6 +521,11 @@ static void rna_uiItemProgress(uiLayout *layout,
   }
 
   uiItemProgressIndicator(layout, text, factor, eButProgressType(progress_type));
+}
+
+static void rna_uiItemSeparator(uiLayout *layout, float factor, int type)
+{
+  uiItemS_ex(layout, factor, LayoutSeparatorType(type));
 }
 
 static void rna_uiTemplateID(uiLayout *layout,
@@ -715,7 +727,7 @@ static void rna_uiTemplateAssetView(uiLayout *layout,
                                     const char *drag_opname,
                                     PointerRNA *r_drag_op_properties)
 {
-  AssetFilterSettings filter_settings{};
+  blender::ed::asset::AssetFilterSettings filter_settings{};
   filter_settings.id_types = filter_id_types ? filter_id_types : FILTER_ID_ALL;
 
   uiTemplateAssetView(layout,
@@ -1071,7 +1083,26 @@ void RNA_api_ui_layout(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static const EnumPropertyItem rna_enum_separator_type_items[] = {
+      {int(LayoutSeparatorType::Auto),
+       "AUTO",
+       0,
+       "Auto",
+       "Best guess at what type of separator is needed."},
+      {int(LayoutSeparatorType::Space),
+       "SPACE",
+       0,
+       "Empty space",
+       "Horizontal or Vertical empty space, depending on layout direction."},
+      {int(LayoutSeparatorType::Line),
+       "LINE",
+       0,
+       "Line",
+       "Horizontal or Vertical line, depending on layout direction."},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   /* simple layout specifiers */
   func = RNA_def_function(srna, "row", "rna_uiLayoutRowWithHeading");
@@ -1095,9 +1126,11 @@ void RNA_api_ui_layout(StructRNA *srna)
   api_ui_item_common_heading(func);
 
   func = RNA_def_function(srna, "panel", "rna_uiLayoutPanel");
-  RNA_def_function_ui_description(func,
-                                  "Creates a collapsable panel. Whether it is open or closed is "
-                                  "stored in the region using the given idname");
+  RNA_def_function_ui_description(
+      func,
+      "Creates a collapsable panel. Whether it is open or closed is stored in the region using "
+      "the given idname. This can only be used when the panel has the full width of the panel "
+      "region available to it. So it can't be used in e.g. in a box or columns");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "idname", nullptr, 0, "", "Identifier of the panel");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
@@ -1121,7 +1154,8 @@ void RNA_api_ui_layout(StructRNA *srna)
       "Similar to `.panel(...)` but instead of storing whether it is open or closed in the "
       "region, it is stored in the provided boolean property. This should be used when multiple "
       "instances of the same panel can exist. For example one for every item in a collection "
-      "property or list");
+      "property or list. This can only be used when the panel has the full width of the panel "
+      "region available to it. So it can't be used in e.g. in a box or columns");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(
       func, "data", "AnyType", "", "Data from which to take the open-state property");
@@ -1359,6 +1393,17 @@ void RNA_api_ui_layout(StructRNA *srna)
       parm = RNA_def_string(func, "menu", nullptr, 0, "", "Identifier of the menu");
       RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
     }
+    else {
+      RNA_def_float(func,
+                    "search_weight",
+                    0.0f,
+                    -FLT_MAX,
+                    FLT_MAX,
+                    "Search Weight",
+                    "Influences the sorting when using menu-seach",
+                    -FLT_MAX,
+                    FLT_MAX);
+    }
     parm = RNA_def_pointer(
         func, "properties", "OperatorProperties", "", "Operator properties to fill in");
     RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
@@ -1480,7 +1525,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_string(func, "category", nullptr, 0, "", "panel type category");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "separator", "uiItemS_ex");
+  func = RNA_def_function(srna, "separator", "rna_uiItemSeparator");
   RNA_def_function_ui_description(func, "Item. Inserts empty space into the layout between items");
   RNA_def_float(func,
                 "factor",
@@ -1491,6 +1536,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                 "Percentage of width to space (leave unset for default space)",
                 0.0f,
                 FLT_MAX);
+  RNA_def_enum(func,
+               "type",
+               rna_enum_separator_type_items,
+               int(LayoutSeparatorType::Auto),
+               "Type",
+               "The type of the separator");
 
   func = RNA_def_function(srna, "separator_spacer", "uiItemSpacer");
   RNA_def_function_ui_description(
@@ -1664,6 +1715,10 @@ void RNA_api_ui_layout(StructRNA *srna)
   func = RNA_def_function(srna, "template_modifiers", "uiTemplateModifiers");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   RNA_def_function_ui_description(func, "Generates the UI layout for the modifier stack");
+
+  func = RNA_def_function(srna, "template_collection_exporters", "uiTemplateCollectionExporters");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  RNA_def_function_ui_description(func, "Generates the UI layout for collection exporters");
 
   func = RNA_def_function(srna, "template_constraints", "uiTemplateConstraints");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);

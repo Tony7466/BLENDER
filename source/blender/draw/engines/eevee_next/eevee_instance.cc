@@ -10,7 +10,7 @@
 
 #include <sstream>
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_object.hh"
 #include "BLI_rect.h"
 #include "DEG_depsgraph_query.hh"
@@ -70,6 +70,13 @@ void Instance::init(const int2 &output_res,
   }
   if (output_res != film.display_extent_get()) {
     sampling.reset();
+  }
+  if (output_rect) {
+    int2 offset = int2(output_rect->xmin, output_rect->ymin);
+    int2 extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
+    if (offset != film.get_data().offset || extent != film.get_data().extent) {
+      sampling.reset();
+    }
   }
   if (assign_if_different(overlays_enabled_, v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS))) {
     sampling.reset();
@@ -198,7 +205,7 @@ void Instance::begin_sync()
 
   if (is_light_bake) {
     /* Do not use render layer visibility during bake.
-     * Note: This is arbitrary and could be changed if needed. */
+     * NOTE: This is arbitrary and could be changed if needed. */
     use_surfaces = use_curves = use_volumes = true;
   }
 
@@ -239,7 +246,7 @@ void Instance::object_sync(Object *ob)
   if (partsys_is_visible && ob != DRW_context_state_get()->object_edit) {
     auto sync_hair =
         [&](ObjectHandle hair_handle, ModifierData &md, ParticleSystem &particle_sys) {
-          ResourceHandle _res_handle = manager->resource_handle(float4x4(ob->object_to_world));
+          ResourceHandle _res_handle = manager->resource_handle(ob->object_to_world());
           sync.sync_curves(ob, hair_handle, _res_handle, ob_ref, &md, &particle_sys);
         };
     foreach_hair_particle_handle(ob, ob_handle, sync_hair);
@@ -448,8 +455,8 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
       BLI_mutex_lock(&render->update_render_passes_mutex);
       /* WORKAROUND: We use texture read to avoid using a frame-buffer to get the render result.
        * However, on some implementation, we need a buffer with a few extra bytes for the read to
-       * happen correctly (see GLTexture::read()). So we need a custom memory allocation. */
-      /* Avoid memcpy(), replace the pointer directly. */
+       * happen correctly (see #GLTexture::read()). So we need a custom memory allocation. */
+      /* Avoid #memcpy(), replace the pointer directly. */
       RE_pass_set_buffer_data(rp, result);
       BLI_mutex_unlock(&render->update_render_passes_mutex);
     }
@@ -457,7 +464,7 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 
   /* The vector pass is initialized to weird values. Set it to neutral value if not rendered. */
   if ((pass_bits & EEVEE_RENDER_PASS_VECTOR) == 0) {
-    for (std::string vector_pass_name :
+    for (const std::string &vector_pass_name :
          Film::pass_to_render_pass_names(EEVEE_RENDER_PASS_VECTOR, view_layer))
     {
       RenderPass *vector_rp = RE_pass_find_by_name(
@@ -595,7 +602,8 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
   auto register_cryptomatte_passes = [&](eViewLayerCryptomatteFlags cryptomatte_layer,
                                          eViewLayerEEVEEPassType eevee_pass) {
     if (view_layer->cryptomatte_flag & cryptomatte_layer) {
-      for (std::string pass_name : Film::pass_to_render_pass_names(eevee_pass, view_layer)) {
+      for (const std::string &pass_name : Film::pass_to_render_pass_names(eevee_pass, view_layer))
+      {
         RE_engine_register_pass(
             engine, scene, view_layer, pass_name.c_str(), 4, "rgba", SOCK_RGBA);
       }

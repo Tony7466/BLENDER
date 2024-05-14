@@ -4,7 +4,6 @@
 
 #include "usd_writer_material.hh"
 
-#include "usd.hh"
 #include "usd_exporter_context.hh"
 #include "usd_hook.hh"
 
@@ -13,12 +12,11 @@
 #include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "IMB_colormanagement.hh"
 
 #include "BLI_fileops.h"
-#include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_memory_utils.hh"
@@ -27,14 +25,13 @@
 #include "BLI_string_utils.hh"
 
 #include "DNA_material_types.h"
+#include "DNA_node_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include <pxr/base/tf/stringUtils.h>
-#include <pxr/pxr.h>
-#include <pxr/usd/usdGeom/scope.h>
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
@@ -80,6 +77,7 @@ static const pxr::TfToken Shader("Shader", pxr::TfToken::Immortal);
 static const pxr::TfToken black("black", pxr::TfToken::Immortal);
 static const pxr::TfToken clamp("clamp", pxr::TfToken::Immortal);
 static const pxr::TfToken repeat("repeat", pxr::TfToken::Immortal);
+static const pxr::TfToken mirror("mirror", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapS("wrapS", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapT("wrapT", pxr::TfToken::Immortal);
 static const pxr::TfToken in("in", pxr::TfToken::Immortal);
@@ -189,7 +187,8 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
 
     if (input_spec.input_name == usdtokens::emissive_color) {
       /* Don't export emission color if strength is zero. */
-      bNodeSocket *emission_strength_sock = nodeFindSocket(node, SOCK_IN, "Emission Strength");
+      bNodeSocket *emission_strength_sock = bke::nodeFindSocket(
+          node, SOCK_IN, "Emission Strength");
 
       if (!emission_strength_sock) {
         continue;
@@ -259,14 +258,14 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
         if (vector_math_node->custom1 == NODE_VECTOR_MATH_MULTIPLY_ADD) {
           /* Attempt one more traversal in case the current node is not not the
            * correct NODE_VECTOR_MATH_MULTIPLY_ADD (see code in usd_reader_material). */
-          bNodeSocket *sock_current = nodeFindSocket(vector_math_node, SOCK_IN, "Vector");
+          bNodeSocket *sock_current = bke::nodeFindSocket(vector_math_node, SOCK_IN, "Vector");
           bNodeLink *temp_link = traverse_channel(sock_current, SH_NODE_VECTOR_MATH);
           if (temp_link && temp_link->fromnode->custom1 == NODE_VECTOR_MATH_MULTIPLY_ADD) {
             vector_math_node = temp_link->fromnode;
           }
 
-          bNodeSocket *sock_scale = nodeFindSocket(vector_math_node, SOCK_IN, "Vector_001");
-          bNodeSocket *sock_bias = nodeFindSocket(vector_math_node, SOCK_IN, "Vector_002");
+          bNodeSocket *sock_scale = bke::nodeFindSocket(vector_math_node, SOCK_IN, "Vector_001");
+          bNodeSocket *sock_bias = bke::nodeFindSocket(vector_math_node, SOCK_IN, "Vector_002");
           const float *scale_value =
               static_cast<bNodeSocketValueVector *>(sock_scale->default_value)->value;
           const float *bias_value =
@@ -290,7 +289,7 @@ static void create_usd_preview_surface_material(const USDExporterContext &usd_ex
       }
 
       /* Look for a connected uvmap node. */
-      if (bNodeSocket *socket = nodeFindSocket(input_node, SOCK_IN, "Vector")) {
+      if (bNodeSocket *socket = bke::nodeFindSocket(input_node, SOCK_IN, "Vector")) {
         if (pxr::UsdShadeInput st_input = usd_shader.CreateInput(usdtokens::st,
                                                                  pxr::SdfValueTypeNames->Float2))
         {
@@ -469,7 +468,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
   }
 
   if (mapping_node->custom1 != TEXMAP_TYPE_POINT) {
-    if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
+    if (bNodeSocket *socket = bke::nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
       create_uv_input(usd_export_context, socket, usd_material, usd_input, default_uv, reports);
     }
     return;
@@ -489,19 +488,19 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
   float loc[3] = {0.0f, 0.0f, 0.0f};
   float rot[3] = {0.0f, 0.0f, 0.0f};
 
-  if (bNodeSocket *scale_socket = nodeFindSocket(mapping_node, SOCK_IN, "Scale")) {
+  if (bNodeSocket *scale_socket = bke::nodeFindSocket(mapping_node, SOCK_IN, "Scale")) {
     copy_v3_v3(scale, ((bNodeSocketValueVector *)scale_socket->default_value)->value);
     /* Ignore the Z scale. */
     scale[2] = 1.0f;
   }
 
-  if (bNodeSocket *loc_socket = nodeFindSocket(mapping_node, SOCK_IN, "Location")) {
+  if (bNodeSocket *loc_socket = bke::nodeFindSocket(mapping_node, SOCK_IN, "Location")) {
     copy_v3_v3(loc, ((bNodeSocketValueVector *)loc_socket->default_value)->value);
     /* Ignore the Z translation. */
     loc[2] = 0.0f;
   }
 
-  if (bNodeSocket *rot_socket = nodeFindSocket(mapping_node, SOCK_IN, "Rotation")) {
+  if (bNodeSocket *rot_socket = bke::nodeFindSocket(mapping_node, SOCK_IN, "Rotation")) {
     copy_v3_v3(rot, ((bNodeSocketValueVector *)rot_socket->default_value)->value);
     /* Ignore the X and Y rotations. */
     rot[0] = 0.0f;
@@ -530,7 +529,7 @@ static void create_transform2d_shader(const USDExporterContext &usd_export_conte
     rot_input.Set(rot_val);
   }
 
-  if (bNodeSocket *socket = nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
+  if (bNodeSocket *socket = bke::nodeFindSocket(mapping_node, SOCK_IN, "Vector")) {
     if (pxr::UsdShadeInput in_input = transform2d_shader.CreateInput(
             usdtokens::in, pxr::SdfValueTypeNames->Float2))
     {
@@ -601,7 +600,7 @@ static void export_in_memory_texture(Image *ima,
   char image_abs_path[FILE_MAX];
 
   char file_name[FILE_MAX];
-  if (strlen(ima->filepath) > 0) {
+  if (ima->filepath[0]) {
     get_absolute_path(ima, image_abs_path);
     BLI_path_split_file_part(image_abs_path, file_name, FILE_MAX);
   }
@@ -696,6 +695,9 @@ static pxr::TfToken get_node_tex_image_wrap(bNode *node)
       break;
     case SHD_IMAGE_EXTENSION_CLIP:
       wrap = usdtokens::black;
+      break;
+    case SHD_IMAGE_EXTENSION_MIRROR:
+      wrap = usdtokens::mirror;
       break;
   }
 
@@ -844,7 +846,7 @@ static std::string get_tex_image_asset_filepath(const USDExporterContext &usd_ex
 
   std::string path;
 
-  if (strlen(ima->filepath) > 0) {
+  if (ima->filepath[0]) {
     /* Get absolute path. */
     path = get_tex_image_asset_filepath(ima);
   }

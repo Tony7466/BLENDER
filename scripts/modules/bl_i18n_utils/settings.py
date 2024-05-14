@@ -536,6 +536,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
 WARN_MSGID_NOT_CAPITALIZED_ALLOWED |= set(lng[2] for lng in LANGUAGES)
 
 WARN_MSGID_END_POINT_ALLOWED = {
+    "Cannot figure out which object this bone belongs to.",
     "Circle|Alt .",
     "Float Neg. Exp.",
     "Max Ext.",
@@ -543,6 +544,7 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Not assigned to any bone collection.",
     "Numpad .",
     "Pad.",
+    "Please file a bug report.",
     "    RNA Path: bpy.types.",
     "Temp. Diff.",
     "Temperature Diff.",
@@ -552,6 +554,9 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Invalid surface UVs on %d curves.",
     "The pose library moved.",
     "in the asset shelf.",
+    "Remove, local files not found.",
+    "Remove all files in \"{}\".",
+    "Remove, keeping local files.",
 }
 
 PARSER_CACHE_HASH = 'sha1'

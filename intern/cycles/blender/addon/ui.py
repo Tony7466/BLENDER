@@ -21,7 +21,7 @@ class CyclesPresetPanel(PresetPanel, Panel):
     preset_operator = "script.execute_preset"
 
     @staticmethod
-    def post_cb(context):
+    def post_cb(context, _filepath):
         # Modify an arbitrary built-in scene property to force a depsgraph
         # update, because add-on properties don't. (see #62325)
         render = context.scene.render
@@ -144,17 +144,20 @@ def show_device_active(context):
     return backend_has_active_gpu(context)
 
 
-def get_effective_preview_denoiser(context):
+def get_effective_preview_denoiser(context, has_oidn_gpu):
     scene = context.scene
     cscene = scene.cycles
 
     if cscene.preview_denoiser != "AUTO":
         return cscene.preview_denoiser
 
+    if has_oidn_gpu:
+        return 'OPENIMAGEDENOISE'
+
     if context.preferences.addons[__package__].preferences.get_devices_for_type('OPTIX'):
         return 'OPTIX'
 
-    return 'OIDN'
+    return 'OPENIMAGEDENOISE'
 
 
 def has_oidn_gpu_devices(context):
@@ -234,15 +237,17 @@ class CYCLES_RENDER_PT_sampling_viewport_denoise(CyclesButtonsPanel, Panel):
         col.prop(cscene, "preview_denoiser", text="Denoiser")
         col.prop(cscene, "preview_denoising_input_passes", text="Passes")
 
-        effective_preview_denoiser = get_effective_preview_denoiser(context)
+        has_oidn_gpu = has_oidn_gpu_devices(context)
+        effective_preview_denoiser = get_effective_preview_denoiser(context, has_oidn_gpu)
         if effective_preview_denoiser == 'OPENIMAGEDENOISE':
             col.prop(cscene, "preview_denoising_prefilter", text="Prefilter")
+            col.prop(cscene, "preview_denoising_quality", text="Quality")
 
         col.prop(cscene, "preview_denoising_start_sample", text="Start Sample")
 
         if effective_preview_denoiser == 'OPENIMAGEDENOISE':
             row = col.row()
-            row.active = not use_cpu(context) and has_oidn_gpu_devices(context)
+            row.active = not use_cpu(context) and has_oidn_gpu
             row.prop(cscene, "preview_denoising_use_gpu", text="Use GPU")
 
 
@@ -303,6 +308,7 @@ class CYCLES_RENDER_PT_sampling_render_denoise(CyclesButtonsPanel, Panel):
         col.prop(cscene, "denoising_input_passes", text="Passes")
         if cscene.denoiser == 'OPENIMAGEDENOISE':
             col.prop(cscene, "denoising_prefilter", text="Prefilter")
+            col.prop(cscene, "denoising_quality", text="Quality")
 
         if cscene.denoiser == 'OPENIMAGEDENOISE':
             row = col.row()
@@ -927,6 +933,7 @@ class CYCLES_RENDER_PT_override(CyclesButtonsPanel, Panel):
         view_layer = context.view_layer
 
         layout.prop(view_layer, "material_override")
+        layout.prop(view_layer, "world_override")
         layout.prop(view_layer, "samples")
 
 
@@ -2085,8 +2092,8 @@ class CYCLES_RENDER_PT_bake_influence(CyclesButtonsPanel, Panel):
 
             sub = col.column(align=True)
             sub.prop(cbk, "normal_r", text="Swizzle R")
-            sub.prop(cbk, "normal_g", text="G")
-            sub.prop(cbk, "normal_b", text="B")
+            sub.prop(cbk, "normal_g", text="G", text_ctxt=i18n_contexts.color)
+            sub.prop(cbk, "normal_b", text="B", text_ctxt=i18n_contexts.color)
 
         elif cscene.bake_type == 'COMBINED':
 
@@ -2233,8 +2240,7 @@ class CYCLES_RENDER_PT_debug(CyclesDebugButtonsPanel, Panel):
         col = layout.column(heading="CPU")
 
         row = col.row(align=True)
-        row.prop(cscene, "debug_use_cpu_sse2", toggle=True)
-        row.prop(cscene, "debug_use_cpu_sse41", toggle=True)
+        row.prop(cscene, "debug_use_cpu_sse42", toggle=True)
         row.prop(cscene, "debug_use_cpu_avx2", toggle=True)
         col.prop(cscene, "debug_bvh_layout", text="BVH")
 

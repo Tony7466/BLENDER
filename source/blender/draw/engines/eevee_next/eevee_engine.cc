@@ -2,11 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BLI_rect.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -212,7 +212,7 @@ RenderEngineType DRW_engine_viewport_eevee_next_type = {
     /*next*/ nullptr,
     /*prev*/ nullptr,
     /*idname*/ "BLENDER_EEVEE_NEXT",
-    /*name*/ N_("EEVEE-Next"),
+    /*name*/ N_("EEVEE"),
     /*flag*/ RE_INTERNAL | RE_USE_PREVIEW | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
     /*update*/ nullptr,
     /*render*/ &DRW_render_to_image,
