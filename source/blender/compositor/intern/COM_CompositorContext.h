@@ -10,7 +10,9 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 
+namespace blender::bke {
 struct bNodeInstanceHash;
+}
 
 namespace blender::realtime_compositor {
 class RenderContext;
@@ -29,13 +31,6 @@ class CompositorContext {
    * on. \see ExecutionSystem
    */
   bool rendering_;
-
-  /**
-   * \brief The quality of the composite.
-   * This field is initialized in ExecutionSystem and must only be read from that point on.
-   * \see ExecutionSystem
-   */
-  eCompositorQuality quality_;
 
   Scene *scene_;
 
@@ -57,7 +52,7 @@ class CompositorContext {
    * \brief Preview image hash table
    * This field is initialized in ExecutionSystem and must only be read from that point on.
    */
-  bNodeInstanceHash *previews_;
+  bke::bNodeInstanceHash *previews_;
 
   /**
    * \brief active rendering view name
@@ -136,7 +131,7 @@ class CompositorContext {
   /**
    * \brief set the preview image hash table
    */
-  void set_preview_hash(bNodeInstanceHash *previews)
+  void set_preview_hash(bke::bNodeInstanceHash *previews)
   {
     previews_ = previews;
   }
@@ -144,25 +139,9 @@ class CompositorContext {
   /**
    * \brief get the preview image hash table
    */
-  bNodeInstanceHash *get_preview_hash() const
+  bke::bNodeInstanceHash *get_preview_hash() const
   {
     return previews_;
-  }
-
-  /**
-   * \brief set the quality
-   */
-  void set_quality(eCompositorQuality quality)
-  {
-    quality_ = quality;
-  }
-
-  /**
-   * \brief get the quality
-   */
-  eCompositorQuality get_quality() const
-  {
-    return quality_;
   }
 
   /**
