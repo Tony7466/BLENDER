@@ -179,6 +179,9 @@ USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim
   if (params_.import_meshes && prim.IsA<pxr::UsdGeomMesh>()) {
     return new USDMeshReader(prim, params_, settings_);
   }
+  if (params_.import_lights && prim.IsA<pxr::UsdLuxDomeLight>()) {
+    return new USDXformReader(prim, params_, settings_);
+  }
 #if PXR_VERSION >= 2111
   if (params_.import_lights &&
       (prim.IsA<pxr::UsdLuxBoundableLightBase>() || prim.IsA<pxr::UsdLuxNonboundableLightBase>()))
@@ -220,6 +223,9 @@ USDPrimReader *USDStageReader::create_reader(const pxr::UsdPrim &prim)
   }
   if (prim.IsA<pxr::UsdGeomMesh>()) {
     return new USDMeshReader(prim, params_, settings_);
+  }
+  if (prim.IsA<pxr::UsdLuxDomeLight>()) {
+    return new USDXformReader(prim, params_, settings_);
   }
 #if PXR_VERSION >= 2111
   if (prim.IsA<pxr::UsdLuxBoundableLightBase>() || prim.IsA<pxr::UsdLuxNonboundableLightBase>()) {
