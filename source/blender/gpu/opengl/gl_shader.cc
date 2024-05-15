@@ -1699,28 +1699,22 @@ GLShaderCompiler::~GLShaderCompiler()
   }
 }
 
-GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert,
-                                                        const char *frag,
-                                                        bool block)
+GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert, const char *frag)
 {
   GLCompilerWorker *result = nullptr;
-  do {
-    for (GLCompilerWorker *compiler : workers_) {
-      if (compiler->state_ == GLCompilerWorker::AVAILABLE) {
-        result = compiler;
-        break;
-      }
+  for (GLCompilerWorker *compiler : workers_) {
+    if (compiler->state_ == GLCompilerWorker::AVAILABLE) {
+      result = compiler;
+      break;
     }
-    if (!result && workers_.size() < 16) {
-      result = new GLCompilerWorker(1024 * 1024 * 2); /* 2mB */
-      workers_.append(result);
-    }
-  } while (result == nullptr && block);
-
+  }
+  if (!result && workers_.size() < 16) {
+    result = new GLCompilerWorker(1024 * 1024 * 2); /* 2mB */
+    workers_.append(result);
+  }
   if (result) {
     result->compile(vert, frag);
   }
-
   return result;
 }
 
@@ -1843,9 +1837,9 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 
 void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> specializations)
 {
-  std::scoped_lock lock(mutex_);
-
   struct SpecializationWork {
+    std::string vertex_src;
+    std::string fragment_src;
     GLCompilerWorker *worker = nullptr;
     bool is_ready = false;
     GLuint program;
@@ -1858,7 +1852,6 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
     GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
     for (auto &constant : specialization.constants) {
       int location = sh->interface->constant_get(constant.name)->location;
-      // BLI_assert(sh->constants.types[location] == constant.type);
       sh->constants.values[location].u = constant.value.u;
     }
     sh->constants.is_dirty = true;
@@ -1871,16 +1864,13 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
     sh->async_compilation_ = true;
     item.program = sh->program_get();
     sh->async_compilation_ = false;
-    std::string vertex_src;
-    std::string fragment_src;
+
     for (const char *src : sh->vertex_sources_.sources_get()) {
-      vertex_src.append(src);
+      item.vertex_src.append(src);
     }
     for (const char *src : sh->fragment_sources_.sources_get()) {
-      fragment_src.append(src);
+      item.fragment_src.append(src);
     }
-    item.worker = get_compiler_worker(vertex_src.c_str(), fragment_src.c_str(), true);
-    BLI_assert(item.worker);
   }
 
   bool is_ready = false;
@@ -1892,13 +1882,18 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
         continue;
       }
 
-      if (item.worker && item.worker->poll()) {
-        BLI_assert(item.worker->load_program_binary(item.program));
+      if (item.worker == nullptr) {
+        std::scoped_lock lock(mutex_);
+        item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
+      }
+      else if (item.worker->poll()) {
+        bool success = item.worker->load_program_binary(item.program);
+        BLI_assert(success);
+        std::scoped_lock lock(mutex_);
         item.worker->release();
         item.worker = nullptr;
         item.is_ready = true;
       }
-
       if (!item.is_ready) {
         is_ready = false;
       }

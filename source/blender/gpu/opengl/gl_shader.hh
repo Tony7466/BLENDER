@@ -259,7 +259,7 @@ class GLShaderCompiler : public ShaderCompilerBase {
   BatchHandle next_batch_handle = 1;
   Map<BatchHandle, Batch> batches;
 
-  GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag, bool block = false);
+  GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag);
   void print_workers();
 
  public:
