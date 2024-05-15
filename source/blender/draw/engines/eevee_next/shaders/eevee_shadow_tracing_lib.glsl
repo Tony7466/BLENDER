@@ -239,8 +239,6 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
   float clip_near = intBitsToFloat(light.clip_near);
   float clip_side = light_local_data_get(light).clip_side;
 
-  /* TODO(fclem): 3D shift for jittered soft shadows. */
-  vec3 projection_origin = vec3(0.0, 0.0, -light_local_data_get(light).shadow_projection_shift);
   vec3 direction;
   if (is_area_light(light.type)) {
     random_2d *= light_area_data_get(light).size;

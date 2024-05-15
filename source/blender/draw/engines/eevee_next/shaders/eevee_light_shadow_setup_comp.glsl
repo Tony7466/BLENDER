@@ -7,6 +7,7 @@
  * Dispatched one thread per light.
  */
 
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 
 int shadow_directional_coverage_get(int level)
@@ -123,10 +124,10 @@ void cascade_sync(inout LightData light)
   /* Used as origin for the clipmap_base_offset trick. */
   light.do_not_access_directly._pad3 = clipmap_origin;
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
-  light.do_not_access_directly._pad0_reserved = intBitsToFloat(base_offset_pos.x);
-  light.do_not_access_directly._pad1_reserved = intBitsToFloat(base_offset_pos.y);
-  light.do_not_access_directly.shadow_radius = intBitsToFloat(0);
-  light.do_not_access_directly.shadow_projection_shift = intBitsToFloat(0);
+  light.do_not_access_directly.tilemaps_count = base_offset_pos.x;
+  light.do_not_access_directly.shadow_radius = intBitsToFloat(base_offset_pos.y);
+  light.do_not_access_directly.radius_squared = intBitsToFloat(0);
+  light.do_not_access_directly.influence_radius_max = intBitsToFloat(0);
 #endif
 }
 
@@ -186,10 +187,10 @@ void clipmap_sync(inout LightData light)
   /* Used as origin for the clipmap_base_offset trick. */
   light.do_not_access_directly._pad3 = clipmap_origin;
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
-  light.do_not_access_directly._pad0_reserved = intBitsToFloat(pos_offset.x);
-  light.do_not_access_directly._pad1_reserved = intBitsToFloat(pos_offset.y);
-  light.do_not_access_directly.shadow_radius = intBitsToFloat(neg_offset.x);
-  light.do_not_access_directly.shadow_projection_shift = intBitsToFloat(neg_offset.y);
+  light.do_not_access_directly.tilemaps_count = pos_offset.x;
+  light.do_not_access_directly.shadow_radius = intBitsToFloat(pos_offset.y);
+  light.do_not_access_directly.radius_squared = intBitsToFloat(neg_offset.x);
+  light.do_not_access_directly.influence_radius_max = intBitsToFloat(neg_offset.y);
 #endif
 }
 

@@ -300,7 +300,6 @@ void ShadowPunctual::end_sync(Light &light)
   as_int.f = far;
   light.clip_far = as_int.i;
   light.local.clip_side = side;
-  light.local.shadow_projection_shift = shift;
 
   for (ShadowTileMap *tilemap : tilemaps_) {
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */
