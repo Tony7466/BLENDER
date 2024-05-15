@@ -123,8 +123,8 @@ static float normal_calc(SculptSession *ss,
 {
   float3 normal_v;
 
-  if (automask_data.have_orig_data) {
-    normal_v = automask_data.orig_data.no;
+  if (automask_data.orig_data) {
+    normal_v = automask_data.orig_data->no;
   }
   else {
     SCULPT_vertex_normal_get(ss, vertex, normal_v);
@@ -615,16 +615,33 @@ void calc_mesh_automask(Object &object,
   auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node);
 
   for (const int i : verts.index_range()) {
-    if (data.have_orig_data) {
-      mesh_orig_vert_data_update(data.orig_data, i);
+    if (data.orig_data) {
+      mesh_orig_vert_data_update(*data.orig_data, i);
     }
     factors[i] *= auto_mask::factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
   }
 }
 
-void cache_free(Cache *automasking)
+NodeData node_begin(Object &object, const Cache *automasking, PBVHNode &node)
 {
-  MEM_delete(automasking);
+  if (!automasking) {
+    return {};
+  }
+
+  NodeData automask_data;
+  if (automasking->settings.flags &
+      (BRUSH_AUTOMASKING_BRUSH_NORMAL | BRUSH_AUTOMASKING_VIEW_NORMAL))
+  {
+    SCULPT_orig_vert_data_init(*automask_data.orig_data, object, node, undo::Type::Position);
+  }
+  return automask_data;
+}
+
+void node_update(auto_mask::NodeData &automask_data, PBVHVertexIter &vd)
+{
+  if (automask_data.orig_data) {
+    SCULPT_orig_vert_data_update(*automask_data.orig_data, vd);
+  }
 }
 
 struct AutomaskFloodFillData {
@@ -803,7 +820,6 @@ static void normal_occlusion_automasking_fill(Cache &automasking,
 
   /* No need to build original data since this is only called at the beginning of strokes. */
   NodeData nodedata;
-  nodedata.have_orig_data = false;
 
   for (int i = 0; i < totvert; i++) {
     PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
