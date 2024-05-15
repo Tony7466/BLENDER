@@ -41,6 +41,12 @@ constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 #  define IS_CPP 1
 #endif
 
+/** WORKAROUND(@fclem): This is because this file is included before common_math_lib.glsl. */
+#ifndef M_PI
+#  define EEVEE_PI
+#  define M_PI 3.14159265358979323846 /* pi */
+#endif
+
 enum eCubeFace : uint32_t {
   /* Ordering by culling order. If cone aperture is shallow, we cull the later view. */
   Z_NEG = 0u,
@@ -691,12 +697,6 @@ struct ScatterRect {
 };
 BLI_STATIC_ASSERT_ALIGN(ScatterRect, 16)
 
-/** WORKAROUND(@fclem): This is because this file is included before common_math_lib.glsl. */
-#ifndef M_PI
-#  define EEVEE_PI
-#  define M_PI 3.14159265358979323846 /* pi */
-#endif
-
 static inline float coc_radius_from_camera_depth(DepthOfFieldData dof, float depth)
 {
   depth = (dof.camera_type != CAMERA_ORTHO) ? 1.0f / depth : depth;
@@ -740,10 +740,6 @@ static inline float circle_to_polygon_angle(float sides_count, float theta)
 
   return side * side_angle + final_local_theta;
 }
-
-#ifdef EEVEE_PI
-#  undef M_PI
-#endif
 
 /** \} */
 
@@ -852,8 +848,7 @@ static inline bool is_local_light(eLightType type)
   /** --- Shadow Data --- */ \
   /** Shift to apply to the light origin to get the shadow projection origin. In light space. */ \
   packed_float3 shadow_position; \
-  /** Other parts of the perspective matrix. Assumes symmetric frustum. */ \
-  float clip_side; \
+  float _pad0; \
   /** Number of allocated tilemap for this local light. */ \
   int tilemaps_count; \
   /** Radius of the light for shadows. Bounding radius for rectangle. */ \
@@ -1095,7 +1090,6 @@ static inline LightSpotData light_local_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
-  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   return data;
@@ -1109,7 +1103,6 @@ static inline LightSpotData light_spot_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
-  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT(radius, _pad1)
@@ -1128,7 +1121,6 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
-  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT2(size, _pad3)
@@ -1138,7 +1130,7 @@ static inline LightAreaData light_area_data_get(LightData light)
 static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_BEGIN(LightSunData, is_sun_light(light.type))
-  SAFE_ASSIGN_FLOAT(radius, clip_side)
+  SAFE_ASSIGN_FLOAT(radius, _pad0)
   SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, tilemaps_count, shadow_radius)
   SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, radius_squared, influence_radius_max)
   SAFE_ASSIGN_FLOAT(shadow_angle, influence_radius_invsqr_surface)
@@ -1183,6 +1175,20 @@ static inline int light_tilemap_max_get(LightData light)
            (light_sun_data_get(light).clipmap_lod_max - light_sun_data_get(light).clipmap_lod_min);
   }
   return light.tilemap_index + light_local_data_get(light).tilemaps_count - 1;
+}
+
+/* Return the number of tilemap needed for a local light. */
+static inline int light_local_tilemap_count(LightData light)
+{
+  if (is_spot_light(light.type)) {
+    return (light_spot_data_get(light).spot_tan > tanf(M_PI / 4.0)) ? 5 : 1;
+  }
+  else if (is_area_light(light.type)) {
+    return 5;
+  }
+  else {
+    return 6;
+  }
 }
 
 /** \} */
@@ -1231,14 +1237,13 @@ struct ShadowTileMapData {
   int tiles_index;
   /** Index of persistent data in the persistent data buffer. */
   int clip_data_index;
-
-  float _pad0;
   /** Light type this tilemap is from. */
   eLightType light_type;
   /** True if the tilemap is part of area light shadow and is one of the side projections. */
   bool32_t is_area_side;
-  /** Distance behind the area light a shadow is shifted. */
-  float area_shift;
+
+  float _pad0;
+  float _pad1;
   /** Near and far clip distances for punctual. */
   float clip_near;
   float clip_far;
@@ -2067,6 +2072,10 @@ float4 utility_tx_sample_lut(sampler2DArray util_tx, float cos_theta, float roug
   return utility_tx_sample_lut(util_tx, coords, layer);
 }
 
+#endif
+
+#ifdef EEVEE_PI
+#  undef M_PI
 #endif
 
 /** \} */

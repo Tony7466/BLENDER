@@ -237,7 +237,6 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
 
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
-  float clip_side = light_local_data_get(light).clip_side;
 
   vec3 direction;
   if (is_area_light(light.type)) {

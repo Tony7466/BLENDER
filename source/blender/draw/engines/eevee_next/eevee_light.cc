@@ -93,13 +93,6 @@ void Light::sync(ShadowModule &shadows,
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
-    if (is_sun_light(this->type)) {
-      this->directional->sync(object_to_world);
-    }
-    else {
-      this->punctual->sync(
-          this->type, object_to_world, la->spotsize, this->local.influence_radius_max);
-    }
   }
   else {
     shadow_discard_safe(shadows);
@@ -168,6 +161,9 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     this->local.influence_radius_max = max(influence_radius_surface, influence_radius_volume);
     this->local.influence_radius_invsqr_surface = safe_rcp(square(influence_radius_surface));
     this->local.influence_radius_invsqr_volume = safe_rcp(square(influence_radius_volume));
+    /* TODO(fclem): This is just duplicating a member for local lights. */
+    this->clip_far = float_as_int(this->local.influence_radius_max);
+    this->clip_near = float_as_int(this->local.influence_radius_max / 4000.0f);
   }
 
   if (is_sun_light(this->type)) {

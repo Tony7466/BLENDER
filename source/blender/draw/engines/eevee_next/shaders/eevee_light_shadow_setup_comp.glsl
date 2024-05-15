@@ -280,17 +280,7 @@ void main()
     vec3 position_on_light = vec3(0.0);
 #endif
 
-    int tilemap_count = 0;
-    if (is_area_light(light.type)) {
-      tilemap_count = 5;
-    }
-    else if (is_spot_light(light.type)) {
-      tilemap_count = (light_spot_data_get(light).spot_tan > tan(M_PI / 4.0)) ? 5 : 1;
-    }
-    else {
-      tilemap_count = 6;
-    }
-
+    int tilemap_count = light_local_tilemap_count(light);
     for (int i = 0; i < tilemap_count; i++) {
       cubeface_sync(
           light.tilemap_index + i, light.object_to_world, eCubeFace(i), position_on_light);
