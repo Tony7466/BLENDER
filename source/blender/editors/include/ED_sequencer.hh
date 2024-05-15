@@ -9,7 +9,6 @@
 #pragma once
 
 #include "BLI_vector_set.hh"
-#include "DNA_sequence_types.h"
 
 struct Scene;
 struct Sequence;
@@ -18,9 +17,9 @@ struct bContext;
 struct View2D;
 
 enum eSeqHandle {
-  SEQ_HANDLE_NONE = 0,
-  SEQ_HANDLE_LEFT = SEQ_LEFTSEL,
-  SEQ_HANDLE_RIGHT = SEQ_RIGHTSEL,
+  SEQ_HANDLE_NONE,
+  SEQ_HANDLE_LEFT,
+  SEQ_HANDLE_RIGHT,
   SEQ_HANDLE_BOTH,
 };
 
@@ -70,9 +69,12 @@ bool sequencer_retiming_mode_is_active(const bContext *C);
  * r_seq2 second strip to be selected.
  * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
  */
-StripSelection ED_sequencer_pick_strip_and_side(const struct Scene *scene,
-                                                const View2D *v2d,
-                                                float mouse_co[2]);
+bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
+                                          const View2D *v2d,
+                                          float mouse_co[2],
+                                          struct Sequence **r_seq1,
+                                          struct Sequence **r_seq2,
+                                          int *r_side);
 
 /**
  * Returns collection with selected strips presented to user. If operation is done in preview,
@@ -83,4 +85,8 @@ StripSelection ED_sequencer_pick_strip_and_side(const struct Scene *scene,
  * \return collection of strips (`Sequence`)
  */
 blender::VectorSet<Sequence *> ED_sequencer_selected_strips_from_context(bContext *C);
+StripSelection ED_sequencer_pick_strip_and_side(const struct Scene *scene,
+                                                const View2D *v2d,
+                                                float mouse_co[2]);
+
 bool ED_sequencer_can_select_handle(const Scene *scene, const Sequence *seq, const View2D *v2d);
