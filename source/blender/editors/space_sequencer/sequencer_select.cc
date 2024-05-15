@@ -1070,9 +1070,9 @@ static bool is_mouse_over_both_handles_of_adjacent_strips(const Scene *scene,
   return true;
 }
 
-StripSelection ED_sequencer_pick_strip_and_side(const Scene *scene,
-                                                const View2D *v2d,
-                                                float mouse_co[2])
+StripSelection ED_sequencer_pick_strip_and_handle(const Scene *scene,
+                                                  const View2D *v2d,
+                                                  float mouse_co[2])
 {
   blender::Vector<Sequence *> strips = mouseover_strips_sorted_get(scene, v2d, mouse_co);
 
@@ -1142,7 +1142,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     selection.seq1 = seq_select_seq_from_preview(C, mval, toggle, extend, center);
   }
   else {
-    selection = ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co);
+    selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co);
   }
 
   if (RNA_boolean_get(op->ptr, "handles_only") && selection.handle == SEQ_HANDLE_NONE) {
@@ -2005,7 +2005,7 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
     WM_event_drag_start_mval(event, region, mval);
     UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_co[0], &mouse_co[1]);
 
-    StripSelection selection = ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co);
+    StripSelection selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co);
 
     if (selection.seq1 != nullptr) {
       return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;

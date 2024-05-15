@@ -63,20 +63,6 @@ void ED_sequencer_special_preview_set(bContext *C, const int mval[2]);
 void ED_sequencer_special_preview_clear();
 bool sequencer_retiming_mode_is_active(const bContext *C);
 /**
- * Returns true if strip can be selected, false otherwise.
- *
- * r_seq1 first strip to be selected. Never nullptr if function returns true
- * r_seq2 second strip to be selected.
- * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
- */
-bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
-                                          const View2D *v2d,
-                                          float mouse_co[2],
-                                          struct Sequence **r_seq1,
-                                          struct Sequence **r_seq2,
-                                          int *r_side);
-
-/**
  * Returns collection with selected strips presented to user. If operation is done in preview,
  * collection is limited to selected presented strips, that can produce image output at current
  * frame.
@@ -85,8 +71,8 @@ bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
  * \return collection of strips (`Sequence`)
  */
 blender::VectorSet<Sequence *> ED_sequencer_selected_strips_from_context(bContext *C);
-StripSelection ED_sequencer_pick_strip_and_side(const struct Scene *scene,
-                                                const View2D *v2d,
-                                                float mouse_co[2]);
+StripSelection ED_sequencer_pick_strip_and_handle(const struct Scene *scene,
+                                                  const View2D *v2d,
+                                                  float mouse_co[2]);
 bool ED_sequencer_can_select_handle(const Scene *scene, const Sequence *seq, const View2D *v2d);
 bool ED_sequencer_handle_is_selected(const Sequence *seq, eSeqHandle handle);

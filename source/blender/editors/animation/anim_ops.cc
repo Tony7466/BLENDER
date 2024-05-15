@@ -233,7 +233,7 @@ static bool sequencer_skip_for_handle_tweak(const bContext *C, const wmEvent *ev
   float mouse_co[2];
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &mouse_co[0], &mouse_co[1]);
 
-  StripSelection selection = ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co);
+  StripSelection selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co);
 
   return selection.handle != SEQ_HANDLE_NONE;
 }
