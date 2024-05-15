@@ -472,9 +472,9 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
     status.item(IFACE_("Confirm"), ICON_MOUSE_LMB);
     status.item(IFACE_("Cancel"), ICON_MOUSE_RMB);
     status.item(IFACE_("Select Ring"), ICON_MOUSE_MOVE);
-    status.item("", ICON_EVENT_PAGEUP, ICON_EVENT_PAGEDOWN);
-    status.item(IFACE_("Change Cut Count"), ICON_MOUSE_MMB);
-    status.item(IFACE_("Change Smoothness"), ICON_EVENT_ALT);
+    status.item("", ICON_MOUSE_MMB);
+    status.item(IFACE_("Number of Cuts"), ICON_EVENT_PAGEUP, ICON_EVENT_PAGEDOWN);
+    status.item(IFACE_("Smoothness"), ICON_EVENT_ALT, ICON_MOUSE_MMB);
     return OPERATOR_RUNNING_MODAL;
   }
 
