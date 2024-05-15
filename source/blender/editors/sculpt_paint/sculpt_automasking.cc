@@ -606,7 +606,7 @@ static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int 
 
 void calc_mesh_automask(Object &object,
                         const auto_mask::Cache &cache,
-                        PBVHNode &node,
+                        const PBVHNode &node,
                         const Span<int> verts,
                         const MutableSpan<float> factors)
 {
@@ -622,7 +622,7 @@ void calc_mesh_automask(Object &object,
   }
 }
 
-NodeData node_begin(Object &object, const Cache *automasking, PBVHNode &node)
+NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &node)
 {
   if (!automasking) {
     return {};
