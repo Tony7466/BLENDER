@@ -2130,8 +2130,8 @@ namespace blender::ed::sculpt_paint {
 // TODO: Move these functions to proper new files.
 
 void calc_mesh_hide_and_mask(const Mesh &mesh,
-                             const Span<int> vert_indices,
-                             const MutableSpan<float> r_factors);
+                             Span<int> vert_indices,
+                             MutableSpan<float> r_factors);
 
 void calc_distance_falloff(SculptSession &ss,
                            Span<float3> vert_positions,
