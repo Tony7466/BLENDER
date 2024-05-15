@@ -114,7 +114,7 @@ void cascade_sync(inout LightData light)
 
   vec2 clipmap_origin = vec2(origin_offset) * tile_size;
 
-  LightSunData sun_data;
+  LightSunData sun_data = light_sun_data_get(light);
   /* Used as origin for the clipmap_base_offset trick. */
   sun_data.clipmap_origin = clipmap_origin;
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
@@ -171,7 +171,7 @@ void clipmap_sync(inout LightData light)
   light.object_to_world.y.w = ls_camera_position.y;
   light.object_to_world.z.w = ls_camera_position.z;
 
-  LightSunData sun_data;
+  LightSunData sun_data = light_sun_data_get(light);
   /* Used as origin for the clipmap_base_offset trick. */
   sun_data.clipmap_origin = clipmap_origin;
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */

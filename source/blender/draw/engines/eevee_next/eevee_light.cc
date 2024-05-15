@@ -181,6 +181,8 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     /* TODO(fclem): Adjust by jitter over blur radius. */
     /* Use non-clamped radius for soft shadows. Avoid having a minimum blur. */
     this->local.shadow_radius = length(this->area.size);
+    /* Set to default position. */
+    this->local.shadow_position = float3(0.0f);
     /* Do not render lights that have no area. */
     if (this->area.size.x * this->area.size.y < 0.00001f) {
       /* Forces light to be culled. */
@@ -212,6 +214,8 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     /* TODO(fclem): Adjust by jitter over blur radius. */
     /* Use unclamped radius for soft shadows. Avoid having a minimum blur. */
     this->local.shadow_radius = max(0.0f, la->radius);
+    /* Set to default position. */
+    this->local.shadow_position = float3(0.0f);
     /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
     this->spot.radius = max(la->radius, la->energy * 2e-05f);
     /* Clamp to minimum value before float imprecision artifacts appear. */
