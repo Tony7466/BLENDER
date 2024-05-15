@@ -262,7 +262,6 @@ void main()
     /* Local lights. */
 #if 0 /* Jittered shadows. */
     vec3 position_on_light = random_position_on_light(light);
-    light_buf[l_idx].shadow_position = position_on_light;
 #else
     vec3 position_on_light = vec3(0.0);
 #endif
@@ -272,6 +271,11 @@ void main()
       cubeface_sync(
           light.tilemap_index + i, light.object_to_world, eCubeFace(i), position_on_light);
     }
+
+    LightSpotData local_data = light_local_data_get(light);
+    local_data.shadow_position = position_on_light;
+
+    light = light_local_data_set(light, local_data);
   }
 
   light_buf[l_idx] = light;

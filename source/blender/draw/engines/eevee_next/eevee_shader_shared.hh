@@ -1105,6 +1105,20 @@ static inline LightSpotData light_local_data_get(LightData light)
   return SAFE_READ_END();
 }
 
+static inline LightData light_local_data_set(LightData light, LightSpotData spot_data)
+{
+  SAFE_WRITE_BEGIN(LightSpotData, spot_data, is_local_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
+  SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  SAFE_WRITE_END(light);
+  return light;
+}
+
 static inline LightSpotData light_spot_data_get(LightData light)
 {
   SAFE_READ_BEGIN(LightSpotData, light, is_spot_light(light.type) || is_point_light(light.type))

@@ -107,8 +107,8 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, float radius, int lod
     }
   }
 
-  /* TODO(fclem): 3D shift for jittered soft shadows. */
-  lP += light_local_data_get(light).shadow_position;
+  /* Transform to shadow local space. */
+  lP -= light_local_data_get(light).shadow_position;
 
   int lod = shadow_punctual_level(light,
                                   lP,
