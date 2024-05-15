@@ -458,6 +458,15 @@ if(WITH_FFTW3)
     ${FFTW3_LIBRARIES}
   )
   add_definitions(-DWITH_FFTW3)
+
+  include(CheckCXXSourceCompiles)
+  check_cxx_source_compiles(
+    "#include <fftw3.h>
+     int main() { fftwf_init_threads(); return 0; }"
+    WITH_FFTW3_THREADS_SUPPORT)
+  if (WITH_FFTW3_THREADS_SUPPORT)
+    add_definitions(-DWITH_FFTW3_THREADS_SUPPORT)
+  endif()
 endif()
 
 if(WIN32)
