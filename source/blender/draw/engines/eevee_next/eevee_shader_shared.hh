@@ -1049,6 +1049,7 @@ static inline float3 light_position_get(LightData light)
     (_validity_check ? (_value) : _type(_garbage))
 #else
 #  define SAFE_BEGIN(dst_type, src_type, src_, check) \
+    UNUSED_VARS(check); \
     src_type _src = src_; \
     dst_type _dst;
 
@@ -1066,7 +1067,7 @@ static inline float3 light_position_get(LightData light)
 #define SAFE_READ_END() _dst
 
 #define SAFE_WRITE_BEGIN(src_type, src, check) SAFE_BEGIN(LightLocalData, src_type, src, check)
-#define SAFE_WRITE_END(light) light.DATA_MEMBER = _dst
+#define SAFE_WRITE_END(light) light.DATA_MEMBER = _dst;
 
 #define ERROR_OFS(a, b) "Offset of " STRINGIFY(a) " mismatch offset of " STRINGIFY(b)
 
@@ -1092,42 +1093,16 @@ static inline float3 light_position_get(LightData light)
 namespace do_not_use {
 #  endif
 
-static inline LightSpotData light_local_data_get(LightData light)
+static inline LightSpotData light_local_data_get_ex(LightData light, bool check)
 {
-  SAFE_READ_BEGIN(LightSpotData, light, is_local_light(light.type))
+  SAFE_READ_BEGIN(LightSpotData, light, check)
+  SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
+  SAFE_ASSIGN_FLOAT(_pad0, _pad0)
+  SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
-  SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
-  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
-  return SAFE_READ_END();
-}
-
-static inline LightData light_local_data_set(LightData light, LightSpotData spot_data)
-{
-  SAFE_WRITE_BEGIN(LightSpotData, spot_data, is_local_light(light.type))
-  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
-  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
-  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
-  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
-  SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
-  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
-  SAFE_WRITE_END(light);
-  return light;
-}
-
-static inline LightSpotData light_spot_data_get(LightData light)
-{
-  SAFE_READ_BEGIN(LightSpotData, light, is_spot_light(light.type) || is_point_light(light.type))
-  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
-  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
-  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
-  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
-  SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT(radius, _pad1)
   SAFE_ASSIGN_FLOAT(spot_mul, _pad2)
@@ -1135,6 +1110,36 @@ static inline LightSpotData light_spot_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(spot_tan, _pad4)
   SAFE_ASSIGN_FLOAT(spot_bias, _pad5)
   return SAFE_READ_END();
+}
+
+static inline LightData light_local_data_set(LightData light, LightSpotData spot_data)
+{
+  SAFE_WRITE_BEGIN(LightSpotData, spot_data, is_local_light(light.type))
+  SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
+  SAFE_ASSIGN_FLOAT(_pad0, _pad0)
+  SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN_FLOAT(_pad1, radius)
+  SAFE_ASSIGN_FLOAT(_pad2, spot_mul)
+  SAFE_ASSIGN_FLOAT2(_pad3, spot_size_inv)
+  SAFE_ASSIGN_FLOAT(_pad4, spot_tan)
+  SAFE_ASSIGN_FLOAT(_pad5, spot_bias)
+  SAFE_WRITE_END(light)
+  return light;
+}
+
+static inline LightSpotData light_local_data_get(LightData light)
+{
+  return light_local_data_get_ex(light, is_local_light(light.type));
+}
+
+static inline LightSpotData light_spot_data_get(LightData light)
+{
+  return light_local_data_get_ex(light, is_spot_light(light.type) || is_point_light(light.type));
 }
 
 static inline LightAreaData light_area_data_get(LightData light)
@@ -1178,7 +1183,7 @@ static inline LightData light_sun_data_set(LightData light, LightSunData sun_dat
   SAFE_ASSIGN_FLOAT2(_pad3, clipmap_origin)
   SAFE_ASSIGN_INT_AS_FLOAT(_pad4, clipmap_lod_min)
   SAFE_ASSIGN_INT_AS_FLOAT(_pad5, clipmap_lod_max)
-  SAFE_WRITE_END(light);
+  SAFE_WRITE_END(light)
   return light;
 }
 
