@@ -162,6 +162,10 @@ ccl_device_inline void point_light_sample_from_uv(const ccl_global KernelLight *
     ls->P = klight->co;
     ls->D = normalize_len(ls->P - ray_P, &ls->t);
     ls->Ng = -ls->D;
+
+    /* Recompute texture coordinates from the new direction. */
+    point_light_uv(klight, ls->Ng, &ls->u, &ls->v);
+
     return;
   }
 
