@@ -137,6 +137,7 @@ class NODE_MT_geometry_node_GEO_PRIMITIVES_CURVE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeCurvePrimitiveBezierSegment")
         node_add_menu.add_node_type(layout, "GeometryNodeCurvePrimitiveCircle")
         node_add_menu.add_node_type(layout, "GeometryNodeCurvePrimitiveLine")
+        node_add_menu.add_node_type(layout, "GeometryNodeCurvePlane")
         node_add_menu.add_node_type(layout, "GeometryNodeCurveSpiral")
         node_add_menu.add_node_type(layout, "GeometryNodeCurveQuadraticBezier")
         node_add_menu.add_node_type(layout, "GeometryNodeCurvePrimitiveQuadrilateral")

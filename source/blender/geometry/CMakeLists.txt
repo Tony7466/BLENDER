@@ -18,6 +18,7 @@ set(INC_SYS
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
+  intern/curve_plane.cc
   intern/extend_curves.cc
   intern/fillet_curves.cc
   intern/join_geometries.cc
@@ -54,6 +55,7 @@ set(SRC
 
   GEO_add_curves_on_mesh.hh
   GEO_curve_constraints.hh
+  GEO_curve_plane.hh
   GEO_extend_curves.hh
   GEO_fillet_curves.hh
   GEO_join_geometries.hh
@@ -132,6 +134,16 @@ if(WITH_GMP)
   list(APPEND LIB
     ${GMP_LIBRARIES}
   )
+endif()
+
+if(WITH_POTRACE)
+  list(APPEND INC
+    ${POTRACE_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${POTRACE_LIBRARIES}
+  )
+  add_definitions(-DWITH_POTRACE)
 endif()
 
 blender_add_lib(bf_geometry "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
