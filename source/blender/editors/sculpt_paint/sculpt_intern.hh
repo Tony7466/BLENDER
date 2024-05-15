@@ -8,15 +8,7 @@
 
 #pragma once
 
-#include <memory>
 #include <queue>
-
-#include "DNA_brush_enums.h"
-#include "DNA_brush_types.h"
-#include "DNA_key_types.h"
-#include "DNA_listBase.h"
-#include "DNA_scene_types.h"
-#include "DNA_vec_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_paint.hh"
@@ -2093,102 +2085,4 @@ inline void *SCULPT_vertex_attr_get(const PBVHVertRef vertex, const SculptAttrib
   }
 
   return NULL;
-}
-
-namespace blender::ed::sculpt_paint {
-
-/**
- * Note on the various positions arrays:
- * - positions_sculpt: The positions affected by brush strokes (maybe indirectly). Owned by the
- *   PBVH or mesh.
- * - positions_mesh: Positions owned by the original mesh. Not the same as `positions_sculpt` if
- *   there are deform modifiers.
- * - positions_eval: Positions after procedural deformation, used to build the PBVH. Translations
- *   are built for these values, then applied to `positions_sculpt`.
- *
- * Only two of these arrays are actually necessary. The third comes from the fact that the PBVH
- * currently stores its own copy of positions when there are deformations. If that was removed, the
- * situation would be clearer.
- *
- * \todo Get rid of one of the arrays mentioned above to avoid the situation with evaluated
- * positions, original positions, and then a third copy that's just there because of historical
- * reasons.
- */
-
-// TODO: Remove access to positions and normals from the PBVH structure. The PBVH should only be
-// concerned with splitting geometry into separate spacially contiguous nodes.
-
-// TODO: Move these functions to proper new files.
-
-void calc_mesh_hide_and_mask(const Mesh &mesh,
-                             Span<int> vert_indices,
-                             MutableSpan<float> r_factors);
-
-void calc_distance_falloff(SculptSession &ss,
-                           Span<float3> vert_positions,
-                           Span<int> vert_indices,
-                           eBrushFalloffShape falloff_shape,
-                           MutableSpan<float> r_distances,
-                           MutableSpan<float> factors);
-
-void calc_brush_strength_factors(const SculptSession &ss,
-                                 const Brush &brush,
-                                 Span<int> vert_indices,
-                                 Span<float> distances,
-                                 MutableSpan<float> factors);
-
-void calc_brush_texture_factors(SculptSession &ss,
-                                const Brush &brush,
-                                Span<float3> vert_positions,
-                                Span<int> vert_indices,
-                                MutableSpan<float> factors);
-
-void calc_brush_texture_colors(SculptSession &ss,
-                               const Brush &brush,
-                               Span<float3> vert_positions,
-                               Span<int> vert_indices,
-                               Span<float> factors,
-                               MutableSpan<float4> r_colors);
-
-void calc_front_face(const float3 &view_normal,
-                     Span<float3> vert_normals,
-                     Span<int> vert_indices,
-                     MutableSpan<float> factors);
-
-/**
- * \todo Remove call to `undo::push_node` deep inside `calc_mesh_automask` so the object argument
- * can be const. That may (hopefully) require pulling out the undo node push into the code for each
- * brush. That should help clarify the code path for brushes, and various optimizations will depend
- * on brush implementations doing their own undo pushes.
- */
-void calc_mesh_automask(Object &object,
-                        const auto_mask::Cache &cache,
-                        PBVHNode &node,
-                        Span<int> verts,
-                        MutableSpan<float> factors);
-
-void apply_translations(Span<float3> translations, Span<int> verts, MutableSpan<float3> positions);
-
-/**
- * \todo Don't invert `deform_imats` on object evaluation. Instead just invert them on-demand in
- * brush implementations. This would be better because only the inversions required for affected
- * vertices would be necessary.
- */
-void apply_crazyspace_to_translations(Span<float3x3> deform_imats,
-                                      Span<int> verts,
-                                      MutableSpan<float3> translations);
-
-void clip_and_lock_translations(const Sculpt &sd,
-                                const SculptSession &ss,
-                                Span<float3> positions,
-                                Span<int> verts,
-                                MutableSpan<float3> translations);
-
-MutableSpan<float3> mesh_brush_positions_for_write(SculptSession &ss, Mesh &mesh);
-
-void flush_positions_to_shape_keys(Object &object,
-                                   Span<int> verts,
-                                   Span<float3> positions,
-                                   MutableSpan<float3> positions_mesh);
-
 }

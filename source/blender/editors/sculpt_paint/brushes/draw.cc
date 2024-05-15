@@ -21,6 +21,7 @@
 #include "BLI_task.h"
 #include "BLI_task.hh"
 
+#include "editors/sculpt_paint/mesh_brush_utils.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
