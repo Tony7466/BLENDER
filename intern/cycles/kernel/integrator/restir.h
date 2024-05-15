@@ -337,11 +337,21 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
         kg, state, &neighbor.sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
     const float neighbor_target_function = luminance(kg, neighbor.reservoir.radiance);
 
+    /* Jacobian. */
+    const bool copy_direction = sample_copy_direction(kg, neighbor.reservoir);
+    if (copy_direction) {
+      neighbor.reservoir.total_weight *= neighbor.reservoir.ls.jacobian_area_to_solid_angle();
+    }
+
     /* Evaluate neighbor sample from the current shading point. */
     light_sample_from_uv(kg, &current->sd, current->path_flag, &neighbor.reservoir.ls);
     radiance_eval(
         kg, state, &current->sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
     const float neighbor_at_canonical = luminance(kg, neighbor.reservoir.radiance);
+
+    if (copy_direction) {
+      neighbor.reservoir.total_weight *= neighbor.reservoir.ls.jacobian_solid_angle_to_area();
+    }
 
     /* TODO(weizhen): either the MIS weight computation should be a member function of
      * SpatialReservoir, or the struct SpatialReservoir should be removed. */
@@ -435,19 +445,19 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   const bool visibility = kernel_data.integrator.restir_unbiased;
   const bool pairwise_mis = kernel_data.integrator.restir_pairwise_mis;
 
-  /* TODO(weizhen): add options for pairwiseMIS and biasedMIS. The current MIS weight is not good
-   * for point light with soft falloff and area light with small spread. */
   /* Uniformly sample neighboring reservoirs within a radius. There is probability to pick the same
    * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
    * samples are used. */
   bool success;
-  if (pairwise_mis) {
+  if (true) {
     success = streaming_samples_pairwise(
         kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
   }
   else {
     /* TODO(weizhen): this is also pairwise, but with worse MIS weight. Keep this for debugging
      * now, probably just delete the option in the future. */
+    /* TODO(weizhen): this is biased because we have no access of the jacobian when
+     * `sample_copy_direction()`. */
     success = streaming_samples(
         kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
   }

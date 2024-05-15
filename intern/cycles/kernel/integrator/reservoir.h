@@ -153,7 +153,9 @@ struct Reservoir {
 ccl_device_inline bool sample_copy_direction(KernelGlobals kg,
                                              ccl_private const Reservoir &reservoir)
 {
-  kernel_assert(!reservoir.is_empty());
+  if (reservoir.is_empty()) {
+    return false;
+  }
 
   if (reservoir.ls.type == LIGHT_AREA) {
     const ccl_global KernelLight *klight = &kernel_data_fetch(lights, reservoir.ls.lamp);
@@ -176,10 +178,6 @@ void Reservoir::add_reservoir(KernelGlobals kg, Reservoir &other, const float ra
 {
   if (other.is_empty()) {
     return;
-  }
-
-  if (sample_copy_direction(kg, other)) {
-    other.total_weight *= other.ls.jacobian_solid_angle_to_area();
   }
 
   add_sample(other.ls, other.radiance, other.total_weight, rand);

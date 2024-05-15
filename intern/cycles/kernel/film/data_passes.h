@@ -243,11 +243,7 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     film_overwrite_pass_float(ptr++, reservoir->ls.u);
     film_overwrite_pass_float(ptr++, reservoir->ls.v);
 
-    const float total_weight = reservoir->total_weight *
-                               (sample_copy_direction(kg, *reservoir) ?
-                                    reservoir->ls.jacobian_area_to_solid_angle() :
-                                    1.0f);
-    film_overwrite_pass_float(ptr, total_weight);
+    film_overwrite_pass_float(ptr, reservoir->total_weight);
   }
 }
 
