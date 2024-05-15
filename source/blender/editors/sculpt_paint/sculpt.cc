@@ -6390,7 +6390,7 @@ void calc_distance_falloff(SculptSession &ss,
   }
 }
 
-void calc_brush_strength_factors(SculptSession &ss,
+void calc_brush_strength_factors(const SculptSession &ss,
                                  const Brush &brush,
                                  const Span<int> verts,
                                  const Span<float> distances,
@@ -6399,7 +6399,7 @@ void calc_brush_strength_factors(SculptSession &ss,
   BLI_assert(verts.size() == distances.size());
   BLI_assert(verts.size() == factors.size());
 
-  StrokeCache &cache = *ss.cache;
+  const StrokeCache &cache = *ss.cache;
 
   for (const int i : verts.index_range()) {
     if (factors[i] == 0.0f) {

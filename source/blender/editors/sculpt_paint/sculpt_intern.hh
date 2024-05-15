@@ -2111,11 +2111,6 @@ namespace blender::ed::sculpt_paint {
  * situation would be clearer.
  */
 
-// TODO: Remove call to `undo::push_node` deep inside `calc_mesh_automask` so the object argument
-// can be const. That may (hopefully) require pulling out the undo node push into this code. I
-// think various optimizations will depend on brush implementsions doing their own undo pushes
-// anyway.
-
 // TODO: Just try to get rid of one of the arrays mentioned above so we don't have this weird
 // situation with evaluated positions, original positions, and then some third copy that's just
 // there because of legacy code reasons.
@@ -2140,7 +2135,7 @@ void calc_distance_falloff(SculptSession &ss,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
 
-void calc_brush_strength_factors(SculptSession &ss,
+void calc_brush_strength_factors(const SculptSession &ss,
                                  const Brush &brush,
                                  Span<int> vert_indices,
                                  Span<float> distances,
@@ -2164,6 +2159,12 @@ void calc_front_face(const float3 &view_normal,
                      Span<int> vert_indices,
                      MutableSpan<float> factors);
 
+/**
+ * \todo Remove call to `undo::push_node` deep inside `calc_mesh_automask` so the object argument
+ * can be const. That may (hopefully) require pulling out the undo node push into the code for each
+ * brush. That should help clarify the code path for brushes, and various optimizations will depend
+ * on brush implementations doing their own undo pushes.
+ */
 void calc_mesh_automask(Object &object,
                         const auto_mask::Cache &cache,
                         PBVHNode &node,
