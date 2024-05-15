@@ -171,7 +171,7 @@ ccl_device_inline void point_light_sample_from_uv(const ccl_global KernelLight *
 
   const Transform tfm = klight->tfm;
   const float2 uv = make_float2(1.0f - ls->u - ls->v, ls->u);
-  ls->Ng = transform_direction(&tfm, map_to_sphere(uv));
+  ls->Ng = normalize(transform_direction(&tfm, map_to_sphere(uv)));
 
   if (klight->spot.is_sphere) {
     ls->P = klight->co + radius * ls->Ng;
