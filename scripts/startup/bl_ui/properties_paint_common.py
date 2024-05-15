@@ -915,6 +915,7 @@ def brush_shared_settings(layout, context, brush, popover=False):
 
     # Grease Pencil #
     if mode == 'PAINT_GREASE_PENCIL':
+        size_mode = True
         size = True
         strength = True
 
@@ -1446,6 +1447,9 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
     if gp_settings is None:
         return
 
+    tool_settings = context.tool_settings
+    ups = tool_settings.unified_paint_settings
+
     grease_pencil_tool = brush.gpencil_tool
 
     if grease_pencil_tool in {'DRAW', 'ERASE', 'TINT'} or tool.idname in {
@@ -1456,11 +1460,16 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
             "builtin.circle",
             "builtin.polyline",
     }:
+        size = "size"
+        size_owner = ups if ups.use_unified_size else brush
+        if size_owner.use_locked_size == 'SCENE':
+            size = "unprojected_radius"
+
         UnifiedPaintPanel.prop_unified(
             layout,
             context,
             brush,
-            "size",
+            size,
             unified_name="use_unified_size",
             pressure_name="use_pressure_size",
             text="Radius",

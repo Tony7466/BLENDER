@@ -13,6 +13,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 #include "BKE_object_deform.h"
+#include "BKE_paint.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 

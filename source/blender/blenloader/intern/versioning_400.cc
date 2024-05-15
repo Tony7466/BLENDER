@@ -2097,13 +2097,32 @@ static void image_settings_avi_to_ffmpeg(Scene *scene)
   }
 }
 
+/* The Hue Correct curve now wraps around by specifying CUMA_USE_WRAPPING, which means it no longer
+ * makes sense to have curve maps outside of the [0, 1] range, so enable clipping and reset the
+ * clip and view ranges. */
+static void hue_correct_set_wrapping(CurveMapping *curve_mapping)
+{
+  curve_mapping->flag |= CUMA_DO_CLIP;
+  curve_mapping->flag |= CUMA_USE_WRAPPING;
+
+  curve_mapping->clipr.xmin = 0.0f;
+  curve_mapping->clipr.xmax = 1.0f;
+  curve_mapping->clipr.ymin = 0.0f;
+  curve_mapping->clipr.ymax = 1.0f;
+
+  curve_mapping->curr.xmin = 0.0f;
+  curve_mapping->curr.xmax = 1.0f;
+  curve_mapping->curr.ymin = 0.0f;
+  curve_mapping->curr.ymax = 1.0f;
+}
+
 static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
 {
   LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
     if (smd->type == seqModifierType_HueCorrect) {
       HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
       CurveMapping *cumap = (CurveMapping *)&hcmd->curve_mapping;
-      cumap->flag |= CUMA_USE_WRAPPING;
+      hue_correct_set_wrapping(cumap);
     }
   }
   return true;
@@ -2153,7 +2172,7 @@ static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
 
       if (node->type == CMP_NODE_HUECORRECT) {
         CurveMapping *cumap = (CurveMapping *)node->storage;
-        cumap->flag |= CUMA_USE_WRAPPING;
+        hue_correct_set_wrapping(cumap);
       }
     }
   }
@@ -3383,7 +3402,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       SceneEEVEE default_scene_eevee = *DNA_struct_default_get(SceneEEVEE);
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.shadow_resolution_scale = default_scene_eevee.shadow_resolution_scale;
-        scene->eevee.clamp_world = 10.0f;
       }
     }
   }
@@ -3532,6 +3550,29 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         light->shadow_maximum_resolution = shadow_max_res_local;
         SET_FLAG_FROM_TEST(light->mode, shadow_resolution_absolute, LA_SHAD_RES_ABSOLUTE);
       }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 36)) {
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      /* Only for grease pencil brushes. */
+      if (brush->gpencil_settings) {
+        /* Use the `Scene` radius unit by default (confusingly named `BRUSH_LOCK_SIZE`).
+         * Convert the radius to be the same visual size as in GPv2. */
+        brush->flag |= BRUSH_LOCK_SIZE;
+        brush->unprojected_radius = brush->size *
+                                    blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 37)) {
+    const World *default_world = DNA_struct_default_get(World);
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      world->sun_threshold = default_world->sun_threshold;
+      world->sun_angle = default_world->sun_angle;
+      world->sun_shadow_maximum_resolution = default_world->sun_shadow_maximum_resolution;
+      world->flag |= WO_USE_SUN_SHADOW;
     }
   }
 
