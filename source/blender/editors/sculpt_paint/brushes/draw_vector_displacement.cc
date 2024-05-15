@@ -36,8 +36,8 @@ struct LocalData {
 
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
+                       const PBVHNode &node,
                        Object &object,
-                       PBVHNode &node,
                        LocalData &tls,
                        MutableSpan<float3> positions_orig,
                        MutableSpan<float3> mesh_positions)
@@ -88,8 +88,6 @@ static void calc_faces(const Sculpt &sd,
 
   apply_translations(translations, verts, positions_orig);
   flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
-
-  BKE_pbvh_node_mark_positions_update(&node);
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -183,7 +181,8 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces(sd, brush, object, *nodes[i], tls, positions_orig, mesh_positions);
+          calc_faces(sd, brush, *nodes[i], object, tls, positions_orig, mesh_positions);
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;
