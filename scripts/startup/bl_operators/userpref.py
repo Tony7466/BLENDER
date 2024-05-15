@@ -405,6 +405,185 @@ class PREFERENCES_OT_keyitem_remove(Operator):
         return {'FINISHED'}
 
 
+class PREFERENCES_OT_quick_assign(Operator):
+    """Assign values to the new drag select settings"""
+    bl_idname = "preferences.quick_assign"
+    bl_label = "Quick Assign"
+
+    def execute(self, context):
+        inputs = context.preferences.inputs
+        
+        if inputs.quick_assign_mode == 'BETTER':
+            inputs.drag_control_mode = 'USERPREF'
+            inputs.userpref_mode = 'EASY'
+            inputs.object_select_box = 'OBJECT_TOUCH'
+            inputs.face_select_box = 'FACE_TOUCH'
+            inputs.edge_select_box = 'EDGE_TOUCH'
+            inputs.backface_box = 'NEAR'
+            inputs.auto_xray_box = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_box = 'SELECT_THROUGH_OBJECT'
+            inputs.xray_button = 'HIDE'
+            inputs.object_header = True
+            inputs.face_header = True
+            inputs.edge_header = True
+            inputs.backface_header = True
+            inputs.auto_xray_header = False
+            inputs.select_through_header = True
+            inputs.wireless_touch_object = True
+            inputs.object_cycle_touch = True
+            inputs.object_cycle_enclose = True
+            inputs.object_cycle_origin = False
+            inputs.face_cycle_default = False
+            inputs.face_cycle_touch = True
+            inputs.face_cycle_enclose = True
+            inputs.face_cycle_center = False
+            inputs.edge_cycle_default = False
+            inputs.edge_cycle_touch = True
+            inputs.edge_cycle_enclose = True
+            inputs.backface_toggle = 'NEAR'
+            inputs.select_through_toggle = 'CURRENT'
+            inputs.object_pie = 'SHOW'
+            inputs.face_pie = 'SHOW'
+            inputs.edge_pie = 'SHOW'
+            inputs.backface_pie = 'SHOW'
+            inputs.auto_xray_pie = 'HIDE'
+            inputs.select_through_pie = 'SHOW'
+            inputs.box_pie = 'CONTEXT'
+            inputs.circle_pie = 'CONTEXT'
+            inputs.lasso_pie = 'CONTEXT'
+        elif inputs.quick_assign_mode == 'AUTO_XRAY':
+            inputs.drag_control_mode = 'USERPREF'
+            inputs.userpref_mode = 'EASY'
+            inputs.object_select_box = 'OBJECT_TOUCH'
+            inputs.face_select_box = 'FACE_TOUCH'
+            inputs.edge_select_box = 'EDGE_TOUCH'
+            inputs.backface_box = 'DEFAULT'
+            inputs.auto_xray_box = 'AUTO_XRAY_BOTH'
+            inputs.select_through_box = 'SELECT_THROUGH_OBJECT'
+            inputs.xray_button = 'SHOW'
+            inputs.object_header = True
+            inputs.face_header = True
+            inputs.edge_header = True
+            inputs.backface_header = True
+            inputs.auto_xray_header = True
+            inputs.select_through_header = False
+            inputs.object_cycle_touch = True
+            inputs.object_cycle_enclose = True
+            inputs.object_cycle_origin = False
+            inputs.face_cycle_default = False
+            inputs.face_cycle_touch = True
+            inputs.face_cycle_enclose = True
+            inputs.face_cycle_center = False
+            inputs.edge_cycle_default = False
+            inputs.edge_cycle_touch = True
+            inputs.edge_cycle_enclose = True
+            inputs.auto_xray_toggle = 'BOTH'
+            inputs.backface_toggle = 'NONE'
+            inputs.object_pie = 'SHOW'
+            inputs.face_pie = 'SHOW'
+            inputs.edge_pie = 'SHOW'
+            inputs.backface_pie = 'SHOW'
+            inputs.auto_xray_pie = 'SHOW'
+            inputs.select_through_pie = 'HIDE'
+            inputs.box_pie = 'SHOW'
+            inputs.circle_pie = 'SHOW'
+            inputs.lasso_pie = 'SHOW'
+        elif inputs.quick_assign_mode == 'DIRECTIONAL':
+            inputs.drag_control_mode = 'USERPREF'
+            inputs.userpref_mode = 'SPLIT'
+            inputs.drag_direction_box = 'LEFT_RIGHT'
+            inputs.drag_direction_lasso = 'ANY'
+            inputs.drag_direction_mode = 'SELECTIVE'
+            inputs.direction_object = True
+            inputs.direction_face = True
+            inputs.direction_edge = True
+            inputs.direction_backface = False
+            inputs.direction_auto_xray = False
+            inputs.direction_select_through = False
+            inputs.object_select_box = 'OBJECT_TOUCH'
+            inputs.object_select_downright_box = 'OBJECT_ENCLOSE'
+            inputs.face_select_box = 'FACE_TOUCH'
+            inputs.face_select_downright_box = 'FACE_ENCLOSE'
+            inputs.edge_select_box = 'EDGE_TOUCH'
+            inputs.edge_select_downright_box = 'EDGE_ENCLOSE'
+            inputs.backface_box = 'DEFAULT'
+            inputs.auto_xray_box = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_box = 'SELECT_THROUGH_OBJECT'
+            inputs.object_select_circle = 'OBJECT_TOUCH'
+            inputs.face_select_circle = 'FACE_TOUCH'
+            inputs.edge_select_circle = 'EDGE_TOUCH'
+            inputs.backface_circle = 'DEFAULT'
+            inputs.auto_xray_circle = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_circle = 'SELECT_THROUGH_OBJECT'
+            inputs.object_select_lasso = 'OBJECT_TOUCH'
+            inputs.face_select_lasso = 'FACE_TOUCH'
+            inputs.edge_select_lasso = 'EDGE_TOUCH'
+            inputs.backface_lasso = 'DEFAULT'
+            inputs.auto_xray_lasso = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_lasso = 'SELECT_THROUGH_OBJECT'
+            inputs.xray_button = 'SHOW'
+            inputs.object_header = False
+            inputs.face_header = False
+            inputs.edge_header = False
+            inputs.backface_header = False
+            inputs.auto_xray_header = False
+            inputs.select_through_header = False
+            inputs.object_pie = 'HIDE'
+            inputs.face_pie = 'HIDE'
+            inputs.edge_pie = 'HIDE'
+        else:
+            inputs.drag_control_mode = 'USERPREF'
+            inputs.userpref_mode = 'SPLIT'
+            inputs.drag_direction_box = 'ANY'
+            inputs.drag_direction_lasso = 'ANY'
+            inputs.object_select_box = 'OBJECT_TOUCH'
+            inputs.face_select_box = 'FACE_DEFAULT'
+            inputs.edge_select_box = 'EDGE_DEFAULT'
+            inputs.backface_box = 'DEFAULT'
+            inputs.auto_xray_box = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_box = 'SELECT_THROUGH_OBJECT'
+            inputs.object_select_circle = 'OBJECT_ORIGIN'
+            inputs.face_select_circle = 'FACE_DEFAULT'
+            inputs.edge_select_circle = 'EDGE_TOUCH'
+            inputs.backface_circle = 'DEFAULT'
+            inputs.auto_xray_circle = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_circle = 'SELECT_THROUGH_OBJECT'
+            inputs.object_select_lasso = 'OBJECT_ORIGIN'
+            inputs.face_select_lasso = 'FACE_DEFAULT'
+            inputs.edge_select_lasso = 'EDGE_DEFAULT'
+            inputs.backface_lasso = 'DEFAULT'
+            inputs.auto_xray_lasso = 'AUTO_XRAY_DISABLE'
+            inputs.select_through_lasso = 'SELECT_THROUGH_OBJECT'
+            inputs.xray_button = 'SHOW'
+            inputs.object_header = False
+            inputs.face_header = False
+            inputs.edge_header = False
+            inputs.backface_header = False
+            inputs.auto_xray_header = False
+            inputs.select_through_header = False
+            inputs.wireless_touch_object = False
+            inputs.square_select = False
+        return {'FINISHED'}
+
+
+class PREFERENCES_OT_reset_cursors(Operator):
+    """Reset mouse cursors"""
+    bl_idname = "preferences.reset_cursors"
+    bl_label = "Reset Cursors"
+
+    def execute(self, context):
+        inputs = context.preferences.inputs
+        inputs.system_cursor = 'SYSTEM'
+        inputs.edit_cursor = 'CROSS'
+        inputs.paint_cursor = 'CROSS_DOT'
+        inputs.dot_cursor = 'DOT'
+        inputs.knife_cursor = 'KNIFE'
+        inputs.eyedropper_cursor = 'EYEDROPPER'
+        inputs.eraser_cursor = 'ERASER'
+        inputs.pencil_cursor = 'PENCIL'
+        return {'FINISHED'}
+
+
 class PREFERENCES_OT_set_direction_any(Operator):
     """Drag in any direction"""
     bl_idname = "preferences.set_direction_any"
@@ -1331,6 +1510,8 @@ classes = (
     PREFERENCES_OT_keyconfig_test,
     PREFERENCES_OT_keyitem_add,
     PREFERENCES_OT_keyitem_remove,
+    PREFERENCES_OT_quick_assign,
+    PREFERENCES_OT_reset_cursors,
     PREFERENCES_OT_set_direction_any,
     PREFERENCES_OT_set_direction_left,
     PREFERENCES_OT_set_direction_right,

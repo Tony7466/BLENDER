@@ -1251,96 +1251,352 @@ void VIEW3D_OT_toggle_xray(wmOperatorType *ot)
 static int toggle_auto_xray_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
   Object *obedit = CTX_data_edit_object(C);
   bToolRef *tref = area->runtime.tool;
-  const bool mode_match = obedit ? ts->auto_xray_edit : ts->auto_xray_object;
 
-  if (STREQ(tref->idname, "builtin.select_box") ||
-      STREQ(tref->idname_fallback, "builtin.select_box"))
-  {
-    if (mode_match && ts->auto_xray && ts->auto_xray_box) {
-      ts->auto_xray ^= true;
-    }
-    else {
-      if (!mode_match) {
-        if (obedit) {
-          ts->auto_xray_edit ^= true;
+  const bool box_op = U.drag_direction_box == 0 ||
+                      U.drag_direction_mode == 1 && !U.direction_auto_xray;
+  const bool lasso_op = U.drag_direction_lasso == 0 ||
+                        U.drag_direction_mode == 1 && !U.direction_auto_xray;
+  const bool box_circle_lasso = U.sync_box && box_op && U.sync_circle && U.sync_lasso && lasso_op;
+  const bool box = STREQ(tref->idname, "builtin.select_box") ||
+                   STREQ(tref->idname_fallback, "builtin.select_box");
+  const bool lasso = STREQ(tref->idname, "builtin.select_lasso") ||
+                     STREQ(tref->idname_fallback, "builtin.select_lasso");
+  const bool circle = STREQ(tref->idname, "builtin.select_circle") ||
+                      STREQ(tref->idname_fallback, "builtin.select_circle");
+  const bool box_lasso = (box || lasso) && lasso_op && U.sync_lasso && box_op && U.sync_box;
+  const bool box_circle = (box || circle) && U.sync_circle && box_op && U.sync_box;
+  const bool circle_lasso = (lasso || circle) && U.sync_circle && lasso_op && U.sync_lasso;
+
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1) {
+      if (box && box_op || box_circle_lasso || box_lasso || box_circle) {
+        if (box) {
+          /* Off in the active mode and On in the other mode = Both */
+          if (obedit && U.auto_xray_box == 1 || !obedit && U.auto_xray_box == 2) {
+            U.auto_xray_box = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_lasso = 3;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_circle = 3;
+            }
+          }
+          /* if toggle mode == Current, Off Edit = On Edit, Both Object = Edit only */
+          else if (U.auto_xray_toggle == 1 &&
+                   (obedit && U.auto_xray_box == 0 || !obedit && U.auto_xray_box == 3))
+          {
+            U.auto_xray_box = 2;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_lasso = 2;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_circle = 2;
+            }
+          }
+          /* if toggle mode == Current, Off Object = On Object, Both Edit = Object only */
+          else if (U.auto_xray_toggle == 1 &&
+                   (!obedit && U.auto_xray_box == 0 || obedit && U.auto_xray_box == 3))
+          {
+            U.auto_xray_box = 1;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_lasso = 1;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_circle = 1;
+            }
+          }
+          /* otherwise On = Off */
+          else if (U.auto_xray_box != 0) {
+            U.auto_xray_box = 0;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_lasso = 0;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_circle = 0;
+            }
+          }
+          /* and Off = Both */
+          else {
+            U.auto_xray_box = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_lasso = 3;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_circle = 3;
+            }
+          }
+        }
+        else if (lasso) {
+          if (obedit && U.auto_xray_lasso == 1 || !obedit && U.auto_xray_lasso == 2) {
+            U.auto_xray_lasso = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_circle = 3;
+            }
+          }
+          else if (U.auto_xray_toggle == 1 &&
+                   (obedit && U.auto_xray_lasso == 0 || !obedit && U.auto_xray_lasso == 3))
+          {
+            U.auto_xray_lasso = 2;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_box = 2;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_circle = 2;
+            }
+          }
+          else if (U.auto_xray_toggle == 1 &&
+                   (!obedit && U.auto_xray_lasso == 0 || obedit && U.auto_xray_lasso == 3))
+          {
+            U.auto_xray_lasso = 1;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_box = 1;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_circle = 1;
+            }
+          }
+          else if (U.auto_xray_lasso != 0) {
+            U.auto_xray_lasso = 0;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_box = 0;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_circle = 0;
+            }
+          }
+          else {
+            U.auto_xray_lasso = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.auto_xray_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_circle = 3;
+            }
+          }
         }
         else {
-          ts->auto_xray_object ^= true;
+          if (obedit && U.auto_xray_circle == 1 || !obedit && U.auto_xray_circle == 2) {
+            U.auto_xray_circle = 3;
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_lasso = 3;
+            }
+          }
+          else if (U.auto_xray_toggle == 1 &&
+                   (obedit && U.auto_xray_circle == 0 || !obedit && U.auto_xray_circle == 3))
+          {
+            U.auto_xray_circle = 2;
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_box = 2;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_lasso = 2;
+            }
+          }
+          else if (U.auto_xray_toggle == 1 &&
+                   (!obedit && U.auto_xray_circle == 0 || obedit && U.auto_xray_circle == 3))
+          {
+            U.auto_xray_circle = 1;
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_box = 1;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_lasso = 1;
+            }
+          }
+          else if (U.auto_xray_circle != 0) {
+            U.auto_xray_circle = 0;
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_box = 0;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_lasso = 0;
+            }
+          }
+          else {
+            U.auto_xray_circle = 3;
+
+            if (box_circle_lasso || box_circle) {
+              U.auto_xray_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.auto_xray_lasso = 3;
+            }
+          }
         }
       }
+      else if (lasso && lasso_op || circle_lasso) {
+        if (lasso) {
+          if (obedit && U.auto_xray_lasso == 1 || !obedit && U.auto_xray_lasso == 2) {
+            U.auto_xray_lasso = 3;
 
-      if (!ts->auto_xray) {
-        ts->auto_xray ^= true;
-      }
+            if (circle_lasso) {
+              U.auto_xray_circle = 3;
+            }
+          }
+          else if (U.auto_xray_toggle_lasso == 1 &&
+                   (obedit && U.auto_xray_lasso == 0 || !obedit && U.auto_xray_lasso == 3))
+          {
+            U.auto_xray_lasso = 2;
 
-      if (!ts->auto_xray_box) {
-        ts->auto_xray_box ^= true;
-      }
-    }
-  }
-  else if (STREQ(tref->idname, "builtin.select_lasso") ||
-           STREQ(tref->idname_fallback, "builtin.select_lasso"))
-  {
-    if (mode_match && ts->auto_xray && ts->auto_xray_lasso) {
-      ts->auto_xray ^= true;
-    }
-    else {
-      if (!mode_match) {
-        if (obedit) {
-          ts->auto_xray_edit ^= true;
+            if (circle_lasso) {
+              U.auto_xray_circle = 2;
+            }
+          }
+          else if (U.auto_xray_toggle_lasso == 1 &&
+                   (!obedit && U.auto_xray_lasso == 0 || obedit && U.auto_xray_lasso == 3))
+          {
+            U.auto_xray_lasso = 1;
+
+            if (circle_lasso) {
+              U.auto_xray_circle = 1;
+            }
+          }
+          else if (U.auto_xray_lasso != 0) {
+            U.auto_xray_lasso = 0;
+
+            if (circle_lasso) {
+              U.auto_xray_circle = 0;
+            }
+          }
+          else {
+            U.auto_xray_lasso = 3;
+
+            if (circle_lasso) {
+              U.auto_xray_circle = 3;
+            }
+          }
         }
         else {
-          ts->auto_xray_object ^= true;
+          if (obedit && U.auto_xray_circle == 1 || !obedit && U.auto_xray_circle == 2) {
+            U.auto_xray_circle = 3;
+
+            if (circle_lasso) {
+              U.auto_xray_lasso = 3;
+            }
+          }
+          else if (U.auto_xray_toggle_lasso == 1 &&
+                   (obedit && U.auto_xray_circle == 0 || !obedit && U.auto_xray_circle == 3))
+          {
+            U.auto_xray_circle = 2;
+
+            if (circle_lasso) {
+              U.auto_xray_lasso = 2;
+            }
+          }
+          else if (U.auto_xray_toggle_lasso == 1 &&
+                   (!obedit && U.auto_xray_circle == 0 || obedit && U.auto_xray_circle == 3))
+          {
+            U.auto_xray_circle = 1;
+
+            if (circle_lasso) {
+              U.auto_xray_lasso = 1;
+            }
+          }
+          else if (U.auto_xray_circle != 0) {
+            U.auto_xray_circle = 0;
+
+            if (circle_lasso) {
+              U.auto_xray_lasso = 0;
+            }
+          }
+          else {
+            U.auto_xray_circle = 3;
+
+            if (circle_lasso) {
+              U.auto_xray_lasso = 3;
+            }
+          }
         }
       }
-
-      if (!ts->auto_xray) {
-        ts->auto_xray ^= true;
-      }
-
-      if (!ts->auto_xray_lasso) {
-        ts->auto_xray_lasso ^= true;
-      }
-    }
-  }
-  else if (STREQ(tref->idname, "builtin.select_circle") ||
-           STREQ(tref->idname_fallback, "builtin.select_circle"))
-  {
-    if (mode_match && ts->auto_xray && ts->auto_xray_circle) {
-      ts->auto_xray ^= true;
-    }
-    else {
-      if (!mode_match) {
-        if (obedit) {
-          ts->auto_xray_edit ^= true;
+      else if (circle) {
+        if (obedit && U.auto_xray_circle == 1 || !obedit && U.auto_xray_circle == 2) {
+          U.auto_xray_circle = 3;
+        }
+        else if (U.auto_xray_toggle_circle == 1 &&
+                 (obedit && U.auto_xray_circle == 0 || !obedit && U.auto_xray_circle == 3))
+        {
+          U.auto_xray_circle = 2;
+        }
+        else if (U.auto_xray_toggle_circle == 1 &&
+                 (!obedit && U.auto_xray_circle == 0 || obedit && U.auto_xray_circle == 3))
+        {
+          U.auto_xray_circle = 1;
+        }
+        else if (U.auto_xray_circle != 0) {
+          U.auto_xray_circle = 0;
         }
         else {
-          ts->auto_xray_object ^= true;
+          U.auto_xray_circle = 3;
         }
       }
-
-      if (!ts->auto_xray) {
-        ts->auto_xray ^= true;
+    }
+    else {
+      if (obedit && U.auto_xray_box == 1 || !obedit && U.auto_xray_box == 2) {
+        U.auto_xray_box = 3;
       }
-
-      if (!ts->auto_xray_circle) {
-        ts->auto_xray_circle ^= true;
+      else if (U.auto_xray_toggle == 1 &&
+               (obedit && U.auto_xray_box == 0 || !obedit && U.auto_xray_box == 3))
+      {
+        U.auto_xray_box = 2;
+      }
+      else if (U.auto_xray_toggle == 1 &&
+               (!obedit && U.auto_xray_box == 0 || obedit && U.auto_xray_box == 3))
+      {
+        U.auto_xray_box = 1;
+      }
+      else if (U.auto_xray_box != 0) {
+        U.auto_xray_box = 0;
+      }
+      else {
+        U.auto_xray_box = 3;
       }
     }
+    ED_area_tag_redraw(area);
   }
-
-  ED_area_tag_redraw(area);
-
   return OPERATOR_FINISHED;
 }
 
 void VIEW3D_OT_toggle_auto_xray(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Toggle Automatic X-Ray";
+  ot->name = "Auto X-Ray";
   ot->idname = "VIEW3D_OT_toggle_auto_xray";
   ot->description = "Transparent scene display during box, lasso, and circle select";
 
@@ -1358,101 +1614,584 @@ void VIEW3D_OT_toggle_auto_xray(wmOperatorType *ot)
 static int toggle_select_through_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
   Object *obedit = CTX_data_edit_object(C);
   bToolRef *tref = area->runtime.tool;
-  const bool mode_match = obedit ? ts->select_through_edit : ts->select_through_object;
 
-  if (STREQ(tref->idname, "builtin.select_box") ||
-      STREQ(tref->idname_fallback, "builtin.select_box"))
-  {
-    if (mode_match && ts->select_through && ts->select_through_box) {
-      ts->select_through ^= true;
-    }
-    else {
-      if (!mode_match) {
-        if (obedit) {
-          ts->select_through_edit ^= true;
+  const bool box_op = U.drag_direction_box == 0 ||
+                      U.drag_direction_mode == 1 && !U.direction_select_through;
+  const bool lasso_op = U.drag_direction_lasso == 0 ||
+                        U.drag_direction_mode == 1 && !U.direction_select_through;
+  const bool box_circle_lasso = U.sync_box && box_op && U.sync_circle && U.sync_lasso && lasso_op;
+  const bool box = STREQ(tref->idname, "builtin.select_box") ||
+                   STREQ(tref->idname_fallback, "builtin.select_box");
+  const bool lasso = STREQ(tref->idname, "builtin.select_lasso") ||
+                     STREQ(tref->idname_fallback, "builtin.select_lasso");
+  const bool circle = STREQ(tref->idname, "builtin.select_circle") ||
+                      STREQ(tref->idname_fallback, "builtin.select_circle");
+  const bool box_lasso = (box || lasso) && lasso_op && U.sync_lasso && box_op && U.sync_box;
+  const bool box_circle = (box || circle) && U.sync_circle && box_op && U.sync_box;
+  const bool circle_lasso = (lasso || circle) && U.sync_circle && lasso_op && U.sync_lasso;
+
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1) {
+      if (box && box_op || box_circle_lasso || box_lasso || box_circle) {
+        if (box) {
+          /* Off in the active mode and On in the other mode = Both */
+          if (obedit && U.select_through_box == 1 || !obedit && U.select_through_box == 2) {
+            U.select_through_box = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_lasso = 3;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_circle = 3;
+            }
+          }
+          /* if toggle mode == Current, Off Edit = On Edit, Both Object = Edit only */
+          else if (U.select_through_toggle == 1 &&
+                   (obedit && U.select_through_box == 0 || !obedit && U.select_through_box == 3))
+          {
+            U.select_through_box = 2;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_lasso = 2;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_circle = 2;
+            }
+          }
+          /* if toggle mode == Current, Off Object = On Object, Both Edit = Object only */
+          else if (U.select_through_toggle == 1 &&
+                   (!obedit && U.select_through_box == 0 || obedit && U.select_through_box == 3))
+          {
+            U.select_through_box = 1;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_lasso = 1;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_circle = 1;
+            }
+          }
+          /* otherwise On = Off */
+          else if (U.select_through_box != 0) {
+            U.select_through_box = 0;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_lasso = 0;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_circle = 0;
+            }
+          }
+          /* and Off = Both */
+          else {
+            U.select_through_box = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_lasso = 3;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_circle = 3;
+            }
+          }
+        }
+        else if (lasso) {
+          if (obedit && U.select_through_lasso == 1 || !obedit && U.select_through_lasso == 2) {
+            U.select_through_lasso = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_circle = 3;
+            }
+          }
+          else if (U.select_through_toggle == 1 && (obedit && U.select_through_lasso == 0 ||
+                                                    !obedit && U.select_through_lasso == 3))
+          {
+            U.select_through_lasso = 2;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_box = 2;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_circle = 2;
+            }
+          }
+          else if (U.select_through_toggle == 1 && (!obedit && U.select_through_lasso == 0 ||
+                                                    obedit && U.select_through_lasso == 3))
+          {
+            U.select_through_lasso = 1;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_box = 1;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_circle = 1;
+            }
+          }
+          else if (U.select_through_lasso != 0) {
+            U.select_through_lasso = 0;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_box = 0;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_circle = 0;
+            }
+          }
+          else {
+            U.select_through_lasso = 3;
+
+            if (box_circle_lasso || box_lasso) {
+              U.select_through_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_circle = 3;
+            }
+          }
         }
         else {
-          ts->select_through_object ^= true;
+          if (obedit && U.select_through_circle == 1 || !obedit && U.select_through_circle == 2) {
+            U.select_through_circle = 3;
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_lasso = 3;
+            }
+          }
+          else if (U.select_through_toggle == 1 && (obedit && U.select_through_circle == 0 ||
+                                                    !obedit && U.select_through_circle == 3))
+          {
+            U.select_through_circle = 2;
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_box = 2;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_lasso = 2;
+            }
+          }
+          else if (U.select_through_toggle == 1 && (!obedit && U.select_through_circle == 0 ||
+                                                    obedit && U.select_through_circle == 3))
+          {
+            U.select_through_circle = 1;
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_box = 1;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_lasso = 1;
+            }
+          }
+          else if (U.select_through_circle != 0) {
+            U.select_through_circle = 0;
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_box = 0;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_lasso = 0;
+            }
+          }
+          else {
+            U.select_through_circle = 3;
+
+            if (box_circle_lasso || box_circle) {
+              U.select_through_box = 3;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.select_through_lasso = 3;
+            }
+          }
         }
       }
+      else if (lasso && lasso_op || circle_lasso) {
+        if (lasso) {
+          if (obedit && U.select_through_lasso == 1 || !obedit && U.select_through_lasso == 2) {
+            U.select_through_lasso = 3;
 
-      if (!ts->select_through) {
-        ts->select_through ^= true;
-      }
+            if (circle_lasso) {
+              U.select_through_circle = 3;
+            }
+          }
+          else if (U.select_through_toggle_lasso == 1 && (obedit && U.select_through_lasso == 0 ||
+                                                          !obedit && U.select_through_lasso == 3))
+          {
+            U.select_through_lasso = 2;
 
-      if (!ts->select_through_box) {
-        ts->select_through_box ^= true;
-      }
-    }
-  }
-  else if (STREQ(tref->idname, "builtin.select_lasso") ||
-           STREQ(tref->idname_fallback, "builtin.select_lasso"))
-  {
-    if (mode_match && ts->select_through && ts->select_through_lasso) {
-      ts->select_through ^= true;
-    }
-    else {
-      if (!mode_match) {
-        if (obedit) {
-          ts->select_through_edit ^= true;
+            if (circle_lasso) {
+              U.select_through_circle = 2;
+            }
+          }
+          else if (U.select_through_toggle_lasso == 1 && (!obedit && U.select_through_lasso == 0 ||
+                                                          obedit && U.select_through_lasso == 3))
+          {
+            U.select_through_lasso = 1;
+
+            if (circle_lasso) {
+              U.select_through_circle = 1;
+            }
+          }
+          else if (U.select_through_lasso != 0) {
+            U.select_through_lasso = 0;
+
+            if (circle_lasso) {
+              U.select_through_circle = 0;
+            }
+          }
+          else {
+            U.select_through_lasso = 3;
+
+            if (circle_lasso) {
+              U.select_through_circle = 3;
+            }
+          }
         }
         else {
-          ts->select_through_object ^= true;
+          if (obedit && U.select_through_circle == 1 || !obedit && U.select_through_circle == 2) {
+            U.select_through_circle = 3;
+
+            if (circle_lasso) {
+              U.select_through_lasso = 3;
+            }
+          }
+          else if (U.select_through_toggle_lasso == 1 && (obedit && U.select_through_circle == 0 ||
+                                                          !obedit && U.select_through_circle == 3))
+          {
+            U.select_through_circle = 2;
+
+            if (circle_lasso) {
+              U.select_through_lasso = 2;
+            }
+          }
+          else if (U.select_through_toggle_lasso == 1 &&
+                   (!obedit && U.select_through_circle == 0 ||
+                    obedit && U.select_through_circle == 3))
+          {
+            U.select_through_circle = 1;
+
+            if (circle_lasso) {
+              U.select_through_lasso = 1;
+            }
+          }
+          else if (U.select_through_circle != 0) {
+            U.select_through_circle = 0;
+
+            if (circle_lasso) {
+              U.select_through_lasso = 0;
+            }
+          }
+          else {
+            U.select_through_circle = 3;
+
+            if (circle_lasso) {
+              U.select_through_lasso = 3;
+            }
+          }
         }
       }
-
-      if (!ts->select_through) {
-        ts->select_through ^= true;
-      }
-
-      if (!ts->select_through_lasso) {
-        ts->select_through_lasso ^= true;
-      }
-    }
-  }
-  else if (STREQ(tref->idname, "builtin.select_circle") ||
-           STREQ(tref->idname_fallback, "builtin.select_circle"))
-  {
-    if (mode_match && ts->select_through && ts->select_through_circle) {
-      ts->select_through ^= true;
-    }
-    else {
-      if (!mode_match) {
-        if (obedit) {
-          ts->select_through_edit ^= true;
+      else if (circle) {
+        if (obedit && U.select_through_circle == 1 || !obedit && U.select_through_circle == 2) {
+          U.select_through_circle = 3;
+        }
+        else if (U.select_through_toggle_circle == 1 && (obedit && U.select_through_circle == 0 ||
+                                                         !obedit && U.select_through_circle == 3))
+        {
+          U.select_through_circle = 2;
+        }
+        else if (U.select_through_toggle_circle == 1 && (!obedit && U.select_through_circle == 0 ||
+                                                         obedit && U.select_through_circle == 3))
+        {
+          U.select_through_circle = 1;
+        }
+        else if (U.select_through_circle != 0) {
+          U.select_through_circle = 0;
         }
         else {
-          ts->select_through_object ^= true;
+          U.select_through_circle = 3;
         }
       }
-
-      if (!ts->select_through) {
-        ts->select_through ^= true;
+    }
+    else {
+      if (obedit && U.select_through_box == 1 || !obedit && U.select_through_box == 2) {
+        U.select_through_box = 3;
       }
-
-      if (!ts->select_through_circle) {
-        ts->select_through_circle ^= true;
+      else if (U.select_through_toggle == 1 &&
+               (obedit && U.select_through_box == 0 || !obedit && U.select_through_box == 3))
+      {
+        U.select_through_box = 2;
+      }
+      else if (U.select_through_toggle == 1 &&
+               (!obedit && U.select_through_box == 0 || obedit && U.select_through_box == 3))
+      {
+        U.select_through_box = 1;
+      }
+      else if (U.select_through_box != 0) {
+        U.select_through_box = 0;
+      }
+      else {
+        U.select_through_box = 3;
       }
     }
+    ED_area_tag_redraw(area);
   }
-
-  ED_area_tag_redraw(area);
-
   return OPERATOR_FINISHED;
 }
 
 void VIEW3D_OT_toggle_select_through(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Toggle Select Through";
+  ot->name = "Select Through";
   ot->idname = "VIEW3D_OT_toggle_select_through";
-  ot->description = "Select occluded objects and mesh elements with box, lasso, and circle select";
+  ot->description = "Select occluded objects and mesh with box, lasso, and circle select";
 
   /* api callbacks */
   ot->exec = toggle_select_through_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Toggle Backface Filter
+ * \{ */
+
+static int toggle_backface_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  Object *obedit = CTX_data_edit_object(C);
+  bToolRef *tref = area->runtime.tool;
+
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1) {
+      const bool box_op = U.drag_direction_box == 0 ||
+                          U.drag_direction_mode == 1 && !U.direction_backface;
+      const bool lasso_op = U.drag_direction_lasso == 0 ||
+                            U.drag_direction_mode == 1 && !U.direction_backface;
+      const bool box = STREQ(tref->idname, "builtin.select_box") ||
+                       STREQ(tref->idname_fallback, "builtin.select_box");
+      const bool lasso = STREQ(tref->idname, "builtin.select_lasso") ||
+                         STREQ(tref->idname_fallback, "builtin.select_lasso");
+      const bool circle = STREQ(tref->idname, "builtin.select_circle") ||
+                          STREQ(tref->idname_fallback, "builtin.select_circle");
+      const bool box_circle_lasso = (box || circle || lasso) && U.sync_box && box_op &&
+                                    U.sync_circle && U.sync_lasso && lasso_op;
+      const bool box_lasso = (box || lasso) && lasso_op && U.sync_lasso && box_op && U.sync_box;
+      const bool box_circle = (box || circle) && U.sync_circle && box_op && U.sync_box;
+      const bool circle_lasso = (lasso || circle) && U.sync_circle && lasso_op && U.sync_lasso;
+
+      if (box && box_op || box_circle_lasso || box_lasso || box_circle) {
+        if (box) {
+          if (U.backface_box != 0) {
+            U.backface_box = 0;
+
+            if (box_circle_lasso || box_lasso) {
+              U.backface_lasso = 0;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_circle = 0;
+            }
+          }
+          else if (U.backface_toggle == 1) {
+            U.backface_box = 2;
+
+            if (box_circle_lasso || box_lasso) {
+              U.backface_lasso = 2;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_circle = 2;
+            }
+          }
+          else {
+            U.backface_box = 1;
+
+            if (box_circle_lasso || box_lasso) {
+              U.backface_lasso = 1;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_circle = 1;
+            }
+          }
+        }
+        else if (lasso) {
+          if (U.backface_lasso != 0) {
+            U.backface_lasso = 0;
+
+            if (box_circle_lasso || box_lasso) {
+              U.backface_box = 0;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_circle = 0;
+            }
+          }
+          else if (U.backface_toggle == 1) {
+            U.backface_lasso = 2;
+
+            if (box_circle_lasso || box_lasso) {
+              U.backface_box = 2;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_circle = 2;
+            }
+          }
+          else {
+            U.backface_lasso = 1;
+
+            if (box_circle_lasso || box_lasso) {
+              U.backface_box = 1;
+            }
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_circle = 1;
+            }
+          }
+        }
+        else {
+          if (U.backface_circle != 0) {
+            U.backface_circle = 0;
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_box = 0;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.backface_lasso = 0;
+            }
+          }
+          else if (U.backface_toggle == 1) {
+            U.backface_circle = 2;
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_box = 2;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.backface_lasso = 2;
+            }
+          }
+          else {
+            U.backface_circle = 1;
+
+            if (box_circle_lasso || box_circle) {
+              U.backface_box = 1;
+            }
+
+            if (box_circle_lasso || circle_lasso) {
+              U.backface_lasso = 1;
+            }
+          }
+        }
+      }
+      else if (lasso && lasso_op || circle_lasso) {
+        if (lasso) {
+          if (U.backface_lasso != 0) {
+            U.backface_lasso = 0;
+
+            if (circle_lasso) {
+              U.backface_circle = 0;
+            }
+          }
+          else if (U.backface_toggle_lasso == 1) {
+            U.backface_lasso = 2;
+
+            if (circle_lasso) {
+              U.backface_circle = 2;
+            }
+          }
+          else {
+            U.backface_lasso = 1;
+
+            if (circle_lasso) {
+              U.backface_circle = 1;
+            }
+          }
+        }
+        else {
+          if (U.backface_circle != 0) {
+            U.backface_circle = 0;
+
+            if (circle_lasso) {
+              U.backface_lasso = 0;
+            }
+          }
+          else if (U.backface_toggle_lasso == 1) {
+            U.backface_circle = 2;
+
+            if (circle_lasso) {
+              U.backface_lasso = 2;
+            }
+          }
+          else {
+            U.backface_circle = 1;
+
+            if (circle_lasso) {
+              U.backface_lasso = 1;
+            }
+          }
+        }
+      }
+      else if (circle) {
+        if (U.backface_circle != 0) {
+          U.backface_circle = 0;
+        }
+        else if (U.backface_toggle_circle == 1) {
+          U.backface_circle = 2;
+        }
+        else {
+          U.backface_circle = 1;
+        }
+      }
+    }
+    else {
+      if (U.backface_box != 0) {
+        U.backface_box = 0;
+      }
+      else if (U.backface_toggle == 1) {
+        U.backface_box = 2;
+      }
+      else {
+        U.backface_box = 1;
+      }
+    }
+    ED_area_tag_redraw(area);
+  }
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_toggle_backface(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Backface Filter";
+  ot->idname = "VIEW3D_OT_toggle_backface";
+  ot->description =
+      "Select mesh based on the direciton of their normals with box, lasso, and circle select";
+
+  /* api callbacks */
+  ot->exec = toggle_backface_exec;
   ot->poll = ED_operator_view3d_active;
 }
 
@@ -1466,12 +2205,20 @@ static int toggle_facedots_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   View3D *v3d = CTX_wm_view3d(C);
-  if (!XRAY_FLAG_ENABLED(v3d)) {
+  const bool solid = v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT;
+  const bool xray = v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
+
+  if (U.facedot_mode == 1 && xray == solid) {
     v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT;
-  }
-  else {
     v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
   }
+  else if (XRAY_FLAG_ENABLED(v3d)) {
+    v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
+  }
+  else {
+    v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT;
+  }
+
   ED_area_tag_redraw(area);
   return OPERATOR_FINISHED;
 }
@@ -1490,43 +2237,484 @@ void VIEW3D_OT_toggle_facedots(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Cycle Shading Mode
+ * \{ */
+
+static int cycle_shading_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  View3D *v3d = CTX_wm_view3d(C);
+
+  if (v3d->shading.type == OB_WIRE) {
+    if (U.shading_cycle_solid) {
+      v3d->shading.type = OB_SOLID;
+    }
+    else if (U.shading_cycle_material) {
+      v3d->shading.type = OB_MATERIAL;
+    }
+    else if (U.shading_cycle_render) {
+      v3d->shading.type = OB_RENDER;
+    }
+  }
+  else if (v3d->shading.type == OB_SOLID) {
+    if (U.shading_cycle_material) {
+      v3d->shading.type = OB_MATERIAL;
+    }
+    else if (U.shading_cycle_render) {
+      v3d->shading.type = OB_RENDER;
+    }
+    else if (U.shading_cycle_wire) {
+      v3d->shading.type = OB_WIRE;
+    }
+  }
+  else if (v3d->shading.type == OB_MATERIAL) {
+    if (U.shading_cycle_render) {
+      v3d->shading.type = OB_RENDER;
+    }
+    else if (U.shading_cycle_wire) {
+      v3d->shading.type = OB_WIRE;
+    }
+    else if (U.shading_cycle_solid) {
+      v3d->shading.type = OB_SOLID;
+    }
+  }
+  else {
+    if (U.shading_cycle_wire) {
+      v3d->shading.type = OB_WIRE;
+    }
+    else if (U.shading_cycle_solid) {
+      v3d->shading.type = OB_SOLID;
+    }
+    else if (U.shading_cycle_material) {
+      v3d->shading.type = OB_MATERIAL;
+    }
+  }
+
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_cycle_shading(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Cycle Shading Mode";
+  ot->idname = "VIEW3D_OT_cycle_shading";
+  ot->description = "Switch to the next shading mode in the cycle";
+  /* api callbacks */
+  ot->exec = cycle_shading_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Cycle Object Mode
  * \{ */
 
 static int cycle_object_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  bToolRef *tref = area->runtime.tool;
 
-  if (ts->object_select_mode == 2) {
-    if (ts->object_cycle_origin) {
-      ts->object_select_mode = 4;
-    }
-    else if (ts->object_cycle_touch) {
-      ts->object_select_mode = 1;
-    }
-  }
-  else if (ts->object_select_mode == 4) {
-    if (ts->object_cycle_touch) {
-      ts->object_select_mode = 1;
-    }
-    else if (ts->object_cycle_enclose) {
-      ts->object_select_mode = 2;
-    }
-  }
-  else {
-    if (ts->object_cycle_enclose) {
-      ts->object_select_mode = 2;
-    }
-    else if (ts->object_cycle_origin) {
-      ts->object_select_mode = 4;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1) {
+      const bool box_op = U.drag_direction_box == 0 ||
+                          U.drag_direction_mode == 1 && !U.direction_object;
+      const bool lasso_op = U.drag_direction_lasso == 0 ||
+                            U.drag_direction_mode == 1 && !U.direction_object;
+      const bool box = STREQ(tref->idname, "builtin.select_box") ||
+                       STREQ(tref->idname_fallback, "builtin.select_box");
+      const bool lasso = STREQ(tref->idname, "builtin.select_lasso") ||
+                         STREQ(tref->idname_fallback, "builtin.select_lasso");
+      const bool circle = STREQ(tref->idname, "builtin.select_circle") ||
+                          STREQ(tref->idname_fallback, "builtin.select_circle");
+      const bool box_circle_lasso = (box || circle || lasso) && U.sync_box && box_op &&
+                                    U.sync_circle && U.sync_lasso && lasso_op;
+      const bool box_lasso = (box || lasso) && lasso_op && U.sync_lasso && box_op && U.sync_box;
+      const bool box_circle = (box || circle) && U.sync_circle && box_op && U.sync_box;
+      const bool circle_lasso = (lasso || circle) && U.sync_circle && lasso_op && U.sync_lasso;
+
+      if (box && box_op || box_circle_lasso || box_lasso || box_circle) {
+        if (box) {
+          if (U.object_select_box == 1) {
+            if (U.object_cycle_origin) {
+              U.object_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_circle = 2;
+              }
+            }
+            else if (U.object_cycle_touch) {
+              U.object_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_circle = 0;
+              }
+            }
+          }
+          else if (U.object_select_box == 2) {
+            if (U.object_cycle_touch) {
+              U.object_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_circle = 0;
+              }
+            }
+            else if (U.object_cycle_enclose) {
+              U.object_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_circle = 1;
+              }
+            }
+          }
+          else {
+            if (U.object_cycle_enclose) {
+              U.object_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_circle = 1;
+              }
+            }
+            else if (U.object_cycle_origin) {
+              U.object_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_circle = 2;
+              }
+            }
+          }
+        }
+        else if (lasso) {
+          if (U.object_select_lasso == 1) {
+            if (U.object_cycle_origin) {
+              U.object_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_circle = 2;
+              }
+            }
+            else if (U.object_cycle_touch) {
+              U.object_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_circle = 0;
+              }
+            }
+          }
+          else if (U.object_select_lasso == 2) {
+            if (U.object_cycle_touch) {
+              U.object_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_circle = 0;
+              }
+            }
+            else if (U.object_cycle_enclose) {
+              U.object_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_circle = 1;
+              }
+            }
+          }
+          else {
+            if (U.object_cycle_enclose) {
+              U.object_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_circle = 1;
+              }
+            }
+            else if (U.object_cycle_origin) {
+              U.object_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.object_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_circle = 2;
+              }
+            }
+          }
+        }
+        else {
+          if (U.object_select_circle == 1) {
+            if (U.object_cycle_origin) {
+              U.object_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_lasso = 2;
+              }
+            }
+            else if (U.object_cycle_touch) {
+              U.object_select_circle = 0;
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_lasso = 0;
+              }
+            }
+          }
+          else if (U.object_select_circle == 2) {
+            if (U.object_cycle_touch) {
+              U.object_select_circle = 0;
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_lasso = 0;
+              }
+            }
+            else if (U.object_cycle_enclose) {
+              U.object_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_lasso = 1;
+              }
+            }
+          }
+          else {
+            if (U.object_cycle_enclose) {
+              U.object_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_lasso = 1;
+              }
+            }
+            else if (U.object_cycle_origin) {
+              U.object_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.object_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.object_select_lasso = 2;
+              }
+            }
+          }
+        }
+      }
+      else if (lasso && lasso_op || circle_lasso) {
+        if (lasso) {
+          if (U.object_select_lasso == 1) {
+            if (U.object_cycle_origin_lasso) {
+              U.object_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.object_select_circle = 2;
+              }
+            }
+            else if (U.object_cycle_touch_lasso) {
+              U.object_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.object_select_circle = 0;
+              }
+            }
+          }
+          else if (U.object_select_lasso == 2) {
+            if (U.object_cycle_touch_lasso) {
+              U.object_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.object_select_circle = 0;
+              }
+            }
+            else if (U.object_cycle_enclose_lasso) {
+              U.object_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.object_select_circle = 1;
+              }
+            }
+          }
+          else {
+            if (U.object_cycle_enclose_lasso) {
+              U.object_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.object_select_circle = 1;
+              }
+            }
+            else if (U.object_cycle_origin_lasso) {
+              U.object_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.object_select_circle = 2;
+              }
+            }
+          }
+        }
+        else {
+          if (U.object_select_circle == 1) {
+            if (U.object_cycle_origin_lasso) {
+              U.object_select_circle = 2;
+
+              if (circle_lasso) {
+                U.object_select_lasso = 2;
+              }
+            }
+            else if (U.object_cycle_touch_lasso) {
+              U.object_select_circle = 0;
+
+              if (circle_lasso) {
+                U.object_select_lasso = 0;
+              }
+            }
+          }
+          else if (U.object_select_circle == 2) {
+            if (U.object_cycle_touch_lasso) {
+              U.object_select_circle = 0;
+
+              if (circle_lasso) {
+                U.object_select_lasso = 0;
+              }
+            }
+            else if (U.object_cycle_enclose_lasso) {
+              U.object_select_circle = 1;
+
+              if (circle_lasso) {
+                U.object_select_lasso = 1;
+              }
+            }
+          }
+          else {
+            if (U.object_cycle_enclose_lasso) {
+              U.object_select_circle = 1;
+
+              if (circle_lasso) {
+                U.object_select_lasso = 1;
+              }
+            }
+            else if (U.object_cycle_origin_lasso) {
+              U.object_select_circle = 2;
+
+              if (circle_lasso) {
+                U.object_select_lasso = 2;
+              }
+            }
+          }
+        }
+      }
+      else if (circle) {
+        if (U.object_select_circle == 1) {
+          if (U.object_cycle_origin_circle) {
+            U.object_select_circle = 2;
+          }
+          else if (U.object_cycle_touch_circle) {
+            U.object_select_circle = 0;
+          }
+        }
+        else if (U.object_select_circle == 2) {
+          if (U.object_cycle_touch_circle) {
+            U.object_select_circle = 0;
+          }
+          else if (U.object_cycle_enclose_circle) {
+            U.object_select_circle = 1;
+          }
+        }
+        else {
+          if (U.object_cycle_enclose_circle) {
+            U.object_select_circle = 1;
+          }
+          else if (U.object_cycle_origin_circle) {
+            U.object_select_circle = 2;
+          }
+        }
+      }
     }
     else {
-      ts->object_select_mode = 1;
+      if (U.object_select_box == 1) {
+        if (U.object_cycle_origin) {
+          U.object_select_box = 2;
+        }
+        else if (U.object_cycle_touch) {
+          U.object_select_box = 0;
+        }
+      }
+      else if (U.object_select_box == 2) {
+        if (U.object_cycle_touch) {
+          U.object_select_box = 0;
+        }
+        else if (U.object_cycle_enclose) {
+          U.object_select_box = 1;
+        }
+      }
+      else {
+        if (U.object_cycle_enclose) {
+          U.object_select_box = 1;
+        }
+        else if (U.object_cycle_origin) {
+          U.object_select_box = 2;
+        }
+      }
     }
+    ED_area_tag_redraw(area);
   }
-
-  ED_area_tag_redraw(area);
   return OPERATOR_FINISHED;
 }
 
@@ -1550,57 +2738,739 @@ void VIEW3D_OT_cycle_object(wmOperatorType *ot)
 static int cycle_face_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  bToolRef *tref = area->runtime.tool;
 
-  if (ts->face_select_mode == 2) {
-    if (ts->face_cycle_enclose) {
-      ts->face_select_mode = 4;
-    }
-    else if (ts->face_cycle_center) {
-      ts->face_select_mode = 8;
-    }
-    else if (ts->face_cycle_default) {
-      ts->face_select_mode = 1;
-    }
-  }
-  else if (ts->face_select_mode == 4) {
-    if (ts->face_cycle_center) {
-      ts->face_select_mode = 8;
-    }
-    else if (ts->face_cycle_default) {
-      ts->face_select_mode = 1;
-    }
-    else if (ts->face_cycle_touch) {
-      ts->face_select_mode = 2;
-    }
-  }
-  else if (ts->face_select_mode == 8) {
-    if (ts->face_cycle_default) {
-      ts->face_select_mode = 1;
-    }
-    else if (ts->face_cycle_touch) {
-      ts->face_select_mode = 2;
-    }
-    else if (ts->face_cycle_enclose) {
-      ts->face_select_mode = 4;
-    }
-  }
-  else {
-    if (ts->face_cycle_touch) {
-      ts->face_select_mode = 2;
-    }
-    else if (ts->face_cycle_enclose) {
-      ts->face_select_mode = 4;
-    }
-    else if (ts->face_cycle_center) {
-      ts->face_select_mode = 8;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1) {
+      const bool box_op = U.drag_direction_box == 0 ||
+                          U.drag_direction_mode == 1 && !U.direction_face;
+      const bool lasso_op = U.drag_direction_lasso == 0 ||
+                            U.drag_direction_mode == 1 && !U.direction_face;
+      const bool box = STREQ(tref->idname, "builtin.select_box") ||
+                       STREQ(tref->idname_fallback, "builtin.select_box");
+      const bool lasso = STREQ(tref->idname, "builtin.select_lasso") ||
+                         STREQ(tref->idname_fallback, "builtin.select_lasso");
+      const bool circle = STREQ(tref->idname, "builtin.select_circle") ||
+                          STREQ(tref->idname_fallback, "builtin.select_circle");
+      const bool box_circle_lasso = (box || circle || lasso) && U.sync_box && box_op &&
+                                    U.sync_circle && U.sync_lasso && lasso_op;
+      const bool box_lasso = (box || lasso) && lasso_op && U.sync_lasso && box_op && U.sync_box;
+      const bool box_circle = (box || circle) && U.sync_circle && box_op && U.sync_box;
+      const bool circle_lasso = (lasso || circle) && U.sync_circle && lasso_op && U.sync_lasso;
+
+      if (box && box_op || box_circle_lasso || box_lasso || box_circle) {
+        if (box) {
+          if (U.face_select_box == 1) {
+            if (U.face_cycle_enclose) {
+              U.face_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 2;
+              }
+            }
+            else if (U.face_cycle_center) {
+              U.face_select_box = 3;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 3;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 3;
+              }
+            }
+            else if (U.face_cycle_default) {
+              U.face_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 0;
+              }
+            }
+          }
+          else if (U.face_select_box == 2) {
+            if (U.face_cycle_center) {
+              U.face_select_box = 3;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 3;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 3;
+              }
+            }
+            else if (U.face_cycle_default) {
+              U.face_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 0;
+              }
+            }
+            else if (U.face_cycle_touch) {
+              U.face_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 1;
+              }
+            }
+          }
+          else if (U.face_select_box == 3) {
+            if (U.face_cycle_default) {
+              U.face_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 0;
+              }
+            }
+            else if (U.face_cycle_touch) {
+              U.face_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 1;
+              }
+            }
+            else if (U.face_cycle_enclose) {
+              U.face_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 2;
+              }
+            }
+          }
+          else {
+            if (U.face_cycle_touch) {
+              U.face_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 1;
+              }
+            }
+            else if (U.face_cycle_enclose) {
+              U.face_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 2;
+              }
+            }
+            else if (U.face_cycle_center) {
+              U.face_select_box = 3;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_lasso = 3;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_circle = 3;
+              }
+            }
+          }
+        }
+        else if (lasso) {
+          if (U.face_select_lasso == 1) {
+            if (U.face_cycle_enclose) {
+              U.face_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 2;
+              }
+            }
+            else if (U.face_cycle_center) {
+              U.face_select_lasso = 3;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 3;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 3;
+              }
+            }
+            else if (U.face_cycle_default) {
+              U.face_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 0;
+              }
+            }
+          }
+          else if (U.face_select_lasso == 2) {
+            if (U.face_cycle_center) {
+              U.face_select_lasso = 3;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 3;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 3;
+              }
+            }
+            else if (U.face_cycle_default) {
+              U.face_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 0;
+              }
+            }
+            else if (U.face_cycle_touch) {
+              U.face_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 1;
+              }
+            }
+          }
+          else if (U.face_select_lasso == 3) {
+            if (U.face_cycle_default) {
+              U.face_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 0;
+              }
+            }
+            else if (U.face_cycle_touch) {
+              U.face_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 1;
+              }
+            }
+            else if (U.face_cycle_enclose) {
+              U.face_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 2;
+              }
+            }
+          }
+          else {
+            if (U.face_cycle_touch) {
+              U.face_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 1;
+              }
+            }
+            else if (U.face_cycle_enclose) {
+              U.face_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 2;
+              }
+            }
+            else if (U.face_cycle_center) {
+              U.face_select_lasso = 3;
+
+              if (box_circle_lasso || box_lasso) {
+                U.face_select_box = 3;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_circle = 3;
+              }
+            }
+          }
+        }
+        else {
+          if (U.face_select_circle == 1) {
+            if (U.face_cycle_enclose) {
+              U.face_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 2;
+              }
+            }
+            else if (U.face_cycle_center) {
+              U.face_select_circle = 3;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 3;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 3;
+              }
+            }
+            else if (U.face_cycle_default) {
+              U.face_select_circle = 0;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 0;
+              }
+            }
+          }
+          else if (U.face_select_circle == 2) {
+            if (U.face_cycle_center) {
+              U.face_select_circle = 3;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 3;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 3;
+              }
+            }
+            else if (U.face_cycle_default) {
+              U.face_select_circle = 0;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 0;
+              }
+            }
+            else if (U.face_cycle_touch) {
+              U.face_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 1;
+              }
+            }
+          }
+          else if (U.face_select_circle == 3) {
+            if (U.face_cycle_default) {
+              U.face_select_circle = 0;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 0;
+              }
+            }
+            else if (U.face_cycle_touch) {
+              U.face_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 1;
+              }
+            }
+            else if (U.face_cycle_enclose) {
+              U.face_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 2;
+              }
+            }
+          }
+          else {
+            if (U.face_cycle_touch) {
+              U.face_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 1;
+              }
+            }
+            else if (U.face_cycle_enclose) {
+              U.face_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 2;
+              }
+            }
+            else if (U.face_cycle_center) {
+              U.face_select_circle = 3;
+
+              if (box_circle_lasso || box_circle) {
+                U.face_select_box = 3;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.face_select_lasso = 3;
+              }
+            }
+          }
+        }
+      }
+      else if (lasso && lasso_op || circle_lasso) {
+        if (lasso) {
+          if (U.face_select_lasso == 1) {
+            if (U.face_cycle_enclose_lasso) {
+              U.face_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.face_select_circle = 2;
+              }
+            }
+            else if (U.face_cycle_center_lasso) {
+              U.face_select_lasso = 3;
+
+              if (circle_lasso) {
+                U.face_select_circle = 3;
+              }
+            }
+            else if (U.face_cycle_default_lasso) {
+              U.face_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.face_select_circle = 0;
+              }
+            }
+          }
+          else if (U.face_select_lasso == 2) {
+            if (U.face_cycle_center_lasso) {
+              U.face_select_lasso = 3;
+
+              if (circle_lasso) {
+                U.face_select_circle = 3;
+              }
+            }
+            else if (U.face_cycle_default_lasso) {
+              U.face_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.face_select_circle = 0;
+              }
+            }
+            else if (U.face_cycle_touch_lasso) {
+              U.face_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.face_select_circle = 1;
+              }
+            }
+          }
+          else if (U.face_select_lasso == 3) {
+            if (U.face_cycle_default_lasso) {
+              U.face_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.face_select_circle = 0;
+              }
+            }
+            else if (U.face_cycle_touch_lasso) {
+              U.face_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.face_select_circle = 1;
+              }
+            }
+            else if (U.face_cycle_enclose_lasso) {
+              U.face_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.face_select_circle = 2;
+              }
+            }
+          }
+          else {
+            if (U.face_cycle_touch_lasso) {
+              U.face_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.face_select_circle = 1;
+              }
+            }
+            else if (U.face_cycle_enclose_lasso) {
+              U.face_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.face_select_circle = 2;
+              }
+            }
+            else if (U.face_cycle_center_lasso) {
+              U.face_select_lasso = 3;
+
+              if (circle_lasso) {
+                U.face_select_circle = 3;
+              }
+            }
+          }
+        }
+        else {
+          if (U.face_select_circle == 1) {
+            if (U.face_cycle_enclose_lasso) {
+              U.face_select_circle = 2;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 2;
+              }
+            }
+            else if (U.face_cycle_center_lasso) {
+              U.face_select_circle = 3;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 3;
+              }
+            }
+            else if (U.face_cycle_default_lasso) {
+              U.face_select_circle = 0;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 0;
+              }
+            }
+          }
+          else if (U.face_select_circle == 2) {
+            if (U.face_cycle_center_lasso) {
+              U.face_select_circle = 3;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 3;
+              }
+            }
+            else if (U.face_cycle_default_lasso) {
+              U.face_select_circle = 0;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 0;
+              }
+            }
+            else if (U.face_cycle_touch_lasso) {
+              U.face_select_circle = 1;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 1;
+              }
+            }
+          }
+          else if (U.face_select_circle == 3) {
+            if (U.face_cycle_default_lasso) {
+              U.face_select_circle = 0;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 0;
+              }
+            }
+            else if (U.face_cycle_touch_lasso) {
+              U.face_select_circle = 1;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 1;
+              }
+            }
+            else if (U.face_cycle_enclose_lasso) {
+              U.face_select_circle = 2;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 2;
+              }
+            }
+          }
+          else {
+            if (U.face_cycle_touch_lasso) {
+              U.face_select_circle = 1;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 1;
+              }
+            }
+            else if (U.face_cycle_enclose_lasso) {
+              U.face_select_circle = 2;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 2;
+              }
+            }
+            else if (U.face_cycle_center_lasso) {
+              U.face_select_circle = 3;
+
+              if (circle_lasso) {
+                U.face_select_lasso = 3;
+              }
+            }
+          }
+        }
+      }
+      else if (circle) {
+        if (U.face_select_circle == 1) {
+          if (U.face_cycle_enclose_circle) {
+            U.face_select_circle = 2;
+          }
+          else if (U.face_cycle_center_circle) {
+            U.face_select_circle = 3;
+          }
+          else if (U.face_cycle_default_circle) {
+            U.face_select_circle = 0;
+          }
+        }
+        else if (U.face_select_circle == 2) {
+          if (U.face_cycle_center_circle) {
+            U.face_select_circle = 3;
+          }
+          else if (U.face_cycle_default_circle) {
+            U.face_select_circle = 0;
+          }
+          else if (U.face_cycle_touch_circle) {
+            U.face_select_circle = 1;
+          }
+        }
+        else if (U.face_select_circle == 3) {
+          if (U.face_cycle_default_circle) {
+            U.face_select_circle = 0;
+          }
+          else if (U.face_cycle_touch_circle) {
+            U.face_select_circle = 1;
+          }
+          else if (U.face_cycle_enclose_circle) {
+            U.face_select_circle = 2;
+          }
+        }
+        else {
+          if (U.face_cycle_touch_circle) {
+            U.face_select_circle = 1;
+          }
+          else if (U.face_cycle_enclose_circle) {
+            U.face_select_circle = 2;
+          }
+          else if (U.face_cycle_center_circle) {
+            U.face_select_circle = 3;
+          }
+        }
+      }
     }
     else {
-      ts->face_select_mode = 1;
+      if (U.face_select_box == 1) {
+        if (U.face_cycle_enclose) {
+          U.face_select_box = 2;
+        }
+        else if (U.face_cycle_center) {
+          U.face_select_box = 3;
+        }
+        else if (U.face_cycle_default) {
+          U.face_select_box = 0;
+        }
+      }
+      else if (U.face_select_box == 2) {
+        if (U.face_cycle_center) {
+          U.face_select_box = 3;
+        }
+        else if (U.face_cycle_default) {
+          U.face_select_box = 0;
+        }
+        else if (U.face_cycle_touch) {
+          U.face_select_box = 1;
+        }
+      }
+      else if (U.face_select_box == 3) {
+        if (U.face_cycle_default) {
+          U.face_select_box = 0;
+        }
+        else if (U.face_cycle_touch) {
+          U.face_select_box = 1;
+        }
+        else if (U.face_cycle_enclose) {
+          U.face_select_box = 2;
+        }
+      }
+      else {
+        if (U.face_cycle_touch) {
+          U.face_select_box = 1;
+        }
+        else if (U.face_cycle_enclose) {
+          U.face_select_box = 2;
+        }
+        else if (U.face_cycle_center) {
+          U.face_select_box = 3;
+        }
+      }
     }
+    ED_area_tag_redraw(area);
   }
-
-  ED_area_tag_redraw(area);
   return OPERATOR_FINISHED;
 }
 
@@ -1624,37 +3494,391 @@ void VIEW3D_OT_cycle_face(wmOperatorType *ot)
 static int cycle_edge_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
+  bToolRef *tref = area->runtime.tool;
 
-  if (ts->edge_select_mode == 2) {
-    if (ts->edge_cycle_enclose) {
-      ts->edge_select_mode = 4;
-    }
-    else if (ts->edge_cycle_default) {
-      ts->edge_select_mode = 1;
-    }
-  }
-  else if (ts->edge_select_mode == 4) {
-    if (ts->edge_cycle_default) {
-      ts->edge_select_mode = 1;
-    }
-    else if (ts->edge_cycle_touch) {
-      ts->edge_select_mode = 2;
-    }
-  }
-  else {
-    if (ts->edge_cycle_touch) {
-      ts->edge_select_mode = 2;
-    }
-    else if (ts->edge_cycle_enclose) {
-      ts->edge_select_mode = 4;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1) {
+      const bool box_op = U.drag_direction_box == 0 ||
+                          U.drag_direction_mode == 1 && !U.direction_edge;
+      const bool lasso_op = U.drag_direction_lasso == 0 ||
+                            U.drag_direction_mode == 1 && !U.direction_edge;
+      const bool box = STREQ(tref->idname, "builtin.select_box") ||
+                       STREQ(tref->idname_fallback, "builtin.select_box");
+      const bool lasso = STREQ(tref->idname, "builtin.select_lasso") ||
+                         STREQ(tref->idname_fallback, "builtin.select_lasso");
+      const bool circle = STREQ(tref->idname, "builtin.select_circle") ||
+                          STREQ(tref->idname_fallback, "builtin.select_circle");
+      const bool box_circle_lasso = (box || circle || lasso) && U.sync_box && box_op &&
+                                    U.sync_circle && U.sync_lasso && lasso_op;
+      const bool box_lasso = (box || lasso) && lasso_op && U.sync_lasso && box_op && U.sync_box;
+      const bool box_circle = (box || circle) && U.sync_circle && box_op && U.sync_box;
+      const bool circle_lasso = (lasso || circle) && U.sync_circle && lasso_op && U.sync_lasso;
+
+      if (box && box_op || box_circle_lasso || box_lasso || box_circle) {
+        if (box) {
+          if (U.edge_select_box == 1) {
+            if (U.edge_cycle_enclose) {
+              U.edge_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_circle = 2;
+              }
+            }
+            else if (U.edge_cycle_default) {
+              U.edge_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_circle = 1;
+              }
+            }
+          }
+          else if (U.edge_select_box == 2) {
+            if (U.edge_cycle_default) {
+              U.edge_select_box = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_lasso = 0;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_circle = 1;
+              }
+            }
+            else if (U.edge_cycle_touch) {
+              U.edge_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_circle = 1;
+              }
+            }
+          }
+          else {
+            if (U.edge_cycle_touch) {
+              U.edge_select_box = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_lasso = 1;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_circle = 1;
+              }
+            }
+            else if (U.edge_cycle_enclose) {
+              U.edge_select_box = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_lasso = 2;
+              }
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_circle = 2;
+              }
+            }
+          }
+        }
+        else if (lasso) {
+          if (U.edge_select_lasso == 1) {
+            if (U.edge_cycle_enclose) {
+              U.edge_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_circle = 2;
+              }
+            }
+            else if (U.edge_cycle_default) {
+              U.edge_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+          }
+          else if (U.edge_select_lasso == 2) {
+            if (U.edge_cycle_default) {
+              U.edge_select_lasso = 0;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+            else if (U.edge_cycle_touch) {
+              U.edge_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+          }
+          else {
+            if (U.edge_cycle_touch) {
+              U.edge_select_lasso = 1;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+            else if (U.edge_cycle_enclose) {
+              U.edge_select_lasso = 2;
+
+              if (box_circle_lasso || box_lasso) {
+                U.edge_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_circle = 2;
+              }
+            }
+          }
+        }
+        else {
+          if (U.edge_select_circle == 1) {
+            if (U.edge_cycle_enclose) {
+              U.edge_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_lasso = 2;
+              }
+            }
+            else if (U.edge_cycle_default) {
+              U.edge_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_lasso = 0;
+              }
+            }
+          }
+          else if (U.edge_select_circle == 2) {
+            if (U.edge_cycle_default) {
+              U.edge_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_box = 0;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_lasso = 0;
+              }
+            }
+            else if (U.edge_cycle_touch) {
+              U.edge_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_lasso = 1;
+              }
+            }
+          }
+          else {
+            if (U.edge_cycle_touch) {
+              U.edge_select_circle = 1;
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_box = 1;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_lasso = 1;
+              }
+            }
+            else if (U.edge_cycle_enclose) {
+              U.edge_select_circle = 2;
+
+              if (box_circle_lasso || box_circle) {
+                U.edge_select_box = 2;
+              }
+
+              if (box_circle_lasso || circle_lasso) {
+                U.edge_select_lasso = 2;
+              }
+            }
+          }
+        }
+      }
+      else if (lasso && lasso_op || circle_lasso) {
+        if (lasso) {
+          if (U.edge_select_lasso == 1) {
+            if (U.edge_cycle_enclose_lasso) {
+              U.edge_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.edge_select_circle = 2;
+              }
+            }
+            else if (U.edge_cycle_default_lasso) {
+              U.edge_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+          }
+          else if (U.edge_select_lasso == 2) {
+            if (U.edge_cycle_default_lasso) {
+              U.edge_select_lasso = 0;
+
+              if (circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+            else if (U.edge_cycle_touch_lasso) {
+              U.edge_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+          }
+          else {
+            if (U.edge_cycle_touch_lasso) {
+              U.edge_select_lasso = 1;
+
+              if (circle_lasso) {
+                U.edge_select_circle = 1;
+              }
+            }
+            else if (U.edge_cycle_enclose_lasso) {
+              U.edge_select_lasso = 2;
+
+              if (circle_lasso) {
+                U.edge_select_circle = 2;
+              }
+            }
+          }
+        }
+        else {
+          if (U.edge_select_circle == 1) {
+            if (U.edge_cycle_enclose_lasso) {
+              U.edge_select_circle = 2;
+
+              if (circle_lasso) {
+                U.edge_select_lasso = 2;
+              }
+            }
+            else if (U.edge_cycle_default_lasso) {
+              U.edge_select_circle = 1;
+
+              if (circle_lasso) {
+                U.edge_select_lasso = 0;
+              }
+            }
+          }
+          else if (U.edge_select_circle == 2) {
+            if (U.edge_cycle_default_lasso) {
+              U.edge_select_circle = 1;
+
+              if (circle_lasso) {
+                U.edge_select_lasso = 0;
+              }
+            }
+            else if (U.edge_cycle_touch_lasso) {
+              U.edge_select_circle = 1;
+
+              if (circle_lasso) {
+                U.edge_select_lasso = 1;
+              }
+            }
+          }
+          else {
+            if (U.edge_cycle_touch_lasso) {
+              U.edge_select_circle = 1;
+
+              if (circle_lasso) {
+                U.edge_select_lasso = 1;
+              }
+            }
+            else if (U.edge_cycle_enclose_lasso) {
+              U.edge_select_circle = 2;
+
+              if (circle_lasso) {
+                U.edge_select_lasso = 2;
+              }
+            }
+          }
+        }
+      }
+      else if (circle) {
+        if (U.edge_select_circle == 1) {
+          if (U.edge_cycle_enclose_circle) {
+            U.edge_select_circle = 2;
+          }
+        }
+        else if (U.edge_cycle_touch_circle) {
+          U.edge_select_circle = 1;
+        }
+      }
     }
     else {
-      ts->edge_select_mode = 1;
+      if (U.edge_select_box == 1) {
+        if (U.edge_cycle_enclose) {
+          U.edge_select_box = 2;
+        }
+        else if (U.edge_cycle_default) {
+          U.edge_select_box = 0;
+        }
+      }
+      else if (U.edge_select_box == 2) {
+        if (U.edge_cycle_default) {
+          U.edge_select_box = 0;
+        }
+        else if (U.edge_cycle_touch) {
+          U.edge_select_box = 1;
+        }
+      }
+      else {
+        if (U.edge_cycle_touch) {
+          U.edge_select_box = 1;
+        }
+        else if (U.edge_cycle_enclose) {
+          U.edge_select_box = 2;
+        }
+      }
     }
+    ED_area_tag_redraw(area);
   }
-
-  ED_area_tag_redraw(area);
   return OPERATOR_FINISHED;
 }
 

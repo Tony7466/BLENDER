@@ -2312,6 +2312,13 @@ class WM_OT_tool_set_by_id(Operator):
             space_type = context.space_data.type
 
         fn = activate_by_id_or_cycle if self.cycle else activate_by_id
+
+        for area in context.window.screen.areas:
+            if area.type == 'VIEW_3D':
+                for region in area.regions:
+                    if region.type == 'HEADER':
+                        region.tag_redraw()
+
         if fn(context, space_type, self.name, as_fallback=self.as_fallback):
             if self.as_fallback:
                 tool_settings = context.tool_settings

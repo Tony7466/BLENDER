@@ -417,29 +417,29 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
   PropertyRNA *prop;
 
   static const EnumPropertyItem auto_xray_items[] = {
-      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
-      {AUTO_XRAY_OBJECT, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
-      {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
-      {AUTO_XRAY_BOTH, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {OPERATOR_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {OPERATOR_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {OPERATOR_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {OPERATOR_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem select_through_items[] = {
-      {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
-      {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
-      {SELECT_THROUGH_BOTH, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
-      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {OPERATOR_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {OPERATOR_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {OPERATOR_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {OPERATOR_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem object_select_items[] = {
-      {OBJECT_TOUCH, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the box"},
-      {OBJECT_ENCLOSE,
+      {OPERATOR_MODE_A, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the box"},
+      {OPERATOR_MODE_B,
        "OBJECT_ENCLOSE",
        0,
        "Enclose",
        "Select objects that are fully inside the box"},
-      {OBJECT_ORIGIN,
+      {OPERATOR_MODE_C,
        "OBJECT_ORIGIN",
        0,
        "Origin",
@@ -448,15 +448,19 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
   };
 
   static const EnumPropertyItem face_select_items[] = {
-      {FACE_DEFAULT,
+      {OPERATOR_MODE_A,
        "FACE_DEFAULT",
        0,
        "Default",
        "Select faces that are touched by the box in Near Select. Select faces if their center is "
        "touched by the box in X-Ray and Select Through"},
-      {FACE_TOUCH, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the box"},
-      {FACE_ENCLOSE, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the box"},
-      {FACE_CENTER,
+      {OPERATOR_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the box"},
+      {OPERATOR_MODE_C,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the box"},
+      {OPERATOR_MODE_D,
        "FACE_CENTER",
        0,
        "Center",
@@ -465,47 +469,61 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
   };
 
   static const EnumPropertyItem edge_select_items[] = {
-      {EDGE_DEFAULT,
+      {OPERATOR_MODE_A,
        "EDGE_DEFAULT",
        0,
        "Default",
        "Select edges that are fully inside the box. If no edges are fully inside the box, select "
        "edges that are touched by the box"},
-      {EDGE_TOUCH, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the box"},
-      {EDGE_ENCLOSE, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the box"},
+      {OPERATOR_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the box"},
+      {OPERATOR_MODE_C,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the box"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem backface_filter_items[] = {
-      {BACKFACE_DEFAULT, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
-      {BACKFACE_NEAR,
+      {OPERATOR_MODE_A, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {OPERATOR_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {OPERATOR_MODE_C,
        "NEAR",
        0,
-       "Fix Near",
-       "Ignore backfacing mesh when not using X-Ray or Select Through, verts don't need "
-       "filtering"},
-      {BACKFACE_XRAY,
-       "XRAY",
-       0,
-       "Front X-Ray",
-       "Ignore backfacing mesh in X-Ray and Select Through"},
-      {BACKFACE_NONE, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   WM_operator_properties_border(ot);
 
-  prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Auto X-Ray", "");
+  prop = RNA_def_enum(ot->srna,
+                      "auto_xray",
+                      auto_xray_items,
+                      0,
+                      "Auto X-Ray",
+                      "Transparent scene display during selection");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
+  prop = RNA_def_enum(ot->srna,
+                      "select_through",
+                      select_through_items,
+                      0,
+                      "Select Through",
+                      "Select occluded objects and mesh");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "object_type", object_select_items, 0, "Object", "");
+  prop = RNA_def_enum(
+      ot->srna, "object_type", object_select_items, 0, "Object", "Object selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "");
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "Face selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "");
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "Edge selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "backface_filter", backface_filter_items, 0, "Backface", "");
+  prop = RNA_def_enum(ot->srna,
+                      "backface_filter",
+                      backface_filter_items,
+                      0,
+                      "Backface",
+                      "Select mesh based on the direction of their normals");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   if (deselect) {
@@ -612,18 +630,18 @@ void WM_operator_properties_gesture_box_zoom(wmOperatorType *ot)
 }
 
 static const EnumPropertyItem auto_xray_items[] = {
-    {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
-    {AUTO_XRAY_OBJECT, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
-    {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
-    {AUTO_XRAY_BOTH, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+    {OPERATOR_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+    {OPERATOR_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+    {OPERATOR_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+    {OPERATOR_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
 static const EnumPropertyItem select_through_items[] = {
-    {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
-    {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
-    {SELECT_THROUGH_BOTH, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
-    {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+    {OPERATOR_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+    {OPERATOR_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+    {OPERATOR_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+    {OPERATOR_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -631,13 +649,17 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
 {
   PropertyRNA *prop;
   static const EnumPropertyItem object_select_items[] = {
-      {OBJECT_ORIGIN,
+      {OPERATOR_MODE_C,
        "OBJECT_ORIGIN",
        0,
        "Origin",
        "Select objects if their origin is touched by the lasso"},
-      {OBJECT_TOUCH, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the lasso"},
-      {OBJECT_ENCLOSE,
+      {OPERATOR_MODE_A,
+       "OBJECT_TOUCH",
+       0,
+       "Touch",
+       "Select objects that are touched by the lasso"},
+      {OPERATOR_MODE_B,
        "OBJECT_ENCLOSE",
        0,
        "Enclose",
@@ -646,15 +668,19 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
   };
 
   static const EnumPropertyItem face_select_items[] = {
-      {FACE_DEFAULT,
+      {OPERATOR_MODE_A,
        "FACE_DEFAULT",
        0,
        "Default",
        "Select faces that are touched by the lasso in Near Select. Select faces if their center "
        "is touched by the lasso in X-Ray and Select Through"},
-      {FACE_TOUCH, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the lasso"},
-      {FACE_ENCLOSE, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the lasso"},
-      {FACE_CENTER,
+      {OPERATOR_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the lasso"},
+      {OPERATOR_MODE_C,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the lasso"},
+      {OPERATOR_MODE_D,
        "FACE_CENTER",
        0,
        "Center",
@@ -663,47 +689,61 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
   };
 
   static const EnumPropertyItem edge_select_items[] = {
-      {EDGE_DEFAULT,
+      {OPERATOR_MODE_A,
        "EDGE_DEFAULT",
        0,
        "Default",
        "Select edges that are fully inside the lasso. If no edges are fully inside the lasso, "
        "select edges that are touched by the lasso"},
-      {EDGE_TOUCH, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the lasso"},
-      {EDGE_ENCLOSE, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the lasso"},
+      {OPERATOR_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the lasso"},
+      {OPERATOR_MODE_C,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the lasso"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem backface_filter_items[] = {
-      {BACKFACE_DEFAULT, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
-      {BACKFACE_NEAR,
+      {OPERATOR_MODE_A, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {OPERATOR_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {OPERATOR_MODE_C,
        "NEAR",
        0,
-       "Fix Near",
-       "Ignore backfacing mesh when not using X-Ray or Select Through, verts don't need "
-       "filtering"},
-      {BACKFACE_XRAY,
-       "XRAY",
-       0,
-       "Front X-Ray",
-       "Ignore backfacing mesh in X-Ray and Select Through"},
-      {BACKFACE_NONE, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   WM_operator_properties_border(ot);
 
-  prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Auto X-Ray", "");
+  prop = RNA_def_enum(ot->srna,
+                      "auto_xray",
+                      auto_xray_items,
+                      0,
+                      "Auto X-Ray",
+                      "Transparent scene display during selection");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
+  prop = RNA_def_enum(ot->srna,
+                      "select_through",
+                      select_through_items,
+                      0,
+                      "Select Through",
+                      "Select occluded objects and mesh");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "object_type", object_select_items, 0, "Object", "");
+  prop = RNA_def_enum(
+      ot->srna, "object_type", object_select_items, 0, "Object", "Object selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "");
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "Face selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "");
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "Edge selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "backface_filter", backface_filter_items, 0, "Backface", "");
+  prop = RNA_def_enum(ot->srna,
+                      "backface_filter",
+                      backface_filter_items,
+                      0,
+                      "Backface",
+                      "Select mesh based on the direction of their normals");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
@@ -744,29 +784,33 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   const int radius_default = 25;
 
   static const EnumPropertyItem auto_xray_items[] = {
-      {AUTO_XRAY_DISABLE, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
-      {AUTO_XRAY_OBJECT, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
-      {AUTO_XRAY_EDIT, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
-      {AUTO_XRAY_BOTH, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {OPERATOR_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {OPERATOR_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {OPERATOR_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {OPERATOR_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem select_through_items[] = {
-      {SELECT_THROUGH_OBJECT, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
-      {SELECT_THROUGH_EDIT, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
-      {SELECT_THROUGH_BOTH, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
-      {SELECT_THROUGH_DISABLE, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {OPERATOR_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {OPERATOR_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {OPERATOR_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {OPERATOR_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem object_select_items[] = {
-      {OBJECT_ORIGIN,
+      {OPERATOR_MODE_C,
        "OBJECT_ORIGIN",
        0,
        "Origin",
        "Select objects if their origin is touched by the circle"},
-      {OBJECT_TOUCH, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the circle"},
-      {OBJECT_ENCLOSE,
+      {OPERATOR_MODE_A,
+       "OBJECT_TOUCH",
+       0,
+       "Touch",
+       "Select objects that are touched by the circle"},
+      {OPERATOR_MODE_B,
        "OBJECT_ENCLOSE",
        0,
        "Enclose",
@@ -775,19 +819,19 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   };
 
   static const EnumPropertyItem face_select_items[] = {
-      {FACE_DEFAULT,
+      {OPERATOR_MODE_A,
        "FACE_DEFAULT",
        0,
        "Default",
        "Select faces that are touched by the circle in Near Select. Select faces if their center "
        "is touched by the circle in X-Ray and Select Through"},
-      {FACE_TOUCH, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the circle"},
-      {FACE_ENCLOSE,
+      {OPERATOR_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the circle"},
+      {OPERATOR_MODE_C,
        "FACE_ENCLOSE",
        0,
        "Enclose",
        "Select faces that are fully inside the circle"},
-      {FACE_CENTER,
+      {OPERATOR_MODE_D,
        "FACE_CENTER",
        0,
        "Center",
@@ -796,8 +840,8 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   };
 
   static const EnumPropertyItem edge_select_items[] = {
-      {EDGE_TOUCH, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the circle"},
-      {EDGE_ENCLOSE,
+      {OPERATOR_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the circle"},
+      {OPERATOR_MODE_C,
        "EDGE_ENCLOSE",
        0,
        "Enclose",
@@ -806,19 +850,13 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   };
 
   static const EnumPropertyItem backface_filter_items[] = {
-      {BACKFACE_DEFAULT, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
-      {BACKFACE_NEAR,
+      {OPERATOR_MODE_A, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {OPERATOR_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {OPERATOR_MODE_C,
        "NEAR",
        0,
-       "Fix Near",
-       "Ignore backfacing mesh when not using X-Ray or Select Through, verts don't need "
-       "filtering"},
-      {BACKFACE_XRAY,
-       "XRAY",
-       0,
-       "Front X-Ray",
-       "Ignore backfacing mesh in X-Ray and Select Through"},
-      {BACKFACE_NONE, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -831,17 +869,33 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  prop = RNA_def_enum(ot->srna, "auto_xray", auto_xray_items, 0, "Auto X-Ray", "");
+  prop = RNA_def_enum(ot->srna,
+                      "auto_xray",
+                      auto_xray_items,
+                      0,
+                      "Auto X-Ray",
+                      "Transparent scene display during selection");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "select_through", select_through_items, 0, "Select Through", "");
+  prop = RNA_def_enum(ot->srna,
+                      "select_through",
+                      select_through_items,
+                      0,
+                      "Select Through",
+                      "Select occluded objects and mesh");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "object_type", object_select_items, 0, "Object", "");
+  prop = RNA_def_enum(
+      ot->srna, "object_type", object_select_items, 0, "Object", "Object selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "");
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "Face selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "");
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "Edge selection style");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_enum(ot->srna, "backface_filter", backface_filter_items, 0, "Backface", "");
+  prop = RNA_def_enum(ot->srna,
+                      "backface_filter",
+                      backface_filter_items,
+                      0,
+                      "Backface",
+                      "Select mesh based on the direction of their normals");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

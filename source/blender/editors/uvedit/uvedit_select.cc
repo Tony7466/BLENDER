@@ -3734,7 +3734,7 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
                              (ts->uv_selectmode == UV_SELECT_EDGE));
   const bool use_select_linked = !(ts->uv_flag & UV_SYNC_SELECTION) &&
                                  (ts->uv_selectmode == UV_SELECT_ISLAND);
-  const bool square = ts->square_select;
+  const bool square = U.square_select;
 
   /* get operator properties */
   x = RNA_int_get(op->ptr, "x");

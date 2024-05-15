@@ -182,7 +182,7 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
 
             if map_type in {'KEYBOARD', 'MOUSE'} and kmi.value == 'CLICK_DRAG':
                 subrow = sub.row()
-                if bpy.context.preferences.inputs.click_drag_direction == 'LEFT_RIGHT':
+                if bpy.context.preferences.inputs.keymap_direction == 'LEFT_RIGHT':
                     if kmi.direction == 'ANY' or kmi.direction == 'EAST' or kmi.direction == 'WEST':
                         subrow.label(text="Direction:")
                     else:
@@ -190,7 +190,7 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
                     subrow.operator("preferences.set_direction_any", text="Any", depress= kmi.direction == 'ANY').item_id = kmi.id
                     subrow.operator("preferences.set_direction_left", text="Left", depress= kmi.direction == 'WEST').item_id = kmi.id
                     subrow.operator("preferences.set_direction_right", text="Right", depress= kmi.direction == 'EAST').item_id = kmi.id
-                elif bpy.context.preferences.inputs.click_drag_direction == 'UP_DOWN':
+                elif bpy.context.preferences.inputs.keymap_direction == 'UP_DOWN':
                     if kmi.direction == 'ANY' or kmi.direction == 'NORTH' or kmi.direction == 'SOUTH':
                         subrow.label(text="Direction:")
                     else:

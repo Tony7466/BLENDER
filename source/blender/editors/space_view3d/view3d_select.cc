@@ -116,8 +116,10 @@ using namespace blender;
 
 float ED_view3d_select_dist_px()
 {
-  if (U.flag & USER_ADJUSTABLE_CLICK_SELECT) {
-    return U.selection_radius * U.pixelsize;
+  const float radius = U.selection_radius == 0 ? 0.1f : (float)U.selection_radius;
+
+  if (U.adjustable_click_select == 1) {
+    return radius * U.pixelsize;
   }
   else {
     return 75.0f * U.pixelsize;
@@ -726,19 +728,10 @@ bool edbm_mesh_facing_viewport(ViewContext *vc,
   float view[3], mesh_co[3], mesh_no[3];
   bool mesh_facing = false;
 
-  for (int i = 0; i < 3; i++) {
-    if (persp) {
-      view[i] = vc->rv3d->viewinv[3][i];
-    }
-    else {
-      view[i] = vc->rv3d->viewmat[i][2];
-    }
-  }
-
   if (persp) {
     if (face) {
       BMIter iter;
-      BMVert *eve;
+      BMVert *v;
       int vcount = 0;
       mesh_no[0] = efa->no[0];
       mesh_no[1] = efa->no[1];
@@ -746,20 +739,20 @@ bool edbm_mesh_facing_viewport(ViewContext *vc,
 
       if (efa->len == 3) {
         float tri[3][3];
-        BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
-          tri[vcount][0] = eve->co[0];
-          tri[vcount][1] = eve->co[1];
-          tri[vcount][2] = eve->co[2];
+        BM_ITER_ELEM (v, &iter, efa, BM_VERTS_OF_FACE) {
+          tri[vcount][0] = v->co[0];
+          tri[vcount][1] = v->co[1];
+          tri[vcount][2] = v->co[2];
           vcount++;
         }
         mid_v3_v3v3v3(mesh_co, tri[0], tri[1], tri[2]);
       }
       else if (efa->len == 4) {
         float quad[4][3];
-        BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
-          quad[vcount][0] = eve->co[0];
-          quad[vcount][1] = eve->co[1];
-          quad[vcount][2] = eve->co[2];
+        BM_ITER_ELEM (v, &iter, efa, BM_VERTS_OF_FACE) {
+          quad[vcount][0] = v->co[0];
+          quad[vcount][1] = v->co[1];
+          quad[vcount][2] = v->co[2];
           vcount++;
         }
         mid_v3_v3v3v3v3(mesh_co, quad[0], quad[1], quad[2], quad[3]);
@@ -767,10 +760,10 @@ bool edbm_mesh_facing_viewport(ViewContext *vc,
       else {
         float(*ngon)[3] = static_cast<float(*)[3]>(
             MEM_mallocN(sizeof(float) * 3 * efa->len, __func__));
-        BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
-          ngon[vcount][0] = eve->co[0];
-          ngon[vcount][1] = eve->co[1];
-          ngon[vcount][2] = eve->co[2];
+        BM_ITER_ELEM (v, &iter, efa, BM_VERTS_OF_FACE) {
+          ngon[vcount][0] = v->co[0];
+          ngon[vcount][1] = v->co[1];
+          ngon[vcount][2] = v->co[2];
           vcount++;
         }
         mid_v3_v3_array(mesh_co, ngon, efa->len);
@@ -787,15 +780,9 @@ bool edbm_mesh_facing_viewport(ViewContext *vc,
         mesh_co[i] = eve->co[i];
       }
     }
-
-    mesh_co[0] -= view[0];
-    mesh_co[1] -= view[1];
-    mesh_co[2] -= view[2];
-    normalize_v3(mesh_co);
   }
   else {
     float plane[3], meshmat[3][3];
-
     if (vert) {
       edbm_vert_orientation(eve, mesh_no, plane, meshmat);
     }
@@ -826,40 +813,127 @@ bool edbm_mesh_facing_viewport(ViewContext *vc,
     mesh_no[2] = meshmat[2][2];
   }
 
-  if (persp) {
-    mesh_facing = dot_v3v3(mesh_no, mesh_co) < 0.0f;
+  for (int i = 0; i < 3; i++) {
+    if (persp) {
+      mesh_co[i] += vc->obact->object_to_world[3][i];
+      view[i] = vc->rv3d->viewinv[3][i] - mesh_co[i];
+
+      if (i == 2) {
+        normalize_v3(view);
+      }
+    }
+    else {
+      view[i] = vc->rv3d->viewmat[i][2];
+    }
   }
-  else {
-    mesh_facing = dot_v3v3(mesh_no, view) > 0.0f;
-  }
+
+  mesh_facing = dot_v3v3(mesh_no, view) > 0.0f;
 
   return mesh_facing;
 }
 
-bool edbm_check_mesh_facing(ToolSettings *ts, wmOperator *op, const bool zbuf)
+bool edbm_check_mesh_facing(
+    wmOperator *op, const bool zbuf, const bool lasso, const bool circle, const bool zbuf_vert)
 {
   bool check_facing = false;
 
-  if (ts->select_header) {
-    check_facing = zbuf ? ts->backface_select &&
-                              (ts->backface_select_mode == 2 || ts->backface_select_mode == 8) :
-                          ts->backface_select &&
-                              (ts->backface_select_mode == 4 || ts->backface_select_mode == 8);
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1 && lasso) {
+      if (zbuf) {
+        if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_backface)) {
+          check_facing = zbuf_vert ?
+                             U.backface_downright_lasso == 1 :
+                             U.backface_downright_lasso == 1 || U.backface_downright_lasso == 2;
+        }
+        else {
+          check_facing = zbuf_vert ? U.backface_lasso == 1 :
+                                     U.backface_lasso == 1 || U.backface_lasso == 2;
+        }
+      }
+      else {
+        if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_backface)) {
+          check_facing = U.backface_downright_lasso == 1;
+        }
+        else {
+          check_facing = U.backface_lasso == 1;
+        }
+      }
+    }
+    else if (U.userpref_mode == 1 && circle) {
+      if (zbuf) {
+        check_facing = zbuf_vert ? U.backface_circle == 1 :
+                                   U.backface_circle == 1 || U.backface_circle == 2;
+      }
+      else {
+        check_facing = U.backface_circle == 1;
+      }
+    }
+    else {
+      if (zbuf) {
+        if (U.userpref_mode == 1 && U.direction_downright_box &&
+            (U.drag_direction_mode == 0 || U.direction_backface))
+        {
+          check_facing = zbuf_vert ?
+                             U.backface_downright_box == 1 :
+                             U.backface_downright_box == 1 || U.backface_downright_box == 2;
+        }
+        else {
+          check_facing = zbuf_vert ? U.backface_box == 1 :
+                                     U.backface_box == 1 || U.backface_box == 2;
+        }
+      }
+      else {
+        if (U.userpref_mode == 1 && U.direction_downright_box &&
+            (U.drag_direction_mode == 0 || U.direction_backface))
+        {
+          check_facing = U.backface_downright_box == 1;
+        }
+        else {
+          check_facing = U.backface_box == 1;
+        }
+      }
+    }
   }
   else {
     const int mode = RNA_enum_get(op->ptr, "backface_filter");
-    check_facing = zbuf ? mode == 2 || mode == 8 : mode == 4 || mode == 8;
+
+    if (zbuf) {
+      check_facing = zbuf_vert ? mode == 2 : mode == 2 || mode == 4;
+    }
+    else {
+      check_facing = mode == 2;
+    }
   }
 
   return check_facing;
 }
 
-int object_style(ToolSettings *ts, wmOperator *op)
+int object_style(wmOperator *op, const bool lasso, const bool circle)
 {
   int type = 0;
 
-  if (ts->select_header) {
-    type = ts->object_select_mode;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1 && lasso) {
+      if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_object)) {
+        type = U.object_select_downright_lasso * 2;
+      }
+      else {
+        type = U.object_select_lasso * 2;
+      }
+    }
+    else if (U.userpref_mode == 1 && circle) {
+      type = U.object_select_circle * 2;
+    }
+    else {
+      if (U.userpref_mode == 1 && U.direction_downright_box &&
+          (U.drag_direction_mode == 0 || U.direction_object))
+      {
+        type = U.object_select_downright_box * 2;
+      }
+      else {
+        type = U.object_select_box * 2;
+      }
+    }
   }
   else {
     type = RNA_enum_get(op->ptr, "object_type");
@@ -872,12 +946,36 @@ int object_style(ToolSettings *ts, wmOperator *op)
   return type;
 }
 
-int face_style(ToolSettings *ts, wmOperator *op)
+int face_style(wmOperator *op, const bool lasso, const bool circle)
 {
   int type = 0;
 
-  if (ts->select_header) {
-    type = ts->face_select_mode;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1 && lasso) {
+      if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_face)) {
+        type = U.face_select_downright_lasso * 2;
+      }
+      else {
+        type = U.face_select_lasso * 2;
+      }
+    }
+    else if (U.userpref_mode == 1 && circle) {
+      type = U.face_select_circle * 2;
+    }
+    else {
+      if (U.userpref_mode == 1 && U.direction_downright_box &&
+          (U.drag_direction_mode == 0 || U.direction_face))
+      {
+        type = U.face_select_downright_box * 2;
+      }
+      else {
+        type = U.face_select_box * 2;
+      }
+    }
+
+    if (type == 6) {
+      type = 8;
+    }
   }
   else {
     type = RNA_enum_get(op->ptr, "face_type");
@@ -890,12 +988,32 @@ int face_style(ToolSettings *ts, wmOperator *op)
   return type;
 }
 
-int edge_style(ToolSettings *ts, wmOperator *op)
+int edge_style(wmOperator *op, const bool lasso, const bool circle)
 {
   int type = 0;
 
-  if (ts->select_header) {
-    type = ts->edge_select_mode;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1 && lasso) {
+      if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_edge)) {
+        type = U.edge_select_downright_lasso * 2;
+      }
+      else {
+        type = U.edge_select_lasso * 2;
+      }
+    }
+    else if (U.userpref_mode == 1 && circle) {
+      type = U.edge_select_circle * 2;
+    }
+    else {
+      if (U.userpref_mode == 1 && U.direction_downright_box &&
+          (U.drag_direction_mode == 0 || U.direction_edge))
+      {
+        type = U.edge_select_downright_box * 2;
+      }
+      else {
+        type = U.edge_select_box * 2;
+      }
+    }
   }
   else {
     type = RNA_enum_get(op->ptr, "edge_type");
@@ -908,12 +1026,8 @@ int edge_style(ToolSettings *ts, wmOperator *op)
   return type;
 }
 
-bool drag_select_through(View3D *v3d,
-                         ToolSettings *ts,
-                         wmOperator *op,
-                         const bool mesh,
-                         const bool lasso,
-                         const bool circle)
+bool drag_select_through(
+    View3D *v3d, wmOperator *op, const bool mesh, const bool lasso, const bool circle)
 {
   if (XRAY_FLAG_ENABLED(v3d)) {
     return true;
@@ -921,13 +1035,58 @@ bool drag_select_through(View3D *v3d,
 
   bool select_through = false;
 
-  if (ts->xray_header) {
-    if (ts->select_through && mesh && ts->select_through_edit ||
-        ts->select_through && !mesh && ts->select_through_object)
-    {
-      select_through = lasso  ? ts->select_through_lasso :
-                       circle ? ts->select_through_circle :
-                                ts->select_through_box;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1 && circle) {
+      if (mesh) {
+        select_through = U.select_through_circle == 2 || U.select_through_circle == 3;
+      }
+      else {
+        select_through = U.select_through_circle == 1 || U.select_through_circle == 3;
+      }
+    }
+    else if (U.userpref_mode == 1 && lasso) {
+      if (mesh) {
+        if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_auto_xray)) {
+          select_through = U.select_through_downright_lasso == 2 ||
+                           U.select_through_downright_lasso == 3;
+        }
+        else {
+          select_through = U.select_through_lasso == 2 || U.select_through_lasso == 3;
+        }
+      }
+      else {
+        if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_auto_xray)) {
+          select_through = U.select_through_downright_lasso == 1 ||
+                           U.select_through_downright_lasso == 3;
+        }
+        else {
+          select_through = U.select_through_lasso == 1 || U.select_through_lasso == 3;
+        }
+      }
+    }
+    else {
+      if (mesh) {
+        if (U.userpref_mode == 1 && U.direction_downright_box &&
+            (U.drag_direction_mode == 0 || U.direction_auto_xray))
+        {
+          select_through = U.select_through_downright_box == 2 ||
+                           U.select_through_downright_box == 3;
+        }
+        else {
+          select_through = U.select_through_box == 2 || U.select_through_box == 3;
+        }
+      }
+      else {
+        if (U.userpref_mode == 1 && U.direction_downright_box &&
+            (U.drag_direction_mode == 0 || U.direction_auto_xray))
+        {
+          select_through = U.select_through_downright_box == 1 ||
+                           U.select_through_downright_box == 3;
+        }
+        else {
+          select_through = U.select_through_box == 1 || U.select_through_box == 3;
+        }
+      }
     }
   }
   else {
@@ -1237,17 +1396,19 @@ bool edbm_center_face(ViewContext *vc,
 }
 
 static bool edbm_backbuf_check_and_select_verts(ViewContext *vc,
+                                                wmOperator *op,
                                                 EditSelectBuf_Cache *esel,
                                                 Depsgraph *depsgraph,
                                                 Object *ob,
                                                 BMEditMesh *em,
-                                                const eSelectOp sel_op)
+                                                const eSelectOp sel_op,
+                                                const bool lasso,
+                                                const bool circle)
 {
   BMVert *eve;
   BMIter iter;
-  ToolSettings *ts = vc->scene->toolsettings;
   const int totface = em->bm->totface;
-  const bool check_mesh_facing = ts->backface_select && ts->backface_select_mode == 8;
+  const bool check_mesh_facing = edbm_check_mesh_facing(op, true, lasso, circle, true);
   blender::BitVector<> visited_face;
   blender::BitVector<> front_face;
   bool changed = false;
@@ -1328,11 +1489,10 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
   ViewContext *vc = data->vc;
-  ToolSettings *ts = vc->scene->toolsettings;
   BMEdge *eed;
   BMIter iter;
   bool changed = false;
-  const bool check_mesh_facing = edbm_check_mesh_facing(ts, op, true);
+  const bool check_mesh_facing = edbm_check_mesh_facing(op, true, false, true, false);
 
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_EDGE);
@@ -1411,13 +1571,14 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
                                                 void *lasso_data,
                                                 void *circle_data)
 {
-  ToolSettings *ts = vc->scene->toolsettings;
+  // ToolSettings *ts = vc->scene->toolsettings;
   BMIter iter, viter;
   BMFace *efa;
   BMVert *eve;
   rctf rectf;
   bool changed = false;
-  const bool check_mesh_facing = edbm_check_mesh_facing(ts, op, true);
+  const bool check_mesh_facing = edbm_check_mesh_facing(
+      op, true, lasso_data != nullptr, circle_data != nullptr, false);
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   LassoSelectUserData *ldata = static_cast<LassoSelectUserData *>(lasso_data);
   CircleSelectUserData *cdata = static_cast<CircleSelectUserData *>(circle_data);
@@ -1692,11 +1853,10 @@ static bool do_lasso_select_objects(ViewContext *vc,
                                     wmOperator *op)
 {
   View3D *v3d = vc->v3d;
-  ToolSettings *ts = vc->scene->toolsettings;
   bool changed = false;
   float region_co[2];
-  const int object_type = object_style(ts, op);
-  const bool wireless_touch = ts->wireless_touch_object && object_type == 1 &&
+  const int object_type = object_style(op, true, false);
+  const bool wireless_touch = U.wireless_touch_object && object_type == 1 &&
                               v3d->shading.type == OB_WIRE && XRAY_FLAG_ENABLED(v3d);
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
@@ -1744,7 +1904,7 @@ static bool do_lasso_select_objects(ViewContext *vc,
     const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(vc->scene,
                                                                                    vc->obact);
 
-    if (drag_select_through(v3d, ts, op, false, true, false)) {
+    if (drag_select_through(v3d, op, false, true, false)) {
       hits = view3d_opengl_select(vc, &buffer, &rect, VIEW3D_SELECT_PICK_ALL, select_filter);
     }
     else {
@@ -2167,15 +2327,20 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   LassoSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
   rcti rect;
-  const int mesh_type[2] = {edge_style(ts, op), face_style(ts, op)};
 
   /* set editmesh */
   vc->em = BKE_editmesh_from_object(vc->obedit);
 
   BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
 
-  view3d_userdata_lassoselect_init(
-      &data, vc, &rect, mcoords, mcoords_len, sel_op, mesh_type[0], mesh_type[1]);
+  view3d_userdata_lassoselect_init(&data,
+                                   vc,
+                                   &rect,
+                                   mcoords,
+                                   mcoords_len,
+                                   sel_op,
+                                   edge_style(op, true, false),
+                                   face_style(op, true, false));
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     if (vc->em->bm->totvertsel) {
@@ -2189,7 +2354,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const bool use_zbuf = !drag_select_through(vc->v3d, ts, op, true, true, false);
+  const bool use_zbuf = !drag_select_through(vc->v3d, op, true, true, false);
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
   if (use_zbuf) {
@@ -2211,7 +2376,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
-    data.check_mesh_direction = edbm_check_mesh_facing(ts, op, use_zbuf);
+    data.check_mesh_direction = edbm_check_mesh_facing(op, use_zbuf, true, false, false);
 
     if (data.check_mesh_direction) {
       const int totface = vc->em->bm->totface;
@@ -2225,7 +2390,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
-          vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op);
+          vc, op, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, true, false);
     }
     else {
       mesh_foreachScreenVert(
@@ -5355,9 +5520,9 @@ static bool do_mesh_box_select(ViewContext *vc,
 {
   BoxSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
-  const int mesh_type[2] = {edge_style(ts, op), face_style(ts, op)};
 
-  view3d_userdata_boxselect_init(&data, vc, rect, sel_op, mesh_type[0], mesh_type[1]);
+  view3d_userdata_boxselect_init(
+      &data, vc, rect, sel_op, edge_style(op, false, square), face_style(op, false, square));
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     if (vc->em->bm->totvertsel) {
@@ -5371,7 +5536,7 @@ static bool do_mesh_box_select(ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const bool use_zbuf = !drag_select_through(vc->v3d, ts, op, true, false, square);
+  const bool use_zbuf = !drag_select_through(vc->v3d, op, true, false, square);
 
   if (use_zbuf) {
     /* for near enclose face */
@@ -5396,7 +5561,7 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
-    data.check_mesh_direction = edbm_check_mesh_facing(ts, op, use_zbuf);
+    data.check_mesh_direction = edbm_check_mesh_facing(op, use_zbuf, false, false, false);
 
     if (data.check_mesh_direction) {
       const int totface = vc->em->bm->totface;
@@ -5410,7 +5575,7 @@ static bool do_mesh_box_select(ViewContext *vc,
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
-          vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op);
+          vc, op, esel, vc->depsgraph, vc->obedit, vc->em, sel_op, false, false);
     }
     else {
       mesh_foreachScreenVert(
@@ -5627,10 +5792,9 @@ static bool do_object_box_select(bContext *C,
                                  const rcti *rect,
                                  const eSelectOp sel_op,
                                  wmOperator *op,
-                                 bool square)
+                                 const bool square)
 {
   View3D *v3d = vc->v3d;
-  ToolSettings *ts = vc->scene->toolsettings;
   GPUSelectBuffer buffer;
   const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(vc->scene,
                                                                                  vc->obact);
@@ -5640,8 +5804,8 @@ static bool do_object_box_select(bContext *C,
   int hits = 0;
   bool changed = false;
   float region_co[2];
-  const int object_type = object_style(ts, op);
-  const bool wireless_touch = ts->wireless_touch_object && object_type == 1 &&
+  const int object_type = object_style(op, false, square);
+  const bool wireless_touch = U.wireless_touch_object && object_type == 1 &&
                               v3d->shading.type == OB_WIRE && XRAY_FLAG_ENABLED(v3d);
   bool select;
   int select_flag;
@@ -5655,7 +5819,7 @@ static bool do_object_box_select(bContext *C,
     changed |= object_deselect_all_visible(vc->scene, vc->view_layer, vc->v3d);
   }
 
-  if (drag_select_through(v3d, ts, op, false, false, square)) {
+  if (drag_select_through(v3d, op, false, false, square)) {
     hits = view3d_opengl_select(vc, &buffer, rect, VIEW3D_SELECT_ALL, select_filter);
   }
   else {
@@ -6231,7 +6395,6 @@ static bool mesh_circle_select(ViewContext *vc,
   ToolSettings *ts = vc->scene->toolsettings;
   CircleSelectUserData data;
   vc->em = BKE_editmesh_from_object(vc->obedit);
-  const int mesh_type[2] = {edge_style(ts, op), face_style(ts, op)};
 
   bool changed = false;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
@@ -6247,9 +6410,10 @@ static bool mesh_circle_select(ViewContext *vc,
 
   ED_view3d_init_mats_rv3d(vc->obedit, vc->rv3d); /* for foreach's screen/vert projection */
 
-  view3d_userdata_circleselect_init(&data, vc, select, mval, rad, mesh_type[0], mesh_type[1]);
+  view3d_userdata_circleselect_init(
+      &data, vc, select, mval, rad, edge_style(op, false, true), face_style(op, false, true));
 
-  const bool use_zbuf = !drag_select_through(vc->v3d, ts, op, true, false, true);
+  const bool use_zbuf = !drag_select_through(vc->v3d, op, true, false, true);
 
   if (use_zbuf) {
     if (wm_userdata->data == nullptr) {
@@ -6266,7 +6430,7 @@ static bool mesh_circle_select(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
-    data.check_mesh_direction = edbm_check_mesh_facing(ts, op, use_zbuf);
+    data.check_mesh_direction = edbm_check_mesh_facing(op, use_zbuf, false, true, false);
 
     if (data.check_mesh_direction) {
       const int totface = vc->em->bm->totface;
@@ -6280,8 +6444,15 @@ static bool mesh_circle_select(ViewContext *vc,
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       if (esel->select_bitmap != nullptr) {
-        changed |= edbm_backbuf_check_and_select_verts(
-            vc, esel, vc->depsgraph, vc->obedit, vc->em, select ? SEL_OP_ADD : SEL_OP_SUB);
+        changed |= edbm_backbuf_check_and_select_verts(vc,
+                                                       op,
+                                                       esel,
+                                                       vc->depsgraph,
+                                                       vc->obedit,
+                                                       vc->em,
+                                                       select ? SEL_OP_ADD : SEL_OP_SUB,
+                                                       false,
+                                                       true);
       }
     }
     else {
@@ -6997,13 +7168,12 @@ static bool object_circle_select(
   Scene *scene = vc->scene;
   ViewLayer *view_layer = vc->view_layer;
   View3D *v3d = vc->v3d;
-  ToolSettings *ts = scene->toolsettings;
   float region_co[2];
   const int circle_data[3] = {mval[0], mval[1], int(rad)};
   float mval_fl[2] = {float(mval[0]), float(mval[1])};
   float radius_squared = rad * rad;
-  const int object_type = object_style(ts, op);
-  const bool wireless_touch = ts->wireless_touch_object && object_type == 1 &&
+  const int object_type = object_style(op, false, true);
+  const bool wireless_touch = U.wireless_touch_object && object_type == 1 &&
                               v3d->shading.type == OB_WIRE && XRAY_FLAG_ENABLED(v3d);
   const bool select = (sel_op != SEL_OP_SUB);
   const int select_flag = select ? BASE_SELECTED : 0;
@@ -7070,7 +7240,7 @@ static bool object_circle_select(
 
     const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(scene,
                                                                                    vc->obact);
-    if (drag_select_through(v3d, ts, op, false, false, true)) {
+    if (drag_select_through(v3d, op, false, false, true)) {
       hits = view3d_opengl_select(vc, &buffer, &rect, VIEW3D_SELECT_ALL, select_filter);
     }
     else {
@@ -7206,8 +7376,7 @@ static int view3d_circle_select_exec(bContext *C, wmOperator *op)
       static_cast<eSelectOp>(RNA_enum_get(op->ptr, "mode")), WM_gesture_is_modal_first(gesture));
 
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
-  ToolSettings *ts = vc.scene->toolsettings;
-  bool square = ts->square_select;
+  bool square = U.square_select;
   rcti rect;
 
   Object *obact = vc.obact;

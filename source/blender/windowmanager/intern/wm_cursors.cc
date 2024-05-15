@@ -41,45 +41,64 @@ struct BCursor {
 
 static BCursor *BlenderCursor[WM_CURSOR_NUM] = {nullptr};
 
+static GHOST_TStandardCursor window_get_custom_cursor(const int cursor)
+{
+  if (cursor == 1) {
+    return GHOST_kStandardCursorCrosshair;
+  }
+  else if (cursor == 2) {
+    return GHOST_kStandardCursorPointer;
+  }
+  else if (cursor == 3) {
+    return GHOST_kStandardCursorCrosshairD;
+  }
+  else if (cursor == 4) {
+    return GHOST_kStandardCursorCrosshairA;
+  }
+  else if (cursor == 5) {
+    return GHOST_kStandardCursorCrosshairC;
+  }
+  else if (cursor == 6) {
+    return GHOST_kStandardCursorBox;
+  }
+  else if (cursor == 7) {
+    return GHOST_kStandardCursorBoxDot;
+  }
+  else if (cursor == 8) {
+    return GHOST_kStandardCursorBoxPointer;
+  }
+  else if (cursor == 9) {
+    return GHOST_kStandardCursorCrosshairB;
+  }
+  else if (cursor == 10) {
+    return GHOST_kStandardCursorBlank;
+  }
+  else if (cursor == 11) {
+    return GHOST_kStandardCursorKnife;
+  }
+  else if (cursor == 12) {
+    return GHOST_kStandardCursorPencil;
+  }
+  else if (cursor == 13) {
+    return GHOST_kStandardCursorEraser;
+  }
+  else if (cursor == 14) {
+    return GHOST_kStandardCursorEyedropper;
+  }
+  else {
+    return GHOST_kStandardCursorDefault;
+  }
+}
+
 /* Blender cursor to GHOST standard cursor conversion. */
 static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
 {
-  const int system_style = U.system_cursor;
-  const int edit_style = U.edit_cursor;
-  const int paint_style = U.paint_cursor;
-  const int dot_style = U.dot_cursor;
-  const int knife_style = U.knife_cursor;
-  const int pencil_style = U.pencil_cursor;
-  const int eraser_style = U.eraser_cursor;
-  const int eyedropper_style = U.eyedropper_cursor;
+  GHOST_TStandardCursor cursor = GHOST_kStandardCursorDefault;
   switch (curs) {
     case WM_CURSOR_DEFAULT:
-      if (system_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (system_style == 2) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (system_style == 3) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (system_style == 4) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (system_style == 5) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (system_style == 6) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (system_style == 7) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (system_style == 8) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (system_style == 9) {
-        return GHOST_kStandardCursorCrosshairB;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.system_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorDefault;
@@ -88,32 +107,9 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
       return GHOST_kStandardCursorWait;
     case WM_CURSOR_EDIT:
     case WM_CURSOR_CROSS:
-      if (edit_style == 1) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (edit_style == 2) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (edit_style == 3) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (edit_style == 4) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (edit_style == 5) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (edit_style == 6) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (edit_style == 7) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (edit_style == 8) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (edit_style == 9) {
-        return GHOST_kStandardCursorCrosshairB;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.edit_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorCrosshair;
@@ -133,35 +129,9 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
     case WM_CURSOR_STOP:
       return GHOST_kStandardCursorStop;
     case WM_CURSOR_KNIFE:
-      if (knife_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (knife_style == 2) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (knife_style == 3) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (knife_style == 4) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (knife_style == 5) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (knife_style == 6) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (knife_style == 7) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (knife_style == 8) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (knife_style == 9) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (knife_style == 10) {
-        return GHOST_kStandardCursorCrosshairB;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.knife_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorKnife;
@@ -173,35 +143,9 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
     case WM_CURSOR_EW_SCROLL:
       return GHOST_kStandardCursorEWScroll;
     case WM_CURSOR_EYEDROPPER:
-      if (eyedropper_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (eyedropper_style == 2) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (eyedropper_style == 3) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (eyedropper_style == 4) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (eyedropper_style == 5) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (eyedropper_style == 6) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (eyedropper_style == 7) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (eyedropper_style == 8) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (eyedropper_style == 9) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (eyedropper_style == 10) {
-        return GHOST_kStandardCursorCrosshairB;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.eyedropper_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorEyedropper;
@@ -211,69 +155,17 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
     case WM_CURSOR_S_ARROW:
       return GHOST_kStandardCursorDownArrow;
     case WM_CURSOR_PAINT:
-      if (paint_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (paint_style == 2) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (paint_style == 3) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (paint_style == 4) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (paint_style == 5) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (paint_style == 6) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (paint_style == 7) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (paint_style == 8) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (paint_style == 9) {
-        return GHOST_kStandardCursorCrosshairB;
-      }
-      else if (paint_style == 10) {
-        return GHOST_kStandardCursorBlank;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.paint_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorCrosshairA;
       }
     case WM_CURSOR_DOT:
-      if (dot_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (dot_style == 2) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (dot_style == 3) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (dot_style == 4) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (dot_style == 5) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (dot_style == 6) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (dot_style == 7) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (dot_style == 8) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (dot_style == 9) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (dot_style == 10) {
-        return GHOST_kStandardCursorBlank;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.dot_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorCrosshairB;
@@ -281,35 +173,9 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
     case WM_CURSOR_CROSSC:
       return GHOST_kStandardCursorCrosshairC;
     case WM_CURSOR_ERASER:
-      if (eraser_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (eraser_style == 2) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (eraser_style == 3) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (eraser_style == 4) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (eraser_style == 5) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (eraser_style == 6) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (eraser_style == 7) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (eraser_style == 8) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (eraser_style == 9) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (eraser_style == 10) {
-        return GHOST_kStandardCursorCrosshairB;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.eraser_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorEraser;
@@ -321,35 +187,9 @@ static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
     case WM_CURSOR_TEXT_EDIT:
       return GHOST_kStandardCursorText;
     case WM_CURSOR_PAINT_BRUSH:
-      if (pencil_style == 1) {
-        return GHOST_kStandardCursorCrosshair;
-      }
-      else if (pencil_style == 2) {
-        return GHOST_kStandardCursorDefault;
-      }
-      else if (pencil_style == 3) {
-        return GHOST_kStandardCursorPointer;
-      }
-      else if (pencil_style == 4) {
-        return GHOST_kStandardCursorCrosshairD;
-      }
-      else if (pencil_style == 5) {
-        return GHOST_kStandardCursorCrosshairA;
-      }
-      else if (pencil_style == 6) {
-        return GHOST_kStandardCursorCrosshairC;
-      }
-      else if (pencil_style == 7) {
-        return GHOST_kStandardCursorBox;
-      }
-      else if (pencil_style == 8) {
-        return GHOST_kStandardCursorBoxDot;
-      }
-      else if (pencil_style == 9) {
-        return GHOST_kStandardCursorBoxPointer;
-      }
-      else if (pencil_style == 10) {
-        return GHOST_kStandardCursorCrosshairB;
+      if (U.custom_cursor) {
+        cursor = window_get_custom_cursor(U.pencil_cursor);
+        return cursor;
       }
       else {
         return GHOST_kStandardCursorPencil;

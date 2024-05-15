@@ -248,7 +248,7 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 
         case TH_HEADER_ACTIVE: {
           cp = ts->header;
-          const int factor = U.header_highlight;
+          const int factor = U.custom_highlight ? U.header_highlight : 5;
           /* Lighten the header color when editor is active. */
           header_active[0] = cp[0] > 245 ? cp[0] - factor : cp[0] + factor;
           header_active[1] = cp[1] > 245 ? cp[1] - factor : cp[1] + factor;

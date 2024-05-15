@@ -875,8 +875,7 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
   bNodeTree &node_tree = *snode->edittree;
-  ToolSettings *ts = CTX_data_tool_settings(C);
-  const bool square = ts->square_select;
+  const bool square = U.square_select;
 
   int x, y, radius;
   float2 offset;

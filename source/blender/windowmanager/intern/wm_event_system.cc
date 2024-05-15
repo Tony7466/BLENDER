@@ -3475,7 +3475,7 @@ static eHandlerActionFlag wm_handlers_do(bContext *C, wmEvent *event, ListBase *
             WM_event_drag_test(event, event->prev_press_xy))
         {
           win->event_queue_check_drag_handled = true;
-          const int direction = WM_event_drag_direction(event);
+          const int direction = WM_event_drag_direction(C, event);
 
           /* Intentionally leave `event->xy` as-is, event users are expected to use
            * `event->prev_press_xy` if they need to access the drag start location. */

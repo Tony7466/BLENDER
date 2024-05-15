@@ -1746,7 +1746,7 @@ bool WM_event_is_modal_drag_exit(const wmEvent *event,
                                  short init_event_val);
 bool WM_event_is_mouse_drag(const wmEvent *event);
 bool WM_event_is_mouse_drag_or_press(const wmEvent *event);
-int WM_event_drag_direction(const wmEvent *event);
+int WM_event_drag_direction(bContext *C, const wmEvent *event);
 char WM_event_utf8_to_ascii(const wmEvent *event) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
 
 /**

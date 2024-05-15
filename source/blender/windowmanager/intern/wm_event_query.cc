@@ -267,28 +267,65 @@ bool WM_event_is_mouse_drag_or_press(const wmEvent *event)
          (ISMOUSE_BUTTON(event->type) && (event->val == KM_PRESS));
 }
 
-int WM_event_drag_direction(const wmEvent *event)
+int WM_event_drag_direction(bContext *C, const wmEvent *event)
 {
   const int delta[2] = {
       event->xy[0] - event->prev_press_xy[0],
       event->xy[1] - event->prev_press_xy[1],
   };
 
-  const bool left_right = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT;
-  const bool up_down = U.click_drag_direction & USER_CLICK_DRAG_DIRECTION_UP_DOWN;
-  int val = up_down ? KM_DIRECTION_S : KM_DIRECTION_W;
+  const bool box_left_right = U.drag_direction_box == 1 && U.drag_control_mode == 1;
+  const bool box_up_down = U.drag_direction_box == 2 && U.drag_control_mode == 1;
+  const bool lasso_left_right = U.drag_direction_lasso == 1 && U.drag_control_mode == 1;
+  const bool lasso_up_down = U.drag_direction_lasso == 2 && U.drag_control_mode == 1;
+  const bool left_right = U.keymap_direction == 1;
+  const bool up_down = U.keymap_direction == 2;
+  int val = up_down ? KM_DIRECTION_N : KM_DIRECTION_W;
 
-  if (left_right || up_down) {
-    float thetaf = 4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI;
-    if (left_right && thetaf > -2.0f && thetaf < 2.0f) {
-      val = KM_DIRECTION_E;
+  if (left_right || up_down || box_left_right || box_up_down || lasso_left_right || lasso_up_down)
+  {
+    const float thetaf = 4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI;
+
+    if (U.direction_downright_box) {
+      U.direction_downright_box ^= true;
     }
-    else if (up_down && thetaf > 0.0f) {
-      val = KM_DIRECTION_N;
+
+    if (U.direction_downright_lasso) {
+      U.direction_downright_lasso ^= true;
+    }
+
+    if (thetaf > -2.0f && thetaf < 2.0f) {
+      if (left_right) {
+        val = KM_DIRECTION_E;
+      }
+
+      if (box_left_right) {
+        U.direction_downright_box ^= true;
+      }
+
+      if (lasso_left_right) {
+        U.direction_downright_lasso ^= true;
+      }
+    }
+
+    if (thetaf < 0.0f) {
+      if (up_down) {
+        val = KM_DIRECTION_S;
+      }
+
+      if (box_up_down) {
+        U.direction_downright_box ^= true;
+      }
+
+      if (lasso_up_down) {
+        U.direction_downright_lasso ^= true;
+      }
     }
   }
-  else {
-    int theta = round_fl_to_int(4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI);
+
+  if (!left_right && !up_down) {
+    const int theta = round_fl_to_int(4.0f * atan2f((float)delta[1], (float)delta[0]) /
+                                      (float)M_PI);
     if (theta == 0) {
       val = KM_DIRECTION_E;
     }

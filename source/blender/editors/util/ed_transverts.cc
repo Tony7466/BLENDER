@@ -315,6 +315,13 @@ void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit,
             editmesh_eval_cage, set_mapped_co, userdata, MESH_FOREACH_NOP);
       }
     }
+
+    /* Fix vert indices for backfacing mesh filter */
+    int index = 0;
+    BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
+      BM_elem_index_set(eve, index);
+      index++;
+    }
   }
   else if (obedit->type == OB_ARMATURE) {
     bArmature *arm = static_cast<bArmature *>(obedit->data);

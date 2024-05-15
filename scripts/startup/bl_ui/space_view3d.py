@@ -751,6 +751,7 @@ class VIEW3D_HT_header(Header):
         layout = self.layout
 
         tool_settings = context.tool_settings
+        inputs = context.preferences.inputs
         view = context.space_data
         shading = view.shading
 
@@ -783,45 +784,220 @@ class VIEW3D_HT_header(Header):
         )
         del act_mode_item
 
-        if object_mode == 'EDIT' or object_mode == 'OBJECT':
-            row = layout.row(align=True)
-            row.template_header_3D_mode()
+        row = layout.row(align=True)
+        row.template_header_3D_mode()
 
-            if object_mode == 'OBJECT':
-                if tool_settings.object_select_mode == 'ENCLOSE':
-                    objicon = 'OBJECT_ENCLOSE'
-                elif tool_settings.object_select_mode == 'ORIGIN':
-                    objicon = 'LIGHTPROBE_SPHERE'
+        if inputs.drag_control_mode == 'USERPREF':
+            if (object_mode == 'OBJECT' and (inputs.object_header or inputs.auto_xray_header or inputs.select_through_header)) or (object_mode == 'EDIT' and (inputs.face_header or inputs.edge_header or inputs.backface_header or inputs.select_through_header or inputs.auto_xray_header)):
+                from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+                _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+
+                if tool_settings.workspace_tool_type == 'FALLBACK':
+                    tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
                 else:
-                    objicon = 'OBJECT_TOUCH'
-                row.active = tool_settings.select_header
-                row.operator("view3d.cycle_object", text="", icon=objicon)
-            else:
-                if tool_settings.select_header:
-                    if tool_settings.face_button:
-                        if tool_settings.face_select_mode == 'TOUCH':
-                            facicon = 'FACE_TOUCH'
-                        elif tool_settings.face_select_mode == 'ENCLOSE':
-                            facicon = 'FACE_ENCLOSE'
-                        elif tool_settings.face_select_mode == 'CENTER':
-                            facicon = 'LIGHTPROBE_PLANE'
-                        else:
-                            facicon = 'FACE_DEFAULT'
-                        row.operator("view3d.cycle_face", text="", icon=facicon)
-                    if tool_settings.edge_button:
-                        if tool_settings.edge_select_mode == 'TOUCH':
-                            edgicon = 'EDGE_TOUCH'
-                        elif tool_settings.edge_select_mode == 'ENCLOSE':
-                            edgicon = 'EDGE_ENCLOSE'
-                        else:
-                            edgicon = 'EDGE_DEFAULT'
-                        row.operator("view3d.cycle_edge", text="", icon=edgicon)
-                    if tool_settings.backface_button:
-                        row.prop(tool_settings, "backface_select", text="", icon='NORMALS_FACE')
+                    tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
 
-            row.popover(panel="VIEW3D_PT_drag_select", text="")
-        else:
-            layout.template_header_3D_mode()
+                enable_auto_xray_button = inputs.auto_xray_header
+                depress_auto_xray = False
+                enable_select_through_button = inputs.select_through_header
+                depress_select_through = False
+                enable_object_button = inputs.object_header
+                objicon = 'OBJECT_TOUCH'
+                enable_face_button = inputs.face_header
+                facicon = 'FACE_DEFAULT'
+                enable_edge_button = inputs.edge_header
+                edgicon = 'EDGE_DEFAULT'
+                enable_backface_button = inputs.backface_header
+                depress_bface = False
+
+                if inputs.userpref_mode == 'SPLIT' and tool == "builtin.select_circle":
+                    if object_mode == 'OBJECT':
+                        if enable_object_button:
+                            if inputs.object_select_circle == 'OBJECT_ENCLOSE':
+                                objicon = 'OBJECT_ENCLOSE'
+                            elif inputs.object_select_circle == 'OBJECT_ORIGIN':
+                                objicon = 'LIGHTPROBE_SPHERE'
+
+                        if enable_auto_xray_button:
+                            depress_auto_xray = inputs.auto_xray_circle == 'AUTO_XRAY_OBJECT' or inputs.auto_xray_circle == 'AUTO_XRAY_BOTH'
+
+                        if enable_select_through_button:
+                            depress_select_through = inputs.select_through_circle == 'SELECT_THROUGH_OBJECT' or inputs.select_through_circle == 'SELECT_THROUGH_BOTH'
+                    else:
+                        if enable_face_button:
+                            if inputs.face_select_circle == 'FACE_TOUCH':
+                                facicon = 'FACE_TOUCH'
+                            elif inputs.face_select_circle == 'FACE_ENCLOSE':
+                                facicon = 'FACE_ENCLOSE'
+                            elif inputs.face_select_circle == 'FACE_CENTER':
+                                facicon = 'LIGHTPROBE_PLANE'
+
+                        if enable_edge_button:
+                            if inputs.edge_select_circle == 'EDGE_ENCLOSE':
+                                edgicon = 'EDGE_ENCLOSE'
+                            else:
+                                edgicon = 'EDGE_TOUCH'
+
+                        if enable_auto_xray_button:
+                            depress_auto_xray = inputs.auto_xray_circle == 'AUTO_XRAY_EDIT' or inputs.auto_xray_circle == 'AUTO_XRAY_BOTH'
+
+                        if enable_select_through_button:
+                            depress_select_through = inputs.select_through_circle == 'SELECT_THROUGH_EDIT' or inputs.select_through_circle == 'SELECT_THROUGH_BOTH'
+
+                        if enable_backface_button:
+                            depress_bface = inputs.backface_circle != 'DEFAULT'
+
+                elif inputs.userpref_mode == 'SPLIT' and tool == "builtin.select_lasso":
+                    if object_mode == 'OBJECT':
+                        if enable_object_button:
+                            if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_object == False:
+                                if inputs.object_select_lasso == 'OBJECT_ENCLOSE':
+                                    objicon = 'OBJECT_ENCLOSE'
+                                elif inputs.object_select_lasso == 'OBJECT_ORIGIN':
+                                    objicon = 'LIGHTPROBE_SPHERE'
+                            else:
+                                enable_object_button = False
+
+                        if enable_auto_xray_button:
+                            if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                                depress_auto_xray = inputs.auto_xray_lasso == 'AUTO_XRAY_OBJECT' or inputs.auto_xray_lasso == 'AUTO_XRAY_BOTH'
+                            else:
+                                enable_auto_xray_button = False
+
+                        if enable_select_through_button:
+                            if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                                depress_select_through = inputs.select_through_lasso == 'SELECT_THROUGH_OBJECT' or inputs.select_through_lasso == 'SELECT_THROUGH_BOTH'
+                            else:
+                                enable_select_through_button = False
+                    else:
+                        if enable_face_button:
+                            if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_face == False:
+                                if inputs.face_select_lasso == 'FACE_TOUCH':
+                                    facicon = 'FACE_TOUCH'
+                                elif inputs.face_select_lasso == 'FACE_ENCLOSE':
+                                    facicon = 'FACE_ENCLOSE'
+                                elif inputs.face_select_lasso == 'FACE_CENTER':
+                                    facicon = 'LIGHTPROBE_PLANE'
+                            else:
+                                enable_face_button = False
+
+                        if enable_edge_button:
+                            if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_edge == False:
+                                if inputs.edge_select_lasso == 'EDGE_TOUCH':
+                                    edgicon = 'EDGE_TOUCH'
+                                elif inputs.edge_select_lasso == 'EDGE_ENCLOSE':
+                                    edgicon = 'EDGE_ENCLOSE'
+                            else:
+                                enable_edge_button = False
+
+                        if enable_backface_button:
+                            if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_backface == False:
+                                depress_bface = inputs.backface_lasso != 'DEFAULT'
+                            else:
+                                enable_backface_button = False
+
+                        if enable_auto_xray_button:
+                            if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                                depress_auto_xray = inputs.auto_xray_lasso == 'AUTO_XRAY_EDIT' or inputs.auto_xray_lasso == 'AUTO_XRAY_BOTH'
+                            else:
+                                enable_auto_xray_button = False
+
+                        if enable_select_through_button:
+                            if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                                depress_select_through = inputs.select_through_lasso == 'SELECT_THROUGH_EDIT' or inputs.select_through_lasso == 'SELECT_THROUGH_BOTH'
+                            else:
+                                enable_select_through_button = False
+
+                elif (inputs.userpref_mode == 'SPLIT' and tool == "builtin.select_box") or (inputs.userpref_mode == 'EASY' and (tool == "builtin.select_box" or tool == "builtin.select_lasso" or tool == "builtin.select_circle")):
+                    if object_mode == 'OBJECT':
+                        if enable_object_button:
+                            if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_object == False):
+                                if inputs.object_select_box == 'OBJECT_ENCLOSE':
+                                    objicon = 'OBJECT_ENCLOSE'
+                                elif inputs.object_select_box == 'OBJECT_ORIGIN':
+                                    objicon = 'LIGHTPROBE_SPHERE'
+                            else:
+                                enable_object_button = False
+
+                        if enable_auto_xray_button:
+                            if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                                depress_auto_xray = inputs.auto_xray_box == 'AUTO_XRAY_OBJECT' or inputs.auto_xray_box == 'AUTO_XRAY_BOTH'
+                            else:
+                                enable_auto_xray_button = False
+
+                        if enable_select_through_button:
+                            if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                                depress_select_through = inputs.select_through_box == 'SELECT_THROUGH_OBJECT' or inputs.select_through_box == 'SELECT_THROUGH_BOTH'
+                            else:
+                                enable_select_through_button = False
+                    else:
+                        if enable_face_button:
+                            if inputs.userpref_mode == 'EASY' or  inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_face == False):
+                                if inputs.face_select_box == 'FACE_TOUCH':
+                                    facicon = 'FACE_TOUCH'
+                                elif inputs.face_select_box == 'FACE_ENCLOSE':
+                                    facicon = 'FACE_ENCLOSE'
+                                elif inputs.face_select_box == 'FACE_CENTER':
+                                    facicon = 'LIGHTPROBE_PLANE'
+                            else:
+                                enable_face_button = False
+
+                        if enable_edge_button:
+                            if inputs.userpref_mode == 'EASY' or  inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_edge == False):
+                                if inputs.edge_select_box == 'EDGE_TOUCH':
+                                    edgicon = 'EDGE_TOUCH'
+                                elif inputs.edge_select_box == 'EDGE_ENCLOSE':
+                                    edgicon = 'EDGE_ENCLOSE'
+                            else:
+                                enable_edge_button = False
+
+                        if enable_backface_button:
+                            if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_backface == False):
+                                depress_bface = inputs.backface_box != 'DEFAULT'
+                            else:
+                                enable_backface_button = False
+
+                        if enable_auto_xray_button:
+                            if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                                depress_auto_xray = inputs.auto_xray_box == 'AUTO_XRAY_EDIT' or inputs.auto_xray_box == 'AUTO_XRAY_BOTH'
+                            else:
+                                enable_auto_xray_button = False
+
+                        if enable_select_through_button:
+                            if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                                depress_select_through = inputs.select_through_box == 'SELECT_THROUGH_EDIT' or inputs.select_through_box == 'SELECT_THROUGH_BOTH'
+                            else:
+                                enable_select_through_button = False
+                else:
+                    enable_auto_xray_button = False
+                    enable_select_through_button = False
+                    enable_object_button = False
+                    enable_face_button = False
+                    enable_edge_button = False
+                    enable_backface_button = False
+
+                if object_mode == 'OBJECT':
+                    if inputs.object_header:
+                        sub = row.row(align=True)
+                        sub.enabled = enable_object_button
+                        sub.operator("view3d.cycle_object", text="", icon=objicon)
+                else:
+                    if inputs.face_header:
+                        sub = row.row(align=True)
+                        sub.enabled = enable_face_button
+                        sub.operator("view3d.cycle_face", text="", icon=facicon)
+
+                    if inputs.edge_header:
+                        sub = row.row(align=True)
+                        sub.enabled = enable_edge_button
+                        sub.operator("view3d.cycle_edge", text="", icon=edgicon)
+
+                    if inputs.backface_header:
+                        sub = row.row(align=True)
+                        sub.enabled = enable_backface_button
+                        sub.operator("view3d.toggle_backface", text="", icon='NORMALS_FACE', depress=depress_bface)
+
+                del tool, enable_object_button, objicon, enable_face_button, facicon, enable_edge_button, edgicon, enable_backface_button, depress_bface
         
         # Contains buttons like Mode, Pivot, Layer, Mesh Select Mode...
         if obj:
@@ -1096,45 +1272,19 @@ class VIEW3D_HT_header(Header):
             sub.popover(panel="VIEW3D_PT_overlay_bones", text="", icon='POSE_HLT')
 
         row = layout.row(align=True)
-        row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
-        if object_mode == 'EDIT' or object_mode == 'OBJECT':
-            if tool_settings.xray_header:
-                from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
-                _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+        if (object_mode == 'EDIT' or object_mode == 'OBJECT') and inputs.drag_control_mode == 'USERPREF' and (inputs.auto_xray_header or inputs.select_through_header):
+            if inputs.auto_xray_header:
+                sub = row.row(align=True)
+                sub.enabled = enable_auto_xray_button
+                sub.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
+            
+            if inputs.select_through_header:
+                sub = row.row(align=True)
+                sub.enabled = enable_select_through_button
+                sub.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
 
-                if tool_settings.workspace_tool_type == 'FALLBACK':
-                    tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
-                else:
-                    tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
-
-                if object_mode in 'EDIT':
-                    mode_match_auto_xray = tool_settings.auto_xray_edit and tool_settings.auto_xray
-                    mode_match_select_through = tool_settings.select_through_edit and tool_settings.select_through
-                elif object_mode in 'OBJECT':
-                    mode_match_auto_xray = tool_settings.auto_xray_object and tool_settings.auto_xray
-                    mode_match_select_through = tool_settings.select_through_object and tool_settings.select_through
-                else:
-                    mode_match_auto_xray = False
-                    mode_match_select_through = False
-
-                if tool == "builtin.select_box":
-                    depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_box
-                    depress_select_through = mode_match_select_through and tool_settings.select_through_box
-                elif tool == "builtin.select_lasso":
-                    depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_lasso
-                    depress_select_through = mode_match_select_through and tool_settings.select_through_lasso
-                elif tool == "builtin.select_circle":
-                    depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_circle
-                    depress_select_through = mode_match_select_through and tool_settings.select_through_circle
-                else:
-                    depress_auto_xray = False
-                    depress_select_through = False
-
-                if tool_settings.auto_xray_button:
-                    row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
-                if tool_settings.select_through_button:
-                    row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
+            del enable_auto_xray_button, depress_auto_xray, enable_select_through_button, depress_select_through
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
         # this hides the key shortcut from users: #70433.
@@ -1144,15 +1294,14 @@ class VIEW3D_HT_header(Header):
             draw_depressed = shading.show_xray_wireframe
         else:
             draw_depressed = shading.show_xray
-        if tool_settings.xray_header:
-            if tool_settings.xray_button or not tool_settings.auto_xray_button and not tool_settings.select_through_button:
-                row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
-        else:
+        if inputs.xray_button != 'HIDE' and inputs.shading_button_mode != 'XRAY_COMBINE':
+            row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
             row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
-        row.popover(panel="VIEW3D_PT_xray", text="")
 
-        row = layout.row(align=True)
-        if tool_settings.shrink_shading_header:
+        if not ((inputs.shading_button_mode == 'XRAY_COMBINE' or inputs.xray_button == 'HIDE') and not inputs.select_through_header and not inputs.auto_xray_header):
+            row = layout.row(align=True)
+
+        if inputs.shading_button_mode != 'DEFAULT':
             if shading.type == 'SOLID':
                 shadicon = 'SHADING_SOLID'
             elif shading.type == 'MATERIAL':
@@ -1161,7 +1310,10 @@ class VIEW3D_HT_header(Header):
                 shadicon = 'SHADING_RENDERED'
             else:
                 shadicon = 'SHADING_WIRE'
-            row.operator("view3d.toggle_xray", text="", icon=shadicon, depress=draw_depressed)
+            if inputs.shading_button_mode == 'XRAY_COMBINE':
+                row.operator("view3d.toggle_xray", text="", icon=shadicon, depress=draw_depressed)
+            else:
+                row.operator("view3d.cycle_shading", text="", icon=shadicon)
         else:
             row.prop(shading, "type", text="", expand=True)
         sub = row.row(align=True)
@@ -1323,15 +1475,316 @@ class ShowHideMenu:
 # Custom Operators
 class VIEW3D_box_lasso(bpy.types.Operator):
   bl_idname = "view3d.box_lasso"
-  bl_label = "box lasso"
+  bl_label = "Box-Lasso"
 
   def invoke(self, context, event):
     from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
     tool = ToolSelectPanelHelper.tool_active_from_context(context)
-    if tool.idname == "builtin.select_box":
-        bpy.ops.wm.tool_set_by_id(name="builtin.select_lasso")
+    tool_settings = context.tool_settings
+    inputs = context.preferences.inputs
+
+    if tool_settings.workspace_tool_type == 'FALLBACK':
+        tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
     else:
-        bpy.ops.wm.tool_set_by_id(name="builtin.select_box")
+        tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
+
+    if tool.idname == "builtin.select_box":
+        for i in range(2):
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_lasso")
+    else:
+        for i in range(2):
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_box")
+
+    return {'FINISHED'}
+
+class VIEW3D_box_select(bpy.types.Operator):
+  bl_idname = "view3d.box_select"
+  bl_label = "Box"
+  bl_description = "Use Box Select"
+
+  def invoke(self, context, event):
+    from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+    tool = ToolSelectPanelHelper.tool_active_from_context(context)
+    tool_settings = context.tool_settings
+
+    for i in range(2):
+        if tool.idname == "builtin.select_circle" or tool.idname == "builtin.select_lasso" or tool.idname == "builtin.select":
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_box", space_type='VIEW_3D')
+        elif tool_settings.workspace_tool_type == 'FALLBACK':
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_box", as_fallback=True, space_type='VIEW_3D')
+        else:
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_box", space_type='VIEW_3D')
+
+    return {'FINISHED'}
+
+class VIEW3D_circle_select(bpy.types.Operator):
+  bl_idname = "view3d.circle_select"
+  bl_label = "Circle"
+  bl_description = "Use Circle Select"
+
+  def invoke(self, context, event):
+    from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+    tool = ToolSelectPanelHelper.tool_active_from_context(context)
+    tool_settings = context.tool_settings
+
+    for i in range(2):
+        if tool.idname == "builtin.select_box" or tool.idname == "builtin.select_lasso" or tool.idname == "builtin.select":
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_circle", space_type='VIEW_3D')
+        elif tool_settings.workspace_tool_type == 'FALLBACK':
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_circle", as_fallback=True, space_type='VIEW_3D')
+        else:
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_circle", space_type='VIEW_3D')
+
+    return {'FINISHED'}
+
+class VIEW3D_lasso_select(bpy.types.Operator):
+  bl_idname = "view3d.lasso_select"
+  bl_label = "Lasso"
+  bl_description = "Use Lasso Select"
+
+  def invoke(self, context, event):
+    from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+    tool = ToolSelectPanelHelper.tool_active_from_context(context)
+    tool_settings = context.tool_settings
+
+    for i in range(2):
+        if tool.idname == "builtin.select_circle" or tool.idname == "builtin.select_box" or tool.idname == "builtin.select":
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_lasso")
+        elif tool_settings.workspace_tool_type == 'FALLBACK':
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_lasso", as_fallback=True)
+        else:
+            bpy.ops.wm.tool_set_by_id(name="builtin.select_lasso")
+
+    return {'FINISHED'}
+
+class VIEW3D_MT_PIE_Drag_Select(Menu):
+    bl_label = "Drag Select"
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        inputs = context.preferences.inputs
+        obj = context.active_object
+        object_mode = 'OBJECT' if obj is None else obj.mode
+
+        if inputs.drag_control_mode == 'USERPREF' and (object_mode == 'OBJECT' or object_mode == 'EDIT'):
+            enable_auto_xray_button = inputs.auto_xray_pie == 'SHOW'
+            depress_auto_xray = False
+            enable_select_through_button = inputs.select_through_pie == 'SHOW'
+            depress_select_through = False
+            enable_backface_button = inputs.backface_pie == 'SHOW'
+            depress_bface = False
+            enable_object_button = inputs.object_pie == 'SHOW'
+            objicon = 'OBJECT_TOUCH'
+            enable_face_button = inputs.face_pie == 'SHOW'
+            facicon = 'FACE_DEFAULT'
+            enable_edge_button = inputs.edge_pie == 'SHOW'
+            edgicon = 'EDGE_DEFAULT'
+
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+            _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+
+            if tool_settings.workspace_tool_type == 'FALLBACK':
+                tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
+            else:
+                tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
+
+            if inputs.userpref_mode == 'SPLIT' and tool == "builtin.select_circle":
+                if object_mode == 'OBJECT':
+                    if enable_object_button:
+                        if inputs.object_select_circle == 'OBJECT_ENCLOSE':
+                            objicon = 'OBJECT_ENCLOSE'
+                        elif inputs.object_select_circle == 'OBJECT_ORIGIN':
+                            objicon = 'LIGHTPROBE_SPHERE'
+
+                    if enable_auto_xray_button:
+                        depress_auto_xray = inputs.auto_xray_circle == 'AUTO_XRAY_OBJECT' or inputs.auto_xray_circle == 'AUTO_XRAY_BOTH'
+
+                    if enable_select_through_button:
+                        depress_select_through = inputs.select_through_circle == 'SELECT_THROUGH_OBJECT' or inputs.select_through_circle == 'SELECT_THROUGH_BOTH'
+                else:
+                    if enable_face_button:
+                        if inputs.face_select_circle == 'FACE_TOUCH':
+                            facicon = 'FACE_TOUCH'
+                        elif inputs.face_select_circle == 'FACE_ENCLOSE':
+                            facicon = 'FACE_ENCLOSE'
+                        elif inputs.face_select_circle == 'FACE_CENTER':
+                            facicon = 'LIGHTPROBE_PLANE'
+
+                    if enable_edge_button:
+                        if inputs.edge_select_circle == 'EDGE_ENCLOSE':
+                            edgicon = 'EDGE_ENCLOSE'
+                        else:
+                            edgicon = 'EDGE_TOUCH'
+                            
+                    if enable_backface_button:
+                        depress_bface = inputs.backface_circle != 'DEFAULT'
+
+                    if enable_auto_xray_button:
+                        depress_auto_xray = inputs.auto_xray_circle == 'AUTO_XRAY_EDIT' or inputs.auto_xray_circle == 'AUTO_XRAY_BOTH'
+
+                    if enable_select_through_button:
+                        depress_select_through = inputs.select_through_circle == 'SELECT_THROUGH_EDIT' or inputs.select_through_circle == 'SELECT_THROUGH_BOTH'
+
+            elif inputs.userpref_mode == 'SPLIT' and tool == "builtin.select_lasso":
+                if object_mode == 'OBJECT':
+                    if enable_object_button:
+                        if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_object == False:
+                            if inputs.object_select_lasso == 'OBJECT_ENCLOSE':
+                                objicon = 'OBJECT_ENCLOSE'
+                            elif inputs.object_select_lasso == 'OBJECT_ORIGIN':
+                                objicon = 'LIGHTPROBE_SPHERE'
+                        else:
+                            enable_object_button = False
+
+                    if enable_auto_xray_button:
+                        if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                            depress_auto_xray = inputs.auto_xray_lasso == 'AUTO_XRAY_OBJECT' or inputs.auto_xray_lasso == 'AUTO_XRAY_BOTH'
+                        else:
+                            enable_auto_xray_button = False
+
+                    if enable_select_through_button:
+                        if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                            depress_select_through = inputs.select_through_lasso == 'SELECT_THROUGH_OBJECT' or inputs.select_through_lasso == 'SELECT_THROUGH_BOTH'
+                        else:
+                            enable_select_through_button = False
+                else:
+                    if enable_face_button:
+                        if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_face == False:
+                            if inputs.face_select_lasso == 'FACE_TOUCH':
+                                facicon = 'FACE_TOUCH'
+                            elif inputs.face_select_lasso == 'FACE_ENCLOSE':
+                                facicon = 'FACE_ENCLOSE'
+                            elif inputs.face_select_lasso == 'FACE_CENTER':
+                                facicon = 'LIGHTPROBE_PLANE'
+                        else:
+                            enable_face_button = False
+
+                    if enable_edge_button:
+                        if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_edge == False:
+                            if inputs.edge_select_lasso == 'EDGE_TOUCH':
+                                edgicon = 'EDGE_TOUCH'
+                            elif inputs.edge_select_lasso == 'EDGE_ENCLOSE':
+                                edgicon = 'EDGE_ENCLOSE'
+                        else:
+                            enable_edge_button = False
+
+                    if enable_backface_button:
+                        if inputs.drag_direction_lasso == 'ANY' or inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_backface == False:
+                            depress_bface = inputs.backface_lasso != 'DEFAULT'
+                        else:
+                            enable_backface_button = False
+
+                    if enable_auto_xray_button:
+                        if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                            depress_auto_xray = inputs.auto_xray_lasso == 'AUTO_XRAY_EDIT' or inputs.auto_xray_lasso == 'AUTO_XRAY_BOTH'
+                        else:
+                            enable_auto_xray_button = False
+
+                    if enable_select_through_button:
+                        if inputs.drag_direction_lasso == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                            depress_select_through = inputs.select_through_lasso == 'SELECT_THROUGH_EDIT' or inputs.select_through_lasso == 'SELECT_THROUGH_BOTH'
+                        else:
+                            enable_select_through_button = False
+
+            elif (inputs.userpref_mode == 'SPLIT' and tool == "builtin.select_box") or (inputs.userpref_mode == 'EASY' and (tool == "builtin.select_box" or tool == "builtin.select_lasso" or tool == "builtin.select_circle")):
+                if object_mode == 'OBJECT':
+                    if enable_object_button:
+                        if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_object == False):
+                            if inputs.object_select_box == 'OBJECT_ENCLOSE':
+                                objicon = 'OBJECT_ENCLOSE'
+                            elif inputs.object_select_box == 'OBJECT_ORIGIN':
+                                objicon = 'LIGHTPROBE_SPHERE'
+                        else:
+                            enable_object_button = False
+
+                    if enable_auto_xray_button:
+                        if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                            depress_auto_xray = inputs.auto_xray_box == 'AUTO_XRAY_OBJECT' or inputs.auto_xray_box == 'AUTO_XRAY_BOTH'
+                        else:
+                            enable_auto_xray_button = False
+
+                    if enable_select_through_button:
+                        if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                            depress_select_through = inputs.select_through_box == 'SELECT_THROUGH_OBJECT' or inputs.select_through_box == 'SELECT_THROUGH_BOTH'
+                        else:
+                            enable_select_through_button = False
+                else:
+                    if enable_face_button:
+                        if inputs.userpref_mode == 'EASY' or  inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_face == False):
+                            if inputs.face_select_box == 'FACE_TOUCH':
+                                facicon = 'FACE_TOUCH'
+                            elif inputs.face_select_box == 'FACE_ENCLOSE':
+                                facicon = 'FACE_ENCLOSE'
+                            elif inputs.face_select_box == 'FACE_CENTER':
+                                facicon = 'LIGHTPROBE_PLANE'
+                        else:
+                            enable_face_button = False
+
+                    if enable_edge_button:
+                        if inputs.userpref_mode == 'EASY' or  inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_edge == False):
+                            if inputs.edge_select_box == 'EDGE_TOUCH':
+                                edgicon = 'EDGE_TOUCH'
+                            elif inputs.edge_select_box == 'EDGE_ENCLOSE':
+                                edgicon = 'EDGE_ENCLOSE'
+                        else:
+                            enable_edge_button = False
+
+                    if enable_backface_button:
+                        if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_backface == False):
+                            depress_bface = inputs.backface_box != 'DEFAULT'
+                        else:
+                            enable_backface_button = False
+
+                    if enable_auto_xray_button:
+                        if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_auto_xray == False):
+                            depress_auto_xray = inputs.auto_xray_box == 'AUTO_XRAY_EDIT' or inputs.auto_xray_box == 'AUTO_XRAY_BOTH'
+                        else:
+                            enable_auto_xray_button = False
+
+                    if enable_select_through_button:
+                        if inputs.userpref_mode == 'EASY' or inputs.drag_direction_box == 'ANY' or (inputs.drag_direction_mode == 'SELECTIVE' and inputs.direction_select_through == False):
+                            depress_select_through = inputs.select_through_box == 'SELECT_THROUGH_EDIT' or inputs.select_through_box == 'SELECT_THROUGH_BOTH'
+                        else:
+                            enable_select_through_button = False
+            else:
+                enable_auto_xray_button = False
+                enable_select_through_button = False
+                enable_object_button = False
+                enable_face_button = False
+                enable_edge_button = False
+                enable_backface_button = False
+        
+            pie = layout.menu_pie()
+
+            if enable_auto_xray_button:
+                pie.operator("view3d.toggle_auto_xray", icon='AUTO_XRAY', depress=depress_auto_xray)
+            if enable_select_through_button:
+                pie.operator("view3d.toggle_select_through", icon='SELECT_THROUGH', depress=depress_select_through)
+            if inputs.box_pie == 'SHOW' or tool != "builtin.select_box" and inputs.box_pie == 'CONTEXT':
+                pie.operator("view3d.box_select", icon='SELECT_SET')
+            if inputs.circle_pie == 'SHOW' or tool != "builtin.select_circle" and inputs.circle_pie == 'CONTEXT':
+                pie.operator("view3d.circle_select", icon='MESH_CIRCLE')
+            if inputs.lasso_pie == 'SHOW' or tool != "builtin.select_lasso" and inputs.lasso_pie == 'CONTEXT':
+                pie.operator("view3d.lasso_select", icon='MOD_DASH')
+
+            if object_mode == 'OBJECT':
+                if enable_object_button:
+                    pie.operator("view3d.cycle_object", text="Object", icon=objicon)
+            else:
+                if enable_backface_button:
+                    pie.operator("view3d.toggle_backface", text="Backface", icon='NORMALS_FACE', depress=depress_bface)
+                if enable_face_button:
+                    pie.operator("view3d.cycle_face", text="Face", icon=facicon)
+                if enable_edge_button:
+                    pie.operator("view3d.cycle_edge", text="Edge", icon=edgicon)
+
+class VIEW3D_pie_drag_select(bpy.types.Operator):
+  bl_idname = "view3d.pie_drag_select"
+  bl_label = "Drag Select"
+
+  def invoke(self, context, event):
+    bpy.ops.wm.call_menu_pie(name="VIEW3D_MT_PIE_Drag_Select")
     return {'FINISHED'}
 
 
@@ -6595,13 +7048,6 @@ class VIEW3D_PT_shading(Panel):
     def draw(self, _context):
         layout = self.layout
         layout.label(text="Viewport Shading")
-        tool_settings = _context.tool_settings
-        shading = VIEW3D_PT_shading.get_shading(_context)
-
-        row = layout.row(align=True)
-        row.prop(tool_settings, "shrink_shading_header", toggle=True)
-        if tool_settings.shrink_shading_header:
-            row.prop(shading, "type", text="", expand=True)
 
 
 class VIEW3D_PT_shading_lighting(Panel):
@@ -6793,7 +7239,17 @@ class VIEW3D_PT_shading_options(Panel):
 
         row = col.row(align=True)
 
-        if shading.type == 'SOLID':
+        if shading.type == 'WIREFRAME':
+            row.prop(shading, "show_xray_wireframe", text="")
+            sub = row.row()
+            sub.active = shading.show_xray_wireframe
+            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray")
+        elif shading.type == 'SOLID':
+            row.prop(shading, "show_xray", text="")
+            sub = row.row()
+            sub.active = shading.show_xray
+            sub.prop(shading, "xray_alpha", text="X-Ray")
+            # X-ray mode is off when alpha is 1.0
             xray_active = shading.show_xray and shading.xray_alpha != 1
 
             row = col.row(align=True)
@@ -6837,6 +7293,61 @@ class VIEW3D_PT_shading_options(Panel):
             row = col.row()
             row.active = not xray_active
             row.prop(shading, "use_dof", text="Depth of Field")
+        else:
+            if shading.type == 'WIREFRAME':
+                row.prop(shading, "show_xray_wireframe", text="")
+                sub = row.row()
+                sub.active = shading.show_xray_wireframe
+                sub.prop(shading, "xray_alpha_wireframe", text="X-Ray")
+            elif shading.type == 'SOLID':
+                row.prop(shading, "show_xray", text="")
+                sub = row.row()
+                sub.active = shading.show_xray
+                sub.prop(shading, "xray_alpha", text="X-Ray")
+                # X-ray mode is off when alpha is 1.0
+                xray_active = shading.show_xray and shading.xray_alpha != 1
+
+                row = col.row(align=True)
+                row.prop(shading, "show_shadows", text="")
+                row.active = not xray_active
+                sub = row.row(align=True)
+                sub.active = shading.show_shadows
+                sub.prop(shading, "shadow_intensity", text="Shadow")
+                sub.popover(
+                    panel="VIEW3D_PT_shading_options_shadow",
+                    icon='PREFERENCES',
+                    text="",
+                )
+
+                col = layout.column()
+
+                row = col.row()
+                row.active = not xray_active
+                row.prop(shading, "show_cavity")
+
+                if shading.show_cavity and not xray_active:
+                    row.prop(shading, "cavity_type", text="Type")
+
+                    if shading.cavity_type in {'WORLD', 'BOTH'}:
+                        col.label(text="World Space")
+                        sub = col.row(align=True)
+                        sub.prop(shading, "cavity_ridge_factor", text="Ridge")
+                        sub.prop(shading, "cavity_valley_factor", text="Valley")
+                        sub.popover(
+                            panel="VIEW3D_PT_shading_options_ssao",
+                            icon='PREFERENCES',
+                            text="",
+                        )
+
+                    if shading.cavity_type in {'SCREEN', 'BOTH'}:
+                        col.label(text="Screen Space")
+                        sub = col.row(align=True)
+                        sub.prop(shading, "curvature_ridge_factor", text="Ridge")
+                        sub.prop(shading, "curvature_valley_factor", text="Valley")
+
+                row = col.row()
+                row.active = not xray_active
+                row.prop(shading, "use_dof", text="Depth of Field")
 
         if shading.type in {'WIREFRAME', 'SOLID'}:
             row = layout.split()
@@ -6977,135 +7488,6 @@ class VIEW3D_PT_gizmo_display(Panel):
         col.prop(view, "show_gizmo_camera_lens", text="Lens")
         col.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
 
-
-class VIEW3D_PT_drag_select(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Drag Select Settings"
-    bl_ui_units_x = 12
-
-    def draw(self, context):
-        obj = context.active_object
-        object_mode = 'OBJECT' if obj is None else obj.mode
-        tool_settings = context.tool_settings
-        layout = self.layout
-        layout.label(text="Drag Select Settings")
-
-        row = layout.row(align=True)
-        row.prop(tool_settings, "blank_text", text="Selection Control", emboss=False)
-        if tool_settings.select_header:
-            row.prop(tool_settings, "select_header", text="Header", toggle=True)
-            if object_mode == 'OBJECT':
-                row = layout.row(align=True)
-                row.prop(tool_settings, "blank_text", text="Object Select", emboss=False)
-                row.prop(tool_settings, "object_select_mode", text="")
-                row = layout.row(align=True)
-                row.prop(tool_settings, "blank_text", text="Object Header Button Modes", emboss=False)
-                row = layout.row(align=True)
-                row.prop(tool_settings, "object_cycle_touch", toggle=True)
-                row.prop(tool_settings, "object_cycle_enclose", toggle=True)
-                row.prop(tool_settings, "object_cycle_origin", toggle=True)
-            else:
-                row = layout.row(align=True)
-                row.prop(tool_settings, "blank_text", text="Face Select", emboss=False)
-                row.prop(tool_settings, "face_select_mode", text="")
-                row = layout.row(align=True)
-                row.prop(tool_settings, "blank_text", text="Edge Select", emboss=False)
-                row.prop(tool_settings, "edge_select_mode", text="")
-                row = layout.row(align=True)
-                row.prop(tool_settings, "backface_select", toggle=True)
-                if tool_settings.backface_select:
-                    row.prop(tool_settings, "backface_select_mode", text="")
-                row = layout.row(align=True)
-                row.prop(tool_settings, "blank_text", text="Header Buttons", emboss=False)
-                row = layout.row(align=True)
-                row.prop(tool_settings, "face_button", toggle=True)
-                row.prop(tool_settings, "edge_button", toggle=True)
-                row.prop(tool_settings, "backface_button", toggle=True)
-                if tool_settings.face_button:
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "blank_text", text="Face Header Button Modes", emboss=False)
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "face_cycle_default", toggle=True)
-                    row.prop(tool_settings, "face_cycle_touch", toggle=True)
-                    row.prop(tool_settings, "face_cycle_enclose", toggle=True)
-                    row.prop(tool_settings, "face_cycle_center", toggle=True)
-                if tool_settings.edge_button:
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "blank_text", text="Edge Header Button Modes", emboss=False)
-                    row = layout.row(align=True)
-                    row.prop(tool_settings, "edge_cycle_default", toggle=True)
-                    row.prop(tool_settings, "edge_cycle_touch", toggle=True)
-                    row.prop(tool_settings, "edge_cycle_enclose", toggle=True)
-        else:
-            row.prop(tool_settings, "select_header", text="Keymap", toggle=True)
-
-
-class VIEW3D_PT_xray(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "X-Ray Settings"
-    bl_ui_units_x = 14
-
-    def draw(self, context):
-        tool_settings = context.tool_settings
-        shading = VIEW3D_PT_shading.get_shading(context)
-        layout = self.layout
-        layout.label(text="X-Ray Settings")
-
-        row = layout.row(align=True)
-        if shading.type == 'WIREFRAME':
-            row.prop(shading, "show_xray_wireframe", text="X-Ray Wireframe", toggle=True)
-            if shading.show_xray_wireframe:
-                row.prop(shading, "xray_alpha_wireframe", text="")
-        elif shading.type == 'SOLID':
-            row.prop(shading, "show_xray", text="X-Ray Solid", toggle=True)
-            if shading.show_xray:
-                row.prop(shading, "xray_alpha", text="")
-        row = layout.row(align=True)
-        row.prop(tool_settings, "blank_text", text="X-Ray Control", emboss=False)
-        if tool_settings.xray_header:
-            row.prop(tool_settings, "xray_header", text="Header", toggle=True)
-
-            row = layout.row(align=True)
-            row.prop(tool_settings, "blank_text", text="Automatic X-Ray", emboss=False)
-            row = layout.row(align=True)
-            row.prop(tool_settings, "auto_xray")
-            sub = row.row(align=True)
-            sub.active = tool_settings.auto_xray
-            sub.prop(tool_settings, "auto_xray_object")
-            sub.prop(tool_settings, "auto_xray_edit")
-            row = layout.row(align=True)
-            sub = row.row(align=True)
-            sub.active = tool_settings.auto_xray
-            sub.prop(tool_settings, "auto_xray_box", toggle=True)
-            sub.prop(tool_settings, "auto_xray_lasso", toggle=True)
-            sub.prop(tool_settings, "auto_xray_circle", toggle=True)
-
-            row = layout.row(align=True)
-            row.prop(tool_settings, "blank_text", text="Select Through", emboss=False)
-            row = layout.row(align=True)
-            row.prop(tool_settings, "select_through")
-            sub = row.row(align=True)
-            sub.active = tool_settings.select_through
-            sub.prop(tool_settings, "select_through_object")
-            sub.prop(tool_settings, "select_through_edit")
-            row = layout.row(align=True)
-            sub = row.row(align=True)
-            sub.active = tool_settings.select_through
-            sub.prop(tool_settings, "select_through_box", toggle=True)
-            sub.prop(tool_settings, "select_through_lasso", toggle=True)
-            sub.prop(tool_settings, "select_through_circle", toggle=True)
-
-            row = layout.row(align=True)
-            row.prop(tool_settings, "blank_text", text="Header Buttons", emboss=False)
-            row = layout.row(align=True)
-            row.prop(tool_settings, "auto_xray_button", toggle=True)
-            row.prop(tool_settings, "select_through_button", toggle=True)
-            row.prop(tool_settings, "xray_button", toggle=True)
-
-        else:
-            row.prop(tool_settings, "xray_header", text="Keymap", toggle=True)
 
 class VIEW3D_PT_overlay(Panel):
     bl_space_type = 'VIEW_3D'
@@ -9261,6 +9643,11 @@ classes = (
     VIEW3D_MT_wpaint_vgroup_lock_pie,
     VIEW3D_MT_sculpt_face_sets_edit_pie,
     VIEW3D_box_lasso,
+    VIEW3D_box_select,
+    VIEW3D_circle_select,
+    VIEW3D_lasso_select,
+    VIEW3D_MT_PIE_Drag_Select,
+    VIEW3D_pie_drag_select,
     VIEW3D_MT_sculpt_curves,
     VIEW3D_PT_active_tool,
     VIEW3D_PT_active_tool_duplicate,
@@ -9285,8 +9672,6 @@ classes = (
     VIEW3D_PT_shading_render_pass,
     VIEW3D_PT_shading_compositor,
     VIEW3D_PT_gizmo_display,
-    VIEW3D_PT_drag_select,
-    VIEW3D_PT_xray,
     VIEW3D_PT_overlay,
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,

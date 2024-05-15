@@ -1678,7 +1678,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = CTX_data_tool_settings(C);
   Object *ob = CTX_data_active_object(C);
   const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
-  const bool square = ts->square_select;
+  const bool square = U.square_select;
 
   int selectmode;
   if (ob && ob->mode == OB_MODE_SCULPT_GPENCIL_LEGACY) {

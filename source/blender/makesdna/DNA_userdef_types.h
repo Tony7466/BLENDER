@@ -886,9 +886,7 @@ typedef struct UserDef {
   char gizmo_size;
   /** Navigate gizmo size. */
   char gizmo_size_navigate_v3d;
-  /** Header highlight */
-  char header_highlight;
-  char _pad3[4];
+  char _pad3[5];
   short edit_studio_light;
   short lookdev_sphere_size;
   short vbotimeout, vbocollectrate;
@@ -931,10 +929,7 @@ typedef struct UserDef {
   /** Number of samples for FPS display calculations. */
   short playback_fps_samples;
 
-  /** Keymap click-drag direction style. */
-  char click_drag_direction;
-
-  char _pad7[1];
+  char _pad7[2];
 
   /** Private, defaults to 20 for 72 DPI setting. */
   short widget_unit;
@@ -972,6 +967,7 @@ typedef struct UserDef {
   /** Flags for which channels to insert keys at. */
   short key_insert_channels;  // eKeyInsertChannels
   char _pad15[6];
+
   /** Flags for animation. */
   short animation_flag;
 
@@ -996,22 +992,6 @@ typedef struct UserDef {
   char drag_threshold_tablet;
   char drag_threshold;
   char move_threshold;
-
-  /** Adjustable selection radius. */
-  float selection_radius;
-  char adjustable_click_select;
-  char select_unbiased;
-
-  /** Mouse cursor styles. **/
-  char system_cursor;
-  char edit_cursor;
-  char paint_cursor;
-  char dot_cursor;
-  char knife_cursor;
-  char pencil_cursor;
-  char eraser_cursor;
-  char eyedropper_cursor;
-  char _pad9[2];
 
   char font_path_ui[1024];
   char font_path_ui_mono[1024];
@@ -1056,10 +1036,151 @@ typedef struct UserDef {
 
   float collection_instance_empty_size;
   char text_flag;
-  char _pad10[1];
 
   char file_preview_type; /* eUserpref_File_Preview_Type */
   char statusbar_flag;    /* eUserpref_StatusBar_Flag */
+
+  /** Luke's Custom Build Options */
+  char keymap_direction;
+  char custom_highlight;
+  char header_highlight;
+  char xray_button;
+  char direction_downright_box;
+  char direction_downright_lasso;
+  char auto_xray_reset;
+  char custom_cursor;
+  char system_cursor;
+  char edit_cursor;
+  char paint_cursor;
+  char dot_cursor;
+  char knife_cursor;
+  char pencil_cursor;
+  char eraser_cursor;
+  char eyedropper_cursor;
+  char adjustable_click_select;
+  char selection_radius;
+  char select_unbiased;
+  char blank_text;
+  char drag_control_mode;
+  char userpref_mode;
+  char drag_direction_box;
+  char drag_direction_lasso;
+  char auto_xray_box;
+  char auto_xray_downright_box;
+  char select_through_box;
+  char select_through_downright_box;
+  char object_select_box;
+  char object_select_downright_box;
+  char face_select_box;
+  char face_select_downright_box;
+  char edge_select_box;
+  char edge_select_downright_box;
+  char backface_box;
+  char backface_downright_box;
+  char auto_xray_lasso;
+  char auto_xray_downright_lasso;
+  char select_through_lasso;
+  char select_through_downright_lasso;
+  char object_select_lasso;
+  char object_select_downright_lasso;
+  char face_select_lasso;
+  char face_select_downright_lasso;
+  char edge_select_lasso;
+  char edge_select_downright_lasso;
+  char backface_lasso;
+  char backface_downright_lasso;
+  char auto_xray_circle;
+  char select_through_circle;
+  char object_select_circle;
+  char face_select_circle;
+  char edge_select_circle;
+  char backface_circle;
+  char object_header;
+  char object_cycle_touch;
+  char object_cycle_enclose;
+  char object_cycle_origin;
+  char face_header;
+  char face_cycle_default;
+  char face_cycle_touch;
+  char face_cycle_enclose;
+  char face_cycle_center;
+  char edge_header;
+  char edge_cycle_default;
+  char edge_cycle_touch;
+  char edge_cycle_enclose;
+  char backface_header;
+  char auto_xray_header;
+  char select_through_header;
+  char object_cycle_touch_circle;
+  char object_cycle_enclose_circle;
+  char object_cycle_origin_circle;
+  char face_cycle_default_circle;
+  char face_cycle_touch_circle;
+  char face_cycle_enclose_circle;
+  char face_cycle_center_circle;
+  char edge_cycle_touch_circle;
+  char edge_cycle_enclose_circle;
+  char backface_toggle_circle;
+  char auto_xray_toggle_circle;
+  char select_through_toggle_circle;
+  char object_cycle_touch_lasso;
+  char object_cycle_enclose_lasso;
+  char object_cycle_origin_lasso;
+  char face_cycle_default_lasso;
+  char face_cycle_touch_lasso;
+  char face_cycle_enclose_lasso;
+  char face_cycle_center_lasso;
+  char edge_cycle_default_lasso;
+  char edge_cycle_touch_lasso;
+  char edge_cycle_enclose_lasso;
+  char backface_toggle_lasso;
+  char auto_xray_toggle_lasso;
+  char select_through_toggle_lasso;
+  char quick_assign;
+  char quick_assign_mode;
+  char operator_controls;
+  char box_controls;
+  char circle_controls;
+  char lasso_controls;
+  char backface_toggle;
+  char auto_xray_toggle;
+  char select_through_toggle;
+  char direction_controls;
+  char drag_direction_mode;
+  char direction_object;
+  char direction_face;
+  char direction_edge;
+  char direction_backface;
+  char direction_auto_xray;
+  char direction_select_through;
+  char object_pie;
+  char face_pie;
+  char edge_pie;
+  char backface_pie;
+  char auto_xray_pie;
+  char select_through_pie;
+  char box_pie;
+  char circle_pie;
+  char lasso_pie;
+  char pie_menu_controls;
+  char object_operator;
+  char face_operator;
+  char edge_operator;
+  char backface_operator;
+  char auto_xray_operator;
+  char select_through_operator;
+  char wireless_touch_object;
+  char square_select;
+  char sync_box;
+  char sync_circle;
+  char sync_lasso;
+  char facedot_mode;
+  char shading_button_mode;
+  char shading_cycle_wire;
+  char shading_cycle_solid;
+  char shading_cycle_material;
+  char shading_cycle_render;
+  char _pad9[6];
 
   struct WalkNavigation walk_navigation;
 
@@ -1103,6 +1224,7 @@ typedef enum eUserPref_Section {
   USER_SECTION_FILE_PATHS = 15,
   USER_SECTION_EXPERIMENTAL = 16,
   USER_SECTION_EXTENSIONS = 17,
+  USER_SECTION_CUSTOM = 18,
 } eUserPref_Section;
 
 /** #UserDef_SpaceData.flag (State of the user preferences UI). */
@@ -1117,8 +1239,8 @@ typedef enum eUserPref_Flag {
   USER_AUTOSAVE = (1 << 0),
   USER_FLAG_NUMINPUT_ADVANCED = (1 << 1),
   USER_FLAG_RECENT_SEARCHES_DISABLE = (1 << 2),
-  USER_ADJUSTABLE_CLICK_SELECT = (1 << 3),
-  USER_SELECT_UNBIASED = (1 << 4),
+  USER_FLAG_UNUSED_3 = (1 << 3), /* cleared */
+  USER_FLAG_UNUSED_4 = (1 << 4), /* cleared */
   USER_TRACKBALL = (1 << 5),
   USER_FLAG_UNUSED_6 = (1 << 6), /* cleared */
   USER_FLAG_UNUSED_7 = (1 << 7), /* cleared */
@@ -1268,130 +1390,32 @@ typedef enum eUserpref_TableAPI {
   USER_TABLET_WINTAB = 2,
 } eUserpref_TabletAPI;
 
-/** #UserDef.click_drag_direction_types */
-typedef enum eUserpref_Click_Drag_Direction {
-  USER_CLICK_DRAG_DIRECTION_EIGHT_WAY = 0,
-  USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT = 1,
-  USER_CLICK_DRAG_DIRECTION_UP_DOWN = 2,
-} eUserpref_Click_Drag_Direction;
+/** #UserDef.mode */
+typedef enum eUserpref_Mode {
+  USER_MODE_A = 0,
+  USER_MODE_B = 1,
+  USER_MODE_C = 2,
+  USER_MODE_D = 3,
+} eUserpref_Mode;
 
-/** #UserDef.system_cursor_types */
-typedef enum eUserpref_System_Cursor_Types {
-  USER_SYSTEM_CURSOR_SYSTEM = 0,
-  USER_SYSTEM_CURSOR_CROSS = 1,
-  USER_SYSTEM_CURSOR_POINTER = 2,
-  USER_SYSTEM_CURSOR_CROSS_OPEN = 3,
-  USER_SYSTEM_CURSOR_CROSS_DOT = 4,
-  USER_SYSTEM_CURSOR_CROSS_MIN = 5,
-  USER_SYSTEM_CURSOR_BOX = 6,
-  USER_SYSTEM_CURSOR_BOX_DOT = 7,
-  USER_SYSTEM_CURSOR_BOX_POINTER = 8,
-  USER_SYSTEM_CURSOR_DOT = 9,
-} eUserpref_System_Cursor_Types;
-
-/** #UserDef.edit_cursor_types */
-typedef enum eUserpref_Edit_Cursor_Types {
-  USER_EDIT_CURSOR_CROSS = 0,
-  USER_EDIT_CURSOR_SYSTEM = 1,
-  USER_EDIT_CURSOR_POINTER = 2,
-  USER_EDIT_CURSOR_CROSS_OPEN = 3,
-  USER_EDIT_CURSOR_CROSS_DOT = 4,
-  USER_EDIT_CURSOR_CROSS_MIN = 5,
-  USER_EDIT_CURSOR_BOX = 6,
-  USER_EDIT_CURSOR_BOX_DOT = 7,
-  USER_EDIT_CURSOR_BOX_POINTER = 8,
-  USER_EDIT_CURSOR_DOT = 9,
-} eUserpref_Edit_Cursor_Types;
-
-/** #UserDef.paint_cursor_types */
-typedef enum eUserpref_Paint_Cursor_Types {
-  USER_PAINT_CURSOR_CROSS_DOT = 0,
-  USER_PAINT_CURSOR_CROSS = 1,
-  USER_PAINT_CURSOR_SYSTEM = 2,
-  USER_PAINT_CURSOR_POINTER = 3,
-  USER_PAINT_CURSOR_CROSS_OPEN = 4,
-  USER_PAINT_CURSOR_CROSS_MIN = 5,
-  USER_PAINT_CURSOR_BOX = 6,
-  USER_PAINT_CURSOR_BOX_DOT = 7,
-  USER_PAINT_CURSOR_BOX_POINTER = 8,
-  USER_PAINT_CURSOR_DOT = 9,
-  USER_PAINT_CURSOR_BLANK = 10,
-} eUserpref_Paint_Cursor_Types;
-
-/** #UserDef.dot_cursor_types */
-typedef enum eUserpref_Dot_Cursor_Types {
-  USER_DOT_CURSOR_DOT = 0,
-  USER_DOT_CURSOR_CROSS = 1,
-  USER_DOT_CURSOR_SYSTEM = 2,
-  USER_DOT_CURSOR_POINTER = 3,
-  USER_DOT_CURSOR_CROSS_OPEN = 4,
-  USER_DOT_CURSOR_CROSS_DOT = 5,
-  USER_DOT_CURSOR_CROSS_MIN = 6,
-  USER_DOT_CURSOR_BOX = 7,
-  USER_DOT_CURSOR_BOX_DOT = 8,
-  USER_DOT_CURSOR_BOX_POINTER = 9,
-  USER_DOT_CURSOR_BLANK = 10,
-} eUserpref_Dot_Cursor_Types;
-
-/** #UserDef.knife_cursor_types */
-typedef enum eUserpref_Knife_Cursor_Types {
-  USER_KNIFE_CURSOR_KNIFE = 0,
-  USER_KNIFE_CURSOR_CROSS = 1,
-  USER_KNIFE_CURSOR_SYSTEM = 2,
-  USER_KNIFE_CURSOR_POINTER = 3,
-  USER_KNIFE_CURSOR_CROSS_OPEN = 4,
-  USER_KNIFE_CURSOR_CROSS_DOT = 5,
-  USER_KNIFE_CURSOR_CROSS_MIN = 6,
-  USER_KNIFE_CURSOR_BOX = 7,
-  USER_KNIFE_CURSOR_BOX_DOT = 8,
-  USER_KNIFE_CURSOR_BOX_POINTER = 9,
-  USER_KNIFE_CURSOR_DOT = 10,
-} eUserpref_Knife_Cursor_Types;
-
-/** #UserDef.pencil_cursor_types */
-typedef enum eUserpref_Pencil_Cursor_Types {
-  USER_PENCIL_CURSOR_PENCIL = 0,
-  USER_PENCIL_CURSOR_CROSS = 1,
-  USER_PENCIL_CURSOR_SYSTEM = 2,
-  USER_PENCIL_CURSOR_POINTER = 3,
-  USER_PENCIL_CURSOR_CROSS_OPEN = 4,
-  USER_PENCIL_CURSOR_CROSS_DOT = 5,
-  USER_PENCIL_CURSOR_CROSS_MIN = 6,
-  USER_PENCIL_CURSOR_BOX = 7,
-  USER_PENCIL_CURSOR_BOX_DOT = 8,
-  USER_PENCIL_CURSOR_BOX_POINTER = 9,
-  USER_PENCIL_CURSOR_DOT = 10,
-} eUserpref_Pencil_Cursor_Types;
-
-/** #UserDef.eraser_cursor_types */
-typedef enum eUserpref_Eraser_Cursor_Types {
-  USER_ERASER_CURSOR_ERASER = 0,
-  USER_ERASER_CURSOR_CROSS = 1,
-  USER_ERASER_CURSOR_SYSTEM = 2,
-  USER_ERASER_CURSOR_POINTER = 3,
-  USER_ERASER_CURSOR_CROSS_OPEN = 4,
-  USER_ERASER_CURSOR_CROSS_DOT = 5,
-  USER_ERASER_CURSOR_CROSS_MIN = 6,
-  USER_ERASER_CURSOR_BOX = 7,
-  USER_ERASER_CURSOR_BOX_DOT = 8,
-  USER_ERASER_CURSOR_BOX_POINTER = 9,
-  USER_ERASER_CURSOR_DOT = 10,
-} eUserpref_Eraser_Cursor_Types;
-
-/** #UserDef.eyedropper_cursor_types */
-typedef enum eUserpref_Eyedropper_Cursor_Types {
-  USER_EYEDROPPER_CURSOR_EYEDROPPER = 0,
-  USER_EYEDROPPER_CURSOR_CROSS = 1,
-  USER_EYEDROPPER_CURSOR_SYSTEM = 2,
-  USER_EYEDROPPER_CURSOR_POINTER = 3,
-  USER_EYEDROPPER_CURSOR_CROSS_OPEN = 4,
-  USER_EYEDROPPER_CURSOR_CROSS_DOT = 5,
-  USER_EYEDROPPER_CURSOR_CROSS_MIN = 6,
-  USER_EYEDROPPER_CURSOR_BOX = 7,
-  USER_EYEDROPPER_CURSOR_BOX_DOT = 8,
-  USER_EYEDROPPER_CURSOR_BOX_POINTER = 9,
-  USER_EYEDROPPER_CURSOR_DOT = 10,
-} eUserpref_Eyedropper_Cursor_Types;
+/** #UserDef.cursor_types */
+typedef enum eUserpref_Cursor_Types {
+  USER_CURSOR_SYSTEM = 0,
+  USER_CURSOR_CROSS = 1,
+  USER_CURSOR_POINTER = 2,
+  USER_CURSOR_CROSS_OPEN = 3,
+  USER_CURSOR_CROSS_DOT = 4,
+  USER_CURSOR_CROSS_MIN = 5,
+  USER_CURSOR_BOX = 6,
+  USER_CURSOR_BOX_DOT = 7,
+  USER_CURSOR_BOX_POINTER = 8,
+  USER_CURSOR_DOT = 9,
+  USER_CURSOR_BLANK = 10,
+  USER_CURSOR_KNIFE = 11,
+  USER_CURSOR_PENCIL = 12,
+  USER_CURSOR_ERASER = 13,
+  USER_CURSOR_EYEDROPPER = 14,
+} eUserpref_Cursor_Types;
 
 /** #UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {

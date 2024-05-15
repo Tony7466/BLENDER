@@ -74,6 +74,7 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_FILE_PATHS, "FILE_PATHS", 0, "File Paths", ""},
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_EXPERIMENTAL, "EXPERIMENTAL", 0, "Experimental", ""},
+    {USER_SECTION_CUSTOM, "CUSTOM", 0, "Luke's Custom Build", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -5366,124 +5367,6 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem system_cursor_items[] = {
-      {USER_SYSTEM_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_SYSTEM_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_SYSTEM_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_SYSTEM_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_SYSTEM_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_SYSTEM_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_SYSTEM_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_SYSTEM_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_SYSTEM_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_SYSTEM_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem edit_cursor_items[] = {
-      {USER_EDIT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_EDIT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_EDIT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_EDIT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_EDIT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_EDIT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_EDIT_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_EDIT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_EDIT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_EDIT_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem paint_cursor_items[] = {
-      {USER_PAINT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_PAINT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_PAINT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_PAINT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_PAINT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_PAINT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_PAINT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_PAINT_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_PAINT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_PAINT_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {USER_PAINT_CURSOR_BLANK, "BLANK", 0, "Blank", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem dot_cursor_items[] = {
-      {USER_DOT_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {USER_DOT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_DOT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_DOT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_DOT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_DOT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_DOT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_DOT_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_DOT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_DOT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_DOT_CURSOR_BLANK, "BLANK", 0, "Blank", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem knife_cursor_items[] = {
-      {USER_KNIFE_CURSOR_KNIFE, "KNIFE", 0, "Knife", ""},
-      {USER_KNIFE_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_KNIFE_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_KNIFE_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_KNIFE_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_KNIFE_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_KNIFE_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_KNIFE_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_KNIFE_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_KNIFE_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_KNIFE_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem eyedropper_cursor_items[] = {
-      {USER_EYEDROPPER_CURSOR_EYEDROPPER, "EYEDROPPER", 0, "Eyedropper", ""},
-      {USER_EYEDROPPER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_EYEDROPPER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_EYEDROPPER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_EYEDROPPER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_EYEDROPPER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_EYEDROPPER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_EYEDROPPER_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_EYEDROPPER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_EYEDROPPER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_EYEDROPPER_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem eraser_cursor_items[] = {
-      {USER_ERASER_CURSOR_ERASER, "ERASER", 0, "Eraser", ""},
-      {USER_ERASER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_ERASER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_ERASER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_ERASER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_ERASER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_ERASER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_ERASER_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_ERASER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_ERASER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_ERASER_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem pencil_cursor_items[] = {
-      {USER_PENCIL_CURSOR_PENCIL, "PENCIL", 0, "Pencil", ""},
-      {USER_PENCIL_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
-      {USER_PENCIL_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
-      {USER_PENCIL_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
-      {USER_PENCIL_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
-      {USER_PENCIL_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
-      {USER_PENCIL_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
-      {USER_PENCIL_CURSOR_BOX, "BOX", 0, "Box", ""},
-      {USER_PENCIL_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
-      {USER_PENCIL_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
-      {USER_PENCIL_CURSOR_DOT, "DOT", 0, "Dot", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   srna = RNA_def_struct(brna, "PreferencesEdit", nullptr);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_nested(brna, srna, "Preferences");
@@ -5858,60 +5741,6 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_DEPTH_CURSOR);
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
-
-  prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_ADJUSTABLE_CLICK_SELECT);
-  RNA_def_property_ui_text(prop, "Enable", "Use additional options for single-click select");
-
-  prop = RNA_def_property(srna, "select_unbiased", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_SELECT_UNBIASED);
-  RNA_def_property_ui_text(
-      prop, "Select Unbiased", "Click-select will not favor unselected mesh elements");
-
-  prop = RNA_def_property(srna, "selection_radius", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_range(prop, 0.1f, 150.0f);
-  RNA_def_property_ui_range(prop, 0.1f, 150.0f, 0.01f, 2);
-  RNA_def_property_ui_text(prop, "Radius", "Size of single-click selection radius");
-
-  prop = RNA_def_property(srna, "system_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, system_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "system_cursor");
-  RNA_def_property_ui_text(prop, "System Cursor", "System mode cursor style");
-
-  prop = RNA_def_property(srna, "edit_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, edit_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "edit_cursor");
-  RNA_def_property_ui_text(prop, "Edit Cursor", "Edit mode cursor style");
-
-  prop = RNA_def_property(srna, "paint_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, paint_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "paint_cursor");
-  RNA_def_property_ui_text(prop, "Paint Cursor", "Paint mode cursor style");
-
-  prop = RNA_def_property(srna, "dot_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, dot_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "dot_cursor");
-  RNA_def_property_ui_text(prop, "2D Cursor", "2D mode cursor style");
-
-  prop = RNA_def_property(srna, "knife_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, knife_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "knife_cursor");
-  RNA_def_property_ui_text(prop, "Knife Cursor", "Knife cursor style");
-
-  prop = RNA_def_property(srna, "eyedropper_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, eyedropper_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "eyedropper_cursor");
-  RNA_def_property_ui_text(prop, "Eyedropper Cursor", "Eyedropper cursor style");
-
-  prop = RNA_def_property(srna, "eraser_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, eraser_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "eraser_cursor");
-  RNA_def_property_ui_text(prop, "Eraser Cursor", "Eraser cursor style");
-
-  prop = RNA_def_property(srna, "pencil_cursor", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, pencil_cursor_items);
-  RNA_def_property_enum_sdna(prop, nullptr, "pencil_cursor");
-  RNA_def_property_ui_text(prop, "Pencil Cursor", "Pencil cursor style");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)
@@ -6382,14 +6211,771 @@ static void rna_def_userdef_input(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem click_drag_direction_types[] = {
-      {USER_CLICK_DRAG_DIRECTION_EIGHT_WAY,
-       "EIGHT_WAY",
+  static const EnumPropertyItem keymap_direction_items[] = {
+      {USER_MODE_A, "EIGHT", 0, "Eight", "Eight directions (N, NE, E, SE, S, SW, W, NW)"},
+      {USER_MODE_B, "LEFT_RIGHT", 0, "Left Right", "Left and right"},
+      {USER_MODE_C, "UP_DOWN", 0, "Up Down", "Up and down"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem quick_assign_mode_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "Blender default"},
+      {USER_MODE_B, "BETTER", 0, "Better", "Improved selection settings"},
+      {USER_MODE_C, "AUTO_XRAY", 0, "Auto X-Ray", "Auto X-Ray with Touch object and mesh"},
+      {USER_MODE_D,
+       "DIRECTIONAL",
        0,
-       "Eight",
-       "Eight directions (N, NE, E, SE, S, SW, W, NW)"},
-      {USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT, "LEFT_RIGHT", 0, "Left Right", "Left and right"},
-      {USER_CLICK_DRAG_DIRECTION_UP_DOWN, "UP_DOWN", 0, "Up Down", "Up and down"},
+       "Directional",
+       "Use drag directional control for Touch/Enlocse object and mesh with Box Select"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem user_direction_box_items[] = {
+      {USER_MODE_A, "ANY", 0, "Any", "Any direction"},
+      {USER_MODE_B, "LEFT_RIGHT", 0, "Left Right", "Left and right"},
+      {USER_MODE_C, "UP_DOWN", 0, "Up Down", "Up and down"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem user_direction_lasso_items[] = {
+      {USER_MODE_A, "ANY", 0, "Any", "Any direction"},
+      {USER_MODE_B, "LEFT_RIGHT", 0, "Left Right", "Left and right"},
+      {USER_MODE_C, "UP_DOWN", 0, "Up Down", "Up and down"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem user_direction_mode_items[] = {
+      {USER_MODE_A, "EVERYTHING", 0, "Everything", "Drag direction for every feature"},
+      {USER_MODE_B,
+       "SELECTIVE",
+       0,
+       "Selective",
+       "Drag direction only affects the features you opt into"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem drag_control_mode_items[] = {
+      {USER_MODE_A,
+       "KEYMAP",
+       0,
+       "Keymap",
+       "The keymap will control additional selection options for box, circle, and lasso"},
+      {USER_MODE_B,
+       "USERPREF",
+       0,
+       "UserPref",
+       "User Preferences will control additional selection options for box, circle, and lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem userpref_mode_items[] = {
+      {USER_MODE_A,
+       "EASY",
+       0,
+       "Easy",
+       "Box, Circle, and Lasso use the same settings, no directional control"},
+      {USER_MODE_B,
+       "SPLIT",
+       0,
+       "Split",
+       "Box, Circle, and Lasso have separate settings, directional control is available for Box "
+       "and Lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem xray_button_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Toggle X-Ray operator in the viewport header"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Toggle X-Ray operator in the viewport header"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem facedot_mode_items[] = {
+      {USER_MODE_A,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle face centers in the current shading mode (X-Ray or Solid)"},
+      {USER_MODE_B, "BOTH", 0, "Both", "Toggle face centers in both X-Ray and Solid shading"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem shading_button_mode_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "Multiple buttons that change shading mode"},
+      {USER_MODE_B, "XRAY_COMBINE", 0, "X-Ray", "Combine the X-Ray and Shading header buttons"},
+      {USER_MODE_C,
+       "CYCLE",
+       0,
+       "Cycle",
+       "One button that cycles through your choice of shading modes"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem adjustable_click_select_items[] = {
+      {USER_MODE_A,
+       "DEFAULT",
+       0,
+       "Default",
+       "Click selection of mesh has a radius of 75, except faces which have a radius of 0"},
+      {USER_MODE_B, "CUSTOM", 0, "Custom", "Choose your own radius for click selection of mesh"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem custom_cursor_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "Default mouse cursors"},
+      {USER_MODE_B, "CUSTOM", 0, "Custom", "Choose your own mouse cursors"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem custom_highlight_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "The header of the active window gets brighter by 5"},
+      {USER_MODE_B,
+       "CUSTOM",
+       0,
+       "Custom",
+       "Choose your own brightness for the active window's header"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem system_cursor_items[] = {
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edit_cursor_items[] = {
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem paint_cursor_items[] = {
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {USER_CURSOR_BLANK, "BLANK", 0, "Blank", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem dot_cursor_items[] = {
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_BLANK, "BLANK", 0, "Blank", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem knife_cursor_items[] = {
+      {USER_CURSOR_KNIFE, "KNIFE", 0, "Knife", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem eyedropper_cursor_items[] = {
+      {USER_CURSOR_EYEDROPPER, "EYEDROPPER", 0, "Eyedropper", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem eraser_cursor_items[] = {
+      {USER_CURSOR_ERASER, "ERASER", 0, "Eraser", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem pencil_cursor_items[] = {
+      {USER_CURSOR_PENCIL, "PENCIL", 0, "Pencil", ""},
+      {USER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem object_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Cycle Object operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Cycle Object operator in the pie menu"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Cycle Face operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Cycle Face operator in the pie menu"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Cycle Edge operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Cycle Edge operator in the pie menu"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Toggle Backface operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Toggle Backface operator in the pie menu"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Toggle Auto X-Ray operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Toggle Auto X-Ray operator in the pie menu"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Toggle Select Through operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Toggle Select Through operator in the pie menu"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem box_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Box Select operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Box Select operator in the pie menu"},
+      {USER_MODE_C,
+       "CONTEXT",
+       0,
+       "Context",
+       "Show the Box Select operator in the pie menu if it is not the active tool"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem circle_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Circle Select operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Circle Select operator in the pie menu"},
+      {USER_MODE_C,
+       "CONTEXT",
+       0,
+       "Context",
+       "Show the Circle Select operator in the pie menu if it is not the active tool"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem lasso_pie_items[] = {
+      {USER_MODE_A, "SHOW", 0, "Show", "Show the Lasso Select operator in the pie menu"},
+      {USER_MODE_B, "HIDE", 0, "Hide", "Hide the Lasso Select operator in the pie menu"},
+      {USER_MODE_C,
+       "CONTEXT",
+       0,
+       "Context",
+       "Show the Lasso Select operator in the pie menu if it is not the active tool"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_toggle_items[] = {
+      {USER_MODE_A, "BOTH", 0, "Both", "Toggle Automatic X-Ray for Object and Edit mode"},
+      {USER_MODE_B,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle Automatic X-Ray for the mode that is currently active (Object or Edit)"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_toggle_circle_items[] = {
+      {USER_MODE_A, "BOTH", 0, "Both", "Toggle Automatic X-Ray for Object and Edit mode"},
+      {USER_MODE_B,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle Automatic X-Ray for the mode that is currently active (Object or Edit)"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_toggle_lasso_items[] = {
+      {USER_MODE_A, "BOTH", 0, "Both", "Toggle Automatic X-Ray for Object and Edit mode"},
+      {USER_MODE_B,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle Automatic X-Ray for the mode that is currently active (Object or Edit)"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_toggle_items[] = {
+      {USER_MODE_A, "BOTH", 0, "Both", "Toggle Select Through for Object and Edit mode"},
+      {USER_MODE_B,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle Select Through for the mode that is currently active (Object or Edit)"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_toggle_circle_items[] = {
+      {USER_MODE_A, "BOTH", 0, "Both", "Toggle Select Through for Object and Edit mode"},
+      {USER_MODE_B,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle Select Through for the mode that is currently active (Object or Edit)"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_toggle_lasso_items[] = {
+      {USER_MODE_A, "BOTH", 0, "Both", "Toggle Select Through for Object and Edit mode"},
+      {USER_MODE_B,
+       "CURRENT",
+       0,
+       "Current",
+       "Toggle Select Through for the mode that is currently active (Object or Edit)"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_toggle_items[] = {
+      {USER_MODE_A,
+       "NONE",
+       0,
+       "No Backface",
+       "Toggle the backfacing mesh filter in No Backface mode"},
+      {USER_MODE_B,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Toggle the backfacing mesh filter in Edge & Face Near mode"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_toggle_circle_items[] = {
+      {USER_MODE_A,
+       "NONE",
+       0,
+       "No Backface",
+       "Toggle the backfacing mesh filter in No Backface mode"},
+      {USER_MODE_B,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Toggle the backfacing mesh filter in Edge & Face Near mode"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_toggle_lasso_items[] = {
+      {USER_MODE_A,
+       "NONE",
+       0,
+       "No Backface",
+       "Toggle the backfacing mesh filter in No Backface mode"},
+      {USER_MODE_B,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Toggle the backfacing mesh filter in Edge & Face Near mode"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_box_items[] = {
+      {USER_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {USER_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {USER_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {USER_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_downright_box_items[] = {
+      {USER_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {USER_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {USER_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {USER_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_box_items[] = {
+      {USER_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {USER_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {USER_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {USER_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_downright_box_items[] = {
+      {USER_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {USER_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {USER_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {USER_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem object_select_box_items[] = {
+      {USER_MODE_A, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the box"},
+      {USER_MODE_B,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the box"},
+      {USER_MODE_C,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem object_select_downright_box_items[] = {
+      {USER_MODE_A, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the box"},
+      {USER_MODE_B,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the box"},
+      {USER_MODE_C,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_box_items[] = {
+      {USER_MODE_A,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the box in Near Select. Select faces if their center is "
+       "touched by the box in X-Ray and Select Through"},
+      {USER_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the box"},
+      {USER_MODE_C, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the box"},
+      {USER_MODE_D,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_downright_box_items[] = {
+      {USER_MODE_A,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the box in Near Select. Select faces if their center is "
+       "touched by the box in X-Ray and Select Through"},
+      {USER_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the box"},
+      {USER_MODE_C, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the box"},
+      {USER_MODE_D,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_box_items[] = {
+      {USER_MODE_A,
+       "EDGE_DEFAULT",
+       0,
+       "Default",
+       "Select edges that are fully inside the box. If no edges are fully inside the box, select "
+       "edges that are touched by the box"},
+      {USER_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the box"},
+      {USER_MODE_C, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_downright_box_items[] = {
+      {USER_MODE_A,
+       "EDGE_DEFAULT",
+       0,
+       "Default",
+       "Select edges that are fully inside the box. If no edges are fully inside the box, select "
+       "edges that are touched by the box"},
+      {USER_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the box"},
+      {USER_MODE_C, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_box_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {USER_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {USER_MODE_C,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_downright_box_items[] = {
+      {USER_MODE_A, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {USER_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {USER_MODE_C,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_lasso_items[] = {
+      {USER_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {USER_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {USER_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {USER_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_downright_lasso_items[] = {
+      {USER_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {USER_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {USER_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {USER_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_lasso_items[] = {
+      {USER_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {USER_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {USER_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {USER_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_downright_lasso_items[] = {
+      {USER_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {USER_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {USER_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {USER_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem object_select_lasso_items[] = {
+      {USER_MODE_A, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the lasso"},
+      {USER_MODE_B,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the lasso"},
+      {USER_MODE_C,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem object_select_downright_lasso_items[] = {
+      {USER_MODE_A, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the lasso"},
+      {USER_MODE_B,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the lasso"},
+      {USER_MODE_C,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_lasso_items[] = {
+      {USER_MODE_A,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the lasso in Near Select. Select faces if their center "
+       "is "
+       "touched by the lasso in X-Ray and Select Through"},
+      {USER_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the lasso"},
+      {USER_MODE_C, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the lasso"},
+      {USER_MODE_D,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_downright_lasso_items[] = {
+      {USER_MODE_A,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the lasso in Near Select. Select faces if their center "
+       "is "
+       "touched by the lasso in X-Ray and Select Through"},
+      {USER_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the lasso"},
+      {USER_MODE_C, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the lasso"},
+      {USER_MODE_D,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_lasso_items[] = {
+      {USER_MODE_A,
+       "EDGE_DEFAULT",
+       0,
+       "Default",
+       "Select edges that are fully inside the lasso. If no edges are fully inside the lasso, "
+       "select "
+       "edges that are touched by the lasso"},
+      {USER_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the lasso"},
+      {USER_MODE_C, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_downright_lasso_items[] = {
+      {USER_MODE_A,
+       "EDGE_DEFAULT",
+       0,
+       "Default",
+       "Select edges that are fully inside the lasso. If no edges are fully inside the lasso, "
+       "select "
+       "edges that are touched by the lasso"},
+      {USER_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the lasso"},
+      {USER_MODE_C, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_lasso_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {USER_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {USER_MODE_C,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_downright_lasso_items[] = {
+      {USER_MODE_A, "BACKFACE_DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {USER_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {USER_MODE_C,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem auto_xray_circle_items[] = {
+      {USER_MODE_A, "AUTO_XRAY_DISABLE", 0, "Disable", "No Auto X-Ray"},
+      {USER_MODE_B, "AUTO_XRAY_OBJECT", 0, "Object", "X-Ray during object select"},
+      {USER_MODE_C, "AUTO_XRAY_EDIT", 0, "Mesh", "X-Ray during mesh select"},
+      {USER_MODE_D, "AUTO_XRAY_BOTH", 0, "Both", "X-Ray during object and mesh select"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem select_through_circle_items[] = {
+      {USER_MODE_B, "SELECT_THROUGH_OBJECT", 0, "Object", "Select through objects"},
+      {USER_MODE_C, "SELECT_THROUGH_EDIT", 0, "Mesh", "Select through mesh"},
+      {USER_MODE_D, "SELECT_THROUGH_BOTH", 0, "Both", "Select through objects and mesh"},
+      {USER_MODE_A, "SELECT_THROUGH_DISABLE", 0, "Disable", "No select through"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem object_select_circle_items[] = {
+      {USER_MODE_A, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the circle"},
+      {USER_MODE_B,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the circle"},
+      {USER_MODE_C,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the circle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_circle_items[] = {
+      {USER_MODE_A,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the circle in Near Select. Select faces if their center "
+       "is "
+       "touched by the circle in X-Ray and Select Through"},
+      {USER_MODE_B, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the circle"},
+      {USER_MODE_C, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the circle"},
+      {USER_MODE_D,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the circle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_circle_items[] = {
+      {USER_MODE_B, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the circle"},
+      {USER_MODE_C, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the circle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem backface_circle_items[] = {
+      {USER_MODE_A, "DEFAULT", 0, "Default", "Select backfacing mesh"},
+      {USER_MODE_B, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
+      {USER_MODE_C,
+       "NEAR",
+       0,
+       "Edge & Face Near",
+       "Ignore backfacing edges and faces when not using X-Ray or Select Through"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -6499,10 +7085,735 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Release Confirms",
                            "Moving things with a mouse drag confirms when releasing the button");
 
-  prop = RNA_def_property(srna, "click_drag_direction", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, click_drag_direction_types);
+  /* Drag Select Options */
+  prop = RNA_def_property(srna, "auto_xray_reset", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_reset", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Reset", "Helper that turns xray off for autoxray");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_downright_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_downright_box", 0);
+  RNA_def_property_ui_text(prop, "", "");
+
+  prop = RNA_def_property(srna, "direction_downright_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_downright_lasso", 0);
+  RNA_def_property_ui_text(prop, "", "");
+
+  prop = RNA_def_property(srna, "facedot_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, facedot_mode_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "facedot_mode");
+  RNA_def_property_ui_text(prop,
+                           "Facedot Toggle",
+                           "Toggle face centers in both solid and X-Ray shading, or only the "
+                           "shading mode that is currently in use");
+
+  prop = RNA_def_property(srna, "shading_button_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, shading_button_mode_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "shading_button_mode");
+  RNA_def_property_ui_text(prop, "Shading Button", "Shading button style in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "shading_cycle_wire", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "shading_cycle_wire", 0);
+  RNA_def_property_ui_text(
+      prop, "", "The viewport shading button will include wireframe shading in its cycle");
+
+  prop = RNA_def_property(srna, "shading_cycle_solid", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "shading_cycle_solid", 0);
+  RNA_def_property_ui_text(
+      prop, "", "The viewport shading button will include solid shading in its cycle");
+
+  prop = RNA_def_property(srna, "shading_cycle_material", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "shading_cycle_material", 0);
+  RNA_def_property_ui_text(
+      prop, "", "The viewport shading button will include material preview shading in its cycle");
+
+  prop = RNA_def_property(srna, "shading_cycle_render", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "shading_cycle_render", 0);
+  RNA_def_property_ui_text(
+      prop, "", "The viewport shading button will include rendered shading in its cycle");
+
+  prop = RNA_def_property(srna, "sync_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "sync_box", 0);
+  RNA_def_property_ui_text(prop,
+                           "Box",
+                           "Keep box select properties the same as other synchronized selection "
+                           "tools when changing them via operator and pie menu");
+
+  prop = RNA_def_property(srna, "sync_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "sync_circle", 0);
+  RNA_def_property_ui_text(prop,
+                           "Circle",
+                           "Keep circle select properties the same as other synchronized "
+                           "selection tools when changing them via operator and pie menu");
+
+  prop = RNA_def_property(srna, "sync_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "sync_lasso", 0);
+  RNA_def_property_ui_text(prop,
+                           "Lasso",
+                           "Keep lasso select properties the same as other synchronized selection "
+                           "tools when changing them via operator and pie menu");
+
+  prop = RNA_def_property(srna, "square_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "square_select", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Square",
+      "Change selection shape to a square with side length equal to the circle diameter");
+
+  prop = RNA_def_property(srna, "wireless_touch_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "wireless_touch_object", 0);
+  RNA_def_property_ui_text(prop,
+                           "Wireless Touch",
+                           "If using Touch select with X-Ray and Wireframe shading, select "
+                           "objects if inside them but not intersecting any wires");
+
+  prop = RNA_def_property(srna, "adjustable_click_select", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, adjustable_click_select_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "adjustable_click_select");
+  RNA_def_property_ui_text(
+      prop, "Click Select", "Use additional options for single-click selection");
+
+  prop = RNA_def_property(srna, "select_unbiased", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_unbiased", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Unbiased", "Click-select will not favor unselected mesh elements");
+
+  prop = RNA_def_property(srna, "selection_radius", PROP_INT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0, 150);
+  RNA_def_property_ui_range(prop, 0, 150, 1, -1);
+  RNA_def_property_ui_text(prop, "Radius", "Size of single-click selection radius");
+
+  prop = RNA_def_property(srna, "custom_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, custom_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom_cursor");
+  RNA_def_property_ui_text(prop, "Mouse Cursors", "Use custom mouse cursors");
+
+  prop = RNA_def_property(srna, "system_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, system_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "system_cursor");
+  RNA_def_property_ui_text(prop, "System", "System mode cursor style");
+
+  prop = RNA_def_property(srna, "edit_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edit_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "edit_cursor");
+  RNA_def_property_ui_text(prop, "Edit", "Edit mode cursor style");
+
+  prop = RNA_def_property(srna, "paint_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, paint_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "paint_cursor");
+  RNA_def_property_ui_text(prop, "Paint", "Paint mode cursor style");
+
+  prop = RNA_def_property(srna, "dot_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, dot_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "dot_cursor");
+  RNA_def_property_ui_text(prop, "2D", "2D mode cursor style");
+
+  prop = RNA_def_property(srna, "knife_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, knife_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "knife_cursor");
+  RNA_def_property_ui_text(prop, "Knife", "Knife cursor style");
+
+  prop = RNA_def_property(srna, "eyedropper_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, eyedropper_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "eyedropper_cursor");
+  RNA_def_property_ui_text(prop, "Eyedropper", "Eyedropper cursor style");
+
+  prop = RNA_def_property(srna, "eraser_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, eraser_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "eraser_cursor");
+  RNA_def_property_ui_text(prop, "Eraser", "Eraser cursor style");
+
+  prop = RNA_def_property(srna, "pencil_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, pencil_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "pencil_cursor");
+  RNA_def_property_ui_text(prop, "Pencil", "Pencil cursor style");
+
+  prop = RNA_def_property(srna, "blank_text", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "blank_text", 0);
+  RNA_def_property_ui_text(prop, "", "");
+
+  prop = RNA_def_property(srna, "keymap_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, keymap_direction_items);
   RNA_def_property_ui_text(
       prop, "Keymap Drag Directions", "Style of click-drag direction the keymap will use");
+
+  prop = RNA_def_property(srna, "custom_highlight", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, custom_highlight_items);
+  RNA_def_property_ui_text(
+      prop, "Header Highlights", "Change the brightness of the active header");
+
+  prop = RNA_def_property(srna, "header_highlight", PROP_INT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_range(prop, 0, 10, 1, -1);
+  RNA_def_property_ui_text(prop, "Amount", "How much brighter the header of the active window is");
+
+  prop = RNA_def_property(srna, "drag_control_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, drag_control_mode_items);
+  RNA_def_property_ui_text(prop,
+                           "Control Style",
+                           "Use either the keymap or user preferences to control additional "
+                           "selection options for box, circle and lasso");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "userpref_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, userpref_mode_items);
+  RNA_def_property_ui_text(prop, "Userpref Mode", "Complexity of the userpref control style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "xray_button", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, xray_button_items);
+  RNA_def_property_ui_text(
+      prop,
+      "X-Ray Button",
+      "Show an operator that toggles transparent scene display in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, object_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Object Pie",
+      "Show an operator that cycles object select modes in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "face_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Face Pie",
+      "Show an operator that cycles face select modes in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "edge_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Edge Pie",
+      "Show an operator that cycles edge select modes in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "backface_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_pie_items);
+  RNA_def_property_ui_text(prop,
+                           "Backface Pie",
+                           "Show an operator that toggles the backfacing mesh filter in the pie "
+                           "menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "auto_xray_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Auto X-Ray Pie",
+      "Show an operator that toggles Automatic X-Ray in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "select_through_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Select_Through Pie",
+      "Show an operator that toggles Select Through in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "box_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, box_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Box Pie",
+      "Show an operator that switches to box select in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "circle_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, circle_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Circle Pie",
+      "Show an operator that switches to circle select in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "lasso_pie", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, lasso_pie_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Lasso Pie",
+      "Show an operator that switches to lasso select in the pie menu (view3d.pie_drag_select)");
+
+  prop = RNA_def_property(srna, "quick_assign", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "quick_assign", 0);
+  RNA_def_property_ui_text(prop, "", "Quickly assign values to the drag select settings");
+
+  prop = RNA_def_property(srna, "operator_controls", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "operator_controls", 0);
+  RNA_def_property_ui_text(prop, "", "Operator settings");
+
+  prop = RNA_def_property(srna, "box_controls", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "box_controls", 0);
+  RNA_def_property_ui_text(prop, "", "Box settings");
+
+  prop = RNA_def_property(srna, "circle_controls", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "circle_controls", 0);
+  RNA_def_property_ui_text(prop, "", "Circle settings");
+
+  prop = RNA_def_property(srna, "lasso_controls", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "lasso_controls", 0);
+  RNA_def_property_ui_text(prop, "", "Lasso settings");
+
+  prop = RNA_def_property(srna, "pie_menu_controls", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "pie_menu_controls", 0);
+  RNA_def_property_ui_text(prop, "", "Pie Menu settings");
+
+  prop = RNA_def_property(srna, "object_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_operator", 0);
+  RNA_def_property_ui_text(prop, "", "Object operator");
+
+  prop = RNA_def_property(srna, "face_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_operator", 0);
+  RNA_def_property_ui_text(prop, "", "Face operator");
+
+  prop = RNA_def_property(srna, "edge_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_operator", 0);
+  RNA_def_property_ui_text(prop, "", "Edge operator");
+
+  prop = RNA_def_property(srna, "backface_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "backface_operator", 0);
+  RNA_def_property_ui_text(prop, "", "Backface operator");
+
+  prop = RNA_def_property(srna, "auto_xray_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_operator", 0);
+  RNA_def_property_ui_text(prop, "", "Auto X-Ray operator");
+
+  prop = RNA_def_property(srna, "select_through_operator", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_operator", 0);
+  RNA_def_property_ui_text(prop, "", "Select Through operator");
+
+  prop = RNA_def_property(srna, "object_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Object Header Button",
+      "Show an operator that cycles object selection modes in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_cycle_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_touch", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The object selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_enclose", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_enclose", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The object selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_origin", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_origin", 0);
+  RNA_def_property_ui_text(
+      prop, "Origin", "The object selection operator will include origin mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_touch_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_touch_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The object selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_enclose_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_enclose_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The object selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_origin_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_origin_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Origin", "The object selection operator will include origin mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_touch_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_touch_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The object selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_enclose_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_enclose_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The object selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_origin_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_origin_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Origin", "The object selection operator will include origin mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Face Header Button",
+      "Show an operator that cycles face selection modes in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "face_cycle_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_default", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "The face selection operator will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_touch", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The face selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_enclose", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_enclose", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The face selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_center", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_center", 0);
+  RNA_def_property_ui_text(
+      prop, "Center", "The face selection operator will include center mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_default_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_default_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "The face selection operator will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_touch_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_touch_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The face selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_enclose_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_enclose_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The face selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_center_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_center_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Center", "The face selection operator will include center mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_default_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_default_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "The face selection operator will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_touch_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_touch_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The face selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_enclose_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_enclose_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The face selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_center_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_center_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Center", "The face selection operator will include center mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Edge Header Button",
+      "Show an operator that cycles edge selection modes in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "edge_cycle_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_default", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "The edge selection operator will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_touch", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The edge selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_enclose", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_enclose", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The edge selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_touch_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_touch_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The edge selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_enclose_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_enclose_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The edge selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_default_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_default_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "The edge selection operator will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_touch_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_touch_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "The edge selection operator will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_enclose_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_enclose_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "The edge selection operator will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "auto_xray_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_header", 0);
+  RNA_def_property_ui_text(prop,
+                           "Auto X-Ray Header Button",
+                           "Show an operator that toggles Automatic X-Ray in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_toggle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_toggle_items);
+  RNA_def_property_ui_text(
+      prop, "Box Toggle", "Which mode the Automatic X-Ray operator will toggle");
+
+  prop = RNA_def_property(srna, "auto_xray_toggle_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_toggle_circle_items);
+  RNA_def_property_ui_text(
+      prop, "Circle Toggle", "Which mode the Automatic X-Ray operator will toggle");
+
+  prop = RNA_def_property(srna, "auto_xray_toggle_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_toggle_lasso_items);
+  RNA_def_property_ui_text(
+      prop, "Lasso Toggle", "Which mode the Automatic X-Ray operator will toggle");
+
+  prop = RNA_def_property(srna, "select_through_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_header", 0);
+  RNA_def_property_ui_text(prop,
+                           "Select Through Header Button",
+                           "Show an operator that toggles Select Through in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_toggle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_toggle_items);
+  RNA_def_property_ui_text(
+      prop, "Box Toggle", "Which mode the Select Through operator will toggle");
+
+  prop = RNA_def_property(srna, "select_through_toggle_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_toggle_circle_items);
+  RNA_def_property_ui_text(
+      prop, "Circle Toggle", "Which mode the Select Through operator will toggle");
+
+  prop = RNA_def_property(srna, "select_through_toggle_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_toggle_lasso_items);
+  RNA_def_property_ui_text(
+      prop, "Lasso Toggle", "Which mode the Select Through operator will toggle");
+
+  prop = RNA_def_property(srna, "backface_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "backface_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Backface Header Button",
+      "Show an operator that toggles the backfacing mesh filter in the viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "backface_toggle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_toggle_items);
+  RNA_def_property_ui_text(
+      prop, "Box Toggle", "Which mode the backfacing mesh filter operator will toggle");
+
+  prop = RNA_def_property(srna, "backface_toggle_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_toggle_circle_items);
+  RNA_def_property_ui_text(
+      prop, "Circle Toggle", "Which mode the backfacing mesh filter operator will toggle");
+
+  prop = RNA_def_property(srna, "backface_toggle_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_toggle_lasso_items);
+  RNA_def_property_ui_text(
+      prop, "Lasso Toggle", "Which mode the backfacing mesh filter operator will toggle");
+
+  prop = RNA_def_property(srna, "quick_assign_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, quick_assign_mode_items);
+  RNA_def_property_ui_text(
+      prop, "Quick Assign Mode", "Which preset the quick assign operator will apply");
+
+  prop = RNA_def_property(srna, "drag_direction_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, user_direction_box_items);
+  RNA_def_property_ui_text(prop, "Box Direction", "Use directional control with box select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "drag_direction_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, user_direction_lasso_items);
+  RNA_def_property_ui_text(prop, "Lasso Direction", "Use directional control with lasso select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "drag_direction_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, user_direction_mode_items);
+  RNA_def_property_ui_text(
+      prop, "Direction Affects", "Opt out of directional control for different features");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_controls", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_controls", 0);
+  RNA_def_property_ui_text(prop, "", "Drag direction settings");
+
+  prop = RNA_def_property(srna, "direction_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_object", 0);
+  RNA_def_property_ui_text(prop, "Object", "Directional control will affect object select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_face", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_face", 0);
+  RNA_def_property_ui_text(prop, "Face", "Directional control will affect face select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_edge", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_edge", 0);
+  RNA_def_property_ui_text(prop, "Edge", "Directional control will affect edge select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_backface", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_backface", 0);
+  RNA_def_property_ui_text(prop, "Backface", "Directional control will affect backface select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_auto_xray", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_auto_xray", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Directional control will affect auto xray");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "direction_select_through", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "direction_select_through", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Through", "Directional control will affect select through");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_box_items);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during selection");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_downright_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_downright_box_items);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during selection");
+
+  prop = RNA_def_property(srna, "select_through_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_box_items);
+  RNA_def_property_ui_text(prop, "Select Through", "Select occluded objects and mesh");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_downright_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_downright_box_items);
+  RNA_def_property_ui_text(prop, "Select Through", "Select occluded objects and mesh");
+
+  prop = RNA_def_property(srna, "object_select_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, object_select_box_items);
+  RNA_def_property_ui_text(prop, "Object", "Object selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_select_downright_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, object_select_downright_box_items);
+  RNA_def_property_ui_text(prop, "Object", "Object selection style");
+
+  prop = RNA_def_property(srna, "face_select_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_box_items);
+  RNA_def_property_ui_text(prop, "Face", "Face selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "face_select_downright_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_downright_box_items);
+  RNA_def_property_ui_text(prop, "Face", "Face selection style");
+
+  prop = RNA_def_property(srna, "edge_select_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_box_items);
+  RNA_def_property_ui_text(prop, "Edge", "Edge selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "edge_select_downright_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_downright_box_items);
+  RNA_def_property_ui_text(prop, "Edge", "Edge selection style");
+
+  prop = RNA_def_property(srna, "backface_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_box_items);
+  RNA_def_property_ui_text(
+      prop, "Backface", "Select mesh based on the direction of their normals");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "backface_downright_box", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_downright_box_items);
+  RNA_def_property_ui_text(
+      prop, "Backface", "Select mesh based on the direction of their normals");
+
+  prop = RNA_def_property(srna, "auto_xray_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_lasso_items);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during selection");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_downright_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_downright_lasso_items);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during selection");
+
+  prop = RNA_def_property(srna, "select_through_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_lasso_items);
+  RNA_def_property_ui_text(prop, "Select Through", "Select occluded objects and mesh");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_downright_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_downright_lasso_items);
+  RNA_def_property_ui_text(prop, "Select Through", "Select occluded objects and mesh");
+
+  prop = RNA_def_property(srna, "object_select_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, object_select_lasso_items);
+  RNA_def_property_ui_text(prop, "Object", "Object selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_select_downright_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, object_select_downright_lasso_items);
+  RNA_def_property_ui_text(prop, "Object", "Object selection style");
+
+  prop = RNA_def_property(srna, "face_select_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_lasso_items);
+  RNA_def_property_ui_text(prop, "Face", "Face selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "face_select_downright_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_downright_lasso_items);
+  RNA_def_property_ui_text(prop, "Face", "Face selection style");
+
+  prop = RNA_def_property(srna, "edge_select_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_lasso_items);
+  RNA_def_property_ui_text(prop, "Edge", "Edge selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "edge_select_downright_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_downright_lasso_items);
+  RNA_def_property_ui_text(prop, "Edge", "Edge selection style");
+
+  prop = RNA_def_property(srna, "backface_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_lasso_items);
+  RNA_def_property_ui_text(
+      prop, "Backface", "Select mesh based on the direction of their normals");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "backface_downright_lasso", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_downright_lasso_items);
+  RNA_def_property_ui_text(
+      prop, "Backface", "Select mesh based on the direction of their normals");
+
+  prop = RNA_def_property(srna, "auto_xray_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, auto_xray_circle_items);
+  RNA_def_property_ui_text(prop, "Auto X-Ray", "Transparent scene display during selection");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, select_through_circle_items);
+  RNA_def_property_ui_text(prop, "Select Through", "Select occluded objects and mesh");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_select_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, object_select_circle_items);
+  RNA_def_property_ui_text(prop, "Object", "Object selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "face_select_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_circle_items);
+  RNA_def_property_ui_text(prop, "Face", "Face selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "edge_select_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_circle_items);
+  RNA_def_property_ui_text(prop, "Edge", "Edge selection style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "backface_circle", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, backface_circle_items);
+  RNA_def_property_ui_text(
+      prop, "Backface", "Select mesh based on the direction of their normals");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_FLAG_NUMINPUT_ADVANCED);
@@ -6567,12 +7878,6 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Motion Threshold",
                            "Number of pixels to before the cursor is considered to have moved "
                            "(used for cycling selected items on successive clicks)");
-
-  prop = RNA_def_property(srna, "header_highlight", PROP_INT, PROP_FACTOR);
-  RNA_def_property_range(prop, 0, 10);
-  RNA_def_property_ui_range(prop, 0, 10, 1, -1);
-  RNA_def_property_ui_text(
-      prop, "Header Highlight", "How much brighter the header of the active window is");
 
   /* tablet pressure curve */
   prop = RNA_def_property(srna, "pressure_threshold_max", PROP_FLOAT, PROP_FACTOR);

@@ -1599,48 +1599,6 @@ typedef struct ToolSettings {
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
-
-  /** LCB Options */
-  char xray_button;
-  char xray_header;
-  char auto_xray;
-  char auto_xray_button;
-  char auto_xray_reset;
-  char auto_xray_object;
-  char auto_xray_edit;
-  char auto_xray_box;
-  char auto_xray_lasso;
-  char auto_xray_circle;
-  char select_through;
-  char select_through_button;
-  char select_through_object;
-  char select_through_edit;
-  char select_through_box;
-  char select_through_lasso;
-  char select_through_circle;
-  char wireless_touch_object;
-  char square_select;
-  char shrink_shading_header;
-  char select_header;
-  char object_select_mode;
-  char face_select_mode;
-  char edge_select_mode;
-  char backface_select;
-  char backface_select_mode;
-  char face_button;
-  char edge_button;
-  char backface_button;
-  char object_cycle_touch;
-  char object_cycle_enclose;
-  char object_cycle_origin;
-  char face_cycle_default;
-  char face_cycle_touch;
-  char face_cycle_enclose;
-  char face_cycle_center;
-  char edge_cycle_default;
-  char edge_cycle_touch;
-  char edge_cycle_enclose;
-  char blank_text;
   char _pad0[6];
 
   /** Grease Pencil Sculpt. */
@@ -2493,50 +2451,12 @@ typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
 } eSnapTransformMode;
 
-/** #Ignore backface select mode */
-enum {
-  BACKFACE_DEFAULT = (1 << 0),
-  BACKFACE_NEAR = (1 << 1),
-  BACKFACE_XRAY = (1 << 2),
-  BACKFACE_NONE = (1 << 3),
-};
-
-/** #Object select style */
-enum {
-  OBJECT_TOUCH = (1 << 0),
-  OBJECT_ENCLOSE = (1 << 1),
-  OBJECT_ORIGIN = (1 << 2),
-};
-
-/** #Face select style */
-enum {
-  FACE_DEFAULT = (1 << 0),
-  FACE_TOUCH = (1 << 1),
-  FACE_ENCLOSE = (1 << 2),
-  FACE_CENTER = (1 << 3),
-};
-
-/** #Edge select style */
-enum {
-  EDGE_DEFAULT = (1 << 0),
-  EDGE_TOUCH = (1 << 1),
-  EDGE_ENCLOSE = (1 << 2),
-};
-
 /** #Auto X-Ray mode */
 enum {
-  AUTO_XRAY_DISABLE = (1 << 0),
-  AUTO_XRAY_OBJECT = (1 << 1),
-  AUTO_XRAY_EDIT = (1 << 2),
-  AUTO_XRAY_BOTH = (1 << 3),
-};
-
-/** #Select through mode */
-enum {
-  SELECT_THROUGH_DISABLE = (1 << 0),
-  SELECT_THROUGH_OBJECT = (1 << 1),
-  SELECT_THROUGH_EDIT = (1 << 2),
-  SELECT_THROUGH_BOTH = (1 << 3),
+  OPERATOR_MODE_A = (1 << 0),
+  OPERATOR_MODE_B = (1 << 1),
+  OPERATOR_MODE_C = (1 << 2),
+  OPERATOR_MODE_D = (1 << 3),
 };
 
 /** #ToolSettings::selectmode */

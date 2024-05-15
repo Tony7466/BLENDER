@@ -91,34 +91,73 @@ static void gesture_modal_state_to_operator(wmOperator *op, int modal_state)
 static void gesture_toggle_xray(bContext *C)
 {
   wmOperatorType *ot = WM_operatortype_find("VIEW3D_OT_toggle_xray", true);
-  ToolSettings *ts = CTX_data_tool_settings(C);
   BLI_assert(ot);
   PointerRNA ptr;
   WM_operator_properties_create_ptr(&ptr, ot);
   WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &ptr, nullptr);
   WM_operator_properties_free(&ptr);
-  ts->auto_xray_reset ^= true;
+  U.auto_xray_reset ^= true;
 }
 
-static void gesture_auto_xray(bContext *C,
-                              View3D *v3d,
-                              ToolSettings *ts,
-                              wmOperator *op,
-                              const bool mesh,
-                              const bool lasso,
-                              const bool circle)
+static void gesture_auto_xray(bContext *C, wmOperator *op, const bool lasso, const bool circle)
 {
+  View3D *v3d = CTX_wm_view3d(C);
+
   if (!v3d || XRAY_FLAG_ENABLED(v3d)) {
     return;
   }
 
+  Object *mesh = CTX_data_edit_object(C);
   bool auto_xray = false;
 
-  if (ts->xray_header) {
-    if (ts->auto_xray && mesh && ts->auto_xray_edit ||
-        ts->auto_xray && !mesh && ts->auto_xray_object)
-    {
-      auto_xray = lasso ? ts->auto_xray_lasso : circle ? ts->auto_xray_circle : ts->auto_xray_box;
+  if (U.drag_control_mode == 1) {
+    if (U.userpref_mode == 1 && circle) {
+      if (mesh) {
+        auto_xray = U.auto_xray_circle == 2 || U.auto_xray_circle == 3;
+      }
+      else {
+        auto_xray = U.auto_xray_circle == 1 || U.auto_xray_circle == 3;
+      }
+    }
+    else if (U.userpref_mode == 1 && lasso) {
+      if (mesh) {
+        if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_auto_xray)) {
+          auto_xray = U.auto_xray_downright_lasso == 2 || U.auto_xray_downright_lasso == 3;
+        }
+        else {
+          auto_xray = U.auto_xray_lasso == 2 || U.auto_xray_lasso == 3;
+        }
+      }
+      else {
+        if (U.direction_downright_lasso && (U.drag_direction_mode == 0 || U.direction_auto_xray)) {
+          auto_xray = U.auto_xray_downright_lasso == 1 || U.auto_xray_downright_lasso == 3;
+        }
+        else {
+          auto_xray = U.auto_xray_lasso == 1 || U.auto_xray_lasso == 3;
+        }
+      }
+    }
+    else {
+      if (mesh) {
+        if (U.userpref_mode == 1 && U.direction_downright_box &&
+            (U.drag_direction_mode == 0 || U.direction_auto_xray))
+        {
+          auto_xray = U.auto_xray_downright_box == 2 || U.auto_xray_downright_box == 3;
+        }
+        else {
+          auto_xray = U.auto_xray_box == 2 || U.auto_xray_box == 3;
+        }
+      }
+      else {
+        if (U.userpref_mode == 1 && U.direction_downright_box &&
+            (U.drag_direction_mode == 0 || U.direction_auto_xray))
+        {
+          auto_xray = U.auto_xray_downright_box == 1 || U.auto_xray_downright_box == 3;
+        }
+        else {
+          auto_xray = U.auto_xray_box == 1 || U.auto_xray_box == 3;
+        }
+      }
     }
   }
   else {
@@ -126,8 +165,8 @@ static void gesture_auto_xray(bContext *C,
     auto_xray = mesh ? mode == 4 || mode == 8 : mode == 2 || mode == 8;
   }
 
-  if (ts->auto_xray_reset) {
-    ts->auto_xray_reset ^= true;
+  if (U.auto_xray_reset) {
+    U.auto_xray_reset ^= true;
   }
 
   if (auto_xray) {
@@ -213,14 +252,11 @@ static bool gesture_box_apply(bContext *C, wmOperator *op)
 int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  View3D *v3d = CTX_wm_view3d(C);
-  Object *obedit = CTX_data_edit_object(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
   const ARegion *region = CTX_wm_region(C);
   const bool wait_for_input = !WM_event_is_mouse_drag_or_press(event) &&
                               RNA_boolean_get(op->ptr, "wait_for_input");
 
-  gesture_auto_xray(C, v3d, ts, op, obedit, false, false);
+  gesture_auto_xray(C, op, false, false);
 
   if (wait_for_input) {
     op->customdata = WM_gesture_new(win, region, event, WM_GESTURE_CROSS_RECT);
@@ -245,11 +281,8 @@ int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 int WM_gesture_box_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  View3D *v3d = CTX_wm_view3d(C);
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   rcti *rect = static_cast<rcti *>(gesture->customdata);
-  Object *obedit = CTX_data_edit_object(C);
-  ToolSettings *ts = CTX_data_tool_settings(C);
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
@@ -272,20 +305,20 @@ int WM_gesture_box_modal(bContext *C, wmOperator *op, const wmEvent *event)
           gesture->modal_state = event->val;
         }
         if (gesture_box_apply(C, op)) {
-          if (ts->auto_xray_reset) {
+          if (U.auto_xray_reset) {
             gesture_toggle_xray(C);
           }
           gesture_modal_end(C, op);
           return OPERATOR_FINISHED;
         }
-        if (ts->auto_xray_reset) {
+        if (U.auto_xray_reset) {
           gesture_toggle_xray(C);
         }
         gesture_modal_end(C, op);
         return OPERATOR_CANCELLED;
       }
       case GESTURE_MODAL_CANCEL: {
-        if (ts->auto_xray_reset) {
+        if (U.auto_xray_reset) {
           gesture_toggle_xray(C);
         }
         gesture_modal_end(C, op);
@@ -353,15 +386,11 @@ static void gesture_circle_apply(bContext *C, wmOperator *op);
 int WM_gesture_circle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  View3D *v3d = CTX_wm_view3d(C);
   const bool wait_for_input = !WM_event_is_mouse_drag_or_press(event) &&
                               RNA_boolean_get(op->ptr, "wait_for_input");
+  gesture_auto_xray(C, op, false, true);
 
-  Object *obedit = CTX_data_edit_object(C);
-  ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
-  gesture_auto_xray(C, v3d, ts, op, obedit, false, true);
-
-  if (ts->square_select) {
+  if (U.square_select) {
     op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_SQUARE);
   }
   else {
@@ -423,11 +452,8 @@ static void gesture_circle_apply(bContext *C, wmOperator *op)
 int WM_gesture_circle_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  View3D *v3d = CTX_wm_view3d(C);
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   rcti *rect = static_cast<rcti *>(gesture->customdata);
-  Object *obedit = CTX_data_edit_object(C);
-  ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
 
   if (event->type == MOUSEMOVE) {
 
@@ -496,7 +522,7 @@ int WM_gesture_circle_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
 
     if (is_finished) {
-      if (ts->auto_xray_reset) {
+      if (U.auto_xray_reset) {
         gesture_toggle_xray(C);
       }
       gesture_modal_end(C, op);
@@ -561,12 +587,9 @@ void WM_OT_circle_gesture(wmOperatorType *ot)
 int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  View3D *v3d = CTX_wm_view3d(C);
   PropertyRNA *prop;
-  Object *obedit = CTX_data_edit_object(C);
-  ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
 
-  gesture_auto_xray(C, v3d, ts, op, obedit, true, false);
+  gesture_auto_xray(C, op, true, false);
 
   op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_LASSO);
 
@@ -606,10 +629,6 @@ static int gesture_lasso_apply(bContext *C, wmOperator *op)
   int retval = OPERATOR_FINISHED;
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
   PointerRNA itemptr;
-  View3D *v3d = CTX_wm_view3d(C);
-  Object *obedit = CTX_data_edit_object(C);
-  wmWindow *win = CTX_wm_window(C);
-  ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
   float loc[2];
   int i;
   const short *lasso = static_cast<const short int *>(gesture->customdata);
@@ -631,7 +650,7 @@ static int gesture_lasso_apply(bContext *C, wmOperator *op)
     OPERATOR_RETVAL_CHECK(retval);
   }
 
-  if (ts->auto_xray_reset) {
+  if (U.auto_xray_reset) {
     gesture_toggle_xray(C);
   }
 
@@ -641,10 +660,6 @@ static int gesture_lasso_apply(bContext *C, wmOperator *op)
 int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
-  View3D *v3d = CTX_wm_view3d(C);
-  Object *obedit = CTX_data_edit_object(C);
-  wmWindow *win = CTX_wm_window(C);
-  ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
@@ -698,7 +713,7 @@ int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
         break;
       }
       case EVT_ESCKEY: {
-        if (ts->auto_xray_reset) {
+        if (U.auto_xray_reset) {
           gesture_toggle_xray(C);
         }
         gesture_modal_end(C, op);
