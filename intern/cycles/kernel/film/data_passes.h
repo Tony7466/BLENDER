@@ -243,7 +243,9 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     film_overwrite_pass_float(ptr++, reservoir->ls.u);
     film_overwrite_pass_float(ptr++, reservoir->ls.v);
 
-    film_overwrite_pass_float(ptr, reservoir->total_weight);
+    film_overwrite_pass_float(ptr++, reservoir->total_weight);
+
+    film_overwrite_pass_float(ptr, reservoir->luminance);
   }
 }
 

@@ -365,10 +365,10 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
       pass_info.num_components = 1;
       break;
     case PASS_RESTIR_PREVIOUS_RESERVOIR:
-      pass_info.num_components = 5;
+      pass_info.num_components = 6;
       break;
     case PASS_RESTIR_RESERVOIR:
-      pass_info.num_components = 5;
+      pass_info.num_components = 6;
       break;
     case PASS_SURFACE_DATA:
       pass_info.num_components = 7;

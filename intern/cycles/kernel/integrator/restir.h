@@ -69,7 +69,9 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   reservoir->ls.u = buffer[i++];
   reservoir->ls.v = buffer[i++];
 
-  reservoir->total_weight = buffer[i];
+  reservoir->total_weight = buffer[i++];
+
+  reservoir->luminance = buffer[i];
 }
 
 /* TODO(weizhen): better to pack in another pass. */
@@ -199,7 +201,7 @@ float mis_weight_pairwise(float pdf_a, float pdf_b, float num)
   return (pdf_b == 0.0f) ? 0.0f : (pdf_a * pdf_a * num) / (pdf_a * pdf_a * num + pdf_b * pdf_b);
 }
 
-float luminance(KernelGlobals kg, const ccl_private BsdfEval &radiance)
+float compute_luminance(KernelGlobals kg, const ccl_private BsdfEval &radiance)
 {
   return dot(spectrum_to_rgb(radiance.sum), float4_to_float3(kernel_data.film.rgb_to_y));
 }
@@ -289,7 +291,6 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
   integrator_restir_unpack_reservoir(kg, &canonical, render_pixel_index, render_buffer, read_prev);
   light_sample_from_uv(kg, &current->sd, current->path_flag, &canonical.ls);
   radiance_eval(kg, state, &current->sd, &canonical.ls, &canonical.radiance, visibility);
-  const float canonical_target_function = luminance(kg, canonical.radiance);
 
   /* Give the canonical sample a defensive constant in the weight. */
   float canonical_mis_weight = 1.0f;
@@ -320,22 +321,17 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
       /* Evaluate current sample from the neighbor shading point. */
       light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &canonical_ls);
       radiance_eval(kg, state, &neighbor.sd, &canonical_ls, &radiance, visibility);
-      const float canonical_at_neighbor = luminance(kg, radiance);
+      const float canonical_at_neighbor = compute_luminance(kg, radiance);
 
-      canonical_mis_weight += (1.0f - mis_weight_pairwise(canonical_at_neighbor,
-                                                          canonical_target_function,
-                                                          neighbors));
+      canonical_mis_weight += (1.0f - mis_weight_pairwise(
+                                          canonical_at_neighbor, canonical.luminance, neighbors));
     }
 
     if (neighbor.is_empty()) {
       continue;
     }
 
-    /* Evaluate neighbor sample from the neighbor shading point. */
     light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &neighbor.reservoir.ls);
-    radiance_eval(
-        kg, state, &neighbor.sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
-    const float neighbor_target_function = luminance(kg, neighbor.reservoir.radiance);
 
     /* Jacobian. */
     const bool copy_direction = sample_copy_direction(kg, neighbor.reservoir);
@@ -347,7 +343,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     light_sample_from_uv(kg, &current->sd, current->path_flag, &neighbor.reservoir.ls);
     radiance_eval(
         kg, state, &current->sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
-    const float neighbor_at_canonical = luminance(kg, neighbor.reservoir.radiance);
+    const float neighbor_at_canonical = compute_luminance(kg, neighbor.reservoir.radiance);
 
     if (copy_direction) {
       neighbor.reservoir.total_weight *= neighbor.reservoir.ls.jacobian_solid_angle_to_area();
@@ -356,7 +352,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     /* TODO(weizhen): either the MIS weight computation should be a member function of
      * SpatialReservoir, or the struct SpatialReservoir should be removed. */
     neighbor.reservoir.total_weight *= mis_weight_pairwise(
-        neighbor_target_function, neighbor_at_canonical, neighbors);
+        neighbor.reservoir.luminance, neighbor_at_canonical, neighbors);
 
     current->add_reservoir(kg, neighbor, rand.z);
   }

@@ -8,6 +8,7 @@ CCL_NAMESPACE_BEGIN
 struct Reservoir {
   LightSample ls;
   BsdfEval radiance;
+  float luminance;
   float total_weight = 0.0f;
 
   int num_light_samples;
@@ -45,7 +46,7 @@ struct Reservoir {
     return total_weight == 0.0f;
   }
 
-  float luminance(const ccl_private BsdfEval &radiance) const
+  float compute_luminance(const ccl_private BsdfEval &radiance) const
   {
     return dot(spectrum_to_rgb(radiance.sum), rgb_to_y);
   }
@@ -56,7 +57,7 @@ struct Reservoir {
       return false;
     }
     /* Apply unbiased contribution weight. */
-    total_weight /= luminance(radiance);
+    total_weight /= luminance;
     return true;
   }
 
@@ -65,7 +66,8 @@ struct Reservoir {
                   const float mis_weight,
                   const float rand)
   {
-    const float weight = luminance(radiance) * mis_weight;
+    const float luminance = compute_luminance(radiance);
+    const float weight = luminance * mis_weight;
 
     if (!(weight > 0.0f)) {
       /* Should be theoretically captured by the following condition, but we can not trust floating
@@ -78,6 +80,7 @@ struct Reservoir {
     if (rand * total_weight <= weight) {
       this->ls = ls;
       this->radiance = radiance;
+      this->luminance = luminance;
     }
   }
 
