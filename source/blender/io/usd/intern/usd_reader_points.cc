@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_reader_points.hh"
+#include "usd_attribute_utils.hh"
 
 #include "BKE_geometry_set.hh"
 #include "BKE_object.hh"
@@ -122,6 +123,9 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
     radii.finish();
   }
 
+  /* TODO: Read in ID and normal data.
+   * See UsdGeomPoints::GetIdsAttr and UsdGeomPointBased::GetNormalsAttr */
+
   /* Read in velocity and generic data. */
   read_velocities(point_cloud, params.motion_sample_time);
   read_custom_data(point_cloud, params.motion_sample_time);
@@ -156,64 +160,17 @@ void USDPointsReader::read_custom_data(PointCloud *point_cloud,
       continue;
     }
 
-    const pxr::SdfValueTypeName type = pv.GetTypeName();
-    const pxr::TfToken interp = pv.GetInterpolation();
-    const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
+    const pxr::SdfValueTypeName pv_type = pv.GetTypeName();
 
-    if (type == pxr::SdfValueTypeNames->Color3fArray) {
-      bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
-          point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(
-              name.GetText(), bke::AttrDomain::Point);
-      if (!primvar_writer) {
-        CLOG_WARN(&LOG, "Couldn't make writer for color %s", name.GetText());
-        continue;
-      }
+    const bke::AttrDomain domain = bke::AttrDomain::Point;
+    const std::optional<eCustomDataType> type = convert_usd_type_to_blender(pv_type);
 
-      pxr::VtVec3fArray colors;
-      if (!pv.ComputeFlattened(&colors, motionSampleTime)) {
-        CLOG_WARN(&LOG, "Couldn't compute the flattened colors %s", name.GetText());
-        continue;
-      }
-
-      /* TODO: Do we need to handle any other interpolation modes? */
-      if (interp == pxr::UsdGeomTokens->constant) {
-        const pxr::GfVec3f &usd_color = colors[0];
-        primvar_writer.span.fill(ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f));
-      }
-      else if (interp == pxr::UsdGeomTokens->vertex) {
-        for (int i = 0; i < colors.size(); ++i) {
-          const pxr::GfVec3f &usd_color = colors[i];
-          primvar_writer.span[i] = ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f);
-        }
-      }
-
-      primvar_writer.finish();
+    if (!type.has_value()) {
+      return;
     }
 
-    /* TODO: Need to handle the other data types. */
-    if (type == pxr::SdfValueTypeNames->FloatArray) {
-      bke::SpanAttributeWriter<float> primvar_writer =
-          point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(
-              name.GetText(), bke::AttrDomain::Point);
-      if (!primvar_writer) {
-        CLOG_WARN(&LOG, "Couldn't make writer for float prop %s", name.GetText());
-        continue;
-      }
-      pxr::VtArray<float> values;
-      if (!pv.ComputeFlattened(&values, motionSampleTime)) {
-        CLOG_WARN(&LOG, "Couldn't compute the flattened float prop %s", name.GetText());
-        continue;
-      }
-
-      /* TODO: Do we need to handle any other interpolation modes? */
-      if (interp == pxr::UsdGeomTokens->constant) {
-        primvar_writer.span.fill(values[0]);
-      }
-      else if (interp == pxr::UsdGeomTokens->vertex) {
-        primvar_writer.span.copy_from(Span(values.data(), values.size()));
-      }
-      primvar_writer.finish();
-    }
+    bke::MutableAttributeAccessor attributes = point_cloud->attributes_for_write();
+    copy_primvar_to_blender_attribute(pv, motionSampleTime, *type, domain, {}, attributes);
   }
 }
 
