@@ -4620,6 +4620,8 @@ def km_grease_pencil_edit_mode(params):
         ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("paste_back", True)]}),
+        # Snap
+        op_menu_pie("GREASE_PENCIL_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
         # Separate
         ("grease_pencil.separate", {"type": 'P', "value": 'PRESS'}, None),
         # Delete all active frames
@@ -4648,6 +4650,11 @@ def km_grease_pencil_edit_mode(params):
          "alt": True}, {"properties": [("type", "TOGGLE")]}),
 
         ("grease_pencil.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
+
+        # Extrude and move selected points
+        op_tool_optional(
+            ("grease_pencil.extrude_move", {"type": 'E', "value": 'PRESS'}, None),
+            (op_tool_cycle, "builtin.extrude"), params),
 
         # Active layer
         op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
@@ -8053,7 +8060,6 @@ def km_3d_view_tool_sculpt_line_hide(params):
 
 
 def km_3d_view_tool_sculpt_polyline_hide(params):
-    # autopep8:off
     return (
         "3D View Tool: Sculpt, Polyline Hide",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
@@ -8064,7 +8070,6 @@ def km_3d_view_tool_sculpt_polyline_hide(params):
              {"properties": [("action", 'SHOW')]}),
         ]},
     )
-    # autopep8: on
 
 
 def km_3d_view_tool_sculpt_box_mask(params):
@@ -8129,6 +8134,16 @@ def km_3d_view_tool_sculpt_lasso_trim(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("sculpt.trim_lasso_gesture", params.tool_maybe_tweak_event, None),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_line_trim(params):
+    return (
+        "3D View Tool: Sculpt, Line Trim",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.trim_line_gesture", params.tool_maybe_tweak_event, None),
         ]},
     )
 
@@ -9061,6 +9076,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_sculpt_lasso_face_set(params),
         km_3d_view_tool_sculpt_box_trim(params),
         km_3d_view_tool_sculpt_lasso_trim(params),
+        km_3d_view_tool_sculpt_line_trim(params),
         km_3d_view_tool_sculpt_line_mask(params),
         km_3d_view_tool_sculpt_line_project(params),
         km_3d_view_tool_sculpt_mesh_filter(params),

@@ -702,7 +702,14 @@ class RENDER_PT_eevee_next_clamping(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        pass
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column()
+        col.prop(props, "clamp_world", text="World")
 
 
 class RENDER_PT_eevee_next_clamping_surface(RenderButtonsPanel, Panel):
@@ -774,6 +781,9 @@ class RENDER_PT_eevee_next_sampling_shadows(RenderButtonsPanel, Panel):
         col = layout.column(heading="Tracing", align=True)
         col.prop(props, "shadow_ray_count", text="Rays")
         col.prop(props, "shadow_step_count", text="Steps")
+
+        col = layout.column()
+        col.prop(props, "shadow_resolution_scale", text="Resolution")
 
         col = layout.column(align=False, heading="Volume Shadows")
         row = col.row(align=True)
@@ -1242,10 +1252,6 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
         col = flow.column()
         col.prop(rd, "simplify_volumes", text="Volume Resolution")
 
-        if context.engine in 'BLENDER_EEVEE_NEXT':
-            col = flow.column()
-            col.prop(rd, "simplify_shadows", text="Shadow Resolution")
-
         col = flow.column()
         col.prop(rd, "use_simplify_normals", text="Normals")
 
@@ -1275,10 +1281,6 @@ class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(rd, "simplify_child_particles_render", text="Max Child Particles")
-
-        if context.engine in 'BLENDER_EEVEE_NEXT':
-            col = flow.column()
-            col.prop(rd, "simplify_shadows_render", text="Shadow Resolution")
 
 
 class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel, GreasePencilSimplifyPanel):

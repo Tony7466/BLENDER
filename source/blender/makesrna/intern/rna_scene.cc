@@ -1831,6 +1831,18 @@ void rna_Scene_use_freestyle_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
   }
 }
 
+void rna_Scene_compositor_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+
+  if (scene->nodetree) {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(scene->nodetree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, &ntree->id);
+    WM_main_add_notifier(NC_SCENE | ND_NODES, &ntree->id);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  }
+}
+
 void rna_Scene_use_view_map_cache_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
 #  ifdef WITH_FREESTYLE
@@ -1930,6 +1942,11 @@ static void rna_SceneEEVEE_gi_cubemap_resolution_update(Main * /*main*/,
   FOREACH_SCENE_OBJECT_END;
 }
 
+static void rna_SceneEEVEE_clamp_world_update(Main * /*main*/, Scene *scene, PointerRNA * /*ptr*/)
+{
+  DEG_id_tag_update(&scene->world->id, ID_RECALC_SHADING);
+}
+
 static void rna_SceneEEVEE_clamp_surface_indirect_update(Main * /*main*/,
                                                          Scene *scene,
                                                          PointerRNA * /*ptr*/)
@@ -1944,6 +1961,22 @@ static void rna_SceneEEVEE_clamp_surface_indirect_update(Main * /*main*/,
 
   /* Also tag the world. */
   DEG_id_tag_update(&scene->world->id, ID_RECALC_SHADING);
+}
+
+static void rna_SceneEEVEE_shadow_resolution_update(Main * /*bmain*/,
+                                                    Scene *scene,
+                                                    PointerRNA * /*ptr*/)
+{
+  FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
+    if (ob->type == OB_LAMP) {
+      DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
+    }
+  }
+  FOREACH_SCENE_OBJECT_END;
+
+  WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, nullptr);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static std::optional<std::string> rna_SceneRenderView_path(const PointerRNA *ptr)
@@ -6615,7 +6648,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem engine_items[] = {
-      {0, "BLENDER_EEVEE", 0, "EEVEE", ""},
+      {0, "BLENDER_EEVEE_NEXT", 0, "EEVEE", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -6672,6 +6705,22 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
        0,
        "Sequencer Strips",
        "Use metadata from the strips in the sequencer"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem compositor_device_items[] = {
+      {SCE_COMPOSITOR_DEVICE_CPU, "CPU", 0, "CPU", ""},
+      {SCE_COMPOSITOR_DEVICE_GPU, "GPU", 0, "GPU", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem compositor_precision_items[] = {
+      {SCE_COMPOSITOR_PRECISION_AUTO,
+       "AUTO",
+       0,
+       "Auto",
+       "Full precision for final renders, half precision otherwise"},
+      {SCE_COMPOSITOR_PRECISION_FULL, "FULL", 0, "Full", "Full precision"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -7334,21 +7383,6 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
                            "meshes in the viewport");
   RNA_def_property_update(prop, 0, "rna_Scene_use_simplify_normals_update");
 
-  /* EEVEE - Simplify Options */
-  prop = RNA_def_property(srna, "simplify_shadows_render", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_default(prop, 1.0);
-  RNA_def_property_range(prop, 0.0, 1.0f);
-  RNA_def_property_ui_text(
-      prop, "Simplify Shadows", "Resolution percentage of shadows in viewport");
-  RNA_def_property_update(prop, 0, "rna_Scene_simplify_update");
-
-  prop = RNA_def_property(srna, "simplify_shadows", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_default(prop, 1.0);
-  RNA_def_property_range(prop, 0.0, 1.0f);
-  RNA_def_property_ui_text(
-      prop, "Simplify Shadows", "Resolution percentage of shadows in viewport");
-  RNA_def_property_update(prop, 0, "rna_Scene_simplify_update");
-
   /* Grease Pencil - Simplify Options */
   prop = RNA_def_property(srna, "simplify_gpencil", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "simplify_gpencil", SIMPLIFY_GPENCIL_ENABLE);
@@ -7416,6 +7450,20 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, nullptr, "bake");
   RNA_def_property_struct_type(prop, "BakeSettings");
   RNA_def_property_ui_text(prop, "Bake Data", "");
+
+  /* Compositor. */
+
+  prop = RNA_def_property(srna, "compositor_device", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, compositor_device_items);
+  RNA_def_property_ui_text(prop, "Compositor Device", "Set how compositing is executed");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
+
+  prop = RNA_def_property(srna, "compositor_precision", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "compositor_precision");
+  RNA_def_property_enum_items(prop, compositor_precision_items);
+  RNA_def_property_ui_text(
+      prop, "Compositor Precision", "The precision of compositor intermediate result");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
 
   /* Nestled Data. */
   /* *** Non-Animated *** */
@@ -8025,6 +8073,17 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Clamping */
+  prop = RNA_def_property(srna, "clamp_world", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop,
+      "Clamp World",
+      "If non-zero, the maximum value for world contribution to the scene lighting. "
+      "Higher values will be scaled down to avoid too "
+      "much light bleeding at the cost of accuracy");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_SceneEEVEE_clamp_world_update");
+
   prop = RNA_def_property(srna, "clamp_surface_direct", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Clamp Surface Direct",
@@ -8471,6 +8530,13 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Use Ray-Tracing", "Enable the ray-tracing module");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "shadow_resolution_scale", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(
+      prop, "Shadows Resolution Scale", "Resolution percentage of shadow maps");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, 0, "rna_SceneEEVEE_shadow_resolution_update");
 }
 
 static void rna_def_scene_gpencil(BlenderRNA *brna)

@@ -122,9 +122,11 @@ class USERPREF_MT_save_load(Menu):
         if app_template:
             display_name = bpy.path.display_name(iface_(app_template))
             layout.operator("wm.read_factory_userpref", text="Load Factory Blender Preferences")
-            props = layout.operator("wm.read_factory_userpref",
-                                    text=iface_("Load Factory {:s} Preferences").format(display_name),
-                                    translate=False)
+            props = layout.operator(
+                "wm.read_factory_userpref",
+                text=iface_("Load Factory {:s} Preferences").format(display_name),
+                translate=False,
+            )
             props.use_factory_startup_app_template_only = True
             del display_name
         else:
@@ -673,16 +675,31 @@ class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
             return False
         return True
 
-    def draw_centered(self, context, layout):
+    @staticmethod
+    def _draw_associate_supported_or_label(context, layout):
         from sys import platform
-        associate_supported = True
         if platform[:3] == "win":
             if context.preferences.system.is_microsoft_store_install:
                 layout.label(text="Microsoft Store installation")
                 layout.label(text="Use Windows 'Default Apps' to associate with blend files")
-                associate_supported = False
+                return False
+        else:
+            # Linux.
+            if bpy.utils.resource_path('SYSTEM'):
+                layout.label(text="System Installation")
+                layout.label(text="File association is handled by the package manager")
+                return False
 
-        if associate_supported:
+            import os
+            if os.environ.get("SNAP"):
+                layout.label(text="Snap Package Installation")
+                layout.label(text="File association is handled by the package manager")
+                return False
+
+        return True
+
+    def draw_centered(self, context, layout):
+        if self._draw_associate_supported_or_label(context, layout):
             layout.label(text="Open blend files with this Blender version")
             split = layout.split(factor=0.5)
             split.alignment = 'LEFT'
@@ -2118,6 +2135,8 @@ class USERPREF_PT_extensions_repos(Panel):
                 split.alert = True
             split.prop(active_repo, "remote_path", text="", icon='URL', placeholder="Repository URL")
             split = row.split()
+
+            layout.prop(active_repo, "use_sync_on_startup")
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
         layout_header.label(text="Advanced")
