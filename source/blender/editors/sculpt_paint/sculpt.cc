@@ -6426,6 +6426,10 @@ void calc_brush_texture_factors(SculptSession &ss,
   BLI_assert(verts.size() == factors.size());
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  const MTex *mtex = BKE_brush_mask_texture_get(&brush, OB_MODE_SCULPT);
+  if (!mtex->tex) {
+    return;
+  }
 
   for (const int i : verts.index_range()) {
     float texture_value;
