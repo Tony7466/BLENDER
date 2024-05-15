@@ -1125,6 +1125,13 @@ float SCULPT_brush_strength_factor(
     int thread_id,
     const blender::ed::sculpt_paint::auto_mask::NodeData *automask_data);
 
+void sculpt_apply_texture(const SculptSession *ss,
+                          const Brush *brush,
+                          const float brush_point[3],
+                          const int thread_id,
+                          float *r_value,
+                          float r_rgba[4]);
+
 /**
  * Return a color of a brush texture on a particular vertex multiplied by active masks.
  */

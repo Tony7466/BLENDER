@@ -2407,12 +2407,12 @@ static float sculpt_apply_hardness(const SculptSession *ss, const float input_le
   return final_len;
 }
 
-static void sculpt_apply_texture(const SculptSession *ss,
-                                 const Brush *brush,
-                                 const float brush_point[3],
-                                 const int thread_id,
-                                 float *r_value,
-                                 float r_rgba[4])
+void sculpt_apply_texture(const SculptSession *ss,
+                          const Brush *brush,
+                          const float brush_point[3],
+                          const int thread_id,
+                          float *r_value,
+                          float r_rgba[4])
 {
   blender::ed::sculpt_paint::StrokeCache *cache = ss->cache;
   const Scene *scene = cache->vc->scene;
@@ -6305,6 +6305,7 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
 {
   BLI_assert(verts.size() == r_factors.size());
 
+  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
   const bke::AttributeAccessor attributes = mesh.attributes();
   if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
     const VArraySpan span(mask);
@@ -6321,6 +6322,17 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
     for (const int i : verts.index_range()) {
       r_factors[i] = span[verts[i]] ? 0.0f : r_factors[i];
     }
+  }
+}
+
+void calc_front_face(const float3 &view_normal,
+                     const Span<float3> vert_normals,
+                     const Span<int> verts,
+                     const MutableSpan<float> factors)
+{
+  for (const int i : verts.index_range()) {
+    const float dot = math::dot(view_normal, vert_normals[verts[i]]);
+    factors[i] *= dot > 0.0f ? dot : 0.0f;
   }
 }
 
@@ -6400,39 +6412,6 @@ void calc_brush_texture_factors(SculptSession &ss,
         &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
 
     factors[i] *= texture_value;
-  }
-}
-
-void calc_brush_texture_colors(SculptSession &ss,
-                               const Brush &brush,
-                               const Span<float3> vert_positions,
-                               const Span<int> verts,
-                               const Span<float> factors,
-                               const MutableSpan<float4> r_colors)
-{
-  BLI_assert(verts.size() == r_colors.size());
-
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  for (const int i : verts.index_range()) {
-    float texture_value;
-    float4 texture_rgba;
-    /* NOTE: This is not a thread-safe call. */
-    sculpt_apply_texture(
-        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
-
-    r_colors[i] = texture_rgba * factors[i];
-  }
-}
-
-void calc_front_face(const float3 &view_normal,
-                     const Span<float3> vert_normals,
-                     const Span<int> verts,
-                     const MutableSpan<float> factors)
-{
-  for (const int i : verts.index_range()) {
-    const float dot = math::dot(view_normal, vert_normals[verts[i]]);
-    factors[i] *= dot > 0.0f ? dot : 0.0f;
   }
 }
 
@@ -6519,6 +6498,7 @@ void flush_positions_to_shape_keys(Object &object,
 
   /* For relative keys editing of base should update other keys. */
   if (bool *dependent = BKE_keyblock_get_dependent_keys(mesh.key, object.shapenr - 1)) {
+    /* TODO: Avoid allocation by using translations already calculated by brush. */
     Array<float3> offsets(verts.size());
     for (const int i : verts.index_range()) {
       offsets[i] = positions[verts[i]] - active_key_data[verts[i]];

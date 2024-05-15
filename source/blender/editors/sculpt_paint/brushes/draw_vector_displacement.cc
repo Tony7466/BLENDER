@@ -34,6 +34,28 @@ struct LocalData {
   Vector<float3> translations;
 };
 
+static void calc_brush_texture_colors(SculptSession &ss,
+                                      const Brush &brush,
+                                      const Span<float3> vert_positions,
+                                      const Span<int> verts,
+                                      const Span<float> factors,
+                                      const MutableSpan<float4> r_colors)
+{
+  BLI_assert(verts.size() == r_colors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+
+  for (const int i : verts.index_range()) {
+    float texture_value;
+    float4 texture_rgba;
+    /* NOTE: This is not a thread-safe call. */
+    sculpt_apply_texture(
+        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
+
+    r_colors[i] = texture_rgba * factors[i];
+  }
+}
+
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const PBVHNode &node,
