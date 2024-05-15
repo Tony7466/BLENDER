@@ -991,14 +991,10 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
     if (seq->machine != int(mouse_co[1])) {
       continue;
     }
-    if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(seq)) >
-        v2d->cur.xmax)
-    {
+    if (SEQ_time_left_handle_frame_get(scene, seq) > v2d->cur.xmax) {
       continue;
     }
-    if (max_ii(SEQ_time_right_handle_frame_get(scene, seq),
-               SEQ_time_content_end_frame_get(scene, seq)) < v2d->cur.xmin)
-    {
+    if (SEQ_time_right_handle_frame_get(scene, seq) < v2d->cur.xmin) {
       continue;
     }
     if (!ED_sequencer_can_select_handle(scene, seq, v2d)) {
@@ -1017,7 +1013,7 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
   if (strips.size() == 2 && strip_to_frame_distance(scene, v2d, strips[0], mouse_co[0]) <
                                 strip_to_frame_distance(scene, v2d, strips[1], mouse_co[0]))
   {
-    SWAP(Sequence *, strips[0], strips[1]);
+    std::swap(strips[0], strips[1]);
   }
 
   return strips;
@@ -1033,10 +1029,10 @@ static bool strips_are_adjacent(const Scene *scene, const Sequence *seq1, const 
   return s1_right == s2_left || s1_left == s2_right;
 }
 
-static eSeqHandle handle_selection_refine(const Scene *scene,
-                                          const Sequence *seq,
-                                          const View2D *v2d,
-                                          float mouse_co[2])
+static eSeqHandle get_strip_handle_under_cursor(const Scene *scene,
+                                                const Sequence *seq,
+                                                const View2D *v2d,
+                                                float mouse_co[2])
 {
   rctf body, left, right;
   strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
@@ -1050,27 +1046,24 @@ static eSeqHandle handle_selection_refine(const Scene *scene,
   return SEQ_HANDLE_NONE;
 }
 
-static bool both_handles_are_selected(const Scene *scene,
-                                      const Sequence *seq1,
-                                      const Sequence *seq2,
-                                      int seq1_side,
-                                      const View2D *v2d,
-                                      float mouse_co[2])
+static bool is_mouse_over_both_handles_of_adjacent_strips(const Scene *scene,
+                                                          blender::Vector<Sequence *> strips,
+                                                          const View2D *v2d,
+                                                          float mouse_co[2])
 {
-  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+  const eSeqHandle seq1_handle = get_strip_handle_under_cursor(scene, strips[0], v2d, mouse_co);
+
+  if (seq1_handle == SEQ_HANDLE_NONE) {
     return false;
   }
-  if (seq1_side == SEQ_SIDE_NONE) {
+  if (!strips_are_adjacent(scene, strips[0], strips[1])) {
     return false;
   }
-  if (!strips_are_adjacent(scene, seq1, seq2)) {
+  const eSeqHandle seq2_handle = get_strip_handle_under_cursor(scene, strips[1], v2d, mouse_co);
+  if (seq1_handle == SEQ_HANDLE_RIGHT && seq2_handle != SEQ_HANDLE_LEFT) {
     return false;
   }
-  const eSeqHandle seq2_side = handle_selection_refine(scene, seq2, v2d, mouse_co);
-  if (seq1_side == SEQ_HANDLE_RIGHT && seq2_side != SEQ_HANDLE_LEFT) {
-    return false;
-  }
-  else if (seq1_side == SEQ_HANDLE_LEFT && seq2_side != SEQ_HANDLE_RIGHT) {
+  else if (seq1_handle == SEQ_HANDLE_LEFT && seq2_handle != SEQ_HANDLE_RIGHT) {
     return false;
   }
 
@@ -1083,17 +1076,17 @@ StripSelection ED_sequencer_pick_strip_and_side(const Scene *scene,
 {
   blender::Vector<Sequence *> strips = mouseover_strips_sorted_get(scene, v2d, mouse_co);
 
-  StripSelection selection{nullptr, nullptr, SEQ_HANDLE_NONE};
+  StripSelection selection;
 
   if (strips.size() == 0) {
     return selection;
   }
 
   selection.seq1 = strips[0];
-  selection.handle = handle_selection_refine(scene, selection.seq1, v2d, mouse_co);
+  selection.handle = get_strip_handle_under_cursor(scene, selection.seq1, v2d, mouse_co);
 
-  if (strips.size() == 2 &&
-      both_handles_are_selected(scene, selection.seq1, strips[1], selection.handle, v2d, mouse_co))
+  if (strips.size() == 2 && (U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) != 0 &&
+      is_mouse_over_both_handles_of_adjacent_strips(scene, strips, v2d, mouse_co))
   {
     selection.seq2 = strips[1];
   }

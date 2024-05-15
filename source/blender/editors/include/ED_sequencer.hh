@@ -16,17 +16,17 @@ struct SpaceSeq;
 struct bContext;
 struct View2D;
 
-struct StripSelection {
-  Sequence *seq1;
-  Sequence *seq2;
-  eSeqHandle handle;
-};
-
 enum eSeqHandle {
   SEQ_HANDLE_NONE,
   SEQ_HANDLE_LEFT,
   SEQ_HANDLE_RIGHT,
   SEQ_HANDLE_BOTH,
+};
+
+struct StripSelection {
+  Sequence *seq1 = nullptr;
+  Sequence *seq2 = nullptr;
+  eSeqHandle handle = SEQ_HANDLE_NONE;
 };
 
 void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool deselect_all);
