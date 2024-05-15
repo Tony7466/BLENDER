@@ -5659,12 +5659,16 @@ static void sculpt_stroke_update_step(bContext *C,
         dyntopo::detail_size::relative_to_detail_size(
             sd->detail_size, ss->cache->radius, ss->cache->dyntopo_pixel_radius, U.pixelsize));
   }
+   *
+   * For some brushes, flushing is done in the brush code itself.
 
+  if (!(ELEM(brush->sculpt_tool, SCULPT_TOOL_DRAW) && BKE_pbvh_type(*ss->pbvh) == PBVH_FACES)) {
   if (dyntopo::stroke_is_dyntopo(ss, brush)) {
     do_symmetrical_brush_actions(sd, ob, sculpt_topology_update, ups, &tool_settings->paint_mode);
   }
 
   do_symmetrical_brush_actions(sd, ob, do_brush_action, ups, &tool_settings->paint_mode);
+    }
   sculpt_combine_proxies(sd, ob);
 
   /* Hack to fix noise texture tearing mesh. */
