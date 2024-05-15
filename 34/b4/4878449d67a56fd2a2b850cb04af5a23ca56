@@ -3,3 +3,4 @@ Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by issue #114173, Cannot undo python opeartor that writes to curve attribute - if
 Referenced by pull request #115234, Fix #109670: attribute shared between geometries even when edited (backport to 3.6)
 Referenced by pull request #121786, Fix #121666: Modifying UVs of duplicate affects the original object
+Referenced by commit 710d168e30e45686bacdbb294ae5bfe772c2cced, Fix #121666: Modifying UVs of duplicate affects the original object
