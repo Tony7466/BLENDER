@@ -8,6 +8,18 @@
 
 CCL_NAMESPACE_BEGIN
 
+ccl_device_inline void point_light_uv(const ccl_global KernelLight *klight,
+                                      const ccl_private float3 Ng,
+                                      ccl_private float *u,
+                                      ccl_private float *v)
+{
+  const Transform itfm = klight->itfm;
+  const float2 uv = map_to_sphere(transform_direction(&itfm, Ng));
+  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
+  *u = uv.y;
+  *v = 1.0f - uv.x - uv.y;
+}
+
 ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
                                           const float2 rand,
                                           const float3 P,
@@ -68,11 +80,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   }
 
   /* Texture coordinates. */
-  const Transform itfm = klight->itfm;
-  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
-  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
-  ls->u = uv.y;
-  ls->v = 1.0f - uv.x - uv.y;
+  point_light_uv(klight, ls->Ng, &ls->u, &ls->v);
 
   return true;
 }
@@ -118,11 +126,7 @@ ccl_device_forceinline void point_light_mnee_sample_update(const ccl_global Kern
   }
 
   /* Texture coordinates. */
-  const Transform itfm = klight->itfm;
-  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
-  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
-  ls->u = uv.y;
-  ls->v = 1.0f - uv.x - uv.y;
+  point_light_uv(klight, ls->Ng, &ls->u, &ls->v);
 }
 
 ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *klight,
@@ -210,11 +214,7 @@ ccl_device_inline bool point_light_sample_from_intersection(const ccl_global Ker
   }
 
   /* Texture coordinates. */
-  const Transform itfm = klight->itfm;
-  const float2 uv = map_to_sphere(transform_direction(&itfm, ls->Ng));
-  /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
-  ls->u = uv.y;
-  ls->v = 1.0f - uv.x - uv.y;
+  point_light_uv(klight, ls->Ng, &ls->u, &ls->v);
 
   return true;
 }
