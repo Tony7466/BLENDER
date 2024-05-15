@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_numbers.hh"
+
 #include "BKE_texture.h"
 
 #include "node_shader_util.hh"
@@ -17,19 +19,19 @@ NODE_STORAGE_FUNCS(NodeTexGabor)
 static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Vector>("Vector").implicit_field(implicit_field_inputs::position);
-  b.add_input<decl::Float>("Scale").default_value(6.4f);
-  b.add_input<decl::Float>("Impulses").default_value(64.0f);
-  b.add_input<decl::Float>("Frequency").default_value(1.25f);
+  b.add_input<decl::Float>("Scale").default_value(5.0f);
+  b.add_input<decl::Float>("Impulses").default_value(16.0f);
+  b.add_input<decl::Float>("Frequency").default_value(2.0f);
   b.add_input<decl::Float>("Anisotropy")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Orientation", "Orientation_2D")
-      .default_value(0.7f)
+  b.add_input<decl::Float>("Orientation", "orientation_2d")
+      .default_value(math::numbers::pi / 4)
       .subtype(PROP_ANGLE);
-  b.add_input<decl::Vector>("Orientation", "Orientation_3D")
-      .default_value({0.0f, 0.0f, 1.0f})
+  b.add_input<decl::Vector>("Orientation", "orientation_3d")
+      .default_value({math::numbers::sqrt2, math::numbers::sqrt2, 0.0f})
       .subtype(PROP_DIRECTION);
   b.add_output<decl::Float>("Value");
 }
@@ -48,6 +50,17 @@ static void node_shader_init_tex_gabor(bNodeTree * /*ntree*/, bNode *node)
   storage->type = SHD_GABOR_TYPE_2D;
 
   node->storage = storage;
+}
+
+static void node_shader_update_tex_gabor(bNodeTree *ntree, bNode *node)
+{
+  const NodeTexGabor &storage = node_storage(*node);
+
+  bNodeSocket *orientation_2d_socket = bke::nodeFindSocket(node, SOCK_IN, "orientation_2d");
+  bke::nodeSetSocketAvailability(ntree, orientation_2d_socket, storage.type == SHD_GABOR_TYPE_2D);
+
+  bNodeSocket *orientation_3d_socket = bke::nodeFindSocket(node, SOCK_IN, "orientation_3d");
+  bke::nodeSetSocketAvailability(ntree, orientation_3d_socket, storage.type == SHD_GABOR_TYPE_3D);
 }
 
 static int node_shader_gpu_tex_gabor(GPUMaterial *material,
@@ -69,7 +82,7 @@ void register_node_type_sh_tex_gabor()
 {
   namespace file_ns = blender::nodes::node_shader_tex_gabor_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_TEX_GABOR, "Gabor Texture", NODE_CLASS_TEXTURE);
   ntype.declare = file_ns::sh_node_tex_gabor_declare;
@@ -78,6 +91,7 @@ void register_node_type_sh_tex_gabor()
   node_type_storage(
       &ntype, "NodeTexGabor", node_free_standard_storage, node_copy_standard_storage);
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_gabor;
+  ntype.updatefunc = file_ns::node_shader_update_tex_gabor;
 
   nodeRegisterType(&ntype);
 }

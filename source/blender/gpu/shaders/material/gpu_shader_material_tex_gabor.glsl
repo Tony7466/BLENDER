@@ -2,6 +2,18 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/* Implements Gabor noise based on the paper:
+ *
+ *   Lagae, Ares, et al. "Procedural noise using sparse Gabor convolution." ACM Transactions on
+ *   Graphics (TOG) 28.3 (2009): 1-10.
+ *
+ * But with the improvements from the paper:
+ *
+ *   Tavernier, Vincent, et al. "Making gabor noise fast and normalized." Eurographics 2019-40th
+ *   Annual Conference of the European Association for Computer Graphics. 2019.
+ *
+ */
+
 #pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
@@ -9,8 +21,26 @@
 #define SHD_GABOR_TYPE_2D 1.0
 #define SHD_GABOR_TYPE_3D 2.0
 
+/* Computes a 2D Gabor kernel based on Equation (6) in the original Gabor noise paper. Where the
+ * frequency argument is the F_0 parameter and the orientation argument is the w_0 parameter. We
+ * assume the Gaussian envelope has a unit magnitude, that is, K = 1. That is because we will
+ * eventually normalize the final noise value to the unit range, so the multiplication by the
+ * magnitude will be canceled by the normalization. Further, we also assume a unit Gaussian width,
+ * that is, a = 1. That is because it does not provide much artistic control. It follows that the
+ * Gaussian will be truncated at pi.
+ *
+ * We also replace the cosine function of the harmonic with a sine function, as suggested by
+ * Tavernier's paper in "Section 3.3. Instance stationarity and normalization", to ensure a zero
+ * mean, which should help with normalization.
+ *
+ * Finally, the Gaussian is windowed using a Hann window, that is because contrary to the claim in
+ * the original Gabor paper, truncating the Gaussian produces significant artifacts especially when
+ * differentiated for bump mapping. The Hann window is C1 continuous and has limited effect on the
+ * shape of the Gaussian, so it felt like an appropriate choice. */
 float compute_2d_gabor_kernel(vec2 position, float frequency, float orientation)
 {
+  /* The kernel is windowed beyond the unit distance, so early exist with a zero for points that
+   * are further than a unit radius. */
   float distance_squared = length_squared(position);
   if (distance_squared >= 1.0) {
     return 0.0;
@@ -26,11 +56,24 @@ float compute_2d_gabor_kernel(vec2 position, float frequency, float orientation)
   return windowed_gaussian_envelope * sinusoidal_wave;
 }
 
+/* The original Gabor noise paper specifies that the impulses count for each cell should be
+ * computed by sampling a Poisson distribution whose mean is the impulse density. However,
+ * Tavernier's paper showed that stratified Poisson point sampling is better assuming the weights
+ * are sampled using a Bernoulli distribution, as shown in Figure (3). By stratified sampling, they
+ * mean a constant number of impulses per cell, so the stratification is the grid itself in a
+ * sense. However, to allow fractional impulses count, an additional impulse is added following a
+ * Bernoulli distribution whose probability is the fractional part of the impulses count. */
 int compute_impulses_count_for_2d_cell(vec2 cell, float impulses_count)
 {
   return int(impulses_count) + (hash_vec2_to_float(cell) < fract(impulses_count) ? 1 : 0);
 }
 
+/* Computes the Gabor noise value at the given position for the given cell. This is essentially the
+ * sum in Equation (8) in the original Gabor noise paper, where we sum Gabor kernels sampled at a
+ * random position with a random weight. The orientation of the kernel is constant for anisotropic
+ * noise while it is random for isotropic noise. The original Gabor noise paper mentions that the
+ * weights should be uniformly distributed in the [-1, 1] range, however, Tavernier's paper showed
+ * that using a Bernoulli distribution yields better results, so that is what we do. */
 float compute_2d_gabor_noise_cell(vec2 cell,
                                   vec2 position,
                                   float impulses_count,
@@ -39,19 +82,33 @@ float compute_2d_gabor_noise_cell(vec2 cell,
                                   float base_orientation)
 
 {
-  int impulses_count_for_cell = compute_impulses_count_for_2d_cell(cell, impulses_count);
-
   float noise = 0.0;
+  int impulses_count_for_cell = compute_impulses_count_for_2d_cell(cell, impulses_count);
   for (int i = 0; i < impulses_count_for_cell; ++i) {
-    float random_orientation = hash_vec3_to_float(vec3(cell, i * 2 + 1)) * 2.0 * M_PI;
+    /* Compute unique seeds for each of the needed random variables. */
+    vec3 seed_for_orientation = vec3(cell, i * 3);
+    vec3 seed_for_kernel_center = vec3(cell, i * 3 + 1);
+    vec3 seed_for_weight = vec3(cell, i * 3 + 2);
+
+    /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
+     * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
+    float random_orientation = hash_vec3_to_float(seed_for_orientation) * 2.0 * M_PI;
     float orientation = base_orientation + random_orientation * isotropy;
-    vec2 kernel_center = position - hash_vec3_to_vec2(vec3(cell, i));
-    float weight = hash_vec3_to_float(vec3(cell, i * 2)) < 0.5 ? -1.0 : 1.0;
-    noise += weight * compute_2d_gabor_kernel(kernel_center, frequency, orientation);
+
+    vec2 kernel_center = hash_vec3_to_vec2(seed_for_kernel_center);
+    vec2 position_in_kernel_space = position - kernel_center;
+
+    /* We either add or subtract the Gabor kernel based on a Bernoulli distribution of equal
+     * probability. */
+    float weight = hash_vec3_to_float(seed_for_weight) < 0.5 ? -1.0 : 1.0;
+
+    noise += weight * compute_2d_gabor_kernel(position_in_kernel_space, frequency, orientation);
   }
   return noise;
 }
 
+/* Computes the Gabor noise value by dividing the space into a grid and evaluating the Gabor noise
+ * in the space of each cell of the 3x3 cell neighbourhood. */
 float compute_2d_gabor_noise(vec2 coordinates,
                              float impulses_count,
                              float frequency,
@@ -66,9 +123,9 @@ float compute_2d_gabor_noise(vec2 coordinates,
     for (int i = -1; i <= 1; i++) {
       vec2 cell_offset = vec2(i, j);
       vec2 current_cell_position = cell_position + cell_offset;
-      vec2 intra_cell_position = local_position - cell_offset;
+      vec2 position_in_cell_space = local_position - cell_offset;
       sum += compute_2d_gabor_noise_cell(current_cell_position,
-                                         intra_cell_position,
+                                         position_in_cell_space,
                                          impulses_count,
                                          frequency,
                                          isotropy,
@@ -79,8 +136,14 @@ float compute_2d_gabor_noise(vec2 coordinates,
   return sum;
 }
 
+/* Identical to compute_2d_gabor_kernel, except it is evaluated in 3D space. Notice that Equation
+ * (6) in the original Gabor noise paper computes the frequency vector using (cos(w_0), sin(w_0)),
+ * which we also do in the 2D variant, however, for 3D, the orientation is already a unit frequency
+ * vector, so we just need to scale it by the frequency value. */
 float compute_3d_gabor_kernel(vec3 position, float frequency, vec3 orientation)
 {
+  /* The kernel is windowed beyond the unit distance, so early exist with a zero for points that
+   * are further than a unit radius. */
   float distance_squared = length_squared(position);
   if (distance_squared >= 1.0) {
     return 0.0;
@@ -96,22 +159,33 @@ float compute_3d_gabor_kernel(vec3 position, float frequency, vec3 orientation)
   return windowed_gaussian_envelope * sinusoidal_wave;
 }
 
+/* Identical to compute_impulses_count_for_2d_cell but works on 3D cells. */
 int compute_impulses_count_for_3d_cell(vec3 cell, float impulses_count)
 {
   return int(impulses_count) + (hash_vec3_to_float(cell) < fract(impulses_count) ? 1 : 0);
 }
 
-vec3 compute_3d_orientation(vec3 cell, int seed, vec3 orientation, float isotropy)
+/* Computes the orientation of the Gabor kernel such that it is is constant for anisotropic
+ * noise while it is random for isotropic noise. We randomize in spherical coordinates for a
+ * uniform distribution. */
+vec3 compute_3d_orientation(vec3 orientation, float isotropy, vec4 seed)
 {
+  /* Return the base orientation in case we are completely anisotropic. */
   if (isotropy == 0.0) {
     return orientation;
   }
 
+  /* Compute the orientation in spherical coordinates. */
   float inclination = acos(orientation.z);
   float azimuth = sign(orientation.y) * acos(orientation.x / length(orientation.xy));
-  vec2 random_angles = hash_vec4_to_vec2(vec4(cell, seed)) * 2.0 * M_PI;
+
+  /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
+   * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
+  vec2 random_angles = hash_vec4_to_vec2(seed) * 2.0 * M_PI;
   inclination += random_angles.x * isotropy;
   azimuth += random_angles.y * isotropy;
+
+  /* Convert back to Cartesian coordinates, */
   return vec3(sin(inclination) * cos(azimuth), sin(inclination) * sin(azimuth), cos(inclination));
 }
 
@@ -123,18 +197,29 @@ float compute_3d_gabor_noise_cell(vec3 cell,
                                   vec3 base_orientation)
 
 {
-  int impulses_count_for_cell = compute_impulses_count_for_3d_cell(cell, impulses_count);
-
   float noise = 0.0;
+  int impulses_count_for_cell = compute_impulses_count_for_3d_cell(cell, impulses_count);
   for (int i = 0; i < impulses_count_for_cell; ++i) {
-    vec3 orientation = compute_3d_orientation(cell, i * 2 + 1, base_orientation, isotropy);
-    vec3 kernel_center = position - hash_vec4_to_vec3(vec4(cell, i));
-    float weight = hash_vec4_to_float(vec4(cell, i * 2)) < 0.5 ? -1.0 : 1.0;
-    noise += weight * compute_3d_gabor_kernel(kernel_center, frequency, orientation);
+    /* Compute unique seeds for each of the needed random variables. */
+    vec4 seed_for_orientation = vec4(cell, i * 3);
+    vec4 seed_for_kernel_center = vec4(cell, i * 3 + 1);
+    vec4 seed_for_weight = vec4(cell, i * 3 + 2);
+
+    vec3 orientation = compute_3d_orientation(base_orientation, isotropy, seed_for_orientation);
+
+    vec3 kernel_center = hash_vec4_to_vec3(seed_for_kernel_center);
+    vec3 position_in_kernel_space = position - kernel_center;
+
+    /* We either add or subtract the Gabor kernel based on a Bernoulli distribution of equal
+     * probability. */
+    float weight = hash_vec4_to_float(seed_for_weight) < 0.5 ? -1.0 : 1.0;
+
+    noise += weight * compute_3d_gabor_kernel(position_in_kernel_space, frequency, orientation);
   }
   return noise;
 }
 
+/* Identical to compute_2d_gabor_noise but works in the 3D neighbourhood of the noise. */
 float compute_3d_gabor_noise(
     vec3 coordinates, float impulses_count, float frequency, float isotropy, vec3 base_orientation)
 {
@@ -147,9 +232,9 @@ float compute_3d_gabor_noise(
       for (int i = -1; i <= 1; i++) {
         vec3 cell_offset = vec3(i, j, k);
         vec3 current_cell_position = cell_position + cell_offset;
-        vec3 intra_cell_position = local_position - cell_offset;
+        vec3 position_in_cell_space = local_position - cell_offset;
         sum += compute_3d_gabor_noise_cell(current_cell_position,
-                                           intra_cell_position,
+                                           position_in_cell_space,
                                            impulses_count,
                                            frequency,
                                            isotropy,
