@@ -27,8 +27,6 @@ namespace blender::ed::sculpt_paint {
 
 inline namespace draw_vector_displacement_cc {
 
-namespace pbvh = bke::pbvh;
-
 struct LocalData {
   Vector<float> factors;
   Vector<float> distances;

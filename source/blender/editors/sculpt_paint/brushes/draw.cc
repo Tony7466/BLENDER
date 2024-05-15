@@ -28,8 +28,6 @@ namespace blender::ed::sculpt_paint {
 
 inline namespace draw_cc {
 
-namespace pbvh = bke::pbvh;
-
 struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
