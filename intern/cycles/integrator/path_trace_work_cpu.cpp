@@ -172,17 +172,14 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
 
   /* FIXME(weizhen): spatial resampling makes adaptive sampling (noise threshold) fail. */
   /* Spatial Resampling. */
-  if (device_scene_->data.integrator.use_spatial_resampling) {
-    int i = 0;
-    for (; i < device_scene_->data.integrator.restir_spatial_iterations; i++) {
-      local_arena.execute(
-          [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset, i); });
-    }
-
-    local_arena.execute([&] {
-      evaluate_final_samples(image_width, image_height, start_sample, sample_offset, i);
-    });
+  int i = 0;
+  for (; i < device_scene_->data.integrator.restir_spatial_iterations; i++) {
+    local_arena.execute(
+        [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset, i); });
   }
+
+  local_arena.execute(
+      [&] { evaluate_final_samples(image_width, image_height, start_sample, sample_offset, i); });
 
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {

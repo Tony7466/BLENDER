@@ -389,7 +389,8 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
   integrator->set_restir_light_samples(light_samples);
   integrator->set_restir_spatial_radius(get_int(cscene, "restir_spatial_radius"));
   integrator->set_restir_spatial_neighbors(get_int(cscene, "restir_spatial_neighbors"));
-  integrator->set_restir_spatial_iterations(get_int(cscene, "restir_spatial_iterations"));
+  integrator->set_restir_spatial_iterations(
+      use_spatial_resampling ? get_int(cscene, "restir_spatial_iterations") : 0);
 
   SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
       cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);

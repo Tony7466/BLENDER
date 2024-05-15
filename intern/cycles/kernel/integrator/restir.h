@@ -377,12 +377,13 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
 
   const bool read_prev = state->read_previous_reservoir;
   integrator_restir_unpack_reservoir(kg, &reservoir, render_pixel_index, render_buffer, read_prev);
-  if (reservoir.is_empty()) {
+  integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
+  if (reservoir.is_empty() || !current.sd.type) {
+    /* TODO(weizhen): revisit this condition when we support background and distant lights. */
     film_clear_pass_surface_data(kg, state, render_buffer);
     return;
   }
 
-  integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
   shader_data_setup_from_restir(kg, state, &current, render_buffer);
 
   light_sample_from_uv(kg, &current.sd, current.path_flag, &reservoir.ls);

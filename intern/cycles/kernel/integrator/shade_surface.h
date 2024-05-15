@@ -415,6 +415,7 @@ ccl_device
   /* Use Resampled Importance Sampling for direct illumination based on Talbot, Justin F.
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
+  /* TODO(weizhen): the flag `use_spatial_resampling` can be replaced with `use_restir`. */
   const bool is_direct_light = light_is_direct_illumination(state);
   const bool use_ris = is_direct_light && (kernel_data.integrator.use_initial_resampling ||
                                            kernel_data.integrator.use_spatial_resampling);
@@ -676,13 +677,13 @@ ccl_device
   kernel_assert(samples_seen <= max_samples);
 
   if (!reservoir.finalize()) {
-    if (is_direct_light) {
+    if (use_ris) {
       film_clear_data_pass_reservoir(kg, state, render_buffer);
     }
     return;
   }
 
-  if (is_direct_light && kernel_data.integrator.use_spatial_resampling) {
+  if (use_ris) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
     film_write_data_pass_reservoir(kg, state, &reservoir, render_buffer);

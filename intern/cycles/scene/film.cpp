@@ -546,7 +546,7 @@ void Film::update_passes(Scene *scene, bool add_sample_count_pass)
 
   /* TODO(weizhen): this crashed once but I can't reproduce. */
   /* Add reservoir pass if spatial resapmling is used. */
-  if (integrator->get_use_restir() & (1 << 1)) {
+  if (integrator->get_use_restir() & 0b11) {
     add_auto_pass(scene, PASS_RESTIR_PREVIOUS_RESERVOIR);
     add_auto_pass(scene, PASS_RESTIR_RESERVOIR);
     add_auto_pass(scene, PASS_SURFACE_DATA);
