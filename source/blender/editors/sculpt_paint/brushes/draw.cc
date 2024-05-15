@@ -30,7 +30,7 @@ inline namespace draw_cc {
 
 namespace pbvh = bke::pbvh;
 
-struct TLS {
+struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
   Vector<float3> translations;
@@ -41,7 +41,7 @@ static void calc_faces(const Sculpt &sd,
                        const float3 &offset,
                        Object &object,
                        PBVHNode &node,
-                       TLS &tls,
+                       LocalData &tls,
                        const MutableSpan<float3> positions_sculpt,
                        const MutableSpan<float3> positions_mesh)
 {
@@ -178,12 +178,12 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
-      threading::EnumerableThreadSpecific<TLS> all_tls;
+      threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        TLS &tls = all_tls.local();
+        LocalData &tls = all_tls.local();
         for (const int i : range) {
           calc_faces(sd, brush, offset, object, *nodes[i], tls, positions_sculpt, positions_mesh);
         }
