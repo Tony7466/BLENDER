@@ -58,15 +58,15 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float> factors = tls.factors;
   calc_mesh_hide_and_mask(mesh, verts, factors);
 
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+  }
+
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
       ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
-
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
-  }
 
   if (ss.cache->automasking) {
     calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
