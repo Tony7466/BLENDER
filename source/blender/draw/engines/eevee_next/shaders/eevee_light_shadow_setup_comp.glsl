@@ -114,21 +114,14 @@ void cascade_sync(inout LightData light)
 
   vec2 clipmap_origin = vec2(origin_offset) * tile_size;
 
-#if USE_LIGHT_UNION
+  LightSunData sun_data;
   /* Used as origin for the clipmap_base_offset trick. */
-  light.sun.clipmap_origin = clipmap_origin;
+  sun_data.clipmap_origin = clipmap_origin;
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
-  light.sun.clipmap_base_offset_pos = base_offset_pos;
-  light.sun.clipmap_base_offset_neg = ivec2(0);
-#else
-  /* Used as origin for the clipmap_base_offset trick. */
-  light.do_not_access_directly._pad3 = clipmap_origin;
-  /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
-  light.do_not_access_directly.tilemaps_count = base_offset_pos.x;
-  light.do_not_access_directly.shadow_radius = intBitsToFloat(base_offset_pos.y);
-  light.do_not_access_directly.radius_squared = intBitsToFloat(0);
-  light.do_not_access_directly.influence_radius_max = intBitsToFloat(0);
-#endif
+  sun_data.clipmap_base_offset_pos = base_offset_pos;
+  sun_data.clipmap_base_offset_neg = ivec2(0);
+
+  light = light_sun_data_set(light, sun_data);
 }
 
 void clipmap_sync(inout LightData light)
@@ -177,21 +170,15 @@ void clipmap_sync(inout LightData light)
   light.object_to_world.x.w = ls_camera_position.x;
   light.object_to_world.y.w = ls_camera_position.y;
   light.object_to_world.z.w = ls_camera_position.z;
-#if USE_LIGHT_UNION
+
+  LightSunData sun_data;
   /* Used as origin for the clipmap_base_offset trick. */
-  light.sun.clipmap_origin = clipmap_origin;
+  sun_data.clipmap_origin = clipmap_origin;
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
-  light.sun.clipmap_base_offset_pos = pos_offset;
-  light.sun.clipmap_base_offset_neg = neg_offset;
-#else
-  /* Used as origin for the clipmap_base_offset trick. */
-  light.do_not_access_directly._pad3 = clipmap_origin;
-  /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
-  light.do_not_access_directly.tilemaps_count = pos_offset.x;
-  light.do_not_access_directly.shadow_radius = intBitsToFloat(pos_offset.y);
-  light.do_not_access_directly.radius_squared = intBitsToFloat(neg_offset.x);
-  light.do_not_access_directly.influence_radius_max = intBitsToFloat(neg_offset.y);
-#endif
+  sun_data.clipmap_base_offset_pos = pos_offset;
+  sun_data.clipmap_base_offset_neg = neg_offset;
+
+  light = light_sun_data_set(light, sun_data);
 }
 
 void cubeface_sync(int tilemap_id,
