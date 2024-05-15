@@ -189,6 +189,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case LIGHT_SHADOW_SETUP:
+      return "eevee_light_shadow_setup";
     case RAY_DENOISE_SPATIAL:
       return "eevee_ray_denoise_spatial";
     case RAY_DENOISE_TEMPORAL:
@@ -225,6 +227,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_reflection_probe_irradiance";
     case SPHERE_PROBE_SELECT:
       return "eevee_reflection_probe_select";
+    case SPHERE_PROBE_SUNLIGHT:
+      return "eevee_reflection_probe_sunlight";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
@@ -774,6 +778,8 @@ static bool can_use_default_cb(GPUMaterial *mat)
 {
   using namespace blender::gpu::shader;
 
+  const ::Material *blender_mat = GPU_material_get_material(mat);
+
   uint64_t shader_uuid = GPU_material_uuid_get(mat);
 
   eMaterialPipeline pipeline_type;
@@ -801,9 +807,11 @@ static bool can_use_default_cb(GPUMaterial *mat)
                                  displacement_type != eMaterialDisplacement::MAT_DISPLACEMENT_BUMP;
   bool has_transparency = GPU_material_flag_get(mat, GPU_MATFLAG_TRANSPARENT);
   bool has_shadow_transparency = has_transparency && transparent_shadows;
+  bool has_raytraced_transmission = blender_mat && (blender_mat->blend_flag & MA_BL_SS_REFRACTION);
 
   return (is_shadow_pass && (!has_vertex_displacement && !has_shadow_transparency)) ||
-         (is_prepass && (!has_vertex_displacement && !has_transparency));
+         (is_prepass &&
+          (!has_vertex_displacement && !has_transparency && !has_raytraced_transmission));
 }
 
 GPUMaterial *ShaderModule::material_default_shader_get(eMaterialPipeline pipeline_type,

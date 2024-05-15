@@ -16,17 +16,17 @@ struct SpaceSeq;
 struct bContext;
 struct View2D;
 
+struct StripSelection {
+  Sequence *seq1;
+  Sequence *seq2;
+  eSeqHandle handle;
+};
+
 enum eSeqHandle {
   SEQ_HANDLE_NONE,
   SEQ_HANDLE_LEFT,
   SEQ_HANDLE_RIGHT,
   SEQ_HANDLE_BOTH,
-};
-
-struct StripSelection {
-  Sequence *seq1;
-  Sequence *seq2;
-  eSeqHandle handle;
 };
 
 void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool deselect_all);
@@ -88,5 +88,5 @@ blender::VectorSet<Sequence *> ED_sequencer_selected_strips_from_context(bContex
 StripSelection ED_sequencer_pick_strip_and_side(const struct Scene *scene,
                                                 const View2D *v2d,
                                                 float mouse_co[2]);
-
 bool ED_sequencer_can_select_handle(const Scene *scene, const Sequence *seq, const View2D *v2d);
+bool ED_sequencer_handle_is_selected(const Sequence *seq, eSeqHandle handle);

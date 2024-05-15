@@ -17,6 +17,7 @@
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_paint.hh"
 
 #include "DEG_depsgraph_query.hh"
 #include "DNA_brush_enums.h"
@@ -521,7 +522,7 @@ struct EraseOperationExecutor {
     const auto execute_eraser_on_drawing = [&](const int layer_index,
                                                const int frame_number,
                                                Drawing &drawing) {
-      const Layer &layer = *grease_pencil.layers()[layer_index];
+      const Layer &layer = *grease_pencil.layer(layer_index);
       const bke::CurvesGeometry &src = drawing.strokes();
 
       /* Evaluated geometry. */
