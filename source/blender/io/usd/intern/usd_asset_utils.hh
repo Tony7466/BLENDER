@@ -135,23 +135,6 @@ const char *temp_textures_dir();
 bool write_to_path(const void *data, size_t size, const char *path, ReportList *reports);
 
 /**
- * Add the given path as a custom property "usd_source_path" on the given id.
- * If the path is a package-relative path (i.e., is relative to a USDZ archive)
- * it will not be added a a property.  If custom property "usd_source_path"
- * already exists, this function does nothing.
- *
- * \param path: path to record as a custom property
- * \param id: id for which to create the custom propery
- */
-void ensure_usd_source_path_prop(const std::string &path, ID *id);
-
-/**
- * Return the value of the "usd_source_path" custom property on the given id.
- * Return an empty string if the property does not exist.
- */
-std::string get_usd_source_path(ID *id);
-
-/**
  * Return the given path as a relative path with respect to the given anchor
  * path.
  *

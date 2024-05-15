@@ -216,10 +216,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const int global_up = RNA_enum_get(op->ptr, "export_global_up_selection");
 
   const bool convert_world_material = RNA_boolean_get(op->ptr, "convert_world_material");
-  bool use_original_paths = RNA_boolean_get(op->ptr, "use_original_paths");
 
   const float light_intensity_scale = RNA_float_get(op->ptr, "light_intensity_scale");
-  const bool convert_light_to_nits = RNA_boolean_get(op->ptr, "convert_light_to_nits");
 
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
@@ -249,10 +247,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       convert_orientation,
       eIOAxis(global_forward),
       eIOAxis(global_up),
-      convert_world_material,
-      use_original_paths,
-      light_intensity_scale,
-      convert_light_to_nits,
+      convert_world_material
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -298,10 +293,6 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   uiItemR(row, ptr, "only_deform_bones", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiLayoutSetActive(row, RNA_boolean_get(ptr, "export_armatures"));
   uiItemR(col, ptr, "export_shapekeys", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  col = uiLayoutColumn(box, true);
-  uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "convert_light_to_nits", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -568,30 +559,6 @@ void WM_OT_usd_export(wmOperatorType *ot)
       "Convert the world material to a USD dome light"
       "Currently works for simple materials, consisting of an environment texture "
       "connected to a background shader, with an optional vector multiply of the texture color");
-
-  RNA_def_boolean(ot->srna,
-                  "use_original_paths",
-                  false,
-                  "Use Original Paths",
-                  "Use the original USD asset path for textures that were previously imported "
-                  "(e.g., textures that were downloaded to the local file system from URIs).  "
-                  "This option is not available when exporting textures");
-
-  RNA_def_float(ot->srna,
-                "light_intensity_scale",
-                1.0f,
-                0.0001f,
-                10000.0f,
-                "Light Intensity Scale",
-                "Value by which to scale the intensity of exported lights",
-                0.0001f,
-                1000.0f);
-
-  RNA_def_boolean(ot->srna,
-                  "convert_light_to_nits",
-                  true,
-                  "Convert Light Units to Nits",
-                  "Convert light energy units to nits");
 }
 
 /* ====== USD Import ====== */
@@ -668,7 +635,6 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const bool set_material_blend = RNA_boolean_get(op->ptr, "set_material_blend");
 
   const float light_intensity_scale = RNA_float_get(op->ptr, "light_intensity_scale");
-  const bool convert_light_from_nits = RNA_boolean_get(op->ptr, "convert_light_from_nits");
 
   const eUSDMtlNameCollisionMode mtl_name_collision_mode = eUSDMtlNameCollisionMode(
       RNA_enum_get(op->ptr, "mtl_name_collision_mode"));
@@ -737,7 +703,6 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_all_materials = import_all_materials;
   params.attr_import_mode = attr_import_mode;
   params.create_background_shader = create_background_shader;
-  params.convert_light_from_nits = convert_light_from_nits;
 
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
@@ -790,11 +755,8 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "set_frame_range", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "convert_light_from_nits", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Materials"));

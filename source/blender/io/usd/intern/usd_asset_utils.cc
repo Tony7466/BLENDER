@@ -481,64 +481,6 @@ bool write_to_path(const void *data, size_t size, const char *path, ReportList *
   return bytes_written > 0;
 }
 
-void ensure_usd_source_path_prop(const std::string &path, ID *id)
-{
-  if (!id || path.empty()) {
-    return;
-  }
-
-  if (pxr::ArIsPackageRelativePath(path)) {
-    /* Don't record package-relative paths (e.g., images in USDZ
-     * archives). */
-    return;
-  }
-
-  IDProperty *idgroup = IDP_EnsureProperties(id);
-
-  if (!idgroup) {
-    return;
-  }
-
-  const char *prop_name = "usd_source_path";
-
-  if (IDP_GetPropertyFromGroup(idgroup, prop_name)) {
-    return;
-  }
-
-  IDPropertyTemplate val = {0};
-  val.string.str = path.c_str();
-  /* Note length includes null terminator. */
-  val.string.len = path.size() + 1;
-  val.string.subtype = IDP_STRING_SUB_UTF8;
-
-  IDProperty *prop = IDP_New(IDP_STRING, &val, prop_name);
-
-  IDP_AddToGroup(idgroup, prop);
-}
-
-std::string get_usd_source_path(ID *id)
-{
-  if (!id) {
-    return "";
-  }
-
-  IDProperty *idgroup = IDP_EnsureProperties(id);
-
-  if (!idgroup) {
-    return "";
-  }
-
-  const char *prop_name = "usd_source_path";
-
-  IDProperty *prop = IDP_GetPropertyFromGroup(idgroup, prop_name);
-
-  if (!prop) {
-    return "";
-  }
-
-  return static_cast<const char *>(prop->data.pointer);
-}
-
 std::string get_relative_path(const std::string &path, const std::string &anchor)
 {
   if (path.empty() || anchor.empty()) {

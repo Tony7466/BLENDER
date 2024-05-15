@@ -1111,9 +1111,9 @@ std::string get_tex_image_asset_filepath(bNode *node,
   return get_tex_image_asset_filepath(ima, stage_path, export_params);
 }
 
-std::string get_tex_image_asset_filepath(Image *ima,
-                                         const std::string &stage_path,
-                                         const USDExportParams &export_params)
+std::string get_tex_image_asset_filepath(Image* ima,
+  const std::string& stage_path,
+  const USDExportParams& export_params)
 {
   if (!ima) {
     return "";
@@ -1125,18 +1125,12 @@ std::string get_tex_image_asset_filepath(Image *ima,
     path = get_in_memory_texture_filename(ima);
   }
   else {
-    if (!export_params.export_textures && export_params.use_original_paths) {
-      path = get_usd_source_path(&ima->id);
+    if (is_packed_texture(ima)) {
+      path = get_in_memory_texture_filename(ima);
     }
-
-    if (path.empty()) {
-      if (is_packed_texture(ima)) {
-        path = get_in_memory_texture_filename(ima);
-      }
-      else if (ima->filepath[0] != '\0') {
-        /* Get absolute path. */
-        path = get_tex_image_asset_filepath(ima);
-      }
+    else if (ima->filepath[0] != '\0') {
+      /* Get absolute path. */
+      path = get_tex_image_asset_filepath(ima);
     }
   }
 
