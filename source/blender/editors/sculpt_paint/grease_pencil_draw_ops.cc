@@ -19,8 +19,8 @@
 
 #include "BLI_assert.h"
 #include "BLI_math_vector.hh"
-#include "BLI_string.h"
 #include "BLI_rect.h"
+#include "BLI_string.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
