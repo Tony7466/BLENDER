@@ -1837,6 +1837,8 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 
 void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> specializations)
 {
+  double start_time = BLI_time_now_seconds();
+
   struct SpecializationWork {
     std::string vertex_src;
     std::string fragment_src;
@@ -1898,6 +1900,10 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
         is_ready = false;
       }
     }
+  }
+
+  if (!items.is_empty()) {
+    printf("Specialization Shaders: %fs\n", BLI_time_now_seconds() - start_time);
   }
 }
 

@@ -77,6 +77,8 @@ class Instance {
 
   bool shaders_are_ready_ = true;
 
+  double start_time = 0;
+
  public:
   ShaderModule &shaders;
   SyncModule sync;
