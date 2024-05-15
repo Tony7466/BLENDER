@@ -2109,18 +2109,14 @@ namespace blender::ed::sculpt_paint {
  * Only two of these arrays are actually necessary. The third comes from the fact that the PBVH
  * currently stores its own copy of positions when there are deformations. If that was removed, the
  * situation would be clearer.
+ *
+ * \todo Get rid of one of the arrays mentioned above to avoid the situation with evaluated
+ * positions, original positions, and then a third copy that's just there because of historical
+ * reasons.
  */
 
-// TODO: Just try to get rid of one of the arrays mentioned above so we don't have this weird
-// situation with evaluated positions, original positions, and then some third copy that's just
-// there because of legacy code reasons.
-
-// TODO: Remove access to positions and normals from new PBVH structure. Reasoning: we should be
-// very strict about that just handling the separation of geometry into separate nodes.
-
-// TODO (longer term (TODO: Move this TODO elsewhere)): Don't invert `deform_imats` on object
-// evaluation. Instead just invert them on-demand in brush implementations. This would be better
-// because only the inversions required for affected vertices would be necessary.
+// TODO: Remove access to positions and normals from the PBVH structure. The PBVH should only be
+// concerned with splitting geometry into separate spacially contiguous nodes.
 
 // TODO: Move these functions to proper new files.
 
@@ -2173,6 +2169,11 @@ void calc_mesh_automask(Object &object,
 
 void apply_translations(Span<float3> translations, Span<int> verts, MutableSpan<float3> positions);
 
+/**
+ * \todo Don't invert `deform_imats` on object evaluation. Instead just invert them on-demand in
+ * brush implementations. This would be better because only the inversions required for affected
+ * vertices would be necessary.
+ */
 void apply_crazyspace_to_translations(Span<float3x3> deform_imats,
                                       Span<int> verts,
                                       MutableSpan<float3> translations);
