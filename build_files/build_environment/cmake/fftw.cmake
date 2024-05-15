@@ -73,6 +73,12 @@ if(MSVC)
       COMMAND ${CMAKE_COMMAND} -E copy
         ${LIBDIR}/fftw3/bin/fftw3f.dll
         ${HARVEST_TARGET}/fftw3/lib/fftw3f.dll
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/fftw3/lib/fftw3f_threads.lib
+        ${HARVEST_TARGET}/fftw3/lib/fftw3f_threads.lib
+      COMMAND ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/fftw3/bin/fftw3f_threads.dll
+        ${HARVEST_TARGET}/fftw3/lib/fftw3f_threads.dll
       DEPENDEES install
     )
   endif()
