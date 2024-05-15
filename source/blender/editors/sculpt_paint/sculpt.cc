@@ -1240,36 +1240,28 @@ void SCULPT_orig_vert_data_init(SculptOrigVertData *data,
   SCULPT_orig_vert_data_unode_init(data, ob, unode);
 }
 
-static void sculpt_orig_mesh_vert_data_update(SculptOrigVertData &orig_data, const int vert)
-{
-  using namespace blender::ed::sculpt_paint;
-  if (orig_data.unode->type == undo::Type::Position) {
-    orig_data.co = orig_data.coords[vert];
-    orig_data.no = orig_data.normals[vert];
-  }
-  else if (orig_data.unode->type == undo::Type::Color) {
-    orig_data.col = orig_data.colors[vert];
-  }
-  else if (orig_data.unode->type == undo::Type::Mask) {
-    orig_data.mask = orig_data.vmasks[vert];
-  }
-}
-
 void SCULPT_orig_vert_data_update(SculptOrigVertData *orig_data, PBVHVertexIter *iter)
 {
   using namespace blender::ed::sculpt_paint;
-  if (!orig_data->bm_log) {
-    sculpt_orig_mesh_vert_data_update(*orig_data, iter->i);
-    return;
-  }
-
   if (orig_data->unode->type == undo::Type::Position) {
-    BM_log_original_vert_data(orig_data->bm_log, iter->bm_vert, &orig_data->co, &orig_data->no);
+    if (orig_data->bm_log) {
+      BM_log_original_vert_data(orig_data->bm_log, iter->bm_vert, &orig_data->co, &orig_data->no);
+    }
+    else {
+      orig_data->co = orig_data->coords[iter->i];
+      orig_data->no = orig_data->normals[iter->i];
+    }
   }
   else if (orig_data->unode->type == undo::Type::Color) {
+    orig_data->col = orig_data->colors[iter->i];
   }
   else if (orig_data->unode->type == undo::Type::Mask) {
-    orig_data->mask = orig_data->vmasks[iter->i];
+    if (orig_data->bm_log) {
+      orig_data->mask = BM_log_original_mask(orig_data->bm_log, iter->bm_vert);
+    }
+    else {
+      orig_data->mask = orig_data->vmasks[iter->i];
+    }
   }
 }
 
@@ -6472,24 +6464,6 @@ void calc_front_face(const float3 &view_normal,
   for (const int i : verts.index_range()) {
     const float dot = math::dot(view_normal, vert_normals[verts[i]]);
     factors[i] *= dot > 0.0f ? dot : 0.0f;
-  }
-}
-
-void calc_mesh_automask(Object &object,
-                        const auto_mask::Cache &cache,
-                        PBVHNode &node,
-                        const Span<int> verts,
-                        const MutableSpan<float> factors)
-{
-  SculptSession &ss = *object.sculpt;
-
-  auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node);
-
-  for (const int i : verts.index_range()) {
-    if (data.have_orig_data) {
-      sculpt_orig_mesh_vert_data_update(data.orig_data, i);
-    }
-    factors[i] *= auto_mask::factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
   }
 }
 

@@ -589,6 +589,39 @@ float factor_get(const Cache *automasking,
   return automasking_factor_end(ss, automasking, vert, mask);
 }
 
+static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int vert)
+{
+  using namespace blender::ed::sculpt_paint;
+  if (orig_data.unode->type == undo::Type::Position) {
+    orig_data.co = orig_data.coords[vert];
+    orig_data.no = orig_data.normals[vert];
+  }
+  else if (orig_data.unode->type == undo::Type::Color) {
+    orig_data.col = orig_data.colors[vert];
+  }
+  else if (orig_data.unode->type == undo::Type::Mask) {
+    orig_data.mask = orig_data.vmasks[vert];
+  }
+}
+
+void calc_mesh_automask(Object &object,
+                        const auto_mask::Cache &cache,
+                        PBVHNode &node,
+                        const Span<int> verts,
+                        const MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+
+  auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node);
+
+  for (const int i : verts.index_range()) {
+    if (data.have_orig_data) {
+      mesh_orig_vert_data_update(data.orig_data, i);
+    }
+    factors[i] *= auto_mask::factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
+  }
+}
+
 void cache_free(Cache *automasking)
 {
   MEM_delete(automasking);
