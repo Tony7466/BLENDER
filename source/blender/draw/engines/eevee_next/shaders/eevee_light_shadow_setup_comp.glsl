@@ -125,7 +125,7 @@ void cascade_sync(inout LightData light)
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
   light.do_not_access_directly._pad0_reserved = intBitsToFloat(base_offset_pos.x);
   light.do_not_access_directly._pad1_reserved = intBitsToFloat(base_offset_pos.y);
-  light.do_not_access_directly._pad7 = intBitsToFloat(0);
+  light.do_not_access_directly.shadow_radius = intBitsToFloat(0);
   light.do_not_access_directly.shadow_projection_shift = intBitsToFloat(0);
 #endif
 }
@@ -188,7 +188,7 @@ void clipmap_sync(inout LightData light)
   /* Number of levels is limited to 32 by `clipmap_level_range()` for this reason. */
   light.do_not_access_directly._pad0_reserved = intBitsToFloat(pos_offset.x);
   light.do_not_access_directly._pad1_reserved = intBitsToFloat(pos_offset.y);
-  light.do_not_access_directly._pad7 = intBitsToFloat(neg_offset.x);
+  light.do_not_access_directly.shadow_radius = intBitsToFloat(neg_offset.x);
   light.do_not_access_directly.shadow_projection_shift = intBitsToFloat(neg_offset.y);
 #endif
 }

@@ -94,7 +94,7 @@ void Light::sync(ShadowModule &shadows,
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
     if (is_sun_light(this->type)) {
-      this->directional->sync(object_to_world, la->sun_angle);
+      this->directional->sync(object_to_world);
     }
     else {
       this->punctual->sync(
@@ -156,21 +156,42 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
 {
   using namespace blender::math;
 
+  /* Compute influence radius first. Can be amended by shape later. */
+  if (is_local_light(this->type)) {
+    const float max_power = reduce_max(float3(&la->r)) * fabsf(la->energy / 100.0f);
+    const float surface_max_power = max(la->diff_fac, la->spec_fac) * max_power;
+    const float volume_max_power = la->volume_fac * max_power;
+
+    float influence_radius_surface = attenuation_radius_get(la, threshold, surface_max_power);
+    float influence_radius_volume = attenuation_radius_get(la, threshold, volume_max_power);
+
+    this->local.influence_radius_max = max(influence_radius_surface, influence_radius_volume);
+    this->local.influence_radius_invsqr_surface = safe_rcp(square(influence_radius_surface));
+    this->local.influence_radius_invsqr_volume = safe_rcp(square(influence_radius_volume));
+  }
+
   if (is_sun_light(this->type)) {
-    this->sun.radius = tanf(min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f);
+    float sun_half_angle = min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f;
+    /* TODO(fclem): Adjust by jitter over blur radius. */
+    this->sun.shadow_angle = sun_half_angle;
     /* Clamp to minimum value before float imprecision artifacts appear. */
-    this->sun.radius = max(0.001f, this->sun.radius);
+    this->sun.radius = max(0.001f, tanf(sun_half_angle));
   }
   else if (is_area_light(this->type)) {
     const bool is_irregular = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
     this->area.size = float2(la->area_size, is_irregular ? la->area_sizey : la->area_size);
     /* Scale and clamp to minimum value before float imprecision artifacts appear. */
-    this->area.size = this->area.size * scale.xy() / 2.0f;
-    /* Do not render lights that virtually have no area or clamp to minimum value before float
-     * imprecision artifacts appear. */
-    this->area.size = (this->area.size.x * this->area.size.y < 0.00001f) ?
-                          float2(0.0) :
-                          max(float2(0.003f), this->area.size * scale.xy() / 2.0f);
+    this->area.size *= scale.xy() / 2.0f;
+    /* TODO(fclem): Adjust by jitter over blur radius. */
+    /* Use non-clamped radius for soft shadows. Avoid having a minimum blur. */
+    this->local.shadow_radius = length(this->area.size);
+    /* Do not render lights that have no area. */
+    if (this->area.size.x * this->area.size.y < 0.00001f) {
+      /* Forces light to be culled. */
+      this->local.influence_radius_max = 0.0f;
+    }
+    /* Clamp to minimum value before float imprecision artifacts appear. */
+    this->area.size = max(float2(0.003f), this->area.size);
     /* For volume point lighting. */
     this->local.radius_squared = square(max(0.001f, length(this->area.size) / 2.0f));
   }
@@ -192,28 +213,15 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
       this->spot.spot_bias = 1.0f;
       this->spot.spot_tan = 0.0f;
     }
-
-    this->spot.radius = la->radius;
+    /* TODO(fclem): Adjust by jitter over blur radius. */
+    /* Use unclamped radius for soft shadows. Avoid having a minimum blur. */
+    this->local.shadow_radius = max(0.0f, la->radius);
     /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
-    this->spot.radius = max(this->spot.radius, la->energy * 2e-05f);
+    this->spot.radius = max(la->radius, la->energy * 2e-05f);
     /* Clamp to minimum value before float imprecision artifacts appear. */
     this->spot.radius = max(0.001f, this->spot.radius);
-
     /* For volume point lighting. */
     this->local.radius_squared = square(this->spot.radius);
-  }
-
-  if (is_local_light(this->type)) {
-    const float max_power = reduce_max(float3(&la->r)) * fabsf(la->energy / 100.0f);
-    const float surface_max_power = max(la->diff_fac, la->spec_fac) * max_power;
-    const float volume_max_power = la->volume_fac * max_power;
-
-    float influence_radius_surface = attenuation_radius_get(la, threshold, surface_max_power);
-    float influence_radius_volume = attenuation_radius_get(la, threshold, volume_max_power);
-
-    this->local.influence_radius_max = max(influence_radius_surface, influence_radius_volume);
-    this->local.influence_radius_invsqr_surface = safe_rcp(square(influence_radius_surface));
-    this->local.influence_radius_invsqr_volume = safe_rcp(square(influence_radius_volume));
   }
 }
 

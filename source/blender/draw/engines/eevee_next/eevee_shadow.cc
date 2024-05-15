@@ -524,13 +524,11 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera
   light.sun.clipmap_lod_max = levels_range.last();
 }
 
-void ShadowDirectional::sync(const float4x4 &object_mat, float shadow_disk_angle)
+void ShadowDirectional::sync(const float4x4 &object_mat)
 {
   object_mat_ = object_mat;
   /* Remove translation. */
   object_mat_.location() = float3(0.0f);
-
-  disk_shape_angle_ = min_ff(shadow_disk_angle, DEG2RADF(179.9f)) / 2.0f;
 }
 
 void ShadowDirectional::release_excess_tilemaps(const Camera &camera)
@@ -584,7 +582,6 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera)
   light.tilemap_index = tilemap_pool.tilemaps_data.size();
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
-  light.sun.shadow_angle = disk_shape_angle_;
 
   if (directional_distribution_type_get(camera) == SHADOW_PROJECTION_CASCADE) {
     cascade_tilemaps_distribution(light, camera);
