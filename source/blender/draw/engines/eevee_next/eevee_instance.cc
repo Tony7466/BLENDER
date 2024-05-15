@@ -186,6 +186,9 @@ void Instance::begin_sync()
     return;
   }
 
+  /* This should be renamed to init()?*/
+  render_buffers.sync();
+
   /* Needs to be first for sun light parameters. */
   world.sync();
 
@@ -207,7 +210,6 @@ void Instance::begin_sync()
   hiz_buffer.sync();
   main_view.sync();
   film.sync();
-  render_buffers.sync();
   ambient_occlusion.sync();
   volume_probes.sync();
   lookdev.sync();

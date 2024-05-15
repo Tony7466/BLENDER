@@ -225,7 +225,6 @@ struct SpecializationConstant {
     uint32_t u;
     int i;
     float f;
-    bool b;
   } value;
 
   SpecializationConstant(const char *name, uint32_t value) : name(name)
@@ -245,7 +244,7 @@ struct SpecializationConstant {
 
   SpecializationConstant(const char *name, bool value) : name(name)
   {
-    this->value.b = value;
+    this->value.u = value ? 1 : 0;
   }
 };
 
