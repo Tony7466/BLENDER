@@ -18,12 +18,13 @@ macro(fftw_build FFTW_POSTFIX)
 
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${LIBDIR}/fftw3
+        -DENABLE_THREADS=ON
         ${FFTW_EXTRA_ARGS}
 
       INSTALL_DIR ${LIBDIR}/fftw3
     )
   else()
-    set(FFTW_EXTRA_ARGS --enable-static)
+    set(FFTW_EXTRA_ARGS --enable-static --enable-threads)
     set(FFTW_INSTALL install)
     ExternalProject_Add(external_fftw3_${FFTW_POSTFIX}
       URL file://${PACKAGE_DIR}/${FFTW_FILE}
