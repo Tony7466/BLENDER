@@ -225,6 +225,12 @@ void cubeface_sync(int tilemap_id,
   tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
 }
 
+vec3 random_position_on_light(LightData light)
+{
+  vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_W);
+  return sample_ball(rand) * sqrt(light_local_data_get(light).radius_squared);
+}
+
 void main()
 {
   uint l_idx = gl_GlobalInvocationID.x;
@@ -260,11 +266,11 @@ void main()
   }
   else {
     /* Local lights. */
-#if 0 /* Jittered shadows. */
-    vec3 position_on_light = random_position_on_light(light);
-#else
     vec3 position_on_light = vec3(0.0);
-#endif
+
+    if (light.shadow_jitter) {
+      position_on_light = random_position_on_light(light);
+    }
 
     int tilemap_count = light_local_tilemap_count(light);
     for (int i = 0; i < tilemap_count; i++) {
