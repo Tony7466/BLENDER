@@ -966,10 +966,7 @@ void MTLRenderPassState::bind_fragment_buffer(id<MTLBuffer> buffer,
   }
 }
 
-void MTLComputeState::bind_compute_buffer(id<MTLBuffer> buffer,
-                                          uint64_t buffer_offset,
-                                          uint index,
-                                          bool writeable)
+void MTLComputeState::bind_compute_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index)
 {
   BLI_assert(index >= 0 && index < MTL_MAX_BUFFER_BINDINGS);
   BLI_assert(buffer_offset >= 0);
