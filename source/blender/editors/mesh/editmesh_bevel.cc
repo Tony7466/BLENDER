@@ -124,10 +124,7 @@ static float get_bevel_offset(wmOperator *op)
 static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
 {
   Scene *sce = CTX_data_scene(C);
-
-  auto get_modal_key_str = [&](int id) {
-    return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
-  };
+  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   char offset_str[NUM_STR_REP_LEN];
   if (RNA_enum_get(op->ptr, "offset_type") == BEVEL_AMT_PERCENT) {
@@ -163,8 +160,6 @@ static void edbm_bevel_update_status_text(bContext *C, wmOperator *op)
   ED_area_status_text(CTX_wm_area(C), header_status.c_str());
 
   /* Shown on Status Bar. */
-
-  BevelData *opdata = static_cast<BevelData *>(op->customdata);
 
   prop = RNA_struct_find_property(op->ptr, "profile_type");
   RNA_property_enum_name_gettexted(
