@@ -968,7 +968,8 @@ struct LightData {
   float lod_bias;
   /* Shadow Map resolution maximum resolution. */
   float lod_min;
-  float _pad1;
+  /* True if the light uses jittered soft shadows. */
+  bool32_t shadow_jitter;
   float _pad2;
 
 #if USE_LIGHT_UNION

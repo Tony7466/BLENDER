@@ -86,10 +86,10 @@ void Light::sync(ShadowModule &shadows,
   this->power[LIGHT_TRANSMISSION] = la->transmission_fac * shape_power * transmission_visibility;
   this->power[LIGHT_VOLUME] = la->volume_fac * point_power * volume_visibility;
 
-  this->pcf_radius = la->shadow_filter_radius;
-
   this->lod_bias = (1.0f - la->shadow_resolution_scale) * SHADOW_TILEMAP_LOD;
   this->lod_min = shadow_lod_min_get(la);
+  this->pcf_radius = la->shadow_filter_radius;
+  this->shadow_jitter = (la->flag & LA_SHADOW_JITTER) != 0;
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
