@@ -228,6 +228,7 @@ class NODE_PT_gizmo_display(Panel):
     bl_label = 'Gizmos'
     bl_ui_units_x = 8
 
+    # TODO: add checkbox for backdrop navigate
     def draw(self, context):
         layout = self.layout
 

@@ -63,7 +63,7 @@ enum {
   GZ_INDEX_TOTAL = 9,
 };
 
-struct NavigateGizmoInfo {
+struct NavigateGizmoInfoN {
   const char *opname;
   const char *gizmo;
   uint icon;
@@ -75,7 +75,7 @@ static void navigate_context_toggle_camera_lock_init(PointerRNA *ptr)
   RNA_string_set(ptr, "data_path", "space_data.lock_camera");
 }
 
-static NavigateGizmoInfo g_navigate_params[GZ_INDEX_TOTAL] = {
+static NavigateGizmoInfoN g_navigate_params[GZ_INDEX_TOTAL] = {
     {
         "VIEW3D_OT_move",
         "GIZMO_GT_button_2d",
@@ -167,7 +167,7 @@ static void WIDGETGROUP_navigate_setup(const bContext *C, wmGizmoGroup *gzgroup)
   wmOperatorType *ot_view_camera = WM_operatortype_find("VIEW3D_OT_view_camera", true);
 
   for (int i = 0; i < GZ_INDEX_TOTAL; i++) {
-    const NavigateGizmoInfo *info = &g_navigate_params[i];
+    const NavigateGizmoInfoN *info = &g_navigate_params[i];
     navgroup->gz_array[i] = WM_gizmo_new(info->gizmo, gzgroup, nullptr);
     wmGizmo *gz = navgroup->gz_array[i];
     gz->flag |= WM_GIZMO_MOVE_CURSOR | WM_GIZMO_DRAW_MODAL;

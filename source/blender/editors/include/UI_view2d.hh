@@ -484,6 +484,8 @@ void UI_view2d_smooth_view(const bContext *C, ARegion *region, const rctf *cur, 
  */
 void VIEW2D_GGT_navigate_impl(wmGizmoGroupType *gzgt, const char *idname);
 
+void VIEW2D_GGT_navigate_backdrop_impl(wmGizmoGroupType *gzgt, const char *idname);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

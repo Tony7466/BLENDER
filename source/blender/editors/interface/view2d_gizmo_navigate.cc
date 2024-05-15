@@ -7,6 +7,7 @@
  */
 
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 
 #include "BKE_context.hh"
 
@@ -42,8 +43,9 @@
 enum {
   GZ_INDEX_MOVE = 0,
   GZ_INDEX_ZOOM = 1,
+  GZ_INDEX_FIT = 2,
 
-  GZ_INDEX_TOTAL = 2,
+  GZ_INDEX_TOTAL = 3,
 };
 
 struct NavigateGizmoInfo {
@@ -63,6 +65,11 @@ static NavigateGizmoInfo g_navigate_params_for_space_image[GZ_INDEX_TOTAL] = {
         "GIZMO_GT_button_2d",
         ICON_VIEW_ZOOM,
     },
+    {
+      "IMAGE_OT_view_all",
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ORTHO, // todo: proper icon
+    },
 };
 
 static NavigateGizmoInfo g_navigate_params_for_space_clip[GZ_INDEX_TOTAL] = {
@@ -72,9 +79,14 @@ static NavigateGizmoInfo g_navigate_params_for_space_clip[GZ_INDEX_TOTAL] = {
         ICON_VIEW_PAN,
     },
     {
-        "CLIP_OT_view_zoom",
-        "GIZMO_GT_button_2d",
-        ICON_VIEW_ZOOM,
+      "CLIP_OT_view_zoom",
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ZOOM,
+    },
+    {
+      "SEQUENCER_OT_view_all_preview",
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ORTHO, // todo: proper icon
     },
 };
 
@@ -89,9 +101,14 @@ static NavigateGizmoInfo g_navigate_params_for_view2d[GZ_INDEX_TOTAL] = {
         "GIZMO_GT_button_2d",
         ICON_VIEW_ZOOM,
     },
+    {
+      "NODE_OT_view_all", // todo: implement generic view_all?
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ORTHO, // todo: proper icon
+    },
 };
 
-static NavigateGizmoInfo g_navigate_params_for_space_node[GZ_INDEX_TOTAL + 1] = {
+static NavigateGizmoInfo g_navigate_params_for_space_node_backdrop[GZ_INDEX_TOTAL] = {
     {
         "NODE_OT_backimage_move",
         "GIZMO_GT_button_2d",
@@ -102,7 +119,11 @@ static NavigateGizmoInfo g_navigate_params_for_space_node[GZ_INDEX_TOTAL + 1] = 
         "GIZMO_GT_button_2d",
         ICON_VIEW_ZOOM,
     },
-
+  {
+    "NODE_OT_backimage_fit",
+    "GIZMO_GT_button_2d",
+    ICON_VIEW_ORTHO, // todo: proper icon
+  },
 };
 
 static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
@@ -112,16 +133,16 @@ static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
       return g_navigate_params_for_space_image;
     case SPACE_CLIP:
       return g_navigate_params_for_space_clip;
-    case SPACE_NODE:
-      return g_navigate_params_for_space_node;
     default:
-      /* Used for sequencer. */
+      /* Used for sequencer and compositor. */
       return g_navigate_params_for_view2d;
   }
 }
 
 struct NavigateWidgetGroup {
   wmGizmo *gz_array[GZ_INDEX_TOTAL];
+  /* Sets order of first gizmo in group. Typically used when other gizmos are already drawn. */
+  int slot_offset;
   /* Store the view state to check for changes. */
   struct {
     rcti rect_visible;
@@ -161,8 +182,7 @@ static bool WIDGETGROUP_navigate_poll(const bContext *C, wmGizmoGroupType * /*gz
     }
     case SPACE_NODE: {
       const SpaceNode *snode = static_cast<const SpaceNode *>(area->spacedata.first);
-      if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_NAVIGATE) ||
-          (snode->flag & SNODE_BACKDRAW) == 0)
+      if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_NAVIGATE))
         return false;
     } break;
   }
@@ -172,6 +192,7 @@ static bool WIDGETGROUP_navigate_poll(const bContext *C, wmGizmoGroupType * /*gz
 static void WIDGETGROUP_navigate_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   NavigateWidgetGroup *navgroup = MEM_cnew<NavigateWidgetGroup>(__func__);
+  navgroup->slot_offset = 0;
 
   const NavigateGizmoInfo *navigate_params = navigate_params_from_space_type(
       gzgroup->type->gzmap_params.spaceid);
@@ -257,7 +278,8 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
     WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, true);
   }
 
-  int icon_mini_slot = 0;
+  // TODO: wtf is this, write a loop
+  int icon_mini_slot = navgroup->slot_offset;
 
   gz = navgroup->gz_array[GZ_INDEX_ZOOM];
   gz->matrix_basis[3][0] = roundf(co[0]);
@@ -267,6 +289,11 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
   gz = navgroup->gz_array[GZ_INDEX_MOVE];
   gz->matrix_basis[3][0] = roundf(co[0]);
   gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot++));
+  WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+
+  gz = navgroup->gz_array[GZ_INDEX_FIT];
+  gz->matrix_basis[3][0] = roundf(co[0]);
+  gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot));
   WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
 }
 
@@ -280,6 +307,98 @@ void VIEW2D_GGT_navigate_impl(wmGizmoGroupType *gzgt, const char *idname)
 
   gzgt->poll = WIDGETGROUP_navigate_poll;
   gzgt->setup = WIDGETGROUP_navigate_setup;
+  gzgt->draw_prepare = WIDGETGROUP_navigate_draw_prepare;
+}
+
+static bool WIDGETGROUP_navigate_backdrop_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
+{
+  ScrArea *area = CTX_wm_area(C);
+
+  const SpaceNode *snode = static_cast<const SpaceNode *>(area->spacedata.first);
+  if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_NAVIGATE) ||
+      (snode->flag & SNODE_BACKDRAW) == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+static void WIDGETGROUP_navigate_backdrop_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
+{
+  NavigateWidgetGroup *navgroup = MEM_cnew<NavigateWidgetGroup>(__func__);
+  navgroup->slot_offset = 4;
+
+  const NavigateGizmoInfo *navigate_params = g_navigate_params_for_space_node_backdrop;
+
+  // todo: reduce duplicate code with WIDGETGROUP_navigate_setup()
+
+  for (int i = 0; i < GZ_INDEX_TOTAL; i++) {
+    const NavigateGizmoInfo *info = &navigate_params[i];
+    navgroup->gz_array[i] = WM_gizmo_new(info->gizmo, gzgroup, nullptr);
+    wmGizmo *gz = navgroup->gz_array[i];
+    gz->flag |= WM_GIZMO_MOVE_CURSOR | WM_GIZMO_DRAW_MODAL;
+
+    {
+      uchar icon_color[3];
+      UI_GetThemeColor3ubv(TH_TEXT, icon_color);
+      int color_tint, color_tint_hi;
+      if (icon_color[0] > 128) {
+        color_tint = -40;
+        color_tint_hi = 60;
+        gz->color[3] = 0.5f;
+        gz->color_hi[3] = 0.5f;
+      }
+      else {
+        color_tint = 60;
+        color_tint_hi = 60;
+        gz->color[3] = 0.5f;
+        gz->color_hi[3] = 0.75f;
+      }
+      UI_GetThemeColorShade3fv(TH_HEADER, color_tint, gz->color);
+      UI_GetThemeColorShade3fv(TH_HEADER, color_tint_hi, gz->color_hi);
+    }
+
+    /* may be overwritten later */
+    gz->scale_basis = (GIZMO_SIZE * GIZMO_MINI_FAC) / 2;
+    if (info->icon != 0) {
+      PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
+      RNA_property_enum_set(gz->ptr, prop, info->icon);
+      RNA_enum_set(
+                   gz->ptr, "draw_options", ED_GIZMO_BUTTON_SHOW_OUTLINE | ED_GIZMO_BUTTON_SHOW_BACKDROP);
+    }
+
+    wmOperatorType *ot = WM_operatortype_find(info->opname, true);
+    WM_gizmo_operator_set(gz, 0, ot, nullptr);
+  }
+
+  /* Modal operators, don't use initial mouse location since we're clicking on a button. */
+  {
+    int gz_ids[] = {GZ_INDEX_ZOOM};
+    for (int i = 0; i < ARRAY_SIZE(gz_ids); i++) {
+      wmGizmo *gz = navgroup->gz_array[gz_ids[i]];
+      wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
+      RNA_boolean_set(&gzop->ptr, "use_cursor_init", false);
+    }
+  }
+
+  gzgroup->customdata = navgroup;
+}
+
+static void WIDGETGROUP_navigate_backdrop_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
+{
+
+}
+
+void VIEW2D_GGT_navigate_backdrop_impl(wmGizmoGroupType *gzgt, const char *idname)
+{
+  gzgt->name = "View2D Navigate";
+  gzgt->idname = idname;
+
+  gzgt->flag |= (WM_GIZMOGROUPTYPE_PERSISTENT | WM_GIZMOGROUPTYPE_SCALE |
+                 WM_GIZMOGROUPTYPE_DRAW_MODAL_ALL);
+
+  gzgt->poll = WIDGETGROUP_navigate_backdrop_poll;
+  gzgt->setup = WIDGETGROUP_navigate_backdrop_setup;
   gzgt->draw_prepare = WIDGETGROUP_navigate_draw_prepare;
 }
 

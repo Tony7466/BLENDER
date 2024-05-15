@@ -1132,6 +1132,11 @@ static void NODE_GGT_navigate(wmGizmoGroupType *gzgt)
   VIEW2D_GGT_navigate_impl(gzgt, "NODE_GGT_navigate");
 }
 
+static void NODE_GGT_navigate_backdrop(wmGizmoGroupType *gzgt)
+{
+  VIEW2D_GGT_navigate_backdrop_impl(gzgt, "NODE_GGT_navigate_backdrop");
+}
+
 static void node_widgets()
 {
   /* Create the widget-map for the area here. */
@@ -1143,6 +1148,7 @@ static void node_widgets()
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_backdrop_corner_pin);
 
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_navigate);
+  WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_navigate_backdrop);
 }
 
 static void node_id_remap(ID *old_id, ID *new_id, SpaceNode *snode)
