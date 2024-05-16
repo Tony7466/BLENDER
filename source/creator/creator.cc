@@ -349,8 +349,8 @@ int main(int argc,
 
 #ifdef BUILD_DATE
   {
-    time_t temp_time = build_commit_timestamp;
-    tm *tm = gmtime(&temp_time);
+    const time_t temp_time = build_commit_timestamp;
+    const tm *tm = gmtime(&temp_time);
     if (LIKELY(tm)) {
       strftime(build_commit_date, sizeof(build_commit_date), "%Y-%m-%d", tm);
       strftime(build_commit_time, sizeof(build_commit_time), "%H:%M", tm);
@@ -493,7 +493,7 @@ int main(int argc,
   RNA_init();
 
   RE_engines_init();
-  BKE_node_system_init();
+  blender::bke::BKE_node_system_init();
   BKE_particle_init_rng();
   /* End second initialization. */
 

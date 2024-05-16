@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,40 +21,25 @@
 #include "BLI_task.h"
 #include "BLI_task.hh"
 
+#include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
 
 inline namespace draw_cc {
 
-namespace pbvh = bke::pbvh;
-
-struct TLS {
+struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
   Vector<float3> translations;
 };
 
-/**
- * Note on the various positions arrays:
- * - positions_sculpt: The positions affected by brush strokes (maybe indirectly). Owned by the
- *   PBVH or mesh.
- * - positions_mesh: Positions owned by the original mesh. Not the same as `positions_sculpt` if
- *   there are deform modifiers.
- * - positions_eval: Positions after procedural deformation, used to build the PBVH. Translations
- *   are built for these values, then applied to `positions_sculpt`.
- *
- * Only two of these arrays are actually necessary. The third comes from the fact that the PBVH
- * currently stores its own copy of positions when there are deformations. If that was removed, the
- * situation would be clearer.
- */
-
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float3 &offset,
+                       const PBVHNode &node,
                        Object &object,
-                       pbvh::mesh::Node &node,
-                       TLS &tls,
+                       LocalData &tls,
                        const MutableSpan<float3> positions_sculpt,
                        const MutableSpan<float3> positions_mesh)
 {
@@ -62,15 +47,19 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  pbvh::Tree pbvh_tree(*ss.pbvh);
+  const PBVH &pbvh = *ss.pbvh;
 
-  const Span<float3> positions_eval = pbvh_tree.vert_positions();
-  const Span<float3> vert_normals = pbvh_tree.vert_normals();
-  const Span<int> verts = node.unique_vert_indices();
+  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   calc_mesh_hide_and_mask(mesh, verts, factors);
+
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+  }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
@@ -78,12 +67,8 @@ static void calc_faces(const Sculpt &sd,
       ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
-  }
-
   if (ss.cache->automasking) {
-    calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
+    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
@@ -102,8 +87,6 @@ static void calc_faces(const Sculpt &sd,
 
   apply_translations(translations, verts, positions_sculpt);
   flush_positions_to_shape_keys(object, verts, positions_sculpt, positions_mesh);
-
-  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
@@ -119,7 +102,7 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -152,7 +135,7 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -179,7 +162,7 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
 
 void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
-  SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const float bstrength = ss.cache->bstrength;
 
@@ -189,17 +172,17 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 
   const float3 offset = effective_normal * ss.cache->radius * ss.cache->scale * bstrength;
 
-  switch (BKE_pbvh_type(object.sculpt->pbvh)) {
+  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
-      threading::EnumerableThreadSpecific<TLS> all_tls;
+      threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        TLS &tls = all_tls.local();
+        LocalData &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node node(*nodes[i]);
-          calc_faces(sd, brush, offset, object, node, tls, positions_sculpt, positions_mesh);
+          calc_faces(sd, brush, offset, *nodes[i], object, tls, positions_sculpt, positions_mesh);
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;

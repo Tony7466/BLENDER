@@ -128,6 +128,18 @@ class VKRenderGraph : public NonCopyable {
   }
 
  public:
+  void add_node(const VKBeginRenderingNode::CreateInfo &begin_rendering)
+  {
+    add_node<VKBeginRenderingNode>(begin_rendering);
+  }
+  void add_node(const VKEndRenderingNode::CreateInfo &end_rendering)
+  {
+    add_node<VKEndRenderingNode>(end_rendering);
+  }
+  void add_node(const VKClearAttachmentsNode::CreateInfo &clear_attachments)
+  {
+    add_node<VKClearAttachmentsNode>(clear_attachments);
+  }
   void add_node(const VKClearColorImageNode::CreateInfo &clear_color_image)
   {
     add_node<VKClearColorImageNode>(clear_color_image);
@@ -164,12 +176,16 @@ class VKRenderGraph : public NonCopyable {
   {
     add_node<VKDispatchNode>(dispatch);
   }
+  void add_node(const VKDispatchIndirectNode::CreateInfo &dispatch)
+  {
+    add_node<VKDispatchIndirectNode>(dispatch);
+  }
 
   /**
    * Submit partial graph to be able to read the expected result of the rendering commands
    * affecting the given vk_buffer. This method is called from
    * `GPU_texture/storagebuf/indexbuf/vertbuf/_read`. In vulkan the content of images cannot be
-   * read directly and always needs tobe copied to a transfer buffer.
+   * read directly and always needs to be copied to a transfer buffer.
    *
    * After calling this function the mapped memory of the vk_buffer would contain the data of the
    * buffer.

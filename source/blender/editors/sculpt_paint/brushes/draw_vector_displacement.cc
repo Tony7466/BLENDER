@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,26 +20,47 @@
 #include "BLI_task.h"
 #include "BLI_task.hh"
 
+#include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
 
 inline namespace draw_vector_displacement_cc {
 
-namespace pbvh = bke::pbvh;
-
-struct TLS {
+struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
   Vector<float4> colors;
   Vector<float3> translations;
 };
 
+static void calc_brush_texture_colors(SculptSession &ss,
+                                      const Brush &brush,
+                                      const Span<float3> vert_positions,
+                                      const Span<int> verts,
+                                      const Span<float> factors,
+                                      const MutableSpan<float4> r_colors)
+{
+  BLI_assert(verts.size() == r_colors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+
+  for (const int i : verts.index_range()) {
+    float texture_value;
+    float4 texture_rgba;
+    /* NOTE: This is not a thread-safe call. */
+    sculpt_apply_texture(
+        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
+
+    r_colors[i] = texture_rgba * factors[i];
+  }
+}
+
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
+                       const PBVHNode &node,
                        Object &object,
-                       pbvh::mesh::Node &node,
-                       TLS &tls,
+                       LocalData &tls,
                        MutableSpan<float3> positions_orig,
                        MutableSpan<float3> mesh_positions)
 {
@@ -47,33 +68,33 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  pbvh::Tree pbvh_tree(*ss.pbvh);
+  PBVH &pbvh = *ss.pbvh;
 
-  const Span<float3> positions = pbvh_tree.vert_positions();
-  const Span<float3> vert_normals = pbvh_tree.vert_normals();
-  const Span<int> verts = node.unique_vert_indices();
+  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   calc_mesh_hide_and_mask(mesh, verts, factors);
 
-  tls.distances.reinitialize(verts.size());
-  const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(
-      ss, positions, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
-  calc_brush_strength_factors(ss, brush, verts, distances, factors);
-
   if (brush.flag & BRUSH_FRONTFACE) {
     calc_front_face(cache.view_normal, vert_normals, verts, factors);
   }
 
+  tls.distances.reinitialize(verts.size());
+  const MutableSpan<float> distances = tls.distances;
+  calc_distance_falloff(
+      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  calc_brush_strength_factors(ss, brush, verts, distances, factors);
+
   if (ss.cache->automasking) {
-    calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
+    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
   tls.colors.reinitialize(verts.size());
   const MutableSpan<float4> colors = tls.colors;
-  calc_brush_texture_colors(ss, brush, positions, verts, factors, colors);
+  calc_brush_texture_colors(ss, brush, positions_eval, verts, factors, colors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -81,7 +102,7 @@ static void calc_faces(const Sculpt &sd,
     SCULPT_calc_vertex_displacement(&ss, &brush, colors[i], translations[i]);
   }
 
-  clip_and_lock_translations(sd, ss, positions, verts, translations);
+  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
@@ -89,8 +110,6 @@ static void calc_faces(const Sculpt &sd,
 
   apply_translations(translations, verts, positions_orig);
   flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
-
-  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -107,7 +126,7 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -145,7 +164,7 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -175,17 +194,17 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
-  switch (BKE_pbvh_type(object.sculpt->pbvh)) {
+  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
-      threading::EnumerableThreadSpecific<TLS> all_tls;
+      threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       MutableSpan<float3> positions_orig = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> mesh_positions = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        TLS &tls = all_tls.local();
+        LocalData &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd, brush, object, face_node, tls, positions_orig, mesh_positions);
+          calc_faces(sd, brush, *nodes[i], object, tls, positions_orig, mesh_positions);
+          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;
