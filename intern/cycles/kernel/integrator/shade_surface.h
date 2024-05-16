@@ -121,6 +121,7 @@ ccl_device_forceinline bool integrate_surface_holdout(KernelGlobals kg,
 ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
                                                        IntegratorState state,
                                                        ccl_private const ShaderData *sd,
+                                                       ccl_private const RNGState *rng_state,
                                                        ccl_global float *ccl_restrict
                                                            render_buffer)
 {
@@ -149,17 +150,24 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
   /* Evaluate emissive closure. */
   Spectrum L = surface_shader_emission(sd);
 
-  const float mis_weight = light_sample_mis_weight_forward_surface(kg, state, path_flag, sd);
+  const float forward_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+  const float nee_pdf = light_sample_pdf_surface(kg, state, path_flag, sd);
+  const float mis_weight = light_sample_mis_weight_forward(kg, forward_pdf, nee_pdf);
 
   guiding_record_surface_emission(kg, state, L, mis_weight);
-  film_write_surface_emission(
-      kg, state, L, mis_weight, render_buffer, object_lightgroup(kg, sd->object));
-}
 
-/* TODO(weizhen): move these radiance functions to somewhere more appropriate. */
-ccl_device_forceinline bool light_is_direct_illumination(IntegratorState state)
-{
-  return !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_ANY_PASS);
+  if (path_use_restir(kg, state)) {
+    /* Evaluate the pdf to sample this light from the previous shading point. */
+    LightSample ls ccl_optional_struct_init;
+    triangle_light_sample_from_intersection(kg, state, sd, &ls);
+    ls.pdf = nee_pdf;
+
+    film_write_surface_emission_to_reservoir(kg, state, L, ls, rng_state, render_buffer);
+  }
+  else {
+    film_write_surface_emission(
+        kg, state, L, mis_weight, render_buffer, object_lightgroup(kg, sd->object));
+  }
 }
 
 /* Evaluate the integrant of the rendering equation in area measure (BSDF * L * cos_NO * V * G) and
@@ -437,19 +445,16 @@ ccl_device
   /* Sample position on a light. */
   Reservoir reservoir(kg, use_ris);
   const int max_samples = reservoir.max_samples;
-  int samples_seen = 0;
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
     PROFILING_EVENT(PROFILING_RESTIR_LIGHT_RESAMPLING);
     LightSample ls ccl_optional_struct_init;
     BsdfEval radiance ccl_optional_struct_init;
 
-    /* TODO(weizhen): does this result in correlated samples if different sample numbers are used
-     * when using RIS? */
+    /* TODO(weizhen): does this result in correlated samples in ReSTIR PT? */
     const float3 rand_light = path_branched_rng_3D(
         kg, rng_state, i, reservoir.num_light_samples, PRNG_LIGHT);
-    const float rand_pick = path_branched_rng_1D(
-        kg, rng_state, samples_seen++, max_samples, PRNG_PICK);
+    const float rand_pick = path_branched_rng_1D(kg, rng_state, i, max_samples, PRNG_PICK);
 
     /* TODO(weizhen): use higher-level nodes in light tree, or use light tile as in the ReSTIR PT
      * paper. */
@@ -486,209 +491,6 @@ ccl_device
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_light_sample(ls, radiance, bsdf_pdf, rand_pick);
   }
-
-  /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
-  for (int i = 0; i < reservoir.num_bsdf_samples * use_ris; i++) {
-    PROFILING_EVENT(PROFILING_RESTIR_BSDF_RESAMPLING);
-    kernel_assert(bounce == 0);
-
-    LightSample ls ccl_optional_struct_init;
-    BsdfEval radiance ccl_optional_struct_init;
-    float3 bsdf_wo ccl_optional_struct_init;
-    float bsdf_pdf = 0.0f;
-
-    float2 bsdf_sampled_roughness = make_float2(1.0f, 1.0f);
-    float bsdf_eta = 1.0f;
-
-    float3 rand_bsdf = path_branched_rng_3D(
-        kg, rng_state, i, reservoir.num_bsdf_samples, PRNG_SURFACE_BSDF);
-    const float rand_pick = path_branched_rng_1D(
-        kg, rng_state, samples_seen++, max_samples, PRNG_PICK);
-
-    ccl_private const ShaderClosure *sc = surface_shader_bsdf_bssrdf_pick(sd, &rand_bsdf);
-
-    /* TODO(weizhen): what to do with subsurface? */
-    surface_shader_bsdf_sample_closure(kg,
-                                       sd,
-                                       sc,
-                                       path_flag,
-                                       rand_bsdf,
-                                       &radiance,
-                                       &bsdf_wo,
-                                       &bsdf_pdf,
-                                       &bsdf_sampled_roughness,
-                                       &bsdf_eta);
-
-    if (bsdf_pdf == 0.0f || bsdf_eval_is_zero(&radiance)) {
-      continue;
-    }
-
-    /* Set up ray. */
-    Ray ray ccl_optional_struct_init;
-    ray.D = normalize(bsdf_wo);
-    ray.P = integrate_surface_ray_offset(kg, sd, sd->P, ray.D);
-    ray.tmin = 0.0f;
-    ray.tmax = FLT_MAX;
-    ray.time = INTEGRATOR_STATE(state, ray, time);
-
-    /* Scene Intersection. */
-    Intersection isect ccl_optional_struct_init;
-    isect.object = OBJECT_NONE;
-    isect.prim = PRIM_NONE;
-    ray.self.object = sd->object;
-    ray.self.prim = sd->prim;
-    ray.self.light_object = OBJECT_NONE;
-    ray.self.light_prim = PRIM_NONE;
-    ray.self.light = LAMP_NONE;
-
-    /* Potential intersection of emissive triangles. */
-    /* TODO(weizhen): is it worth to set up the next `path_flag`? */
-    const uint32_t next_path_flag = PATH_RAY_ALL_VISIBILITY & ~PATH_RAY_CAMERA;
-
-    bool hit = scene_intersect(kg, &ray, next_path_flag, &isect);
-
-    if (!hit) {
-      isect.prim = PRIM_NONE;
-    }
-
-    /* Potential intersection of spot, point, and area lights. */
-    /* TODO(weizhen): delay shadow ray tracing, or delay this whole BSDF sampling? */
-    /* FIXME(weizhen): this has artefacts when `num_hits > 1` due to transparent lights. */
-    hit = lights_intersect(
-              kg, state, &ray, &isect, sd->prim, sd->object, sd->type, next_path_flag) ||
-          hit;
-
-    Spectrum L = zero_spectrum();
-    /* TODO(weizhen): volume? */
-    if (hit) {
-      /* TODO(weizhen): is this the flag for `sc`? */
-      const uint32_t transmission_flag = (sd->flag & SD_BSDF_HAS_TRANSMISSION) ?
-                                             PATH_RAY_MIS_HAD_TRANSMISSION :
-                                             ~PATH_RAY_MIS_HAD_TRANSMISSION;
-
-      if (isect.type & PRIMITIVE_LAMP) {
-        if (!light_sample_from_intersection(
-                kg, &isect, ray.P, ray.D, sd->N, transmission_flag, &ls))
-        {
-          continue;
-        }
-        ShaderDataTinyStorage emission_sd_storage;
-        ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
-
-        L = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time);
-
-        /* TODO(weizhen): maybe merge with `light_sample_mis_weight_forward_lamp` */
-        /* Light selection pdf. */
-#ifdef __LIGHT_TREE__
-        if (kernel_data.integrator.use_light_tree) {
-          ls.pdf *= light_tree_pdf<false>(kg,
-                                          ray.P,
-                                          sd->N,
-                                          0.0f,
-                                          transmission_flag,
-                                          0,
-                                          kernel_data_fetch(light_to_tree, ls.lamp),
-                                          light_link_receiver_forward(kg, state));
-        }
-        else
-#endif
-        {
-          ls.pdf *= light_distribution_pdf_lamp(kg);
-        }
-      }
-      else {
-        /* TODO(weizhen): this is too costly. */
-        ShaderData emission_sd;
-        shader_setup_from_ray(kg, &emission_sd, &ray, &isect);
-
-        /* TODO(weizhen):  can't use `nullptr` with aov. */
-        surface_shader_eval<node_feature_mask>(
-            kg, state, &emission_sd, nullptr, transmission_flag);
-
-        /* Emissive triangle. */
-        if (emission_sd.flag & SD_EMISSION) {
-          /* Evaluate emissive closure. */
-          L = surface_shader_emission(&emission_sd);
-
-          triangle_light_sample_from_intersection(
-              kg, &isect, &emission_sd, ray.P, ray.D, ray.time, &ls);
-
-          /* TODO(weizhen): PATH_RAY_MIS_SKIP?  */
-          const bool has_mis = (emission_sd.type & PRIMITIVE_TRIANGLE) &&
-                               (emission_sd.flag &
-                                ((emission_sd.flag & SD_BACKFACING) ? SD_MIS_BACK : SD_MIS_FRONT));
-
-          if (has_mis) {
-            ls.pdf = triangle_light_pdf(kg, &emission_sd, isect.t);
-
-            /* TODO(weizhen): maybe merge with `light_sample_mis_weight_forward_surface` */
-            /* Light selection pdf. */
-#ifdef __LIGHT_TREE__
-            if (kernel_data.integrator.use_light_tree) {
-              uint lookup_offset = kernel_data_fetch(object_lookup_offset, emission_sd.object);
-              uint prim_offset = kernel_data_fetch(object_prim_offset, emission_sd.object);
-              uint triangle = kernel_data_fetch(triangle_to_tree,
-                                                emission_sd.prim - prim_offset + lookup_offset);
-
-              ls.pdf *= light_tree_pdf<false>(kg,
-                                              sd->P,
-                                              sd->N,
-                                              0.0f,
-                                              transmission_flag,
-                                              emission_sd.object,
-                                              triangle,
-                                              light_link_receiver_forward(kg, state));
-            }
-#endif
-          }
-          else {
-            ls.pdf = 0.0f;
-          }
-        }
-      }
-    }
-    else {
-      /* ShaderDataTinyStorage emission_sd_storage; */
-      /* ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage); */
-
-      /* /\* Distant light. *\/ */
-      /* for (int lamp = 0; lamp < kernel_data.integrator.num_lights; lamp++) { */
-      /*   if (distant_light_sample_from_intersection(kg, ray.D, lamp, &ls)) { */
-      /*     /\* TODO(weizhen): how to do distant light pdf? *\/ */
-      /*     L += light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time); */
-      /*   } */
-      /* } */
-
-      /* /\* Background light. *\/ */
-      /* const int background_shader = kernel_data.background.surface_shader; */
-
-      /* /\* Use fast constant background color if available. *\/ */
-      /* Spectrum background_eval = zero_spectrum(); */
-      /* if (surface_shader_constant_emission(kg, background_shader, &background_eval)) { */
-      /*   L = background_eval; */
-      /* } */
-
-      /* /\* Evaluate background shader. *\/ */
-      /* shader_setup_from_background(kg, emission_sd, ray.P, ray.D, sd->time); */
-      /* TODO(weizhen): can't use `nullptr` with aov. */
-      /* surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND>( */
-      /*     kg, state, emission_sd, nullptr, PATH_RAY_EMISSION); */
-      /* L = surface_shader_background(emission_sd); */
-      /* /\* TODO(weizhen): how to do background light pdf? *\/ */
-    }
-
-    if (is_zero(L)) {
-      continue;
-    }
-    const float geometry_term = ls.jacobian_solid_angle_to_area();
-    bsdf_eval_mul(&radiance, L * geometry_term);
-    PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
-    reservoir.add_bsdf_sample(ls, radiance, bsdf_pdf, rand_pick);
-  }
-
-  PROFILING_EVENT(PROFILING_RESTIR_INITIAL_RESAMPLING);
-
-  kernel_assert(samples_seen <= max_samples);
 
   if (use_ris) {
     /* Write to reservoir and trace shadow ray later. */
@@ -966,6 +768,10 @@ ccl_device int integrate_surface(KernelGlobals kg,
   integrate_surface_shader_setup(kg, state, &sd);
   PROFILING_SHADER(sd.object, sd.shader);
 
+  /* Load random number state. */
+  RNGState rng_state;
+  path_state_rng_load(state, &rng_state);
+
   int continue_path_label = 0;
 
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
@@ -1016,7 +822,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
       if (sd.flag & SD_EMISSION) {
         /* TODO(weizhen): `min_bounce` is only for debugging, revert after finishing the branch. */
         if (INTEGRATOR_STATE(state, path, bounce) >= kernel_data.integrator.min_bounce) {
-          integrate_surface_emission(kg, state, &sd, render_buffer);
+          integrate_surface_emission(kg, state, &sd, &rng_state, render_buffer);
         }
       }
 
@@ -1039,10 +845,6 @@ ccl_device int integrate_surface(KernelGlobals kg,
       film_write_denoising_features_surface(kg, state, &sd, render_buffer);
 #endif
     }
-
-    /* Load random number state. */
-    RNGState rng_state;
-    path_state_rng_load(state, &rng_state);
 
 #if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4
     surface_shader_prepare_guiding(kg, state, &sd, &rng_state);

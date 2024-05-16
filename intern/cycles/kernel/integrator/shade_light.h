@@ -55,11 +55,24 @@ ccl_device_inline void integrate_light(KernelGlobals kg,
   }
 
   /* MIS weighting. */
-  const float mis_weight = light_sample_mis_weight_forward_lamp(kg, state, path_flag, &ls, ray_P);
+  const float forward_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+  ls.pdf = light_sample_pdf_lamp(kg, state, path_flag, &ls, ray_P);
+  const float mis_weight = light_sample_mis_weight_forward(kg, forward_pdf, ls.pdf);
+
+  guiding_record_surface_emission(kg, state, light_eval, mis_weight);
 
   /* Write to render buffer. */
-  guiding_record_surface_emission(kg, state, light_eval, mis_weight);
-  film_write_surface_emission(kg, state, light_eval, mis_weight, render_buffer, ls.group);
+  if (path_use_restir(kg, state)) {
+    /* Load random number state. */
+    RNGState rng_state;
+    path_state_rng_load(state, &rng_state);
+
+    /* FIXME(weizhen): this has artefacts when `num_hits > 1` due to transparent lights. */
+    film_write_surface_emission_to_reservoir(kg, state, light_eval, ls, &rng_state, render_buffer);
+  }
+  else {
+    film_write_surface_emission(kg, state, light_eval, mis_weight, render_buffer, ls.group);
+  }
 }
 
 ccl_device void integrator_shade_light(KernelGlobals kg,

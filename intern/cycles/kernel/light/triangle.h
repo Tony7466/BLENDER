@@ -304,28 +304,26 @@ ccl_device_forceinline void triangle_light_sample_from_uv(KernelGlobals kg,
 
 ccl_device_inline void triangle_light_sample_from_intersection(
     KernelGlobals kg,
-    ccl_private const Intersection *ccl_restrict isect,
+    IntegratorState state,
     ccl_private const ShaderData *sd,
-    const float3 ray_P,
-    const float3 ray_D,
-    const float time,
     ccl_private LightSample *ccl_restrict ls)
 {
+  const float3 ray_D = INTEGRATOR_STATE(state, ray, D);
   ls->shader = sd->shader;
   ls->D = ray_D;
-  ls->t = isect->t;
-  ls->u = isect->u;
-  ls->v = isect->v;
-  ls->P = ray_P + ray_D * ls->t;
-  ls->object = isect->object;
-  ls->prim = isect->prim;
+  ls->t = sd->ray_length;
+  ls->u = sd->u;
+  ls->v = sd->v;
+  ls->P = INTEGRATOR_STATE(state, ray, P) + ray_D * ls->t;
+  ls->object = sd->object;
+  ls->prim = sd->prim;
   ls->lamp = LAMP_NONE;
   ls->type = LIGHT_TRIANGLE;
   ls->group = object_lightgroup(kg, ls->object);
 
   /* Normal. */
   float3 V[3];
-  triangle_world_space_vertices(kg, ls->object, ls->prim, time, V);
+  triangle_world_space_vertices(kg, ls->object, ls->prim, INTEGRATOR_STATE(state, ray, time), V);
   const float3 e0 = V[1] - V[0];
   const float3 e1 = V[2] - V[0];
   ls->Ng = safe_normalize(cross(e0, e1));

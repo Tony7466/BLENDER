@@ -408,4 +408,20 @@ ccl_device_inline float path_state_rng_light_termination(KernelGlobals kg,
   return 0.0f;
 }
 
+/* TODO(weizhen): move these radiance functions to somewhere more appropriate. Revisit when
+ * implementing ReSTIR PT. */
+ccl_device_forceinline bool light_is_direct_illumination(IntegratorState state)
+{
+  return !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_ANY_PASS);
+}
+
+ccl_device_forceinline bool path_use_restir(KernelGlobals kg, IntegratorState state)
+{
+  const bool use_restir = kernel_data.integrator.use_initial_resampling ||
+                          kernel_data.integrator.use_spatial_resampling;
+
+  return INTEGRATOR_STATE(state, path, bounce) == 1 && use_restir &&
+         kernel_data.integrator.use_direct_light;
+}
+
 CCL_NAMESPACE_END

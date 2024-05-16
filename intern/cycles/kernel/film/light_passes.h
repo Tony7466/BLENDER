@@ -728,4 +728,40 @@ ccl_device_inline void film_write_surface_emission(KernelGlobals kg,
       kg, state, contribution, buffer, kernel_data.film.pass_emission, lightgroup);
 }
 
+ccl_device_inline void film_write_surface_emission_to_reservoir(
+    KernelGlobals kg,
+    ConstIntegratorState state,
+    const Spectrum L,
+    ccl_private const LightSample &ls,
+    ccl_private const RNGState *rng_state,
+    ccl_global float *ccl_restrict render_buffer)
+{
+  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+    /* TODO(weizhen): this might not work for path guiding because the value was assigned by
+     * `mis_pdf` instead of `bsdf_pdf`. */
+    const float bsdf_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+
+    const bool is_direct_illumination = (INTEGRATOR_STATE(state, path, bounce) == 1);
+    Reservoir reservoir(kg, is_direct_illumination);
+
+    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
+                               kernel_data.film.pass_restir_reservoir;
+    restir_unpack_reservoir(kg, &reservoir, buffer);
+
+    const float geometry_term = ls.jacobian_solid_angle_to_area();
+    Spectrum contribution = INTEGRATOR_STATE(state, path, throughput) * bsdf_pdf * L *
+                            geometry_term;
+
+    /* TODO(weizhen): handle diffuse/glossy pass properly. */
+    BsdfEval radiance;
+    bsdf_eval_init(&radiance, contribution);
+
+    const float rand_pick = path_branched_rng_1D(
+        kg, rng_state, reservoir.num_light_samples, reservoir.max_samples, PRNG_PICK);
+
+    reservoir.add_bsdf_sample(ls, radiance, bsdf_pdf, rand_pick);
+    film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
+  }
+}
+
 CCL_NAMESPACE_END

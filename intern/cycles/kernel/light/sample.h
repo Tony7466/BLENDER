@@ -516,14 +516,6 @@ ccl_device_inline float light_sample_mis_weight_forward_surface(KernelGlobals kg
                                                                 const uint32_t path_flag,
                                                                 const ccl_private ShaderData *sd)
 {
-  if ((kernel_data.integrator.use_initial_resampling ||
-       kernel_data.integrator.use_spatial_resampling) &&
-      kernel_data.integrator.use_direct_light && INTEGRATOR_STATE(state, path, bounce) == 1)
-  {
-    /* Direct illumination is handled with RIS. */
-    return 0.0f;
-  }
-
   const float nee_pdf = light_sample_pdf_surface(kg, state, path_flag, sd);
   const float forward_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
   return light_sample_mis_weight_forward(kg, forward_pdf, nee_pdf);
@@ -535,14 +527,6 @@ ccl_device_inline float light_sample_mis_weight_forward_lamp(KernelGlobals kg,
                                                              const ccl_private LightSample *ls,
                                                              const float3 P)
 {
-  if ((kernel_data.integrator.use_initial_resampling ||
-       kernel_data.integrator.use_spatial_resampling) &&
-      kernel_data.integrator.use_direct_light && INTEGRATOR_STATE(state, path, bounce) == 1)
-  {
-    /* Direct illumination is handled with RIS. */
-    return 0.0f;
-  }
-
   const float nee_pdf = light_sample_pdf_lamp(kg, state, path_flag, ls, P);
   const float forward_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
   return light_sample_mis_weight_forward(kg, forward_pdf, nee_pdf);
