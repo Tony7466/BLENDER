@@ -265,6 +265,7 @@ class NODE_MT_geometry_node_GEO_INPUT_CONSTANT(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputMaterial")
         node_add_menu.add_node_type(layout, "FunctionNodeInputRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeInputString")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputSound")
         node_add_menu.add_node_type(layout, "ShaderNodeValue")
         node_add_menu.add_node_type(layout, "FunctionNodeInputVector")
         node_add_menu.draw_assets_for_catalog(layout, "Input/Constant")

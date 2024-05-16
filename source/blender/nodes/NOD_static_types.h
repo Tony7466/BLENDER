@@ -380,6 +380,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_NORMAL, 0, "INPUT_NORMAL", InputNormal, "No
 DefNode(GeometryNode, GEO_NODE_INPUT_POSITION, 0, "POSITION", InputPosition, "Position", "Retrieve a vector indicating the location of each element")
 DefNode(GeometryNode, GEO_NODE_INPUT_RADIUS, 0, "INPUT_RADIUS", InputRadius, "Radius", "Retrieve the radius at each point on curve or point cloud geometry")
 DefNode(GeometryNode, GEO_NODE_INPUT_SCENE_TIME, 0, "INPUT_SCENE_TIME", InputSceneTime, "Scene Time", "Retrieve the current time in the scene's animation in units of seconds or frames")
+DefNode(GeometryNode, GEO_NODE_INPUT_SOUND, def_geo_input_sound, "INPUT_SOUND", InputSound, "Sound", "Output a single sound")
 DefNode(GeometryNode, GEO_NODE_INPUT_SHORTEST_EDGE_PATHS, 0, "SHORTEST_EDGE_PATHS", InputShortestEdgePaths, "Shortest Edge Paths", "Find the shortest paths along mesh edges to selected end vertices, with customizable cost per edge")
 DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_CYCLIC, 0, "INPUT_SPLINE_CYCLIC",InputSplineCyclic, "Is Spline Cyclic", "Retrieve whether each spline endpoint connects to the beginning")
 DefNode(GeometryNode, GEO_NODE_INPUT_SPLINE_LENGTH, 0, "SPLINE_LENGTH", SplineLength, "Spline Length", "Retrieve the total length of each spline, as a distance or as a number of points")
