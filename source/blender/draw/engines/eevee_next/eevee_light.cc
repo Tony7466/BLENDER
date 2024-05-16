@@ -72,7 +72,7 @@ void Light::sync(ShadowModule &shadows,
 
   this->object_to_world = object_to_world;
 
-  shape_parameters_set(la, scale, threshold);
+  shape_parameters_set(la, scale, object_to_world.z_axis(), threshold);
 
   const bool diffuse_visibility = (visibility_flag & OB_HIDE_DIFFUSE) == 0;
   const bool glossy_visibility = (visibility_flag & OB_HIDE_GLOSSY) == 0;
@@ -145,7 +145,10 @@ float Light::attenuation_radius_get(const ::Light *la, float light_threshold, fl
   return sqrtf(light_power / light_threshold);
 }
 
-void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float threshold)
+void Light::shape_parameters_set(const ::Light *la,
+                                 const float3 &scale,
+                                 const float3 &z_axis,
+                                 float threshold)
 {
   using namespace blender::math;
 
@@ -175,6 +178,8 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     this->sun.shadow_angle = sun_half_angle * trace_scaling_fac;
     /* Clamp to minimum value before float imprecision artifacts appear. */
     this->sun.shape_radius = clamp(tanf(sun_half_angle), 0.001f, 20.0f);
+    /* Stable shading direction. */
+    this->sun.direction = z_axis;
   }
   else if (is_area_light(this->type)) {
     const bool is_irregular = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);

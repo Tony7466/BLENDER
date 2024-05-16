@@ -242,14 +242,13 @@ void main()
     /* Distant lights. */
     vec3 position_on_light = vec3(0.0);
 
-    // Transform original_object_to_world = light.object_to_world;
-
     if (light.shadow_jitter) {
       float shape_radius = light_sun_data_get(light).shape_radius;
 
       vec2 rand = sampling_rng_2D_get(SAMPLING_SHADOW_W);
       vec3 L = normalize(vec3(sample_disk(rand.xy) * shape_radius, 1.0));
 
+      light.object_to_world = transform_from_matrix(mat4x4(from_up_axis(L)));
     }
 
     if (light.type == LIGHT_SUN_ORTHO) {

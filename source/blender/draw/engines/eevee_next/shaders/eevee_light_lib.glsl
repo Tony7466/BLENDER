@@ -24,7 +24,7 @@ LightVector light_vector_get(LightData light, const bool is_directional, vec3 P)
 {
   LightVector lv;
   if (is_directional) {
-    lv.L = light_z_axis(light);
+    lv.L = light_sun_data_get(light).direction;
     lv.dist = 1.0;
   }
   else {

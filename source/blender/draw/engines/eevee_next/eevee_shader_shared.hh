@@ -91,6 +91,15 @@ static inline float4x4 transform_to_matrix(Transform t)
                   float4(t.x.w, t.y.w, t.z.w, 1.0f));
 }
 
+static inline float4x4 transform_from_matrix(float4x4 m)
+{
+  Transform t;
+  t.x = float4(m[0][0], m[1][0], m[2][0], m[3][0]);
+  t.y = float4(m[0][1], m[1][1], m[2][1], m[3][1]);
+  t.z = float4(m[0][2], m[1][2], m[2][2], m[3][2]);
+  return t;
+}
+
 static inline float3 transform_x_axis(Transform t)
 {
   return float3(t.x.x, t.y.x, t.z.x);
@@ -905,9 +914,8 @@ struct LightAreaData {
 BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightLocalData), "Data size must match")
 
 struct LightSunData {
-  float _pad0;
-  float _pad1;
-  float _pad2;
+  /* Sun direction for shading. Use object_to_world for getting into shadow space. */
+  packed_float3 direction;
   /* Radius of the sun disk, one unit away from a shading point. */
   float shape_radius;
 
@@ -945,7 +953,11 @@ BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightLocalData), "Data size mus
 #endif
 
 struct LightData {
-  /** Normalized object to world matrix. Stored transposed for compactness. */
+  /**
+   * Normalized object to world matrix. Stored transposed for compactness.
+   * Used for shading and shadowing local lights, or shadowing sun lights.
+   * IMPORTANT: Not used for shading sun lights as this matrix is jittered.
+   */
   Transform object_to_world;
 
   /** Power depending on shader type. Referenced by LightingType. */
@@ -1158,6 +1170,7 @@ static inline LightAreaData light_area_data_get(LightData light)
 static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_READ_BEGIN(LightSunData, light, is_sun_light(light.type))
+  SAFE_ASSIGN_FLOAT3(direction, shadow_position)
   SAFE_ASSIGN_FLOAT(shape_radius, _pad0)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.x, shadow_radius)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.y, shape_radius)
@@ -1173,6 +1186,7 @@ static inline LightSunData light_sun_data_get(LightData light)
 static inline LightData light_sun_data_set(LightData light, LightSunData sun_data)
 {
   SAFE_WRITE_BEGIN(LightSunData, sun_data, is_sun_light(light.type))
+  SAFE_ASSIGN_FLOAT3(shadow_position, direction)
   SAFE_ASSIGN_FLOAT(_pad0, shape_radius)
   SAFE_ASSIGN_INT_AS_FLOAT(shadow_radius, clipmap_base_offset_neg.x)
   SAFE_ASSIGN_INT_AS_FLOAT(shape_radius, clipmap_base_offset_neg.y)
