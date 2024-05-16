@@ -76,8 +76,7 @@ void node_group_label(const bNodeTree * /*ntree*/,
                       char *label,
                       int label_maxncpy)
 {
-  BLI_strncpy(
-      label, (node->id) ? node->id->name + 2 : IFACE_("Group"), label_maxncpy);
+  BLI_strncpy(label, (node->id) ? node->id->name + 2 : IFACE_("Group"), label_maxncpy);
 }
 
 int node_group_ui_class(const bNode *node)

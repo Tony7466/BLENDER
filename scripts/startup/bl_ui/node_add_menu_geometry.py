@@ -758,7 +758,6 @@ class NODE_MT_category_GEO_GROUP(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
-
 class NODE_MT_geometry_node_add_all(Menu):
     bl_idname = "NODE_MT_geometry_node_add_all"
     bl_label = ""

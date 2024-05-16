@@ -90,6 +90,7 @@ def get_context_modifier(context):
         return None
     return modifier
 
+
 def get_context_node(context):
     # Context only has a "node" attribute in the modifier extra operators drop-down.
     node = getattr(context, "node", ...)
@@ -99,6 +100,7 @@ def get_context_node(context):
             return None
         node = space.edit_tree.nodes.active
     return node
+
 
 def edit_geometry_nodes_modifier_poll(context):
     return get_context_modifier(context) is not None
@@ -336,7 +338,8 @@ class NewGeometryNodeTreeAssign(Operator):
         modifier.node_group = group
 
         return {'FINISHED'}
-    
+
+
 class NewGeometryNodeGroupNode(Operator):
     """Create a new geometry node tree data block and assign node group"""
     bl_idname = "node.new_geometry_node_group_node"
@@ -346,7 +349,7 @@ class NewGeometryNodeGroupNode(Operator):
     @classmethod
     def poll(cls, context):
         return geometry_modifier_poll(context)
-    
+
     def execute(self, context):
         node = get_context_node(context)
         if not node:
@@ -355,7 +358,6 @@ class NewGeometryNodeGroupNode(Operator):
         node.node_tree = group
         # print("New Geometry Node Group")
         return {'FINISHED'}
-
 
 
 class NewGeometryNodeGroupTool(Operator):
