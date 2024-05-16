@@ -611,7 +611,7 @@ def _template_items_tool_select(
     else:
         # For right mouse, set the cursor.
         return [
-            (cursor_operator, {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+            () if cursor_operator is not None else (cursor_operator, {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
             ("transform.translate", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
              {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
         ]
@@ -8730,7 +8730,8 @@ def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
 def km_sequencer_editor_tool_generic_select_timeline_lcs(params, fallback):
     return [
         *_template_items_tool_select(
-            params, "sequencer.select", "sequencer.cursor_set", cursor_prioritize=True, fallback=fallback),
+            params, "sequencer.select", None, cursor_prioritize=True, fallback=fallback),
+        *_template_items_change_frame(params),
     ]
 
 
