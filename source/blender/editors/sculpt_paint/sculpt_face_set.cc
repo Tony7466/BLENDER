@@ -741,7 +741,7 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", bke::AttrDomain::Face, false);
 
-  Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
+  const Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
 
   int next_face_set = 1;
 
@@ -869,7 +869,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
           "material_index", bke::AttrDomain::Face, 0);
       const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
           ".hide_poly", bke::AttrDomain::Face, false);
-      Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
+      const Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
 
       int prev_material = material_indices[0];
       int material_face_set = 1;
