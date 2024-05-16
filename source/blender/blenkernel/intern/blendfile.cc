@@ -306,25 +306,86 @@ static bool reuse_bmain_data_remapper_is_id_remapped(id::IDRemapper &remapper, I
   return false;
 }
 
+static bool reuse_bmain_move_id(ReuseOldBMainData *reuse_data,
+                                ID *id,
+                                Library *lib,
+                                const bool reuse_existing)
+{
+  id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
+  Main *new_bmain = reuse_data->new_bmain;
+  Main *old_bmain = reuse_data->old_bmain;
+  ListBase *new_lb = which_libbase(new_bmain, GS(id->name));
+  ListBase *old_lb = which_libbase(old_bmain, GS(id->name));
+
+  if (reuse_existing) {
+    /* A 'new' version of the same data may already exist in new_bmain, in the rare case
+     * that the same asset blend file was linked explicitly into the blend file we are loading.
+     * Don't move the old linked ID, but remap its usages to the new one instead. */
+    LISTBASE_FOREACH_BACKWARD (ID *, id_iter, new_lb) {
+      if (!ELEM(id_iter->lib, id->lib, lib)) {
+        continue;
+      }
+      if (!STREQ(id_iter->name + 2, id->name + 2)) {
+        continue;
+      }
+
+      remapper.add(id, id_iter);
+      return false;
+    }
+  }
+
+  /* If ID is already in the new_bmain, this should not have been called. */
+  BLI_assert(BLI_findindex(new_lb, id) < 0);
+  BLI_assert(BLI_findindex(old_lb, id) >= 0);
+
+  /* Move from one list to another, and ensure name is valid. */
+  BLI_remlink_safe(old_lb, id);
+  BKE_main_namemap_remove_name(old_bmain, id, id->name + 2);
+
+  id->lib = lib;
+  BLI_addtail(new_lb, id);
+  BKE_id_new_name_validate(new_bmain, new_lb, id, nullptr, true);
+  BKE_lib_libblock_session_uid_renew(id);
+
+  /* Remap to itself, to avoid re-processing this ID again. */
+  remapper.add(id, id);
+  return true;
+}
+
 static Library *reuse_bmain_data_dependencies_new_library_get(ReuseOldBMainData *reuse_data,
                                                               Library *old_lib)
 {
-  if (old_lib == nullptr) {
-    return nullptr;
-  }
-
   id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
   Library *new_lib = old_lib;
   IDRemapperApplyResult result = remapper.apply(reinterpret_cast<ID **>(&new_lib),
                                                 ID_REMAP_APPLY_DEFAULT);
-  if (result == ID_REMAP_RESULT_SOURCE_UNAVAILABLE) {
-    /* No matching new library found. Avoid nullptr case when original data was linked, which would
-     * match against all local IDs. */
+
+  switch (result) {
+    case ID_REMAP_RESULT_SOURCE_UNAVAILABLE: {
+      /* Move library to new bmain.
+       * There should be no filepath conflicts, as #reuse_bmain_data_remapper_ensure has
+       * already remapped existing libraries with matching filepath. */
+      reuse_bmain_move_id(reuse_data, &old_lib->id, nullptr, false);
+      return old_lib;
+    }
+    case ID_REMAP_RESULT_SOURCE_NOT_MAPPABLE: {
+      BLI_assert_unreachable();
+      return nullptr;
+    }
+    case ID_REMAP_RESULT_SOURCE_REMAPPED: {
+      /* Already in new bmain, only transfer flags. */
+      new_lib->runtime.tag |= old_lib->runtime.tag &
+                              (LIBRARY_ASSET_EDITABLE | LIBRARY_ASSET_FILE_WRITABLE);
+      return new_lib;
+    }
+    case ID_REMAP_RESULT_SOURCE_UNASSIGNED: {
+      /* Happens when the library is the newly opened blend file. */
+      return nullptr;
+    }
   }
-  BLI_assert_msg(result == ID_REMAP_RESULT_SOURCE_UNASSIGNED || new_lib != nullptr,
-                 "`new_lib` should only ever be NULL here in case the library of the old linked "
-                 "ID is the newly opened .blend file.");
-  return new_lib;
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 static int reuse_editable_asset_bmain_data_dependencies_process_cb(
@@ -337,8 +398,6 @@ static int reuse_editable_asset_bmain_data_dependencies_process_cb(
   }
 
   ReuseOldBMainData *reuse_data = static_cast<ReuseOldBMainData *>(cb_data->user_data);
-  Main *new_bmain = reuse_data->new_bmain;
-  Main *old_bmain = reuse_data->old_bmain;
 
   /* First check if it has already been remapped. */
   id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
@@ -359,44 +418,20 @@ static int reuse_editable_asset_bmain_data_dependencies_process_cb(
     return IDWALK_RET_STOP_RECURSION;
   }
 
-  ListBase *new_lb = which_libbase(new_bmain, GS(id->name));
-  ListBase *old_lb = which_libbase(old_bmain, GS(id->name));
-
-  /* If ID is already in the new_bmain, this should have been detected by the check on `remapper`
-   * above. */
-  BLI_assert(BLI_findindex(new_lb, id) < 0);
-  BLI_assert(BLI_findindex(old_lb, id) >= 0);
-
   /* There may be a new library pointer in new_bmain, matching a library in old_bmain, even
    * though pointer values are not the same. So we need to check new linked IDs in new_bmain
    * against both potential library pointers. */
   Library *old_id_new_lib = reuse_bmain_data_dependencies_new_library_get(reuse_data, id->lib);
 
-  /* A 'new' version of the same data may already exist in new_bmain, in the rare case
-   * that the same asset blend file was linked explicitly into the blend file we are loading.
-   * Don't move the old linked ID, but remap its usages to the new one instead. */
-  LISTBASE_FOREACH_BACKWARD (ID *, id_iter, new_lb) {
-    if (!ELEM(id_iter->lib, id->lib, old_id_new_lib)) {
-      continue;
-    }
-    if (!STREQ(id_iter->name + 2, id->name + 2)) {
-      continue;
-    }
-
-    remapper.add(id, id_iter);
+  /* Happens when the library is the newly opened blend file. */
+  if (old_id_new_lib == nullptr) {
+    remapper.add(id, nullptr);
     return IDWALK_RET_STOP_RECURSION;
   }
 
-  BLI_remlink_safe(old_lb, id);
-  BKE_main_namemap_remove_name(old_bmain, id, id->name + 2);
-
-  id->lib = old_id_new_lib;
-  BLI_addtail(new_lb, id);
-  BKE_id_new_name_validate(new_bmain, new_lb, id, nullptr, true);
-  /* Remap to itself, to avoid re-processing this ID again. */
-  remapper.add(id, id);
-
-  return IDWALK_RET_NOP;
+  /* Move to new main database. */
+  return reuse_bmain_move_id(reuse_data, id, old_id_new_lib, true) ? IDWALK_RET_STOP_RECURSION :
+                                                                     IDWALK_RET_NOP;
 }
 
 static bool reuse_editable_asset_needed(ReuseOldBMainData *reuse_data)
@@ -431,9 +466,7 @@ static void reuse_editable_asset_bmain_data_for_blendfile(ReuseOldBMainData *reu
 
   id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
 
-  /* Preserve all IDs from editable asset libraries. */
   ListBase *old_lb = which_libbase(old_bmain, idcode);
-  ListBase *new_lb = which_libbase(new_bmain, idcode);
   ID *old_id_iter;
 
   FOREACH_MAIN_LISTBASE_ID_BEGIN (old_lb, old_id_iter) {
@@ -442,45 +475,16 @@ static void reuse_editable_asset_bmain_data_for_blendfile(ReuseOldBMainData *reu
       continue;
     }
 
-    /* All other IDs can be re-used, provided there is no name/library conflict (i.e. the new
-     * bmain does not already have the 'same' data). */
-    bool can_use_old_id = true;
     Library *old_id_new_lib = reuse_bmain_data_dependencies_new_library_get(reuse_data,
                                                                             old_id_iter->lib);
 
-    /* Mark new library datablock as asset editable. */
-    old_id_new_lib->runtime.tag |= old_id_iter->lib->runtime.tag &
-                                   (LIBRARY_ASSET_EDITABLE | LIBRARY_ASSET_FILE_WRITABLE);
-
-    LISTBASE_FOREACH (ID *, new_id_iter, new_lb) {
-      if (!ELEM(new_id_iter->lib, old_id_iter->lib, old_id_new_lib)) {
-        continue;
-      }
-      if (!STREQ(old_id_iter->name + 2, new_id_iter->name + 2)) {
-        continue;
-      }
-
-      /* In case we found a matching ID in new_bmain, it can be considered as 'the same'
-       * as the old ID, so usages of old ID ported over to new main can be remapped.
-       *
-       * This is only valid if the old ID was linked though. */
-      remapper.add(old_id_iter, new_id_iter);
-      can_use_old_id = false;
-      break;
+    /* Happens when the library is the newly opened blend file. */
+    if (old_id_new_lib == nullptr) {
+      remapper.add(old_id_iter, nullptr);
+      continue;
     }
 
-    if (can_use_old_id) {
-      BLI_remlink_safe(old_lb, old_id_iter);
-      BKE_main_namemap_remove_name(old_bmain, old_id_iter, old_id_iter->name + 2);
-
-      BLI_addtail(new_lb, old_id_iter);
-      old_id_iter->lib = old_id_new_lib;
-      BKE_id_new_name_validate(new_bmain, new_lb, old_id_iter, nullptr, true);
-      BKE_lib_libblock_session_uid_renew(old_id_iter);
-
-      /* Remap to itself, to avoid re-processing this ID again. */
-      remapper.add(old_id_iter, old_id_iter);
-
+    if (reuse_bmain_move_id(reuse_data, old_id_iter, old_id_new_lib, true)) {
       /* Port over dependencies of re-used ID, unless matching already existing ones in
        * new_bmain can be found.
        *
@@ -926,9 +930,10 @@ static void setup_app_data(bContext *C,
       /* Keep linked brush asset data, similar to UI data. Only does a known
        * subset know. Could do everything, but that risks dragging along more
        * scene data than we want. */
-      for (short idcode = 0; idcode < INDEX_ID_MAX; idcode++) {
-        if (ID_TYPE_SUPPORTS_ASSET_EDITABLE(idcode)) {
-          reuse_editable_asset_bmain_data_for_blendfile(&reuse_data, idcode);
+      for (short idtype_index = 0; idtype_index < INDEX_ID_MAX; idtype_index++) {
+        const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_idtype_index(idtype_index);
+        if (ID_TYPE_SUPPORTS_ASSET_EDITABLE(idtype_info->id_code)) {
+          reuse_editable_asset_bmain_data_for_blendfile(&reuse_data, idtype_info->id_code);
         }
       }
     }
