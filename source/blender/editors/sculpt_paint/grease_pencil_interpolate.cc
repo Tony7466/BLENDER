@@ -129,15 +129,12 @@ static bke::CurvesGeometry interpolate_between_curves(const bke::CurvesGeometry 
   const OffsetIndices to_points_by_curve = to_curves.points_by_curve();
 
   /* New point counts for each source curve for resampling. */
-  Array<int> from_curve_resample_counts(from_curves.curves_num(), 0);
+  Array<int> dst_curve_sizes(dst_curve_num, 0);
   for (const int i : IndexRange(dst_curve_num)) {
     const int from_curve_i = from_curve_indices[i];
     const int to_curve_i = to_curve_indices[i];
-
-    const int dst_count = std::max(from_points_by_curve[from_curve_i].size(),
-                                   to_points_by_curve[to_curve_i].size());
-
-    from_curve_resample_counts[from_curve_i] = dst_count;
+    dst_curve_sizes[i] = std::max(from_points_by_curve[from_curve_i].size(),
+                                  to_points_by_curve[to_curve_i].size());
   }
 
   bke::CurvesGeometry dst_curves = geometry::interpolate_curves(
@@ -145,7 +142,7 @@ static bke::CurvesGeometry interpolate_between_curves(const bke::CurvesGeometry 
       to_curves,
       from_curve_indices,
       to_curve_indices,
-      VArray<int>::ForSpan(from_curve_resample_counts),
+      VArray<int>::ForSpan(dst_curve_sizes),
       from_selection,
       mix_factor);
 
