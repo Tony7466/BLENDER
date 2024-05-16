@@ -483,9 +483,9 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
   }
 
   data.layer_data.reinitialize(grease_pencil.layers().size());
-  data.layer_mask.foreach_index([&](const int layer_index, const int index) {
+  data.layer_mask.foreach_index([&](const int layer_index) {
     const Layer &layer = *grease_pencil.layers()[layer_index];
-    GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[index];
+    GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
 
     if (const std::optional<FramesMapKeyInterval> interval = find_frames_interval(
             layer, current_frame, data.exclude_breakdowns))
