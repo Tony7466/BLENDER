@@ -707,8 +707,7 @@ IndexMask retrieve_editable_strokes(Object &object,
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
-        return editable_material_indices.contains(material_index) ||
-               (layer.as_node().flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
+        return editable_material_indices.contains(material_index) || layer.use_locked_material();
       });
 }
 
@@ -783,8 +782,7 @@ IndexMask retrieve_editable_points(Object &object,
   return IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
         const int material_index = materials[point_i];
-        return editable_material_indices.contains(material_index) ||
-               (layer.as_node().flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
+        return editable_material_indices.contains(material_index) || layer.use_locked_material();
       });
 }
 
@@ -886,8 +884,7 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
 {
   const bke::CurvesGeometry &curves = drawing.strokes();
 
-  const IndexMask editable_points = retrieve_editable_points(
-      object, drawing, layer_index, memory);
+  const IndexMask editable_points = retrieve_editable_points(object, drawing, layer_index, memory);
   const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
 
   return IndexMask::from_intersection(editable_points, selected_points, memory);
@@ -900,10 +897,12 @@ IndexMask retrieve_editable_and_selected_elements(Object &object,
                                                   IndexMaskMemory &memory)
 {
   if (selection_domain == bke::AttrDomain::Curve) {
-    return ed::greasepencil::retrieve_editable_and_selected_strokes(object, drawing, layer_index, memory);
+    return ed::greasepencil::retrieve_editable_and_selected_strokes(
+        object, drawing, layer_index, memory);
   }
   else if (selection_domain == bke::AttrDomain::Point) {
-    return ed::greasepencil::retrieve_editable_and_selected_points(object, drawing, layer_index, memory);
+    return ed::greasepencil::retrieve_editable_and_selected_points(
+        object, drawing, layer_index, memory);
   }
   return {};
 }
