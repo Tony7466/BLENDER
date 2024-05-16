@@ -19,18 +19,16 @@
 
 namespace blender::geometry {
 
-using Segment = potrace_word;
+static constexpr const int segment_size = sizeof(potrace_word) * 8;
 
-static constexpr const int segment_size = sizeof(Segment) * 8;
-
-static Segment from_bools(const Span<bool> src)
+static potrace_word from_bools(const Span<bool> src)
 {
   BLI_assert(src.size() <= segment_size);
-  Segment result = 0;
+  potrace_word result = 0;
   for (const int64_t i : src.index_range()) {
-    const Segment bit(src[i]);
+    const potrace_word bit(src[i]);
     BLI_assert(ELEM(bit, 0, 1));
-    result |= bit << (31 - i);
+    result |= bit << (segment_size - 1 - i);
   }
   return result;
 }
@@ -49,15 +47,15 @@ static potrace_state_t *bools_to_potrace_curves(const int2 resolution, const Spa
   const int extra_segment = extra_bits_num == 0 ? 0 : 1;
   const int segments_num = full_segments_num + extra_segment;
 
-  Array<Segment> segments(segments_num * resolution.y);
+  Array<potrace_word> segments(segments_num * resolution.y);
   threading::parallel_for(
       IndexRange(resolution.y),
       4096,
       [&](const IndexRange range) {
         for (const int y_index : range) {
           const Span<bool> src_line = grid_color.slice(y_index * resolution.x, resolution.x);
-          MutableSpan<Segment> line = segments.as_mutable_span().slice(y_index * segments_num,
-                                                                       segments_num);
+          MutableSpan<potrace_word> line = segments.as_mutable_span().slice(y_index * segments_num,
+                                                                            segments_num);
           for (const int i : IndexRange(full_segments_num)) {
             line[i] = from_bools(src_line.slice(i * segment_size, segment_size));
           }
@@ -80,11 +78,6 @@ static potrace_state_t *bools_to_potrace_curves(const int2 resolution, const Spa
 
   BLI_assert(params != nullptr);
   return potrace_trace(params, &bitmap);
-}
-
-static float2 to_float2(const potrace_dpoint_s &point)
-{
-  return float2(point.x, point.y);
 }
 
 static void potrace_curves_captuer_parent_index(const Span<const potrace_path_t *> src_curves,
@@ -111,10 +104,14 @@ static void potrace_curves_captuer_parent_index(const Span<const potrace_path_t 
   });
 }
 
+static float2 to_float2(const potrace_dpoint_s &point)
+{
+  return float2(point.x, point.y);
+}
+
 static void potrace_curves_to_vector_curve(const Span<const potrace_path_t *> src_curves,
                                            Array<std::array<float2, 3>> &r_vector_data,
-                                           Array<int> &r_offsets,
-                                           Array<int8_t> &r_types)
+                                           Array<int> &r_offsets)
 {
   BLI_assert(!src_curves.is_empty());
   r_offsets.reinitialize(src_curves.size() + 1);
@@ -126,7 +123,6 @@ static void potrace_curves_to_vector_curve(const Span<const potrace_path_t *> sr
   const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
 
   r_vector_data.reinitialize(offsets.total_size());
-  r_types.reinitialize(offsets.total_size());
   threading::parallel_for(
       src_curves.index_range(),
       4096,
@@ -140,13 +136,16 @@ static void potrace_curves_to_vector_curve(const Span<const potrace_path_t *> sr
             points[i][1] = to_float2(src_curves[curve_i]->curve.c[i][1]);
             points[i][2] = to_float2(src_curves[curve_i]->curve.c[i][2]);
           }
+
           const Span<int> src_point_types(src_curves[curve_i]->curve.tag,
                                           src_curves[curve_i]->curve.n);
-          MutableSpan<int8_t> dst_point_types = r_types.as_mutable_span().slice(curve_points);
-          std::transform(src_point_types.begin(),
-                         src_point_types.end(),
-                         dst_point_types.begin(),
-                         [&](const int type) { return int8_t(type); });
+          /* Initialize unused polyline point by other point the treat this as handle. */
+          for (const int i : curve_points.index_range()) {
+            BLI_assert(ELEM(src_point_types[i], POTRACE_CURVETO, POTRACE_CORNER));
+            if (src_point_types[i] == POTRACE_CORNER) {
+              points[i][0] = points[i][1];
+            }
+          }
         }
       },
       threading::accumulated_task_sizes(
@@ -154,7 +153,6 @@ static void potrace_curves_to_vector_curve(const Span<const potrace_path_t *> sr
 }
 
 static void vector_curves_to_bezier_curves(const OffsetIndices<int> offsets,
-                                           const Span<int8_t> types,
                                            MutableSpan<std::array<float2, 3>> vector_data)
 {
   threading::parallel_for(
@@ -164,20 +162,7 @@ static void vector_curves_to_bezier_curves(const OffsetIndices<int> offsets,
         IndexMaskMemory memory;
         for (const int curve_i : range) {
           const IndexRange curve_points = offsets[curve_i];
-          const Span<int8_t> point_types = types.slice(curve_points);
           MutableSpan<std::array<float2, 3>> points = vector_data.slice(curve_points);
-
-          const IndexMask bezier_points = IndexMask::from_predicate(
-              curve_points.index_range(), GrainSize(4096), memory, [&](const int64_t i) {
-                BLI_assert(ELEM(point_types[i], POTRACE_CURVETO, POTRACE_CORNER));
-                return point_types[i] == POTRACE_CURVETO;
-              });
-          const IndexMask poly_line_points = bezier_points.complement(curve_points.index_range(),
-                                                                      memory);
-          /* Initialize unused polyline point by other point the treat this as handle. */
-          poly_line_points.foreach_index_optimized<int64_t>(
-              [&](const int64_t i) { points[i][0] = points[i][1]; });
-
           /* Make it so each triplet will contain left right and control point positions. */
           const float2 first_handle = points.first()[0];
           for (const int i : curve_points.index_range().drop_back(1)) {
@@ -211,7 +196,6 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
                                        const bke::AttributeIDRef &parent_index_id)
 {
   Array<std::array<float2, 3>> vector_data;
-  Array<int8_t> types;
   Array<int> offsets_data;
   Array<int> parent_index_data;
 
@@ -228,14 +212,14 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
     return std::nullopt;
   }
 
-  potrace_curves_to_vector_curve(curves_list, vector_data, offsets_data, types);
+  potrace_curves_to_vector_curve(curves_list, vector_data, offsets_data);
   if (parent_index_id) {
     potrace_curves_captuer_parent_index(curves_list, parent_index_data);
   }
   potrace_state_free(potrace_result);
 
   const OffsetIndices<int> offsets(offsets_data);
-  vector_curves_to_bezier_curves(offsets, types, vector_data);
+  vector_curves_to_bezier_curves(offsets, vector_data);
 
   Curves *curves_id = bke::curves_new_nomain(offsets.total_size(), offsets.size());
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
