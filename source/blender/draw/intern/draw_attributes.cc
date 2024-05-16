@@ -109,6 +109,7 @@ bool drw_custom_data_match_attribute(const CustomData *custom_data,
     if (layer_index == -1) {
       continue;
     }
+
     *r_layer_index = layer_index;
     *r_type = attr_type;
     return true;

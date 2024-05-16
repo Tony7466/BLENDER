@@ -534,12 +534,10 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
       }
     }
 
-    /* Some attributes may not be used in the shader anymore and
-     * were not garbage collected yet, so we need to find the
-     * right index for this attribute as uniforms defining the
-     * scope of the attributes are based on attribute loading
-     * order, which is itself based on the material's attributes.
-     */
+    /* Some attributes may not be used in the shader anymore and were not garbage collected yet, so
+     * we need to find the right index for this attribute as uniforms defining the scope of the
+     * attributes are based on attribute loading order, which is itself based on the material's
+     * attributes. */
     const int index = attribute_index_in_material(gpu_material, request.attribute_name);
     if (index != -1) {
       curves_infos.is_point_attribute[index][0] = request.domain == bke::AttrDomain::Point;

@@ -77,8 +77,7 @@ DRWShadingGroup *DRW_shgroup_pointcloud_create_sub(Object *object,
 
     //   char sampler_name[32];
     //   /* \note reusing curve attribute function. */
-    //   drw_curves_get_attribute_sampler_name(request.attribute_name, request.shader_input_name,
-    //   sampler_name);
+    //   drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
     //   GPUTexture *attribute_buf = DRW_pointcloud_evaluated_attribute(&pointcloud);
     //   if (!cache->attributes_buf[i]) {

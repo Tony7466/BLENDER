@@ -560,7 +560,6 @@ static void ensure_final_attribute(const Curves &curves,
                                    const DRW_AttributeRequest &request,
                                    const int index)
 {
-  /* XXX(jbakker): should we check if it is a default attribute? Not sure yet */
   char sampler_name[32];
   drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
