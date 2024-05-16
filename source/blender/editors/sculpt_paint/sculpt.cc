@@ -6308,7 +6308,7 @@ void calc_mesh_hide_and_mask(const Mesh &mesh,
   if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
     const VArraySpan span(mask);
     for (const int i : verts.index_range()) {
-      r_factors[i] = 1.0f - mask[verts[i]];
+      r_factors[i] = 1.0f - span[verts[i]];
     }
   }
   else {
