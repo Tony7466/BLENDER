@@ -32,7 +32,7 @@ float octahedral_texel_solid_angle(ivec2 local_texel,
    * anything from a simple quad (at the Z=0 poles), to a 4 pointed start (at the Z=+-1 poles)
    * passing by arrow tail shapes (at the X=0 and Y=0 edges).
    *
-   * But we can leverage the symetries of the octahedral mapping. Given that all oddly shaped
+   * But we can leverage the symmetries of the octahedral mapping. Given that all oddly shaped
    * texels are on the X=0 and Y=0 planes, we first fold all texels to the first quadrant.
    *
    * The texel footprint clipped to a quadrant is a well defined spherical quad. We then multiply
@@ -69,7 +69,7 @@ float octahedral_texel_solid_angle(ivec2 local_texel,
   v11 = normalize(v11);
   /* Compute solid angle of the spherical quad. */
   float texel_clipped_solid_angle = quad_solid_angle(v00, v10, v01, v11);
-  /* Multiply by the symetric halfs that we omited.
+  /* Multiply by the symmetric halves that we omitted.
    * Also important to note that we avoid weighting the same pixel more than it's total sampled
    * footprint if it is duplicated in another pixel of the map. So border pixels do not require any
    * special treatment. Only the center cross needs it. */
@@ -84,6 +84,10 @@ float octahedral_texel_solid_angle(ivec2 local_texel,
 
 void main()
 {
+  uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
+  const uint local_index = gl_LocalInvocationIndex;
+  const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+
   SphereProbeUvArea world_coord = reinterpret_as_atlas_coord(world_coord_packed);
   SphereProbeUvArea sample_coord = reinterpret_as_atlas_coord(probe_coord_packed);
   SphereProbePixelArea write_coord = reinterpret_as_write_coord(write_coord_packed);
@@ -107,6 +111,11 @@ void main()
     radiance.rgb = mix(world_radiance.rgb, radiance.rgb, opacity);
   }
 
+  float sun_threshold = uniform_buf.clamp.sun_threshold;
+  vec3 radiance_clamped = colorspace_brightness_clamp_max(radiance, sun_threshold);
+  vec3 radiance_sun = radiance - radiance_clamped;
+  radiance = radiance_clamped;
+
   if (!any(greaterThanEqual(local_texel, ivec2(write_coord.extent)))) {
     float clamp_indirect = uniform_buf.clamp.surface_indirect;
     vec3 out_radiance = colorspace_brightness_clamp_max(radiance, clamp_indirect);
@@ -115,19 +124,51 @@ void main()
     imageStore(atlas_img, texel, vec4(out_radiance, 1.0));
   }
 
-  if (extract_sh) {
-    float sample_weight = octahedral_texel_solid_angle(local_texel, write_coord, sample_coord);
+  float sample_weight = octahedral_texel_solid_angle(local_texel, write_coord, sample_coord);
 
-    const uint local_index = gl_LocalInvocationIndex;
-    const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
-
+  if (extract_sun) {
     /* Parallel sum. Result is stored inside local_radiance[0]. */
-    local_radiance[local_index] = radiance.xyzz * sample_weight;
+    local_radiance[local_index] = radiance_sun.xyzz * sample_weight;
     for (uint stride = group_size / 2; stride > 0; stride /= 2) {
       barrier();
       if (local_index < stride) {
         local_radiance[local_index] += local_radiance[local_index + stride];
       }
+    }
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0u) {
+      out_sun[work_group_index].radiance = local_radiance[0].xyz;
+    }
+    barrier();
+
+    /* Reusing local_radiance for directions. */
+    local_radiance[local_index] = vec4(normalize(direction), 1.0) * sample_weight *
+                                  length(radiance_sun.xyz);
+    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+      barrier();
+      if (local_index < stride) {
+        local_radiance[local_index] += local_radiance[local_index + stride];
+      }
+    }
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0u) {
+      out_sun[work_group_index].direction = local_radiance[0];
+    }
+    barrier();
+  }
+
+  if (extract_sh) {
+    /* Parallel sum. Result is stored inside local_radiance[0]. */
+    local_radiance[local_index] = radiance.xyzz * sample_weight;
+    uint stride = group_size / 2;
+    for (int i = 0; i < 10; i++) {
+      barrier();
+      if (local_index < stride) {
+        local_radiance[local_index] += local_radiance[local_index + stride];
+      }
+      stride /= 2;
     }
 
     barrier();
@@ -153,7 +194,6 @@ void main()
        * instead of adding to it? */
       spherical_harmonics_encode_signal_sample(L, local_radiance[0], sh);
       /* Outputs one SH for each thread-group. */
-      uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
       out_sh[work_group_index].L0_M0 = sh.L0.M0;
       out_sh[work_group_index].L1_Mn1 = sh.L1.Mn1;
       out_sh[work_group_index].L1_M0 = sh.L1.M0;

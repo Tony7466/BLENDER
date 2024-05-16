@@ -73,7 +73,7 @@ void ED_node_tree_start(SpaceNode *snode, bNodeTree *ntree, ID *id, ID *from)
   if (ntree) {
     bNodeTreePath *path = MEM_cnew<bNodeTreePath>("node tree path");
     path->nodetree = ntree;
-    path->parent_key = NODE_INSTANCE_KEY_BASE;
+    path->parent_key = blender::bke::NODE_INSTANCE_KEY_BASE;
 
     /* copy initial offset from bNodeTree */
     copy_v2_v2(path->view_center, ntree->view_center);
@@ -109,17 +109,18 @@ void ED_node_tree_push(SpaceNode *snode, bNodeTree *ntree, bNode *gnode)
   path->nodetree = ntree;
   if (gnode) {
     if (prev_path) {
-      path->parent_key = BKE_node_instance_key(prev_path->parent_key, prev_path->nodetree, gnode);
+      path->parent_key = blender::bke::BKE_node_instance_key(
+          prev_path->parent_key, prev_path->nodetree, gnode);
     }
     else {
-      path->parent_key = NODE_INSTANCE_KEY_BASE;
+      path->parent_key = blender::bke::NODE_INSTANCE_KEY_BASE;
     }
 
     STRNCPY(path->node_name, gnode->name);
     STRNCPY(path->display_name, gnode->name);
   }
   else {
-    path->parent_key = NODE_INSTANCE_KEY_BASE;
+    path->parent_key = blender::bke::NODE_INSTANCE_KEY_BASE;
   }
 
   /* copy initial offset from bNodeTree */
@@ -348,17 +349,17 @@ bool push_compute_context_for_tree_path(const SpaceNode &snode,
   for (const int i : tree_path.index_range().drop_back(1)) {
     bNodeTree *tree = tree_path[i]->nodetree;
     const char *group_node_name = tree_path[i + 1]->node_name;
-    const bNode *group_node = nodeFindNodebyName(tree, group_node_name);
+    const bNode *group_node = blender::bke::nodeFindNodebyName(tree, group_node_name);
     if (group_node == nullptr) {
       return false;
     }
-    const bke::bNodeTreeZones *tree_zones = tree->zones();
+    const blender::bke::bNodeTreeZones *tree_zones = tree->zones();
     if (tree_zones == nullptr) {
       return false;
     }
-    const Vector<const bke::bNodeTreeZone *> zone_stack = tree_zones->get_zone_stack_for_node(
-        group_node->identifier);
-    for (const bke::bNodeTreeZone *zone : zone_stack) {
+    const Vector<const blender::bke::bNodeTreeZone *> zone_stack =
+        tree_zones->get_zone_stack_for_node(group_node->identifier);
+    for (const blender::bke::bNodeTreeZone *zone : zone_stack) {
       switch (zone->output_node->type) {
         case GEO_NODE_SIMULATION_OUTPUT: {
           compute_context_builder.push<bke::SimulationZoneComputeContext>(*zone->output_node);
@@ -879,13 +880,8 @@ static bool node_collection_drop_poll(bContext *C, wmDrag *drag, const wmEvent *
   return WM_drag_is_ID_type(drag, ID_GR) && !UI_but_active_drop_name(C);
 }
 
-static bool node_ima_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
+static bool node_id_im_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
 {
-  if (drag->type == WM_DRAG_PATH) {
-    const eFileSel_File_Types file_type = static_cast<eFileSel_File_Types>(
-        WM_drag_get_path_file_type(drag));
-    return ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE);
-  }
   return WM_drag_is_ID_type(drag, ID_IM);
 }
 
@@ -915,20 +911,12 @@ static void node_id_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
   RNA_int_set(drop->ptr, "session_uid", int(id->session_uid));
 }
 
-static void node_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
+static void node_id_im_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
   ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
-
   if (id) {
     RNA_int_set(drop->ptr, "session_uid", int(id->session_uid));
     RNA_struct_property_unset(drop->ptr, "filepath");
-    return;
-  }
-
-  const char *path = WM_drag_get_single_path(drag);
-  if (path) {
-    RNA_string_set(drop->ptr, "filepath", path);
-    RNA_struct_property_unset(drop->ptr, "name");
     return;
   }
 }
@@ -958,8 +946,8 @@ static void node_dropboxes()
                  nullptr);
   WM_dropbox_add(lb,
                  "NODE_OT_add_file",
-                 node_ima_drop_poll,
-                 node_id_path_drop_copy,
+                 node_id_im_drop_poll,
+                 node_id_im_drop_copy,
                  WM_drag_free_imported_drag_ID,
                  nullptr);
   WM_dropbox_add(lb,
@@ -1102,7 +1090,7 @@ static int /*eContextResult*/ node_context(const bContext *C,
   }
   if (CTX_data_equals(member, "active_node")) {
     if (snode->edittree) {
-      bNode *node = nodeGetActive(snode->edittree);
+      bNode *node = bke::nodeGetActive(snode->edittree);
       CTX_data_pointer_set(result, &snode->edittree->id, &RNA_Node, node);
     }
 
@@ -1251,7 +1239,7 @@ static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
   const bool allow_pointer_access = (data_flags & IDWALK_NO_ORIG_POINTERS_ACCESS) == 0;
   bool is_embedded_nodetree = snode->id != nullptr && allow_pointer_access &&
-                              ntreeFromID(snode->id) == snode->nodetree;
+                              bke::ntreeFromID(snode->id) == snode->nodetree;
 
   BKE_LIB_FOREACHID_PROCESS_ID(data, snode->id, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_ID(data, snode->from, IDWALK_CB_NOP);
@@ -1269,7 +1257,7 @@ static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
      * actual data. Note that `snode->id` was already processed (and therefore potentially
      * remapped) above. */
     if (!is_readonly) {
-      snode->nodetree = (snode->id == nullptr) ? nullptr : ntreeFromID(snode->id);
+      snode->nodetree = (snode->id == nullptr) ? nullptr : bke::ntreeFromID(snode->id);
       if (path != nullptr) {
         path->nodetree = snode->nodetree;
       }
@@ -1288,14 +1276,14 @@ static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
    * accessed. */
   BLI_assert(snode->id == nullptr || snode->nodetree == nullptr ||
              (snode->nodetree->id.flag & LIB_EMBEDDED_DATA) == 0 ||
-             snode->nodetree == ntreeFromID(snode->id));
+             snode->nodetree == bke::ntreeFromID(snode->id));
 
   /* This is mainly here for readfile case ('lib_link' process), as in such case there is no access
    * to original data allowed, so no way to know whether the SpaceNode nodetree pointer is an
    * embedded one or not. */
   if (!is_readonly && snode->id && !snode->nodetree) {
     is_embedded_nodetree = true;
-    snode->nodetree = ntreeFromID(snode->id);
+    snode->nodetree = bke::ntreeFromID(snode->id);
     if (path != nullptr) {
       path->nodetree = snode->nodetree;
     }

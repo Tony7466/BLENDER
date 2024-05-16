@@ -145,7 +145,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   }
 
   /* Init key-framing flag. */
-  eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene);
+  eInsertKeyFlags flag = blender::animrig::get_keyframing_flags(scene);
   KeyframeSettings settings = get_keyframe_settings(true);
   settings.keyframe_type = eBezTriple_KeyframeType(ts->keyframe_type);
 
@@ -1337,7 +1337,7 @@ static void bake_graph_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    bake_fcurve_segments((FCurve *)ale->key_data);
+    blender::animrig::bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
@@ -2284,19 +2284,25 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
       continue;
     }
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
-    ANIM_nla_mapping_apply_fcurve(adt, fcu, false, true);
+
     float closest_fcu_frame;
-    if (!find_closest_frame(fcu, current_frame, next, &closest_fcu_frame)) {
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, false, true);
+    const bool success = find_closest_frame(fcu, current_frame, next, &closest_fcu_frame);
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, true, true);
+
+    if (!success) {
       continue;
     }
+
     if ((next && closest_fcu_frame < closest_frame) ||
         (!next && closest_fcu_frame > closest_frame))
     {
       closest_frame = closest_fcu_frame;
       found = true;
     }
-    ANIM_nla_mapping_apply_fcurve(adt, fcu, true, true);
   }
+
+  ANIM_animdata_freelist(&anim_data);
 
   if (!found) {
     BKE_report(op->reports, RPT_INFO, "No more keyframes to jump to in this direction");
@@ -2304,8 +2310,6 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   BKE_scene_frame_set(scene, closest_frame);
-
-  ANIM_animdata_freelist(&anim_data);
 
   /* Set notifier that things have changed. */
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, ac.scene);
@@ -3291,7 +3295,7 @@ void GRAPH_OT_driver_variables_paste(wmOperatorType *ot)
 /** \name Delete Invalid Drivers Operator
  * \{ */
 
-static int graph_driver_delete_invalid_exec(bContext *C, wmOperator *op)
+static int graph_driver_delete_invalid_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
   ListBase anim_data = {nullptr, nullptr};
@@ -3322,7 +3326,7 @@ static int graph_driver_delete_invalid_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    ok |= ANIM_remove_driver(op->reports, ale->id, fcu->rna_path, fcu->array_index, 0);
+    ok |= ANIM_remove_driver(ale->id, fcu->rna_path, fcu->array_index);
     if (!ok) {
       break;
     }

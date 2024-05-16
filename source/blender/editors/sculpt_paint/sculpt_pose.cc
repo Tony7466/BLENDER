@@ -10,6 +10,7 @@
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 
@@ -138,12 +139,12 @@ static void do_pose_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
   float final_pos[3];
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
+  SCULPT_orig_vert_data_init(orig_data, *ob, *node, undo::Type::Position);
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       *ob, ss->cache->automasking.get(), *node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_orig_vert_data_update(&orig_data, &vd);
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+    SCULPT_orig_vert_data_update(orig_data, vd);
     auto_mask::node_update(automask_data, vd);
 
     float total_disp[3];
@@ -199,7 +200,7 @@ static void pose_brush_grow_factor_task(Object *ob,
   SculptSession *ss = ob->sculpt;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SculptVertexNeighborIter ni;
     float max = 0.0f;
 
@@ -233,7 +234,7 @@ static void sculpt_pose_grow_pose_factor(Object *ob,
                                          float *r_pose_origin,
                                          MutableSpan<float> pose_factor)
 {
-  PBVH *pbvh = ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->sculpt->pbvh;
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
@@ -342,7 +343,7 @@ static bool pose_topology_floodfill(const SculptSession *ss,
                                     float3 &pose_origin,
                                     int &tot_co)
 {
-  int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
+  int to_v_i = BKE_pbvh_vertex_to_index(*ss->pbvh, to_v);
 
   const float *co = SCULPT_vertex_co_get(ss, to_v);
 
@@ -392,7 +393,7 @@ static bool pose_face_sets_floodfill(const SculptSession *ss,
                                      float3 &pose_origin,
                                      int &tot_co)
 {
-  const int index = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
+  const int index = BKE_pbvh_vertex_to_index(*ss->pbvh, to_v);
   const PBVHVertRef vertex = to_v;
   bool visit_next = false;
 
@@ -540,7 +541,7 @@ void calc_pose_data(Object *ob,
 static void pose_brush_init_task(SculptSession *ss, MutableSpan<float> pose_factor, PBVHNode *node)
 {
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SculptVertexNeighborIter ni;
     float avg = 0.0f;
     int total = 0;
@@ -616,7 +617,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_topology(
 
   int totvert = SCULPT_vertex_count_get(ss);
   PBVHVertRef nearest_vertex = SCULPT_nearest_vertex_get(ob, initial_location, FLT_MAX, true);
-  int nearest_vertex_index = BKE_pbvh_vertex_to_index(ss->pbvh, nearest_vertex);
+  int nearest_vertex_index = BKE_pbvh_vertex_to_index(*ss->pbvh, nearest_vertex);
 
   /* Init the buffers used to keep track of the changes in the pose factors as more segments are
    * added to the IK chain. */
@@ -772,8 +773,8 @@ static bool pose_face_sets_fk_find_masked_floodfill(const SculptSession *ss,
                                                     int &masked_face_set,
                                                     int &target_face_set)
 {
-  int from_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, from_v);
-  int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
+  int from_v_i = BKE_pbvh_vertex_to_index(*ss->pbvh, from_v);
+  int to_v_i = BKE_pbvh_vertex_to_index(*ss->pbvh, to_v);
 
   if (!is_duplicate) {
     floodfill_it[to_v_i] = floodfill_it[from_v_i] + 1;
@@ -810,7 +811,7 @@ static bool pose_face_sets_fk_set_weights_floodfill(const SculptSession *ss,
                                                     const int masked_face_set,
                                                     MutableSpan<float> fk_weights)
 {
-  int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
+  int to_v_i = BKE_pbvh_vertex_to_index(*ss->pbvh, to_v);
 
   fk_weights[to_v_i] = 1.0f;
   return !face_set::vert_has_face_set(ss, to_v, masked_face_set);
@@ -824,7 +825,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
   std::unique_ptr<SculptPoseIKChain> ik_chain = pose_ik_chain_new(1, totvert);
 
   const PBVHVertRef active_vertex = SCULPT_active_vertex_get(ss);
-  int active_vertex_index = BKE_pbvh_vertex_to_index(ss->pbvh, active_vertex);
+  int active_vertex_index = BKE_pbvh_vertex_to_index(*ss->pbvh, active_vertex);
 
   const int active_face_set = face_set::active_face_set_get(ss);
 
@@ -855,7 +856,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
   int origin_count = 0;
   float origin_acc[3] = {0.0f};
   for (int i = 0; i < totvert; i++) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
 
     if (floodfill_it[i] != 0 && face_set::vert_has_face_set(ss, vertex, active_face_set) &&
         face_set::vert_has_face_set(ss, vertex, masked_face_set))
@@ -869,7 +870,7 @@ static std::unique_ptr<SculptPoseIKChain> pose_ik_chain_init_face_sets_fk(
   float target_acc[3] = {0.0f};
   if (target_face_set != masked_face_set) {
     for (int i = 0; i < totvert; i++) {
-      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
 
       if (floodfill_it[i] != 0 && face_set::vert_has_face_set(ss, vertex, active_face_set) &&
           face_set::vert_has_face_set(ss, vertex, target_face_set))
@@ -944,7 +945,7 @@ std::unique_ptr<SculptPoseIKChain> ik_chain_init(
 
 void pose_brush_init(Object *ob, SculptSession *ss, Brush *br)
 {
-  PBVH *pbvh = ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->sculpt->pbvh;
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 

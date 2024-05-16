@@ -1156,7 +1156,7 @@ static void sculpt_geometry_preview_lines_draw(const uint gpuattr,
     return;
   }
 
-  if (BKE_pbvh_type(ss->pbvh) != PBVH_FACES) {
+  if (BKE_pbvh_type(*ss->pbvh) != PBVH_FACES) {
     return;
   }
 
@@ -1215,7 +1215,6 @@ static bool paint_use_2d_cursor(PaintMode mode)
       return false;
     case PaintMode::Texture3D:
     case PaintMode::Texture2D:
-    case PaintMode::SculptUV:
     case PaintMode::VertexGPencil:
     case PaintMode::SculptGPencil:
     case PaintMode::WeightGPencil:
@@ -1430,7 +1429,7 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
     paint_cursor_update_unprojected_radius(ups, brush, vc, pcontext->scene_space_location);
   }
 
-  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS;
+  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(*ss->pbvh) == PBVH_GRIDS;
 
   pcontext->sd = CTX_data_tool_settings(pcontext->C)->sculpt;
 }
@@ -1516,6 +1515,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
     return;
   }
 
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
   Paint *paint = pcontext->paint;
   Brush *brush = pcontext->brush;
   if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
@@ -1527,9 +1527,9 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
   }
 
   /* default radius and color */
-  float color[3] = {1.0f, 1.0f, 1.0f};
-  float radius = BKE_brush_size_get(pcontext->scene, brush);
+  pcontext->pixel_radius = BKE_brush_size_get(pcontext->scene, brush);
 
+  float3 color(1.0f);
   const int x = pcontext->x;
   const int y = pcontext->y;
 
@@ -1541,9 +1541,17 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       return;
     }
 
+    if (BKE_brush_use_locked_size(pcontext->scene, brush)) {
+      const bke::greasepencil::Layer &layer = *grease_pencil->get_active_layer();
+      const ed::greasepencil::DrawingPlacement placement(
+          *pcontext->scene, *pcontext->region, *pcontext->vc.v3d, *object, layer);
+      const float radius = BKE_brush_unprojected_radius_get(pcontext->scene, brush);
+      const float3 location = placement.project(float2(pcontext->x, pcontext->y));
+      pcontext->pixel_radius = project_brush_radius(&pcontext->vc, radius, location);
+    }
+
     /* Get current drawing material. */
-    Material *ma = BKE_grease_pencil_object_material_from_brush_get(object, brush);
-    if (ma) {
+    if (Material *ma = BKE_grease_pencil_object_material_from_brush_get(object, brush)) {
       MaterialGPencilStyle *gp_style = ma->gp_style;
 
       /* Follow user settings for the size of the draw cursor:
@@ -1561,8 +1569,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
                                              ELEM(brush->gpencil_settings->vertex_mode,
                                                   GPPAINT_MODE_STROKE,
                                                   GPPAINT_MODE_BOTH);
-
-        copy_v3_v3(color, use_vertex_color_stroke ? brush->rgb : gp_style->stroke_rgba);
+        color = use_vertex_color_stroke ? float3(brush->rgb) : float4(gp_style->stroke_rgba).xyz();
       }
     }
   }
@@ -1572,14 +1579,13 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 
   GPU_line_width(1.0f);
   /* Inner Ring: Color from UI panel */
-  immUniformColor4f(color[0], color[1], color[2], 0.8f);
-  imm_draw_circle_wire_2d(pcontext->pos, x, y, radius, 32);
+  immUniformColor4f(color.x, color.y, color.z, 0.8f);
+  imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius, 32);
 
   /* Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
-  float darkcolor[3];
-  mul_v3_v3fl(darkcolor, color, 0.40f);
+  const float3 darkcolor = color * 0.40f;
   immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
-  imm_draw_circle_wire_2d(pcontext->pos, x, y, radius + 1, 32);
+  imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius + 1, 32);
 
   /* Draw line for lazy mouse */
   /* TODO: No stabilize mode yet. */

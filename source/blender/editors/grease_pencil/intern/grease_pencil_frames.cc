@@ -335,7 +335,9 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
   }
 }
 
-bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil)
+bool ensure_active_keyframe(const Scene &scene,
+                            GreasePencil &grease_pencil,
+                            bool &r_inserted_keyframe)
 {
   const int current_frame = scene.r.cfra;
   bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
@@ -357,15 +359,18 @@ bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil)
         (brush->gpencil_tool == GPAINT_TOOL_ERASE))
     {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
-       * current frame. Also duplicate the frame when erasing, Otherwise empty drawing is added,
-       * see !119051 */
+       * current frame.
+       * Note: Also duplicate the frame when erasing, Otherwise empty drawing is added, see
+       * !119051.
+       */
       grease_pencil.insert_duplicate_frame(
           active_layer, *active_layer.frame_key_at(current_frame), current_frame, false);
     }
     else {
       /* Otherwise we just insert a blank keyframe at the current frame. */
-      grease_pencil.insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+      grease_pencil.insert_frame(active_layer, current_frame);
     }
+    r_inserted_keyframe = true;
   }
   /* There should now always be a drawing at the current frame. */
   BLI_assert(active_layer.has_drawing_at(current_frame));
@@ -389,16 +394,15 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
       if (!layer->is_editable()) {
         continue;
       }
-      changed = grease_pencil.insert_blank_frame(
-          *layer, current_frame, duration, BEZT_KEYTYPE_KEYFRAME);
+      changed |= grease_pencil.insert_frame(*layer, current_frame, duration) != nullptr;
     }
   }
   else {
     if (!grease_pencil.has_active_layer()) {
       return OPERATOR_CANCELLED;
     }
-    changed = grease_pencil.insert_blank_frame(
-        *grease_pencil.get_active_layer(), current_frame, duration, BEZT_KEYTYPE_KEYFRAME);
+    changed |= grease_pencil.insert_frame(
+                   *grease_pencil.get_active_layer(), current_frame, duration) != nullptr;
   }
 
   if (changed) {
@@ -461,9 +465,9 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac, KeyframeClipboard &clipboard
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
         const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
-        const int duration = frame.is_implicit_hold() ? 0 :
-                                                        layer->get_frame_duration_at(frame_number);
-        buf.append({frame_number, Drawing(*drawing), duration});
+        const int duration = layer->get_frame_duration_at(frame_number);
+        buf.append(
+            {frame_number, Drawing(*drawing), duration, eBezTriple_KeyframeType(frame.type)});
 
         /* Check the range of this layer only. */
         if (frame_number < layer_first_frame) {
@@ -549,15 +553,15 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       continue;
     }
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-    Layer *layer = reinterpret_cast<Layer *>(ale->data);
-    const std::string layer_name = layer->name();
+    Layer &layer = *reinterpret_cast<Layer *>(ale->data);
+    const std::string layer_name = layer.name();
     if (!from_single_channel && !clipboard.copy_buffer.contains(layer_name)) {
       continue;
     }
-    KeyframeClipboard::LayerBufferItem layer_buffer = from_single_channel ?
-                                                          *clipboard.copy_buffer.values().begin() :
-                                                          clipboard.copy_buffer.lookup(layer_name);
-    bool change = false;
+    const KeyframeClipboard::LayerBufferItem layer_buffer =
+        from_single_channel ? *clipboard.copy_buffer.values().begin() :
+                              clipboard.copy_buffer.lookup(layer_name);
+    bool changed = false;
 
     /* Mix mode with existing data. */
     switch (merge_mode) {
@@ -568,11 +572,11 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       case KEYFRAME_PASTE_MERGE_OVER: {
         /* Remove all keys. */
         Vector<int> frames_to_remove;
-        for (auto frame_number : layer->frames().keys()) {
+        for (auto frame_number : layer.frames().keys()) {
           frames_to_remove.append(frame_number);
         }
-        grease_pencil->remove_frames(*layer, frames_to_remove);
-        change = true;
+        grease_pencil->remove_frames(layer, frames_to_remove);
+        changed = true;
         break;
       }
       case KEYFRAME_PASTE_MERGE_OVER_RANGE:
@@ -593,29 +597,29 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
         /* Remove keys in range. */
         if (frame_min < frame_max) {
           Vector<int> frames_to_remove;
-          for (auto frame_number : layer->frames().keys()) {
+          for (auto frame_number : layer.frames().keys()) {
             if (frame_min < frame_number && frame_number < frame_max) {
               frames_to_remove.append(frame_number);
             }
           }
-          grease_pencil->remove_frames(*layer, frames_to_remove);
-          change = true;
+          grease_pencil->remove_frames(layer, frames_to_remove);
+          changed = true;
         }
         break;
       }
     }
-    for (KeyframeClipboard::DrawingBufferItem drawing_buffer : layer_buffer.drawing_buffers) {
-      const int target_frame_number = drawing_buffer.frame_number + offset;
-      if (layer->frames().contains(target_frame_number)) {
-        layer->remove_frame(target_frame_number);
+    for (const KeyframeClipboard::DrawingBufferItem &item : layer_buffer.drawing_buffers) {
+      const int target_frame_number = item.frame_number + offset;
+      if (layer.frames().contains(target_frame_number)) {
+        grease_pencil->remove_frames(layer, {target_frame_number});
       }
-      layer->add_frame(
-          target_frame_number, grease_pencil->drawings().size(), drawing_buffer.duration);
-      grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
-      change = true;
+      Drawing &dst_drawing = *grease_pencil->insert_frame(
+          layer, target_frame_number, item.duration, item.keytype);
+      dst_drawing = item.drawing;
+      changed = true;
     }
 
-    if (change) {
+    if (changed) {
       DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
     }
   }

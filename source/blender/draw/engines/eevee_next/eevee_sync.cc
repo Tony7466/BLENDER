@@ -117,10 +117,8 @@ void SyncModule::sync_mesh(Object *ob,
     return;
   }
 
-  if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
-    /** NOTE:
-     * EEVEE doesn't render meshes with bounds or wire display type in the viewport,
-     * but Cycles does. */
+  if ((ob->dt < OB_SOLID) && ((inst_.is_viewport() && inst_.v3d->shading.type != OB_RENDER))) {
+    /** Do not render objects with display type lower than solid when in material preview mode. */
     return;
   }
 
@@ -193,7 +191,7 @@ bool SyncModule::sync_sculpt(Object *ob,
    * when switching from eevee to workbench).
    */
   if (ob_ref.object->sculpt && ob_ref.object->sculpt->pbvh) {
-    BKE_pbvh_is_drawing_set(ob_ref.object->sculpt->pbvh, pbvh_draw);
+    BKE_pbvh_is_drawing_set(*ob_ref.object->sculpt->pbvh, pbvh_draw);
   }
 
   if (!pbvh_draw) {
