@@ -97,19 +97,23 @@ void calc_brush_texture_factors(SculptSession &ss,
                                 Span<int> vert_indices,
                                 MutableSpan<float> factors);
 
+namespace auto_mask {
+
 /**
  * Calculate all auto-masking influence on each vertex.
  *
- * \todo Remove call to `undo::push_node` deep inside `calc_mesh_automask` so the object argument
- * can be const. That may (hopefully) require pulling out the undo node push into the code for each
- * brush. That should help clarify the code path for brushes, and various optimizations will depend
- * on brush implementations doing their own undo pushes.
+ * \todo Remove call to `undo::push_node` deep inside this function so the `object` argument can be
+ * const. That may (hopefully) require pulling out the undo node push into the code for each brush.
+ * That should help clarify the code path for brushes, and various optimizations will depend on
+ * brush implementations doing their own undo pushes.
  */
-void calc_mesh_automask(Object &object,
-                        const auto_mask::Cache &cache,
-                        const PBVHNode &node,
-                        Span<int> verts,
-                        MutableSpan<float> factors);
+void calc_vert_factors(Object &object,
+                       const Cache &cache,
+                       const PBVHNode &node,
+                       Span<int> verts,
+                       MutableSpan<float> factors);
+
+}  // namespace auto_mask
 
 /**
  * Many brushes end up calculating translations from the original positions. Instead of applying

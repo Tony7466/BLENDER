@@ -68,7 +68,7 @@ static void calc_faces(const Sculpt &sd,
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
   if (ss.cache->automasking) {
-    calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
+    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);

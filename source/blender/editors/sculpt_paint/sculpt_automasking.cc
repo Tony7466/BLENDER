@@ -23,6 +23,7 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
+#include "mesh_brush_utils.hh"
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
@@ -604,21 +605,21 @@ static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int 
   }
 }
 
-void calc_mesh_automask(Object &object,
-                        const auto_mask::Cache &cache,
-                        const PBVHNode &node,
-                        const Span<int> verts,
-                        const MutableSpan<float> factors)
+void calc_vert_factors(Object &object,
+                       const Cache &cache,
+                       const PBVHNode &node,
+                       const Span<int> verts,
+                       const MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
 
-  auto_mask::NodeData data = auto_mask::node_begin(object, &cache, node);
+  NodeData data = node_begin(object, &cache, node);
 
   for (const int i : verts.index_range()) {
     if (data.orig_data) {
       mesh_orig_vert_data_update(*data.orig_data, i);
     }
-    factors[i] *= auto_mask::factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
+    factors[i] *= factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
   }
 }
 
