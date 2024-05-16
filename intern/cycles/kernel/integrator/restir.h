@@ -47,35 +47,6 @@ struct SpatialResampling {
   }
 };
 
-ccl_device_inline bool integrator_restir_unpack_reservoir(KernelGlobals kg,
-                                                          ccl_private Reservoir *reservoir,
-                                                          const ccl_global float *buffer)
-{
-  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-  int i = 0;
-  /* TODO(weizhen): this works for diffuse surfaces. For specular, probably `sd->wi` is needed
-   * instead. */
-  /* TODO(weizhen): compress the data. */
-  reservoir->ls.object = (int)buffer[i++];
-  if (reservoir->ls.object == OBJECT_NONE) {
-    /* Analytic light. */
-    reservoir->ls.lamp = (int)buffer[i++];
-  }
-  else {
-    /* Mesh light. */
-    reservoir->ls.prim = (int)buffer[i++];
-  }
-
-  reservoir->ls.u = buffer[i++];
-  reservoir->ls.v = buffer[i++];
-
-  reservoir->total_weight = buffer[i++];
-
-  reservoir->luminance = buffer[i];
-
-  return !reservoir->is_empty();
-}
-
 /* TODO(weizhen): better to pack in another pass. */
 ccl_device_inline bool integrator_restir_unpack_shader(ccl_private ShaderData *sd,
                                                        ccl_private uint32_t *path_flag,
@@ -134,7 +105,7 @@ ccl_device_inline bool integrator_restir_unpack_reservoir(KernelGlobals kg,
   ccl_global const float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
                                    (read_prev ? kernel_data.film.pass_restir_previous_reservoir :
                                                 kernel_data.film.pass_restir_reservoir);
-  return integrator_restir_unpack_reservoir(kg, reservoir, buffer);
+  return restir_unpack_reservoir(kg, reservoir, buffer);
 }
 
 ccl_device_inline void ray_setup(KernelGlobals kg,
@@ -393,7 +364,7 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
           kg, &reservoir, render_pixel_index, render_buffer, read_prev) ||
       !integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer))
   {
-    film_clear_pass_surface_data(kg, state, render_buffer);
+    film_clear_pass_reservoir(kg, state, render_buffer);
     return;
   }
 
@@ -413,9 +384,7 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &current.sd, &current.reservoir.ls, &current.reservoir.radiance, 0);
 
-  /* TODO(weizhen): clear data properly. */
-  film_clear_data_pass_reservoir(kg, state, render_buffer, !read_prev);
-  film_clear_pass_surface_data(kg, state, render_buffer);
+  film_clear_pass_reservoir(kg, state, render_buffer);
 }
 
 ccl_device bool integrator_restir(KernelGlobals kg,
@@ -427,12 +396,10 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                   const int scheduled_sample)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
-  const bool write_prev = !(state->read_previous_reservoir);
 
   SpatialReservoir current(kg);
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
   if (!integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer)) {
-    film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
     return false;
   }
 
@@ -454,9 +421,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   /* Uniformly sample neighboring reservoirs within a radius. There is probability to pick the same
    * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
    * samples are used. */
-  bool success;
   if (true) {
-    success = streaming_samples_pairwise(
+    streaming_samples_pairwise(
         kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
   }
   else {
@@ -464,16 +430,12 @@ ccl_device bool integrator_restir(KernelGlobals kg,
      * now, probably just delete the option in the future. */
     /* TODO(weizhen): this is biased because we have no access of the jacobian when
      * `sample_copy_direction()`. */
-    success = streaming_samples(
+    streaming_samples(
         kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
   }
 
-  if (!success) {
-    film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
-    return false;
-  }
-
-  film_write_data_pass_reservoir(kg, state, &current.reservoir, render_buffer, write_prev);
+  const bool write_prev = !(state->read_previous_reservoir);
+  film_write_pass_reservoir(kg, state, &current.reservoir, render_buffer, write_prev);
   return true;
 }
 

@@ -7,6 +7,7 @@
 #include "kernel/film/adaptive_sampling.h"
 #include "kernel/film/write.h"
 
+#include "kernel/integrator/reservoir.h"
 #include "kernel/integrator/shadow_catcher.h"
 
 CCL_NAMESPACE_BEGIN
@@ -587,6 +588,57 @@ ccl_device_inline void film_write_holdout(KernelGlobals kg,
   film_write_transparent(kg, state, path_flag, transparent, buffer);
 }
 
+ccl_device_inline void film_write_pass_reservoir(KernelGlobals kg,
+                                                 ConstIntegratorState state,
+                                                 ccl_private Reservoir *reservoir,
+                                                 ccl_global float *ccl_restrict render_buffer,
+                                                 const bool write_prev = false)
+{
+  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+
+    float *ptr = buffer + (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
+                                        kernel_data.film.pass_restir_reservoir);
+
+    /* TODO(weizhen): it is possible to compress the LightSample. */
+
+    film_overwrite_pass_float(ptr++, (float)reservoir->ls.object);
+    film_overwrite_pass_float(
+        ptr++,
+        float(reservoir->ls.object == OBJECT_NONE ? reservoir->ls.lamp : reservoir->ls.prim));
+
+    film_overwrite_pass_float(ptr++, reservoir->ls.u);
+    film_overwrite_pass_float(ptr++, reservoir->ls.v);
+
+    film_overwrite_pass_float(ptr++, reservoir->total_weight);
+
+    film_overwrite_pass_float(ptr, reservoir->luminance);
+  }
+}
+
+/* TODO(weizhen): clear data properly. */
+ccl_device_inline void film_clear_pass_reservoir(KernelGlobals kg,
+                                                 ConstIntegratorState state,
+                                                 ccl_global float *ccl_restrict render_buffer)
+{
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+
+  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+    /* Set weight to zero. */
+    float *ptr = buffer + kernel_data.film.pass_restir_reservoir + 4;
+    film_overwrite_pass_float(ptr, 0.0f);
+
+    ptr = buffer + kernel_data.film.pass_restir_previous_reservoir + 4;
+    film_overwrite_pass_float(ptr, 0.0f);
+  }
+
+  if (kernel_data.film.pass_flag & PASSMASK(SURFACE_DATA)) {
+    /* Set sd.type to zero. */
+    float *ptr = buffer + kernel_data.film.pass_surface_data + 3;
+    film_overwrite_pass_float(ptr, 0.0f);
+  }
+}
+
 /* Write background contribution to render buffer.
  *
  * Includes transparency, matching film_write_transparent. */
@@ -637,6 +689,8 @@ ccl_device_inline void film_write_volume_emission(KernelGlobals kg,
       kg, state, contribution, buffer, kernel_data.film.pass_emission, lightgroup);
 }
 
+/* TODO(weizhen): the function name might be confusing. It is not emission from surface, but
+ * emission received by surface. */
 ccl_device_inline void film_write_surface_emission(KernelGlobals kg,
                                                    ConstIntegratorState state,
                                                    const Spectrum L,

@@ -348,6 +348,20 @@ ccl_device_inline void integrate_shadow_write_pass_diffuse_glossy(
   }
 }
 
+ccl_device_inline void integrate_write_pass_diffuse_glossy(KernelGlobals kg,
+                                                           IntegratorState state,
+                                                           const ccl_private BsdfEval *radiance)
+{
+  if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
+    if (INTEGRATOR_STATE(state, path, bounce) == 0) {
+      INTEGRATOR_STATE_WRITE(state, path, pass_diffuse_weight) = bsdf_eval_pass_diffuse_weight(
+          radiance);
+      INTEGRATOR_STATE_WRITE(state, path, pass_glossy_weight) = bsdf_eval_pass_glossy_weight(
+          radiance);
+    }
+  }
+}
+
 template<bool is_direct_light>
 ccl_device_inline void integrate_direct_light_create_shadow_path(
     KernelGlobals kg,
@@ -676,19 +690,13 @@ ccl_device
 
   kernel_assert(samples_seen <= max_samples);
 
-  if (!reservoir.finalize()) {
-    if (use_ris) {
-      film_clear_data_pass_reservoir(kg, state, render_buffer);
-    }
-    return;
-  }
-
   if (use_ris) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-    film_write_data_pass_reservoir(kg, state, &reservoir, render_buffer);
+    reservoir.finalize();
+    film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
   }
-  else {
+  else if (reservoir.finalize()) {
     bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight);
 
     int mnee_vertex_count = 0;
@@ -795,14 +803,7 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
   const Spectrum bsdf_weight = bsdf_eval_sum(&bsdf_eval) / bsdf_pdf;
   INTEGRATOR_STATE_WRITE(state, path, throughput) *= bsdf_weight;
 
-  if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
-    if (INTEGRATOR_STATE(state, path, bounce) == 0) {
-      INTEGRATOR_STATE_WRITE(state, path, pass_diffuse_weight) = bsdf_eval_pass_diffuse_weight(
-          &bsdf_eval);
-      INTEGRATOR_STATE_WRITE(state, path, pass_glossy_weight) = bsdf_eval_pass_glossy_weight(
-          &bsdf_eval);
-    }
-  }
+  integrate_write_pass_diffuse_glossy(kg, state, &bsdf_eval);
 
   /* Update path state */
   if (!(label & LABEL_TRANSPARENT)) {

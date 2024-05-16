@@ -10,7 +10,6 @@
 
 #include "kernel/film/cryptomatte_passes.h"
 #include "kernel/film/write.h"
-#include "kernel/integrator/reservoir.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -220,60 +219,6 @@ ccl_device_inline void film_write_data_passes_background(
     }
   }
 #endif
-}
-
-ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
-                                                      IntegratorState state,
-                                                      ccl_private Reservoir *reservoir,
-                                                      ccl_global float *ccl_restrict render_buffer,
-                                                      const bool write_prev = false)
-{
-  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
-    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
-
-    float *ptr = buffer + (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
-                                        kernel_data.film.pass_restir_reservoir);
-
-    /* TODO(weizhen): it is possible to compress the LightSample. */
-
-    film_overwrite_pass_float(ptr++, (float)reservoir->ls.object);
-    film_overwrite_pass_float(
-        ptr++, float(reservoir->ls.prim == PRIM_NONE ? reservoir->ls.lamp : reservoir->ls.prim));
-
-    film_overwrite_pass_float(ptr++, reservoir->ls.u);
-    film_overwrite_pass_float(ptr++, reservoir->ls.v);
-
-    film_overwrite_pass_float(ptr++, reservoir->total_weight);
-
-    film_overwrite_pass_float(ptr, reservoir->luminance);
-  }
-}
-
-ccl_device_inline void film_clear_data_pass_reservoir(KernelGlobals kg,
-                                                      IntegratorState state,
-                                                      ccl_global float *ccl_restrict render_buffer,
-                                                      const bool write_prev = false)
-{
-  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
-    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
-    /* Set weight to zero. */
-    float *ptr = buffer + 4 +
-                 (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
-                               kernel_data.film.pass_restir_reservoir);
-    film_overwrite_pass_float(ptr, 0.0f);
-  }
-}
-
-ccl_device_inline void film_clear_pass_surface_data(KernelGlobals kg,
-                                                    IntegratorState state,
-                                                    ccl_global float *ccl_restrict render_buffer)
-{
-  if (kernel_data.film.pass_flag & PASSMASK(SURFACE_DATA)) {
-    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
-    /* Set sd.type to zero. */
-    float *ptr = buffer + 3 + kernel_data.film.pass_surface_data;
-    film_overwrite_pass_float(ptr, 0.0f);
-  }
 }
 
 CCL_NAMESPACE_END

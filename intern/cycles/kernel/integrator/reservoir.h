@@ -1,7 +1,7 @@
 #ifndef RESERVOIR_H_
 #define RESERVOIR_H_
 
-#include "kernel/light/sample.h"
+#include "kernel/light/common.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -218,6 +218,35 @@ struct SpatialReservoir {
     reservoir.add_reservoir(kg, other.reservoir, rand);
   }
 };
+
+ccl_device_inline bool restir_unpack_reservoir(KernelGlobals kg,
+                                               ccl_private Reservoir *reservoir,
+                                               const ccl_global float *buffer)
+{
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
+  int i = 0;
+  /* TODO(weizhen): this works for diffuse surfaces. For specular, probably `sd->wi` is needed
+   * instead. */
+  /* TODO(weizhen): compress the data. */
+  reservoir->ls.object = (int)buffer[i++];
+  if (reservoir->ls.object == OBJECT_NONE) {
+    /* Analytic light. */
+    reservoir->ls.lamp = (int)buffer[i++];
+  }
+  else {
+    /* Mesh light. */
+    reservoir->ls.prim = (int)buffer[i++];
+  }
+
+  reservoir->ls.u = buffer[i++];
+  reservoir->ls.v = buffer[i++];
+
+  reservoir->total_weight = buffer[i++];
+
+  reservoir->luminance = buffer[i];
+
+  return !reservoir->is_empty();
+}
 
 CCL_NAMESPACE_END
 
