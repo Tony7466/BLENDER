@@ -30,11 +30,13 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git/)
   find_package(Git)
   if(GIT_FOUND)
     # message(STATUS "Found Git: ${GIT_EXECUTABLE}")
-    execute_process(COMMAND git rev-parse --short=12 HEAD
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                    OUTPUT_VARIABLE MY_WC_HASH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET)
+    execute_process(
+      COMMAND git rev-parse --short=12 HEAD
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE MY_WC_HASH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+    )
   endif()
 endif()
 set(BUILD_REV ${MY_WC_HASH})
@@ -60,7 +62,7 @@ else()
   set(CPACK_PACKAGE_FILE_NAME ${PROJECT_NAME_LOWER}-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}-git${CPACK_DATE}.${BUILD_REV}-${PACKAGE_ARCH})
 endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # RPM packages
   include(build_files/cmake/RpmBuild.cmake)
   if(RPMBUILD_FOUND)
@@ -124,7 +126,8 @@ macro(add_package_archive packagename extension)
   add_custom_command(
     OUTPUT ${package_output}
     COMMAND ${build_archive} ${packagename} ${extension} bin release
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  )
   unset(build_archive)
   unset(package_output)
 endmacro()
@@ -132,14 +135,16 @@ endmacro()
 if(APPLE)
   add_package_archive(
     "${PROJECT_NAME}-${BLENDER_VERSION}-${BUILD_REV}-OSX-${CMAKE_OSX_ARCHITECTURES}"
-    "zip")
+    "zip"
+  )
 elseif(UNIX)
   # platform name could be tweaked, to include glibc, and ensure processor is correct (i386 vs i686)
   string(TOLOWER ${CMAKE_SYSTEM_NAME} PACKAGE_SYSTEM_NAME)
 
   add_package_archive(
     "${PROJECT_NAME}-${BLENDER_VERSION}-${BUILD_REV}-${PACKAGE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}"
-    "tar.xz")
+    "tar.xz"
+  )
 endif()
 
 unset(MAJOR_VERSION)

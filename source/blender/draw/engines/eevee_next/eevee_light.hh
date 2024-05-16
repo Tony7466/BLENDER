@@ -76,7 +76,11 @@ struct Light : public LightData, NonCopyable {
   }
 #endif
 
-  void sync(ShadowModule &shadows, const Object *ob, float threshold);
+  void sync(ShadowModule &shadows,
+            float4x4 object_to_world,
+            char visibility_flag,
+            const ::Light *la,
+            float threshold);
 
   void shadow_ensure(ShadowModule &shadows);
   void shadow_discard_safe(ShadowModule &shadows);
@@ -84,10 +88,11 @@ struct Light : public LightData, NonCopyable {
   void debug_draw();
 
  private:
+  float shadow_lod_min_get(const ::Light *la);
   float attenuation_radius_get(const ::Light *la, float light_threshold, float light_power);
-  void shape_parameters_set(const ::Light *la, const float scale[3]);
-  float shape_radiance_get(const ::Light *la);
-  float point_radiance_get(const ::Light *la);
+  void shape_parameters_set(const ::Light *la, const float3 &scale, float threshold);
+  float shape_radiance_get();
+  float point_radiance_get();
 };
 
 /** \} */
@@ -112,14 +117,15 @@ class LightModule {
 
   /** Map of light objects data. Converted to flat array each frame. */
   Map<ObjectKey, Light> light_map_;
+  ObjectKey world_sunlight_key;
   /** Flat array sent to GPU, populated from light_map_. Source buffer for light culling. */
   LightDataBuf light_buf_ = {"Lights_no_cull"};
-  /** Recorded size of light_map_ (after pruning) to detect deletion. */
-  int64_t light_map_size_ = 0;
   /** Luminous intensity to consider the light boundary at. Used for culling. */
   float light_threshold_ = 0.01f;
-  /** If false, will prevent all scene light from being synced. */
+  /** If false, will prevent all scene lights from being synced. */
   bool use_scene_lights_ = false;
+  /** If false, will prevent all sun lights from being synced. */
+  bool use_sun_lights_ = false;
   /** Number of sun lights synced during the last sync. Used as offset. */
   int sun_lights_len_ = 0;
   int local_lights_len_ = 0;
@@ -147,6 +153,9 @@ class LightModule {
   /** Total number of words the tile buffer needs to contain for the render resolution. */
   uint total_word_count_ = 0;
 
+  /** Update light on the GPU after culling. Ran for each sample. */
+  PassSimple update_ps_ = {"LightUpdate"};
+
   /** Debug Culling visualization. */
   PassSimple debug_draw_ps_ = {"LightCulling.Debug"};
 
@@ -165,16 +174,17 @@ class LightModule {
 
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
 
-  template<typename T> void bind_resources(draw::detail::PassBase<T> *pass)
+  template<typename PassType> void bind_resources(PassType &pass)
   {
-    pass->bind_ssbo(LIGHT_CULL_BUF_SLOT, &culling_data_buf_);
-    pass->bind_ssbo(LIGHT_BUF_SLOT, &culling_light_buf_);
-    pass->bind_ssbo(LIGHT_ZBIN_BUF_SLOT, &culling_zbin_buf_);
-    pass->bind_ssbo(LIGHT_TILE_BUF_SLOT, &culling_tile_buf_);
+    pass.bind_ssbo(LIGHT_CULL_BUF_SLOT, &culling_data_buf_);
+    pass.bind_ssbo(LIGHT_BUF_SLOT, &culling_light_buf_);
+    pass.bind_ssbo(LIGHT_ZBIN_BUF_SLOT, &culling_zbin_buf_);
+    pass.bind_ssbo(LIGHT_TILE_BUF_SLOT, &culling_tile_buf_);
   }
 
  private:
   void culling_pass_sync();
+  void update_pass_sync();
   void debug_pass_sync();
 };
 

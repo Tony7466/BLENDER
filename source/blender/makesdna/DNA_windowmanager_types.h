@@ -14,6 +14,23 @@
 
 #include "DNA_ID.h"
 
+#ifdef __cplusplus
+#  include <mutex>
+using std_mutex_type = std::mutex;
+#else
+#  define std_mutex_type void
+#endif
+
+/** Workaround to forward-declare C++ type in C header. */
+#ifdef __cplusplus
+namespace blender::bke {
+class WindowManagerRuntime;
+}
+using WindowManagerRuntimeHandle = blender::bke::WindowManagerRuntime;
+#else   // __cplusplus
+typedef struct WindowManagerRuntimeHandle WindowManagerRuntimeHandle;
+#endif  // __cplusplus
+
 /* Defined here: */
 
 struct wmWindow;
@@ -98,6 +115,9 @@ typedef struct ReportList {
   int flag;
   char _pad[4];
   struct wmTimer *reporttimer;
+
+  /** Mutex for thread-safety, runtime only. */
+  std_mutex_type *lock;
 } ReportList;
 
 /* Timer custom-data to control reports display. */
@@ -109,7 +129,7 @@ typedef struct ReportTimerInfo {
   float flash_progress;
 } ReportTimerInfo;
 
-//#ifdef WITH_XR_OPENXR
+// #ifdef WITH_XR_OPENXR
 typedef struct wmXrData {
   /** Runtime information for managing Blender specific behaviors. */
   struct wmXrRuntimeData *runtime;
@@ -117,7 +137,7 @@ typedef struct wmXrData {
    * even before the session runs. */
   XrSessionSettings session_settings;
 } wmXrData;
-//#endif
+// #endif
 
 /* reports need to be before wmWindowManager */
 
@@ -162,9 +182,7 @@ typedef struct wmWindowManager {
    * \note keep in sync with `notifier_queue` adding/removing elements must also update this set.
    */
   struct GSet *notifier_queue_set;
-
-  /** Information and error reports. */
-  struct ReportList reports;
+  void *_pad1;
 
   /** Threaded jobs manager. */
   ListBase jobs;
@@ -192,19 +210,20 @@ typedef struct wmWindowManager {
   ListBase timers;
   /** Timer for auto save. */
   struct wmTimer *autosavetimer;
+  /** Auto-save timer was up, but it wasn't possible to auto-save in the current mode. */
+  char autosave_scheduled;
+  char _pad2[7];
 
   /** All undo history (runtime only). */
   struct UndoStack *undo_stack;
 
-  /** Indicates whether interface is locked for user interaction. */
-  char is_interface_locked;
-  char _pad[7];
-
   struct wmMsgBus *message_bus;
 
-  //#ifdef WITH_XR_OPENXR
+  // #ifdef WITH_XR_OPENXR
   wmXrData xr;
-  //#endif
+  // #endif
+
+  WindowManagerRuntimeHandle *runtime;
 } wmWindowManager;
 
 #define WM_KEYCONFIG_ARRAY_P(wm) &(wm)->defaultconf, &(wm)->addonconf, &(wm)->userconf
@@ -661,14 +680,14 @@ enum {
    * Unlike #OP_IS_REPEAT the selection (and context generally) may be different each time.
    * See #60777 for an example of when this is needed.
    */
-  OP_IS_REPEAT_LAST = (1 << 1),
+  OP_IS_REPEAT_LAST = (1 << 2),
 
   /** When the cursor is grabbed */
-  OP_IS_MODAL_GRAB_CURSOR = (1 << 2),
+  OP_IS_MODAL_GRAB_CURSOR = (1 << 3),
 
   /**
    * Allow modal operators to have the region under the cursor for their context
    * (the region-type is maintained to prevent errors).
    */
-  OP_IS_MODAL_CURSOR_REGION = (1 << 3),
+  OP_IS_MODAL_CURSOR_REGION = (1 << 4),
 };

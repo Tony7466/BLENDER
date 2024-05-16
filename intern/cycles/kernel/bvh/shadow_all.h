@@ -26,13 +26,14 @@ ccl_device
 #else
 ccl_device_inline
 #endif
-    bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
-                                     ccl_private const Ray *ray,
-                                     IntegratorShadowState state,
-                                     const uint visibility,
-                                     const uint max_hits,
-                                     ccl_private uint *r_num_recorded_hits,
-                                     ccl_private float *r_throughput)
+    bool
+    BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
+                                ccl_private const Ray *ray,
+                                IntegratorShadowState state,
+                                const uint visibility,
+                                const uint max_hits,
+                                ccl_private uint *r_num_recorded_hits,
+                                ccl_private float *r_throughput)
 {
   /* todo:
    * - likely and unlikely for if() statements
@@ -174,7 +175,7 @@ ccl_device_inline
                 break;
               }
 #endif
-#if BVH_FEATURE(BVH_HAIR)
+#if BVH_FEATURE(BVH_HAIR) && defined(__HAIR__)
               case PRIMITIVE_CURVE_THICK:
               case PRIMITIVE_MOTION_CURVE_THICK:
               case PRIMITIVE_CURVE_RIBBON:
@@ -194,7 +195,7 @@ ccl_device_inline
                 break;
               }
 #endif
-#if BVH_FEATURE(BVH_POINTCLOUD)
+#if BVH_FEATURE(BVH_POINTCLOUD) && defined(__POINTCLOUD__)
               case PRIMITIVE_POINT:
               case PRIMITIVE_MOTION_POINT: {
                 if ((type & PRIMITIVE_MOTION) && kernel_data.bvh.use_bvh_steps) {

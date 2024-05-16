@@ -5,9 +5,9 @@
 #include "workbench_private.hh"
 
 #include "BKE_camera.h"
-#include "BKE_editmesh.h"
+#include "BKE_editmesh.hh"
 #include "BKE_mesh_types.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
@@ -16,7 +16,7 @@
 #include "DNA_fluid_types.h"
 #include "ED_paint.hh"
 #include "ED_view3d.hh"
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 namespace blender::workbench {
 
@@ -152,6 +152,17 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
     reset_taa = true;
   }
 
+  bool _overlays_enabled = v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS);
+  /* Depth is always required in Wireframe mode. */
+  _overlays_enabled = _overlays_enabled || shading.type < OB_SOLID;
+  /* Some overlay passes can be rendered even with overlays disabled (See #116424). */
+  _overlays_enabled = _overlays_enabled || new_clip_state & DRW_STATE_CLIP_PLANES;
+  if (assign_if_different(overlays_enabled, _overlays_enabled)) {
+    /* Reset TAA when enabling overlays, since we won't have valid sample0 depth textures.
+     * (See #113741) */
+    reset_taa = true;
+  }
+
   if (reset_taa || samples_len <= 1) {
     sample = 0;
   }
@@ -173,26 +184,24 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
              shading.flag & V3D_SHADING_DEPTH_OF_FIELD;
 
   draw_object_id = draw_outline || draw_curvature;
-
-  overlays_enabled = v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS);
 };
 
 static const CustomData *get_loop_custom_data(const Mesh *mesh)
 {
   if (mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {
-    BLI_assert(mesh->edit_mesh != nullptr);
-    BLI_assert(mesh->edit_mesh->bm != nullptr);
-    return &mesh->edit_mesh->bm->ldata;
+    BLI_assert(mesh->runtime->edit_mesh != nullptr);
+    BLI_assert(mesh->runtime->edit_mesh->bm != nullptr);
+    return &mesh->runtime->edit_mesh->bm->ldata;
   }
-  return &mesh->loop_data;
+  return &mesh->corner_data;
 }
 
 static const CustomData *get_vert_custom_data(const Mesh *mesh)
 {
   if (mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {
-    BLI_assert(mesh->edit_mesh != nullptr);
-    BLI_assert(mesh->edit_mesh->bm != nullptr);
-    return &mesh->edit_mesh->bm->vdata;
+    BLI_assert(mesh->runtime->edit_mesh != nullptr);
+    BLI_assert(mesh->runtime->edit_mesh->bm != nullptr);
+    return &mesh->runtime->edit_mesh->bm->vdata;
   }
   return &mesh->vert_data;
 }
@@ -215,9 +224,9 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
   bool has_uv = false;
 
   if (ob->type == OB_MESH) {
-    const Mesh *me = static_cast<Mesh *>(ob->data);
-    const CustomData *cd_vdata = get_vert_custom_data(me);
-    const CustomData *cd_ldata = get_loop_custom_data(me);
+    const Mesh *mesh = static_cast<Mesh *>(ob->data);
+    const CustomData *cd_vdata = get_vert_custom_data(mesh);
+    const CustomData *cd_ldata = get_loop_custom_data(mesh);
 
     has_color = (CustomData_has_layer(cd_vdata, CD_PROP_COLOR) ||
                  CustomData_has_layer(cd_vdata, CD_PROP_BYTE_COLOR) ||
@@ -235,7 +244,8 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
   }
 
   if (sculpt_pbvh) {
-    if (color_type == V3D_SHADING_TEXTURE_COLOR && BKE_pbvh_type(ob->sculpt->pbvh) != PBVH_FACES) {
+    if (color_type == V3D_SHADING_TEXTURE_COLOR && BKE_pbvh_type(*ob->sculpt->pbvh) != PBVH_FACES)
+    {
       /* Force use of material color for sculpt. */
       color_type = V3D_SHADING_MATERIAL_COLOR;
     }

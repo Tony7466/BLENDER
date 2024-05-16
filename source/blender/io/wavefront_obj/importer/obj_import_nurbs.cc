@@ -13,6 +13,7 @@
 
 #include "DNA_curve_types.h"
 
+#include "IO_wavefront_obj.hh"
 #include "importer_mesh_utils.hh"
 #include "obj_import_nurbs.hh"
 #include "obj_import_objects.hh"
@@ -21,7 +22,8 @@ namespace blender::io::obj {
 
 Object *CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &import_params)
 {
-  std::string ob_name{curve_geometry_.geometry_name_};
+  std::string ob_name = get_geometry_name(curve_geometry_.geometry_name_,
+                                          import_params.collection_separator);
   if (ob_name.empty() && !curve_geometry_.nurbs_element_.group_.empty()) {
     ob_name = curve_geometry_.nurbs_element_.group_;
   }
@@ -76,16 +78,21 @@ void CurveFromGeometry::create_nurbs(Curve *curve)
   }
 
   BKE_nurb_knot_calc_u(nurb);
+
+  /* Figure out whether curve should have U endpoint flag set:
+   * the parameters should have at least (degree+1) values on each end,
+   * and their values should match curve range. */
   bool do_endpoints = false;
   int deg1 = nurbs_geometry.degree + 1;
   if (nurbs_geometry.parm.size() >= deg1 * 2) {
     do_endpoints = true;
+    const float2 range = nurbs_geometry.range;
     for (int i = 0; i < deg1; ++i) {
-      if (abs(nurbs_geometry.parm[i]) > 0.0001f) {
+      if (abs(nurbs_geometry.parm[i] - range.x) > 0.0001f) {
         do_endpoints = false;
         break;
       }
-      if (abs(nurbs_geometry.parm[nurbs_geometry.parm.size() - 1 - i] - 1.0f) > 0.0001f) {
+      if (abs(nurbs_geometry.parm[nurbs_geometry.parm.size() - 1 - i] - range.y) > 0.0001f) {
         do_endpoints = false;
         break;
       }

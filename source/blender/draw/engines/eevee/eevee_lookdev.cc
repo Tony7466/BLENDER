@@ -5,7 +5,7 @@
 /** \file
  * \ingroup draw_engine
  */
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BKE_camera.h"
 #include "BKE_studiolight.h"
@@ -21,14 +21,14 @@
 
 #include "ED_screen.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "UI_resources.hh"
 
 #include "eevee_lightcache.h"
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
-#include "draw_common.h"
+#include "draw_common_c.hh"
 
 static void eevee_lookdev_lightcache_delete(EEVEE_Data *vedata)
 {
@@ -53,7 +53,7 @@ static void eevee_lookdev_hdri_preview_init(EEVEE_Data *vedata, EEVEE_ViewLayerD
   DRWShadingGroup *grp;
 
   const EEVEE_EffectsInfo *effects = vedata->stl->effects;
-  GPUBatch *sphere = DRW_cache_sphere_get(effects->sphere_lod);
+  blender::gpu::Batch *sphere = DRW_cache_sphere_get(effects->sphere_lod);
   int mat_options = VAR_MAT_MESH | VAR_MAT_LOOKDEV;
 
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |

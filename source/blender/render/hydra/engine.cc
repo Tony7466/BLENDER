@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "engine.h"
+#include "engine.hh"
 
 #include <pxr/base/plug/plugin.h>
 #include <pxr/base/plug/registry.h>
@@ -13,9 +13,9 @@
 
 #include "BLI_path_util.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "DEG_depsgraph_query.hh"
 

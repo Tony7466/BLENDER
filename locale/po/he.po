@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Beta (b'26346464e0c0')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-10-09 09:45:23\n"
+"POT-Creation-Date: 2024-05-06 10:38+0000\n"
 "PO-Revision-Date: 2023-10-06 09:54+0000\n"
 "Last-Translator: Eitan Traurig <eitant13@gmail.com>\n"
 "Language-Team: Hebrew <https://translate.blender.org/projects/blender-ui/ui/he/>\n"
@@ -109,6 +109,10 @@ msgstr "ליפכהל"
 
 msgid "Hold"
 msgstr "קיזחהל"
+
+
+msgid "Animation"
+msgstr "היצמינא"
 
 
 msgid "Heads"
@@ -493,6 +497,14 @@ msgid "Blue"
 msgstr "לוחכ"
 
 
+msgid "Mask"
+msgstr "הכסמ"
+
+
+msgid "World"
+msgstr "םלוע"
+
+
 msgid "Full Name"
 msgstr "אלמ םש"
 
@@ -508,10 +520,6 @@ msgstr "קלח"
 
 
 msgctxt "Brush"
-msgid "Sculpt Tool"
-msgstr "לוסיפ ילכ"
-
-
 msgid "Sculpt Tool"
 msgstr "לוסיפ ילכ"
 
@@ -597,10 +605,6 @@ msgid "Mist"
 msgstr "לפרע"
 
 
-msgid "Animation"
-msgstr "היצמינא"
-
-
 msgid "Black"
 msgstr "רוחש"
 
@@ -634,10 +638,6 @@ msgstr "קלח"
 
 msgid "Grease Pencil Color"
 msgstr "Grease Pencil יאבצ"
-
-
-msgid "Mask"
-msgstr "הכסמ"
 
 
 msgid "Languages..."
@@ -678,10 +678,6 @@ msgstr "עלצ ינותנ"
 
 msgid "Vertex Data"
 msgstr "דוקדוק ינותנ"
-
-
-msgid "World"
-msgstr "םלוע"
 
 
 msgid "Lift"
@@ -813,10 +809,6 @@ msgstr "תרתוכ טסקט"
 
 msgid "Export Vertex Colors"
 msgstr "דוקדוק יעבצ אציי"
-
-
-msgid "Import Vertex Colors"
-msgstr "דוקדוק יעבצ אביי"
 
 
 msgid "UV Sculpting"
@@ -961,6 +953,10 @@ msgid "Remove Shortcut"
 msgstr "ךרד־רוציק רסה"
 
 
+msgid "%d items"
+msgstr "‪%d‬ םיטירפ"
+
+
 msgid "Red:"
 msgstr ":םודא"
 
@@ -977,34 +973,6 @@ msgid "Saturation:"
 msgstr ":היוור"
 
 
-msgid "Shortcut: %s"
-msgstr "‬%s‪ :ךרד־רוציק"
-
-
-msgid "Python: %s"
-msgstr "Python: ‪%s‬"
-
-
-msgid "Radians: %f"
-msgstr "‬%f‪ :םינאידר"
-
-
-msgid "Expression: %s"
-msgstr "‬%s‪ :יוטיב"
-
-
-msgid "Library: %s"
-msgstr "‬%s‪ :היירפס"
-
-
-msgid "Disabled: %s"
-msgstr "‬%s‪ :תבשומ"
-
-
-msgid "Python: %s.%s"
-msgstr "Python: ‪%s‬.‪%s‬"
-
-
 msgid "No Properties"
 msgstr "םינייפאמ אלל"
 
@@ -1019,10 +987,6 @@ msgstr "תודוקנ קחמ"
 
 msgid "Stop this job"
 msgstr "וז הדובע רוצע"
-
-
-msgid "%d items"
-msgstr "‪%d‬ םיטירפ"
 
 
 msgid "vertex data"
@@ -1145,16 +1109,16 @@ msgid "Image 2"
 msgstr "2 הנומת"
 
 
-msgid "Std Dev"
-msgstr "ןקת תייטס"
-
-
 msgid "Path:"
 msgstr ":ביתנ"
 
 
 msgid "Add Input"
 msgstr "טלק ףסוה"
+
+
+msgid "Std Dev"
+msgstr "ןקת תייטס"
 
 
 msgctxt "NodeTree"

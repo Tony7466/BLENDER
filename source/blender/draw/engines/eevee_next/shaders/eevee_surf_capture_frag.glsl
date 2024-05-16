@@ -9,10 +9,9 @@
  * into other surface shaders.
  */
 
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_hair_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
@@ -28,21 +27,29 @@ void main()
   init_globals();
 
   /* TODO(fclem): Remove random sampling for capture and accumulate color. */
-  g_closure_rand = 0.5;
+  float closure_rand = 0.5;
 
-  nodetree_surface();
+  nodetree_surface(closure_rand);
 
-  g_diffuse_data.color *= g_diffuse_data.weight;
-  g_reflection_data.color *= g_reflection_data.weight;
-  g_refraction_data.color *= g_refraction_data.weight;
+  vec3 albedo = vec3(0.0);
 
-  vec3 albedo = g_diffuse_data.color + g_reflection_data.color;
+  for (int i = 0; i < CLOSURE_BIN_COUNT; i++) {
+    ClosureUndetermined cl = g_closure_get_resolved(i, 1.0);
+    if (cl.weight <= 1e-5) {
+      continue;
+    }
+    if (cl.type != CLOSURE_BSDF_TRANSLUCENT_ID &&
+        cl.type != CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID)
+    {
+      albedo += cl.color;
+    }
+  }
 
   /* ----- Surfel output ----- */
 
   if (capture_info_buf.do_surfel_count) {
     /* Generate a surfel only once. This check allow cases where no axis is dominant. */
-    vec3 vNg = normal_world_to_view(g_data.Ng);
+    vec3 vNg = drw_normal_world_to_view(g_data.Ng);
     bool is_surface_view_aligned = dominant_axis(vNg) == 2;
     if (is_surface_view_aligned) {
       uint surfel_id = atomicAdd(capture_info_buf.surfel_len, 1u);

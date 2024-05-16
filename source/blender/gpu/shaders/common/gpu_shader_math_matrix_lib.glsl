@@ -92,7 +92,7 @@ mat4x4 invert(mat4x4 mat, out bool r_success);
 /**
  * Flip the matrix across its diagonal. Also flips dimensions for non square matrices.
  */
-// mat3x3 transpose(mat3x3 mat); /* Built-In in GLSL language. */
+// mat3x3 transpose(mat3x3 mat); /* Built-In using GLSL language. */
 
 /**
  * Normalize each column of the matrix individually.
@@ -125,7 +125,7 @@ mat4x4 normalize_and_get_size(mat4x4 mat, out vec4 r_size);
  * Returns the determinant of the matrix.
  * It can be interpreted as the signed volume (or area) of the unit cube after transformation.
  */
-// float determinant(mat3x3 mat); /* Built-In in GLSL language. */
+// float determinant(mat3x3 mat); /* Built-In using GLSL language. */
 
 /**
  * Returns the adjoint of the matrix (also known as adjugate matrix).
@@ -1029,7 +1029,7 @@ mat4x4 from_loc_rot_scale(vec3 location, AxisAngle rotation, vec3 scale)
 mat3x3 from_up_axis(vec3 up)
 {
   /* Duff, Tom, et al. "Building an orthonormal basis, revisited." JCGT 6.1 (2017). */
-  float z_sign = sign(up.z);
+  float z_sign = up.z >= 0.0 ? 1.0 : -1.0;
   float a = -1.0 / (z_sign + up.z);
   float b = up.x * up.y * a;
 

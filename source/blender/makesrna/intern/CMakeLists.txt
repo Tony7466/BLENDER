@@ -110,6 +110,7 @@ endif()
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_GREASE_PENCIL_V3)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
   list(APPEND DEFSRC
     rna_grease_pencil.cc
   )
@@ -195,7 +196,7 @@ unset(GENSRC_CXXFLAGS)
 
 
 # NOTE: Disable clang-tidy because generated files are stored outside of the source,
-# so the clang-tidy can not find our .clang-tidy and fall-backs to own set of rules
+# so the clang-tidy can not find our .clang-tidy and fall-backs to its own set of rules
 # which are too noisy for Blender.
 #
 # In the future clang-tidy would either need to be inlined checks and passed via the
@@ -220,12 +221,6 @@ set(SRC
   ${DEFSRC}
   ${APISRC}
   ../../../../intern/clog/clog.c
-  ../../../../intern/guardedalloc/intern/leak_detector.cc
-  ../../../../intern/guardedalloc/intern/mallocn.c
-  ../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
-  ../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
-  ../../../../intern/guardedalloc/intern/memory_usage.cc
-
   # Needed for defaults.
   ../../../../release/datafiles/userdef/userdef_default.c
   ../../../../release/datafiles/userdef/userdef_default_theme.c
@@ -234,6 +229,7 @@ set(SRC
 set(INC
   .
   ..
+  ../../animrig
   ../../asset_system
   ../../blenfont
   ../../blenkernel
@@ -249,6 +245,7 @@ set(INC
   ../../io/usd
   ../../modifiers
   ../../nodes
+  ../../nodes/geometry/include
   ../../sequencer
   ../../simulation
   ../../windowmanager
@@ -257,6 +254,7 @@ set(INC
   ../../render
   ../../../../intern/clog
   ../../../../intern/cycles/blender
+  ../../../../extern/fmtlib/include
   ../../../../intern/memutil
   ../../../../intern/mantaflow/extern
 
@@ -479,14 +477,15 @@ set(SRC
 
   ${SRC_RNA_INC}
   rna_access_internal.h
-  rna_internal.h
-  rna_internal_types.h
+  rna_internal.hh
+  rna_internal_types.hh
   rna_mesh_utils.hh
 )
 
 set(LIB
   PRIVATE bf::animrig
   PRIVATE bf::dna
+  PRIVATE extern_fmtlib
   bf_editor_space_api
 
   bf_editor_animation
