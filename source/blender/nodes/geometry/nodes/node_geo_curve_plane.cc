@@ -16,10 +16,10 @@ namespace blender::nodes::node_geo_curve_plane_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Vector>("Min")
-      .default_value(float3(-1.0f))
+      .default_value(float3(float2(-1.0f), 0.0f))
       .description("Minimum boundary of volume");
   b.add_input<decl::Vector>("Max")
-      .default_value(float3(1.0f))
+      .default_value(float3(float2(1.0f), 0.0f))
       .description("Maximum boundary of volume");
 
   b.add_input<decl::Int>("Resolution X").default_value(32).min(2);
@@ -35,29 +35,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 }
 
 #ifdef WITH_POTRACE
-
-static char compress_bools_to_char(const Span<bool> src)
-{
-  char result = 0;
-  result |= src[0] << 0;
-  result |= src[1] << 1;
-  result |= src[2] << 2;
-  result |= src[3] << 3;
-  result |= src[4] << 4;
-  result |= src[5] << 5;
-  result |= src[6] << 6;
-  result |= src[7] << 7;
-  return result;
-}
-
-static void bools_to_segments(const Span<bool> bools, MutableSpan<char> segments)
-{
-  int src_i = 0;
-  for (const int dst_i : segments.index_range()) {
-    segments[dst_i] = compress_bools_to_char(bools.slice(src_i, 8));
-    src_i += 8;
-  }
-}
 
 class ImageBitMapFieldContext : public FieldContext {
  private:
@@ -143,15 +120,15 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   AnonymousAttributeIDPtr parent_curve_id = params.get_output_anonymous_attribute_id_if_needed(
       "Parent Curve");
-  Curves *curve = geometry::plane_to_curve(
+  std::optional<Curves *> curve = geometry::plane_to_curve(
       resolution, byte_map, min_point, max_point, parent_curve_id.get());
-  if (curve == nullptr) {
+  if (!curve.has_value()) {
     params.error_message_add(NodeWarningType::Warning, TIP_("Can not generate curve"));
     params.set_default_remaining_outputs();
     return;
   }
 
-  params.set_output("Curve", GeometrySet::from_curves(curve));
+  params.set_output("Curve", GeometrySet::from_curves(*curve));
 }
 
 #else

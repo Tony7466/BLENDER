@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -190,11 +190,11 @@ static void vector_curves_to_bezier_curves(const OffsetIndices<int> offsets,
           [&](const IndexRange range) { return offsets[range].size(); }));
 }
 
-Curves *plane_to_curve(const int2 resolution,
-                       const Span<bool> grid_color,
-                       const float2 min_point,
-                       const float2 max_point,
-                       const bke::AttributeIDRef &parent_index_id)
+std::optional<Curves *> plane_to_curve(const int2 resolution,
+                                       const Span<bool> grid_color,
+                                       const float2 min_point,
+                                       const float2 max_point,
+                                       const bke::AttributeIDRef &parent_index_id)
 {
   Array<std::array<float2, 3>> vector_data;
   Array<int8_t> types;
@@ -211,7 +211,7 @@ Curves *plane_to_curve(const int2 resolution,
   gather_list(potrace_result->plist, curves_list);
   if (curves_list.is_empty()) {
     potrace_state_free(potrace_result);
-    return nullptr;
+    return std::nullopt;
   }
 
   potrace_curves_to_vector_curve(curves_list, vector_data, offsets_data, types);
