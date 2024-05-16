@@ -632,12 +632,9 @@ static float fcm_cycles_time(
   /* Initialize storage. */
   storage->cycyofs = 0;
 
-  /* check if modifier is first in stack, otherwise disable ourself... */
-  /* FIXME... */
-  if (fcm->prev) {
-    // fcm->flag |= FMODIFIER_FLAG_DISABLED;
-    return evaltime;
-  }
+  /* It shouldn't be possible for this modifier type to be anywhere other than
+   * the top of the stack. If it is, something's wrong. */
+  BLI_assert(fcm->prev == nullptr);
 
   if (fcu == nullptr || (fcu->bezt == nullptr && fcu->fpt == nullptr)) {
     return evaltime;
