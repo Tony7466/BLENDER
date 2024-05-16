@@ -165,7 +165,8 @@ vector3 compute_3d_orientation(vector3 orientation, float isotropy, vector4 seed
 
   /* Compute the orientation in spherical coordinates. */
   float inclination = acos(orientation.z);
-  float azimuth = sign(orientation.y) * acos(orientation.x / length(vector2(orientation.x, orientation.y)));
+  float azimuth = sign(orientation.y) *
+                  acos(orientation.x / length(vector2(orientation.x, orientation.y)));
 
   /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
    * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
@@ -174,7 +175,8 @@ vector3 compute_3d_orientation(vector3 orientation, float isotropy, vector4 seed
   azimuth += random_angles.y * isotropy;
 
   /* Convert back to Cartesian coordinates, */
-  return vector3(sin(inclination) * cos(azimuth), sin(inclination) * sin(azimuth), cos(inclination));
+  return vector3(
+      sin(inclination) * cos(azimuth), sin(inclination) * sin(azimuth), cos(inclination));
 }
 
 float compute_3d_gabor_noise_cell(vector3 cell,
@@ -208,8 +210,11 @@ float compute_3d_gabor_noise_cell(vector3 cell,
 }
 
 /* Identical to compute_2d_gabor_noise but works in the 3D neighbourhood of the noise. */
-float compute_3d_gabor_noise(
-    vector3 coordinates, float impulses_count, float frequency, float isotropy, vector3 base_orientation)
+float compute_3d_gabor_noise(vector3 coordinates,
+                             float impulses_count,
+                             float frequency,
+                             float isotropy,
+                             vector3 base_orientation)
 {
   vector3 cell_position = floor(coordinates);
   vector3 local_position = coordinates - cell_position;
@@ -234,40 +239,38 @@ float compute_3d_gabor_noise(
   return sum;
 }
 
-shader node_gabor_texture(
-    int use_mapping = 0,
-    matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-    string type = "2D",
-    vector3 Vector = P,
-    float Scale = 5.0,
-    float Impulses = 16.0,
-    float Frequency = 2.0,
-    float Anisotropy = 1.0,
-    float Orientation2D = M_PI / 4.0,
-    vector3 Orientation3D = vector3(M_SQRT2, M_SQRT2, 0.0),
-    output float Value = 0.0,
-    )
+shader node_gabor_texture(int use_mapping = 0,
+                          matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                          string type = "2D",
+                          vector3 Vector = P,
+                          float Scale = 5.0,
+                          float Impulses = 16.0,
+                          float Frequency = 2.0,
+                          float Anisotropy = 1.0,
+                          float Orientation2D = M_PI / 4.0,
+                          vector3 Orientation3D = vector3(M_SQRT2, M_SQRT2, 0.0),
+                          output float Value = 0.0, )
 {
   vector3 coordinates = Vector;
   if (use_mapping) {
     coordinates = transform(mapping, coordinates);
   }
 
-
   vector3 scaled_coordinates = coordinates * Scale;
   float isotropy = 1.0 - clamp(Anisotropy, 0.0, 1.0);
 
   if (type == "2D") {
-    Value = compute_2d_gabor_noise(
-        vector2(scaled_coordinates.x, scaled_coordinates.y), Impulses, Frequency, isotropy, Orientation2D);
+    Value = compute_2d_gabor_noise(vector2(scaled_coordinates.x, scaled_coordinates.y),
+                                   Impulses,
+                                   Frequency,
+                                   isotropy,
+                                   Orientation2D);
   }
   else if (type == "3D") {
     vector3 orientation = normalize(vector(Orientation3D));
-    Value = compute_3d_gabor_noise(
-        scaled_coordinates, Impulses, Frequency, isotropy, orientation);
+    Value = compute_3d_gabor_noise(scaled_coordinates, Impulses, Frequency, isotropy, orientation);
   }
   else {
     error("Unknown dimension!");
   }
 }
-
