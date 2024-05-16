@@ -19,6 +19,10 @@
  * API function arguments should favor passing raw data references rather than general catch-all
  * storage structs in order to clarify the scope of each function, structure the work around the
  * required data, and limit redundant data storage.
+ *
+ * Many functions calculate "factors" which describe how strong the brush influence should be
+ * between 0 and 1. Most functions multiply with the existing factor value rather than assigning a
+ * new value from scratch.
  */
 
 struct Brush;
