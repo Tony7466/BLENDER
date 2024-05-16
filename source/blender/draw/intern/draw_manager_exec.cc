@@ -320,8 +320,8 @@ void DRW_state_reset()
 
   GPU_texture_unbind_all();
   GPU_texture_image_unbind_all();
-  GPU_uniformbuf_unbind_all();
-  GPU_storagebuf_unbind_all();
+  GPU_uniformbuf_debug_unbind_all();
+  GPU_storagebuf_debug_unbind_all();
 
   /* Should stay constant during the whole rendering. */
   GPU_point_size(5);
@@ -1011,8 +1011,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       if (G.debug & G_DEBUG_GPU) {
         GPU_texture_unbind_all();
         GPU_texture_image_unbind_all();
-        GPU_uniformbuf_unbind_all();
-        GPU_storagebuf_unbind_all();
+        GPU_uniformbuf_debug_unbind_all();
+        GPU_storagebuf_debug_unbind_all();
       }
     }
     GPU_shader_bind(shgroup->shader);
@@ -1191,8 +1191,8 @@ static void drw_draw_pass_ex(DRWPass *pass,
 
   DST.shader = nullptr;
 
-  BLI_assert(DST.buffer_finish_called &&
-             "DRW_render_instance_buffer_finish had not been called before drawing");
+  BLI_assert_msg(DST.buffer_finish_called,
+                 "DRW_render_instance_buffer_finish had not been called before drawing");
 
   if (DST.view_previous != DST.view_active || DST.view_active->is_dirty) {
     drw_update_view();

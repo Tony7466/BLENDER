@@ -15,6 +15,7 @@
 #include "eevee_light.hh"
 
 #include "BLI_math_rotation.h"
+#include "DNA_defaults.h"
 
 namespace blender::eevee {
 
@@ -45,11 +46,13 @@ static eLightType to_light_type(short blender_light_type,
 /** \name Light Object
  * \{ */
 
-void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
+void Light::sync(ShadowModule &shadows,
+                 float4x4 object_to_world,
+                 char visibility_flag,
+                 const ::Light *la,
+                 float threshold)
 {
   using namespace blender::math;
-
-  const ::Light *la = (const ::Light *)ob->data;
 
   eLightType new_type = to_light_type(la->type, la->area_shape, la->mode & LA_USE_SOFT_FALLOFF);
   if (assign_if_different(this->type, new_type)) {
@@ -59,61 +62,43 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->color = float3(&la->r) * la->energy;
 
   float3 scale;
-  this->object_mat = ob->object_to_world();
-  this->object_mat.view<3, 3>() = normalize_and_get_size(this->object_mat.view<3, 3>(), scale);
+  object_to_world.view<3, 3>() = normalize_and_get_size(object_to_world.view<3, 3>(), scale);
 
   /* Make sure we have consistent handedness (in case of negatively scaled Z axis). */
-  float3 back = cross(float3(this->_right), float3(this->_up));
-  if (dot(back, float3(this->_back)) < 0.0f) {
-    negate_v3(this->_up);
+  float3 back = cross(float3(object_to_world.x_axis()), float3(object_to_world.y_axis()));
+  if (dot(back, float3(object_to_world.z_axis())) < 0.0f) {
+    negate_v3(object_to_world.y_axis());
   }
+
+  this->object_to_world = object_to_world;
 
   shape_parameters_set(la, scale, threshold);
 
+  const bool diffuse_visibility = (visibility_flag & OB_HIDE_DIFFUSE) == 0;
+  const bool glossy_visibility = (visibility_flag & OB_HIDE_GLOSSY) == 0;
+  const bool transmission_visibility = (visibility_flag & OB_HIDE_TRANSMISSION) == 0;
+  const bool volume_visibility = (visibility_flag & OB_HIDE_VOLUME_SCATTER) == 0;
+
   float shape_power = shape_radiance_get();
   float point_power = point_radiance_get();
-  this->power[LIGHT_DIFFUSE] = la->diff_fac * shape_power;
-  this->power[LIGHT_TRANSMIT] = la->diff_fac * point_power;
-  this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power;
-  this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
+  this->power[LIGHT_DIFFUSE] = la->diff_fac * shape_power * diffuse_visibility;
+  this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power * glossy_visibility;
+  this->power[LIGHT_TRANSMISSION] = la->transmission_fac * shape_power * transmission_visibility;
+  this->power[LIGHT_VOLUME] = la->volume_fac * point_power * volume_visibility;
 
   this->pcf_radius = la->shadow_filter_radius;
 
-  /* TODO(fclem): Cleanup: Move that block to `ShadowPunctual::end_sync()` and
-   * `ShadowDirectional::end_sync()`. */
-  float resolution_scale = clamp(la->shadow_resolution_scale, 0.0f, 2.0f);
-  this->lod_bias = (resolution_scale < 1.0) ? -log2(resolution_scale) : -(resolution_scale - 1.0f);
-  this->lod_bias += shadows.get_global_lod_bias();
+  this->lod_bias = (1.0f - la->shadow_resolution_scale) * SHADOW_TILEMAP_LOD;
+  this->lod_min = shadow_lod_min_get(la);
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
     if (is_sun_light(this->type)) {
-      this->directional->sync(this->object_mat,
-                              1.0f,
-                              la->sun_angle * la->shadow_softness_factor,
-                              la->shadow_trace_distance);
+      this->directional->sync(object_to_world, la->sun_angle);
     }
     else {
-      /* Reuse shape radius as near clip plane. */
-      /* This assumes `shape_parameters_set` has already set `radius_squared`. */
-      float radius = math::sqrt(this->local.radius_squared);
-      float shadow_radius = la->shadow_softness_factor * radius;
-      if (ELEM(la->type, LA_LOCAL, LA_SPOT)) {
-        /* `shape_parameters_set` can increase the radius of point and spot lights to ensure a
-         * minimum radius/energy ratio.
-         * But we don't want to take that into account for computing the shadow-map projection,
-         * since non-zero radius introduces padding (required for soft-shadows tracing), reducing
-         * the effective resolution of shadow-maps.
-         * So we use the original light radius instead. */
-        shadow_radius = la->shadow_softness_factor * la->radius;
-      }
-      this->punctual->sync(this->type,
-                           this->object_mat,
-                           la->spotsize,
-                           radius,
-                           this->local.influence_radius_max,
-                           la->shadow_softness_factor,
-                           shadow_radius);
+      this->punctual->sync(
+          this->type, object_to_world, la->spotsize, this->local.influence_radius_max);
     }
   }
   else {
@@ -121,6 +106,17 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   }
 
   this->initialized = true;
+}
+
+float Light::shadow_lod_min_get(const ::Light *la)
+{
+  /* Property is in mm. Convert to unit. */
+  float max_res_unit = la->shadow_maximum_resolution;
+  if (is_sun_light(this->type)) {
+    return log2f(max_res_unit * SHADOW_MAP_MAX_RES) - 1.0f;
+  }
+  /* Store absolute mode as negative. */
+  return (la->mode & LA_SHAD_RES_ABSOLUTE) ? -max_res_unit : max_res_unit;
 }
 
 void Light::shadow_discard_safe(ShadowModule &shadows)
@@ -169,8 +165,12 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     const bool is_irregular = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
     this->area.size = float2(la->area_size, is_irregular ? la->area_sizey : la->area_size);
     /* Scale and clamp to minimum value before float imprecision artifacts appear. */
-    this->area.size = max(float2(0.003f), this->area.size * scale.xy() / 2.0f);
-
+    this->area.size = this->area.size * scale.xy() / 2.0f;
+    /* Do not render lights that virtually have no area or clamp to minimum value before float
+     * imprecision artifacts appear. */
+    this->area.size = (this->area.size.x * this->area.size.y < 0.00001f) ?
+                          float2(0.0) :
+                          max(float2(0.003f), this->area.size * scale.xy() / 2.0f);
     /* For volume point lighting. */
     this->local.radius_squared = square(max(0.001f, length(this->area.size) / 2.0f));
   }
@@ -288,7 +288,9 @@ float Light::point_radiance_get()
 void Light::debug_draw()
 {
 #ifndef NDEBUG
-  drw_debug_sphere(float3(_position), local.influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
+  drw_debug_sphere(transform_location(this->object_to_world),
+                   local.influence_radius_max,
+                   float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
 }
 
@@ -325,16 +327,37 @@ void LightModule::begin_sync()
 
   sun_lights_len_ = 0;
   local_lights_len_ = 0;
+
+  if (use_sun_lights_ && inst_.world.sun_threshold() > 0.0) {
+    /* Create a placeholder light to be fed by the GPU after sunlight extraction.
+     * Sunlight is disabled if power is zero. */
+    ::Light la = blender::dna::shallow_copy(
+        *(const ::Light *)DNA_default_table[SDNA_TYPE_FROM_STRUCT(Light)]);
+    la.type = LA_SUN;
+    /* Set on the GPU. */
+    la.r = la.g = la.b = -1.0f; /* Tag as world sun light. */
+    la.energy = 1.0f;
+    la.sun_angle = inst_.world.sun_angle();
+    la.shadow_maximum_resolution = inst_.world.sun_shadow_max_resolution();
+    SET_FLAG_FROM_TEST(la.mode, inst_.world.use_sun_shadow(), LA_SHADOW);
+
+    Light &light = light_map_.lookup_or_add_default(world_sunlight_key);
+    light.used = true;
+    light.sync(inst_.shadows, float4x4::identity(), 0, &la, light_threshold_);
+
+    sun_lights_len_ += 1;
+  }
 }
 
 void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
 {
+  const ::Light *la = static_cast<const ::Light *>(ob->data);
   if (use_scene_lights_ == false) {
     return;
   }
 
   if (use_sun_lights_ == false) {
-    if (static_cast<const ::Light *>(ob->data)->type == LA_SUN) {
+    if (la->type == LA_SUN) {
       return;
     }
   }
@@ -343,7 +366,7 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   light.used = true;
   if (handle.recalc != 0 || !light.initialized) {
     light.initialized = true;
-    light.sync(inst_.shadows, ob, light_threshold_);
+    light.sync(inst_.shadows, ob->object_to_world(), ob->visibility_flag, la, light_threshold_);
   }
   sun_lights_len_ += int(is_sun_light(light.type));
   local_lights_len_ += int(!is_sun_light(light.type));
@@ -428,6 +451,7 @@ void LightModule::end_sync()
   culling_tile_buf_.resize(total_word_count_);
 
   culling_pass_sync();
+  update_pass_sync();
   debug_pass_sync();
 }
 
@@ -444,6 +468,7 @@ void LightModule::culling_pass_sync()
   {
     auto &sub = culling_ps_.sub("Select");
     sub.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_SELECT));
+    sub.bind_ubo("sunlight_buf", &inst_.world.sunlight);
     sub.bind_ssbo("light_cull_buf", &culling_data_buf_);
     sub.bind_ssbo("in_light_buf", light_buf_);
     sub.bind_ssbo("out_light_buf", culling_light_buf_);
@@ -483,6 +508,20 @@ void LightModule::culling_pass_sync()
   }
 }
 
+void LightModule::update_pass_sync()
+{
+  auto &pass = update_ps_;
+  pass.init();
+  pass.shader_set(inst_.shaders.static_shader_get(LIGHT_SHADOW_SETUP));
+  pass.bind_ssbo("light_buf", &culling_light_buf_);
+  pass.bind_ssbo("light_cull_buf", &culling_data_buf_);
+  pass.bind_ssbo("tilemaps_buf", &inst_.shadows.tilemap_pool.tilemaps_data);
+  pass.bind_resources(inst_.uniform_data);
+  /* TODO(fclem): Dispatch for all light. */
+  pass.dispatch(int3(1, 1, 1));
+  pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+}
+
 void LightModule::debug_pass_sync()
 {
   if (inst_.debug_mode == eDebugMode::DEBUG_LIGHT_CULLING) {
@@ -512,6 +551,7 @@ void LightModule::set_view(View &view, const int2 extent)
   culling_data_buf_.push_update();
 
   inst_.manager->submit(culling_ps_, view);
+  inst_.manager->submit(update_ps_);
 }
 
 void LightModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
