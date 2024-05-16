@@ -90,7 +90,7 @@ static void ui_region_redraw_immediately(bContext *C, ARegion *region)
   WM_draw_region_viewport_bind(region);
   ED_region_do_draw(C, region);
   WM_draw_region_viewport_unbind(region);
-  region->do_draw = false;
+  region->do_draw = 0;
 }
 
 /** \} */
@@ -1222,7 +1222,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
     if (RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {
       bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
       bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-      if (nodeFindNodeTry(ntree, sock, &node, nullptr)) {
+      if (blender::bke::nodeFindNodeTry(ntree, sock, &node, nullptr)) {
         path = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_Node);
         if (path) {
           /* we're good! */
@@ -1571,7 +1571,7 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 /** \name Copy Driver To Selected Operator
  * \{ */
 
-/* Namespaced for unit testing. Conceptually these functions should be static
+/* Name-spaced for unit testing. Conceptually these functions should be static
  * and not be used outside this source file.  But they need to be externally
  * accessible to add unit tests for them. */
 namespace blender::interface::internal {
@@ -1594,7 +1594,7 @@ blender::Vector<FCurve *> get_property_drivers(
   blender::Vector<FCurve *> drivers = {};
   const bool is_array_prop = RNA_property_array_check(prop);
   if (!is_array_prop) {
-    /* Note: by convention Blender assigns 0 as the index for drivers of
+    /* NOTE: by convention Blender assigns 0 as the index for drivers of
      * non-array properties, which is why we search for it here.  Values > 0 are
      * not recognized by Blender's driver system in that case.  Values < 0 are
      * recognized for driver evaluation, but `BKE_fcurve_find()` unconditionally
@@ -2411,7 +2411,7 @@ static void UI_OT_button_execute(wmOperatorType *ot)
 
 static int button_string_clear_exec(bContext *C, wmOperator * /*op*/)
 {
-  uiBut *but = UI_context_active_but_get_respect_menu(C);
+  uiBut *but = UI_context_active_but_get_respect_popup(C);
 
   if (but) {
     ui_but_active_string_clear_and_exit(C, but);

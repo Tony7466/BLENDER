@@ -53,21 +53,20 @@ void type_popup_unlink(const AssetShelfType &shelf_type)
 
 static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_type)
 {
-  const SpaceType *space_type = BKE_spacetype_from_id(shelf_type.space_type);
-
   Vector<AssetShelf *> &popup_shelves = StaticPopupShelves::shelves();
 
   for (AssetShelf *shelf : popup_shelves) {
     if (STREQ(shelf->idname, shelf_type.idname)) {
-      if (type_poll(*C, *space_type, type_ensure(*space_type, *shelf))) {
+      if (type_poll_for_popup(*C, ensure_shelf_has_type(*shelf))) {
         return shelf;
       }
       break;
     }
   }
 
-  if (type_poll(*C, *space_type, &shelf_type)) {
+  if (type_poll_for_popup(*C, &shelf_type)) {
     AssetShelf *new_shelf = create_shelf_from_type(shelf_type);
+    new_shelf->settings.display_flag |= ASSETSHELF_SHOW_NAMES;
     popup_shelves.append(new_shelf);
     return new_shelf;
   }
@@ -164,6 +163,8 @@ uiBlock *popup_block_create(const bContext *C, ARegion *region, AssetShelfType *
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_bounds_set_normal(block, 0.3f * U.widget_unit);
+  UI_block_direction_set(block, UI_DIR_DOWN);
 
   AssetShelf *shelf = get_shelf_for_popup(C, *shelf_type);
   if (!shelf) {
@@ -173,29 +174,32 @@ uiBlock *popup_block_create(const bContext *C, ARegion *region, AssetShelfType *
 
   const uiStyle *style = UI_style_get_dpi();
 
-  const float pad = 0.2f * UI_UNIT_Y; /* UI_MENU_PADDING */
+  const int layout_width = UI_UNIT_X * 40;
+  const int left_col_width = 10 * UI_UNIT_X;
+  const int right_col_width = layout_width - left_col_width;
   uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, pad, 0, UI_UNIT_X * 40, 0, pad / 2, style);
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, layout_width, 0, 0, style);
 
   PointerRNA library_ref_ptr = RNA_pointer_create(
       &screen->id, &RNA_AssetLibraryReference, &shelf->settings.asset_library_reference);
   uiLayoutSetContextPointer(layout, "asset_library_reference", &library_ref_ptr);
 
   uiLayout *row = uiLayoutRow(layout, false);
-  uiLayout *sub = uiLayoutRow(row, false);
-  uiLayoutSetUnitsX(sub, 10);
-  uiLayoutSetFixedSize(sub, true);
-  uiLayout *catalogs_col = uiLayoutColumn(sub, false);
+  uiLayout *catalogs_col = uiLayoutColumn(row, false);
+  uiLayoutSetUnitsX(catalogs_col, left_col_width / UI_UNIT_X);
+  uiLayoutSetFixedSize(catalogs_col, true);
   library_selector_draw(C, catalogs_col, *shelf);
   catalog_tree_draw(*catalogs_col, *shelf);
 
   uiLayout *right_col = uiLayoutColumn(row, false);
-  sub = uiLayoutRow(right_col, false);
+  uiLayout *sub = uiLayoutRow(right_col, false);
   /* Same as file/asset browser header. */
   PointerRNA shelf_ptr = RNA_pointer_create(&screen->id, &RNA_AssetShelf, shelf);
   uiItemR(sub, &shelf_ptr, "search_filter", UI_ITEM_R_IMMEDIATE, "", ICON_VIEWZOOM);
 
   uiLayout *asset_view_col = uiLayoutColumn(right_col, false);
+  uiLayoutSetUnitsX(asset_view_col, right_col_width / UI_UNIT_X);
+  uiLayoutSetFixedSize(asset_view_col, true);
   build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, *C, *region);
 
   return block;

@@ -35,7 +35,6 @@
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_appdir.hh"
-#include "BKE_asset.hh"
 #include "BKE_blender_copybuffer.hh"
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
@@ -828,18 +827,15 @@ static int new_texture_exec(bContext *C, wmOperator * /*op*/)
 
   UI_context_active_but_prop_get_templateID(C, &ptr, &prop);
 
-  Main *id_main = CTX_data_main(C);
-  if (ptr.owner_id) {
-    id_main = BKE_main_from_id(id_main, ptr.owner_id);
-  }
+  Main *bmain = (ptr.owner_id) ? CTX_data_main_from_id(C, ptr.owner_id) : CTX_data_main(C);
 
   /* add or copy texture */
   Tex *tex = static_cast<Tex *>(CTX_data_pointer_get_type(C, "texture", &RNA_Texture).data);
   if (tex) {
-    tex = (Tex *)BKE_id_copy(id_main, &tex->id);
+    tex = (Tex *)BKE_id_copy(bmain, &tex->id);
   }
   else {
-    tex = BKE_texture_add(id_main, DATA_("Texture"));
+    tex = BKE_texture_add(bmain, DATA_("Texture"));
   }
 
   /* hook into UI */
@@ -2964,7 +2960,7 @@ static int paste_material_exec(bContext *C, wmOperator *op)
     BKE_library_foreach_ID_link(
         bmain, &nodetree->id, paste_material_nodetree_ids_decref, nullptr, IDWALK_NOP);
 
-    ntreeFreeEmbeddedTree(nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(nodetree);
     MEM_freeN(nodetree);
     ma->nodetree = nullptr;
   }

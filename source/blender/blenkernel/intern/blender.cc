@@ -34,7 +34,6 @@
 #include "BKE_idprop.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
-#include "BKE_preferences.h"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
@@ -87,7 +86,7 @@ void BKE_blender_free()
   BKE_ffmpeg_exit();
 #endif
 
-  BKE_node_system_exit();
+  blender::bke::BKE_node_system_exit();
 }
 
 /** \} */

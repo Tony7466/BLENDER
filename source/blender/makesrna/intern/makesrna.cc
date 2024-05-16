@@ -3378,7 +3378,8 @@ static void rna_def_function_funcs(FILE *f, StructDefRNA *dsrna, FunctionDefRNA 
         fprintf(f, ", ");
       }
       first = 0;
-      fprintf(f, "CTX_data_main(C)"); /* may have direct access later */
+      /* May have direct access later. */
+      fprintf(f, "(_ptr->owner_id) ? CTX_data_main_from_id(C, _ptr->owner_id) : CTX_data_main(C)");
     }
 
     if (func->flag & FUNC_USE_CONTEXT) {
@@ -4782,9 +4783,6 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_texture.cc", "rna_texture_api.cc", RNA_def_texture},
     {"rna_action.cc", "rna_action_api.cc", RNA_def_action},
     {"rna_animation.cc", "rna_animation_api.cc", RNA_def_animation},
-#ifdef WITH_ANIM_BAKLAVA
-    {"rna_animation_id.cc", nullptr, RNA_def_animation_id},
-#endif
     {"rna_animviz.cc", nullptr, RNA_def_animviz},
     {"rna_armature.cc", "rna_armature_api.cc", RNA_def_armature},
     {"rna_attribute.cc", nullptr, RNA_def_attribute},

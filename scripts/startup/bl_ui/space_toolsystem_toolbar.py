@@ -18,7 +18,9 @@ from bl_ui.space_toolsystem_common import (
     ToolSelectPanelHelper,
     ToolDef,
 )
-
+from bl_ui.properties_paint_common import (
+    BrushAssetShelf,
+)
 from bpy.app.translations import pgettext_tip as tip_
 
 
@@ -1888,7 +1890,7 @@ class _defs_weight_paint:
         )
 
 
-class _defs_paint_grease_pencil:
+class _defs_grease_pencil_paint:
 
     @staticmethod
     def generate_from_brushes(context):
@@ -1951,7 +1953,8 @@ class _defs_paint_grease_pencil:
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_paint
-        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
+
+        BrushAssetShelf.draw_popup_selector(row, context, brush)
 
         from bl_ui.properties_paint_common import (
             brush_basic_grease_pencil_paint_settings,
@@ -1966,7 +1969,7 @@ class _defs_paint_grease_pencil:
     def line():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_line")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.line",
@@ -1982,7 +1985,7 @@ class _defs_paint_grease_pencil:
     def polyline():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_polyline")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.polyline",
@@ -1998,7 +2001,7 @@ class _defs_paint_grease_pencil:
     def arc():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_arc")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.arc",
@@ -2014,7 +2017,7 @@ class _defs_paint_grease_pencil:
     def curve():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_curve")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.curve",
@@ -2030,7 +2033,7 @@ class _defs_paint_grease_pencil:
     def box():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_box")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.box",
@@ -2046,7 +2049,7 @@ class _defs_paint_grease_pencil:
     def circle():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_circle")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.circle",
@@ -2333,7 +2336,8 @@ class _defs_gpencil_paint:
         row = layout.row(align=True)
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_paint
-        row.template_ID_preview(settings, "brush", rows=3, cols=8, hide_buttons=True)
+
+        BrushAssetShelf.draw_popup_selector(layout, context, brush)
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
@@ -2737,7 +2741,6 @@ class _defs_gpencil_sculpt:
         ]
 
 
-
 class _defs_grease_pencil_sculpt:
     @staticmethod
     def poll_select_mask(context):
@@ -2874,6 +2877,7 @@ class _defs_gpencil_vertex:
                 )
             )
         ]
+
 
 class _defs_node_select:
 
@@ -3564,16 +3568,16 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'PAINT_GREASE_PENCIL': [
             _defs_view3d_generic.cursor,
             None,
-            _defs_paint_grease_pencil.generate_from_brushes,
-            _defs_paint_grease_pencil.cutter,
-            _defs_paint_grease_pencil.tint,
+            _defs_grease_pencil_paint.generate_from_brushes,
+            _defs_grease_pencil_paint.cutter,
+            _defs_grease_pencil_paint.tint,
             None,
-            _defs_paint_grease_pencil.line,
-            _defs_paint_grease_pencil.polyline,
-            _defs_paint_grease_pencil.arc,
-            _defs_paint_grease_pencil.curve,
-            _defs_paint_grease_pencil.box,
-            _defs_paint_grease_pencil.circle,
+            _defs_grease_pencil_paint.line,
+            _defs_grease_pencil_paint.polyline,
+            _defs_grease_pencil_paint.arc,
+            _defs_grease_pencil_paint.curve,
+            _defs_grease_pencil_paint.box,
+            _defs_grease_pencil_paint.circle,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,

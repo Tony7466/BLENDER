@@ -69,7 +69,7 @@ struct bContext {
     bScreen *screen;
     ScrArea *area;
     ARegion *region;
-    ARegion *menu;
+    ARegion *region_popup;
     wmGizmoGroup *gizmo_group;
     const bContextStore *store;
 
@@ -727,9 +727,9 @@ void *CTX_wm_region_data(const bContext *C)
   return (region) ? region->regiondata : nullptr;
 }
 
-ARegion *CTX_wm_menu(const bContext *C)
+ARegion *CTX_wm_region_popup(const bContext *C)
 {
-  return C->wm.menu;
+  return C->wm.region_popup;
 }
 
 wmGizmoGroup *CTX_wm_gizmo_group(const bContext *C)
@@ -995,9 +995,10 @@ void CTX_wm_region_set(bContext *C, ARegion *region)
 #endif
 }
 
-void CTX_wm_menu_set(bContext *C, ARegion *menu)
+void CTX_wm_region_popup_set(bContext *C, ARegion *region_popup)
 {
-  C->wm.menu = menu;
+  BLI_assert(region_popup == nullptr || region_popup->regiontype == RGN_TYPE_TEMPORARY);
+  C->wm.region_popup = region_popup;
 }
 
 void CTX_wm_gizmo_group_set(bContext *C, wmGizmoGroup *gzgroup)
@@ -1056,6 +1057,11 @@ Main *CTX_data_main(const bContext *C)
   }
 
   return C->data.main;
+}
+
+Main *CTX_data_main_from_id(const bContext *C, const ID *id)
+{
+  return BKE_main_from_id(CTX_data_main(C), id);
 }
 
 void CTX_data_main_set(bContext *C, Main *bmain)

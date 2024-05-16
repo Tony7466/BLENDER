@@ -1831,6 +1831,18 @@ void rna_Scene_use_freestyle_update(Main * /*bmain*/, Scene * /*scene*/, Pointer
   }
 }
 
+void rna_Scene_compositor_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+
+  if (scene->nodetree) {
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(scene->nodetree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, &ntree->id);
+    WM_main_add_notifier(NC_SCENE | ND_NODES, &ntree->id);
+    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  }
+}
+
 void rna_Scene_use_view_map_cache_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
 #  ifdef WITH_FREESTYLE
@@ -1933,11 +1945,6 @@ static void rna_SceneEEVEE_gi_cubemap_resolution_update(Main * /*main*/,
   FOREACH_SCENE_OBJECT_END;
 }
 
-static void rna_SceneEEVEE_clamp_world_update(Main * /*main*/, Scene *scene, PointerRNA * /*ptr*/)
-{
-  DEG_id_tag_update(&scene->world->id, ID_RECALC_SHADING);
-}
-
 static void rna_SceneEEVEE_clamp_surface_indirect_update(Main * /*main*/,
                                                          Scene *scene,
                                                          PointerRNA * /*ptr*/)
@@ -1981,10 +1988,11 @@ static std::optional<std::string> rna_SceneRenderView_path(const PointerRNA *ptr
 static void rna_Scene_use_nodes_update(bContext *C, PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->data;
+  Main *bmain = CTX_data_main_from_id(C, &scene->id);
   if (scene->use_nodes && scene->nodetree == nullptr) {
     ED_node_composit_default(C, scene);
   }
-  DEG_relations_tag_update(CTX_data_main(C));
+  DEG_relations_tag_update(bmain);
 }
 
 static void rna_Physics_relations_update(Main *bmain, Scene * /*scene*/, PointerRNA * /*ptr*/)
@@ -2142,7 +2150,7 @@ static void rna_Scene_simplify_update_impl(Main *bmain,
 static void rna_Scene_use_simplify_update(bContext *C, PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
-  Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main_from_id(C, &scene->id);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   rna_Scene_simplify_update_impl(bmain, scene, false, depsgraph);
 }
@@ -2150,7 +2158,7 @@ static void rna_Scene_use_simplify_update(bContext *C, PointerRNA *ptr)
 static void rna_Scene_simplify_volume_update(bContext *C, PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
-  Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main_from_id(C, &scene->id);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   if (scene->r.mode & R_SIMPLIFY) {
     rna_Scene_simplify_update_impl(bmain, scene, false, depsgraph);
@@ -6639,7 +6647,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem engine_items[] = {
-      {0, "BLENDER_EEVEE", 0, "EEVEE", ""},
+      {0, "BLENDER_EEVEE_NEXT", 0, "EEVEE", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -6696,6 +6704,22 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
        0,
        "Sequencer Strips",
        "Use metadata from the strips in the sequencer"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem compositor_device_items[] = {
+      {SCE_COMPOSITOR_DEVICE_CPU, "CPU", 0, "CPU", ""},
+      {SCE_COMPOSITOR_DEVICE_GPU, "GPU", 0, "GPU", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem compositor_precision_items[] = {
+      {SCE_COMPOSITOR_PRECISION_AUTO,
+       "AUTO",
+       0,
+       "Auto",
+       "Full precision for final renders, half precision otherwise"},
+      {SCE_COMPOSITOR_PRECISION_FULL, "FULL", 0, "Full", "Full precision"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -7426,6 +7450,20 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "BakeSettings");
   RNA_def_property_ui_text(prop, "Bake Data", "");
 
+  /* Compositor. */
+
+  prop = RNA_def_property(srna, "compositor_device", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, compositor_device_items);
+  RNA_def_property_ui_text(prop, "Compositor Device", "Set how compositing is executed");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
+
+  prop = RNA_def_property(srna, "compositor_precision", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "compositor_precision");
+  RNA_def_property_enum_items(prop, compositor_precision_items);
+  RNA_def_property_ui_text(
+      prop, "Compositor Precision", "The precision of compositor intermediate result");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_Scene_compositor_update");
+
   /* Nestled Data. */
   /* *** Non-Animated *** */
   RNA_define_animate_sdna(false);
@@ -8034,17 +8072,6 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Clamping */
-  prop = RNA_def_property(srna, "clamp_world", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop,
-      "Clamp World",
-      "If non-zero, the maximum value for world contribution to the scene lighting. "
-      "Higher values will be scaled down to avoid too "
-      "much light bleeding at the cost of accuracy");
-  RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_SceneEEVEE_clamp_world_update");
-
   prop = RNA_def_property(srna, "clamp_surface_direct", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Clamp Surface Direct",

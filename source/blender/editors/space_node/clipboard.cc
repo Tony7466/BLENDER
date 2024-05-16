@@ -33,7 +33,7 @@ struct NodeClipboardItemIDInfo {
   /**
    * Library filepath of the referenced ID, together with its name it forms a unique identifier.
    *
-   * Note: Library reference is stored as an absolute path. Since the Node clipboard is runtime
+   * \note Library reference is stored as an absolute path. Since the Node clipboard is runtime
    * data, persistent over new blend-files opening, this should guarantee that identical IDs from
    * identical libraries can be matched accordingly, even across several blend-files.
    */
@@ -112,7 +112,7 @@ struct NodeClipboard {
     /* Find a new valid ID pointer for all ID usages in given node.
      *
      * NOTE: Due to the fact that the clipboard survives file loading, only name (including IDType)
-     * and libpath pairs can be used here.
+     * and library-path pairs can be used here.
      *   - UID cannot be trusted across file load.
      *   - ID pointer itself cannot be trusted across undo/redo and file-load. */
     auto validate_id_fn = [this, &is_valid, &bmain, &bmain_id_map, &libraries_path_to_id](
@@ -291,7 +291,7 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
         new_node->parent = node_map.lookup(new_node->parent);
       }
       else {
-        nodeDetachNode(&tree, new_node);
+        bke::nodeDetachNode(&tree, new_node);
       }
     }
   }
@@ -335,9 +335,9 @@ void NODE_OT_clipboard_copy(wmOperatorType *ot)
 
 static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
 {
-  Main *bmain = CTX_data_main(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
   bNodeTree &tree = *snode.edittree;
+  Main *bmain = CTX_data_main_from_id(C, &tree.id);
   NodeClipboard &clipboard = get_node_clipboard();
 
   if (clipboard.nodes.is_empty()) {
@@ -351,7 +351,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
                "Some nodes references to other IDs could not be restored, will be left empty");
   }
 
-  ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
+  ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
   node_deselect_all(tree);
 
@@ -399,7 +399,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   for (bNode *new_node : node_map.values()) {
-    nodeSetSelected(new_node, true);
+    bke::nodeSetSelected(new_node, true);
 
     new_node->flag &= ~NODE_ACTIVE;
 
@@ -439,11 +439,11 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
     const bNode *fromnode = link.fromnode;
     const bNode *tonode = link.tonode;
     if (node_map.lookup_key_ptr(fromnode) && node_map.lookup_key_ptr(tonode)) {
-      bNodeLink *new_link = nodeAddLink(&tree,
-                                        node_map.lookup(fromnode),
-                                        socket_map.lookup(link.fromsock),
-                                        node_map.lookup(tonode),
-                                        socket_map.lookup(link.tosock));
+      bNodeLink *new_link = bke::nodeAddLink(&tree,
+                                             node_map.lookup(fromnode),
+                                             socket_map.lookup(link.fromsock),
+                                             node_map.lookup(tonode),
+                                             socket_map.lookup(link.tosock));
       new_link->multi_input_sort_id = link.multi_input_sort_id;
     }
   }

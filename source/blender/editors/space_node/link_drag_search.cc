@@ -69,18 +69,18 @@ static void add_reroute_node_fn(nodes::LinkSearchOpParams &params)
 {
   bNode &reroute = params.add_node("NodeReroute");
   if (params.socket.in_out == SOCK_IN) {
-    nodeAddLink(&params.node_tree,
-                &reroute,
-                static_cast<bNodeSocket *>(reroute.outputs.first),
-                &params.node,
-                &params.socket);
+    bke::nodeAddLink(&params.node_tree,
+                     &reroute,
+                     static_cast<bNodeSocket *>(reroute.outputs.first),
+                     &params.node,
+                     &params.socket);
   }
   else {
-    nodeAddLink(&params.node_tree,
-                &params.node,
-                &params.socket,
-                &reroute,
-                static_cast<bNodeSocket *>(reroute.inputs.first));
+    bke::nodeAddLink(&params.node_tree,
+                     &params.node,
+                     &params.socket,
+                     &reroute,
+                     static_cast<bNodeSocket *>(reroute.inputs.first));
   }
 }
 
@@ -95,16 +95,17 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
       nullptr);
   socket_iface->init_from_socket_instance(&params.socket);
   params.node_tree.tree_interface.active_item_set(&socket_iface->item);
+  Main *bmain = CTX_data_main_from_id(&params.C, &params.node_tree.id);
 
   bNode &group_input = params.add_node("NodeGroupInput");
 
   /* This is necessary to create the new sockets in the other input nodes. */
-  ED_node_tree_propagate_change(&params.C, CTX_data_main(&params.C), &params.node_tree);
+  ED_node_tree_propagate_change(&params.C, bmain, &params.node_tree);
 
   /* Hide the new input in all other group input nodes, to avoid making them taller. */
   for (bNode *node : params.node_tree.all_nodes()) {
     if (node->type == NODE_GROUP_INPUT) {
-      bNodeSocket *new_group_input_socket = nodeFindSocket(
+      bNodeSocket *new_group_input_socket = bke::nodeFindSocket(
           node, SOCK_OUT, socket_iface->identifier);
       if (new_group_input_socket) {
         new_group_input_socket->flag |= SOCK_HIDDEN;
@@ -117,14 +118,13 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, socket_iface->identifier);
+  bNodeSocket *socket = bke::nodeFindSocket(&group_input, SOCK_OUT, socket_iface->identifier);
   if (socket) {
     /* Unhide the socket for the new input in the new node and make a connection to it. */
     socket->flag &= ~SOCK_HIDDEN;
-    nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
+    bke::nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
 
-    bke::node_socket_move_default_value(
-        *CTX_data_main(&params.C), params.node_tree, params.socket, *socket);
+    bke::node_socket_move_default_value(*bmain, params.node_tree, params.socket, *socket);
   }
 }
 
@@ -142,10 +142,10 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
+  bNodeSocket *socket = bke::nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
-    nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
+    bke::nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
   }
 }
 
@@ -165,7 +165,7 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
     return;
   }
 
-  const bNodeTreeType &node_tree_type = *node_tree.typeinfo;
+  const bke::bNodeTreeType &node_tree_type = *node_tree.typeinfo;
   const eNodeSocketInOut in_out = socket.in_out == SOCK_OUT ? SOCK_IN : SOCK_OUT;
 
   const IDProperty *sockets = BKE_asset_metadata_idprop_find(
@@ -178,7 +178,7 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
       continue;
     }
     const char *socket_idname = IDP_String(socket_property);
-    const bNodeSocketType *socket_type = nodeSocketTypeFind(socket_idname);
+    const bke::bNodeSocketType *socket_type = bke::nodeSocketTypeFind(socket_idname);
     if (socket_type == nullptr) {
       continue;
     }
@@ -201,7 +201,7 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
     search_link_ops.append(
         {asset_name + " " + UI_MENU_ARROW_SEP + socket_name,
          [&asset, socket_property, in_out](nodes::LinkSearchOpParams &params) {
-           Main &bmain = *CTX_data_main(&params.C);
+           Main &bmain = *CTX_data_main_from_id(&params.C, &params.node_tree.id);
 
            bNode &node = params.add_node(params.node_tree.typeinfo->group_idname);
            node.flag &= ~NODE_OPTIONS;
@@ -218,7 +218,8 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
                node, in_out, socket_property->name);
            if (new_node_socket != nullptr) {
              /* Rely on the way #nodeAddLink switches in/out if necessary. */
-             nodeAddLink(&params.node_tree, &params.node, &params.socket, &node, new_node_socket);
+             bke::nodeAddLink(
+                 &params.node_tree, &params.node, &params.socket, &node, new_node_socket);
            }
          },
          weight});
@@ -291,7 +292,8 @@ static void gather_socket_link_operations(const bContext &C,
       const bNodeTreeInterfaceSocket &interface_socket =
           reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
       {
-        const bNodeSocketType *from_typeinfo = nodeSocketTypeFind(interface_socket.socket_type);
+        const bke::bNodeSocketType *from_typeinfo = bke::nodeSocketTypeFind(
+            interface_socket.socket_type);
         const eNodeSocketDatatype from = from_typeinfo ? eNodeSocketDatatype(from_typeinfo->type) :
                                                          SOCK_CUSTOM;
         const eNodeSocketDatatype to = eNodeSocketDatatype(socket.typeinfo->type);
@@ -345,7 +347,6 @@ static void link_drag_search_update_fn(
 
 static void link_drag_search_exec_fn(bContext *C, void *arg1, void *arg2)
 {
-  Main &bmain = *CTX_data_main(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
   bNodeTree &node_tree = *snode.edittree;
   LinkDragSearchStorage &storage = *static_cast<LinkDragSearchStorage *>(arg1);
@@ -374,11 +375,12 @@ static void link_drag_search_exec_fn(bContext *C, void *arg1, void *arg2)
     new_node->locx -= new_node->width;
   }
 
-  nodeSetSelected(new_node, true);
-  nodeSetActive(&node_tree, new_node);
+  bke::nodeSetSelected(new_node, true);
+  bke::nodeSetActive(&node_tree, new_node);
 
   /* Ideally it would be possible to tag the node tree in some way so it updates only after the
    * translate operation is finished, but normally moving nodes around doesn't cause updates. */
+  Main &bmain = *CTX_data_main_from_id(C, &node_tree.id);
   ED_node_tree_propagate_change(C, &bmain, &node_tree);
 
   /* Start translation operator with the new node. */

@@ -52,7 +52,6 @@ class AssetView : public ui::AbstractGridView {
 
  public:
   AssetView(const AssetLibraryReference &library_ref, const AssetShelf &shelf, bool is_popup);
-  ~AssetView();
 
   void build_items() override;
   bool begin_filtering(const bContext &C) const override;
@@ -108,8 +107,6 @@ AssetView::AssetView(const AssetLibraryReference &library_ref,
     }
   }
 }
-
-AssetView::~AssetView() {}
 
 void AssetView::build_items()
 {
@@ -214,6 +211,16 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
   const AssetView &asset_view = reinterpret_cast<const AssetView &>(this->get_view());
   const AssetShelfType &shelf_type = *asset_view.shelf_.type;
 
+  PointerRNA file_ptr = RNA_pointer_create(
+      nullptr,
+      &RNA_FileSelectEntry,
+      /* XXX passing file pointer here, should be asset handle or asset representation. */
+      const_cast<FileDirEntry *>(asset_.file_data));
+  UI_but_context_ptr_set(uiLayoutGetBlock(&layout),
+                         reinterpret_cast<uiBut *>(view_item_but_),
+                         "active_file",
+                         &file_ptr);
+
   wmOperatorType *ot = WM_operatortype_find(shelf_type.activate_operator.c_str(), true);
   PointerRNA op_props = PointerRNA_NULL;
   if (ot) {
@@ -236,15 +243,19 @@ void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
 
 void AssetViewItem::on_activate(bContext & /*C*/)
 {
-  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
   if (asset_view.is_popup_) {
-    UI_popup_menu_close_from_but(reinterpret_cast<uiBut *>(view_item_button()));
+    UI_popup_menu_close_from_but(reinterpret_cast<uiBut *>(this->view_item_button()));
   }
 }
 
 std::optional<bool> AssetViewItem::should_be_active() const
 {
-  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
+  const AssetShelfType &shelf_type = *asset_view.shelf_.type;
+  if (!shelf_type.get_active_asset) {
+    return {};
+  }
   if (!asset_view.active_asset_) {
     return false;
   }

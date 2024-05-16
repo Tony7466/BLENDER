@@ -18,7 +18,7 @@
 
 #include "ED_asset_shelf.hh"
 
-using namespace blender;
+namespace blender::ui {
 
 static uiBlock *asset_shelf_block_fn(bContext *C, ARegion *region, void *arg_shelf_type)
 {
@@ -26,40 +26,46 @@ static uiBlock *asset_shelf_block_fn(bContext *C, ARegion *region, void *arg_she
   return ed::asset::shelf::popup_block_create(C, region, shelf_type);
 }
 
-void uiTemplateAssetShelfPopover(uiLayout *layout,
-                                 bContext *C,
-                                 const char *asset_shelf_id,
-                                 const char *name,
-                                 const BIFIconID icon)
+void template_asset_shelf_popover(uiLayout &layout,
+                                  const bContext &C,
+                                  const StringRefNull asset_shelf_id,
+                                  const StringRef name,
+                                  const BIFIconID icon)
 {
-  const ScrArea *area = CTX_wm_area(C);
-  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(*area->type,
-                                                                       asset_shelf_id);
+  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_id);
   if (!shelf_type) {
-    RNA_warning("Asset shelf type not found: %s", asset_shelf_id);
+    RNA_warning("Asset shelf type not found: %s", asset_shelf_id.c_str());
     return;
   }
 
-  const ARegion *region = CTX_wm_region(C);
+  const ARegion *region = CTX_wm_region(&C);
   const bool use_big_size = !RGN_TYPE_IS_HEADER_ANY(region->regiontype);
+  const bool use_preview_icon = use_big_size;
   const short width = [&]() -> short {
     if (use_big_size) {
       return UI_UNIT_X * 6;
     }
-    return UI_UNIT_X * (name ? 7 : 1.6f);
+    return UI_UNIT_X * (name.is_empty() ? 1.6f : 7);
   }();
   const short height = UI_UNIT_Y * (use_big_size ? 6 : 1);
 
-  uiBlock *block = uiLayoutGetBlock(layout);
+  uiBlock *block = uiLayoutGetBlock(&layout);
   uiBut *but = uiDefBlockBut(
       block, asset_shelf_block_fn, shelf_type, name, 0, 0, width, height, "Select an asset");
-  ui_def_but_icon(but, icon, UI_HAS_ICON);
-  UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
+  if (use_preview_icon) {
+    ui_def_but_icon(but, icon, UI_HAS_ICON | UI_BUT_ICON_PREVIEW);
+  }
+  else {
+    ui_def_but_icon(but, icon, UI_HAS_ICON);
+    UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
+  }
 
-  if (ed::asset::shelf::type_poll(*C, *area->type, shelf_type) == false) {
+  if (ed::asset::shelf::type_poll_for_popup(C, shelf_type) == false) {
     UI_but_flag_enable(but, UI_BUT_DISABLED);
   }
 }
+
+}  // namespace blender::ui
 
 static int asset_shelf_popup_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {

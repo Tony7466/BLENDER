@@ -1008,7 +1008,7 @@ enum {
    * Datablocks like this can not be linked to and from datablocks in regular main.
    * They should stay isolated from each other.
    */
-  LIB_TAG_ASSET_MAIN = 1 << 27,
+  LIB_TAG_ASSET_EDIT_MAIN = 1 << 27,
 
   /* ------------------------------------------------------------------------------------------- */
 
@@ -1221,7 +1221,6 @@ typedef enum IDRecalcFlag {
 #define FILTER_ID_LI (1ULL << 39)
 #define FILTER_ID_GP (1ULL << 40)
 #define FILTER_ID_IP (1ULL << 41)
-#define FILTER_ID_AN (1ULL << 42)
 
 #define FILTER_ID_ALL \
   (FILTER_ID_AC | FILTER_ID_AR | FILTER_ID_BR | FILTER_ID_CA | FILTER_ID_CU_LEGACY | \
@@ -1231,7 +1230,7 @@ typedef enum IDRecalcFlag {
    FILTER_ID_SPK | FILTER_ID_SO | FILTER_ID_TE | FILTER_ID_TXT | FILTER_ID_VF | FILTER_ID_WO | \
    FILTER_ID_CF | FILTER_ID_WS | FILTER_ID_LP | FILTER_ID_CV | FILTER_ID_PT | FILTER_ID_VO | \
    FILTER_ID_SIM | FILTER_ID_KE | FILTER_ID_SCR | FILTER_ID_WM | FILTER_ID_LI | FILTER_ID_GP | \
-   FILTER_ID_IP | FILTER_ID_AN)
+   FILTER_ID_IP)
 
 /**
  * This enum defines the index assigned to each type of IDs in the array returned by
@@ -1270,7 +1269,6 @@ typedef enum eID_Index {
   /* Animation types, might be used by almost all other types. */
   INDEX_ID_IP, /* Deprecated. */
   INDEX_ID_AC,
-  INDEX_ID_AN,
 
   /* Grease Pencil, special case, should be with the other obdata, but it can also be used by many
    * other ID types, including node trees e.g.

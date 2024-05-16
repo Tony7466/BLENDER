@@ -23,10 +23,13 @@
 #include "BKE_asset_edit.hh"
 #include "BKE_blendfile.hh"
 #include "BKE_blendfile_link_append.hh"
+#include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_remap.hh"
+#include "BKE_library.hh"
 #include "BKE_main.hh"
+#include "BKE_packedFile.h"
 #include "BKE_preferences.h"
 #include "BKE_report.hh"
 
@@ -63,19 +66,13 @@ struct AssetEditBlend {
 AssetEditBlend::AssetEditBlend(const std::string &filepath)
     : filepath(std::move(filepath)), main(BKE_main_new())
 {
-  this->main->is_asset_weak_reference_main = true;
+  this->main->is_asset_edit_main = true;
   BLI_assert(!BLI_path_is_rel(filepath.c_str()));
 
-  /* Fairly simple check based on filepath only.
-   * - Ends with `.asset.bend` extensions.
-   * - Is located in user asset library.
-   *
-   * TODO?
-   * - Check file contents.
-   * - Check file is writable.
-   */
+  /* Simple check, based on being a writable .asset.blend file in a user asset library. */
   this->is_editable = StringRef(filepath).endswith(BLENDER_ASSET_FILE_SUFFIX) &&
-                      BKE_preferences_asset_library_containing_path(&U, filepath.c_str());
+                      BKE_preferences_asset_library_containing_path(&U, filepath.c_str()) &&
+                      BLI_file_is_writable(filepath.c_str());
 }
 
 AssetEditBlend::~AssetEditBlend()
@@ -128,7 +125,7 @@ ID *AssetEditBlend::ensure_id(const ID_Type id_type, const char *asset_name)
 
   BKE_blendfile_link_append_context_free(lapp_context);
 
-  BKE_main_id_tag_all(this->main, LIB_TAG_ASSET_MAIN, true);
+  BKE_main_id_tag_all(this->main, LIB_TAG_ASSET_EDIT_MAIN, true);
 
   /* Verify that the name matches. It must for referencing the same asset again to work.  */
   BLI_assert(local_asset == nullptr || STREQ(local_asset->name + 2, asset_name));
@@ -164,21 +161,24 @@ static std::string asset_blendfile_path_for_save(const bUserAssetLibrary &user_l
   BLI_assert(!root_path.empty());
 
   if (!BLI_dir_create_recursive(root_path.c_str())) {
-    BKE_report(&reports, RPT_ERROR, "Failed to create asset library directory to save brush");
+    BKE_report(&reports, RPT_ERROR, "Failed to create asset library directory to save asset");
     return "";
   }
 
+  /* Make sure filename only contains valid characters for filesystem. */
   char base_name_filesafe[FILE_MAXFILE];
   BLI_strncpy(base_name_filesafe,
               base_name.data(),
-              std::min(sizeof(base_name_filesafe), size_t(base_name.size())));
+              std::min(sizeof(base_name_filesafe), size_t(base_name.size() + 1)));
   BLI_path_make_safe_filename(base_name_filesafe);
 
   const std::string filepath = root_path + SEP + base_name_filesafe + BLENDER_ASSET_FILE_SUFFIX;
+
   if (!BLI_is_file(filepath.c_str())) {
     return filepath;
   }
 
+  /* Avoid overwriting existing file by adding number suffix. */
   for (int i = 1;; i++) {
     const std::string filepath = root_path + SEP + base_name_filesafe + "_" + std::to_string(i++) +
                                  BLENDER_ASSET_FILE_SUFFIX;
@@ -190,6 +190,70 @@ static std::string asset_blendfile_path_for_save(const bUserAssetLibrary &user_l
   return "";
 }
 
+static void asset_main_create_expander(void * /*handle*/, Main * /*bmain*/, void *vid)
+{
+  ID *id = static_cast<ID *>(vid);
+
+  if (id && (id->tag & LIB_TAG_DOIT) == 0) {
+    id->tag |= LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT;
+  }
+}
+
+static Main *asset_main_create_from_ID(Main *bmain_src, ID &id_asset, ID **id_asset_new)
+{
+  /* Tag asset ID and its dependencies. */
+  ID *id_src;
+  FOREACH_MAIN_ID_BEGIN (bmain_src, id_src) {
+    id_src->tag &= ~(LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT);
+  }
+  FOREACH_MAIN_ID_END;
+
+  id_asset.tag |= LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT;
+
+  BLO_expand_main(nullptr, bmain_src, asset_main_create_expander);
+
+  /* Create main and copy all tagged datablocks. */
+  Main *bmain_dst = BKE_main_new();
+  STRNCPY(bmain_dst->filepath, bmain_src->filepath);
+
+  blender::bke::id::IDRemapper id_remapper;
+
+  FOREACH_MAIN_ID_BEGIN (bmain_src, id_src) {
+    if (id_src->tag & LIB_TAG_DOIT) {
+      /* Note that this will not copy Library datablocks, and all copied
+       * datablocks will become local as a result. */
+      ID *id_dst = BKE_id_copy_ex(bmain_dst,
+                                  id_src,
+                                  nullptr,
+                                  LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_DEG_TAG |
+                                      ((id_src == &id_asset) ? LIB_ID_COPY_ASSET_METADATA : 0));
+      id_remapper.add(id_src, id_dst);
+      if (id_src == &id_asset) {
+        *id_asset_new = id_dst;
+      }
+    }
+    else {
+      id_remapper.add(id_src, nullptr);
+    }
+
+    id_src->tag &= ~(LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT);
+  }
+  FOREACH_MAIN_ID_END;
+
+  /* Remap datablock pointers. */
+  BKE_libblock_remap_multiple_raw(bmain_dst, id_remapper, ID_REMAP_SKIP_USER_CLEAR);
+
+  /* Compute reference counts. */
+  ID *id_dst;
+  FOREACH_MAIN_ID_BEGIN (bmain_dst, id_dst) {
+    id_dst->tag &= ~LIB_TAG_NO_USER_REFCOUNT;
+  }
+  FOREACH_MAIN_ID_END;
+  BKE_main_id_refcount_recompute(bmain_dst, false);
+
+  return bmain_dst;
+}
+
 static bool asset_write_in_library(Main *bmain,
                                    const ID &id_const,
                                    const StringRef name,
@@ -197,73 +261,39 @@ static bool asset_write_in_library(Main *bmain,
                                    std::string &final_full_file_path,
                                    ReportList &reports)
 {
-  /* TODO: Comment seems to be resolved by separate #Main storage?
-   *  XXX
-   * FIXME
-   *
-   * This code is _pure evil_. It does in-place manipulation on IDs in global Main database,
-   * temporarilly remove them and add them back...
-   *
-   * Use it as-is for now (in a similar way as python API or copy-to-buffer works). Nut the whole
-   * 'BKE_blendfile_write_partial' code needs to be completely refactored.
-   *
-   * Ideas:
-   *   - Have `BKE_blendfile_write_partial_begin` return a new temp Main.
-   *   - Replace `BKE_blendfile_write_partial_tag_ID` by API to add IDs to this temp Main.
-   *     + This should _duplicate_ the ID, not remove the original one from the source Main!
-   *   - Have API to automatically also duplicate dependencies into temp Main.
-   *     + Have options to e.g. make all duplicated IDs 'local' (i.e. remove their library data).
-   *   - `BKE_blendfile_write_partial` then simply write the given temp main.
-   *   - `BKE_blendfile_write_partial_end` frees the temp Main.
-   */
-
   ID &id = const_cast<ID &>(id_const);
 
-  const short prev_flag = id.flag;
-  const int prev_tag = id.tag;
-  const int prev_us = id.us;
-  const std::string prev_name = id.name + 2;
-  /* TODO: Remove library overrides stuff now that they are not used for brush assets. */
-  IDOverrideLibrary *prev_liboverride = id.override_library;
-  const int write_flags = 0; /* Could use #G_FILE_COMPRESS ? */
-  const eBLO_WritePathRemap remap_mode = BLO_WRITE_PATH_REMAP_RELATIVE;
+  ID *new_id = nullptr;
+  Main *new_main = asset_main_create_from_ID(bmain, id, &new_id);
 
-  BKE_blendfile_write_partial_begin(bmain);
+  std::string new_name = name;
+  BKE_libblock_rename(new_main, new_id, new_name.c_str());
+  id_fake_user_set(new_id);
 
-  id.flag |= LIB_FAKEUSER;
-  id.tag &= ~LIB_TAG_RUNTIME;
-  id.us = 1;
-  BLI_strncpy(id.name + 2, name.data(), std::min(sizeof(id.name) - 2, size_t(name.size())));
-  id.override_library = nullptr;
+  BlendFileWriteParams blend_file_write_params{};
+  blend_file_write_params.remap_mode = BLO_WRITE_PATH_REMAP_RELATIVE;
 
-  BKE_blendfile_write_partial_tag_ID(&id, true);
+  BKE_packedfile_pack_all(new_main, nullptr, false);
 
-  /* TODO: check overwriting existing file. */
-  /* TODO: ensure filepath contains only valid characters for file system. */
-  const bool sucess = BKE_blendfile_write_partial(
-      bmain, filepath.c_str(), write_flags, remap_mode, &reports);
+  const int write_flags = G_FILE_COMPRESS;
+  const bool success = BLO_write_file(
+      new_main, filepath.c_str(), write_flags, &blend_file_write_params, &reports);
 
-  if (sucess) {
-    final_full_file_path = std::string(filepath) + SEP + "Brush" + SEP + name;
+  if (success) {
+    const IDTypeInfo *idtype = BKE_idtype_get_info_from_id(&id);
+    final_full_file_path = std::string(filepath) + SEP + std::string(idtype->name) + SEP + name;
   }
 
-  BKE_blendfile_write_partial_end(bmain);
+  BKE_main_free(new_main);
 
-  BKE_blendfile_write_partial_tag_ID(&id, false);
-  id.flag = prev_flag;
-  id.tag = prev_tag;
-  id.us = prev_us;
-  BLI_strncpy(id.name + 2, prev_name.c_str(), sizeof(id.name) - 2);
-  id.override_library = prev_liboverride;
-
-  return sucess;
+  return success;
 }
 
 void AssetEditBlend::reload(Main &global_main)
 {
   Main *old_main = this->main;
   this->main = BKE_main_new();
-  this->main->is_asset_weak_reference_main = true;
+  this->main->is_asset_edit_main = true;
 
   /* Fill fresh main database with same datablock as before. */
   LibraryLink_Params lapp_params{};
@@ -291,7 +321,7 @@ void AssetEditBlend::reload(Main &global_main)
 
   BKE_blendfile_link_append_context_free(lapp_context);
 
-  BKE_main_id_tag_all(this->main, LIB_TAG_ASSET_MAIN, true);
+  BKE_main_id_tag_all(this->main, LIB_TAG_ASSET_EDIT_MAIN, true);
 
   /* Remap old to new. */
   bke::id::IDRemapper mappings;
@@ -330,10 +360,13 @@ static Vector<AssetEditBlend> &asset_edit_blend_get_all()
 
 static AssetEditBlend *asset_edit_blend_from_id(const ID &id)
 {
-  BLI_assert(id.tag & LIB_TAG_ASSET_MAIN);
+  BLI_assert(id.tag & LIB_TAG_ASSET_EDIT_MAIN);
 
+  /* TODO: It would be good to make this more efficient, though it's unlikely to be a bottleneck
+   * for brush assets. It's not easy to add a hash map here because it needs to be kept up to date
+   * as the main database is edited, which can be done in many places. So this would require hooks
+   * quite deep in ID management. */
   for (AssetEditBlend &asset_blend : asset_edit_blend_get_all()) {
-    /* TODO: Look into make this whole thing more efficient. */
     ListBase *lb = which_libbase(asset_blend.main, GS(id.name));
     LISTBASE_FOREACH (ID *, other_id, lb) {
       if (&id == other_id) {
@@ -420,7 +453,7 @@ bool asset_edit_id_revert(Main &global_main, const ID &id, ReportList & /*report
   }
 
   /* Reload entire main, including texture dependencies. This relies on there
-   * being only a single brush asset per blend file. */
+   * being only a single asset per blend file. */
   asset_blend->reload(global_main);
 
   return true;
@@ -481,7 +514,7 @@ ID *asset_edit_id_from_weak_reference(Main &global_main,
 
 bool asset_edit_id_is_editable(const ID &id)
 {
-  if (!(id.tag & LIB_TAG_ASSET_MAIN)) {
+  if (!(id.tag & LIB_TAG_ASSET_EDIT_MAIN)) {
     return false;
   }
 

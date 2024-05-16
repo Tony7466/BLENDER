@@ -861,8 +861,6 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->armatures);
     case ID_AC:
       return &(bmain->actions);
-    case ID_AN:
-      return &(bmain->animations);
     case ID_NT:
       return &(bmain->nodetrees);
     case ID_BR:
@@ -908,7 +906,6 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
 
   /* Moved here to avoid problems when freeing with animato (aligorith). */
   lb[INDEX_ID_AC] = &(bmain->actions);
-  lb[INDEX_ID_AN] = &(bmain->animations);
 
   lb[INDEX_ID_KE] = &(bmain->shapekeys);
 
@@ -972,7 +969,7 @@ Main *BKE_main_from_id(Main *global_main, const ID *id, const bool verify)
   if (id == nullptr || (id->tag & LIB_TAG_NO_MAIN)) {
     return nullptr;
   }
-  if (id->tag & LIB_TAG_ASSET_MAIN) {
+  if (id->tag & LIB_TAG_ASSET_EDIT_MAIN) {
     return blender::bke::asset_edit_main(*id);
   }
 

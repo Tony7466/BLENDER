@@ -28,6 +28,7 @@ from bl_ui.properties_paint_common import (
     brush_settings,
     brush_settings_advanced,
     draw_color_settings,
+    BrushAssetShelf,
 )
 from bl_ui.utils import PresetPanel
 
@@ -53,6 +54,7 @@ class VIEW3D_MT_brush_context_menu(Menu):
             layout.separator()
 
             layout.operator("brush.asset_edit_metadata", text="Edit Metadata")
+            layout.operator("brush.asset_load_preview", text="Edit Preview Image...")
             layout.operator("brush.asset_update", text="Update Asset")
             layout.operator("brush.asset_revert", text="Revert to Asset")
         else:
@@ -82,9 +84,6 @@ class VIEW3D_MT_brush_gpencil_context_menu(Menu):
         if not brush:
             layout.label(text="No Brushes currently available", icon='INFO')
             return
-
-        layout.operator("gpencil.brush_reset")
-        layout.operator("gpencil.brush_reset_all")
 
 
 class View3DPanel:
@@ -355,7 +354,7 @@ class VIEW3D_PT_tools_particlemode(Panel, View3DPaintPanel):
 # TODO, move to space_view3d.py
 class VIEW3D_PT_tools_brush_select(Panel, View3DPaintBrushPanel, BrushSelectPanel):
     bl_context = ".paint_common"
-    bl_label = "Brushes"
+    bl_label = "Brush Asset"
 
 
 # TODO, move to space_view3d.py
@@ -1599,30 +1598,8 @@ class GreasePencilPaintPanel:
             return True
 
 
-class VIEW3D_PT_tools_grease_pencil_brush_select(Panel, View3DPanel, GreasePencilPaintPanel):
-    bl_label = "Brushes"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_paint
-
-        row = layout.row()
-        row.column().template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
-
-        col = row.column()
-        col.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
-
-        if context.mode == 'PAINT_GPENCIL':
-            brush = tool_settings.gpencil_paint.brush
-            if brush is not None:
-                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
-
-                if brush.use_custom_icon:
-                    layout.row().prop(brush, "icon_filepath", text="")
+class VIEW3D_PT_tools_grease_pencil_brush_select(Panel, View3DPanel, GreasePencilPaintPanel, BrushSelectPanel):
+    bl_label = "Brush Asset"
 
 
 class VIEW3D_PT_tools_grease_pencil_brush_settings(Panel, View3DPanel, GreasePencilPaintPanel):
@@ -2010,30 +1987,8 @@ class GreasePencilSculptPanel:
             return True
 
 
-class VIEW3D_PT_tools_grease_pencil_sculpt_select(Panel, View3DPanel, GreasePencilSculptPanel):
-    bl_label = "Brushes"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_sculpt_paint
-
-        row = layout.row()
-        row.column().template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
-
-        col = row.column()
-        col.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
-
-        if context.mode == 'SCULPT_GPENCIL':
-            brush = tool_settings.gpencil_sculpt_paint.brush
-            if brush is not None:
-                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
-
-                if (brush.use_custom_icon):
-                    layout.row().prop(brush, "icon_filepath", text="")
+class VIEW3D_PT_tools_grease_pencil_sculpt_select(Panel, View3DPanel, GreasePencilSculptPanel, BrushSelectPanel):
+    bl_label = "Brush Asset"
 
 
 class VIEW3D_PT_tools_grease_pencil_sculpt_settings(Panel, View3DPanel, GreasePencilSculptPanel):
@@ -2122,30 +2077,8 @@ class GreasePencilWeightPanel:
             return True
 
 
-class VIEW3D_PT_tools_grease_pencil_weight_paint_select(View3DPanel, Panel, GreasePencilWeightPanel):
-    bl_label = "Brushes"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_weight_paint
-
-        row = layout.row()
-        row.column().template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
-
-        col = row.column()
-        col.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
-
-        if context.mode in {'WEIGHT_GPENCIL', 'WEIGHT_GREASE_PENCIL'}:
-            brush = tool_settings.gpencil_weight_paint.brush
-            if brush is not None:
-                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
-
-                if (brush.use_custom_icon):
-                    layout.row().prop(brush, "icon_filepath", text="")
+class VIEW3D_PT_tools_grease_pencil_weight_paint_select(View3DPanel, Panel, GreasePencilWeightPanel, BrushSelectPanel):
+    bl_label = "Brush Asset"
 
 
 class VIEW3D_PT_tools_grease_pencil_weight_paint_settings(Panel, View3DPanel, GreasePencilWeightPanel):
@@ -2221,30 +2154,8 @@ class GreasePencilVertexPanel:
             return True
 
 
-class VIEW3D_PT_tools_grease_pencil_vertex_paint_select(View3DPanel, Panel, GreasePencilVertexPanel):
-    bl_label = "Brushes"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_vertex_paint
-
-        row = layout.row()
-        row.column().template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
-
-        col = row.column()
-        col.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
-
-        if context.mode == 'VERTEX_GPENCIL':
-            brush = tool_settings.gpencil_vertex_paint.brush
-            if brush is not None:
-                col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
-
-                if (brush.use_custom_icon):
-                    layout.row().prop(brush, "icon_filepath", text="")
+class VIEW3D_PT_tools_grease_pencil_vertex_paint_select(View3DPanel, Panel, GreasePencilVertexPanel, BrushSelectPanel):
+    bl_label = "Brush Asset"
 
 
 class VIEW3D_PT_tools_grease_pencil_vertex_paint_settings(Panel, View3DPanel, GreasePencilVertexPanel):
@@ -2462,6 +2373,36 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
             col.template_palette(settings, "palette", color=True)
 
 
+class VIEW3D_PT_tools_grease_pencil_brush_eraser(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Eraser"
+    bl_category = "Tool"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        tool_settings = context.tool_settings
+        settings = tool_settings.gpencil_paint
+
+        if context.region.type == 'TOOL_HEADER':
+            return False
+
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+        tool = ToolSelectPanelHelper.tool_active_from_context(context)
+        return (tool and tool.idname == "builtin.brush")
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        settings = tool_settings.gpencil_paint
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column()
+        col.prop(settings, "eraser_brush")
+
+
 # Grease Pencil Brush Appearance (one for each mode)
 class VIEW3D_PT_tools_grease_pencil_paint_appearance(GreasePencilDisplayPanel, Panel, View3DPanel):
     bl_context = ".greasepencil_paint"
@@ -2516,29 +2457,8 @@ class GreasePencilV3PaintPanel:
             return True
 
 
-class VIEW3D_PT_tools_grease_pencil_v3_brush_select(Panel, View3DPanel, GreasePencilV3PaintPanel):
-    bl_label = "Brushes"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_paint
-
-        row = layout.row()
-        row.column().template_ID_preview(gpencil_paint, "brush", new="brush.add_gpencil", rows=3, cols=8)
-
-        col = row.column()
-        col.menu("VIEW3D_MT_brush_gpencil_context_menu", icon='DOWNARROW_HLT', text="")
-
-        brush = tool_settings.gpencil_paint.brush
-        if brush is not None:
-            col.prop(brush, "use_custom_icon", toggle=True, icon='FILE_IMAGE', text="")
-
-            if brush.use_custom_icon:
-                layout.row().prop(brush, "icon_filepath", text="")
+class VIEW3D_PT_tools_grease_pencil_v3_brush_select(Panel, View3DPanel, GreasePencilV3PaintPanel, BrushSelectPanel):
+    bl_label = "Brush Asset"
 
 
 class VIEW3D_PT_tools_grease_pencil_v3_brush_settings(Panel, View3DPanel, GreasePencilV3PaintPanel):
@@ -2577,6 +2497,96 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_settings(Panel, View3DPanel, Grease
                     brush_basic_grease_pencil_paint_settings,
                 )
                 brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=False)
+
+
+class VIEW3D_PT_tools_grease_pencil_v3_brush_advanced(View3DPanel, Panel):
+    bl_context = ".greasepencil_paint"
+    bl_label = "Advanced"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_v3_brush_settings"
+    bl_category = "Tool"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_ui_units_x = 13
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.active_object
+        if ob.type != 'GREASEPENCIL':
+            return False
+        brush = context.tool_settings.gpencil_paint.brush
+        return brush is not None and brush.gpencil_tool not in {'ERASE', 'TINT'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        tool_settings = context.scene.tool_settings
+        ups = tool_settings.unified_paint_settings
+        gpencil_paint = tool_settings.gpencil_paint
+        brush = gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        col = layout.column(align=True)
+        if brush is None:
+            return
+        if brush.gpencil_tool != 'FILL':
+            size_owner = ups if ups.use_unified_size else brush
+
+            row = col.row(align=True)
+            row.prop(size_owner, "use_locked_size", expand=True)
+            col.separator()
+
+            col.prop(gp_settings, "input_samples")
+            col.separator()
+
+            col.prop(gp_settings, "active_smooth_factor")
+            col.separator()
+
+            col.prop(gp_settings, "angle", slider=True)
+            col.prop(gp_settings, "angle_factor", text="Factor", slider=True)
+
+            ob = context.object
+            ma = None
+            if ob and brush.gpencil_settings.use_material_pin is False:
+                ma = ob.active_material
+            elif brush.gpencil_settings.material:
+                ma = brush.gpencil_settings.material
+
+            col.separator()
+            col.prop(gp_settings, "hardness", slider=True)
+            subcol = col.column(align=True)
+            if ma and ma.grease_pencil.mode == 'LINE':
+                subcol.enabled = False
+            subcol.prop(gp_settings, "aspect")
+        elif brush.gpencil_tool == 'FILL':
+            row = col.row(align=True)
+            row.prop(gp_settings, "fill_draw_mode", text="Boundary", text_ctxt=i18n_contexts.id_gpencil)
+            row.prop(
+                gp_settings,
+                "show_fill_boundary",
+                icon='HIDE_OFF' if gp_settings.show_fill_boundary else 'HIDE_ON',
+                text="",
+            )
+
+            col.separator()
+            row = col.row(align=True)
+            row.prop(gp_settings, "fill_layer_mode", text="Layers")
+
+            col.separator()
+            col.prop(gp_settings, "fill_simplify_level", text="Simplify")
+            if gp_settings.fill_draw_mode != 'STROKE':
+                col = layout.column(align=False, heading="Ignore Transparent")
+                col.use_property_decorate = False
+                row = col.row(align=True)
+                sub = row.row(align=True)
+                sub.prop(gp_settings, "show_fill", text="")
+                sub = sub.row(align=True)
+                sub.active = gp_settings.show_fill
+                sub.prop(gp_settings, "fill_threshold", text="")
+
+            col.separator()
+            row = col.row(align=True)
+            row.prop(gp_settings, "use_fill_limit")
 
 
 class VIEW3D_PT_tools_grease_pencil_v3_brush_mixcolor(View3DPanel, Panel):
@@ -2683,6 +2693,35 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette(View3DPanel, Panel):
             col.template_palette(settings, "palette", color=True)
 
 
+class VIEW3D_PT_tools_grease_pencil_v3_brush_eraser(View3DPanel, Panel):
+    bl_context = ".grease_pencil_paint"
+    bl_label = "Eraser"
+    bl_category = "Tool"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        tool_settings = context.tool_settings
+        settings = tool_settings.gpencil_paint
+
+        if context.region.type == 'TOOL_HEADER':
+            return False
+
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+        tool = ToolSelectPanelHelper.tool_active_from_context(context)
+        return (tool and tool.idname == "builtin.brush")
+
+    def draw(self, context):
+        layout = self.layout
+        settings = tool_settings.gpencil_paint
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column()
+        col.prop_search(settings, "eraser_brush", bpy.data, "brushes")
+
+
 classes = (
     VIEW3D_MT_brush_context_menu,
     VIEW3D_MT_brush_gpencil_context_menu,
@@ -2758,6 +2797,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_brush_random,
     VIEW3D_PT_tools_grease_pencil_brush_stabilizer,
     VIEW3D_PT_tools_grease_pencil_brush_gap_closure,
+    VIEW3D_PT_tools_grease_pencil_brush_eraser,
     VIEW3D_PT_tools_grease_pencil_paint_appearance,
     VIEW3D_PT_tools_grease_pencil_sculpt_select,
     VIEW3D_PT_tools_grease_pencil_sculpt_settings,
@@ -2776,6 +2816,8 @@ classes = (
 
     VIEW3D_PT_tools_grease_pencil_v3_brush_select,
     VIEW3D_PT_tools_grease_pencil_v3_brush_settings,
+    VIEW3D_PT_tools_grease_pencil_v3_brush_eraser,
+    VIEW3D_PT_tools_grease_pencil_v3_brush_advanced,
     VIEW3D_PT_tools_grease_pencil_v3_brush_mixcolor,
     VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette,
 

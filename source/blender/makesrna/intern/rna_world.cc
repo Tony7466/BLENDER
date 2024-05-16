@@ -11,6 +11,8 @@
 
 #include "RNA_define.hh"
 
+#include "BLI_math_rotation.h"
+
 #include "rna_internal.hh"
 
 #include "DNA_lightprobe_types.h"
@@ -76,16 +78,15 @@ static void rna_World_draw_update(Main * /*bmain*/, Scene * /*scene*/, PointerRN
 static void rna_World_use_nodes_update(bContext *C, PointerRNA *ptr)
 {
   World *wrld = (World *)ptr->data;
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
+  Main *bmain = CTX_data_main_from_id(C, &wrld->id);
 
   if (wrld->use_nodes && wrld->nodetree == nullptr) {
     ED_node_shader_default(C, &wrld->id);
   }
 
   DEG_relations_tag_update(bmain);
-  rna_World_update(bmain, scene, ptr);
-  rna_World_draw_update(bmain, scene, ptr);
+  rna_World_update(bmain, nullptr, ptr);
+  rna_World_draw_update(bmain, nullptr, ptr);
 }
 
 void rna_World_lightgroup_get(PointerRNA *ptr, char *value)
@@ -222,6 +223,15 @@ void RNA_def_world(BlenderRNA *brna)
 
   rna_def_animdata_common(srna);
 
+  /* Flags */
+  prop = RNA_def_property(srna, "use_eevee_finite_volume", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", WO_USE_EEVEE_FINITE_VOLUME);
+  RNA_def_property_ui_text(prop,
+                           "Finite Volume",
+                           "The world's volume used to be rendered by EEVEE Legacy. Conversion is "
+                           "needed for it to render properly");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
   /* colors */
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_sdna(prop, nullptr, "horr");
@@ -271,6 +281,37 @@ void RNA_def_world(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "probe_resolution");
   RNA_def_property_enum_items(prop, world_probe_resolution_items);
   RNA_def_property_ui_text(prop, "Resolution", "Resolution when baked to a texture");
+  RNA_def_property_update(prop, 0, "rna_World_draw_update");
+
+  prop = RNA_def_property(srna, "sun_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Sun Threshold",
+                           "If non-zero, the maximum value for world contribution that will be "
+                           "recorded inside the world light probe. The excess contribution is "
+                           "converted to a sun light. This reduces the light bleeding caused by "
+                           "very bright light sources");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_update(prop, 0, "rna_World_draw_update");
+
+  prop = RNA_def_property(srna, "sun_angle", PROP_FLOAT, PROP_ANGLE);
+  RNA_def_property_range(prop, DEG2RADF(0.0f), DEG2RADF(180.0f));
+  RNA_def_property_ui_text(
+      prop, "Sun Angle", "Angular diameter of the Sun as seen from the Earth");
+  RNA_def_property_update(prop, 0, "rna_World_draw_update");
+
+  prop = RNA_def_property(srna, "use_sun_shadow", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", WO_USE_SUN_SHADOW);
+  RNA_def_property_ui_text(prop, "Use Shadow", "Enable sun shadow casting");
+  RNA_def_property_update(prop, 0, "rna_World_draw_update");
+
+  prop = RNA_def_property(srna, "sun_shadow_maximum_resolution", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0001f, 0.020f, 0.05f, 4);
+  RNA_def_property_ui_text(prop,
+                           "Shadows Resolution Limit",
+                           "Maximum size of a shadow map pixel. Higher values use less memory at "
+                           "the cost of shadow quality");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_World_draw_update");
 
   rna_def_lighting(brna);

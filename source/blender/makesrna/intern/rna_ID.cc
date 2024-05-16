@@ -16,7 +16,6 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_asset.hh"
 #include "BKE_icons.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main_namemap.hh"
@@ -35,7 +34,6 @@
  */
 const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_AC, "ACTION", ICON_ACTION, "Action", ""},
-    {ID_AN, "ANIMATION", ICON_ACTION, "Animation", ""}, /* TODO: give Animation its own icon. */
     {ID_AR, "ARMATURE", ICON_ARMATURE_DATA, "Armature", ""},
     {ID_BR, "BRUSH", ICON_BRUSH_DATA, "Brush", ""},
     {ID_CF, "CACHEFILE", ICON_FILE, "Cache File", ""},
@@ -124,9 +122,6 @@ static const EnumPropertyItem rna_enum_override_library_property_operation_items
 const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
     /* Datablocks */
     {FILTER_ID_AC, "filter_action", ICON_ACTION, "Actions", "Show Action data-blocks"},
-#ifdef WITH_ANIM_BAKLAVA
-    {FILTER_ID_AN, "filter_animation", ICON_ACTION, "Animations", "Show Animation data-blocks"},
-#endif
     {FILTER_ID_AR,
      "filter_armature",
      ICON_ARMATURE_DATA,
@@ -290,9 +285,9 @@ int rna_ID_name_length(PointerRNA *ptr)
 void rna_ID_name_set(PointerRNA *ptr, const char *value)
 {
   ID *id = (ID *)ptr->data;
-  Main *id_main = BKE_main_from_id(G_MAIN, id);
+  Main *bmain = BKE_main_from_id(G_MAIN, id);
 
-  BKE_libblock_rename(id_main, id, value);
+  BKE_libblock_rename(bmain, id, value);
 
   if (GS(id->name) == ID_OB) {
     Object *ob = (Object *)id;
@@ -380,11 +375,6 @@ short RNA_type_to_ID_code(const StructRNA *type)
   if (base_type == &RNA_Action) {
     return ID_AC;
   }
-#  ifdef WITH_ANIM_BAKLAVA
-  if (base_type == &RNA_Animation) {
-    return ID_AN;
-  }
-#  endif
   if (base_type == &RNA_Armature) {
     return ID_AR;
   }
@@ -507,11 +497,6 @@ StructRNA *ID_code_to_RNA_type(short idcode)
   switch ((ID_Type)idcode) {
     case ID_AC:
       return &RNA_Action;
-    case ID_AN:
-#  ifdef WITH_ANIM_BAKLAVA
-      return &RNA_Animation;
-#  endif
-      break;
     case ID_AR:
       return &RNA_Armature;
     case ID_BR:
@@ -1071,8 +1056,7 @@ static void rna_ID_update_tag(ID *id, Main *bmain, ReportList *reports, int flag
         allow_flag = OB_RECALC_ALL | PSYS_RECALC;
         break;
 #  endif
-      case ID_AC: /* Fall-through. */
-      case ID_AN:
+      case ID_AC:
         allow_flag = ID_RECALC_ANIMATION;
         break;
       default:
@@ -1173,14 +1157,14 @@ bool rna_IDMaterials_assign_int(PointerRNA *ptr, int key, const PointerRNA *assi
     return false;
   }
 
-  Main *id_main = BKE_main_from_id(G_MAIN, id);
+  Main *bmain = BKE_main_from_id(G_MAIN, id);
   if (mat) {
-    if (id_main != BKE_main_from_id(G_MAIN, &mat->id)) {
+    if (bmain != BKE_main_from_id(G_MAIN, &mat->id)) {
       return false;
     }
   }
 
-  BKE_id_material_assign(id_main, id, mat, key + 1);
+  BKE_id_material_assign(bmain, id, mat, key + 1);
   return true;
 }
 
@@ -1232,8 +1216,8 @@ static void rna_IDMaterials_clear_id(ID *id, Main *bmain)
 static void rna_Library_filepath_set(PointerRNA *ptr, const char *value)
 {
   Library *lib = (Library *)ptr->data;
-  Main *id_main = BKE_main_from_id(G_MAIN, &lib->id);
-  BKE_library_filepath_set(id_main, lib, value);
+  Main *bmain = BKE_main_from_id(G_MAIN, &lib->id);
+  BKE_library_filepath_set(bmain, lib, value);
 }
 
 /* ***** ImagePreview ***** */
@@ -2322,7 +2306,7 @@ static void rna_def_ID(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Is Indirect", "Is this ID block linked indirectly");
 
   prop = RNA_def_property(srna, "is_asset_library_data", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "tag", LIB_TAG_ASSET_MAIN);
+  RNA_def_property_boolean_sdna(prop, nullptr, "tag", LIB_TAG_ASSET_EDIT_MAIN);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop,
                            "Asset Library Data",
