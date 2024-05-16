@@ -47,7 +47,7 @@ struct SpatialResampling {
   }
 };
 
-ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
+ccl_device_inline bool integrator_restir_unpack_reservoir(KernelGlobals kg,
                                                           ccl_private Reservoir *reservoir,
                                                           const ccl_global float *buffer)
 {
@@ -72,10 +72,12 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   reservoir->total_weight = buffer[i++];
 
   reservoir->luminance = buffer[i];
+
+  return !reservoir->is_empty();
 }
 
 /* TODO(weizhen): better to pack in another pass. */
-ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *sd,
+ccl_device_inline bool integrator_restir_unpack_shader(ccl_private ShaderData *sd,
                                                        ccl_private uint32_t *path_flag,
                                                        const ccl_global float *buffer)
 {
@@ -95,6 +97,10 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
 
   /* (TODO): do I need to write to this? */
   // sd->closure_transparent_extinction;
+
+  /* Whether there is valid interesction at the current shading point. */
+  /* TODO(weizhen): revisit this condition when we support background and distant lights. */
+  return sd->type;
 }
 
 ccl_device_forceinline ccl_global float *pixel_render_buffer(
@@ -105,7 +111,7 @@ ccl_device_forceinline ccl_global float *pixel_render_buffer(
   return render_buffer + render_buffer_offset;
 }
 
-ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
+ccl_device_inline bool integrator_restir_unpack_shader(KernelGlobals kg,
                                                        ccl_private SpatialReservoir *reservoir,
                                                        uint32_t render_pixel_index,
                                                        ccl_global float *ccl_restrict
@@ -114,10 +120,10 @@ ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
   PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
   ccl_global const float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
                                    kernel_data.film.pass_surface_data;
-  integrator_restir_unpack_shader(&reservoir->sd, &reservoir->path_flag, buffer);
+  return integrator_restir_unpack_shader(&reservoir->sd, &reservoir->path_flag, buffer);
 }
 
-ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
+ccl_device_inline bool integrator_restir_unpack_reservoir(KernelGlobals kg,
                                                           ccl_private Reservoir *reservoir,
                                                           uint32_t render_pixel_index,
                                                           ccl_global float *ccl_restrict
@@ -128,7 +134,7 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   ccl_global const float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
                                    (read_prev ? kernel_data.film.pass_restir_previous_reservoir :
                                                 kernel_data.film.pass_restir_reservoir);
-  integrator_restir_unpack_reservoir(kg, reservoir, buffer);
+  return integrator_restir_unpack_reservoir(kg, reservoir, buffer);
 }
 
 ccl_device_inline void ray_setup(KernelGlobals kg,
@@ -188,11 +194,13 @@ ccl_device_inline bool restir_unpack_neighbor(KernelGlobals kg,
   }
 
   neighbor->pixel_index = pixel_index;
-  integrator_restir_unpack_shader(kg, neighbor, pixel_index.z, render_buffer);
-  integrator_restir_unpack_reservoir(
-      kg, &neighbor->reservoir, pixel_index.z, render_buffer, read_prev);
+  if (integrator_restir_unpack_shader(kg, neighbor, pixel_index.z, render_buffer)) {
+    integrator_restir_unpack_reservoir(
+        kg, &neighbor->reservoir, pixel_index.z, render_buffer, read_prev);
+    return resampling->is_valid_neighbor(&current->sd, &neighbor->sd);
+  }
 
-  return resampling->is_valid_neighbor(&current->sd, &neighbor->sd);
+  return false;
 }
 
 /* TODO(weizhen): move these functions to a more appropriate place. */
@@ -288,9 +296,11 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
 
   Reservoir canonical = current->reservoir;
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
-  integrator_restir_unpack_reservoir(kg, &canonical, render_pixel_index, render_buffer, read_prev);
-  light_sample_from_uv(kg, &current->sd, current->path_flag, &canonical.ls);
-  radiance_eval(kg, state, &current->sd, &canonical.ls, &canonical.radiance, visibility);
+  if (integrator_restir_unpack_reservoir(
+          kg, &canonical, render_pixel_index, render_buffer, read_prev))
+  {
+    light_sample_from_uv(kg, &current->sd, current->path_flag, &canonical.ls);
+  }
 
   /* Give the canonical sample a defensive constant in the weight. */
   float canonical_mis_weight = 1.0f;
@@ -315,7 +325,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     if (!canonical.is_empty()) {
       /* TODO(weizhen): verify if branching has influence on performance on GPU. This branching and
        * the `neighbor.is_empty()` check is unnecessary, because if `total_weight` is zero then the
-       * sample would not picked by the reservoir regarless of the `mis_weight`. */
+       * sample would not picked by the reservoir regardless of the `mis_weight`. */
       BsdfEval radiance;
 
       /* Evaluate current sample from the neighbor shading point. */
@@ -357,10 +367,13 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     current->add_reservoir(kg, neighbor, rand.z);
   }
 
-  /* Add canonical sample to the reservoir. */
-  canonical.total_weight *= canonical_mis_weight;
-  const float rand = path_branched_rng_3D(kg, rng_state, 0, samples, PRNG_SPATIAL_RESAMPLING).z;
-  current->reservoir.add_reservoir(kg, canonical, rand);
+  if (!canonical.is_empty()) {
+    /* Add canonical sample to the reservoir. */
+    radiance_eval(kg, state, &current->sd, &canonical.ls, &canonical.radiance, visibility);
+    canonical.total_weight *= canonical_mis_weight;
+    const float rand = path_branched_rng_3D(kg, rng_state, 0, samples, PRNG_SPATIAL_RESAMPLING).z;
+    current->reservoir.add_reservoir(kg, canonical, rand);
+  }
 
   current->reservoir.total_weight /= valid_neighbors;
 
@@ -376,10 +389,10 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
 
   const bool read_prev = state->read_previous_reservoir;
-  integrator_restir_unpack_reservoir(kg, &reservoir, render_pixel_index, render_buffer, read_prev);
-  integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
-  if (reservoir.is_empty() || !current.sd.type) {
-    /* TODO(weizhen): revisit this condition when we support background and distant lights. */
+  if (!integrator_restir_unpack_reservoir(
+          kg, &reservoir, render_pixel_index, render_buffer, read_prev) ||
+      !integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer))
+  {
     film_clear_pass_surface_data(kg, state, render_buffer);
     return;
   }
@@ -418,11 +431,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
 
   SpatialReservoir current(kg);
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
-  integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
-
-  if (!current.sd.type) {
-    /* No interesction at the current shading point. */
-    /* TODO(weizhen): revisit this condition when we support background and distant lights. */
+  if (!integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer)) {
     film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
     return false;
   }
