@@ -849,7 +849,7 @@ static inline bool is_local_light(eLightType type)
   /** Shift to apply to the light origin to get the shadow projection origin. In light space. */ \
   packed_float3 shadow_position; \
   float _pad0; \
-  /** Radius of the light for shadows. Bounding radius for rectangle. */ \
+  /** Radius of the light for shadow ray casting. Bounding radius for rectangle. */ \
   float shadow_radius; \
   /** Special radius factor for point lighting (volume). */ \
   float radius_squared; \

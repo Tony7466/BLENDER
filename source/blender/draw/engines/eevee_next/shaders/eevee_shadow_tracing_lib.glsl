@@ -277,11 +277,12 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     direction *= saturate((dist - clip_distance) / dist);
   }
 
+  vec3 shadow_position = light_local_data_get(light).shadow_position;
   /* Compute the ray again. */
   ShadowRayPunctual ray;
   /* Transform to shadow local space. */
-  ray.origin = lP - light_local_data_get(light).shadow_position;
-  ray.direction = direction;
+  ray.origin = lP - shadow_position;
+  ray.direction = direction + shadow_position;
   ray.light_tilemap_index = light.tilemap_index;
   ray.local_ray_up = safe_normalize(cross(cross(ray.origin, ray.direction), ray.direction));
   ray.light = light;
