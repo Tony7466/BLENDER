@@ -942,16 +942,16 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-CombinedKeyingResult insert_key_legacy_action(Main *bmain,
-                                              bAction *action,
-                                              PointerRNA *ptr,
-                                              PropertyRNA *prop,
-                                              const std::string &rna_path,
-                                              const float frame,
-                                              const Span<float> values,
-                                              eInsertKeyFlags insert_key_flag,
-                                              eBezTriple_KeyframeType key_type,
-                                              const BitSpan keying_mask)
+static CombinedKeyingResult insert_key_legacy_action(Main *bmain,
+                                                     bAction *action,
+                                                     PointerRNA *ptr,
+                                                     PropertyRNA *prop,
+                                                     const std::string &rna_path,
+                                                     const float frame,
+                                                     const Span<float> values,
+                                                     eInsertKeyFlags insert_key_flag,
+                                                     eBezTriple_KeyframeType key_type,
+                                                     const BitSpan keying_mask)
 {
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
