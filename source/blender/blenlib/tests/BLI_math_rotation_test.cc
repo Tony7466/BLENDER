@@ -882,7 +882,7 @@ TEST(math_rotation, DualQuaternionTransform)
 TEST(math_axis_angle, AxisAngleFromQuaternion)
 {
   {
-    const math::AxisAngle axis_angle({0.0f, 1.0f, 0.0f}, math::AngleRadian(0.0f));
+    const math::AxisAngle axis_angle({0.0f, 1.0f, 0.0f}, math::AngleRadian(0));
     const math::Quaternion quaternion(1.0f, {0.0f, 0.0f, 0.0f});
     const math::AxisAngle from_quaternion = math::to_axis_angle(quaternion);
     EXPECT_V3_NEAR(axis_angle.axis(), from_quaternion.axis(), 1e-6);
