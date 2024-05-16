@@ -4,13 +4,22 @@
 
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_report.hh"
 
+#include "BLI_array_utils.hh"
+#include "BLI_offset_indices.hh"
+#include "BLI_task.hh"
+#include "BLI_virtual_array.hh"
 #include "BLT_translation.hh"
+
+#include "DNA_grease_pencil_types.h"
 
 #include "ED_grease_pencil.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
+
+#include "GEO_interpolate_curves.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -81,6 +90,20 @@ struct GreasePencilInterpolateOpData {
   int active_layer_index;
 };
 
+/* Build index lists for curve interpolation using index. */
+static void find_curve_mapping_from_index(const bke::greasepencil::Drawing &from_drawing,
+                                          const bke::greasepencil::Drawing &to_drawing,
+                                          Array<int> &from_curve_indices,
+                                          Array<int> &to_curve_indices)
+{
+  const int curves_num = std::min(from_drawing.strokes().curves_num(),
+                                  to_drawing.strokes().curves_num());
+  from_curve_indices.reinitialize(curves_num);
+  to_curve_indices.reinitialize(curves_num);
+  array_utils::fill_index_range(from_curve_indices.as_mutable_span());
+  array_utils::fill_index_range(to_curve_indices.as_mutable_span());
+}
+
 /* Build index lists for curve interpolation between two frames. */
 static void find_curve_mapping_from_selection_order(const bke::greasepencil::Drawing &from_drawing,
                                                     const bke::greasepencil::Drawing &to_drawing,
@@ -88,19 +111,43 @@ static void find_curve_mapping_from_selection_order(const bke::greasepencil::Dra
                                                     Array<int> &to_curve_indices)
 {
   // TODO don't have selection order yet
-  from_curve_indices = {};
-  to_curve_indices = {};
+  find_curve_mapping_from_index(from_drawing, to_drawing, from_curve_indices, to_curve_indices);
 }
 
 static bke::CurvesGeometry interpolate_between_curves(const bke::CurvesGeometry &from_curves,
                                                       const bke::CurvesGeometry &to_curves,
                                                       const Span<int> from_curve_indices,
-                                                      const Span<int> to_curve_indices)
+                                                      const Span<int> to_curve_indices,
+                                                      const IndexMask &from_selection,
+                                                      const float mix_factor)
 {
-  int dst_point_num;
-  int dst_curve_num;
-  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+  BLI_assert(from_curve_indices.size() == to_curve_indices.size());
+  const int dst_curve_num = from_curve_indices.size();
+  const OffsetIndices from_points_by_curve = from_curves.points_by_curve();
+  const OffsetIndices to_points_by_curve = to_curves.points_by_curve();
 
+  /* New point counts for each source curve for resampling. */
+  Array<int> from_curve_resample_counts(from_curves.curves_num(), 0);
+  for (const int i : IndexRange(dst_curve_num)) {
+    const int from_curve_i = from_curve_indices[i];
+    const int to_curve_i = to_curve_indices[i];
+
+    const int dst_count = std::max(from_points_by_curve[from_curve_i].size(),
+                                   to_points_by_curve[to_curve_i].size());
+
+    from_curve_resample_counts[from_curve_i] = dst_count;
+  }
+
+  bke::CurvesGeometry dst_curves = geometry::interpolate_curves(
+      from_curves,
+      to_curves,
+      from_curve_indices,
+      to_curve_indices,
+      VArray<int>::ForSpan(from_curve_resample_counts),
+      from_selection,
+      mix_factor);
+
+  dst_curves.tag_topology_changed();
   return dst_curves;
 }
 
@@ -291,28 +338,55 @@ static void grease_pencil_interpolate_status_indicators(
       &C, IFACE_("ESC/RMB to cancel, Enter/LMB to confirm, WHEEL/MOVE to adjust factor"));
 }
 
-static void grease_pencil_interpolate_update(bContext &C,
-                                             const wmOperator &op,
-                                             const GreasePencilInterpolateOpData &opdata)
+static bke::greasepencil::Drawing *get_or_create_drawing_at_frame(GreasePencil &grease_pencil,
+                                                                  bke::greasepencil::Layer &layer,
+                                                                  const int frame_number)
+{
+  using bke::greasepencil::FramesMapKey;
+
+  std::optional<FramesMapKey> frame_key = layer.frame_key_at(frame_number);
+  if (frame_key && *frame_key == frame_number) {
+    return grease_pencil.get_drawing_at(layer, frame_number);
+  }
+
+  return grease_pencil.insert_frame(layer, frame_number);
+}
+
+static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
 {
   using bke::greasepencil::Drawing;
   using bke::greasepencil::Layer;
 
-  const Object &object = *CTX_data_active_object(&C);
-  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+  const auto &opdata = *static_cast<GreasePencilInterpolateOpData *>(op.customdata);
+  const Scene &scene = *CTX_data_scene(&C);
+  const int current_frame = scene.r.cfra;
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   opdata.layer_mask.foreach_index([&](const int layer_index, const int index) {
-    const Layer &layer = *grease_pencil.layers()[layer_index];
+    Layer &layer = *grease_pencil.layers_for_write()[layer_index];
     const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[index];
+
+    Drawing *dst_drawing = get_or_create_drawing_at_frame(grease_pencil, layer, current_frame);
+    if (dst_drawing == nullptr) {
+      return;
+    }
 
     const Drawing &from_drawing = *grease_pencil.get_drawing_at(layer,
                                                                 layer_data.from_frame_number);
     const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer, layer_data.to_frame_number);
+    const float mix_factor = opdata.init_factor + opdata.shift;
+    const IndexMask selection = IndexRange(layer_data.from_curve_indices.size());
     const bke::CurvesGeometry interpolated_curves = interpolate_between_curves(
         from_drawing.strokes(),
         to_drawing.strokes(),
         layer_data.from_curve_indices,
-        layer_data.to_curve_indices);
+        layer_data.to_curve_indices,
+        selection,
+        mix_factor);
+
+    dst_drawing->strokes_for_write() = std::move(interpolated_curves);
+    dst_drawing->tag_topology_changed();
   });
 
   grease_pencil_interpolate_status_indicators(C, opdata);
@@ -411,28 +485,29 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
     if (const std::optional<FramesMapKeyInterval> interval = find_frames_interval(
             layer, current_frame, data.exclude_breakdowns))
     {
-      BLI_assert(layer.has_drawing_at(layer_data.from_frame_number));
-      BLI_assert(layer.has_drawing_at(layer_data.to_frame_number));
+      BLI_assert(layer.has_drawing_at(interval->first));
+      BLI_assert(layer.has_drawing_at(interval->second));
       layer_data.from_frame_number = interval->first;
       layer_data.to_frame_number = interval->second;
+      const Drawing &from_drawing = *grease_pencil.get_drawing_at(layer, interval->first);
+      const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer, interval->second);
 
       if (data.interpolate_selected_only) {
-        const Drawing &from_drawing = *grease_pencil.get_drawing_at(layer,
-                                                                    layer_data.from_frame_number);
-        const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer,
-                                                                  layer_data.to_frame_number);
         find_curve_mapping_from_selection_order(
             from_drawing, to_drawing, layer_data.from_curve_indices, layer_data.to_curve_indices);
       }
       else {
-        layer_data.from_curve_indices = {};
-        layer_data.to_curve_indices = {};
+        /* Pair from/to curves by index. */
+        find_curve_mapping_from_index(
+            from_drawing, to_drawing, layer_data.from_curve_indices, layer_data.to_curve_indices);
       }
+      return;
     }
-    else {
-      layer_data.from_frame_number = 0;
-      layer_data.to_frame_number = 0;
-    }
+
+    layer_data.from_frame_number = 0;
+    layer_data.to_frame_number = 0;
+    layer_data.from_curve_indices = {};
+    layer_data.to_curve_indices = {};
   });
 
   const GreasePencilInterpolateOpData::LayerData &active_layer_data =
@@ -443,6 +518,7 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
         RPT_ERROR,
         "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
     MEM_delete(&data);
+    op.customdata = nullptr;
     return false;
   }
   data.init_factor = float(current_frame - active_layer_data.from_frame_number) /
@@ -574,14 +650,14 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
                                     interpolate_factor_min,
                                     interpolate_factor_max) -
                          opdata.init_factor;
-          grease_pencil_interpolate_update(*C, *op, opdata);
+          grease_pencil_interpolate_update(*C, *op);
           break;
         case InterpolateToolModalEvent::Decrease:
           opdata.shift = std::clamp(opdata.init_factor + opdata.shift - 0.01f,
                                     interpolate_factor_min,
                                     interpolate_factor_max) -
                          opdata.init_factor;
-          grease_pencil_interpolate_update(*C, *op, opdata);
+          grease_pencil_interpolate_update(*C, *op);
           break;
       }
       break;
@@ -594,7 +670,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
             mouse_pos / region.winx, interpolate_factor_min, interpolate_factor_max);
         opdata.shift = factor - opdata.init_factor;
 
-        grease_pencil_interpolate_update(*C, *op, opdata);
+        grease_pencil_interpolate_update(*C, *op);
       }
       break;
     default: {
@@ -604,7 +680,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
         opdata.shift = std::clamp(value * 0.01f, interpolate_factor_min, interpolate_factor_max) -
                        opdata.init_factor;
 
-        grease_pencil_interpolate_update(*C, *op, opdata);
+        grease_pencil_interpolate_update(*C, *op);
         break;
       }
       /* Unhandled event, allow to pass through. */
