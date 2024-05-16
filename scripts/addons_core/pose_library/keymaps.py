@@ -29,6 +29,9 @@ def register() -> None:
     # Drag to blend pose.
     kmi = km.keymap_items.new("poselib.blend_pose_asset", "LEFTMOUSE", "CLICK_DRAG")
     addon_keymaps.append((km, kmi))
+    kmi = km.keymap_items.new("poselib.blend_pose_asset", "LEFTMOUSE", "CLICK_DRAG", ctrl=True)
+    kmi.properties.flipped = True
+    addon_keymaps.append((km, kmi))
 
 
 def unregister() -> None:
