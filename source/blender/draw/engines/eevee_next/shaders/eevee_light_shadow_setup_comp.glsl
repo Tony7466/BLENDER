@@ -228,7 +228,8 @@ void cubeface_sync(int tilemap_id,
 vec3 random_position_on_light(LightData light)
 {
   vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_W);
-  return sample_ball(rand) * sqrt(light_local_data_get(light).radius_squared);
+
+  return sample_ball(rand) * light_local_data_get(light).shape_radius;
 }
 
 void main()

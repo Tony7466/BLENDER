@@ -109,7 +109,6 @@ float light_attenuation_common(LightData light, const bool is_directional, vec3 
 
 float light_shape_radius(LightData light)
 {
-
   float radius;
   if (is_sun_light(light.type)) {
     return light_sun_data_get(light).radius;
@@ -118,7 +117,7 @@ float light_shape_radius(LightData light)
     return length(light_area_data_get(light).size);
   }
   else {
-    return light_spot_data_get(light).radius;
+    return light_local_data_get(light).shape_radius;
   }
 }
 
@@ -190,7 +189,7 @@ float light_point_light(LightData light, const bool is_directional, LightVector 
    * http://www.cemyuksel.com/research/pointlightattenuation/
    */
   float d_sqr = square(lv.dist);
-  float r_sqr = light_local_data_get(light).radius_squared;
+  float r_sqr = square(light_local_data_get(light).shape_radius);
   /* Using reformulation that has better numerical precision. */
   float power = 2.0 / (d_sqr + r_sqr + lv.dist * sqrt(d_sqr + r_sqr));
 
@@ -216,7 +215,7 @@ float light_sphere_disk_radius(float sphere_radius, float distance_to_sphere)
 float light_ltc(
     sampler2DArray utility_tx, LightData light, vec3 N, vec3 V, LightVector lv, vec4 ltc_mat)
 {
-  if (is_sphere_light(light.type) && lv.dist < light_spot_data_get(light).radius) {
+  if (is_sphere_light(light.type) && lv.dist < light_local_data_get(light).shape_radius) {
     /* Inside the sphere light, integrate over the hemisphere. */
     return 1.0;
   }
@@ -251,11 +250,11 @@ float light_ltc(
     vec2 size;
     if (is_sphere_light(light.type)) {
       /* Spherical omni or spot light. */
-      size = vec2(light_sphere_disk_radius(light_spot_data_get(light).radius, lv.dist));
+      size = vec2(light_sphere_disk_radius(light_local_data_get(light).shape_radius, lv.dist));
     }
     else if (is_oriented_disk_light(light.type)) {
       /* View direction-aligned disk. */
-      size = vec2(light_spot_data_get(light).radius);
+      size = vec2(light_local_data_get(light).shape_radius);
     }
     else if (is_sun_light(light.type)) {
       size = vec2(light_sun_data_get(light).radius);

@@ -851,8 +851,8 @@ static inline bool is_local_light(eLightType type)
   float _pad0; \
   /** Radius of the light for shadow ray casting. Bounding radius for rectangle. */ \
   float shadow_radius; \
-  /** Special radius factor for point lighting (volume). */ \
-  float radius_squared; \
+  /** Radius of the light for shading. Bounding radius for rectangle. */ \
+  float shape_radius; \
   /** Maximum influence radius. Used for culling. Equal to clip far distance. */ \
   float influence_radius_max; \
   /** Influence radius (inverted and squared) adjusted for Surface / Volume power. */ \
@@ -879,8 +879,7 @@ BLI_STATIC_ASSERT_ALIGN(LightLocalData, 16)
 struct LightSpotData {
   LOCAL_LIGHT_COMMON
 
-  /** Sphere light radius. */
-  float radius;
+  float _pad1;
   /** Scale and bias to spot equation parameter. Used for adjusting the falloff. */
   float spot_mul;
 
@@ -1100,12 +1099,11 @@ static inline LightSpotData light_local_data_get_ex(LightData light, bool check)
   SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
   SAFE_ASSIGN_FLOAT(_pad0, _pad0)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
-  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(shape_radius, shape_radius)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
-  SAFE_ASSIGN_FLOAT(radius, _pad1)
   SAFE_ASSIGN_FLOAT(spot_mul, _pad2)
   SAFE_ASSIGN_FLOAT2(spot_size_inv, _pad3)
   SAFE_ASSIGN_FLOAT(spot_tan, _pad4)
@@ -1119,12 +1117,11 @@ static inline LightData light_local_data_set(LightData light, LightSpotData spot
   SAFE_ASSIGN_FLOAT3(shadow_position, shadow_position)
   SAFE_ASSIGN_FLOAT(_pad0, _pad0)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
-  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(shape_radius, shape_radius)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
-  SAFE_ASSIGN_FLOAT(_pad1, radius)
   SAFE_ASSIGN_FLOAT(_pad2, spot_mul)
   SAFE_ASSIGN_FLOAT2(_pad3, spot_size_inv)
   SAFE_ASSIGN_FLOAT(_pad4, spot_tan)
@@ -1146,7 +1143,7 @@ static inline LightSpotData light_spot_data_get(LightData light)
 static inline LightAreaData light_area_data_get(LightData light)
 {
   SAFE_READ_BEGIN(LightAreaData, light, is_area_light(light.type))
-  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(shape_radius, shape_radius)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
@@ -1162,7 +1159,7 @@ static inline LightSunData light_sun_data_get(LightData light)
   SAFE_READ_BEGIN(LightSunData, light, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(radius, _pad0)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.x, shadow_radius)
-  SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.y, radius_squared)
+  SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.y, shape_radius)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_pos.x, influence_radius_max)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_pos.y, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(shadow_angle, influence_radius_invsqr_volume)
@@ -1177,7 +1174,7 @@ static inline LightData light_sun_data_set(LightData light, LightSunData sun_dat
   SAFE_WRITE_BEGIN(LightSunData, sun_data, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(_pad0, radius)
   SAFE_ASSIGN_INT_AS_FLOAT(shadow_radius, clipmap_base_offset_neg.x)
-  SAFE_ASSIGN_INT_AS_FLOAT(radius_squared, clipmap_base_offset_neg.y)
+  SAFE_ASSIGN_INT_AS_FLOAT(shape_radius, clipmap_base_offset_neg.y)
   SAFE_ASSIGN_INT_AS_FLOAT(influence_radius_max, clipmap_base_offset_pos.x)
   SAFE_ASSIGN_INT_AS_FLOAT(influence_radius_invsqr_surface, clipmap_base_offset_pos.y)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, shadow_angle)

@@ -193,7 +193,7 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     /* Clamp to minimum value before float imprecision artifacts appear. */
     this->area.size = max(float2(0.003f), this->area.size);
     /* For volume point lighting. */
-    this->local.radius_squared = square(max(0.001f, length(this->area.size) / 2.0f));
+    this->local.shape_radius = max(0.001f, length(this->area.size) / 2.0f);
   }
   else if (is_point_light(this->type)) {
     /* Spot size & blend */
@@ -218,11 +218,9 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     /* Set to default position. */
     this->local.shadow_position = float3(0.0f);
     /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
-    this->spot.radius = max(la->radius, la->energy * 2e-05f);
+    this->local.shape_radius = max(la->radius, la->energy * 2e-05f);
     /* Clamp to minimum value before float imprecision artifacts appear. */
-    this->spot.radius = max(0.001f, this->spot.radius);
-    /* For volume point lighting. */
-    this->local.radius_squared = square(this->spot.radius);
+    this->local.shape_radius = max(0.001f, this->local.shape_radius);
   }
 }
 
@@ -248,7 +246,7 @@ float Light::shape_radiance_get()
     case LIGHT_SPOT_SPHERE:
     case LIGHT_SPOT_DISK: {
       /* Sphere area. */
-      float area = float(4.0f * M_PI) * this->spot.radius_squared;
+      float area = float(4.0f * M_PI) * this->local.shape_radius;
       /* Convert radiant flux to radiance. */
       return 1.0f / (area * float(M_PI));
     }

@@ -250,7 +250,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     /* Clip the ray to not cross the near plane.
      * Scale it so that it encompass the whole cube (with a safety margin). */
     float clip_distance = clip_near + 0.001;
-    float ray_length = max(abs(direction.x), max(abs(direction.y), abs(direction.z)));
+    float ray_length = reduce_max(abs(direction));
     direction *= saturate((ray_length - clip_distance) / ray_length);
   }
   else {
