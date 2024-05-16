@@ -746,7 +746,7 @@ inline bool TreeNode::use_masks() const
   return ((this->flag & GP_LAYER_TREE_NODE_HIDE_MASKS) == 0) &&
          (!this->parent_group() || this->parent_group()->as_node().use_masks());
 }
-bool TreeNode::use_locked_material() const
+inline bool TreeNode::use_locked_material() const
 {
   return this->flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL;
 }
