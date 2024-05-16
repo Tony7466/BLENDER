@@ -9,6 +9,7 @@
  */
 
 #include "BLI_math_vector_types.hh"
+#include "BLI_string_ref.hh"
 #include "DNA_curve_types.h"
 
 struct ChannelDriver;
@@ -229,6 +230,11 @@ void BKE_fcurves_free(ListBase *list);
  */
 void BKE_fcurves_copy(ListBase *dst, ListBase *src);
 
+/**
+ * Set the RNA path of a F-Curve.
+ */
+void BKE_fcurve_rnapath_set(FCurve &fcu, blender::StringRef rna_path);
+
 /* Set fcurve modifier name and ensure uniqueness.
  * Pass new name string when it's been edited otherwise pass empty string. */
 void BKE_fmodifier_name_set(FModifier *fcm, const char *name);
@@ -308,8 +314,7 @@ int BKE_fcurves_filter(ListBase *dst, ListBase *src, const char *dataPrefix, con
  * property, what is returned is a best-effort guess. The topmost layer has priority, and it is
  * assumed that when it has a strip, it's infinite.
  */
-FCurve *BKE_animadata_fcurve_find_by_rna_path(const ID *id,
-                                              AnimData *animdata,
+FCurve *BKE_animadata_fcurve_find_by_rna_path(AnimData *animdata,
                                               const char *rna_path,
                                               const int rna_index,
                                               bAction **r_action,

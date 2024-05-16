@@ -9,6 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -139,13 +140,13 @@ static void transform_node(Object *ob, const float transform_mats[8][4][4], PBVH
   SculptSession *ss = ob->sculpt;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
+  SCULPT_orig_vert_data_init(orig_data, *ob, *node, undo::Type::Position);
 
   PBVHVertexIter vd;
 
   undo::push_node(*ob, node, undo::Type::Position);
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_orig_vert_data_update(&orig_data, &vd);
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+    SCULPT_orig_vert_data_update(orig_data, vd);
     float *start_co;
     float transformed_co[3], orig_co[3], disp[3];
     float fade = vd.mask;
@@ -200,7 +201,7 @@ static void elastic_transform_node(Object *ob,
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
+  SCULPT_orig_vert_data_init(orig_data, *ob, *node, undo::Type::Position);
 
   KelvinletParams params;
   /* TODO(pablodp606): These parameters can be exposed if needed as transform strength and volume
@@ -214,8 +215,8 @@ static void elastic_transform_node(Object *ob,
   undo::push_node(*ob, node, undo::Type::Position);
 
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_orig_vert_data_update(&orig_data, &vd);
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+    SCULPT_orig_vert_data_update(orig_data, vd);
     float transformed_co[3], orig_co[3], disp[3];
     const float fade = vd.mask;
     copy_v3_v3(orig_co, orig_data.co);
@@ -402,7 +403,7 @@ static int set_pivot_position_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    Vector<PBVHNode *> nodes = bke::pbvh::search_gather(ss->pbvh, {});
+    Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*ss->pbvh, {});
 
     float avg[3];
     int total = 0;
@@ -412,7 +413,7 @@ static int set_pivot_position_exec(bContext *C, wmOperator *op)
     if (mode == PivotPositionMode::Unmasked) {
       for (PBVHNode *node : nodes) {
         PBVHVertexIter vd;
-        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+        BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
           const float mask = vd.mask;
           if (mask < 1.0f) {
             if (SCULPT_check_vertex_pivot_symmetry(vd.co, ss->pivot_pos, symm)) {
@@ -430,7 +431,7 @@ static int set_pivot_position_exec(bContext *C, wmOperator *op)
 
       for (PBVHNode *node : nodes) {
         PBVHVertexIter vd;
-        BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+        BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
           const float mask = vd.mask;
           if (mask < (0.5f + threshold) && mask > (0.5f - threshold)) {
             if (SCULPT_check_vertex_pivot_symmetry(vd.co, ss->pivot_pos, symm)) {

@@ -89,11 +89,6 @@ const EnumPropertyItem rna_enum_object_mode_items[] = {
      "Vertex Paint",
      "Grease Pencil Vertex Paint Strokes"},
     {OB_MODE_SCULPT_CURVES, "SCULPT_CURVES", ICON_SCULPTMODE_HLT, "Sculpt Mode", ""},
-    {OB_MODE_PAINT_GREASE_PENCIL,
-     "PAINT_GREASE_PENCIL",
-     ICON_GREASEPENCIL,
-     "Draw Mode",
-     "Paint Grease Pencil Strokes"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1771,7 +1766,7 @@ static void rna_Object_modifier_remove(Object *object,
 
 static void rna_Object_modifier_clear(Object *object, bContext *C)
 {
-  blender::ed::object::modifier_clear(CTX_data_main(C), CTX_data_scene(C), object);
+  blender::ed::object::modifiers_clear(CTX_data_main(C), CTX_data_scene(C), object);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }

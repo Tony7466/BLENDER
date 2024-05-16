@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <optional>
 #include <queue>
 
 #include "BKE_attribute.hh"
@@ -101,11 +102,11 @@ struct SculptVertexNeighborIter {
 struct SculptOrigVertData {
   BMLog *bm_log;
 
-  blender::ed::sculpt_paint::undo::Node *unode;
-  float (*coords)[3];
-  float (*normals)[3];
+  const blender::ed::sculpt_paint::undo::Node *unode;
+  const blender::float3 *coords;
+  const blender::float3 *normals;
   const float *vmasks;
-  float (*colors)[4];
+  const blender::float4 *colors;
 
   /* Original coordinate, normal, and mask. */
   const float *co;
@@ -476,7 +477,7 @@ struct StrokeCache {
   } paint_brush;
 
   /* Pose brush */
-  SculptPoseIKChain *pose_ik_chain;
+  std::unique_ptr<SculptPoseIKChain> pose_ik_chain;
 
   /* Enhance Details. */
   float (*detail_directions)[3];
@@ -714,7 +715,7 @@ bool SCULPT_poll(bContext *C);
 
 /**
  * Returns true if sculpt session can handle color attributes
- * (BKE_pbvh_type(ss->pbvh) == PBVH_FACES).  If false an error
+ * (BKE_pbvh_type(*ss->pbvh) == PBVH_FACES).  If false an error
  * message will be shown to the user.  Operators should return
  * OPERATOR_CANCELLED in this case.
  *
@@ -884,7 +885,7 @@ float *SCULPT_brush_deform_target_vertex_co_get(SculptSession *ss,
                                                 int deform_target,
                                                 PBVHVertexIter *iter);
 
-void SCULPT_vertex_neighbors_get(SculptSession *ss,
+void SCULPT_vertex_neighbors_get(const SculptSession *ss,
                                  PBVHVertRef vertex,
                                  bool include_duplicates,
                                  SculptVertexNeighborIter *iter);
@@ -952,7 +953,7 @@ namespace hide {
 
 bool vert_visible_get(const SculptSession *ss, PBVHVertRef vertex);
 bool vert_all_faces_visible_get(const SculptSession *ss, PBVHVertRef vertex);
-bool vert_any_face_visible_get(SculptSession *ss, PBVHVertRef vertex);
+bool vert_any_face_visible_get(const SculptSession *ss, PBVHVertRef vertex);
 
 }
 
@@ -964,11 +965,11 @@ bool vert_any_face_visible_get(SculptSession *ss, PBVHVertRef vertex);
 
 namespace face_set {
 
-int active_face_set_get(SculptSession *ss);
-int vert_face_set_get(SculptSession *ss, PBVHVertRef vertex);
+int active_face_set_get(const SculptSession *ss);
+int vert_face_set_get(const SculptSession *ss, PBVHVertRef vertex);
 
-bool vert_has_face_set(SculptSession *ss, PBVHVertRef vertex, int face_set);
-bool vert_has_unique_face_set(SculptSession *ss, PBVHVertRef vertex);
+bool vert_has_face_set(const SculptSession *ss, PBVHVertRef vertex, int face_set);
+bool vert_has_unique_face_set(const SculptSession *ss, PBVHVertRef vertex);
 
 bke::SpanAttributeWriter<int> ensure_face_sets_mesh(Object &object);
 int ensure_face_sets_bmesh(Object &object);
@@ -988,21 +989,21 @@ Array<int> duplicate_face_sets(const Mesh &mesh);
  * Initialize a #SculptOrigVertData for accessing original vertex data;
  * handles #BMesh, #Mesh, and multi-resolution.
  */
-void SCULPT_orig_vert_data_init(SculptOrigVertData *data,
-                                Object *ob,
-                                PBVHNode *node,
+void SCULPT_orig_vert_data_init(SculptOrigVertData &data,
+                                Object &ob,
+                                const PBVHNode &node,
                                 blender::ed::sculpt_paint::undo::Type type);
 /**
  * Update a #SculptOrigVertData for a particular vertex from the PBVH iterator.
  */
-void SCULPT_orig_vert_data_update(SculptOrigVertData *orig_data, PBVHVertexIter *iter);
+void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVertexIter &iter);
 /**
  * Initialize a #SculptOrigVertData for accessing original vertex data;
  * handles #BMesh, #Mesh, and multi-resolution.
  */
-void SCULPT_orig_vert_data_unode_init(SculptOrigVertData *data,
-                                      Object *ob,
-                                      blender::ed::sculpt_paint::undo::Node *unode);
+void SCULPT_orig_vert_data_unode_init(SculptOrigVertData &data,
+                                      const Object &ob,
+                                      const blender::ed::sculpt_paint::undo::Node &unode);
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1174,17 +1175,15 @@ struct FillData {
   blender::BitVector<> visited_verts;
 };
 
-void init_fill(SculptSession *ss, FillData *flood);
+FillData init_fill(SculptSession *ss);
 void add_active(Object *ob, SculptSession *ss, FillData *flood, float radius);
 void add_initial_with_symmetry(
     Object *ob, SculptSession *ss, FillData *flood, PBVHVertRef vertex, float radius);
 void add_initial(FillData *flood, PBVHVertRef vertex);
 void add_and_skip_initial(FillData *flood, PBVHVertRef vertex);
-void execute(
-    SculptSession *ss,
-    FillData *flood,
-    FunctionRef<bool(SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)>
-        func);
+void execute(SculptSession *ss,
+             FillData *flood,
+             FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
 
 }
 
@@ -1302,15 +1301,13 @@ struct Cache {
 };
 
 struct NodeData {
-  SculptOrigVertData orig_data;
-  bool have_orig_data;
+  std::optional<SculptOrigVertData> orig_data;
 };
 
 /**
  * Call before PBVH vertex iteration.
- * \param automask_data: pointer to an uninitialized #auto_mask::NodeData struct.
  */
-NodeData node_begin(Object &object, const Cache *automasking, PBVHNode &node);
+NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &node);
 
 /* Call before factor_get and SCULPT_brush_strength_factor. */
 void node_update(NodeData &automask_data, PBVHVertexIter &vd);
@@ -1332,7 +1329,6 @@ Cache *active_cache_get(SculptSession *ss);
  */
 std::unique_ptr<Cache> cache_init(const Sculpt *sd, Object *ob);
 std::unique_ptr<Cache> cache_init(const Sculpt *sd, const Brush *brush, Object *ob);
-void cache_free(Cache *automasking);
 
 bool mode_enabled(const Sculpt *sd, const Brush *br, eAutomasking_flag mode);
 bool is_enabled(const Sculpt *sd, const SculptSession *ss, const Brush *br);
@@ -1663,6 +1659,9 @@ void modal_keymap(wmKeyConfig *keyconf);
 namespace blender::ed::sculpt_paint::gesture {
 enum ShapeType {
   Box = 0,
+
+  /* In the context of a sculpt gesture, both lasso and polyline modal
+   * operators are handled as the same general shape. */
   Lasso = 1,
   Line = 2,
 };
@@ -1672,13 +1671,14 @@ enum class SelectionType {
   Outside = 1,
 };
 
+/* Common data structure for both lasso and polyline. */
 struct LassoData {
   float4x4 projviewobjmat;
 
   rcti boundbox;
   int width;
 
-  /* 2D bitmap to test if a vertex is affected by the lasso shape. */
+  /* 2D bitmap to test if a vertex is affected by the surrounding shape. */
   blender::BitVector<> mask_px;
 };
 
@@ -1736,7 +1736,7 @@ struct GestureData {
   float3 world_space_view_origin;
   float3 world_space_view_normal;
 
-  /* Lasso Gesture. */
+  /* Lasso & Polyline Gesture. */
   LassoData lasso;
 
   /* Line Gesture. */
@@ -1767,6 +1767,7 @@ bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vert
 /* Initialization functions. */
 std::unique_ptr<GestureData> init_from_box(bContext *C, wmOperator *op);
 std::unique_ptr<GestureData> init_from_lasso(bContext *C, wmOperator *op);
+std::unique_ptr<GestureData> init_from_polyline(bContext *C, wmOperator *op);
 std::unique_ptr<GestureData> init_from_line(bContext *C, wmOperator *op);
 
 /* Common gesture operator properties. */
@@ -1784,6 +1785,7 @@ void SCULPT_OT_project_line_gesture(wmOperatorType *ot);
 namespace blender::ed::sculpt_paint::trim {
 void SCULPT_OT_trim_lasso_gesture(wmOperatorType *ot);
 void SCULPT_OT_trim_box_gesture(wmOperatorType *ot);
+void SCULPT_OT_trim_line_gesture(wmOperatorType *ot);
 }
 
 /** \} */
@@ -1891,15 +1893,14 @@ void do_pose_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes);
  */
 void calc_pose_data(Object *ob,
                     SculptSession *ss,
-                    float initial_location[3],
+                    const float3 &initial_location,
                     float radius,
                     float pose_offset,
-                    float *r_pose_origin,
-                    float *r_pose_factor);
+                    float3 &r_pose_origin,
+                    MutableSpan<float> r_pose_factor);
 void pose_brush_init(Object *ob, SculptSession *ss, Brush *br);
-SculptPoseIKChain *ik_chain_init(
-    Object *ob, SculptSession *ss, Brush *br, const float initial_location[3], float radius);
-void ik_chain_free(SculptPoseIKChain *ik_chain);
+std::unique_ptr<SculptPoseIKChain> ik_chain_init(
+    Object *ob, SculptSession *ss, Brush *br, const float3 &initial_location, float radius);
 
 }
 
