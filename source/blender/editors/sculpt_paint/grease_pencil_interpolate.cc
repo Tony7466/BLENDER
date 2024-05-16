@@ -365,9 +365,9 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
-  opdata.layer_mask.foreach_index([&](const int layer_index, const int index) {
+  opdata.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layers_for_write()[layer_index];
-    const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[index];
+    const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
 
     Drawing *dst_drawing = get_or_create_drawing_at_frame(grease_pencil, layer, current_frame);
     if (dst_drawing == nullptr) {
