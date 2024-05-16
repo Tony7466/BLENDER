@@ -234,6 +234,7 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
       integrator_path_next(kg, state, current_kernel, DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME);
     }
     else {
+      integrator_finalize_reservoir(kg, state, render_buffer);
       integrator_path_terminate(kg, state, current_kernel);
     }
     return;
@@ -274,6 +275,7 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
 #endif
       }
       else {
+        integrator_finalize_reservoir(kg, state, render_buffer);
         integrator_path_terminate(kg, state, current_kernel);
       }
     }
@@ -284,6 +286,7 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
         (INTEGRATOR_STATE(state, path, bounce) < kernel_data.integrator.min_bounce))
     {
       /* TODO(weizhen): `min_bounce` is only for debugging, revert after finishing the branch. */
+      integrator_finalize_reservoir(kg, state, render_buffer);
       integrator_path_terminate(kg, state, current_kernel);
     }
     else {
@@ -341,6 +344,7 @@ ccl_device_forceinline void integrator_intersect_next_kernel_after_volume(
   else {
     /* Nothing hit, continue with background kernel. */
     if (integrator_intersect_skip_lights(kg, state)) {
+      integrator_finalize_reservoir(kg, state, render_buffer);
       integrator_path_terminate(kg, state, current_kernel);
     }
     else {

@@ -693,7 +693,6 @@ ccl_device
   if (use_ris) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-    reservoir.finalize();
     film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
   }
   else if (reservoir.finalize()) {
@@ -1107,6 +1106,7 @@ ccl_device_forceinline void integrator_shade_surface(KernelGlobals kg,
 {
   const int continue_path_label = integrate_surface<node_feature_mask>(kg, state, render_buffer);
   if (continue_path_label == LABEL_NONE) {
+    integrator_finalize_reservoir(kg, state, render_buffer);
     integrator_path_terminate(kg, state, current_kernel);
     return;
   }

@@ -639,6 +639,24 @@ ccl_device_inline void film_clear_pass_reservoir(KernelGlobals kg,
   }
 }
 
+/* TODO(weizhen): this function is called before terminating the path. Better to move this function
+ * inside of `integrator_path_terminate()`. And what if multiple threads render the same pixel? */
+ccl_device_inline void integrator_finalize_reservoir(KernelGlobals kg,
+                                                     IntegratorState state,
+                                                     ccl_global float *ccl_restrict render_buffer)
+{
+  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
+                               kernel_data.film.pass_restir_reservoir;
+    Reservoir reservoir;
+    restir_unpack_reservoir(kg, &reservoir, buffer);
+    reservoir.finalize();
+    film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
+
+    /* buffer[4] = safe_divide(buffer[4], buffer[5]); */
+  }
+}
+
 /* Write background contribution to render buffer.
  *
  * Includes transparency, matching film_write_transparent. */

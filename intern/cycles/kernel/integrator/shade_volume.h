@@ -1191,6 +1191,7 @@ ccl_device void integrator_shade_volume(KernelGlobals kg,
   const VolumeIntegrateEvent event = volume_integrate(kg, state, &ray, render_buffer);
   if (event == VOLUME_PATH_MISSED) {
     /* End path. */
+    integrator_finalize_reservoir(kg, state, render_buffer);
     integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME);
     return;
   }
