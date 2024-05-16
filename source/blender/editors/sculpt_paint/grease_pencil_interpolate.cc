@@ -13,6 +13,8 @@
 #include "BLI_virtual_array.hh"
 #include "BLT_translation.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "DNA_grease_pencil_types.h"
 
 #include "ED_grease_pencil.hh"
@@ -390,6 +392,9 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   });
 
   grease_pencil_interpolate_status_indicators(C, opdata);
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
 using FramesMapKeyInterval = std::pair<int, int>;
