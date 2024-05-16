@@ -111,7 +111,7 @@ float light_shape_radius(LightData light)
 {
   float radius;
   if (is_sun_light(light.type)) {
-    return light_sun_data_get(light).radius;
+    return light_sun_data_get(light).shape_radius;
   }
   else if (is_area_light(light.type)) {
     return length(light_area_data_get(light).size);
@@ -257,7 +257,7 @@ float light_ltc(
       size = vec2(light_local_data_get(light).shape_radius);
     }
     else if (is_sun_light(light.type)) {
-      size = vec2(light_sun_data_get(light).radius);
+      size = vec2(light_sun_data_get(light).shape_radius);
     }
     else {
       /* Area light. */

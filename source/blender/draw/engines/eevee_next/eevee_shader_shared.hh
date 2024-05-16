@@ -908,7 +908,8 @@ struct LightSunData {
   float _pad0;
   float _pad1;
   float _pad2;
-  float radius;
+  /* Radius of the sun disk, one unit away from a shading point. */
+  float shape_radius;
 
   /** --- Shadow Data --- */
   /** Offset of the LOD min in LOD min tile units. Split positive and negative for bit-shift. */
@@ -1157,7 +1158,7 @@ static inline LightAreaData light_area_data_get(LightData light)
 static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_READ_BEGIN(LightSunData, light, is_sun_light(light.type))
-  SAFE_ASSIGN_FLOAT(radius, _pad0)
+  SAFE_ASSIGN_FLOAT(shape_radius, _pad0)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.x, shadow_radius)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_neg.y, shape_radius)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_base_offset_pos.x, influence_radius_max)
@@ -1172,7 +1173,7 @@ static inline LightSunData light_sun_data_get(LightData light)
 static inline LightData light_sun_data_set(LightData light, LightSunData sun_data)
 {
   SAFE_WRITE_BEGIN(LightSunData, sun_data, is_sun_light(light.type))
-  SAFE_ASSIGN_FLOAT(_pad0, radius)
+  SAFE_ASSIGN_FLOAT(_pad0, shape_radius)
   SAFE_ASSIGN_INT_AS_FLOAT(shadow_radius, clipmap_base_offset_neg.x)
   SAFE_ASSIGN_INT_AS_FLOAT(shape_radius, clipmap_base_offset_neg.y)
   SAFE_ASSIGN_INT_AS_FLOAT(influence_radius_max, clipmap_base_offset_pos.x)

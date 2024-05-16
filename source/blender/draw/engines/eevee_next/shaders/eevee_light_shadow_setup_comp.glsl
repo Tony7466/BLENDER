@@ -225,20 +225,6 @@ void cubeface_sync(int tilemap_id,
   tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
 }
 
-vec3 random_position_on_light(LightData light)
-{
-  vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_W);
-
-  if (is_area_light(light.type)) {
-    vec2 point_on_unit_shape = (light.type == LIGHT_RECT) ? rand.xy * 2.0 - 1.0 :
-                                                            sample_disk(rand.xy);
-    return vec3(point_on_unit_shape * light_area_data_get(light).size, 0.0);
-  }
-  else {
-    return sample_ball(rand) * light_local_data_get(light).shape_radius;
-  }
-}
-
 void main()
 {
   uint l_idx = gl_GlobalInvocationID.x;
@@ -254,16 +240,17 @@ void main()
 
   if (is_sun_light(light.type)) {
     /* Distant lights. */
+    vec3 position_on_light = vec3(0.0);
 
-#if 0 /* Jittered shadows. */
-    vec3 position_on_light = random_position_on_light(light);
-    vec3 light_direction = normalize(position_on_light);
-    float3x3 object_to_world_transposed = transpose(from_up_axis(light_direction));
+    // Transform original_object_to_world = light.object_to_world;
 
-    light.object_to_world.x.xyz = object_to_world_transposed[0];
-    light.object_to_world.y.xyz = object_to_world_transposed[1];
-    light.object_to_world.z.xyz = object_to_world_transposed[2];
-#endif
+    if (light.shadow_jitter) {
+      float shape_radius = light_sun_data_get(light).shape_radius;
+
+      vec2 rand = sampling_rng_2D_get(SAMPLING_SHADOW_W);
+      vec3 L = normalize(vec3(sample_disk(rand.xy) * shape_radius, 1.0));
+
+    }
 
     if (light.type == LIGHT_SUN_ORTHO) {
       cascade_sync(light);
@@ -277,7 +264,16 @@ void main()
     vec3 position_on_light = vec3(0.0);
 
     if (light.shadow_jitter) {
-      position_on_light = random_position_on_light(light);
+      vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_W);
+
+      if (is_area_light(light.type)) {
+        vec2 point_on_unit_shape = (light.type == LIGHT_RECT) ? rand.xy * 2.0 - 1.0 :
+                                                                sample_disk(rand.xy);
+        position_on_light = vec3(point_on_unit_shape * light_area_data_get(light).size, 0.0);
+      }
+      else {
+        position_on_light = sample_ball(rand) * light_local_data_get(light).shape_radius;
+      }
     }
 
     int tilemap_count = light_local_tilemap_count(light);

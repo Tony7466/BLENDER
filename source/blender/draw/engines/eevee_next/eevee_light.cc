@@ -174,7 +174,7 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     /* Use non-clamped radius for soft shadows. Avoid having a minimum blur. */
     this->sun.shadow_angle = sun_half_angle * trace_scaling_fac;
     /* Clamp to minimum value before float imprecision artifacts appear. */
-    this->sun.radius = max(0.001f, tanf(sun_half_angle));
+    this->sun.shape_radius = clamp(tanf(sun_half_angle), 0.001f, 20.0f);
   }
   else if (is_area_light(this->type)) {
     const bool is_irregular = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
@@ -252,7 +252,7 @@ float Light::shape_radiance_get()
     }
     case LIGHT_SUN_ORTHO:
     case LIGHT_SUN: {
-      float inv_sin_sq = 1.0f + 1.0f / square(this->sun.radius);
+      float inv_sin_sq = 1.0f + 1.0f / square(this->sun.shape_radius);
       /* Convert irradiance to radiance. */
       return float(M_1_PI) * inv_sin_sq;
     }
