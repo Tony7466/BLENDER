@@ -1075,7 +1075,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
       key_data.array_index = property_index;
       key_data.position = {scene_frame, rna_values[property_index]};
       const SingleKeyingResult result = insert_key_layer(
-          *layer, *binding, rna_path_id_to_prop.value(), key_data, insert_key_flags, key_settings);
+          *layer, *binding, *rna_path_id_to_prop, key_data, insert_key_flags, key_settings);
       combined_result.add(result);
     }
   }
