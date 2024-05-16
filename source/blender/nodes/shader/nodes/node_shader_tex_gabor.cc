@@ -27,10 +27,10 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Orientation", "orientation_2d")
+  b.add_input<decl::Float>("Orientation", "Orientation 2D")
       .default_value(math::numbers::pi / 4)
       .subtype(PROP_ANGLE);
-  b.add_input<decl::Vector>("Orientation", "orientation_3d")
+  b.add_input<decl::Vector>("Orientation", "Orientation 3D")
       .default_value({math::numbers::sqrt2, math::numbers::sqrt2, 0.0f})
       .subtype(PROP_DIRECTION);
   b.add_output<decl::Float>("Value");
@@ -56,10 +56,10 @@ static void node_shader_update_tex_gabor(bNodeTree *ntree, bNode *node)
 {
   const NodeTexGabor &storage = node_storage(*node);
 
-  bNodeSocket *orientation_2d_socket = bke::nodeFindSocket(node, SOCK_IN, "orientation_2d");
+  bNodeSocket *orientation_2d_socket = bke::nodeFindSocket(node, SOCK_IN, "Orientation 2D");
   bke::nodeSetSocketAvailability(ntree, orientation_2d_socket, storage.type == SHD_GABOR_TYPE_2D);
 
-  bNodeSocket *orientation_3d_socket = bke::nodeFindSocket(node, SOCK_IN, "orientation_3d");
+  bNodeSocket *orientation_3d_socket = bke::nodeFindSocket(node, SOCK_IN, "Orientation 3D");
   bke::nodeSetSocketAvailability(ntree, orientation_3d_socket, storage.type == SHD_GABOR_TYPE_3D);
 }
 
