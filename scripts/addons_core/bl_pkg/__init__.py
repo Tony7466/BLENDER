@@ -136,6 +136,7 @@ use_repos_to_notify = False
 def repos_to_notify():
     import os
     from .bl_extension_utils import (
+        repo_index_outdated,
         scandir_with_demoted_errors,
         PKG_MANIFEST_FILENAME_TOML,
     )
@@ -149,6 +150,9 @@ def repos_to_notify():
     #
     # Since it's not all that common to disable the status bar just run notifications
     # if any repositories are marked to run notifications.
+
+    repos_notify = []
+    any_repo_outdated = False
 
     prefs = bpy.context.preferences
     extension_repos = prefs.extensions.repos
@@ -189,6 +193,13 @@ def repos_to_notify():
 
         # NOTE: offline checks are handled by the notification (not here).
         repos_notify.append(repo_item)
+        if repo_index_outdated(repo_item.directory):
+            any_repo_outdated = True
+
+    # Update all repos together or none, to avoid bothering users
+    # multiple times in a day.
+    if not any_repo_outdated:
+        return []
 
     return repos_notify
 
