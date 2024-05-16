@@ -96,12 +96,17 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   ipc_sharedsemaphore start_semaphore = {0};
   std::string start_name = std::string(subprocess_name) + "_START";
   ipc_sem_init(&start_semaphore, start_name.c_str());
-  ipc_sem_create(&start_semaphore, 1);
+  ipc_sem_create(&start_semaphore, 0);
 
   ipc_sharedsemaphore end_semaphore = {0};
   std::string end_name = std::string(subprocess_name) + "_END";
   ipc_sem_init(&end_semaphore, end_name.c_str());
-  ipc_sem_create(&end_semaphore, 1);
+  ipc_sem_create(&end_semaphore, 0);
+
+  ipc_sharedsemaphore close_semaphore = {0};
+  std::string close_name = std::string(subprocess_name) + "_CLOSE";
+  ipc_sem_init(&close_semaphore, close_name.c_str());
+  ipc_sem_create(&close_semaphore, 0);
 
   GHOST_SystemHandle ghost_system = GHOST_CreateSystemBackground();
   BLI_assert(ghost_system);
@@ -118,6 +123,10 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
   while (true) {
     ipc_sem_decrement(&start_semaphore);
+
+    if (ipc_sem_try_decrement(&close_semaphore)) {
+      break;
+    }
 
     const char *shaders = reinterpret_cast<const char *>(shared_mem.data);
 
@@ -138,4 +147,5 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   ipc_mem_close(&shared_mem, false);
   ipc_sem_close(&start_semaphore);
   ipc_sem_close(&end_semaphore);
+  ipc_sem_close(&close_semaphore);
 }

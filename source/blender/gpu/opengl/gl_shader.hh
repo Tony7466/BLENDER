@@ -221,6 +221,7 @@ class GLCompilerWorker {
   ipc_sharedmemory_ pipe_ = {0};
   ipc_sharedsemaphore start_semaphore_ = {0};
   ipc_sharedsemaphore end_semaphore_ = {0};
+  ipc_sharedsemaphore close_semaphore_ = {0};
   enum eState { COMPILATION_REQUESTED, COMPILATION_READY, COMPILATION_FINISHED, AVAILABLE };
   eState state_ = AVAILABLE;
 

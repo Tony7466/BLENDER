@@ -1593,13 +1593,17 @@ GLCompilerWorker::GLCompilerWorker(size_t max_size)
   ipc_mem_init(&pipe_, pipe_name.c_str(), max_size);
   ipc_mem_create(&pipe_);
 
-  std::string start_name = "BLENDER_SHADER_COMPILER_" + std::to_string(pipe_id) + "_START";
+  std::string start_name = pipe_name + "_START";
   ipc_sem_init(&start_semaphore_, start_name.c_str());
   ipc_sem_create(&start_semaphore_, 0);
 
-  std::string end_name = "BLENDER_SHADER_COMPILER_" + std::to_string(pipe_id) + "_END";
+  std::string end_name = pipe_name + "_END";
   ipc_sem_init(&end_semaphore_, end_name.c_str());
   ipc_sem_create(&end_semaphore_, 0);
+
+  std::string close_name = pipe_name + "_CLOSE";
+  ipc_sem_init(&close_semaphore_, close_name.c_str());
+  ipc_sem_create(&close_semaphore_, 0);
 
   /* TODO: Pass max_size. */
   std::string cmd = std::string(BKE_appdir_program_path()) + " --compilation-subprocess " +
@@ -1610,11 +1614,15 @@ GLCompilerWorker::GLCompilerWorker(size_t max_size)
 
 GLCompilerWorker::~GLCompilerWorker()
 {
-  _pclose(compiler_);
-  compiler_ = nullptr;
-  ipc_mem_close(&pipe_, true);
+  ipc_sem_increment(&close_semaphore_);
+  /* Flag start so the subprocess can reach the close semaphore. */
+  ipc_sem_increment(&start_semaphore_);
+  ipc_sem_close(&close_semaphore_);
   ipc_sem_close(&start_semaphore_);
   ipc_sem_close(&end_semaphore_);
+  ipc_mem_close(&pipe_, true);
+  _pclose(compiler_);
+  compiler_ = nullptr;
 }
 
 #include <chrono>
