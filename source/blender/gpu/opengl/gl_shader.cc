@@ -1589,7 +1589,8 @@ GLCompilerWorker::GLCompilerWorker(size_t max_size)
   pipe_id++;
 
   /* TODO: Per Blender instance name. */
-  std::string pipe_name = "BLENDER_SHADER_COMPILER_" + std::to_string(pipe_id);
+  std::string pipe_name = "BLENDER_SHADER_COMPILER_" + std::to_string(getpid()) + "_" +
+                          std::to_string(pipe_id);
   ipc_mem_init(&pipe_, pipe_name.c_str(), max_size);
   ipc_mem_create(&pipe_);
 
