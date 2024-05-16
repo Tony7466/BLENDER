@@ -171,6 +171,61 @@ static void apply_positions_faces(const Sculpt &sd,
   // TODO: flush_positions_to_shape_keys
 }
 
+static void do_smooth_brush_mesh(const Sculpt &sd,
+                                 const Brush &brush,
+                                 Object &object,
+                                 Span<PBVHNode *> nodes)
+{
+  const SculptSession &ss = *object.sculpt;
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
+  const PBVH &pbvh = *ss.pbvh;
+
+  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+
+  Array<int> node_vert_offset_data(nodes.size() + 1);
+  for (const int i : nodes.index_range()) {
+    node_vert_offset_data[i] = bke::pbvh::node_unique_verts(*nodes[i]).size();
+  }
+  const OffsetIndices<int> node_vert_offsets = offset_indices::accumulate_counts_to_offsets(
+      node_vert_offset_data);
+
+  Array<float3> new_positions(node_vert_offsets.total_size());
+
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    LocalData &tls = all_tls.local();
+    for (const int i : range) {
+      calc_smooth_positions_faces(mesh.faces(),
+                                  mesh.corner_verts(),
+                                  ss.vert_to_face_map,
+                                  ss.vertex_info.boundary,
+                                  hide_poly,
+                                  bke::pbvh::node_unique_verts(*nodes[i]),
+                                  tls,
+                                  positions_eval,
+                                  new_positions.as_mutable_span().slice(node_vert_offsets[i]));
+    }
+  });
+
+  MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
+  MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    LocalData &tls = all_tls.local();
+    for (const int i : range) {
+      apply_positions_faces(sd,
+                            brush,
+                            *nodes[i],
+                            object,
+                            tls,
+                            new_positions.as_mutable_span().slice(node_vert_offsets[i]));
+    }
+  });
+}
+
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
@@ -249,7 +304,7 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 
 }  // namespace smooth_cc
 
-void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+void do_smooth_brush(const Sculpt &sd, Object &object, const Span<PBVHNode *> nodes)
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
@@ -267,53 +322,7 @@ void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-
-      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
-      const Span<int> verts = bke::pbvh::node_unique_verts(node);
-
-      Array<int> node_vert_offset_data(nodes.size() + 1);
-      for (const int i : nodes.index_range()) {
-        node_vert_offset_data[i] = bke::pbvh::node_unique_verts(*nodes[i]).size();
-      }
-      const OffsetIndices<int> node_vert_offsets = offset_indices::accumulate_counts_to_offsets(
-          node_vert_offset_data);
-
-      Array<float3> new_positions(node_vert_offsets.total_size());
-
-      threading::EnumerableThreadSpecific<LocalData> all_tls;
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_smooth_positions_faces(mesh.faces(),
-                                      mesh.corner_verts(),
-                                      ss.vert_to_face_map,
-                                      ss.vertex_info.boundary,
-                                      hide_poly,
-                                      bke::pbvh::node_unique_verts(*nodes[i]),
-                                      tls,
-                                      positions_eval,
-                                      new_positions.as_mutable_span().slice(node_vert_offsets[i]));
-        }
-      });
-
-      MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
-      MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          apply_positions_faces(sd,
-                                brush,
-                                *nodes[i],
-                                object,
-                                tls,
-                                new_positions.as_mutable_span().slice(node_vert_offsets[i]));
-        }
-      });
-
+      do_smooth_brush_mesh(sd, brush, object, nodes);
       break;
     }
     case PBVH_GRIDS:
