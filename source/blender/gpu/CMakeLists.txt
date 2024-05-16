@@ -50,6 +50,7 @@ set(SRC
   intern/gpu_batch_utils.cc
   intern/gpu_capabilities.cc
   intern/gpu_codegen.cc
+  intern/gpu_compilation_subprocess.cc
   intern/gpu_compute.cc
   intern/gpu_context.cc
   intern/gpu_debug.cc
@@ -88,6 +89,7 @@ set(SRC
   GPU_capabilities.hh
   GPU_common.hh
   GPU_common_types.hh
+  GPU_compilation_subprocess.hh
   GPU_compute.hh
   GPU_context.hh
   GPU_debug.hh

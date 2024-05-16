@@ -8,6 +8,7 @@
 
 #include <iomanip>
 
+#include "BKE_appdir.hh"
 #include "BKE_global.hh"
 
 #include "BLI_string.h"
@@ -1592,16 +1593,17 @@ GLCompilerWorker::GLCompilerWorker(size_t max_size)
   ipc_mem_init(&pipe_, pipe_name.c_str(), max_size);
   ipc_mem_create(&pipe_);
 
-  std::string start_name = "BLENDER_SHADER_COMPILER_START_" + std::to_string(pipe_id);
+  std::string start_name = "BLENDER_SHADER_COMPILER_" + std::to_string(pipe_id) + "_START";
   ipc_sem_init(&start_semaphore_, start_name.c_str());
   ipc_sem_create(&start_semaphore_, 0);
 
-  std::string end_name = "BLENDER_SHADER_COMPILER_END_" + std::to_string(pipe_id);
+  std::string end_name = "BLENDER_SHADER_COMPILER_" + std::to_string(pipe_id) + "_END";
   ipc_sem_init(&end_semaphore_, end_name.c_str());
   ipc_sem_create(&end_semaphore_, 0);
 
-  std::string cmd = "python C:/dev/blender/test-parallel-compilation/main.py --name " + pipe_name +
-                    " --size " + std::to_string(max_size);
+  /* TODO: Pass max_size. */
+  std::string cmd = std::string(BKE_appdir_program_path()) + " --compilation-subprocess " +
+                    pipe_name;
 
   compiler_ = _popen(cmd.c_str(), "w");
 }
@@ -1622,7 +1624,7 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   BLI_assert(state_ == AVAILABLE);
 
   strcpy((char *)pipe_.data, vert.c_str());
-  strcpy((char *)pipe_.data + vert.size(), frag.c_str());
+  strcpy((char *)pipe_.data + vert.size() + 1, frag.c_str());
 
   const std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   // printf("SEND START %s - %s\n", pipe_.name, std::ctime(&t));
