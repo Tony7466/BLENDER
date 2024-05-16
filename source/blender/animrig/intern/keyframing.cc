@@ -1000,8 +1000,8 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
                                            Binding &binding,
                                            const std::string &rna_path,
                                            const KeyInsertData &key_data,
-                                           const eInsertKeyFlags insert_key_flags,
-                                           const KeyframeSettings &key_settings)
+                                           const KeyframeSettings &key_settings,
+                                           const eInsertKeyFlags insert_key_flags)
 {
   Strip *strip = layer.strip_at_time(key_data.position[0]);
   if (strip == nullptr) {
@@ -1018,8 +1018,8 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
                                                       PointerRNA *rna_pointer,
                                                       const blender::Span<std::string> rna_paths,
                                                       const float scene_frame,
-                                                      const eInsertKeyFlags insert_key_flags,
-                                                      const KeyframeSettings &key_settings)
+                                                      const KeyframeSettings &key_settings,
+                                                      const eInsertKeyFlags insert_key_flags)
 {
   BLI_assert(action.is_action_layered());
 
@@ -1075,7 +1075,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
       key_data.array_index = property_index;
       key_data.position = {scene_frame, rna_values[property_index]};
       const SingleKeyingResult result = insert_key_layer(
-          *layer, *binding, *rna_path_id_to_prop, key_data, insert_key_flags, key_settings);
+          *layer, *binding, *rna_path_id_to_prop, key_data, key_settings, insert_key_flags);
       combined_result.add(result);
     }
   }
@@ -1126,8 +1126,8 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                      rna_pointer,
                                      rna_paths,
                                      scene_frame,
-                                     insert_key_flags,
-                                     key_settings);
+                                     key_settings,
+                                     insert_key_flags);
   }
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
