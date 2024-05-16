@@ -73,6 +73,28 @@ vec3 sample_ggx(vec3 rand, float alpha, vec3 Vt)
   return sample_ggx(rand, alpha, Vt, G1_unused);
 }
 
+/* All inputs should be in trangent space. */
+float sample_pdf_ggx_bounded(vec3 Vt, vec3 Lt, float alpha)
+{
+  /**
+   * Eto, Kenta, and Yusuke Tokuyoshi. "Bounded VNDF Sampling for Smith-GGX Reflections."
+   * SIGGRAPH Asia 2023 Technical Communications. 2023. 1-4.
+   * https://gpuopen.com/download/publications/Bounded_VNDF_Sampling_for_Smith-GGX_Reflections.pdf
+   * Listing 2.
+   */
+  vec3 Ht = normalize(Vt + Lt);
+  float a2 = square(alpha);
+  float s2 = square(1.0 + length(Vt.xy));
+  float D = bxdf_ggx_D(Ht.z, a2);
+  float len_ai_sqr = length_squared(alpha * Vt.xy);
+  float t = sqrt(len_ai_sqr + square(Vt.z));
+  if (Vt.z >= 0.0) {
+    float k = (1.0 - a2) * s2 / (s2 + a2 * square(Vt.z));
+    return D / (2.0 * (k * Vt.z + t));
+  }
+  return D * (t - Vt.z) / (2.0 * len_ai_sqr);
+}
+
 /* Similar as `sample_ggx()`, but reduces the number or rejected samples due to reflection in the
  * lower hemisphere, and returns `pdf` instead of `G1_V`. Only used for reflection.
  *
@@ -103,7 +125,7 @@ vec3 sample_ggx_bounded(vec3 rand, float alpha, vec3 Vt, out float pdf)
   /* Transforming the normal back to the ellipsoid configuration. */
   vec3 Ht = normalize(vec3(alpha * Hh.xy, max(0.0, Hh.z)));
 
-  pdf = 0.5 * bxdf_ggx_D(saturate(Ht.z), a2) / (k * Vt.z + norm);
+  pdf = bxdf_ggx_D(saturate(Ht.z), a2) / (2.0 * (k * Vt.z + norm));
 
   return Ht;
 }

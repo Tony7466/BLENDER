@@ -18,16 +18,21 @@
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_closure_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
 float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
 {
   float pdf = 1.0;
+  mat3 world_to_tangent = from_up_axis(cl.N);
+  vec3 Vt = world_to_tangent * V;
+  vec3 Lt = world_to_tangent * L;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID: {
       if (thickness != 0.0) {
@@ -35,20 +40,24 @@ float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
         pdf = 1.0 / (4.0 * M_PI);
       }
       else {
-        return bsdf_lambert(-cl.N, L, pdf);
+        bsdf_lambert(-cl.N, L, pdf);
       }
+      break;
     }
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID: {
-      return bsdf_lambert(cl.N, L, pdf);
+      bsdf_lambert(cl.N, L, pdf);
+      break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
       float roughness = square(max(BSDF_ROUGHNESS_THRESHOLD, to_closure_reflection(cl).roughness));
-      return bsdf_ggx_reflect(cl.N, L, V, roughness, pdf);
+      pdf = sample_pdf_ggx_bounded(Vt, Lt, roughness);
+      break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
       float roughness = square(max(BSDF_ROUGHNESS_THRESHOLD, to_closure_refraction(cl).roughness));
-      return bsdf_ggx_refract(cl.N, L, V, roughness, to_closure_refraction(cl).ior, pdf);
+      bsdf_ggx_refract(cl.N, L, V, roughness, to_closure_refraction(cl).ior, pdf);
+      break;
     }
   }
   return pdf;
@@ -196,7 +205,8 @@ void main()
     /* Slide 54. */
     /* The reference is wrong.
      * The ratio estimator is `pdf_local / pdf_ray` instead of `bsdf_local / pdf_ray`. */
-    float weight = pdf_eval(closure, ray_direction, V, thickness) * ray_pdf_inv;
+    float pdf = pdf_eval(closure, ray_direction, V, thickness);
+    float weight = pdf * ray_pdf_inv;
 
     radiance_accum += ray_radiance.rgb * weight;
     weight_accum += weight;
