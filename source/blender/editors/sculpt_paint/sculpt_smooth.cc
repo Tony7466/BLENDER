@@ -342,76 +342,6 @@ void do_smooth_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float 
   }
 }
 
-static void smooth_position_node(
-    Object *ob, Sculpt *sd, const Brush *brush, float bstrength, PBVHNode *node)
-{
-  SculptSession *ss = ob->sculpt;
-
-  PBVHVertexIter vd;
-
-  CLAMP(bstrength, 0.0f, 1.0f);
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush->falloff_shape);
-
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      *ob, ss->cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                sqrtf(test.dist),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    float avg[3], val[3];
-    neighbor_coords_average_interior(ss, avg, vd.vertex);
-    sub_v3_v3v3(val, avg, vd.co);
-    madd_v3_v3v3fl(val, vd.co, val, fade);
-    SCULPT_clip(sd, ss, vd.co, val);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength)
-{
-  SculptSession *ss = ob->sculpt;
-  const Brush *brush = BKE_paint_brush(&sd->paint);
-
-  const int max_iterations = 4;
-  const float fract = 1.0f / max_iterations;
-
-  CLAMP(bstrength, 0.0f, 1.0f);
-
-  const int count = int(bstrength * max_iterations);
-  const float last = max_iterations * (bstrength - count * fract);
-
-  SCULPT_vertex_random_access_ensure(ss);
-  SCULPT_boundary_info_ensure(ob);
-
-  for (const int iteration : IndexRange(count + 1)) {
-    const float strength = (iteration != count) ? 1.0f : last;
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      for (const int i : range) {
-        smooth_position_node(ob, sd, brush, strength, nodes[i]);
-      }
-    });
-  }
-}
-
 void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
@@ -425,8 +355,8 @@ void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
     enhance_details_brush(sd, ob, nodes);
   }
   else {
-    /* Regular mode, smooth. */
-    do_smooth_brush(sd, ob, nodes, ss->cache->bstrength);
+    /* Implementation moved to new file. */
+    BLI_assert_unreachable();
   }
 }
 

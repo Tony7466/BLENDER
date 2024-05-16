@@ -24,20 +24,25 @@
 #include "BLI_virtual_array.hh"
 
 #include "editors/sculpt_paint/sculpt_intern.hh"
+#include "mesh_brush_common.hh"
 
 namespace blender::ed::sculpt_paint {
 
 inline namespace smooth_cc {
 
-namespace pbvh = bke::pbvh;
-
-struct TLS {
+struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
   // Vector<int> neighbor_offsets;
   // Vector<int> neighbor_indices;
-  Array<Vector<int>> vert_neighbors;
+  Vector<Vector<int>> vert_neighbors;
   Vector<float3> translations;
+};
+
+struct MeshTopologyData {
+  OffsetIndices<int> faces;
+  Span<int> corner_verts;
+  GroupedSpan<int> vert_to_face;
 };
 
 // template<typename FilterFn>
@@ -81,19 +86,17 @@ static void calc_vert_neighbors(const OffsetIndices<int> faces,
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
     const bool is_boundary = boundary_verts[vert];
-    if (boundary_verts[vert]) {
-      for (const int face : vert_to_face[vert]) {
-        if (!hide_poly.is_empty() && hide_poly[face]) {
-          /* Skip connectivity from hidden faces. */
-          continue;
-        }
-        const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
-        if (!is_boundary || boundary_verts[verts[0]]) {
-          neighbors[i].append_non_duplicates(verts[0]);
-        }
-        if (!is_boundary || boundary_verts[verts[1]]) {
-          neighbors[i].append_non_duplicates(verts[1]);
-        }
+    for (const int face : vert_to_face[vert]) {
+      if (!hide_poly.is_empty() && hide_poly[face]) {
+        /* Skip connectivity from hidden faces. */
+        continue;
+      }
+      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
+      if (!is_boundary || boundary_verts[verts[0]]) {
+        neighbors[i].append_non_duplicates(verts[0]);
+      }
+      if (!is_boundary || boundary_verts[verts[1]]) {
+        neighbors[i].append_non_duplicates(verts[1]);
       }
     }
   }
@@ -109,52 +112,46 @@ static float3 average_positions(const Span<float3> positions, const Span<int> in
   return result;
 }
 
-static void calc_smooth_positions_faces(Object &object,
+static void calc_smooth_positions_faces(const OffsetIndices<int> faces,
+                                        const Span<int> corner_verts,
+                                        const GroupedSpan<int> vert_to_face_map,
+                                        const BitSpan boundary_verts,
                                         const Span<bool> hide_poly,
-                                        pbvh::mesh::Node &node,
-                                        TLS &tls,
+                                        const Span<int> verts,
+                                        LocalData &tls,
+                                        const Span<float3> positions,
                                         const MutableSpan<float3> new_positions)
 {
-  SculptSession &ss = *object.sculpt;
-
-  const Span<int> verts = node.unique_vert_indices();
-
   tls.vert_neighbors.reinitialize(verts.size());
-  calc_vert_neighbors(ss.faces,
-                      ss.corner_verts,
-                      ss.vert_to_face_map,
-                      ss.vertex_info.boundary,
-                      hide_poly,
-                      verts,
-                      tls.vert_neighbors);
+  calc_vert_neighbors(
+      faces, corner_verts, vert_to_face_map, boundary_verts, hide_poly, verts, tls.vert_neighbors);
   const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : verts.index_range()) {
-    new_positions[i] = average_positions(positions_eval, vert_neighbors[i]);
+    new_positions[i] = average_positions(positions, vert_neighbors[i]);
   }
 }
 
 static void apply_positions_faces(const Sculpt &sd,
                                   const Brush &brush,
+                                  const PBVHNode &node,
                                   Object &object,
-                                  const Span<bool> hide_poly,
-                                  pbvh::mesh::Node &node,
-                                  TLS &tls,
+                                  LocalData &tls,
                                   const Span<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
-  StrokeCache &cache = *ss.cache;
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const StrokeCache &cache = *ss.cache;
+  const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  pbvh::Tree pbvh_tree(*ss.pbvh);
-
-  const Span<float3> positions_eval = pbvh_tree.vert_positions();
-  const Span<float3> vert_normals = pbvh_tree.vert_normals();
-  const Span<int> verts = node.unique_vert_indices();
+  const PBVH &pbvh = *ss.pbvh;
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   calc_mesh_hide_and_mask(mesh, verts, factors);
+
+  if (brush.flag & BRUSH_FRONTFACE) {
+    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+  }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
@@ -162,28 +159,16 @@ static void apply_positions_faces(const Sculpt &sd,
       ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
-  if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
-  }
-
   if (ss.cache->automasking) {
-    calc_mesh_automask(object, *ss.cache->automasking, node, verts, factors);
+    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
-  calc_vert_neighbors(ss.faces,
-                      ss.corner_verts,
-                      ss.vert_to_face_map,
-                      ss.vertex_info.boundary,
-                      hide_poly,
-                      verts,
-                      tls.vert_neighbors);
-  const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
-
-  for (const int i : verts.index_range()) {
-    new_positions[i] = average_positions(positions_eval, vert_neighbors[i]);
-  }
+  // TODO: clip_and_lock_translations
+  // TODO: apply_crazyspace_to_translations
+  // TODO: apply_translations
+  // TODO: flush_positions_to_shape_keys
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -200,7 +185,7 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -238,7 +223,7 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -270,50 +255,62 @@ void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const float bstrength = ss.cache->bstrength;
 
-  switch (BKE_pbvh_type(object.sculpt->pbvh)) {
+  const int max_iterations = 4;
+  const float fract = 1.0f / max_iterations;
+
+  CLAMP(bstrength, 0.0f, 1.0f);
+
+  const int count = int(bstrength * max_iterations);
+  const float last = max_iterations * (bstrength - count * fract);
+
+  SCULPT_boundary_info_ensure(&object);
+
+  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
+      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+      const Span<int> verts = bke::pbvh::node_unique_verts(node);
+
       Array<int> node_vert_offset_data(nodes.size() + 1);
       for (const int i : nodes.index_range()) {
-        node_vert_offset_data[i] = BKE_pbvh_node_get_unique_vert_indices(nodes[i]).size();
+        node_vert_offset_data[i] = bke::pbvh::node_unique_verts(*nodes[i]).size();
       }
       const OffsetIndices<int> node_vert_offsets = offset_indices::accumulate_counts_to_offsets(
           node_vert_offset_data);
 
       Array<float3> new_positions(node_vert_offsets.total_size());
 
-      threading::EnumerableThreadSpecific<TLS> all_tls;
+      threading::EnumerableThreadSpecific<LocalData> all_tls;
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        TLS &tls = all_tls.local();
+        LocalData &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node face_node(*nodes[i]);
-          calc_smooth_positions_faces(object,
+          calc_smooth_positions_faces(mesh.faces(),
+                                      mesh.corner_verts(),
+                                      ss.vert_to_face_map,
+                                      ss.vertex_info.boundary,
                                       hide_poly,
-                                      face_node,
+                                      bke::pbvh::node_unique_verts(*nodes[i]),
                                       tls,
+                                      positions_eval,
                                       new_positions.as_mutable_span().slice(node_vert_offsets[i]));
         }
       });
 
       MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
-      // TODO: clip_and_lock_translations
-      // TODO: apply_crazyspace_to_translations
-      // TODO: apply_translations
-      // TODO: flush_positions_to_shape_keys
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        TLS &tls = all_tls.local();
+        LocalData &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd,
-                     brush,
-                     object,
-                     face_node,
-                     tls,
-                     new_positions.as_mutable_span().slice(node_vert_offsets[i]));
+          apply_positions_faces(sd,
+                                brush,
+                                *nodes[i],
+                                object,
+                                tls,
+                                new_positions.as_mutable_span().slice(node_vert_offsets[i]));
         }
       });
 
@@ -327,6 +324,8 @@ void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
       });
       break;
     case PBVH_BMESH:
+      BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
+      BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
           calc_bmesh(object, brush, *nodes[i]);
