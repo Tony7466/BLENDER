@@ -482,7 +482,7 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
       break;
   }
 
-  data.layer_data.reinitialize(data.layer_mask.size());
+  data.layer_data.reinitialize(grease_pencil.layers().size());
   data.layer_mask.foreach_index([&](const int layer_index, const int index) {
     const Layer &layer = *grease_pencil.layers()[layer_index];
     GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[index];
