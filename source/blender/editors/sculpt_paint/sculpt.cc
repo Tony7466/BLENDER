@@ -87,7 +87,7 @@
 #include "bmesh.hh"
 
 #include "editors/sculpt_paint/brushes/types.hh"
-#include "mesh_brush_utils.hh"
+#include "mesh_brush_common.hh"
 
 using blender::float3;
 using blender::MutableSpan;

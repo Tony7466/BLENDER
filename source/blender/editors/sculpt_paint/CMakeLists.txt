@@ -110,7 +110,7 @@ set(SRC
 
   curves_sculpt_intern.hh
   grease_pencil_intern.hh
-  mesh_brush_utils.hh
+  mesh_brush_common.hh
   grease_pencil_weight_paint.hh
   paint_intern.hh
   sculpt_intern.hh
