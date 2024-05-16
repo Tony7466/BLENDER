@@ -67,18 +67,40 @@ void template_asset_shelf_popover(uiLayout &layout,
 
 }  // namespace blender::ui
 
+using namespace blender;
+
 static int asset_shelf_popup_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "asset_shelf", nullptr, 0, nullptr);
 
   const ScrArea *area = CTX_wm_area(C);
-  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(*area->type,
-                                                                       asset_shelf_id);
+  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_id);
   if (ed::asset::shelf::type_poll(*C, *area->type, shelf_type) == false) {
     return OPERATOR_CANCELLED;
   }
 
-  UI_popup_block_invoke(C, asset_shelf_block_fn, shelf_type, nullptr);
+  PanelType *pt = WM_paneltype_find("ASSETSHELF_PT_popover_panel", true);
+  if (pt == nullptr) {
+    BKE_reportf(reports, RPT_ERROR, "Panel \"%s\" not found", idname);
+    return OPERATOR_CANCELLED;
+  }
+
+  if (pt->poll && (pt->poll(C, pt) == false)) {
+    /* cancel but allow event to pass through, just like operators do */
+    return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
+  }
+
+  std::string asset_shelf_id_str = asset_shelf_id;
+  // UI_popup_block_invoke(C, asset_shelf_block_fn, shelf_type, nullptr);
+  ui_popover_panel_create(
+      C,
+      nullptr,
+      nullptr,
+      [asset_shelf_id_str](bContext *C, uiLayout *layout, void *arg_pt) {
+        // uiLayoutsetP
+        ui_item_paneltype_func(C, layout, arg_pt)
+      },
+      pt);
 
   MEM_freeN(asset_shelf_id);
 

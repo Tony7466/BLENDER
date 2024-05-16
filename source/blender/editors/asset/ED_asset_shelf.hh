@@ -65,7 +65,7 @@ void header_region_init(wmWindowManager *wm, ARegion *region);
 void header_region(const bContext *C, ARegion *region);
 void header_region_listen(const wmRegionListenerParams *params);
 int header_region_size();
-void header_regiontype_register(ARegionType *region_type, const int space_type);
+void types_register(ARegionType *region_type, const int space_type);
 
 /** \} */
 

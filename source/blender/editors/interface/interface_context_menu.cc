@@ -121,6 +121,8 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
     return "WM_OT_call_panel";
   }
 
+  /* TODO add asset shelf operator here. */
+
   *r_prop = nullptr;
   return nullptr;
 }
