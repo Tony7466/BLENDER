@@ -637,6 +637,11 @@ typedef struct bUserExtensionRepo {
   char module[48];
 
   /**
+   * Secret access token for remote repositories.
+   */
+  char access_token[1024];
+
+  /**
    * The "local" directory where extensions are stored.
    * When unset, use `{BLENDER_USER_EXTENSIONS}/{bUserExtensionRepo::module}`.
    */

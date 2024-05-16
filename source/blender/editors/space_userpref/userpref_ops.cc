@@ -275,6 +275,7 @@ static int preferences_extension_repo_add_exec(bContext *C, wmOperator *op)
 
   char name[sizeof(bUserExtensionRepo::name)] = "";
   char remote_url[sizeof(bUserExtensionRepo::remote_url)] = "";
+  char access_token[sizeof(bUserExtensionRepo::access_token)] = "";
   char custom_directory[sizeof(bUserExtensionRepo::custom_dirpath)] = "";
 
   const bool use_custom_directory = RNA_boolean_get(op->ptr, "use_custom_directory");
@@ -286,6 +287,7 @@ static int preferences_extension_repo_add_exec(bContext *C, wmOperator *op)
 
   if (repo_type == bUserExtensionRepoAddType::Remote) {
     RNA_string_get(op->ptr, "remote_url", remote_url);
+    RNA_string_get(op->ptr, "access_token", access_token);
   }
 
   /* Setup the name using the following logic:
@@ -353,6 +355,7 @@ static int preferences_extension_repo_add_exec(bContext *C, wmOperator *op)
   if (repo_type == bUserExtensionRepoAddType::Remote) {
     STRNCPY(new_repo->remote_url, remote_url);
     new_repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL;
+    STRNCPY(new_repo->access_token, access_token);
   }
 
   /* Activate new repository in the UI for further setup. */
@@ -397,9 +400,14 @@ static void preferences_extension_repo_add_ui(bContext * /*C*/, wmOperator *op)
   PointerRNA *ptr = op->ptr;
   const bUserExtensionRepoAddType repo_type = bUserExtensionRepoAddType(RNA_enum_get(ptr, "type"));
 
+  char access_token[sizeof(bUserExtensionRepo::access_token)] = "";
+  RNA_string_get(op->ptr, "access_token", access_token);
+  int token_icon = access_token[0] == '\0' ? ICON_UNLOCKED : ICON_LOCKED;
+
   switch (repo_type) {
     case bUserExtensionRepoAddType::Remote: {
       uiItemR(layout, op->ptr, "remote_url", UI_ITEM_R_IMMEDIATE, nullptr, ICON_NONE);
+      uiItemR(layout, op->ptr, "access_token", UI_ITEM_R_IMMEDIATE, nullptr, token_icon);
       uiItemR(layout, op->ptr, "use_sync_on_startup", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     }
@@ -476,6 +484,19 @@ static void PREFERENCES_OT_extension_repo_add(wmOperatorType *ot)
                                        sizeof(bUserExtensionRepo::remote_url),
                                        RNA_property_ui_name_raw(prop_ref),
                                        RNA_property_ui_description_raw(prop_ref));
+    RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  }
+
+  { /* Remote Path. */
+    const char *prop_id = "access_token";
+    PropertyRNA *prop_ref = RNA_struct_type_find_property(type_ref, prop_id);
+    PropertyRNA *prop = RNA_def_string(ot->srna,
+                                       prop_id,
+                                       nullptr,
+                                       sizeof(bUserExtensionRepo::access_token),
+                                       RNA_property_ui_name_raw(prop_ref),
+                                       RNA_property_ui_description_raw(prop_ref));
+    //TODO subtype=PROP_PASSWORD
     RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   }
 

@@ -2137,6 +2137,13 @@ class USERPREF_PT_extensions_repos(Panel):
             split.prop(active_repo, "remote_url", text="", icon='URL', placeholder="Repository URL")
             split = row.split()
 
+            if not active_repo.remote_url.startswith("https://extensions.blender.org/"):
+                access_token_icon = 'LOCKED' if active_repo.access_token else 'UNLOCKED'
+                row = layout.row()
+                split = row.split(factor=0.936)
+                split.prop(active_repo, "access_token", icon=access_token_icon)
+                split = row.split()
+
             layout.prop(active_repo, "use_sync_on_startup")
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
