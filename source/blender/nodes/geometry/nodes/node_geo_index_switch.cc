@@ -47,7 +47,8 @@ static void node_declare(NodeDeclarationBuilder &b)
       input.supports_field();
     }
     /* Labels are ugly in combination with data-block pickers and are usually disabled. */
-    input.hide_label(ELEM(data_type, SOCK_OBJECT, SOCK_IMAGE, SOCK_COLLECTION, SOCK_MATERIAL));
+    input.hide_label(
+        ELEM(data_type, SOCK_OBJECT, SOCK_IMAGE, SOCK_COLLECTION, SOCK_MATERIAL, SOCK_SOUND));
   }
 
   auto &output = b.add_output(data_type, "Output");
@@ -339,6 +340,7 @@ static void node_rna(StructRNA *srna)
                                                SOCK_OBJECT,
                                                SOCK_COLLECTION,
                                                SOCK_MATERIAL,
+                                               SOCK_SOUND,
                                                SOCK_IMAGE,
                                                SOCK_MENU);
                                  });

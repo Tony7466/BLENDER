@@ -326,6 +326,10 @@ inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMaterial
 {
   BLO_write_struct(writer, bNodeSocketValueMaterial, &data);
 }
+inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueSound &data)
+{
+  BLO_write_struct(writer, bNodeSocketValueSound, &data);
+}
 inline void socket_data_write_impl(BlendWriter *writer, bNodeSocketValueMenu &data)
 {
   BLO_write_struct(writer, bNodeSocketValueMenu, &data);

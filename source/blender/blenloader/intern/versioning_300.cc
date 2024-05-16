@@ -1196,7 +1196,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
                      SOCK_OBJECT,
                      SOCK_COLLECTION,
                      SOCK_TEXTURE,
-                     SOCK_MATERIAL))
+                     SOCK_MATERIAL,
+                     SOCK_SOUND))
             {
               link->tosock = link->tosock->next;
             }

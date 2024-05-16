@@ -2965,6 +2965,12 @@ void DepsgraphRelationBuilder::build_nodetree_socket(bNodeSocket *socket)
       build_material(material);
     }
   }
+  else if (socket->type == SOCK_SOUND) {
+    bSound *sound = ((bNodeSocketValueSound *)socket->default_value)->value;
+    if (sound != nullptr) {
+      build_sound(sound);
+    }
+  }
 }
 
 void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
@@ -3011,6 +3017,11 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
       build_material((Material *)bnode->id);
       ComponentKey material_key(id, NodeType::SHADING);
       add_relation(material_key, ntree_output_key, "Material -> Node");
+    }
+    else if (id_type == ID_SO) {
+      build_sound((bSound *)bnode->id);
+      ComponentKey sound_key(id, NodeType::AUDIO);
+      add_relation(sound_key, ntree_output_key, "Sound -> Node");
     }
     else if (id_type == ID_TE) {
       build_texture((Tex *)bnode->id);

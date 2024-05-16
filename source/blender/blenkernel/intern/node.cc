@@ -355,6 +355,12 @@ static void library_foreach_node_socket(bNodeSocket *sock, LibraryForeachIDData 
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
       break;
     }
+    case SOCK_SOUND: {
+      bNodeSocketValueMaterial &default_value =
+          *sock->default_value_typed<bNodeSocketValueMaterial>();
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, default_value.value, IDWALK_CB_USER);
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -716,6 +722,9 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
     case SOCK_MATERIAL:
       BLO_write_struct(writer, bNodeSocketValueMaterial, sock->default_value);
       break;
+    case SOCK_SOUND:
+      BLO_write_struct(writer, bNodeSocketValueSound, sock->default_value);
+      break;
     case SOCK_ROTATION:
       BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
       break;
@@ -946,6 +955,7 @@ static bool is_node_socket_supported(const bNodeSocket *sock)
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL:
+    case SOCK_SOUND:
     case SOCK_ROTATION:
     case SOCK_MENU:
     case SOCK_MATRIX:
@@ -1904,6 +1914,11 @@ static void socket_id_user_increment(bNodeSocket *sock)
       id_us_plus(reinterpret_cast<ID *>(default_value.value));
       break;
     }
+    case SOCK_SOUND: {
+      bNodeSocketValueSound &default_value = *sock->default_value_typed<bNodeSocketValueSound>();
+      id_us_plus(reinterpret_cast<ID *>(default_value.value));
+      break;
+    }
     case SOCK_FLOAT:
     case SOCK_VECTOR:
     case SOCK_RGBA:
@@ -1949,6 +1964,11 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_MATERIAL: {
       bNodeSocketValueMaterial &default_value =
           *sock->default_value_typed<bNodeSocketValueMaterial>();
+      id_us_min(reinterpret_cast<ID *>(default_value.value));
+      return default_value.value != nullptr;
+    }
+    case SOCK_SOUND: {
+      bNodeSocketValueSound &default_value = *sock->default_value_typed<bNodeSocketValueSound>();
       id_us_min(reinterpret_cast<ID *>(default_value.value));
       return default_value.value != nullptr;
     }
@@ -2021,6 +2041,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_COLLECTION:
         case SOCK_TEXTURE:
         case SOCK_MATERIAL:
+        case SOCK_SOUND:
         case SOCK_MENU:
           break;
       }
@@ -2154,6 +2175,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
+    case SOCK_SOUND:
+      return "NodeSocketSound";
     case SOCK_MENU:
       return "NodeSocketMenu";
     case SOCK_CUSTOM:
@@ -2241,6 +2264,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
       return "NodeTreeInterfaceSocketTexture";
     case SOCK_MATERIAL:
       return "NodeTreeInterfaceSocketMaterial";
+    case SOCK_SOUND:
+      return "NodeTreeInterfaceSocketSound";
     case SOCK_MENU:
       return "NodeTreeInterfaceSocketMenu";
     case SOCK_CUSTOM:
@@ -2282,6 +2307,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
+    case SOCK_SOUND:
+      return "Sound";
     case SOCK_MENU:
       return "Menu";
     case SOCK_CUSTOM:
@@ -2756,6 +2783,8 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueObject>()->value;
     case SOCK_MATERIAL:
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
+    case SOCK_SOUND:
+      return &socket.default_value_typed<bNodeSocketValueSound>()->value;
     case SOCK_ROTATION:
       return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
     case SOCK_MENU:
@@ -2818,6 +2847,7 @@ void node_socket_move_default_value(Main & /*bmain*/,
            SOCK_COLLECTION,
            SOCK_IMAGE,
            SOCK_MATERIAL,
+           SOCK_SOUND,
            SOCK_TEXTURE,
            SOCK_OBJECT))
   {

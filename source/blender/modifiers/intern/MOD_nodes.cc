@@ -2054,6 +2054,10 @@ static void draw_property_for_socket(const bContext &C,
       uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "materials", name, ICON_MATERIAL);
       break;
     }
+    case SOCK_SOUND: {
+      uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "sounds", name, ICON_MATERIAL);
+      break;
+    }
     case SOCK_TEXTURE: {
       uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "textures", name, ICON_TEXTURE);
       break;

@@ -1203,6 +1203,7 @@ static const float std_node_socket_colors[][4] = {
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
     {0.40, 0.40, 0.40, 1.0}, /* SOCK_MENU */
     {0.72, 0.20, 0.52, 1.0}, /* SOCK_MATRIX */
+    {0.78, 1.00, 0.40, 1.0}, /* SOCK_SOUND */
 };
 
 /* Callback for colors that does not depend on the socket pointer argument to get the type. */
@@ -1239,6 +1240,7 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_ROTATION>,
     std_node_socket_color_fn<SOCK_MENU>,
     std_node_socket_color_fn<SOCK_MATRIX>,
+    std_node_socket_color_fn<SOCK_SOUND>,
 };
 
 /* draw function for file output node sockets,
@@ -1469,7 +1471,8 @@ static void std_node_socket_draw(
 
       break;
     }
-    case SOCK_MATERIAL: {
+    case SOCK_MATERIAL:
+    case SOCK_SOUND: {
       uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
       break;
     }
@@ -1525,7 +1528,8 @@ static void std_node_socket_interface_draw(ID *id,
     case SOCK_COLLECTION:
     case SOCK_IMAGE:
     case SOCK_TEXTURE:
-    case SOCK_MATERIAL: {
+    case SOCK_MATERIAL:
+    case SOCK_SOUND: {
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       break;
     }

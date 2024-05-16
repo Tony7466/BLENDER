@@ -29,6 +29,7 @@ BLI_CPP_TYPE_MAKE(Collection *, CPPTypeFlags::BasicType)
 BLI_CPP_TYPE_MAKE(Tex *, CPPTypeFlags::BasicType)
 BLI_CPP_TYPE_MAKE(Image *, CPPTypeFlags::BasicType)
 BLI_CPP_TYPE_MAKE(Material *, CPPTypeFlags::BasicType)
+BLI_CPP_TYPE_MAKE(bSound *, CPPTypeFlags::BasicType)
 
 BLI_CPP_TYPE_MAKE(MStringProperty, CPPTypeFlags::None);
 

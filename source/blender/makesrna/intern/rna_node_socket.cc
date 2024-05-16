@@ -35,6 +35,7 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
     {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
     {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
     {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
+    {SOCK_SOUND, "SOUND", 0, "Sound", ""},
     {SOCK_MENU, "MENU", 0, "Menu", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -1518,6 +1519,49 @@ static void rna_def_node_socket_interface_material(BlenderRNA *brna, const char 
   rna_def_node_tree_interface_socket_builtin(srna);
 }
 
+static void rna_def_node_socket_sound(BlenderRNA *brna, const char *identifier)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
+  RNA_def_struct_ui_text(srna, "Sound Node Socket", "Sound socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueSound", "default_value");
+
+  prop = RNA_def_property(srna, "default_value", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "value");
+  RNA_def_property_struct_type(prop, "Sound");
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_and_relation_update");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT | PROP_CONTEXT_UPDATE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+}
+
+static void rna_def_node_socket_interface_sound(BlenderRNA *brna, const char *identifier)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, identifier, "NodeTreeInterfaceSocket");
+  RNA_def_struct_ui_text(srna, "Sound Node Socket Interface", "Sound socket of a node");
+  RNA_def_struct_sdna(srna, "bNodeTreeInterfaceSocket");
+
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueSound", "socket_data");
+
+  prop = RNA_def_property(srna, "default_value", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "value");
+  RNA_def_property_struct_type(prop, "Sound");
+  RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+
+  rna_def_node_tree_interface_socket_builtin(srna);
+}
+
 static void rna_def_node_socket_virtual(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
@@ -1593,6 +1637,7 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
     {"NodeSocketCollection", "NodeTreeInterfaceSocketCollection", SOCK_COLLECTION, PROP_NONE},
     {"NodeSocketTexture", "NodeTreeInterfaceSocketTexture", SOCK_TEXTURE, PROP_NONE},
     {"NodeSocketMaterial", "NodeTreeInterfaceSocketMaterial", SOCK_MATERIAL, PROP_NONE},
+    {"NodeSocketSound", "NodeTreeInterfaceSocketSound", SOCK_SOUND, PROP_NONE},
     {"NodeSocketMenu", "NodeTreeInterfaceSocketMenu", SOCK_MENU, PROP_NONE},
 };
 
@@ -1646,6 +1691,9 @@ static void rna_def_node_socket_subtypes(BlenderRNA *brna)
         break;
       case SOCK_MATERIAL:
         rna_def_node_socket_material(brna, identifier);
+        break;
+      case SOCK_SOUND:
+        rna_def_node_socket_sound(brna, identifier);
         break;
       case SOCK_MENU:
         rna_def_node_socket_menu(brna, identifier);
@@ -1715,6 +1763,9 @@ void rna_def_node_socket_interface_subtypes(BlenderRNA *brna)
         break;
       case SOCK_MATERIAL:
         rna_def_node_socket_interface_material(brna, identifier);
+        break;
+      case SOCK_SOUND:
+        rna_def_node_socket_interface_sound(brna, identifier);
         break;
 
       case SOCK_CUSTOM:

@@ -1926,6 +1926,9 @@ void DepsgraphNodeBuilder::build_nodetree_socket(bNodeSocket *socket)
   else if (socket->type == SOCK_MATERIAL) {
     build_id((ID *)((bNodeSocketValueMaterial *)socket->default_value)->value);
   }
+  else if (socket->type == SOCK_SOUND) {
+    build_id((ID *)((bNodeSocketValueSound *)socket->default_value)->value);
+  }
 }
 
 void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
@@ -1974,6 +1977,9 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
     ID_Type id_type = GS(id->name);
     if (id_type == ID_MA) {
       build_material((Material *)id);
+    }
+    else if (id_type == ID_SO) {
+      build_sound((bSound *)id);
     }
     else if (id_type == ID_TE) {
       build_texture((Tex *)id);

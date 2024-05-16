@@ -58,6 +58,12 @@ static void add_used_ids_from_sockets(const ListBase &sockets, Set<ID *> &ids)
         }
         break;
       }
+      case SOCK_SOUND: {
+        if (bSound *sound = ((bNodeSocketValueSound *)socket->default_value)->value) {
+          ids.add(reinterpret_cast<ID *>(sound));
+        }
+        break;
+      }
       case SOCK_TEXTURE: {
         if (Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value) {
           ids.add(reinterpret_cast<ID *>(texture));
@@ -366,6 +372,12 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       ID *id = reinterpret_cast<ID *>(value->value);
       return id_name_or_value_prop(identifier, id, std::nullopt, use_name_for_ids);
     }
+    case SOCK_SOUND: {
+      const bNodeSocketValueSound *value = static_cast<const bNodeSocketValueSound *>(
+          socket.socket_data);
+      ID *id = reinterpret_cast<ID *>(value->value);
+      return id_name_or_value_prop(identifier, id, std::nullopt, use_name_for_ids);
+    }
     case SOCK_MATRIX:
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
@@ -407,6 +419,7 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_TEXTURE:
     case SOCK_IMAGE:
     case SOCK_MATERIAL:
+    case SOCK_SOUND:
       if (use_name_for_ids) {
         return property.type == IDP_STRING;
       }
@@ -535,6 +548,12 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       ID *id = IDP_Id(&property);
       Material *material = (id && GS(id->name) == ID_MA) ? (Material *)id : nullptr;
       *(Material **)r_value = material;
+      break;
+    }
+    case SOCK_SOUND: {
+      ID *id = IDP_Id(&property);
+      bSound *sound = (id && GS(id->name) == ID_SO) ? (bSound *)id : nullptr;
+      *(bSound **)r_value = sound;
       break;
     }
     default: {

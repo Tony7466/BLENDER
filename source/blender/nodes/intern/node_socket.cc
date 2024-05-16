@@ -30,6 +30,7 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
+#include "DNA_sound_types.h"
 
 #include "RNA_access.hh"
 
@@ -677,6 +678,13 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
       *data = dval;
       break;
     }
+    case SOCK_SOUND: {
+      bNodeSocketValueSound *dval = MEM_cnew<bNodeSocketValueSound>("node socket value sound");
+      dval->value = nullptr;
+
+      *data = dval;
+      break;
+    }
 
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
@@ -772,6 +780,13 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
     case SOCK_MATERIAL: {
       bNodeSocketValueMaterial *toval = (bNodeSocketValueMaterial *)to;
       bNodeSocketValueMaterial *fromval = (bNodeSocketValueMaterial *)from;
+      *toval = *fromval;
+      id_us_plus(&toval->value->id);
+      break;
+    }
+    case SOCK_SOUND: {
+      bNodeSocketValueSound *toval = (bNodeSocketValueSound *)to;
+      bNodeSocketValueSound *fromval = (bNodeSocketValueSound *)from;
       *toval = *fromval;
       id_us_plus(&toval->value->id);
       break;
@@ -1151,6 +1166,18 @@ static bke::bNodeSocketType *make_socket_type_material()
   return socktype;
 }
 
+static bke::bNodeSocketType *make_socket_type_sound()
+{
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_SOUND, PROP_NONE);
+  socktype->base_cpp_type = &blender::CPPType::get<bSound *>();
+  socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
+    *(bSound **)r_value = ((bNodeSocketValueSound *)socket_value)->value;
+  };
+  socktype->geometry_nodes_cpp_type = socktype->base_cpp_type;
+  socktype->get_geometry_nodes_cpp_value = socktype->get_base_cpp_value;
+  return socktype;
+}
+
 void register_standard_node_socket_types()
 {
   /* Draw callbacks are set in `drawnode.cc` to avoid bad-level calls. */
@@ -1201,6 +1228,8 @@ void register_standard_node_socket_types()
   bke::nodeRegisterSocketType(make_socket_type_image());
 
   bke::nodeRegisterSocketType(make_socket_type_material());
+
+  bke::nodeRegisterSocketType(make_socket_type_sound());
 
   bke::nodeRegisterSocketType(make_socket_type_virtual());
 }

@@ -365,6 +365,12 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       dst = std::move(value);
       break;
     }
+    case SOCK_SOUND: {
+      auto value = std::make_unique<decl::Sound>();
+      value->default_value_fn = get_default_id_getter(ntree.tree_interface, io_socket);
+      dst = std::move(value);
+      break;
+    }
     case SOCK_CUSTOM: {
       auto value = std::make_unique<decl::Custom>();
       value->init_socket_fn = get_init_socket_fn(ntree.tree_interface, io_socket);

@@ -336,6 +336,8 @@ static std::optional<ID_Type> socket_type_to_id_type(const eNodeSocketDatatype s
       return ID_TE;
     case SOCK_MATERIAL:
       return ID_MA;
+    case SOCK_SOUND:
+      return ID_SO;
   }
   return std::nullopt;
 }
@@ -707,6 +709,9 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
       break;
     case SOCK_MATERIAL:
       uiItemPointerR(row, op_ptr, rna_path, bmain_ptr, "materials", name, ICON_MATERIAL);
+      break;
+    case SOCK_SOUND:
+      uiItemPointerR(row, op_ptr, rna_path, bmain_ptr, "sounds", name, ICON_SOUND);
       break;
     case SOCK_TEXTURE:
       uiItemPointerR(row, op_ptr, rna_path, bmain_ptr, "textures", name, ICON_TEXTURE);

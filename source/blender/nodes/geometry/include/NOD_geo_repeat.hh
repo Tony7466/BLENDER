@@ -61,6 +61,7 @@ struct RepeatItemsAccessor {
                 SOCK_GEOMETRY,
                 SOCK_OBJECT,
                 SOCK_MATERIAL,
+                SOCK_SOUND,
                 SOCK_IMAGE,
                 SOCK_COLLECTION);
   }

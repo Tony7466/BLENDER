@@ -76,6 +76,7 @@ struct ListBase;
 struct Material;
 struct PreviewImage;
 struct Tex;
+struct bSound;
 struct bGPdata;
 struct bNodeLink;
 struct bNodePreview;
@@ -270,6 +271,7 @@ typedef enum eNodeSocketDatatype {
   SOCK_ROTATION = 14,
   SOCK_MENU = 15,
   SOCK_MATRIX = 16,
+  SOCK_SOUND = 17,
 } eNodeSocketDatatype;
 
 /** Socket shape. */
@@ -931,6 +933,10 @@ typedef struct bNodeSocketValueTexture {
 typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
+
+typedef struct bNodeSocketValueSound {
+  struct bSound *value;
+} bNodeSocketValueSound;
 
 typedef struct bNodeSocketValueMenu {
   /* Default input enum identifier. */

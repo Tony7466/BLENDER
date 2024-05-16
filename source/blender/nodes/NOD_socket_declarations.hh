@@ -271,6 +271,15 @@ class Material : public IDSocketDeclaration {
   Material();
 };
 
+class Sound : public IDSocketDeclaration {
+ public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_SOUND;
+
+  using Builder = SocketDeclarationBuilder<Sound>;
+
+  Sound();
+};
+
 class Collection : public IDSocketDeclaration {
  public:
   static constexpr eNodeSocketDatatype static_socket_type = SOCK_COLLECTION;
@@ -512,6 +521,8 @@ inline IDSocketDeclaration::IDSocketDeclaration(const char *idname) : idname(idn
 inline Object::Object() : IDSocketDeclaration("NodeSocketObject") {}
 
 inline Material::Material() : IDSocketDeclaration("NodeSocketMaterial") {}
+
+inline Sound::Sound() : IDSocketDeclaration("NodeSocketSound") {}
 
 inline Collection::Collection() : IDSocketDeclaration("NodeSocketCollection") {}
 
