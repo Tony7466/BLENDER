@@ -63,12 +63,10 @@ LightVector light_shape_vector_get(LightData light, const bool is_directional, v
   return light_vector_get(light, is_directional, P);
 }
 
-/* Rotate vector to light's local space. Does not translate. */
-vec3 light_world_to_local(LightData light, vec3 L)
+vec3 light_world_to_local_direction(LightData light, vec3 L)
 {
   return transform_direction_transposed(light.object_to_world, L);
 }
-
 vec3 light_world_to_local_point(LightData light, vec3 point)
 {
   return transform_point_inversed(light.object_to_world, point);
@@ -87,7 +85,7 @@ float light_influence_attenuation(float dist, float inv_sqr_influence)
 float light_spot_attenuation(LightData light, vec3 L)
 {
   LightSpotData spot = light_spot_data_get(light);
-  vec3 lL = light_world_to_local(light, L);
+  vec3 lL = light_world_to_local_direction(light, L);
   float ellipse = inversesqrt(1.0 + length_squared(lL.xy * spot.spot_size_inv / lL.z));
   float spotmask = smoothstep(0.0, 1.0, ellipse * spot.spot_mul + spot.spot_bias);
   return (lL.z > 0.0) ? spotmask : 0.0;

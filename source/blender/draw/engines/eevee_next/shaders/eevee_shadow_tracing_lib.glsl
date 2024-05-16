@@ -450,9 +450,9 @@ float shadow_eval(LightData light,
   /* Add normal bias to avoid aliasing artifacts. */
   P += N_bias * (texel_radius * shadow_normal_offset(Ng, L));
 
-  vec3 lP = is_directional ? light_world_to_local(light, P) :
-                             light_world_to_local(light, P - light_position_get(light));
-  vec3 lNg = light_world_to_local(light, Ng);
+  vec3 lP = is_directional ? light_world_to_local_direction(light, P) :
+                             light_world_to_local_direction(light, P - light_position_get(light));
+  vec3 lNg = light_world_to_local_direction(light, Ng);
   /* Invert horizon clipping. */
   lNg = (is_transmission) ? -lNg : lNg;
   /* Don't do a any horizon clipping in this case as the closure is lit from both sides. */
