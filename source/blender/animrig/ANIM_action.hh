@@ -116,6 +116,12 @@ class Action : public ::bAction {
    */
   bool layer_remove(Layer &layer_to_remove);
 
+  /**
+   * If the Action is empty, create a default layer with a single infinite
+   * keyframe strip.
+   */
+  void ensure_layer();
+
   /* Animation Binding access. */
   blender::Span<const Binding *> bindings() const;
   blender::MutableSpan<Binding *> bindings();
@@ -216,6 +222,16 @@ class Action : public ::bAction {
    * Return whether this Animation actually has any animation data for the given binding.
    */
   bool is_binding_animated(binding_handle_t binding_handle) const;
+
+  /**
+   * Get the layer that should be used for user-level keyframe insertion.
+   *
+   * \return The layer, or nullptr if no layer exists that meets the criteria
+   *
+   * TODO: figure out what "the criteria" mentioned above should be, and
+   * document it.
+   */
+  Layer *get_layer_for_keyframing();
 
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */

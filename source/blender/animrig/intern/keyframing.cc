@@ -1036,14 +1036,19 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
         "animated, which should have been caught and handled by higher-level functions.");
   }
 
-  Layer *layer;
-  if (action.layers().size() == 0) {
-    layer = &action.layer_add("Layer 0");
+  action.ensure_layer();
+  Layer *layer = action.get_layer_for_keyframing();
+  /* Since the semantics of finding a layer appropriate for keyframing isn't
+   * decided yet, we're being conservative here and checking for null despite
+   * ensuring that at least one layer exists above.
+   *
+   * TODO: revisit this once those semantics are hammered out. */
+  if (layer == nullptr) {
+    /* TODO: count the rna paths properly (e.g. accounting for multi-element
+     * properties). */
+    combined_result.add(SingleKeyingResult::NO_VALID_LAYER, rna_paths.size());
+    return combined_result;
   }
-  else {
-    layer = action.layer(0);
-  }
-  BLI_assert(layer != nullptr);
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 

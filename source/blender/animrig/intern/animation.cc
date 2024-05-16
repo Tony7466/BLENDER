@@ -182,6 +182,15 @@ bool Action::layer_remove(Layer &layer_to_remove)
   return true;
 }
 
+void Action::ensure_layer()
+{
+  if (this->layers().size() == 0) {
+    /* TODO: default layer name localization. */
+    Layer &layer = this->layer_add("Layer");
+    layer.strip_add(Strip::Type::Keyframe);
+  }
+}
+
 int64_t Action::find_layer_index(const Layer &layer) const
 {
   for (const int64_t layer_index : this->layers().index_range()) {
@@ -392,6 +401,16 @@ bool Action::is_binding_animated(const binding_handle_t binding_handle) const
 
   Span<const FCurve *> fcurves = fcurves_for_animation(*this, binding_handle);
   return !fcurves.is_empty();
+}
+
+Layer *Action::get_layer_for_keyframing()
+{
+  /* TODO: handle multiple layers. */
+  if (this->layers().size() == 0) {
+    return nullptr;
+  }
+
+  return this->layer(0);
 }
 
 bool Action::assign_id(Binding *binding, ID &animated_id)
