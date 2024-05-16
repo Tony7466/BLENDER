@@ -284,7 +284,7 @@ NodeResizeDirection node_get_resize_direction(const SpaceNode &snode,
 static void node_draw_buttons_group(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   uiTemplateIDBrowse(
-      layout, C, ptr, "node_tree", nullptr, nullptr, nullptr, UI_TEMPLATE_ID_FILTER_ALL, nullptr);
+      layout, C, ptr, "node_tree", "node.new_geometry_node_group_node", nullptr, nullptr, UI_TEMPLATE_ID_FILTER_ALL, nullptr);
 }
 
 static void node_buts_frame_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

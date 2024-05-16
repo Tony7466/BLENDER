@@ -752,7 +752,11 @@ class NODE_MT_category_GEO_GROUP(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.draw_node_group_add_menu(context, layout)
+        node_add_menu.add_node_type(
+            layout, "GeometryNodeGroup",
+            label="Empty Node Group")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
 
 
 class NODE_MT_geometry_node_add_all(Menu):

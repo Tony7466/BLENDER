@@ -77,7 +77,7 @@ void node_group_label(const bNodeTree * /*ntree*/,
                       int label_maxncpy)
 {
   BLI_strncpy(
-      label, (node->id) ? node->id->name + 2 : IFACE_("Missing Data-Block"), label_maxncpy);
+      label, (node->id) ? node->id->name + 2 : IFACE_("Group"), label_maxncpy);
 }
 
 int node_group_ui_class(const bNode *node)
