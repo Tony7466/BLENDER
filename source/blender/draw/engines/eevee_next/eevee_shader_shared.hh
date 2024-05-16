@@ -91,7 +91,7 @@ static inline float4x4 transform_to_matrix(Transform t)
                   float4(t.x.w, t.y.w, t.z.w, 1.0f));
 }
 
-static inline float4x4 transform_from_matrix(float4x4 m)
+static inline Transform transform_from_matrix(float4x4 m)
 {
   Transform t;
   t.x = float4(m[0][0], m[1][0], m[2][0], m[3][0]);
