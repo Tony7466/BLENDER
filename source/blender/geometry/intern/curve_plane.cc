@@ -190,6 +190,20 @@ static void vector_curves_to_bezier_curves(const OffsetIndices<int> offsets,
           [&](const IndexRange range) { return offsets[range].size(); }));
 }
 
+template<typename In, typename Out, typename Func>
+static void parallel_transform(const Span<In> src,
+                               const int64_t grain_size,
+                               MutableSpan<Out> dst,
+                               const Func func)
+{
+  BLI_assert(src.size() == dst.size());
+  threading::parallel_for(src.index_range(), grain_size, [&](const IndexRange range) {
+    const Span<In> src_slice = src.slice(range);
+    MutableSpan<Out> dst_slice = dst.slice(range);
+    std::transform(src_slice.begin(), src_slice.end(), dst_slice.begin(), func);
+  });
+}
+
 std::optional<Curves *> plane_to_curve(const int2 resolution,
                                        const Span<bool> grid_color,
                                        const float2 min_point,
@@ -231,44 +245,30 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
   curves.cyclic_for_write().fill(true);
   array_utils::copy(offsets_data.as_span(), curves.offsets_for_write());
 
-  MutableSpan<float3> positions = curves.positions_for_write();
-  MutableSpan<float3> handle_positions_left = curves.handle_positions_left_for_write();
-  MutableSpan<float3> handle_positions_right = curves.handle_positions_right_for_write();
-
   const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
+  parallel_transform(
+      vector_data.as_span().cast<float2>(),
+      4096,
+      vector_data.as_mutable_span().cast<float2>(),
+      [&](const float2 src_point) { return min_point + src_point * resolution_factor; });
 
-  threading::parallel_for(IndexRange(offsets.total_size()), 4096, [&](const IndexRange range) {
-    const Span<std::array<float2, 3>> src_slice = vector_data.as_span().slice(range);
-    MutableSpan<float3> dst_slice = positions.slice(range);
-    std::transform(src_slice.begin(),
-                   src_slice.end(),
-                   dst_slice.begin(),
-                   [&](const std::array<float2, 3> &src_point) {
-                     return float3(min_point + src_point[2] * resolution_factor, 0);
-                   });
-  });
+  parallel_transform(
+      vector_data.as_span(),
+      4096,
+      curves.positions_for_write(),
+      [](const std::array<float2, 3> &src_point) { return float3(src_point[2], 0.0f); });
 
-  threading::parallel_for(IndexRange(offsets.total_size()), 4096, [&](const IndexRange range) {
-    const Span<std::array<float2, 3>> src_slice = vector_data.as_span().slice(range);
-    MutableSpan<float3> dst_slice = handle_positions_left.slice(range);
-    std::transform(src_slice.begin(),
-                   src_slice.end(),
-                   dst_slice.begin(),
-                   [&](const std::array<float2, 3> &src_point) {
-                     return float3(min_point + src_point[1] * resolution_factor, 0);
-                   });
-  });
+  parallel_transform(
+      vector_data.as_span(),
+      4096,
+      curves.handle_positions_left_for_write(),
+      [](const std::array<float2, 3> &src_point) { return float3(src_point[1], 0.0f); });
 
-  threading::parallel_for(IndexRange(offsets.total_size()), 4096, [&](const IndexRange range) {
-    const Span<std::array<float2, 3>> src_slice = vector_data.as_span().slice(range);
-    MutableSpan<float3> dst_slice = handle_positions_right.slice(range);
-    std::transform(src_slice.begin(),
-                   src_slice.end(),
-                   dst_slice.begin(),
-                   [&](const std::array<float2, 3> &src_point) {
-                     return float3(min_point + src_point[0] * resolution_factor, 0);
-                   });
-  });
+  parallel_transform(
+      vector_data.as_span(),
+      4096,
+      curves.handle_positions_right_for_write(),
+      [](const std::array<float2, 3> &src_point) { return float3(src_point[0], 0.0f); });
 
   if (!parent_index_data.is_empty()) {
     bke::SpanAttributeWriter<int> parent_attribute =
