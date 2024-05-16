@@ -146,9 +146,6 @@ class VKRenderGraph : public NonCopyable {
     std::scoped_lock lock(resources_.mutex);
     static VKRenderGraphNode node_template = {};
     NodeHandle node_handle = nodes_.append_and_get_index(node_template);
-    if (node_handle == 2) {
-      printf("%s\n", __func__);
-    }
     if (nodes_.size() > links_.size()) {
       links_.resize(nodes_.size());
     }

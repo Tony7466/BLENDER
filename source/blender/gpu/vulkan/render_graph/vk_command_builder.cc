@@ -212,7 +212,6 @@ void VKCommandBuilder::build_pipeline_barriers(VKRenderGraph &render_graph,
                                                NodeHandle node_handle,
                                                VkPipelineStageFlags pipeline_stage)
 {
-  render_graph.links_[node_handle].debug_print(render_graph.resources_);
   reset_barriers();
   add_image_barriers(render_graph, node_handle, pipeline_stage);
   add_buffer_barriers(render_graph, node_handle, pipeline_stage);

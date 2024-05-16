@@ -281,8 +281,6 @@ class VKResourceStateTracker {
    */
   void reset_image_layouts();
 
-  void validate() const;
-
  private:
   /**
    * Get the current stamp of the resource.

@@ -122,7 +122,6 @@ ResourceWithStamp VKResourceStateTracker::get_and_increase_stamp(ResourceHandle 
 
 ResourceWithStamp VKResourceStateTracker::get_image_and_increase_stamp(VkImage vk_image)
 {
-  validate();
   ResourceHandle handle = image_resources_.lookup(vk_image);
   Resource &resource = resources_.lookup(handle);
   return get_and_increase_stamp(handle, resource);
@@ -130,7 +129,6 @@ ResourceWithStamp VKResourceStateTracker::get_image_and_increase_stamp(VkImage v
 
 ResourceWithStamp VKResourceStateTracker::get_buffer_and_increase_version(VkBuffer vk_buffer)
 {
-  validate();
   ResourceHandle handle = buffer_resources_.lookup(vk_buffer);
   Resource &resource = resources_.lookup(handle);
   return get_and_increase_stamp(handle, resource);
@@ -138,7 +136,6 @@ ResourceWithStamp VKResourceStateTracker::get_buffer_and_increase_version(VkBuff
 
 ResourceWithStamp VKResourceStateTracker::get_buffer(VkBuffer vk_buffer) const
 {
-  validate();
   ResourceHandle handle = buffer_resources_.lookup(vk_buffer);
   const Resource &resource = resources_.lookup(handle);
   return get_stamp(handle, resource);
@@ -146,7 +143,6 @@ ResourceWithStamp VKResourceStateTracker::get_buffer(VkBuffer vk_buffer) const
 
 ResourceWithStamp VKResourceStateTracker::get_image(VkImage vk_image) const
 {
-  validate();
   ResourceHandle handle = image_resources_.lookup(vk_image);
   const Resource &resource = resources_.lookup(handle);
   return get_stamp(handle, resource);
@@ -154,7 +150,6 @@ ResourceWithStamp VKResourceStateTracker::get_image(VkImage vk_image) const
 
 void VKResourceStateTracker::reset_image_layouts()
 {
-  validate();
   for (ResourceHandle image_handle : image_resources_.values()) {
     VKResourceStateTracker::Resource &resource = resources_.lookup(image_handle);
     if (resource.owner == ResourceOwner::SWAP_CHAIN) {
