@@ -178,6 +178,8 @@ static void do_smooth_brush_mesh(const Sculpt &sd,
 {
   const SculptSession &ss = *object.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const OffsetIndices faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
@@ -199,8 +201,8 @@ static void do_smooth_brush_mesh(const Sculpt &sd,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
     for (const int i : range) {
-      calc_smooth_positions_faces(mesh.faces(),
-                                  mesh.corner_verts(),
+      calc_smooth_positions_faces(faces,
+                                  corner_verts,
                                   ss.vert_to_face_map,
                                   ss.vertex_info.boundary,
                                   hide_poly,
@@ -226,7 +228,7 @@ static void do_smooth_brush_mesh(const Sculpt &sd,
   });
 }
 
-static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
+static void calc_grids(const Sculpt &sd, Object &object, const Brush &brush, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
   PBVHVertexIter vd;
@@ -259,7 +261,7 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
     float3 avg;
     smooth::neighbor_coords_average_interior(&ss, avg, vd.vertex);
     float3 final = float3(vd.co) + (avg - float3(vd.co)) * fade;
-    SCULPT_clip(sd, &ss, vd.co, val);
+    SCULPT_clip(&sd, &ss, vd.co, val);
   }
   BKE_pbvh_vertex_iter_end;
 }
