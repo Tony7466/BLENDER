@@ -451,7 +451,7 @@ float shadow_eval(LightData light,
   P += N_bias * (texel_radius * shadow_normal_offset(Ng, L));
 
   vec3 lP = is_directional ? light_world_to_local_direction(light, P) :
-                             light_world_to_local_direction(light, P - light_position_get(light));
+                             light_world_to_local_point(light, P);
   vec3 lNg = light_world_to_local_direction(light, Ng);
   /* Invert horizon clipping. */
   lNg = (is_transmission) ? -lNg : lNg;
