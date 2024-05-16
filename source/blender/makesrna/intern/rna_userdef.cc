@@ -6794,8 +6794,9 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_sync_on_startup", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP);
-  RNA_def_property_ui_text(
-      prop, "Check for Updates on Startup", "Allow Blender to check for updates upon launch");
+  RNA_def_property_ui_text(prop,
+                           "Check for Updates on Startup",
+                           "Allow Blender to check for updates upon launch, once every 24 hours");
 
   prop = RNA_def_property(srna, "use_access_token", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN);

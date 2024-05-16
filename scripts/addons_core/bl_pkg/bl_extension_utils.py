@@ -280,12 +280,13 @@ def pkg_theme_file_list(directory: str, pkg_idname: str) -> Tuple[str, List[str]
 def repo_index_outdated(directory: str) -> bool:
     filepath_json = os.path.join(directory, REPO_LOCAL_JSON)
     mtime = file_mtime_or_none(filepath_json)
-    if mtime == None:
+    if mtime is None:
         return True
 
     # Refresh once every 24 hours.
     age_in_seconds = time.time() - mtime
     max_age_in_seconds = 3600.0 * 24.0
+    # Use abs in case clock moved backwards.
     return abs(age_in_seconds) > max_age_in_seconds
 
 
