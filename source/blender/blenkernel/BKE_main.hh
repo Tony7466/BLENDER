@@ -143,6 +143,14 @@ struct Main {
    * could try to use more refined detection on load. */
   bool has_forward_compatibility_issues;
 
+  /**
+   * The currently opened .blend file was created as an asset library storage.
+   *
+   * This is used to warn the user when they try to save it from Blender UI, since this will likely
+   * break the automatic management from the asset library system.
+   */
+  bool is_asset_repository;
+
   /** Commit timestamp from `buildinfo`. */
   uint64_t build_commit_timestamp;
   /** Commit Hash from `buildinfo`. */
@@ -182,6 +190,11 @@ struct Main {
    * various data management process must have this property set to false..
    */
   bool is_global_main;
+
+  /**
+   * True if main used to store weakly referenced assets.
+   */
+  bool is_asset_edit_main;
 
   BlendThumbnail *blen_thumb;
 
@@ -299,6 +312,17 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
  * Check whether given `bmain` is empty or contains some IDs.
  */
 bool BKE_main_is_empty(Main *bmain);
+
+/**
+ * Check whether the bmain has issues, e.g. for reporting in the status bar.
+ */
+bool BKE_main_has_issues(const Main *bmain);
+
+/**
+ * Check whether user confirmation should be required when overwriting this `bmain` into its source
+ * blendfile.
+ */
+bool BKE_main_needs_overwrite_confirm(const Main *bmain);
 
 void BKE_main_lock(Main *bmain);
 void BKE_main_unlock(Main *bmain);
@@ -487,6 +511,20 @@ ListBase *which_libbase(Main *bmain, short type);
  * enum definitions in `DNA_ID.h`. See also the #FOREACH_MAIN_ID_BEGIN macro in `BKE_main.hh`
  */
 int set_listbasepointers(Main *main, ListBase *lb[]);
+
+/**
+ * Return main database this ID is a member of.
+ *
+ * This works for the global main database and asset edit databases.
+ * So only datablocks that are directly editable in the user interface.
+ *
+ * Use this in operator and draw code instead of assuming the main
+ * in the context owns datablocks.
+ *
+ * Optionally can verify that this datablock is one of these databases.
+ * This is slow and mainly meant for asserts.
+ */
+Main *BKE_main_from_id(Main *global_main, const ID *id, bool verify = false);
 
 #define MAIN_VERSION_FILE_ATLEAST(main, ver, subver) \
   ((main)->versionfile > (ver) || \

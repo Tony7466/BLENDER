@@ -205,6 +205,8 @@ enum {
    * duplicate scene/collections, or objects.
    */
   LIB_ID_COPY_RIGID_BODY_NO_COLLECTION_HANDLING = 1 << 28,
+  /* Copy asset metadata. */
+  LIB_ID_COPY_ASSET_METADATA = 1 << 29,
 
   /* *** Helper 'defines' gathering most common flag sets. *** */
   /** Shape-keys are not real ID's, more like local data to geometry IDs. */
@@ -707,12 +709,6 @@ void BKE_library_make_local(
 
 void BKE_id_tag_set_atomic(ID *id, int tag);
 void BKE_id_tag_clear_atomic(ID *id, int tag);
-
-/**
- * Check that given ID pointer actually is in G_MAIN.
- * Main intended use is for debug asserts in places we cannot easily get rid of #G_MAIN.
- */
-bool BKE_id_is_in_global_main(ID *id);
 
 bool BKE_id_can_be_asset(const ID *id);
 

@@ -2583,7 +2583,6 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
         brush->gpencil_tool = brush->gpencil_settings->brush_type;
       }
     }
-    BKE_paint_toolslots_init_from_main(bmain);
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 280, 38)) {
@@ -2866,9 +2865,6 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
     Material *ma;
     /* Pen Soft brush. */
     brush = (Brush *)do_versions_rename_id(bmain, ID_BR, "Draw Soft", "Pencil Soft");
-    if (brush) {
-      brush->gpencil_settings->icon_id = GP_BRUSH_ICON_PEN;
-    }
     do_versions_rename_id(bmain, ID_BR, "Draw Pencil", "Pencil");
     do_versions_rename_id(bmain, ID_BR, "Draw Pen", "Pen");
     do_versions_rename_id(bmain, ID_BR, "Draw Ink", "Ink Pen");

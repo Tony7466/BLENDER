@@ -11,6 +11,7 @@
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
+#include "BKE_asset.hh"
 #include "BKE_screen.hh"
 
 #include "BLI_fnmatch.h"
@@ -251,8 +252,12 @@ void AssetViewItem::on_activate(bContext & /*C*/)
 std::optional<bool> AssetViewItem::should_be_active() const
 {
   const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
-  if (!asset_view.active_asset_) {
+  const AssetShelfType &shelf_type = *asset_view.shelf_.type;
+  if (!shelf_type.get_active_asset) {
     return {};
+  }
+  if (!asset_view.active_asset_) {
+    return false;
   }
   const asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
   AssetWeakReference weak_ref = asset->make_weak_reference();

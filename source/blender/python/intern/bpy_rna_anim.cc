@@ -31,6 +31,7 @@
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_report.hh"
 
 #include "RNA_access.hh"
@@ -403,9 +404,9 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
   }
   else {
     ID *id = self->ptr.owner_id;
+    Main *main = BKE_main_from_id(G_MAIN, id);
 
-    BLI_assert(BKE_id_is_in_global_main(id));
-    CombinedKeyingResult combined_result = insert_keyframe(G_MAIN,
+    CombinedKeyingResult combined_result = insert_keyframe(main,
                                                            *id,
                                                            group_name,
                                                            path_full,

@@ -3632,7 +3632,7 @@ static int wm_save_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * 
   }
 
   if (blendfile_path[0] != '\0') {
-    if (CTX_data_main(C)->has_forward_compatibility_issues) {
+    if (BKE_main_needs_overwrite_confirm(CTX_data_main(C))) {
       wm_save_file_overwrite_dialog(C, op);
       ret = OPERATOR_INTERFACE;
     }
@@ -3994,31 +3994,43 @@ static void file_overwrite_detailed_info_show(uiLayout *parent_layout, Main *bma
    * block. */
   uiLayoutSetScaleY(layout, 0.70f);
 
-  char writer_ver_str[16];
-  char current_ver_str[16];
-  if (bmain->versionfile == BLENDER_VERSION) {
-    BKE_blender_version_blendfile_string_from_values(
-        writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, bmain->subversionfile);
-    BKE_blender_version_blendfile_string_from_values(
-        current_ver_str, sizeof(current_ver_str), BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
-  }
-  else {
-    BKE_blender_version_blendfile_string_from_values(
-        writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
-    BKE_blender_version_blendfile_string_from_values(
-        current_ver_str, sizeof(current_ver_str), BLENDER_VERSION, -1);
+  if (bmain->has_forward_compatibility_issues) {
+    char writer_ver_str[16];
+    char current_ver_str[16];
+    if (bmain->versionfile == BLENDER_VERSION) {
+      BKE_blender_version_blendfile_string_from_values(
+          writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, bmain->subversionfile);
+      BKE_blender_version_blendfile_string_from_values(
+          current_ver_str, sizeof(current_ver_str), BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
+    }
+    else {
+      BKE_blender_version_blendfile_string_from_values(
+          writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
+      BKE_blender_version_blendfile_string_from_values(
+          current_ver_str, sizeof(current_ver_str), BLENDER_VERSION, -1);
+    }
+
+    char message_line1[256];
+    char message_line2[256];
+    SNPRINTF(message_line1,
+             RPT_("This file was saved by a newer version of Blender (%s)"),
+             writer_ver_str);
+    SNPRINTF(message_line2,
+             RPT_("Saving it with this Blender (%s) may cause loss of data"),
+             current_ver_str);
+    uiItemL(layout, message_line1, ICON_NONE);
+    uiItemL(layout, message_line2, ICON_NONE);
   }
 
-  char message_line1[256];
-  char message_line2[256];
-  SNPRINTF(message_line1,
-           RPT_("This file was saved by a newer version of Blender (%s)"),
-           writer_ver_str);
-  SNPRINTF(message_line2,
-           RPT_("Saving it with this Blender (%s) may cause loss of data"),
-           current_ver_str);
-  uiItemL(layout, message_line1, ICON_NONE);
-  uiItemL(layout, message_line2, ICON_NONE);
+  if (bmain->is_asset_repository) {
+    if (bmain->has_forward_compatibility_issues) {
+      uiItemS_ex(layout, 1.4f);
+    }
+
+    uiItemL(layout, RPT_("This file is managed by the Blender asset system."), ICON_NONE);
+    uiItemL(layout, RPT_("and is expected to contain a single asset data-block."), ICON_NONE);
+    uiItemL(layout, RPT_("Take care to avoid data loss when editing assets."), ICON_NONE);
+  }
 }
 
 static void save_file_overwrite_cancel(bContext *C, void *arg_block, void * /*arg_data*/)
@@ -4083,7 +4095,12 @@ static void save_file_overwrite_saveas(bContext *C, void *arg_block, void * /*ar
   wmWindow *win = CTX_wm_window(C);
   UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
 
-  WM_operator_name_call(C, "WM_OT_save_as_mainfile", WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
+  PointerRNA props_ptr;
+  wmOperatorType *ot = WM_operatortype_find("WM_OT_save_as_mainfile", false);
+  WM_operator_properties_create_ptr(&props_ptr, ot);
+
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr, nullptr);
+  WM_operator_properties_free(&props_ptr);
 }
 
 static void save_file_overwrite_saveas_button(uiBlock *block, wmGenericCallback *post_action)
@@ -4119,8 +4136,27 @@ static uiBlock *block_create_save_file_overwrite_dialog(bContext *C, ARegion *re
   uiLayout *layout = uiItemsAlertBox(block, 34, ALERT_ICON_WARNING);
 
   /* Title. */
-  uiItemL_ex(
-      layout, RPT_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
+  if (bmain->has_forward_compatibility_issues) {
+    if (bmain->is_asset_repository) {
+      uiItemL_ex(
+          layout,
+          RPT_("Convert asset blend file to regular blend file with an older Blender version?"),
+          ICON_NONE,
+          true,
+          false);
+    }
+    else {
+      uiItemL_ex(
+          layout, RPT_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
+    }
+  }
+  else if (bmain->is_asset_repository) {
+    uiItemL_ex(
+        layout, RPT_("Convert asset blend file to regular blend file?"), ICON_NONE, true, false);
+  }
+  else {
+    BLI_assert_unreachable();
+  }
 
   /* Filename. */
   const char *blendfile_path = BKE_main_blendfile_path(CTX_data_main(C));
@@ -4332,7 +4368,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
 
   uiLayout *layout = uiItemsAlertBox(block, 34, ALERT_ICON_QUESTION);
 
-  const bool needs_overwrite_confirm = bmain->has_forward_compatibility_issues;
+  const bool needs_overwrite_confirm = BKE_main_needs_overwrite_confirm(bmain);
 
   /* Title. */
   uiItemL_ex(layout, RPT_("Save changes before closing?"), ICON_NONE, true, false);

@@ -27,6 +27,7 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 
 #include "DNA_defaults.h"
@@ -50,6 +51,7 @@
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
 #include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
 #include "BKE_effect.h"
@@ -60,6 +62,7 @@
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_nla.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_paint.hh"
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
@@ -2114,6 +2117,40 @@ static bool seq_filter_bilinear_to_auto(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
+static void update_paint_modes_for_brush_assets(Main &bmain)
+{
+  /* Replace paint brushes with a reference to the default brush asset for that mode. */
+  LISTBASE_FOREACH (Scene *, scene, &bmain.scenes) {
+    BKE_paint_brushes_set_default_references(scene->toolsettings);
+  }
+
+  /* Replace persistent tool references with the new single builtin brush tool. */
+  LISTBASE_FOREACH (WorkSpace *, workspace, &bmain.workspaces) {
+    LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
+      if (tref->space_type != SPACE_VIEW3D) {
+        continue;
+      }
+      if (!ELEM(tref->mode,
+                CTX_MODE_SCULPT,
+                CTX_MODE_PAINT_VERTEX,
+                CTX_MODE_PAINT_WEIGHT,
+                CTX_MODE_PAINT_TEXTURE,
+                CTX_MODE_PAINT_GPENCIL_LEGACY,
+                CTX_MODE_PAINT_GREASE_PENCIL,
+                CTX_MODE_SCULPT_GPENCIL_LEGACY,
+                CTX_MODE_SCULPT_GREASE_PENCIL,
+                CTX_MODE_WEIGHT_GPENCIL_LEGACY,
+                CTX_MODE_WEIGHT_GREASE_PENCIL,
+                CTX_MODE_VERTEX_GPENCIL_LEGACY,
+                CTX_MODE_SCULPT_CURVES))
+      {
+        continue;
+      }
+      STRNCPY(tref->idname, "builtin.brush");
+    }
+  }
+}
+
 static void image_settings_avi_to_ffmpeg(Scene *scene)
 {
   if (ELEM(scene->r.im_format.imtype, R_IMF_IMTYPE_AVIRAW, R_IMF_IMTYPE_AVIJPEG)) {
@@ -3623,6 +3660,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 40)) {
+    update_paint_modes_for_brush_assets(*bmain);
   }
 
   /**

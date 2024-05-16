@@ -675,6 +675,9 @@ static void setup_app_data(bContext *C,
    * (but may have a null `curscreen`). */
   else if (ELEM(nullptr, bfd->curscreen, bfd->curscene)) {
     BKE_report(reports->reports, RPT_WARNING, "Library file, loading empty scene");
+    if (blender::StringRefNull(bfd->main->filepath).endswith(BLENDER_ASSET_FILE_SUFFIX)) {
+      bfd->main->is_asset_repository = true;
+    }
     mode = LOAD_UI_OFF;
   }
   else if (G.fileflags & G_FILE_NO_UI) {
@@ -1256,6 +1259,15 @@ UserDef *BKE_blendfile_userdef_from_defaults()
 
   BKE_preferences_extension_repo_add_default(userdef);
   BKE_preferences_extension_repo_add_default_user(userdef);
+
+  {
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/Cloth");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/General");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/Painting");
+  }
 
   return userdef;
 }

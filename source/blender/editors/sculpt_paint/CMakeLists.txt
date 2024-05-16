@@ -4,8 +4,12 @@
 
 set(INC
   ../include
+  ../asset
   ../uvedit
+  ../../asset_system
   ../../blenkernel
+  ../../blenlib
+  ../../blenloader
   ../../blentranslation
   ../../bmesh
   ../../draw
@@ -26,6 +30,7 @@ set(INC_SYS
 )
 
 set(SRC
+  brush_asset_ops.cc
   curves_sculpt_add.cc
   curves_sculpt_brush.cc
   curves_sculpt_comb.cc
