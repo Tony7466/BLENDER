@@ -98,8 +98,6 @@ bool curves_ensure_procedural_data(Curves *curves_id,
                                    int subdiv,
                                    int thickness_res);
 
-void drw_curves_get_attribute_sampler_name(const char *layer_name,
-                                           const char *shader_input_name,
-                                           char r_sampler_name[32]);
+void drw_curves_get_attribute_sampler_name(const char *layer_name, char r_sampler_name[32]);
 
 }  // namespace blender::draw

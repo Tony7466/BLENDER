@@ -15,6 +15,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 
 #include "GPU_batch.hh"
 #include "GPU_capabilities.hh"
@@ -269,23 +270,31 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   const DRW_Attributes &attrs = curves_cache->final.attr_used;
   for (int i = 0; i < attrs.num_requests; i++) {
     const DRW_AttributeRequest &request = attrs.requests[i];
+    const int render_layer = CustomData_get_render_layer(request.domain == bke::AttrDomain::Curve ?
+                                                             &curves_id.geometry.curve_data :
+                                                             &curves_id.geometry.point_data,
+                                                         request.cd_type);
 
     char sampler_name[32];
-    drw_curves_get_attribute_sampler_name(
-        request.attribute_name, request.shader_input_name, sampler_name);
+    drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
     if (request.domain == bke::AttrDomain::Curve) {
       if (!curves_cache->proc_attributes_buf[i]) {
         continue;
       }
-
       DRW_shgroup_buffer_texture(shgrp, sampler_name, curves_cache->proc_attributes_buf[i]);
+      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+        DRW_shgroup_buffer_texture(shgrp, "a", curves_cache->proc_attributes_buf[i]);
+      }
     }
     else {
       if (!curves_cache->final.attributes_buf[i]) {
         continue;
       }
       DRW_shgroup_buffer_texture(shgrp, sampler_name, curves_cache->final.attributes_buf[i]);
+      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+        DRW_shgroup_buffer_texture(shgrp, "a", curves_cache->final.attributes_buf[i]);
+      }
     }
 
     /* Some attributes may not be used in the shader anymore and were not garbage collected yet, so
@@ -498,27 +507,39 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
   const DRW_Attributes &attrs = curves_cache->final.attr_used;
   for (int i = 0; i < attrs.num_requests; i++) {
     const DRW_AttributeRequest &request = attrs.requests[i];
+    const int render_layer = CustomData_get_render_layer(request.domain == bke::AttrDomain::Curve ?
+                                                             &curves_id.geometry.curve_data :
+                                                             &curves_id.geometry.point_data,
+                                                         request.cd_type);
+
     char sampler_name[32];
-    drw_curves_get_attribute_sampler_name(
-        request.attribute_name, request.shader_input_name, sampler_name);
+    drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
     if (request.domain == bke::AttrDomain::Curve) {
       if (!curves_cache->proc_attributes_buf[i]) {
         continue;
       }
       sub_ps.bind_texture(sampler_name, curves_cache->proc_attributes_buf[i]);
+      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+        sub_ps.bind_texture("a", curves_cache->proc_attributes_buf[i]);
+      }
     }
     else {
       if (!curves_cache->final.attributes_buf[i]) {
         continue;
       }
       sub_ps.bind_texture(sampler_name, curves_cache->final.attributes_buf[i]);
+      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+        sub_ps.bind_texture("a", curves_cache->final.attributes_buf[i]);
+      }
     }
 
-    /* Some attributes may not be used in the shader anymore and were not garbage collected yet, so
-     * we need to find the right index for this attribute as uniforms defining the scope of the
-     * attributes are based on attribute loading order, which is itself based on the material's
-     * attributes. */
+    /* Some attributes may not be used in the shader anymore and
+     * were not garbage collected yet, so we need to find the
+     * right index for this attribute as uniforms defining the
+     * scope of the attributes are based on attribute loading
+     * order, which is itself based on the material's attributes.
+     */
     const int index = attribute_index_in_material(gpu_material, request.attribute_name);
     if (index != -1) {
       curves_infos.is_point_attribute[index][0] = request.domain == bke::AttrDomain::Point;

@@ -67,7 +67,6 @@ bool drw_attributes_overlap(const DRW_Attributes *a, const DRW_Attributes *b)
 
 void drw_attributes_add_request(DRW_Attributes *attrs,
                                 const char *name,
-                                const char *input_name,
                                 const eCustomDataType type,
                                 const int layer_index,
                                 const blender::bke::AttrDomain domain)
@@ -81,12 +80,6 @@ void drw_attributes_add_request(DRW_Attributes *attrs,
   DRW_AttributeRequest *req = &attrs->requests[attrs->num_requests];
   req->cd_type = type;
   STRNCPY(req->attribute_name, name);
-  if (input_name) {
-    STRNCPY(req->shader_input_name, input_name);
-  }
-  else {
-    req->shader_input_name[0] = '\0';
-  }
   req->layer_index = layer_index;
   req->domain = domain;
   attrs->num_requests += 1;
@@ -116,7 +109,6 @@ bool drw_custom_data_match_attribute(const CustomData *custom_data,
     if (layer_index == -1) {
       continue;
     }
-
     *r_layer_index = layer_index;
     *r_type = attr_type;
     return true;

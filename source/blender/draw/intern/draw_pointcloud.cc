@@ -126,7 +126,7 @@ gpu::Batch *point_cloud_sub_pass_setup_implementation(PassT &sub_ps,
     LISTBASE_FOREACH (GPUMaterialAttribute *, gpu_attr, &gpu_attrs) {
       char sampler_name[32];
       /** NOTE: Reusing curve attribute function. */
-      drw_curves_get_attribute_sampler_name(gpu_attr->name, gpu_attr->input_name, sampler_name);
+      drw_curves_get_attribute_sampler_name(gpu_attr->name, sampler_name);
 
       gpu::VertBuf **attribute_buf = DRW_pointcloud_evaluated_attribute(&pointcloud,
                                                                         gpu_attr->name);
