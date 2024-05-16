@@ -849,9 +849,9 @@ static inline bool is_local_light(eLightType type)
   /** Shift to apply to the light origin to get the shadow projection origin. In light space. */ \
   packed_float3 shadow_position; \
   float _pad0; \
-  /** Radius of the light for shadow ray casting. Bounding radius for rectangle. */ \
+  /** Radius of the light for shadow ray casting. Simple scaling factor for rectangle lights. */ \
   float shadow_radius; \
-  /** Radius of the light for shading. Bounding radius for rectangle. */ \
+  /** Radius of the light for shading. Bounding radius for rectangle lights. */ \
   float shape_radius; \
   /** Maximum influence radius. Used for culling. Equal to clip far distance. */ \
   float influence_radius_max; \

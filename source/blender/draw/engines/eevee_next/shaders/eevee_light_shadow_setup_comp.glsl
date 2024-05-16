@@ -229,7 +229,14 @@ vec3 random_position_on_light(LightData light)
 {
   vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_W);
 
-  return sample_ball(rand) * light_local_data_get(light).shape_radius;
+  if (is_area_light(light.type)) {
+    vec2 point_on_unit_shape = (light.type == LIGHT_RECT) ? rand.xy * 2.0 - 1.0 :
+                                                            sample_disk(rand.xy);
+    return vec3(point_on_unit_shape * light_area_data_get(light).size, 0.0);
+  }
+  else {
+    return sample_ball(rand) * light_local_data_get(light).shape_radius;
+  }
 }
 
 void main()

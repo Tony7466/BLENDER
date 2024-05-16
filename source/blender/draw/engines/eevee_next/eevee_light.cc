@@ -166,13 +166,13 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     this->clip_near = float_as_int(this->local.influence_radius_max / 4000.0f);
   }
 
-  float trace_radius_fac = (la->mode & LA_SHADOW_JITTER) ? la->shadow_jitter_overblur / 100.0f :
-                                                           1.0f;
+  float trace_scaling_fac = (la->mode & LA_SHADOW_JITTER) ? la->shadow_jitter_overblur / 100.0f :
+                                                            1.0f;
 
   if (is_sun_light(this->type)) {
     float sun_half_angle = min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f;
     /* Use non-clamped radius for soft shadows. Avoid having a minimum blur. */
-    this->sun.shadow_angle = sun_half_angle * trace_radius_fac;
+    this->sun.shadow_angle = sun_half_angle * trace_scaling_fac;
     /* Clamp to minimum value before float imprecision artifacts appear. */
     this->sun.radius = max(0.001f, tanf(sun_half_angle));
   }
@@ -181,8 +181,8 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     this->area.size = float2(la->area_size, is_irregular ? la->area_sizey : la->area_size);
     /* Scale and clamp to minimum value before float imprecision artifacts appear. */
     this->area.size *= scale.xy() / 2.0f;
-    /* Use non-clamped radius for soft shadows. Avoid having a minimum blur. */
-    this->local.shadow_radius = length(this->area.size) * trace_radius_fac;
+    /* In this case, this is just the scaling factor. */
+    this->local.shadow_radius = trace_scaling_fac;
     /* Set to default position. */
     this->local.shadow_position = float3(0.0f);
     /* Do not render lights that have no area. */
@@ -214,7 +214,7 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
       this->spot.spot_tan = 0.0f;
     }
     /* Use unclamped radius for soft shadows. Avoid having a minimum blur. */
-    this->local.shadow_radius = max(0.0f, la->radius) * trace_radius_fac;
+    this->local.shadow_radius = max(0.0f, la->radius) * trace_scaling_fac;
     /* Set to default position. */
     this->local.shadow_position = float3(0.0f);
     /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
