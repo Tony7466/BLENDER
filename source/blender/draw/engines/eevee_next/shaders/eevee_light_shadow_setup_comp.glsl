@@ -9,6 +9,7 @@
 
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
 
 int shadow_directional_coverage_get(int level)
 {
@@ -243,12 +244,13 @@ void main()
     vec3 position_on_light = vec3(0.0);
 
     if (light.shadow_jitter) {
-      float shape_radius = light_sun_data_get(light).shape_radius;
+      /* TODO(fclem): Remove atan here. We only need the cosine of the angle. */
+      float shape_angle = atan_fast(light_sun_data_get(light).shape_radius);
 
       vec2 rand = sampling_rng_2D_get(SAMPLING_SHADOW_W);
-      vec3 L = normalize(vec3(sample_disk(rand.xy) * shape_radius, 1.0));
+      vec3 shadow_direction = sample_uniform_cone(rand, cos(shape_angle));
 
-      light.object_to_world = transform_from_matrix(mat4x4(from_up_axis(L)));
+      light.object_to_world = transform_from_matrix(mat4x4(from_up_axis(shadow_direction)));
     }
 
     if (light.type == LIGHT_SUN_ORTHO) {
