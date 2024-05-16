@@ -92,7 +92,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -254,7 +254,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -460,7 +460,7 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_and_selected_elements(
-        *object, info, selection_domain, memory);
+        *object, info.drawing, info.layer_index, selection_domain, memory);
     if (elements.is_empty()) {
       return;
     }
@@ -607,7 +607,7 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask points = ed::greasepencil::retrieve_editable_and_selected_points(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (points.is_empty()) {
       return;
     }
@@ -776,7 +776,7 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -851,7 +851,7 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -926,7 +926,7 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
   for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       continue;
     }
@@ -974,7 +974,7 @@ static int grease_pencil_set_uniform_thickness_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1031,7 +1031,7 @@ static int grease_pencil_set_uniform_opacity_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1086,7 +1086,7 @@ static int grease_pencil_stroke_switch_direction_exec(bContext *C, wmOperator * 
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1163,7 +1163,7 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1338,7 +1338,7 @@ static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask elements = retrieve_editable_and_selected_elements(
-        *object, info, selection_domain, memory);
+        *object, info.drawing, info.layer_index, selection_domain, memory);
     if (elements.is_empty()) {
       return;
     }
@@ -1459,7 +1459,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1655,7 +1655,7 @@ static int grease_pencil_stroke_reorder_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -2513,10 +2513,11 @@ static int grease_pencil_stroke_merge_by_distance_exec(bContext *C, wmOperator *
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     bke::greasepencil::Drawing &drawing = info.drawing;
     IndexMaskMemory memory;
-    const IndexMask points =
-        use_unselected ?
-            ed::greasepencil::retrieve_editable_points(*object, drawing, memory) :
-            ed::greasepencil::retrieve_editable_and_selected_points(*object, drawing, memory);
+    const IndexMask points = use_unselected ?
+                                 ed::greasepencil::retrieve_editable_points(
+                                     *object, drawing, info.layer_index, memory) :
+                                 ed::greasepencil::retrieve_editable_and_selected_points(
+                                     *object, info.drawing, info.layer_index, memory);
     if (points.is_empty()) {
       return;
     }
@@ -2677,7 +2678,7 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask points_to_extrude = retrieve_editable_and_selected_points(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
     if (points_to_extrude.is_empty()) {
       return;
     }

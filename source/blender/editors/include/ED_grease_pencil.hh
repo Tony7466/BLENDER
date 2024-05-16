@@ -295,13 +295,16 @@ IndexMask retrieve_visible_points(Object &object,
                                   IndexMaskMemory &memory);
 
 IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
-                                                 const MutableDrawingInfo &info,
+                                                 const bke::greasepencil::Drawing &drawing,
+                                                 int layer_index,
                                                  IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_points(Object &object,
-                                                const MutableDrawingInfo &info,
+                                                const bke::greasepencil::Drawing &drawing,
+                                                int layer_index,
                                                 IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_elements(Object &object,
-                                                  const MutableDrawingInfo &info,
+                                                  const bke::greasepencil::Drawing &drawing,
+                                                  int layer_index,
                                                   bke::AttrDomain selection_domain,
                                                   IndexMaskMemory &memory);
 

@@ -62,7 +62,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
       else {
         points_per_layer_per_object[layer_offset] =
             ed::greasepencil::retrieve_editable_and_selected_points(
-                *object, info, curves_transform_data->memory);
+                *object, info.drawing, info.layer_index, curves_transform_data->memory);
         tc.data_len += points_per_layer_per_object[layer_offset].size();
       }
 
