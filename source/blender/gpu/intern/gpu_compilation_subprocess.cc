@@ -58,7 +58,7 @@ class SubprocessShader {
     glAttachShader(program, vert);
     glAttachShader(program, frag);
     glLinkProgram(program);
-    glGetProgramiv(program, GL_COMPILE_STATUS, &status);
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (!status) {
       glGetProgramInfoLog(program, sizeof(log), nullptr, log);
       fprintf(stderr, log);
@@ -99,7 +99,7 @@ bool validate_binary(void *binary)
   GLuint program = glCreateProgram();
   glProgramBinary(program, bin->format, &bin->data_start, bin->size);
   GLint status;
-  glGetProgramiv(program, GL_COMPILE_STATUS, &status);
+  glGetProgramiv(program, GL_LINK_STATUS, &status);
   glDeleteProgram(program);
   return status;
 }
