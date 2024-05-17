@@ -1274,34 +1274,12 @@ struct PBVHBatches {
       skip = 1 << (args.ccg_key.level - display_level - 1);
     }
 
-    int hidden_grids_count = 0;
     for (const int grid_index : args.grid_indices) {
       bool sharp = (!sharp_faces.is_empty() && sharp_faces[grid_to_face_map[grid_index]]);
-
-      if (!grid_hidden.is_empty()) {
-        const BoundedBitSpan gh = grid_hidden[grid_index];
-        for (int y = 0; y < gridsize - 1; y += skip) {
-          for (int x = 0; x < gridsize - 1; x += skip) {
-            if (paint_is_grid_face_hidden(gh, gridsize, x, y)) {
-              /* Skip hidden faces by just setting sharp to false. */
-              sharp = false;
-              ++hidden_grids_count;
-              goto outer_loop_break;
-            }
-          }
-        }
-      }
-
-    outer_loop_break:
       if (sharp) {
         needs_tri_index = false;
         break;
       }
-    }
-    // fix for bug #95419 if all grids have hidden corners needs_tri_index = true will render
-    // artifacts.
-    if (needs_tri_index && hidden_grids_count == args.grid_indices.size()) {
-      needs_tri_index = false;
     }
 
     GPUIndexBufBuilder elb, elb_lines;
