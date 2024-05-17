@@ -102,4 +102,31 @@ FCurve *action_fcurve_ensure(Main *bmain,
 
   return fcu;
 }
+
+Action *convert_to_layered_action(Main &bmain, Action &action)
+{
+  if (action.is_empty() || action.is_action_layered()) {
+    return nullptr;
+  }
+
+  char layered_action_name[MAX_ID_NAME - 2];
+  SNPRINTF(layered_action_name, "%s_layered", action.id.name);
+  bAction *baction = BKE_action_add(&bmain, layered_action_name);
+
+  return nullptr;
+}
+
+Action *bake_to_legacy_action(Main &bmain, Action &action)
+{
+  if (action.is_empty() || action.is_action_legacy()) {
+    return nullptr;
+  }
+
+  char legacy_action_name[MAX_ID_NAME - 2];
+  SNPRINTF(legacy_action_name, "%s_legacy", action.id.name);
+  bAction *baction = BKE_action_add(&bmain, legacy_action_name);
+
+  return nullptr;
+}
+
 }  // namespace blender::animrig
