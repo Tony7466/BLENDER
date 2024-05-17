@@ -12,6 +12,8 @@
 #include "BKE_global.hh"
 
 #include "BLI_string.h"
+#include "BLI_system.h"
+#include BLI_SYSTEM_PID_H
 #include "BLI_vector.hh"
 
 #include "GPU_capabilities.hh"
@@ -26,6 +28,11 @@
 #include "gl_shader_interface.hh"
 
 #include <sstream>
+#include <stdio.h>
+#ifdef WIN32
+#  define popen _popen
+#  define pclose _pclose
+#endif
 
 using namespace blender;
 using namespace blender::gpu;
@@ -1611,7 +1618,7 @@ GLCompilerWorker::GLCompilerWorker(size_t max_size)
   std::string cmd = std::string(BKE_appdir_program_path()) + " --compilation-subprocess " +
                     pipe_name;
 
-  compiler_ = _popen(cmd.c_str(), "w");
+  compiler_ = popen(cmd.c_str(), "w");
 }
 
 GLCompilerWorker::~GLCompilerWorker()
@@ -1623,7 +1630,7 @@ GLCompilerWorker::~GLCompilerWorker()
   ipc_sem_close(&start_semaphore_);
   ipc_sem_close(&end_semaphore_);
   ipc_mem_close(&pipe_, true);
-  _pclose(compiler_);
+  pclose(compiler_);
   compiler_ = nullptr;
 }
 
