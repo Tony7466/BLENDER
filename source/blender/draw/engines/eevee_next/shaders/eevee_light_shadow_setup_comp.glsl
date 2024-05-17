@@ -37,12 +37,12 @@ void orthographic_sync(int tilemap_id,
   }
   else {
     /* Same light direction but camera might have moved. Shift tilemap grid.  */
-    tilemaps_buf[tilemap_id].grid_shift = tilemaps_clip_buf[clip_index].grid_offset -
-                                          origin_offset;
-    drw_print(tilemaps_buf[tilemap_id].grid_shift);
+    tilemaps_buf[tilemap_id].grid_shift = origin_offset -
+                                          tilemaps_clip_buf[clip_index].grid_offset;
   }
-  tilemaps_buf[tilemap_id].grid_offset = origin_offset; /* TODO(fclem): Remove. */
   tilemaps_clip_buf[clip_index].grid_offset = origin_offset;
+  /* TODO(fclem): Remove this duplicate. Only needed because of the base offset packing. */
+  tilemaps_buf[tilemap_id].grid_offset = origin_offset;
 
   float level_size = shadow_directional_coverage_get(clipmap_level);
   float half_size = level_size / 2.0;
