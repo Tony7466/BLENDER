@@ -571,8 +571,6 @@ typedef enum PassType {
   PASS_SHADOW_CATCHER_SAMPLE_COUNT,
   PASS_SHADOW_CATCHER_MATTE,
 
-  PASS_RESTIR_PREVIOUS_RESERVOIR,
-  PASS_RESTIR_RESERVOIR,
   PASS_SURFACE_DATA,
 
   /* Guiding related debug rendering passes */
@@ -584,6 +582,9 @@ typedef enum PassType {
   /* The avg. roughness at the first bounce. */
   PASS_GUIDING_AVG_ROUGHNESS,
   PASS_CATEGORY_DATA_END = 63,
+
+  PASS_RESTIR_PREVIOUS_RESERVOIR,
+  PASS_RESTIR_RESERVOIR,
 
   PASS_BAKE_PRIMITIVE,
   PASS_BAKE_SEED,

@@ -594,26 +594,25 @@ ccl_device_inline void film_write_pass_reservoir(KernelGlobals kg,
                                                  ccl_global float *ccl_restrict render_buffer,
                                                  const bool write_prev = false)
 {
-  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
-    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+  kernel_assert(kernel_data.integrator.use_restir);
 
-    float *ptr = buffer + (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
-                                        kernel_data.film.pass_restir_reservoir);
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
-    /* TODO(weizhen): it is possible to compress the LightSample. */
+  float *ptr = buffer + (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
+                                      kernel_data.film.pass_restir_reservoir);
 
-    film_overwrite_pass_float(ptr++, (float)reservoir->ls.object);
-    film_overwrite_pass_float(
-        ptr++,
-        float(reservoir->ls.object == OBJECT_NONE ? reservoir->ls.lamp : reservoir->ls.prim));
+  /* TODO(weizhen): it is possible to compress the LightSample. */
 
-    film_overwrite_pass_float(ptr++, reservoir->ls.u);
-    film_overwrite_pass_float(ptr++, reservoir->ls.v);
+  film_overwrite_pass_float(ptr++, (float)reservoir->ls.object);
+  film_overwrite_pass_float(
+      ptr++, float(reservoir->ls.object == OBJECT_NONE ? reservoir->ls.lamp : reservoir->ls.prim));
 
-    film_overwrite_pass_float(ptr++, reservoir->total_weight);
+  film_overwrite_pass_float(ptr++, reservoir->ls.u);
+  film_overwrite_pass_float(ptr++, reservoir->ls.v);
 
-    film_overwrite_pass_float(ptr, reservoir->luminance);
-  }
+  film_overwrite_pass_float(ptr++, reservoir->total_weight);
+
+  film_overwrite_pass_float(ptr, reservoir->luminance);
 }
 
 /* TODO(weizhen): clear data properly. */
@@ -621,22 +620,20 @@ ccl_device_inline void film_clear_pass_reservoir(KernelGlobals kg,
                                                  ConstIntegratorState state,
                                                  ccl_global float *ccl_restrict render_buffer)
 {
+  kernel_assert(kernel_data.integrator.use_restir);
+
   ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
-  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
-    /* Set weight to zero. */
-    float *ptr = buffer + kernel_data.film.pass_restir_reservoir + 4;
-    film_overwrite_pass_float(ptr, 0.0f);
+  /* Set weight to zero. */
+  float *ptr = buffer + kernel_data.film.pass_restir_reservoir + 4;
+  film_overwrite_pass_float(ptr, 0.0f);
 
-    ptr = buffer + kernel_data.film.pass_restir_previous_reservoir + 4;
-    film_overwrite_pass_float(ptr, 0.0f);
-  }
+  ptr = buffer + kernel_data.film.pass_restir_previous_reservoir + 4;
+  film_overwrite_pass_float(ptr, 0.0f);
 
-  if (kernel_data.film.pass_flag & PASSMASK(SURFACE_DATA)) {
-    /* Set sd.type to zero. */
-    float *ptr = buffer + kernel_data.film.pass_surface_data + 3;
-    film_overwrite_pass_float(ptr, 0.0f);
-  }
+  /* Set sd.type to zero. */
+  ptr = buffer + kernel_data.film.pass_surface_data + 3;
+  film_overwrite_pass_float(ptr, 0.0f);
 }
 
 /* TODO(weizhen): this function is called before terminating the path. Better to move this function
@@ -645,7 +642,7 @@ ccl_device_inline void integrator_finalize_reservoir(KernelGlobals kg,
                                                      IntegratorState state,
                                                      ccl_global float *ccl_restrict render_buffer)
 {
-  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+  if (kernel_data.integrator.use_restir) {
     ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
                                kernel_data.film.pass_restir_reservoir;
     Reservoir reservoir;
@@ -736,32 +733,29 @@ ccl_device_inline void film_write_surface_emission_to_reservoir(
     ccl_private const RNGState *rng_state,
     ccl_global float *ccl_restrict render_buffer)
 {
-  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
-    /* TODO(weizhen): this might not work for path guiding because the value was assigned by
-     * `mis_pdf` instead of `bsdf_pdf`. */
-    const float bsdf_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
+  /* TODO(weizhen): this might not work for path guiding because the value was assigned by
+   * `mis_pdf` instead of `bsdf_pdf`. */
+  const float bsdf_pdf = INTEGRATOR_STATE(state, path, mis_ray_pdf);
 
-    const bool is_direct_illumination = (INTEGRATOR_STATE(state, path, bounce) == 1);
-    Reservoir reservoir(kg, is_direct_illumination);
+  const bool is_direct_illumination = (INTEGRATOR_STATE(state, path, bounce) == 1);
+  Reservoir reservoir(kg, is_direct_illumination);
 
-    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
-                               kernel_data.film.pass_restir_reservoir;
-    restir_unpack_reservoir(kg, &reservoir, buffer);
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
+                             kernel_data.film.pass_restir_reservoir;
+  restir_unpack_reservoir(kg, &reservoir, buffer);
 
-    const float geometry_term = ls.jacobian_solid_angle_to_area();
-    Spectrum contribution = INTEGRATOR_STATE(state, path, throughput) * bsdf_pdf * L *
-                            geometry_term;
+  const float geometry_term = ls.jacobian_solid_angle_to_area();
+  Spectrum contribution = INTEGRATOR_STATE(state, path, throughput) * bsdf_pdf * L * geometry_term;
 
-    /* TODO(weizhen): handle diffuse/glossy pass properly. */
-    BsdfEval radiance;
-    bsdf_eval_init(&radiance, contribution);
+  /* TODO(weizhen): handle diffuse/glossy pass properly. */
+  BsdfEval radiance;
+  bsdf_eval_init(&radiance, contribution);
 
-    const float rand_pick = path_branched_rng_1D(
-        kg, rng_state, reservoir.num_light_samples, reservoir.max_samples, PRNG_PICK);
+  const float rand_pick = path_branched_rng_1D(
+      kg, rng_state, reservoir.num_light_samples, reservoir.max_samples, PRNG_PICK);
 
-    reservoir.add_bsdf_sample(ls, radiance, bsdf_pdf, rand_pick);
-    film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
-  }
+  reservoir.add_bsdf_sample(ls, radiance, bsdf_pdf, rand_pick);
+  film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
 }
 
 CCL_NAMESPACE_END
