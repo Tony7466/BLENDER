@@ -403,7 +403,7 @@ static int insert_key(bContext *C, wmOperator *op)
     Vector<RNAPath> rna_paths = construct_rna_paths(&id_ptr);
 
     combined_result.merge(animrig::insert_key_rna(bmain,
-                                                  &id_ptr,
+                                                  *selected_id,
                                                   rna_paths.as_span(),
                                                   scene_frame,
                                                   anim_eval_context,

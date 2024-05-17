@@ -262,7 +262,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
  * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
 CombinedKeyingResult insert_key_rna(Main *bmain,
-                                    PointerRNA *rna_pointer,
+                                    ID &id,
                                     const blender::Span<RNAPath> rna_paths,
                                     float scene_frame,
                                     const AnimationEvalContext &anim_eval_context,

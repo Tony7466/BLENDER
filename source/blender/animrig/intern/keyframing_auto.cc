@@ -144,7 +144,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<RNAPath> rn
   for (PointerRNA ptr : sources) {
     const CombinedKeyingResult result = insert_key_rna(
         bmain,
-        &ptr,
+        *ptr.owner_id,
         rna_paths,
         scene_frame,
         anim_eval_context,
@@ -247,7 +247,7 @@ void autokeyframe_pose_channel(bContext *C,
   for (PointerRNA &ptr : sources) {
     const CombinedKeyingResult result = insert_key_rna(
         bmain,
-        &ptr,
+        *ptr.owner_id,
         rna_paths,
         scene_frame,
         anim_eval_context,

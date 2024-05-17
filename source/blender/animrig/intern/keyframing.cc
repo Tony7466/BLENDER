@@ -960,7 +960,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
 }
 
 CombinedKeyingResult insert_key_rna(Main *bmain,
-                                    PointerRNA *rna_pointer,
+                                    ID &id,
                                     const blender::Span<RNAPath> rna_paths,
                                     const float scene_frame,
                                     const AnimationEvalContext &anim_eval_context,
@@ -968,22 +968,22 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
                                     const eInsertKeyFlags insert_key_flags)
 
 {
-  ID *id = rna_pointer->owner_id;
-  bAction *action = id_action_ensure(bmain, id);
+  PointerRNA rna_pointer = RNA_id_pointer_create(&id);
+  bAction *action = id_action_ensure(bmain, &id);
   CombinedKeyingResult combined_result;
 
   if (action == nullptr) {
     return combined_result;
   }
 
-  AnimData *adt = BKE_animdata_from_id(id);
+  AnimData *adt = BKE_animdata_from_id(&id);
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
   ListBase nla_cache = {nullptr, nullptr};
   NlaKeyframingContext *nla_context = nullptr;
 
   if (adt && adt->action == action) {
-    PointerRNA id_pointer = RNA_id_pointer_create(id);
+    PointerRNA id_pointer = RNA_id_pointer_create(&id);
     nla_context = BKE_animsys_get_nla_keyframing_context(
         &nla_cache, &id_pointer, adt, &anim_eval_context);
   }
@@ -995,7 +995,7 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.path.c_str(), &ptr, &prop);
+        &rna_pointer, rna_path.path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       continue;
     }
@@ -1005,7 +1005,7 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
 
     BitVector<> successful_remaps(rna_values.size(), false);
     BKE_animsys_nla_remap_keyframe_values(nla_context,
-                                          rna_pointer,
+                                          &rna_pointer,
                                           prop,
                                           rna_values.as_mutable_span(),
                                           rna_path.index.value_or(-1),
@@ -1014,7 +1014,7 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
                                           successful_remaps);
     const CombinedKeyingResult result = insert_key_action(bmain,
                                                           action,
-                                                          rna_pointer,
+                                                          &rna_pointer,
                                                           prop,
                                                           rna_path_id_to_prop->c_str(),
                                                           nla_frame,
