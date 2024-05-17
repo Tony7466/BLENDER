@@ -533,6 +533,7 @@ void LightModule::update_pass_sync()
   pass.bind_ssbo("light_buf", &culling_light_buf_);
   pass.bind_ssbo("light_cull_buf", &culling_data_buf_);
   pass.bind_ssbo("tilemaps_buf", &inst_.shadows.tilemap_pool.tilemaps_data);
+  pass.bind_ssbo("tilemaps_clip_buf", &inst_.shadows.tilemap_pool.tilemaps_clip);
   pass.bind_resources(inst_.uniform_data);
   pass.dispatch(int3(shadow_setup_dispatch_size, 1, 1));
   pass.barrier(GPU_BARRIER_SHADER_STORAGE);

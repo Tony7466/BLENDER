@@ -73,6 +73,7 @@ GPU_SHADER_CREATE_INFO(eevee_light_shadow_setup)
     .storage_buf(0, Qualifier::READ, "LightCullingData", "light_cull_buf")
     .storage_buf(1, Qualifier::READ_WRITE, "LightData", "light_buf[]")
     .storage_buf(2, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
+    .storage_buf(3, Qualifier::READ_WRITE, "ShadowTileMapClip", "tilemaps_clip_buf[]")
     .compute_source("eevee_light_shadow_setup_comp.glsl");
 
 /** \} */

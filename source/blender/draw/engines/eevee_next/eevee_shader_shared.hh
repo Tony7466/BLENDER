@@ -117,6 +117,13 @@ static inline float3 transform_location(Transform t)
   return float3(t.x.w, t.y.w, t.z.w);
 }
 
+#if !IS_CPP
+static inline bool transform_equal(Transform a, Transform b)
+{
+  return all(equal(a.x, b.x)) && all(equal(a.y, b.y)) && all(equal(a.z, b.z));
+}
+#endif
+
 static inline float3 transform_point(Transform t, float3 point)
 {
   return float4(point, 1.0f) * float3x4(t.x, t.y, t.z);
@@ -1350,6 +1357,8 @@ struct ShadowTileMapClip {
   /** NOTE: These are positive just like camera parameters. */
   int clip_near;
   int clip_far;
+  /* Transform the shadow is rendered with. Used to detect updates on GPU. */
+  Transform object_to_world;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapClip, 16)
 

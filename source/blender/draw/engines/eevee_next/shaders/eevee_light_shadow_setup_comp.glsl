@@ -27,15 +27,20 @@ void orthographic_sync(int tilemap_id,
     tilemaps_buf[tilemap_id].grid_shift = tilemaps_buf[tilemap_id].grid_offset - origin_offset;
   }
   tilemaps_buf[tilemap_id].grid_offset = origin_offset;
+  drw_print(origin_offset);
+  drw_print(tilemaps_buf[tilemap_id].grid_shift);
 
-  mat3x3 object_to_world_transposed = mat3x3(tilemaps_buf[tilemap_id].viewmat);
+  /* Do not check translation. */
+  object_to_world.x.w = 0.0;
+  object_to_world.y.w = 0.0;
+  object_to_world.z.w = 0.0;
 
-  if (!all(equal(object_to_world_transposed[0], object_to_world.x.xyz)) ||
-      !all(equal(object_to_world_transposed[1], object_to_world.y.xyz)) ||
-      !all(equal(object_to_world_transposed[2], object_to_world.z.xyz)))
-  {
+  int clip_index = tilemaps_buf[tilemap_id].clip_data_index;
+  if (!transform_equal(tilemaps_clip_buf[clip_index].object_to_world, object_to_world)) {
     /* Set dirty as the light direction changed. */
     tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
+    tilemaps_clip_buf[clip_index].object_to_world = object_to_world;
+    drw_print("update");
   }
 
   float level_size = shadow_directional_coverage_get(clipmap_level);
@@ -188,11 +193,20 @@ void cubeface_sync(int tilemap_id,
                    eCubeFace cubeface,
                    vec3 jitter_offset)
 {
+  object_to_world.x.w += jitter_offset.x;
+  object_to_world.y.w += jitter_offset.y;
+  object_to_world.z.w += jitter_offset.z;
+
+  int clip_index = tilemaps_buf[tilemap_id].clip_data_index;
+  if (!transform_equal(tilemaps_clip_buf[clip_index].object_to_world, object_to_world)) {
+    /* Set dirty as the light direction changed. */
+    tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
+    tilemaps_clip_buf[clip_index].object_to_world = object_to_world;
+  }
+
   /* Update View Matrix. */
   /* TODO(fclem): Could avoid numerical inversion since the transform is a unit matrix. */
   mat4x4 viewmat = invert(transform_to_matrix(object_to_world));
-  /* Translate by jitter. */
-  viewmat = from_location(-jitter_offset) * viewmat;
 
   /* Use switch instead of inline array of float3x3. */
   switch (cubeface) {
@@ -217,13 +231,6 @@ void cubeface_sync(int tilemap_id,
   }
 
   mat4x4 prev_viewmat = tilemaps_buf[tilemap_id].viewmat;
-
-  if (!all(equal(prev_viewmat[0], viewmat[0])) || !all(equal(prev_viewmat[1], viewmat[1])) ||
-      !all(equal(prev_viewmat[2], viewmat[2])) || !all(equal(prev_viewmat[3], viewmat[3])))
-  {
-    /* Set dirty as the light transform changed. */
-    tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
-  }
 
   tilemaps_buf[tilemap_id].viewmat = viewmat;
 
