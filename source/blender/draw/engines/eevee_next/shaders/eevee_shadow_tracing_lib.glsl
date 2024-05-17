@@ -131,11 +131,11 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
 /* If the ray direction `L`  is below the horizon defined by N (normalized) at the shading point,
  * push it just above the horizon so that this ray will never be below it and produce
  * over-shadowing (since light evaluation already clips the light shape). */
-vec3 shadow_ray_above_horizon_ensure(vec3 L, vec3 N)
+vec3 shadow_ray_above_horizon_ensure(vec3 L, vec3 N, float max_clip_distance)
 {
-  float distance_to_plan = dot(L, -N);
-  if (distance_to_plan > 0.0) {
-    L += N * (0.01 + distance_to_plan);
+  float distance_to_plane = dot(L, -N);
+  if (distance_to_plane > 0.0 && distance_to_plane < 0.01 + max_clip_distance) {
+    L += N * (0.01 + distance_to_plane);
   }
   return L;
 }
@@ -170,7 +170,7 @@ ShadowRayDirectional shadow_ray_generate_directional(
   /* Light shape is 1 unit away from the shading point. */
   vec3 direction = sample_uniform_cone(sample_cylinder(random_2d), shadow_angle);
 
-  direction = shadow_ray_above_horizon_ensure(direction, lNg);
+  direction = shadow_ray_above_horizon_ensure(direction, lNg, max_tracing_distance);
 
   /* It only make sense to trace where there can be occluder. Clamp by distance to near plane. */
   direction *= dist_to_near_plane / direction.z;
@@ -247,7 +247,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     vec3 point_on_light_shape = vec3(random_2d * shape_radius, 0.0);
 
     direction = point_on_light_shape - lP;
-    direction = shadow_ray_above_horizon_ensure(direction, lNg);
+    direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
 
     /* Clip the ray to not cross the near plane.
      * Scale it so that it encompass the whole cube (with a safety margin). */
@@ -271,7 +271,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
 
     direction = point_on_light_shape - lP;
-    direction = shadow_ray_above_horizon_ensure(direction, lNg);
+    direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
 
     /* Clip the ray to not cross the light shape. */
     float clip_distance = clip_near + 0.001;
