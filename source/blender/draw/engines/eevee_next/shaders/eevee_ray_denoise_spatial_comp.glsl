@@ -36,17 +36,16 @@ float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID: {
       if (thickness != 0.0) {
-        /* Uniform sphere weighting. */
-        pdf = 1.0 / (4.0 * M_PI);
+        pdf = sample_pdf_uniform_sphere();
       }
       else {
-        bsdf_lambert(-cl.N, L, pdf);
+        pdf = sample_pdf_cosine_hemisphere(saturate(-Lt.z));
       }
       break;
     }
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID: {
-      bsdf_lambert(cl.N, L, pdf);
+      pdf = sample_pdf_cosine_hemisphere(saturate(Lt.z));
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
