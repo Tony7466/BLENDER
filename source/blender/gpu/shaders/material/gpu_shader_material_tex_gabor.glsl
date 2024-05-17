@@ -12,6 +12,10 @@
  *   Tavernier, Vincent, et al. "Making gabor noise fast and normalized." Eurographics 2019-40th
  *   Annual Conference of the European Association for Computer Graphics. 2019.
  *
+ * And compute the Phase and Intensity of the Gabor based on the paper:
+ *
+ *   Tricard, Thibault, et al. "Procedural phasor noise." ACM Transactions on Graphics (TOG) 38.4
+ *   (2019): 1-13.
  */
 
 #pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
@@ -29,21 +33,30 @@
  * that is, a = 1. That is because it does not provide much artistic control. It follows that the
  * Gaussian will be truncated at pi.
  *
- * We also replace the cosine function of the harmonic with a sine function, as suggested by
- * Tavernier's paper in "Section 3.3. Instance stationarity and normalization", to ensure a zero
- * mean, which should help with normalization.
+ * To avoid the discontinuities caused by the aforementioned truncation, the Gaussian is windowed
+ * using a Hann window, that is because contrary to the claim made in the original Gabor paper,
+ * truncating the Gaussian produces significant artifacts especially when differentiated for bump
+ * mapping. The Hann window is C1 continuous and has limited effect on the shape of the Gaussian,
+ * so it felt like an appropriate choice.
  *
- * Finally, the Gaussian is windowed using a Hann window, that is because contrary to the claim in
- * the original Gabor paper, truncating the Gaussian produces significant artifacts especially when
- * differentiated for bump mapping. The Hann window is C1 continuous and has limited effect on the
- * shape of the Gaussian, so it felt like an appropriate choice. */
-float compute_2d_gabor_kernel(vec2 position, float frequency, float orientation)
+ * Finally, instead of computing the Gabor value directly, we instead use the complex phasor
+ * formulation described in section 3.1.1 in Tricard's paper. That's done to be able to compute the
+ * phase and intensity of the Gabor noise after summation based on equations (8) and (9). The
+ * return value of the Gabor kernel function is then a complex number whose real value is the
+ * value computed in the original Gabor noise paper, and whose imaginary part is the sine
+ * counterpart of the real part, which is the only extra computation in the new formulation.
+ *
+ * Note that while the original Gabor noise paper uses the cosine part of the phasor, that is, the
+ * real part of the phasor, we use the sine part instead, that is, the imaginary part of the
+ * phasor, as suggested by Tavernier's paper in "Section 3.3. Instance stationarity and
+ * normalization", to ensure a zero mean, which should help with normalization. */
+vec2 compute_2d_gabor_kernel(vec2 position, float frequency, float orientation)
 {
   /* The kernel is windowed beyond the unit distance, so early exist with a zero for points that
    * are further than a unit radius. */
   float distance_squared = length_squared(position);
   if (distance_squared >= 1.0) {
-    return 0.0;
+    return vec2(0.0);
   }
 
   float hann_window = 0.5 + 0.5 * cos(M_PI * distance_squared);
@@ -51,18 +64,20 @@ float compute_2d_gabor_kernel(vec2 position, float frequency, float orientation)
   float windowed_gaussian_envelope = gaussian_envelop * hann_window;
 
   vec2 frequency_vector = frequency * vec2(cos(orientation), sin(orientation));
-  float sinusoidal_wave = sin(2.0 * M_PI * dot(position, frequency_vector));
+  float angle = 2.0 * M_PI * dot(position, frequency_vector);
+  vec2 phasor = vec2(cos(angle), sin(angle));
 
-  return windowed_gaussian_envelope * sinusoidal_wave;
+  return windowed_gaussian_envelope * phasor;
 }
 
 /* The original Gabor noise paper specifies that the impulses count for each cell should be
  * computed by sampling a Poisson distribution whose mean is the impulse density. However,
  * Tavernier's paper showed that stratified Poisson point sampling is better assuming the weights
  * are sampled using a Bernoulli distribution, as shown in Figure (3). By stratified sampling, they
- * mean a constant number of impulses per cell, so the stratification is the grid itself in a
- * sense. However, to allow fractional impulses count, an additional impulse is added following a
- * Bernoulli distribution whose probability is the fractional part of the impulses count. */
+ * mean a constant number of impulses per cell, so the stratification is the grid itself in that
+ * sense, as described in the supplementary material of the paper. However, to allow fractional
+ * impulses count, an additional impulse is added following a Bernoulli distribution whose
+ * probability is the fractional part of the impulses count. */
 int compute_impulses_count_for_2d_cell(vec2 cell, float impulses_count)
 {
   return int(impulses_count) + (hash_vec2_to_float(cell) < fract(impulses_count) ? 1 : 0);
@@ -74,15 +89,15 @@ int compute_impulses_count_for_2d_cell(vec2 cell, float impulses_count)
  * noise while it is random for isotropic noise. The original Gabor noise paper mentions that the
  * weights should be uniformly distributed in the [-1, 1] range, however, Tavernier's paper showed
  * that using a Bernoulli distribution yields better results, so that is what we do. */
-float compute_2d_gabor_noise_cell(vec2 cell,
-                                  vec2 position,
-                                  float impulses_count,
-                                  float frequency,
-                                  float isotropy,
-                                  float base_orientation)
+vec2 compute_2d_gabor_noise_cell(vec2 cell,
+                                 vec2 position,
+                                 float impulses_count,
+                                 float frequency,
+                                 float isotropy,
+                                 float base_orientation)
 
 {
-  float noise = 0.0;
+  vec2 noise = vec2(0.0);
   int impulses_count_for_cell = compute_impulses_count_for_2d_cell(cell, impulses_count);
   for (int i = 0; i < impulses_count_for_cell; ++i) {
     /* Compute unique seeds for each of the needed random variables. */
@@ -109,16 +124,16 @@ float compute_2d_gabor_noise_cell(vec2 cell,
 
 /* Computes the Gabor noise value by dividing the space into a grid and evaluating the Gabor noise
  * in the space of each cell of the 3x3 cell neighbourhood. */
-float compute_2d_gabor_noise(vec2 coordinates,
-                             float impulses_count,
-                             float frequency,
-                             float isotropy,
-                             float base_orientation)
+vec2 compute_2d_gabor_noise(vec2 coordinates,
+                            float impulses_count,
+                            float frequency,
+                            float isotropy,
+                            float base_orientation)
 {
   vec2 cell_position = floor(coordinates);
   vec2 local_position = coordinates - cell_position;
 
-  float sum = 0.0;
+  vec2 sum = vec2(0.0);
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       vec2 cell_offset = vec2(i, j);
@@ -140,13 +155,13 @@ float compute_2d_gabor_noise(vec2 coordinates,
  * (6) in the original Gabor noise paper computes the frequency vector using (cos(w_0), sin(w_0)),
  * which we also do in the 2D variant, however, for 3D, the orientation is already a unit frequency
  * vector, so we just need to scale it by the frequency value. */
-float compute_3d_gabor_kernel(vec3 position, float frequency, vec3 orientation)
+vec2 compute_3d_gabor_kernel(vec3 position, float frequency, vec3 orientation)
 {
   /* The kernel is windowed beyond the unit distance, so early exist with a zero for points that
    * are further than a unit radius. */
   float distance_squared = length_squared(position);
   if (distance_squared >= 1.0) {
-    return 0.0;
+    return vec2(0.0);
   }
 
   float hann_window = 0.5 + 0.5 * cos(M_PI * distance_squared);
@@ -154,9 +169,10 @@ float compute_3d_gabor_kernel(vec3 position, float frequency, vec3 orientation)
   float windowed_gaussian_envelope = gaussian_envelop * hann_window;
 
   vec3 frequency_vector = frequency * orientation;
-  float sinusoidal_wave = sin(2.0 * M_PI * dot(position, frequency_vector));
+  float angle = 2.0 * M_PI * dot(position, frequency_vector);
+  vec2 phasor = vec2(cos(angle), sin(angle));
 
-  return windowed_gaussian_envelope * sinusoidal_wave;
+  return windowed_gaussian_envelope * phasor;
 }
 
 /* Identical to compute_impulses_count_for_2d_cell but works on 3D cells. */
@@ -189,15 +205,15 @@ vec3 compute_3d_orientation(vec3 orientation, float isotropy, vec4 seed)
   return vec3(sin(inclination) * cos(azimuth), sin(inclination) * sin(azimuth), cos(inclination));
 }
 
-float compute_3d_gabor_noise_cell(vec3 cell,
-                                  vec3 position,
-                                  float impulses_count,
-                                  float frequency,
-                                  float isotropy,
-                                  vec3 base_orientation)
+vec2 compute_3d_gabor_noise_cell(vec3 cell,
+                                 vec3 position,
+                                 float impulses_count,
+                                 float frequency,
+                                 float isotropy,
+                                 vec3 base_orientation)
 
 {
-  float noise = 0.0;
+  vec2 noise = vec2(0.0);
   int impulses_count_for_cell = compute_impulses_count_for_3d_cell(cell, impulses_count);
   for (int i = 0; i < impulses_count_for_cell; ++i) {
     /* Compute unique seeds for each of the needed random variables. */
@@ -220,13 +236,13 @@ float compute_3d_gabor_noise_cell(vec3 cell,
 }
 
 /* Identical to compute_2d_gabor_noise but works in the 3D neighbourhood of the noise. */
-float compute_3d_gabor_noise(
+vec2 compute_3d_gabor_noise(
     vec3 coordinates, float impulses_count, float frequency, float isotropy, vec3 base_orientation)
 {
   vec3 cell_position = floor(coordinates);
   vec3 local_position = coordinates - cell_position;
 
-  float sum = 0.0;
+  vec2 sum = vec2(0.0);
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -254,18 +270,32 @@ void node_tex_gabor(vec3 coordinates,
                     float orientation_2d,
                     vec3 orientation_3d,
                     float type,
-                    out float output_value)
+                    out float output_value,
+                    out float output_phase,
+                    out float output_intensity)
 {
   vec3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0 - clamp(anisotropy, 0.0, 1.0);
 
+  vec2 phasor = vec2(0.0);
   if (type == SHD_GABOR_TYPE_2D) {
-    output_value = compute_2d_gabor_noise(
+    phasor = compute_2d_gabor_noise(
         scaled_coordinates.xy, impulses_count, frequency, isotropy, orientation_2d);
   }
   else if (type == SHD_GABOR_TYPE_3D) {
     vec3 orientation = normalize(orientation_3d);
-    output_value = compute_3d_gabor_noise(
+    phasor = compute_3d_gabor_noise(
         scaled_coordinates, impulses_count, frequency, isotropy, orientation);
   }
+
+  /* As discussed in compute_2d_gabor_kernel, we use the imaginary part of the phasor as the Gabor
+   * value. */
+  output_value = phasor.y;
+
+  /* Compute the phase based on equation (9) in Tricard's paper. But remap the phase into the
+   * [0, 1] range. */
+  output_phase = (atan2(phasor.y, phasor.x) + M_PI) / (2.0 * M_PI);
+
+  /* Compute the intensity based on equation (8) in Tricard's paper. */
+  output_intensity = length(phasor);
 }

@@ -34,6 +34,8 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
       .default_value({math::numbers::sqrt2, math::numbers::sqrt2, 0.0f})
       .subtype(PROP_DIRECTION);
   b.add_output<decl::Float>("Value");
+  b.add_output<decl::Float>("Phase");
+  b.add_output<decl::Float>("Intensity");
 }
 
 static void node_shader_buts_tex_gabor(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

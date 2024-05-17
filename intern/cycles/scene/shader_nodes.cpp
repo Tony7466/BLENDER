@@ -1242,6 +1242,8 @@ NODE_DEFINE(GaborTextureNode)
   SOCKET_IN_VECTOR(orientation_3d, "Orientation 3D", make_float3(M_SQRT2_F, M_SQRT2_F, 0.0f));
 
   SOCKET_OUT_FLOAT(value, "Value");
+  SOCKET_OUT_FLOAT(phase, "Phase");
+  SOCKET_OUT_FLOAT(intensity, "Intensity");
 
   return type;
 }
@@ -1259,6 +1261,8 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *orientation_3d_in = input("Orientation 3D");
 
   ShaderOutput *value_out = output("Value");
+  ShaderOutput *phase_out = output("Phase");
+  ShaderOutput *intensity_out = output("Intensity");
 
   int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
   int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
@@ -1269,22 +1273,23 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
   int orientation_3d_stack_offset = compiler.stack_assign(orientation_3d_in);
 
   int value_stack_offset = compiler.stack_assign_if_linked(value_out);
+  int phase_stack_offset = compiler.stack_assign_if_linked(phase_out);
+  int intensity_stack_offset = compiler.stack_assign_if_linked(intensity_out);
 
   compiler.add_node(
       NODE_TEX_GABOR,
       type,
       compiler.encode_uchar4(
           vector_stack_offset, scale_stack_offset, impulses_stack_offset, frequency_stack_offset),
-      compiler.encode_uchar4(anisotropy_stack_offset,
-                             orientation_2d_stack_offset,
-                             orientation_3d_stack_offset,
-                             value_stack_offset));
+      compiler.encode_uchar4(
+          anisotropy_stack_offset, orientation_2d_stack_offset, orientation_3d_stack_offset));
 
-  compiler.add_node(__float_as_int(scale),
-                    __float_as_int(impulses),
-                    __float_as_int(frequency),
-                    __float_as_int(anisotropy));
-  compiler.add_node(__float_as_int(orientation_2d));
+  compiler.add_node(
+      compiler.encode_uchar4(value_stack_offset, phase_stack_offset, intensity_stack_offset),
+      __float_as_int(scale),
+      __float_as_int(impulses),
+      __float_as_int(frequency));
+  compiler.add_node(__float_as_int(anisotropy), __float_as_int(orientation_2d));
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
