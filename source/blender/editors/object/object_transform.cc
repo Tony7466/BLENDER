@@ -33,6 +33,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
+#include "BKE_anim_data.hh"
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
@@ -67,6 +68,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
 #include "ED_armature.hh"
@@ -292,6 +294,23 @@ static void object_clear_scale(Object *ob, const bool clear_delta)
   }
 }
 
+static void deselect_action_keys(blender::Span<Object *> objects)
+{
+  blender::Map<bAction *, bool> deselected_actions;
+  for (Object *ob : objects) {
+    AnimData *adt = BKE_animdata_from_id(&ob->id);
+    if (!adt || !adt->action) {
+      continue;
+    }
+    if (deselected_actions.contains(adt->action)) {
+      continue;
+    }
+    blender::animrig::Action &action = adt->action->wrap();
+    action.clear_key_selection();
+    deselected_actions.add(adt->action, true);
+  }
+}
+
 /* generic exec for clear-transform operators */
 static int object_clear_transform_generic_exec(bContext *C,
                                                wmOperator *op,
@@ -340,6 +359,10 @@ static int object_clear_transform_generic_exec(bContext *C,
 
   /* get KeyingSet to use */
   ks = ANIM_get_keyingset_for_autokeying(scene, default_ksName);
+
+  if (blender::animrig::is_autokey_on(scene)) {
+    deselect_action_keys(objects);
+  }
 
   for (Object *ob : objects) {
     if (use_transform_data_origin) {

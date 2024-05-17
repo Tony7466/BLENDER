@@ -882,7 +882,7 @@ static void insert_fcurve_key(bAnimContext *ac,
   ale->update |= ANIM_UPDATE_DEFAULT;
 }
 
-static void deselect_action_keys(ListBase *anim_data)
+static void deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
 {
   /* Since we are working with channels of animation data here, a lot of channels will point to the
    * same action. Store which in which actions the keys have been deselected to not iterate them
@@ -902,7 +902,7 @@ static void deselect_action_keys(ListBase *anim_data)
     }
 
     blender::animrig::Action &action = ale->adt->action->wrap();
-    action.clear_selection();
+    action.clear_key_selection();
 
     deselected_actions.add(ale->adt->action, true);
   }

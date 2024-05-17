@@ -190,9 +190,11 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
 
     /* Build object array. */
     Vector<Object *> objects_eval;
+    Vector<Object *> objects_orig;
     {
       FOREACH_SELECTED_EDITABLE_OBJECT_BEGIN (view_layer_eval, v3d, ob_eval) {
         objects_eval.append(ob_eval);
+        objects_orig.append(DEG_get_original_object(ob_eval));
       }
       FOREACH_SELECTED_EDITABLE_OBJECT_END;
     }
@@ -212,6 +214,10 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
     if (use_transform_data_origin) {
       BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
       xds = object::data_xform_container_create();
+    }
+
+    if (blender::animrig::is_autokey_on(scene)) {
+      blender::animrig::deselect_action_keys(objects_orig);
     }
 
     for (Object *ob_eval : objects_eval) {
@@ -500,6 +506,10 @@ static bool snap_selected_to_location(bContext *C,
       for (Object *ob : objects) {
         object::data_xform_container_item_ensure(xds, ob);
       }
+    }
+
+    if (blender::animrig::is_autokey_on(scene)) {
+      blender::animrig::deselect_action_keys(objects);
     }
 
     for (Object *ob : objects) {

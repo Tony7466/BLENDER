@@ -143,7 +143,7 @@ static void clear_selection_layered_action(Action &action)
   }
 }
 
-void Action::clear_selection()
+void Action::clear_key_selection()
 {
   if (this->is_empty()) {
     return;

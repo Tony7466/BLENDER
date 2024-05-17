@@ -27,10 +27,12 @@
 #include "BKE_nla.h"
 #include "BKE_report.hh"
 
+#include "DNA_action_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_bit_vector.hh"
 #include "BLI_dynstr.h"
+#include "BLI_map.hh"
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.hh"
@@ -1026,6 +1028,23 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
   return combined_result;
+}
+
+void deselect_action_keys(Span<Object *> objects)
+{
+  Map<bAction *, bool> deselected_actions;
+  for (Object *ob : objects) {
+    AnimData *adt = BKE_animdata_from_id(&ob->id);
+    if (!adt || !adt->action) {
+      continue;
+    }
+    if (deselected_actions.contains(adt->action)) {
+      continue;
+    }
+    Action &action = adt->action->wrap();
+    action.clear_key_selection();
+    deselected_actions.add(adt->action, true);
+  }
 }
 
 }  // namespace blender::animrig

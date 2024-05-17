@@ -220,7 +220,7 @@ class Action : public ::bAction {
   /**
    * Deselect all keys within the action.
    */
-  void clear_selection();
+  void clear_key_selection();
 
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
