@@ -40,6 +40,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -905,6 +906,29 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   }
 
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
+
+  /* Since we are working with channels of animation data here, a lot of channels will point to the
+   * same action. Store which in which actions the keys have been deselected to not iterate them
+   * more than once. */
+  blender::Map<bAction *, bool> deselected_actions;
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    if (ale->type != ANIMTYPE_FCURVE) {
+      /* Maybe the same behavior should extend to Grease Pencil? */
+      continue;
+    }
+    if (!ale->adt || !ale->adt->action) {
+      continue;
+    }
+
+    if (deselected_actions.contains(ale->adt->action)) {
+      continue;
+    }
+
+    blender::animrig::Action &action = ale->adt->action->wrap();
+    action.clear_selection();
+
+    deselected_actions.add(ale->adt->action, true);
+  }
 
   /* Init keyframing flag. */
   flag = blender::animrig::get_keyframing_flags(scene);
