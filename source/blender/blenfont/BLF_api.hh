@@ -10,7 +10,6 @@
 
 #include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
-#include "BLI_rect.h"
 #include "BLI_string_ref.hh"
 #include "BLI_sys_types.h"
 #include "BLI_vector.hh"

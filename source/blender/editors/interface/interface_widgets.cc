@@ -1945,21 +1945,18 @@ static void widget_draw_text(const uiFontStyle *fstyle,
           immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
       immUniformColor4ubv(wcol->item);
-      blender::Vector<blender::Bounds<int>> boxes = BLF_str_selection_boxes(fstyle->uifont_id,
-                                                                            drawstr,
-                                                                            strlen(drawstr),
-                                                                            but->ofs + but->selsta,
-                                                                            but->selend -
-                                                                                but->selsta);
-
-      for (blender::Bounds<int> bounds : boxes) {
+      const auto boxes = BLF_str_selection_boxes(fstyle->uifont_id,
+                                                 drawstr,
+                                                 strlen(drawstr),
+                                                 but->ofs + but->selsta,
+                                                 but->selend - but->selsta);
+      for (auto bounds : boxes) {
         immRecti(pos,
                  rect->xmin + bounds.min,
                  rect->ymin + U.pixelsize,
                  std::min(rect->xmin + bounds.max, rect->xmax - 2),
                  rect->ymax - U.pixelsize);
       }
-
       immUnbindProgram();
       GPU_blend(GPU_BLEND_NONE);
 
