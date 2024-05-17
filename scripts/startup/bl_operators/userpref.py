@@ -583,7 +583,6 @@ class PREFERENCES_OT_addon_refresh(Operator):
 
         return {'FINISHED'}
 
-
 # Note: shares some logic with PREFERENCES_OT_app_template_install
 # but not enough to de-duplicate. Fixed here may apply to both.
 class PREFERENCES_OT_addon_install(Operator):
@@ -595,6 +594,12 @@ class PREFERENCES_OT_addon_install(Operator):
         name="Overwrite",
         description="Remove existing add-ons with the same ID",
         default=True,
+    )
+
+    enable_on_install: BoolProperty(
+        name="Enable on Install",
+        description="Enable after installing",
+        default=False,
     )
 
     def _target_path_items(_self, context):
@@ -739,6 +744,9 @@ class PREFERENCES_OT_addon_install(Operator):
         for mod in addon_utils.modules(refresh=False):
             if mod.__name__ in addons_new:
                 bl_info = addon_utils.module_bl_info(mod)
+
+                if self.enable_on_install:
+                    bpy.ops.preferences.addon_enable(module=mod.__name__)
 
                 # show the newly installed addon.
                 context.preferences.view.show_addons_enabled_only = False

@@ -1450,7 +1450,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
     )
     _drop_variables = None
 
-    filter_glob: StringProperty(default="*.zip", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.zip;*.py", options={'HIDDEN'})
 
     directory: StringProperty(
         name="Directory",
@@ -1481,6 +1481,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
     def exec_command_iter(self, is_modal):
         from .bl_extension_utils import (
             pkg_manifest_dict_from_file_or_error,
+            pkg_is_legacy_addon,
         )
 
         self._addon_restore = []
@@ -1528,7 +1529,14 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         # Extract meta-data from package files.
         # Note that errors are ignored here, let the underlying install operation do this.
         pkg_id_sequence = []
+        pkg_files = []
+        pkg_legacy_files = []
         for source_filepath in source_files:
+            if pkg_is_legacy_addon(source_filepath):
+                pkg_legacy_files.append(source_filepath)
+                continue
+            pkg_files.append(source_filepath)
+
             result = pkg_manifest_dict_from_file_or_error(source_filepath)
             if isinstance(result, str):
                 continue
@@ -1539,6 +1547,13 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
         directory = repo_item.directory
         assert directory != ""
+
+        # Install legacy add-ons
+        for source_filepath in pkg_legacy_files:
+            bpy.ops.preferences.addon_install(filepath=source_filepath, enable_on_install=self.enable_on_install)
+
+        if not pkg_files:
+            return None
 
         # Collect package ID's.
         self.repo_directory = directory
@@ -1573,7 +1588,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
                 partial(
                     bl_extension_utils.pkg_install_files,
                     directory=directory,
-                    files=source_files,
+                    files=pkg_files,
                     use_idle=is_modal,
                 )
             ],
