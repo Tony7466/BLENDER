@@ -796,13 +796,13 @@ enum class EditMode {
 static constexpr float VERTEX_ITERATION_THRESHOLD = 50000.0f;
 
 static void grow_shrink_visibility_mesh(Object &object,
-                                        PBVH &pbvh,
                                         const Span<PBVHNode *> nodes,
                                         const EditMode mode)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int> tri_faces = mesh.corner_tri_faces();
 
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (!attributes.contains(".hide_vert")) {
@@ -823,10 +823,11 @@ static void grow_shrink_visibility_mesh(Object &object,
   threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {
-      undo::push_node(&object, node, undo::Type::HideVert);
+      undo::push_node(object, node, undo::Type::HideVert);
 
       Vector<int> &face_indices = all_face_indices.local();
-      const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, face_indices);
+      const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
+          tri_faces, *node, face_indices);
       for (const int i : indices.index_range()) {
         int face_index = indices[i];
         if (!hide_poly[face_index]) {
@@ -879,14 +880,14 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
     orig_grid_hidden[i].copy_from(grid_hidden[i].as_span());
   }
 
-  const CCGKey key = *BKE_pbvh_get_grid_key(&pbvh);
+  const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
   const bool desired_state = !(mode == EditMode::Grow);
 
   bool any_changed = false;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (PBVHNode *node : nodes.slice(range)) {
-      undo::push_node(&object, node, undo::Type::HideVert);
-      const Span<int> grids = BKE_pbvh_node_get_grid_indices(*node);
+      undo::push_node(object, node, undo::Type::HideVert);
+      const Span<int> grids = bke::pbvh::node_grid_indices(*node);
 
       for (const int i : grids.index_range()) {
         const int grid_index = grids[i];
@@ -925,7 +926,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
 
   if (any_changed) {
     multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
-    BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
+    BKE_pbvh_sync_visibility_from_verts(pbvh, &mesh);
   }
 }
 
@@ -954,7 +955,7 @@ static void grow_shrink_visibility_bmesh(Object &object,
 
   partialvis_update_bmesh_nodes(&object, nodes, action, [&](const BMVert *vert) {
     int vi = BM_elem_index_get(vert);
-    PBVHVertRef vref = BKE_pbvh_index_to_vertex(&pbvh, vi);
+    PBVHVertRef vref = BKE_pbvh_index_to_vertex(pbvh, vi);
     SculptVertexNeighborIter ni;
 
     bool should_change = false;
@@ -975,8 +976,8 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
   Object &object = *CTX_data_active_object(C);
   Depsgraph &depsgraph = *CTX_data_ensure_evaluated_depsgraph(C);
 
-  PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(&depsgraph, &object);
-  BLI_assert(BKE_object_sculpt_pbvh_get(&object) == pbvh);
+  PBVH &pbvh = *BKE_sculpt_object_pbvh_ensure(&depsgraph, &object);
+  BLI_assert(BKE_object_sculpt_pbvh_get(&object) == &pbvh);
 
   const EditMode mode = EditMode(RNA_enum_get(op->ptr, "mode"));
 
@@ -997,13 +998,13 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
   for (int i = 0; i < iterations; i++) {
     switch (BKE_pbvh_type(pbvh)) {
       case PBVH_FACES:
-        grow_shrink_visibility_mesh(object, *pbvh, nodes, mode);
+        grow_shrink_visibility_mesh(object, nodes, mode);
         break;
       case PBVH_GRIDS:
-        grow_shrink_visibility_grid(depsgraph, object, *pbvh, nodes, mode);
+        grow_shrink_visibility_grid(depsgraph, object, pbvh, nodes, mode);
         break;
       case PBVH_BMESH:
-        grow_shrink_visibility_bmesh(object, *pbvh, nodes, mode);
+        grow_shrink_visibility_bmesh(object, pbvh, nodes, mode);
         break;
     }
   }
