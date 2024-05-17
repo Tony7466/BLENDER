@@ -164,8 +164,6 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     std::string hash_str = std::to_string(vert_hash) + "_" + std::to_string(frag_hash);
     fs::path cache_path = cache_dir / hash_str;
 
-    bool cache_hit = false;
-
     /* TODO: This should lock the files. */
     if (fs::exists(cache_path)) {
       /* Read cached binary. */
@@ -175,20 +173,19 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
       file.read(reinterpret_cast<char *>(shared_mem.data), size);
       /* Ensure it's valid. */
       if (validate_binary(shared_mem.data)) {
-        cache_hit = true;
+        ipc_sem_increment(&end_semaphore);
+        continue;
       }
     }
 
-    if (!cache_hit) {
-      SubprocessShader shader(vert_src, frag_src);
-      ShaderBinary *binary = shader.load_binary(shared_mem.data);
-
-      std::ofstream file(cache_path, std::ios::binary | std::ios::out);
-      file.write(reinterpret_cast<char *>(shared_mem.data),
-                 binary->size + offsetof(ShaderBinary, data_start));
-    }
+    SubprocessShader shader(vert_src, frag_src);
+    ShaderBinary *binary = shader.load_binary(shared_mem.data);
 
     ipc_sem_increment(&end_semaphore);
+
+    std::ofstream file(cache_path, std::ios::binary | std::ios::out);
+    file.write(reinterpret_cast<char *>(shared_mem.data),
+               binary->size + offsetof(ShaderBinary, data_start));
   }
 
   GPU_exit();
