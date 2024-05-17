@@ -43,6 +43,7 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_bone_collections.hh"
 #include "ANIM_driver.hh"
@@ -358,6 +359,30 @@ static bool get_selection(bContext *C, blender::Vector<PointerRNA> *r_selection)
   return true;
 }
 
+static void deselect_keys_of_selection(bContext *C)
+{
+  using namespace blender;
+  Vector<PointerRNA> selection;
+  get_selection(C, &selection);
+
+  /* Since multiple objects might use the same action, store which actions had their keys
+   * deselected, to only iterate over each action once. */
+  blender::Map<bAction *, bool> deselected_actions;
+  for (PointerRNA &id_ptr : selection) {
+    ID *selected_id = id_ptr.owner_id;
+    AnimData *adt = BKE_animdata_from_id(selected_id);
+    if (!adt || !adt->action) {
+      continue;
+    }
+    if (deselected_actions.contains(adt->action)) {
+      continue;
+    }
+    animrig::Action &action = adt->action->wrap();
+    action.clear_selection();
+    deselected_actions.add(adt->action, true);
+  }
+}
+
 static int insert_key(bContext *C, wmOperator *op)
 {
   using namespace blender;
@@ -422,6 +447,8 @@ static int insert_key(bContext *C, wmOperator *op)
 
 static int insert_key_exec(bContext *C, wmOperator *op)
 {
+  deselect_keys_of_selection(C);
+
   Scene *scene = CTX_data_scene(C);
   /* Use the active keying set if there is one. */
   const int type = RNA_enum_get(op->ptr, "type");
@@ -458,6 +485,8 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 
 static int keyframe_insert_with_keyingset_exec(bContext *C, wmOperator *op)
 {
+  deselect_keys_of_selection(C);
+
   Scene *scene = CTX_data_scene(C);
   KeyingSet *ks = keyingset_get_from_op_with_error(op, op->type->prop, scene);
   if (ks == nullptr) {
