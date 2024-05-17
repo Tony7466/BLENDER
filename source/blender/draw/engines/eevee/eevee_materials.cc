@@ -246,10 +246,12 @@ void EEVEE_materials_init(EEVEE_ViewLayerData *sldata,
   }
 
   if (draw_ctx->rv3d) {
-    copy_v4_v4(sldata->common_data.camera_uv_scale, draw_ctx->rv3d->viewcamtexcofac);
+    copy_v2_v2(sldata->common_data.camera_uv_scale, &draw_ctx->rv3d->viewcamtexcofac[0]);
+    copy_v2_v2(sldata->common_data.camera_uv_bias, &draw_ctx->rv3d->viewcamtexcofac[2]);
   }
   else {
-    copy_v4_fl4(sldata->common_data.camera_uv_scale, 1.0f, 1.0f, 0.0f, 0.0f);
+    copy_v2_fl2(sldata->common_data.camera_uv_scale, 1.0f, 1.0f);
+    copy_v2_fl2(sldata->common_data.camera_uv_bias, 0.0f, 0.0f);
   }
 
   if (!DRW_state_is_image_render() && ((stl->effects->enabled_effects & EFFECT_TAA) == 0)) {
@@ -834,7 +836,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
                          !DRW_state_is_image_render();
 
   if (ob->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
-    BKE_pbvh_is_drawing_set(BKE_object_sculpt_pbvh_get(ob), use_sculpt_pbvh);
+    BKE_pbvh_is_drawing_set(*BKE_object_sculpt_pbvh_get(ob), use_sculpt_pbvh);
   }
 
   /* First get materials for this mesh. */
@@ -911,7 +913,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
           int debug_node_nr = 0;
           DRW_debug_modelmat(ob->object_to_world().ptr());
           BKE_pbvh_draw_debug_cb(
-              BKE_object_sculpt_pbvh_get(ob), DRW_sculpt_debug_cb, &debug_node_nr);
+              *BKE_object_sculpt_pbvh_get(ob), DRW_sculpt_debug_cb, &debug_node_nr);
         }
       }
 

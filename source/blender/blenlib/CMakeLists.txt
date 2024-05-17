@@ -99,14 +99,14 @@ set(SRC
   intern/math_basis_types.cc
   intern/math_bits_inline.c
   intern/math_boolean.cc
-  intern/math_color.c
+  intern/math_color.cc
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
   intern/math_geom.cc
   intern/math_geom_inline.c
   intern/math_interp.cc
-  intern/math_matrix.c
   intern/math_matrix.cc
+  intern/math_matrix_c.cc
   intern/math_rotation.c
   intern/math_rotation.cc
   intern/math_solvers.c
@@ -254,8 +254,8 @@ set(SRC
   BLI_implicit_sharing.hh
   BLI_implicit_sharing_ptr.hh
   BLI_index_mask.hh
-  BLI_index_mask_fwd.hh
   BLI_index_mask_expression.hh
+  BLI_index_mask_fwd.hh
   BLI_index_range.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
@@ -345,7 +345,7 @@ set(SRC
   BLI_set.hh
   BLI_set_slots.hh
   BLI_shared_cache.hh
-  BLI_simd.h
+  BLI_simd.hh
   BLI_smaa_textures.h
   BLI_sort.h
   BLI_sort.hh
@@ -367,6 +367,7 @@ set(SRC
   BLI_system.h
   BLI_task.h
   BLI_task.hh
+  BLI_task_size_hints.hh
   BLI_tempfile.h
   BLI_threads.h
   BLI_time.h
@@ -401,6 +402,7 @@ set(SRC
 set(LIB
   PUBLIC bf::dna
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf::extern::xxhash
   bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
@@ -521,8 +523,8 @@ if(WITH_GTESTS)
     tests/BLI_heap_simple_test.cc
     tests/BLI_heap_test.cc
     tests/BLI_implicit_sharing_test.cc
-    tests/BLI_index_mask_test.cc
     tests/BLI_index_mask_expression_test.cc
+    tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc

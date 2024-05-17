@@ -2095,13 +2095,14 @@ static int nlaedit_make_single_user_exec(bContext *C, wmOperator * /*op*/)
 static int nlaedit_make_single_user_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (RNA_boolean_get(op->ptr, "confirm")) {
-    return WM_operator_confirm_ex(C,
-                                  op,
-                                  IFACE_("Make each action single-user in the selected strips?"),
-                                  nullptr,
-                                  IFACE_("Make Single"),
-                                  ALERT_ICON_NONE,
-                                  false);
+    return WM_operator_confirm_ex(
+        C,
+        op,
+        IFACE_("Make Selected Strips Single-User"),
+        IFACE_("Linked actions will be duplicated for each selected strip."),
+        IFACE_("Make Single"),
+        ALERT_ICON_WARNING,
+        false);
   }
   return nlaedit_make_single_user_exec(C, op);
 }
@@ -2111,7 +2112,7 @@ void NLA_OT_make_single_user(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Make Single User";
   ot->idname = "NLA_OT_make_single_user";
-  ot->description = "Ensure that each action is only used once in the set of strips selected";
+  ot->description = "Make linked action local to each strip";
 
   /* api callbacks */
   ot->invoke = nlaedit_make_single_user_invoke;
@@ -2175,7 +2176,7 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator * /*op*/)
        * (transitions don't have scale) */
       if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
         if (strip->act == nullptr || ID_IS_OVERRIDE_LIBRARY(strip->act) ||
-            ID_IS_LINKED(strip->act))
+            !ID_IS_EDITABLE(strip->act))
         {
           continue;
         }

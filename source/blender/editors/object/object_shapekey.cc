@@ -229,7 +229,7 @@ static bool object_shape_key_mirror(
       ED_mesh_mirror_spatial_table_end(ob);
     }
     else if (ob->type == OB_LATTICE) {
-      Lattice *lt = static_cast<Lattice *>(ob->data);
+      const Lattice *lt = static_cast<const Lattice *>(ob->data);
       int i1, i2;
       float *fp1, *fp2;
       int u, v, w;
@@ -296,8 +296,8 @@ static bool shape_key_poll(bContext *C)
   Object *ob = context_object(C);
   ID *data = static_cast<ID *>((ob) ? ob->data : nullptr);
 
-  return (ob != nullptr && !ID_IS_LINKED(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && data != nullptr &&
-          !ID_IS_LINKED(data) && !ID_IS_OVERRIDE_LIBRARY(data));
+  return (ob != nullptr && ID_IS_EDITABLE(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && data != nullptr &&
+          ID_IS_EDITABLE(data) && !ID_IS_OVERRIDE_LIBRARY(data));
 }
 
 static bool shape_key_exists_poll(bContext *C)
