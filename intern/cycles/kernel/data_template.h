@@ -113,6 +113,8 @@ KERNEL_STRUCT_MEMBER(film, int, pass_shadow_catcher_matte)
 KERNEL_STRUCT_MEMBER(film, int, pass_restir_previous_reservoir)
 KERNEL_STRUCT_MEMBER(film, int, pass_restir_reservoir)
 /* TODO(weizhen): can we use pass_normal/position/uv? */
+KERNEL_STRUCT_MEMBER(film, int, pass_restir_pt_previous_reservoir)
+KERNEL_STRUCT_MEMBER(film, int, pass_restir_pt_reservoir)
 KERNEL_STRUCT_MEMBER(film, int, pass_surface_data)
 /* Cryptomatte. */
 KERNEL_STRUCT_MEMBER(film, int, cryptomatte_passes)
@@ -145,6 +147,8 @@ KERNEL_STRUCT_MEMBER(film, int, use_approximate_shadow_catcher)
 KERNEL_STRUCT_MEMBER(film, int, pass_guiding_color)
 KERNEL_STRUCT_MEMBER(film, int, pass_guiding_probability)
 KERNEL_STRUCT_MEMBER(film, int, pass_guiding_avg_roughness)
+
+KERNEL_STRUCT_MEMBER(film, int, pad)
 KERNEL_STRUCT_END(KernelFilm)
 
 /* Integrator. */

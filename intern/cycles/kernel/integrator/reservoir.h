@@ -248,6 +248,76 @@ ccl_device_inline bool restir_unpack_reservoir(KernelGlobals kg,
   return !reservoir->is_empty();
 }
 
+struct GlobalReservoir {
+  Spectrum radiance;
+  float total_weight = 0.0f;
+  uint32_t path_flag;
+
+  float3 rgb_to_y;
+
+  GlobalReservoir() = default;
+
+  GlobalReservoir(KernelGlobals kg)
+  {
+    rgb_to_y = float4_to_float3(kernel_data.film.rgb_to_y);
+  }
+
+  float compute_luminance(const ccl_private Spectrum &radiance) const
+  {
+    return dot(spectrum_to_rgb(radiance), rgb_to_y);
+  }
+
+  bool add_sample(const ccl_private Spectrum &radiance, const float rand)
+  {
+    const float weight = compute_luminance(radiance);
+
+    if (!(weight > 0.0f)) {
+      /* Should be theoretically captured by the following condition, but we can not trust floating
+       * point precision. */
+      return false;
+    }
+
+    total_weight += weight;
+
+    if (rand * total_weight > weight) {
+      return false;
+    }
+
+    this->radiance = radiance;
+
+    return true;
+  }
+
+  bool is_empty() const
+  {
+    return total_weight == 0.0f;
+  }
+
+  bool finalize()
+  {
+    if (is_empty()) {
+      return false;
+    }
+    /* Apply unbiased contribution weight. */
+    total_weight /= compute_luminance(radiance);
+    radiance *= total_weight;
+    return true;
+  }
+};
+
+ccl_device_inline bool restir_unpack_reservoir_pt(KernelGlobals kg,
+                                                  ccl_private GlobalReservoir *reservoir,
+                                                  ccl_global float *buffer)
+{
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
+
+  reservoir->total_weight = kernel_read_pass_float(buffer);
+  reservoir->path_flag = (uint32_t)kernel_read_pass_float(buffer + 1);
+  reservoir->radiance = kernel_read_pass_float3(buffer + 2);
+
+  return !reservoir->is_empty();
+}
+
 CCL_NAMESPACE_END
 
 #endif  // RESERVOIR_H_

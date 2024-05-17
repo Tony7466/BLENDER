@@ -94,6 +94,8 @@ const NodeEnum *Pass::get_type_enum()
     pass_type_enum.insert("shadow_catcher_sample_count", PASS_SHADOW_CATCHER_SAMPLE_COUNT);
     pass_type_enum.insert("shadow_catcher_matte", PASS_SHADOW_CATCHER_MATTE);
 
+    pass_type_enum.insert("restir_pt_previous_reservoir", PASS_RESTIR_PREVIOUS_RESERVOIR);
+    pass_type_enum.insert("restir_pt_reservoir", PASS_RESTIR_RESERVOIR);
     pass_type_enum.insert("restir_previous_reservoir", PASS_RESTIR_PREVIOUS_RESERVOIR);
     pass_type_enum.insert("restir_reservoir", PASS_RESTIR_RESERVOIR);
     pass_type_enum.insert("surface_data", PASS_SURFACE_DATA);
@@ -369,6 +371,12 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
       break;
     case PASS_RESTIR_RESERVOIR:
       pass_info.num_components = 6;
+      break;
+    case PASS_RESTIR_PT_PREVIOUS_RESERVOIR:
+      pass_info.num_components = 5;
+      break;
+    case PASS_RESTIR_PT_RESERVOIR:
+      pass_info.num_components = 5;
       break;
     case PASS_SURFACE_DATA:
       pass_info.num_components = 7;

@@ -44,6 +44,7 @@ class CPUKernels {
   IntegratorShadeFunction integrator_shade_dedicated_light;
   IntegratorShadeFunction integrator_megakernel;
   IntegratorShadeFunction integrator_evaluate_final_samples;
+  IntegratorShadeFunction integrator_evaluate_restir_pt;
 
   /* Shader evaluation. */
 

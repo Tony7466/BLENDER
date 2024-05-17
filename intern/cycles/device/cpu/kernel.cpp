@@ -34,6 +34,7 @@ CPUKernels::CPUKernels()
       REGISTER_KERNEL(integrator_shade_dedicated_light),
       REGISTER_KERNEL(integrator_megakernel),
       REGISTER_KERNEL(integrator_evaluate_final_samples),
+      REGISTER_KERNEL(integrator_evaluate_restir_pt),
       /* Shader evaluation. */
       REGISTER_KERNEL(shader_eval_displace),
       REGISTER_KERNEL(shader_eval_background),

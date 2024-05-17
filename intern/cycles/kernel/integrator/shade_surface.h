@@ -438,10 +438,11 @@ ccl_device
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
   const bool is_direct_light = light_is_direct_illumination(state);
-  const bool use_ris = is_direct_light && kernel_data.integrator.use_restir;
+  const bool use_restir = kernel_data.integrator.use_restir;
+  const bool use_restir_di = is_direct_light && use_restir;
 
   /* Sample position on a light. */
-  Reservoir reservoir(kg, use_ris);
+  Reservoir reservoir(kg, use_restir_di);
   const int max_samples = reservoir.max_samples;
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
@@ -452,7 +453,9 @@ ccl_device
     /* TODO(weizhen): does this result in correlated samples in ReSTIR PT? */
     const float3 rand_light = path_branched_rng_3D(
         kg, rng_state, i, reservoir.num_light_samples, PRNG_LIGHT);
-    const float rand_pick = path_branched_rng_1D(kg, rng_state, i, max_samples, PRNG_PICK);
+    const float rand_pick = use_restir ?
+                                path_branched_rng_1D(kg, rng_state, i, max_samples, PRNG_PICK) :
+                                0.0f;
 
     /* TODO(weizhen): use higher-level nodes in light tree, or use light tile as in the ReSTIR PT
      * paper. */
@@ -483,19 +486,24 @@ ccl_device
     }
 
     /* Evaluate light shader. */
-    const bool check_visibility = use_ris && kernel_data.integrator.restir_unbiased;
+    const bool check_visibility = use_restir && kernel_data.integrator.restir_unbiased;
     const float bsdf_pdf = radiance_eval(kg, state, sd, &ls, &radiance, check_visibility);
 
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_light_sample(ls, radiance, bsdf_pdf, rand_pick);
   }
 
-  if (use_ris) {
-    /* Write to reservoir and trace shadow ray later. */
+  if (reservoir.is_empty()) {
+    return;
+  }
+
+  if (use_restir_di) {
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
+    /* Write to reservoir and trace shadow ray later. */
     film_write_pass_reservoir(kg, state, &reservoir, render_buffer);
   }
-  else if (reservoir.finalize()) {
+  else {
+    reservoir.finalize();
     bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight);
 
     int mnee_vertex_count = 0;

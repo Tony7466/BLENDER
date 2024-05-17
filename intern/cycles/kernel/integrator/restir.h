@@ -351,6 +351,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
   return current->reservoir.finalize();
 }
 
+/* Evaluate ReSTIR DI final samples. */
 ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
                                                   IntegratorState state,
                                                   ccl_global float *ccl_restrict render_buffer)
@@ -364,7 +365,10 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
           kg, &reservoir, render_pixel_index, render_buffer, read_prev) ||
       !integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer))
   {
-    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION);
+    integrator_path_next(kg,
+                         state,
+                         DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION,
+                         DEVICE_KERNEL_INTEGRATOR_RESTIR_PT_EVALUATION);
     return;
   }
 
@@ -384,7 +388,40 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &current.sd, &current.reservoir.ls, &current.reservoir.radiance, 0);
 
-  integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION);
+  integrator_path_next(kg,
+                       state,
+                       DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION,
+                       DEVICE_KERNEL_INTEGRATOR_RESTIR_PT_EVALUATION);
+}
+
+/* Evaluate ReSTIR PT final samples. */
+/* TODO(weizhen): merge with restir DI. */
+ccl_device void integrator_evaluate_restir_pt(KernelGlobals kg,
+                                              IntegratorState state,
+                                              ccl_global float *ccl_restrict render_buffer)
+{
+  const bool read_prev = false;
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+
+  ccl_global float *reservoir_buffer = buffer +
+                                       (read_prev ?
+                                            kernel_data.film.pass_restir_pt_previous_reservoir :
+                                            kernel_data.film.pass_restir_pt_reservoir);
+
+  GlobalReservoir reservoir(kg);
+  if (restir_unpack_reservoir_pt(kg, &reservoir, reservoir_buffer)) {
+    const int sample = INTEGRATOR_STATE(state, path, sample);
+
+    reservoir.finalize();
+
+    /* Clamp indirect light. */
+    film_clamp_light(kg, &reservoir.radiance, 1);
+
+    /* Direct light shadow. */
+    film_write_combined_pass(kg, reservoir.path_flag, sample, reservoir.radiance, buffer);
+  }
+
+  integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_RESTIR_PT_EVALUATION);
 }
 
 ccl_device bool integrator_restir(KernelGlobals kg,

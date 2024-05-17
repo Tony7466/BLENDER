@@ -105,6 +105,8 @@ const char *device_kernel_as_string(DeviceKernel kernel)
       return "integrator_shadow_catcher_count_possible_splits";
     case DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION:
       return "integrator_evaluate_final_samples";
+    case DEVICE_KERNEL_INTEGRATOR_RESTIR_PT_EVALUATION:
+      return "integrator_evaluate_restir_pt";
 
     /* Shader evaluation. */
     case DEVICE_KERNEL_SHADER_EVAL_DISPLACE:
