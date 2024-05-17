@@ -34,6 +34,7 @@ void orthographic_sync(int tilemap_id,
       !all(equal(object_to_world_transposed[1], object_to_world.y.xyz)) ||
       !all(equal(object_to_world_transposed[2], object_to_world.z.xyz)))
   {
+    /* Set dirty as the light direction changed. */
     tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
   }
 
@@ -215,15 +216,21 @@ void cubeface_sync(int tilemap_id,
       break;
   }
 
+  mat4x4 prev_viewmat = tilemaps_buf[tilemap_id].viewmat;
+
+  if (!all(equal(prev_viewmat[0], viewmat[0])) || !all(equal(prev_viewmat[1], viewmat[1])) ||
+      !all(equal(prev_viewmat[2], viewmat[2])) || !all(equal(prev_viewmat[3], viewmat[3])))
+  {
+    /* Set dirty as the light transform changed. */
+    tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
+  }
+
   tilemaps_buf[tilemap_id].viewmat = viewmat;
 
   /* Update corners. */
   tilemaps_buf[tilemap_id].corners[0].xyz += jitter_offset;
   tilemaps_buf[tilemap_id].corners[1].xyz += jitter_offset;
   /* Other corners are deltas. They do not change after jitter. */
-
-  /* Set dirty. */
-  tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
 }
 
 void main()
