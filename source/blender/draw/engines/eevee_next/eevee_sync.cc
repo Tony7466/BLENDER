@@ -313,6 +313,12 @@ void SyncModule::sync_point_cloud(Object *ob,
   drawcall_add(material.reflection_probe_prepass);
   drawcall_add(material.reflection_probe_shading);
 
+  inst_.shadows.sync_object(ob,
+                            ob_handle,
+                            res_handle,
+                            material.is_alpha_blend_transparent,
+                            material.has_transparent_shadows);
+
   inst_.cryptomatte.sync_object(ob, res_handle);
   GPUMaterial *gpu_material =
       inst_.materials.material_array_get(ob, has_motion).gpu_materials[material_slot - 1];
@@ -322,12 +328,6 @@ void SyncModule::sync_point_cloud(Object *ob,
   if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
     inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
   }
-
-  inst_.shadows.sync_object(ob,
-                            ob_handle,
-                            res_handle,
-                            material.is_alpha_blend_transparent,
-                            material.has_transparent_shadows);
 }
 
 /** \} */
@@ -578,6 +578,12 @@ void SyncModule::sync_curves(Object *ob,
   drawcall_add(material.reflection_probe_prepass);
   drawcall_add(material.reflection_probe_shading);
 
+  inst_.shadows.sync_object(ob,
+                            ob_handle,
+                            res_handle,
+                            material.is_alpha_blend_transparent,
+                            material.has_transparent_shadows);
+
   inst_.cryptomatte.sync_object(ob, res_handle);
   GPUMaterial *gpu_material =
       inst_.materials.material_array_get(ob, has_motion).gpu_materials[mat_nr - 1];
@@ -587,12 +593,6 @@ void SyncModule::sync_curves(Object *ob,
   if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
     inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
   }
-
-  inst_.shadows.sync_object(ob,
-                            ob_handle,
-                            res_handle,
-                            material.is_alpha_blend_transparent,
-                            material.has_transparent_shadows);
 }
 
 /** \} */
