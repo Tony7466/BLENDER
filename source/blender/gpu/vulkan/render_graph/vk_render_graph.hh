@@ -167,9 +167,6 @@ class VKRenderGraph : public NonCopyable {
       }
       debug_.node_group_map[node_handle] = debug_.used_groups.size() - 1;
     }
-    if (node_handle == 2) {
-      node_links.debug_print(resources_);
-    }
   }
 
  public:
