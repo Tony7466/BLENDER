@@ -2,13 +2,25 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_hash.hh"
 #include "CLG_log.h"
 #include "GHOST_C-api.h"
 #include "GPU_context.hh"
 #include "GPU_init_exit.hh"
 #include "opengl/ipc.hh"
 #include <epoxy/gl.h>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string>
+
+namespace fs = std::filesystem;
+
+struct ShaderBinary {
+  GLint size;
+  GLuint format;
+  GLubyte data_start;
+};
 
 class SubprocessShader {
   GLuint vert = 0;
@@ -63,13 +75,8 @@ class SubprocessShader {
     glDeleteProgram(program);
   }
 
-  void load_binary(void *memory)
+  ShaderBinary *load_binary(void *memory)
   {
-    struct ShaderBinary {
-      GLint size;
-      GLuint format;
-      GLubyte data_start;
-    };
     ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(memory);
 
     if (success) {
@@ -80,11 +87,26 @@ class SubprocessShader {
       bin->size = 0;
       bin->format = 0;
     }
+
+    return bin;
   }
 };
 
+/* Check if the binary is valid and can be loaded by the driver. */
+bool validate_binary(void *binary)
+{
+  ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(binary);
+  GLuint program = glCreateProgram();
+  glProgramBinary(program, bin->format, &bin->data_start, bin->size);
+  GLint status;
+  glGetProgramiv(program, GL_COMPILE_STATUS, &status);
+  glDeleteProgram(program);
+  return status;
+}
+
 void GPU_compilation_subprocess_run(const char *subprocess_name)
 {
+  using namespace blender;
   CLG_init();
 
   ipc_sharedmemory_ shared_mem = {0};
@@ -121,6 +143,9 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPUContext *gpu_context = GPU_context_create(nullptr, ghost_context);
   GPU_init();
 
+  fs::path cache_dir = fs::temp_directory_path() / "BLENDER_SHADER_CACHE";
+  fs::create_directory(cache_dir);
+
   while (true) {
     ipc_sem_decrement(&start_semaphore);
 
@@ -133,8 +158,35 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     const char *vert_src = shaders;
     const char *frag_src = shaders + strlen(shaders) + 1;
 
-    SubprocessShader shader(vert_src, frag_src);
-    shader.load_binary(shared_mem.data);
+    DefaultHash<StringRefNull> hasher;
+    uint64_t vert_hash = hasher(vert_src);
+    uint64_t frag_hash = hasher(frag_src);
+    std::string hash_str = std::to_string(vert_hash) + "_" + std::to_string(frag_hash);
+    fs::path cache_path = cache_dir / hash_str;
+
+    bool cache_hit = false;
+
+    /* TODO: This should lock the files. */
+    if (fs::exists(cache_path)) {
+      /* Read cached binary. */
+      std::ifstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
+      std::streamsize size = file.tellg();
+      file.seekg(0, std::ios::beg);
+      file.read(reinterpret_cast<char *>(shared_mem.data), size);
+      /* Ensure it's valid. */
+      if (validate_binary(shared_mem.data)) {
+        cache_hit = true;
+      }
+    }
+
+    if (!cache_hit) {
+      SubprocessShader shader(vert_src, frag_src);
+      ShaderBinary *binary = shader.load_binary(shared_mem.data);
+
+      std::ofstream file(cache_path, std::ios::binary | std::ios::out);
+      file.write(reinterpret_cast<char *>(shared_mem.data),
+                 binary->size + offsetof(ShaderBinary, data_start));
+    }
 
     ipc_sem_increment(&end_semaphore);
   }
