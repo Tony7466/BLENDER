@@ -99,12 +99,12 @@ struct ShadowTileMap : public ShadowTileMapData {
 
   void set_dirty()
   {
-    grid_shift = int2(SHADOW_TILEMAP_RES);
+    is_dirty = true;
   }
 
   void set_updated()
   {
-    grid_shift = int2(0);
+    is_dirty = false;
   }
 };
 

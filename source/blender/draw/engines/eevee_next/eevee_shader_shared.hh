@@ -1311,8 +1311,9 @@ struct ShadowTileMapData {
   eLightType light_type;
   /** True if the tilemap is part of area light shadow and is one of the side projections. */
   bool32_t is_area_side;
+  /** Entire tilemap (all tiles) needs to be tagged as dirty. */
+  bool32_t is_dirty;
 
-  float _pad0;
   float _pad1;
   /** Near and far clip distances for punctual. */
   float clip_near;
@@ -1359,6 +1360,10 @@ struct ShadowTileMapClip {
   int clip_far;
   /* Transform the shadow is rendered with. Used to detect updates on GPU. */
   Transform object_to_world;
+  /* Integer offset of the center of the 16x16 tiles from the origin of the tile space. */
+  int2 grid_offset;
+  int _pad0;
+  int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapClip, 16)
 

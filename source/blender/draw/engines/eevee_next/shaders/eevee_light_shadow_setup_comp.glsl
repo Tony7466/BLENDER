@@ -22,26 +22,27 @@ void orthographic_sync(int tilemap_id,
                        int clipmap_level,
                        eShadowProjectionType projection_type)
 {
-  if (all(equal(tilemaps_buf[tilemap_id].grid_shift, int2(0)))) {
-    /* Only replace shift if it is not already dirty. */
-    tilemaps_buf[tilemap_id].grid_shift = tilemaps_buf[tilemap_id].grid_offset - origin_offset;
-  }
-  tilemaps_buf[tilemap_id].grid_offset = origin_offset;
-  drw_print(origin_offset);
-  drw_print(tilemaps_buf[tilemap_id].grid_shift);
-
   /* Do not check translation. */
   object_to_world.x.w = 0.0;
   object_to_world.y.w = 0.0;
   object_to_world.z.w = 0.0;
 
   int clip_index = tilemaps_buf[tilemap_id].clip_data_index;
-  if (!transform_equal(tilemaps_clip_buf[clip_index].object_to_world, object_to_world)) {
+  if (tilemaps_buf[tilemap_id].is_dirty ||
+      !transform_equal(tilemaps_clip_buf[clip_index].object_to_world, object_to_world))
+  {
     /* Set dirty as the light direction changed. */
     tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
     tilemaps_clip_buf[clip_index].object_to_world = object_to_world;
-    drw_print("update");
   }
+  else {
+    /* Same light direction but camera might have moved. Shift tilemap grid.  */
+    tilemaps_buf[tilemap_id].grid_shift = tilemaps_clip_buf[clip_index].grid_offset -
+                                          origin_offset;
+    drw_print(tilemaps_buf[tilemap_id].grid_shift);
+  }
+  tilemaps_buf[tilemap_id].grid_offset = origin_offset; /* TODO(fclem): Remove. */
+  tilemaps_clip_buf[clip_index].grid_offset = origin_offset;
 
   float level_size = shadow_directional_coverage_get(clipmap_level);
   float half_size = level_size / 2.0;
@@ -198,7 +199,9 @@ void cubeface_sync(int tilemap_id,
   object_to_world.z.w += jitter_offset.z;
 
   int clip_index = tilemaps_buf[tilemap_id].clip_data_index;
-  if (!transform_equal(tilemaps_clip_buf[clip_index].object_to_world, object_to_world)) {
+  if (tilemaps_buf[tilemap_id].is_dirty ||
+      !transform_equal(tilemaps_clip_buf[clip_index].object_to_world, object_to_world))
+  {
     /* Set dirty as the light direction changed. */
     tilemaps_buf[tilemap_id].grid_shift = int2(SHADOW_TILEMAP_RES);
     tilemaps_clip_buf[clip_index].object_to_world = object_to_world;
