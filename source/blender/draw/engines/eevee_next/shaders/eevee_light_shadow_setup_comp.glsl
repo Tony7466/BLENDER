@@ -250,7 +250,7 @@ void main()
     /* Distant lights. */
     vec3 position_on_light = vec3(0.0);
 
-    if (light.shadow_jitter) {
+    if (light.shadow_jitter && uniform_buf.shadow.use_jitter) {
       /* TODO(fclem): Remove atan here. We only need the cosine of the angle. */
       float shape_angle = atan_fast(light_sun_data_get(light).shape_radius);
 
@@ -271,7 +271,7 @@ void main()
     /* Local lights. */
     vec3 position_on_light = vec3(0.0);
 
-    if (light.shadow_jitter) {
+    if (light.shadow_jitter && uniform_buf.shadow.use_jitter) {
       vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_I);
 
       if (is_area_light(light.type)) {

@@ -579,9 +579,9 @@ void ShadowModule::init()
     }
   }
 
-  jittered_transparency_ = !inst_.is_viewport() ||
-                           scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT;
-
+  data_.use_jitter = !inst_.is_viewport() ||
+                     (!inst_.sampling.interactive_mode() &&
+                      (scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT));
   data_.ray_count = clamp_i(scene.eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(scene.eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
 
@@ -740,7 +740,7 @@ void ShadowModule::sync_object(const Object *ob,
   ShadowObject &shadow_ob = objects_.lookup_or_add_default(handle.object_key);
   shadow_ob.used = true;
   const bool is_initialized = shadow_ob.resource_handle.raw != 0;
-  const bool has_jittered_transparency = has_transparent_shadows && jittered_transparency_;
+  const bool has_jittered_transparency = has_transparent_shadows && data_.use_jitter;
   if (is_shadow_caster && (handle.recalc || !is_initialized || has_jittered_transparency)) {
     if (handle.recalc && is_initialized) {
       past_casters_updated_.append(shadow_ob.resource_handle.raw);

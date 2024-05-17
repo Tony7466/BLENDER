@@ -1554,8 +1554,8 @@ struct ShadowSceneData {
   int step_count;
   /* Bounding radius for a film pixel at 1 unit from the camera. */
   float film_pixel_radius;
-
-  float _pad0;
+  /* Global switch for jittered shadows. */
+  bool32_t use_jitter;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
 
