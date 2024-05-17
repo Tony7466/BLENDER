@@ -1371,6 +1371,11 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define FN_NODE_SEPARATE_MATRIX 1242
 #define FN_NODE_INPUT_ROTATION 1243
 #define FN_NODE_AXES_TO_ROTATION 1244
+#define FN_NODE_MATRIX_ADD 1245
+#define FN_NODE_MATRIX_SUBTRACT 1246
+#define FN_NODE_MATRIX_NORMALIZE 1247
+#define FN_NODE_MATRIX_DETERMINANT 1248
+#define FN_NODE_MATRIX_ADJOINT 1249
 
 /** \} */
 
