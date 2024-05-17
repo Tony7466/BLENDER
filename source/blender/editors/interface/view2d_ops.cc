@@ -1203,18 +1203,6 @@ static int view_zoomdrag_invoke(bContext *C, wmOperator *op, const wmEvent *even
     RNA_float_set(op->ptr, "deltax", dx);
     RNA_float_set(op->ptr, "deltay", dy);
 
-    if (window->grabcursor == 0) {
-      if (v2d->keepofs & V2D_LOCKOFS_X) {
-        WM_cursor_modal_set(window, WM_CURSOR_NS_SCROLL);
-      }
-      else if (v2d->keepofs & V2D_LOCKOFS_Y) {
-        WM_cursor_modal_set(window, WM_CURSOR_EW_SCROLL);
-      }
-      else {
-        WM_cursor_modal_set(window, WM_CURSOR_NSEW_SCROLL);
-      }
-    }
-
     view_zoomdrag_apply(C, op);
     view_zoomdrag_exit(C, op);
     return OPERATOR_FINISHED;
@@ -1228,6 +1216,18 @@ static int view_zoomdrag_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
   /* for modal exit test */
   vzd->invoke_event = event->type;
+
+  if (window->grabcursor == 0) {
+    if (v2d->keepofs & V2D_LOCKOFS_X) {
+      WM_cursor_modal_set(window, WM_CURSOR_NS_SCROLL);
+    }
+    else if (v2d->keepofs & V2D_LOCKOFS_Y) {
+      WM_cursor_modal_set(window, WM_CURSOR_EW_SCROLL);
+    }
+    else {
+      WM_cursor_modal_set(window, WM_CURSOR_NSEW_SCROLL);
+    }
+  }
 
   /* add temp handler */
   WM_event_add_modal_handler(C, op);
