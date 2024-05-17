@@ -915,6 +915,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
                                        bAction *action,
                                        PointerRNA *ptr,
                                        PropertyRNA *prop,
+                                       const std::optional<std::string> channel_group,
                                        const std::string &rna_path,
                                        const float frame,
                                        const Span<float> values,
@@ -926,7 +927,10 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   BLI_assert(action != nullptr);
 
   std::string group;
-  if (ptr->type == &RNA_PoseBone) {
+  if (channel_group.has_value()) {
+    group = *channel_group;
+  }
+  else if (ptr->type == &RNA_PoseBone) {
     bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
     group = pose_channel->name;
   }
@@ -961,8 +965,9 @@ CombinedKeyingResult insert_key_action(Main *bmain,
 
 CombinedKeyingResult insert_key_rna(Main *bmain,
                                     ID &id,
+                                    const std::optional<std::string> channel_group,
                                     const blender::Span<RNAPath> rna_paths,
-                                    const float scene_frame,
+                                    const std::optional<float> scene_frame,
                                     const AnimationEvalContext &anim_eval_context,
                                     const eBezTriple_KeyframeType key_type,
                                     const eInsertKeyFlags insert_key_flags)
@@ -971,6 +976,8 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
   PointerRNA rna_pointer = RNA_id_pointer_create(&id);
   bAction *action = id_action_ensure(bmain, &id);
   CombinedKeyingResult combined_result;
+
+  const float frame = scene_frame.value_or(anim_eval_context.eval_time);
 
   if (action == nullptr) {
     return combined_result;
@@ -988,7 +995,7 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
         &nla_cache, &id_pointer, adt, &anim_eval_context);
   }
 
-  const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
+  const float nla_frame = BKE_nla_tweakedit_remap(adt, frame, NLATIME_CONVERT_UNMAP);
   const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
   for (const RNAPath &rna_path : rna_paths) {
@@ -1016,6 +1023,7 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
                                                           action,
                                                           &rna_pointer,
                                                           prop,
+                                                          channel_group,
                                                           rna_path_id_to_prop->c_str(),
                                                           nla_frame,
                                                           rna_values.as_span(),

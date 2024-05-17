@@ -145,6 +145,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<RNAPath> rn
     const CombinedKeyingResult result = insert_key_rna(
         bmain,
         *ptr.owner_id,
+        std::nullopt,
         rna_paths,
         scene_frame,
         anim_eval_context,
@@ -248,6 +249,7 @@ void autokeyframe_pose_channel(bContext *C,
     const CombinedKeyingResult result = insert_key_rna(
         bmain,
         *ptr.owner_id,
+        std::nullopt,
         rna_paths,
         scene_frame,
         anim_eval_context,

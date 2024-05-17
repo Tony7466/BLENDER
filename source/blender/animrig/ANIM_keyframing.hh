@@ -263,8 +263,9 @@ CombinedKeyingResult insert_key_action(Main *bmain,
  */
 CombinedKeyingResult insert_key_rna(Main *bmain,
                                     ID &id,
+                                    std::optional<std::string> channel_group,
                                     const blender::Span<RNAPath> rna_paths,
-                                    float scene_frame,
+                                    std::optional<float> scene_frame,
                                     const AnimationEvalContext &anim_eval_context,
                                     eBezTriple_KeyframeType key_type,
                                     eInsertKeyFlags insert_key_flags);

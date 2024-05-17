@@ -404,6 +404,7 @@ static int insert_key(bContext *C, wmOperator *op)
 
     combined_result.merge(animrig::insert_key_rna(bmain,
                                                   *selected_id,
+                                                  std::nullopt,
                                                   rna_paths.as_span(),
                                                   scene_frame,
                                                   anim_eval_context,
