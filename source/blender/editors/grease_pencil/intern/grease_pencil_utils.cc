@@ -707,6 +707,8 @@ IndexMask retrieve_editable_strokes(Object &object,
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
+        /* The stroke is editable if the material is editable. If the material is not editable,
+         * then the stroke is only editable if the layer disables the locked material option. */
         return editable_material_indices.contains(material_index) || layer.use_locked_material();
       });
 }
@@ -782,6 +784,8 @@ IndexMask retrieve_editable_points(Object &object,
   return IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
         const int material_index = materials[point_i];
+        /* The stroke is editable if the material is editable. If the material is not editable,
+         * then the stroke is only editable if the layer disables the locked material option. */
         return editable_material_indices.contains(material_index) || layer.use_locked_material();
       });
 }
