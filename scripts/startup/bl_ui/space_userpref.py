@@ -2137,7 +2137,7 @@ class USERPREF_PT_extensions_repos(Panel):
             split.prop(active_repo, "remote_url", text="", icon='URL', placeholder="Repository URL")
             split = row.split()
 
-            if not active_repo.remote_url.startswith("https://extensions.blender.org/"):
+            if active_repo.use_access_token:
                 access_token_icon = 'LOCKED' if active_repo.access_token else 'UNLOCKED'
                 row = layout.row()
                 split = row.split(factor=0.936)
@@ -2163,6 +2163,7 @@ class USERPREF_PT_extensions_repos(Panel):
                 # valid UTF-8 which will raise a Python exception when passed in as text.
                 row.prop(active_repo, "directory", text="")
 
+            layout_panel.prop(active_repo, "use_access_token")
             layout_panel.prop(active_repo, "use_cache")
             layout_panel.separator()
 

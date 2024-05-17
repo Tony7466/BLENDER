@@ -639,7 +639,7 @@ typedef struct bUserExtensionRepo {
   /**
    * Secret access token for remote repositories.
    */
-  char access_token[1024];
+  char *access_token;
 
   /**
    * The "local" directory where extensions are stored.
@@ -659,6 +659,7 @@ typedef enum eUserExtensionRepo_Flag {
   USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
   USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL = 1 << 3,
   USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP = 1 << 4,
+  USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN = 1 << 5,
 } eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
