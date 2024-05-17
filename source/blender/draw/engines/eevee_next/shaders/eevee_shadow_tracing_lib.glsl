@@ -365,6 +365,7 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
     }
   }
   else {
+    lP -= light_local_data_get(light).shadow_position;
     /* Simplification of `exp2(shadow_punctual_level_fractional)`. */
     scale = shadow_punctual_pixel_ratio(light,
                                         lP,
