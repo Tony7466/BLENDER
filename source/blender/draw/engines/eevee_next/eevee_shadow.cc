@@ -571,17 +571,21 @@ void ShadowModule::init()
   }
 
   ::Scene &scene = *inst_.scene;
-  bool enabled = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
-  if (assign_if_different(enabled_, enabled)) {
+
+  bool update_lights = false;
+  bool enable_shadow = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
+  bool use_jitter = enable_shadow && (!inst_.is_viewport() ||
+                                      (!inst_.sampling.interactive_mode() &&
+                                       (scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT)));
+  update_lights |= assign_if_different(enabled_, enable_shadow);
+  update_lights |= assign_if_different(data_.use_jitter, bool32_t(use_jitter));
+  if (update_lights) {
     /* Force light reset. */
     for (Light &light : inst_.lights.light_map_.values()) {
       light.initialized = false;
     }
   }
 
-  data_.use_jitter = !inst_.is_viewport() ||
-                     (!inst_.sampling.interactive_mode() &&
-                      (scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT));
   data_.ray_count = clamp_i(scene.eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(scene.eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
 
