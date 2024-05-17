@@ -190,7 +190,7 @@ bool USDPointsReader::is_animated() const
 
   pxr::UsdGeomPrimvarsAPI pv_api(points_prim_);
   std::vector<pxr::UsdGeomPrimvar> primvars = pv_api.GetPrimvarsWithValues();
-  for (const pxr::UsdGeomPrimvar& pv : primvars) {
+  for (const pxr::UsdGeomPrimvar &pv : primvars) {
     is_animated |= pv.ValueMightBeTimeVarying();
   }
 
