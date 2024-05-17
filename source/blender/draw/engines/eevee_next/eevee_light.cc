@@ -251,7 +251,7 @@ float Light::shape_radiance_get()
     case LIGHT_SPOT_SPHERE:
     case LIGHT_SPOT_DISK: {
       /* Sphere area. */
-      float area = float(4.0f * M_PI) * this->local.shape_radius;
+      float area = float(4.0f * M_PI) * square(this->local.shape_radius);
       /* Convert radiant flux to radiance. */
       return 1.0f / (area * float(M_PI));
     }
