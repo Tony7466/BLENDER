@@ -267,14 +267,20 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
     DRW_shgroup_buffer_texture(shgrp, "hairLen", curves_cache->proc_length_buf);
   }
 
+  int curve_data_render_uv = 0;
+  int point_data_render_uv = 0;
+  if (CustomData_has_layer(&curves_id.geometry.curve_data, CD_PROP_FLOAT2)) {
+    curve_data_render_uv = CustomData_get_render_layer(&curves_id.geometry.curve_data,
+                                                       CD_PROP_FLOAT2);
+  }
+  if (CustomData_has_layer(&curves_id.geometry.point_data, CD_PROP_FLOAT2)) {
+    point_data_render_uv = CustomData_get_render_layer(&curves_id.geometry.point_data,
+                                                       CD_PROP_FLOAT2);
+  }
+
   const DRW_Attributes &attrs = curves_cache->final.attr_used;
   for (int i = 0; i < attrs.num_requests; i++) {
     const DRW_AttributeRequest &request = attrs.requests[i];
-    const int render_layer = CustomData_get_render_layer(request.domain == bke::AttrDomain::Curve ?
-                                                             &curves_id.geometry.curve_data :
-                                                             &curves_id.geometry.point_data,
-                                                         request.cd_type);
-
     char sampler_name[32];
     drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
@@ -283,7 +289,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
         continue;
       }
       DRW_shgroup_buffer_texture(shgrp, sampler_name, curves_cache->proc_attributes_buf[i]);
-      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+      if (request.cd_type == CD_PROP_FLOAT2 && request.layer_index == curve_data_render_uv) {
         DRW_shgroup_buffer_texture(shgrp, "a", curves_cache->proc_attributes_buf[i]);
       }
     }
@@ -292,7 +298,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
         continue;
       }
       DRW_shgroup_buffer_texture(shgrp, sampler_name, curves_cache->final.attributes_buf[i]);
-      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+      if (request.cd_type == CD_PROP_FLOAT2 && request.layer_index == point_data_render_uv) {
         DRW_shgroup_buffer_texture(shgrp, "a", curves_cache->final.attributes_buf[i]);
       }
     }
@@ -504,14 +510,20 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
     sub_ps.bind_texture("hairLen", curves_cache->proc_length_buf);
   }
 
+  int curve_data_render_uv = 0;
+  int point_data_render_uv = 0;
+  if (CustomData_has_layer(&curves_id.geometry.curve_data, CD_PROP_FLOAT2)) {
+    curve_data_render_uv = CustomData_get_render_layer(&curves_id.geometry.curve_data,
+                                                       CD_PROP_FLOAT2);
+  }
+  if (CustomData_has_layer(&curves_id.geometry.point_data, CD_PROP_FLOAT2)) {
+    point_data_render_uv = CustomData_get_render_layer(&curves_id.geometry.point_data,
+                                                       CD_PROP_FLOAT2);
+  }
+
   const DRW_Attributes &attrs = curves_cache->final.attr_used;
   for (int i = 0; i < attrs.num_requests; i++) {
     const DRW_AttributeRequest &request = attrs.requests[i];
-    const int render_layer = CustomData_get_render_layer(request.domain == bke::AttrDomain::Curve ?
-                                                             &curves_id.geometry.curve_data :
-                                                             &curves_id.geometry.point_data,
-                                                         request.cd_type);
-
     char sampler_name[32];
     drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
@@ -520,7 +532,7 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
         continue;
       }
       sub_ps.bind_texture(sampler_name, curves_cache->proc_attributes_buf[i]);
-      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+      if (request.cd_type == CD_PROP_FLOAT2 && request.layer_index == curve_data_render_uv) {
         sub_ps.bind_texture("a", curves_cache->proc_attributes_buf[i]);
       }
     }
@@ -529,7 +541,7 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
         continue;
       }
       sub_ps.bind_texture(sampler_name, curves_cache->final.attributes_buf[i]);
-      if (request.layer_index == render_layer && request.cd_type == CD_PROP_FLOAT2) {
+      if (request.cd_type == CD_PROP_FLOAT2 && request.layer_index == point_data_render_uv) {
         sub_ps.bind_texture("a", curves_cache->final.attributes_buf[i]);
       }
     }
