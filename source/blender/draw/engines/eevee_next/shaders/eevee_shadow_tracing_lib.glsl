@@ -413,7 +413,6 @@ float shadow_eval(LightData light,
                   float thickness, /* Only used if is_transmission is true. */
                   vec3 P,
                   vec3 Ng,
-                  vec3 L,
                   int ray_count,
                   int ray_step_count)
 {
@@ -431,6 +430,12 @@ float shadow_eval(LightData light,
   vec3 random_shadow_3d = vec3(0.5);
   vec2 random_pcf_2d = vec2(0.0);
 #endif
+
+  /* Direction towards the shadow center (punctual) or direction (direction).
+   * Not the same as the light vector if the shadow is jittered. */
+  vec3 L = is_directional ? light_z_axis(light) :
+                            normalize(light_position_get(light) +
+                                      light_local_data_get(light).shadow_position - P);
 
   bool is_facing_light = (dot(Ng, L) > 0.0);
   /* Still bias the transmission surfaces towards the light if they are facing away. */
