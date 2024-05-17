@@ -6139,6 +6139,15 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       "GPU Backend",
       "GPU backend to use (requires restarting Blender for changes to take effect)");
 
+  prop = RNA_def_property(srna, "max_shader_compilation_subprocesses", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, INT16_MAX);
+  RNA_def_property_ui_text(prop,
+                           "Max Shader Compilation Subprocesses",
+                           "Max number of parallel shader compilation subprocesses, "
+                           "clamped at the max threads supported by the CPU "
+                           "(0 disables subprocess shader compilation) "
+                           "(requires restarting Blender for changes to take effect)");
+
   /* Audio */
 
   prop = RNA_def_property(srna, "audio_mixing_buffer", PROP_ENUM, PROP_NONE);

@@ -52,6 +52,7 @@ struct GPUCapabilities {
   bool stencil_export_support = false;
 
   bool use_parallel_compilation = false;
+  int max_parallel_compilations = 0;
 
   /* OpenGL related workarounds. */
   bool mip_render_workaround = false;

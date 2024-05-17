@@ -71,8 +71,10 @@ ShaderModule::ShaderModule()
 #endif
   }
 
-  start_time = BLI_time_now_seconds();
-  compilation_handle_ = GPU_shader_batch_create_from_infos(infos);
+  if (GPU_use_parallel_compilation()) {
+    start_time = BLI_time_now_seconds();
+    compilation_handle_ = GPU_shader_batch_create_from_infos(infos);
+  }
 }
 
 ShaderModule::~ShaderModule()
@@ -328,8 +330,13 @@ GPUShader *ShaderModule::static_shader_get(eShaderType shader_type)
   BLI_assert(is_ready());
   if (shaders_[shader_type] == nullptr) {
     const char *shader_name = static_shader_create_info_name_get(shader_type);
-    fprintf(stderr, "EEVEE: error: Could not compile static shader \"%s\"\n", shader_name);
-    BLI_assert(0);
+    if (GPU_use_parallel_compilation()) {
+      fprintf(stderr, "EEVEE: error: Could not compile static shader \"%s\"\n", shader_name);
+      BLI_assert(0);
+    }
+    else {
+      shaders_[shader_type] = GPU_shader_create_from_info_name(shader_name);
+    }
   }
   return shaders_[shader_type];
 }

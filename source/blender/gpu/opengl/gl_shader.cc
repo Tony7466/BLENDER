@@ -16,6 +16,7 @@
 
 #include "GPU_capabilities.hh"
 #include "GPU_platform.hh"
+#include "gpu_capabilities_private.hh"
 #include "gpu_shader_dependency_private.hh"
 
 #include "gl_debug.hh"
@@ -1719,7 +1720,7 @@ GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert, const 
       break;
     }
   }
-  if (!result && workers_.size() < 16) {
+  if (!result && workers_.size() < GCaps.max_parallel_compilations) {
     result = new GLCompilerWorker(1024 * 1024 * 2); /* 2mB */
     workers_.append(result);
   }
@@ -1739,6 +1740,8 @@ void GLShaderCompiler::print_workers()
 
 BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
 {
+  BLI_assert(GPU_use_parallel_compilation());
+
   std::scoped_lock lock(mutex_);
   BatchHandle handle = next_batch_handle++;
   batches.add(handle, {});
@@ -1848,6 +1851,8 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 
 void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> specializations)
 {
+  BLI_assert(GPU_use_parallel_compilation());
+
   double start_time = BLI_time_now_seconds();
 
   struct SpecializationWork {

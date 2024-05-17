@@ -499,7 +499,7 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
 
 void DeferredLayer::begin_sync()
 {
-  if (true) {
+  if (GPU_use_parallel_compilation()) {
     /* Pre-compile specialization constants in parallel. */
     Vector<ShaderSpecialization> specializations;
     for (int i = 0; i < 3; i++) {
