@@ -33,11 +33,10 @@ struct IDProperty;
  * This type is intended to be convenient to construct with initializer lists:
  *
  * ```
- * RNAPath non_array_path =                {"dof.focus_distance"};
- * RNAPath array_path_no_key =             {"location"};
- * RNAPath array_path_with_index =         {"location", {}, 2};
- * RNAPath array_path_with_key =           {"vertex_groups", "Arm"};
- * RNAPath array_path_with_key_and_index = {"vertex_groups", "Arm", 5};
+ * RNAPath path_only =               {"dof.focus_distance"};
+ * RNAPath path_with_index =         {"location", {}, 2};
+ * RNAPath path_with_key =           {"modifiers", "SimpleDeform"};
+ * RNAPath path_with_key_and_index = {"modifiers", "SimpleDeform", 5};
  * ```
  *
  * NOTE: some older parts of Blender's code base use negative array indices as a
@@ -48,7 +47,7 @@ struct IDProperty;
  * so:
  *
  * ```
- * some_older_function(rna_path.index().value_or(-1));
+ * some_older_function(rna_path.index.value_or(-1));
  * ```
  */
 struct RNAPath {
