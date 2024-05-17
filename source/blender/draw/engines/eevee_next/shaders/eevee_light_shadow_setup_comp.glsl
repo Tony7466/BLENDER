@@ -254,8 +254,11 @@ void main()
       /* TODO(fclem): Remove atan here. We only need the cosine of the angle. */
       float shape_angle = atan_fast(light_sun_data_get(light).shape_radius);
 
-      vec2 rand = sampling_rng_2D_get(SAMPLING_SHADOW_I);
+      /* Reverse to that first sample is straight up. */
+      vec2 rand = 1.0 - sampling_rng_2D_get(SAMPLING_SHADOW_I);
       vec3 shadow_direction = sample_uniform_cone(rand, cos(shape_angle));
+
+      shadow_direction = transform_direction(light.object_to_world, shadow_direction);
 
       light.object_to_world = transform_from_matrix(mat4x4(from_up_axis(shadow_direction)));
     }
