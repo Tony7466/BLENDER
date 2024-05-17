@@ -99,6 +99,9 @@ ccl_device void integrator_megakernel(KernelGlobals kg,
         case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
           integrator_intersect_dedicated_light(kg, state);
           break;
+        case DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION:
+          integrator_evaluate_final_samples(kg, state, render_buffer);
+          break;
         default:
           kernel_assert(0);
           break;

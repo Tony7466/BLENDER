@@ -9,7 +9,6 @@
 
 #include "kernel/film/write.h"
 #include "kernel/integrator/path_state.h"
-#include "kernel/integrator/state_flow.h"
 
 #include "integrator/pass_accessor_cpu.h"
 #include "integrator/path_trace_display.h"
@@ -203,6 +202,9 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   IntegratorStateCPU *state = &integrator_states[0];
   IntegratorStateCPU *shadow_catcher_state = nullptr;
 
+  state->setup_restir = false;
+  state->final_evaluation = false;
+
   if (device_scene_->data.integrator.has_shadow_catcher) {
     shadow_catcher_state = &integrator_states[1];
     path_state_init_queues(shadow_catcher_state);
@@ -244,7 +246,7 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   }
 }
 
-void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
+void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kernel_globals,
                                                           const KernelWorkTile &work_tile,
                                                           const int iteration)
 {
@@ -254,6 +256,8 @@ void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
 
   /* Ping-pong between two reservoirs. */
   state->read_previous_reservoir = iteration % 2;
+  state->setup_restir = true;
+  state->final_evaluation = false;
 
   KernelWorkTile sample_work_tile = work_tile;
   float *render_buffer = buffers_->buffer.data();
@@ -262,22 +266,16 @@ void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
     return;
   }
 
-  if (!kernels_.integrator_init_from_camera(kg, state, &sample_work_tile, render_buffer)) {
+  if (!kernels_.integrator_init_from_camera(
+          kernel_globals, state, &sample_work_tile, render_buffer))
+  {
     return;
   }
 
-  /* TODO(weizhen): handle the state flow properly during initialization. */
-  if (kernel_data.cam.is_inside_volume) {
-    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);
-  }
-  else {
-    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
-  }
-
-  kernels_.integrator_restir(kg, state, &sample_work_tile, render_buffer);
+  kernels_.integrator_restir(kernel_globals, state, &sample_work_tile, render_buffer);
 }
 
-void PathTraceWorkCPU::render_samples_evaluate_final(KernelGlobalsCPU *kg,
+void PathTraceWorkCPU::render_samples_evaluate_final(KernelGlobalsCPU *kernel_globals,
                                                      const KernelWorkTile &work_tile,
                                                      const int iteration)
 {
@@ -287,6 +285,8 @@ void PathTraceWorkCPU::render_samples_evaluate_final(KernelGlobalsCPU *kg,
 
   /* Ping-pong between two reservoirs. */
   state->read_previous_reservoir = iteration % 2;
+  state->setup_restir = false;
+  state->final_evaluation = true;
 
   KernelWorkTile sample_work_tile = work_tile;
   float *render_buffer = buffers_->buffer.data();
@@ -295,20 +295,13 @@ void PathTraceWorkCPU::render_samples_evaluate_final(KernelGlobalsCPU *kg,
     return;
   }
 
-  if (!kernels_.integrator_init_from_camera(kg, state, &sample_work_tile, render_buffer)) {
+  if (!kernels_.integrator_init_from_camera(
+          kernel_globals, state, &sample_work_tile, render_buffer))
+  {
     return;
   }
 
-  /* TODO(weizhen): handle the state flow properly during initialization. */
-  if (kernel_data.cam.is_inside_volume) {
-    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);
-  }
-  else {
-    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
-  }
-
-  kernels_.integrator_evaluate_final_samples(kg, state, render_buffer);
-  kernels_.integrator_megakernel(kg, state, render_buffer);
+  kernels_.integrator_megakernel(kernel_globals, state, render_buffer);
 }
 
 void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,

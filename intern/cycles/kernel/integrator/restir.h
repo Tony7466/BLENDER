@@ -364,7 +364,7 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
           kg, &reservoir, render_pixel_index, render_buffer, read_prev) ||
       !integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer))
   {
-    film_clear_pass_reservoir(kg, state, render_buffer);
+    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION);
     return;
   }
 
@@ -384,7 +384,7 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &current.sd, &current.reservoir.ls, &current.reservoir.radiance, 0);
 
-  film_clear_pass_reservoir(kg, state, render_buffer);
+  integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_FINAL_EVALUATION);
 }
 
 ccl_device bool integrator_restir(KernelGlobals kg,

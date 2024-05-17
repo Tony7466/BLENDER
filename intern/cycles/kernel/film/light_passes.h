@@ -620,7 +620,9 @@ ccl_device_inline void film_clear_pass_reservoir(KernelGlobals kg,
                                                  ConstIntegratorState state,
                                                  ccl_global float *ccl_restrict render_buffer)
 {
-  kernel_assert(kernel_data.integrator.use_restir);
+  if (!kernel_data.integrator.use_restir) {
+    return;
+  }
 
   ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
