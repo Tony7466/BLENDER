@@ -157,7 +157,7 @@ enum eShaderType {
 class ShaderModule {
  private:
   std::array<GPUShader *, MAX_SHADER_TYPE> shaders_;
-  BatchHandle compilation_handle_;
+  BatchHandle compilation_handle_ = 0;
   double start_time = 0;
 
   /** Shared shader module across all engine instances. */
