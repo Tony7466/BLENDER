@@ -1439,7 +1439,7 @@ static size_t animfilter_action(bAnimContext *ac,
    * and we're getting stuff for editing...
    */
   if ((filter_mode & ANIMFILTER_FOREDIT) &&
-      (ID_IS_LINKED(&action) || ID_IS_OVERRIDE_LIBRARY(&action)))
+      (!ID_IS_EDITABLE(&action) || ID_IS_OVERRIDE_LIBRARY(&action)))
   {
     return 0;
   }
@@ -3036,10 +3036,17 @@ static size_t animdata_filter_dopesheet_ob(
     }
 
     /* grease pencil */
-    if ((ob->type == OB_GPENCIL_LEGACY) && (ob->data) && !(ads->filterflag & ADS_FILTER_NOGPENCIL))
+    if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) &&
+        !(ads->filterflag & ADS_FILTER_NOGPENCIL))
     {
-      tmp_items += animdata_filter_ds_gpencil(
-          ac, &tmp_data, ads, static_cast<bGPdata *>(ob->data), filter_mode);
+      if ((ob->type == OB_GREASE_PENCIL) && U.experimental.use_grease_pencil_version3) {
+        tmp_items += animdata_filter_grease_pencil_data(
+            &tmp_data, ads, static_cast<GreasePencil *>(ob->data), filter_mode);
+      }
+      else {
+        tmp_items += animdata_filter_ds_gpencil(
+            ac, &tmp_data, ads, static_cast<bGPdata *>(ob->data), filter_mode);
+      }
     }
   }
   END_ANIMFILTER_SUBCHANNELS;

@@ -20,6 +20,7 @@
 #include "BLI_color_mix.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -412,7 +413,7 @@ bool mode_toggle_poll_test(bContext *C)
   if (ob == nullptr || ob->type != OB_MESH) {
     return false;
   }
-  if (!ob->data || ID_IS_LINKED(ob->data)) {
+  if (!ob->data || !ID_IS_EDITABLE(ob->data)) {
     return false;
   }
   return true;
