@@ -2,17 +2,21 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_hash.hh"
-#include "CLG_log.h"
-#include "GHOST_C-api.h"
-#include "GPU_context.hh"
-#include "GPU_init_exit.hh"
-#include "opengl/ipc.hh"
-#include <epoxy/gl.h>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <string>
+#include "GPU_compilation_subprocess.hh"
+
+#ifdef WITH_OPENGL_BACKEND
+
+#  include "BLI_hash.hh"
+#  include "CLG_log.h"
+#  include "GHOST_C-api.h"
+#  include "GPU_context.hh"
+#  include "GPU_init_exit.hh"
+#  include "opengl/ipc.hh"
+#  include <epoxy/gl.h>
+#  include <filesystem>
+#  include <fstream>
+#  include <iostream>
+#  include <string>
 
 namespace fs = std::filesystem;
 
@@ -198,3 +202,12 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   ipc_sem_close(&end_semaphore);
   ipc_sem_close(&close_semaphore);
 }
+
+#else
+
+void GPU_compilation_subprocess_run(const char *subprocess_name)
+{
+  BLI_assert_unreachable();
+}
+
+#endif
