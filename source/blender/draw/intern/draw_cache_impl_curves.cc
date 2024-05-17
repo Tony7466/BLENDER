@@ -681,7 +681,7 @@ static bool ensure_attributes(const Curves &curves,
   CurvesEvalFinalCache &final_cache = cache.eval_cache.final;
 
   if (gpu_material) {
-    /* Next code should be kept in sync with `mesh_cd_calc_used_gpu_layers`. */
+    /* The following code should be kept in sync with `mesh_cd_calc_used_gpu_layers`. */
     DRW_Attributes attrs_needed;
     drw_attributes_clear(&attrs_needed);
     ListBase gpu_attrs = GPU_material_attributes(gpu_material);
