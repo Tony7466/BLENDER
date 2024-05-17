@@ -26,6 +26,10 @@ void main()
     if (is_world_sun_light) {
       light.color = sunlight_buf.color;
       light.object_to_world = sunlight_buf.object_to_world;
+
+      LightSunData sun_data = light_sun_data_get(light);
+      sun_data.direction = transform_z_axis(sunlight_buf.object_to_world);
+      light = light_sun_data_set(light, sun_data);
       /* NOTE: Use the radius from UI instead of auto sun size for now. */
     }
     /* NOTE: We know the index because sun lights are packed at the start of the input buffer. */
