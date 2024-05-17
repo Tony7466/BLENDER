@@ -7193,6 +7193,7 @@ class VIEW3D_PT_overlay_guides(Panel):
         sub = split.column()
         sub.prop(overlay, "show_text", text="Text Info")
         sub.prop(overlay, "show_stats", text="Statistics")
+        sub.prop(overlay, "show_camera_guides", text="Camera Guides")
 
         sub = split.column()
         sub.prop(overlay, "show_cursor", text="3D Cursor")
