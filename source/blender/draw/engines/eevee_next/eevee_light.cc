@@ -72,7 +72,8 @@ void Light::sync(ShadowModule &shadows,
 
   this->object_to_world = object_to_world;
 
-  shape_parameters_set(la, scale, object_to_world.z_axis(), threshold);
+  shape_parameters_set(
+      la, scale, object_to_world.z_axis(), threshold, shadows.get_data().use_jitter);
 
   const bool diffuse_visibility = (visibility_flag & OB_HIDE_DIFFUSE) == 0;
   const bool glossy_visibility = (visibility_flag & OB_HIDE_GLOSSY) == 0;
@@ -148,7 +149,8 @@ float Light::attenuation_radius_get(const ::Light *la, float light_threshold, fl
 void Light::shape_parameters_set(const ::Light *la,
                                  const float3 &scale,
                                  const float3 &z_axis,
-                                 float threshold)
+                                 const float threshold,
+                                 const bool use_jitter)
 {
   using namespace blender::math;
 
@@ -169,8 +171,9 @@ void Light::shape_parameters_set(const ::Light *la,
     this->clip_near = float_as_int(this->local.influence_radius_max / 4000.0f);
   }
 
-  float trace_scaling_fac = (la->mode & LA_SHADOW_JITTER) ? la->shadow_jitter_overblur / 100.0f :
-                                                            1.0f;
+  float trace_scaling_fac = (use_jitter && (la->mode & LA_SHADOW_JITTER)) ?
+                                la->shadow_jitter_overblur / 100.0f :
+                                1.0f;
 
   if (is_sun_light(this->type)) {
     float sun_half_angle = min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f;

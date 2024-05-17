@@ -94,7 +94,8 @@ struct Light : public LightData, NonCopyable {
   void shape_parameters_set(const ::Light *la,
                             const float3 &scale,
                             const float3 &z_axis,
-                            float threshold);
+                            float threshold,
+                            bool do_jitter);
   float shape_radiance_get();
   float point_radiance_get();
 };
