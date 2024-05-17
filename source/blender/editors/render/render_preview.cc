@@ -50,7 +50,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_icons.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -78,7 +78,7 @@
 
 #include "BIF_glutil.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -643,7 +643,7 @@ static Scene *preview_prepare_scene(
 /* new UI convention: draw is in pixel space already. */
 /* uses UI_BTYPE_ROUNDBOX button in block to get the rect */
 static bool ed_preview_draw_rect(
-    Scene *scene, ScrArea *area, int split, int first, rcti *rect, rcti *newrect)
+    Scene *scene, ScrArea *area, int split, int first, const rcti *rect, rcti *newrect)
 {
   Render *re;
   RenderView *rv;
@@ -1608,7 +1608,7 @@ static void icon_preview_startjob_all_sizes(void *customdata, wmJobWorkerStatus 
      * freeze the UI (e.g. on Eevee shader compilation). And since the result will never be stored
      * in a file, it's done every time the file is reloaded, so this becomes a frequent annoyance.
      */
-    if (!use_solid_render_mode && ip->id && ID_IS_LINKED(ip->id)) {
+    if (!use_solid_render_mode && ip->id && !ID_IS_EDITABLE(ip->id)) {
       continue;
     }
 

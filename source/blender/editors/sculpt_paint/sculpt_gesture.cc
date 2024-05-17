@@ -18,6 +18,7 @@
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_rect.h"
 #include "BLI_vector.hh"
 
 #include "BKE_context.hh"
@@ -36,7 +37,7 @@
 
 namespace blender::ed::sculpt_paint::gesture {
 
-void operator_properties(wmOperatorType *ot)
+void operator_properties(wmOperatorType *ot, ShapeType shapeType)
 {
   RNA_def_boolean(ot->srna,
                   "use_front_faces_only",
@@ -44,12 +45,14 @@ void operator_properties(wmOperatorType *ot)
                   "Front Faces Only",
                   "Affect only faces facing towards the view");
 
-  RNA_def_boolean(ot->srna,
-                  "use_limit_to_segment",
-                  false,
-                  "Limit to Segment",
-                  "Apply the gesture action only to the area that is contained within the "
-                  "segment without extending its effect to the entire line");
+  if (shapeType == ShapeType::Line) {
+    RNA_def_boolean(ot->srna,
+                    "use_limit_to_segment",
+                    false,
+                    "Limit to Segment",
+                    "Apply the gesture action only to the area that is contained within the "
+                    "segment without extending its effect to the entire line");
+  }
 }
 
 static void init_common(bContext *C, wmOperator *op, GestureData &gesture_data)
@@ -60,7 +63,6 @@ static void init_common(bContext *C, wmOperator *op, GestureData &gesture_data)
 
   /* Operator properties. */
   gesture_data.front_faces_only = RNA_boolean_get(op->ptr, "use_front_faces_only");
-  gesture_data.line.use_side_planes = RNA_boolean_get(op->ptr, "use_limit_to_segment");
   gesture_data.selection_type = SelectionType::Inside;
 
   /* SculptSession */
@@ -93,6 +95,11 @@ static void lasso_px_cb(int x, int x_end, int y, void *user_data)
   do {
     lasso->mask_px[index].set();
   } while (++index != index_end);
+}
+
+std::unique_ptr<GestureData> init_from_polyline(bContext *C, wmOperator *op)
+{
+  return init_from_lasso(C, op);
 }
 
 std::unique_ptr<GestureData> init_from_lasso(bContext *C, wmOperator *op)
@@ -219,6 +226,7 @@ std::unique_ptr<GestureData> init_from_line(bContext *C, wmOperator *op)
 {
   std::unique_ptr<GestureData> gesture_data = std::make_unique<GestureData>();
   gesture_data->shape_type = ShapeType::Line;
+  gesture_data->line.use_side_planes = RNA_boolean_get(op->ptr, "use_limit_to_segment");
 
   init_common(C, op, *gesture_data);
 
@@ -227,6 +235,12 @@ std::unique_ptr<GestureData> init_from_line(bContext *C, wmOperator *op)
   line_points[0][1] = RNA_int_get(op->ptr, "ystart");
   line_points[1][0] = RNA_int_get(op->ptr, "xend");
   line_points[1][1] = RNA_int_get(op->ptr, "yend");
+
+  gesture_data->gesture_points.reinitialize(2);
+  gesture_data->gesture_points[0][0] = line_points[0][0];
+  gesture_data->gesture_points[0][1] = line_points[0][1];
+  gesture_data->gesture_points[1][0] = line_points[1][0];
+  gesture_data->gesture_points[1][1] = line_points[1][1];
 
   gesture_data->line.flip = RNA_boolean_get(op->ptr, "flip");
 
@@ -317,7 +331,7 @@ static Vector<PBVHNode *> update_affected_nodes_by_line_plane(GestureData &gestu
   frustum.planes = clip_planes;
   frustum.num_planes = gesture_data.line.use_side_planes ? 3 : 1;
 
-  return gesture_data.nodes = bke::pbvh::search_gather(ss->pbvh, [&](PBVHNode &node) {
+  return gesture_data.nodes = bke::pbvh::search_gather(*ss->pbvh, [&](PBVHNode &node) {
            return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
          });
 }
@@ -333,14 +347,14 @@ static void update_affected_nodes_by_clip_planes(GestureData &gesture_data)
   frustum.planes = clip_planes;
   frustum.num_planes = 4;
 
-  gesture_data.nodes = bke::pbvh::search_gather(ss->pbvh, [&](PBVHNode &node) {
+  gesture_data.nodes = bke::pbvh::search_gather(*ss->pbvh, [&](PBVHNode &node) {
     switch (gesture_data.selection_type) {
       case SelectionType::Inside:
         return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
       case SelectionType::Outside:
         /* Certain degenerate cases of a lasso shape can cause the resulting
          * frustum planes to enclose a node's AABB, therefore we must submit it
-         * to be more throughly evaluated. */
+         * to be more thoroughly evaluated. */
         if (gesture_data.shape_type == ShapeType::Lasso) {
           return true;
         }

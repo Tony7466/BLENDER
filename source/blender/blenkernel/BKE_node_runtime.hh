@@ -23,7 +23,6 @@
 struct bNode;
 struct bNodeSocket;
 struct bNodeTree;
-struct bNodeType;
 
 namespace blender::nodes {
 struct FieldInferencingInterface;
@@ -34,8 +33,9 @@ namespace anonymous_attribute_lifetime {
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
 namespace blender::bke {
+struct bNodeType;
 class bNodeTreeZones;
-}
+}  // namespace blender::bke
 namespace blender::bke::anonymous_attribute_inferencing {
 struct AnonymousAttributeInferencingResult;
 };
@@ -186,7 +186,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * data. It has to be updated when the node declaration changes. Access can be allowed by using
    * #AllowUsingOutdatedInfo.
    */
-  const SocketDeclarationHandle *declaration = nullptr;
+  const nodes::SocketDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -253,7 +253,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
    * intended to change though. Especially when nodes become more dynamic with respect to how many
    * sockets they have.
    */
-  NodeDeclarationHandle *declaration = nullptr;
+  nodes::NodeDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -299,6 +299,10 @@ class bNodeRuntime : NonCopyable, NonMovable {
 
   /** Used to avoid running forward compatibility code more often than necessary. */
   bool forward_compatible_versioning_done = false;
+
+  /** If this node is reroute and this reroute is not logically linked with any source except other
+   * reroute, this will be true. */
+  bool is_dangling_reroute = false;
 
   /** Only valid if #topology_cache_is_dirty is false. */
   Vector<bNodeSocket *> inputs;
@@ -410,14 +414,14 @@ inline const bNode *bNodeTree::node_by_id(const int32_t identifier) const
 inline blender::Span<bNode *> bNodeTree::nodes_by_type(const blender::StringRefNull type_idname)
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->nodes_by_type.lookup(nodeTypeFind(type_idname.c_str()));
+  return this->runtime->nodes_by_type.lookup(blender::bke::nodeTypeFind(type_idname.c_str()));
 }
 
 inline blender::Span<const bNode *> bNodeTree::nodes_by_type(
     const blender::StringRefNull type_idname) const
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->nodes_by_type.lookup(nodeTypeFind(type_idname.c_str()));
+  return this->runtime->nodes_by_type.lookup(blender::bke::nodeTypeFind(type_idname.c_str()));
 }
 
 inline blender::Span<const bNode *> bNodeTree::toposort_left_to_right() const
@@ -729,6 +733,12 @@ inline bool bNode::is_group_output() const
 inline blender::Span<bNodeLink> bNode::internal_links() const
 {
   return this->runtime->internal_links;
+}
+
+inline bool bNode::is_dangling_reroute() const
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->is_dangling_reroute;
 }
 
 inline bool bNode::is_socket_drawn(const bNodeSocket &socket) const

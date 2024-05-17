@@ -235,8 +235,8 @@ def enum_preview_denoiser(self, context):
         items = [
             ('AUTO',
              "Automatic",
-             ("Use the fastest available denoiser for viewport rendering "
-              "(OptiX if available, OpenImageDenoise otherwise)"),
+             ("Use GPU accelerated denoising if supported, for the best performance. "
+              "Prefer OpenImageDenoise over OptiX"),
              0)]
     else:
         items = [('AUTO', "None", "Blender was compiled without a viewport denoiser", 0)]
@@ -271,6 +271,21 @@ enum_denoising_prefilter = (
     ('ACCURATE',
      "Accurate",
      "Prefilter noisy guiding passes before denoising color. Improves quality when guiding passes are noisy using extra processing time",
+     3),
+)
+
+enum_denoising_quality = (
+    ('HIGH',
+     "High",
+     "High quality",
+     1),
+    ('BALANCED',
+     "Balanced",
+     "Balanced between performance and quality",
+     2),
+    ('FAST',
+     "Fast",
+     "High performance",
      3),
 )
 
@@ -342,9 +357,15 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     )
     denoising_prefilter: EnumProperty(
         name="Denoising Prefilter",
-        description="Prefilter noisy guiding (albedo and normal) passes to improve denoising quality when using OpenImageDenoiser",
+        description="Prefilter noisy guiding (albedo and normal) passes to improve denoising quality when using OpenImageDenoise",
         items=enum_denoising_prefilter,
         default='ACCURATE',
+    )
+    denoising_quality: EnumProperty(
+        name="Denoising Quality",
+        description="Overall denoising quality when using OpenImageDenoise",
+        items=enum_denoising_quality,
+        default='HIGH',
     )
     denoising_input_passes: EnumProperty(
         name="Denoising Input Passes",
@@ -371,9 +392,15 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     )
     preview_denoising_prefilter: EnumProperty(
         name="Viewport Denoising Prefilter",
-        description="Prefilter noisy guiding (albedo and normal) passes to improve denoising quality when using OpenImageDenoiser",
+        description="Prefilter noisy guiding (albedo and normal) passes to improve denoising quality when using OpenImageDenoise",
         items=enum_denoising_prefilter,
         default='FAST',
+    )
+    preview_denoising_quality: EnumProperty(
+        name="Viewport Denoising Quality",
+        description="Overall denoising quality when using OpenImageDenoise",
+        items=enum_denoising_quality,
+        default='BALANCED',
     )
     preview_denoising_input_passes: EnumProperty(
         name="Viewport Denoising Input Passes",
@@ -1054,11 +1081,6 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
 
 class CyclesLightSettings(bpy.types.PropertyGroup):
 
-    cast_shadow: BoolProperty(
-        name="Cast Shadow",
-        description="Light casts shadows",
-        default=True,
-    )
     max_bounces: IntProperty(
         name="Max Bounces",
         description="Maximum number of bounces the light will contribute to the render",
@@ -1425,6 +1447,15 @@ class CyclesDeviceSettings(bpy.types.PropertyGroup):
 class CyclesPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
+    @staticmethod
+    def default_device():
+        import platform
+        # Default to selecting the Metal compute device on Apple Silicon GPUs
+        # (drivers are tightly integrated with macOS so pose no stability risk)
+        if (platform.system() == 'Darwin') and (platform.machine() == 'arm64'):
+            return 5
+        return 0
+
     def get_device_types(self, context):
         import _cycles
         has_cuda, has_optix, has_hip, has_metal, has_oneapi, has_hiprt = _cycles.get_device_types()
@@ -1446,6 +1477,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     compute_device_type: EnumProperty(
         name="Compute Device Type",
         description="Device to use for computation (rendering with Cycles)",
+        default=CyclesPreferences.default_device(),
         items=CyclesPreferences.get_device_types,
     )
 
@@ -1594,14 +1626,15 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         compute_device_type = self.get_compute_device_type()
 
         # We need non-CPU devices, used for rendering and supporting OIDN GPU denoising
-        for device in _cycles.available_devices(compute_device_type):
-            device_type = device[1]
-            if device_type == 'CPU':
-                continue
+        if compute_device_type != 'NONE':
+            for device in _cycles.available_devices(compute_device_type):
+                device_type = device[1]
+                if device_type == 'CPU':
+                    continue
 
-            has_device_oidn_support = device[5]
-            if has_device_oidn_support and self.find_existing_device_entry(device).use:
-                return True
+                has_device_oidn_support = device[5]
+                if has_device_oidn_support and self.find_existing_device_entry(device).use:
+                    return True
 
         return False
 

@@ -2506,7 +2506,7 @@ static void lineart_object_load_single_instance(LineartData *ld,
   }
   if (ob->type == OB_MESH) {
     use_mesh = BKE_object_get_evaluated_mesh(ob);
-    if ((!use_mesh) || use_mesh->edit_mesh) {
+    if ((!use_mesh) || use_mesh->runtime->edit_mesh) {
       /* If the object is being edited, then the mesh is not evaluated fully into the final
        * result, do not load them. This could be caused by incorrect evaluation order due to
        * the way line art uses depsgraph.See #102612 for explanation of this workaround. */
@@ -5068,8 +5068,11 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
     }
   }
 
-  LineartCache *lc = MOD_lineart_init_cache();
-  *cached_result = lc;
+  LineartCache *lc = *cached_result;
+  if (!lc) {
+    lc = MOD_lineart_init_cache();
+    *cached_result = lc;
+  }
 
   ld = lineart_create_render_buffer_v3(scene,
                                        &lmd,

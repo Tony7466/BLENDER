@@ -6,6 +6,7 @@ set(INC
   .
   ../blenkernel
   ../blentranslation
+  ../bmesh
   ../functions
   ../makesrna
   ../../../intern/eigen
@@ -42,12 +43,14 @@ set(SRC
   intern/reverse_uv_sampler.cc
   intern/separate_geometry.cc
   intern/set_curve_type.cc
+  intern/simplify_curves.cc
   intern/smooth_curves.cc
   intern/subdivide_curves.cc
   intern/transform.cc
   intern/trim_curves.cc
   intern/uv_pack.cc
   intern/uv_parametrizer.cc
+  intern/volume_grid_resample.cc
 
   GEO_add_curves_on_mesh.hh
   GEO_curve_constraints.hh
@@ -76,6 +79,7 @@ set(SRC
   GEO_reverse_uv_sampler.hh
   GEO_separate_geometry.hh
   GEO_set_curve_type.hh
+  GEO_simplify_curves.hh
   GEO_smooth_curves.hh
   GEO_subdivide_curves.hh
   GEO_transform.hh
@@ -123,6 +127,10 @@ if(WITH_GMP)
 
   list(APPEND INC_SYS
     ${GMP_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${GMP_LIBRARIES}
   )
 endif()
 

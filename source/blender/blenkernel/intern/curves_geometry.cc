@@ -58,6 +58,8 @@ CurvesGeometry::CurvesGeometry() : CurvesGeometry(0, 0) {}
 
 CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 {
+  this->runtime = MEM_new<CurvesGeometryRuntime>(__func__);
+
   this->point_num = point_num;
   this->curve_num = curve_num;
   CustomData_reset(&this->point_data);
@@ -66,8 +68,6 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 
   this->attributes_for_write().add<float3>(
       "position", AttrDomain::Point, AttributeInitConstruct());
-
-  this->runtime = MEM_new<CurvesGeometryRuntime>(__func__);
 
   if (curve_num > 0) {
     this->curve_offsets = static_cast<int *>(
@@ -244,6 +244,9 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
                                             const T default_value = T())
 {
   const int num = domain_num(curves, domain);
+  if (num <= 0) {
+    return {};
+  }
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
 
@@ -1552,7 +1555,7 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
         });
   }
 
-  BLO_read_list(&reader, &this->vertex_group_names);
+  BLO_read_struct_list(&reader, bDeformGroup, &this->vertex_group_names);
 
   /* Recalculate curve type count cache that isn't saved in files. */
   this->update_curve_types();

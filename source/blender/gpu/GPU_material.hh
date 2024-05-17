@@ -16,8 +16,8 @@
 
 #include "BLI_sys_types.h" /* for bool */
 
-#include "GPU_shader.h"  /* for GPUShaderCreateInfo */
-#include "GPU_texture.h" /* for GPUSamplerState */
+#include "GPU_shader.hh"  /* for GPUShaderCreateInfo */
+#include "GPU_texture.hh" /* for GPUSamplerState */
 
 struct GHash;
 struct GPUMaterial;
@@ -146,6 +146,11 @@ struct GPUCodegenOutput {
 };
 
 using GPUCodegenCallbackFn = void (*)(void *thunk, GPUMaterial *mat, GPUCodegenOutput *codegen);
+/**
+ * Should return an already compiled pass if it's functionally equivalent to the one being
+ * compiled.
+ */
+using GPUMaterialPassReplacementCallbackFn = GPUPass *(*)(void *thunk, GPUMaterial *mat);
 
 GPUNodeLink *GPU_constant(const float *num);
 GPUNodeLink *GPU_uniform(const float *num);
@@ -237,17 +242,19 @@ enum eGPUMaterialEngine {
   GPU_MAT_COMPOSITOR,
 };
 
-GPUMaterial *GPU_material_from_nodetree(Scene *scene,
-                                        Material *ma,
-                                        bNodeTree *ntree,
-                                        ListBase *gpumaterials,
-                                        const char *name,
-                                        eGPUMaterialEngine engine,
-                                        uint64_t shader_uuid,
-                                        bool is_volume_shader,
-                                        bool is_lookdev,
-                                        GPUCodegenCallbackFn callback,
-                                        void *thunk);
+GPUMaterial *GPU_material_from_nodetree(
+    Scene *scene,
+    Material *ma,
+    bNodeTree *ntree,
+    ListBase *gpumaterials,
+    const char *name,
+    eGPUMaterialEngine engine,
+    uint64_t shader_uuid,
+    bool is_volume_shader,
+    bool is_lookdev,
+    GPUCodegenCallbackFn callback,
+    void *thunk,
+    GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);
 
 void GPU_material_compile(GPUMaterial *mat);
 void GPU_material_free_single(GPUMaterial *material);
@@ -275,7 +282,7 @@ const char *GPU_material_get_name(GPUMaterial *material);
 void GPU_material_optimize(GPUMaterial *mat);
 
 /**
- * Return can be NULL if it's a world material.
+ * Return can be null if it's a world material.
  */
 Material *GPU_material_get_material(GPUMaterial *material);
 /**

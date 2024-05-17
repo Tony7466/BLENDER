@@ -330,10 +330,8 @@ bool space_image_main_region_poll(bContext *C)
 static bool space_image_main_area_not_uv_brush_poll(bContext *C)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
-  Scene *scene = CTX_data_scene(C);
-  ToolSettings *toolsettings = scene->toolsettings;
 
-  if (sima && !toolsettings->uvsculpt && (CTX_data_edit_object(C) == nullptr)) {
+  if (sima && (CTX_data_edit_object(C) == nullptr)) {
     return true;
   }
 
@@ -2348,7 +2346,7 @@ int ED_image_save_all_modified_info(const Main *bmain, ReportList *reports)
 
     if (image_should_be_saved(ima, &is_format_writable)) {
       if (BKE_image_has_packedfile(ima) || image_should_pack_during_save_all(ima)) {
-        if (!ID_IS_LINKED(ima)) {
+        if (ID_IS_EDITABLE(ima)) {
           num_saveable_images++;
         }
         else {
@@ -2806,6 +2804,7 @@ static int image_flip_exec(bContext *C, wmOperator *op)
 
   BKE_image_partial_update_mark_full_update(ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -2881,6 +2880,7 @@ static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
 
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
   return OPERATOR_FINISHED;
@@ -3009,6 +3009,12 @@ static int image_clipboard_paste_exec(bContext *C, wmOperator *op)
 
 static bool image_clipboard_paste_poll(bContext *C)
 {
+  SpaceImage *sima = CTX_wm_space_image(C);
+  if (!sima) {
+    CTX_wm_operator_poll_msg_set(C, "Image Editor not found");
+    return false;
+  }
+
   if (!WM_clipboard_image_available()) {
     CTX_wm_operator_poll_msg_set(C, "No compatible images are on the clipboard");
     return false;
@@ -3121,6 +3127,8 @@ static int image_invert_exec(bContext *C, wmOperator *op)
   ED_image_undo_push_end();
 
   BKE_image_partial_update_mark_full_update(ima);
+
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
 
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 

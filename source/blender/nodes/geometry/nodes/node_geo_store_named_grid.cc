@@ -51,7 +51,7 @@ static void search_link_ops(GatherLinkSearchOpParams &params)
     if (const std::optional<eCustomDataType> data_type = bke::socket_type_to_custom_data_type(
             eNodeSocketDatatype(params.other_socket().type)))
     {
-      if (grid_type_supported(*data_type)) {
+      if (custom_data_type_supports_grids(*data_type)) {
         params.add_item(IFACE_("Grid"), [data_type](LinkSearchOpParams &params) {
           bNode &node = params.add_node("GeometryNodeStoreNamedGrid");
           node.custom1 = *data_type;
@@ -130,7 +130,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_STORE_NAMED_GRID, "Store Named Grid", NODE_CLASS_GEOMETRY);
 
@@ -139,7 +139,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
