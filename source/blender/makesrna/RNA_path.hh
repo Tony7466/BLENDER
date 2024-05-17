@@ -40,11 +40,10 @@ struct IDProperty;
  * ```
  *
  * NOTE: some older parts of Blender's code base use negative array indices as a
- * magic value to mean things like "all array elements". However, negative array
- * values should specifically NOT be used as a magic value in this type.
- * Instead, simply leave the index unspecified. Unspecified indices can then be
- * converted to a negative magic value at the API boundaries that need it, like
- * so:
+ * magic value to mean things like "all array elements". However, magic values
+ * should specifically NOT be used in this type. Instead, simply leave the index
+ * unspecified. Unspecified indices can then be converted to a negative magic
+ * value at the API boundaries that need it, like so:
  *
  * ```
  * some_older_function(rna_path.index.value_or(-1));
@@ -55,7 +54,7 @@ struct RNAPath {
 
   /* Key/index for array properties. Any combination of index and key can be
    * specfied (including neither). In the case that both are specified, they
-   * should represent two different ways to access the same element. */
+   * should be redundant ways to access the same element. */
   std::optional<std::string> key = std::nullopt;
   std::optional<int> index = std::nullopt;
 };
