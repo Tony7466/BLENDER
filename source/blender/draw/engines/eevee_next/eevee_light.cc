@@ -522,6 +522,11 @@ void LightModule::culling_pass_sync()
 
 void LightModule::update_pass_sync()
 {
+  /* TODO(fclem): This dispatch for all light before culling. This could be made better by
+   * only running on lights that survive culling using an indirect dispatch. */
+  uint safe_lights_len = max_ii(lights_len_, 1);
+  uint shadow_setup_dispatch_size = divide_ceil_u(safe_lights_len, CULLING_SELECT_GROUP_SIZE);
+
   auto &pass = update_ps_;
   pass.init();
   pass.shader_set(inst_.shaders.static_shader_get(LIGHT_SHADOW_SETUP));
@@ -529,8 +534,7 @@ void LightModule::update_pass_sync()
   pass.bind_ssbo("light_cull_buf", &culling_data_buf_);
   pass.bind_ssbo("tilemaps_buf", &inst_.shadows.tilemap_pool.tilemaps_data);
   pass.bind_resources(inst_.uniform_data);
-  /* TODO(fclem): Dispatch for all light. */
-  pass.dispatch(int3(1, 1, 1));
+  pass.dispatch(int3(shadow_setup_dispatch_size, 1, 1));
   pass.barrier(GPU_BARRIER_SHADER_STORAGE);
 }
 
