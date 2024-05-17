@@ -225,19 +225,15 @@ KERNEL_STRUCT_MEMBER(integrator, int, use_volume_guiding)
 KERNEL_STRUCT_MEMBER(integrator, int, use_guiding_direct_light)
 KERNEL_STRUCT_MEMBER(integrator, int, use_guiding_mis_weights)
 /* ReSTIR */
-KERNEL_STRUCT_MEMBER(integrator, int, use_initial_resampling)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_unbiased)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_light_samples)
-KERNEL_STRUCT_MEMBER(integrator, int, use_spatial_resampling)
+KERNEL_STRUCT_MEMBER(integrator, int, use_restir)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_radius)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_neighbors)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_iterations)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_pairwise_mis)
 
 /* Padding. */
-KERNEL_STRUCT_MEMBER(integrator, int, pad1)
-KERNEL_STRUCT_MEMBER(integrator, int, pad2)
-KERNEL_STRUCT_MEMBER(integrator, int, pad3)
 KERNEL_STRUCT_END(KernelIntegrator)
 
 /* SVM. For shader specialization. */

@@ -437,10 +437,8 @@ ccl_device
   /* Use Resampled Importance Sampling for direct illumination based on Talbot, Justin F.
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
-  /* TODO(weizhen): the flag `use_spatial_resampling` can be replaced with `use_restir`. */
   const bool is_direct_light = light_is_direct_illumination(state);
-  const bool use_ris = is_direct_light && (kernel_data.integrator.use_initial_resampling ||
-                                           kernel_data.integrator.use_spatial_resampling);
+  const bool use_ris = is_direct_light && kernel_data.integrator.use_restir;
 
   /* Sample position on a light. */
   Reservoir reservoir(kg, use_ris);
