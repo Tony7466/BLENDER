@@ -23,6 +23,44 @@
 struct ListBase;
 struct IDProperty;
 
+/**
+ * An RNA path to a property, including an optional index/key for array
+ * properties.
+ *
+ * If both a key and index are specified, they indicate redundant ways to access
+ * the same array element.
+ *
+ * This type is intended to be convenient to construct with initializer lists:
+ *
+ * ```
+ * RNAPath non_array_path =                {"dof.focus_distance"};
+ * RNAPath array_path_no_key =             {"location"};
+ * RNAPath array_path_with_index =         {"location", {}, 2};
+ * RNAPath array_path_with_key =           {"vertex_groups", "Arm"};
+ * RNAPath array_path_with_key_and_index = {"vertex_groups", "Arm", 5};
+ * ```
+ *
+ * NOTE: some older parts of Blender's code base use negative array indices as a
+ * magic value to mean things like "all array elements". However, negative array
+ * values should specifically NOT be used as a magic value in this type.
+ * Instead, simply leave the index unspecified. Unspecified indices can then be
+ * converted to a negative magic value at the API boundaries that need it, like
+ * so:
+ *
+ * ```
+ * some_older_function(rna_path.index().value_or(-1));
+ * ```
+ */
+struct RNAPath {
+  std::string path;
+
+  /* Key/index for array properties. Any combination of index and key can be
+   * specfied (including neither). In the case that both are specified, they
+   * should represent two different ways to access the same element. */
+  std::optional<std::string> key = std::nullopt;
+  std::optional<int> index = std::nullopt;
+};
+
 char *RNA_path_append(
     const char *path, const PointerRNA *ptr, PropertyRNA *prop, int intkey, const char *strkey);
 #if 0 /* UNUSED. */
