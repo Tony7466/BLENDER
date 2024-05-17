@@ -184,7 +184,15 @@ bool USDPointsReader::is_animated() const
 
   is_animated |= points_prim_.GetPointsAttr().ValueMightBeTimeVarying();
 
-  /* Will want to check if other attributes are time varying as well. */
+  is_animated |= points_prim_.GetVelocitiesAttr().ValueMightBeTimeVarying();
+
+  is_animated |= points_prim_.GetWidthsAttr().ValueMightBeTimeVarying();
+
+  pxr::UsdGeomPrimvarsAPI pv_api(points_prim_);
+  std::vector<pxr::UsdGeomPrimvar> primvars = pv_api.GetPrimvarsWithValues();
+  for (const pxr::UsdGeomPrimvar& pv : primvars) {
+    is_animated |= pv.ValueMightBeTimeVarying();
+  }
 
   return is_animated;
 }
