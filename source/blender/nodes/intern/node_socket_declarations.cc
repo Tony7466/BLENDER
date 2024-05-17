@@ -749,12 +749,8 @@ bool Shader::can_connect(const bNodeSocket &socket) const
 
 bNodeSocket &MaskGrid::build(bNodeTree &ntree, bNode &node) const
 {
-  bNodeSocket &socket = *nodeAddSocket(&ntree,
-                                       &node,
-                                       this->in_out,
-                                       "NodeSocketBool",
-                                       this->identifier.c_str(),
-                                       this->name.c_str());
+  bNodeSocket &socket = *bke::nodeAddSocket(
+      &ntree, &node, this->in_out, "NodeSocketBool", this->identifier.c_str(), this->name.c_str());
   socket.flag |= SOCK_HIDE_VALUE;
   return socket;
 }
@@ -770,7 +766,7 @@ bool MaskGrid::matches(const bNodeSocket &socket) const
   return true;
 }
 
-bool MaskGrid::can_connect(const bNodeSocket & socket) const
+bool MaskGrid::can_connect(const bNodeSocket &socket) const
 {
   if (!sockets_can_connect(*this, socket)) {
     return false;
@@ -779,8 +775,8 @@ bool MaskGrid::can_connect(const bNodeSocket & socket) const
 }
 
 bNodeSocket &MaskGrid::update_or_build(bNodeTree & /*ntree*/,
-                                     bNode & /*node*/,
-                                     bNodeSocket &socket) const
+                                       bNode & /*node*/,
+                                       bNodeSocket &socket) const
 {
   socket.flag |= SOCK_HIDE_VALUE;
   return socket;
