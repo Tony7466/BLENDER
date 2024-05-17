@@ -30,9 +30,9 @@
 float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
 {
   float pdf = 1.0;
-  mat3 world_to_tangent = from_up_axis(cl.N);
-  vec3 Vt = world_to_tangent * V;
-  vec3 Lt = world_to_tangent * L;
+  mat3 tangent_to_world = from_up_axis(cl.N);
+  vec3 Vt = V * tangent_to_world;
+  vec3 Lt = L * tangent_to_world;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID: {
       if (thickness != 0.0) {
