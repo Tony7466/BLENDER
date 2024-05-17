@@ -526,6 +526,34 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
   PropertyRNA *prop;
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_boolean(ot->srna,
+                         "use_stabilize_stroke",
+                         false,
+                         "Stabilize Stroke",
+                         "Helper to draw smooth and clean lines. Press Shift for an invert effect "
+                         "(even if this option is not active)");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_float(ot->srna,
+                       "smooth_stroke_factor",
+                       0.75f,
+                       0.0f,
+                       1.0f,
+                       "Stabilizer Stroke Factor",
+                       "Higher values gives a smoother stroke",
+                       0.0f,
+                       1.0f);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_int(ot->srna,
+                     "smooth_stroke_radius",
+                     35,
+                     0,
+                     200,
+                     "Stabilizer Stroke Radius",
+                     "Minimum distance from last point before stroke continues",
+                     1,
+                     100);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  RNA_def_property_subtype(prop, PROP_PIXEL);
 }
 
 void WM_operator_properties_gesture_polyline(wmOperatorType *ot)

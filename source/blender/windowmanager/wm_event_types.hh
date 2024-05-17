@@ -518,6 +518,9 @@ enum {
 
   /** Toggle to activate flip (flip the active side of a straight line). */
   GESTURE_MODAL_FLIP = 14,
+
+  /** Lasso select: Whether or not the stroke is smoothed.*/
+  GESTURE_MODAL_SMOOTH = 15,
 };
 
 /** \} */

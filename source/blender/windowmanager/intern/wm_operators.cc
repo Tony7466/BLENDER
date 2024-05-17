@@ -4220,6 +4220,7 @@ static void gesture_lasso_modal_keymap(wmKeyConfig *keyconf)
 {
   static const EnumPropertyItem modal_items[] = {
       {GESTURE_MODAL_MOVE, "MOVE", 0, "Move", ""},
+      {GESTURE_MODAL_SMOOTH, "SMOOTH", 0, "Smooth", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

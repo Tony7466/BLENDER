@@ -1430,6 +1430,11 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("paint.hide_show_lasso_gesture")
             layout.prop(props, "area", expand=False)
+            layout.prop(props, "use_stabilize_stroke", text="Stabilize Stroke")
+            subrow = layout.row(align=False)
+            subrow.active = props.use_stabilize_stroke
+            subrow.prop(props, "smooth_stroke_radius", text="Radius", slider=True)
+            subrow.prop(props, "smooth_stroke_factor", text="Factor", slider=True)
 
         return dict(
             idname="builtin.lasso_hide",

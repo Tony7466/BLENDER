@@ -17,8 +17,10 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "BLI_math_base.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 
@@ -491,6 +493,8 @@ int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   PropertyRNA *prop;
 
   op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_LASSO);
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  gesture->use_smooth = RNA_boolean_get(op->ptr, "use_stabilize_stroke");
 
   /* Add modal handler. */
   WM_event_add_modal_handler(C, op);
@@ -510,6 +514,8 @@ int WM_gesture_lines_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   PropertyRNA *prop;
 
   op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_LINES);
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  gesture->use_smooth = RNA_boolean_get(op->ptr, "use_stabilize_stroke");
 
   /* Add modal handler. */
   WM_event_add_modal_handler(C, op);
@@ -555,11 +561,19 @@ static int gesture_lasso_apply(bContext *C, wmOperator *op)
 int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  const bool use_smooth_property = RNA_boolean_get(op->ptr, "use_stabilize_stroke");
+  const float factor = RNA_float_get(op->ptr, "smooth_stroke_factor");
+  const int radius = RNA_int_get(op->ptr, "smooth_stroke_radius");
 
   if (event->type == EVT_MODAL_MAP) {
     switch (event->val) {
       case GESTURE_MODAL_MOVE: {
         gesture->move = !gesture->move;
+        break;
+      }
+      case GESTURE_MODAL_SMOOTH: {
+        printf("State: %d, %d\n", use_smooth_property, !gesture->use_smooth);
+        gesture->use_smooth = use_smooth_property || !gesture->use_smooth;
         break;
       }
     }
@@ -569,6 +583,8 @@ int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
       case MOUSEMOVE:
       case INBETWEEN_MOUSEMOVE: {
         wm_gesture_tag_redraw(CTX_wm_window(C));
+        gesture->current_mouse_position = float2((event->xy[0] - gesture->winrct.xmin),
+                                                 (event->xy[1] - gesture->winrct.ymin));
 
         if (gesture->points == gesture->points_alloc) {
           gesture->points_alloc *= 2;
@@ -578,22 +594,34 @@ int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         {
           short(*lasso)[2] = static_cast<short int(*)[2]>(gesture->customdata);
+          const float2 last_position(lasso[gesture->points - 1][0], lasso[gesture->points - 1][1]);
 
-          const int x = ((event->xy[0] - gesture->winrct.xmin) - lasso[gesture->points - 1][0]);
-          const int y = ((event->xy[1] - gesture->winrct.ymin) - lasso[gesture->points - 1][1]);
+          const float2 delta = gesture->current_mouse_position - last_position;
+          const float dist_squared = blender::math::length_squared(delta);
 
           /* Move the lasso. */
           if (gesture->move) {
             for (int i = 0; i < gesture->points; i++) {
-              lasso[i][0] += x;
-              lasso[i][1] += y;
+              lasso[i][0] += delta.x;
+              lasso[i][1] += delta.y;
             }
           }
-          /* Make a simple distance check to get a smoother lasso
-           * add only when at least 2 pixels between this and previous location. */
-          else if ((x * x + y * y) > pow2f(2.0f * UI_SCALE_FAC)) {
-            lasso[gesture->points][0] = event->xy[0] - gesture->winrct.xmin;
-            lasso[gesture->points][1] = event->xy[1] - gesture->winrct.ymin;
+          else if (gesture->use_smooth) {
+            // TODO: Is UI_SCALE_FAC needed here?
+            if (dist_squared > square_f(radius * UI_SCALE_FAC)) {
+              float2 result = blender::math::interpolate(
+                  last_position, gesture->current_mouse_position, factor);
+
+              lasso[gesture->points][0] = result.x;
+              lasso[gesture->points][1] = result.y;
+              gesture->points++;
+            }
+          }
+          else if (dist_squared > pow2f(2.0f * UI_SCALE_FAC)) {
+            /* Make a simple distance check to get a smoother lasso even if smoothing isnt enabled
+             * add only when at least 2 pixels between this and previous location. */
+            lasso[gesture->points][0] = gesture->current_mouse_position.x;
+            lasso[gesture->points][1] = gesture->current_mouse_position.y;
             gesture->points++;
           }
         }
