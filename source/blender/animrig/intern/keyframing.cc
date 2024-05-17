@@ -959,13 +959,14 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   return combined_result;
 }
 
-CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
+CombinedKeyingResult insert_key_rna(Main *bmain,
+                                    PointerRNA *rna_pointer,
                                     const blender::Span<RNAPath> rna_paths,
                                     const float scene_frame,
-                                    const eInsertKeyFlags insert_key_flags,
+                                    const AnimationEvalContext &anim_eval_context,
                                     const eBezTriple_KeyframeType key_type,
-                                    Main *bmain,
-                                    const AnimationEvalContext &anim_eval_context)
+                                    const eInsertKeyFlags insert_key_flags)
+
 {
   ID *id = rna_pointer->owner_id;
   bAction *action = id_action_ensure(bmain, id);

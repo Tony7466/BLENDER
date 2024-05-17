@@ -402,13 +402,13 @@ static int insert_key(bContext *C, wmOperator *op)
     }
     Vector<RNAPath> rna_paths = construct_rna_paths(&id_ptr);
 
-    combined_result.merge(animrig::insert_key_rna(&id_ptr,
+    combined_result.merge(animrig::insert_key_rna(bmain,
+                                                  &id_ptr,
                                                   rna_paths.as_span(),
                                                   scene_frame,
-                                                  insert_key_flags,
+                                                  anim_eval_context,
                                                   key_type,
-                                                  bmain,
-                                                  anim_eval_context));
+                                                  insert_key_flags));
   }
 
   if (combined_result.get_count(animrig::SingleKeyingResult::SUCCESS) == 0) {

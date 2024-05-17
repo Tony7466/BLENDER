@@ -261,12 +261,12 @@ CombinedKeyingResult insert_key_action(Main *bmain,
  * \param scene_frame: is expected to be not NLA mapped as that happens within the function.
  * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
-CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
+CombinedKeyingResult insert_key_rna(Main *bmain,
+                                    PointerRNA *rna_pointer,
                                     const blender::Span<RNAPath> rna_paths,
                                     float scene_frame,
-                                    eInsertKeyFlags insert_key_flags,
+                                    const AnimationEvalContext &anim_eval_context,
                                     eBezTriple_KeyframeType key_type,
-                                    Main *bmain,
-                                    const AnimationEvalContext &anim_eval_context);
+                                    eInsertKeyFlags insert_key_flags);
 
 }  // namespace blender::animrig

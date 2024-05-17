@@ -143,13 +143,13 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<RNAPath> rn
   CombinedKeyingResult combined_result;
   for (PointerRNA ptr : sources) {
     const CombinedKeyingResult result = insert_key_rna(
+        bmain,
         &ptr,
         rna_paths,
         scene_frame,
-        flag,
+        anim_eval_context,
         eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
-        bmain,
-        anim_eval_context);
+        flag);
     combined_result.merge(result);
   }
 
@@ -246,13 +246,13 @@ void autokeyframe_pose_channel(bContext *C,
   CombinedKeyingResult combined_result;
   for (PointerRNA &ptr : sources) {
     const CombinedKeyingResult result = insert_key_rna(
+        bmain,
         &ptr,
         rna_paths,
         scene_frame,
-        flag,
+        anim_eval_context,
         eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
-        bmain,
-        anim_eval_context);
+        flag);
     combined_result.merge(result);
   }
 
