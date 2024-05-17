@@ -298,7 +298,7 @@ static bool image_paint_poll_ex(bContext *C, bool check_tool)
 
     if (sima) {
       if (sima->image != nullptr &&
-          (ID_IS_LINKED(sima->image) || ID_IS_OVERRIDE_LIBRARY(sima->image)))
+          (!ID_IS_EDITABLE(sima->image) || ID_IS_OVERRIDE_LIBRARY(sima->image)))
       {
         return false;
       }
@@ -901,7 +901,7 @@ void ED_object_texture_paint_mode_enter_ex(Main *bmain,
 
   BKE_paint_init(bmain, scene, PaintMode::Texture3D, PAINT_CURSOR_TEXTURE_PAINT);
 
-  BKE_paint_toolslots_brush_validate(bmain, &imapaint->paint);
+  BKE_paint_brush_validate(bmain, &imapaint->paint);
 
   if (U.glreslimit != 0) {
     BKE_image_free_all_gputextures(bmain);
@@ -964,7 +964,7 @@ static bool texture_paint_toggle_poll(bContext *C)
   if (ob == nullptr || ob->type != OB_MESH) {
     return false;
   }
-  if (ob->data == nullptr || ID_IS_LINKED(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob->data)) {
+  if (ob->data == nullptr || !ID_IS_EDITABLE(ob->data) || ID_IS_OVERRIDE_LIBRARY(ob->data)) {
     return false;
   }
 

@@ -122,6 +122,9 @@ void main()
 
   LightProbeSample samp = lightprobe_load(P, Ng, V);
 
+  float clamp_indirect = uniform_buf.clamp.surface_indirect;
+  samp.volume_irradiance = spherical_harmonics_clamp(samp.volume_irradiance, clamp_indirect);
+
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
     ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
 
@@ -145,9 +148,9 @@ void main()
         break;
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
         float ior = to_closure_refraction(cl).ior;
-        if (gbuf.thickness > 0.0) {
+        if (gbuf.thickness != 0.0) {
           vec3 L = refraction_dominant_dir(cl.N, V, ior, roughness);
-          cl.N = -thickness_sphere_intersect(gbuf.thickness, cl.N, L).hit_N;
+          cl.N = -thickness_shape_intersect(gbuf.thickness, cl.N, L).hit_N;
           ior = 1.0 / ior;
           V = -L;
         }
@@ -157,7 +160,7 @@ void main()
       case CLOSURE_BSDF_TRANSLUCENT_ID:
         /* Translucent BSDF with thickness is modeled as uniform sphere distribution which drops
          * all the directional terms. */
-        L = (gbuf.thickness > 0.0) ? vec3(0.0) : -N;
+        L = (gbuf.thickness != 0.0) ? vec3(0.0) : -N;
         break;
       default:
         L = N;

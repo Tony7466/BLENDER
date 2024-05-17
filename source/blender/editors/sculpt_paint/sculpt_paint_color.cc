@@ -50,7 +50,7 @@ static void do_color_smooth_task(Object *ob, const Brush *brush, PBVHNode *node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       *ob, ss->cache->automasking.get(), *node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -92,7 +92,7 @@ static void do_paint_brush_task(Object *ob,
   PBVHColorBufferNode *color_buffer;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Color);
+  SCULPT_orig_vert_data_init(orig_data, *ob, *node, undo::Type::Color);
 
   color_buffer = BKE_pbvh_node_color_buffer_get(node);
 
@@ -130,8 +130,8 @@ static void do_paint_brush_task(Object *ob,
     }
   }
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    SCULPT_orig_vert_data_update(&orig_data, &vd);
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+    SCULPT_orig_vert_data_update(orig_data, vd);
 
     bool affect_vertex = false;
     float distance_to_stroke_location = 0.0f;
@@ -221,7 +221,7 @@ static void do_sample_wet_paint_task(SculptSession *ss,
   test.radius *= brush->wet_paint_radius_factor;
   test.radius_squared = test.radius * test.radius;
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -354,7 +354,7 @@ static void do_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       *ob, ss->cache->automasking.get(), *node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -479,7 +479,7 @@ static void do_smear_store_prev_colors_task(SculptSession *ss,
                                             float (*prev_colors)[4])
 {
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_vertex_color_get(ss, vd.vertex, prev_colors[vd.index]);
   }
   BKE_pbvh_vertex_iter_end;
@@ -499,7 +499,7 @@ void do_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   if (!ss->cache->prev_colors) {
     ss->cache->prev_colors = MEM_cnew_array<float[4]>(totvert, __func__);
     for (int i = 0; i < totvert; i++) {
-      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
 
       SCULPT_vertex_color_get(ss, vertex, ss->cache->prev_colors[i]);
     }

@@ -95,6 +95,11 @@ static void rna_CurveMapping_clip_set(PointerRNA *ptr, bool value)
 {
   CurveMapping *cumap = (CurveMapping *)ptr->data;
 
+  /* Clipping is always done for wrapped curves, so don't allow user to change it. */
+  if (cumap->flag & CUMA_USE_WRAPPING) {
+    return;
+  }
+
   if (value) {
     cumap->flag |= CUMA_DO_CLIP;
   }
@@ -817,8 +822,13 @@ static void rna_def_curvemapping(BlenderRNA *brna)
   FunctionRNA *func;
 
   static const EnumPropertyItem tone_items[] = {
-      {CURVE_TONE_STANDARD, "STANDARD", 0, "Standard", ""},
-      {CURVE_TONE_FILMLIKE, "FILMLIKE", 0, "Filmlike", ""},
+      {CURVE_TONE_STANDARD,
+       "STANDARD",
+       0,
+       "Standard",
+       "Combined curve is applied to each channel individually, which may result in a change of "
+       "hue"},
+      {CURVE_TONE_FILMLIKE, "FILMLIKE", 0, "Filmlike", "Keeps the hue constant"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1194,7 +1204,6 @@ static void rna_def_scopes(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, "Scopes", "vecscope_alpha");
   RNA_def_property_range(prop, 0, 1);
   RNA_def_property_ui_text(prop, "Vectorscope Opacity", "Opacity of the points");
-  RNA_def_property_update(prop, 0, "rna_Scopes_update");
 }
 
 static void rna_def_colormanage(BlenderRNA *brna)
