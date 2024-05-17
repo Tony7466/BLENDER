@@ -1049,19 +1049,20 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
           group = "Object Transforms";
         }
 
-        if (all) {
+        std::optional<int> array_index = std::nullopt;
+        if (!all && index >= 0) {
           /* -1 indicates operating on the entire array (or the property itself otherwise) */
-          index = -1;
+          array_index = index;
         }
 
-        CombinedKeyingResult result = insert_keyframe(bmain,
-                                                      *ptr.owner_id,
-                                                      group,
-                                                      path->c_str(),
-                                                      index,
-                                                      &anim_eval_context,
-                                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                                      flag);
+        CombinedKeyingResult result = insert_key_rna(bmain,
+                                                     *ptr.owner_id,
+                                                     group,
+                                                     {{path->c_str(), {}, array_index}},
+                                                     std::nullopt,
+                                                     anim_eval_context,
+                                                     eBezTriple_KeyframeType(ts->keyframe_type),
+                                                     flag);
         changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       }
       else {

@@ -329,15 +329,19 @@ bool autokeyframe_property(bContext *C,
          *       E.g., color wheels (see #42567). */
         BLI_assert((fcu->array_index == rnaindex) || (rnaindex == -1));
       }
-      CombinedKeyingResult result = insert_keyframe(bmain,
-                                                    *id,
-                                                    (fcu && fcu->grp) ? fcu->grp->name : nullptr,
-                                                    fcu ? fcu->rna_path :
-                                                          (path ? path->c_str() : nullptr),
-                                                    rnaindex,
-                                                    &anim_eval_context,
-                                                    eBezTriple_KeyframeType(ts->keyframe_type),
-                                                    flag);
+      CombinedKeyingResult result = insert_key_rna(
+          bmain,
+          *id,
+          (fcu && fcu->grp) ? fcu->grp->name : nullptr,
+          {{
+              fcu ? fcu->rna_path : (path ? path->c_str() : nullptr),   // Path.
+              std::nullopt,                                             // Key.
+              rnaindex == -1 ? std::nullopt : std::optional(rnaindex),  // Index.
+          }},
+          std::nullopt,
+          anim_eval_context,
+          eBezTriple_KeyframeType(ts->keyframe_type),
+          flag);
       changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }

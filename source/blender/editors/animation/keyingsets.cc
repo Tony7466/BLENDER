@@ -1082,14 +1082,15 @@ static int insert_key_to_keying_set_path(bContext *C,
   CombinedKeyingResult combined_result;
   for (; array_index < array_length; array_index++) {
     if (mode == ModifyKeyMode::INSERT) {
-      CombinedKeyingResult result = insert_keyframe(bmain,
-                                                    *keyingset_path->id,
-                                                    groupname,
-                                                    keyingset_path->rna_path,
-                                                    array_index,
-                                                    &anim_eval_context,
-                                                    keytype,
-                                                    path_insert_key_flags);
+      BLI_assert(array_index >= 0);
+      CombinedKeyingResult result = insert_key_rna(bmain,
+                                                   *keyingset_path->id,
+                                                   groupname,
+                                                   {{keyingset_path->rna_path, {}, array_index}},
+                                                   std::nullopt,
+                                                   anim_eval_context,
+                                                   keytype,
+                                                   path_insert_key_flags);
       keyed_channels += result.get_count(SingleKeyingResult::SUCCESS);
       combined_result.merge(result);
     }
