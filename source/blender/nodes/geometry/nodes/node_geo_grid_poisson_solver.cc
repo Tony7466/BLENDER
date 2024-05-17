@@ -152,7 +152,7 @@ static void node_rna(StructRNA * /*srna*/) {}
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_GRID_POISSON_SOLVER, "Grid Poisson Solver", NODE_CLASS_GEOMETRY);
@@ -160,7 +160,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
