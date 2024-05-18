@@ -57,7 +57,9 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
     const StringRef name = item.name;
     const std::string identifier = BakeItemsAccessor::socket_identifier_for_item(item);
-    auto &input_decl = b.add_input(socket_type, name, identifier);
+    auto &input_decl = b.add_input(socket_type, name, identifier)
+                           .socket_name_ptr(
+                               &ntree->id, BakeItemsAccessor::item_srna, &item, "name");
     auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
     if (socket_type_supports_fields(socket_type)) {
       input_decl.supports_field();
@@ -67,9 +69,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       else {
         output_decl.dependent_field({input_decl.index()});
       }
-    }
-    if (ntree) {
-      input_decl.socket_name_ptr(&ntree->id, BakeItemsAccessor::item_srna, &item, "name");
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
