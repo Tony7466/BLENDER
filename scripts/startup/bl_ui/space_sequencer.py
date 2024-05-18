@@ -501,6 +501,7 @@ class SEQUENCER_MT_view(Menu):
         layout.operator("sequencer.export_subtitles", text="Export Subtitles", icon='EXPORT')
 
         layout.separator()
+
                # Note that the context is needed for the shortcut to display properly.
         layout.operator_context = 'INVOKE_REGION_PREVIEW' if is_preview else 'INVOKE_REGION_WIN'
         props = layout.operator(
@@ -1111,6 +1112,7 @@ class SEQUENCER_MT_retiming(Menu):
 
         layout.operator("sequencer.retiming_key_add")
         layout.operator("sequencer.retiming_freeze_frame_add")
+
 
 class SEQUENCER_MT_context_menu(Menu):
     bl_label = "Sequencer"
