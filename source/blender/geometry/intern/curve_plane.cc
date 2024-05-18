@@ -80,8 +80,8 @@ static potrace_state_t *bools_to_potrace_curves(const int2 resolution, const Spa
   return potrace_trace(params, &bitmap);
 }
 
-static void potrace_curves_captuer_parent_index(const Span<const potrace_path_t *> src_curves,
-                                                Array<int> &r_parent_index)
+static void potrace_curve_parent_index(const Span<const potrace_path_t *> src_curves,
+                                       Array<int> &r_parent_index)
 {
   r_parent_index.reinitialize(src_curves.size());
 
@@ -109,12 +109,42 @@ static float2 to_float2(const potrace_dpoint_s &point)
   return float2(point.x, point.y);
 }
 
+static IndexRange range_sum(const IndexRange a, const IndexRange b)
+{
+  return IndexRange(a.start() + b.start(), a.size() + b.size());
+}
+
+template<typename T, int num>
+std::ostream &operator<<(std::ostream &stream, const std::array<T, num> &data)
+{
+  stream << "{";
+  for (const int64_t i : IndexRange(num)) {
+    stream << data[i] << (num - 1 == i ? "" : ", ");
+  }
+  stream << "}";
+  return stream;
+}
+
 template<typename T> std::ostream &operator<<(std::ostream &stream, const Span<T> span)
 {
   for (const int64_t i : span.index_range()) {
     stream << span[i] << (span.size() - 1 == i ? "" : ", ");
   }
   return stream;
+}
+
+template<typename In, typename Out, typename Func>
+static void parallel_transform(const Span<In> src,
+                               const int64_t grain_size,
+                               MutableSpan<Out> dst,
+                               const Func func)
+{
+  BLI_assert(src.size() == dst.size());
+  threading::parallel_for(src.index_range(), grain_size, [&](const IndexRange range) {
+    const Span<In> src_slice = src.slice(range);
+    MutableSpan<Out> dst_slice = dst.slice(range);
+    std::transform(src_slice.begin(), src_slice.end(), dst_slice.begin(), func);
+  });
 }
 
 namespace potrace {
@@ -135,7 +165,7 @@ enum struct SegmentType : int8_t {
 static bool extra_bezier_point_between(const SegmentType a_segment_type,
                                        const SegmentType b_segment_type)
 {
-  if (a_segment_type == SegmentType::Bezier && b_segment_type == SegmentType::Poly) {
+  if (a_segment_type == SegmentType::Poly && b_segment_type == SegmentType::Bezier) {
     return true;
   }
   return false;
@@ -153,26 +183,48 @@ static int extra_points_in_curve(const Span<int> segment_types)
   return extra_points_num + int(extra_point_in_cycle);
 }
 
-/**
- * Offsets are slices of curve with segments of the same type.
- */
-static void curve_segment_offsets(const Span<int> segment_types, MutableSpan<int> indices)
+}  // namespace potrace
+
+static int count_different_types(const Span<int> segment_types)
+{
+  const IndexRange range = segment_types.index_range().drop_back(1);
+  const int different_types_num = std::count_if(range.begin(), range.end(), [&](const int64_t i) {
+    return potrace::SegmentType(segment_types[i]) != potrace::SegmentType(segment_types[i + 1]);
+  });
+  const bool different_types_in_cycle = potrace::SegmentType(segment_types.last()) !=
+                                        potrace::SegmentType(segment_types.first());
+  return different_types_num + int(different_types_in_cycle);
+}
+
+static void copy_type_switch_indices(const Span<int> segment_types, MutableSpan<int> indices)
 {
   const IndexRange range = segment_types.index_range().drop_back(1);
   indices.last() = -1;
   std::copy_if(range.begin(), range.end(), indices.begin(), [&](const int64_t i) {
-    return extra_bezier_point_between(SegmentType(segment_types[i]),
-                                      SegmentType(segment_types[i + 1]));
+    return potrace::SegmentType(segment_types[i]) != potrace::SegmentType(segment_types[i + 1]);
   });
-  if (extra_bezier_point_between(SegmentType(segment_types.last()),
-                                 SegmentType(segment_types.first())))
-  {
+  if (potrace::SegmentType(segment_types.last()) != potrace::SegmentType(segment_types.first())) {
     BLI_assert(indices.last() == -1);
-    indices.last() = segment_types.size();
+    indices.last() = segment_types.size() - 1;
   }
 }
 
-}  // namespace potrace
+static int count_extra_points(const Span<potrace::CurveType> types)
+{
+  /* If there is just 2 type of segments, number of extra points can be found in trivial way. */
+  if constexpr (false) {
+    const IndexRange range = types.index_range().drop_back(1);
+    const int different_types_num = std::count_if(
+        range.begin(), range.end(), [&](const int64_t i) {
+          return extra_bezier_point_between(potrace::SegmentType(types[i]),
+                                            potrace::SegmentType(types[i + 1]));
+        });
+    const bool different_types_in_cycle = extra_bezier_point_between(
+        potrace::SegmentType(types.last()), potrace::SegmentType(types.first()));
+    return different_types_num + int(different_types_in_cycle);
+  }
+  return types.size() / 2;
+}
 
 static potrace::CurveType curve_type(const Span<int> segment_types, const int extra_points)
 {
@@ -200,39 +252,72 @@ static potrace::CurveType curve_type(const Span<int> segment_types, const int ex
   }
 }
 
-static void vector_curve_type_check(const Span<const potrace_path_t *> src_curves,
-                                    Array<potrace::CurveType> &r_curve_types,
-                                    Array<int> &r_type_switch_offsets,
-                                    Array<int> &r_type_switch_indices)
+static void potrace_curve_sizes(const Span<const potrace_path_t *> src_curves,
+                                MutableSpan<int> offsets)
 {
   BLI_assert(!src_curves.is_empty());
+  threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      offsets[curve_i] = src_curves[curve_i]->curve.n;
+    }
+  });
+}
 
-  r_type_switch_offsets.reinitialize(src_curves.size() + 1);
+static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
+                                 const OffsetIndices<int> offsets,
+                                 MutableSpan<std::array<float2, 3>> vector_data)
+{
+  threading::parallel_for(
+      src_curves.index_range(),
+      4096,
+      [&](const IndexRange range) {
+        for (const int curve_i : range) {
+          const IndexRange curve_points = offsets[curve_i];
+          MutableSpan<std::array<float2, 3>> points = vector_data.slice(curve_points);
+          for (const int64_t i : curve_points.index_range()) {
+            points[i][0] = to_float2(src_curves[curve_i]->curve.c[i][0]);
+            points[i][1] = to_float2(src_curves[curve_i]->curve.c[i][1]);
+            points[i][2] = to_float2(src_curves[curve_i]->curve.c[i][2]);
+          }
+        }
+      },
+      threading::accumulated_task_sizes(
+          [&](const IndexRange range) { return offsets[range].size(); }));
+}
+
+static void transform_points(const int2 resolution,
+                             const float2 min_point,
+                             const float2 max_point,
+                             MutableSpan<std::array<float2, 3>> points_data)
+{
+  const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
+  parallel_transform(
+      points_data.as_span().cast<float2>(),
+      4096,
+      points_data.cast<float2>(),
+      [&](const float2 src_point) { return min_point + src_point * resolution_factor; });
+}
+
+static void potrace_curve_slice_segments(const Span<const potrace_path_t *> src_curves,
+                                         Array<int> &r_curve_types_offset_data,
+                                         Array<int> &r_curve_type_indices_data)
+{
+  r_curve_types_offset_data.reinitialize(src_curves.size() + 1);
   threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
-      r_type_switch_offsets[curve_i] = potrace::extra_points_in_curve(segment_types);
+      r_curve_types_offset_data[curve_i] = count_different_types(segment_types);
+      if (r_curve_types_offset_data[curve_i] > 0) {
+        BLI_assert(r_curve_types_offset_data[curve_i] % 2 == 0);
+        static constexpr const int first_last_points = 2;
+        r_curve_types_offset_data[curve_i] += first_last_points;
+      }
     }
   });
+  const OffsetIndices<int> curve_types_offset = offset_indices::accumulate_counts_to_offsets(
+      r_curve_types_offset_data);
 
-  const OffsetIndices<int> type_offsets = offset_indices::accumulate_counts_to_offsets(
-      r_type_switch_offsets);
-  if (type_offsets.total_size() == 0) {
-    r_type_switch_offsets = {};
-    const int type_of_all_curves = *src_curves.first()->curve.tag;
-    r_curve_types = {curve_type({type_of_all_curves}, 0)};
-    return;
-  }
-
-  r_curve_types.reinitialize(src_curves.size());
-  threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
-    for (const int curve_i : range) {
-      const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
-      r_curve_types[curve_i] = curve_type(segment_types, type_offsets[curve_i].size());
-    }
-  });
-
-  r_type_switch_indices.reinitialize(type_offsets.total_size());
+  r_curve_type_indices_data.reinitialize(curve_types_offset.total_size());
   threading::parallel_for(
       src_curves.index_range(),
       4096,
@@ -240,307 +325,215 @@ static void vector_curve_type_check(const Span<const potrace_path_t *> src_curve
         for (const int curve_i : range) {
           const Span<int> segment_types(src_curves[curve_i]->curve.tag,
                                         src_curves[curve_i]->curve.n);
-          MutableSpan<int> curve_type_switch_indices =
-              r_type_switch_indices.as_mutable_span().slice(type_offsets[curve_i]);
-          potrace::curve_segment_offsets(segment_types, curve_type_switch_indices);
+          MutableSpan<int> curve_type_indices_data =
+              r_curve_type_indices_data.as_mutable_span().slice(curve_types_offset[curve_i]);
+          if (curve_type_indices_data.is_empty()) {
+            continue;
+          }
+          curve_type_indices_data.first() = 0;
+          copy_type_switch_indices(segment_types,
+                                   curve_type_indices_data.drop_front(1).drop_back(1));
+          curve_type_indices_data.last() = segment_types.size();
         }
       },
       threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return type_offsets[range].size(); }));
+          [&](const IndexRange range) { return curve_types_offset[range].size(); }));
 }
 
-static void potrace_curves_to_vector_curve(const Span<const potrace_path_t *> src_curves,
-                                           Array<std::array<float2, 3>> &r_vector_data,
-                                           Array<int> &r_offsets)
+static void potrace_curve_extra_points(const Span<const potrace_path_t *> src_curves,
+                                       const GroupedSpan<int> curve_type_indices,
+                                       MutableSpan<int> extra_curve_offset_data)
 {
-  BLI_assert(!src_curves.is_empty());
-  r_offsets.reinitialize(src_curves.size() + 1);
   threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
     for (const int curve_i : range) {
-      r_offsets[curve_i] = src_curves[curve_i]->curve.n;
+      const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
+      const Span<int> curve_type_switch_indices = curve_type_indices[curve_i];
+      const IndexRange curve_range = curve_type_switch_indices.index_range().drop_back(2);
+      std::cout << curve_range << ";\n";
+      std::cout << segment_types << ";\n";
+      std::cout << curve_type_switch_indices << ";\n";
+      std::cout << "\n";
+      extra_curve_offset_data[curve_i] = std::count_if(
+          curve_range.begin(), curve_range.end(), [&](const int64_t i) {
+            const potrace::SegmentType current_type = potrace::SegmentType(
+                segment_types[curve_type_switch_indices[i]]);
+            const potrace::SegmentType next_type = potrace::SegmentType(
+                segment_types[curve_type_switch_indices[i + 1]]);
+            return potrace::extra_bezier_point_between(current_type, next_type);
+          });
+      if (potrace::extra_bezier_point_between(potrace::SegmentType(segment_types.last()),
+                                              potrace::SegmentType(segment_types.first())))
+      {
+        extra_curve_offset_data[curve_i]++;
+      }
     }
   });
-  const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
-
-  r_vector_data.reinitialize(offsets.total_size());
-  threading::parallel_for(
-      src_curves.index_range(),
-      4096,
-      [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const IndexRange curve_points = offsets[curve_i];
-          MutableSpan<std::array<float2, 3>> points = r_vector_data.as_mutable_span().slice(
-              curve_points);
-          const Span<int> src_point_types(src_curves[curve_i]->curve.tag,
-                                          src_curves[curve_i]->curve.n);
-          for (const int64_t i : curve_points.index_range()) {
-            points[i][0] = to_float2(src_curves[curve_i]->curve.c[i][0]);
-            points[i][1] = to_float2(src_curves[curve_i]->curve.c[i][1]);
-            points[i][2] = to_float2(src_curves[curve_i]->curve.c[i][2]);
-            // std::cout << "{" << points[i][0] << ", " << points[i][1] << ", " << points[i][2] <<
-            // ", Type: " << (src_point_types[i] == POTRACE_CURVETO ? "Curve" : "Poly") << "}, ";
-          }
-          // std::cout << "\n";
-
-          /* Initialize unused polyline point by other point the treat this as handle. */
-          // for (const int i : curve_points.index_range()) {
-          // BLI_assert(ELEM(src_point_types[i], POTRACE_CURVETO, POTRACE_CORNER));
-          // if (src_point_types[i] == POTRACE_CURVETO) {
-          // std::swap(points[i][1], points[i][2]);
-          // std::swap(points[i][0], points[i][2]);
-          // points[i][0] = points[i][1];
-          // points[i][1] = points[i][2];
-          // std::swap(points[i][2], points[i][1]);
-          // }
-          // }
-        }
-      },
-      threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return offsets[range].size(); }));
 }
 
-static void vector_curves_as_bezier(const OffsetIndices<int> offsets,
-                                    MutableSpan<std::array<float2, 3>> vector_data)
+static void potrace_curve_type(const Span<const potrace_path_t *> src_curves,
+                               const OffsetIndices<int> extra_curve_offsets,
+                               MutableSpan<potrace::CurveType> curve_type_data)
 {
-  threading::parallel_for(
-      offsets.index_range(),
-      4096,
-      [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const IndexRange curve_points = offsets[curve_i];
-          MutableSpan<std::array<float2, 3>> points = vector_data.slice(curve_points);
-          for (const int i : curve_points.index_range()) {
-            std::swap(points[i][1], points[i][2]);
-            std::swap(points[i][0], points[i][2]);
-          }
-          /* Make it so each triplet will contain left right and control point positions. */
-          const float2 first_handle = points.first()[2];
-          for (const int i : curve_points.index_range().drop_back(1)) {
-            const int r_i = curve_points.index_range().last(i);
-            points[i][2] = points[i + 1][2];
-          }
-          points.last()[2] = first_handle;
-        }
-      },
-      threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return offsets[range].size(); }));
+  threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
+      curve_type_data[curve_i] = curve_type(segment_types, extra_curve_offsets[curve_i].size());
+    }
+  });
 }
 
-static void vector_curves_as_bezier_poly(const OffsetIndices<int> offsets,
-                                         MutableSpan<std::array<float2, 3>> vector_data)
+static void potrace_curve_to_bezier(MutableSpan<std::array<float2, 3>> points_data)
 {
-  threading::parallel_for(
-      offsets.index_range(),
-      4096,
-      [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const IndexRange curve_points = offsets[curve_i];
-          MutableSpan<std::array<float2, 3>> points = vector_data.slice(curve_points);
-          for (const int i : curve_points.index_range()) {
-            std::swap(points[i][1], points[i][2]);
-            std::swap(points[i][0], points[i][2]);
-          }
-          /* Make it so each triplet will contain left right and control point positions. */
-          const float2 first_handle = points.first()[2];
-          for (const int i : curve_points.index_range().drop_back(1)) {
-            const int r_i = curve_points.index_range().last(i);
-            points[i][2] = points[i + 1][2];
-          }
-          points.last()[2] = first_handle;
-        }
-      },
-      threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return offsets[range].size(); }));
+  for (std::array<float2, 3> &point : points_data) {
+    std::swap(point[1], point[2]);
+    std::swap(point[0], point[2]);
+  }
 }
 
-static void vector_curves_as_bezier_or_poly(const OffsetIndices<int> offsets,
-                                            const OffsetIndices<int> extra_points,
-                                            const Span<potrace::CurveType> types,
-                                            const Span<int> extra_curve_points_indices,
-                                            MutableSpan<std::array<float2, 3>> vector_data)
+static void potrace_bezeir_curve_shift_handles(MutableSpan<std::array<float2, 3>> points_data)
+{
+  // const float2 first_handle = points_data.first()[2];
+  for (const int i : points_data.index_range().drop_back(1)) {
+    points_data[i][2] = points_data[i + 1][2];
+  }
+  // points_data.last()[2] = first_handle;
+}
+
+static void potrace_bezeir_curve_shift_poly_handles(MutableSpan<std::array<float2, 3>> points_data)
+{
+  // const float2 first_handle = points_data.last()[2];
+  for (const int i : points_data.index_range().drop_back(1)) {
+    points_data[i + 1][0] = points_data[i][2];
+  }
+  // points_data.first()[0] = first_handle;
+}
+
+static void potrace_to_bezier_or_poly_curves(const Span<const potrace_path_t *> src_curves,
+                                             const OffsetIndices<int> curve_offsets,
+                                             const GroupedSpan<int> curve_type_indices,
+                                             const Span<potrace::CurveType> curve_type_data,
+                                             MutableSpan<std::array<float2, 3>> points_data)
 {
   threading::parallel_for(
-      offsets.index_range(),
+      curve_offsets.index_range(),
       4096,
       [&](const IndexRange range) {
         for (const int curve_i : range) {
-          const IndexRange curve_points = offsets[curve_i];
-          MutableSpan<std::array<float2, 3>> points = vector_data.slice(curve_points);
+          const IndexRange curve_points = curve_offsets[curve_i];
+          const Span<int> segment_types(src_curves[curve_i]->curve.tag,
+                                        src_curves[curve_i]->curve.n);
+          const Span<int> type_indices = curve_type_indices[curve_i];
+          MutableSpan<std::array<float2, 3>> points = points_data.slice(curve_points);
 
-          const potrace::CurveType type = types[curve_i];
-          if (extra_points[curve_i].is_empty()) {
-            BLI_assert(
-                ELEM(type, potrace::CurveType::BezierSpline, potrace::CurveType::PolySpline));
-            if (type == potrace::CurveType::BezierSpline) {
-              vector_curves_as_bezier(Span{0, int(points.size())}, points);
+          const potrace::CurveType curve_type = curve_type_data[curve_i];
+          if (type_indices.is_empty()) {
+            BLI_assert(ELEM(
+                curve_type, potrace::CurveType::BezierSpline, potrace::CurveType::PolySpline));
+            if (curve_type == potrace::CurveType::BezierSpline) {
+              potrace_curve_to_bezier(points);
+              const float2 first_handle = points.first()[2];
+              potrace_bezeir_curve_shift_handles(points);
+              points.last()[2] = first_handle;
+            }
+            else {
+              // potrace_bezeir_curve_shift_poly_handles(points);
             }
             continue;
           }
 
-          const Span<int> extra_point_indices = extra_curve_points_indices.slice(
-              extra_points[curve_i]);
-          const IndexRange first_segments_same_type = IndexRange::from_begin_end(
-              0, extra_point_indices[0]);
-          if (!first_segments_same_type.is_empty()) {
-            if (type == potrace::CurveType::FirstPolySegment) {
-              vector_curves_as_bezier_poly(Span{0, int(first_segments_same_type.size())}, points);
+          float2 first_handle_iter = points_data.last()[2];
+          std::array<float2, 3> *prev_point = nullptr;
+          for (const int range_i : type_indices.index_range().drop_back(1)) {
+            const potrace::SegmentType range_type = potrace::SegmentType(
+                segment_types[type_indices[range_i]]);
+            const IndexRange typed_range = IndexRange::from_begin_end(type_indices[range_i],
+                                                                      type_indices[range_i + 1]);
+            MutableSpan<std::array<float2, 3>> range_points = points.slice(typed_range);
+            if (typed_range.is_empty()) {
+              continue;
             }
-            else {
-              vector_curves_as_bezier(Span{0, int(first_segments_same_type.size())}, points);
-            }
-          }
-
-          for (const int type_p : extra_point_indices.index_range().drop_back(1)) {
-            const potrace::SegmentType current_type =
-                ((type == potrace::CurveType::FirstPolySegment) ^ (type_p % 2)) ?
-                    potrace::SegmentType::Poly :
-                    potrace::SegmentType::Bezier;
-            const IndexRange segments_same_type = IndexRange::from_begin_end(
-                extra_point_indices[type_p], extra_point_indices[type_p + 1]);
-            const int extra_points_shift = type_p + segments_same_type.first();
-
-            if (current_type == potrace::SegmentType::Poly) {
-              vector_curves_as_bezier_poly(
-                  Span{extra_points_shift, int(segments_same_type.size())}, points);
-            }
-            else {
-              vector_curves_as_bezier(Span{extra_points_shift, int(segments_same_type.size())},
-                                      points);
-            }
-          }
-
-          const IndexRange last_segments_same_type = IndexRange::from_begin_end(
-              extra_point_indices.last(), curve_points.size());
-          if (!last_segments_same_type.is_empty()) {
-            if (type == potrace::CurveType::FirstPolySegment) {
-              vector_curves_as_bezier_poly(
-                  Span{extra_point_indices.last(), int(last_segments_same_type.size())}, points);
-            }
-            else {
-              vector_curves_as_bezier(
-                  Span{extra_point_indices.last(), int(last_segments_same_type.size())}, points);
+            switch (range_type) {
+              case potrace::SegmentType::Bezier: {
+                if (prev_point != nullptr) {
+                }
+                potrace_curve_to_bezier(range_points);
+                const float2 first_handle = range_points.first()[2];
+                potrace_bezeir_curve_shift_handles(range_points);
+                // range_points.last()[2] = first_handle;
+                prev_point = &range_points.last();
+                break;
+              }
+              case potrace::SegmentType::Poly: {
+                if (prev_point != nullptr) {
+                  *prev_point[2] = math::midpoint(*prev_point[1], range_points.first()[1]);
+                  range_points.first()[0] = *prev_point[2];
+                }
+                potrace_bezeir_curve_shift_poly_handles(range_points);
+                prev_point = &range_points.last();
+                break;
+              }
+              default:
+                break;
             }
           }
         }
       },
       threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return offsets[range].size(); }));
+          [&](const IndexRange range) { return curve_offsets[range].size(); }));
 }
 
-template<typename In, typename Out, typename Func>
-static void parallel_transform(const Span<In> src,
-                               const int64_t grain_size,
-                               MutableSpan<Out> dst,
-                               const Func func)
+static void points_to_bezier_or_poly_curves(const OffsetIndices<int> curve_offsets,
+                                            const OffsetIndices<int> extra_point_offsets,
+                                            const GroupedSpan<int> curve_type_indices,
+                                            const Span<potrace::CurveType> curve_type_data,
+                                            const Span<std::array<float2, 3>> points_data,
+                                            MutableSpan<float3> positions,
+                                            MutableSpan<float3> left_handle,
+                                            MutableSpan<float3> right_handle)
 {
-  BLI_assert(src.size() == dst.size());
-  threading::parallel_for(src.index_range(), grain_size, [&](const IndexRange range) {
-    const Span<In> src_slice = src.slice(range);
-    MutableSpan<Out> dst_slice = dst.slice(range);
-    std::transform(src_slice.begin(), src_slice.end(), dst_slice.begin(), func);
-  });
-}
+  std::cout << points_data << ";\n";
 
-static void vector_curve_to_poly_or_bezier(const OffsetIndices<int> curves,
-                                           const OffsetIndices<int> extra_points,
-                                           const Span<potrace::CurveType> types,
-                                           const Span<int> extra_curve_points_indices,
-                                           const Span<std::array<float2, 3>> src_points,
-                                           MutableSpan<float3> positions,
-                                           MutableSpan<float3> left_handle,
-                                           MutableSpan<float3> right_handle)
-{
   left_handle.fill({});
   right_handle.fill({});
-  // parallel_transform(vectors, 4096, left_handle,
+  // parallel_transform(src_points, 4096, left_handle,
   //     [](const std::array<float2, 3> &src_point) { return float3(src_point[0], 0.0f); });
 
-  threading::parallel_for(
-      curves.index_range(),
-      4096,
-      [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          const Span<std::array<float2, 3>> curve_points = src_points.slice(
-              curves[curve_i].first(), curves[curve_i].size());
-          MutableSpan<float3> curve_positions = positions.slice(
-              curves[curve_i].first() + extra_points[curve_i].first(),
-              curves[curve_i].size() + extra_points[curve_i].size());
-          // MutableSpan<float3> curve_left_handle = left_handle.slice(curves[curve_i].first() +
-          // extra_points[curve_i].first(), curves[curve_i].size() + extra_points[curve_i].size());
-          // MutableSpan<float3> curve_right_handle = right_handle.slice(curves[curve_i].first() +
-          // extra_points[curve_i].first(), curves[curve_i].size() + extra_points[curve_i].size());
-
-          const Span<int> extra_point_indices = extra_curve_points_indices.slice(
-              extra_points[curve_i]);
-
-          {
-            const IndexRange first_segments_same_type = IndexRange::from_begin_end(
-                0, extra_point_indices[0]);
-            for (const int64_t i : first_segments_same_type) {
-              std::cout << "first_segments_same_type >> " << i << ";\n";
-              curve_positions[i] = float3(src_points[i][0], 0.0f);
-            }
-          }
-
-          std::cout << extra_point_indices << ";\n";
-
-          for (const int64_t type_i : extra_point_indices.index_range().drop_back(1)) {
-            const IndexRange segments_same_type = IndexRange::from_begin_end(
-                extra_point_indices[type_i], extra_point_indices[type_i + 1]);
-            const int64_t extra_points_shift = type_i;
-
-            for (const int64_t i : segments_same_type) {
-              std::cout << "segments_same_type >> " << (extra_points_shift + i) << ";\n";
-              curve_positions[extra_points_shift + i] = float3(src_points[i][0], 0.0f);
-            }
-          }
-
-          {
-            const IndexRange last_segments_same_type = IndexRange::from_begin_end(
-                extra_point_indices.last(), curve_points.size());
-            const int64_t extra_points_shift = extra_point_indices.size();
-            for (const int64_t i : last_segments_same_type) {
-              std::cout << "last_segments_same_type >> " << i << ";\n";
-              curve_positions[extra_points_shift + i] = float3(src_points[i][0], 0.0f);
-            }
-          }
-        }
-      },
-      threading::accumulated_task_sizes([&](const IndexRange range) {
-        return curves[range].size() + extra_points[range].size();
-      }));
-
   /*
-    parallel_transform(vectors, 4096, positions,
-        [](const std::array<float2, 3> &src_point) { return float3(src_point[1], 0.0f); });
+    threading::parallel_for(
+        curves.index_range(),
+        4096,
+        [&](const IndexRange range) {
+          for (const int curve_i : range) {
+            const Span<std::array<float2, 3>> curve_points =
+    src_points.slice(curves[curve_i].first(), curves[curve_i].size()); MutableSpan<float3>
+    curve_positions = positions.slice(range_sum(curves[curve_i], extra_points[curve_i])); const
+    Span<int> extra_point_indices = extra_curve_points_indices.slice(extra_points[curve_i]);
+
+          }
+        },
+        threading::accumulated_task_sizes([&](const IndexRange range) {
+          return curves[range].size() + extra_points[range].size();
+        }));
   */
 
-  // parallel_transform(vectors, 4096, right_handle,
+  parallel_transform(
+      points_data,
+      4096,
+      left_handle.take_front(points_data.size()),
+      [](const std::array<float2, 3> &src_point) { return float3(src_point[0], 0.0f); });
+  parallel_transform(
+      points_data,
+      4096,
+      positions.take_front(points_data.size()),
+      [](const std::array<float2, 3> &src_point) { return float3(src_point[1], 0.0f); });
+  parallel_transform(
+      points_data,
+      4096,
+      right_handle.take_front(points_data.size()),
+      [](const std::array<float2, 3> &src_point) { return float3(src_point[2], 0.0f); });
+
+  // parallel_transform(src_points, 4096, right_handle,
   //     [](const std::array<float2, 3> &src_point) { return float3(src_point[2], 0.0f); });
-}
-
-static void vector_curve_to_poly(const Span<std::array<float2, 3>> src_points,
-                                 MutableSpan<float3> positions)
-{
-  parallel_transform(src_points, 4096, positions, [](const std::array<float2, 3> &src_point) {
-    return float3(src_point[1], 0.0f);
-  });
-}
-
-static void vector_curve_to_bezier(const Span<std::array<float2, 3>> src_points,
-                                   MutableSpan<float3> positions,
-                                   MutableSpan<float3> left_handle,
-                                   MutableSpan<float3> right_handle)
-{
-  parallel_transform(src_points, 4096, left_handle, [](const std::array<float2, 3> &src_point) {
-    return float3(src_point[0], 0.0f);
-  });
-  parallel_transform(src_points, 4096, positions, [](const std::array<float2, 3> &src_point) {
-    return float3(src_point[1], 0.0f);
-  });
-  parallel_transform(src_points, 4096, right_handle, [](const std::array<float2, 3> &src_point) {
-    return float3(src_point[2], 0.0f);
-  });
 }
 
 std::optional<Curves *> plane_to_curve(const int2 resolution,
@@ -562,153 +555,107 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
     return std::nullopt;
   }
 
-  Array<std::array<float2, 3>> vector_data;
-  Array<int> offsets_data;
-  potrace_curves_to_vector_curve(curves_list, vector_data, offsets_data);
-  const OffsetIndices<int> offsets(offsets_data);
-
   Array<int> parent_index_data;
   if (parent_index_id) {
-    potrace_curves_captuer_parent_index(curves_list, parent_index_data);
+    potrace_curve_parent_index(curves_list, parent_index_data);
   }
 
-  Array<potrace::CurveType> curve_types;
-  Array<int> extra_curve_points_offsets;
-  Array<int> extra_curve_points_indices;
-  vector_curve_type_check(
-      curves_list, curve_types, extra_curve_points_offsets, extra_curve_points_indices);
-  const OffsetIndices<int> extra_points_offsets(extra_curve_points_offsets);
+  Array<int> offset_data(curves_list.size() + 1);
+  potrace_curve_sizes(curves_list, offset_data);
+  const OffsetIndices<int> curve_offsets = offset_indices::accumulate_counts_to_offsets(
+      offset_data);
+
+  Array<std::array<float2, 3>> points_data(curve_offsets.total_size());
+  potrace_curve_points(curves_list, curve_offsets, points_data);
+  transform_points(resolution, min_point, max_point, points_data);
+
+  Array<int> curve_types_offset_data;
+  Array<int> curve_type_indices_data;
+  potrace_curve_slice_segments(curves_list, curve_types_offset_data, curve_type_indices_data);
+  const GroupedSpan<int> curve_type_indices(curve_types_offset_data.as_span(),
+                                            curve_type_indices_data);
+
+  Array<int> extra_curve_offset_data(curves_list.size() + 1);
+  potrace_curve_extra_points(curves_list, curve_type_indices, extra_curve_offset_data);
+  const OffsetIndices<int> extra_point_offsets = offset_indices::accumulate_counts_to_offsets(
+      extra_curve_offset_data);
+
+  Array<potrace::CurveType> curve_type_data(curves_list.size());
+  potrace_curve_type(curves_list, extra_point_offsets, curve_type_data);
+
+  potrace_to_bezier_or_poly_curves(
+      curves_list, curve_offsets, curve_type_indices, curve_type_data, points_data);
 
   potrace_state_free(potrace_result);
 
-  if (extra_curve_points_offsets.is_empty()) {
-    BLI_assert(curve_types.size() == 1);
-    if (curve_types.first() == potrace::CurveType::BezierSpline) {
-      vector_curves_as_bezier(offsets, vector_data);
-    }
-  }
-  else {
-    vector_curves_as_bezier_or_poly(
-        offsets, extra_points_offsets, curve_types, extra_curve_points_indices, vector_data);
-  }
-
-  BLI_assert(extra_points_offsets.total_size() >= 0);
-  Curves *curves_id = bke::curves_new_nomain(
-      offsets.total_size() + extra_points_offsets.total_size(), offsets.size());
-  std::cout << "Curves num: " << offsets.size()
-            << ";\nPoints num: " << offsets.total_size() + extra_points_offsets.total_size()
+  const int64_t total_vertices = curve_offsets.total_size() + extra_point_offsets.total_size();
+  Curves *curves_id = bke::curves_new_nomain(total_vertices, curve_offsets.size());
+  std::cout << "Curves num: " << curve_offsets.size() << ";\nPoints num: " << total_vertices
             << ";\n";
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
   curves.cyclic_for_write().fill(true);
 
-  MutableSpan<int> curve_offsets = curves.offsets_for_write();
-  if (extra_curve_points_offsets.is_empty()) {
-    array_utils::copy(offsets_data.as_span(), curve_offsets);
-    std::cout << "curve_offsets range:"
-              << IndexRange(offsets_data.first(), offsets_data.last() - offsets_data.first())
-              << ";\n";
-  }
-  else {
-    threading::parallel_for(curve_offsets.index_range(), 4096, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        curve_offsets[curve_i] = offsets_data[curve_i] + extra_curve_points_offsets[curve_i];
-        std::cout << "curve_offsets[curve_i]: " << curve_offsets[curve_i] << "\n";
-      }
-    });
-  }
-
-  if (extra_curve_points_offsets.is_empty()) {
-    BLI_assert(curve_types.size() == 1);
-    switch (curve_types.first()) {
-      case potrace::CurveType::PolySpline: {
-        curves.fill_curve_types(CURVE_TYPE_POLY);
-        break;
-      }
-      case potrace::CurveType::BezierSpline: {
-        curves.fill_curve_types(CURVE_TYPE_BEZIER);
-        curves.handle_types_left_for_write().fill(BEZIER_HANDLE_FREE);
-        curves.handle_types_right_for_write().fill(BEZIER_HANDLE_FREE);
-        break;
-      }
-      default: {
-        BLI_assert_unreachable();
-      }
+  MutableSpan<int> dst_curve_offsets = curves.offsets_for_write();
+  threading::parallel_for(curve_offsets.index_range(), 4096, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      dst_curve_offsets[curve_i] = offset_data[curve_i] + extra_curve_offset_data[curve_i];
     }
-  }
-  else {
-    MutableSpan<int8_t> curves_type = curves.curve_types_for_write();
-    MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
-    MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
-    threading::parallel_for(
-        curves_list.index_range(),
-        4096,
-        [&](const IndexRange range) {
-          for (const int curve_i : range) {
-            switch (curve_types[curve_i]) {
-              case potrace::CurveType::PolySpline: {
-                curves_type[curve_i] = CURVE_TYPE_POLY;
-                break;
-              }
-              case potrace::CurveType::BezierSpline:
-              case potrace::CurveType::FirstPolySegment:
-              case potrace::CurveType::FirstBezierSegment: {
-                curves_type[curve_i] = CURVE_TYPE_BEZIER;
-                const IndexRange finall_curve_range = IndexRange(
-                    offsets[curve_i].first() + extra_points_offsets[curve_i].first(),
-                    offsets[curve_i].size() + extra_points_offsets[curve_i].size());
-                handle_types_left.slice(finall_curve_range).fill(BEZIER_HANDLE_FREE);
-                handle_types_right.slice(finall_curve_range).fill(BEZIER_HANDLE_FREE);
-                break;
-              }
-              default: {
-                BLI_assert_unreachable();
-              }
+  });
+
+  parallel_transform(curve_type_data.as_span(),
+                     4096,
+                     curves.curve_types_for_write(),
+                     [&](const potrace::CurveType type) {
+                       BLI_assert(ELEM(type,
+                                       potrace::CurveType::PolySpline,
+                                       potrace::CurveType::BezierSpline,
+                                       potrace::CurveType::FirstPolySegment,
+                                       potrace::CurveType::FirstBezierSegment));
+                       return type == potrace::CurveType::PolySpline ? CURVE_TYPE_POLY :
+                                                                       CURVE_TYPE_BEZIER;
+                     });
+
+  // curves.curve_types_for_write().fill(CURVE_TYPE_BEZIER);
+
+  MutableSpan<int8_t> handle_types_left = curves.handle_types_left_for_write();
+  MutableSpan<int8_t> handle_types_right = curves.handle_types_right_for_write();
+  threading::parallel_for(
+      curves_list.index_range(),
+      4096,
+      [&](const IndexRange range) {
+        for (const int curve_i : range) {
+          switch (curve_type_data[curve_i]) {
+            case potrace::CurveType::PolySpline:
+              break;
+            case potrace::CurveType::BezierSpline:
+            case potrace::CurveType::FirstPolySegment:
+            case potrace::CurveType::FirstBezierSegment: {
+              const IndexRange finall_curve_range = range_sum(curve_offsets[curve_i],
+                                                              extra_point_offsets[curve_i]);
+              handle_types_left.slice(finall_curve_range).fill(BEZIER_HANDLE_FREE);
+              handle_types_right.slice(finall_curve_range).fill(BEZIER_HANDLE_FREE);
+              break;
+            }
+            default: {
+              BLI_assert_unreachable();
             }
           }
-        },
-        threading::accumulated_task_sizes(
-            [&](const IndexRange range) { return offsets[range].size(); }));
-  }
+        }
+      },
+      threading::accumulated_task_sizes([&](const IndexRange range) {
+        return curve_offsets[range].size() + extra_point_offsets[range].size();
+      }));
 
-  const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
-  parallel_transform(
-      vector_data.as_span().cast<float2>(),
-      4096,
-      vector_data.as_mutable_span().cast<float2>(),
-      [&](const float2 src_point) { return min_point + src_point * resolution_factor; });
-
-  if (extra_curve_points_offsets.is_empty()) {
-    BLI_assert(curve_types.size() == 1);
-    switch (curve_types.first()) {
-      case potrace::CurveType::PolySpline: {
-        vector_curve_to_poly(vector_data, curves.positions_for_write());
-        break;
-      }
-      case potrace::CurveType::BezierSpline: {
-        vector_curve_to_bezier(vector_data,
-                               curves.positions_for_write(),
-                               curves.handle_positions_left_for_write(),
-                               curves.handle_positions_right_for_write());
-        break;
-      }
-      default: {
-        BLI_assert_unreachable();
-      }
-    }
-  }
-  else {
-    curves.positions_for_write().fill(float3(0.0f, 0.0f, -1.0f));
-    std::cout << "vector_curve_to_poly_or_bezier;\n";
-    vector_curve_to_poly_or_bezier(offsets,
-                                   extra_points_offsets,
-                                   curve_types,
-                                   extra_curve_points_indices,
-                                   vector_data,
-                                   curves.positions_for_write(),
-                                   curves.handle_positions_left_for_write(),
-                                   curves.handle_positions_right_for_write());
-  }
+  curves.positions_for_write().fill(float3(0.0f, 0.0f, -1.0f));
+  points_to_bezier_or_poly_curves(curve_offsets,
+                                  extra_point_offsets,
+                                  curve_type_indices,
+                                  curve_type_data,
+                                  points_data,
+                                  curves.positions_for_write(),
+                                  curves.handle_positions_left_for_write(),
+                                  curves.handle_positions_right_for_write());
 
   if (!parent_index_data.is_empty()) {
     bke::SpanAttributeWriter<int> parent_attribute =
