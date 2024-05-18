@@ -9,6 +9,7 @@
 struct Scene;
 struct Sequence;
 
+#include <mutex>
 #include <thread>
 
 #include "BLI_map.hh"
@@ -20,14 +21,13 @@ class ShareableAnim {
   blender::Vector<ImBufAnim *> anims; /* Ordered by view_id. */
   blender::Vector<Sequence *> users;
   bool multiview_loaded = false;
-  ThreadMutex mutex = BLI_MUTEX_INITIALIZER;
-  bool is_locked = false;
+  std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>();
 
   void release_from_strip(Sequence *seq);
   void release_from_all_strips(void);
   void acquire_anims(const Scene *scene, Sequence *seq, bool openfile);
   bool has_anim(const Scene *scene, Sequence *seq);
-  void lock();
+  bool lock();
   void unlock();
 };
 

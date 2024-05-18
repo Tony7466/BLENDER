@@ -142,11 +142,11 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
 
 void ShareableAnim::release_from_strip(Sequence *seq)
 {
-  if (anims.size() == 0 || is_locked == true) {
+  if (anims.size() == 0) {
     return;
   }
 
-  BLI_mutex_lock(&mutex);
+  mutex->lock();
 
   users.remove_if([seq](Sequence *seq_user) { return seq == seq_user; });
 
@@ -156,7 +156,8 @@ void ShareableAnim::release_from_strip(Sequence *seq)
     }
     anims.clear();
   }
-  BLI_mutex_unlock(&mutex);
+
+  mutex->unlock();
 };
 
 void ShareableAnim::release_from_all_strips(void)
@@ -207,16 +208,14 @@ bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
   return !anims.is_empty();
 }
 
-void ShareableAnim::lock()
+bool ShareableAnim::lock()
 {
-  is_locked = true;
-  // BLI_mutex_lock(&mutex);
+  return mutex->try_lock();
 }
 
 void ShareableAnim::unlock()
 {
-  is_locked = false;
-  // BLI_mutex_unlock(&mutex);
+  mutex->unlock();
 }
 
 void seq_open_anim_file(const Scene *scene, Sequence *seq, bool openfile)
@@ -296,14 +295,14 @@ void AnimManager::prefetch(const Scene *scene)
       Sequence *seq = strips[i];
       ShareableAnim &sh_anim = cache_entry_get(scene, seq);
 
-      BLI_mutex_lock(&sh_anim.mutex);
+      sh_anim.lock();
       if (sh_anim.has_anim(scene, seq)) {
-        BLI_mutex_unlock(&sh_anim.mutex);
+        sh_anim.unlock();
         continue;
       }
 
       sh_anim.acquire_anims(scene, seq, true);
-      BLI_mutex_unlock(&sh_anim.mutex);
+      sh_anim.unlock();
     }
   });
 }
@@ -344,27 +343,16 @@ void AnimManager::strip_anims_laod_and_lock(const Scene *scene,
     for (int i : range) {
       Sequence *seq = strips[i];
       ShareableAnim &sh_anim = cache_entry_get(scene, seq);
-      BLI_mutex_lock(&sh_anim.mutex);
-      // xxx potentially dangerous - the anims may be freed after this. Ideally we would have
-      // set of unique cache items to be loaded, but they have to be loaded for each strip due
-      // to multiview... Perhaps the architecture could be changed, so each cache item gets
-      // assigned a strip as a user and when anims are loaded, it loads anim for each user. But
-      // that complicates things a
-
-      // bit a bit more safe thing could be to have is_locked flag. This flag will be set only
-      // when loading anim. This would work, because that way we know, that anim is being
-      // loaded and won't be freed. This would still result in gangup though. But we don't need
-      // mutex for this - this is only needed to prevent freeing, so just bool would be good
-      // enough.
+      if (!sh_anim.mutex->try_lock()) {
+        continue;
+      }
 
       if (sh_anim.has_anim(scene, seq)) {
-        BLI_mutex_unlock(&sh_anim.mutex);
+        sh_anim.unlock();
         continue;
       }
 
       sh_anim.acquire_anims(scene, seq, true);
-      sh_anim.lock();
-      BLI_mutex_unlock(&sh_anim.mutex);
     }
   });
 
