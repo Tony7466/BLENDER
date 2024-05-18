@@ -3647,3 +3647,4 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       blender::bke::mesh_sculpt_mask_to_generic(*mesh);
     }
   }
+}
