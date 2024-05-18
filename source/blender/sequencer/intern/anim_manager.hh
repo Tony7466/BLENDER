@@ -21,6 +21,7 @@ class ShareableAnim {
   blender::Vector<Sequence *> users;
   bool multiview_loaded = false;
   ThreadMutex mutex = BLI_MUTEX_INITIALIZER;
+  bool is_locked = false;
 
   void release_from_strip(Sequence *seq);
   void release_from_all_strips(void);
