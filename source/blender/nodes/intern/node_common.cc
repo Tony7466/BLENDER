@@ -29,8 +29,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_prototypes.h"
-
 #include "NOD_common.h"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
@@ -740,11 +738,6 @@ static void group_input_declare(NodeDeclarationBuilder &b)
         if (socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
           SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
               *node_tree, socket, SOCK_OUT);
-          socket_decl->socket_name_owner = RNA_pointer_create(
-              const_cast<ID *>(&node_tree->id),
-              &RNA_NodeTreeInterfaceSocket,
-              const_cast<bNodeTreeInterfaceSocket *>(&socket));
-          socket_decl->socket_name_property = "name";
           r_declaration.outputs.append(socket_decl.get());
           r_declaration.items.append(std::move(socket_decl));
         }
@@ -773,11 +766,6 @@ static void group_output_declare(NodeDeclarationBuilder &b)
         if (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
           SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
               *node_tree, socket, SOCK_IN);
-          socket_decl->socket_name_owner = RNA_pointer_create(
-              const_cast<ID *>(&node_tree->id),
-              &RNA_NodeTreeInterfaceSocket,
-              const_cast<bNodeTreeInterfaceSocket *>(&socket));
-          socket_decl->socket_name_property = "name";
           r_declaration.inputs.append(socket_decl.get());
           r_declaration.items.append(std::move(socket_decl));
         }
