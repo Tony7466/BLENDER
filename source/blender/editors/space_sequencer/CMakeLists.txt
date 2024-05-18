@@ -29,6 +29,7 @@ set(SRC
   sequencer_clipboard.cc
   sequencer_drag_drop.cc
   sequencer_edit.cc
+  sequencer_manager.cc
   sequencer_modifier.cc
   sequencer_ops.cc
   sequencer_preview.cc
@@ -46,6 +47,7 @@ set(SRC
 
   sequencer_intern.hh
   sequencer_quads_batch.hh
+  sequencer_scopes.hh
 )
 
 set(LIB
@@ -71,6 +73,16 @@ if(WITH_AUDASPACE)
     )
   endif()
   add_definitions(-DWITH_AUDASPACE)
+endif()
+
+if(WITH_TBB)
+  add_definitions(-DWITH_TBB)
+  list(APPEND INC_SYS
+    ${TBB_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${TBB_LIBRARIES}
+  )
 endif()
 
 
