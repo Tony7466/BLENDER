@@ -34,6 +34,8 @@
 #include "render.hh"
 #include "strip_time.hh"
 
+/* This is arbitrary, it is possible to prefetch n strips ahead, but if strips are too short, but
+ * it may be better to prefetch frame range. */
 #define PREFETCH_DIST 512
 
 static void anim_filepath_get(const Scene *scene,
@@ -84,10 +86,6 @@ static void index_dir_set(Editing *ed, Sequence *seq, ImBufAnim *anim)
 static ImBufAnim *anim_get(Sequence *seq, const char *filepath, bool openfile)
 {
   ImBufAnim *anim = nullptr;
-
-  if (BLI_thread_is_main()) {
-    printf("Loading from main\n");
-  }
 
   if (openfile) {
     anim = openanim(filepath,
@@ -208,7 +206,7 @@ bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
   return !anims.is_empty();
 }
 
-bool ShareableAnim::lock()
+bool ShareableAnim::try_lock()
 {
   return mutex->try_lock();
 }
@@ -250,9 +248,17 @@ static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
   return strips_sorted;
 }
 
-static void free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &strips)
+AnimManager *seq_anim_lookup_ensure(Editing *ed)
 {
-  blender::Map<std::string, ShareableAnim> &anims = ed->runtime.anim_lookup->anims;
+  if (ed->runtime.anim_lookup == nullptr) {
+    ed->runtime.anim_lookup = MEM_new<AnimManager>(__func__);
+  }
+  return ed->runtime.anim_lookup;
+}
+
+void AnimManager::free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &strips)
+{
+  mutex.lock();
   for (ShareableAnim &sh_anim : anims.values()) {
     bool strips_use_anim = false;
     for (Sequence *user : sh_anim.users) {
@@ -262,74 +268,16 @@ static void free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &st
       }
     }
 
-    // TODO has users func? could be nicer anyway...
     if (!strips_use_anim && sh_anim.users.size() > 0) {
       sh_anim.release_from_all_strips();
     }
   }
+  mutex.unlock();
 }
 
-AnimManager *seq_anim_lookup_ensure(Editing *ed)
-{
-  if (ed->runtime.anim_lookup == nullptr) {
-    ed->runtime.anim_lookup = MEM_new<AnimManager>(__func__);
-  }
-  return ed->runtime.anim_lookup;
-}
-
-void AnimManager::prefetch(const Scene *scene)
-{
-  Editing *ed = SEQ_editing_get(scene);
-  blender::Vector<Sequence *> strips = strips_to_prefetch_get(scene);
-
-  free_unused_anims(ed, strips);
-
-  /* Ensure cache items. */
-  for (Sequence *seq : strips) {
-    cache_entry_get(scene, seq);
-  }
-
-  using namespace blender;
-  threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
-    for (int i : range) {
-      Sequence *seq = strips[i];
-      ShareableAnim &sh_anim = cache_entry_get(scene, seq);
-
-      sh_anim.lock();
-      if (sh_anim.has_anim(scene, seq)) {
-        sh_anim.unlock();
-        continue;
-      }
-
-      sh_anim.acquire_anims(scene, seq, true);
-      sh_anim.unlock();
-    }
-  });
-}
-
-void AnimManager::manage_anims(const Scene *scene)
-{
-  if (prefetch_thread.joinable()) {
-    prefetch_thread.join();
-  }
-  else {
-    prefetch_thread = std::thread(&AnimManager::prefetch, this, scene);
-  }
-}
-
-ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *seq)
-{
-  char filepath[FILE_MAX];
-  anim_filepath_get(scene, seq, sizeof(filepath), filepath);
-
-  BLI_mutex_lock(&mutex);
-  ShareableAnim &sh_anim = anims.lookup_or_add_default(std::string(filepath));
-  BLI_mutex_unlock(&mutex);
-  return sh_anim;
-}
-
-void AnimManager::strip_anims_laod_and_lock(const Scene *scene,
-                                            blender::Vector<Sequence *> &strips)
+void AnimManager::parallel_load_anims(const Scene *scene,
+                                      blender::Vector<Sequence *> &strips,
+                                      bool unlock)
 {
   /* Ensure cache items. */
   // XXX why is this needed, when cache_entry_get is locking vector? if this is not done before
@@ -348,15 +296,54 @@ void AnimManager::strip_anims_laod_and_lock(const Scene *scene,
       }
 
       if (sh_anim.has_anim(scene, seq)) {
-        sh_anim.unlock();
+        if (unlock) {
+          sh_anim.unlock();
+        }
         continue;
       }
 
       sh_anim.acquire_anims(scene, seq, true);
+      if (unlock) {
+        sh_anim.unlock();
+      }
     }
   });
+}
 
-  printf("main load end\n");
+void AnimManager::free_unused_and_prefetch_anims(const Scene *scene)
+{
+  Editing *ed = SEQ_editing_get(scene);
+  blender::Vector<Sequence *> strips = strips_to_prefetch_get(scene);
+
+  free_unused_anims(ed, strips);
+  parallel_load_anims(scene, strips, true);
+}
+
+void AnimManager::manage_anims(const Scene *scene)
+{
+  if (prefetch_thread.joinable()) {
+    prefetch_thread.join();
+  }
+  else {
+    prefetch_thread = std::thread(&AnimManager::free_unused_and_prefetch_anims, this, scene);
+  }
+}
+
+ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *seq)
+{
+  char filepath[FILE_MAX];
+  anim_filepath_get(scene, seq, sizeof(filepath), filepath);
+
+  mutex.lock();
+  ShareableAnim &sh_anim = anims.lookup_or_add_default(std::string(filepath));
+  mutex.unlock();
+  return sh_anim;
+}
+
+void AnimManager::strip_anims_laod_and_lock(const Scene *scene,
+                                            blender::Vector<Sequence *> &strips)
+{
+  parallel_load_anims(scene, strips, false);
 }
 
 void AnimManager::strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips)

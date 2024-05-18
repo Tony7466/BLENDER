@@ -13,8 +13,6 @@ struct Sequence;
 #include <thread>
 
 #include "BLI_map.hh"
-#include "BLI_struct_equality_utils.hh"
-#include "BLI_threads.h"
 
 class ShareableAnim {
  public:
@@ -27,24 +25,28 @@ class ShareableAnim {
   void release_from_all_strips(void);
   void acquire_anims(const Scene *scene, Sequence *seq, bool openfile);
   bool has_anim(const Scene *scene, Sequence *seq);
-  bool lock();
+  bool try_lock();
   void unlock();
 };
 
 class AnimManager {
  public:
   blender::Map<std::string, ShareableAnim> anims;
-  ThreadMutex mutex = BLI_MUTEX_INITIALIZER;
+  std::mutex mutex;
   std::thread prefetch_thread;
 
-  void prefetch(const Scene *scene);
   void manage_anims(const Scene *scene);
 
   void strip_anims_laod_and_lock(const Scene *scene, blender::Vector<Sequence *> &strips);
   void strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips);
 
   blender::Vector<ImBufAnim *> &strip_anims_get(const Scene *scene, const Sequence *seq);
+
+ private:
   ShareableAnim &cache_entry_get(const Scene *scene, const Sequence *seq);
+  void free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &strips);
+  void free_unused_and_prefetch_anims(const Scene *scene);
+  void parallel_load_anims(const Scene *scene, blender::Vector<Sequence *> &strips, bool unlock);
 };
 
 void seq_open_anim_file(const Scene *scene, Sequence *seq, bool openfile);
