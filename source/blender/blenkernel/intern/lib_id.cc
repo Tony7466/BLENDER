@@ -397,7 +397,7 @@ void BKE_id_newptr_and_tag_clear(ID *id)
   if (key != nullptr) {
     BKE_id_newptr_and_tag_clear(&key->id);
   }
-  bNodeTree *ntree = ntreeFromID(id);
+  bNodeTree *ntree = blender::bke::ntreeFromID(id);
   if (ntree != nullptr) {
     BKE_id_newptr_and_tag_clear(&ntree->id);
   }
@@ -540,7 +540,8 @@ void BKE_lib_id_make_local_generic(Main *bmain, ID *id, const int flags)
       if (key && key_new) {
         ID_NEW_SET(key, key_new);
       }
-      bNodeTree *ntree = ntreeFromID(id), *ntree_new = ntreeFromID(id_new);
+      bNodeTree *ntree = blender::bke::ntreeFromID(id),
+                *ntree_new = blender::bke::ntreeFromID(id_new);
       if (ntree && ntree_new) {
         ID_NEW_SET(ntree, ntree_new);
       }
@@ -879,8 +880,8 @@ static void id_swap(Main *bmain,
     id_b->recalc = id_a_back.recalc;
   }
 
-  id_embedded_swap((ID **)BKE_ntree_ptr_from_id(id_a),
-                   (ID **)BKE_ntree_ptr_from_id(id_b),
+  id_embedded_swap((ID **)blender::bke::BKE_ntree_ptr_from_id(id_a),
+                   (ID **)blender::bke::BKE_ntree_ptr_from_id(id_b),
                    do_full_id,
                    remapper_id_a,
                    remapper_id_b);
@@ -1946,7 +1947,7 @@ void BKE_library_make_local(Main *bmain,
     const bool do_skip = (id && !BKE_idtype_idcode_is_linkable(GS(id->name)));
 
     for (; id; id = static_cast<ID *>(id->next)) {
-      ID *ntree = (ID *)ntreeFromID(id);
+      ID *ntree = (ID *)blender::bke::ntreeFromID(id);
 
       id->tag &= ~LIB_TAG_DOIT;
       if (ntree != nullptr) {
@@ -2144,7 +2145,7 @@ void BKE_library_make_local(Main *bmain,
 
 void BKE_libblock_rename(Main *bmain, ID *id, const char *name)
 {
-  BLI_assert(!ID_IS_LINKED(id));
+  BLI_assert(ID_IS_EDITABLE(id));
   if (STREQ(id->name + 2, name)) {
     return;
   }
@@ -2224,7 +2225,7 @@ bool BKE_id_is_in_global_main(ID *id)
 
 bool BKE_id_can_be_asset(const ID *id)
 {
-  return !ID_IS_LINKED(id) && !ID_IS_OVERRIDE_LIBRARY(id) &&
+  return ID_IS_EDITABLE(id) && !ID_IS_OVERRIDE_LIBRARY(id) &&
          BKE_idtype_idcode_is_linkable(GS(id->name));
 }
 
@@ -2242,7 +2243,7 @@ ID *BKE_id_owner_get(ID *id, const bool debug_relationship_assert)
 
 bool BKE_id_is_editable(const Main *bmain, const ID *id)
 {
-  return !(ID_IS_LINKED(id) || BKE_lib_override_library_is_system_defined(bmain, id));
+  return ID_IS_EDITABLE(id) && !BKE_lib_override_library_is_system_defined(bmain, id);
 }
 
 /************************* Datablock order in UI **************************/
