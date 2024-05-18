@@ -534,6 +534,8 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
     return nullptr;
   }
 
+  bNodeSocket *already_viewed_socket = nullptr;
+
   /* Pick the next socket to be linked to the viewer. */
   const int tot_outputs = node_to_view.output_sockets().size();
   for (const int offset : IndexRange(1, tot_outputs)) {
@@ -544,6 +546,7 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
     }
     if (has_linked_geometry_socket && output_socket.type == SOCK_GEOMETRY) {
       /* Skip geometry sockets when cycling if one is already viewed. */
+      already_viewed_socket = &output_socket;
       continue;
     }
 
@@ -568,7 +571,7 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
     }
     return &output_socket;
   }
-  return nullptr;
+  return already_viewed_socket;
 }
 
 static void finalize_viewer_link(const bContext &C,
