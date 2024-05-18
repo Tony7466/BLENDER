@@ -862,22 +862,25 @@ static bool rna_MovieSequence_reload_if_needed(ID *scene_id, Sequence *seq, Main
 
 static PointerRNA rna_MovieSequence_metadata_get(ID *scene_id, Sequence *seq)
 {
-  if (seq == nullptr || seq->anims.first == nullptr) {
+  return PointerRNA_NULL;
+
+  // XXXXX
+  /*if (seq == nullptr || seq->anims.first == nullptr) {
     return PointerRNA_NULL;
   }
 
-  StripAnim *sanim = static_cast<StripAnim *>(seq->anims.first);
-  if (sanim->anim == nullptr) {
-    return PointerRNA_NULL;
-  }
+    StripAnim *sanim = static_cast<StripAnim *>(seq->anims.first);
+    if (sanim->anim == nullptr) {
+      return PointerRNA_NULL;
+    }
 
-  IDProperty *metadata = IMB_anim_load_metadata(sanim->anim);
-  if (metadata == nullptr) {
-    return PointerRNA_NULL;
-  }
+    IDProperty *metadata = IMB_anim_load_metadata(sanim->anim);
+    if (metadata == nullptr) {
+      return PointerRNA_NULL;
+    }
 
   PointerRNA ptr = RNA_pointer_create(scene_id, &RNA_IDPropertyWrapPtr, metadata);
-  return ptr;
+  return ptr;*/
 }
 
 static PointerRNA rna_SequenceEditor_meta_stack_get(CollectionPropertyIterator *iter)

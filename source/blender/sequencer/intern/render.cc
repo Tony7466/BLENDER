@@ -1131,7 +1131,7 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
 
   if (proxy->anim == nullptr) {
     if (seq_proxy_get_custom_file_filepath(seq, filepath, context->view_id)) {
-      // eeeh probably should be managed by manager as well
+      // eeeh probably should be managed by anim_manager as well
       proxy->anim = openanim(filepath, IB_rect, 0, seq->strip->colorspace_settings.name);
     }
     if (proxy->anim == nullptr) {
@@ -1160,7 +1160,7 @@ static IMB_Timecode_Type seq_render_movie_strip_timecode_get(Sequence *seq)
 static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
                                           Sequence *seq,
                                           float timeline_frame,
-                                          StripAnim *sanim,
+                                          ImBufAnim *anim,
                                           bool *r_is_proxy_image)
 {
   ImBuf *ibuf = nullptr;
@@ -1176,11 +1176,9 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
     {
       ibuf = seq_render_movie_strip_custom_file_proxy(context, seq, timeline_frame);
     }
-    else if (sanim != nullptr) {
-      ibuf = IMB_anim_absolute(sanim->anim,
-                               frame_index + seq->anim_startofs,
-                               seq_render_movie_strip_timecode_get(seq),
-                               psize);
+    else if (anim != nullptr) {
+      ibuf = IMB_anim_absolute(
+          anim, frame_index + seq->anim_startofs, seq_render_movie_strip_timecode_get(seq), psize);
     }
 
     if (ibuf != nullptr) {
@@ -1189,8 +1187,8 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
   }
 
   /* Fetching for requested proxy size failed, try fetching the original instead. */
-  if (ibuf == nullptr && sanim != nullptr) {
-    ibuf = IMB_anim_absolute(sanim->anim,
+  if (ibuf == nullptr && anim != nullptr) {
+    ibuf = IMB_anim_absolute(anim,
                              frame_index + seq->anim_startofs,
                              seq_render_movie_strip_timecode_get(seq),
                              IMB_PROXY_NONE);
@@ -1218,26 +1216,29 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
   // seq_open_anim_file(context->scene, seq, false);
 
   ImBuf *ibuf = nullptr;
-  StripAnim *sanim = static_cast<StripAnim *>(seq->anims.first);
   const int totfiles = seq_num_files(context->scene, seq->views_format, true);
   bool is_multiview_render = (seq->flag & SEQ_USE_VIEWS) != 0 &&
                              (context->scene->r.scemode & R_MULTIVIEW) != 0 &&
                              BLI_listbase_count_at_most(&seq->anims, totfiles + 1) == totfiles;
+
+  Scene *scene = context->scene;
+  Editing *ed = SEQ_editing_get(context->scene);
+  AnimManager *anim_manager = seq_anim_lookup_ensure(ed);
+  blender::Vector<ImBufAnim *> anims = anim_manager->strip_anims_get(scene, seq);
 
   if (is_multiview_render) {
     ImBuf **ibuf_arr;
     int totviews = BKE_scene_multiview_num_views_get(&context->scene->r);
     ibuf_arr = static_cast<ImBuf **>(
         MEM_callocN(sizeof(ImBuf *) * totviews, "Sequence Image Views Imbufs"));
-    int ibuf_view_id;
 
-    for (ibuf_view_id = 0, sanim = static_cast<StripAnim *>(seq->anims.first); sanim;
-         sanim = sanim->next, ibuf_view_id++)
-    {
-      if (sanim->anim) {
+    int ibuf_view_id = 0;
+    for (ImBufAnim *anim : anims) {
+      if (anim) {
         ibuf_arr[ibuf_view_id] = seq_render_movie_strip_view(
-            context, seq, timeline_frame, sanim, r_is_proxy_image);
+            context, seq, timeline_frame, anim, r_is_proxy_image);
       }
+      ibuf_view_id++;
     }
 
     if (seq->views_format == R_IMF_VIEWS_STEREO_3D) {
@@ -1273,7 +1274,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
     MEM_freeN(ibuf_arr);
   }
   else {
-    ibuf = seq_render_movie_strip_view(context, seq, timeline_frame, sanim, r_is_proxy_image);
+    ibuf = seq_render_movie_strip_view(context, seq, timeline_frame, anims[0], r_is_proxy_image);
   }
 
   if (ibuf == nullptr) {
@@ -1281,10 +1282,10 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
   }
 
   if (*r_is_proxy_image == false) {
-    if (sanim && sanim->anim) {
+    if (anims[0]) {
       short fps_denom;
       float fps_num;
-      IMB_anim_get_fps(sanim->anim, true, &fps_denom, &fps_num);
+      IMB_anim_get_fps(anims[0], true, &fps_denom, &fps_num);
       seq->strip->stripdata->orig_fps = fps_denom / fps_num;
     }
     seq->strip->stripdata->orig_width = ibuf->x;
@@ -2106,17 +2107,13 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
 
   seq_cache_free_temp_cache(context->scene, context->task_id, timeline_frame);
 
-  seq_anim_lookup_ensure(ed);
-  AnimManager *lookup = ed->runtime.anim_lookup;
-  if (lookup->working) {
-    printf("Oh noooooooo, prefetch is blocking main!!!!!\n");
-  }
+  AnimManager *anim_manager = seq_anim_lookup_ensure(ed);
 
   if (!strips.is_empty() && !out) {
     BLI_mutex_lock(&seq_render_mutex);
-
     /* Load anims in main thread for the first time and lock them, so they can't be freed. */
-    lookup->load_set(scene, strips);
+    anim_manager->strip_anims_laod_and_lock(scene, strips);
+
     out = seq_render_strip_stack(context, &state, channels, seqbasep, timeline_frame, chanshown);
 
     if (context->is_prefetch_render) {
@@ -2126,12 +2123,12 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
       seq_cache_put_if_possible(
           context, strips.last(), timeline_frame, SEQ_CACHE_STORE_FINAL_OUT, out);
     }
-    // printf("main is unlocking strips\n");
-    BLI_mutex_unlock(&seq_render_mutex);
-  }
 
+    BLI_mutex_unlock(&seq_render_mutex);
+    anim_manager->strip_anims_unlock(scene, strips);
+  }
   seq_prefetch_start(context, timeline_frame);
-  // lookup->manage_anims(scene);
+  anim_manager->manage_anims(scene);
 
   return out;
 }

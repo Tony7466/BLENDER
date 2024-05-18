@@ -19,10 +19,6 @@ struct Sequence;
  * Check if one sequence is input to the other.
  */
 bool SEQ_relation_is_effect_of_strip(const Sequence *effect, const Sequence *input);
-/**
- * Function to free imbuf and anim data on changes.
- */
-void SEQ_relations_sequence_free_anim(const Scene *scene, Sequence *seq);
 bool SEQ_relations_check_scene_recursion(Scene *scene, ReportList *reports);
 /**
  * Check if "seq_main" (indirectly) uses strip "seq".
