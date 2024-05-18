@@ -587,6 +587,12 @@ static void finalize_viewer_link(const bContext &C,
   ED_node_tree_propagate_change(&C, bmain, snode.edittree);
 }
 
+static void position_viewer_node(bNodeTree &tree, bNode &viewer_node, bNodeSocket &socket_to_view)
+{
+  viewer_node.locx = socket_to_view.runtime->location.x;
+  viewer_node.locy = socket_to_view.runtime->location.y;
+}
+
 static int view_socket(const bContext &C,
                        SpaceNode &snode,
                        bNodeTree &btree,
@@ -610,6 +616,7 @@ static int view_socket(const bContext &C,
     bNode &target_node = *link->tonode;
     if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
       finalize_viewer_link(C, snode, target_node, *link);
+      position_viewer_node(btree, *viewer_node, bsocket_to_view);
       return OPERATOR_FINISHED;
     }
   }
@@ -651,6 +658,7 @@ static int view_socket(const bContext &C,
     BKE_ntree_update_tag_link_changed(&btree);
   }
   finalize_viewer_link(C, snode, *viewer_node, *viewer_link);
+  position_viewer_node(btree, *viewer_node, bsocket_to_view);
   return OPERATOR_CANCELLED;
 }
 
