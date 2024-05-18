@@ -587,10 +587,84 @@ static void finalize_viewer_link(const bContext &C,
   ED_node_tree_propagate_change(&C, bmain, snode.edittree);
 }
 
-static void position_viewer_node(bNodeTree &tree, bNode &viewer_node, bNodeSocket &socket_to_view)
+static void position_viewer_node(bNodeTree &tree,
+                                 bNode &viewer_node,
+                                 bNode &node_to_view,
+                                 bNodeSocket &socket_to_view)
 {
-  viewer_node.locx = socket_to_view.runtime->location.x;
-  viewer_node.locy = socket_to_view.runtime->location.y;
+  const float default_padding = 10;
+  const float viewer_width = viewer_node.width;
+  float viewer_height = BLI_rctf_size_y(&viewer_node.runtime->totr);
+  if (viewer_height == 0) {
+    /* Can't use if the viewer node has only just been added and the actual height is not yet
+     * known. */
+    viewer_height = 100;
+  }
+  const float main_candidate_x = socket_to_view.runtime->location.x + 30;
+  float current_y = node_to_view.runtime->totr.ymax + viewer_height + 10;
+  float final_x;
+
+  while (true) {
+    rctf main_candidate_rect;
+    main_candidate_rect.xmin = main_candidate_x;
+    main_candidate_rect.xmax = main_candidate_x + viewer_width;
+    main_candidate_rect.ymax = current_y;
+    main_candidate_rect.ymin = current_y - viewer_height;
+    BLI_rctf_pad(&main_candidate_rect, default_padding, default_padding);
+
+    const bNode *collided_node = nullptr;
+    LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
+      if (ELEM(node, &viewer_node, &node_to_view)) {
+        continue;
+      }
+      if (!BLI_rctf_isect(&main_candidate_rect, &node->runtime->totr, nullptr)) {
+        continue;
+      }
+      collided_node = node;
+      break;
+    }
+    if (!collided_node) {
+      final_x = main_candidate_x;
+      break;
+    }
+    current_y = collided_node->runtime->totr.ymax + viewer_height + default_padding + 1;
+
+    const float align_node_x = collided_node->runtime->totr.xmin;
+    if (align_node_x < socket_to_view.runtime->location.x + 5 ||
+        align_node_x > socket_to_view.runtime->location.x + 300)
+    {
+      /* The collided node is too far from the socket to view, so don't attempt to align to it. */
+      continue;
+    }
+
+    rctf aligned_candidate_rect;
+    aligned_candidate_rect.xmin = align_node_x;
+    aligned_candidate_rect.xmax = aligned_candidate_rect.xmin + viewer_width;
+    aligned_candidate_rect.ymin = current_y - viewer_height;
+    aligned_candidate_rect.ymax = current_y;
+    BLI_rctf_pad(&aligned_candidate_rect, default_padding, default_padding);
+
+    bool found_collision_for_aligned_rect = false;
+    LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
+      if (ELEM(node, &viewer_node, &node_to_view)) {
+        continue;
+      }
+      if (BLI_rctf_isect(&aligned_candidate_rect, &node->runtime->totr, nullptr)) {
+        found_collision_for_aligned_rect = true;
+        break;
+      }
+    }
+
+    if (!found_collision_for_aligned_rect) {
+      /* Align to the found node. */
+      final_x = align_node_x;
+      break;
+    }
+  }
+
+  viewer_node.parent = nullptr;
+  viewer_node.locx = final_x;
+  viewer_node.locy = current_y;
 }
 
 static int view_socket(const bContext &C,
@@ -616,7 +690,7 @@ static int view_socket(const bContext &C,
     bNode &target_node = *link->tonode;
     if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
       finalize_viewer_link(C, snode, target_node, *link);
-      position_viewer_node(btree, *viewer_node, bsocket_to_view);
+      position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view);
       return OPERATOR_FINISHED;
     }
   }
@@ -658,7 +732,7 @@ static int view_socket(const bContext &C,
     BKE_ntree_update_tag_link_changed(&btree);
   }
   finalize_viewer_link(C, snode, *viewer_node, *viewer_link);
-  position_viewer_node(btree, *viewer_node, bsocket_to_view);
+  position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view);
   return OPERATOR_CANCELLED;
 }
 
