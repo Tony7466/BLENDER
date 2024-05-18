@@ -567,6 +567,7 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
       break;
     }
     if (is_currently_viewed) {
+      already_viewed_socket = &output_socket;
       continue;
     }
     return &output_socket;
