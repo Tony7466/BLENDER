@@ -735,11 +735,22 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder ::socket_name_ptr(
-    PointerRNA owner_data, StringRef name_property_name)
+    PointerRNA ptr, StringRef property_name)
 {
-  decl_base_->socket_name_owner = owner_data;
-  decl_base_->socket_name_property = name_property_name;
+  decl_base_->socket_name_owner = ptr;
+  decl_base_->socket_name_property = property_name;
   return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::socket_name_ptr(
+    const ID *id, const StructRNA *srna, const void *data, StringRef property_name)
+{
+  /* Doing const-casts here because this data is generally only available as const when creating
+   * the declaration, but it's still valid to modify later. */
+  return this->socket_name_ptr(RNA_pointer_create(const_cast<ID *>(id),
+                                                  const_cast<StructRNA *>(srna),
+                                                  const_cast<void *>(data)),
+                               property_name);
 }
 
 OutputFieldDependency OutputFieldDependency::ForFieldSource()

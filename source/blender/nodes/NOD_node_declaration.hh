@@ -372,8 +372,11 @@ class BaseSocketDeclarationBuilder {
    * Set a function that retrieves an RNA pointer to the name of the socket. This can be used to be
    * able to rename the socket within the node.
    */
-  BaseSocketDeclarationBuilder &socket_name_ptr(PointerRNA owner_data,
-                                                StringRef name_property_name);
+  BaseSocketDeclarationBuilder &socket_name_ptr(PointerRNA ptr, StringRef property_name);
+  BaseSocketDeclarationBuilder &socket_name_ptr(const ID *id,
+                                                const StructRNA *srna,
+                                                const void *data,
+                                                StringRef property_name);
 
   /** Index in the list of inputs or outputs. */
   int index() const;

@@ -45,6 +45,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.use_custom_socket_order();
   b.allow_any_socket_order();
 
+  const bNodeTree *ntree = b.tree_or_null();
   const bNode *node = b.node_or_null();
   if (!node) {
     return;
@@ -66,6 +67,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       else {
         output_decl.dependent_field({input_decl.index()});
       }
+    }
+    if (ntree) {
+      input_decl.socket_name_ptr(&ntree->id, BakeItemsAccessor::item_srna, &item, "name");
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
