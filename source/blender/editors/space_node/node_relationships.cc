@@ -626,6 +626,9 @@ static void position_viewer_node(bNodeTree &tree,
 
     const bNode *collided_node = nullptr;
     LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
+      if (node->type == NODE_FRAME) {
+        continue;
+      }
       if (ELEM(node, &viewer_node, &node_to_view)) {
         continue;
       }
@@ -658,6 +661,9 @@ static void position_viewer_node(bNodeTree &tree,
 
     bool found_collision_for_aligned_rect = false;
     LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
+      if (node->type == NODE_FRAME) {
+        continue;
+      }
       if (ELEM(node, &viewer_node, &node_to_view)) {
         continue;
       }
