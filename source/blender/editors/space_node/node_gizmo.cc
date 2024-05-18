@@ -626,4 +626,15 @@ void NODE_GGT_backdrop_corner_pin(wmGizmoGroupType *gzgt)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Navigate
+ * \{ */
+
+void NODE_GGT_navigate(wmGizmoGroupType *gzgt)
+{
+  VIEW2D_GGT_navigate_impl(gzgt, "NODE_GGT_navigate");
+}
+
+/** \} */
+
 }  // namespace blender::ed::space_node
