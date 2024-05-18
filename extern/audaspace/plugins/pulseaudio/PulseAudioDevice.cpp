@@ -124,11 +124,13 @@ void PulseAudioDevice::playing(bool playing)
 
 	AUD_pa_threaded_mainloop_lock(m_mainloop);
 	AUD_pa_stream_cork(m_stream, playing ? 0 : 1, nullptr, nullptr);
+
 	if(!playing)
 	{
 		AUD_pa_stream_flush(m_stream, nullptr, nullptr);
 		m_clear = true;
 	}
+
 	AUD_pa_threaded_mainloop_unlock(m_mainloop);
 }
 

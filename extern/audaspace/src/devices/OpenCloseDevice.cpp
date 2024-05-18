@@ -57,7 +57,6 @@ void OpenCloseDevice::playing(bool playing)
 				open();
 				m_device_opened = true;
 			}
-
 			start();
 		}
 		else
