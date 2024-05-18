@@ -194,9 +194,10 @@ void cubeface_sync(int tilemap_id,
                    eCubeFace cubeface,
                    vec3 jitter_offset)
 {
-  object_to_world.x.w += jitter_offset.x;
-  object_to_world.y.w += jitter_offset.y;
-  object_to_world.z.w += jitter_offset.z;
+  vec3 world_jitter_offset = transform_point(object_to_world, jitter_offset);
+  object_to_world.x.w = world_jitter_offset.x;
+  object_to_world.y.w = world_jitter_offset.y;
+  object_to_world.z.w = world_jitter_offset.z;
 
   int clip_index = tilemaps_buf[tilemap_id].clip_data_index;
   if (tilemaps_buf[tilemap_id].is_dirty ||
