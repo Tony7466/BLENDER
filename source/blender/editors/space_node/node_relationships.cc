@@ -671,8 +671,8 @@ static void position_viewer_node(bNodeTree &tree,
   }
 
   viewer_node.parent = nullptr;
-  viewer_node.locx = final_x;
-  viewer_node.locy = current_y;
+  viewer_node.locx = final_x / UI_SCALE_FAC;
+  viewer_node.locy = current_y / UI_SCALE_FAC;
 }
 
 static int view_socket(const bContext &C,
