@@ -587,6 +587,14 @@ static void finalize_viewer_link(const bContext &C,
   ED_node_tree_propagate_change(&C, bmain, snode.edittree);
 }
 
+/**
+ * Positions the viewer node so that it is slightly to the right and top of the node to view. The
+ * viewer is placed so that it does not overlap any existing nodes. The algorithm will iteratively
+ * try different places until a good position for the viewer is found.
+ *
+ * If possible, the viewer is aligned to another node that is close by to result in a better
+ * looking node position.
+ */
 static void position_viewer_node(bNodeTree &tree,
                                  bNode &viewer_node,
                                  bNode &node_to_view,
