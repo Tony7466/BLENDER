@@ -1308,11 +1308,11 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
 static void draw_node_socket_without_value(uiLayout *layout, bNodeSocket *sock, const char *text)
 {
   if (sock->runtime->declaration) {
-    if (sock->runtime->declaration->socket_name_owner.data) {
+    if (sock->runtime->declaration->socket_name_rna) {
       uiLayoutSetEmboss(layout, UI_EMBOSS_NONE);
       uiItemR(layout,
-              const_cast<PointerRNA *>(&sock->runtime->declaration->socket_name_owner),
-              sock->runtime->declaration->socket_name_property.c_str(),
+              const_cast<PointerRNA *>(&sock->runtime->declaration->socket_name_rna->owner),
+              sock->runtime->declaration->socket_name_rna->property_name.c_str(),
               UI_ITEM_NONE,
               "",
               ICON_NONE);

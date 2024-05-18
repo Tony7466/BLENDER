@@ -160,6 +160,11 @@ class ItemDeclaration {
 
 using ItemDeclarationPtr = std::unique_ptr<ItemDeclaration>;
 
+struct SocketNameRNA {
+  PointerRNA owner = PointerRNA_NULL;
+  std::string property_name;
+};
+
 /**
  * Describes a single input or output socket. This is subclassed for different socket types.
  */
@@ -208,9 +213,11 @@ class SocketDeclaration : public ItemDeclaration {
   /** Some input sockets can have non-trivial values in the case when they are unlinked. This
    * callback computes the default input of a values in geometry nodes when nothing is linked. */
   std::unique_ptr<ImplicitInputValueFn> implicit_input_fn;
-
-  PointerRNA socket_name_owner = PointerRNA_NULL;
-  std::string socket_name_property;
+  /**
+   * Property that stores the name of the socket so that it can be modified directly from the
+   * node without going to the side-bar.
+   */
+  std::unique_ptr<SocketNameRNA> socket_name_rna;
 
   friend NodeDeclarationBuilder;
   friend class BaseSocketDeclarationBuilder;

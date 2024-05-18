@@ -735,10 +735,11 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder ::socket_name_ptr(
-    PointerRNA ptr, StringRef property_name)
+    const PointerRNA ptr, const StringRef property_name)
 {
-  decl_base_->socket_name_owner = ptr;
-  decl_base_->socket_name_property = property_name;
+  decl_base_->socket_name_rna = std::make_unique<SocketNameRNA>();
+  decl_base_->socket_name_rna->owner = ptr;
+  decl_base_->socket_name_rna->property_name = property_name;
   return *this;
 }
 
