@@ -165,11 +165,11 @@ void blf_glyph_cache_clear(FontBLF *font)
  * \return nullptr if not found.
  */
 static GlyphBLF *blf_glyph_cache_find_glyph(const GlyphCacheBLF *gc,
-                                            uint charcode,
+                                            uint glyph_index,
                                             uint8_t subpixel)
 {
   const std::unique_ptr<GlyphBLF> *ptr = gc->glyphs.lookup_ptr_as(
-      GlyphCacheKey{charcode, subpixel});
+      GlyphCacheKey{glyph_index, subpixel});
   if (ptr != nullptr) {
     return ptr->get();
   }
@@ -325,7 +325,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(
     }
   }
 
-  GlyphCacheKey key = {charcode, subpixel};
+  GlyphCacheKey key = {glyph_index, subpixel};
   gc->glyphs.add(key, std::move(g));
   return gc->glyphs.lookup(key).get();
 }
@@ -664,6 +664,48 @@ static bool blf_font_has_coverage_bit(const FontBLF *font, int coverage_bit)
     return false;
   }
   return (font->unicode_ranges[uint(coverage_bit) >> 5] & (1u << (uint(coverage_bit) % 32)));
+}
+
+FontBLF *blf_font_script_ensure(FontBLF *font, const uint charcode)
+{
+  FontBLF *ideal = font;
+
+  if (blf_get_char_index(font, charcode)) {
+    return font;
+  }
+
+  /* Not found in main font, so look in the others. */
+
+  int coverage_bit = blf_charcode_to_coverage_bit(charcode);
+
+  for (int i = BLF_MAX_FONT - 1; i >= 0; i--) {
+    FontBLF *f = global_font[i];
+    if (!f || f == font || !(f->flags & BLF_DEFAULT)) {
+      continue;
+    }
+
+    if (f->flags & BLF_LAST_RESORT) {
+      continue;
+    }
+
+    if (coverage_bit < 0 || blf_font_has_coverage_bit(f, coverage_bit)) {
+      if (blf_get_char_index(f, charcode)) {
+        ideal = f;
+        break;
+      }
+    }
+  }
+
+  if (ideal != font) {
+    blf_ensure_face(ideal);
+    blf_font_size(ideal, font->size);
+    ideal->color[0] = font->color[0];
+    ideal->color[1] = font->color[1];
+    ideal->color[2] = font->color[2];
+    ideal->color[3] = font->color[3];
+  }
+
+  return ideal;
 }
 
 /**
@@ -1223,7 +1265,7 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
     return nullptr;
   }
 
-  if ((settings_font->flags & BLF_MONOSPACED) && (settings_font != glyph_font)) {
+  if ((settings_font->flags & BLF_MONOSPACED) && (glyph->linearHoriAdvance > 0)) {
     const int col = BLI_wcwidth_or_error(char32_t(charcode));
     if (col > 0) {
       blf_glyph_transform_monospace(glyph, col * fixed_width);
@@ -1257,16 +1299,29 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
   return nullptr;
 }
 
-GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode, uint8_t subpixel)
+GlyphBLF *blf_glyph_ensure(
+    FontBLF *font, GlyphCacheBLF *gc, const uint charcode, uint glyph_index, uint8_t subpixel)
 {
-  GlyphBLF *g = blf_glyph_cache_find_glyph(gc, charcode, subpixel);
-  if (g) {
-    return g;
+  GlyphBLF *g = NULL;
+
+  if (glyph_index) {
+    g = blf_glyph_cache_find_glyph(gc, glyph_index, subpixel);
+    if (g) {
+      return g;
+    }
   }
 
   /* Glyph might not come from the initial font. */
   FontBLF *font_with_glyph = font;
-  FT_UInt glyph_index = blf_glyph_index_from_charcode(&font_with_glyph, charcode);
+  if (!glyph_index && charcode) {
+    glyph_index = blf_glyph_index_from_charcode(&font_with_glyph, charcode);
+    if (glyph_index) {
+      g = blf_glyph_cache_find_glyph(gc, glyph_index, subpixel);
+      if (g) {
+        return g;
+      }
+    }
+  }
 
   if (!blf_ensure_face(font_with_glyph)) {
     return nullptr;
@@ -1300,7 +1355,7 @@ GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *
   const uint8_t subpixel = uint8_t(pen_x & ((font->size > 16.0f) ? 32L : 48L));
 
   if (g->subpixel != subpixel) {
-    g = blf_glyph_ensure(font, gc, g->c, subpixel);
+    g = blf_glyph_ensure(font, gc, g->c, g->idx, subpixel);
   }
   return g;
 }

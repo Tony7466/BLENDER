@@ -37,6 +37,29 @@ set(LIB
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )
 
+if(WITH_HARFBUZZ)
+  add_definitions(-DWITH_HARFBUZZ)
+  list(APPEND INC_SYS
+    ${LIBHARFBUZZ_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${LIBHARFBUZZ_LIBRARIES}
+  )
+endif()
+
+if(WITH_FRIBIDI)
+  add_definitions(-DWITH_FRIBIDI)
+
+  list(APPEND INC_SYS
+    ${LIBFRIBIDI_INCLUDE_DIRS}
+  )
+
+  list(APPEND LIB
+    ${LIBFRIBIDI_LIBRARIES}
+  )
+endif()
+
 if(WIN32)
   list(APPEND SRC
     intern/blf_font_win32_compat.cc
@@ -50,6 +73,7 @@ if(WITH_PYTHON)
   )
 endif()
 
+add_definitions(-DFRIBIDI_LIB_STATIC)
 
 blender_add_lib(bf_blenfont "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 add_library(bf::blenfont ALIAS bf_blenfont)

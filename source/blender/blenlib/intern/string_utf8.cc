@@ -965,6 +965,22 @@ const char *BLI_str_find_next_char_utf8(const char *p, const char *str_end)
   return p;
 }
 
+bool BLI_char_isRTL_utf32(const char32_t c)
+{
+  /* Hebrew, Arabic, Syriac, Thaana, N'Ko, Samaritan, Mandaic, Hebrew Ligatures, Arabic
+   * Presentation Forms, Cypriot, Hatran, Phoenician, Lydian,  Meroitic, Kharoshthi, Arabian,
+   * Manichaean, Avestan, Parthian, Pahlavi, Old Turkic, Old Hungarian, Mende Kikakui, Adlam,
+   * Arabic Mathematical Alphabetic Symbols */
+  return (c >= 0x00590 && c <= 0x008FF) || (c >= 0x0FB1D && c <= 0x0FDFF) ||
+         (c >= 0x0FE70 && c <= 0x0FEFF) || (c >= 0x10800 && c <= 0x10CFF) ||
+         (c >= 0x1E800 && c <= 0x1E95F) || (c >= 0x1EE00 && c <= 0x1EEFF);
+}
+
+bool BLI_char_isRTL_utf8(const char *c)
+{
+  return (BLI_char_isRTL_utf32(BLI_str_utf8_as_unicode_safe(c)));
+}
+
 size_t BLI_str_partition_utf8(const char *str,
                               const uint delim[],
                               const char **r_sep,

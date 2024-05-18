@@ -149,6 +149,12 @@ const char *BLI_str_find_next_char_utf8(const char *p, const char *str_end)
     ATTR_WARN_UNUSED_RESULT ATTR_RETURNS_NONNULL ATTR_NONNULL(1, 2);
 
 /**
+ * \return if the single character is (usually) considered part of a right-to-left string.
+ */
+bool BLI_char_isRTL_utf32(const char32_t c) ATTR_WARN_UNUSED_RESULT;
+bool BLI_char_isRTL_utf8(const char *c) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
+
+/**
  * \return the `wchar_t` length in UTF-8.
  */
 size_t BLI_wstrlen_utf8(const wchar_t *src) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
