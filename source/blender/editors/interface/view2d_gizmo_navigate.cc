@@ -99,7 +99,7 @@ static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
     case SPACE_CLIP:
       return g_navigate_params_for_space_clip;
     default:
-      /* Used for sequencer and compositor. */
+      /* Used for sequencer and node editors. */
       return g_navigate_params_for_view2d;
   }
 }
