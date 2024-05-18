@@ -7,7 +7,6 @@
  */
 
 #include "BLI_utildefines.h"
-#include "BLI_vector.hh"
 
 #include "BKE_context.hh"
 
@@ -24,6 +23,8 @@
 #include "WM_types.hh"
 
 #include "UI_view2d.hh"
+
+using namespace blender;
 
 /* -------------------------------------------------------------------- */
 /** \name View2D Navigation Gizmo Group
@@ -54,16 +55,16 @@ struct NavigateGizmoInfo {
   uint icon;
 };
 
-static NavigateGizmoInfo g_navigate_params_for_space_image[GZ_INDEX_TOTAL] = {
+static Vector<NavigateGizmoInfo> g_navigate_params_for_space_image = {
+    {
+      "IMAGE_OT_view_zoom",
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ZOOM,
+    },
     {
         "IMAGE_OT_view_pan",
         "GIZMO_GT_button_2d",
         ICON_VIEW_PAN,
-    },
-    {
-        "IMAGE_OT_view_zoom",
-        "GIZMO_GT_button_2d",
-        ICON_VIEW_ZOOM,
     },
     {
       "IMAGE_OT_view_all",
@@ -72,7 +73,7 @@ static NavigateGizmoInfo g_navigate_params_for_space_image[GZ_INDEX_TOTAL] = {
     },
 };
 
-static NavigateGizmoInfo g_navigate_params_for_space_clip[GZ_INDEX_TOTAL] = {
+static Vector<NavigateGizmoInfo>  g_navigate_params_for_space_clip = {
     {
         "CLIP_OT_view_pan",
         "GIZMO_GT_button_2d",
@@ -90,17 +91,17 @@ static NavigateGizmoInfo g_navigate_params_for_space_clip[GZ_INDEX_TOTAL] = {
     },
 };
 
-static NavigateGizmoInfo g_navigate_params_for_view2d[GZ_INDEX_TOTAL] = {
-    {
-        "VIEW2D_OT_pan",
-        "GIZMO_GT_button_2d",
-        ICON_VIEW_PAN,
-    },
+static Vector<NavigateGizmoInfo> g_navigate_params_for_view2d = {
     {
         "VIEW2D_OT_zoom",
         "GIZMO_GT_button_2d",
         ICON_VIEW_ZOOM,
     },
+  {
+    "VIEW2D_OT_pan",
+    "GIZMO_GT_button_2d",
+    ICON_VIEW_PAN,
+  },
     {
       "NODE_OT_view_all", // todo: implement generic view_all?
       "GIZMO_GT_button_2d",
@@ -108,7 +109,7 @@ static NavigateGizmoInfo g_navigate_params_for_view2d[GZ_INDEX_TOTAL] = {
     },
 };
 
-static NavigateGizmoInfo g_navigate_params_for_space_node_backdrop[GZ_INDEX_TOTAL] = {
+static Vector<NavigateGizmoInfo> g_navigate_params_for_space_node_backdrop = {
     {
         "NODE_OT_backimage_move",
         "GIZMO_GT_button_2d",
@@ -119,14 +120,19 @@ static NavigateGizmoInfo g_navigate_params_for_space_node_backdrop[GZ_INDEX_TOTA
         "GIZMO_GT_button_2d",
         ICON_VIEW_ZOOM,
     },
-  {
-    "NODE_OT_backimage_fit",
-    "GIZMO_GT_button_2d",
-    ICON_VIEW_ORTHO, // todo: proper icon
-  },
+    {
+      "NODE_OT_backimage_fit",
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ORTHO, // todo: proper icon
+    },
+    {
+      "NODE_OT_backimage_fit",
+      "GIZMO_GT_button_2d",
+      ICON_VIEW_ORTHO, // todo: proper icon
+    },
 };
 
-static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
+static Vector<NavigateGizmoInfo> navigate_params_from_space_type(short space_type)
 {
   switch (space_type) {
     case SPACE_IMAGE:
@@ -140,7 +146,7 @@ static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
 }
 
 struct NavigateWidgetGroup {
-  wmGizmo *gz_array[GZ_INDEX_TOTAL];
+  blender::Vector<wmGizmo *> gz_array;
   /* Sets order of first gizmo in group. Typically used when other gizmos are already drawn. */
   int slot_offset;
   /* Store the view state to check for changes. */
@@ -189,17 +195,16 @@ static bool WIDGETGROUP_navigate_poll(const bContext *C, wmGizmoGroupType * /*gz
   return true;
 }
 
-static void WIDGETGROUP_navigate_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
+static void navigate_setup(NavigateWidgetGroup *navgroup, wmGizmoGroup *gzgroup)
 {
-  NavigateWidgetGroup *navgroup = MEM_cnew<NavigateWidgetGroup>(__func__);
-  navgroup->slot_offset = 0;
+  const Vector<NavigateGizmoInfo> navigate_params = navigate_params_from_space_type(
+                                                                                    gzgroup->type->gzmap_params.spaceid);
+  navgroup->gz_array.reserve(navigate_params.size());
 
-  const NavigateGizmoInfo *navigate_params = navigate_params_from_space_type(
-      gzgroup->type->gzmap_params.spaceid);
-
-  for (int i = 0; i < GZ_INDEX_TOTAL; i++) {
-    const NavigateGizmoInfo *info = &navigate_params[i];
-    navgroup->gz_array[i] = WM_gizmo_new(info->gizmo, gzgroup, nullptr);
+  for (int i = 0; i < navigate_params.size(); i++) {
+    const NavigateGizmoInfo info = navigate_params[i];
+    wmGizmo *new_gz =WM_gizmo_new(info.gizmo, gzgroup, nullptr);
+    navgroup->gz_array.append(new_gz);
     wmGizmo *gz = navgroup->gz_array[i];
     gz->flag |= WM_GIZMO_MOVE_CURSOR | WM_GIZMO_DRAW_MODAL;
 
@@ -225,14 +230,14 @@ static void WIDGETGROUP_navigate_setup(const bContext * /*C*/, wmGizmoGroup *gzg
 
     /* may be overwritten later */
     gz->scale_basis = (GIZMO_SIZE * GIZMO_MINI_FAC) / 2;
-    if (info->icon != 0) {
+    if (info.icon != 0) {
       PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
-      RNA_property_enum_set(gz->ptr, prop, info->icon);
+      RNA_property_enum_set(gz->ptr, prop, info.icon);
       RNA_enum_set(
-          gz->ptr, "draw_options", ED_GIZMO_BUTTON_SHOW_OUTLINE | ED_GIZMO_BUTTON_SHOW_BACKDROP);
+                   gz->ptr, "draw_options", ED_GIZMO_BUTTON_SHOW_OUTLINE | ED_GIZMO_BUTTON_SHOW_BACKDROP);
     }
 
-    wmOperatorType *ot = WM_operatortype_find(info->opname, true);
+    wmOperatorType *ot = WM_operatortype_find(info.opname, true);
     WM_gizmo_operator_set(gz, 0, ot, nullptr);
   }
 
@@ -247,6 +252,16 @@ static void WIDGETGROUP_navigate_setup(const bContext * /*C*/, wmGizmoGroup *gzg
   }
 
   gzgroup->customdata = navgroup;
+
+}
+
+static void WIDGETGROUP_navigate_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
+{
+  // todo: where does this get deleted? replace with smart ptr ?
+  NavigateWidgetGroup *navgroup = new NavigateWidgetGroup();
+  navgroup->slot_offset = 0;
+  
+  navigate_setup(navgroup, gzgroup);
 }
 
 static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
@@ -273,7 +288,7 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
 
   wmGizmo *gz;
 
-  for (uint i = 0; i < ARRAY_SIZE(navgroup->gz_array); i++) {
+  for (uint i = 0; i < navgroup->gz_array.size(); i++) {
     gz = navgroup->gz_array[i];
     WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, true);
   }
@@ -281,20 +296,13 @@ static void WIDGETGROUP_navigate_draw_prepare(const bContext *C, wmGizmoGroup *g
   // TODO: wtf is this, write a loop
   int icon_mini_slot = navgroup->slot_offset;
 
-  gz = navgroup->gz_array[GZ_INDEX_ZOOM];
-  gz->matrix_basis[3][0] = roundf(co[0]);
-  gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot++));
-  WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+  for (int i = 0; i < navgroup->gz_array.size(); i++) {
 
-  gz = navgroup->gz_array[GZ_INDEX_MOVE];
-  gz->matrix_basis[3][0] = roundf(co[0]);
-  gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot++));
-  WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
-
-  gz = navgroup->gz_array[GZ_INDEX_FIT];
-  gz->matrix_basis[3][0] = roundf(co[0]);
-  gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot));
-  WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+    gz = navgroup->gz_array[i];
+    gz->matrix_basis[3][0] = roundf(co[0]);
+    gz->matrix_basis[3][1] = roundf(co[1] - (icon_offset_mini * icon_mini_slot++));
+    WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+  }
 }
 
 void VIEW2D_GGT_navigate_impl(wmGizmoGroupType *gzgt, const char *idname)
@@ -325,63 +333,11 @@ static bool WIDGETGROUP_navigate_backdrop_poll(const bContext *C, wmGizmoGroupTy
 
 static void WIDGETGROUP_navigate_backdrop_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
-  NavigateWidgetGroup *navgroup = MEM_cnew<NavigateWidgetGroup>(__func__);
+  // todo: where does this get deleted? replace with smart ptr ?
+  NavigateWidgetGroup *navgroup = new NavigateWidgetGroup();
   navgroup->slot_offset = 4;
 
-  const NavigateGizmoInfo *navigate_params = g_navigate_params_for_space_node_backdrop;
-
-  // todo: reduce duplicate code with WIDGETGROUP_navigate_setup()
-
-  for (int i = 0; i < GZ_INDEX_TOTAL; i++) {
-    const NavigateGizmoInfo *info = &navigate_params[i];
-    navgroup->gz_array[i] = WM_gizmo_new(info->gizmo, gzgroup, nullptr);
-    wmGizmo *gz = navgroup->gz_array[i];
-    gz->flag |= WM_GIZMO_MOVE_CURSOR | WM_GIZMO_DRAW_MODAL;
-
-    {
-      uchar icon_color[3];
-      UI_GetThemeColor3ubv(TH_TEXT, icon_color);
-      int color_tint, color_tint_hi;
-      if (icon_color[0] > 128) {
-        color_tint = -40;
-        color_tint_hi = 60;
-        gz->color[3] = 0.5f;
-        gz->color_hi[3] = 0.5f;
-      }
-      else {
-        color_tint = 60;
-        color_tint_hi = 60;
-        gz->color[3] = 0.5f;
-        gz->color_hi[3] = 0.75f;
-      }
-      UI_GetThemeColorShade3fv(TH_HEADER, color_tint, gz->color);
-      UI_GetThemeColorShade3fv(TH_HEADER, color_tint_hi, gz->color_hi);
-    }
-
-    /* may be overwritten later */
-    gz->scale_basis = (GIZMO_SIZE * GIZMO_MINI_FAC) / 2;
-    if (info->icon != 0) {
-      PropertyRNA *prop = RNA_struct_find_property(gz->ptr, "icon");
-      RNA_property_enum_set(gz->ptr, prop, info->icon);
-      RNA_enum_set(
-                   gz->ptr, "draw_options", ED_GIZMO_BUTTON_SHOW_OUTLINE | ED_GIZMO_BUTTON_SHOW_BACKDROP);
-    }
-
-    wmOperatorType *ot = WM_operatortype_find(info->opname, true);
-    WM_gizmo_operator_set(gz, 0, ot, nullptr);
-  }
-
-  /* Modal operators, don't use initial mouse location since we're clicking on a button. */
-  {
-    int gz_ids[] = {GZ_INDEX_ZOOM};
-    for (int i = 0; i < ARRAY_SIZE(gz_ids); i++) {
-      wmGizmo *gz = navgroup->gz_array[gz_ids[i]];
-      wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, 0);
-      RNA_boolean_set(&gzop->ptr, "use_cursor_init", false);
-    }
-  }
-
-  gzgroup->customdata = navgroup;
+  navigate_setup(navgroup, gzgroup);
 }
 
 static void WIDGETGROUP_navigate_backdrop_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
