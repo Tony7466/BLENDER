@@ -502,7 +502,7 @@ class SEQUENCER_MT_view(Menu):
 
         layout.separator()
 
-               # Note that the context is needed for the shortcut to display properly.
+        # Note that the context is needed for the shortcut to display properly.
         layout.operator_context = 'INVOKE_REGION_PREVIEW' if is_preview else 'INVOKE_REGION_WIN'
         props = layout.operator(
             "wm.context_toggle_enum",
