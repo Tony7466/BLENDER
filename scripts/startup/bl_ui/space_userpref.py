@@ -1637,7 +1637,7 @@ class USERPREF_UL_asset_libraries(UIList):
 class USERPREF_UL_extension_repos(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         repo = item
-        icon = 'INTERNET' if repo.use_remote_path else 'DISK_DRIVE'
+        icon = 'INTERNET' if repo.use_remote_url else 'DISK_DRIVE'
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.prop(repo, "name", text="", icon=icon, emboss=False)
         elif self.layout_type == 'GRID':
@@ -1648,7 +1648,7 @@ class USERPREF_UL_extension_repos(UIList):
         if repo.enabled:
             if (
                     (repo.use_custom_directory and repo.custom_directory == "") or
-                    (repo.use_remote_path and repo.remote_path == "")
+                    (repo.use_remote_url and repo.remote_url == "")
             ):
                 layout.label(text="", icon='ERROR')
 
@@ -1664,7 +1664,7 @@ class USERPREF_UL_extension_repos(UIList):
         for index, orig_index in enumerate(sorted(
             range(len(items)),
             key=lambda i: (
-                items[i].use_remote_path is False,
+                items[i].use_remote_url is False,
                 items[i].name.lower(),
             )
         )):
@@ -2095,15 +2095,15 @@ class USERPREF_PT_extensions_repos(Panel):
         layout.use_property_split = False
         layout.use_property_decorate = False
 
-        paths = context.preferences.filepaths
-        active_repo_index = paths.active_extension_repo
+        extensions = context.preferences.extensions
+        active_repo_index = extensions.active_repo
 
         row = layout.row()
 
         row.template_list(
             "USERPREF_UL_extension_repos", "user_extension_repos",
-            paths, "extension_repos",
-            paths, "active_extension_repo"
+            extensions, "repos",
+            extensions, "active_repo"
         )
 
         col = row.column(align=True)
@@ -2116,7 +2116,7 @@ class USERPREF_PT_extensions_repos(Panel):
         col.operator("preferences.extension_repo_upgrade", text="", icon='IMPORT')
 
         try:
-            active_repo = None if active_repo_index < 0 else paths.extension_repos[active_repo_index]
+            active_repo = None if active_repo_index < 0 else extensions.repos[active_repo_index]
         except IndexError:
             active_repo = None
 
@@ -2126,15 +2126,17 @@ class USERPREF_PT_extensions_repos(Panel):
         # NOTE: changing repositories from remote to local & vice versa could be supported but is obscure enough
         # that it can be hidden entirely. If there is a some justification to show this, it can be exposed.
         # For now it can be accessed from Python if someone is.
-        # `layout.prop(active_repo, "use_remote_path", text="Use Remote URL")`
+        # `layout.prop(active_repo, "use_remote_url", text="Use Remote URL")`
 
-        if active_repo.use_remote_path:
+        if active_repo.use_remote_url:
             row = layout.row()
             split = row.split(factor=0.936)
-            if active_repo.remote_path == "":
+            if active_repo.remote_url == "":
                 split.alert = True
-            split.prop(active_repo, "remote_path", text="", icon='URL', placeholder="Repository URL")
+            split.prop(active_repo, "remote_url", text="", icon='URL', placeholder="Repository URL")
             split = row.split()
+
+            layout.prop(active_repo, "use_sync_on_startup")
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
         layout_header.label(text="Advanced")
@@ -2160,7 +2162,7 @@ class USERPREF_PT_extensions_repos(Panel):
 
 
 # -----------------------------------------------------------------------------
-# Add-On Panels
+# Add-on Panels
 
 # Only a popover.
 class USERPREF_PT_addons_filter(Panel):
@@ -2177,7 +2179,7 @@ class USERPREF_PT_addons_filter(Panel):
 class AddOnPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
-    bl_context = "addons"
+    bl_context = "extensions"
 
 
 class USERPREF_PT_addons(AddOnPanel, Panel):
@@ -2273,11 +2275,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         prefs = context.preferences
 
-        if (
-                prefs.view.show_developer_ui and
-                prefs.experimental.use_extension_repos and
-                self.is_extended()
-        ):
+        if self.is_extended():
             # Rely on the draw function being appended to by the extensions add-on.
             return
 
@@ -2295,12 +2293,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         )
 
         # collect the categories that can be filtered on
-        addons = [
-            (mod, addon_utils.module_bl_info(mod))
-            for mod in addon_utils.modules(refresh=False)
-        ]
+        addon_modules = [mod for mod in addon_utils.modules(refresh=False)]
 
         self._draw_addon_header(layout, prefs, wm)
+
+        layout_topmost = layout.column()
 
         col = layout.column()
 
@@ -2333,7 +2330,8 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
         # initialized on demand
         user_addon_paths = []
 
-        for mod, bl_info in addons:
+        for mod in addon_modules:
+            bl_info = addon_utils.module_bl_info(mod)
             addon_module_name = mod.__name__
 
             is_enabled = addon_module_name in used_addon_module_name_map
@@ -2462,34 +2460,35 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                     if (addon_preferences := used_addon_module_name_map[addon_module_name].preferences) is not None:
                         self.draw_addon_preferences(col_box, context, addon_preferences)
 
-        # Append missing scripts
-        # First collect scripts that are used but have no script file.
-        module_names = {mod.__name__ for mod, bl_info in addons}
-        missing_modules = {
-            addon_module_name for addon_module_name in used_addon_module_name_map
-            if addon_module_name not in module_names
-        }
+        if filter in {"All", "Enabled"}:
+            # Append missing scripts
+            # First collect scripts that are used but have no script file.
+            module_names = {mod.__name__ for mod in addon_modules}
+            missing_modules = {
+                addon_module_name for addon_module_name in used_addon_module_name_map
+                if addon_module_name not in module_names
+            }
 
-        if missing_modules and filter in {"All", "Enabled"}:
-            col.column().separator()
-            col.column().label(text="Missing script files")
+            if missing_modules:
+                layout_topmost.column().separator()
+                layout_topmost.column().label(text="Missing script files")
 
-            module_names = {mod.__name__ for mod, bl_info in addons}
-            for addon_module_name in sorted(missing_modules):
-                is_enabled = addon_module_name in used_addon_module_name_map
-                # Addon UI Code
-                box = col.column().box()
-                colsub = box.column()
-                row = colsub.row(align=True)
+                module_names = {mod.__name__ for mod in addon_modules}
+                for addon_module_name in sorted(missing_modules):
+                    is_enabled = addon_module_name in used_addon_module_name_map
+                    # Addon UI Code
+                    box = layout_topmost.column().box()
+                    colsub = box.column()
+                    row = colsub.row(align=True)
 
-                row.label(text="", icon='ERROR')
+                    row.label(text="", icon='ERROR')
 
-                if is_enabled:
-                    row.operator(
-                        "preferences.addon_disable", icon='CHECKBOX_HLT', text="", emboss=False,
-                    ).module = addon_module_name
+                    if is_enabled:
+                        row.operator(
+                            "preferences.addon_disable", icon='CHECKBOX_HLT', text="", emboss=False,
+                        ).module = addon_module_name
 
-                row.label(text=addon_module_name, translate=False)
+                    row.label(text=addon_module_name, translate=False)
 
 
 # -----------------------------------------------------------------------------
@@ -2715,11 +2714,9 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_new_curves_tools"}, ("blender/blender/issues/68981", "#68981")),
                 ({"property": "use_new_point_cloud_type"}, ("blender/blender/issues/75717", "#75717")),
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
-                ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "use_grease_pencil_version3_convert_on_load"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
-                ({"property": "use_extension_repos"}, ("/blender/blender/issues/117286", "#117286")),
                 ({"property": "use_extension_utils"}, ("/blender/blender/issues/117286", "#117286")),
                 ({"property": "use_animation_baklava"}, ("/blender/blender/issues/120406", "#120406")),
             ),
