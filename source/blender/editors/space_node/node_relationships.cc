@@ -2068,6 +2068,45 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   return selected_node;
 }
 
+static bool node_can_be_inserted_on_link(const bNodeTree &tree,
+                                         const bNode &node,
+                                         const bNodeLink &link)
+{
+  bool has_possible_input = false;
+  bool has_possible_output = false;
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &node.inputs) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    if (!tree.typeinfo->validate_link) {
+      has_possible_input = true;
+      break;
+    }
+    if (tree.typeinfo->validate_link(eNodeSocketDatatype(link.fromsock->type),
+                                     eNodeSocketDatatype(socket->type)))
+    {
+      has_possible_input = true;
+      break;
+    }
+  }
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &node.outputs) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    if (!tree.typeinfo->validate_link) {
+      has_possible_output = true;
+      break;
+    }
+    if (tree.typeinfo->validate_link(eNodeSocketDatatype(socket->type),
+                                     eNodeSocketDatatype(link.tosock->type)))
+    {
+      has_possible_output = true;
+      break;
+    }
+  }
+  return has_possible_input && has_possible_output;
+}
+
 void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
 {
   bNodeTree &node_tree = *snode.edittree;
@@ -2116,13 +2155,16 @@ void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
 
   if (selink) {
     selink->flag |= NODE_LINK_INSERT_TARGET;
+    if (!node_can_be_inserted_on_link(node_tree, *node_to_insert, *selink)) {
+      selink->flag |= NODE_LINK_INSERT_TARGET_INVALID;
+    }
   }
 }
 
 void node_insert_on_link_flags_clear(bNodeTree &node_tree)
 {
   LISTBASE_FOREACH (bNodeLink *, link, &node_tree.links) {
-    link->flag &= ~NODE_LINK_INSERT_TARGET;
+    link->flag &= ~(NODE_LINK_INSERT_TARGET | NODE_LINK_INSERT_TARGET_INVALID);
   }
 }
 
@@ -2140,15 +2182,16 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
   bNodeLink *old_link = nullptr;
   LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
     if (link->flag & NODE_LINK_INSERT_TARGET) {
-      old_link = link;
+      if (!(link->flag & NODE_LINK_INSERT_TARGET_INVALID)) {
+        old_link = link;
+      }
       break;
     }
   }
+  node_insert_on_link_flags_clear(node_tree);
   if (old_link == nullptr) {
     return;
   }
-
-  old_link->flag &= ~NODE_LINK_INSERT_TARGET;
 
   bNodeSocket *best_input = get_main_socket(ntree, *node_to_insert, SOCK_IN);
   bNodeSocket *best_output = get_main_socket(ntree, *node_to_insert, SOCK_OUT);
