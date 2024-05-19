@@ -1827,32 +1827,37 @@ static bNode *find_common_parent_node(const Span<bNode *> nodes)
   if (nodes.is_empty()) {
     return nullptr;
   }
-  Vector<bNode *> parent_candidates;
+  Vector<bNode *> candidates;
+  /* Follow the chain of parents from the first node to find all frame nodes that could possibly be
+   * common to all nodes. */
   for (bNode *parent = nodes[0]->parent; parent; parent = parent->parent) {
-    parent_candidates.append(parent);
+    candidates.append(parent);
   }
-  std::reverse(parent_candidates.begin(), parent_candidates.end());
-  for (bNode *node : nodes) {
+  /* Reverse so that the root frame is the first element (if there is any). */
+  std::reverse(candidates.begin(), candidates.end());
+  for (bNode *node : nodes.drop_front(1)) {
     Vector<bNode *> parents;
     for (bNode *parent = node->parent; parent; parent = parent->parent) {
       parents.append(parent);
     }
     std::reverse(parents.begin(), parents.end());
-    parent_candidates.resize(std::min(parent_candidates.size(), parents.size()));
-    for (const int i : parent_candidates.index_range()) {
-      if (parent_candidates[i] != parents[i]) {
-        parent_candidates.resize(i);
+    /* Possibly shrink set of candidates so that it only contains the parents common with the
+     * current node. */
+    candidates.resize(std::min(candidates.size(), parents.size()));
+    for (const int i : candidates.index_range()) {
+      if (candidates[i] != parents[i]) {
+        candidates.resize(i);
         break;
       }
     }
-    if (parent_candidates.is_empty()) {
+    if (candidates.is_empty()) {
       break;
     }
   }
-  if (parent_candidates.is_empty()) {
+  if (candidates.is_empty()) {
     return nullptr;
   }
-  return parent_candidates.last();
+  return candidates.last();
 }
 
 static int node_join_exec(bContext *C, wmOperator * /*op*/)
