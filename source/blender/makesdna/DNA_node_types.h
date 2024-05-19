@@ -1988,6 +1988,11 @@ typedef struct NodeGeometryBake {
   char _pad[4];
 } NodeGeometryBake;
 
+typedef struct NodeGeometryEstimateTransform {
+  /* NodeGeometryEstimateTransformMode */
+  int8_t mode;
+} NodeGeometryEstimateTransform;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
@@ -2874,3 +2879,9 @@ typedef enum NodeGeometryTransformMode {
   GEO_NODE_TRANSFORM_MODE_COMPONENTS = 0,
   GEO_NODE_TRANSFORM_MODE_MATRIX = 1,
 } NodeGeometryTransformMode;
+
+typedef enum GeometryNodeEstimateTransformMode {
+  GEO_NODE_ESTIMATE_TRANSFORM_T = 0,
+  GEO_NODE_ESTIMATE_TRANSFORM_TR = 1,
+  GEO_NODE_ESTIMATE_TRANSFORM_TRS = 2,
+} GeometryNodeEstimateTransformMode;
