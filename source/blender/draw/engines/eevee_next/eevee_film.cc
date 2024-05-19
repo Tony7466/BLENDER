@@ -679,11 +679,6 @@ void Film::accumulate(View &view, GPUTexture *combined_final_tx)
 
   inst_.manager->submit(accumulate_ps_, view);
 
-  if (inst_.is_viewport()) {
-    DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
-    GPU_framebuffer_viewport_reset(dfbl->default_fb);
-  }
-
   combined_tx_.swap();
   weight_tx_.swap();
 
@@ -713,7 +708,6 @@ void Film::display()
 
   DRW_manager_get()->submit(accumulate_ps_, drw_view);
 
-  GPU_framebuffer_viewport_reset(dfbl->default_fb);
   inst_.render_buffers.release();
 
   /* IMPORTANT: Do not swap! No accumulation has happened. */
