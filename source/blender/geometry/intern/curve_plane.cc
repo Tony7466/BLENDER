@@ -328,6 +328,8 @@ static void potrace_curve_extra_points(const Span<const potrace_path_t *> src_cu
 {
   threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
     for (const int curve_i : range) {
+      std::cout << "potrace_curve_extra_points: "
+                << "curve_i: " << curve_i << ";\n";
       const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
       const Span<int> curve_type_switch_indices = curve_type_indices[curve_i];
       const IndexRange curve_range = curve_type_switch_indices.index_range();
@@ -336,11 +338,11 @@ static void potrace_curve_extra_points(const Span<const potrace_path_t *> src_cu
       std::cout << curve_type_switch_indices << ";\n";
       std::cout << "\n";
       extra_curve_offset_data[curve_i] = std::count_if(
-          curve_range.begin(), curve_range.drop_back(1).end(), [&](const int64_t i) {
+          curve_range.begin(), curve_range.end(), [&](const int64_t i) {
             const potrace::SegmentType current_type = potrace::SegmentType(
-                segment_types[curve_type_switch_indices[i]]);
+                segment_types[curve_type_switch_indices[i] - 1]);
             const potrace::SegmentType next_type = potrace::SegmentType(
-                segment_types[curve_type_switch_indices[i + 1]]);
+                segment_types[curve_type_switch_indices[i]]);
             return potrace::extra_bezier_point_between(current_type, next_type);
           });
       if (potrace::extra_bezier_point_between(potrace::SegmentType(segment_types.last()),
@@ -348,6 +350,7 @@ static void potrace_curve_extra_points(const Span<const potrace_path_t *> src_cu
       {
         extra_curve_offset_data[curve_i]++;
       }
+      std::cout << "extra_curve_offset_data: " << extra_curve_offset_data[curve_i] << ";\n";
     }
   });
 }
@@ -364,21 +367,21 @@ static void potrace_curve_type(const Span<const potrace_path_t *> src_curves,
   });
 }
 
-static void potrace_curve_to_bezier(MutableSpan<std::array<float2, 3>> points_data)
+static void potrace_curve_to_bezier(const Span<std::array<float2, 3>> src,
+                                    MutableSpan<std::array<float2, 3>> dst)
 {
-  for (std::array<float2, 3> &point : points_data) {
-    std::swap(point[1], point[2]);
-    std::swap(point[0], point[2]);
+  BLI_assert(src.size() == dst.size());
+  for (const int i : src.index_range()) {
+    dst[i][0] = src[i][1];
+    dst[i][1] = src[i][2];
+    dst[i][2] = src[i][0];
   }
-}
 
-static void potrace_bezeir_curve_shift_handles(MutableSpan<std::array<float2, 3>> points_data)
-{
-  // const float2 first_handle = points_data.first()[2];
-  for (const int i : points_data.index_range().drop_back(1)) {
-    points_data[i][2] = points_data[i + 1][2];
+  const float2 first_handle = dst.first()[2];
+  for (const int i : dst.index_range().drop_back(1)) {
+    dst[i][2] = dst[i + 1][2];
   }
-  // points_data.last()[2] = first_handle;
+  dst.last()[2] = first_handle;
 }
 
 static void potrace_bezeir_after_poly(const std::array<float2, 3> poly,
@@ -420,22 +423,28 @@ static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
                                  const GroupedSpan<int> curve_type_indices,
                                  MutableSpan<std::array<float2, 3>> vector_data)
 {
-  // std::cout << AT << ";\n";
+  // std::cout << "\n";
   threading::parallel_for(
       src_curves.index_range(),
       4096,
       [&](const IndexRange range) {
         for (const int curve_i : range) {
-          // std::cout << AT << ";\n";
+          // std::cout << " curve_i: " << curve_i << ";\n";
           const IndexRange curve_points = range_sum(offsets[curve_i],
                                                     extra_point_offsets[curve_i]);
           const Span<int> segment_types(src_curves[curve_i]->curve.tag,
                                         src_curves[curve_i]->curve.n);
           const Span<int> type_indices = curve_type_indices[curve_i];
-          // std::cout << "DDDD: " << type_indices << ";\n";
           MutableSpan<std::array<float2, 3>> points = vector_data.slice(curve_points);
 
+          // const Span<potrace_dpoint_t [3]> dyd(src_curves[curve_i]->curve.c,
+          // src_curves[curve_i]->curve.n); BLI_assert(dyd[0][0].x != 6);
+
           if (type_indices.is_empty()) {
+            // std::cout << "  Single;\n";
+            // std::cout << "  curve_points: " << curve_points << ";\n";
+            // std::cout << "  segment_types: " << segment_types << ";\n";
+            // std::cout << "  type_indices: " << type_indices << ";\n";
             for (const int64_t i : points.index_range()) {
               points[i][0] = to_float2(src_curves[curve_i]->curve.c[i][0]);
               points[i][1] = to_float2(src_curves[curve_i]->curve.c[i][1]);
@@ -448,13 +457,19 @@ static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
 
           {
             const IndexRange typed_range(type_indices[0]);
+
+            // std::cout << "  First segment;\n";
+            // std::cout << "  typed_range: " << typed_range << ";\n";
+            // std::cout << "  curve_points: " << curve_points << ";\n";
+            // std::cout << "  segment_types: " << segment_types << ";\n";
+            // std::cout << "  type_indices: " << type_indices << ";\n";
+
             BLI_assert(!typed_range.is_empty());
             const potrace::SegmentType range_type = potrace::SegmentType(segment_types[0]);
             const potrace::SegmentType next_range_type = potrace::SegmentType(
                 segment_types[type_indices[0]]);
 
             for (const int64_t i : typed_range) {
-              // std::cout << AT << ";\n";
               BLI_assert(offset == 0);
               points[i][0] = to_float2(src_curves[curve_i]->curve.c[i][0]);
               points[i][1] = to_float2(src_curves[curve_i]->curve.c[i][1]);
@@ -467,6 +482,7 @@ static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
           }
 
           for (const int range_i : type_indices.index_range().drop_back(1)) {
+
             // std::cout << AT << ";\n";
             const int range_index = type_indices[range_i];
             const int next_range_index = type_indices[range_i + 1];
@@ -476,6 +492,15 @@ static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
                 segment_types[next_range_index]);
             const IndexRange typed_range = IndexRange::from_begin_end(range_index,
                                                                       next_range_index);
+
+            // std::cout << "  range_i: " << range_i << ";\n";
+            // std::cout << "  range_index: " << range_index << ";\n";
+            // std::cout << "  next_range_index: " << next_range_index << ";\n";
+            // std::cout << "  typed_range: " << typed_range << ";\n";
+            // std::cout << "  curve_points: " << curve_points << ";\n";
+            // std::cout << "  segment_types: " << segment_types << ";\n";
+            // std::cout << "  type_indices: " << type_indices << ";\n";
+            // std::cout << "  offset: " << offset << ";\n";
 
             for (const int64_t i : typed_range) {
               // std::cout << AT << ";\n";
@@ -488,6 +513,28 @@ static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
               offset++;
             }
           }
+
+          {
+            const IndexRange typed_range = IndexRange::from_begin_end(type_indices.last(),
+                                                                      segment_types.size());
+
+            // std::cout << "  Last segment;\n";
+            // std::cout << "  typed_range: " << typed_range << ";\n";
+            // std::cout << "  curve_points: " << curve_points << ";\n";
+            // std::cout << "  segment_types: " << segment_types << ";\n";
+            // std::cout << "  type_indices: " << type_indices << ";\n";
+
+            BLI_assert(!typed_range.is_empty());
+            const potrace::SegmentType range_type = potrace::SegmentType(segment_types[0]);
+            const potrace::SegmentType next_range_type = potrace::SegmentType(
+                segment_types[type_indices[0]]);
+
+            for (const int64_t i : typed_range) {
+              points[offset + i][0] = to_float2(src_curves[curve_i]->curve.c[i][0]);
+              points[offset + i][1] = to_float2(src_curves[curve_i]->curve.c[i][1]);
+              points[offset + i][2] = to_float2(src_curves[curve_i]->curve.c[i][2]);
+            }
+          }
         }
       },
       threading::accumulated_task_sizes([&](const IndexRange range) {
@@ -495,60 +542,144 @@ static void potrace_curve_points(const Span<const potrace_path_t *> src_curves,
       }));
 }
 
+static std::array<float2, 3> bezier_before_bezier(const int index,
+                                                  const Span<std::array<float2, 3>> potrace_data)
+{
+  // std::cout << "    - " << __func__ << ": " << index << ";\n";
+  std::array<float2, 3> point = potrace_data[index];
+  point[0] = point[1];
+  point[1] = point[2];
+  const int next_index = math::mod_periodic<int64_t>(index + 1, potrace_data.size());
+  point[2] = potrace_data[next_index][0];
+  return point;
+}
+
+static std::array<float2, 3> bezier_before_poly(const int index,
+                                                const Span<std::array<float2, 3>> potrace_data)
+{
+  // std::cout << "    - " << __func__ << ": " << index << ";\n";
+  std::array<float2, 3> point = potrace_data[index];
+  point[0] = point[1];
+  point[1] = point[2];
+  const int next_index = math::mod_periodic<int64_t>(index + 1, potrace_data.size());
+  point[2] = math::midpoint(point[1], potrace_data[next_index][1]);
+  return point;
+}
+
+static std::array<float2, 3> poly_after_poly(const int index,
+                                             const Span<std::array<float2, 3>> potrace_data)
+{
+  // std::cout << "    - " << __func__ << ": " << index << ";\n";
+  std::array<float2, 3> point = potrace_data[index];
+  const int prev_index = math::mod_periodic<int64_t>(index - 1, potrace_data.size());
+  point[0] = potrace_data[prev_index][2];
+  return point;
+}
+
+static std::array<float2, 3> poly_after_bezier(const int index,
+                                               const Span<std::array<float2, 3>> potrace_data)
+{
+  // std::cout << "    - " << __func__ << ": " << index << ";\n";
+  std::array<float2, 3> point = potrace_data[index];
+  const int prev_index = math::mod_periodic<int64_t>(index - 1, potrace_data.size());
+  point[0] = math::midpoint(potrace_data[prev_index][2], point[1]);
+  return point;
+}
+
+static std::array<float2, 3> poly_point_bezier(const int index,
+                                               const Span<std::array<float2, 3>> potrace_data)
+{
+  // std::cout << "    - " << __func__ << ": " << index << ";\n";
+  const int prev_index = math::mod_periodic<int64_t>(index - 1, potrace_data.size());
+  const int next_index = math::mod_periodic<int64_t>(index + 1, potrace_data.size());
+
+  const std::array<float2, 3> &prev_poly = potrace_data[prev_index];
+  const std::array<float2, 3> &next_bezier = potrace_data[next_index];
+
+  return {math::midpoint(prev_poly[1], prev_poly[2]), prev_poly[2], next_bezier[0]};
+}
+
 static void potrace_to_bezier_or_poly_curves(const Span<const potrace_path_t *> src_curves,
                                              const OffsetIndices<int> curve_offsets,
                                              const OffsetIndices<int> extra_point_offsets,
                                              const GroupedSpan<int> curve_type_indices,
                                              const Span<potrace::CurveType> curve_type_data,
+                                             const Span<std::array<float2, 3>> potrace_data,
                                              MutableSpan<std::array<float2, 3>> points_data)
 {
-  std::cout << "\n";
+  // std::cout << "\n";
+
+  // std::cout << potrace_data << "\n";
+
   threading::parallel_for(
       curve_offsets.index_range(),
       4096,
       [&](const IndexRange range) {
         for (const int curve_i : range) {
-          std::cout << "curve_i: " << curve_i << ";\n";
+          // std::cout << "curve_i: " << curve_i << ";\n";
 
           const IndexRange curve_points = range_sum(curve_offsets[curve_i],
                                                     extra_point_offsets[curve_i]);
           const Span<int> segment_types(src_curves[curve_i]->curve.tag,
                                         src_curves[curve_i]->curve.n);
           const Span<int> type_indices = curve_type_indices[curve_i];
-          MutableSpan<std::array<float2, 3>> points = points_data.slice(curve_points);
+          const Span<std::array<float2, 3>> src_points = potrace_data.slice(curve_points);
+          MutableSpan<std::array<float2, 3>> dst_points = points_data.slice(curve_points);
 
-          const int points_num = curve_points.size();
+          const int last = dst_points.size() - 1;
 
-          std::cout << "  curve_points: " << curve_points << ";\n";
-          std::cout << "  segment_types: " << segment_types << ";\n";
-          std::cout << "  type_indices: " << type_indices << ";\n";
+          // std::cout << "  curve_points: " << curve_points << ";\n";
+          // std::cout << "  segment_types: " << segment_types << ";\n";
+          // std::cout << "  type_indices: " << type_indices << ";\n";
 
           const potrace::CurveType curve_type = curve_type_data[curve_i];
           if (type_indices.is_empty()) {
             BLI_assert(ELEM(
                 curve_type, potrace::CurveType::BezierSpline, potrace::CurveType::PolySpline));
             if (curve_type == potrace::CurveType::BezierSpline) {
-              std::cout << "  Single Beier;\n";
-              potrace_curve_to_bezier(points);
-              const float2 first_handle = points.first()[2];
-              potrace_bezeir_curve_shift_handles(points);
-              points.last()[2] = first_handle;
+              // std::cout << "  Single Beier;\n";
+              potrace_curve_to_bezier(src_points, dst_points);
             }
             else {
-              std::cout << "  Single Poly;\n";
+              // std::cout << "  Single Poly;\n";
+              array_utils::copy(src_points, dst_points);
             }
             continue;
           }
+
+          const bool merge_end_and_begin = segment_types.first() == segment_types.last();
 
           int64_t offset = 0;
           {
             const IndexRange typed_range(type_indices[0]);
             BLI_assert(!typed_range.is_empty());
+
             const potrace::SegmentType range_type = potrace::SegmentType(segment_types[0]);
             const potrace::SegmentType next_range_type = potrace::SegmentType(
                 segment_types[type_indices[0]]);
 
-            // TODO ....
+            switch (range_type) {
+              case potrace::SegmentType::Poly: {
+                if (merge_end_and_begin) {
+                  dst_points[0] = poly_after_poly(0, src_points);
+                }
+                else {
+                  dst_points[0] = poly_after_bezier(0, src_points);
+                }
+                for (const int index : typed_range.drop_front(1)) {
+                  dst_points[index] = poly_after_poly(index, src_points);
+                }
+                break;
+              }
+              case potrace::SegmentType::Bezier: {
+                for (const int index : typed_range.drop_back(1)) {
+                  dst_points[index] = bezier_before_bezier(index, src_points);
+                }
+                dst_points[typed_range.last()] = bezier_before_poly(typed_range.last(),
+                                                                    src_points);
+                break;
+              }
+            }
 
             if (potrace::extra_bezier_point_between(range_type, next_range_type)) {
               offset++;
@@ -559,70 +690,68 @@ static void potrace_to_bezier_or_poly_curves(const Span<const potrace_path_t *> 
             const int range_index = type_indices[range_i];
             const int next_range_index = type_indices[range_i + 1];
 
-            /* Int64_t is necessary! */
-            const int prev_index = math::mod_periodic<int64_t>(offset + range_index - 1,
-                                                               points_num);
-            const int prev_prev_index = math::mod_periodic<int64_t>(offset + range_index - 2,
-                                                                    points_num);
-
             const IndexRange segment_range =
                 IndexRange::from_begin_end(range_index, next_range_index).shift(offset);
-            MutableSpan<std::array<float2, 3>> segment_points = points.slice(segment_range);
             switch (potrace::SegmentType(segment_types[range_index])) {
-              case potrace::SegmentType::Bezier: {
-                std::cout << "   Bezier Segments:\n";
-                std::cout << "    segment_range: " << segment_range << ";\n";
-                std::cout << "    range_index: " << range_index << ";\n";
-                std::cout << "    prev_index: " << prev_index << ";\n";
-                std::cout << "    prev_prev_index: " << prev_prev_index << ";\n";
-
-                for (std::array<float2, 3> &point : segment_points) {
-                  std::swap(point[1], point[2]);
-                  std::swap(point[0], point[2]);
-                }
-
-                // points[prev_index][2] = segment_points.first()[2];
-
-                const float2 first_handle = segment_points[0][2];
-                for (const int i : segment_points.index_range().drop_back(1)) {
-                  segment_points[i][2] = segment_points[i + 1][2];
-                }
-
-                const float2 control_point = points[prev_prev_index][2];
-                const float2 prev_handle = math::midpoint(points[prev_prev_index][1],
-                                                          points[prev_prev_index][2]);
-                const float2 next_handle = segment_points.first()[0];
-                points[prev_index] = {prev_handle, control_point, first_handle};
-
-                // points[prev_prev_index][2] = prev_handle;
-                // points[prev_index] = potrace::extra_point_between(points[prev_prev_index],
-                // segment_points.first());
-                break;
-              }
               case potrace::SegmentType::Poly: {
-                std::cout << "   Poly Segments:\n";
-                std::cout << "    segment_range: " << segment_range << ";\n";
-                std::cout << "    range_index: " << range_index << ";\n";
-                std::cout << "    prev_index: " << prev_index << ";\n";
-                std::cout << "    prev_prev_index: " << prev_prev_index << ";\n";
-
-                points[prev_index][2] = math::midpoint(segment_points[0][1], segment_points[0][1]);
-                segment_points[0][0] = points[prev_index][2];
-                for (const int i : segment_points.index_range().drop_back(1)) {
-                  segment_points[i + 1][0] = segment_points[i][2];
+                dst_points[range_index + offset] = poly_after_bezier(range_index + offset,
+                                                                     src_points);
+                for (const int index : segment_range.drop_front(1)) {
+                  dst_points[index] = poly_after_poly(index, src_points);
                 }
-
+                const int extra_point = segment_range.one_after_last();
+                dst_points[extra_point] = poly_point_bezier(extra_point, src_points);
                 offset++;
                 break;
               }
-              default:
+              case potrace::SegmentType::Bezier: {
+                for (const int index : segment_range.drop_back(1)) {
+                  dst_points[index] = bezier_before_bezier(index, src_points);
+                }
+                dst_points[segment_range.last()] = bezier_before_poly(segment_range.last(),
+                                                                      src_points);
                 break;
+              }
+            }
+          }
+
+          {
+            const IndexRange typed_range = IndexRange::from_begin_end(type_indices.last(),
+                                                                      segment_types.size());
+            BLI_assert(!typed_range.is_empty());
+
+            switch (potrace::SegmentType(segment_types.last())) {
+              case potrace::SegmentType::Poly: {
+                dst_points[typed_range[0] + offset] = poly_after_bezier(typed_range[0] + offset,
+                                                                        src_points);
+                for (const int index : typed_range.drop_front(1)) {
+                  dst_points[index + offset] = poly_after_poly(index + offset, src_points);
+                }
+                if (!merge_end_and_begin) {
+                  const int extra_point = typed_range.one_after_last() + offset;
+                  dst_points[extra_point] = poly_point_bezier(extra_point, src_points);
+                }
+                break;
+              }
+              case potrace::SegmentType::Bezier: {
+                for (const int index : typed_range.drop_back(1)) {
+                  dst_points[index + offset] = bezier_before_bezier(index + offset, src_points);
+                }
+                if (!merge_end_and_begin) {
+                  dst_points[last] = bezier_before_poly(last, src_points);
+                }
+                else {
+                  dst_points[last] = bezier_before_bezier(last, src_points);
+                }
+                break;
+              }
             }
           }
         }
       },
       threading::accumulated_task_sizes(
           [&](const IndexRange range) { return curve_offsets[range].size(); }));
+  // std::cout << points_data << "\n";
 }
 
 std::optional<Curves *> plane_to_curve(const int2 resolution,
@@ -669,19 +798,22 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
   potrace_curve_type(curves_list, extra_point_offsets, curve_type_data);
 
   const int64_t total_vertices = curve_offsets.total_size() + extra_point_offsets.total_size();
-  std::cout << "Curves num: " << curve_offsets.size() << ";\nPoints num: " << total_vertices
-            << ";\n";
+  // std::cout << "Curves num: " << curve_offsets.size() << ";\nPoints num: " << total_vertices <<
+  // ";\n";
 
-  Array<std::array<float2, 3>> points_data(total_vertices, {float2(-1), float2(-2), float2(-3)});
+  Array<std::array<float2, 3>> points_buffer(total_vertices, {float2(-1), float2(-2), float2(-3)});
   potrace_curve_points(
-      curves_list, curve_offsets, extra_point_offsets, curve_type_indices, points_data);
+      curves_list, curve_offsets, extra_point_offsets, curve_type_indices, points_buffer);
   // std::cout << "points_data: " << points_data.as_span() << ";\n";
 
+  Array<std::array<float2, 3>> points_data(points_buffer.size(),
+                                           {float2(1), float2(2), float2(3)});
   potrace_to_bezier_or_poly_curves(curves_list,
                                    curve_offsets,
                                    extra_point_offsets,
                                    curve_type_indices,
                                    curve_type_data,
+                                   points_buffer,
                                    points_data);
   transform_points(resolution, min_point, max_point, points_data);
 
