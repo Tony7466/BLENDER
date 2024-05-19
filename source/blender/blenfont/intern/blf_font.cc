@@ -1155,66 +1155,16 @@ int blf_str_offset_to_cursor(
   return int(blf_font_width(font, str, str_len, nullptr));
 }
 
-#ifdef WITH_HARFBUZZ
-typedef struct StrSelectionGlyphBounds_Data {
-  size_t sel_start;
-  size_t sel_length;
-  bool RTL;
-  short current_box;
-  rcti boxes[2];
-} StrSelectionGlyphBounds_Data;
-
-static bool blf_str_selection_foreach_glyph(const char *str,
-                                            const size_t str_step_ofs,
-                                            const rcti *bounds,
-                                            void *user_data)
-{
-  StrSelectionGlyphBounds_Data *data = static_cast<StrSelectionGlyphBounds_Data *>(user_data);
-  /* Called in glyph order, so str_step_ofs varies. */
-
-  if (str_step_ofs >= data->sel_start && str_step_ofs < (data->sel_start + data->sel_length)) {
-    bool RTL = BLI_char_isRTL_utf8(str + str_step_ofs);
-    if (RTL != data->RTL) {
-      data->current_box = 1;
-    }
-    if (data->boxes[data->current_box].xmin == data->boxes[data->current_box].xmax) {
-      data->boxes[data->current_box].xmin = bounds->xmin;
-    }
-    if (bounds->xmax > data->boxes[data->current_box].xmax) {
-      data->boxes[data->current_box].xmax = bounds->xmax;
-    }
-    data->RTL = RTL;
-  }
-  /* Always test all glyphs. */
-  return true;
-}
-
-#endif
-
 blender::Vector<blender::Bounds<int>> blf_str_selection_boxes(
     FontBLF *font, const char *str, size_t str_len, size_t sel_start, size_t sel_length)
 {
-  blender::Vector<blender::Bounds<int>> boxes;
-
 #ifdef WITH_HARFBUZZ
   if (U.experimental.use_text_shaping) {
-    StrSelectionGlyphBounds_Data data = {
-        sel_start, sel_length, BLI_char_isRTL_utf8(str + sel_start), {0}, {0}};
-    blf_font_boundbox_foreach_glyph(font, str, str_len, blf_str_selection_foreach_glyph, &data);
-
-    /* Avoid overlap when multiple boxes meet. */
-    if (data.boxes[1].xmin > 0) {
-      data.boxes[1].xmin += 1;
-    }
-
-    boxes.append(blender::Bounds(data.boxes[0].xmin, data.boxes[0].xmax));
-    if (data.boxes[1].xmin != data.boxes[1].xmax) {
-      boxes.append(blender::Bounds(data.boxes[1].xmin, data.boxes[1].xmax));
-    }
-    return boxes;
+    return blf_shaping_selection_boxes(font, str, str_len, sel_start, sel_length);
   }
 #endif
 
+  blender::Vector<blender::Bounds<int>> boxes;
   const int start = blf_str_offset_to_cursor(font, str, str_len, sel_start, 0.0f);
   const int end = blf_str_offset_to_cursor(font, str, str_len, sel_start + sel_length, 0.0f);
   boxes.append(blender::Bounds(start, end));

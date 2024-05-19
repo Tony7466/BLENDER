@@ -219,4 +219,7 @@ void blf_shaping_foreach(FontBLF *font,
                          BLF_GlyphBoundsFn user_fn,
                          void *user_data);
 
+blender::Vector<blender::Bounds<int>> blf_shaping_selection_boxes(
+    FontBLF *font, const char *str, size_t str_len, size_t sel_start, size_t sel_length);
+
 #endif

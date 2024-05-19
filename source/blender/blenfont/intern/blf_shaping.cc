@@ -15,10 +15,10 @@
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
-#  include <fribidi/fribidi.h>
-#  include <harfbuzz/hb-ft.h>
-#  include <harfbuzz/hb-ot.h>
-#  include <harfbuzz/hb.h>
+#include <fribidi/fribidi.h>
+#include <harfbuzz/hb-ft.h>
+#include <harfbuzz/hb-ot.h>
+#include <harfbuzz/hb.h>
 
 #include "BLF_api.hh"
 
@@ -86,9 +86,9 @@ typedef struct ShapingData {
 
   hb_unicode_funcs_t *hb_ufuncs = nullptr;
   hb_buffer_t *hb_buf = nullptr;
-#  ifdef WITH_FRIBIDI
+#ifdef WITH_FRIBIDI
   FriBidiParType base_direction = FRIBIDI_PAR_LTR;
-#  endif
+#endif
 
   struct SegmentData {
     /* For each run of language/script/direction. */
@@ -129,7 +129,7 @@ ShapingData::ShapingData(const char *str, size_t len)
   /* Convert input string into array of 32-bit code points. */
   BLI_str_utf8_as_utf32(this->logical_str.data(), str, this->char_count);
 
-#  ifdef WITH_FRIBIDI
+#ifdef WITH_FRIBIDI
   /* FriBiDi reorder. Do not include null terminator or it might move too. */
   fribidi_log2vis((FriBidiChar *)this->logical_str.data(),
                   int(this->char_count) - 1,
@@ -138,9 +138,9 @@ ShapingData::ShapingData(const char *str, size_t len)
                   this->positions_L2V.data(),
                   this->positions_V2L.data(),
                   NULL);
-#  else
+#else
   this->visual_str = this->logical_str;
-#  endif
+#endif
 }
 
 ShapingData::~ShapingData()
@@ -288,13 +288,13 @@ bool ShapingData::process(FontBLF *font, GlyphCacheBLF *gc, ResultBLF *r_info)
     bounds->ymin = g->box_ymin + pos->y_offset;
     bounds->ymax = bounds->ymin + g->box_ymax;
 
-#  ifndef BLF_SUBPIXEL_POSITION
+#ifndef BLF_SUBPIXEL_POSITION
     pen_x = FT_PIX_ROUND(pen_x);
-#  endif
-#  ifdef BLF_SUBPIXEL_AA
+#endif
+#ifdef BLF_SUBPIXEL_AA
     this->segment.glyphs[i] = blf_glyph_ensure_subpixel(
         this->segment.font, this->segment.gc, g, pen_x);
-#  endif
+#endif
 
     max_width = pen_x + std::max(pos->x_advance, g->advance_x);
     pen_x += advance;
@@ -322,11 +322,11 @@ bool ShapingData::process(FontBLF *font, GlyphCacheBLF *gc, ResultBLF *r_info)
 }
 
 int blf_shaping_draw(FontBLF *font,
-                            GlyphCacheBLF *gc,
-                            const char *str,
-                            const size_t str_len,
-                            struct ResultBLF *r_info,
-                            ft_pix pen_y)
+                     GlyphCacheBLF *gc,
+                     const char *str,
+                     const size_t str_len,
+                     struct ResultBLF *r_info,
+                     ft_pix pen_y)
 {
   if (!str[0] || !str_len) {
     return 0;
@@ -354,11 +354,11 @@ int blf_shaping_draw(FontBLF *font,
 }
 
 void blf_shaping_bounds(FontBLF *font,
-                               GlyphCacheBLF *gc,
-                               const char *str,
-                               const size_t str_len,
-                               rcti *bounds,
-                               ft_pix pen_y)
+                        GlyphCacheBLF *gc,
+                        const char *str,
+                        const size_t str_len,
+                        rcti *bounds,
+                        ft_pix pen_y)
 {
   if (!str[0] || !str_len) {
     return;
@@ -412,4 +412,58 @@ void blf_shaping_foreach(FontBLF *font,
       }
     }
   }
+}
+
+typedef struct StrSelectionGlyphBounds_Data {
+  size_t sel_start;
+  size_t sel_length;
+  bool RTL;
+  short current_box;
+  rcti boxes[2];
+} StrSelectionGlyphBounds_Data;
+
+static bool blf_str_selection_foreach_glyph(const char *str,
+                                            const size_t str_step_ofs,
+                                            const rcti *bounds,
+                                            void *user_data)
+{
+  StrSelectionGlyphBounds_Data *data = static_cast<StrSelectionGlyphBounds_Data *>(user_data);
+  /* Called in glyph order, so str_step_ofs varies. */
+
+  if (str_step_ofs >= data->sel_start && str_step_ofs < (data->sel_start + data->sel_length)) {
+    bool RTL = BLI_char_isRTL_utf8(str + str_step_ofs);
+    if (RTL != data->RTL) {
+      data->current_box = 1;
+    }
+    if (data->boxes[data->current_box].xmin == data->boxes[data->current_box].xmax) {
+      data->boxes[data->current_box].xmin = bounds->xmin;
+    }
+    if (bounds->xmax > data->boxes[data->current_box].xmax) {
+      data->boxes[data->current_box].xmax = bounds->xmax;
+    }
+    data->RTL = RTL;
+  }
+  /* Always test all glyphs. */
+  return true;
+}
+
+blender::Vector<blender::Bounds<int>> blf_shaping_selection_boxes(
+    FontBLF *font, const char *str, size_t str_len, size_t sel_start, size_t sel_length)
+{
+  blender::Vector<blender::Bounds<int>> boxes;
+
+  StrSelectionGlyphBounds_Data data = {
+      sel_start, sel_length, BLI_char_isRTL_utf8(str + sel_start), {0}, {0}};
+  blf_font_boundbox_foreach_glyph(font, str, str_len, blf_str_selection_foreach_glyph, &data);
+
+  /* Avoid overlap when multiple boxes meet. */
+  if (data.boxes[1].xmin > 0) {
+    data.boxes[1].xmin += 1;
+  }
+
+  boxes.append(blender::Bounds(data.boxes[0].xmin, data.boxes[0].xmax));
+  if (data.boxes[1].xmin != data.boxes[1].xmax) {
+    boxes.append(blender::Bounds(data.boxes[1].xmin, data.boxes[1].xmax));
+  }
+  return boxes;
 }
