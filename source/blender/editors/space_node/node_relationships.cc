@@ -1822,6 +1822,39 @@ static void node_join_attach_recursive(bNodeTree &ntree,
   }
 }
 
+static bNode *find_common_parent_node(const Span<bNode *> nodes)
+{
+  if (nodes.is_empty()) {
+    return nullptr;
+  }
+  Vector<bNode *> parent_candidates;
+  for (bNode *parent = nodes[0]->parent; parent; parent = parent->parent) {
+    parent_candidates.append(parent);
+  }
+  std::reverse(parent_candidates.begin(), parent_candidates.end());
+  for (bNode *node : nodes) {
+    Vector<bNode *> parents;
+    for (bNode *parent = node->parent; parent; parent = parent->parent) {
+      parents.append(parent);
+    }
+    std::reverse(parents.begin(), parents.end());
+    parent_candidates.resize(std::min(parent_candidates.size(), parents.size()));
+    for (const int i : parent_candidates.index_range()) {
+      if (parent_candidates[i] != parents[i]) {
+        parent_candidates.resize(i);
+        break;
+      }
+    }
+    if (parent_candidates.is_empty()) {
+      break;
+    }
+  }
+  if (parent_candidates.is_empty()) {
+    return nullptr;
+  }
+  return parent_candidates.last();
+}
+
 static int node_join_exec(bContext *C, wmOperator * /*op*/)
 {
   Main &bmain = *CTX_data_main(C);
@@ -1832,6 +1865,7 @@ static int node_join_exec(bContext *C, wmOperator * /*op*/)
 
   bNode *frame_node = bke::nodeAddStaticNode(C, &ntree, NODE_FRAME);
   bke::nodeSetActive(&ntree, frame_node);
+  frame_node->parent = find_common_parent_node(selected_nodes);
 
   ntree.ensure_topology_cache();
 
