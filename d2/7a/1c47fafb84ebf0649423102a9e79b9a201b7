@@ -1,2 +1,3 @@
 Referenced by commit d9d9ff1dcd2036997064f982bbb94cf7d52e4828, Nodes: hide shader input in node properties panel
 Referenced by pull request #121150, Nodes: hide reroute input socket in sidebar
+Referenced by commit 14233be92f91ad45b536764ac5a37e20c758d499, Nodes: hide reroute input socket in sidebar
