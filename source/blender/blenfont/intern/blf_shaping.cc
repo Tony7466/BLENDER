@@ -5,15 +5,10 @@
 /** \file
  * \ingroup blf
  *
- * Complex text shaping.
+ * Complex text shaping. RTL languages, ligatures, etc.
  */
 
 #include <cstring>
-
-#include <ft2build.h>
-
-#include FT_FREETYPE_H
-#include FT_GLYPH_H
 
 #include <fribidi/fribidi.h>
 #include <harfbuzz/hb-ft.h>
@@ -31,8 +26,6 @@
 /* -------------------------------------------------------------------- */
 /** \name Complex Text Layout (Bidirectional, Shaping, Ligatures, etc)
  * \{ */
-
-/* WIP. */
 
 /* Using FriBiDi to reorder input string. Harfbuzz can do so but only per-script so
  * [lang1_RTL lang2_RTL] would result in [lang1_LTR lang2_LTR] instead of correct
