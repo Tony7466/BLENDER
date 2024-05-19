@@ -2654,6 +2654,8 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  SpaceNode &snode = *CTX_wm_space_node(C);
+  bNodeTree &tree = *snode.edittree;
   ARegion &region = *CTX_wm_region(C);
   View2D &v2d = region.v2d;
 
@@ -2671,7 +2673,12 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
       ED_region_tag_redraw(&region);
       break;
     }
+    case RIGHTMOUSE:
     case EVT_ESCKEY: {
+      for (bNode *node : tree.all_nodes()) {
+        node->locx = slide_data.initial_node_positions[node->index()].x;
+      }
+      ED_region_tag_redraw(&region);
       MEM_delete(&slide_data);
       return OPERATOR_CANCELLED;
     }
