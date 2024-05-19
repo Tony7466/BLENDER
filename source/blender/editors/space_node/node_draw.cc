@@ -3040,6 +3040,17 @@ static void node_get_invalid_links_extra_info(const SpaceNode &snode,
           continue;
         }
       }
+      if (!(link->flag & NODE_LINK_VALID)) {
+        /* All other cases for invalid links should be handled above. */
+        if (tree.has_available_link_cycle()) {
+          NodeExtraInfoRow row;
+          row.text = IFACE_("Invalid Link");
+          row.tooltip = TIP_("The links form a cycle which is not supported");
+          row.icon = ICON_ERROR;
+          rows.append(std::move(row));
+          continue;
+        }
+      }
     }
   }
 }
