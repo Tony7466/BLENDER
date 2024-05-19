@@ -111,7 +111,7 @@ bool paint_convert_bb_to_rect(rcti *rect,
 
 void paint_calc_redraw_planes(float planes[4][4],
                               const ARegion *region,
-                              Object *ob,
+                              const Object *ob,
                               const rcti *screen_rect)
 {
   BoundBox bb;
@@ -127,18 +127,18 @@ void paint_calc_redraw_planes(float planes[4][4],
   ED_view3d_clipping_calc(&bb, planes, region, ob, &rect);
 }
 
-float paint_calc_object_space_radius(const ViewContext *vc,
+float paint_calc_object_space_radius(const ViewContext &vc,
                                      const blender::float3 &center,
                                      const float pixel_radius)
 {
-  Object *ob = vc->obact;
+  Object *ob = vc.obact;
   float delta[3], scale, loc[3];
   const float xy_delta[2] = {pixel_radius, 0.0f};
 
   mul_v3_m4v3(loc, ob->object_to_world().ptr(), center);
 
-  const float zfac = ED_view3d_calc_zfac(vc->rv3d, loc);
-  ED_view3d_win_to_delta(vc->region, xy_delta, zfac, delta);
+  const float zfac = ED_view3d_calc_zfac(vc.rv3d, loc);
+  ED_view3d_win_to_delta(vc.region, xy_delta, zfac, delta);
 
   scale = fabsf(mat4_to_scale(ob->object_to_world().ptr()));
   scale = (scale == 0.0f) ? 1.0f : scale;

@@ -1049,13 +1049,12 @@ bool paint_space_stroke_enabled(Brush *br, PaintMode mode)
   return paint_supports_dynamic_size(br, mode);
 }
 
-static bool sculpt_is_grab_tool(Brush *br)
+static bool sculpt_is_grab_tool(const Brush &br)
 {
-
-  if (br->sculpt_tool == SCULPT_TOOL_CLOTH && br->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB) {
+  if (br.sculpt_tool == SCULPT_TOOL_CLOTH && br.cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB) {
     return true;
   }
-  return ELEM(br->sculpt_tool,
+  return ELEM(br.sculpt_tool,
               SCULPT_TOOL_GRAB,
               SCULPT_TOOL_ELASTIC_DEFORM,
               SCULPT_TOOL_POSE,
@@ -1065,9 +1064,9 @@ static bool sculpt_is_grab_tool(Brush *br)
               SCULPT_TOOL_SNAKE_HOOK);
 }
 
-bool paint_supports_dynamic_size(Brush *br, PaintMode mode)
+bool paint_supports_dynamic_size(const Brush &br, PaintMode mode)
 {
-  if (br->flag & BRUSH_ANCHORED) {
+  if (br.flag & BRUSH_ANCHORED) {
     return false;
   }
 
@@ -1080,7 +1079,7 @@ bool paint_supports_dynamic_size(Brush *br, PaintMode mode)
 
     case PaintMode::Texture2D: /* fall through */
     case PaintMode::Texture3D:
-      if ((br->imagepaint_tool == PAINT_TOOL_FILL) && (br->flag & BRUSH_USE_GRADIENT)) {
+      if ((br.imagepaint_tool == PAINT_TOOL_FILL) && (br.flag & BRUSH_USE_GRADIENT)) {
         return false;
       }
       break;
@@ -1091,10 +1090,10 @@ bool paint_supports_dynamic_size(Brush *br, PaintMode mode)
   return true;
 }
 
-bool paint_supports_smooth_stroke(Brush *br, PaintMode mode)
+bool paint_supports_smooth_stroke(const Brush &br, PaintMode mode)
 {
-  if (!(br->flag & BRUSH_SMOOTH_STROKE) ||
-      (br->flag & (BRUSH_ANCHORED | BRUSH_DRAG_DOT | BRUSH_LINE)))
+  if (!(br.flag & BRUSH_SMOOTH_STROKE) ||
+      (br.flag & (BRUSH_ANCHORED | BRUSH_DRAG_DOT | BRUSH_LINE)))
   {
     return false;
   }
@@ -1118,9 +1117,9 @@ bool paint_supports_texture(PaintMode mode)
       mode, PaintMode::Sculpt, PaintMode::Vertex, PaintMode::Texture3D, PaintMode::Texture2D);
 }
 
-bool paint_supports_dynamic_tex_coords(Brush *br, PaintMode mode)
+bool paint_supports_dynamic_tex_coords(const Brush &br, PaintMode mode)
 {
-  if (br->flag & BRUSH_ANCHORED) {
+  if (br.flag & BRUSH_ANCHORED) {
     return false;
   }
 

@@ -89,16 +89,16 @@ void paint_stroke_free(bContext *C, wmOperator *op, PaintStroke *stroke);
 /**
  * Returns zero if the stroke dots should not be spaced, non-zero otherwise.
  */
-bool paint_space_stroke_enabled(Brush *br, PaintMode mode);
+bool paint_space_stroke_enabled(const Brush &br, PaintMode mode);
 /**
  * Return true if the brush size can change during paint (normally used for pressure).
  */
-bool paint_supports_dynamic_size(Brush *br, PaintMode mode);
+bool paint_supports_dynamic_size(const Brush &br, PaintMode mode);
 /**
  * Return true if the brush size can change during paint (normally used for pressure).
  */
-bool paint_supports_dynamic_tex_coords(Brush *br, PaintMode mode);
-bool paint_supports_smooth_stroke(Brush *br, PaintMode mode);
+bool paint_supports_dynamic_tex_coords(const Brush &br, PaintMode mode);
+bool paint_supports_smooth_stroke(const Brush &br, PaintMode mode);
 bool paint_supports_texture(PaintMode mode);
 
 /**
@@ -354,11 +354,11 @@ bool paint_convert_bb_to_rect(rcti *rect,
  * 2D screens-space bounding box into four 3D planes).
  */
 void paint_calc_redraw_planes(float planes[4][4],
-                              const ARegion *region,
-                              Object *ob,
+                              const ARegion &region,
+                              const Object *ob,
                               const rcti *screen_rect);
 
-float paint_calc_object_space_radius(const ViewContext *vc,
+float paint_calc_object_space_radius(const ViewContext &vc,
                                      const blender::float3 &center,
                                      float pixel_radius);
 
