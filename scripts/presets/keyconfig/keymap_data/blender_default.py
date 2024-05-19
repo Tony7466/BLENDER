@@ -611,7 +611,7 @@ def _template_items_tool_select(
     else:
         # For right mouse, set the cursor.
         return [
-            () if cursor_operator is not None else (cursor_operator, {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+            (cursor_operator, {"type": 'LEFTMOUSE', "value": 'PRESS'}, None) if cursor_operator is not None else (),
             ("transform.translate", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
              {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
         ]
