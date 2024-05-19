@@ -112,7 +112,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.error_message_add(
         NodeWarningType::Error,
         TIP_("Source and target geometry must have the same number of points"));
-    params.set_output("Transform", float4x4::identity());
+    params.set_default_remaining_outputs();
+    return;
+  }
+  else if (source_pos.size() == 0) {
+    params.error_message_add(NodeWarningType::Error, TIP_("Input has no points"));
+    params.set_default_remaining_outputs();
     return;
   }
 
