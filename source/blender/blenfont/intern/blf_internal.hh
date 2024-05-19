@@ -188,3 +188,35 @@ extern FT_Error FT_New_Face__win32_compat(FT_Library library,
                                           FT_Face *aface);
 #  endif
 #endif
+
+#ifdef WITH_HARFBUZZ
+
+typedef int32_t ft_pix;
+
+typedef bool (*BLF_GlyphBoundsFn)(const char *str,
+                                  size_t str_step_ofs,
+                                  const rcti *bounds,
+                                  void *user_data);
+
+int blf_shaping_draw(FontBLF *font,
+                     GlyphCacheBLF *gc,
+                     const char *str,
+                     const size_t str_len,
+                     struct ResultBLF *r_info,
+                     ft_pix pen_y);
+
+void blf_shaping_bounds(FontBLF *font,
+                        GlyphCacheBLF *gc,
+                        const char *str,
+                        const size_t str_len,
+                        rcti *bounds,
+                        ft_pix pen_y);
+
+void blf_shaping_foreach(FontBLF *font,
+                         GlyphCacheBLF *gc,
+                         const char *str,
+                         const size_t str_len,
+                         BLF_GlyphBoundsFn user_fn,
+                         void *user_data);
+
+#endif
