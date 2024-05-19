@@ -666,6 +666,7 @@ static bool blf_font_has_coverage_bit(const FontBLF *font, int coverage_bit)
   return (font->unicode_ranges[uint(coverage_bit) >> 5] & (1u << (uint(coverage_bit) % 32)));
 }
 
+#ifdef WITH_HARFBUZZ
 FontBLF *blf_font_script_ensure(FontBLF *font, const uint charcode)
 {
   FontBLF *ideal = font;
@@ -707,6 +708,7 @@ FontBLF *blf_font_script_ensure(FontBLF *font, const uint charcode)
 
   return ideal;
 }
+#endif
 
 /**
  * Return a glyph index from `charcode`. Not found returns zero, which is a valid

@@ -77,7 +77,6 @@ uint blf_get_char_index(FontBLF *font, uint charcode);
  */
 bool blf_ensure_face(FontBLF *font);
 void blf_ensure_size(FontBLF *font);
-FontBLF *blf_font_script_ensure(FontBLF *font, const uint charcode);
 
 void blf_draw_buffer__start(FontBLF *font);
 void blf_draw_buffer__end();
@@ -197,6 +196,8 @@ typedef bool (*BLF_GlyphBoundsFn)(const char *str,
                                   size_t str_step_ofs,
                                   const rcti *bounds,
                                   void *user_data);
+
+FontBLF *blf_font_script_ensure(FontBLF *font, const uint charcode);
 
 int blf_shaping_draw(FontBLF *font,
                      GlyphCacheBLF *gc,
