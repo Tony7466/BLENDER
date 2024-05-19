@@ -7,6 +7,7 @@
  */
 
 #include <algorithm>
+#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -2628,15 +2629,51 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 
 struct NodeSlideData {
   int2 initial_mouse_pos;
+  Vector<rctf> initial_node_rects;
   Vector<float2> initial_node_positions;
+  Vector<float2> split_points;
   Vector<bNode *> nodes_to_move_left;
   Vector<bNode *> nodes_to_move_right;
+  bool add_key_down = false;
 };
+
+constexpr int slide_node_y_bin_side = 10;
+
+static int y_bin_by_coordinate(const float y)
+{
+  return int(y) / slide_node_y_bin_side;
+}
+
+static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
+                                                const Span<rctf> initial_node_rects,
+                                                const Span<float2> split_points)
+{
+  Map<int, float> split_x_by_y_bin;
+  for (const float2 &point : split_points) {
+    float &x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(point.y), point.x);
+    x = std::max(x, point.x);
+  }
+  Vector<bNode *> initial_nodes;
+  for (bNode *node : tree.all_nodes()) {
+    const rctf &node_rect = initial_node_rects[node->index()];
+    for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
+      if (const float *split_x = split_x_by_y_bin.lookup_ptr(y_bin_by_coordinate(y))) {
+        if (node_rect.xmin < *split_x) {
+          initial_nodes.append(node);
+          break;
+        }
+      }
+    }
+  }
+  return initial_nodes;
+}
 
 static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   SpaceNode &snode = *CTX_wm_space_node(C);
   bNodeTree &tree = *snode.edittree;
+  ARegion &region = *CTX_wm_region(C);
+  View2D &v2d = region.v2d;
   tree.ensure_topology_cache();
 
   NodeSlideData *slide_data = MEM_new<NodeSlideData>(__func__);
@@ -2644,10 +2681,19 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   for (bNode *node : tree.all_nodes()) {
     slide_data->initial_node_positions.append(float2(node->locx, node->locy));
+    slide_data->initial_node_rects.append(node->runtime->totr);
   }
 
+  float x, y;
+  UI_view2d_region_to_view(&v2d, event->mval[0], event->mval[1], &x, &y);
+  slide_data->split_points.append({x, y});
   slide_data->initial_mouse_pos = event->mval;
-  slide_data->nodes_to_move_left = tree.all_nodes();
+  slide_data->nodes_to_move_left = find_nodes_to_slide_left(
+      tree, slide_data->initial_node_rects, slide_data->split_points);
+
+  /* TODO: Handle key more generally. */
+  slide_data->add_key_down = true;
+
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
@@ -2660,17 +2706,48 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
   View2D &v2d = region.v2d;
 
   NodeSlideData &slide_data = *static_cast<NodeSlideData *>(op->customdata);
+
+  float2 initial_mouse;
+  float2 current_mouse;
+  UI_view2d_region_to_view(&v2d,
+                           slide_data.initial_mouse_pos.x,
+                           slide_data.initial_mouse_pos.y,
+                           &initial_mouse.x,
+                           &initial_mouse.y);
+  UI_view2d_region_to_view(
+      &v2d, event->mval[0], event->mval[1], &current_mouse.x, &current_mouse.y);
+  initial_mouse /= UI_SCALE_FAC;
+  current_mouse /= UI_SCALE_FAC;
+
   switch (event->type) {
     case MOUSEMOVE: {
-      const int2 mouse_pos = event->mval;
-      const float node_diff_x = (UI_view2d_region_to_view_x(&v2d, mouse_pos.x) -
-                                 UI_view2d_region_to_view_x(&v2d,
-                                                            slide_data.initial_mouse_pos.x)) /
-                                UI_SCALE_FAC;
+      if (slide_data.add_key_down) {
+        slide_data.split_points.append(current_mouse);
+        slide_data.nodes_to_move_left = find_nodes_to_slide_left(
+            tree, slide_data.initial_node_rects, slide_data.split_points);
+      }
+
+      const float node_diff_x = current_mouse.x - initial_mouse.x;
       for (bNode *node : slide_data.nodes_to_move_left) {
         node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
       }
       ED_region_tag_redraw(&region);
+      break;
+    }
+    case EVT_VKEY: {
+      switch (event->val) {
+        case KM_PRESS: {
+          slide_data.add_key_down = true;
+          slide_data.split_points.append(current_mouse);
+          slide_data.nodes_to_move_left = find_nodes_to_slide_left(
+              tree, slide_data.initial_node_rects, slide_data.split_points);
+          break;
+        }
+        case KM_RELEASE: {
+          slide_data.add_key_down = false;
+          break;
+        }
+      }
       break;
     }
     case RIGHTMOUSE:
