@@ -3028,6 +3028,18 @@ static void node_get_invalid_links_extra_info(const SpaceNode &snode,
           continue;
         }
       }
+      if (link->fromsock->type == SOCK_MENU) {
+        const bNodeSocketValueMenu &socket_value =
+            *link->fromsock->default_value_typed<bNodeSocketValueMenu>();
+        if (socket_value.has_conflict()) {
+          NodeExtraInfoRow row;
+          row.text = IFACE_("Invalid Link");
+          row.tooltip = TIP_("Use node groups to reuse the same menu multiple times");
+          row.icon = ICON_ERROR;
+          rows.append(std::move(row));
+          continue;
+        }
+      }
     }
   }
 }
