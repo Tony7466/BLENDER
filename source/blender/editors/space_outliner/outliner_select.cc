@@ -493,15 +493,15 @@ static void tree_element_gplayer_activate(bContext *C, TreeElement *te, TreeStor
 }
 
 static void tree_element_grease_pencil_node_activate(bContext *C,
-                                                      TreeElement *te,
-                                                      TreeStoreElem *tselem)
+                                                     TreeElement *te,
+                                                     TreeStoreElem *tselem)
 {
   GreasePencil &grease_pencil = *(GreasePencil *)tselem->id;
   bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
 
-    grease_pencil.active_node = &node;
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
+  grease_pencil.active_node = &node;
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 }
 
 static void tree_element_bonecollection_activate(bContext *C,
