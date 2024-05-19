@@ -2681,7 +2681,11 @@ static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
       if (!final_nodes.add(node)) {
         continue;
       }
-      /* TODO: Add to split map. */
+      const rctf &node_rect = initial_node_rects[node->index()];
+      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
+        float &split_x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(y), node_rect.xmax);
+        split_x = std::max(split_x, node_rect.xmax);
+      }
       for (bNodeSocket *input_socket : node->input_sockets()) {
         if (!input_socket->is_available()) {
           continue;
@@ -2738,6 +2742,11 @@ static Vector<bNode *> find_nodes_to_slide_right(bNodeTree &tree,
       bNode *node = nodes_to_check.pop();
       if (!final_nodes.add(node)) {
         continue;
+      }
+      const rctf &node_rect = initial_node_rects[node->index()];
+      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
+        float &split_x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(y), node_rect.xmin);
+        split_x = std::min(split_x, node_rect.xmin);
       }
       for (bNodeSocket *output_socket : node->output_sockets()) {
         if (!output_socket->is_available()) {
