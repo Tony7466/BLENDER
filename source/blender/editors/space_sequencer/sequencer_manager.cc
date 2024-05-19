@@ -128,15 +128,15 @@ void register_file_selector_panel(void)
     SpaceType *st = BKE_spacetype_from_id(SPACE_SEQ);
     ARegionType *art = BKE_regiontype_from_id(st, RGN_TYPE_UI);
     file_selector_panel_register(art);
-    void file_selector_panel_register(ARegionType *art)
-    static void open_text_file(wmOperatorType *ot)
-    static void open_sound_file(wmOperatorType *ot)
-    static void open_video_file(wmOperatorType *ot)
-    static void open_image_file(wmOperatorType *ot)
-    static void file_selector_panel_draw(const bContext *C, Panel *panel)
-    static int open_texte_file_exec(bContext *C, wmOperator *op)
-    static int open_sound_file_exec(bContext *C, wmOperator *op)
-    static int open_video_file_exec(bContext *C, wmOperator *op)
-    static int open_image_file_exec(bContext *C, wmOperator *op)
+    void file_selector_panel_register(ARegionType *art);
+    static void open_text_file(wmOperatorType *ot);
+    static void open_sound_file(wmOperatorType *ot);
+    static void open_video_file(wmOperatorType *ot);
+    static void open_image_file(wmOperatorType *ot);
+    static void file_selector_panel_draw(const bContext *C, Panel *panel);
+    static int open_texte_file_exec(bContext *C, wmOperator *op);
+    static int open_sound_file_exec(bContext *C, wmOperator *op);
+    static int open_video_file_exec(bContext *C, wmOperator *op);
+    static int open_image_file_exec(bContext *C, wmOperator *op);
 
 }
