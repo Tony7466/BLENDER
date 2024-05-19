@@ -2632,8 +2632,8 @@ struct NodeSlideData {
   Vector<rctf> initial_node_rects;
   Vector<float2> initial_node_positions;
   Vector<float2> split_points;
-  Vector<bNode *> nodes_to_move_left;
-  Vector<bNode *> nodes_to_move_right;
+  std::optional<Vector<bNode *>> nodes_to_slide_left;
+  std::optional<Vector<bNode *>> nodes_to_slide_right;
   bool add_key_down = false;
 };
 
@@ -2675,11 +2675,13 @@ static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
       }
     }
 
+    /* Add dependencies recursively. */
     while (!nodes_to_check.is_empty()) {
       bNode *node = nodes_to_check.pop();
       if (!final_nodes.add(node)) {
         continue;
       }
+      /* TODO: Add to split map. */
       for (bNodeSocket *input_socket : node->input_sockets()) {
         if (!input_socket->is_available()) {
           continue;
@@ -2691,6 +2693,64 @@ static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
     }
 
     if (final_nodes.size() == prev_final_nodes_size) {
+      /* No new nodes have been found. */
+      break;
+    }
+    prev_final_nodes_size = final_nodes.size();
+  }
+
+  return final_nodes.as_span();
+}
+
+static Vector<bNode *> find_nodes_to_slide_right(bNodeTree &tree,
+                                                 const Span<rctf> initial_node_rects,
+                                                 const Span<float2> split_points)
+{
+  Map<int, float> split_x_by_y_bin;
+  for (const float2 &point : split_points) {
+    float &x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(point.y), point.x);
+    x = std::min(x, point.x);
+  }
+  VectorSet<bNode *> final_nodes;
+  int prev_final_nodes_size = 0;
+
+  while (true) {
+    Stack<bNode *> nodes_to_check;
+
+    /* Find nodes to the right of boundary. */
+    for (bNode *node : tree.all_nodes()) {
+      if (final_nodes.contains(node)) {
+        continue;
+      }
+      const rctf &node_rect = initial_node_rects[node->index()];
+      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
+        if (const float *split_x = split_x_by_y_bin.lookup_ptr(y_bin_by_coordinate(y))) {
+          if (*split_x < node_rect.xmax) {
+            nodes_to_check.push(node);
+            break;
+          }
+        }
+      }
+    }
+
+    /* Add dependent nodes recursively. */
+    while (!nodes_to_check.is_empty()) {
+      bNode *node = nodes_to_check.pop();
+      if (!final_nodes.add(node)) {
+        continue;
+      }
+      for (bNodeSocket *output_socket : node->output_sockets()) {
+        if (!output_socket->is_available()) {
+          continue;
+        }
+        for (bNodeSocket *from_socket : output_socket->directly_linked_sockets()) {
+          nodes_to_check.push(&from_socket->owner_node());
+        }
+      }
+    }
+
+    if (final_nodes.size() == prev_final_nodes_size) {
+      /* No new nodes have been found. */
       break;
     }
     prev_final_nodes_size = final_nodes.size();
@@ -2719,8 +2779,6 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   UI_view2d_region_to_view(&v2d, event->mval[0], event->mval[1], &x, &y);
   slide_data->split_points.append({x, y});
   slide_data->initial_mouse_pos = event->mval;
-  slide_data->nodes_to_move_left = find_nodes_to_slide_left(
-      tree, slide_data->initial_node_rects, slide_data->split_points);
 
   /* TODO: Handle key more generally. */
   slide_data->add_key_down = true;
@@ -2754,13 +2812,28 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
     case MOUSEMOVE: {
       if (slide_data.add_key_down) {
         slide_data.split_points.append(current_mouse);
-        slide_data.nodes_to_move_left = find_nodes_to_slide_left(
-            tree, slide_data.initial_node_rects, slide_data.split_points);
+        slide_data.nodes_to_slide_left.reset();
+        slide_data.nodes_to_slide_right.reset();
       }
 
       const float node_diff_x = current_mouse.x - initial_mouse.x;
-      for (bNode *node : slide_data.nodes_to_move_left) {
-        node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
+      if (node_diff_x < 0) {
+        if (!slide_data.nodes_to_slide_left.has_value()) {
+          slide_data.nodes_to_slide_left = find_nodes_to_slide_left(
+              tree, slide_data.initial_node_rects, slide_data.split_points);
+        }
+        for (bNode *node : *slide_data.nodes_to_slide_left) {
+          node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
+        }
+      }
+      else {
+        if (!slide_data.nodes_to_slide_right.has_value()) {
+          slide_data.nodes_to_slide_right = find_nodes_to_slide_right(
+              tree, slide_data.initial_node_rects, slide_data.split_points);
+        }
+        for (bNode *node : *slide_data.nodes_to_slide_right) {
+          node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
+        }
       }
       ED_region_tag_redraw(&region);
       break;
@@ -2770,8 +2843,8 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
         case KM_PRESS: {
           slide_data.add_key_down = true;
           slide_data.split_points.append(current_mouse);
-          slide_data.nodes_to_move_left = find_nodes_to_slide_left(
-              tree, slide_data.initial_node_rects, slide_data.split_points);
+          slide_data.nodes_to_slide_left.reset();
+          slide_data.nodes_to_slide_right.reset();
           break;
         }
         case KM_RELEASE: {
