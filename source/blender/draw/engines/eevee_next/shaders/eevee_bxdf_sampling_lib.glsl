@@ -25,11 +25,11 @@ float sample_pdf_ggx_refract_ex(
 /* All inputs must be in tangent space. */
 float sample_pdf_ggx_refract(vec3 Vt, vec3 Lt, float alpha, float ior)
 {
-  vec3 Ht = normalize(Vt + Lt);
-  float NH = saturate(Ht.z);
-  float NV = saturate(Vt.z);
-  float VH = saturate(dot(Vt, Ht));
-  float LH = saturate(dot(Lt, Ht));
+  vec3 Ht = normalize(-(ior * Lt + Vt));
+  float NH = Ht.z;
+  float NV = Vt.z;
+  float VH = dot(Vt, Ht);
+  float LH = dot(Lt, Ht);
 
   if (VH > 0.0) {
     vec3 Vh = normalize(vec3(alpha * Vt.xy, Vt.z));

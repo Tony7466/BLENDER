@@ -63,7 +63,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
       if (is_singular_ray(to_closure_reflection(cl).roughness)) {
         samp.direction = reflect(-V, cl.N);
-        samp.pdf = 1.0;
+        samp.pdf = 1e6;
       }
       else {
         samp.direction = sample_ggx_reflect(random_point_on_cylinder,
@@ -91,7 +91,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
 
       if (is_singular_ray(roughness)) {
         samp.direction = refract(-V, cl.N, 1.0 / ior);
-        samp.pdf = 1.0;
+        samp.pdf = 1e6;
       }
       else {
         samp.direction = sample_ggx_refract(random_point_on_cylinder,

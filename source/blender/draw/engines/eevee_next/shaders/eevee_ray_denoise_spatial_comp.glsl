@@ -29,37 +29,32 @@
 
 float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
 {
-  float pdf = 1.0;
   mat3 tangent_to_world = from_up_axis(cl.N);
   vec3 Vt = V * tangent_to_world;
   vec3 Lt = L * tangent_to_world;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID: {
       if (thickness != 0.0) {
-        pdf = sample_pdf_uniform_sphere();
+        return sample_pdf_uniform_sphere();
       }
-      else {
-        pdf = sample_pdf_cosine_hemisphere(saturate(-Lt.z));
-      }
-      break;
+      return sample_pdf_cosine_hemisphere(saturate(-Lt.z));
     }
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID: {
-      pdf = sample_pdf_cosine_hemisphere(saturate(Lt.z));
-      break;
+      return sample_pdf_cosine_hemisphere(saturate(Lt.z));
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
-      float roughness = square(max(BSDF_ROUGHNESS_THRESHOLD, to_closure_reflection(cl).roughness));
-      pdf = sample_pdf_ggx_bounded(Vt, Lt, roughness);
-      break;
+      float roughness = max(BSDF_ROUGHNESS_THRESHOLD, to_closure_reflection(cl).roughness);
+      return sample_pdf_ggx_bounded(Vt, Lt, square(roughness));
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      float roughness = square(max(BSDF_ROUGHNESS_THRESHOLD, to_closure_refraction(cl).roughness));
-      pdf = sample_pdf_ggx_refract(Vt, Lt, roughness, to_closure_refraction(cl).ior);
-      break;
+      float ior = to_closure_refraction(cl).ior;
+      float roughness = max(BSDF_ROUGHNESS_THRESHOLD, to_closure_refraction(cl).roughness);
+      return sample_pdf_ggx_refract(Vt, Lt, square(roughness), ior);
     }
   }
-  return pdf;
+  /* TODO(fclem): Assert. */
+  return 0.0;
 }
 
 void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
