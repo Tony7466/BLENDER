@@ -2832,6 +2832,9 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
               tree, slide_data.initial_node_rects, slide_data.split_points);
         }
         for (bNode *node : *slide_data.nodes_to_slide_left) {
+          if (node->type == NODE_FRAME) {
+            continue;
+          }
           node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
         }
       }
@@ -2841,6 +2844,9 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
               tree, slide_data.initial_node_rects, slide_data.split_points);
         }
         for (bNode *node : *slide_data.nodes_to_slide_right) {
+          if (node->type == NODE_FRAME) {
+            continue;
+          }
           node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
         }
       }
