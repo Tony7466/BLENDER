@@ -476,7 +476,7 @@ static int hide_show_all_exec(bContext *C, wmOperator *op)
   const VisAction action = VisAction(RNA_enum_get(op->ptr, "action"));
 
   PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(depsgraph, &ob);
-  BLI_assert(BKE_object_sculpt_pbvh_get(ob) == pbvh);
+  BLI_assert(BKE_object_sculpt_pbvh_get(&ob) == pbvh);
 
   /* Start undo. */
   switch (action) {
@@ -594,7 +594,7 @@ static int hide_show_masked_exec(bContext *C, wmOperator *op)
   const VisAction action = VisAction(RNA_enum_get(op->ptr, "action"));
 
   PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(depsgraph, &ob);
-  BLI_assert(BKE_object_sculpt_pbvh_get(ob) == pbvh);
+  BLI_assert(BKE_object_sculpt_pbvh_get(&ob) == pbvh);
 
   /* Start undo. */
   switch (action) {

@@ -1063,7 +1063,7 @@ static void cursor_draw_tiling_preview(const uint gpuattr,
                                        const Object &ob,
                                        const float radius)
 {
-  BLI_assert(ob->type == OB_MESH);
+  BLI_assert(ob.type == OB_MESH);
   const Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf(&ob);
   if (!mesh) {
     mesh = static_cast<const Mesh *>(ob.data);
