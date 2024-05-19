@@ -8,10 +8,14 @@
 
 #pragma once
 
+#include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 #include "DNA_sequence_types.h"
+#include "ED_sequencer.hh"
 #include "RNA_access.hh"
+
+#include "sequencer_scopes.hh"
 
 /* Internal exports only. */
 
@@ -38,7 +42,24 @@ struct Editing;
 struct ListBase;
 
 #define DEFAULT_IMG_STRIP_LENGTH 25 /* XXX arbitrary but ok for now. */
-#define OVERLAP_ALPHA 180
+
+namespace blender::ed::seq {
+
+struct SpaceSeq_Runtime : public NonCopyable {
+  /** Required for Thumbnail job start condition. */
+  rctf last_thumbnail_area = {0, 0, 0, 0};
+  /** Stores lists of most recently displayed thumbnails. */
+  GHash *last_displayed_thumbnails = nullptr;
+  int rename_channel_index = 0;
+  float timeline_clamp_custom_range = 0;
+
+  blender::ed::seq::SeqScopes scopes;
+
+  SpaceSeq_Runtime() = default;
+  ~SpaceSeq_Runtime();
+};
+
+}  // namespace blender::ed::seq
 
 struct SeqChannelDrawContext {
   const bContext *C;
@@ -63,10 +84,6 @@ struct SeqChannelDrawContext {
 
 void draw_timeline_seq(const bContext *C, ARegion *region);
 void draw_timeline_seq_display(const bContext *C, ARegion *region);
-void color3ubv_from_seq(const Scene *curscene,
-                        const Sequence *seq,
-                        bool show_strip_color_tag,
-                        uchar r_col[3]);
 
 /* `sequencer_preview_draw.cc` */
 
@@ -125,7 +142,7 @@ void channel_draw_context_init(const bContext *C,
 
 /* `sequencer_edit.cc` */
 
-void seq_rectf(const Scene *scene, Sequence *seq, rctf *rectf);
+void seq_rectf(const Scene *scene, const Sequence *seq, rctf *rectf);
 Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int sel);
 void recurs_sel_seq(Sequence *seq_meta);
 int seq_effect_find_selected(Scene *scene,
@@ -157,20 +174,10 @@ bool sequencer_view_strips_poll(bContext *C);
  */
 blender::VectorSet<Sequence *> all_strips_from_context(bContext *C);
 
-/**
- * Returns collection with selected strips presented to user. If operation is done in preview,
- * collection is limited to selected presented strips, that can produce image output at current
- * frame.
- *
- * \param C: context
- * \return collection of strips (`Sequence`)
- */
-blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C);
-
 /* Externals. */
 
-extern EnumPropertyItem sequencer_prop_effect_types[];
-extern EnumPropertyItem prop_side_types[];
+extern const EnumPropertyItem sequencer_prop_effect_types[];
+extern const EnumPropertyItem prop_side_types[];
 
 /* Operators. */
 
@@ -236,7 +243,10 @@ void SEQUENCER_OT_select_side(wmOperatorType *ot);
 void SEQUENCER_OT_select_box(wmOperatorType *ot);
 void SEQUENCER_OT_select_inverse(wmOperatorType *ot);
 void SEQUENCER_OT_select_grouped(wmOperatorType *ot);
-Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, const int mval[2], int *r_hand);
+Sequence *find_nearest_seq(const Scene *scene,
+                           const View2D *v2d,
+                           const int mval[2],
+                           eSeqHandle *r_hand);
 
 /* `sequencer_add.cc` */
 
@@ -257,14 +267,6 @@ void sequencer_dropboxes();
 
 void sequencer_operatortypes();
 void sequencer_keymap(wmKeyConfig *keyconf);
-
-/* sequencer_scope.c */
-
-ImBuf *make_waveform_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_sep_waveform_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_vectorscope_view_from_ibuf(ImBuf *ibuf);
-ImBuf *make_zebra_view_from_ibuf(ImBuf *ibuf, float perc);
-ImBuf *make_histogram_view_from_ibuf(ImBuf *ibuf);
 
 /* `sequencer_buttons.cc` */
 
@@ -322,13 +324,20 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op);
 
 /* `sequencer_retiming_draw.cc` */
 void sequencer_draw_retiming(const bContext *C, SeqQuadsBatch *quads);
-blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
-SeqRetimingKey *try_to_realize_virtual_key(const bContext *C, Sequence *seq, const int mval[2]);
+SeqRetimingKey *try_to_realize_virtual_keys(const bContext *C, Sequence *seq, const int mval[2]);
 SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq);
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
-bool retiming_keys_are_visible(const bContext *C);
+bool retiming_keys_are_visible(const SpaceSeq *sseq);
+
+/* `sequencer_timeline_draw.cc` */
+blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
+blender::Vector<Sequence *> sequencer_visible_strips_get(const Scene *scene, const View2D *v2d);
 
 /* `sequencer_clipboard.cc` */
 int sequencer_clipboard_copy_exec(bContext *C, wmOperator *op);
 int sequencer_clipboard_paste_exec(bContext *C, wmOperator *op);
+
+/* sequencer_manager.cc*/
+
+void register_file_selector_panel(void);

@@ -1,6 +1,3 @@
-/* SPDX-FileCopyrightText: 2024 Blender Authors
-*
-* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "BLI_path_util.h"
 #include "BKE_context.h"
 #include "BKE_report.h"
@@ -26,6 +23,7 @@ static void open_text_file(wmOperatorType *ot)
     ot->name = "Open Text File";
     ot->idname = "FILE_OT_open_text_file";
     ot->description = "Select a text file";
+    id == 1;
 
     ot->exec = open_text_file_exec;
     ot->poll = ED_operator_areaactive;
@@ -47,6 +45,7 @@ static void open_video_file(wmOperatorType *ot)
     ot->name = "Open Video File";
     ot->idname = "FILE_OT_open_video_file";
     ot->description = "Select a video file";
+    id == 2;
 
     ot->exec = open_video_file_exec;
     ot->poll = ED_operator_areaactive;
@@ -68,6 +67,7 @@ static void open_sound_file(wmOperatorType *ot)
     ot->name = "Open Sound File";
     ot->idname = "FILE_OT_open_sound_file";
     ot->description = "Select a sound file";
+    id == 3;
 
     ot->exec = open_sound_file_exec;
     ot->poll = ED_operator_areaactive;
@@ -89,6 +89,7 @@ static void open_image_file(wmOperatorType *ot)
     ot->name = "Open Image File";
     ot->idname = "FILE_OT_open_image_file";
     ot->description = "Select an image file";
+    id == 4;
 
     ot->exec = open_image_file_exec;
     ot->poll = ED_operator_areaactive;
@@ -127,4 +128,15 @@ void register_file_selector_panel(void)
     SpaceType *st = BKE_spacetype_from_id(SPACE_SEQ);
     ARegionType *art = BKE_regiontype_from_id(st, RGN_TYPE_UI);
     file_selector_panel_register(art);
+    void file_selector_panel_register(ARegionType *art)
+    static void open_text_file(wmOperatorType *ot)
+    static void open_sound_file(wmOperatorType *ot)
+    static void open_video_file(wmOperatorType *ot)
+    static void open_image_file(wmOperatorType *ot)
+    static void file_selector_panel_draw(const bContext *C, Panel *panel)
+    static int open_texte_file_exec(bContext *C, wmOperator *op)
+    static int open_sound_file_exec(bContext *C, wmOperator *op)
+    static int open_video_file_exec(bContext *C, wmOperator *op)
+    static int open_image_file_exec(bContext *C, wmOperator *op)
+
 }
