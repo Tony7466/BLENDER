@@ -60,7 +60,7 @@ static bool vertex_weight_paint_mode_poll(bContext *C)
 
 static void tag_object_after_update(Object &object)
 {
-  BLI_assert(object->type == OB_MESH);
+  BLI_assert(object.type == OB_MESH);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   DEG_id_tag_update(&mesh.id, ID_RECALC_SYNC_TO_EVAL);
   /* NOTE: Original mesh is used for display, so tag it directly here. */
