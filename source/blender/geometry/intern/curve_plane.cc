@@ -328,15 +328,14 @@ static void potrace_curve_extra_points(const Span<const potrace_path_t *> src_cu
 {
   threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
     for (const int curve_i : range) {
-      std::cout << "potrace_curve_extra_points: "
-                << "curve_i: " << curve_i << ";\n";
+      // std::cout << "potrace_curve_extra_points: " << "curve_i: " << curve_i << ";\n";
       const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
       const Span<int> curve_type_switch_indices = curve_type_indices[curve_i];
       const IndexRange curve_range = curve_type_switch_indices.index_range();
-      std::cout << curve_range << ";\n";
-      std::cout << segment_types << ";\n";
-      std::cout << curve_type_switch_indices << ";\n";
-      std::cout << "\n";
+      // std::cout << curve_range << ";\n";
+      // std::cout << segment_types << ";\n";
+      // std::cout << curve_type_switch_indices << ";\n";
+      // std::cout << "\n";
       extra_curve_offset_data[curve_i] = std::count_if(
           curve_range.begin(), curve_range.end(), [&](const int64_t i) {
             const potrace::SegmentType current_type = potrace::SegmentType(
@@ -350,7 +349,7 @@ static void potrace_curve_extra_points(const Span<const potrace_path_t *> src_cu
       {
         extra_curve_offset_data[curve_i]++;
       }
-      std::cout << "extra_curve_offset_data: " << extra_curve_offset_data[curve_i] << ";\n";
+      // std::cout << "extra_curve_offset_data: " << extra_curve_offset_data[curve_i] << ";\n";
     }
   });
 }
@@ -669,6 +668,8 @@ static void potrace_to_bezier_or_poly_curves(const Span<const potrace_path_t *> 
                 for (const int index : typed_range.drop_front(1)) {
                   dst_points[index] = poly_after_poly(index, src_points);
                 }
+                const int extra_point = typed_range.one_after_last();
+                dst_points[extra_point] = poly_point_bezier(extra_point, src_points);
                 break;
               }
               case potrace::SegmentType::Bezier: {
