@@ -149,7 +149,7 @@ template<typename ImageBuffer> class PaintingKernel {
                           const Brush *brush,
                           const int thread_id,
                           const Span<float3> positions)
-      : ss(ss), brush(brush), thread_id(thread_id), vert_positions_(positions.data())
+      : ss(&ss), brush(brush), thread_id(thread_id), vert_positions_(positions.data())
   {
     init_brush_strength();
     init_brush_test();
@@ -169,7 +169,7 @@ template<typename ImageBuffer> class PaintingKernel {
         geom_primitives, paint_input, pixel_row, pixel_pos);
     bool pixels_painted = false;
     for (int x = 0; x < pixel_row.num_pixels; x++) {
-      if (!brush_test_fn(&test, pixel_pos)) {
+      if (!brush_test_fn(test, pixel_pos)) {
         pixel_pos += delta_pixel_pos;
         image_accessor.next_pixel();
         continue;
@@ -181,8 +181,8 @@ template<typename ImageBuffer> class PaintingKernel {
       const float mask = 0.0f;
 
       const float falloff_strength = SCULPT_brush_strength_factor(
-          ss,
-          brush,
+          *ss,
+          *brush,
           pixel_pos,
           sqrtf(test.dist),
           normal,
@@ -240,11 +240,11 @@ template<typename ImageBuffer> class PaintingKernel {
  private:
   void init_brush_strength()
   {
-    brush_strength = ss.cache->bstrength;
+    brush_strength = ss->cache->bstrength;
   }
   void init_brush_test()
   {
-    brush_test_fn = SCULPT_brush_test_init_with_falloff_shape(ss, &test, brush->falloff_shape);
+    brush_test_fn = SCULPT_brush_test_init_with_falloff_shape(*ss, test, brush->falloff_shape);
   }
 
   /**
@@ -299,7 +299,7 @@ static std::vector<bool> init_uv_primitives_brush_test(SculptSession &ss,
 {
   std::vector<bool> brush_test(uv_primitives.size());
   SculptBrushTest test;
-  SCULPT_brush_test_init(ss, &test);
+  SCULPT_brush_test_init(ss, test);
   float3 brush_min_bounds(test.location[0] - test.radius,
                           test.location[1] - test.radius,
                           test.location[2] - test.radius);
@@ -550,7 +550,7 @@ bool SCULPT_paint_image_canvas_get(PaintModeSettings &paint_mode_settings,
   return true;
 }
 
-bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object &ob)
+bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob)
 {
   if (!U.experimental.use_sculpt_texture_paint) {
     return false;
@@ -560,7 +560,7 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings *settings, Object &ob)
   }
   Image *image;
   ImageUser *image_user;
-  return BKE_paint_canvas_image_get(settings, &ob, &image, &image_user);
+  return BKE_paint_canvas_image_get(&settings, &ob, &image, &image_user);
 }
 
 void SCULPT_do_paint_brush_image(PaintModeSettings &paint_mode_settings,

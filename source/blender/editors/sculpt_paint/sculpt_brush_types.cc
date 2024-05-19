@@ -253,14 +253,14 @@ static void do_draw_brush_task(Object &ob, const Brush &brush, const float *offs
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -345,7 +345,7 @@ static void do_fill_brush_task(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
@@ -354,7 +354,7 @@ static void do_fill_brush_task(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -367,7 +367,7 @@ static void do_fill_brush_task(
     closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
     sub_v3_v3v3(val, intr, vd.co);
 
-    if (!SCULPT_plane_trim(ss.cache, brush, val)) {
+    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
       continue;
     }
 
@@ -434,7 +434,7 @@ static void do_scrape_brush_task(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
 
@@ -442,7 +442,7 @@ static void do_scrape_brush_task(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -455,7 +455,7 @@ static void do_scrape_brush_task(
     closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
     sub_v3_v3v3(val, intr, vd.co);
 
-    if (!SCULPT_plane_trim(ss.cache, brush, val)) {
+    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
       continue;
     }
 
@@ -532,7 +532,7 @@ static void do_clay_thumb_brush_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   float plane_tilt[4];
@@ -551,7 +551,7 @@ static void do_clay_thumb_brush_task(Object &ob,
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     float local_co[3];
@@ -655,7 +655,7 @@ void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> n
   mul_m4_m4m4(tmat, mat, scale);
   invert_m4_m4(mat, tmat);
 
-  float clay_strength = ss.cache->bstrength * SCULPT_clay_thumb_get_stabilized_pressure(ss.cache);
+  float clay_strength = ss.cache->bstrength * SCULPT_clay_thumb_get_stabilized_pressure(*ss.cache);
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
@@ -683,7 +683,7 @@ static void do_flatten_brush_task(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
@@ -692,7 +692,7 @@ static void do_flatten_brush_task(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     float intr[3];
@@ -702,7 +702,7 @@ static void do_flatten_brush_task(
 
     sub_v3_v3v3(val, intr, vd.co);
 
-    if (SCULPT_plane_trim(ss.cache, brush, val)) {
+    if (SCULPT_plane_trim(*ss.cache, brush, val)) {
       auto_mask::node_update(automask_data, vd);
 
       const float fade = bstrength * SCULPT_brush_strength_factor(ss,
@@ -778,7 +778,7 @@ static void calc_clay_surface_task_cb(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
 
   /* Apply the brush normal radius to the test before sampling. */
   float test_radius = sqrtf(test.radius_squared);
@@ -791,7 +791,7 @@ static void calc_clay_surface_task_cb(Object &ob,
   }
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -819,7 +819,7 @@ static void do_clay_brush_task(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
@@ -828,7 +828,7 @@ static void do_clay_brush_task(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -926,7 +926,7 @@ static void do_clay_strips_brush_task(Object &ob,
   const bool flip = (ss.cache->bstrength < 0.0f);
   const float bstrength = flip ? -ss.cache->bstrength : ss.cache->bstrength;
 
-  SCULPT_brush_test_init(ss, &test);
+  SCULPT_brush_test_init(ss, test);
   plane_from_point_normal_v3(test.plane_tool, area_co, area_no_sp);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
@@ -934,7 +934,7 @@ static void do_clay_strips_brush_task(Object &ob,
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!SCULPT_brush_test_cube(&test, vd.co, mat, brush.tip_roundness, brush.tip_scale_x)) {
+    if (!SCULPT_brush_test_cube(test, vd.co, mat, brush.tip_roundness, brush.tip_scale_x)) {
       continue;
     }
 
@@ -947,7 +947,7 @@ static void do_clay_strips_brush_task(Object &ob,
     closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
     sub_v3_v3v3(val, intr, vd.co);
 
-    if (!SCULPT_plane_trim(ss.cache, brush, val)) {
+    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
       continue;
     }
 
@@ -1074,7 +1074,7 @@ static void do_snake_hook_brush_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   KelvinletParams params;
@@ -1084,7 +1084,7 @@ static void do_snake_hook_brush_task(Object &ob,
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!do_elastic && !sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!do_elastic && !sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -1203,7 +1203,7 @@ static void do_thumb_brush_task(Object &ob, const Brush &brush, const float *con
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -1212,7 +1212,7 @@ static void do_thumb_brush_task(Object &ob, const Brush &brush, const float *con
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
 
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -1267,7 +1267,7 @@ static void do_rotate_brush_task(Object &ob, const Brush &brush, const float ang
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -1276,7 +1276,7 @@ static void do_rotate_brush_task(Object &ob, const Brush &brush, const float ang
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
 
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
 
@@ -1334,7 +1334,7 @@ static void do_layer_brush_task(Object &ob, const Sculpt &sd, const Brush &brush
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -1343,7 +1343,7 @@ static void do_layer_brush_task(Object &ob, const Sculpt &sd, const Brush &brush
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
 
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -1437,14 +1437,14 @@ static void do_inflate_brush_task(Object &ob, const Brush &brush, PBVHNode *node
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -1497,14 +1497,14 @@ static void do_nudge_brush_task(Object &ob, const Brush &brush, const float *con
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -1569,14 +1569,14 @@ static void do_crease_brush_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     /* Offset vertex. */
@@ -1672,7 +1672,7 @@ static void do_pinch_brush_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   float x_object_space[3];
@@ -1684,7 +1684,7 @@ static void do_pinch_brush_task(Object &ob,
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -1783,7 +1783,7 @@ static void do_grab_brush_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   const bool grab_silhouette = brush.flag2 & BRUSH_GRAB_SILHOUETTE;
@@ -1794,7 +1794,7 @@ static void do_grab_brush_task(Object &ob,
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
 
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -1967,7 +1967,7 @@ static void do_draw_sharp_brush_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -1975,7 +1975,7 @@ static void do_draw_sharp_brush_task(Object &ob,
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
     /* Offset vertex. */
@@ -2042,7 +2042,7 @@ static void do_topology_slide_task(Object &ob, const Brush &brush, PBVHNode *nod
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -2050,7 +2050,7 @@ static void do_topology_slide_task(Object &ob, const Brush &brush, PBVHNode *nod
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -2206,7 +2206,7 @@ static void do_topology_relax_task(Object &ob, const Brush &brush, PBVHNode *nod
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -2214,7 +2214,7 @@ static void do_topology_relax_task(Object &ob, const Brush &brush, PBVHNode *nod
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(orig_data, vd);
-    if (!sculpt_brush_test_sq_fn(&test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -2282,7 +2282,7 @@ static void do_displacement_eraser_brush_task(Object &ob, const Brush &brush, PB
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -2290,7 +2290,7 @@ static void do_displacement_eraser_brush_task(Object &ob, const Brush &brush, PB
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -2342,7 +2342,7 @@ static void do_displacement_smear_brush_task(Object &ob, const Brush &brush, PBV
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -2350,7 +2350,7 @@ static void do_displacement_smear_brush_task(Object &ob, const Brush &brush, PBV
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -2497,7 +2497,7 @@ static void do_topology_rake_bmesh_task(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -2505,7 +2505,7 @@ static void do_topology_rake_bmesh_task(
 
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
     auto_mask::node_update(automask_data, vd);
@@ -2580,14 +2580,14 @@ static void do_mask_brush_draw_task(Object &ob,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       ob, ss.cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
@@ -2619,8 +2619,8 @@ static void do_mask_brush_draw_task(Object &ob,
 void SCULPT_do_mask_brush_draw(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  const const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->sculpt);
+  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
+  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(*ob.sculpt);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
       do_mask_brush_draw_task(ob, brush, mask_write, nodes[i]);

@@ -57,7 +57,7 @@ bool mode_enabled(const Sculpt &sd, const Brush *br, const eAutomasking_flag mod
 
 bool is_enabled(const Sculpt &sd, const SculptSession *ss, const Brush *br)
 {
-  if (ss && br && dyntopo::stroke_is_dyntopo(*ss, br)) {
+  if (ss && br && dyntopo::stroke_is_dyntopo(*ss, *br)) {
     return false;
   }
   if (mode_enabled(sd, br, BRUSH_AUTOMASKING_TOPOLOGY)) {
@@ -646,7 +646,7 @@ static void topology_automasking_init(const Sculpt &sd, Object &ob)
    * the brush radius if the tool requires it. */
   flood_fill::FillData flood = flood_fill::init_fill(ss);
   const float radius = ss.cache ? ss.cache->radius : FLT_MAX;
-  flood_fill::add_active(ob, ss, &flood, radius);
+  flood_fill::add_active(ob, ss, flood, radius);
 
   AutomaskFloodFillData fdata = {0};
 
@@ -655,10 +655,9 @@ static void topology_automasking_init(const Sculpt &sd, Object &ob)
   fdata.symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   copy_v3_v3(fdata.location, SCULPT_active_vertex_co_get(ss));
-  flood_fill::execute(
-      ss, &flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool /*is_duplicate*/) {
-        return floodfill_cb(ss, from_v, to_v, &fdata);
-      });
+  flood_fill::execute(ss, flood, [&](PBVHVertRef from_v, PBVHVertRef to_v, bool /*is_duplicate*/) {
+    return floodfill_cb(ss, from_v, to_v, &fdata);
+  });
 }
 
 static void init_face_sets_masking(const Sculpt &sd, Object &ob)
@@ -666,7 +665,7 @@ static void init_face_sets_masking(const Sculpt &sd, Object &ob)
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
-  if (!is_enabled(sd, ss, brush)) {
+  if (!is_enabled(sd, &ss, brush)) {
     return;
   }
 
@@ -827,7 +826,7 @@ std::unique_ptr<Cache> cache_init(const Sculpt &sd, const Brush *brush, Object &
 {
   SculptSession &ss = *ob.sculpt;
 
-  if (!is_enabled(sd, ss, brush)) {
+  if (!is_enabled(sd, &ss, brush)) {
     return nullptr;
   }
 
