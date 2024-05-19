@@ -2653,19 +2653,50 @@ static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
     float &x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(point.y), point.x);
     x = std::max(x, point.x);
   }
-  Vector<bNode *> initial_nodes;
-  for (bNode *node : tree.all_nodes()) {
-    const rctf &node_rect = initial_node_rects[node->index()];
-    for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
-      if (const float *split_x = split_x_by_y_bin.lookup_ptr(y_bin_by_coordinate(y))) {
-        if (node_rect.xmin < *split_x) {
-          initial_nodes.append(node);
-          break;
+  VectorSet<bNode *> final_nodes;
+  int prev_final_nodes_size = 0;
+
+  while (true) {
+    Stack<bNode *> nodes_to_check;
+
+    /* Find nodes to the left of boundary. */
+    for (bNode *node : tree.all_nodes()) {
+      if (final_nodes.contains(node)) {
+        continue;
+      }
+      const rctf &node_rect = initial_node_rects[node->index()];
+      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
+        if (const float *split_x = split_x_by_y_bin.lookup_ptr(y_bin_by_coordinate(y))) {
+          if (node_rect.xmin < *split_x) {
+            nodes_to_check.push(node);
+            break;
+          }
         }
       }
     }
+
+    while (!nodes_to_check.is_empty()) {
+      bNode *node = nodes_to_check.pop();
+      if (!final_nodes.add(node)) {
+        continue;
+      }
+      for (bNodeSocket *input_socket : node->input_sockets()) {
+        if (!input_socket->is_available()) {
+          continue;
+        }
+        for (bNodeSocket *from_socket : input_socket->directly_linked_sockets()) {
+          nodes_to_check.push(&from_socket->owner_node());
+        }
+      }
+    }
+
+    if (final_nodes.size() == prev_final_nodes_size) {
+      break;
+    }
+    prev_final_nodes_size = final_nodes.size();
   }
-  return initial_nodes;
+
+  return final_nodes.as_span();
 }
 
 static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
