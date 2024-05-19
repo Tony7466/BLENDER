@@ -2622,4 +2622,81 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Slide Nodes Operator
+ * \{ */
+
+struct NodeSlideData {
+  int2 initial_mouse_pos;
+  Vector<float2> initial_node_positions;
+  Vector<bNode *> nodes_to_move_left;
+  Vector<bNode *> nodes_to_move_right;
+};
+
+static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  SpaceNode &snode = *CTX_wm_space_node(C);
+  bNodeTree &tree = *snode.edittree;
+  tree.ensure_topology_cache();
+
+  NodeSlideData *slide_data = MEM_new<NodeSlideData>(__func__);
+  op->customdata = slide_data;
+
+  for (bNode *node : tree.all_nodes()) {
+    slide_data->initial_node_positions.append(float2(node->locx, node->locy));
+  }
+
+  slide_data->initial_mouse_pos = event->mval;
+  slide_data->nodes_to_move_left = tree.all_nodes();
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ARegion &region = *CTX_wm_region(C);
+  View2D &v2d = region.v2d;
+
+  NodeSlideData &slide_data = *static_cast<NodeSlideData *>(op->customdata);
+  switch (event->type) {
+    case MOUSEMOVE: {
+      const int2 mouse_pos = event->mval;
+      const float node_diff_x = (UI_view2d_region_to_view_x(&v2d, mouse_pos.x) -
+                                 UI_view2d_region_to_view_x(&v2d,
+                                                            slide_data.initial_mouse_pos.x)) /
+                                UI_SCALE_FAC;
+      for (bNode *node : slide_data.nodes_to_move_left) {
+        node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
+      }
+      ED_region_tag_redraw(&region);
+      break;
+    }
+    case EVT_ESCKEY: {
+      MEM_delete(&slide_data);
+      return OPERATOR_CANCELLED;
+    }
+    case LEFTMOUSE: {
+      MEM_delete(&slide_data);
+      return OPERATOR_FINISHED;
+    }
+  }
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+void NODE_OT_slide(wmOperatorType *ot)
+{
+  ot->name = "Slide Nodes";
+  ot->description = "Make space for new nodes at the mouse position";
+  ot->idname = "NODE_OT_slide";
+
+  ot->invoke = node_slide_invoke;
+  ot->modal = node_slide_modal;
+  ot->poll = ED_operator_node_editable;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+}
+
+/** \} */
+
 }  // namespace blender::ed::space_node

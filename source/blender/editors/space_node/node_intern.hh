@@ -380,6 +380,8 @@ void NODE_OT_output_file_move_active_socket(wmOperatorType *ot);
 
 void NODE_OT_switch_view_update(wmOperatorType *ot);
 
+void NODE_OT_slide(wmOperatorType *ot);
+
 /**
  * \note clipboard_cut is a simple macro of copy + delete.
  */

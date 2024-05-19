@@ -2244,6 +2244,7 @@ def km_node_editor(params):
             ("node.translate_attach", {"type": params.select_mouse, "value": 'CLICK_DRAG'},
              {"properties": [("TRANSFORM_OT_translate", [("view2d_edge_pan", True)])]}),
         )),
+        ("node.slide", {"type" : 'V', "value": 'PRESS'}, None),
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, {"properties": [("view2d_edge_pan", True)]}),
         ("transform.translate", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
          {"properties": [("release_confirm", True), ("view2d_edge_pan", True)]}),
