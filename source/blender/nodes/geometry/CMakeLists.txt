@@ -25,6 +25,7 @@ set(INC
 )
 
 set(INC_SYS
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -75,6 +76,7 @@ set(SRC
   nodes/node_geo_edge_paths_to_selection.cc
   nodes/node_geo_edge_split.cc
   nodes/node_geo_edges_to_face_groups.cc
+  nodes/node_geo_estimate_transform.cc
   nodes/node_geo_evaluate_at_index.cc
   nodes/node_geo_evaluate_on_domain.cc
   nodes/node_geo_extrude_mesh.cc
