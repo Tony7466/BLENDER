@@ -2984,6 +2984,54 @@ static void node_get_compositor_extra_info(TreeDrawContext &tree_draw_ctx,
   }
 }
 
+static void node_get_invalid_links_extra_info(const SpaceNode &snode,
+                                              const bNode &node,
+                                              Vector<NodeExtraInfoRow> &rows)
+{
+  const bNodeTree &tree = *snode.edittree;
+  for (const bNodeSocket *input_socket : node.input_sockets()) {
+    if (!input_socket->is_available()) {
+      continue;
+    }
+    for (const bNodeLink *link : input_socket->directly_linked_links()) {
+      if (!link->is_used()) {
+        continue;
+      }
+      if (tree.typeinfo->validate_link) {
+        if (!tree.typeinfo->validate_link(eNodeSocketDatatype(link->fromsock->type),
+                                          eNodeSocketDatatype(link->tosock->type)))
+        {
+          NodeExtraInfoRow row;
+          row.text = IFACE_("Invalid Link");
+          row.tooltip_fn = [](bContext * /*C*/, void *arg, const char * /*tip*/) -> std::string {
+            const bNodeLink *link = static_cast<bNodeLink *>(arg);
+            return fmt::format(TIP_("Conversion is not supported: "
+                                    "{} " BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE " {}"),
+                               TIP_(link->fromsock->typeinfo->label),
+                               TIP_(link->tosock->typeinfo->label));
+          };
+          row.tooltip_fn_arg = const_cast<bNodeLink *>(link);
+          row.icon = ICON_ERROR;
+          rows.append(std::move(row));
+          continue;
+        }
+      }
+      if (tree.type == NTREE_GEOMETRY) {
+        if (link->fromsock->display_shape == SOCK_DISPLAY_SHAPE_DIAMOND &&
+            link->tosock->display_shape != SOCK_DISPLAY_SHAPE_DIAMOND)
+        {
+          NodeExtraInfoRow row;
+          row.text = IFACE_("Invalid Link");
+          row.tooltip = TIP_("The node input does not support fields");
+          row.icon = ICON_ERROR;
+          rows.append(std::move(row));
+          continue;
+        }
+      }
+    }
+  }
+}
+
 static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
                                                     TreeDrawContext &tree_draw_ctx,
                                                     const SpaceNode &snode,
@@ -3003,6 +3051,8 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
     row.tooltip = TIP_(node.typeinfo->deprecation_notice);
     rows.append(std::move(row));
   }
+
+  node_get_invalid_links_extra_info(snode, node, rows);
 
   if (snode.edittree->type == NTREE_COMPOSIT) {
     node_get_compositor_extra_info(tree_draw_ctx, snode, node, rows);
