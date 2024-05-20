@@ -114,7 +114,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   CLG_init();
 
   ipc_sharedmemory_ shared_mem = {0};
-  ipc_mem_init(&shared_mem, subprocess_name, 1024 * 1024 * 2 /*2mb TODO: pass as parameter. */);
+  ipc_mem_init(&shared_mem, subprocess_name, 1024 * 1024 * 5 /*5mb TODO: pass as parameter. */);
   if (ipc_mem_open_existing(&shared_mem) != 0) {
     return;
   }

@@ -1728,7 +1728,7 @@ GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert, const 
     }
   }
   if (!result && workers_.size() < GCaps.max_parallel_compilations) {
-    result = new GLCompilerWorker(1024 * 1024 * 2); /* 2mB */
+    result = new GLCompilerWorker(1024 * 1024 * 5); /* 5mB */
     workers_.append(result);
   }
   if (result) {
