@@ -23,9 +23,12 @@ float sample_pdf_ggx_refract_ex(
 }
 
 /* All inputs must be in tangent space. */
-float sample_pdf_ggx_refract(vec3 Vt, vec3 Lt, float alpha, float ior)
+float sample_pdf_ggx_refract(vec3 Vt, vec3 Lt, float alpha, float ior, bool is_second_event)
 {
-  vec3 Ht = normalize(-(ior * Lt + Vt));
+  /* Inverse of `refract(-V, H, 1.0 / ior)` with `Lt * ior + Vt` equivalent to `Lt + Vt / ior`. */
+  vec3 Ht = normalize(-(Lt * ior + Vt));
+  /* FIXME(fclem): Why is this necessary? */
+  Ht = is_second_event ? -Ht : Ht;
   float NH = Ht.z;
   float NV = Vt.z;
   float VH = dot(Vt, Ht);
