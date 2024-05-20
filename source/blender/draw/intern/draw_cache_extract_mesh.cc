@@ -889,11 +889,11 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
     extract_lines_subdiv(
         mr, subdiv_cache, buffers.ibo.lines, buffers.ibo.lines_loose, cache.no_loose_wire);
   }
-  if (DRW_ibo_requested(buffers.ibo.points)) {
-    extract_points_subdiv(mr, subdiv_cache, *buffers.ibo.points);
-  }
   if (DRW_ibo_requested(buffers.ibo.tris)) {
     extract_tris_subdiv(subdiv_cache, cache, *buffers.ibo.tris);
+  }
+  if (DRW_ibo_requested(buffers.ibo.points)) {
+    extract_points_subdiv(mr, subdiv_cache, *buffers.ibo.points);
   }
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);
