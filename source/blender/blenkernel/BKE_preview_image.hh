@@ -24,6 +24,7 @@ namespace blender::bke {
 struct PreviewDeferredData;
 
 struct PreviewImageRuntime {
+  /** Used to store data to defer the loading of the preview. If empty, loading is not deferred. */
   std::unique_ptr<PreviewDeferredData> deferred_loading_data;
   PreviewImageRuntime();
   PreviewImageRuntime(const PreviewImageRuntime &other);
