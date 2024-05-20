@@ -599,10 +599,10 @@ static void finalize_viewer_link(const bContext &C,
  * If possible, the viewer is aligned to another node that is close by to result in a better
  * looking node position.
  */
-static void position_viewer_node(bNodeTree &tree,
+static void position_viewer_node(const bNodeTree &tree,
                                  bNode &viewer_node,
-                                 bNode &node_to_view,
-                                 bNodeSocket &socket_to_view)
+                                 const bNode &node_to_view,
+                                 const bNodeSocket &socket_to_view)
 {
   const float default_padding = 10;
   const float viewer_width = viewer_node.width;
