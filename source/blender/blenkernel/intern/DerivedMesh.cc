@@ -263,8 +263,9 @@ static void modifier_modify_mesh_and_geometry_set(ModifierData *md,
     mti->modify_geometry_set(md, &mectx, &geometry_set);
   }
   else {
-    Mesh *new_mesh = BKE_modifier_modify_mesh(md, &mectx, geometry_set.get_mesh_for_write());
-    geometry_set.replace_mesh(new_mesh);
+    if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+      geometry_set.replace_mesh(BKE_modifier_modify_mesh(md, &mectx, mesh));
+    }
   }
 
   if (!geometry_set.has_mesh()) {
@@ -933,7 +934,9 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
         edit_hints.mesh_cage->tag_ensured_mutable();
       }
       else {
-        edit_hints.mesh_cage = edit_hints.mesh_cage->copy();
+        Mesh *mesh_copy = BKE_mesh_copy_for_eval(edit_hints.mesh_cage->get());
+        MeshComponent *copy = new MeshComponent(mesh_copy);
+        edit_hints.mesh_cage = ImplicitSharingPtr<MeshComponent>(copy);
       }
       Mesh *mesh_cage = const_cast<MeshComponent &>(*edit_hints.mesh_cage).get_for_write();
       BKE_mesh_wrapper_ensure_mdata(mesh_cage);
