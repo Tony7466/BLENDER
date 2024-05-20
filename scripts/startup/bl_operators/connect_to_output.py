@@ -294,11 +294,8 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
                     output_node_socket_index = i
                     break
             if output_node_socket_index is None:
-                # Create geometry socket.
-                geometry_out_socket = base_node_tree.interface.new_socket(
-                    'Geometry', in_out='OUTPUT', socket_type=socket_type
-                )
-                output_node_socket_index = geometry_out_socket.index
+                output_node_socket_index = self.ensure_viewer_socket(
+                    base_node_tree, socket_type, connect_socket = None)
 
         # For shader node trees, we connect to a material output.
         elif space.tree_type == 'ShaderNodeTree':
