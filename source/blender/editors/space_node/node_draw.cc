@@ -2989,69 +2989,17 @@ static void node_get_invalid_links_extra_info(const SpaceNode &snode,
                                               Vector<NodeExtraInfoRow> &rows)
 {
   const bNodeTree &tree = *snode.edittree;
-  for (const bNodeSocket *input_socket : node.input_sockets()) {
-    if (!input_socket->is_available()) {
-      continue;
-    }
-    for (const bNodeLink *link : input_socket->directly_linked_links()) {
-      if (!link->is_used()) {
-        continue;
-      }
-      if (tree.typeinfo->validate_link) {
-        if (!tree.typeinfo->validate_link(eNodeSocketDatatype(link->fromsock->type),
-                                          eNodeSocketDatatype(link->tosock->type)))
-        {
-          NodeExtraInfoRow row;
-          row.text = IFACE_("Invalid Link");
-          row.tooltip_fn = [](bContext * /*C*/, void *arg, const char * /*tip*/) -> std::string {
-            const bNodeLink *link = static_cast<bNodeLink *>(arg);
-            return fmt::format(TIP_("Conversion is not supported: "
-                                    "{} " BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE " {}"),
-                               TIP_(link->fromsock->typeinfo->label),
-                               TIP_(link->tosock->typeinfo->label));
-          };
-          row.tooltip_fn_arg = const_cast<bNodeLink *>(link);
-          row.icon = ICON_ERROR;
-          rows.append(std::move(row));
-          continue;
-        }
-      }
-      if (tree.type == NTREE_GEOMETRY) {
-        if (link->fromsock->display_shape == SOCK_DISPLAY_SHAPE_DIAMOND &&
-            link->tosock->display_shape != SOCK_DISPLAY_SHAPE_DIAMOND)
-        {
-          NodeExtraInfoRow row;
-          row.text = IFACE_("Invalid Link");
-          row.tooltip = TIP_("The node input does not support fields");
-          row.icon = ICON_ERROR;
-          rows.append(std::move(row));
-          continue;
-        }
-      }
-      if (link->fromsock->type == SOCK_MENU) {
-        const bNodeSocketValueMenu &socket_value =
-            *link->fromsock->default_value_typed<bNodeSocketValueMenu>();
-        if (socket_value.has_conflict()) {
-          NodeExtraInfoRow row;
-          row.text = IFACE_("Invalid Link");
-          row.tooltip = TIP_("Use node groups to reuse the same menu multiple times");
-          row.icon = ICON_ERROR;
-          rows.append(std::move(row));
-          continue;
-        }
-      }
-      if (!(link->flag & NODE_LINK_VALID)) {
-        /* All other cases for invalid links should be handled above. */
-        if (tree.has_available_link_cycle()) {
-          NodeExtraInfoRow row;
-          row.text = IFACE_("Invalid Link");
-          row.tooltip = TIP_("The links form a cycle which is not supported");
-          row.icon = ICON_ERROR;
-          rows.append(std::move(row));
-          continue;
-        }
-      }
-    }
+  const Span<bke::NodeLinkError> link_errors = tree.runtime->link_errors_by_target_node.lookup(
+      node.identifier);
+  if (link_errors.is_empty()) {
+    return;
+  }
+  for (const bke::NodeLinkError &link_error : link_errors) {
+    NodeExtraInfoRow row;
+    row.text = IFACE_("Invalid Link");
+    row.tooltip = link_error.tooltip.c_str();
+    row.icon = ICON_ERROR;
+    rows.append(std::move(row));
   }
 }
 
