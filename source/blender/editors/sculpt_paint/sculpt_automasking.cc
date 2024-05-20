@@ -619,7 +619,7 @@ void calc_vert_factors(Object &object,
     if (data.orig_data) {
       mesh_orig_vert_data_update(*data.orig_data, i);
     }
-    factors[i] *= factor_get(&cache, &ss, BKE_pbvh_make_vref(verts[i]), &data);
+    factors[i] *= factor_get(&cache, ss, BKE_pbvh_make_vref(verts[i]), &data);
   }
 }
 
