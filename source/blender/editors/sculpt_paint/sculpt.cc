@@ -3537,13 +3537,12 @@ static void do_brush_action(const Sculpt &sd,
     invert = !invert;
   }
 
-  const bool use_vector_displacement = (ss->cache->brush->flag2 &
-                                            BRUSH_USE_COLOR_AS_DISPLACEMENT &&
-                                        (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA));
-
   /* Apply one type of brush action. */
   switch (brush.sculpt_tool) {
-    case SCULPT_TOOL_DRAW:
+    case SCULPT_TOOL_DRAW: {
+      const bool use_vector_displacement = (ss.cache->brush->flag2 &
+                                                BRUSH_USE_COLOR_AS_DISPLACEMENT &&
+                                            (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA));
       if (use_vector_displacement) {
         ed::sculpt_paint::do_draw_vector_displacement_brush(*sd, *ob, nodes);
       }
@@ -3551,6 +3550,7 @@ static void do_brush_action(const Sculpt &sd,
         ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
       }
       break;
+    }
     case SCULPT_TOOL_SMOOTH:
       if (brush.smooth_deform_type == BRUSH_SMOOTH_DEFORM_LAPLACIAN) {
         smooth::do_smooth_brush(sd, ob, nodes);
