@@ -113,7 +113,7 @@ struct MeshBufferList {
     gpu::IndexBuf *tris;
     /* Loose edges last. */
     gpu::IndexBuf *lines;
-    /* Sub buffer of `lines` only containing the loose edges. */
+    /* Potentially a sub buffer of `lines` only containing the loose edges. */
     gpu::IndexBuf *lines_loose;
     gpu::IndexBuf *points;
     gpu::IndexBuf *fdots;
@@ -256,9 +256,8 @@ struct MeshBatchCache {
   MeshBatchList batch;
 
   /* Index buffer per material. These are sub-ranges of `ibo.tris`. */
-  gpu::IndexBuf **tris_per_mat;
-
-  gpu::Batch **surface_per_mat;
+  Array<gpu::IndexBuf *> tris_per_mat;
+  Array<gpu::Batch *> surface_per_mat;
 
   DRWSubdivCache *subdiv_cache;
 

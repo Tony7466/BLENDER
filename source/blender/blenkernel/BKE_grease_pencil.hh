@@ -35,6 +35,16 @@ namespace blender::bke {
 
 namespace greasepencil {
 
+/* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px`
+ * was the brush size which would be stored in the stroke thickness and then scaled by the
+ * point pressure factor. Finally, the render engine would divide this thickness value by
+ * 2000 (we're going from a thickness to a radius, hence the factor of two) to convert back
+ * into blender units. With Grease Pencil 3, the radius is no longer stored in `px` space,
+ * but in blender units (world space) directly. Also note that there is no longer a stroke
+ * "thickness" attribute, the radii are directly stored on the points.
+ * For compatibility, legacy thickness values have to be multiplied by this factor. */
+constexpr float LEGACY_RADIUS_CONVERSION_FACTOR = 1.0f / 2000.0f;
+
 class DrawingRuntime {
  public:
   /**
@@ -47,6 +57,10 @@ class DrawingRuntime {
    */
   mutable SharedCache<Vector<float3>> curve_plane_normals_cache;
 
+  /*
+   * Matrices that transform from a 3D point in layer-space to a 2D point in texture-space. This is
+   * stored per curve.
+   */
   mutable SharedCache<Vector<float4x2>> curve_texture_matrices;
 
   /**
@@ -61,6 +75,9 @@ class Drawing : public ::GreasePencilDrawing {
  public:
   Drawing();
   Drawing(const Drawing &other);
+  Drawing(Drawing &&other);
+  Drawing &operator=(const Drawing &other);
+  Drawing &operator=(Drawing &&other);
   ~Drawing();
 
   const bke::CurvesGeometry &strokes() const;
@@ -140,10 +157,6 @@ class DrawingReference : public ::GreasePencilDrawingReference {
   ~DrawingReference();
 };
 
-const Drawing *get_eval_grease_pencil_layer_drawing(const GreasePencil &grease_pencil,
-                                                    int layer_index);
-Drawing *get_eval_grease_pencil_layer_drawing_for_write(GreasePencil &grease_pencil,
-                                                        int layer_index);
 /**
  * Copies the drawings from one array to another. Assumes that \a dst_drawings is allocated but not
  * initialized, e.g. it will allocate new drawings and store the pointers.
@@ -155,7 +168,7 @@ class LayerGroup;
 class Layer;
 
 /* Defines the common functions used by #TreeNode, #Layer, and #LayerGroup.
- * Note: Because we cannot mix C-style and C++ inheritance (all of these three classes wrap a
+ * NOTE: Because we cannot mix C-style and C++ inheritance (all of these three classes wrap a
  * C-struct that already uses "inheritance"), we define and implement these methods on all these
  * classes individually. This just means that we can call `layer->name()` directly instead of
  * having to write `layer->as_node().name()`. For #Layer and #LayerGroup the calls are just
@@ -317,8 +330,16 @@ struct LayerTransformData {
   FrameTransformationStatus status{TRANS_CLEAR};
 };
 
-/* The key of a GreasePencilFrame in the frames map is the starting scene frame number (int) of
- * that frame. */
+/*
+ * The key type for a `GreasePencilFrame` in the frames map.
+ *
+ * This is either the start or end frame (scene time) of a `GreasePencilFrame`.
+ *
+ * If the key refers to a end frame, the value in the map for this key is
+ * `GreasePencilFrame::end()`.
+ * Note that end frame is exclusive with regards to the frame duration. E.g. if a frame starts at
+ * 10 and the end frame is at 15, then the duration is 4.
+ */
 using FramesMapKey = int;
 
 class LayerRuntime {
@@ -328,7 +349,7 @@ class LayerRuntime {
    * (drawing_index) to the drawing in the GreasePencil->drawings array. The frame number indicates
    * the first frame the drawing is shown. The end time is implicitly defined by the next greater
    * frame number (key) in the map. If the value mapped to (index) is -1, no drawing is shown at
-   * this frame.
+   * this frame. Frames with such a value are `GreasePencilFrame::end()` in the code.
    *
    *    \example:
    *
@@ -403,24 +424,24 @@ class Layer : public ::GreasePencilLayer {
 
   /**
    * Adds a new frame into the layer frames map.
-   * Fails if there already exists a frame at \a key that is not a null-frame.
-   * Null-frame at \a key and subsequent null-frames are removed.
+   * Fails if there already exists a frame at \a key that is not an end-frame.
+   * End-frame at \a key and subsequent end-frames are removed.
    *
    * If \a duration is 0, the frame is marked as an implicit hold (see `GP_FRAME_IMPLICIT_HOLD`).
-   * Otherwise adds an additional null-frame at \a key + \a duration, if necessary, to
+   * Otherwise adds an additional end-frame at \a key + \a duration, if necessary, to
    * indicate the end of the added frame.
    *
    * \returns a pointer to the added frame on success, otherwise nullptr.
    */
-  GreasePencilFrame *add_frame(FramesMapKey key, int drawing_index, int duration = 0);
+  GreasePencilFrame *add_frame(FramesMapKey key, int duration = 0);
   /**
    * Removes a frame with \a key from the frames map.
    *
    * Fails if the map does not contain a frame with \a key or in the specific case where
    * the previous frame has a fixed duration (is not marked as an implicit hold) and the frame to
-   * remove is a null frame.
+   * remove is an end frame.
    *
-   * Will remove null frames after the frame to remove.
+   * Will remove end frame(s) after the frame to remove.
    * \return true on success.
    */
   bool remove_frame(FramesMapKey key);
@@ -453,8 +474,10 @@ class Layer : public ::GreasePencilLayer {
   GreasePencilFrame *frame_at(const int frame_number);
 
   /**
-   * \returns the frame duration of the active frame at \a frame_number or -1 if there is no active
-   * frame or the active frame is the last frame.
+   * \returns the frame duration of the keyframe at \a frame_number.
+   * If there is no keyframe at \a frame_number it \returns -1.
+   * If the keyframe is an implicit hold, \returns 0.
+   * if the keyframe is the last one, \returns -1.
    */
   int get_frame_duration_at(const int frame_number) const;
 
@@ -504,15 +527,16 @@ class Layer : public ::GreasePencilLayer {
   using SortedKeysIterator = const int *;
 
  private:
-  GreasePencilFrame *add_frame_internal(int frame_number, int drawing_index);
+  GreasePencilFrame *add_frame_internal(int frame_number);
 
   /**
-   * Removes null frames starting from \a begin until \a end (excluded) or until a non-null frame
-   * is reached. \param begin, end: Iterators into the `sorted_keys` span. \returns an iterator to
-   * the element after the last null-frame that was removed.
+   * Removes end frames starting from \a begin until \a end (excluded) or until a start frame
+   * is reached.
+   * \param begin, end: Iterators into the `sorted_keys` span.
+   * \returns an iterator to the element after the last end-frame that was removed.
    */
-  SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin,
-                                                         SortedKeysIterator end);
+  SortedKeysIterator remove_leading_end_frames_in_range(SortedKeysIterator begin,
+                                                        SortedKeysIterator end);
 
   float4x4 parent_inverse() const;
 
@@ -571,6 +595,11 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   TreeNode &as_node();
 
   /**
+   * Returns true if the group is empty.
+   */
+  bool is_empty() const;
+
+  /**
    * Returns the number of direct nodes in this group.
    */
   int64_t num_direct_nodes() const;
@@ -621,15 +650,6 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
 
  protected:
   /**
-   * Adds a new layer named \a name at the end of this group and returns it.
-   */
-  Layer &add_layer(StringRefNull name);
-  Layer &add_layer(const Layer &duplicate_layer);
-  /**
-   * Adds a new group named \a name at the end of this group and returns it.
-   */
-  LayerGroup &add_group(StringRefNull name);
-  /**
    * Adds an existing \a node at the end of this group.
    */
   TreeNode &add_node(TreeNode &node);
@@ -658,7 +678,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
    * Unlink the node from the list of nodes in this group.
    * \returns true, if the node was successfully unlinked.
    */
-  bool unlink_node(TreeNode &link);
+  bool unlink_node(TreeNode &link, bool keep_children = false);
 
  private:
   void ensure_nodes_cache() const;
@@ -754,6 +774,10 @@ inline TreeNode &LayerGroup::as_node()
 {
   return *reinterpret_cast<TreeNode *>(this);
 }
+inline bool LayerGroup::is_empty() const
+{
+  return BLI_listbase_is_empty(&this->children);
+}
 
 inline const TreeNode &Layer::as_node() const
 {
@@ -822,7 +846,7 @@ class GreasePencilEditHints {
 
   /**
    * Array of #GreasePencilDrawingEditHints. There is one edit hint for each evaluated drawing.
-   * Note: The index for each element is the layer index.
+   * \note The index for each element is the layer index.
    */
   std::optional<Array<GreasePencilDrawingEditHints>> drawing_hints;
 };
@@ -848,12 +872,12 @@ inline const blender::bke::greasepencil::DrawingReference &GreasePencilDrawingRe
   return *reinterpret_cast<const blender::bke::greasepencil::DrawingReference *>(this);
 }
 
-inline GreasePencilFrame GreasePencilFrame::null()
+inline GreasePencilFrame GreasePencilFrame::end()
 {
   return GreasePencilFrame{-1, 0, 0};
 }
 
-inline bool GreasePencilFrame::is_null() const
+inline bool GreasePencilFrame::is_end() const
 {
   return this->drawing_index == -1;
 }
@@ -895,13 +919,26 @@ inline const blender::bke::greasepencil::LayerGroup &GreasePencilLayerTreeGroup:
   return *reinterpret_cast<const blender::bke::greasepencil::LayerGroup *>(this);
 }
 
-inline const GreasePencilDrawingBase *GreasePencil::drawing(int64_t index) const
+inline const GreasePencilDrawingBase *GreasePencil::drawing(const int64_t index) const
 {
+  BLI_assert(index >= 0 && index < this->drawings().size());
   return this->drawings()[index];
 }
-inline GreasePencilDrawingBase *GreasePencil::drawing(int64_t index)
+inline GreasePencilDrawingBase *GreasePencil::drawing(const int64_t index)
 {
+  BLI_assert(index >= 0 && index < this->drawings().size());
   return this->drawings()[index];
+}
+
+inline const blender::bke::greasepencil::Layer *GreasePencil::layer(const int64_t index) const
+{
+  BLI_assert(index >= 0 && index < this->layers().size());
+  return this->layers()[index];
+}
+inline blender::bke::greasepencil::Layer *GreasePencil::layer(const int64_t index)
+{
+  BLI_assert(index >= 0 && index < this->layers().size());
+  return this->layers_for_write()[index];
 }
 
 inline const blender::bke::greasepencil::LayerGroup &GreasePencil::root_group() const
@@ -915,7 +952,12 @@ inline blender::bke::greasepencil::LayerGroup &GreasePencil::root_group()
 
 inline bool GreasePencil::has_active_layer() const
 {
-  return (this->active_layer != nullptr);
+  return (this->active_node != nullptr) && (this->active_node->wrap().is_layer());
+}
+
+inline bool GreasePencil::has_active_group() const
+{
+  return (this->active_node != nullptr) && (this->active_node->wrap().is_group());
 }
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name);

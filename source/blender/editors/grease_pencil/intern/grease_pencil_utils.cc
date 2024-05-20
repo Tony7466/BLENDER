@@ -68,26 +68,35 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     }
   }
   /* Initialize DrawingPlacementDepth from toolsettings. */
-  switch (scene.toolsettings->gpencil_v3d_align) {
-    case GP_PROJECT_VIEWSPACE:
-      depth_ = DrawingPlacementDepth::ObjectOrigin;
-      placement_loc_ = layer_space_to_world_space_.location();
-      break;
-    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR):
+  const char align_flag = scene.toolsettings->gpencil_v3d_align;
+  if (align_flag & GP_PROJECT_VIEWSPACE) {
+    if (align_flag & GP_PROJECT_CURSOR) {
       depth_ = DrawingPlacementDepth::Cursor;
+      surface_offset_ = 0.0f;
       placement_loc_ = float3(scene.cursor.location);
-      break;
-    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW):
+    }
+    else if (align_flag & GP_PROJECT_DEPTH_VIEW) {
       depth_ = DrawingPlacementDepth::Surface;
       surface_offset_ = scene.toolsettings->gpencil_surface_offset;
       /* Default to view placement with the object origin if we don't hit a surface. */
       placement_loc_ = layer_space_to_world_space_.location();
-      break;
-    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE):
+    }
+    else if (align_flag & GP_PROJECT_DEPTH_STROKE) {
       depth_ = DrawingPlacementDepth::NearestStroke;
+      surface_offset_ = 0.0f;
       /* Default to view placement with the object origin if we don't hit a stroke. */
       placement_loc_ = layer_space_to_world_space_.location();
-      break;
+    }
+    else {
+      depth_ = DrawingPlacementDepth::ObjectOrigin;
+      surface_offset_ = 0.0f;
+      placement_loc_ = layer_space_to_world_space_.location();
+    }
+  }
+  else {
+    depth_ = DrawingPlacementDepth::ObjectOrigin;
+    surface_offset_ = 0.0f;
+    placement_loc_ = float3(0.0f);
   }
 
   if (ELEM(plane_,
@@ -121,7 +130,7 @@ bool DrawingPlacement::use_project_to_nearest_stroke() const
 void DrawingPlacement::cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d)
 {
   const eV3DDepthOverrideMode mode = (depth_ == DrawingPlacementDepth::Surface) ?
-                                         V3D_DEPTH_NO_GPENCIL :
+                                         V3D_DEPTH_NO_OVERLAYS :
                                          V3D_DEPTH_GPENCIL_ONLY;
   ED_view3d_depth_override(depsgraph, region, view3d, nullptr, mode, &this->depth_cache_);
 }
@@ -356,28 +365,29 @@ static Array<std::pair<int, int>> get_visible_frames_for_layer(
   return frame_numbers.as_span();
 }
 
-static Array<int> get_editable_frames_for_layer(const bke::greasepencil::Layer &layer,
+static Array<int> get_editable_frames_for_layer(const GreasePencil &grease_pencil,
+                                                const bke::greasepencil::Layer &layer,
                                                 const int current_frame,
                                                 const bool use_multi_frame_editing)
 {
+  using namespace blender::bke::greasepencil;
   Vector<int> frame_numbers;
+  Set<const Drawing *> added_drawings;
   if (use_multi_frame_editing) {
-    bool current_frame_is_covered = false;
-    const int drawing_index_at_current_frame = layer.drawing_index_at(current_frame);
+    const Drawing *current_drawing = grease_pencil.get_drawing_at(layer, current_frame);
     for (const auto [frame_number, frame] : layer.frames().items()) {
       if (!frame.is_selected()) {
         continue;
       }
       frame_numbers.append(frame_number);
-      current_frame_is_covered |= (frame.drawing_index == drawing_index_at_current_frame);
+      added_drawings.add(grease_pencil.get_drawing_at(layer, frame_number));
     }
-    if (current_frame_is_covered) {
+    if (added_drawings.contains(current_drawing)) {
       return frame_numbers.as_span();
     }
   }
 
   frame_numbers.append(current_frame);
-
   return frame_numbers.as_span();
 }
 
@@ -398,7 +408,7 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
       continue;
     }
     const Array<int> frame_numbers = get_editable_frames_for_layer(
-        layer, current_frame, use_multi_frame_editing);
+        grease_pencil, layer, current_frame, use_multi_frame_editing);
     for (const int frame_number : frame_numbers) {
       if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
         editable_drawings.append({*drawing, layer_i, frame_number, 1.0f});
@@ -436,7 +446,7 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
       continue;
     }
     const Array<int> frame_numbers = get_editable_frames_for_layer(
-        layer, current_frame, use_multi_frame_editing);
+        grease_pencil, layer, current_frame, use_multi_frame_editing);
     for (const int frame_number : frame_numbers) {
       if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
         const float falloff = use_multi_frame_falloff ?
@@ -454,6 +464,88 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
   return editable_drawings;
 }
 
+Array<Vector<MutableDrawingInfo>> retrieve_editable_drawings_grouped_per_frame(
+    const Scene &scene, GreasePencil &grease_pencil)
+{
+  using namespace blender::bke::greasepencil;
+  int current_frame = scene.r.cfra;
+  const ToolSettings *toolsettings = scene.toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  const bool use_multi_frame_falloff = use_multi_frame_editing &&
+                                       (toolsettings->gp_sculpt.flag &
+                                        GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
+  if (use_multi_frame_falloff) {
+    BKE_curvemapping_init(toolsettings->gp_sculpt.cur_falloff);
+  }
+
+  /* Get a set of unique frame numbers with editable drawings on them. */
+  VectorSet<int> selected_frames;
+  int frame_min = current_frame, frame_max = current_frame;
+  Span<const Layer *> layers = grease_pencil.layers();
+  if (use_multi_frame_editing) {
+    for (const int layer_i : layers.index_range()) {
+      const Layer &layer = *layers[layer_i];
+      if (!layer.is_editable()) {
+        continue;
+      }
+      for (const auto [frame_number, frame] : layer.frames().items()) {
+        if (frame_number != current_frame && frame.is_selected()) {
+          selected_frames.add(frame_number);
+          frame_min = math::min(frame_min, frame_number);
+          frame_max = math::max(frame_max, frame_number);
+        }
+      }
+    }
+  }
+  selected_frames.add(current_frame);
+
+  /* Get multi frame falloff factor per selected frame. */
+  Array<float> falloff_per_selected_frame(selected_frames.size(), 1.0f);
+  if (use_multi_frame_falloff) {
+    int frame_group = 0;
+    for (const int frame_number : selected_frames) {
+      falloff_per_selected_frame[frame_group] = get_multi_frame_falloff(
+          frame_number, current_frame, frame_min, frame_max, toolsettings->gp_sculpt.cur_falloff);
+      frame_group++;
+    }
+  }
+
+  /* Get drawings grouped per frame. */
+  Array<Vector<MutableDrawingInfo>> drawings_grouped_per_frame(selected_frames.size());
+  Set<const Drawing *> added_drawings;
+  for (const int layer_i : layers.index_range()) {
+    const Layer &layer = *layers[layer_i];
+    if (!layer.is_editable()) {
+      continue;
+    }
+    /* In multi frame editing mode, add drawings at selected frames. */
+    if (use_multi_frame_editing) {
+      for (const auto [frame_number, frame] : layer.frames().items()) {
+        Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number);
+        if (!frame.is_selected() || drawing == nullptr || added_drawings.contains(drawing)) {
+          continue;
+        }
+        const int frame_group = selected_frames.index_of(frame_number);
+        drawings_grouped_per_frame[frame_group].append(
+            {*drawing, layer_i, frame_number, falloff_per_selected_frame[frame_group]});
+        added_drawings.add_new(drawing);
+      }
+    }
+
+    /* Add drawing at current frame. */
+    Drawing *current_drawing = grease_pencil.get_drawing_at(layer, current_frame);
+    if (!added_drawings.contains(current_drawing)) {
+      const int frame_group = selected_frames.index_of(current_frame);
+      drawings_grouped_per_frame[frame_group].append(
+          {*current_drawing, layer_i, current_frame, falloff_per_selected_frame[frame_group]});
+      added_drawings.add_new(current_drawing);
+    }
+  }
+
+  return drawings_grouped_per_frame;
+}
+
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene,
     GreasePencil &grease_pencil,
@@ -468,10 +560,51 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
 
   Vector<MutableDrawingInfo> editable_drawings;
   const Array<int> frame_numbers = get_editable_frames_for_layer(
-      layer, current_frame, use_multi_frame_editing);
+      grease_pencil, layer, current_frame, use_multi_frame_editing);
   for (const int frame_number : frame_numbers) {
     if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
       editable_drawings.append({*drawing, layer_index, frame_number, 1.0f});
+    }
+  }
+
+  return editable_drawings;
+}
+
+Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer_with_falloff(
+    const Scene &scene,
+    GreasePencil &grease_pencil,
+    const blender::bke::greasepencil::Layer &layer)
+{
+  using namespace blender::bke::greasepencil;
+  const int current_frame = scene.r.cfra;
+  const ToolSettings *toolsettings = scene.toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  const bool use_multi_frame_falloff = use_multi_frame_editing &&
+                                       (toolsettings->gp_sculpt.flag &
+                                        GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
+  const int layer_index = *grease_pencil.get_layer_index(layer);
+  int center_frame;
+  std::pair<int, int> minmax_frame;
+  if (use_multi_frame_falloff) {
+    BKE_curvemapping_init(toolsettings->gp_sculpt.cur_falloff);
+    minmax_frame = get_minmax_selected_frame_numbers(grease_pencil, current_frame);
+    center_frame = math::clamp(current_frame, minmax_frame.first, minmax_frame.second);
+  }
+
+  Vector<MutableDrawingInfo> editable_drawings;
+  const Array<int> frame_numbers = get_editable_frames_for_layer(
+      grease_pencil, layer, current_frame, use_multi_frame_editing);
+  for (const int frame_number : frame_numbers) {
+    if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
+      const float falloff = use_multi_frame_falloff ?
+                                get_multi_frame_falloff(frame_number,
+                                                        center_frame,
+                                                        minmax_frame.first,
+                                                        minmax_frame.second,
+                                                        toolsettings->gp_sculpt.cur_falloff) :
+                                1.0f;
+      editable_drawings.append({*drawing, layer_index, frame_number, falloff});
     }
   }
 
@@ -684,6 +817,39 @@ IndexMask retrieve_visible_strokes(Object &object,
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
+        return !hidden_material_indices.contains(material_index);
+      });
+}
+
+IndexMask retrieve_visible_points(Object &object,
+                                  const bke::greasepencil::Drawing &drawing,
+                                  IndexMaskMemory &memory)
+{
+  /* Get all the hidden material indices. */
+  VectorSet<int> hidden_material_indices = get_hidden_material_indices(object);
+
+  if (hidden_material_indices.is_empty()) {
+    return drawing.strokes().points_range();
+  }
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange points_range = curves.points_range();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  /* Propagate the material index to the points. */
+  const VArray<int> materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Point, 0);
+  if (const std::optional<int> single_material = materials.get_if_single()) {
+    if (!hidden_material_indices.contains(*single_material)) {
+      return points_range;
+    }
+    return {};
+  }
+
+  /* Get all the points that are part of a stroke with a visible material. */
+  return IndexMask::from_predicate(
+      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
+        const int material_index = materials[point_i];
         return !hidden_material_indices.contains(material_index);
       });
 }
@@ -1013,11 +1179,14 @@ int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
   }
 
   /* Ensure a drawing at the current keyframe. */
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
+  bool inserted_keyframe = false;
+  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil, inserted_keyframe)) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
-
+  if (inserted_keyframe) {
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+  }
   return OPERATOR_RUNNING_MODAL;
 }
 
