@@ -1912,7 +1912,7 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
       bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
       output << reroute_name;
     }
-    if (socket.type == SOCK_CUSTOM) {
+    else if (socket.type == SOCK_CUSTOM) {
       output << TIP_("Extension socket. Connect a link to create a new socket");
     }
     else {
