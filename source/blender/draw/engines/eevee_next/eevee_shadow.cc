@@ -120,8 +120,8 @@ void ShadowTileMap::debug_draw() const
       {0.1f, 0.1f, 0.1f, 1.0f},
       {1.0f, 1.0f, 1.0f, 1.0f},
   };
-  float4 color =
-      debug_color[((projection_type == SHADOW_PROJECTION_CUBEFACE ? cubeface : level) + 9999) % 6];
+  float4 color = debug_color
+      [((projection_type == SHADOW_PROJECTION_CUBEFACE ? int(cubeface) : level) + 9999) % 6];
 
   float4x4 persinv = winmat * viewmat;
   drw_debug_matrix_as_bbox(math::invert(persinv), color);
@@ -575,7 +575,7 @@ void ShadowModule::init()
   bool update_lights = false;
   bool enable_shadow = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
   bool use_jitter = enable_shadow &&
-                    (!inst_.is_viewport() ||
+                    (inst_.is_image_render() ||
                      (!inst_.is_navigating() && !inst_.is_transforming() && !inst_.is_playback() &&
                       (scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT)));
   update_lights |= assign_if_different(enabled_, enable_shadow);
