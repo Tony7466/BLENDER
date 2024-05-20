@@ -242,36 +242,28 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
   const int subdiv_loose_edge_verts_num = verts_per_coarse_edge * loose_edges.size();
   const int loose_edge_verts_start = subdiv_cache.num_subdiv_loops;
 
-  int loose_edge_verts_num;
-  Vector<int> visible_loose_edge_verts;
-  if (hide_vert.is_empty() && !mr.v_origindex) {
-    // TODO
-    loose_edge_verts_num = mr.loose_edges.size() * 2;
-  }
-  else {
-    const auto show_vert = [&](const int vert) {
-      if (!hide_vert.is_empty() && hide_vert[vert]) {
-        return false;
-      }
-      if (mr.v_origindex && mr.v_origindex[vert] == ORIGINDEX_NONE) {
-        return false;
-      }
-      return true;
-    };
-
-    visible_loose_edge_verts.reserve(mr.loose_edges.size() * 2);
-    for (const int i : loose_edges.index_range()) {
-      const int2 coarse_edge = coarse_edges[loose_edges[i]];
-      const IndexRange edge_verts_range(loose_edge_verts_start + i * verts_per_coarse_edge,
-                                        verts_per_coarse_edge);
-      if (show_vert(coarse_edge[0])) {
-        visible_loose_edge_verts.append(edge_verts_range.first());
-      }
-      if (show_vert(coarse_edge[1])) {
-        visible_loose_edge_verts.append(edge_verts_range.last());
-      }
+  const auto show_vert = [&](const int vert) {
+    if (!hide_vert.is_empty() && hide_vert[vert]) {
+      return false;
     }
-    loose_edge_verts_num = visible_loose_edge_verts.size();
+    if (mr.v_origindex && mr.v_origindex[vert] == ORIGINDEX_NONE) {
+      return false;
+    }
+    return true;
+  };
+
+  Vector<int> visible_loose_edge_verts;
+  visible_loose_edge_verts.reserve(mr.loose_edges.size() * 2);
+  for (const int i : loose_edges.index_range()) {
+    const int2 coarse_edge = coarse_edges[loose_edges[i]];
+    const IndexRange edge_verts_range(loose_edge_verts_start + i * verts_per_coarse_edge,
+                                      verts_per_coarse_edge);
+    if (show_vert(coarse_edge[0])) {
+      visible_loose_edge_verts.append(edge_verts_range.first());
+    }
+    if (show_vert(coarse_edge[1])) {
+      visible_loose_edge_verts.append(edge_verts_range.last());
+    }
   }
 
   const Span<int> loose_verts = mr.loose_verts;
@@ -284,7 +276,7 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
   GPUIndexBufBuilder builder;
   GPU_indexbuf_init(&builder,
                     GPU_PRIM_POINTS,
-                    visible_corners.size() + loose_edge_verts_num + loose_verts.size(),
+                    visible_corners.size() + visible_loose_edge_verts.size() + loose_verts.size(),
                     max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
   visible_corners.to_indices<int32_t>(data.take_front(visible_corners.size()).cast<int32_t>());
