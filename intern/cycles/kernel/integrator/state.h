@@ -95,12 +95,46 @@ typedef struct IntegratorQueueCounter {
   int num_queued[DEVICE_KERNEL_INTEGRATOR_NUM];
 } IntegratorQueueCounter;
 
+#define KERNEL_STRUCT_BEGIN(name)
+#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) struct Wrapped_##parent_struct##_##name { type name; void operator=(type) {} };
+#define KERNEL_STRUCT_ARRAY_MEMBER KERNEL_STRUCT_MEMBER
+#define KERNEL_STRUCT_END(name)
+#define KERNEL_STRUCT_END_ARRAY(name, cpu_size, gpu_size)
+#define KERNEL_STRUCT_VOLUME_STACK_SIZE MAX_VOLUME_STACK_SIZE
+
+#include "kernel/integrator/state_template.h"
+#include "kernel/integrator/shadow_state_template.h"
+
+#undef KERNEL_STRUCT_BEGIN
+#undef KERNEL_STRUCT_MEMBER
+#undef KERNEL_STRUCT_ARRAY_MEMBER
+#undef KERNEL_STRUCT_END
+#undef KERNEL_STRUCT_END_ARRAY
+#undef KERNEL_STRUCT_VOLUME_STACK_SIZE
+
+/* TODO: tidy this up - just trying to understand if it affected perf of non packed version. */
+#ifndef wrapper_inline
+#ifdef PACKED_STATE
+#define wrapper_inline ccl_device __attribute__((always_inline))
+#else
+#define wrapper_inline
+#endif
+#endif
+
 /* Integrator State GPU
  *
  * GPU rendering path state with SoA layout. */
 typedef struct IntegratorStateGPU {
 #define KERNEL_STRUCT_BEGIN(name) struct {
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) ccl_global type *name;
+#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+  ccl_global Wrapped_##parent_struct##_##name *name; \
+  wrapper_inline ccl_global Wrapped_##parent_struct##_##name *name##_fn() ccl_constant { return (ccl_global Wrapped_##parent_struct##_##name*)name; }
+
+#ifdef PACKED_STATE
+#define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
+  ccl_global int *unused_##name; \
+  wrapper_inline ccl_global packed_##parent_struct *name##_fn() ccl_constant { return (ccl_global packed_##parent_struct*)packed; }
+#endif
 #define KERNEL_STRUCT_ARRAY_MEMBER KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_END(name) \
   } \
@@ -116,6 +150,7 @@ typedef struct IntegratorStateGPU {
 
 #undef KERNEL_STRUCT_BEGIN
 #undef KERNEL_STRUCT_MEMBER
+#undef KERNEL_STRUCT_MEMBER_PACKED
 #undef KERNEL_STRUCT_ARRAY_MEMBER
 #undef KERNEL_STRUCT_END
 #undef KERNEL_STRUCT_END_ARRAY
@@ -179,12 +214,12 @@ typedef int ConstIntegratorShadowState;
 #  define INTEGRATOR_STATE_NULL -1
 
 #  define INTEGRATOR_STATE(state, nested_struct, member) \
-    kernel_integrator_state.nested_struct.member[state]
+    kernel_integrator_state.nested_struct.member##_fn()[state].member
 #  define INTEGRATOR_STATE_WRITE(state, nested_struct, member) \
     INTEGRATOR_STATE(state, nested_struct, member)
 
 #  define INTEGRATOR_STATE_ARRAY(state, nested_struct, array_index, member) \
-    kernel_integrator_state.nested_struct[array_index].member[state]
+    kernel_integrator_state.nested_struct[array_index].member##_fn()[state].member
 #  define INTEGRATOR_STATE_ARRAY_WRITE(state, nested_struct, array_index, member) \
     INTEGRATOR_STATE_ARRAY(state, nested_struct, array_index, member)
 

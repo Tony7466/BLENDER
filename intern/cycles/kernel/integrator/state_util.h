@@ -15,6 +15,11 @@ CCL_NAMESPACE_BEGIN
 ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
                                                        ccl_private const Ray *ccl_restrict ray)
 {
+#ifdef PACKED_STATE
+  ((ccl_private float4&)ray->P).w = ray->dP;
+  ((ccl_private float4&)ray->D).w = ray->dD;
+  INTEGRATOR_STATE_WRITE(state, ray, packed) = (ccl_private packed_ray&)*ray;
+#else
   INTEGRATOR_STATE_WRITE(state, ray, P) = ray->P;
   INTEGRATOR_STATE_WRITE(state, ray, D) = ray->D;
   INTEGRATOR_STATE_WRITE(state, ray, tmin) = ray->tmin;
@@ -22,11 +27,17 @@ ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
   INTEGRATOR_STATE_WRITE(state, ray, time) = ray->time;
   INTEGRATOR_STATE_WRITE(state, ray, dP) = ray->dP;
   INTEGRATOR_STATE_WRITE(state, ray, dD) = ray->dD;
+#endif
 }
 
 ccl_device_forceinline void integrator_state_read_ray(ConstIntegratorState state,
                                                       ccl_private Ray *ccl_restrict ray)
 {
+#ifdef PACKED_STATE
+  *((ccl_private packed_ray*)ray) = INTEGRATOR_STATE(state, ray, packed);
+  ray->dP = ((ccl_private float4&)ray->P).w;
+  ray->dD = ((ccl_private float4&)ray->D).w;
+#else
   ray->P = INTEGRATOR_STATE(state, ray, P);
   ray->D = INTEGRATOR_STATE(state, ray, D);
   ray->tmin = INTEGRATOR_STATE(state, ray, tmin);
@@ -34,6 +45,7 @@ ccl_device_forceinline void integrator_state_read_ray(ConstIntegratorState state
   ray->time = INTEGRATOR_STATE(state, ray, time);
   ray->dP = INTEGRATOR_STATE(state, ray, dP);
   ray->dD = INTEGRATOR_STATE(state, ray, dD);
+#endif
 }
 
 /* Shadow Ray */
@@ -96,23 +108,31 @@ ccl_device_forceinline void integrator_state_read_shadow_ray_self(
 ccl_device_forceinline void integrator_state_write_isect(
     IntegratorState state, ccl_private const Intersection *ccl_restrict isect)
 {
+#ifdef PACKED_STATE
+  INTEGRATOR_STATE_WRITE(state, isect, packed) = *isect;
+#else
   INTEGRATOR_STATE_WRITE(state, isect, t) = isect->t;
   INTEGRATOR_STATE_WRITE(state, isect, u) = isect->u;
   INTEGRATOR_STATE_WRITE(state, isect, v) = isect->v;
   INTEGRATOR_STATE_WRITE(state, isect, object) = isect->object;
   INTEGRATOR_STATE_WRITE(state, isect, prim) = isect->prim;
   INTEGRATOR_STATE_WRITE(state, isect, type) = isect->type;
+#endif
 }
 
 ccl_device_forceinline void integrator_state_read_isect(
     ConstIntegratorState state, ccl_private Intersection *ccl_restrict isect)
 {
+#ifdef PACKED_STATE
+  *isect = INTEGRATOR_STATE(state, isect, packed);
+#else
   isect->prim = INTEGRATOR_STATE(state, isect, prim);
   isect->object = INTEGRATOR_STATE(state, isect, object);
   isect->type = INTEGRATOR_STATE(state, isect, type);
   isect->u = INTEGRATOR_STATE(state, isect, u);
   isect->v = INTEGRATOR_STATE(state, isect, v);
   isect->t = INTEGRATOR_STATE(state, isect, t);
+#endif
 }
 
 #ifdef __VOLUME__
@@ -250,6 +270,10 @@ ccl_device_inline void integrator_state_copy_only(KernelGlobals kg,
           kernel_integrator_state.parent_struct.name[state]; \
     }
 
+#ifdef PACKED_STATE
+#  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
+#endif
+
 #  define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
     if (kernel_integrator_state.parent_struct[index].name != nullptr) { \
       kernel_integrator_state.parent_struct[index].name[to_state] = \
@@ -277,6 +301,10 @@ ccl_device_inline void integrator_state_copy_only(KernelGlobals kg,
 #  undef KERNEL_STRUCT_END
 #  undef KERNEL_STRUCT_END_ARRAY
 #  undef KERNEL_STRUCT_VOLUME_STACK_SIZE
+
+#ifdef PACKED_STATE
+#  undef KERNEL_STRUCT_MEMBER_PACKED
+#endif
 }
 
 ccl_device_inline void integrator_state_move(KernelGlobals kg,
@@ -306,6 +334,10 @@ ccl_device_inline void integrator_shadow_state_copy_only(KernelGlobals kg,
           kernel_integrator_state.parent_struct.name[state]; \
     }
 
+#ifdef PACKED_STATE
+#  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
+#endif
+
 #  define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
     if (kernel_integrator_state.parent_struct[index].name != nullptr) { \
       kernel_integrator_state.parent_struct[index].name[to_state] = \
@@ -333,6 +365,10 @@ ccl_device_inline void integrator_shadow_state_copy_only(KernelGlobals kg,
 #  undef KERNEL_STRUCT_END
 #  undef KERNEL_STRUCT_END_ARRAY
 #  undef KERNEL_STRUCT_VOLUME_STACK_SIZE
+
+#ifdef PACKED_STATE
+#  undef KERNEL_STRUCT_MEMBER_PACKED
+#endif
 }
 
 ccl_device_inline void integrator_shadow_state_move(KernelGlobals kg,

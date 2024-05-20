@@ -731,12 +731,12 @@ typedef struct Ray {
   float tmax; /* end distance */
   float time; /* time (for motion blur) */
 
-  RaySelfPrimitives self;
-
 #ifdef __RAY_DIFFERENTIALS__
   float dP;
   float dD;
 #endif
+
+  RaySelfPrimitives self;
 } Ray;
 
 /* Intersection */
@@ -747,6 +747,38 @@ typedef struct Intersection {
   int object;
   int type;
 } Intersection;
+
+#define packed_isect Intersection
+
+struct packed_ray {
+  packed_float3 P;
+  float dP;
+  packed_float3 D;
+  float dD;
+  float tmin;
+  float tmax;
+  float time;
+};
+
+struct packed_shadow_ray
+{
+  packed_float3 P;
+  packed_float3 D;
+  float tmin;
+  float tmax;
+  float time;
+  float dP;
+  int self_light;
+};
+
+struct packed_subsurface
+{
+  PackedSpectrum albedo;
+  PackedSpectrum radius;
+  float anisotropy;
+  packed_float3 N;
+};
+
 
 /* Primitives */
 

@@ -347,6 +347,12 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
     }
   }
 
+  if (auto str = getenv("PACKED_STATE")) {
+    if (atoi(str)) {
+      global_defines += "#define PACKED_STATE\n";
+    }
+  }
+
 #  ifdef WITH_CYCLES_DEBUG
   global_defines += "#define WITH_CYCLES_DEBUG\n";
 #  endif

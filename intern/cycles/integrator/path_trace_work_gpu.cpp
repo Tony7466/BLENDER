@@ -120,6 +120,11 @@ void PathTraceWorkGPU::alloc_integrator_soa()
     min_num_active_main_paths_ = min(min_num_active_main_paths_, max_num_paths_ / 2);
   }
 
+  bool packed_state = false;
+  if (auto str = getenv("PACKED_STATE")) {
+    packed_state = (atoi(str) != 0);
+  }
+
   /* Allocate a device only memory buffer before for each struct member, and then
    * write the pointers into a struct that resides in constant memory.
    *
@@ -132,7 +137,12 @@ void PathTraceWorkGPU::alloc_integrator_soa()
     device_only_memory<type> *array = new device_only_memory<type>(device_, name_str.c_str()); \
     array->alloc_to_device(max_num_paths_); \
     integrator_state_soa_.emplace_back(array); \
-    integrator_state_gpu_.parent_struct.name = (type *)array->device_pointer; \
+    memcpy(&integrator_state_gpu_.parent_struct.name, &array->device_pointer, sizeof(array->device_pointer)); \
+  }
+#define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
+  if (!packed_state) { KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) } else \
+  if ((kernel_features & (feature))) { \
+    printf("Using packed array (%s::%s) -- sizeof(%s) = %d bytes\n", #parent_struct, #name, "packed_" #parent_struct, (int)sizeof(packed_##parent_struct)); \
   }
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
   if ((kernel_features & (feature)) && \
@@ -143,7 +153,7 @@ void PathTraceWorkGPU::alloc_integrator_soa()
     device_only_memory<type> *array = new device_only_memory<type>(device_, name_str.c_str()); \
     array->alloc_to_device(max_num_paths_); \
     integrator_state_soa_.emplace_back(array); \
-    integrator_state_gpu_.parent_struct[array_index].name = (type *)array->device_pointer; \
+    memcpy(&integrator_state_gpu_.parent_struct[array_index].name, &array->device_pointer, sizeof(array->device_pointer)); \
   }
 #define KERNEL_STRUCT_END(name) \
   (void)array_index; \
