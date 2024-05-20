@@ -13,6 +13,7 @@
 
 #include "BLI_implicit_sharing.hh"
 #include "BLI_struct_equality_utils.hh"
+#include "BLI_utildefines.h"
 
 namespace blender {
 

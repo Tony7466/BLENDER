@@ -292,10 +292,8 @@ static MeshEditHints &geometry_mesh_edit_hints_ensure(GeometrySet &geometry)
 
 static void save_deform_mesh(GeometrySet &geometry)
 {
-  if (const Mesh *mesh = geometry.get_mesh()) {
-    MeshEditHints &edit_data = geometry_mesh_edit_hints_ensure(geometry);
-    edit_data.mesh_deform = geometry.get_component_ptr<MeshComponent>();
-  }
+  MeshEditHints &edit_data = geometry_mesh_edit_hints_ensure(geometry);
+  edit_data.mesh_deform = geometry.get_component_ptr<MeshComponent>();
 }
 
 static GeometrySet mesh_calc_modifiers(Depsgraph &depsgraph,
@@ -664,10 +662,8 @@ static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
 
 static void save_cage_mesh(GeometrySet &geometry)
 {
-  if (const Mesh *mesh = geometry.get_mesh()) {
-    MeshEditHints &edit_data = geometry_mesh_edit_hints_ensure(geometry);
-    edit_data.mesh_cage = geometry.get_component_ptr<MeshComponent>();
-  }
+  MeshEditHints &edit_data = geometry_mesh_edit_hints_ensure(geometry);
+  edit_data.mesh_cage = geometry.get_component_ptr<MeshComponent>();
 }
 
 static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
