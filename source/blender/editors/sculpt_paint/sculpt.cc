@@ -6293,6 +6293,8 @@ void fill_factor_from_hide_and_mask(const Mesh &mesh,
                                     const Span<int> verts,
                                     const MutableSpan<float> r_factors)
 {
+  BLI_assert(verts.size() == r_factors.size());
+
   /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
   const bke::AttributeAccessor attributes = mesh.attributes();
   if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
@@ -6331,6 +6333,9 @@ void calc_distance_falloff(SculptSession &ss,
                            const MutableSpan<float> r_distances,
                            const MutableSpan<float> factors)
 {
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == r_distances.size());
+
   SculptBrushTest test;
   const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, falloff_shape);
@@ -6355,6 +6360,9 @@ void calc_brush_strength_factors(const SculptSession &ss,
                                  const Span<float> distances,
                                  const MutableSpan<float> factors)
 {
+  BLI_assert(verts.size() == distances.size());
+  BLI_assert(verts.size() == factors.size());
+
   const StrokeCache &cache = *ss.cache;
 
   for (const int i : verts.index_range()) {
@@ -6378,6 +6386,8 @@ void calc_brush_texture_factors(SculptSession &ss,
                                 const Span<int> verts,
                                 const MutableSpan<float> factors)
 {
+  BLI_assert(verts.size() == factors.size());
+
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   const MTex *mtex = BKE_brush_mask_texture_get(&brush, OB_MODE_SCULPT);
   if (!mtex->tex) {
