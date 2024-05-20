@@ -1822,25 +1822,26 @@ static void node_join_attach_recursive(bNodeTree &ntree,
   }
 }
 
+static Vector<bNode *> get_sorted_node_parents(bNode &node)
+{
+  Vector<bNode *> parents;
+  for (bNode *parent = node.parent; parent; parent = parent->parent) {
+    parents.append(parent);
+  }
+  /* Reverse so that the root frame is the first element (if there is any). */
+  std::reverse(parents.begin(), parents.end());
+  return parents;
+}
+
 static bNode *find_common_parent_node(const Span<bNode *> nodes)
 {
   if (nodes.is_empty()) {
     return nullptr;
   }
-  Vector<bNode *> candidates;
-  /* Follow the chain of parents from the first node to find all frame nodes that could possibly be
-   * common to all nodes. */
-  for (bNode *parent = nodes[0]->parent; parent; parent = parent->parent) {
-    candidates.append(parent);
-  }
-  /* Reverse so that the root frame is the first element (if there is any). */
-  std::reverse(candidates.begin(), candidates.end());
+  /* The common parent node also has to be a parent of the first node. */
+  Vector<bNode *> candidates = get_sorted_node_parents(*nodes[0]);
   for (bNode *node : nodes.drop_front(1)) {
-    Vector<bNode *> parents;
-    for (bNode *parent = node->parent; parent; parent = parent->parent) {
-      parents.append(parent);
-    }
-    std::reverse(parents.begin(), parents.end());
+    Vector<bNode *> parents = get_sorted_node_parents(*node);
     /* Possibly shrink set of candidates so that it only contains the parents common with the
      * current node. */
     candidates.resize(std::min(candidates.size(), parents.size()));
