@@ -20,11 +20,7 @@
 
 namespace fs = std::filesystem;
 
-struct ShaderBinary {
-  GLint size;
-  GLuint format;
-  GLubyte data_start;
-};
+namespace blender::gpu {
 
 class SubprocessShader {
   GLuint vert = 0;
@@ -36,15 +32,12 @@ class SubprocessShader {
   SubprocessShader(const char *vert_src, const char *frag_src)
   {
     GLint status;
-    static char log[5000] = "";
 
     vert = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vert, 1, &vert_src, nullptr);
     glCompileShader(vert);
     glGetShaderiv(vert, GL_COMPILE_STATUS, &status);
     if (!status) {
-      glGetShaderInfoLog(vert, sizeof(log), nullptr, log);
-      fprintf(stderr, log);
       return;
     }
 
@@ -53,8 +46,6 @@ class SubprocessShader {
     glCompileShader(frag);
     glGetShaderiv(frag, GL_COMPILE_STATUS, &status);
     if (!status) {
-      glGetShaderInfoLog(frag, sizeof(log), nullptr, log);
-      fprintf(stderr, log);
       return;
     }
 
@@ -64,8 +55,6 @@ class SubprocessShader {
     glLinkProgram(program);
     glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (!status) {
-      glGetProgramInfoLog(program, sizeof(log), nullptr, log);
-      fprintf(stderr, log);
       return;
     }
 
@@ -83,7 +72,7 @@ class SubprocessShader {
   {
     ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(memory);
 
-    if (success) {
+    if (success && (bin->size + sizeof(ShaderBinary) < ShaderBinary::max_data_size)) {
       glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &bin->size);
       glGetProgramBinary(program, bin->size, nullptr, &bin->format, &bin->data_start);
     }
@@ -97,7 +86,7 @@ class SubprocessShader {
 };
 
 /* Check if the binary is valid and can be loaded by the driver. */
-bool validate_binary(void *binary)
+static bool validate_binary(void *binary)
 {
   ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(binary);
   GLuint program = glCreateProgram();
@@ -108,13 +97,17 @@ bool validate_binary(void *binary)
   return status;
 }
 
+}  // namespace blender::gpu
+
 void GPU_compilation_subprocess_run(const char *subprocess_name)
 {
   using namespace blender;
+  using namespace blender::gpu;
+
   CLG_init();
 
   ipc_sharedmemory_ shared_mem = {0};
-  ipc_mem_init(&shared_mem, subprocess_name, 1024 * 1024 * 5 /*5mb TODO: pass as parameter. */);
+  ipc_mem_init(&shared_mem, subprocess_name, ShaderBinary::max_data_size);
   if (ipc_mem_open_existing(&shared_mem) != 0) {
     return;
   }

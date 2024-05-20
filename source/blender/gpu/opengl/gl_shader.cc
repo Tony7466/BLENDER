@@ -19,6 +19,7 @@
 #include BLI_SYSTEM_PID_H
 
 #include "GPU_capabilities.hh"
+#include "GPU_compilation_subprocess.hh"
 #include "GPU_platform.hh"
 #include "gpu_capabilities_private.hh"
 #include "gpu_shader_dependency_private.hh"
@@ -1593,14 +1594,14 @@ GLuint GLShader::program_get()
 /** \name Compiler workers
  * \{ */
 
-GLCompilerWorker::GLCompilerWorker(size_t max_size)
+GLCompilerWorker::GLCompilerWorker()
 {
   static size_t pipe_id = 0;
   pipe_id++;
 
   std::string pipe_name = "BLENDER_SHADER_COMPILER_" + std::to_string(getpid()) + "_" +
                           std::to_string(pipe_id);
-  ipc_mem_init(&pipe_, pipe_name.c_str(), max_size);
+  ipc_mem_init(&pipe_, pipe_name.c_str(), ShaderBinary::max_data_size);
   ipc_mem_create(&pipe_);
 
   std::string start_name = pipe_name + "_START";
@@ -1727,7 +1728,7 @@ GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert, const 
     }
   }
   if (!result && workers_.size() < GCaps.max_parallel_compilations) {
-    result = new GLCompilerWorker(1024 * 1024 * 5); /* 5mB */
+    result = new GLCompilerWorker();
     workers_.append(result);
   }
   if (result) {
@@ -1777,7 +1778,16 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
       for (const char *src : item.shader->fragment_sources_.sources_get()) {
         item.fragment_src.append(src);
       }
-      item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
+
+      size_t required_size = item.vertex_src.size() + item.fragment_src.size() +
+                             sizeof(ShaderBinary);
+
+      if (required_size < ShaderBinary::max_data_size) {
+        item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
+      }
+      else {
+        const_cast<shader::ShaderCreateInfo *>(info)->do_batch_compilation = false;
+      }
     }
     batch.items.append(item);
   }
@@ -1813,10 +1823,14 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       {
         delete item.shader;
         item.shader = nullptr;
+        /* Try to compile it locally. */
+        const_cast<shader::ShaderCreateInfo *>(item.info)->do_batch_compilation = false;
+      }
+      else {
+        item.is_ready = true;
       }
       item.worker->release();
       item.worker = nullptr;
-      item.is_ready = true;
     }
     else if (worker_is_lost(item.worker)) {
       delete item.shader;

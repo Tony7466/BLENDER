@@ -232,7 +232,7 @@ class GLCompilerWorker {
   bool is_lost();
 
  private:
-  GLCompilerWorker(size_t max_size);
+  GLCompilerWorker();
   ~GLCompilerWorker();
   void compile(StringRefNull vert, StringRefNull frag);
   void release();
