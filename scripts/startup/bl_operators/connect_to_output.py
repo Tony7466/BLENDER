@@ -37,7 +37,6 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
     )
 
     def __init__(self):
-        self.shader_output_type = ""
         self.shader_output_idname = ""
 
     @classmethod
@@ -56,13 +55,10 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
         """Get correct output node in shader editor"""
         if shader_type == 'OBJECT':
             if space.id in bpy.data.lights.values():
-                self.shader_output_type = 'OUTPUT_LIGHT'
                 self.shader_output_idname = 'ShaderNodeOutputLight'
             else:
-                self.shader_output_type = 'OUTPUT_MATERIAL'
                 self.shader_output_idname = 'ShaderNodeOutputMaterial'
         elif shader_type == 'WORLD':
-            self.shader_output_type = 'OUTPUT_WORLD'
             self.shader_output_idname = 'ShaderNodeOutputWorld'
 
     def ensure_viewer_socket(self, node_tree, socket_type, connect_socket=None):
@@ -159,7 +155,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
             if node_tree.type == 'GEOMETRY':
                 output_node = get_group_output_node(node_tree)
             elif node_tree.type == 'SHADER':
-                output_node = get_group_output_node(node_tree, output_node_type=self.shader_output_type)
+                output_node = get_group_output_node(node_tree, output_node_idname=self.shader_output_idname)
 
             if output_node is not None:
                 self.search_sockets(output_node, self.used_viewer_sockets_active_mat)
@@ -175,7 +171,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
                         continue
                     # Get viewer node.
                     output_node = get_group_output_node(mat.node_tree,
-                                                        output_node_type=self.shader_output_type)
+                                                        output_node_idname=self.shader_output_idname)
                     if output_node is not None:
                         self.search_sockets(output_node, self.other_viewer_sockets_users)
             elif socket.socket_type == 'NodeSocketGeometry':
@@ -304,7 +300,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
 
             # Get or create material_output node.
             output_node = get_group_output_node(base_node_tree,
-                                                output_node_type=self.shader_output_type)
+                                                output_node_idname=self.shader_output_idname)
             if not output_node:
                 output_node = base_node_tree.nodes.new(self.shader_output_idname)
                 output_node.location = get_output_location(base_node_tree)

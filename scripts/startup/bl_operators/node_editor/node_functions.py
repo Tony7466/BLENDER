@@ -29,11 +29,11 @@ def node_space_type_poll(cls, context, types):
     return True
 
 
-def get_group_output_node(tree, output_node_type='GROUP_OUTPUT'):
+def get_group_output_node(tree, output_node_idname='NodeGroupOutput'):
     for node in tree.nodes:
-        if node.type == output_node_type and node.is_active_output:
+        if node.bl_idname == output_node_idname and node.is_active_output:
             return node
-        
+
 
 def get_output_location(tree):
     # get right-most location.
