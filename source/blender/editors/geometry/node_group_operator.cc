@@ -241,7 +241,7 @@ static void store_result_geometry(
       const bool has_shape_keys = mesh.key != nullptr;
 
       if (object.mode == OB_MODE_SCULPT) {
-        sculpt_paint::undo::geometry_begin(&object, &op);
+        sculpt_paint::undo::geometry_begin(object, &op);
       }
 
       Mesh *new_mesh = geometry.get_component_for_write<bke::MeshComponent>().release();
@@ -268,7 +268,7 @@ static void store_result_geometry(
       }
 
       if (object.mode == OB_MODE_SCULPT) {
-        sculpt_paint::undo::geometry_end(&object);
+        sculpt_paint::undo::geometry_end(object);
       }
       break;
     }
@@ -615,7 +615,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
                                                   PointerRNA *md_ptr,
                                                   const bNodeTreeInterfaceSocket &socket)
 {
-  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
+  bke::bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(socket.socket_type);
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
 
   char socket_id_esc[MAX_NAME * 2];
@@ -668,7 +668,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
                                      const bNodeTreeInterfaceSocket &socket,
                                      const int socket_index)
 {
-  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
+  bke::bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(socket.socket_type);
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
 
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
