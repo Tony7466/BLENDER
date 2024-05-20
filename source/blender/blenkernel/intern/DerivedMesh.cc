@@ -69,6 +69,7 @@
 #  include "DNA_userdef_types.h"
 #endif
 
+using blender::Array;
 using blender::float3;
 using blender::IndexRange;
 using blender::MutableSpan;
@@ -90,154 +91,7 @@ using blender::bke::MeshComponent;
 
 static void mesh_init_origspace(Mesh *mesh);
 
-/* -------------------------------------------------------------------- */
-
-static float *dm_getVertArray(DerivedMesh *dm)
-{
-  float(*positions)[3] = (float(*)[3])CustomData_get_layer_named_for_write(
-      &dm->vertData, CD_PROP_FLOAT3, "position", dm->getNumVerts(dm));
-
-  if (!positions) {
-    positions = (float(*)[3])CustomData_add_layer_named(
-        &dm->vertData, CD_PROP_FLOAT3, CD_SET_DEFAULT, dm->getNumVerts(dm), "position");
-    CustomData_set_layer_flag(&dm->vertData, CD_PROP_FLOAT3, CD_FLAG_TEMPORARY);
-    dm->copyVertArray(dm, positions);
-  }
-
-  return (float *)positions;
-}
-
-static blender::int2 *dm_getEdgeArray(DerivedMesh *dm)
-{
-  blender::int2 *edge = (blender::int2 *)CustomData_get_layer_named_for_write(
-      &dm->edgeData, CD_PROP_INT32_2D, ".edge_verts", dm->getNumEdges(dm));
-
-  if (!edge) {
-    edge = (blender::int2 *)CustomData_add_layer_named(
-        &dm->edgeData, CD_PROP_INT32_2D, CD_SET_DEFAULT, dm->getNumEdges(dm), ".edge_verts");
-    CustomData_set_layer_flag(&dm->edgeData, CD_PROP_INT32_2D, CD_FLAG_TEMPORARY);
-    dm->copyEdgeArray(dm, edge);
-  }
-
-  return edge;
-}
-
-static int *dm_getCornerVertArray(DerivedMesh *dm)
-{
-  int *corner_verts = (int *)CustomData_get_layer_named_for_write(
-      &dm->loopData, CD_PROP_INT32, ".corner_vert", dm->getNumLoops(dm));
-
-  if (!corner_verts) {
-    corner_verts = (int *)CustomData_add_layer_named(
-        &dm->loopData, CD_PROP_INT32, CD_SET_DEFAULT, dm->getNumLoops(dm), ".corner_vert");
-    dm->copyCornerVertArray(dm, corner_verts);
-  }
-
-  return corner_verts;
-}
-
-static int *dm_getCornerEdgeArray(DerivedMesh *dm)
-{
-  int *corner_edges = (int *)CustomData_get_layer_named(
-      &dm->loopData, CD_PROP_INT32, ".corner_edge");
-
-  if (!corner_edges) {
-    corner_edges = (int *)CustomData_add_layer_named(
-        &dm->loopData, CD_PROP_INT32, CD_SET_DEFAULT, dm->getNumLoops(dm), ".corner_edge");
-    dm->copyCornerEdgeArray(dm, corner_edges);
-  }
-
-  return corner_edges;
-}
-
-static int *dm_getPolyArray(DerivedMesh *dm)
-{
-  if (!dm->face_offsets) {
-    dm->face_offsets = MEM_cnew_array<int>(dm->getNumPolys(dm) + 1, __func__);
-    dm->copyPolyArray(dm, dm->face_offsets);
-  }
-  return dm->face_offsets;
-}
-
-void DM_init_funcs(DerivedMesh *dm)
-{
-  /* default function implementations */
-  dm->getVertArray = dm_getVertArray;
-  dm->getEdgeArray = dm_getEdgeArray;
-  dm->getCornerVertArray = dm_getCornerVertArray;
-  dm->getCornerEdgeArray = dm_getCornerEdgeArray;
-  dm->getPolyArray = dm_getPolyArray;
-
-  dm->getVertDataArray = DM_get_vert_data_layer;
-  dm->getEdgeDataArray = DM_get_edge_data_layer;
-  dm->getPolyDataArray = DM_get_poly_data_layer;
-  dm->getLoopDataArray = DM_get_loop_data_layer;
-}
-
-void DM_init(DerivedMesh *dm,
-             DerivedMeshType type,
-             int numVerts,
-             int numEdges,
-             int numTessFaces,
-             int numLoops,
-             int numPolys)
-{
-  dm->type = type;
-  dm->numVertData = numVerts;
-  dm->numEdgeData = numEdges;
-  dm->numTessFaceData = numTessFaces;
-  dm->numLoopData = numLoops;
-  dm->numPolyData = numPolys;
-
-  DM_init_funcs(dm);
-
-  /* Don't use #CustomData_reset because we don't want to touch custom-data. */
-  copy_vn_i(dm->vertData.typemap, CD_NUMTYPES, -1);
-  copy_vn_i(dm->edgeData.typemap, CD_NUMTYPES, -1);
-  copy_vn_i(dm->faceData.typemap, CD_NUMTYPES, -1);
-  copy_vn_i(dm->loopData.typemap, CD_NUMTYPES, -1);
-  copy_vn_i(dm->polyData.typemap, CD_NUMTYPES, -1);
-}
-
-void DM_from_template(DerivedMesh *dm,
-                      DerivedMesh *source,
-                      DerivedMeshType type,
-                      int numVerts,
-                      int numEdges,
-                      int numTessFaces,
-                      int numLoops,
-                      int numPolys)
-{
-  const CustomData_MeshMasks *mask = &CD_MASK_DERIVEDMESH;
-  CustomData_copy_layout(&source->vertData, &dm->vertData, mask->vmask, CD_SET_DEFAULT, numVerts);
-  CustomData_copy_layout(&source->edgeData, &dm->edgeData, mask->emask, CD_SET_DEFAULT, numEdges);
-  CustomData_copy_layout(
-      &source->faceData, &dm->faceData, mask->fmask, CD_SET_DEFAULT, numTessFaces);
-  CustomData_copy_layout(&source->loopData, &dm->loopData, mask->lmask, CD_SET_DEFAULT, numLoops);
-  CustomData_copy_layout(&source->polyData, &dm->polyData, mask->pmask, CD_SET_DEFAULT, numPolys);
-  dm->face_offsets = static_cast<int *>(MEM_dupallocN(source->face_offsets));
-
-  dm->type = type;
-  dm->numVertData = numVerts;
-  dm->numEdgeData = numEdges;
-  dm->numTessFaceData = numTessFaces;
-  dm->numLoopData = numLoops;
-  dm->numPolyData = numPolys;
-
-  DM_init_funcs(dm);
-}
-
-void DM_release(DerivedMesh *dm)
-{
-  CustomData_free(&dm->vertData, dm->numVertData);
-  CustomData_free(&dm->edgeData, dm->numEdgeData);
-  CustomData_free(&dm->faceData, dm->numTessFaceData);
-  CustomData_free(&dm->loopData, dm->numLoopData);
-  CustomData_free(&dm->polyData, dm->numPolyData);
-  MEM_SAFE_FREE(dm->face_offsets);
-}
-
-void BKE_mesh_runtime_eval_to_meshkey(Mesh *me_deformed, Mesh *mesh, KeyBlock *kb)
+void BKE_mesh_runtime_eval_to_meshkey(const Mesh *me_deformed, Mesh *mesh, KeyBlock *kb)
 {
   /* Just a shallow wrapper around #BKE_keyblock_convert_from_mesh,
    * that ensures both evaluated mesh and original one has same number of vertices. */
@@ -249,20 +103,6 @@ void BKE_mesh_runtime_eval_to_meshkey(Mesh *me_deformed, Mesh *mesh, KeyBlock *k
   }
 
   BKE_keyblock_convert_from_mesh(me_deformed, mesh->key, kb);
-}
-
-void DM_set_only_copy(DerivedMesh *dm, const CustomData_MeshMasks *mask)
-{
-  CustomData_set_only_copy(&dm->vertData, mask->vmask);
-  CustomData_set_only_copy(&dm->edgeData, mask->emask);
-  CustomData_set_only_copy(&dm->faceData, mask->fmask);
-  /* this wasn't in 2.63 and is disabled for 2.64 because it gives problems with
-   * weight paint mode when there are modifiers applied, needs further investigation,
-   * see replies to r50969, Campbell */
-#if 0
-  CustomData_set_only_copy(&dm->loopData, mask->lmask);
-  Custom(&dm->polyData, mask->pmask);
-#endif
 }
 
 static void mesh_set_only_copy(Mesh *mesh, const CustomData_MeshMasks *mask)
@@ -279,77 +119,22 @@ static void mesh_set_only_copy(Mesh *mesh, const CustomData_MeshMasks *mask)
 #endif
 }
 
-void *DM_get_vert_data_layer(DerivedMesh *dm, const eCustomDataType type)
-{
-  return CustomData_get_layer_for_write(&dm->vertData, type, dm->getNumVerts(dm));
-}
-
-void *DM_get_edge_data_layer(DerivedMesh *dm, const eCustomDataType type)
-{
-  return CustomData_get_layer_for_write(&dm->edgeData, type, dm->getNumEdges(dm));
-}
-
-void *DM_get_poly_data_layer(DerivedMesh *dm, const eCustomDataType type)
-{
-  return CustomData_get_layer_for_write(&dm->polyData, type, dm->getNumPolys(dm));
-}
-
-void *DM_get_loop_data_layer(DerivedMesh *dm, const eCustomDataType type)
-{
-  return CustomData_get_layer_for_write(&dm->loopData, type, dm->getNumLoops(dm));
-}
-
-void DM_copy_vert_data(
-    const DerivedMesh *source, DerivedMesh *dest, int source_index, int dest_index, int count)
-{
-  CustomData_copy_data(&source->vertData, &dest->vertData, source_index, dest_index, count);
-}
-
-void DM_interp_vert_data(const DerivedMesh *source,
-                         DerivedMesh *dest,
-                         int *src_indices,
-                         float *weights,
-                         int count,
-                         int dest_index)
-{
-  CustomData_interp(
-      &source->vertData, &dest->vertData, src_indices, weights, nullptr, count, dest_index);
-}
-
-static float (*get_editbmesh_orco_verts(const BMEditMesh *em))[3]
-{
-  BMIter iter;
-  BMVert *eve;
-  float(*orco)[3];
-  int i;
-
-  /* these may not really be the orco's, but it's only for preview.
-   * could be solver better once, but isn't simple */
-
-  orco = (float(*)[3])MEM_malloc_arrayN(em->bm->totvert, sizeof(float[3]), "BMEditMesh Orco");
-
-  BM_ITER_MESH_INDEX (eve, &iter, em->bm, BM_VERTS_OF_MESH, i) {
-    copy_v3_v3(orco[i], eve->co);
-  }
-
-  return orco;
-}
-
 /* orco custom data layer */
-static float (*get_orco_coords(const Object *ob, const BMEditMesh *em, int layer, int *free))[3]
+static Span<float3> get_orco_coords(const Object *ob,
+                                    const BMEditMesh *em,
+                                    eCustomDataType layer_type,
+                                    Array<float3> &storage)
 {
-  *free = 0;
-
-  if (layer == CD_ORCO) {
-    /* get original coordinates */
-    *free = 1;
+  if (layer_type == CD_ORCO) {
 
     if (em) {
-      return get_editbmesh_orco_verts(em);
+      storage = BM_mesh_vert_coords_alloc(em->bm);
+      return storage;
     }
-    return BKE_mesh_orco_verts_get(ob);
+    storage = BKE_mesh_orco_verts_get(ob);
+    return storage;
   }
-  if (layer == CD_CLOTH_ORCO) {
+  if (layer_type == CD_CLOTH_ORCO) {
     /* apply shape key for cloth, this should really be solved
      * by a more flexible customdata system, but not simple */
     if (!em) {
@@ -360,23 +145,23 @@ static float (*get_orco_coords(const Object *ob, const BMEditMesh *em, int layer
             BKE_key_from_object(const_cast<Object *>(ob)), clmd->sim_parms->shapekey_rest);
 
         if (kb && kb->data) {
-          return (float(*)[3])kb->data;
+          return {static_cast<const float3 *>(kb->data), kb->totelem};
         }
       }
     }
 
-    return nullptr;
+    return {};
   }
 
-  return nullptr;
+  return {};
 }
 
-static Mesh *create_orco_mesh(const Object *ob, const Mesh *mesh, const BMEditMesh *em, int layer)
+static Mesh *create_orco_mesh(const Object *ob,
+                              const Mesh *mesh,
+                              const BMEditMesh *em,
+                              eCustomDataType layer)
 {
   Mesh *orco_mesh;
-  float(*orco)[3];
-  int free;
-
   if (em) {
     orco_mesh = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, nullptr, mesh);
     BKE_mesh_ensure_default_orig_index_customdata(orco_mesh);
@@ -385,15 +170,12 @@ static Mesh *create_orco_mesh(const Object *ob, const Mesh *mesh, const BMEditMe
     orco_mesh = BKE_mesh_copy_for_eval(mesh);
   }
 
-  orco = get_orco_coords(ob, em, layer, &free);
+  Array<float3> storage;
+  const Span<float3> orco = get_orco_coords(ob, em, layer, storage);
 
-  if (orco) {
-    orco_mesh->vert_positions_for_write().copy_from(
-        {reinterpret_cast<const float3 *>(orco), orco_mesh->verts_num});
+  if (!orco.is_empty()) {
+    orco_mesh->vert_positions_for_write().copy_from(orco);
     orco_mesh->tag_positions_changed();
-    if (free) {
-      MEM_freeN(orco);
-    }
   }
 
   return orco_mesh;
@@ -430,21 +212,17 @@ static void add_orco_mesh(Object *ob,
   else {
     /* TODO(sybren): totvert should potentially change here, as ob->data
      * or em may have a different number of vertices than dm. */
-    int free = 0;
-    float(*orco)[3] = get_orco_coords(ob, em, layer, &free);
-    if (orco) {
+    Array<float3> storage;
+    const Span<float3> orco = get_orco_coords(ob, em, layer, storage);
+    if (!orco.is_empty()) {
       layer_orco = orco_coord_layer_ensure(mesh, layer);
-      layer_orco.copy_from(Span<float3>(reinterpret_cast<float3 *>(orco), totvert));
-    }
-    if (free) {
-      MEM_freeN(orco);
+      layer_orco.copy_from(orco);
     }
   }
 
   if (!layer_orco.is_empty()) {
     if (layer == CD_ORCO) {
-      BKE_mesh_orco_verts_transform(
-          (Mesh *)ob->data, reinterpret_cast<float(*)[3]>(layer_orco.data()), totvert, false);
+      BKE_mesh_orco_verts_transform((Mesh *)ob->data, layer_orco, false);
     }
   }
 }

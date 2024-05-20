@@ -604,7 +604,10 @@ const char *nodeStaticSocketLabel(int type, int subtype);
   } \
   ((void)0)
 
-bNodeSocket *nodeFindSocket(const bNode *node, eNodeSocketInOut in_out, const char *identifier);
+bNodeSocket *nodeFindSocket(bNode *node, eNodeSocketInOut in_out, StringRef identifier);
+const bNodeSocket *nodeFindSocket(const bNode *node,
+                                  eNodeSocketInOut in_out,
+                                  StringRef identifier);
 bNodeSocket *nodeAddSocket(bNodeTree *ntree,
                            bNode *node,
                            eNodeSocketInOut in_out,
@@ -1635,8 +1638,6 @@ void node_preview_free(bNodePreview *preview);
 void node_preview_init_tree(bNodeTree *ntree, int xsize, int ysize);
 
 void node_preview_remove_unused(bNodeTree *ntree);
-
-void node_preview_clear(bNodePreview *preview);
 
 void node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, bool remove_old);
 
