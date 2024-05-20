@@ -62,9 +62,6 @@ static void extract_lines_mesh(const MeshRenderData &mr,
                                gpu::IndexBuf *lines_loose,
                                bool &no_loose_wire)
 {
-  const OffsetIndices faces = mr.faces;
-  const Span<int> corner_edges = mr.corner_edges;
-
   IndexMaskMemory memory;
   const IndexMask all_loose_edges = IndexMask::from_indices(mr.loose_edges, memory);
   const IndexMask visible_loose_edges = calc_mesh_edge_visibility(mr, all_loose_edges, memory);
@@ -95,6 +92,8 @@ static void extract_lines_mesh(const MeshRenderData &mr,
    * This is okay because any of the possible face corner indices are correct, since they all
    * correspond to the same #Mesh vertex. `used` exists here as a performance optimization to
    * avoid writing to the VBO. */
+  const OffsetIndices faces = mr.faces;
+  const Span<int> corner_edges = mr.corner_edges;
   if (visible_non_loose_edges.size() == mr.edges_num) {
     /* All edges in the mesh are visible. The edges in the GPU buffer will have the same order as
      * the mesh's edges, so any remapping is unnecessary. Use a boolean array to avoid writing to
