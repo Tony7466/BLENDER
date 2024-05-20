@@ -242,6 +242,10 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
   const int subdiv_loose_edge_verts_num = verts_per_coarse_edge * loose_edges.size();
   const int loose_edge_verts_start = subdiv_cache.num_subdiv_loops;
 
+  /* Handling of loose edge vertices is more complex than it should be, and reverts to the branchy
+   * operation per-element design. It's also single threaded. Ideally this source data would be
+   * uploaded to the GPU and the index buffer would be created there. This shouldn't be a
+   * bottleneck in typical GPU subdivision use cases though. */
   const auto show_vert = [&](const int vert) {
     if (!hide_vert.is_empty() && hide_vert[vert]) {
       return false;
