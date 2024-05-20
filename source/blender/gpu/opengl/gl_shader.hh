@@ -224,10 +224,12 @@ class GLCompilerWorker {
   ipc_sharedsemaphore close_semaphore_ = {0};
   enum eState { COMPILATION_REQUESTED, COMPILATION_READY, COMPILATION_FINISHED, AVAILABLE };
   eState state_ = AVAILABLE;
+  double compilation_start = 0;
 
  public:
   bool poll();
   bool load_program_binary(GLint program);
+  bool is_lost();
 
  private:
   GLCompilerWorker(size_t max_size);
@@ -261,6 +263,7 @@ class GLShaderCompiler : public ShaderCompilerBase {
   Map<BatchHandle, Batch> batches;
 
   GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag);
+  bool worker_is_lost(GLCompilerWorker *&worker);
   void print_workers();
 
  public:

@@ -12,9 +12,11 @@
 #include "BKE_global.hh"
 
 #include "BLI_string.h"
+#include "BLI_time.h"
+#include "BLI_vector.hh"
+
 #include "BLI_system.h"
 #include BLI_SYSTEM_PID_H
-#include "BLI_vector.hh"
 
 #include "GPU_capabilities.hh"
 #include "GPU_platform.hh"
@@ -1648,6 +1650,7 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   ipc_sem_increment(&start_semaphore_);
 
   state_ = COMPILATION_REQUESTED;
+  compilation_start = BLI_time_now_seconds();
 }
 
 bool GLCompilerWorker::poll()
@@ -1666,7 +1669,13 @@ bool GLCompilerWorker::poll()
   return state_ == COMPILATION_READY;
 }
 
-#include "BLI_time.h"
+bool GLCompilerWorker::is_lost()
+{
+  /* We need some way to handle processes being killed or lost due to crashes or hangs.
+   * There's no good way to check for those, so we simply use a max timeout. */
+  float max_timeout_seconds = 30.0f;
+  return (BLI_time_now_seconds() - compilation_start) > max_timeout_seconds;
+}
 
 bool GLCompilerWorker::load_program_binary(GLint program)
 {
@@ -1735,6 +1744,18 @@ GLCompilerWorker *GLShaderCompiler::get_compiler_worker(const char *vert, const 
     result->compile(vert, frag);
   }
   return result;
+}
+
+bool GLShaderCompiler::worker_is_lost(GLCompilerWorker *&worker)
+{
+  if (worker->is_lost()) {
+    std::cerr << "ERROR: Compilation subprocess lost\n";
+    workers_.remove_first_occurrence_and_reorder(worker);
+    delete worker;
+    worker = nullptr;
+  }
+
+  return worker == nullptr;
 }
 
 void GLShaderCompiler::print_workers()
@@ -1809,8 +1830,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       waiting++;
       item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     }
-
-    if (item.worker && item.worker->poll()) {
+    else if (item.worker->poll()) {
       if (!item.worker->load_program_binary(item.shader->program_active_->program_id) ||
           !item.shader->post_finalize(item.info))
       {
@@ -1820,6 +1840,12 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       item.worker->release();
       item.worker = nullptr;
       item.is_ready = true;
+    }
+    else if (worker_is_lost(item.worker)) {
+      delete item.shader;
+      item.shader = nullptr;
+      /* Try to compile it locally. */
+      const_cast<shader::ShaderCreateInfo *>(item.info)->do_batch_compilation = false;
     }
 
     if (!item.is_ready) {
@@ -1868,6 +1894,7 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
     GLCompilerWorker *worker = nullptr;
     bool is_ready = false;
     GLuint program;
+    GLShader *shader;
   };
 
   Vector<SpecializationWork> items;
@@ -1886,6 +1913,7 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
     }
     items.append({});
     SpecializationWork &item = items.last();
+    item.shader = sh;
     sh->async_compilation_ = true;
     item.program = sh->program_get();
     sh->async_compilation_ = false;
@@ -1906,19 +1934,27 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
       if (item.is_ready) {
         continue;
       }
+      std::scoped_lock lock(mutex_);
 
       if (item.worker == nullptr) {
-        std::scoped_lock lock(mutex_);
         item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
       }
       else if (item.worker->poll()) {
         bool success = item.worker->load_program_binary(item.program);
         BLI_assert(success);
-        std::scoped_lock lock(mutex_);
         item.worker->release();
         item.worker = nullptr;
         item.is_ready = true;
       }
+      else if (worker_is_lost(item.worker)) {
+        glDeleteProgram(item.program);
+        item.program = 0;
+        item.shader->program_active_->program_id = 0;
+        item.shader->constants.is_dirty = true;
+        /* Will be compiled locally later. */
+        item.is_ready = true;
+      }
+
       if (!item.is_ready) {
         is_ready = false;
       }
