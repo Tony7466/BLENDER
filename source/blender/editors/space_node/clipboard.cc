@@ -60,12 +60,12 @@ struct NodeClipboardItem {
 };
 
 struct ClipboardLink {
-  const bNode *from_node;
-  const bNode *to_node;
+  const bNode *from_node = nullptr;
+  const bNode *to_node = nullptr;
   std::string from_socket;
   std::string to_socket;
-  int flag;
-  int multi_input_sort_id;
+  int flag = 0;
+  int multi_input_sort_id = 0;
 };
 
 struct NodeClipboard {
