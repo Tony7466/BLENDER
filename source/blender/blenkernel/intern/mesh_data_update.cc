@@ -264,7 +264,6 @@ static void modifier_modify_mesh_and_geometry_set(ModifierData *md,
 
 static void set_rest_position(Mesh &mesh)
 {
-  BKE_mesh_wrapper_ensure_mdata(&mesh);
   MutableAttributeAccessor attributes = mesh.attributes_for_write();
   const AttributeReader positions = attributes.lookup<float3>("position");
   attributes.remove("rest_position");
@@ -726,6 +725,7 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
 
   if (ob.modifier_flag & OB_MODIFIER_FLAG_ADD_REST_POSITION) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+      BKE_mesh_wrapper_ensure_mdata(mesh);
       set_rest_position(*mesh);
     }
   }
