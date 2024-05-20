@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'7b7e9f224c89')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-22 07:36+0000\n"
+"POT-Creation-Date: 2024-05-06 10:38+0000\n"
 "PO-Revision-Date: 2024-01-17 19:22+0000\n"
 "Last-Translator: Peter Simonsson <peter@simonsson.com>\n"
 "Language-Team: Swedish <https://translate.blender.org/projects/blender-ui/ui/sv/>\n"
@@ -313,6 +313,10 @@ msgstr "Håll fast framåt"
 
 msgid "Animation"
 msgstr "Animering"
+
+
+msgid "New"
+msgstr "Ny"
 
 
 msgid "Motion Paths"
@@ -5449,6 +5453,10 @@ msgid "Context Menu"
 msgstr "Kontextmeny"
 
 
+msgid "Zoom"
+msgstr "Zooma"
+
+
 msgid "Console"
 msgstr "Konsol"
 
@@ -5565,10 +5573,6 @@ msgid "Apply"
 msgstr "Applicera"
 
 
-msgid "Cache"
-msgstr "Cache"
-
-
 msgid "Text to 3D Object"
 msgstr "Text till 3D-objekt"
 
@@ -5583,6 +5587,10 @@ msgstr "Open Shading Language"
 
 msgid "Python"
 msgstr "Python"
+
+
+msgid "Cache"
+msgstr "Cache"
 
 
 msgid "Blender"
@@ -5725,10 +5733,6 @@ msgid "Explode"
 msgstr "Spräng"
 
 
-msgid "New"
-msgstr "Ny"
-
-
 msgid "Face Count"
 msgstr "Sidantal"
 
@@ -5805,10 +5809,6 @@ msgid "Basis"
 msgstr "Bas"
 
 
-msgid "Zoom"
-msgstr "Zooma"
-
-
 msgctxt "Image"
 msgid "Edge"
 msgstr "Kant"
@@ -5816,6 +5816,10 @@ msgstr "Kant"
 
 msgid "Shadow"
 msgstr "Skugga"
+
+
+msgid "Apply a color transformation in the HSV color model"
+msgstr "Applicera en färgomvandling i HSV-färgmodellen"
 
 
 msgid "Eccentricity"
@@ -5830,8 +5834,16 @@ msgid "Lens Distortion"
 msgstr "Linsförvrängning"
 
 
+msgid "A color picker"
+msgstr "En färgväljare"
+
+
 msgid "Rotate"
 msgstr "Rotera"
+
+
+msgid "Map values to colors with the use of a gradient"
+msgstr "Mappa värden till färger med användning av en gradient"
 
 
 msgid "Menu"
@@ -6512,10 +6524,6 @@ msgid "Curves Info"
 msgstr "Kurvinfo"
 
 
-msgid "Apply a color transformation in the HSV color model"
-msgstr "Applicera en färgomvandling i HSV-färgmodellen"
-
-
 msgid "Invert a color, producing a negative"
 msgstr "Invertera en färg, till en negativ"
 
@@ -6554,10 +6562,6 @@ msgstr "Punktinfo"
 
 msgid "Retrieve information about points in a point cloud"
 msgstr "Hämta information om punkter i ett punktmoln"
-
-
-msgid "A color picker"
-msgstr "En färgväljare"
 
 
 msgid "Apply color corrections for each color channel"
@@ -6929,14 +6933,6 @@ msgstr "Returnera slumpvis värde eller färg baserat på input-frö"
 
 msgid "UV coordinates to be used for mapping"
 msgstr "UV-koordinater som används för mappning"
-
-
-msgid "Map values to colors with the use of a gradient"
-msgstr "Mappa värden till färger med användning av en gradient"
-
-
-msgid "Map an input vectors to curves, used to fine-tune the interpolation of the input"
-msgstr "Mappa en input-vektor till kurvor, används för att finjustera interpolationen av inputen"
 
 
 msgid "Displace the surface along an arbitrary direction"
@@ -8361,6 +8357,10 @@ msgid "Add Circle"
 msgstr "Lägg till cirkel"
 
 
+msgid "Handles"
+msgstr "Handtag"
+
+
 msgctxt "Operator"
 msgid "Toggle Cyclic"
 msgstr "Växla cyklisk"
@@ -8433,10 +8433,6 @@ msgstr "Separera"
 msgctxt "Operator"
 msgid "Smooth"
 msgstr "Jämn"
-
-
-msgid "Handles"
-msgstr "Handtag"
 
 
 msgid "Subdivide selected segments"
@@ -13798,6 +13794,11 @@ msgstr "Armatur"
 
 
 msgctxt "WindowManager"
+msgid "Rotate"
+msgstr "Rotera"
+
+
+msgctxt "WindowManager"
 msgid "Timeline"
 msgstr "Tidslinje"
 
@@ -13905,11 +13906,6 @@ msgstr "Snäpp"
 msgctxt "WindowManager"
 msgid "Apply"
 msgstr "Applicera"
-
-
-msgctxt "WindowManager"
-msgid "Rotate"
-msgstr "Rotera"
 
 
 msgctxt "WindowManager"
@@ -14098,10 +14094,6 @@ msgid "Add New"
 msgstr "Lägg till ny"
 
 
-msgid "%s (Global)"
-msgstr "%s (global)"
-
-
 msgctxt "Operator"
 msgid "New"
 msgstr "Ny"
@@ -14152,25 +14144,9 @@ msgid "Failed to get add-ons path"
 msgstr "Kunde inte hitta tilläggets sökväg"
 
 
-msgid "Add-on path %r could not be found"
-msgstr "Tilläggets sökväg %r kunde inte hittas"
-
-
-msgid "Remove Add-on: %r?"
-msgstr "Ta bort tillägg: %r?"
-
-
-msgid "Path: %r"
-msgstr "Sökväg: %r"
-
-
 msgctxt "Operator"
 msgid "Open..."
 msgstr "Öppna..."
-
-
-msgid "File '%s' not found"
-msgstr "Fil '%s' hittas inte"
 
 
 msgctxt "Operator"
@@ -14289,22 +14265,6 @@ msgstr "Support"
 
 msgid "Object(s)"
 msgstr "Objekt"
-
-
-msgid "Version: %s"
-msgstr "Version: %s"
-
-
-msgid "Date: %s %s"
-msgstr "Datum: %s %s"
-
-
-msgid "Hash: %s"
-msgstr "Hash: %s"
-
-
-msgid "Branch: %s"
-msgstr "Branch: %s"
 
 
 msgid "Node(s)"
@@ -14874,11 +14834,6 @@ msgstr "Före"
 msgctxt "Operator"
 msgid "After"
 msgstr "Efter"
-
-
-msgctxt "Operator"
-msgid "Zoom"
-msgstr "Zooma"
 
 
 msgid "Normalization"
@@ -15708,14 +15663,6 @@ msgid "Text: Internal"
 msgstr "Text: intern"
 
 
-msgid "File: *%s (unsaved)"
-msgstr "Fil: *%s (osparad)"
-
-
-msgid "File: %s"
-msgstr "Fil: %s"
-
-
 msgid "Active Editor"
 msgstr "Aktiv redigerare"
 
@@ -15930,10 +15877,6 @@ msgstr "Internet:"
 
 msgid "User:"
 msgstr "Användare:"
-
-
-msgid "Color %d"
-msgstr "Färg %d"
 
 
 msgctxt "Operator"
@@ -16420,10 +16363,6 @@ msgid "To 3D Cursor"
 msgstr "Till 3D-markör"
 
 
-msgid "Compositor not supported on this platform"
-msgstr "Bildsammansättning stöds inte på denna plattform"
-
-
 msgid "Fade Inactive Geometry"
 msgstr "Tona ut inaktiv geometri"
 
@@ -16866,6 +16805,10 @@ msgstr "Bildruta: %d / %d"
 
 msgid "Frame: - / %d"
 msgstr "Bildruta: - / %d"
+
+
+msgid "File: %s"
+msgstr "Fil: %s"
 
 
 msgid "No files selected to be opened"

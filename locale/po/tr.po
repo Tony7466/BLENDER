@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'7b7e9f224c89')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-22 07:36+0000\n"
+"POT-Creation-Date: 2024-05-06 10:38+0000\n"
 "PO-Revision-Date: 2024-01-18 08:08+0000\n"
 "Last-Translator: Emre İnan <emre4321a@gmail.com>\n"
 "Language-Team: Turkish <https://translate.blender.org/projects/blender-ui/ui/tr/>\n"
@@ -585,6 +585,10 @@ msgstr "İnce ayar kipindeyken ana eylemin geçici olarak tutulacağı yuva"
 
 msgid "Animation"
 msgstr "Canlandırma"
+
+
+msgid "New"
+msgstr "Yeni"
 
 
 msgid "Drivers"
@@ -7340,6 +7344,10 @@ msgid "Specular"
 msgstr "Aynasal"
 
 
+msgid "Thickness Mode"
+msgstr "Kalınlık Kipi"
+
+
 msgid "Viewport Size"
 msgstr "Görüş Alanı Boyutu"
 
@@ -8052,10 +8060,6 @@ msgid "Deform using the shape of a lattice object"
 msgstr "Bir dış kafes nesnesinin şeklini kullanarak deforme et"
 
 
-msgid "New"
-msgstr "Yeni"
-
-
 msgid "Material Mode"
 msgstr "Malzeme Kipi"
 
@@ -8144,10 +8148,6 @@ msgstr "Yuvarlak"
 msgctxt "Mesh"
 msgid "Flat"
 msgstr "Düz"
-
-
-msgid "Thickness Mode"
-msgstr "Kalınlık Kipi"
 
 
 msgid "Proximity Mode"
@@ -8296,6 +8296,10 @@ msgid "Is Viewport"
 msgstr "Görüş Alanı"
 
 
+msgid "Active item"
+msgstr "Etkin öge"
+
+
 msgid "Object Info"
 msgstr "Nesne Bilgisi"
 
@@ -8393,10 +8397,6 @@ msgstr "Olağanlaştır"
 
 msgid "Z Axis"
 msgstr "Z Eks"
-
-
-msgid "Active item"
-msgstr "Etkin öge"
 
 
 msgid "Collection of repeat items"
@@ -11542,14 +11542,6 @@ msgid "Torus"
 msgstr "Halka"
 
 
-msgid "Previews generation process failed for file '%s'!"
-msgstr "'%s' dosyası için önizlemeler üretme süreci başarısız!"
-
-
-msgid "Previews clear process failed for file '%s'!"
-msgstr "'%s' dosyası için önizlemeleri temizleme süreci başarısız!"
-
-
 msgid "Fur Material"
 msgstr "Kürk Malzemesi"
 
@@ -11572,26 +11564,6 @@ msgstr "Yeni Önayar"
 
 msgid "Reload Start-Up file to restore settings"
 msgstr "Ayarları geri yüklemek için Başlangıç dosyasını yeniden yükle"
-
-
-msgid "Modules Installed (%s) from %r into %r"
-msgstr "Kurulu Modüller (%s), %r konumundan %r konumuna"
-
-
-msgid "Template Installed (%s) from %r into %r"
-msgstr "Kurulu Şablonlar (%s), %r konumundan %r konumuna"
-
-
-msgid "StudioLight Installed %r into %r"
-msgstr "Kurulu StudioLight, %r konumundan %r konumuna"
-
-
-msgid "Installing keymap failed: %s"
-msgstr "Düğme eşlem kurulumu başarısız: %s"
-
-
-msgid "Renamed %d of %d %s"
-msgstr "%d / %d %s yeniden adlandırıldı"
 
 
 msgctxt "Operator"
@@ -11650,10 +11622,6 @@ msgstr "İliştir..."
 
 msgid "Assign"
 msgstr "Ata"
-
-
-msgid "Operator not found: bpy.ops.%s"
-msgstr "İşleç bulunamadı: bpy.ops.%s"
 
 
 msgid "Bug"
@@ -11734,10 +11702,6 @@ msgstr "Destek"
 msgctxt "Operator"
 msgid "User Communities"
 msgstr "Kullanıcı Toplulukları"
-
-
-msgid "Rename %d %s"
-msgstr "Yeniden Adlandır: %d %s"
 
 
 msgid "Mix Vector"
@@ -12122,11 +12086,6 @@ msgid "Python API Reference"
 msgstr "Python API Başvurusu"
 
 
-msgctxt "Operator"
-msgid "Load Factory %s Settings"
-msgstr "%s Fabrika Ayarlarını Yükle"
-
-
 msgid "Auto-Save Preferences"
 msgstr "Otomatik Kayıt Tercihleri"
 
@@ -12260,14 +12219,6 @@ msgstr "İnternet:"
 
 msgid "User:"
 msgstr "Kullanıcı:"
-
-
-msgid "Load Factory %s Preferences"
-msgstr "%s Fabrika Tercihlerini Yükle"
-
-
-msgid "Color %d"
-msgstr "Renk %d"
 
 
 msgctxt "Operator"

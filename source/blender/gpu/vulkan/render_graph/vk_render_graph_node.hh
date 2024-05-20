@@ -8,14 +8,18 @@
 
 #pragma once
 
+#include "nodes/vk_begin_rendering_node.hh"
 #include "nodes/vk_blit_image_node.hh"
+#include "nodes/vk_clear_attachments_node.hh"
 #include "nodes/vk_clear_color_image_node.hh"
 #include "nodes/vk_clear_depth_stencil_image_node.hh"
 #include "nodes/vk_copy_buffer_node.hh"
 #include "nodes/vk_copy_buffer_to_image_node.hh"
 #include "nodes/vk_copy_image_node.hh"
 #include "nodes/vk_copy_image_to_buffer_node.hh"
+#include "nodes/vk_dispatch_indirect_node.hh"
 #include "nodes/vk_dispatch_node.hh"
+#include "nodes/vk_end_rendering_node.hh"
 #include "nodes/vk_fill_buffer_node.hh"
 #include "nodes/vk_synchronization_node.hh"
 
@@ -37,13 +41,17 @@ struct VKRenderGraphNode {
   VKNodeType type;
   union {
     VKBlitImageNode::Data blit_image;
+    VKBeginRenderingNode::Data begin_rendering;
+    VKClearAttachmentsNode::Data clear_attachments;
     VKClearColorImageNode::Data clear_color_image;
     VKClearDepthStencilImageNode::Data clear_depth_stencil_image;
     VKCopyBufferNode::Data copy_buffer;
     VKCopyBufferToImageNode::Data copy_buffer_to_image;
     VKCopyImageNode::Data copy_image;
     VKCopyImageToBufferNode::Data copy_image_to_buffer;
+    VKEndRenderingNode::Data end_rendering;
     VKDispatchNode::Data dispatch;
+    VKDispatchIndirectNode::Data dispatch_indirect;
     VKFillBufferNode::Data fill_buffer;
     VKSynchronizationNode::Data synchronization;
   };
@@ -92,10 +100,16 @@ struct VKRenderGraphNode {
     switch (type) {
       case VKNodeType::UNUSED:
         return VK_PIPELINE_STAGE_NONE;
+      case VKNodeType::BEGIN_RENDERING:
+        return VKBeginRenderingNode::pipeline_stage;
+      case VKNodeType::CLEAR_ATTACHMENTS:
+        return VKClearAttachmentsNode::pipeline_stage;
       case VKNodeType::CLEAR_COLOR_IMAGE:
         return VKClearColorImageNode::pipeline_stage;
       case VKNodeType::CLEAR_DEPTH_STENCIL_IMAGE:
         return VKClearDepthStencilImageNode::pipeline_stage;
+      case VKNodeType::END_RENDERING:
+        return VKEndRenderingNode::pipeline_stage;
       case VKNodeType::FILL_BUFFER:
         return VKFillBufferNode::pipeline_stage;
       case VKNodeType::COPY_BUFFER:
@@ -110,6 +124,8 @@ struct VKRenderGraphNode {
         return VKBlitImageNode::pipeline_stage;
       case VKNodeType::DISPATCH:
         return VKDispatchNode::pipeline_stage;
+      case VKNodeType::DISPATCH_INDIRECT:
+        return VKDispatchIndirectNode::pipeline_stage;
       case VKNodeType::SYNCHRONIZATION:
         return VKSynchronizationNode::pipeline_stage;
     }
@@ -124,10 +140,22 @@ struct VKRenderGraphNode {
    * `VKCommandBuilder::build_node` and `VKCommandBuilder::build_pipeline_barriers.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      VKBoundPipelines &r_bound_pipelines) const
+                      VKBoundPipelines &r_bound_pipelines)
   {
     switch (type) {
       case VKNodeType::UNUSED: {
+        break;
+      }
+
+      case VKNodeType::BEGIN_RENDERING: {
+        VKBeginRenderingNode node_info;
+        node_info.build_commands(command_buffer, begin_rendering, r_bound_pipelines);
+        break;
+      }
+
+      case VKNodeType::CLEAR_ATTACHMENTS: {
+        VKClearAttachmentsNode node_info;
+        node_info.build_commands(command_buffer, clear_attachments, r_bound_pipelines);
         break;
       }
 
@@ -140,6 +168,12 @@ struct VKRenderGraphNode {
       case VKNodeType::CLEAR_DEPTH_STENCIL_IMAGE: {
         VKClearDepthStencilImageNode node_info;
         node_info.build_commands(command_buffer, clear_depth_stencil_image, r_bound_pipelines);
+        break;
+      }
+
+      case VKNodeType::END_RENDERING: {
+        VKEndRenderingNode node_info;
+        node_info.build_commands(command_buffer, end_rendering, r_bound_pipelines);
         break;
       }
 
@@ -190,6 +224,12 @@ struct VKRenderGraphNode {
         node_info.build_commands(command_buffer, dispatch, r_bound_pipelines);
         break;
       }
+
+      case VKNodeType::DISPATCH_INDIRECT: {
+        VKDispatchIndirectNode node_info;
+        node_info.build_commands(command_buffer, dispatch_indirect, r_bound_pipelines);
+        break;
+      }
     }
   }
 
@@ -205,9 +245,18 @@ struct VKRenderGraphNode {
         break;
       }
 
+      case VKNodeType::DISPATCH_INDIRECT: {
+        VKDispatchIndirectNode node_info;
+        node_info.free_data(dispatch_indirect);
+        break;
+      }
+
       case VKNodeType::UNUSED:
+      case VKNodeType::BEGIN_RENDERING:
+      case VKNodeType::CLEAR_ATTACHMENTS:
       case VKNodeType::CLEAR_COLOR_IMAGE:
       case VKNodeType::CLEAR_DEPTH_STENCIL_IMAGE:
+      case VKNodeType::END_RENDERING:
       case VKNodeType::FILL_BUFFER:
       case VKNodeType::COPY_BUFFER:
       case VKNodeType::COPY_IMAGE:

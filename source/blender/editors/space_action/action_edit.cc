@@ -808,11 +808,10 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   if (hold_previous) {
     const std::optional<FramesMapKey> active_frame_number = layer->frame_key_at(
         current_frame_number);
-    if (!active_frame_number || layer->frames().lookup(*active_frame_number).is_null()) {
-      /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
+    if (!active_frame_number || layer->frames().lookup(*active_frame_number).is_end()) {
+      /* There is no active frame to hold to, or it's an end frame. Therefore just insert a blank
        * frame. */
-      changed = grease_pencil->insert_blank_frame(
-          *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+      changed |= grease_pencil->insert_frame(*layer, current_frame_number) != nullptr;
     }
     else {
       /* Duplicate the active frame. */
@@ -822,8 +821,7 @@ static void insert_grease_pencil_key(bAnimContext *ac,
   }
   else {
     /* Insert a blank frame. */
-    changed = grease_pencil->insert_blank_frame(
-        *layer, current_frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+    changed |= grease_pencil->insert_frame(*layer, current_frame_number) != nullptr;
   }
 
   if (changed) {
@@ -909,7 +907,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Init keyframing flag. */
-  flag = ANIM_get_keyframing_flags(scene);
+  flag = blender::animrig::get_keyframing_flags(scene);
 
   /* GPLayers specific flags */
   if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
@@ -1300,7 +1298,7 @@ static void bake_action_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    bake_fcurve_segments((FCurve *)ale->key_data);
+    blender::animrig::bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
