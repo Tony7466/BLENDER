@@ -63,6 +63,7 @@
 
 /* `inittab` initialization functions. */
 #include "../bmesh/bmesh_py_api.h"
+#include "../generic/attribute_array_py_api.h"
 #include "../generic/bgl.h"
 #include "../generic/bl_math_py_api.h"
 #include "../generic/blf_py_api.h"
@@ -300,6 +301,7 @@ static _inittab bpy_internal_modules[] = {
 #endif
     {"gpu", BPyInit_gpu},
     {"idprop", BPyInit_idprop},
+    {"attribute_array", BPyInit_attribute_array},
 #ifdef WITH_HYDRA
     {"_bpy_hydra", BPyInit_hydra},
 #endif

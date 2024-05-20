@@ -62,6 +62,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "../generic/attribute_array_py_api.h"
 #include "../generic/idprop_py_api.h" /* For IDprop lookups. */
 #include "../generic/idprop_py_ui_api.h"
 #include "../generic/py_capi_rna.h"
@@ -1454,7 +1455,12 @@ PyObject *pyrna_prop_to_py(PointerRNA *ptr, PropertyRNA *prop)
       PointerRNA newptr;
       newptr = RNA_property_pointer_get(ptr, prop);
       if (newptr.data) {
-        ret = pyrna_struct_CreatePyObject(&newptr);
+        if (RNA_struct_is_attribute_array(newptr.type)) {
+          ret = BPy_AttributeArray_CreatePyObject(&newptr);
+        }
+        else {
+          ret = pyrna_struct_CreatePyObject(&newptr);
+        }
       }
       else {
         ret = Py_None;

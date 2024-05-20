@@ -351,6 +351,13 @@ static void rna_Attribute_update_data(Main * /*bmain*/, Scene * /*scene*/, Point
   }
 }
 
+static PointerRNA rna_Attribute_attribute_array_get(PointerRNA *ptr)
+{
+  CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
+  layer->length = rna_Attribute_data_length(ptr);
+  return rna_pointer_inherit_refine(ptr, &RNA_AttributeArray, ptr->data);
+}
+
 /* Color Attribute */
 
 static void rna_ByteColorAttributeValue_color_get(PointerRNA *ptr, float *values)
@@ -1175,6 +1182,17 @@ static void rna_def_attribute_float2(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Attribute_update_data");
 }
 
+static void rna_def_attribute_array(BlenderRNA *brna)
+{
+  /* The #AttributeArray struct grants access to attribute arrays in Blender python. The
+   * #STRUCT_ATTRIBUTE_ARRAY flag is linked to the #BPy_AttributeArray in #bpy_rna.cc. See
+   * #python/generic/attribute_array_py_api.cc for all Python methods available in this class. */
+  StructRNA *srna = RNA_def_struct(brna, "AttributeArray", nullptr);
+  RNA_def_struct_flag(srna, STRUCT_ATTRIBUTE_ARRAY);
+  RNA_def_struct_sdna(srna, "CustomDataLayer");
+  RNA_def_struct_ui_text(srna, "Attribute Array", "A geometry attribute data array");
+}
+
 static void rna_def_attribute(BlenderRNA *brna)
 {
   PropertyRNA *prop;
@@ -1217,6 +1235,12 @@ static void rna_def_attribute(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Is Required", "Whether the attribute can be removed or renamed");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
+  /* Direct Python access to the attribute array. */
+  prop = RNA_def_property(srna, "data_array", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_Attribute_attribute_array_get", nullptr, nullptr, nullptr);
+
   /* types */
   rna_def_attribute_float(brna);
   rna_def_attribute_float_vector(brna);
@@ -1230,6 +1254,8 @@ static void rna_def_attribute(BlenderRNA *brna)
   rna_def_attribute_bool(brna);
   rna_def_attribute_float2(brna);
   rna_def_attribute_int8(brna);
+
+  rna_def_attribute_array(brna);
 }
 
 /* Mesh/PointCloud/Curves.attributes */

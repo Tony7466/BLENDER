@@ -14,6 +14,7 @@ set(INC_SYS
 )
 
 set(SRC
+  attribute_array_py_api.cc
   bgl.cc
   bl_math_py_api.cc
   blf_py_api.cc
@@ -24,6 +25,8 @@ set(SRC
   py_capi_rna.cc
   py_capi_utils.cc
 
+  attribute_array_py_api.h
+  attribute_array_py_types.hh
   bgl.h
   bl_math_py_api.h
   blf_py_api.h

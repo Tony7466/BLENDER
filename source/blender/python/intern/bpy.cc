@@ -51,6 +51,7 @@
 #include "../generic/python_utildefines.h"
 
 /* external util modules */
+#include "../generic/attribute_array_py_api.h"
 #include "../generic/idprop_py_api.h"
 #include "../generic/idprop_py_ui_api.h"
 #include "bpy_msgbus.h"
@@ -728,6 +729,7 @@ void BPy_init_modules(bContext *C)
   /* stand alone utility modules not related to blender directly */
   IDProp_Init_Types(); /* not actually a submodule, just types */
   IDPropertyUIData_Init_Types();
+  AttributeArray_Init_Types(); /* not actually a submodule, just types */
 #ifdef WITH_FREESTYLE
   Freestyle_Init();
 #endif

@@ -84,6 +84,7 @@ const StructRNA *RNA_struct_base_child_of(const StructRNA *type, const StructRNA
 
 bool RNA_struct_is_ID(const StructRNA *type);
 bool RNA_struct_is_a(const StructRNA *type, const StructRNA *srna);
+bool RNA_struct_is_attribute_array(const StructRNA *type);
 
 bool RNA_struct_undo_check(const StructRNA *type);
 

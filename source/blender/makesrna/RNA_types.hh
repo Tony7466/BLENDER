@@ -723,6 +723,8 @@ enum StructFlag {
    * So accessing the property should not read from the current context to derive values/limits.
    */
   STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID = (1 << 11),
+  /** Indicates that this struct is a geometry attribute array. */
+  STRUCT_ATTRIBUTE_ARRAY = (1 << 12),
 };
 
 using StructValidateFunc = int (*)(PointerRNA *ptr, void *data, bool *have_function);

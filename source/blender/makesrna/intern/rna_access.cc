@@ -744,6 +744,11 @@ bool RNA_struct_idprops_unset(PointerRNA *ptr, const char *identifier)
   return false;
 }
 
+bool RNA_struct_is_attribute_array(const StructRNA *type)
+{
+  return (type->flag & STRUCT_ATTRIBUTE_ARRAY) != 0;
+}
+
 bool RNA_struct_is_a(const StructRNA *type, const StructRNA *srna)
 {
   const StructRNA *base;

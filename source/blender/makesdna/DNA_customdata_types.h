@@ -42,9 +42,10 @@ typedef struct CustomDataLayer {
   int active_mask;
   /** Shape key-block unique id reference. */
   int uid;
+  /** Only for use in RNA and #bpy_rna: number of items in the layer data. */
+  int length;
   /** Layer name, MAX_CUSTOMDATA_LAYER_NAME. */
   char name[68];
-  char _pad1[4];
   /** Layer data. */
   void *data;
   /**
