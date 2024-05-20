@@ -604,6 +604,7 @@ static void position_viewer_node(const bNodeTree &tree,
                                  const bNode &node_to_view,
                                  const bNodeSocket &socket_to_view)
 {
+  tree.ensure_topology_cache();
   const float default_padding = 10;
   const float viewer_width = viewer_node.width;
   float viewer_height = BLI_rctf_size_y(&viewer_node.runtime->totr);
@@ -625,7 +626,7 @@ static void position_viewer_node(const bNodeTree &tree,
     BLI_rctf_pad(&main_candidate_rect, default_padding, default_padding);
 
     const bNode *collided_node = nullptr;
-    LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
+    for (const bNode *node : tree.all_nodes()) {
       if (node->type == NODE_FRAME) {
         continue;
       }
@@ -660,7 +661,7 @@ static void position_viewer_node(const bNodeTree &tree,
     BLI_rctf_pad(&aligned_candidate_rect, default_padding, default_padding);
 
     bool found_collision_for_aligned_rect = false;
-    LISTBASE_FOREACH (const bNode *, node, &tree.nodes) {
+    for (const bNode *node : tree.all_nodes()) {
       if (node->type == NODE_FRAME) {
         continue;
       }
