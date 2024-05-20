@@ -53,8 +53,8 @@ static void process_ibo_verts_mesh(const MeshRenderData &mr, const Fn &process_v
   threading::parallel_for(loose_edges.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
       const int2 edge = edges[loose_edges[i]];
-      process_vert_fn(loose_edges_start + i + 0, edge[0]);
-      process_vert_fn(loose_edges_start + i + 1, edge[1]);
+      process_vert_fn(loose_edges_start + i * 2 + 0, edge[0]);
+      process_vert_fn(loose_edges_start + i * 2 + 1, edge[1]);
     }
   });
 
@@ -239,6 +239,7 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
   const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
   const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
   const int verts_per_coarse_edge = edges_per_coarse_edge * 2;
+  const int subdiv_loose_edge_verts_num = verts_per_coarse_edge * loose_edges.size();
   const int loose_edge_verts_start = subdiv_cache.num_subdiv_loops;
 
   int loose_edge_verts_num;
@@ -283,7 +284,7 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
   GPUIndexBufBuilder builder;
   GPU_indexbuf_init(&builder,
                     GPU_PRIM_POINTS,
-                    visible_corners.size() + visible_loose_edge_verts.size() + loose_verts.size(),
+                    visible_corners.size() + loose_edge_verts_num + loose_verts.size(),
                     max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
   visible_corners.to_indices<int32_t>(data.take_front(visible_corners.size()).cast<int32_t>());
@@ -292,7 +293,7 @@ static void extract_points_subdiv_mesh(const MeshRenderData &mr,
       .drop_back(loose_verts.size())
       .copy_from(visible_loose_edge_verts.as_span().cast<uint>());
 
-  const int loose_verts_start = loose_edge_verts_start + loose_edge_verts_num;
+  const int loose_verts_start = loose_edge_verts_start + subdiv_loose_edge_verts_num;
   visible_loose.shift(loose_verts_start, memory)
       .to_indices<int32_t>(data.take_back(visible_loose.size()).cast<int32_t>());
 
