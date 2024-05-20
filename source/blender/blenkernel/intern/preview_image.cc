@@ -46,7 +46,7 @@ static GHash *gCachedPreviews = nullptr;
 
 namespace blender::bke {
 
-struct PreviewDeferredData {
+struct PreviewDeferredLoadingData {
   std::string filepath;
   ThumbSource source;
 };
@@ -55,7 +55,7 @@ PreviewImageRuntime::PreviewImageRuntime() = default;
 PreviewImageRuntime::PreviewImageRuntime(const PreviewImageRuntime &other)
 {
   if (other.deferred_loading_data) {
-    this->deferred_loading_data = std::make_unique<PreviewDeferredData>(
+    this->deferred_loading_data = std::make_unique<PreviewDeferredLoadingData>(
         *other.deferred_loading_data);
   }
 }
@@ -66,7 +66,8 @@ PreviewImageRuntime::~PreviewImageRuntime() = default;
 static PreviewImage *previewimg_deferred_create(const char *filepath, ThumbSource source)
 {
   PreviewImage *prv = BKE_previewimg_create();
-  prv->runtime->deferred_loading_data = std::make_unique<blender::bke::PreviewDeferredData>();
+  prv->runtime->deferred_loading_data =
+      std::make_unique<blender::bke::PreviewDeferredLoadingData>();
   prv->runtime->deferred_loading_data->filepath = filepath;
   prv->runtime->deferred_loading_data->source = source;
   return prv;
@@ -383,7 +384,8 @@ void BKE_previewimg_ensure(PreviewImage *prv, const int size)
     return;
   }
 
-  const blender::bke::PreviewDeferredData &prv_deferred = *prv->runtime->deferred_loading_data;
+  const blender::bke::PreviewDeferredLoadingData &prv_deferred =
+      *prv->runtime->deferred_loading_data;
   int icon_w, icon_h;
 
   ImBuf *thumb = IMB_thumb_manage(prv_deferred.filepath.c_str(), THB_LARGE, prv_deferred.source);
