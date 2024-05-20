@@ -520,7 +520,7 @@ struct BlendePyContextStore {
   bool has_win;
 };
 
-static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py, const char *script_id)
+static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py)
 {
   c_py->wm = CTX_wm_manager(C);
   c_py->scene = CTX_data_scene(C);
@@ -530,11 +530,11 @@ static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py, const
     CTX_wm_window_set(C, static_cast<wmWindow *>(c_py->wm->windows.first));
   }
   else {
+    /* NOTE: this should never happen, although it may be possible when loading
+     * `.blend` files without windowing data. Whatever the case, it shouldn't crash,
+     * although typical scripts that accesses the context is not expected to work usefully. */
     c_py->win = nullptr;
-    fprintf(stderr,
-            "Python script \"%s\" "
-            "running with missing context data.\n",
-            script_id);
+    fprintf(stderr, "Python script running with missing context data.\n");
   }
 }
 
@@ -558,7 +558,7 @@ static void arg_py_context_restore(bContext *C, BlendePyContextStore *c_py)
 #    define BPY_CTX_SETUP(_cmd) \
       { \
         BlendePyContextStore py_c; \
-        arg_py_context_backup(C, &py_c, argv[1]); \
+        arg_py_context_backup(C, &py_c); \
         { \
           _cmd; \
         } \
@@ -593,6 +593,7 @@ static void print_version_full()
   printf("\tbuild commit date: %s\n", build_commit_date);
   printf("\tbuild commit time: %s\n", build_commit_time);
   printf("\tbuild hash: %s\n", build_hash);
+  printf("\tbuild branch: %s\n", build_branch);
   printf("\tbuild platform: %s\n", build_platform);
   printf("\tbuild type: %s\n", build_type);
   printf("\tbuild c flags: %s\n", build_cflags);
@@ -2277,7 +2278,7 @@ static int arg_handle_python_expr_run(int argc, const char **argv, void *data)
 static const char arg_handle_python_console_run_doc[] =
     "\n\t"
     "Run Blender with an interactive console.";
-static int arg_handle_python_console_run(int /*argc*/, const char **argv, void *data)
+static int arg_handle_python_console_run(int /*argc*/, const char ** /*argv*/, void *data)
 {
 #  ifdef WITH_PYTHON
   bContext *C = static_cast<bContext *>(data);
