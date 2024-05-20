@@ -16,11 +16,10 @@
 
 #include "DNA_node_types.h"
 
-#include "RNA_access.hh"
+#include "RNA_types.hh"
 
 struct bContext;
 struct bNode;
-struct PointerRNA;
 struct uiLayout;
 
 namespace blender::nodes {

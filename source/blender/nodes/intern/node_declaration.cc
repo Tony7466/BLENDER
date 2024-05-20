@@ -14,6 +14,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 
+#include "RNA_access.hh"
+
 namespace blender::nodes {
 
 static void reset_declaration(NodeDeclaration &declaration)
