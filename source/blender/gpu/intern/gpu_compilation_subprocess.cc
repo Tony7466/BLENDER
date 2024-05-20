@@ -205,6 +205,8 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
 #else
 
+#  include "BLI_assert.h"
+
 void GPU_compilation_subprocess_run(const char *subprocess_name)
 {
   BLI_assert_unreachable();
