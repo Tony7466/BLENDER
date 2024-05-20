@@ -15,11 +15,6 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
-struct BsdfSample {
-  vec3 direction;
-  float pdf;
-};
-
 bool is_singular_ray(float roughness)
 {
   return roughness < BSDF_ROUGHNESS_THRESHOLD;
@@ -33,7 +28,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
   const float rng_bias = 0.08;
   random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - rng_bias);
 
-  mat3 world_to_tangent = from_up_axis(cl.N);
+  mat3 tangent_to_world = from_up_axis(cl.N);
 
   BsdfSample samp;
   switch (cl.type) {
@@ -46,18 +41,18 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
       }
       else {
         samp.direction = sample_cosine_hemisphere(random_point_on_cylinder,
-                                                  -world_to_tangent[2],
-                                                  world_to_tangent[1],
-                                                  world_to_tangent[0],
+                                                  -tangent_to_world[2],
+                                                  tangent_to_world[1],
+                                                  tangent_to_world[0],
                                                   samp.pdf);
       }
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID:
       samp.direction = sample_cosine_hemisphere(random_point_on_cylinder,
-                                                world_to_tangent[2],
-                                                world_to_tangent[1],
-                                                world_to_tangent[0],
+                                                tangent_to_world[2],
+                                                tangent_to_world[1],
+                                                tangent_to_world[0],
                                                 samp.pdf);
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
@@ -66,13 +61,10 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
         samp.pdf = 1e6;
       }
       else {
-        samp.direction = sample_ggx_reflect(random_point_on_cylinder,
-                                            square(to_closure_reflection(cl).roughness),
-                                            V,
-                                            world_to_tangent[2],
-                                            world_to_tangent[1],
-                                            world_to_tangent[0],
-                                            samp.pdf);
+        float roughness = to_closure_reflection(cl).roughness;
+        vec3 Vt = V * tangent_to_world;
+        samp = bxdf_ggx_sample_reflection(random_point_on_cylinder, Vt, square(roughness));
+        samp.direction = tangent_to_world * samp.direction;
       }
       break;
     }
@@ -86,7 +78,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
         cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
         ior = 1.0 / ior;
         V = -L;
-        world_to_tangent = from_up_axis(cl.N);
+        tangent_to_world = from_up_axis(cl.N);
       }
 
       if (is_singular_ray(roughness)) {
@@ -94,14 +86,9 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
         samp.pdf = 1e6;
       }
       else {
-        samp.direction = sample_ggx_refract(random_point_on_cylinder,
-                                            square(roughness),
-                                            ior,
-                                            V,
-                                            world_to_tangent[2],
-                                            world_to_tangent[1],
-                                            world_to_tangent[0],
-                                            samp.pdf);
+        vec3 Vt = V * tangent_to_world;
+        samp = bxdf_ggx_sample_transmission(random_point_on_cylinder, Vt, square(roughness), ior);
+        samp.direction = tangent_to_world * samp.direction;
       }
       break;
     }

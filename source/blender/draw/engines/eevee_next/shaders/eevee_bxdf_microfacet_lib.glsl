@@ -1,0 +1,236 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
+
+/* -------------------------------------------------------------------- */
+/** \name Microfacet GGX distribution
+ * \{ */
+
+float bxdf_ggx_D(float NH, float a2)
+{
+  return a2 / (M_PI * square((a2 - 1.0) * square(NH) + 1.0));
+}
+
+float bxdf_ggx_smith_G1(float NX, float a2)
+{
+  return 2.0 / (1.0 + sqrt(1.0 + a2 * (1.0 / square(NX) - 1.0)));
+}
+
+/**
+ * Returns a tangent space reflection or refraction direction following the GGX distribution.
+ *
+ * \param rand: random point on the unit cylinder (result of sample_cylinder).
+ * \param alpha: roughness parameter.
+ * \param Vt: View vector in tangent space.
+ * \param do_reflection: true is sampling reflection.
+ *
+ * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
+ */
+BsdfSample bxdf_ggx_sample_visible_normals(
+    vec3 rand, vec3 Vt, float alpha, float eta, const bool do_reflection)
+{
+  /**
+   * "Sampling Visible GGX Normals with Spherical Caps.""
+   * Jonathan Dupuy and Anis Benyoub, HPG Vol. 42, No. 8, 2023.
+   * https://diglib.eg.org/bitstream/handle/10.1111/cgf14867/v42i8_03_14867.pdf
+   * View vector is expected to be in tangent space.
+   *
+   * "Bounded VNDF Sampling for Smith-GGX Reflections."
+   * Eto, Kenta, and Yusuke Tokuyoshi.
+   * SIGGRAPH Asia 2023 Technical Communications. 2023. 1-4.
+   * https://gpuopen.com/download/publications/Bounded_VNDF_Sampling_for_Smith-GGX_Reflections.pdf
+   */
+
+  vec2 Vt_alpha = alpha * Vt.xy;
+  float len_Vt_alpha_sqr = length_squared(Vt_alpha);
+
+  /* Transforming the view direction to the hemisphere configuration. */
+  vec3 Vh = vec3(Vt_alpha, Vt.z);
+  float Vh_norm;
+  /* Use optimal normalize code if norm is not needed.  */
+  Vh = (do_reflection) ? normalize_and_get_length(Vh, Vh_norm) : normalize(Vh);
+
+  /* Compute the bounded cap. */
+  float a2 = square(alpha);
+  float s2 = square(1.0 + length(Vt.xy));
+  float k = (1.0 - a2) * s2 / (s2 + a2 * square(Vt.z));
+
+  /* Sample a spherical cap in (-Vh.z, 1]. */
+  float cos_theta = mix((do_reflection) ? -Vh.z * k : -Vh.z, 1.0, 1.0 - rand.x);
+  float sin_theta = sqrt(saturate(1.0 - square(cos_theta)));
+  vec3 Lh = vec3(sin_theta * rand.yz, cos_theta);
+
+  /* Compute unnormalized halfway direction. */
+  vec3 Hh = Vh + Lh;
+
+  /* Transforming the normal back to the ellipsoid configuration. */
+  vec3 Ht = normalize(vec3(alpha * Hh.xy, max(0.0, Hh.z)));
+
+  /* Normal Distribution Function. */
+  float D = bxdf_ggx_D(saturate(Ht.z), a2);
+
+  float VH = dot(Vt, Ht);
+  if (VH < 0.0) {
+    BsdfSample samp;
+    samp.direction = vec3(1.0, 0.0, 0.0);
+    samp.pdf = 0.0;
+    return samp;
+  }
+
+  vec3 Lt;
+  float pdf;
+  if (do_reflection) {
+    Lt = reflect(-Vt, Ht);
+    if (Vt.z >= 0.0) {
+      pdf = D / (2.0 * (k * Vt.z + Vh_norm));
+    }
+    else {
+      float t = sqrt(len_Vt_alpha_sqr + square(Vt.z));
+      pdf = D * (t - Vt.z) / (2.0 * len_Vt_alpha_sqr);
+    }
+  }
+  else {
+    Lt = refract(-Vt, Ht, 1.0 / eta);
+    float LH = dot(Lt, Ht);
+    float Ht2 = square(eta * LH + VH);
+    float G1_V = 2.0 * Vh.z / (1.0 + Vh.z);
+    pdf = D * G1_V * abs(VH * LH) * square(eta) / (Vt.z * Ht2);
+  }
+
+  BsdfSample samp;
+  samp.direction = Lt;
+  samp.pdf = pdf;
+  return samp;
+}
+
+BsdfSample bxdf_ggx_sample_reflection(vec3 rand, vec3 Vt, float alpha)
+{
+  return bxdf_ggx_sample_visible_normals(rand, Vt, alpha, 1.0, true);
+}
+
+BsdfSample bxdf_ggx_sample_transmission(vec3 rand, vec3 Vt, float alpha, float ior)
+{
+  return bxdf_ggx_sample_visible_normals(rand, Vt, alpha, ior, false);
+}
+
+/* Compute the GGX BxDF without the Fresnel term, multiplied by the cosine foreshortening term. */
+BsdfEval bxdf_ggx_eval(vec3 N, vec3 L, vec3 V, float alpha, float eta, const bool do_reflection)
+{
+  float LV = dot(L, V);
+  float NV = dot(N, V);
+  /* For transmission, `L` lies in the opposite hemisphere as `H`, therefore negate `L`. */
+  float NL = max(dot(N, do_reflection ? L : -L), 1e-8);
+
+  if (do_reflection) {
+    if (NV <= 0.0) {
+      /* Impossible configuration for reflection. */
+      BsdfEval eval;
+      eval.throughput = 0.0;
+      eval.pdf = 0.0;
+      return eval;
+    }
+  }
+  else {
+    if (is_equal(eta, 1.0, 1e-4)) {
+      /* Only valid when `L` and `V` point in the opposite directions. */
+      BsdfEval eval;
+      eval.throughput = float(is_equal(LV, -1.0, 1e-3));
+      eval.pdf = 1e6;
+      return eval;
+    }
+
+    bool valid = (eta < 1.0) ? (LV < -eta) : (LV * eta < -1.0);
+    if (!valid) {
+      /* Impossible configuration for transmission due to total internal reflection. */
+      BsdfEval eval;
+      eval.throughput = 0.0;
+      eval.pdf = 0.0;
+      return eval;
+    }
+  }
+
+  vec3 H = do_reflection ? L + V : eta * L + V;
+  H = (do_reflection || eta < 1.0) ? H : -H;
+  float inv_len_H = safe_rcp(length(H));
+  H *= inv_len_H;
+
+  float NH = max(dot(N, H), 1e-8);
+  float VH = saturate(dot(V, H));
+  float LH = saturate(dot(do_reflection ? L : -L, H));
+
+  float a2 = square(alpha);
+  float G_V = bxdf_ggx_smith_G1(NV, a2);
+  float G_L = bxdf_ggx_smith_G1(NL, a2);
+  float D = bxdf_ggx_D(NH, a2);
+
+  mat3 tangent_to_world = from_up_axis(N);
+  vec3 Vt = V * tangent_to_world;
+  vec3 Lt = L * tangent_to_world;
+
+  BsdfEval eval;
+  if (do_reflection) {
+    /**
+     * Eto, Kenta, and Yusuke Tokuyoshi. "Bounded VNDF Sampling for Smith-GGX Reflections."
+     * SIGGRAPH Asia 2023 Technical Communications. 2023. 1-4.
+     * https://gpuopen.com/download/publications/Bounded_VNDF_Sampling_for_Smith-GGX_Reflections.pdf
+     * Listing 2.
+     */
+    float s2 = square(1.0 + length(Vt.xy));
+    float len_ai_sqr = length_squared(alpha * Vt.xy);
+    float t = sqrt(len_ai_sqr + square(Vt.z));
+    if (Vt.z >= 0.0) {
+      float k = (1.0 - a2) * s2 / (s2 + a2 * square(Vt.z));
+      eval.pdf = D / (2.0 * (k * Vt.z + t));
+    }
+    eval.pdf = D * (t - Vt.z) / (2.0 * len_ai_sqr);
+
+#if 0 /* Should work without going into tangent space. But is currently wrong. */
+    float sin_theta = sqrt(1.0 - square(NV));
+    if (VH >= 0.0) {
+      float Vh_norm = length(vec2(sin_theta, NV));
+      float s2 = square(1.0 + sin_theta);
+      float k = (1.0 - a2) * s2 / (s2 + a2 * square(NV));
+      eval.pdf = D / (2.0 * (k * VH + Vh_norm));
+    }
+    else {
+      float len_Vt_alpha_sqr = square(alpha * sin_theta);
+      float t = sqrt(len_Vt_alpha_sqr + square(VH));
+      eval.pdf = D * (t - VH) / (2.0 * len_Vt_alpha_sqr);
+    }
+#endif
+    /* TODO: But also unused for now. */
+    eval.throughput = 1.0;
+  }
+  else {
+    vec3 Vh = normalize(vec3(alpha * Vt.xy, Vt.z));
+    float G1_V = 2.0 * Vh.z / (1.0 + Vh.z);
+
+    float Ht2 = square(eta * LH + VH);
+
+    eval.pdf = (D * G1_V * abs(VH * LH) * square(eta)) / (NV * Ht2);
+
+#if 0 /* Should work without going into tangent space. But is currently wrong. */
+    float Ht2 = square(eta * LH + VH);
+    eval.pdf = D * G_V * abs(VH * LH) * square(eta) / (NV * Ht2);
+#endif
+    /* `btdf * NL = abs(VH * LH) * ior^2 * D * G(V) * G(L) / (Ht2 * NV * NL) * NL`. */
+    eval.throughput = (D * G_V * G_L * VH * LH * square(eta * inv_len_H)) / NV;
+  }
+  return eval;
+}
+
+BsdfEval bxdf_ggx_eval_reflection(vec3 N, vec3 L, vec3 V, float alpha)
+{
+  return bxdf_ggx_eval(N, L, V, alpha, 1.0, true);
+}
+
+BsdfEval bxdf_ggx_eval_transmission(vec3 N, vec3 L, vec3 V, float alpha, float ior)
+{
+  return bxdf_ggx_eval(N, L, V, alpha, ior, false);
+}
+
+/** \} */
