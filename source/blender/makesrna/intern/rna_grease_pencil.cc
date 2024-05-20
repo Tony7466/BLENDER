@@ -254,7 +254,7 @@ static void rna_GreasePencil_active_group_set(PointerRNA *ptr,
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(value.data);
   if (node->wrap().is_group()) {
-    grease_pencil->active_node = node;
+    grease_pencil->set_active_node(node);
     WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
   }
 }

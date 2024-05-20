@@ -517,6 +517,8 @@ typedef struct GreasePencil {
   const blender::bke::greasepencil::LayerGroup *get_active_group() const;
   blender::bke::greasepencil::LayerGroup *get_active_group();
 
+  void set_active_node(GreasePencilLayerTreeNode *node);
+
   /* Adding layers and layer groups. */
   /** Adds a new layer with the given name to the top of root group. */
   blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);

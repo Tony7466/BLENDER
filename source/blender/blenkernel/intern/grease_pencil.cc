@@ -87,7 +87,7 @@ static void grease_pencil_init_data(ID *id)
   MEMCPY_STRUCT_AFTER(grease_pencil, DNA_struct_default_get(GreasePencil), id);
 
   grease_pencil->root_group_ptr = MEM_new<greasepencil::LayerGroup>(__func__);
-  grease_pencil->active_node = nullptr;
+  grease_pencil->set_active_node(nullptr);
 
   CustomData_reset(&grease_pencil->layers_data);
 
@@ -120,7 +120,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
     bke::greasepencil::TreeNode *active_node = grease_pencil_dst->find_node_by_name(
         grease_pencil_src->active_node->wrap().name());
     BLI_assert(active_node);
-    grease_pencil_dst->active_node = active_node;
+    grease_pencil_dst->set_active_node(active_node);
   }
 
   CustomData_copy(&grease_pencil_src->layers_data,
@@ -2665,6 +2665,11 @@ blender::bke::greasepencil::LayerGroup *GreasePencil::get_active_group()
   return &this->active_node->wrap().as_group();
 }
 
+void GreasePencil::set_active_node(GreasePencilLayerTreeNode *node)
+{
+  this->active_node = node;
+}
+
 static blender::VectorSet<blender::StringRefNull> get_node_names(const GreasePencil &grease_pencil)
 {
   using namespace blender;
@@ -3216,7 +3221,7 @@ static void read_layer_tree(GreasePencil &grease_pencil, BlendDataReader *reader
    * and create an empty root group to avoid crashes. */
   if (grease_pencil.root_group_ptr == nullptr) {
     grease_pencil.root_group_ptr = MEM_new<blender::bke::greasepencil::LayerGroup>(__func__);
-    grease_pencil.active_node = nullptr;
+    grease_pencil.set_active_node(nullptr);
     return;
   }
   /* Read active layer. */
