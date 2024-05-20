@@ -90,7 +90,7 @@ static void ui_region_redraw_immediately(bContext *C, ARegion *region)
   WM_draw_region_viewport_bind(region);
   ED_region_do_draw(C, region);
   WM_draw_region_viewport_unbind(region);
-  region->do_draw = false;
+  region->do_draw = 0;
 }
 
 /** \} */
@@ -1222,7 +1222,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
     if (RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {
       bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
       bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-      if (nodeFindNodeTry(ntree, sock, &node, nullptr)) {
+      if (blender::bke::nodeFindNodeTry(ntree, sock, &node, nullptr)) {
         path = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_Node);
         if (path) {
           /* we're good! */
@@ -1279,7 +1279,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
           Object *ob = (Object *)link.owner_id;
           ID *id_data = static_cast<ID *>(ob->data);
           if ((id_data == nullptr) || (id_data->tag & LIB_TAG_DOIT) == 0 ||
-              ID_IS_LINKED(id_data) || (GS(id_data->name) != id_code))
+              !ID_IS_EDITABLE(id_data) || (GS(id_data->name) != id_code))
           {
             continue;
           }
@@ -2411,7 +2411,7 @@ static void UI_OT_button_execute(wmOperatorType *ot)
 
 static int button_string_clear_exec(bContext *C, wmOperator * /*op*/)
 {
-  uiBut *but = UI_context_active_but_get_respect_menu(C);
+  uiBut *but = UI_context_active_but_get_respect_popup(C);
 
   if (but) {
     ui_but_active_string_clear_and_exit(C, but);

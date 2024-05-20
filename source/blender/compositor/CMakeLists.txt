@@ -479,8 +479,6 @@ if(WITH_COMPOSITOR_CPU)
     # Distort operation
     operations/COM_DisplaceOperation.cc
     operations/COM_DisplaceOperation.h
-    operations/COM_DisplaceSimpleOperation.cc
-    operations/COM_DisplaceSimpleOperation.h
     operations/COM_FlipOperation.cc
     operations/COM_FlipOperation.h
     operations/COM_MapUVOperation.cc
@@ -588,6 +586,16 @@ if(WITH_COMPOSITOR_CPU)
       ${OPENIMAGEDENOISE_LIBRARIES}
       ${TBB_LIBRARIES}
     )
+  endif()
+
+  if(WITH_FFTW3)
+    list(APPEND INC_SYS
+      ${FFTW3_INCLUDE_DIRS}
+    )
+    list(APPEND LIB
+      ${FFTW3_LIBRARIES}
+    )
+    add_definitions(-DWITH_FFTW3)
   endif()
 
   blender_add_lib(bf_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
