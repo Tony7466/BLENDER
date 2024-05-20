@@ -676,7 +676,7 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
                                             const CustomData_MeshMasks &dataMask)
 {
   const Mesh &mesh_input = *static_cast<const Mesh *>(ob.data);
-  BMEditMesh &em_input = *mesh_input.runtime->edit_mesh;
+  const BMEditMesh &em_input = *mesh_input.runtime->edit_mesh;
 
   /* Mesh with constructive modifiers but no deformation applied. Tracked
    * along with final mesh if undeformed / orco coordinates are requested
@@ -737,7 +737,7 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
       continue;
     }
 
-    blender::bke::ScopedModifierTimer modifier_timer{*md};
+    ScopedModifierTimer modifier_timer{*md};
     Mesh *mesh = geometry_set.get_mesh_for_write();
 
     /* Add an orco mesh as layer if needed by this modifier. */
@@ -758,10 +758,10 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
       else {
         BKE_mesh_wrapper_ensure_mdata(mesh);
         BKE_modifier_deform_verts(md, &mectx, mesh, mesh->vert_positions_for_write());
+        mesh->tag_positions_changed();
       }
     }
     else {
-      Mesh *mesh = geometry_set.get_mesh_for_write();
       non_deform_modifier_applied = true;
 
       /* create an orco derivedmesh in parallel */
@@ -856,10 +856,8 @@ static void mesh_build_data(Depsgraph &depsgraph,
                             const bool need_mapping)
 {
   const Mesh &mesh_input = *static_cast<const Mesh *>(ob.data);
-
   GeometrySet geometry_set = mesh_calc_modifiers(
       depsgraph, scene, ob, true, need_mapping, dataMask, true);
-
   const Mesh *mesh_eval = geometry_set.get_mesh();
 
   BKE_object_eval_assign_data(&ob, &const_cast<ID &>(mesh_eval->id), false);
@@ -885,11 +883,6 @@ static void mesh_build_data(Depsgraph &depsgraph,
   }
 
   mesh_build_extra_data(depsgraph, ob, *mesh_eval);
-}
-
-static void ensure_mesh_component_mdata(GeometrySet &geometry_set)
-{
-  const Mesh *mesh = geometry_set.get_mesh();
 }
 
 static void editbmesh_build_data(Depsgraph &depsgraph,
