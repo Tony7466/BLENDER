@@ -3540,14 +3540,13 @@ static void do_brush_action(const Sculpt &sd,
   /* Apply one type of brush action. */
   switch (brush.sculpt_tool) {
     case SCULPT_TOOL_DRAW: {
-      const bool use_vector_displacement = (ss.cache->brush->flag2 &
-                                                BRUSH_USE_COLOR_AS_DISPLACEMENT &&
-                                            (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA));
+      const bool use_vector_displacement = (brush.flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT &&
+                                            (brush.mtex.brush_map_mode == MTEX_MAP_MODE_AREA));
       if (use_vector_displacement) {
-        ed::sculpt_paint::do_draw_vector_displacement_brush(*sd, *ob, nodes);
+        ed::sculpt_paint::do_draw_vector_displacement_brush(sd, ob, nodes);
       }
       else {
-        ed::sculpt_paint::do_draw_brush(*sd, *ob, nodes);
+        ed::sculpt_paint::do_draw_brush(sd, ob, nodes);
       }
       break;
     }
@@ -5664,11 +5663,11 @@ static void sculpt_stroke_update_step(bContext *C,
    *
    * For some brushes, flushing is done in the brush code itself.
    */
-  if (!(ELEM(brush->sculpt_tool, SCULPT_TOOL_DRAW) && BKE_pbvh_type(*ss->pbvh) == PBVH_FACES)) {
-    if (ss->deform_modifiers_active) {
-      SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush->sculpt_tool));
+  if (!(ELEM(brush.sculpt_tool, SCULPT_TOOL_DRAW) && BKE_pbvh_type(*ss.pbvh) == PBVH_FACES)) {
+    if (ss.deform_modifiers_active) {
+      SCULPT_flush_stroke_deform(sd, ob, sculpt_tool_is_proxy_used(brush.sculpt_tool));
     }
-    else if (ss->shapekey_active) {
+    else if (ss.shapekey_active) {
       sculpt_update_keyblock(ob);
     }
   }
@@ -6334,14 +6333,14 @@ void calc_distance_falloff(SculptSession &ss,
 {
   SculptBrushTest test;
   const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      &ss, &test, falloff_shape);
+      ss, test, falloff_shape);
 
   for (const int i : verts.index_range()) {
     if (factors[i] == 0.0f) {
       r_distances[i] = FLT_MAX;
       continue;
     }
-    if (!sculpt_brush_test_sq_fn(&test, positions[verts[i]])) {
+    if (!sculpt_brush_test_sq_fn(test, positions[verts[i]])) {
       factors[i] = 0.0f;
       r_distances[i] = FLT_MAX;
       continue;
@@ -6360,13 +6359,13 @@ void calc_brush_strength_factors(const SculptSession &ss,
 
   for (const int i : verts.index_range()) {
     if (factors[i] == 0.0f) {
-      /* Skip already masked-out points, as they might be outside of the brush radius and have
-       * distance of FLT_MAX. Having such large values in the calculations below might lead to
+      /* Skip already masked-out points, as they might be outside of the brush radius and be
+       * unaffected anyway. Having such large values in the calculations below might lead to
        * non-finite values, leading to undesired results. */
       continue;
     }
 
-    const float hardness = sculpt_apply_hardness(&ss, distances[i]);
+    const float hardness = sculpt_apply_hardness(ss, distances[i]);
     const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
 
     factors[i] *= strength;
@@ -6390,7 +6389,7 @@ void calc_brush_texture_factors(SculptSession &ss,
     float4 texture_rgba;
     /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
-        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
+        ss, brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
 
     factors[i] *= texture_value;
   }

@@ -1125,8 +1125,8 @@ float SCULPT_brush_strength_factor(
     const blender::ed::sculpt_paint::auto_mask::NodeData *automask_data);
 
 /** Sample the brush's texture value. */
-void sculpt_apply_texture(const SculptSession *ss,
-                          const Brush *brush,
+void sculpt_apply_texture(const SculptSession &ss,
+                          const Brush &brush,
                           const float brush_point[3],
                           const int thread_id,
                           float *r_value,

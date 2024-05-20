@@ -50,7 +50,7 @@ static void calc_brush_texture_colors(SculptSession &ss,
     float4 texture_rgba;
     /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
-        &ss, &brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
+        ss, brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
 
     r_colors[i] = texture_rgba * factors[i];
   }
@@ -99,7 +99,7 @@ static void calc_faces(const Sculpt &sd,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   for (const int i : verts.index_range()) {
-    SCULPT_calc_vertex_displacement(&ss, &brush, colors[i], translations[i]);
+    SCULPT_calc_vertex_displacement(ss, brush, colors[i], translations[i]);
   }
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
@@ -120,22 +120,22 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      &ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
     auto_mask::node_update(automask_data, vd);
 
     float r_rgba[4];
-    SCULPT_brush_strength_color(&ss,
-                                &brush,
+    SCULPT_brush_strength_color(ss,
+                                brush,
                                 vd.co,
                                 math::sqrt(test.dist),
                                 vd.no,
@@ -145,7 +145,7 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
                                 thread_id,
                                 &automask_data,
                                 r_rgba);
-    SCULPT_calc_vertex_displacement(&ss, &brush, r_rgba, proxy[vd.i]);
+    SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[vd.i]);
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -158,22 +158,22 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      &ss, &test, brush.falloff_shape);
+      ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
       continue;
     }
 
     auto_mask::node_update(automask_data, vd);
 
     float r_rgba[4];
-    SCULPT_brush_strength_color(&ss,
-                                &brush,
+    SCULPT_brush_strength_color(ss,
+                                brush,
                                 vd.co,
                                 math::sqrt(test.dist),
                                 vd.no,
@@ -183,7 +183,7 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
                                 thread_id,
                                 &automask_data,
                                 r_rgba);
-    SCULPT_calc_vertex_displacement(&ss, &brush, r_rgba, proxy[vd.i]);
+    SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[vd.i]);
   }
   BKE_pbvh_vertex_iter_end;
 }
