@@ -627,7 +627,7 @@ static void position_viewer_node(const bNodeTree &tree,
 
     const bNode *collided_node = nullptr;
     for (const bNode *node : tree.all_nodes()) {
-      if (node->type == NODE_FRAME) {
+      if (node->is_frame()) {
         continue;
       }
       if (ELEM(node, &viewer_node, &node_to_view)) {
@@ -662,7 +662,7 @@ static void position_viewer_node(const bNodeTree &tree,
 
     bool found_collision_for_aligned_rect = false;
     for (const bNode *node : tree.all_nodes()) {
-      if (node->type == NODE_FRAME) {
+      if (node->is_frame()) {
         continue;
       }
       if (ELEM(node, &viewer_node, &node_to_view)) {
