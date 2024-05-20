@@ -264,7 +264,6 @@ class GLShaderCompiler : public ShaderCompilerBase {
 
   GLCompilerWorker *get_compiler_worker(const char *vert, const char *frag);
   bool worker_is_lost(GLCompilerWorker *&worker);
-  void print_workers();
 
  public:
   ~GLShaderCompiler();

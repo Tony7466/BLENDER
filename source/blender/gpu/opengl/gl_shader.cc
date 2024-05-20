@@ -1598,7 +1598,6 @@ GLCompilerWorker::GLCompilerWorker(size_t max_size)
   static size_t pipe_id = 0;
   pipe_id++;
 
-  /* TODO: Per Blender instance name. */
   std::string pipe_name = "BLENDER_SHADER_COMPILER_" + std::to_string(getpid()) + "_" +
                           std::to_string(pipe_id);
   ipc_mem_init(&pipe_, pipe_name.c_str(), max_size);
@@ -1645,8 +1644,6 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   strcpy((char *)pipe_.data, vert.c_str());
   strcpy((char *)pipe_.data + vert.size() + 1, frag.c_str());
 
-  const std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  // printf("SEND START %s - %s\n", pipe_.name, std::ctime(&t));
   ipc_sem_increment(&start_semaphore_);
 
   state_ = COMPILATION_REQUESTED;
@@ -1661,8 +1658,6 @@ bool GLCompilerWorker::poll()
   }
 
   if (ipc_sem_try_decrement(&end_semaphore_)) {
-    const std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    // printf("RECV END %s - %s\n", pipe_.name, std::ctime(&t));
     state_ = COMPILATION_READY;
   }
 
@@ -1682,8 +1677,6 @@ bool GLCompilerWorker::load_program_binary(GLint program)
   BLI_assert(ELEM(state_, COMPILATION_REQUESTED, COMPILATION_READY));
   if (state_ == COMPILATION_REQUESTED) {
     ipc_sem_decrement(&end_semaphore_);
-    const std::time_t t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    // printf("STALL RECV END %s - %s\n", pipe_.name, std::ctime(&t));
     state_ = COMPILATION_READY;
   }
 
@@ -1697,9 +1690,7 @@ bool GLCompilerWorker::load_program_binary(GLint program)
   state_ = COMPILATION_FINISHED;
 
   if (binary->size > 0) {
-    double t = BLI_time_now_seconds();
     glProgramBinary(program, binary->format, &binary->data_start, binary->size);
-    // printf("%s - %fs\n", pipe_.name, BLI_time_now_seconds() - t);
     return true;
   }
 
@@ -1708,7 +1699,6 @@ bool GLCompilerWorker::load_program_binary(GLint program)
 
 void GLCompilerWorker::release()
 {
-  // BLI_assert(state_ == COMPILATION_FINISHED);
   state_ = AVAILABLE;
 }
 
@@ -1758,14 +1748,6 @@ bool GLShaderCompiler::worker_is_lost(GLCompilerWorker *&worker)
   return worker == nullptr;
 }
 
-void GLShaderCompiler::print_workers()
-{
-  printf("-----------------------------\n");
-  for (GLCompilerWorker *worker : workers_) {
-    printf("%s | state %d \n", worker->pipe_.name, worker->state_);
-  }
-}
-
 BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
 {
   BLI_assert(GPU_use_parallel_compilation());
@@ -1810,13 +1792,9 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
     return true;
   }
 
-  int waiting = 0;
-  int ready = 0;
-
   batch.is_ready = true;
   for (CompilationWork &item : batch.items) {
     if (item.is_ready) {
-      ready++;
       continue;
     }
 
@@ -1827,7 +1805,6 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
     }
 
     if (!item.worker) {
-      waiting++;
       item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     }
     else if (item.worker->poll()) {
@@ -1853,15 +1830,12 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
     }
   }
 
-  // printf("Size: %d | Ready: %d | Wait: %d\n", batch.items.size(), ready, waiting);
-
   int available = 0;
   for (GLCompilerWorker *worker : workers_) {
     if (worker->state_ == GLCompilerWorker::AVAILABLE) {
       available++;
     }
   }
-  // printf("Busy: %d | Available: %d\n", workers_.size() - available, available);
 
   return batch.is_ready;
 }
@@ -1869,7 +1843,6 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
 Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 {
   while (!batch_is_ready(handle)) {
-    // print_workers();
     BLI_time_sleep_ms(1);
   }
   std::scoped_lock lock(mutex_);
