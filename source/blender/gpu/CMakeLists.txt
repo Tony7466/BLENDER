@@ -857,6 +857,10 @@ target_link_libraries(bf_gpu PUBLIC
   bf_gpu_shaders
 )
 
+if(WITH_OPENGL_BACKEND AND UNIX)
+target_link_libraries(bf_gpu PUBLIC rt)
+endif()
+
 if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
 endif()
