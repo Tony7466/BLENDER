@@ -36,11 +36,11 @@ def get_group_output_node(tree, output_node_type='GROUP_OUTPUT'):
         
 
 def get_output_location(tree):
-    # get right-most location
+    # get right-most location.
     sorted_by_xloc = (sorted(tree.nodes, key=lambda x: x.location.x))
     max_xloc_node = sorted_by_xloc[-1]
 
-    # get average y location
+    # get average y location.
     sum_yloc = 0
     for node in tree.nodes:
         sum_yloc += node.location.y
@@ -51,7 +51,7 @@ def get_output_location(tree):
 
 
 def get_internal_socket(socket):
-    # get the internal socket from a socket inside or outside the group
+    # get the internal socket from a socket inside or outside the group.
     node = socket.node
     if node.type == 'GROUP_OUTPUT':
         iterator = node.id_data.interface.items_tree
@@ -73,7 +73,7 @@ def is_visible_socket(socket):
 
 
 def is_viewer_socket(socket):
-    # checks if a internal socket is a valid viewer socket
+    # checks if a internal socket is a valid viewer socket.
     return socket.name == viewer_socket_name and socket.ViewerSocket
 
 
