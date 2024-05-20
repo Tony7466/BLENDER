@@ -43,7 +43,8 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
     @classmethod
     def poll(cls, context):
         """Already implemented natively for compositing nodes."""
-        return (node_editor_poll(cls, context) and node_space_type_poll(cls, context, {'ShaderNodeTree', 'GeometryNodeTree'}))
+        return (node_editor_poll(cls, context) and
+                node_space_type_poll(cls, context, {'ShaderNodeTree', 'GeometryNodeTree'}))
 
 
     @staticmethod
@@ -55,14 +56,14 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
         """Get correct output node in shader editor"""
         if shader_type == 'OBJECT':
             if space.id in bpy.data.lights.values():
-                self.shader_output_type = "OUTPUT_LIGHT"
-                self.shader_output_ident = "ShaderNodeOutputLight"
+                self.shader_output_type = 'OUTPUT_LIGHT'
+                self.shader_output_ident = 'ShaderNodeOutputLight'
             else:
-                self.shader_output_type = "OUTPUT_MATERIAL"
-                self.shader_output_ident = "ShaderNodeOutputMaterial"
+                self.shader_output_type = 'OUTPUT_MATERIAL'
+                self.shader_output_ident = 'ShaderNodeOutputMaterial'
         elif shader_type == 'WORLD':
-            self.shader_output_type = "OUTPUT_WORLD"
-            self.shader_output_ident = "ShaderNodeOutputWorld"
+            self.shader_output_type = 'OUTPUT_WORLD'
+            self.shader_output_ident = 'ShaderNodeOutputWorld'
 
     def ensure_viewer_socket(self, node_tree, socket_type, connect_socket=None):
         """Check if a viewer output already exists in a node group, otherwise create it"""
@@ -246,7 +247,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
     def invoke(self, context, event):
         space = context.space_data
         # Ignore operator when running in wrong context.
-        if self.run_in_geometry_nodes != (space.tree_type == "GeometryNodeTree"):
+        if self.run_in_geometry_nodes != (space.tree_type == 'GeometryNodeTree'):
             return {'PASS_THROUGH'}
 
         mlocx = event.mouse_region_x
@@ -273,7 +274,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
             return {'CANCELLED'}
 
         # For geometry node trees, we just connect to the group output
-        if space.tree_type == "GeometryNodeTree":
+        if space.tree_type == 'GeometryNodeTree':
             socket_type = 'NodeSocketGeometry'
 
             # Find (or create if needed) the output of this node tree
@@ -300,7 +301,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
                 output_node_socket_index = geometry_out_socket.index
 
         # For shader node trees, we connect to a material output
-        elif space.tree_type == "ShaderNodeTree":
+        elif space.tree_type == 'ShaderNodeTree':
             socket_type = 'NodeSocketShader'
             self.init_shader_variables(space, space.shader_type)
 
