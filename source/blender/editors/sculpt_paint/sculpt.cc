@@ -6290,9 +6290,9 @@ void SCULPT_cube_tip_init(const Sculpt & /*sd*/,
 
 namespace blender::ed::sculpt_paint {
 
-void calc_mesh_hide_and_mask(const Mesh &mesh,
-                             const Span<int> verts,
-                             const MutableSpan<float> r_factors)
+void fill_factor_from_hide_and_mask(const Mesh &mesh,
+                                    const Span<int> verts,
+                                    const MutableSpan<float> r_factors)
 {
   /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
   const bke::AttributeAccessor attributes = mesh.attributes();

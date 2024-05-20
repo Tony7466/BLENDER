@@ -60,9 +60,9 @@ struct Cache;
 /**
  * Calculate initial influence factors based on vertex visibility and masking.
  */
-void calc_mesh_hide_and_mask(const Mesh &mesh,
-                             Span<int> vert_indices,
-                             MutableSpan<float> r_factors);
+void fill_factor_from_hide_and_mask(const Mesh &mesh,
+                                    Span<int> vert_indices,
+                                    MutableSpan<float> r_factors);
 
 /**
  * Disable brush influence when vertex normals point away from the view.

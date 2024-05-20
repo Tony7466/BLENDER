@@ -55,7 +55,7 @@ static void calc_faces(const Sculpt &sd,
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
-  calc_mesh_hide_and_mask(mesh, verts, factors);
+  fill_factor_from_hide_and_mask(mesh, verts, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
     calc_front_face(cache.view_normal, vert_normals, verts, factors);
