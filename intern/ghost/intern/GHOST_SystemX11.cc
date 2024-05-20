@@ -1948,17 +1948,17 @@ static GHOST_TKey ghost_key_from_keysym(const KeySym key)
       GXMAP(type, XK_KP_9, GHOST_kKeyNumpad9);
       GXMAP(type, XK_KP_Decimal, GHOST_kKeyNumpadPeriod);
 
-      GXMAP(type, XK_KP_Insert, GHOST_kKeyNumpad0);
-      GXMAP(type, XK_KP_End, GHOST_kKeyNumpad1);
-      GXMAP(type, XK_KP_Down, GHOST_kKeyNumpad2);
-      GXMAP(type, XK_KP_Page_Down, GHOST_kKeyNumpad3);
-      GXMAP(type, XK_KP_Left, GHOST_kKeyNumpad4);
+      GXMAP(type, XK_KP_Insert, GHOST_kKeyInsert);
+      GXMAP(type, XK_KP_End, GHOST_kKeyEnd);
+      GXMAP(type, XK_KP_Down, GHOST_kKeyDownArrow);
+      GXMAP(type, XK_KP_Page_Down, GHOST_kKeyDownPage);
+      GXMAP(type, XK_KP_Left, GHOST_kKeyLeftArrow);
       GXMAP(type, XK_KP_Begin, GHOST_kKeyNumpad5);
-      GXMAP(type, XK_KP_Right, GHOST_kKeyNumpad6);
-      GXMAP(type, XK_KP_Home, GHOST_kKeyNumpad7);
-      GXMAP(type, XK_KP_Up, GHOST_kKeyNumpad8);
-      GXMAP(type, XK_KP_Page_Up, GHOST_kKeyNumpad9);
-      GXMAP(type, XK_KP_Delete, GHOST_kKeyNumpadPeriod);
+      GXMAP(type, XK_KP_Right, GHOST_kKeyRightArrow);
+      GXMAP(type, XK_KP_Home, GHOST_kKeyHome);
+      GXMAP(type, XK_KP_Up, GHOST_kKeyUpArrow);
+      GXMAP(type, XK_KP_Page_Up, GHOST_kKeyDownPage);
+      GXMAP(type, XK_KP_Delete, GHOST_kKeyDelete);
 
       GXMAP(type, XK_KP_Enter, GHOST_kKeyNumpadEnter);
       GXMAP(type, XK_KP_Add, GHOST_kKeyNumpadPlus);
