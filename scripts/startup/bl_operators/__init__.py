@@ -15,6 +15,7 @@ _modules = [
     "anim",
     "assets",
     "clip",
+    "connect_to_output",
     "console",
     "constraint",
     "file",
@@ -58,6 +59,13 @@ def register():
         for cls in mod.classes:
             register_class(cls)
 
+    # properties
+    bpy.types.NodeTreeInterfaceSocket.ViewerSocket = bpy.props.BoolProperty(
+        name="Preview Socket",
+        default=False,
+        description="An internal property used to determine if a socket is generated for preview purposes"
+    )
+
 
 def unregister():
     from bpy.utils import unregister_class
@@ -65,3 +73,6 @@ def unregister():
         for cls in reversed(mod.classes):
             if cls.is_registered:
                 unregister_class(cls)
+
+    # properties
+    del bpy.types.NodeTreeInterfaceSocket.ViewerSocket
