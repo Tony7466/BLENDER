@@ -454,6 +454,21 @@ static void rna_userdef_script_autoexec_update(Main * /*bmain*/,
   USERDEF_TAG_DIRTY;
 }
 
+static void rna_userdef_internet_offline_mode_update(Main * /*bmain*/,
+                                                     Scene * /*scene*/,
+                                                     PointerRNA *ptr)
+{
+  UserDef *userdef = (UserDef *)ptr->data;
+  if (userdef->flag & USER_INTERNET_OFFLINE) {
+    G.f |= G_FLAG_INTERNET_OFFLINE;
+  }
+  else {
+    G.f &= ~G_FLAG_INTERNET_OFFLINE;
+  }
+
+  USERDEF_TAG_DIRTY;
+}
+
 static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *value)
 {
   bUserScriptDirectory *script_dir = static_cast<bUserScriptDirectory *>(ptr->data);
@@ -6143,6 +6158,16 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       prop,
       "GPU Backend",
       "GPU backend to use (requires restarting Blender for changes to take effect)");
+
+  /* Network. */
+
+  prop = RNA_def_property(srna, "use_internet_offline", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_INTERNET_OFFLINE);
+  RNA_def_property_ui_text(
+      prop,
+      "Work Offline",
+      "Disallow internet access for built-in operations and 3rd party add-ons");
+  RNA_def_property_update(prop, 0, "rna_userdef_internet_offline_mode_update");
 
   /* Audio */
 

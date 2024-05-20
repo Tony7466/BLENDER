@@ -135,7 +135,7 @@ use_repos_to_notify = False
 
 def repos_to_notify():
     repos_notify = []
-    if not bpy.app.background:
+    if not (bpy.app.background or bpy.app.internet_offline):
         # To use notifications on startup requires:
         # - The splash displayed.
         # - The status bar displayed.

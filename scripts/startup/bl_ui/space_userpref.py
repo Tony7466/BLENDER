@@ -739,6 +739,16 @@ class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
         col.prop(system, "vbo_collection_rate", text="Garbage Collection Rate")
 
 
+class USERPREF_PT_system_network(SystemPanel, CenterAlignMixIn, Panel):
+    bl_label = "Network"
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        system = prefs.system
+
+        layout.prop(system, "use_internet_offline", text="Work Offline")
+
+
 class USERPREF_PT_system_video_sequencer(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "Video Sequencer"
 
@@ -2829,6 +2839,7 @@ classes = (
     USERPREF_PT_system_os_settings,
     USERPREF_PT_system_memory,
     USERPREF_PT_system_video_sequencer,
+    USERPREF_PT_system_network,
     USERPREF_PT_system_sound,
 
     USERPREF_MT_interface_theme_presets,

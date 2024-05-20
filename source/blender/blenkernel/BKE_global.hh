@@ -185,6 +185,18 @@ enum {
   G_FLAG_EVENT_SIMULATE = (1 << 3),
   G_FLAG_USERPREF_NO_SAVE_ON_EXIT = (1 << 4),
 
+  /**
+   * Internet access is blocked (offline mode).
+   *
+   * \note This setting doesn't prevent network access, rather it is a setting to
+   * disallow built-in utilities and 3rd party scripts from accessing the internet.
+   * While this isn't enforced, it is considered a bug when any script sends or receives
+   * data over the internet while this flag is set.
+   */
+  G_FLAG_INTERNET_OFFLINE = (1 << 10),
+  /** When this flag is set ignore the preferences #USER_INTERNET_OFFLINE. */
+  G_FLAG_INTERNET_OVERRIDE_PREF = (1 << 11),
+
   G_FLAG_SCRIPT_AUTOEXEC = (1 << 13),
   /** When this flag is set ignore the preferences #USER_SCRIPT_AUTOEXEC_DISABLE. */
   G_FLAG_SCRIPT_OVERRIDE_PREF = (1 << 14),
@@ -194,8 +206,8 @@ enum {
 
 /** Don't overwrite these flags when reading a file. */
 #define G_FLAG_ALL_RUNTIME \
-  (G_FLAG_SCRIPT_AUTOEXEC | G_FLAG_SCRIPT_OVERRIDE_PREF | G_FLAG_EVENT_SIMULATE | \
-   G_FLAG_USERPREF_NO_SAVE_ON_EXIT | \
+  (G_FLAG_SCRIPT_AUTOEXEC | G_FLAG_SCRIPT_OVERRIDE_PREF | G_FLAG_INTERNET_OFFLINE | \
+   G_FLAG_INTERNET_OVERRIDE_PREF | G_FLAG_EVENT_SIMULATE | G_FLAG_USERPREF_NO_SAVE_ON_EXIT | \
 \
    /* #BPY_python_reset is responsible for resetting these flags on file load. */ \
    G_FLAG_SCRIPT_AUTOEXEC_FAIL | G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET)
