@@ -6320,6 +6320,8 @@ void calc_front_face(const float3 &view_normal,
                      const Span<int> verts,
                      const MutableSpan<float> factors)
 {
+  BLI_assert(verts.size() == factors.size());
+
   for (const int i : verts.index_range()) {
     const float dot = math::dot(view_normal, vert_normals[verts[i]]);
     factors[i] *= dot > 0.0f ? dot : 0.0f;
@@ -6409,6 +6411,8 @@ void apply_translations(const Span<float3> translations,
                         const Span<int> verts,
                         const MutableSpan<float3> positions)
 {
+  BLI_assert(verts.size() == translations.size());
+
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
     positions[vert] += translations[i];
@@ -6419,6 +6423,8 @@ void apply_crazyspace_to_translations(const Span<float3x3> deform_imats,
                                       const Span<int> verts,
                                       const MutableSpan<float3> translations)
 {
+  BLI_assert(verts.size() == translations.size());
+
   for (const int i : verts.index_range()) {
     translations[i] = math::transform_point(deform_imats[verts[i]], translations[i]);
   }
@@ -6430,6 +6436,8 @@ void clip_and_lock_translations(const Sculpt &sd,
                                 const Span<int> verts,
                                 const MutableSpan<float3> translations)
 {
+  BLI_assert(verts.size() == translations.size());
+
   const StrokeCache *cache = ss.cache;
   if (!cache) {
     return;
