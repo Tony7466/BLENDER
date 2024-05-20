@@ -187,11 +187,11 @@ static bke::GeometrySet get_original_geometry_eval_copy(Object &object)
       if (std::shared_ptr<BMEditMesh> &em = mesh->runtime->edit_mesh) {
         Mesh *mesh_copy = BKE_mesh_wrapper_from_editmesh(em, nullptr, mesh);
         BKE_mesh_wrapper_ensure_mdata(mesh_copy);
-        Mesh *final_copy = BKE_mesh_copy_for_eval(mesh_copy);
+        Mesh *final_copy = BKE_mesh_copy_for_eval(*mesh_copy);
         BKE_id_free(nullptr, mesh_copy);
         return bke::GeometrySet::from_mesh(final_copy);
       }
-      return bke::GeometrySet::from_mesh(BKE_mesh_copy_for_eval(mesh));
+      return bke::GeometrySet::from_mesh(BKE_mesh_copy_for_eval(*mesh));
     }
     default:
       return {};
@@ -241,7 +241,7 @@ static void store_result_geometry(
       const bool has_shape_keys = mesh.key != nullptr;
 
       if (object.mode == OB_MODE_SCULPT) {
-        sculpt_paint::undo::geometry_begin(&object, &op);
+        sculpt_paint::undo::geometry_begin(object, &op);
       }
 
       Mesh *new_mesh = geometry.get_component_for_write<bke::MeshComponent>().release();
@@ -268,7 +268,7 @@ static void store_result_geometry(
       }
 
       if (object.mode == OB_MODE_SCULPT) {
-        sculpt_paint::undo::geometry_end(&object);
+        sculpt_paint::undo::geometry_end(object);
       }
       break;
     }
