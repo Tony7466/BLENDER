@@ -65,8 +65,6 @@
 #include "rna_access_internal.h"
 #include "rna_internal.hh"
 
-const PointerRNA PointerRNA_NULL = {nullptr};
-
 static CLG_LogRef LOG = {"rna.access"};
 
 /* Init/Exit */
@@ -2139,7 +2137,7 @@ static bool rna_property_editable_do(const PointerRNA *ptr,
 
   /* Handle linked or liboverride ID cases. */
   const bool is_linked_prop_exception = (prop->flag & PROP_LIB_EXCEPTION) != 0;
-  if (ID_IS_LINKED(id)) {
+  if (!ID_IS_EDITABLE(id)) {
     if (is_linked_prop_exception) {
       return true;
     }
@@ -2227,7 +2225,7 @@ bool RNA_property_anim_editable(const PointerRNA *ptr, PropertyRNA *prop_orig)
   if (ptr->owner_id) {
     AnimData *anim_data = BKE_animdata_from_id(ptr->owner_id);
     if (anim_data && anim_data->action &&
-        (ID_IS_LINKED(anim_data->action) || ID_IS_OVERRIDE_LIBRARY(anim_data->action)))
+        (!ID_IS_EDITABLE(anim_data->action) || ID_IS_OVERRIDE_LIBRARY(anim_data->action)))
     {
       return false;
     }
