@@ -34,7 +34,7 @@ float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
   vec3 Lt = L * tangent_to_world;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID: {
-      if (thickness != 0.0) {
+      if (thickness > 0.0) {
         return sample_pdf_uniform_sphere();
       }
       return sample_pdf_cosine_hemisphere(saturate(-Lt.z));
@@ -65,8 +65,8 @@ void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
       float ior = to_closure_refraction(cl).ior;
       float roughness = to_closure_refraction(cl).roughness;
-      roughness = refraction_roughness_remapping(roughness, ior);
-      vec3 L = refraction_dominant_dir(cl.N, V, ior, roughness);
+      float apparent_roughness = refraction_roughness_remapping(roughness, ior);
+      vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
       cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
       cl.data.y = 1.0 / ior;
       V = -L;
