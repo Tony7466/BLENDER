@@ -8,7 +8,9 @@
 
 #include "BLI_string.h"
 
+#include "DNA_curves_types.h"
 #include "DNA_grease_pencil_types.h"
+#include "DNA_scene_types.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -23,8 +25,11 @@
 #  include <fmt/format.h>
 
 #  include "BKE_attribute.hh"
+#  include "BKE_curves.hh"
+#  include "BKE_customdata.hh"
 #  include "BKE_grease_pencil.hh"
 
+#  include "BLI_cpp_type.hh"
 #  include "BLI_span.hh"
 
 #  include "DEG_depsgraph.hh"
@@ -39,6 +44,15 @@ static void rna_grease_pencil_update(Main * /*bmain*/, Scene * /*scene*/, Pointe
 {
   DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
+}
+
+static void rna_grease_pencil_tag_redraw(ID *id, GreasePencilDrawing * /*drawing*/)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
 }
 
 static void rna_grease_pencil_autolock(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -218,6 +232,26 @@ static void rna_GreasePencilLayer_pass_index_set(PointerRNA *ptr, int value)
   layer_passes.finish();
 }
 
+static GreasePencilFrame *rna_GreasePencilLayer_get_frame_at(GreasePencilLayer *layer_in,
+                                                             int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = *static_cast<Layer *>(layer_in);
+  return layer.frame_at(frame_number);
+}
+
+static void rna_GreasePencilLayer_clear(ID *id, GreasePencilLayer *layer_in)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = *static_cast<Layer *>(layer_in);
+
+  grease_pencil.remove_frames(layer, layer.sorted_keys());
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+}
+
 static PointerRNA rna_GreasePencil_active_layer_get(PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
@@ -225,7 +259,7 @@ static PointerRNA rna_GreasePencil_active_layer_get(PointerRNA *ptr)
     return rna_pointer_inherit_refine(
         ptr, &RNA_GreasePencilLayer, static_cast<void *>(grease_pencil->get_active_layer()));
   }
-  return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
+  return PointerRNA_NULL;
 }
 
 static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
@@ -244,7 +278,7 @@ static PointerRNA rna_GreasePencil_active_group_get(PointerRNA *ptr)
     return rna_pointer_inherit_refine(
         ptr, &RNA_GreasePencilLayerGroup, static_cast<void *>(grease_pencil->get_active_group()));
   }
-  return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
+  return PointerRNA_NULL;
 }
 
 static void rna_GreasePencil_active_group_set(PointerRNA *ptr,
@@ -255,7 +289,7 @@ static void rna_GreasePencil_active_group_set(PointerRNA *ptr,
   GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(value.data);
   if (node->wrap().is_group()) {
     grease_pencil->active_node = node;
-    WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
+    WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
   }
 }
 
@@ -303,7 +337,769 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
   return grease_pencil->layer_groups().size();
 }
 
+static void rna_GreasePencilLayer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  blender::Span<FramesMapKey> sorted_keys = layer.sorted_keys();
+
+  rna_iterator_array_begin(
+      iter, (void *)sorted_keys.data(), sizeof(FramesMapKey), sorted_keys.size(), false, nullptr);
+}
+
+static PointerRNA rna_GreasePencilLayer_frames_get(CollectionPropertyIterator *iter)
+{
+  using namespace blender::bke::greasepencil;
+  const FramesMapKey frame_key = *static_cast<FramesMapKey *>(rna_iterator_array_get(iter));
+  const Layer &layer = static_cast<GreasePencilLayer *>(iter->parent.data)->wrap();
+  const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
+  return rna_pointer_inherit_refine(&iter->parent,
+                                    &RNA_GreasePencilFrame,
+                                    static_cast<void *>(const_cast<GreasePencilFrame *>(frame)));
+}
+
+static int rna_GreasePencilLayer_frames_length(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  return layer.frames().size();
+}
+
+static bool rna_GreasePencilLayer_frames_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (index < 0 || index >= layer.sorted_keys().size()) {
+    return false;
+  }
+  const FramesMapKey frame_key = layer.sorted_keys()[index];
+  const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
+
+  r_ptr->owner_id = &grease_pencil.id;
+  r_ptr->type = &RNA_GreasePencilFrame;
+  r_ptr->data = static_cast<void *>(const_cast<GreasePencilFrame *>(frame));
+  return true;
+}
+
+static GreasePencilFrame *rna_Frames_frame_new(ID *id,
+                                               GreasePencilLayer *layer_in,
+                                               ReportList *reports,
+                                               int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = static_cast<GreasePencilLayer *>(layer_in)->wrap();
+
+  if (layer.frames().contains(frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame already exists on frame number %d", frame_number);
+    return nullptr;
+  }
+
+  grease_pencil.insert_frame(layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+
+  return layer.frame_at(frame_number);
+}
+
+static void rna_Frames_frame_remove(ID *id,
+                                    GreasePencilLayer *layer_in,
+                                    ReportList *reports,
+                                    int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = static_cast<GreasePencilLayer *>(layer_in)->wrap();
+
+  if (!layer.frames().contains(frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame doesn't exists on frame number %d", frame_number);
+    return;
+  }
+
+  if (grease_pencil.remove_frames(layer, {frame_number})) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+  }
+}
+
+static GreasePencilFrame *rna_Frames_frame_copy(ID *id,
+                                                GreasePencilLayer *layer_in,
+                                                ReportList *reports,
+                                                int from_frame_number,
+                                                int to_frame_number,
+                                                bool instance_drawing)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = static_cast<GreasePencilLayer *>(layer_in)->wrap();
+
+  if (!layer.frames().contains(from_frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame doesn't exists on frame number %d", from_frame_number);
+    return nullptr;
+  }
+  if (layer.frames().contains(to_frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame already exists on frame number %d", to_frame_number);
+    return nullptr;
+  }
+
+  grease_pencil.insert_duplicate_frame(
+      layer, from_frame_number, to_frame_number, instance_drawing);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+
+  return layer.frame_at(to_frame_number);
+}
+
+static PointerRNA rna_Frame_drawing_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  GreasePencilFrame &this_frame = *static_cast<GreasePencilFrame *>(ptr->data);
+  if (this_frame.drawing_index == -1) {
+    return PointerRNA_NULL;
+  }
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  Layer *this_layer = nullptr;
+  int frame_number = 0;
+  for (const Layer *layer : grease_pencil.layers()) {
+    layer->frames().foreach_item(
+        [&](const FramesMapKey frame_key, const GreasePencilFrame &frame) {
+          if (&frame == &this_frame) {
+            this_layer = const_cast<Layer *>(layer);
+            frame_number = int(frame_key);
+            return;
+          }
+        });
+  }
+  if (this_layer == nullptr) {
+    return PointerRNA_NULL;
+  }
+
+  const Drawing *drawing = grease_pencil.get_drawing_at(*this_layer, frame_number);
+
+  return rna_pointer_inherit_refine(
+      ptr, &RNA_GreasePencilDrawing, static_cast<void *>(const_cast<Drawing *>(drawing)));
+}
+
+static int rna_Frame_frame_number_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  GreasePencilFrame &frame_to_find = *static_cast<GreasePencilFrame *>(ptr->data);
+  int frame_number = 0;
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  for (const Layer *layer : grease_pencil.layers()) {
+    layer->frames().foreach_item(
+        [&](const FramesMapKey frame_key, const GreasePencilFrame &frame) {
+          if (&frame == &frame_to_find) {
+            frame_number = int(frame_key);
+            return;
+          }
+        });
+  }
+
+  return frame_number;
+}
+
+static void rna_Frame_frame_number_index_range(
+    PointerRNA * /*ptr*/, int *min, int *max, int * /*softmin*/, int * /*softmax*/)
+{
+  *min = MINAFRAME;
+  *max = MAXFRAME;
+}
+
+static void rna_Drawing_add_strokes(GreasePencilDrawing *drawing_in,
+                                    ReportList *reports,
+                                    const int *sizes,
+                                    const int sizes_num)
+{
+  using namespace blender;
+  if (std::any_of(sizes, sizes + sizes_num, [](const int size) { return size < 1; })) {
+    BKE_report(reports, RPT_ERROR, "Stroke sizes must be greater than zero");
+    return;
+  }
+
+  bke::CurvesGeometry &curves = drawing_in->geometry.wrap();
+
+  const int orig_points_num = curves.points_num();
+  const int orig_curves_num = curves.curves_num();
+  curves.resize(orig_points_num, orig_curves_num + sizes_num);
+
+  /* Find the final number of points by accumulating the new. */
+  MutableSpan<int> new_offsets = curves.offsets_for_write().drop_front(orig_curves_num);
+  new_offsets.drop_back(1).copy_from({sizes, sizes_num});
+  offset_indices::accumulate_counts_to_offsets(new_offsets, orig_points_num);
+
+  curves.resize(curves.offsets().last(), curves.curves_num());
+
+  /* Initialize new attribute values, since #CurvesGeometry::resize() doesn't do that. */
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::fill_attribute_range_default(
+      attributes, bke::AttrDomain::Point, {}, curves.points_range().drop_front(orig_points_num));
+  bke::fill_attribute_range_default(
+      attributes, bke::AttrDomain::Curve, {}, curves.curves_range().drop_front(orig_curves_num));
+
+  curves.update_curve_types();
+
+  bke::greasepencil::Drawing &drawing =
+      reinterpret_cast<GreasePencilDrawing *>(drawing_in)->wrap();
+  drawing.tag_topology_changed();
+
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
+}
+
+static blender::bke::greasepencil::Drawing *rna_grease_pencil_drawing(const PointerRNA *ptr)
+{
+  return reinterpret_cast<blender::bke::greasepencil::Drawing *>(ptr->data);
+}
+
+static int domain_num(const blender::bke::CurvesGeometry &curves,
+                      const blender::bke::AttrDomain domain)
+{
+  return domain == blender::bke::AttrDomain::Point ? curves.points_num() : curves.curves_num();
+}
+static CustomData &domain_custom_data(blender::bke::CurvesGeometry &curves,
+                                      const blender::bke::AttrDomain domain)
+{
+  return domain == blender::bke::AttrDomain::Point ? curves.point_data : curves.curve_data;
+}
+
+template<typename T>
+static PointerRNA rna_attribute_array_get(PointerRNA *ptr,
+                                          const blender::bke::AttrDomain domain,
+                                          const blender::StringRef name,
+                                          const T default_value = T())
+{
+  blender::bke::greasepencil::Drawing *drawing = rna_grease_pencil_drawing(ptr);
+  blender::bke::CurvesGeometry &curves = drawing->strokes_for_write();
+  const int num = domain_num(curves, domain);
+  if (num <= 0) {
+    return PointerRNA_NULL;
+  }
+
+  const eCustomDataType type = blender::bke::cpp_type_to_custom_data_type(
+      blender::CPPType::get<T>());
+  CustomData &custom_data = domain_custom_data(curves, domain);
+
+  int layer_index = CustomData_get_named_layer_index(&custom_data, type, name);
+  if (layer_index == -1) {
+    T *data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name);
+    blender::MutableSpan<T> span = {data, num};
+    if (span.first() != default_value) {
+      span.fill(default_value);
+    }
+    layer_index = CustomData_get_named_layer_index(&custom_data, type, name);
+  }
+
+  CustomDataLayer &layer = custom_data.layers[layer_index];
+  CustomData_ensure_data_is_mutable(&layer, num);
+  layer.length = num;
+  return rna_pointer_inherit_refine(ptr, &RNA_AttributeArray, static_cast<void *>(&layer));
+}
+
+/** Curve domain. */
+static PointerRNA rna_attribute_array_cyclic_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<bool>(ptr, blender::bke::AttrDomain::Curve, "cyclic", false);
+}
+
+static PointerRNA rna_attribute_array_fill_colors_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<blender::ColorGeometry4f>(
+      ptr,
+      blender::bke::AttrDomain::Curve,
+      "fill_color",
+      blender::ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+}
+
+static PointerRNA rna_attribute_array_start_caps_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<int8_t>(
+      ptr, blender::bke::AttrDomain::Curve, "start_cap", GP_STROKE_CAP_TYPE_ROUND);
+}
+
+static PointerRNA rna_attribute_array_end_caps_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<int8_t>(
+      ptr, blender::bke::AttrDomain::Curve, "end_cap", GP_STROKE_CAP_TYPE_ROUND);
+}
+
+static PointerRNA rna_attribute_array_softnesses_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(ptr, blender::bke::AttrDomain::Curve, "softness", 0.0f);
+}
+
+static PointerRNA rna_attribute_array_aspect_ratios_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(
+      ptr, blender::bke::AttrDomain::Curve, "aspect_ratio", 1.0f);
+}
+
+static PointerRNA rna_attribute_array_material_indices_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<int>(ptr, blender::bke::AttrDomain::Curve, "material_index", 0);
+}
+
+static PointerRNA rna_attribute_array_init_times_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(ptr, blender::bke::AttrDomain::Curve, "init_time", 0.0f);
+}
+
+static PointerRNA rna_attribute_array_stroke_selections_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<bool>(ptr, blender::bke::AttrDomain::Curve, ".selection", true);
+}
+
+/** Point domain. */
+static PointerRNA rna_attribute_array_positions_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<blender::float3>(
+      ptr, blender::bke::AttrDomain::Point, "position", blender::float3(0.0f, 0.0f, 0.0f));
+}
+
+static PointerRNA rna_attribute_array_radii_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(ptr, blender::bke::AttrDomain::Point, "radius", 0.01f);
+}
+
+static PointerRNA rna_attribute_array_opacities_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(ptr, blender::bke::AttrDomain::Point, "opacity", 0.0f);
+}
+
+static PointerRNA rna_attribute_array_vertex_colors_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<blender::ColorGeometry4f>(
+      ptr,
+      blender::bke::AttrDomain::Point,
+      "vertex_color",
+      blender::ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+}
+
+static PointerRNA rna_attribute_array_rotations_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(ptr, blender::bke::AttrDomain::Point, "rotation", 0.0f);
+}
+
+static PointerRNA rna_attribute_array_delta_times_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<float>(ptr, blender::bke::AttrDomain::Point, "delta_time", 0.0f);
+}
+
+static PointerRNA rna_attribute_array_point_selections_get(PointerRNA *ptr)
+{
+  return rna_attribute_array_get<bool>(ptr, blender::bke::AttrDomain::Point, ".selection", true);
+}
+
+static void rna_Drawing_strokes_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  blender::bke::greasepencil::Drawing *drawing = rna_grease_pencil_drawing(ptr);
+  rna_iterator_array_begin(iter,
+                           drawing->geometry.wrap().offsets_for_write().data(),
+                           sizeof(int),
+                           drawing->geometry.curve_num,
+                           false,
+                           nullptr);
+}
+
+static bool rna_Drawing_strokes_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+  Drawing *drawing = rna_grease_pencil_drawing(ptr);
+  if (index < 0 || index >= drawing->geometry.curve_num) {
+    return false;
+  }
+  r_ptr->owner_id = &grease_pencil->id;
+  r_ptr->type = &RNA_Stroke;
+  r_ptr->data = &drawing->geometry.wrap().offsets_for_write()[index];
+  return true;
+}
+
+static int rna_Drawing_strokes_length(PointerRNA *ptr)
+{
+  blender::bke::greasepencil::Drawing *drawing = rna_grease_pencil_drawing(ptr);
+  return drawing->geometry.curve_num;
+}
+
+static int rna_Drawing_points_length(PointerRNA *ptr)
+{
+  blender::bke::greasepencil::Drawing *drawing = rna_grease_pencil_drawing(ptr);
+  return drawing->geometry.point_num;
+}
+
+static int rna_Stroke_start_point_get(PointerRNA *ptr)
+{
+  const int *offset_ptr = static_cast<int *>(ptr->data);
+  return *offset_ptr;
+}
+
+static int rna_Stroke_stop_point_get(PointerRNA *ptr)
+{
+  const int *offset_ptr = static_cast<int *>(ptr->data);
+  return *(offset_ptr + 1);
+}
+
 #else
+
+static void rna_def_grease_pencil_drawing_stroke(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "Stroke", nullptr);
+  RNA_def_struct_ui_text(srna,
+                         "Stroke Point Indices",
+                         "The start and stop point indices of a single stroke in a drawing, for "
+                         "use in range(start, stop) and slices [start:stop]");
+
+  prop = RNA_def_property(srna, "start", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(prop, "rna_Stroke_start_point_get", nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Start Point Index",
+                           "The index of this stroke's start point, e.g. in `range(start, stop)` "
+                           "or `array[start:stop]`");
+
+  prop = RNA_def_property(srna, "stop", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(prop, "rna_Stroke_stop_point_get", nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Stop Point Index",
+                           "The index of this stroke's stop point, e.g. in `range(start, stop)` "
+                           "or `array[start:stop]`");
+}
+
+static void rna_def_grease_pencil_drawing_api(StructRNA *srna)
+{
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "tag_redraw", "rna_grease_pencil_tag_redraw");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID);
+  RNA_def_function_ui_description(
+      func, "Redraw the Grease Pencil object to reflect changes made in the drawing attributes");
+
+  func = RNA_def_function(srna, "add_strokes", "rna_Drawing_add_strokes");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_int_array(func,
+                           "sizes",
+                           1,
+                           nullptr,
+                           0,
+                           INT_MAX,
+                           "Sizes",
+                           "The number of points in each stroke",
+                           1,
+                           10000);
+  RNA_def_property_array(parm, RNA_MAX_ARRAY_LENGTH);
+  RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
+}
+
+static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem rna_enum_drawing_type_items[] = {
+      {GP_DRAWING, "DRAWING", 0, "Drawing", ""},
+      {GP_DRAWING_REFERENCE, "REFERENCE", 0, "Reference", ""},
+      {0, nullptr, 0, nullptr, nullptr}};
+
+  srna = RNA_def_struct(brna, "GreasePencilDrawing", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilDrawing");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Drawing", "A Grease Pencil drawing");
+
+  /* Type. */
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "base.type");
+  RNA_def_property_enum_items(prop, rna_enum_drawing_type_items);
+  /* TODO: Make this property editable when drawing references are supported. */
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Type", "Drawing type");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Number of strokes. */
+  prop = RNA_def_property(srna, "num_strokes", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(prop, "rna_Drawing_strokes_length", nullptr, nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Number of Strokes", "The number of strokes in the drawing");
+
+  /* Number of points. */
+  prop = RNA_def_property(srna, "num_points", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_funcs(prop, "rna_Drawing_points_length", nullptr, nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Number of Points", "The number of stroke points in the drawing");
+
+  /* Stroke points: indices of stroke's start and stop point. */
+  prop = RNA_def_property(srna, "strokes", PROP_COLLECTION, PROP_NONE);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_Drawing_strokes_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    "rna_Drawing_strokes_length",
+                                    "rna_Drawing_strokes_lookup_int",
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_struct_type(prop, "Stroke");
+  RNA_def_property_ui_text(
+      prop, "Stroke Points", "The start and stop point indices of all strokes in the drawing");
+
+  rna_def_grease_pencil_drawing_api(srna);
+
+  /* Built-in attributes for curves. */
+
+  /* Cyclic. */
+  prop = RNA_def_property(srna, "cyclic", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_cyclic_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Stroke Cyclic",
+                           "The cyclic state of all strokes in the drawing. When a stroke is "
+                           "cyclic, the start and end point are connected");
+
+  /* Fill colors. */
+  prop = RNA_def_property(srna, "fill_colors", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_fill_colors_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Fill Colors", "The fill colors of all strokes in the drawing");
+
+  /* Start caps. */
+  prop = RNA_def_property(srna, "start_caps", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_start_caps_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Start Caps", "The shape of the start captions of all strokes in the drawing");
+
+  /* End caps. */
+  prop = RNA_def_property(srna, "end_caps", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_end_caps_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke End Caps", "The shape of the end captions of all strokes in the drawing");
+
+  /* Softnesses. */
+  prop = RNA_def_property(srna, "softnesses", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_softnesses_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Stroke Softnesses",
+                           "The softnesses of all strokes in the drawing. Used to render a soft "
+                           "gradient from the center line of the stroke to the edge");
+
+  /* Aspect ratios. */
+  prop = RNA_def_property(srna, "aspect_ratios", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_aspect_ratios_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Aspect Ratios", "The aspect ratios of textures on all strokes in the drawing");
+
+  /* Material indices. */
+  prop = RNA_def_property(srna, "material_indices", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_material_indices_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Material Indices", "The material indices of all strokes in the drawing");
+
+  /* Init times. */
+  prop = RNA_def_property(srna, "init_times", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_init_times_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Stroke Init Times",
+                           "The initial drawing timestamps of all strokes in the drawing. Used by "
+                           "the build modifier to 'replay' how the stroke was drawn");
+
+  /* Selection state. */
+  prop = RNA_def_property(srna, "stroke_selections", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_stroke_selections_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Selections", "The selection state of all strokes in the drawing");
+
+  /* Built-in attributes for curve points. */
+
+  /* Positions. */
+  prop = RNA_def_property(srna, "positions", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_positions_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Point Positions", "The positions of all points in the drawing");
+
+  /* Radii. */
+  prop = RNA_def_property(srna, "radii", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(prop, "rna_attribute_array_radii_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Stroke Point Radii", "The radii of all points in the drawing");
+
+  /* Opacities. */
+  prop = RNA_def_property(srna, "opacities", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_opacities_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Point Opacities", "The opacities of all points in the drawing");
+
+  /* Vertex colors. */
+  prop = RNA_def_property(srna, "vertex_colors", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_vertex_colors_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Point Vertex Colors", "The vertex colors of all points in the drawing");
+
+  /* Texture rotations. */
+  prop = RNA_def_property(srna, "rotations", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_rotations_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Stroke Point Texture Rotations",
+                           "The texture rotations of all points in the drawing");
+
+  /* Delta times. */
+  prop = RNA_def_property(srna, "delta_times", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_delta_times_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Stroke Point Delta Times",
+                           "The time difference between the moment a point was added and the "
+                           "moment the previous point was added. Used by the build modifier to "
+                           "'replay' how the stroke was drawn");
+
+  /* Selection state. */
+  prop = RNA_def_property(srna, "point_selections", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "AttributeArray");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_attribute_array_point_selections_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Stroke Point Selections", "The selection state of all points in the drawing");
+}
+
+static void rna_def_grease_pencil_frame(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilFrame", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilFrame");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "A Grease Pencil keyframe");
+
+  /* Drawing. */
+  prop = RNA_def_property(srna, "drawing", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilDrawing");
+  /* TODO: Make drawing editable. */
+  RNA_def_property_pointer_funcs(prop, "rna_Frame_drawing_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Drawing", "A Grease Pencil drawing");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Frame number. */
+  prop = RNA_def_property(srna, "frame_number", PROP_INT, PROP_NONE);
+  /* TODO: Make property editable, ensure frame number isn't already in use. */
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(
+      prop, "rna_Frame_frame_number_get", nullptr, "rna_Frame_frame_number_index_range");
+  RNA_def_property_range(prop, MINAFRAME, MAXFRAME);
+  RNA_def_property_ui_text(prop, "Frame Number", "The frame on which the drawing appears");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Selection status. */
+  prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_FRAME_SELECTED);
+  RNA_def_property_ui_text(prop, "Select", "Frame is selected for editing in the Dope Sheet");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+}
+
+static void rna_def_grease_pencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "GreasePencilFrames");
+  srna = RNA_def_struct(brna, "GreasePencilFrames", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilLayer");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frames", "Collection of Grease Pencil frames");
+
+  func = RNA_def_function(srna, "new", "rna_Frames_frame_new");
+  RNA_def_function_ui_description(func, "Add a new Grease Pencil frame");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_int(func,
+                     "frame_number",
+                     1,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Frame Number",
+                     "The frame on which the drawing appears",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "frame", "GreasePencilFrame", "", "The newly created frame");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_Frames_frame_remove");
+  RNA_def_function_ui_description(func, "Remove a Grease Pencil frame");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_int(func,
+                     "frame_number",
+                     1,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Frame Number",
+                     "The frame number of the frame to remove",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "copy", "rna_Frames_frame_copy");
+  RNA_def_function_ui_description(func, "Copy a Grease Pencil frame");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_int(func,
+                     "from_frame_number",
+                     1,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Source Frame Number",
+                     "The frame number of the source frame",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_int(func,
+                     "to_frame_number",
+                     2,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Frame Number of Copy",
+                     "The frame number to copy the frame to",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_boolean(func,
+                         "instance_drawing",
+                         false,
+                         "Instance Drawing",
+                         "Let the copied frame use the same drawing as the source");
+  parm = RNA_def_pointer(func, "copy", "GreasePencilFrame", "", "The newly copied frame");
+  RNA_def_function_return(func, parm);
+}
 
 static void rna_def_grease_pencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop)
 {
@@ -380,7 +1176,22 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Grease Pencil Layer", "Collection of related drawings");
   RNA_def_struct_path_func(srna, "rna_GreasePencilLayer_path");
 
-  /* Name */
+  /* Frames. */
+  prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilFrame");
+  RNA_def_property_ui_text(prop, "Frames", "Grease Pencil frames");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GreasePencilLayer_frames_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_GreasePencilLayer_frames_get",
+                                    "rna_GreasePencilLayer_frames_length",
+                                    "rna_GreasePencilLayer_frames_lookup_int",
+                                    nullptr,
+                                    nullptr);
+  rna_def_grease_pencil_frames_api(brna, prop);
+
+  /* Name. */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "Layer name");
   RNA_def_property_string_funcs(prop,
@@ -390,14 +1201,14 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_update");
 
-  /* Mask Layers */
+  /* Mask Layers. */
   prop = RNA_def_property(srna, "mask_layers", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "masks", nullptr);
   RNA_def_property_struct_type(prop, "GreasePencilLayerMask");
   RNA_def_property_ui_text(prop, "Masks", "List of Masking Layers");
   rna_def_grease_pencil_layers_mask_api(brna, prop);
 
-  /* Visibility */
+  /* Visibility. */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE);
@@ -405,7 +1216,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Hide", "Set layer visibility");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
-  /* Lock */
+  /* Lock. */
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_LOCKED);
@@ -414,7 +1225,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       prop, "Locked", "Protect layer from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
-  /* Opacity */
+  /* Opacity. */
   prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, "GreasePencilLayer", "opacity");
   RNA_def_property_ui_text(prop, "Opacity", "Layer Opacity");
@@ -440,6 +1251,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       "The visibility of drawings on this layer is affected by the layers in its masks list");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* Use Lights. */
   prop = RNA_def_property(srna, "use_lights", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_LIGHTS);
@@ -447,7 +1259,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       prop, "Use Lights", "Enable the use of lights on stroke and fill materials");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
-  /* pass index for compositing and modifiers */
+  /* Pass index for compositing and modifiers. */
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_ui_text(prop, "Pass Index", "Index number for the \"Layer Index\" pass");
   RNA_def_property_int_funcs(prop,
@@ -456,6 +1268,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                              nullptr);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* Parent. */
   prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
@@ -463,12 +1276,14 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Parent", "Parent object");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");
 
+  /* Parent Bone. */
   prop = RNA_def_property(srna, "parent_bone", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "parsubstr");
   RNA_def_property_ui_text(
       prop, "Parent Bone", "Name of parent bone. Only used when the parent object is an armature");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");
 
+  /* Translation. */
   prop = RNA_def_property(srna, "translation", PROP_FLOAT, PROP_TRANSLATION);
   RNA_def_property_array(prop, 3);
   RNA_def_property_float_sdna(prop, nullptr, "translation");
@@ -476,6 +1291,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Translation", "Translation of the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* Rotation. */
   prop = RNA_def_property(srna, "rotation", PROP_FLOAT, PROP_EULER);
   RNA_def_property_array(prop, 3);
   RNA_def_property_float_sdna(prop, nullptr, "rotation");
@@ -483,6 +1299,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Rotation", "Euler rotation of the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* Scale.*/
   prop = RNA_def_property(srna, "scale", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_array(prop, 3);
   RNA_def_property_float_sdna(prop, nullptr, "scale");
@@ -491,6 +1308,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Scale", "Scale of the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* View layer for render. */
   prop = RNA_def_property(srna, "viewlayer_render", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "viewlayername");
   RNA_def_property_ui_text(
@@ -498,6 +1316,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       "ViewLayer",
       "Only include Layer in this View Layer render output (leave blank to include always)");
 
+  /* Use View layer masks. */
   prop = RNA_def_property(srna, "use_viewlayer_masks", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_DISABLE_MASKS_IN_VIEWLAYER);
@@ -505,11 +1324,28 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       prop, "Use Masks in Render", "Include the mask layers when rendering the view-layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* Blend Mode. */
   prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "blend_mode");
   RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* API: Get frame at. */
+  FunctionRNA *func;
+  PropertyRNA *parm;
+  func = RNA_def_function(srna, "get_frame_at", "rna_GreasePencilLayer_get_frame_at");
+  RNA_def_function_ui_description(func, "Get the frame at given frame number");
+  parm = RNA_def_int(
+      func, "frame_number", 1, MINAFRAME, MAXFRAME, "Frame Number", "", MINAFRAME, MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "frame", "GreasePencilFrame", "Frame", "");
+  RNA_def_function_return(func, parm);
+
+  /* API: Clear. */
+  func = RNA_def_function(srna, "clear", "rna_GreasePencilLayer_clear");
+  RNA_def_function_ui_description(func, "Remove all the Grease Pencil frames from the layer");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID);
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
@@ -851,6 +1687,9 @@ void RNA_def_grease_pencil(BlenderRNA *brna)
   rna_def_grease_pencil_layer(brna);
   rna_def_grease_pencil_layer_mask(brna);
   rna_def_grease_pencil_layer_group(brna);
+  rna_def_grease_pencil_frame(brna);
+  rna_def_grease_pencil_drawing(brna);
+  rna_def_grease_pencil_drawing_stroke(brna);
 }
 
 #endif
