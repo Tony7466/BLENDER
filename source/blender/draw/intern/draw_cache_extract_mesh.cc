@@ -736,7 +736,7 @@ void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
       MeshBufferList &buffers;
     };
     TaskNode *task_node = BLI_task_graph_node_create(
-        task_graph,
+        &task_graph,
         [](void *__restrict task_data) {
           const TaskData &data = *static_cast<TaskData *>(task_data);
           extract_points(data.mr, *data.buffers.ibo.points);
@@ -886,7 +886,7 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
 
   if (DRW_ibo_requested(buffers.ibo.lines) || DRW_ibo_requested(buffers.ibo.lines_loose)) {
     extract_lines_subdiv(
-        mr, subdiv_cache, buffers.ibo.lines, buffers.ibo.lines_loose, cache.no_loose_wire);
+        subdiv_cache, mr, buffers.ibo.lines, buffers.ibo.lines_loose, cache.no_loose_wire);
   }
   if (DRW_ibo_requested(buffers.ibo.tris)) {
     extract_tris_subdiv(subdiv_cache, cache, *buffers.ibo.tris);

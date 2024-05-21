@@ -21,7 +21,6 @@
 #include "BKE_subdiv_mesh.hh"
 #include "BKE_subdiv_modifier.hh"
 
-#include "BLI_array_utils.hh"
 #include "BLI_linklist.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"

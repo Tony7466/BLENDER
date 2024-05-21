@@ -311,10 +311,6 @@ static void extract_edge_fac_loose_geom_subdiv(const DRWSubdivCache &subdiv_cach
     return;
   }
 
-  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
-  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
-
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
   /* Make sure buffer is active for sending loose data. */

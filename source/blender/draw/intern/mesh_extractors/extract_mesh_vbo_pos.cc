@@ -230,10 +230,6 @@ static void extract_pos_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
     return;
   }
 
-  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  const Span<float3> edge_vert_positions = loose_info.edge_vert_positions;
-  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
-
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
   /* TODO(@kevindietrich): replace this when compressed normals are supported. */

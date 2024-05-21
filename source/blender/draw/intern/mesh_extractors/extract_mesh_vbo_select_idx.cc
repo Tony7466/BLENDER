@@ -213,11 +213,6 @@ static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache &subdiv_cach
     return;
   }
 
-  const Span<int2> coarse_edges = mr.edges;
-  const int edges_per_coarse_edge = subdiv_cache.loose_info.edges_per_coarse_edge;
-  const int verts_per_coarse_edge = edges_per_coarse_edge * 2;
-  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
-
   gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
   MutableSpan<int32_t> vbo_data(static_cast<int32_t *>(GPU_vertbuf_get_data(vbo)),
                                 subdiv_full_vbo_size(mr, subdiv_cache));

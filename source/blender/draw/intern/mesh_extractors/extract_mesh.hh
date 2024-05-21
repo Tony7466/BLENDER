@@ -354,8 +354,8 @@ void extract_lines(const MeshRenderData &mr,
                    gpu::IndexBuf *lines,
                    gpu::IndexBuf *lines_loose,
                    bool &no_loose_wire);
-void extract_lines_subdiv(const MeshRenderData &mr,
-                          const DRWSubdivCache &subdiv_cache,
+void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
+                          const MeshRenderData &mr,
                           gpu::IndexBuf *lines,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire);
