@@ -71,14 +71,14 @@ class SubprocessShader {
   ShaderBinary *load_binary(void *memory)
   {
     ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(memory);
+    bin->size = 0;
+    bin->format = 0;
 
-    if (success && (bin->size + sizeof(ShaderBinary) < ShaderBinary::max_data_size)) {
+    if (success) {
       glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &bin->size);
-      glGetProgramBinary(program, bin->size, nullptr, &bin->format, &bin->data_start);
-    }
-    else {
-      bin->size = 0;
-      bin->format = 0;
+      if (bin->size + sizeof(ShaderBinary) < ShaderBinary::max_data_size) {
+        glGetProgramBinary(program, bin->size, nullptr, &bin->format, &bin->data_start);
+      }
     }
 
     return bin;
