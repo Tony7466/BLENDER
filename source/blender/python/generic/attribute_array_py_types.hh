@@ -22,7 +22,9 @@
 
 #include "BKE_customdata.hh"
 
+#include "BLI_color.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::python::attributearray {
@@ -216,7 +218,7 @@ static bool set_attribute_quaternion(void *data, int index, PyObject *py_value)
 {
   if (QuaternionObject_Check(py_value)) {
     const QuaternionObject *value = reinterpret_cast<QuaternionObject *>(py_value);
-    static_cast<float4 *>(data)[index] = {
+    static_cast<math::Quaternion *>(data)[index] = {
         value->quat[0], value->quat[1], value->quat[2], value->quat[3]};
     return true;
   }
@@ -269,7 +271,7 @@ static bool set_attribute_color(void *data, int index, PyObject *py_value)
     if (size != 4) {
       return false;
     }
-    float4 &set_value = static_cast<float4 *>(data)[index];
+    ColorGeometry4f &set_value = static_cast<ColorGeometry4f *>(data)[index];
     for (int i = 0; i < 4; i++) {
       if (!set_attribute_float(set_value, i, PyTuple_GET_ITEM(py_value, i))) {
         return false;
@@ -282,7 +284,7 @@ static bool set_attribute_color(void *data, int index, PyObject *py_value)
     if (size != 4) {
       return false;
     }
-    float4 &set_value = static_cast<float4 *>(data)[index];
+    ColorGeometry4f &set_value = static_cast<ColorGeometry4f *>(data)[index];
     for (int i = 0; i < 4; i++) {
       if (!set_attribute_float(set_value, i, PyList_GET_ITEM(py_value, i))) {
         return false;
@@ -300,7 +302,7 @@ static bool set_attribute_byte_color(void *data, int index, PyObject *py_value)
     if (size != 4) {
       return false;
     }
-    uchar4 &set_value = static_cast<uchar4 *>(data)[index];
+    ColorGeometry4b &set_value = static_cast<ColorGeometry4b *>(data)[index];
     for (int i = 0; i < 4; i++) {
       if (!set_attribute_uint8(set_value, i, PyTuple_GET_ITEM(py_value, i))) {
         return false;
@@ -313,7 +315,7 @@ static bool set_attribute_byte_color(void *data, int index, PyObject *py_value)
     if (size != 4) {
       return false;
     }
-    uchar4 &set_value = static_cast<uchar4 *>(data)[index];
+    ColorGeometry4b &set_value = static_cast<ColorGeometry4b *>(data)[index];
     for (int i = 0; i < 4; i++) {
       if (!set_attribute_uint8(set_value, i, PyList_GET_ITEM(py_value, i))) {
         return false;
@@ -391,7 +393,8 @@ PyObject *get_attribute_color(void *data, int index)
 {
   PyObject *result = PyTuple_New(4);
   for (int i = 0; i < 4; i++) {
-    PyTuple_SET_ITEM(result, i, PyFloat_FromDouble((static_cast<float4 *>(data)[index])[i]));
+    PyTuple_SET_ITEM(
+        result, i, PyFloat_FromDouble((static_cast<ColorGeometry4f *>(data)[index])[i]));
   }
   return result;
 }
@@ -400,7 +403,7 @@ PyObject *get_attribute_byte_color(void *data, int index)
 {
   PyObject *result = PyTuple_New(4);
   for (int i = 0; i < 4; i++) {
-    PyTuple_SET_ITEM(result, i, PyLong_FromLong((static_cast<uchar4 *>(data)[index])[i]));
+    PyTuple_SET_ITEM(result, i, PyLong_FromLong((static_cast<ColorGeometry4b *>(data)[index])[i]));
   }
   return result;
 }
@@ -457,19 +460,19 @@ std::unordered_map<int, CustomDataTypeMapping> data_types{
       get_attribute_float4x4,
       set_attribute_float4x4}},
     {CD_PROP_QUATERNION,
-     {sizeof(float4),
+     {sizeof(math::Quaternion),
       'f',
       "mathutils.Quaternion((w, x, y, z)), tuple (w, x, y, z) or list [w, x, y, z]",
       get_attribute_quaternion,
       set_attribute_quaternion}},
     {CD_PROP_COLOR,
-     {sizeof(float4),
+     {sizeof(ColorGeometry4f),
       'f',
       "tuple (r, g, b, a) or list [r, g, b, a] of floats",
       get_attribute_color,
       set_attribute_color}},
     {CD_PROP_BYTE_COLOR,
-     {sizeof(uchar4),
+     {sizeof(ColorGeometry4b),
       'B',
       "tuple (r, g, b, a) or list [r, g, b, a] of int in the range 0-255",
       get_attribute_byte_color,
