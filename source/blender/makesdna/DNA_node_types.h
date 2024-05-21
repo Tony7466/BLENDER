@@ -39,6 +39,10 @@ struct bNodeTreeInterfaceCache;
 namespace blender::bke {
 class bNodeTreeZones;
 class bNodeTreeZone;
+struct bNodeInstanceHash;
+struct bNodeTreeType;
+struct bNodeType;
+struct bNodeSocketType;
 }  // namespace blender::bke
 namespace blender::bke {
 struct RuntimeNodeEnumItems;
@@ -47,11 +51,19 @@ using bNodeTreeRuntimeHandle = blender::bke::bNodeTreeRuntime;
 using bNodeRuntimeHandle = blender::bke::bNodeRuntime;
 using bNodeSocketRuntimeHandle = blender::bke::bNodeSocketRuntime;
 using RuntimeNodeEnumItemsHandle = blender::bke::RuntimeNodeEnumItems;
+using NodeInstanceHashHandle = blender::bke::bNodeInstanceHash;
+using bNodeTreeTypeHandle = blender::bke::bNodeTreeType;
+using bNodeTypeHandle = blender::bke::bNodeType;
+using bNodeSocketTypeHandle = blender::bke::bNodeSocketType;
 #else
 typedef struct bNodeTreeRuntimeHandle bNodeTreeRuntimeHandle;
 typedef struct bNodeRuntimeHandle bNodeRuntimeHandle;
 typedef struct bNodeSocketRuntimeHandle bNodeSocketRuntimeHandle;
 typedef struct RuntimeNodeEnumItemsHandle RuntimeNodeEnumItemsHandle;
+typedef struct NodeInstanceHashHandle NodeInstanceHashHandle;
+typedef struct bNodeTreeTypeHandle bNodeTreeTypeHandle;
+typedef struct bNodeTypeHandle bNodeTypeHandle;
+typedef struct bNodeSocketTypeHandle bNodeSocketTypeHandle;
 #endif
 
 struct AnimData;
@@ -65,10 +77,8 @@ struct Material;
 struct PreviewImage;
 struct Tex;
 struct bGPdata;
-struct bNodeInstanceHash;
 struct bNodeLink;
 struct bNodePreview;
-struct bNodeType;
 struct bNode;
 struct NodeEnumDefinition;
 
@@ -140,7 +150,7 @@ typedef struct bNodeSocket {
   /** Input/output type. */
   short in_out;
   /** Runtime type information. */
-  struct bNodeSocketType *typeinfo;
+  bNodeSocketTypeHandle *typeinfo;
   /** Runtime type identifier. */
   char idname[64];
 
@@ -365,7 +375,7 @@ typedef struct bNode {
   char idname[64];
 
   /** Type information retrieved from the #idname. TODO: Move to runtime data. */
-  struct bNodeType *typeinfo;
+  bNodeTypeHandle *typeinfo;
 
   /**
    * Integer type used for builtin nodes, allowing cheaper lookup and changing ID names with
@@ -607,7 +617,9 @@ typedef struct bNodeLink {
 
 /** #bNodeLink::flag */
 enum {
-  NODE_LINKFLAG_HILITE = 1 << 0, /** Link has been successfully validated. */
+  /** Node should be inserted on this link on drop. */
+  NODE_LINK_INSERT_TARGET = 1 << 0,
+  /** Link has been successfully validated. */
   NODE_LINK_VALID = 1 << 1,
   /** Free test flag, undefined. */
   NODE_LINK_TEST = 1 << 2,
@@ -653,7 +665,7 @@ typedef struct bNodeTree {
   ID *owner_id;
 
   /** Runtime type information. */
-  struct bNodeTreeType *typeinfo;
+  bNodeTreeTypeHandle *typeinfo;
   /** Runtime type identifier. */
   char idname[64];
   /** User-defined description of the node tree. */
@@ -682,7 +694,7 @@ typedef struct bNodeTree {
   /** Precision used by the GPU execution of the compositor tree. */
   int precision DNA_DEPRECATED;
 
-  /** #NodeGroupColorTag. */
+  /** #blender::bke::NodeGroupColorTag. */
   int color_tag;
   char _pad[4];
 
@@ -701,7 +713,7 @@ typedef struct bNodeTree {
    * Node preview hash table.
    * Only available in base node trees (e.g. scene->node_tree).
    */
-  struct bNodeInstanceHash *previews;
+  NodeInstanceHashHandle *previews;
   /**
    * Defines the node tree instance to use for the "active" context,
    * in case multiple different editors are used and make context ambiguous.
@@ -1330,7 +1342,7 @@ typedef struct NodeTexMagic {
 } NodeTexMagic;
 
 typedef struct NodeShaderAttribute {
-  char name[64];
+  char name[256];
   int type;
   char _pad[4];
 } NodeShaderAttribute;
