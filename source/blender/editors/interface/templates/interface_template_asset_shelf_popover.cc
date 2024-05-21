@@ -36,8 +36,21 @@ void template_asset_shelf_popover(uiLayout &layout,
     return;
   }
 
-  uiLayoutSetContextString(&layout, "asset_shelf_idname", asset_shelf_id);
-  uiItemPopoverPanel(&layout, &C, "ASSETSHELF_PT_popover_panel", name.c_str(), icon);
+  uiLayout *row = uiLayoutRow(&layout, true);
+  const ARegion *region = CTX_wm_region(&C);
+  const bool use_big_size = !RGN_TYPE_IS_HEADER_ANY(region->regiontype);
+  const short width = [&]() -> short {
+    if (use_big_size) {
+      return UI_UNIT_X * 6;
+    }
+    return UI_UNIT_X * (name.is_empty() ? 1.6f : 7);
+  }();
+  const short height = UI_UNIT_Y * (use_big_size ? 6 : 1);
+
+  uiLayoutSetContextString(row, "asset_shelf_idname", asset_shelf_id);
+  uiLayoutSetUnitsX(row, width / UI_UNIT_X);
+  uiLayoutSetUnitsY(row, height / UI_UNIT_Y);
+  uiItemPopoverPanel(row, &C, "ASSETSHELF_PT_popover_panel", name.c_str(), icon);
 
 #if 0
   const ARegion *region = CTX_wm_region(&C);

@@ -161,54 +161,6 @@ static void catalog_tree_draw(uiLayout &layout, AssetShelf &shelf)
   ui::TreeViewBuilder::build_tree_view(*tree_view, layout);
 }
 
-static int layout_width()
-{
-  return UI_UNIT_X * 40;
-}
-static int left_col_width()
-{
-  return 10 * UI_UNIT_X;
-}
-static int right_col_width()
-{
-  return layout_width() - left_col_width();
-}
-
-static void draw_in_layout(uiLayout &layout,
-                           const bContext &C,
-                           const ARegion &region,
-                           AssetShelfType &shelf_type)
-{
-  AssetShelf *shelf = get_shelf_for_popup(C, shelf_type);
-  if (!shelf) {
-    BLI_assert_unreachable();
-    return;
-  }
-
-  bScreen *screen = CTX_wm_screen(&C);
-  PointerRNA library_ref_ptr = RNA_pointer_create(
-      &screen->id, &RNA_AssetLibraryReference, &shelf->settings.asset_library_reference);
-  uiLayoutSetContextPointer(&layout, "asset_library_reference", &library_ref_ptr);
-
-  uiLayout *row = uiLayoutRow(&layout, false);
-  uiLayout *catalogs_col = uiLayoutColumn(row, false);
-  uiLayoutSetUnitsX(catalogs_col, left_col_width() / UI_UNIT_X);
-  uiLayoutSetFixedSize(catalogs_col, true);
-  library_selector_draw(&C, catalogs_col, *shelf);
-  catalog_tree_draw(*catalogs_col, *shelf);
-
-  uiLayout *right_col = uiLayoutColumn(row, false);
-  uiLayout *sub = uiLayoutRow(right_col, false);
-  /* Same as file/asset browser header. */
-  PointerRNA shelf_ptr = RNA_pointer_create(&screen->id, &RNA_AssetShelf, shelf);
-  uiItemR(sub, &shelf_ptr, "search_filter", UI_ITEM_R_IMMEDIATE, "", ICON_VIEWZOOM);
-
-  uiLayout *asset_view_col = uiLayoutColumn(right_col, false);
-  uiLayoutSetUnitsX(asset_view_col, right_col_width() / UI_UNIT_X);
-  uiLayoutSetFixedSize(asset_view_col, true);
-  build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, C, region);
-}
-
 static AssetShelfType *lookup_type_from_idname_in_context(const bContext *C)
 {
   const std::optional<StringRefNull> idname = CTX_data_string_get(C, "asset_shelf_idname");
@@ -225,7 +177,42 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
 
   const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
 
-  draw_in_layout(*panel->layout, *C, *region, *shelf_type);
+  const int left_col_width_units = 10;
+  const int right_col_width_units = 30;
+  const int layout_width_units = left_col_width_units + right_col_width_units;
+
+  uiLayout *layout = panel->layout;
+  uiLayoutSetUnitsX(layout, layout_width_units);
+
+  AssetShelf *shelf = get_shelf_for_popup(*C, *shelf_type);
+  if (!shelf) {
+    BLI_assert_unreachable();
+    return;
+  }
+
+  bScreen *screen = CTX_wm_screen(C);
+  PointerRNA library_ref_ptr = RNA_pointer_create(
+      &screen->id, &RNA_AssetLibraryReference, &shelf->settings.asset_library_reference);
+  uiLayoutSetContextPointer(layout, "asset_library_reference", &library_ref_ptr);
+
+  uiLayout *row = uiLayoutRow(layout, false);
+  uiLayout *catalogs_col = uiLayoutColumn(row, false);
+  uiLayoutSetUnitsX(catalogs_col, left_col_width_units);
+  uiLayoutSetFixedSize(catalogs_col, true);
+  library_selector_draw(C, catalogs_col, *shelf);
+  catalog_tree_draw(*catalogs_col, *shelf);
+
+  uiLayout *right_col = uiLayoutColumn(row, false);
+  uiLayout *sub = uiLayoutRow(right_col, false);
+  /* Same as file/asset browser header. */
+  PointerRNA shelf_ptr = RNA_pointer_create(&screen->id, &RNA_AssetShelf, shelf);
+  uiItemR(sub, &shelf_ptr, "search_filter", UI_ITEM_R_IMMEDIATE, "", ICON_VIEWZOOM);
+
+  uiLayout *asset_view_col = uiLayoutColumn(right_col, false);
+  uiLayoutSetUnitsX(asset_view_col, right_col_width_units);
+  uiLayoutSetFixedSize(asset_view_col, true);
+
+  build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, *C, *region);
 }
 
 static bool popover_panel_poll(const bContext *C, PanelType * /*panel_type*/)
