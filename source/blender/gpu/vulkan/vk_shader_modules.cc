@@ -6,6 +6,7 @@
  * \ingroup gpu
  */
 
+#include "BLI_hash.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_time.h"
 
@@ -20,43 +21,6 @@
 #include <sstream>
 
 namespace blender::gpu {
-
-bool VKShaderModules::construct(VKShader &shader,
-                                const shader::ShaderCreateInfo & /*info*/,
-                                Span<const char *> sources,
-                                shaderc_shader_kind stage,
-                                VkShaderModule *r_shader_module)
-{
-  BLI_assert_msg(ELEM(stage,
-                      shaderc_vertex_shader,
-                      shaderc_geometry_shader,
-                      shaderc_fragment_shader,
-                      shaderc_compute_shader),
-                 "Only forced ShaderC shader kinds are supported.");
-  Vector<uint32_t> spirv_module;
-  if (!compile_glsl_to_spirv(shader, sources, stage, spirv_module)) {
-    r_shader_module = VK_NULL_HANDLE;
-    return false;
-  }
-  return build_shader_module(shader, spirv_module, r_shader_module);
-}
-
-void VKShaderModules::destruct(VkShaderModule vk_shader_module)
-{
-  VK_ALLOCATION_CALLBACKS
-  const VKDevice &device = VKBackend::get().device_get();
-  vkDestroyShaderModule(device.device_get(), vk_shader_module, vk_allocation_callbacks);
-}
-
-void VKShaderModules::free_data()
-{
-  debug_print();
-}
-
-/* -------------------------------------------------------------------- */
-/** \name Frontend compilation (GLSL -> SpirV)
- *
- * \{ */
 
 static const std::string to_stage_name(shaderc_shader_kind stage)
 {
@@ -76,6 +40,79 @@ static const std::string to_stage_name(shaderc_shader_kind stage)
   }
   return std::string("unknown stage");
 }
+
+bool VKShaderModules::construct(VKShader &shader,
+                                const shader::ShaderCreateInfo &info,
+                                Span<const char *> sources,
+                                shaderc_shader_kind stage,
+                                VkShaderModule *r_shader_module)
+{
+  BLI_assert_msg(ELEM(stage,
+                      shaderc_vertex_shader,
+                      shaderc_geometry_shader,
+                      shaderc_fragment_shader,
+                      shaderc_compute_shader),
+                 "Only forced ShaderC shader kinds are supported.");
+
+  Vector<uint32_t> spirv_module;
+  if (!compile_glsl_to_spirv(shader, sources, stage, spirv_module)) {
+    r_shader_module = VK_NULL_HANDLE;
+    return false;
+  }
+
+  const bool use_module_cache = !info.do_static_compilation_;
+  uint64_t cache_key = 0;
+  if (use_module_cache) {
+    cache_key = spirv_module.hash();
+    VkShaderModule *shader_module = cache_.lookup_ptr(cache_key);
+    if (shader_module) {
+      printf("%s: %s.%s\n", __func__, info.name_.c_str(), to_stage_name(stage).c_str());
+      stats_.shader_modules_reused += 1;
+      *r_shader_module = *shader_module;
+      return true;
+    }
+  }
+
+  if (!build_shader_module(shader, spirv_module, r_shader_module)) {
+    r_shader_module = VK_NULL_HANDLE;
+    return false;
+  }
+
+  if (use_module_cache) {
+    cache_.add_new(cache_key, *r_shader_module);
+    cached_values_.add_new(*r_shader_module);
+  }
+  return true;
+}
+
+void VKShaderModules::destruct(VkShaderModule vk_shader_module)
+{
+  if (cached_values_.contains(vk_shader_module)) {
+    return;
+  }
+
+  VK_ALLOCATION_CALLBACKS
+  const VKDevice &device = VKBackend::get().device_get();
+  vkDestroyShaderModule(device.device_get(), vk_shader_module, vk_allocation_callbacks);
+}
+
+void VKShaderModules::free_data()
+{
+  debug_print();
+
+  VK_ALLOCATION_CALLBACKS
+  const VKDevice &device = VKBackend::get().device_get();
+  for (VkShaderModule vk_shader_module : cached_values_) {
+    vkDestroyShaderModule(device.device_get(), vk_shader_module, vk_allocation_callbacks);
+  }
+  cache_.clear();
+  cached_values_.clear();
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Frontend compilation (GLSL -> SpirV)
+ *
+ * \{ */
 
 static std::string combine_sources(Span<const char *> sources)
 {
@@ -167,7 +204,8 @@ bool VKShaderModules::build_shader_module(const VKShader &shader,
 void VKShaderModules::debug_print() const
 {
   std::stringstream ss;
-  ss << "VKShaderModules(glsl_spirv_time=" << stats_.glsl_to_spirv_time << "s"
+  ss << "VKShaderModules(reused_shader_modules=" << stats_.shader_modules_reused
+     << ", glsl_spirv_time=" << stats_.glsl_to_spirv_time << "s"
      << ", spirv_shader_module_time" << stats_.spirv_to_shader_module_time << "s)\n";
   std::cout << ss.str();
 }

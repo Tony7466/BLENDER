@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <BLI_map.hh>
+
 #include "GPU_shader.hh"
 
 #include "vk_common.hh"
@@ -30,9 +32,13 @@ class ShaderCreateInfo;
  */
 class VKShaderModules {
  private:
+  Map<uint64_t, VkShaderModule> cache_;
+  Set<VkShaderModule> cached_values_;
+
   struct {
     double glsl_to_spirv_time = 0.0;
     double spirv_to_shader_module_time = 0.0;
+    int64_t shader_modules_reused = 0;
   } stats_;
 
  public:
