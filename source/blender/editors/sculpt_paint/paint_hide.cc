@@ -824,8 +824,7 @@ static void grow_shrink_visibility_mesh(Object &object,
       Vector<int> &face_indices = all_face_indices.local();
       const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
           tri_faces, *node, face_indices);
-      for (const int i : indices.index_range()) {
-        int face_index = indices[i];
+      for (const int face_index : indices) {
         if (!hide_poly[face_index]) {
           continue;
         }
@@ -885,9 +884,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
       undo::push_node(object, node, undo::Type::HideVert);
       const Span<int> grids = bke::pbvh::node_grid_indices(*node);
 
-      for (const int i : grids.index_range()) {
-        const int grid_index = grids[i];
-
+      for (const int grid_index : grids) {
         for (const int y : IndexRange(key.grid_size)) {
           for (const int x : IndexRange(key.grid_size)) {
             const int grid_elem_idx = y * key.grid_size + x;
