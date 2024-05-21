@@ -90,7 +90,6 @@ AssetShelfType *type_find_from_idname(const StringRef idname);
 /** \name Asset Shelf Popup
  * \{ */
 
-uiBlock *popup_block_create(const bContext *C, ARegion *region, AssetShelfType *shelf_type);
 void type_popup_unlink(const AssetShelfType &shelf_type);
 
 /** \} */

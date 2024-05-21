@@ -2912,7 +2912,7 @@ void ED_operatortypes_ui()
   WM_operatortype_append(UI_OT_eyedropper_driver);
   WM_operatortype_append(UI_OT_eyedropper_gpencil_color);
 
-  WM_operatortype_append(UI_OT_asset_shelf_popup);
+  WM_operatortype_append(UI_OT_asset_shelf_popover);
 }
 
 void ED_keymap_ui(wmKeyConfig *keyconf)

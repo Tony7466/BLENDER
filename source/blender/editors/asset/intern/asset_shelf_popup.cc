@@ -10,6 +10,8 @@
 
 #include "BKE_screen.hh"
 
+#include "BLI_string.h"
+
 #include "BLT_translation.hh"
 
 #include "UI_interface_c.hh"
@@ -21,6 +23,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "WM_api.hh"
 
 namespace blender::ed::asset::shelf {
 
@@ -51,20 +55,20 @@ void type_popup_unlink(const AssetShelfType &shelf_type)
   }
 }
 
-static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_type)
+static AssetShelf *get_shelf_for_popup(const bContext &C, AssetShelfType &shelf_type)
 {
   Vector<AssetShelf *> &popup_shelves = StaticPopupShelves::shelves();
 
   for (AssetShelf *shelf : popup_shelves) {
     if (STREQ(shelf->idname, shelf_type.idname)) {
-      if (type_poll_for_popup(*C, ensure_shelf_has_type(*shelf))) {
+      if (type_poll_for_popup(C, ensure_shelf_has_type(*shelf))) {
         return shelf;
       }
       break;
     }
   }
 
-  if (type_poll_for_popup(*C, &shelf_type)) {
+  if (type_poll_for_popup(C, &shelf_type)) {
     AssetShelf *new_shelf = create_shelf_from_type(shelf_type);
     new_shelf->settings.display_flag |= ASSETSHELF_SHOW_NAMES;
     popup_shelves.append(new_shelf);
@@ -157,23 +161,23 @@ static void catalog_tree_draw(uiLayout &layout, AssetShelf &shelf)
   ui::TreeViewBuilder::build_tree_view(*tree_view, layout);
 }
 
-const int layout_width()
+static int layout_width()
 {
   return UI_UNIT_X * 40;
 }
-const int left_col_width()
+static int left_col_width()
 {
   return 10 * UI_UNIT_X;
 }
-const int right_col_width()
+static int right_col_width()
 {
   return layout_width() - left_col_width();
 }
 
 static void draw_in_layout(uiLayout &layout,
                            const bContext &C,
-                           const ARegion *region,
-                           const AssetShelfType &shelf_type)
+                           const ARegion &region,
+                           AssetShelfType &shelf_type)
 {
   AssetShelf *shelf = get_shelf_for_popup(C, shelf_type);
   if (!shelf) {
@@ -181,16 +185,16 @@ static void draw_in_layout(uiLayout &layout,
     return;
   }
 
-  bScreen *screen = CTX_wm_screen(C);
+  bScreen *screen = CTX_wm_screen(&C);
   PointerRNA library_ref_ptr = RNA_pointer_create(
       &screen->id, &RNA_AssetLibraryReference, &shelf->settings.asset_library_reference);
-  uiLayoutSetContextPointer(layout, "asset_library_reference", &library_ref_ptr);
+  uiLayoutSetContextPointer(&layout, "asset_library_reference", &library_ref_ptr);
 
-  uiLayout *row = uiLayoutRow(layout, false);
+  uiLayout *row = uiLayoutRow(&layout, false);
   uiLayout *catalogs_col = uiLayoutColumn(row, false);
   uiLayoutSetUnitsX(catalogs_col, left_col_width() / UI_UNIT_X);
   uiLayoutSetFixedSize(catalogs_col, true);
-  library_selector_draw(C, catalogs_col, *shelf);
+  library_selector_draw(&C, catalogs_col, *shelf);
   catalog_tree_draw(*catalogs_col, *shelf);
 
   uiLayout *right_col = uiLayoutColumn(row, false);
@@ -202,34 +206,36 @@ static void draw_in_layout(uiLayout &layout,
   uiLayout *asset_view_col = uiLayoutColumn(right_col, false);
   uiLayoutSetUnitsX(asset_view_col, right_col_width() / UI_UNIT_X);
   uiLayoutSetFixedSize(asset_view_col, true);
-  build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, shelf, C, region);
+  build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, C, region);
 }
 
-uiBlock *popup_block_create(const bContext *C, ARegion *region, AssetShelfType *shelf_type)
+static AssetShelfType *lookup_type_from_idname_in_context(const bContext *C)
 {
-  uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
-  UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER);
-  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
-  UI_block_bounds_set_normal(block, 0.3f * U.widget_unit);
-  UI_block_direction_set(block, UI_DIR_DOWN);
-
-  const uiStyle *style = UI_style_get_dpi();
-  uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, layout_width, 0, 0, style);
-
-  draw_in_layout(*layout, *C, *region, *shelf_type);
-
-  return block;
+  const std::optional<StringRefNull> idname = CTX_data_string_get(C, "asset_shelf_idname");
+  if (!idname) {
+    return nullptr;
+  }
+  return type_find_from_idname(*idname);
 }
 
 static void popover_panel_draw(const bContext *C, Panel *panel)
 {
-  AssetShelfType shelf_type = {}; /* TODO pass shelf type. */
-
-  uiLayout *layout = panel->layout;
+  AssetShelfType *shelf_type = lookup_type_from_idname_in_context(C);
+  BLI_assert_msg(shelf_type != nullptr, "couldn't find asset shelf type from context");
 
   const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
-  draw_in_layout(*layout, *C, *region, shelf_type);
+
+  draw_in_layout(*panel->layout, *C, *region, *shelf_type);
+}
+
+static bool popover_panel_poll(const bContext *C, PanelType * /*panel_type*/)
+{
+  const AssetShelfType *shelf_type = lookup_type_from_idname_in_context(C);
+  if (!shelf_type) {
+    return false;
+  }
+
+  return type_poll_for_popup(*C, shelf_type);
 }
 
 void popover_panel_register(ARegionType *region_type)
@@ -246,6 +252,7 @@ void popover_panel_register(ARegionType *region_type)
   STRNCPY(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->description = N_("Display an asset shelf in a popover panel");
   pt->draw = popover_panel_draw;
+  pt->poll = popover_panel_poll;
   pt->listener = asset::list::asset_reading_region_listen_fn;
   BLI_addtail(&region_type->paneltypes, pt);
   WM_paneltype_add(pt);

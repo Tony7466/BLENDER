@@ -7,10 +7,12 @@
  */
 
 #include "BKE_context.hh"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+#include "RNA_prototypes.h"
 
 #include "UI_interface_c.hh"
 #include "UI_resources.hh"
@@ -18,18 +20,14 @@
 
 #include "ED_asset_shelf.hh"
 
-namespace blender::ui {
+#include "WM_api.hh"
 
-static uiBlock *asset_shelf_block_fn(bContext *C, ARegion *region, void *arg_shelf_type)
-{
-  AssetShelfType *shelf_type = reinterpret_cast<AssetShelfType *>(arg_shelf_type);
-  return ed::asset::shelf::popup_block_create(C, region, shelf_type);
-}
+namespace blender::ui {
 
 void template_asset_shelf_popover(uiLayout &layout,
                                   const bContext &C,
                                   const StringRefNull asset_shelf_id,
-                                  const StringRef name,
+                                  const StringRefNull name,
                                   const BIFIconID icon)
 {
   AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_id);
@@ -38,6 +36,10 @@ void template_asset_shelf_popover(uiLayout &layout,
     return;
   }
 
+  uiLayoutSetContextString(&layout, "asset_shelf_idname", asset_shelf_id);
+  uiItemPopoverPanel(&layout, &C, "ASSETSHELF_PT_popover_panel", name.c_str(), icon);
+
+#if 0
   const ARegion *region = CTX_wm_region(&C);
   const bool use_big_size = !RGN_TYPE_IS_HEADER_ANY(region->regiontype);
   const bool use_preview_icon = use_big_size;
@@ -63,25 +65,25 @@ void template_asset_shelf_popover(uiLayout &layout,
   if (ed::asset::shelf::type_poll_for_popup(C, shelf_type) == false) {
     UI_but_flag_enable(but, UI_BUT_DISABLED);
   }
+#endif
 }
 
 }  // namespace blender::ui
 
 using namespace blender;
 
-static int asset_shelf_popup_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "asset_shelf", nullptr, 0, nullptr);
 
-  const ScrArea *area = CTX_wm_area(C);
   AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_id);
-  if (ed::asset::shelf::type_poll(*C, *area->type, shelf_type) == false) {
+  if (ed::asset::shelf::type_poll_for_popup(*C, shelf_type) == false) {
     return OPERATOR_CANCELLED;
   }
 
   PanelType *pt = WM_paneltype_find("ASSETSHELF_PT_popover_panel", true);
   if (pt == nullptr) {
-    BKE_reportf(reports, RPT_ERROR, "Panel \"%s\" not found", idname);
+    BKE_reportf(op->reports, RPT_ERROR, "Asset shelf popover panel type not found");
     return OPERATOR_CANCELLED;
   }
 
@@ -91,6 +93,7 @@ static int asset_shelf_popup_invoke(bContext *C, wmOperator *op, const wmEvent *
   }
 
   std::string asset_shelf_id_str = asset_shelf_id;
+#if 0
   // UI_popup_block_invoke(C, asset_shelf_block_fn, shelf_type, nullptr);
   ui_popover_panel_create(
       C,
@@ -101,20 +104,21 @@ static int asset_shelf_popup_invoke(bContext *C, wmOperator *op, const wmEvent *
         ui_item_paneltype_func(C, layout, arg_pt)
       },
       pt);
+#endif
 
   MEM_freeN(asset_shelf_id);
 
   return OPERATOR_INTERFACE;
 }
 
-void UI_OT_asset_shelf_popup(wmOperatorType *ot)
+void UI_OT_asset_shelf_popover(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Asset Shelf Popup";
-  ot->idname = "UI_OT_asset_shelf_popup";
+  ot->name = "Asset Shelf Popover";
+  ot->idname = "UI_OT_asset_shelf_popover";
 
   /* api callbacks */
-  ot->invoke = asset_shelf_popup_invoke;
+  ot->invoke = asset_shelf_popover_invoke;
 
   /* flags */
   ot->flag = OPTYPE_INTERNAL;

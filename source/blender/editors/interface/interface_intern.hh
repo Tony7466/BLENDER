@@ -1528,7 +1528,7 @@ void UI_OT_eyedropper_driver(wmOperatorType *ot);
 void UI_OT_eyedropper_gpencil_color(wmOperatorType *ot);
 
 /* interface_template_asset_shelf_popover.cc */
-void UI_OT_asset_shelf_popup(wmOperatorType *ot);
+void UI_OT_asset_shelf_popover(wmOperatorType *ot);
 
 /* interface_template_asset_view.cc */
 
