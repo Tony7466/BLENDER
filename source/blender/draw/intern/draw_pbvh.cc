@@ -1189,11 +1189,10 @@ struct PBVHBatches {
       uint offset = 0;
       const uint grid_vert_len = gridsize * gridsize;
       for (int i = 0; i < totgrid; i++, offset += grid_vert_len) {
+        uint v0, v1, v2, v3;
         bool grid_visible = false;
         const BoundedBitSpan gh = grid_hidden.is_empty() ? BoundedBitSpan() :
                                                            grid_hidden[args.grid_indices[i]];
-
-        uint v0, v1, v2, v3;
         for (int j = 0; j < gridsize - skip; j += skip) {
           for (int k = 0; k < gridsize - skip; k += skip) {
             /* Skip hidden grid face */
