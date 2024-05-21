@@ -1049,11 +1049,12 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
           group = "Object Transforms";
         }
 
-        std::optional<int> array_index = std::nullopt;
-        if (!all && index >= 0) {
-          /* -1 indicates operating on the entire array (or the property itself otherwise) */
-          array_index = index;
-        }
+        /* Note: an index of -1 is a magic value that indicates either that
+         * we're operating on all elements of an array property, or that the
+         * property isn't an array. Here we convert that to simply not
+         * specifying an index at all. */
+        const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
+                                                                    std::optional(index);
 
         CombinedKeyingResult result = insert_key_rna(bmain,
                                                      *ptr.owner_id,
