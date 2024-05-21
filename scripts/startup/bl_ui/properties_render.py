@@ -702,14 +702,7 @@ class RENDER_PT_eevee_next_clamping(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        scene = context.scene
-        props = scene.eevee
-
-        col = layout.column()
-        col.prop(props, "clamp_world", text="World")
+        pass
 
 
 class RENDER_PT_eevee_next_clamping_surface(RenderButtonsPanel, Panel):
@@ -850,7 +843,7 @@ class RENDER_PT_eevee_next_sampling_viewport(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(props, "taa_samples", text="Samples")
         col.prop(props, "use_taa_reprojection", text="Temporal Reprojection")
-        col.prop(props, "use_shadow_jittered_viewport", text="Jittered Shadows")
+        col.prop(props, "use_shadow_jitter_viewport", text="Jittered Shadows")
 
         # Add SSS sample count here.
 

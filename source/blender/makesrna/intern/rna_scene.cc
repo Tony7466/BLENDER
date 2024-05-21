@@ -1942,11 +1942,6 @@ static void rna_SceneEEVEE_gi_cubemap_resolution_update(Main * /*main*/,
   FOREACH_SCENE_OBJECT_END;
 }
 
-static void rna_SceneEEVEE_clamp_world_update(Main * /*main*/, Scene *scene, PointerRNA * /*ptr*/)
-{
-  DEG_id_tag_update(&scene->world->id, ID_RECALC_SHADING);
-}
-
 static void rna_SceneEEVEE_clamp_surface_indirect_update(Main * /*main*/,
                                                          Scene *scene,
                                                          PointerRNA * /*ptr*/)
@@ -8064,7 +8059,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       prop, "Tracing Method", "Select the tracing method used to find scene-ray intersections");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "use_shadow_jittered_viewport", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_shadow_jitter_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_SHADOW_JITTERED_VIEWPORT);
   RNA_def_property_ui_text(prop,
                            "Jittered Shadows (Viewport)",
@@ -8073,17 +8068,6 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Clamping */
-  prop = RNA_def_property(srna, "clamp_world", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop,
-      "Clamp World",
-      "If non-zero, the maximum value for world contribution to the scene lighting. "
-      "Higher values will be scaled down to avoid too "
-      "much light bleeding at the cost of accuracy");
-  RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_SceneEEVEE_clamp_world_update");
-
   prop = RNA_def_property(srna, "clamp_surface_direct", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Clamp Surface Direct",
@@ -8892,6 +8876,7 @@ void RNA_def_scene(BlenderRNA *brna)
   /* Tool Settings */
   prop = RNA_def_property(srna, "tool_settings", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_pointer_sdna(prop, nullptr, "toolsettings");
   RNA_def_property_struct_type(prop, "ToolSettings");
   RNA_def_property_ui_text(prop, "Tool Settings", "");
