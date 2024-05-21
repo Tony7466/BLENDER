@@ -148,7 +148,7 @@ void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXforma
       xformOps.append(xf.AddTransformOp());
       break;
     default:
-      printf("Warning: unknown XformOp type\n");
+      CLOG_WARN(&LOG, "Warning: unknown XformOp type\n");
       xformOps.append(xf.AddTransformOp());
       break;
   }
