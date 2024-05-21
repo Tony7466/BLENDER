@@ -2148,22 +2148,29 @@ class USERPREF_PT_extensions_repos(Panel):
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
         layout_header.label(text="Advanced")
-        if layout_panel:
-            layout_panel.prop(active_repo, "use_custom_directory")
 
-            row = layout_panel.row()
+        if layout_panel:
+            layout_panel.use_property_split = True
+
+            col = layout_panel.column(align=False, heading="Custom Directory")
+            row = col.row(align=True)
+            sub = row.row(align=True)
+            sub.prop(active_repo, "use_custom_directory", text="")
+            sub = sub.row(align=True)
+            sub.active = active_repo.use_custom_directory
             if active_repo.use_custom_directory:
                 if active_repo.custom_directory == "":
-                    row.alert = True
-                row.prop(active_repo, "custom_directory", text="")
+                    sub.alert = True
+                sub.prop(active_repo, "custom_directory", text="")
             else:
                 # Show the read-only directory property.
                 # Apart from being consistent with the custom directory UI,
                 # prefer a read-only property over a label because this is not necessarily
                 # valid UTF-8 which will raise a Python exception when passed in as text.
-                row.prop(active_repo, "directory", text="")
+                sub.prop(active_repo, "directory", text="")
 
-            layout_panel.prop(active_repo, "use_access_token")
+            row = layout_panel.row(align=True, heading="Authentication")
+            row.prop(active_repo, "use_access_token")
             layout_panel.prop(active_repo, "use_cache")
             layout_panel.separator()
 

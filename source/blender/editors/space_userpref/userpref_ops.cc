@@ -423,7 +423,9 @@ static void preferences_extension_repo_add_ui(bContext * /*C*/, wmOperator *op)
       const int token_icon = (use_access_token && RNA_string_length(op->ptr, "access_token")) ?
                                  ICON_LOCKED :
                                  ICON_UNLOCKED;
-      uiItemR(layout, op->ptr, "use_access_token", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+      uiLayout *row = uiLayoutRowWithHeading(layout, true, IFACE_("Authentication"));
+      uiItemR(row, op->ptr, "use_access_token", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiLayout *col = uiLayoutRow(layout, false);
       uiLayoutSetActive(col, use_access_token);
       /* Use "immediate" flag to refresh the icon. */

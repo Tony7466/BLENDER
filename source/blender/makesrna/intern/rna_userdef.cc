@@ -6747,8 +6747,7 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_access_token", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN);
-  RNA_def_property_ui_text(
-      prop, "Use Access Token", "Use an access token for this online repository");
+  RNA_def_property_ui_text(prop, "Requires Access Token", "Repository requires an access token");
 
   prop = RNA_def_property(srna, "use_custom_directory", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
