@@ -597,17 +597,17 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   SculptFakeNeighbors fake_neighbors = {};
 
   /* Transform operator */
-  blender::float3 pivot_pos;
-  float pivot_rot[4];
-  blender::float3 pivot_scale;
+  blender::float3 pivot_pos = {};
+  blender::float4 pivot_rot = {};
+  blender::float3 pivot_scale = {};
 
-  blender::float3 init_pivot_pos;
-  float init_pivot_rot[4];
-  blender::float3 init_pivot_scale;
+  blender::float3 init_pivot_pos = {};
+  blender::float4 init_pivot_rot = {};
+  blender::float3 init_pivot_scale = {};
 
-  blender::float3 prev_pivot_pos;
-  float prev_pivot_rot[4];
-  blender::float3 prev_pivot_scale;
+  blender::float3 prev_pivot_pos = {};
+  blender::float4 prev_pivot_rot = {};
+  blender::float3 prev_pivot_scale = {};
 
   struct {
     struct {
@@ -747,19 +747,6 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
  * drawing the mesh and all updates that come with it.
  */
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d);
-
-/* paint_vertex.cc */
-
-/**
- * Fills the object's active color attribute layer with the fill color.
- *
- * \param only_selected: Limit the fill to selected faces or vertices.
- *
- * \return #true if successful.
- */
-bool BKE_object_attributes_active_color_fill(Object &ob,
-                                             const float fill_color[4],
-                                             bool only_selected);
 
 /** C accessor for #Object::sculpt::pbvh. */
 PBVH *BKE_object_sculpt_pbvh_get(Object *object);

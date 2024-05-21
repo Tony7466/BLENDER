@@ -128,7 +128,7 @@ static float normal_calc(const SculptSession &ss,
     normal_v = automask_data.orig_data->no;
   }
   else {
-    SCULPT_vertex_normal_get(ss, vertex, normal_v);
+    normal_v = SCULPT_vertex_normal_get(ss, vertex);
   }
 
   float angle = safe_acosf(dot_v3v3(normal, normal_v));
@@ -339,10 +339,8 @@ static void calc_blurred_cavity(SculptSession &ss,
     PBVHVertRef v = blurvert.vertex;
     start = (start + 1) % queue.size();
 
-    float3 no;
-
     const float *co = SCULPT_vertex_co_get(ss, v);
-    SCULPT_vertex_normal_get(ss, v, no);
+    const float3 no = SCULPT_vertex_normal_get(ss, v);
 
     float centdist = len_v3v3(co, co1);
 
@@ -417,12 +415,12 @@ static void calc_blurred_cavity(SculptSession &ss,
 
   normalize_v3(sno1);
   if (dot_v3v3(sno1, sno1) == 0.0f) {
-    SCULPT_vertex_normal_get(ss, vertex, sno1);
+    sno1 = SCULPT_vertex_normal_get(ss, vertex);
   }
 
   normalize_v3(sno2);
   if (dot_v3v3(sno2, sno2) == 0.0f) {
-    SCULPT_vertex_normal_get(ss, vertex, sno2);
+    sno2 = SCULPT_vertex_normal_get(ss, vertex);
   }
 
   float3 vec = sco1 - sco2;
