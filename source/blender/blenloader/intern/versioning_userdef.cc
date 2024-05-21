@@ -957,7 +957,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(402, 42)) {
     /* 80 was the old default. */
     if (userdef->node_margin == 80) {
-      userdef->node_margin = 20;
+      userdef->node_margin = 40;
     }
   }
 
