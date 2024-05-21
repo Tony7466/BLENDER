@@ -30,6 +30,14 @@ struct NlaKeyframingContext;
 
 namespace blender::animrig {
 
+/**
+ * Represents a single success/failure in the keyframing process.
+ *
+ * What is considered "single" depends on the level at which the failure
+ * happens. For example, it can be at the level of a single key on a single
+ * fcurve, all the way up to the level of an entire ID not being animatable.
+ * Both are considered "single" events.
+ */
 enum class SingleKeyingResult {
   SUCCESS = 0,
   /* TODO: remove `UNKNOWN_FAILURE` and replace all usages with proper, specific

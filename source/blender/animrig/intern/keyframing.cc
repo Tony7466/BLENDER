@@ -99,7 +99,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   if (this->get_count(SingleKeyingResult::UNKNOWN_FAILURE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::UNKNOWN_FAILURE);
     errors.append(
-        fmt::format(RPT_("Could not insert {:d} key(s) for unknown reasons."), error_count));
+        fmt::format(RPT_("There were {:d} keying failures for unknown reasons."), error_count));
   }
 
   if (this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
@@ -153,23 +153,23 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
 
   if (this->get_count(SingleKeyingResult::NO_VALID_LAYER) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_LAYER);
-    errors.append(fmt::format(RPT_("Due to there being no layer that can accept them, {:d} "
-                                   "keyframe(s) were not inserted."),
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because there "
+                                   "were no layers that could accept the keys."),
                               error_count));
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_STRIP) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_STRIP);
-    errors.append(fmt::format(RPT_("Due to there being no strip that can accept them, {:d} "
-                                   "keyframe(s) were not inserted."),
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because there "
+                                   "were no strips that could accept the keys."),
                               error_count));
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_BINDING) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_BINDING);
-    errors.append(fmt::format(
-        RPT_("Due to a missing animation binding, {:d} keyframe(s) were not inserted."),
-        error_count));
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because of "
+                                   "missing animation bindings."),
+                              error_count));
   }
 
   if (errors.is_empty()) {
@@ -1092,8 +1092,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   /* Init animdata if none available yet. */
   AnimData *adt = BKE_animdata_ensure_id(id);
   if (adt == nullptr) {
-    /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
+    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE);
     return combined_result;
   }
 
