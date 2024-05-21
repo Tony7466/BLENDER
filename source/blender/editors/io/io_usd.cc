@@ -950,11 +950,6 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "Validate Meshes",
       "Ensure the data is valid "
       "(when disabled, data may be imported which causes crashes displaying or editing)");
-  RNA_def_boolean(ot->srna,
-                  "validate_meshes",
-                  false,
-                  "Validate Meshes",
-                  "Check imported mesh objects for invalid data (slow)");
 
   RNA_def_boolean(ot->srna,
                   "import_defined_only",
