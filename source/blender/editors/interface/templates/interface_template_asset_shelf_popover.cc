@@ -88,6 +88,7 @@ using namespace blender;
 static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "asset_shelf", nullptr, 0, nullptr);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(asset_shelf_id); });
 
   AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_id);
   if (ed::asset::shelf::type_poll_for_popup(*C, shelf_type) == false) {
@@ -118,8 +119,6 @@ static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent
       },
       pt);
 #endif
-
-  MEM_freeN(asset_shelf_id);
 
   return OPERATOR_INTERFACE;
 }
