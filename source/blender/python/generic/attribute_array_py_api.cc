@@ -251,8 +251,10 @@ static PyObject *foreach_getset(BPy_AttributeArray *self,
     return nullptr;
   }
 
-  const bool type_is_compatible = buffer.format ? (*buffer.format == (*data_type).buffer_format) :
-                                                  ((*data_type).buffer_format == 'B');
+  const bool type_is_compatible = buffer.format ?
+                                      (*buffer.format == (*data_type).buffer_format_a ||
+                                       *buffer.format == (*data_type).buffer_format_b) :
+                                      ((*data_type).buffer_format_a == 'B');
   const bool size_matches = (buffer.len ==
                              int64_t(self->data_layer->length) * (*data_type).item_size);
 
@@ -264,7 +266,7 @@ static PyObject *foreach_getset(BPy_AttributeArray *self,
     PyErr_Format(PyExc_TypeError,
                  "%s(array): array type mismatch (expected type '%.1s', got '%.1s')",
                  function_name,
-                 &(*data_type).buffer_format,
+                 &(*data_type).buffer_format_a,
                  buffer.format);
     return nullptr;
   }
@@ -327,6 +329,15 @@ static PyObject *BPy_AttributeArray_foreach_set(BPy_AttributeArray *self, PyObje
 /** \name BPy_AttributeArray Fill
  * \{ */
 
+static std::optional<int> get_index_int(PyObject *py_index)
+{
+  const int index = PyLong_AsLong(py_index);
+  if (index == -1 && PyErr_Occurred()) {
+    return std::nullopt;
+  }
+  return index;
+}
+
 PyDoc_STRVAR(
     /* Wrap. */
     BPy_AttributeArray_fill_doc,
@@ -335,10 +346,11 @@ PyDoc_STRVAR(
     "   Fill the geometry attribute array with a value.\n"
     "\n"
     "   :arg value: Value to fill the array with.\n"
-    "   :arg indices: Limit the array fill to the given indices (optional argument).\n"
-    "   :type indices: List of ints.\n");
+    "   :arg indices: Only fill the given indices (optional argument).\n"
+    "   :type indices: List, array or numpy array of ints.\n");
 static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *args)
 {
+  /* Get fill value and (optionally) a list of indices. */
   PyObject *py_value, *py_indices = nullptr;
   if (!PyArg_ParseTuple(args, "O|O:AttributeArray.fill(value, indices)", &py_value, &py_indices)) {
     return nullptr;
@@ -348,6 +360,7 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
     return nullptr;
   }
 
+  /* Verify the indices object. */
   if (py_indices == Py_None) {
     py_indices = nullptr;
   }
@@ -357,11 +370,10 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
         "AttributeArray.fill[value, indices]: invalid indices type, expected a list of ints");
     return nullptr;
   }
+
   Py_ssize_t indices_length;
-  PyObject **py_indices_fast;
   if (py_indices) {
-    indices_length = PySequence_Fast_GET_SIZE(py_indices);
-    py_indices_fast = PySequence_Fast_ITEMS(py_indices);
+    indices_length = PySequence_Size(py_indices);
     if (indices_length == 0) {
       Py_RETURN_NONE;
     }
@@ -370,15 +382,19 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
   /* Get the index of first value in the array. */
   int first_index = 0;
   if (py_indices) {
-    PyObject *py_index = py_indices_fast[0];
-    if (!PyLong_Check(py_index)) {
+    PyObject *py_index = PySequence_GetItem(py_indices, 0);
+    std::optional<int> maybe_first_index = get_index_int(py_index);
+    if (!maybe_first_index.has_value()) {
       PyErr_Format(
           PyExc_IndexError,
           "AttributeArray.fill(value, indices): invalid index type (expected an int, got %.200s)",
           Py_TYPE(py_index)->tp_name);
+      Py_DECREF(py_index);
       return nullptr;
     }
-    first_index = PyLong_AsLong(py_index);
+
+    Py_DECREF(py_index);
+    first_index = maybe_first_index.value();
     if (first_index < 0 || first_index >= self->data_layer->length) {
       PyErr_Format(PyExc_IndexError,
                    "AttributeArray.fill(value, indices): index %d out of range, size %d",
@@ -400,7 +416,7 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
   void *data = self->data_layer->data;
   if (py_indices == nullptr) {
     for (int index = 1; index < self->data_layer->length; index++) {
-      memcpy(static_cast<char *>(data) + index * (*data_type).item_size,
+      memcpy(static_cast<int8_t *>(data) + index * (*data_type).item_size,
              data,
              (*data_type).item_size);
     }
@@ -408,15 +424,19 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
   /* Fill the array using indices. */
   else {
     for (int i = 1; i < indices_length; i++) {
-      PyObject *py_index = py_indices_fast[i];
-      if (!PyLong_Check(py_index)) {
+      PyObject *py_index = PySequence_GetItem(py_indices, i);
+      std::optional<int> maybe_index = get_index_int(py_index);
+      if (!maybe_index.has_value()) {
         PyErr_Format(PyExc_IndexError,
                      "AttributeArray.fill(value, indices): invalid index type (expected an int, "
                      "got %.200s)",
                      Py_TYPE(py_index)->tp_name);
+        Py_DECREF(py_index);
         return nullptr;
       }
-      const int index = PyLong_AsLong(py_index);
+
+      Py_DECREF(py_index);
+      const int index = maybe_index.value();
       if (index < 0 || index >= self->data_layer->length) {
         PyErr_Format(PyExc_IndexError,
                      "AttributeArray.fill(value, indices): index %d out of range, size %d",
@@ -424,8 +444,9 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
                      self->data_layer->length);
         return nullptr;
       }
-      memcpy(static_cast<char *>(data) + index * (*data_type).item_size,
-             static_cast<char *>(data) + first_index * (*data_type).item_size,
+
+      memcpy(static_cast<int8_t *>(data) + index * (*data_type).item_size,
+             static_cast<int8_t *>(data) + first_index * (*data_type).item_size,
              (*data_type).item_size);
     }
   }
