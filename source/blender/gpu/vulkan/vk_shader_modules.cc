@@ -20,6 +20,7 @@
 #include <sstream>
 
 namespace blender::gpu {
+
 bool VKShaderModules::construct(VKShader &shader,
                                 const shader::ShaderCreateInfo & /*info*/,
                                 Span<const char *> sources,
@@ -38,6 +39,18 @@ bool VKShaderModules::construct(VKShader &shader,
     return false;
   }
   return build_shader_module(shader, spirv_module, r_shader_module);
+}
+
+void VKShaderModules::destruct(VkShaderModule vk_shader_module)
+{
+  VK_ALLOCATION_CALLBACKS
+  const VKDevice &device = VKBackend::get().device_get();
+  vkDestroyShaderModule(device.device_get(), vk_shader_module, vk_allocation_callbacks);
+}
+
+void VKShaderModules::free_data()
+{
+  debug_print();
 }
 
 /* -------------------------------------------------------------------- */
@@ -150,6 +163,7 @@ bool VKShaderModules::build_shader_module(const VKShader &shader,
 /** \name Debugging and statistics
  *
  * \{ */
+
 void VKShaderModules::debug_print() const
 {
   std::stringstream ss;
@@ -157,18 +171,7 @@ void VKShaderModules::debug_print() const
      << ", spirv_shader_module_time" << stats_.spirv_to_shader_module_time << "s)\n";
   std::cout << ss.str();
 }
+
 /** \} */
-
-void VKShaderModules::destruct(VkShaderModule vk_shader_module)
-{
-  VK_ALLOCATION_CALLBACKS
-  const VKDevice &device = VKBackend::get().device_get();
-  vkDestroyShaderModule(device.device_get(), vk_shader_module, vk_allocation_callbacks);
-}
-
-void VKShaderModules::free_data()
-{
-  debug_print();
-}
 
 }  // namespace blender::gpu
