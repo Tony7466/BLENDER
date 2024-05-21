@@ -38,6 +38,7 @@
 
 #  include "DEG_depsgraph.hh"
 
+#  include "IO_orientation.hh"
 #  include "io_usd.hh"
 #  include "io_utils.hh"
 #  include "usd.hh"
@@ -220,6 +221,11 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_custom_properties = RNA_boolean_get(op->ptr, "export_custom_properties");
   const bool author_blender_name = RNA_boolean_get(op->ptr, "author_blender_name");
 
+  const bool convert_orientation = RNA_boolean_get(op->ptr, "convert_orientation");
+
+  const int global_forward = RNA_enum_get(op->ptr, "export_global_forward_selection");
+  const int global_up = RNA_enum_get(op->ptr, "export_global_up_selection");
+
   const eUSDZTextureDownscaleSize usdz_downscale_size = eUSDZTextureDownscaleSize(
       RNA_enum_get(op->ptr, "usdz_downscale_size"));
 
@@ -250,6 +256,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       relative_paths,
       export_custom_properties,
       author_blender_name,
+      convert_orientation,
+      eIOAxis(global_forward),
+      eIOAxis(global_up),
       usdz_downscale_size,
       usdz_downscale_custom_size,
   };
@@ -299,6 +308,12 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  uiItemR(col, ptr, "convert_orientation", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (RNA_boolean_get(ptr, "convert_orientation")) {
+    uiItemR(col, ptr, "export_global_forward_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "export_global_up_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -361,6 +376,24 @@ static bool wm_usd_export_check(bContext * /*C*/, wmOperator *op)
   }
 
   return false;
+}
+
+static void forward_axis_update(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
+{
+  int forward = RNA_enum_get(ptr, "forward_axis");
+  int up = RNA_enum_get(ptr, "up_axis");
+  if ((forward % 3) == (up % 3)) {
+    RNA_enum_set(ptr, "up_axis", (up + 1) % 6);
+  }
+}
+
+static void up_axis_update(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
+{
+  int forward = RNA_enum_get(ptr, "forward_axis");
+  int up = RNA_enum_get(ptr, "up_axis");
+  if ((forward % 3) == (up % 3)) {
+    RNA_enum_set(ptr, "forward_axis", (forward + 1) % 6);
+  }
 }
 
 void WM_OT_usd_export(wmOperatorType *ot)
@@ -479,6 +512,24 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "representation of a Principled BSDF node network");
 
   RNA_def_boolean(ot->srna,
+                  "convert_orientation",
+                  false,
+                  "Convert Orientation",
+                  "The USD exporter will convert scene orientation axis");
+
+  prop = RNA_def_enum(ot->srna,
+                      "export_global_forward_selection",
+                      io_transform_axis,
+                      IO_AXIS_NEGATIVE_Z,
+                      "Forward Axis",
+                      "");
+  RNA_def_property_update_runtime(prop, forward_axis_update);
+
+  prop = RNA_def_enum(
+      ot->srna, "export_global_up_selection", io_transform_axis, IO_AXIS_Y, "Up Axis", "");
+  RNA_def_property_update_runtime(prop, up_axis_update);
+
+  RNA_def_boolean(ot->srna,
                   "export_textures",
                   true,
                   "Export Textures",
@@ -590,6 +641,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const bool import_shapes = RNA_boolean_get(op->ptr, "import_shapes");
   const bool import_skeletons = RNA_boolean_get(op->ptr, "import_skeletons");
   const bool import_blendshapes = RNA_boolean_get(op->ptr, "import_blendshapes");
+  const bool import_points = RNA_boolean_get(op->ptr, "import_points");
 
   const bool import_subdiv = RNA_boolean_get(op->ptr, "import_subdiv");
 
@@ -659,6 +711,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_shapes = import_shapes;
   params.import_skeletons = import_skeletons;
   params.import_blendshapes = import_blendshapes;
+  params.import_points = import_points;
   params.prim_path_mask = prim_path_mask;
   params.import_subdiv = import_subdiv;
   params.support_scene_instancing = support_scene_instancing;
@@ -707,6 +760,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "import_points", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(box, ptr, "prim_path_mask", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(box, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -805,6 +859,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "import_shapes", true, "Shapes", "");
   RNA_def_boolean(ot->srna, "import_skeletons", true, "Skeletons", "");
   RNA_def_boolean(ot->srna, "import_blendshapes", true, "Blend Shapes", "");
+  RNA_def_boolean(ot->srna, "import_points", true, "Point Clouds", "");
 
   RNA_def_boolean(ot->srna,
                   "import_subdiv",
@@ -927,11 +982,13 @@ void WM_OT_usd_import(wmOperatorType *ot)
                "Custom Properties",
                "Behavior when importing USD attributes as Blender custom properties");
 
-  RNA_def_boolean(ot->srna,
-                  "validate_meshes",
-                  false,
-                  "Validate Meshes",
-                  "Check imported mesh objects for invalid data (slow)");
+  RNA_def_boolean(
+      ot->srna,
+      "validate_meshes",
+      false,
+      "Validate Meshes",
+      "Ensure the data is valid "
+      "(when disabled, data may be imported which causes crashes displaying or editing)");
 }
 
 namespace blender::ed::io {
