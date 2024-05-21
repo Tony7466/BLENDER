@@ -34,14 +34,11 @@ float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
   vec3 Lt = L * tangent_to_world;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID: {
-      if (thickness > 0.0) {
-        return sample_pdf_uniform_sphere();
-      }
-      return sample_pdf_cosine_hemisphere(saturate(-Lt.z));
+      return bxdf_translucent_eval(cl.N, L, thickness).pdf;
     }
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID: {
-      return sample_pdf_cosine_hemisphere(saturate(Lt.z));
+      return bxdf_diffuse_eval(cl.N, L).pdf;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
       float roughness = max(BSDF_ROUGHNESS_THRESHOLD, to_closure_reflection(cl).roughness);

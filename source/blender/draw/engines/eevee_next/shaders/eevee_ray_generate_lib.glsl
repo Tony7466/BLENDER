@@ -26,35 +26,26 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
   vec3 random_point_on_cylinder = sample_cylinder(noise);
   /* Bias the rays so we never get really high energy rays almost parallel to the surface. */
   const float rng_bias = 0.08;
-  random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - rng_bias);
+  /* When modeling object thickness as a sphere, the outgoing rays are distributed uniformly
+   * over the sphere. We don't want the RAY_BIAS in this case. */
+  if (cl.type != CLOSURE_BSDF_TRANSLUCENT_ID || thickness <= 0.0) {
+    random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - rng_bias);
+  }
 
   mat3 tangent_to_world = from_up_axis(cl.N);
 
   BsdfSample samp;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
-      if (thickness > 0.0) {
-        /* When modeling object thickness as a sphere, the outgoing rays are distributed uniformly
-         * over the sphere. We don't need the RAY_BIAS in this case. */
-        samp.direction = sample_sphere(noise);
-        samp.pdf = sample_pdf_uniform_sphere();
-      }
-      else {
-        samp.direction = sample_cosine_hemisphere(random_point_on_cylinder,
-                                                  -tangent_to_world[2],
-                                                  tangent_to_world[1],
-                                                  tangent_to_world[0],
-                                                  samp.pdf);
-      }
+      samp = bxdf_translucent_sample(random_point_on_cylinder, thickness);
+      samp.direction = tangent_to_world * samp.direction;
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
-    case CLOSURE_BSDF_DIFFUSE_ID:
-      samp.direction = sample_cosine_hemisphere(random_point_on_cylinder,
-                                                tangent_to_world[2],
-                                                tangent_to_world[1],
-                                                tangent_to_world[0],
-                                                samp.pdf);
+    case CLOSURE_BSDF_DIFFUSE_ID: {
+      samp = bxdf_diffuse_sample(random_point_on_cylinder);
+      samp.direction = tangent_to_world * samp.direction;
       break;
+    }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
       if (is_singular_ray(to_closure_reflection(cl).roughness)) {
         samp.direction = reflect(-V, cl.N);
