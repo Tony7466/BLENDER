@@ -942,10 +942,10 @@ static void grow_shrink_visibility_bmesh(Object &object,
                                          const VisAction action)
 {
 
-  SculptSession *ss = object.sculpt;
+  SculptSession &ss = *object.sculpt;
   const Array<bool> prev_visibility = duplicate_visibility(object);
 
-  partialvis_update_bmesh_nodes(&object, nodes, action, [&](const BMVert *vert) {
+  partialvis_update_bmesh_nodes(object, nodes, action, [&](const BMVert *vert) {
     int vi = BM_elem_index_get(vert);
     PBVHVertRef vref = BKE_pbvh_index_to_vertex(pbvh, vi);
     SculptVertexNeighborIter ni;
@@ -976,7 +976,7 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
   const SculptSession &ss = *object.sculpt;
-  int num_verts = SCULPT_vertex_count_get(&ss);
+  int num_verts = SCULPT_vertex_count_get(ss);
 
   int iterations = RNA_int_get(op->ptr, "iterations");
 
@@ -986,7 +986,7 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
     iterations = int(num_verts / VERTEX_ITERATION_THRESHOLD) + 1;
   }
 
-  undo::push_begin(&object, op);
+  undo::push_begin(object, op);
   for (int i = 0; i < iterations; i++) {
     switch (BKE_pbvh_type(pbvh)) {
       case PBVH_FACES:
@@ -1000,9 +1000,9 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
         break;
     }
   }
-  undo::push_end(&object);
+  undo::push_end(object);
 
-  SCULPT_topology_islands_invalidate(object.sculpt);
+  SCULPT_topology_islands_invalidate(*object.sculpt);
   tag_update_visibility(*C);
 
   return OPERATOR_FINISHED;
