@@ -287,8 +287,11 @@ static void print_ps(PlayState *ps)
 static void playanim_window_get_size(GHOST_WindowHandle ghost_window, int *r_width, int *r_height)
 {
   GHOST_RectangleHandle bounds = GHOST_GetClientBounds(ghost_window);
-  *r_width = GHOST_GetWidthRectangle(bounds);
-  *r_height = GHOST_GetHeightRectangle(bounds);
+  float nativePixelSize = GHOST_GetNativePixelSize(ghost_window);
+
+  *r_width = GHOST_GetWidthRectangle(bounds) * nativePixelSize;
+  *r_height = GHOST_GetHeightRectangle(bounds) * nativePixelSize;
+
   GHOST_DisposeRectangle(bounds);
 }
 
@@ -1605,6 +1608,8 @@ static GHOST_WindowHandle playanim_window_open(
       posx = 0;
       posy = 0;
     }
+
+    GHOST_UseNativePixels();
 
     /* NOTE: ideally the GPU could be queried for the maximum supported window size,
      * this isn't so simple as the GPU back-end's capabilities are initialized *after* the window
