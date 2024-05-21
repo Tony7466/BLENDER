@@ -6,19 +6,17 @@
 
 #ifdef WITH_OPENGL_BACKEND
 
+#  include "BKE_appdir.hh"
+#  include "BLI_fileops.hh"
 #  include "BLI_hash.hh"
+#  include "BLI_path_util.h"
 #  include "CLG_log.h"
 #  include "GHOST_C-api.h"
 #  include "GPU_context.hh"
 #  include "GPU_init_exit.hh"
 #  include "opengl/ipc.hh"
 #  include <epoxy/gl.h>
-#  include <filesystem>
-#  include <fstream>
-#  include <iostream>
 #  include <string>
-
-namespace fs = std::filesystem;
 
 namespace blender::gpu {
 
@@ -140,8 +138,9 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPUContext *gpu_context = GPU_context_create(nullptr, ghost_context);
   GPU_init();
 
-  fs::path cache_dir = fs::temp_directory_path() / "BLENDER_SHADER_CACHE";
-  fs::create_directory(cache_dir);
+  BKE_tempdir_init(nullptr);
+  std::string cache_dir = std::string(BKE_tempdir_base()) + "BLENDER_SHADER_CACHE" + SEP_STR;
+  BLI_dir_create_recursive(cache_dir.c_str());
 
   while (true) {
     ipc_sem_decrement(&start_semaphore);
@@ -159,12 +158,12 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     uint64_t vert_hash = hasher(vert_src);
     uint64_t frag_hash = hasher(frag_src);
     std::string hash_str = std::to_string(vert_hash) + "_" + std::to_string(frag_hash);
-    fs::path cache_path = cache_dir / hash_str;
+    std::string cache_path = cache_dir + SEP_STR + hash_str;
 
-    /* TODO: This should lock the files. */
-    if (fs::exists(cache_path)) {
+    /* TODO: This should lock the files? */
+    if (BLI_exists(cache_path.c_str())) {
       /* Read cached binary. */
-      std::ifstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
+      fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
       std::streamsize size = file.tellg();
       file.seekg(0, std::ios::beg);
       file.read(reinterpret_cast<char *>(shared_mem.data), size);
@@ -180,7 +179,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
     ipc_sem_increment(&end_semaphore);
 
-    std::ofstream file(cache_path, std::ios::binary | std::ios::out);
+    fstream file(cache_path, std::ios::binary | std::ios::out);
     file.write(reinterpret_cast<char *>(shared_mem.data),
                binary->size + offsetof(ShaderBinary, data_start));
   }
