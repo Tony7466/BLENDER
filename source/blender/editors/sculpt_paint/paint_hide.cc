@@ -787,17 +787,12 @@ void PAINT_OT_visibility_invert(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER;
 }
 
-enum class EditMode {
-  Grow = 0,
-  Shrink = 1,
-};
-
 /* Number of vertices per iteration step size when growing or shrinking visibility. */
 static constexpr float VERTEX_ITERATION_THRESHOLD = 50000.0f;
 
 static void grow_shrink_visibility_mesh(Object &object,
                                         const Span<PBVHNode *> nodes,
-                                        const EditMode mode)
+                                        const VisAction action)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
@@ -818,7 +813,7 @@ static void grow_shrink_visibility_mesh(Object &object,
   array_utils::copy(hide_vert.span.as_span(), orig_hide_vert.as_mutable_span());
 
   bool any_changed = false;
-  const bool desired_state = !(mode == EditMode::Grow);
+  const bool desired_state = action_to_hide(action);
 
   threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -868,7 +863,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         Object &object,
                                         PBVH &pbvh,
                                         const Span<PBVHNode *> nodes,
-                                        const EditMode mode)
+                                        const VisAction action)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
@@ -880,8 +875,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
     orig_grid_hidden[i].copy_from(grid_hidden[i].as_span());
   }
 
+  const bool desired_state = action_to_hide(action);
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
-  const bool desired_state = !(mode == EditMode::Grow);
 
   bool any_changed = false;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -945,13 +940,11 @@ static Array<bool> duplicate_visibility(const Object &object)
 static void grow_shrink_visibility_bmesh(Object &object,
                                          PBVH &pbvh,
                                          const Span<PBVHNode *> nodes,
-                                         const EditMode mode)
+                                         const VisAction action)
 {
 
   SculptSession *ss = object.sculpt;
-  const VisAction action = mode == EditMode::Grow ? VisAction::Show : VisAction::Hide;
   const Array<bool> prev_visibility = duplicate_visibility(object);
-  const bool desired_state = !(mode == EditMode::Grow);
 
   partialvis_update_bmesh_nodes(&object, nodes, action, [&](const BMVert *vert) {
     int vi = BM_elem_index_get(vert);
@@ -960,7 +953,7 @@ static void grow_shrink_visibility_bmesh(Object &object,
 
     bool should_change = false;
     SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vref, ni) {
-      if (prev_visibility[ni.index] == desired_state) {
+      if (prev_visibility[ni.index] == action_to_hide(action)) {
         /* Not returning instantly to avoid leaking memory. */
         should_change = true;
         break;
@@ -979,7 +972,7 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
   PBVH &pbvh = *BKE_sculpt_object_pbvh_ensure(&depsgraph, &object);
   BLI_assert(BKE_object_sculpt_pbvh_get(&object) == &pbvh);
 
-  const EditMode mode = EditMode(RNA_enum_get(op->ptr, "mode"));
+  const VisAction mode = VisAction(RNA_enum_get(op->ptr, "action"));
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
@@ -1018,13 +1011,13 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
 
 void PAINT_OT_visibility_filter(wmOperatorType *ot)
 {
-  static EnumPropertyItem modes[] = {
-      {int(EditMode::Grow),
+  static EnumPropertyItem actions[] = {
+      {int(VisAction::Show),
        "GROW",
        0,
        "Grow Visibility",
        "Grows the visibility by one face based on mesh topology"},
-      {int(EditMode::Shrink),
+      {int(VisAction::Hide),
        "SHRINK",
        0,
        "Shrink Visibility",
@@ -1041,7 +1034,7 @@ void PAINT_OT_visibility_filter(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna, "mode", modes, int(EditMode::Grow), "Mode", "");
+  RNA_def_enum(ot->srna, "action", actions, int(VisAction::Show), "Action", "");
 
   RNA_def_int(ot->srna,
               "iterations",
