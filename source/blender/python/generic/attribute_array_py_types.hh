@@ -45,6 +45,12 @@ static bool set_attribute_bool(void *data, int index, PyObject *py_value)
 
 static bool set_attribute_float(void *data, int index, PyObject *py_value)
 {
+  if (PyLong_Check(py_value)) {
+    /* Allow int values (like 0), convert them to float. */
+    const long value = PyLong_AsLong(py_value);
+    static_cast<float *>(data)[index] = float(value);
+    return true;
+  }
   if (!PyFloat_Check(py_value)) {
     return false;
   }
@@ -416,7 +422,8 @@ PyObject *get_attribute_byte_color(void *data, int index)
 
 struct CustomDataTypeMapping {
   int item_size;
-  char buffer_format;
+  char buffer_format_a;
+  char buffer_format_b;
   std::string description;
   std::function<PyObject *(void *, int)> get_attribute;
   std::function<bool(void *, int, PyObject *)> set_attribute;
@@ -424,19 +431,32 @@ struct CustomDataTypeMapping {
 
 std::unordered_map<int, CustomDataTypeMapping> data_types{
     {int(CD_PROP_BOOL),
-     {sizeof(bool), '?', "bool value True/False or 0/1", get_attribute_bool, set_attribute_bool}},
-    {CD_PROP_FLOAT, {sizeof(float), 'f', "a float", get_attribute_float, set_attribute_float}},
+     {sizeof(bool),
+      '?',
+      '?',
+      "bool value True/False or 0/1",
+      get_attribute_bool,
+      set_attribute_bool}},
+    {CD_PROP_FLOAT,
+     {sizeof(float), 'f', 'f', "a float", get_attribute_float, set_attribute_float}},
     {CD_PROP_INT8,
-     {sizeof(int8_t), 'b', "int8 between -128 and 127", get_attribute_int8, set_attribute_int8}},
-    {CD_PROP_INT32, {sizeof(int32_t), 'i', "an int32", get_attribute_int32, set_attribute_int32}},
+     {sizeof(int8_t),
+      'b',
+      'b',
+      "int8 between -128 and 127",
+      get_attribute_int8,
+      set_attribute_int8}},
+    {CD_PROP_INT32, {sizeof(int32_t), 'i', 'l', "int", get_attribute_int32, set_attribute_int32}},
     {CD_PROP_INT32_2D,
      {sizeof(int2),
       'i',
+      'l',
       "tuple (x, y) or list [x, y] of ints",
       get_attribute_int2,
       set_attribute_int2}},
     {CD_PROP_STRING,
      {sizeof(MStringProperty),
+      'B',
       'B',
       "string with a maximum of 254 characters",
       get_attribute_string,
@@ -444,11 +464,13 @@ std::unordered_map<int, CustomDataTypeMapping> data_types{
     {CD_PROP_FLOAT2,
      {sizeof(float2),
       'f',
+      'f',
       "mathutils.Vector((x, y)), tuple (x, y) or list [x, y]",
       get_attribute_float2,
       set_attribute_float2}},
     {CD_PROP_FLOAT3,
      {sizeof(float3),
+      'f',
       'f',
       "mathutils.Vector((x, y, z)), tuple (x, y, z) or list [x, y, z]",
       get_attribute_float3,
@@ -456,11 +478,13 @@ std::unordered_map<int, CustomDataTypeMapping> data_types{
     {CD_PROP_FLOAT4X4,
      {sizeof(float4x4),
       'f',
+      'f',
       "mathutils.Matrix() with 4x4 dimensions",
       get_attribute_float4x4,
       set_attribute_float4x4}},
     {CD_PROP_QUATERNION,
      {sizeof(math::Quaternion),
+      'f',
       'f',
       "mathutils.Quaternion((w, x, y, z)), tuple (w, x, y, z) or list [w, x, y, z]",
       get_attribute_quaternion,
@@ -468,11 +492,13 @@ std::unordered_map<int, CustomDataTypeMapping> data_types{
     {CD_PROP_COLOR,
      {sizeof(ColorGeometry4f),
       'f',
+      'f',
       "tuple (r, g, b, a) or list [r, g, b, a] of floats",
       get_attribute_color,
       set_attribute_color}},
     {CD_PROP_BYTE_COLOR,
      {sizeof(ColorGeometry4b),
+      'B',
       'B',
       "tuple (r, g, b, a) or list [r, g, b, a] of int in the range 0-255",
       get_attribute_byte_color,
