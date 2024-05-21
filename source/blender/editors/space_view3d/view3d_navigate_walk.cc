@@ -1021,8 +1021,6 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
 {
 #define WALK_ROTATE_TABLET_FAC 8.8f              /* Higher is faster, relative to region size. */
 #define WALK_ROTATE_CONSTANT_FAC DEG2RADF(0.15f) /* Higher is faster, radians per-pixel. */
-#define WALK_TOP_LIMIT DEG2RADF(85.0f)
-#define WALK_BOTTOM_LIMIT DEG2RADF(-80.0f)
 #define WALK_MOVE_SPEED (0 ? 0.0f : g_walk.base_speed)
 #define WALK_JUMP_HEIGHT (0 ? 0.0f : g_walk.jump_height)
 #define WALK_BOOST_FACTOR ((void)0, walk->speed_factor)
@@ -1125,16 +1123,6 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
 
           /* User adjustment factor. */
           y *= walk->mouse_speed;
-
-          /* Clamp the angle limits: it ranges from 90.0f to -90.0f. */
-          angle = -asinf(rv3d->viewmat[2][2]);
-
-          if (angle + y > WALK_TOP_LIMIT && y > 0.0f) {
-            y = WALK_TOP_LIMIT - angle;
-          }
-          else if (angle + y < WALK_BOTTOM_LIMIT && y < 0.0f) {
-            y = WALK_BOTTOM_LIMIT - angle;
-          }
 
           copy_v3_fl3(upvec, 1.0f, 0.0f, 0.0f);
           mul_m3_v3(mat, upvec);
@@ -1419,8 +1407,6 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
 
   return OPERATOR_FINISHED;
 #undef WALK_ROTATE_TABLET_FAC
-#undef WALK_TOP_LIMIT
-#undef WALK_BOTTOM_LIMIT
 #undef WALK_MOVE_SPEED
 #undef WALK_JUMP_HEIGHT
 #undef WALK_BOOST_FACTOR
