@@ -57,7 +57,7 @@ class BitGroupVector {
   BitGroupVector(const BitGroupVector &other)
       : group_size_(other.group_size_),
         aligned_group_size_(other.aligned_group_size_),
-        data_(other.data_.operator blender::bits::BoundedBitSpan())
+        data_(other.data_)
   {
   }
 
