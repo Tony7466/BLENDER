@@ -15,11 +15,6 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
-bool is_singular_ray(float roughness)
-{
-  return roughness < BSDF_ROUGHNESS_THRESHOLD;
-}
-
 /* Returns view-space ray. */
 BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, float thickness)
 {
@@ -47,16 +42,10 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
-      if (is_singular_ray(to_closure_reflection(cl).roughness)) {
-        samp.direction = reflect(-V, cl.N);
-        samp.pdf = 1e6;
-      }
-      else {
-        float roughness = to_closure_reflection(cl).roughness;
-        vec3 Vt = V * tangent_to_world;
-        samp = bxdf_ggx_sample_reflection(random_point_on_cylinder, Vt, square(roughness));
-        samp.direction = tangent_to_world * samp.direction;
-      }
+      float roughness = to_closure_reflection(cl).roughness;
+      vec3 Vt = V * tangent_to_world;
+      samp = bxdf_ggx_sample_reflection(random_point_on_cylinder, Vt, square(roughness));
+      samp.direction = tangent_to_world * samp.direction;
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
@@ -71,16 +60,9 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
         V = -L;
         tangent_to_world = from_up_axis(cl.N);
       }
-
-      if (is_singular_ray(roughness)) {
-        samp.direction = refract(-V, cl.N, 1.0 / ior);
-        samp.pdf = 1e6;
-      }
-      else {
-        vec3 Vt = V * tangent_to_world;
-        samp = bxdf_ggx_sample_transmission(random_point_on_cylinder, Vt, square(roughness), ior);
-        samp.direction = tangent_to_world * samp.direction;
-      }
+      vec3 Vt = V * tangent_to_world;
+      samp = bxdf_ggx_sample_transmission(random_point_on_cylinder, Vt, square(roughness), ior);
+      samp.direction = tangent_to_world * samp.direction;
       break;
     }
     case CLOSURE_NONE_ID:

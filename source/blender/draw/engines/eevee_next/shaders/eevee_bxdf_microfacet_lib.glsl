@@ -33,6 +33,17 @@ float bxdf_ggx_smith_G1(float NX, float a2)
 BsdfSample bxdf_ggx_sample_visible_normals(
     vec3 rand, vec3 Vt, float alpha, float eta, const bool do_reflection)
 {
+  if (alpha < square(BSDF_ROUGHNESS_THRESHOLD)) {
+    BsdfSample samp;
+    samp.pdf = 1e6;
+    if (do_reflection) {
+      samp.direction = reflect(-Vt, vec3(0.0, 0.0, 1.0));
+    }
+    else {
+      samp.direction = refract(-Vt, vec3(0.0, 0.0, 1.0), 1.0 / eta);
+    }
+    return samp;
+  }
   /**
    * "Sampling Visible GGX Normals with Spherical Caps.""
    * Jonathan Dupuy and Anis Benyoub, HPG Vol. 42, No. 8, 2023.
