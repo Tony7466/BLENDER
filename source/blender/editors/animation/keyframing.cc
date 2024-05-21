@@ -1049,17 +1049,15 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
           group = "Object Transforms";
         }
 
-        /* Note: an index of -1 is a magic value that indicates either that
-         * we're operating on all elements of an array property, or that the
-         * property isn't an array. Here we convert that to simply not
-         * specifying an index at all. */
+        /* NOTE: `index == -1` is a magic number, meaning "operate on all elements"
+         * or "not an array property". */
         const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
                                                                     std::optional(index);
 
         CombinedKeyingResult result = insert_key_rna(bmain,
                                                      *ptr.owner_id,
                                                      group,
-                                                     {{path->c_str(), {}, array_index}},
+                                                     {{*path, {}, array_index}},
                                                      std::nullopt,
                                                      anim_eval_context,
                                                      eBezTriple_KeyframeType(ts->keyframe_type),

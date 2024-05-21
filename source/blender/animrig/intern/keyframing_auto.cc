@@ -321,7 +321,6 @@ bool autokeyframe_property(bContext *C,
     if (autokeyframe_cfra_can_key(scene, id)) {
       ToolSettings *ts = scene->toolsettings;
       const eInsertKeyFlags flag = get_autokey_flags(scene);
-      const std::optional<std::string> path = RNA_path_from_ID_to_property(ptr, prop);
 
       if (only_if_property_keyed) {
         /* NOTE: We use rnaindex instead of fcu->array_index,
@@ -329,19 +328,21 @@ bool autokeyframe_property(bContext *C,
          *       E.g., color wheels (see #42567). */
         BLI_assert((fcu->array_index == rnaindex) || (rnaindex == -1));
       }
-      CombinedKeyingResult result = insert_key_rna(
-          bmain,
-          *id,
-          (fcu && fcu->grp) ? fcu->grp->name : nullptr,
-          {{
-              fcu ? fcu->rna_path : (path ? path->c_str() : nullptr),   // Path.
-              std::nullopt,                                             // Key.
-              rnaindex == -1 ? std::nullopt : std::optional(rnaindex),  // Index.
-          }},
-          std::nullopt,
-          anim_eval_context,
-          eBezTriple_KeyframeType(ts->keyframe_type),
-          flag);
+
+      const std::string path = fcu ? fcu->rna_path :
+                                     RNA_path_from_ID_to_property(ptr, prop).value_or("");
+      /* NOTE: `rnaindex == -1` is a magic number, meaning either "operate on
+       * all elements" or "not an array property". */
+      const std::optional<int> array_index = rnaindex < 0 ? std::nullopt : std::optional(rnaindex);
+
+      CombinedKeyingResult result = insert_key_rna(bmain,
+                                                   *id,
+                                                   (fcu && fcu->grp) ? fcu->grp->name : nullptr,
+                                                   {{path, {}, array_index}},
+                                                   std::nullopt,
+                                                   anim_eval_context,
+                                                   eBezTriple_KeyframeType(ts->keyframe_type),
+                                                   flag);
       changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }
