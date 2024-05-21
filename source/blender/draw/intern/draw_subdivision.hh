@@ -10,6 +10,8 @@
 #include "BLI_span.hh"
 #include "BLI_sys_types.h"
 
+#include "mesh_extractors/extract_mesh.hh"
+
 struct BMesh;
 struct GPUUniformBuf;
 namespace blender::gpu {
@@ -44,30 +46,6 @@ struct DRWPatchMap {
   int max_patch_face;
   int max_depth;
   int patches_are_triangular;
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name DRWSubdivLooseGeom
- *
- * This stores the subdivided vertices and edges of loose geometry from #MeshExtractLooseGeom.
- * \{ */
-
-/* Each edge will store data for its 2 verts, that way we can keep the overall logic simple, here
- * and in the buffer extractors. Although it duplicates memory (and work), the buffers also store
- * duplicate values. */
-struct DRWSubdivLooseGeom {
-  // int vbo_size;
-  // int loose_edge_verts_start;
-  // int loose_verts_start;
-  /** For every coarse edge, there are `resolution - 1` subdivided edges. */
-  int edges_per_coarse_edge;
-  /** For every subdivided edge, there are two coarse vertices. */
-  // int verts_per_coarse_edge;
-
-  /** Subdivided vertices of loose*/
-  Array<float3> edge_vert_positions;
 };
 
 /** \} */
@@ -153,7 +131,11 @@ struct DRWSubdivCache {
 
   DRWPatchMap gpu_patch_map;
 
-  DRWSubdivLooseGeom loose_info;
+  /**
+   * Subdivided vertices of loose edges. The size of this array is the number of loose edges
+   * multiplied with the resolution. For storage in the VBO the data is duplicated for each edge.
+   */
+  Array<float3> loose_edge_positions;
 
   /* UBO to store settings for the various compute shaders. */
   GPUUniformBuf *ubo;
@@ -273,5 +255,29 @@ void draw_subdiv_build_edituv_stretch_angle_buffer(const DRWSubdivCache &cache,
 
 /** Return the format used for the positions and normals VBO. */
 GPUVertFormat *draw_subdiv_get_pos_nor_format();
+
+/** For every coarse edge, there are `resolution - 1` subdivided edges. */
+inline int subdiv_edges_per_coarse_edge(const DRWSubdivCache &cache)
+{
+  return cache.resolution - 1;
+}
+
+/** For every subdivided edge, there are two coarse vertices stored in vertex buffers. */
+inline int subdiv_verts_per_coarse_edge(const DRWSubdivCache &cache)
+{
+  return subdiv_edges_per_coarse_edge(cache) * 2;
+}
+
+/** The number of subdivided edges from base mesh loose edges. */
+inline int subdiv_loose_edges_num(const MeshRenderData &mr, const DRWSubdivCache &cache)
+{
+  return mr.loose_edges.size() * subdiv_edges_per_coarse_edge(cache);
+}
+
+/** Size of vertex buffers including all face corners, loose edges, and loose vertices. */
+inline int subdiv_full_vbo_size(const MeshRenderData &mr, const DRWSubdivCache &cache)
+{
+  return cache.num_subdiv_loops + subdiv_loose_edges_num(mr, cache) * 2 + mr.loose_verts.size();
+}
 
 }  // namespace blender::draw

@@ -218,10 +218,8 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   if (loose_edges.is_empty()) {
     return;
   }
-
-  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
-  const int subdiv_loose_edges_num = loose_edges.size() * edges_per_coarse_edge;
+  const int edges_per_edge = subdiv_edges_per_coarse_edge(subdiv_cache);
+  const int loose_edges_num = subdiv_loose_edges_num(mr, subdiv_cache);
 
   /* Update flags for loose edges, points are already handled. */
   static GPUVertFormat format;
@@ -232,10 +230,9 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   gpu::VertBuf *flags = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format(flags, &format);
 
-  GPU_vertbuf_data_alloc(flags, subdiv_loose_edges_num);
+  GPU_vertbuf_data_alloc(flags, loose_edges_num);
 
-  MutableSpan<uint> flags_data(static_cast<uint *>(GPU_vertbuf_get_data(flags)),
-                               subdiv_loose_edges_num);
+  MutableSpan<uint> flags_data(static_cast<uint *>(GPU_vertbuf_get_data(flags)), loose_edges_num);
 
   switch (mr.extract_type) {
     case MR_EXTRACT_MESH: {
@@ -244,9 +241,8 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
         const Span<bool> hide_edge = mr.hide_edge;
         if (!hide_edge.is_empty()) {
           for (const int i : loose_edges.index_range()) {
-            const int coarse_edge = loose_edges[i];
-            const bool value = hide_edge[coarse_edge];
-            flags_data.slice(i * edges_per_coarse_edge, edges_per_coarse_edge).fill(value);
+            const bool value = hide_edge[loose_edges[i]];
+            flags_data.slice(i * edges_per_edge, edges_per_edge).fill(value);
           }
         }
         else {
@@ -256,21 +252,19 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
       else {
         if (mr.bm) {
           for (const int i : loose_edges.index_range()) {
-            const int coarse_edge = loose_edges[i];
-            const BMEdge *bm_edge = bm_original_edge_get(mr, coarse_edge);
+            const BMEdge *bm_edge = bm_original_edge_get(mr, loose_edges[i]);
             const int value = (bm_edge) ? BM_elem_flag_test_bool(bm_edge, BM_ELEM_HIDDEN) : true;
-            flags_data.slice(i * edges_per_coarse_edge, edges_per_coarse_edge).fill(value);
+            flags_data.slice(i * edges_per_edge, edges_per_edge).fill(value);
           }
         }
         else {
           const Span<bool> hide_edge = mr.hide_edge;
           if (!hide_edge.is_empty()) {
             for (const int i : loose_edges.index_range()) {
-              const int coarse_edge = loose_edges[i];
-              const bool value = (e_origindex[coarse_edge] == ORIGINDEX_NONE) ?
+              const bool value = (e_origindex[loose_edges[i]] == ORIGINDEX_NONE) ?
                                      false :
-                                     hide_edge[coarse_edge];
-              flags_data.slice(i * edges_per_coarse_edge, edges_per_coarse_edge).fill(value);
+                                     hide_edge[loose_edges[i]];
+              flags_data.slice(i * edges_per_edge, edges_per_edge).fill(value);
             }
           }
           else {
@@ -283,17 +277,16 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
     case MR_EXTRACT_BMESH: {
       BMesh *bm = mr.bm;
       for (const int i : loose_edges.index_range()) {
-        const int coarse_edge = loose_edges[i];
-        const BMEdge *bm_edge = BM_edge_at_index(bm, coarse_edge);
+        const BMEdge *bm_edge = BM_edge_at_index(bm, loose_edges[i]);
         const bool value = BM_elem_flag_test_bool(bm_edge, BM_ELEM_HIDDEN);
-        flags_data.slice(i * edges_per_coarse_edge, edges_per_coarse_edge).fill(value);
+        flags_data.slice(i * edges_per_edge, edges_per_edge).fill(value);
       }
       break;
     }
   }
 
   draw_subdiv_build_lines_loose_buffer(
-      subdiv_cache, ibo, flags, uint(edge_loose_offset), subdiv_loose_edges_num);
+      subdiv_cache, ibo, flags, uint(edge_loose_offset), loose_edges_num);
 
   GPU_vertbuf_discard(flags);
 }
@@ -304,29 +297,26 @@ void extract_lines_subdiv(const MeshRenderData &mr,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire)
 {
-  const DRWSubdivLooseGeom &loose_info = subdiv_cache.loose_info;
-  const int edges_per_coarse_edge = loose_info.edges_per_coarse_edge;
-  const int subdiv_loose_edges_num = mr.loose_edges.size() * edges_per_coarse_edge;
-  const int indices_num = subdiv_loose_edges_num * 2;
-  no_loose_wire = indices_num == 0;
+  const int loose_ibo_size = subdiv_loose_edges_num(mr, subdiv_cache) * 2;
+  no_loose_wire = loose_ibo_size == 0;
 
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
-    GPU_indexbuf_init_build_on_device(lines_loose, indices_num);
+    GPU_indexbuf_init_build_on_device(lines_loose, loose_ibo_size);
     extract_lines_loose_geom_subdiv(subdiv_cache, mr, 0, lines_loose);
     return;
   }
 
-  const int non_loose_num = subdiv_cache.num_subdiv_loops * 2;
+  const int non_loose_ibo_size = subdiv_cache.num_subdiv_loops * 2;
 
-  GPU_indexbuf_init_build_on_device(lines, non_loose_num + indices_num);
-  if (non_loose_num > 0) {
+  GPU_indexbuf_init_build_on_device(lines, non_loose_ibo_size + loose_ibo_size);
+  if (non_loose_ibo_size > 0) {
     draw_subdiv_build_lines_buffer(subdiv_cache, lines);
   }
-  extract_lines_loose_geom_subdiv(subdiv_cache, mr, non_loose_num, lines);
+  extract_lines_loose_geom_subdiv(subdiv_cache, mr, non_loose_ibo_size, lines);
 
   if (DRW_ibo_requested(lines_loose)) {
     /* Multiply by 2 because these are edges indices. */
-    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, non_loose_num, indices_num);
+    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, non_loose_ibo_size, loose_ibo_size);
   }
 }
 

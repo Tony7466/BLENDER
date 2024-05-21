@@ -686,7 +686,7 @@ void draw_subdiv_cache_free(DRWSubdivCache &cache)
     GPU_uniformbuf_free(cache.ubo);
     cache.ubo = nullptr;
   }
-  cache.loose_info = {};
+  cache.loose_edge_positions = {};
 }
 
 /* Flags used in #DRWSubdivCache.extra_coarse_face_data. The flags are packed in the upper bits of
@@ -2207,12 +2207,11 @@ static bool draw_subdiv_create_requested_buffers(Object &ob,
 void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCache &cache)
 {
   const Span<int> loose_edges = cache.loose_geom.edges;
-  if (cache.loose_geom.verts.is_empty() && loose_edges.is_empty()) {
+  if (loose_edges.is_empty()) {
     return;
   }
 
-  DRWSubdivLooseGeom &result = subdiv_cache.loose_info;
-  if (!result.edge_vert_positions.is_empty()) {
+  if (!subdiv_cache.loose_edge_positions.is_empty()) {
     /* Already processed. */
     return;
   }
@@ -2222,8 +2221,6 @@ void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCach
   const int resolution = subdiv_cache.resolution;
   const int resolution_1 = resolution - 1;
   const float inv_resolution_1 = 1.0f / float(resolution_1);
-  const int edges_per_coarse_edge = resolution - 1;
-  result.edges_per_coarse_edge = edges_per_coarse_edge;
 
   const Span<float3> coarse_positions = coarse_mesh->vert_positions();
   const Span<int2> coarse_edges = coarse_mesh->edges();
@@ -2234,22 +2231,20 @@ void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCach
       coarse_edges, coarse_mesh->verts_num, vert_to_edge_offsets, vert_to_edge_indices);
 
   /* Also store the last vertex to simplify copying the positions to the VBO. */
-  const int cache_verts_per_edge = edges_per_coarse_edge + 1;
-  result.edge_vert_positions.reinitialize(loose_edges.size() * cache_verts_per_edge);
-  MutableSpan<float3> edge_vert_positions = result.edge_vert_positions;
+  subdiv_cache.loose_edge_positions.reinitialize(loose_edges.size() * resolution);
+  MutableSpan<float3> edge_positions = subdiv_cache.loose_edge_positions;
 
   threading::parallel_for(loose_edges.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       const int coarse_edge = loose_edges[i];
-      MutableSpan edge_positions = edge_vert_positions.slice(i * cache_verts_per_edge,
-                                                             cache_verts_per_edge);
-      for (const int j : IndexRange(cache_verts_per_edge)) {
-        edge_positions[j] = bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
-                                                                           coarse_edges,
-                                                                           vert_to_edge_map,
-                                                                           coarse_edge,
-                                                                           is_simple,
-                                                                           j * inv_resolution_1);
+      MutableSpan positions = edge_positions.slice(i * resolution, resolution);
+      for (const int j : positions.index_range()) {
+        positions[j] = bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
+                                                                      coarse_edges,
+                                                                      vert_to_edge_map,
+                                                                      coarse_edge,
+                                                                      is_simple,
+                                                                      j * inv_resolution_1);
       }
     }
   });
