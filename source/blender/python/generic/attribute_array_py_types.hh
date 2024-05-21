@@ -45,6 +45,12 @@ static bool set_attribute_bool(void *data, int index, PyObject *py_value)
 
 static bool set_attribute_float(void *data, int index, PyObject *py_value)
 {
+  if (PyLong_Check(py_value)) {
+    /* Allow int values (like 0), convert them to float. */
+    const long value = PyLong_AsLong(py_value);
+    static_cast<float *>(data)[index] = float(value);
+    return true;
+  }
   if (!PyFloat_Check(py_value)) {
     return false;
   }
