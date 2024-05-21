@@ -568,24 +568,29 @@ VKShader::VKShader(const char *name) : Shader(name)
   context_ = VKContext::get();
 }
 
+void VKShader::init(const shader::ShaderCreateInfo &info)
+{
+  create_info_ = &info;
+}
+
 VKShader::~VKShader()
 {
   VK_ALLOCATION_CALLBACKS
-  const VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device_get();
   if (vertex_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), vertex_module_, vk_allocation_callbacks);
+    device.shader_modules.destruct(vertex_module_);
     vertex_module_ = VK_NULL_HANDLE;
   }
   if (geometry_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), geometry_module_, vk_allocation_callbacks);
+    device.shader_modules.destruct(geometry_module_);
     geometry_module_ = VK_NULL_HANDLE;
   }
   if (fragment_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), fragment_module_, vk_allocation_callbacks);
+    device.shader_modules.destruct(fragment_module_);
     fragment_module_ = VK_NULL_HANDLE;
   }
   if (compute_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.device_get(), compute_module_, vk_allocation_callbacks);
+    device.shader_modules.destruct(compute_module_);
     compute_module_ = VK_NULL_HANDLE;
   }
   if (vk_pipeline_layout_ != VK_NULL_HANDLE) {
@@ -594,22 +599,16 @@ VKShader::~VKShader()
   }
   /* Reset not owning handles. */
   vk_descriptor_set_layout_ = VK_NULL_HANDLE;
+  create_info_ = nullptr;
 }
 
 void VKShader::build_shader_module(MutableSpan<const char *> sources,
                                    shaderc_shader_kind stage,
                                    VkShaderModule *r_shader_module)
 {
-  BLI_assert_msg(ELEM(stage,
-                      shaderc_vertex_shader,
-                      shaderc_geometry_shader,
-                      shaderc_fragment_shader,
-                      shaderc_compute_shader),
-                 "Only forced ShaderC shader kinds are supported.");
-  const VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device_get();
   sources[SOURCES_INDEX_VERSION] = device.glsl_patch_get();
-  Vector<uint32_t> spirv_module = compile_glsl_to_spirv(sources, stage);
-  build_shader_module(spirv_module, r_shader_module);
+  device.shader_modules.construct(*this, *create_info_, sources, stage, r_shader_module);
 }
 
 void VKShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)

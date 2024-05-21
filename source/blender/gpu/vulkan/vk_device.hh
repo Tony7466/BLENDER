@@ -19,6 +19,7 @@
 #include "vk_descriptor_set_layouts.hh"
 #include "vk_pipeline_pool.hh"
 #include "vk_samplers.hh"
+#include "vk_shader_modules.hh"
 #include "vk_timeline_semaphore.hh"
 
 namespace blender::gpu {
@@ -112,6 +113,7 @@ class VKDevice : public NonCopyable {
 
  public:
   render_graph::VKResourceStateTracker resources;
+  VKShaderModules shader_modules;
   VKPipelinePool pipelines;
 
   /**

@@ -18,8 +18,11 @@
 
 namespace blender::gpu {
 class VKShaderInterface;
+class VKShaderModules;
 
 class VKShader : public Shader {
+  friend class VKShaderModules;
+
  private:
   VKContext *context_ = nullptr;
   VkShaderModule vertex_module_ = VK_NULL_HANDLE;
@@ -43,13 +46,16 @@ class VKShader : public Shader {
    */
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
 
+  /** Create info used to construct this shader.   */
+  const shader::ShaderCreateInfo *create_info_ = nullptr;
+
  public:
   VKPushConstants push_constants;
 
   VKShader(const char *name);
   virtual ~VKShader();
 
-  void init(const shader::ShaderCreateInfo & /*info*/) override {}
+  void init(const shader::ShaderCreateInfo &info) override;
 
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
