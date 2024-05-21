@@ -215,14 +215,16 @@ static void extract_points_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(data);
 
   const Span<int2> edges = mr.edges;
-  const int loose_geom_start = subdiv_cache.num_subdiv_loops;
-  const int loose_verts_start = loose_geom_start + subdiv_loose_edges_num(mr, subdiv_cache) * 2;
+  const int loose_start = subdiv_cache.num_subdiv_loops;
+  const int verts_per_edge = subdiv_verts_per_coarse_edge(subdiv_cache);
+  const int loose_verts_start = loose_start + verts_per_edge * loose_edges.size();
 
   if (mr.extract_type != MR_EXTRACT_BMESH) {
     threading::parallel_for(loose_edges.index_range(), 2048, [&](const IndexRange range) {
       for (const int i : range) {
-        vert_set_mesh(elb, mr, edges[loose_edges[i]][0], loose_geom_start + i * 2 + 0);
-        vert_set_mesh(elb, mr, edges[loose_edges[i]][1], loose_geom_start + i * 2 + 1);
+        const IndexRange edge_vbo_range(loose_start + i * verts_per_edge, verts_per_edge);
+        vert_set_mesh(elb, mr, edges[loose_edges[i]][0], edge_vbo_range.first());
+        vert_set_mesh(elb, mr, edges[loose_edges[i]][1], edge_vbo_range.last());
       }
     });
 
@@ -236,12 +238,13 @@ static void extract_points_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   else {
     threading::parallel_for(loose_edges.index_range(), 2048, [&](const IndexRange range) {
       for (const int i : range) {
+        const IndexRange edge_vbo_range(loose_start + i * verts_per_edge, verts_per_edge);
         BMVert *vert_0 = mr.v_origindex ? bm_original_vert_get(mr, edges[loose_edges[i]][0]) :
                                           BM_vert_at_index(mr.bm, edges[loose_edges[i]][0]);
         BMVert *vert_1 = mr.v_origindex ? bm_original_vert_get(mr, edges[loose_edges[i]][1]) :
                                           BM_vert_at_index(mr.bm, edges[loose_edges[i]][1]);
-        vert_set_bm(elb, vert_0, loose_geom_start + i * 2 + 0);
-        vert_set_bm(elb, vert_1, loose_geom_start + i * 2 + 1);
+        vert_set_bm(elb, vert_0, edge_vbo_range.first());
+        vert_set_bm(elb, vert_1, edge_vbo_range.last());
       }
     });
 
