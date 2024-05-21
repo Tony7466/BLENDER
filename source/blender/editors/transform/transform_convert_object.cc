@@ -900,7 +900,7 @@ static void special_aftertrans_update__object(bContext *C, TransInfo *t)
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   bool motionpath_update = false;
 
-  if (blender::animrig::is_autokey_on(t->scene)) {
+  if (blender::animrig::is_autokey_on(t->scene) && !canceled) {
     blender::Vector<Object *> objects;
     for (int i = 0; i < tc->data_len; i++) {
       const TransData *td = &tc->data[i];
