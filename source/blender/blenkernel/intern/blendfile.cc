@@ -55,7 +55,7 @@
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_read_write.hh"
 #include "BLO_readfile.hh"
@@ -229,7 +229,7 @@ struct ReuseOldBMainData {
   /** Data generated and used by calling WM code to handle keeping WM and UI IDs as best as
    * possible across file reading.
    *
-   * \note: May be null in undo (memfile) case.. */
+   * \note May be null in undo (memfile) case. */
   BlendFileReadWMSetupData *wm_setup_data;
 
   /** Storage for all remapping rules (old_id -> new_id) required by the preservation of old IDs
@@ -867,7 +867,7 @@ static void setup_app_data(bContext *C,
     CTX_wm_screen_set(C, bfd->curscreen);
     CTX_wm_area_set(C, nullptr);
     CTX_wm_region_set(C, nullptr);
-    CTX_wm_menu_set(C, nullptr);
+    CTX_wm_region_popup_set(C, nullptr);
   }
   BLI_assert(CTX_wm_manager(C) == static_cast<wmWindowManager *>(bmain->wm.first));
 
@@ -1206,11 +1206,9 @@ UserDef *BKE_blendfile_userdef_from_defaults()
     const char *addons[] = {
         "io_anim_bvh",
         "io_curve_svg",
-        "io_mesh_stl",
         "io_mesh_uv_layout",
         "io_scene_fbx",
         "io_scene_gltf2",
-        "io_scene_x3d",
         "cycles",
         "pose_library",
     };
@@ -1506,8 +1504,7 @@ bool BKE_blendfile_write_partial(Main *bmain_src,
    * (otherwise `main->filepath` will not be set at read time). */
   STRNCPY(bmain_dst->filepath, bmain_src->filepath);
 
-  BLO_main_expander(blendfile_write_partial_cb);
-  BLO_expand_main(nullptr, bmain_src);
+  BLO_expand_main(nullptr, bmain_src, blendfile_write_partial_cb);
 
   /* move over all tagged blocks */
   set_listbasepointers(bmain_src, lbarray_src);

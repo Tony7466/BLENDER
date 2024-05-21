@@ -12,6 +12,7 @@
 
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_task.hh"
 #include "BLI_virtual_array.hh"
 
 #include "DNA_scene_types.h"
@@ -101,8 +102,6 @@ struct MeshRenderData {
   BMFace *efa_act;
   BMFace *efa_act_uv;
   /* The triangulation of #Mesh faces, owned by the mesh. */
-  Span<int3> corner_tris;
-  Span<int> corner_tri_faces;
   VArraySpan<int> material_indices;
 
   bke::MeshNormalDomain normals_domain;
@@ -120,7 +119,6 @@ struct MeshRenderData {
 
   Span<int> loose_verts;
   Span<int> loose_edges;
-  const SortedFaceData *face_sorted;
 
   const char *active_color_name;
   const char *default_color_name;
@@ -278,14 +276,14 @@ struct MeshExtract {
 /* `draw_cache_extract_mesh_render_data.cc` */
 
 /**
- * \param is_mode_active: When true, use the modifiers from the edit-data,
+ * \param edit_mode_active: When true, use the modifiers from the edit-data,
  * otherwise don't use modifiers as they are not from this object.
  */
 MeshRenderData *mesh_render_data_create(Object *object,
                                         Mesh *mesh,
                                         bool is_editmode,
                                         bool is_paint_mode,
-                                        bool is_mode_active,
+                                        bool edit_mode_active,
                                         const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
@@ -297,15 +295,8 @@ void mesh_render_data_update_loose_geom(MeshRenderData &mr,
                                         MeshBufferCache &cache,
                                         eMRIterType iter_type,
                                         eMRDataType data_flag);
-void mesh_render_data_update_faces_sorted(MeshRenderData &mr,
-                                          MeshBufferCache &cache,
-                                          eMRDataType data_flag);
-/**
- * Part of the creation of the #MeshRenderData that happens in a thread.
- */
-void mesh_render_data_update_corner_tris(MeshRenderData &mr,
-                                         eMRIterType iter_type,
-                                         eMRDataType data_flag);
+const SortedFaceData &mesh_render_data_faces_sorted_ensure(const MeshRenderData &mr,
+                                                           MeshBufferCache &cache);
 
 /* draw_cache_extract_mesh_extractors.c */
 
@@ -334,13 +325,41 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData &mr,
                                      BMUVOffsets offsets,
                                      EditLoopData *eattr);
 
-template<typename GPUType>
-void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals);
+template<typename GPUType> void convert_normals(Span<float3> src, MutableSpan<GPUType> dst);
 
-extern const MeshExtract extract_tris;
-extern const MeshExtract extract_lines;
-extern const MeshExtract extract_lines_with_lines_loose;
-extern const MeshExtract extract_lines_loose_only;
+template<typename T>
+void extract_mesh_loose_edge_data(const Span<T> vert_data,
+                                  const Span<int2> edges,
+                                  const Span<int> loose_edge_indices,
+                                  MutableSpan<T> gpu_data)
+{
+  threading::parallel_for(loose_edge_indices.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int2 edge = edges[loose_edge_indices[i]];
+      gpu_data[i * 2 + 0] = vert_data[edge[0]];
+      gpu_data[i * 2 + 1] = vert_data[edge[1]];
+    }
+  });
+}
+
+void extract_tris(const MeshRenderData &mr,
+                  const SortedFaceData &face_sorted,
+                  MeshBatchCache &cache,
+                  gpu::IndexBuf &ibo);
+void extract_tris_subdiv(const DRWSubdivCache &subdiv_cache,
+                         MeshBatchCache &cache,
+                         gpu::IndexBuf &ibo);
+
+void extract_lines(const MeshRenderData &mr,
+                   gpu::IndexBuf *lines,
+                   gpu::IndexBuf *lines_loose,
+                   bool &no_loose_wire);
+void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
+                          const MeshRenderData &mr,
+                          gpu::IndexBuf *lines,
+                          gpu::IndexBuf *lines_loose,
+                          bool &no_loose_wire);
+
 extern const MeshExtract extract_points;
 extern const MeshExtract extract_fdots;
 extern const MeshExtract extract_lines_paint_mask;

@@ -86,7 +86,7 @@
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DRW_engine.hh"
 
@@ -1316,63 +1316,60 @@ FileData *blo_filedata_from_memfile(MemFile *memfile,
 
 void blo_filedata_free(FileData *fd)
 {
-  if (fd) {
-
-    /* Free all BHeadN data blocks */
-#ifndef NDEBUG
-    BLI_freelistN(&fd->bhead_list);
+  /* Free all BHeadN data blocks */
+#ifdef NDEBUG
+  BLI_freelistN(&fd->bhead_list);
 #else
-    /* Sanity check we're not keeping memory we don't need. */
-    LISTBASE_FOREACH_MUTABLE (BHeadN *, new_bhead, &fd->bhead_list) {
-      if (fd->file->seek != nullptr && BHEAD_USE_READ_ON_DEMAND(&new_bhead->bhead)) {
-        BLI_assert(new_bhead->has_data == 0);
-      }
-      MEM_freeN(new_bhead);
+  /* Sanity check we're not keeping memory we don't need. */
+  LISTBASE_FOREACH_MUTABLE (BHeadN *, new_bhead, &fd->bhead_list) {
+    if (fd->file->seek != nullptr && BHEAD_USE_READ_ON_DEMAND(&new_bhead->bhead)) {
+      BLI_assert(new_bhead->has_data == 0);
     }
+    MEM_freeN(new_bhead);
+  }
 #endif
-    fd->file->close(fd->file);
+  fd->file->close(fd->file);
 
-    if (fd->filesdna) {
-      DNA_sdna_free(fd->filesdna);
-    }
-    if (fd->compflags) {
-      MEM_freeN((void *)fd->compflags);
-    }
-    if (fd->reconstruct_info) {
-      DNA_reconstruct_info_free(fd->reconstruct_info);
-    }
+  if (fd->filesdna) {
+    DNA_sdna_free(fd->filesdna);
+  }
+  if (fd->compflags) {
+    MEM_freeN((void *)fd->compflags);
+  }
+  if (fd->reconstruct_info) {
+    DNA_reconstruct_info_free(fd->reconstruct_info);
+  }
 
-    if (fd->datamap) {
-      oldnewmap_free(fd->datamap);
-    }
-    if (fd->globmap) {
-      oldnewmap_free(fd->globmap);
-    }
-    if (fd->packedmap) {
-      oldnewmap_free(fd->packedmap);
-    }
-    if (fd->libmap && !(fd->flags & FD_FLAGS_NOT_MY_LIBMAP)) {
-      oldnewmap_free(fd->libmap);
-    }
-    if (fd->old_idmap_uid != nullptr) {
-      BKE_main_idmap_destroy(fd->old_idmap_uid);
-    }
-    if (fd->new_idmap_uid != nullptr) {
-      BKE_main_idmap_destroy(fd->new_idmap_uid);
-    }
-    blo_cache_storage_end(fd);
-    if (fd->bheadmap) {
-      MEM_freeN(fd->bheadmap);
-    }
+  if (fd->datamap) {
+    oldnewmap_free(fd->datamap);
+  }
+  if (fd->globmap) {
+    oldnewmap_free(fd->globmap);
+  }
+  if (fd->packedmap) {
+    oldnewmap_free(fd->packedmap);
+  }
+  if (fd->libmap && !(fd->flags & FD_FLAGS_NOT_MY_LIBMAP)) {
+    oldnewmap_free(fd->libmap);
+  }
+  if (fd->old_idmap_uid != nullptr) {
+    BKE_main_idmap_destroy(fd->old_idmap_uid);
+  }
+  if (fd->new_idmap_uid != nullptr) {
+    BKE_main_idmap_destroy(fd->new_idmap_uid);
+  }
+  blo_cache_storage_end(fd);
+  if (fd->bheadmap) {
+    MEM_freeN(fd->bheadmap);
+  }
 
 #ifdef USE_GHASH_BHEAD
-    if (fd->bhead_idname_hash) {
-      BLI_ghash_free(fd->bhead_idname_hash, nullptr, nullptr);
-    }
+  if (fd->bhead_idname_hash) {
+    BLI_ghash_free(fd->bhead_idname_hash, nullptr, nullptr);
+  }
 #endif
 
-    MEM_freeN(fd);
-  }
+  MEM_freeN(fd);
 }
 
 /** \} */
@@ -1383,30 +1380,27 @@ void blo_filedata_free(FileData *fd)
 
 BlendThumbnail *BLO_thumbnail_from_file(const char *filepath)
 {
-  FileData *fd;
   BlendThumbnail *data = nullptr;
-  int *fd_data;
 
-  fd = blo_filedata_from_file_minimal(filepath);
-  fd_data = fd ? read_file_thumbnail(fd) : nullptr;
-
-  if (fd_data) {
-    const int width = fd_data[0];
-    const int height = fd_data[1];
-    if (BLEN_THUMB_MEMSIZE_IS_VALID(width, height)) {
-      const size_t data_size = BLEN_THUMB_MEMSIZE(width, height);
-      data = static_cast<BlendThumbnail *>(MEM_mallocN(data_size, __func__));
-      if (data) {
-        BLI_assert((data_size - sizeof(*data)) ==
-                   (BLEN_THUMB_MEMSIZE_FILE(width, height) - (sizeof(*fd_data) * 2)));
-        data->width = width;
-        data->height = height;
-        memcpy(data->rect, &fd_data[2], data_size - sizeof(*data));
+  FileData *fd = blo_filedata_from_file_minimal(filepath);
+  if (fd) {
+    if (const int *fd_data = read_file_thumbnail(fd)) {
+      const int width = fd_data[0];
+      const int height = fd_data[1];
+      if (BLEN_THUMB_MEMSIZE_IS_VALID(width, height)) {
+        const size_t data_size = BLEN_THUMB_MEMSIZE(width, height);
+        data = static_cast<BlendThumbnail *>(MEM_mallocN(data_size, __func__));
+        if (data) {
+          BLI_assert((data_size - sizeof(*data)) ==
+                     (BLEN_THUMB_MEMSIZE_FILE(width, height) - (sizeof(*fd_data) * 2)));
+          data->width = width;
+          data->height = height;
+          memcpy(data->rect, &fd_data[2], data_size - sizeof(*data));
+        }
       }
     }
+    blo_filedata_free(fd);
   }
-
-  blo_filedata_free(fd);
 
   return data;
 }
@@ -1898,7 +1892,7 @@ static void after_liblink_id_embedded_id_process(BlendLibReader *reader, ID *id)
 {
 
   /* Handle 'private IDs'. */
-  bNodeTree *nodetree = ntreeFromID(id);
+  bNodeTree *nodetree = blender::bke::ntreeFromID(id);
   if (nodetree != nullptr) {
     after_liblink_id_process(reader, &nodetree->id);
 
@@ -1951,26 +1945,21 @@ static void after_liblink_id_process(BlendLibReader *reader, ID *id)
   }
 }
 
-static void direct_link_id_override_property_operation_cb(BlendDataReader *reader, void *data)
+static void direct_link_id_override_property(BlendDataReader *reader,
+                                             IDOverrideLibraryProperty *op)
 {
-  IDOverrideLibraryPropertyOperation *opop = static_cast<IDOverrideLibraryPropertyOperation *>(
-      data);
-
-  BLO_read_data_address(reader, &opop->subitem_reference_name);
-  BLO_read_data_address(reader, &opop->subitem_local_name);
-
-  opop->tag = 0; /* Runtime only. */
-}
-
-static void direct_link_id_override_property_cb(BlendDataReader *reader, void *data)
-{
-  IDOverrideLibraryProperty *op = static_cast<IDOverrideLibraryProperty *>(data);
-
-  BLO_read_data_address(reader, &op->rna_path);
+  BLO_read_string(reader, &op->rna_path);
 
   op->tag = 0; /* Runtime only. */
 
-  BLO_read_list_cb(reader, &op->operations, direct_link_id_override_property_operation_cb);
+  BLO_read_struct_list(reader, IDOverrideLibraryPropertyOperation, &op->operations);
+
+  LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
+    BLO_read_string(reader, &opop->subitem_reference_name);
+    BLO_read_string(reader, &opop->subitem_local_name);
+
+    opop->tag = 0; /* Runtime only. */
+  }
 }
 
 static void direct_link_id_common(
@@ -1982,13 +1971,13 @@ static void direct_link_id_embedded_id(BlendDataReader *reader,
                                        ID *id_old)
 {
   /* Handle 'private IDs'. */
-  bNodeTree **nodetree = BKE_ntree_ptr_from_id(id);
+  bNodeTree **nodetree = blender::bke::BKE_ntree_ptr_from_id(id);
   if (nodetree != nullptr && *nodetree != nullptr) {
-    BLO_read_data_address(reader, nodetree);
+    BLO_read_struct(reader, bNodeTree, nodetree);
     direct_link_id_common(reader,
                           current_library,
                           (ID *)*nodetree,
-                          id_old != nullptr ? (ID *)ntreeFromID(id_old) : nullptr,
+                          id_old != nullptr ? (ID *)blender::bke::ntreeFromID(id_old) : nullptr,
                           0);
     blender::bke::ntreeBlendReadData(reader, id, *nodetree);
   }
@@ -1996,7 +1985,7 @@ static void direct_link_id_embedded_id(BlendDataReader *reader,
   if (GS(id->name) == ID_SCE) {
     Scene *scene = (Scene *)id;
     if (scene->master_collection != nullptr) {
-      BLO_read_data_address(reader, &scene->master_collection);
+      BLO_read_struct(reader, Collection, &scene->master_collection);
       direct_link_id_common(reader,
                             current_library,
                             &scene->master_collection->id,
@@ -2101,7 +2090,7 @@ static void direct_link_id_common(
     id->library_weak_reference = nullptr;
   }
   else {
-    BLO_read_data_address(reader, &id->library_weak_reference);
+    BLO_read_struct(reader, LibraryWeakReference, &id->library_weak_reference);
   }
 
   if (id_tag & LIB_TAG_ID_LINK_PLACEHOLDER) {
@@ -2113,7 +2102,7 @@ static void direct_link_id_common(
   BKE_animdata_blend_read_data(reader, id);
 
   if (id->asset_data) {
-    BLO_read_data_address(reader, &id->asset_data);
+    BLO_read_struct(reader, AssetMetaData, &id->asset_data);
     BKE_asset_metadata_read(reader, id->asset_data);
     /* Restore runtime asset type info. */
     const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
@@ -2122,7 +2111,7 @@ static void direct_link_id_common(
 
   /* Link direct data of ID properties. */
   if (id->properties) {
-    BLO_read_data_address(reader, &id->properties);
+    BLO_read_struct(reader, IDProperty, &id->properties);
     /* this case means the data was written incorrectly, it should not happen */
     IDP_BlendDataRead(reader, &id->properties);
   }
@@ -2148,11 +2137,13 @@ static void direct_link_id_common(
 
   /* Link direct data of overrides. */
   if (id->override_library) {
-    BLO_read_data_address(reader, &id->override_library);
+    BLO_read_struct(reader, IDOverrideLibrary, &id->override_library);
     /* Work around file corruption on writing, see #86853. */
     if (id->override_library != nullptr) {
-      BLO_read_list_cb(
-          reader, &id->override_library->properties, direct_link_id_override_property_cb);
+      BLO_read_struct_list(reader, IDOverrideLibraryProperty, &id->override_library->properties);
+      LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &id->override_library->properties) {
+        direct_link_id_override_property(reader, op);
+      }
       id->override_library->runtime = nullptr;
     }
   }
@@ -2767,7 +2758,8 @@ static void read_libblock_undo_restore_at_old_address(FileData *fd, Main *main, 
                        id_old,
                        true,
                        (ID_REMAP_NO_ORIG_POINTERS_ACCESS | ID_REMAP_SKIP_NEVER_NULL_USAGE |
-                        ID_REMAP_SKIP_UPDATE_TAGGING | ID_REMAP_SKIP_USER_REFCOUNT));
+                        ID_REMAP_SKIP_UPDATE_TAGGING | ID_REMAP_SKIP_USER_REFCOUNT |
+                        ID_REMAP_SKIP_USER_CLEAR));
 
   /* Special temporary usage of this pointer, necessary for the `undo_preserve` call after
    * lib-linking to restore some data that should never be affected by undo, e.g. the 3D cursor of
@@ -3014,7 +3006,7 @@ BHead *blo_read_asset_data_block(FileData *fd, BHead *bhead, AssetMetaData **r_a
   bhead = read_data_into_datamap(fd, bhead, "asset-data read");
 
   BlendDataReader reader = {fd};
-  BLO_read_data_address(&reader, r_asset_data);
+  BLO_read_struct(&reader, AssetMetaData, r_asset_data);
   BKE_asset_metadata_read(&reader, *r_asset_data);
 
   oldnewmap_clear(fd->datamap);
@@ -3049,7 +3041,7 @@ static BHead *read_global(BlendFileData *bfd, FileData *fd, BHead *bhead)
   bfd->fileflags = fg->fileflags;
   bfd->globalf = fg->globalf;
 
-  /* Note: since 88b24bc6bb, `fg->filepath` is only written for crash recovery and autosave files,
+  /* NOTE: since 88b24bc6bb, `fg->filepath` is only written for crash recovery and autosave files,
    * so only overwrite `fd->relabase` if it is not empty, in case a regular blendfile is opened
    * through one of the 'recover' operators.
    *
@@ -3089,6 +3081,9 @@ static void link_global(FileData *fd, BlendFileData *bfd)
     if (bfd->curscreen) {
       bfd->curscene = bfd->curscreen->scene;
     }
+  }
+  if (bfd->curscene == nullptr) {
+    bfd->curscene = static_cast<Scene *>(bfd->main->scenes.first);
   }
 }
 
@@ -3351,7 +3346,7 @@ static void after_liblink_merged_bmain_process(Main *bmain, BlendFileReadReport 
 
 static void direct_link_keymapitem(BlendDataReader *reader, wmKeyMapItem *kmi)
 {
-  BLO_read_data_address(reader, &kmi->properties);
+  BLO_read_struct(reader, IDProperty, &kmi->properties);
   IDP_BlendDataRead(reader, &kmi->properties);
   kmi->ptr = nullptr;
   kmi->flag &= ~KMI_UPDATE;
@@ -3372,27 +3367,28 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   BlendDataReader reader_ = {fd};
   BlendDataReader *reader = &reader_;
 
-  BLO_read_list(reader, &user->themes);
-  BLO_read_list(reader, &user->user_keymaps);
-  BLO_read_list(reader, &user->user_keyconfig_prefs);
-  BLO_read_list(reader, &user->user_menus);
-  BLO_read_list(reader, &user->addons);
-  BLO_read_list(reader, &user->autoexec_paths);
-  BLO_read_list(reader, &user->script_directories);
-  BLO_read_list(reader, &user->asset_libraries);
-  BLO_read_list(reader, &user->extension_repos);
+  BLO_read_struct_list(reader, bTheme, &user->themes);
+  BLO_read_struct_list(reader, wmKeyMap, &user->user_keymaps);
+  BLO_read_struct_list(reader, wmKeyConfigPref, &user->user_keyconfig_prefs);
+  BLO_read_struct_list(reader, bUserMenu, &user->user_menus);
+  BLO_read_struct_list(reader, bAddon, &user->addons);
+  BLO_read_struct_list(reader, bPathCompare, &user->autoexec_paths);
+  BLO_read_struct_list(reader, bUserScriptDirectory, &user->script_directories);
+  BLO_read_struct_list(reader, bUserAssetLibrary, &user->asset_libraries);
+  BLO_read_struct_list(reader, bUserExtensionRepo, &user->extension_repos);
+  BLO_read_struct_list(reader, bUserAssetShelfSettings, &user->asset_shelves_settings);
 
   LISTBASE_FOREACH (wmKeyMap *, keymap, &user->user_keymaps) {
     keymap->modal_items = nullptr;
     keymap->poll = nullptr;
     keymap->flag &= ~KEYMAP_UPDATE;
 
-    BLO_read_list(reader, &keymap->diff_items);
-    BLO_read_list(reader, &keymap->items);
+    BLO_read_struct_list(reader, wmKeyMapDiffItem, &keymap->diff_items);
+    BLO_read_struct_list(reader, wmKeyMapItem, &keymap->items);
 
     LISTBASE_FOREACH (wmKeyMapDiffItem *, kmdi, &keymap->diff_items) {
-      BLO_read_data_address(reader, &kmdi->remove_item);
-      BLO_read_data_address(reader, &kmdi->add_item);
+      BLO_read_struct(reader, wmKeyMapItem, &kmdi->remove_item);
+      BLO_read_struct(reader, wmKeyMapItem, &kmdi->add_item);
 
       if (kmdi->remove_item) {
         direct_link_keymapitem(reader, kmdi->remove_item);
@@ -3408,30 +3404,34 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   }
 
   LISTBASE_FOREACH (wmKeyConfigPref *, kpt, &user->user_keyconfig_prefs) {
-    BLO_read_data_address(reader, &kpt->prop);
+    BLO_read_struct(reader, IDProperty, &kpt->prop);
     IDP_BlendDataRead(reader, &kpt->prop);
   }
 
   LISTBASE_FOREACH (bUserMenu *, um, &user->user_menus) {
-    BLO_read_list(reader, &um->items);
+    BLO_read_struct_list(reader, bUserMenuItem, &um->items);
     LISTBASE_FOREACH (bUserMenuItem *, umi, &um->items) {
       if (umi->type == USER_MENU_TYPE_OPERATOR) {
         bUserMenuItem_Op *umi_op = (bUserMenuItem_Op *)umi;
-        BLO_read_data_address(reader, &umi_op->prop);
+        BLO_read_struct(reader, IDProperty, &umi_op->prop);
         IDP_BlendDataRead(reader, &umi_op->prop);
       }
     }
   }
 
   LISTBASE_FOREACH (bAddon *, addon, &user->addons) {
-    BLO_read_data_address(reader, &addon->prop);
+    BLO_read_struct(reader, IDProperty, &addon->prop);
     IDP_BlendDataRead(reader, &addon->prop);
+  }
+
+  LISTBASE_FOREACH (bUserAssetShelfSettings *, shelf_settings, &user->asset_shelves_settings) {
+    BKE_asset_catalog_path_list_blend_read_data(reader, shelf_settings->enabled_catalog_paths);
   }
 
   /* XXX */
   user->uifonts.first = user->uifonts.last = nullptr;
 
-  BLO_read_list(reader, &user->uistyles);
+  BLO_read_struct_list(reader, uiStyle, &user->uistyles);
 
   /* Don't read the active app template, use the default one. */
   user->app_template[0] = '\0';
@@ -3943,6 +3943,7 @@ static ID *library_id_is_yet_read(FileData *fd, Main *mainvar, BHead *bhead)
 struct BlendExpander {
   FileData *fd;
   Main *main;
+  BLOExpandDoitCallback callback;
 };
 
 static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
@@ -4059,13 +4060,6 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
   }
 }
 
-static BLOExpandDoitCallback expand_doit;
-
-void BLO_main_expander(BLOExpandDoitCallback expand_doit_func)
-{
-  expand_doit = expand_doit_func;
-}
-
 static int expand_cb(LibraryIDLinkCallbackData *cb_data)
 {
   /* Embedded IDs are not known by lib_link code, so they would be remapped to `nullptr`. But there
@@ -4091,15 +4085,15 @@ static int expand_cb(LibraryIDLinkCallbackData *cb_data)
   BlendExpander *expander = static_cast<BlendExpander *>(cb_data->user_data);
   ID *id = *(cb_data->id_pointer);
 
-  expand_doit(expander->fd, expander->main, id);
+  expander->callback(expander->fd, expander->main, id);
 
   return IDWALK_RET_NOP;
 }
 
-void BLO_expand_main(void *fdhandle, Main *mainvar)
+void BLO_expand_main(void *fdhandle, Main *mainvar, BLOExpandDoitCallback callback)
 {
   FileData *fd = static_cast<FileData *>(fdhandle);
-  BlendExpander expander = {fd, mainvar};
+  BlendExpander expander = {fd, mainvar, callback};
 
   for (bool do_it = true; do_it;) {
     do_it = false;
@@ -4311,11 +4305,8 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
     mainl->id_map = BKE_main_idmap_create(mainl, false, nullptr, MAIN_IDMAP_TYPE_NAME);
   }
 
-  /* expander now is callback function */
-  BLO_main_expander(expand_doit_library);
-
   /* make main consistent */
-  BLO_expand_main(*fd, mainl);
+  BLO_expand_main(*fd, mainl, expand_doit_library);
 
   /* Do this when expand found other libraries. */
   read_libraries(*fd, (*fd)->mainlist);
@@ -4409,6 +4400,8 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
   fix_relpaths_library(BKE_main_blendfile_path(mainvar), mainvar);
 
   /* patch to prevent switch_endian happens twice */
+  /* FIXME This is extremely bad design, #library_link_end should probably _always_ free the file
+   * data? */
   if ((*fd)->flags & FD_FLAGS_SWITCH_ENDIAN) {
     blo_filedata_free(*fd);
     *fd = nullptr;
@@ -4617,11 +4610,11 @@ static FileData *read_library_file_data(FileData *basefd,
 
   if (mainptr->curlib->packedfile) {
     /* Read packed file. */
-    PackedFile *pf = mainptr->curlib->packedfile;
+    const PackedFile *pf = mainptr->curlib->packedfile;
 
     BLO_reportf_wrap(basefd->reports,
                      RPT_INFO,
-                     RPT_("Read packed library:  '%s', parent '%s'"),
+                     RPT_("Read packed library: '%s', parent '%s'"),
                      mainptr->curlib->filepath,
                      library_parent_filepath(mainptr->curlib));
     fd = blo_filedata_from_memory(pf->data, pf->size, basefd->reports);
@@ -4633,7 +4626,7 @@ static FileData *read_library_file_data(FileData *basefd,
     /* Read file on disk. */
     BLO_reportf_wrap(basefd->reports,
                      RPT_INFO,
-                     RPT_("Read library:  '%s', '%s', parent '%s'"),
+                     RPT_("Read library: '%s', '%s', parent '%s'"),
                      mainptr->curlib->runtime.filepath_abs,
                      mainptr->curlib->filepath,
                      library_parent_filepath(mainptr->curlib));
@@ -4688,9 +4681,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
   Main *mainl = static_cast<Main *>(mainlist->first);
   bool do_it = true;
 
-  /* Expander is now callback function. */
-  BLO_main_expander(expand_doit_library);
-
   /* At this point the base blend file has been read, and each library blend
    * encountered so far has a main with placeholders for linked data-blocks.
    *
@@ -4729,7 +4719,7 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 
         /* Test if linked data-blocks need to read further linked data-blocks
          * and create link placeholders for them. */
-        BLO_expand_main(fd, mainptr);
+        BLO_expand_main(fd, mainptr, expand_doit_library);
       }
     }
   }
@@ -4780,19 +4770,45 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
   BKE_main_free(main_newid);
 }
 
+static void *blo_verify_data_address(void *new_address,
+                                     const void * /*old_address*/,
+                                     const size_t expected_size)
+{
+  if (new_address != nullptr) {
+    /* Not testing equality, since size might have been aligned up,
+     * or might be passed the size of a base struct with inheritance. */
+    BLI_assert_msg(MEM_allocN_len(new_address) >= expected_size,
+                   "Corrupt .blend file, unexpected data size.");
+    UNUSED_VARS_NDEBUG(expected_size);
+  }
+
+  return new_address;
+}
+
 void *BLO_read_get_new_data_address(BlendDataReader *reader, const void *old_address)
 {
   return newdataadr(reader->fd, old_address);
 }
 
-void *BLO_read_get_new_data_address_no_us(BlendDataReader *reader, const void *old_address)
+void *BLO_read_get_new_data_address_no_us(BlendDataReader *reader,
+                                          const void *old_address,
+                                          const size_t expected_size)
 {
-  return newdataadr_no_us(reader->fd, old_address);
+  void *new_address = newdataadr_no_us(reader->fd, old_address);
+  return blo_verify_data_address(new_address, old_address, expected_size);
 }
 
 void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_address)
 {
   return newpackedadr(reader->fd, old_address);
+}
+
+void *BLO_read_struct_array_with_size(BlendDataReader *reader,
+                                      const void *old_address,
+                                      const size_t expected_size)
+{
+  void *new_address = newdataadr(reader->fd, old_address);
+  return blo_verify_data_address(new_address, old_address, expected_size);
 }
 
 ID *BLO_read_get_new_id_address(BlendLibReader *reader,
@@ -4818,23 +4834,20 @@ bool BLO_read_requires_endian_switch(BlendDataReader *reader)
   return (reader->fd->flags & FD_FLAGS_SWITCH_ENDIAN) != 0;
 }
 
-void BLO_read_list_cb(BlendDataReader *reader, ListBase *list, BlendReadListFn callback)
+void BLO_read_struct_list_with_size(BlendDataReader *reader,
+                                    const size_t expected_elem_size,
+                                    ListBase *list)
 {
   if (BLI_listbase_is_empty(list)) {
     return;
   }
 
-  BLO_read_data_address(reader, &list->first);
-  if (callback != nullptr) {
-    callback(reader, list->first);
-  }
+  list->first = BLO_read_struct_array_with_size(reader, list->first, expected_elem_size);
   Link *ln = static_cast<Link *>(list->first);
   Link *prev = nullptr;
   while (ln) {
-    BLO_read_data_address(reader, &ln->next);
-    if (ln->next != nullptr && callback != nullptr) {
-      callback(reader, ln->next);
-    }
+    ln->next = static_cast<Link *>(
+        BLO_read_struct_array_with_size(reader, ln->next, expected_elem_size));
     ln->prev = prev;
     prev = ln;
     ln = ln->next;
@@ -4842,36 +4855,50 @@ void BLO_read_list_cb(BlendDataReader *reader, ListBase *list, BlendReadListFn c
   list->last = prev;
 }
 
-void BLO_read_list(BlendDataReader *reader, ListBase *list)
+void BLO_read_char_array(BlendDataReader *reader, int array_size, char **ptr_p)
 {
-  BLO_read_list_cb(reader, list, nullptr);
+  *ptr_p = reinterpret_cast<char *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(char) * array_size));
+}
+
+void BLO_read_uint8_array(BlendDataReader *reader, int array_size, uint8_t **ptr_p)
+{
+  *ptr_p = reinterpret_cast<uint8_t *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(uint8_t) * array_size));
+}
+
+void BLO_read_int8_array(BlendDataReader *reader, int array_size, int8_t **ptr_p)
+{
+  *ptr_p = reinterpret_cast<int8_t *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(int8_t) * array_size));
 }
 
 void BLO_read_int32_array(BlendDataReader *reader, int array_size, int32_t **ptr_p)
 {
-  BLO_read_data_address(reader, ptr_p);
-  if (BLO_read_requires_endian_switch(reader)) {
+  *ptr_p = reinterpret_cast<int32_t *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(int32_t) * array_size));
+
+  if (*ptr_p && BLO_read_requires_endian_switch(reader)) {
     BLI_endian_switch_int32_array(*ptr_p, array_size);
   }
 }
 
-void BLO_read_int8_array(BlendDataReader *reader, int /*array_size*/, int8_t **ptr_p)
-{
-  BLO_read_data_address(reader, ptr_p);
-}
-
 void BLO_read_uint32_array(BlendDataReader *reader, int array_size, uint32_t **ptr_p)
 {
-  BLO_read_data_address(reader, ptr_p);
-  if (BLO_read_requires_endian_switch(reader)) {
+  *ptr_p = reinterpret_cast<uint32_t *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(uint32_t) * array_size));
+
+  if (*ptr_p && BLO_read_requires_endian_switch(reader)) {
     BLI_endian_switch_uint32_array(*ptr_p, array_size);
   }
 }
 
 void BLO_read_float_array(BlendDataReader *reader, int array_size, float **ptr_p)
 {
-  BLO_read_data_address(reader, ptr_p);
-  if (BLO_read_requires_endian_switch(reader)) {
+  *ptr_p = reinterpret_cast<float *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(float) * array_size));
+
+  if (*ptr_p && BLO_read_requires_endian_switch(reader)) {
     BLI_endian_switch_float_array(*ptr_p, array_size);
   }
 }
@@ -4883,10 +4910,41 @@ void BLO_read_float3_array(BlendDataReader *reader, int array_size, float **ptr_
 
 void BLO_read_double_array(BlendDataReader *reader, int array_size, double **ptr_p)
 {
-  BLO_read_data_address(reader, ptr_p);
-  if (BLO_read_requires_endian_switch(reader)) {
+  *ptr_p = reinterpret_cast<double *>(
+      BLO_read_struct_array_with_size(reader, *((void **)ptr_p), sizeof(double) * array_size));
+
+  if (*ptr_p && BLO_read_requires_endian_switch(reader)) {
     BLI_endian_switch_double_array(*ptr_p, array_size);
   }
+}
+
+void BLO_read_string(BlendDataReader *reader, char **ptr_p)
+{
+  BLO_read_data_address(reader, ptr_p);
+
+#ifndef NDEBUG
+  const char *str = *ptr_p;
+  if (str) {
+    /* Verify that we have a null terminator. */
+    for (size_t len = MEM_allocN_len(str); len > 0; len--) {
+      if (str[len - 1] == '\0') {
+        return;
+      }
+    }
+
+    BLI_assert_msg(0, "Corrupt .blend file, expected string to be null terminated.");
+  }
+#endif
+}
+
+void BLO_read_string(BlendDataReader *reader, char *const *ptr_p)
+{
+  BLO_read_string(reader, const_cast<char **>(ptr_p));
+}
+
+void BLO_read_string(BlendDataReader *reader, const char **ptr_p)
+{
+  BLO_read_string(reader, const_cast<char **>(ptr_p));
 }
 
 static void convert_pointer_array_64_to_32(BlendDataReader *reader,

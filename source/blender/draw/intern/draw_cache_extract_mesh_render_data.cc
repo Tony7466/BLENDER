@@ -354,22 +354,13 @@ static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &
   return cache;
 }
 
-static void mesh_render_data_faces_sorted_ensure(MeshRenderData &mr, MeshBufferCache &cache)
+const SortedFaceData &mesh_render_data_faces_sorted_ensure(const MeshRenderData &mr,
+                                                           MeshBufferCache &cache)
 {
-  if (cache.face_sorted.visible_tris_num > 0) {
-    return;
+  if (cache.face_sorted.visible_tris_num == 0) {
+    cache.face_sorted = mesh_render_data_faces_sorted_build(mr);
   }
-  cache.face_sorted = mesh_render_data_faces_sorted_build(mr);
-}
-
-void mesh_render_data_update_faces_sorted(MeshRenderData &mr,
-                                          MeshBufferCache &cache,
-                                          const eMRDataType data_flag)
-{
-  if (data_flag & MR_DATA_POLYS_SORTED) {
-    mesh_render_data_faces_sorted_ensure(mr, cache);
-    mr.face_sorted = &cache.face_sorted;
-  }
+  return cache.face_sorted;
 }
 
 /** \} */
@@ -451,26 +442,6 @@ const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *mesh)
 
   BLI_assert(0);
   return &mesh->vert_data;
-}
-
-void mesh_render_data_update_corner_tris(MeshRenderData &mr,
-                                         const eMRIterType iter_type,
-                                         const eMRDataType data_flag)
-{
-  if (mr.extract_type != MR_EXTRACT_BMESH) {
-    /* Mesh */
-    if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
-      mr.corner_tris = mr.mesh->corner_tris();
-      mr.corner_tri_faces = mr.mesh->corner_tri_faces();
-    }
-  }
-  else {
-    /* #BMesh */
-    if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
-      /* Edit mode ensures this is valid, no need to calculate. */
-      BLI_assert((mr.bm->totloop == 0) || !mr.edit_bmesh->looptris.is_empty());
-    }
-  }
 }
 
 static bool bm_edge_is_sharp(const BMEdge *const &edge)
@@ -576,7 +547,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
                                         Mesh *mesh,
                                         const bool is_editmode,
                                         const bool is_paint_mode,
-                                        const bool is_mode_active,
+                                        const bool edit_mode_active,
                                         const float4x4 &object_to_world,
                                         const bool do_final,
                                         const bool do_uvedit,
@@ -597,9 +568,9 @@ MeshRenderData *mesh_render_data_create(Object *object,
 
     BLI_assert(editmesh_eval_cage && editmesh_eval_final);
     mr->bm = mesh->runtime->edit_mesh->bm;
-    mr->edit_bmesh = mesh->runtime->edit_mesh;
+    mr->edit_bmesh = mesh->runtime->edit_mesh.get();
     mr->mesh = (do_final) ? editmesh_eval_final : editmesh_eval_cage;
-    mr->edit_data = is_mode_active ? mr->mesh->runtime->edit_data.get() : nullptr;
+    mr->edit_data = edit_mode_active ? mr->mesh->runtime->edit_data.get() : nullptr;
 
     /* If there is no distinct cage, hide unmapped edges that can't be selected. */
     mr->hide_unmapped_edges = !do_final || editmesh_eval_final == editmesh_eval_cage;
@@ -636,7 +607,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
     /* Use bmesh directly when the object is in edit mode unchanged by any modifiers.
      * For non-final UVs, always use original bmesh since the UV editor does not support
      * using the cage mesh with deformed coordinates. */
-    if ((is_mode_active && mr->mesh->runtime->is_original_bmesh &&
+    if ((edit_mode_active && mr->mesh->runtime->is_original_bmesh &&
          mr->mesh->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) ||
         (do_uvedit && !do_final))
     {
@@ -646,7 +617,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
       mr->extract_type = MR_EXTRACT_MESH;
 
       /* Use mapping from final to original mesh when the object is in edit mode. */
-      if (is_mode_active && do_final) {
+      if (edit_mode_active && do_final) {
         mr->v_origindex = static_cast<const int *>(
             CustomData_get_layer(&mr->mesh->vert_data, CD_ORIGINDEX));
         mr->e_origindex = static_cast<const int *>(
@@ -709,7 +680,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
 
     mr->material_indices = *attributes.lookup<int>("material_index", bke::AttrDomain::Face);
 
-    if (is_mode_active || is_paint_mode) {
+    if (edit_mode_active || is_paint_mode) {
       if (use_hide) {
         mr->hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
         mr->hide_edge = *attributes.lookup<bool>(".hide_edge", bke::AttrDomain::Edge);

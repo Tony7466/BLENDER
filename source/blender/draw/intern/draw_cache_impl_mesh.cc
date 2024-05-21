@@ -555,7 +555,7 @@ static bool mesh_batch_cache_valid(Object *object, Mesh *mesh)
     return false;
   }
 
-  /* Note: PBVH draw data should not be checked here. */
+  /* NOTE: PBVH draw data should not be checked here. */
 
   if (cache->is_editmode != (mesh->runtime->edit_mesh != nullptr)) {
     return false;
@@ -585,7 +585,7 @@ static void mesh_batch_cache_init(Object *object, Mesh *mesh)
   cache->is_editmode = mesh->runtime->edit_mesh != nullptr;
 
   if (object->sculpt && object->sculpt->pbvh) {
-    cache->pbvh_is_drawing = BKE_pbvh_is_drawing(object->sculpt->pbvh);
+    cache->pbvh_is_drawing = BKE_pbvh_is_drawing(*object->sculpt->pbvh);
   }
 
   if (cache->is_editmode == false) {
@@ -596,10 +596,8 @@ static void mesh_batch_cache_init(Object *object, Mesh *mesh)
   }
 
   cache->mat_len = mesh_render_mat_len_get(object, mesh);
-  cache->surface_per_mat = static_cast<gpu::Batch **>(
-      MEM_callocN(sizeof(*cache->surface_per_mat) * cache->mat_len, __func__));
-  cache->tris_per_mat = static_cast<gpu::IndexBuf **>(
-      MEM_callocN(sizeof(*cache->tris_per_mat) * cache->mat_len, __func__));
+  cache->surface_per_mat = Array<gpu::Batch *>(cache->mat_len, nullptr);
+  cache->tris_per_mat = Array<gpu::IndexBuf *>(cache->mat_len, nullptr);
 
   cache->is_dirty = false;
   cache->batch_ready = (DRWBatchFlag)0;
@@ -803,7 +801,7 @@ static void mesh_batch_cache_free_subdiv_cache(MeshBatchCache &cache)
 {
   if (cache.subdiv_cache) {
     draw_subdiv_cache_free(*cache.subdiv_cache);
-    MEM_freeN(cache.subdiv_cache);
+    MEM_delete(cache.subdiv_cache);
     cache.subdiv_cache = nullptr;
   }
 }
@@ -817,7 +815,7 @@ static void mesh_batch_cache_clear(MeshBatchCache &cache)
   for (int i = 0; i < cache.mat_len; i++) {
     GPU_INDEXBUF_DISCARD_SAFE(cache.tris_per_mat[i]);
   }
-  MEM_SAFE_FREE(cache.tris_per_mat);
+  cache.tris_per_mat = {};
 
   for (int i = 0; i < sizeof(cache.batch) / sizeof(void *); i++) {
     gpu::Batch **batch = (gpu::Batch **)&cache.batch;
@@ -826,7 +824,7 @@ static void mesh_batch_cache_clear(MeshBatchCache &cache)
 
   mesh_batch_cache_discard_shaded_tri(cache);
   mesh_batch_cache_discard_uvedit(cache);
-  MEM_SAFE_FREE(cache.surface_per_mat);
+  cache.surface_per_mat = {};
   cache.mat_len = 0;
 
   cache.batch_ready = (DRWBatchFlag)0;
@@ -989,7 +987,7 @@ gpu::Batch **DRW_mesh_batch_cache_get_surface_shaded(Object *object,
   mesh_cd_layers_type_merge(&cache.cd_needed, cd_needed);
   drw_attributes_merge(&cache.attr_needed, &attrs_needed, mesh->runtime->render_mutex);
   mesh_batch_cache_request_surface_batches(cache);
-  return cache.surface_per_mat;
+  return cache.surface_per_mat.data();
 }
 
 gpu::Batch **DRW_mesh_batch_cache_get_surface_texpaint(Object *object, Mesh *mesh)
@@ -997,7 +995,7 @@ gpu::Batch **DRW_mesh_batch_cache_get_surface_texpaint(Object *object, Mesh *mes
   MeshBatchCache &cache = *mesh_batch_cache_get(mesh);
   texpaint_request_active_uv(cache, object, mesh);
   mesh_batch_cache_request_surface_batches(cache);
-  return cache.surface_per_mat;
+  return cache.surface_per_mat.data();
 }
 
 gpu::Batch *DRW_mesh_batch_cache_get_surface_texpaint_single(Object *object, Mesh *mesh)
@@ -1383,7 +1381,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                            DRW_object_is_in_edit_mode(ob);
 
   /* This could be set for paint mode too, currently it's only used for edit-mode. */
-  const bool is_mode_active = is_editmode && DRW_object_is_in_edit_mode(ob);
+  const bool edit_mode_active = is_editmode && DRW_object_is_in_edit_mode(ob);
 
   DRWBatchFlag batch_requested = cache.batch_requested;
   cache.batch_requested = (DRWBatchFlag)0;
@@ -1512,7 +1510,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   cache.batch_ready |= batch_requested;
 
   bool do_cage = false, do_uvcage = false;
-  if (is_editmode && is_mode_active) {
+  if (is_editmode && edit_mode_active) {
     const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
     const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
 
@@ -1576,7 +1574,6 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   }
   assert_deps_valid(MBC_LOOSE_EDGES, {BUFFER_INDEX(ibo.lines_loose), BUFFER_INDEX(vbo.pos)});
   if (DRW_batch_requested(cache.batch.loose_edges, GPU_PRIM_LINES)) {
-    DRW_ibo_request(nullptr, &mbuflist->ibo.lines);
     DRW_ibo_request(cache.batch.loose_edges, &mbuflist->ibo.lines_loose);
     DRW_vbo_request(cache.batch.loose_edges, &mbuflist->vbo.pos);
   }
@@ -1871,7 +1868,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                        mesh,
                                        is_editmode,
                                        is_paint_mode,
-                                       is_mode_active,
+                                       edit_mode_active,
                                        ob->object_to_world(),
                                        false,
                                        true,
@@ -1888,7 +1885,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                        mesh,
                                        is_editmode,
                                        is_paint_mode,
-                                       is_mode_active,
+                                       edit_mode_active,
                                        ob->object_to_world(),
                                        false,
                                        false,
@@ -1904,7 +1901,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                            &cache.final,
                            is_editmode,
                            is_paint_mode,
-                           is_mode_active,
+                           edit_mode_active,
                            ob->object_to_world(),
                            true,
                            false,
@@ -1925,7 +1922,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                      mesh,
                                      is_editmode,
                                      is_paint_mode,
-                                     is_mode_active,
+                                     edit_mode_active,
                                      ob->object_to_world(),
                                      true,
                                      false,

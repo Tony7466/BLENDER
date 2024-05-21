@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_model_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
@@ -146,8 +147,13 @@ Closure closure_eval(ClosureDiffuse diffuse)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
-  /* Diffuse & SSS always use the first closure. */
+#if (CLOSURE_BIN_COUNT > 1) && defined(MAT_TRANSLUCENT) && !defined(MAT_CLEARCOAT)
+  /* Use second slot so we can have diffuse + translucent without noise. */
+  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
+#else
+  /* Either is single closure or use same bin as transmission bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
+#endif
   return Closure(0);
 }
 
@@ -156,7 +162,7 @@ Closure closure_eval(ClosureSubsurface diffuse)
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
   cl.data.rgb = diffuse.sss_radius;
-  /* Diffuse & SSS always use the first closure. */
+  /* Transmission Closures are always in first bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }
@@ -165,13 +171,8 @@ Closure closure_eval(ClosureTranslucent translucent)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, translucent);
-#if CLOSURE_BIN_COUNT == 1
-  /* Only one closure type is present in the whole tree. */
+  /* Transmission Closures are always in first bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
-#else
-  /* Use second slot so we can have diffuse + translucent without noise. */
-  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
-#endif
   return Closure(0);
 }
 
@@ -198,16 +199,27 @@ Closure closure_eval(ClosureReflection reflection)
   closure_base_copy(cl, reflection);
   cl.data.r = reflection.roughness;
 
-#if CLOSURE_BIN_COUNT == 1
+#ifdef MAT_CLEARCOAT
+#  if CLOSURE_BIN_COUNT == 2
+  /* Multiple reflection closures. */
+  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(0, 1);
+#  elif CLOSURE_BIN_COUNT == 3
+  /* Multiple reflection closures and one other closure. */
+  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(1, 2);
+#  else
+#    error Clearcoat should always have at least 2 bins
+#  endif
+#else
+#  if CLOSURE_BIN_COUNT == 1
   /* Only one reflection closure is present in the whole tree. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
-#elif CLOSURE_BIN_COUNT == 2
-  /* Case with either only one reflection and one other closure
-   * or only multiple reflection closures. */
-  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(0, 1);
-#elif CLOSURE_BIN_COUNT == 3
-  /* Case with multiple reflection closures and one other closure. */
-  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(1, 2);
+#  elif CLOSURE_BIN_COUNT == 2
+  /* Only one reflection and one other closure. */
+  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
+#  elif CLOSURE_BIN_COUNT == 3
+  /* Only one reflection and two other closures. */
+  closure_select(g_closure_bins[2], g_closure_rand[2], cl);
+#  endif
 #endif
 
 #undef CHOOSE_MIN_WEIGHT_CLOSURE_BIN
@@ -221,8 +233,7 @@ Closure closure_eval(ClosureRefraction refraction)
   closure_base_copy(cl, refraction);
   cl.data.r = refraction.roughness;
   cl.data.g = refraction.ior;
-  /* Use same slot as diffuse as mixed diffuse/refraction are not common.
-   * Allow glass material with clearcoat without noise. */
+  /* Transmission Closures are always in first bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }
@@ -576,6 +587,7 @@ vec2 bsdf_lut(float cos_theta, float roughness, float ior, bool do_multiscatter)
 #  define nodetree_surface(closure_rand) Closure(0)
 #  define nodetree_volume() Closure(0)
 #  define nodetree_thickness() 0.1
+#  define thickness_mode 1.0
 #endif
 
 #ifdef GPU_VERTEX_SHADER

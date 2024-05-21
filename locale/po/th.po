@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-05 01:39+0000\n"
+"POT-Creation-Date: 2024-05-06 10:38+0000\n"
 "PO-Revision-Date: 2019-12-08 17:40+0700\n"
 "Last-Translator: gongpha <gongpha@gmail.com>\n"
 "Language-Team: Thai Translation Team <gongpha@gmail.com>\n"
@@ -230,6 +230,14 @@ msgid "Multiply"
 msgstr "คูณ"
 
 
+msgid "Animation"
+msgstr "แอนิเมชัน"
+
+
+msgid "New"
+msgstr "ใหม่"
+
+
 msgid "End Frame"
 msgstr "เฟรมสิ้นสุด"
 
@@ -248,6 +256,14 @@ msgstr "ชนิดของเส้นทาง"
 
 msgid "In Range"
 msgstr "ในระยะ"
+
+
+msgid "Mix Mode"
+msgstr "โหมดผสม"
+
+
+msgid "Keyframe"
+msgstr "คีย์เฟรม"
 
 
 msgid "Height"
@@ -809,10 +825,6 @@ msgid "Armature"
 msgstr "โครงร่าง"
 
 
-msgid "Mix Mode"
-msgstr "โหมดผสม"
-
-
 msgid "Rotation X"
 msgstr "หมุน X"
 
@@ -1193,10 +1205,6 @@ msgid "Use"
 msgstr "ใช้"
 
 
-msgid "Keyframe"
-msgstr "คีย์เฟรม"
-
-
 msgid "Frames"
 msgstr "เฟรม"
 
@@ -1324,14 +1332,6 @@ msgid "Red"
 msgstr "แดง"
 
 
-msgid "B"
-msgstr "B"
-
-
-msgid "Animation"
-msgstr "แอนิเมชัน"
-
-
 msgid "Font"
 msgstr "ฟอนต์"
 
@@ -1384,6 +1384,10 @@ msgid "Users"
 msgstr "ผู้ใช้"
 
 
+msgid "Layers"
+msgstr "ชั้น"
+
+
 msgid "Wire"
 msgstr "เส้น"
 
@@ -1406,22 +1410,6 @@ msgstr "เพิ่มสี"
 
 msgid "Mask Texture"
 msgstr "พื้นผิวหน้ากาก"
-
-
-msgid "Grab UVs"
-msgstr "จับ UV"
-
-
-msgid "Relax"
-msgstr "ผ่อนคลาย"
-
-
-msgid "Relax UVs"
-msgstr "ผ่อนคลาย UV"
-
-
-msgid "Pinch UVs"
-msgstr "บีบ UV"
 
 
 msgid "Weight Paint Tool"
@@ -1518,10 +1506,6 @@ msgstr "เรียงตาม"
 
 msgid "Grid Settings"
 msgstr "การตั้งค่าตะแกรง"
-
-
-msgid "Layers"
-msgstr "ชั้น"
 
 
 msgid "Selected"
@@ -2056,6 +2040,10 @@ msgid "Track"
 msgstr "แทร็ค"
 
 
+msgid "Zoom"
+msgstr "ซูม"
+
+
 msgid "Snap"
 msgstr "ยึดติด"
 
@@ -2254,10 +2242,6 @@ msgid "Merge Vertices"
 msgstr "ผสานจุดยอด"
 
 
-msgid "New"
-msgstr "ใหม่"
-
-
 msgid "Patch"
 msgstr "แพตช์"
 
@@ -2373,10 +2357,6 @@ msgstr "ไปยัง"
 
 msgid "RGB Curves"
 msgstr "เส้นโค้ง RGB"
-
-
-msgid "Zoom"
-msgstr "ซูม"
 
 
 msgid "-1 is original image only, 0 is exact 50/50 mix, 1 is processed image only"
@@ -2565,12 +2545,17 @@ msgid "Report"
 msgstr "รายงาน"
 
 
-msgid "Duplicate"
-msgstr "ทำซ้ำ"
-
-
 msgid "Enter Edit Mode"
 msgstr "เข้าสู่โหมดแก้ไข"
+
+
+msgctxt "Operator"
+msgid "Add Circle"
+msgstr "เพิ่มวงกลม"
+
+
+msgid "Duplicate"
+msgstr "ทำซ้ำ"
 
 
 msgctxt "Operator"
@@ -2788,11 +2773,6 @@ msgstr "เพิ่มจุดยอด"
 
 msgid "Add Vertex"
 msgstr "เพิ่มจุดยอด"
-
-
-msgctxt "Operator"
-msgid "Add Circle"
-msgstr "เพิ่มวงกลม"
 
 
 msgctxt "Operator"
@@ -3153,6 +3133,22 @@ msgstr "เส้นทางไฟล์"
 msgctxt "Operator"
 msgid "Mask Filter"
 msgstr "กรองหน้ากาก"
+
+
+msgid "Relax"
+msgstr "ผ่อนคลาย"
+
+
+msgid "Grab UVs"
+msgstr "จับ UV"
+
+
+msgid "Pinch UVs"
+msgstr "บีบ UV"
+
+
+msgid "Relax UVs"
+msgstr "ผ่อนคลาย UV"
 
 
 msgctxt "Sequence"
@@ -4011,10 +4007,6 @@ msgid "Open..."
 msgstr "เปิด..."
 
 
-msgid "%s: %s"
-msgstr "%s: %s"
-
-
 msgctxt "Operator"
 msgid "Link..."
 msgstr "เชื่อมโยง..."
@@ -4084,10 +4076,6 @@ msgid "Data Source:"
 msgstr "แหลางข้อมูล:"
 
 
-msgid "Frame: %d (%s)"
-msgstr "เฟรม: %d (%s)"
-
-
 msgid "Parent:"
 msgstr "แม่:"
 
@@ -4141,15 +4129,6 @@ msgstr "คำนวณ"
 
 
 msgctxt "Operator"
-msgid "Zoom"
-msgstr "ซูม"
-
-
-msgid "Zoom %d:%d"
-msgstr "ซูม %d:%d"
-
-
-msgctxt "Operator"
 msgid "Clean Channels"
 msgstr "ล้างช่อง"
 
@@ -4200,6 +4179,11 @@ msgstr "ไฟล์ข้อความ"
 
 msgid "Blender IDs"
 msgstr "Blender ID"
+
+
+msgctxt "Operator"
+msgid "Zoom Region..."
+msgstr "ขอบเขตการซูม..."
 
 
 msgctxt "Operator"
@@ -4409,14 +4393,6 @@ msgid "Next Word"
 msgstr "คำถัดไป"
 
 
-msgid "File: *%s (unsaved)"
-msgstr "ไฟล์: *%s (ยังไม่ได้บันทึก)"
-
-
-msgid "File: %s"
-msgstr "ไฟล์: %s"
-
-
 msgctxt "Operator"
 msgid "Install Application Template..."
 msgstr "ติดตั้งแม่แบบแอปพลิเคชั่น..."
@@ -4557,6 +4533,10 @@ msgid "Axis X"
 msgstr "แกน X"
 
 
+msgid "B"
+msgstr "B"
+
+
 msgid "Panel Title"
 msgstr "ชื่อแผง"
 
@@ -4622,11 +4602,6 @@ msgstr "สลับมุมมองท้องถิ่น"
 msgctxt "Operator"
 msgid "Active Camera"
 msgstr "กล้องที่กำลังใช้งาน"
-
-
-msgctxt "Operator"
-msgid "Zoom Region..."
-msgstr "ขอบเขตการซูม..."
 
 
 msgctxt "Operator"
@@ -4990,6 +4965,10 @@ msgid "Surface"
 msgstr "พื้นผิว"
 
 
+msgid "%s: %s"
+msgstr "%s: %s"
+
+
 msgid "Redo"
 msgstr "ทำอีกครั้ง"
 
@@ -5240,6 +5219,10 @@ msgstr ", %.2f เฟรม/วินาที"
 
 msgid ", failed to load"
 msgstr ", โหลดล้มเหลว"
+
+
+msgid "File: %s"
+msgstr "ไฟล์: %s"
 
 
 msgid "Cancel"
