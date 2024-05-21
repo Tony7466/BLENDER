@@ -564,9 +564,9 @@ class NodeTreeMainUpdater {
   void update_individual_nodes(bNodeTree &ntree)
   {
     for (bNode *node : ntree.all_nodes()) {
-      blender::bke::nodeDeclarationEnsure(&ntree, node);
+      bke::nodeDeclarationEnsure(&ntree, node);
       if (this->should_update_individual_node(ntree, *node)) {
-        bNodeType &ntype = *node->typeinfo;
+        bke::bNodeType &ntype = *node->typeinfo;
         if (ntype.group_update_func) {
           ntype.group_update_func(&ntree, node);
         }
@@ -621,11 +621,11 @@ class NodeTreeMainUpdater {
     BLI_STRUCT_EQUALITY_OPERATORS_3(InternalLink, from, to, multi_input_sort_id);
   };
 
-  const bNodeLink *first_non_dangling_link(const bNodeTree &ntree,
+  const bNodeLink *first_non_dangling_link(const bNodeTree & /*ntree*/,
                                            const Span<const bNodeLink *> links) const
   {
     for (const bNodeLink *link : links) {
-      if (!bke::nodeIsDanglingReroute(&ntree, link->fromnode)) {
+      if (!link->fromnode->is_dangling_reroute()) {
         return link;
       }
     }

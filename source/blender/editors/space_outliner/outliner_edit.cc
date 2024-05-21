@@ -44,7 +44,7 @@
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_report.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -342,7 +342,7 @@ static void do_item_rename(ARegion *region,
   else if (ELEM(tselem->type, TSE_SEQUENCE, TSE_SEQ_STRIP, TSE_SEQUENCE_DUP)) {
     BKE_report(reports, RPT_INFO, "Sequence names are not editable from the Outliner");
   }
-  else if (TSE_IS_REAL_ID(tselem) && ID_IS_LINKED(tselem->id)) {
+  else if (TSE_IS_REAL_ID(tselem) && !ID_IS_EDITABLE(tselem->id)) {
     BKE_report(reports, RPT_INFO, "External library data is not editable");
   }
   else if (TSE_IS_REAL_ID(tselem) && ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
@@ -486,7 +486,7 @@ static void id_delete_tag(bContext *C, ReportList *reports, TreeElement *te, Tre
     }
   }
 
-  if (te->idcode == ID_LI && ((Library *)id)->parent != nullptr) {
+  if (te->idcode == ID_LI && ((Library *)id)->runtime.parent != nullptr) {
     BKE_reportf(reports, RPT_WARNING, "Cannot delete indirectly linked library '%s'", id->name);
     return;
   }
@@ -538,11 +538,11 @@ static int outliner_id_delete_tag(bContext *C,
     TreeStoreElem *tselem = TREESTORE(te);
 
     if (te->idcode != 0 && tselem->id) {
-      if (te->idcode == ID_LI && ((Library *)tselem->id)->parent) {
+      if (te->idcode == ID_LI && ((Library *)tselem->id)->runtime.parent) {
         BKE_reportf(reports,
                     RPT_ERROR_INVALID_INPUT,
                     "Cannot delete indirectly linked library '%s'",
-                    ((Library *)tselem->id)->filepath_abs);
+                    ((Library *)tselem->id)->runtime.filepath_abs);
       }
       else {
         id_delete_tag(C, reports, te, tselem);
@@ -633,7 +633,7 @@ static int outliner_id_remap_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (ID_IS_LINKED(old_id)) {
+  if (!ID_IS_EDITABLE(old_id)) {
     BKE_reportf(op->reports,
                 RPT_WARNING,
                 "Old ID '%s' is linked from a library, indirect usages of this data-block will "
@@ -913,13 +913,14 @@ static int lib_relocate(
     Library *lib = (Library *)tselem->id;
     char dir[FILE_MAXDIR], filename[FILE_MAX];
 
-    BLI_path_split_dir_file(lib->filepath_abs, dir, sizeof(dir), filename, sizeof(filename));
+    BLI_path_split_dir_file(
+        lib->runtime.filepath_abs, dir, sizeof(dir), filename, sizeof(filename));
 
-    printf("%s, %s\n", tselem->id->name, lib->filepath_abs);
+    printf("%s, %s\n", tselem->id->name, lib->runtime.filepath_abs);
 
     /* We assume if both paths in lib are not the same then `lib->filepath` was relative. */
     RNA_boolean_set(
-        &op_props, "relative_path", BLI_path_cmp(lib->filepath_abs, lib->filepath) != 0);
+        &op_props, "relative_path", BLI_path_cmp(lib->runtime.filepath_abs, lib->filepath) != 0);
 
     RNA_string_set(&op_props, "directory", dir);
     RNA_string_set(&op_props, "filename", filename);
@@ -942,11 +943,11 @@ static int outliner_lib_relocate_invoke_do(
     TreeStoreElem *tselem = TREESTORE(te);
 
     if (te->idcode == ID_LI && tselem->id) {
-      if (((Library *)tselem->id)->parent && !reload) {
+      if (((Library *)tselem->id)->runtime.parent && !reload) {
         BKE_reportf(reports,
                     RPT_ERROR_INVALID_INPUT,
                     "Cannot relocate indirectly linked library '%s'",
-                    ((Library *)tselem->id)->filepath_abs);
+                    ((Library *)tselem->id)->runtime.filepath_abs);
         return OPERATOR_CANCELLED;
       }
 
@@ -1831,8 +1832,7 @@ static void do_outliner_drivers_editop(SpaceOutliner *space_outliner,
             break;
           }
           case DRIVERS_EDITMODE_REMOVE: {
-            /* remove driver matching the information obtained (only if valid) */
-            ANIM_remove_driver(reports, id, path, array_index, dflags);
+            ANIM_remove_driver(id, path, array_index);
             break;
           }
         }
@@ -2215,7 +2215,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   return WM_operator_props_dialog_popup(C,
                                         op,
                                         unused_message_popup_width_compute(C),
-                                        IFACE_("Purge Unused Data From This File"),
+                                        IFACE_("Purge Unused Data from This File"),
                                         IFACE_("Delete"));
 }
 
@@ -2339,7 +2339,7 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "do_recursive",
-                  false,
+                  true,
                   "Recursive Delete",
                   "Recursively check for indirectly unused data-blocks, ensuring that no orphaned "
                   "data-blocks remain after execution");

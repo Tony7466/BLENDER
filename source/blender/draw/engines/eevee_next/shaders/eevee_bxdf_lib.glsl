@@ -42,7 +42,7 @@ float bxdf_ggx_smith_G1_opti(float NX, float a2)
 }
 
 /* Compute the GGX BRDF without the Fresnel term, multiplied by the cosine foreshortening term. */
-float bsdf_ggx_reflect(vec3 N, vec3 L, vec3 V, float roughness)
+float bsdf_ggx_reflect(vec3 N, vec3 L, vec3 V, float roughness, out float pdf)
 {
   float a2 = square(roughness);
 
@@ -52,18 +52,21 @@ float bsdf_ggx_reflect(vec3 N, vec3 L, vec3 V, float roughness)
   float NV = max(dot(N, V), 1e-8);
 
   /* TODO: maybe implement non-separable shadowing-masking term following Cycles. */
-  float G = bxdf_ggx_smith_G1(NV, a2) * bxdf_ggx_smith_G1(NL, a2);
+  float G_V = bxdf_ggx_smith_G1(NV, a2);
+  float G_L = bxdf_ggx_smith_G1(NL, a2);
   float D = bxdf_ggx_D(NH, a2);
 
+  pdf = D / ((1.0 + G_V) * 4.0 * NV);
   /* BRDF * NL =  `((D * G) / (4 * NV * NL)) * NL`. */
-  return (0.25 * D * G) / NV;
+  return (D * (G_V * G_L)) / (4.0 * NV);
 }
 
 /* Compute the GGX BTDF without the Fresnel term, multiplied by the cosine foreshortening term. */
-float bsdf_ggx_refract(vec3 N, vec3 L, vec3 V, float roughness, float eta)
+float bsdf_ggx_refract(vec3 N, vec3 L, vec3 V, float roughness, float eta, out float pdf)
 {
   float LV = dot(L, V);
   if (is_equal(eta, 1.0, 1e-4)) {
+    pdf = 1.0;
     /* Only valid when `L` and `V` point in the opposite directions. */
     return float(is_equal(LV, -1.0, 1e-3));
   }
@@ -71,6 +74,7 @@ float bsdf_ggx_refract(vec3 N, vec3 L, vec3 V, float roughness, float eta)
   bool valid = (eta < 1.0) ? (LV < -eta) : (LV * eta < -1.0);
   if (!valid) {
     /* Impossible configuration for transmission due to total internal reflection. */
+    pdf = 0.0;
     return 0.0;
   }
 
@@ -87,11 +91,14 @@ float bsdf_ggx_refract(vec3 N, vec3 L, vec3 V, float roughness, float eta)
   float LH = saturate(dot(-L, H));
 
   float a2 = square(roughness);
-  float G = bxdf_ggx_smith_G1(NV, a2) * bxdf_ggx_smith_G1(NL, a2);
+  float G_V = bxdf_ggx_smith_G1(NV, a2);
+  float G_L = bxdf_ggx_smith_G1(NL, a2);
   float D = bxdf_ggx_D(NH, a2);
+  float com = D * VH * LH * square(eta * inv_len_H);
 
+  pdf = com / ((1.0 + G_V) * NV);
   /* `btdf * NL = abs(VH * LH) * ior^2 * D * G(V) * G(L) / (Ht2 * NV * NL) * NL`. */
-  return (D * G * VH * LH * square(eta * inv_len_H)) / NV;
+  return (G_V * G_L * com) / NV;
 }
 
 /** \} */
@@ -102,9 +109,11 @@ float bsdf_ggx_refract(vec3 N, vec3 L, vec3 V, float roughness, float eta)
  * Not really a microfacet model but fits this file.
  * \{ */
 
-float bsdf_lambert(vec3 N, vec3 L)
+float bsdf_lambert(vec3 N, vec3 L, out float pdf)
 {
-  return saturate(dot(N, L));
+  float cos_theta = saturate(dot(N, L));
+  pdf = cos_theta;
+  return cos_theta;
 }
 
 /** \} */
@@ -142,6 +151,36 @@ float refraction_roughness_remapping(float roughness, float ior)
   else {
     return roughness * sqrt_fast(saturate(1.0 - ior)) * 0.8;
   }
+}
+
+/**
+ * `roughness` is expected to be the linear (from UI) roughness from.
+ */
+vec3 reflection_dominant_dir(vec3 N, vec3 V, float roughness)
+{
+  /* From Frostbite PBR Course
+   * http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf
+   * Listing 22.
+   * Note that the reference labels squared roughness (GGX input) as roughness. */
+  float m = square(roughness);
+  vec3 R = -reflect(V, N);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
+  return normalize(mix(N, R, fac));
+}
+
+/**
+ * `roughness` is expected to be the reflection roughness from `refraction_roughness_remapping`.
+ */
+vec3 refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
+{
+  /* Reusing same thing as reflection_dominant_dir for now with the roughness mapped to
+   * reflection roughness. */
+  float m = square(roughness);
+  vec3 R = refract(-V, N, 1.0 / ior);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
+  return normalize(mix(-N, R, fac));
 }
 
 /** \} */
