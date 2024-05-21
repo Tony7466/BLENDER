@@ -28,6 +28,8 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include <iostream>
+
 namespace blender::ed::sculpt_paint::greasepencil {
 
 /* -------------------------------------------------------------------- */
@@ -61,9 +63,9 @@ struct GreasePencilInterpolateOpData {
     int to_frame_number;
 
     /* Curve indices in the start frame. */
-    Array<int> from_curve_indices;
+    Vector<int> from_curve_indices;
     /* Curve indices in the end frame. */
-    Array<int> to_curve_indices;
+    Vector<int> to_curve_indices;
 
     /* Geometry of the target frame before interpolation for restoring on cancel. */
     bke::CurvesGeometry stored_curves;
@@ -95,8 +97,8 @@ struct GreasePencilInterpolateOpData {
 /* Build index lists for curve interpolation using index. */
 static void find_curve_mapping_from_index(const bke::greasepencil::Drawing &from_drawing,
                                           const bke::greasepencil::Drawing &to_drawing,
-                                          Array<int> &from_curve_indices,
-                                          Array<int> &to_curve_indices)
+                                          Vector<int> &from_curve_indices,
+                                          Vector<int> &to_curve_indices)
 {
   const int curves_num = std::min(from_drawing.strokes().curves_num(),
                                   to_drawing.strokes().curves_num());
@@ -107,13 +109,27 @@ static void find_curve_mapping_from_index(const bke::greasepencil::Drawing &from
 }
 
 /* Build index lists for curve interpolation between two frames. */
-static void find_curve_mapping_from_selection_order(const bke::greasepencil::Drawing &from_drawing,
+static void find_curve_mapping_from_selection_order(const bke::greasepencil::Layer &layer,
+                                                    const bke::greasepencil::Drawing &from_drawing,
                                                     const bke::greasepencil::Drawing &to_drawing,
-                                                    Array<int> &from_curve_indices,
-                                                    Array<int> &to_curve_indices)
+                                                    Vector<int> &from_curve_indices,
+                                                    Vector<int> &to_curve_indices)
 {
-  // TODO don't have selection order yet
-  find_curve_mapping_from_index(from_drawing, to_drawing, from_curve_indices, to_curve_indices);
+  const bke::greasepencil::OrderedSelection &global_selection = layer.runtime->ordered_selection;
+
+  std::cout << "Global Selection:" << std::endl;
+  for (const int i : global_selection.data().index_range()) {
+    std::cout << "  Frame " << global_selection.data()[i].frame_number << " Stroke "
+              << global_selection.data()[i].stroke_index << std::endl;
+  }
+
+  const int curves_num = global_selection.data().size() / 2;
+  from_curve_indices.reinitialize(curves_num);
+  to_curve_indices.reinitialize(curves_num);
+  for (const int i : IndexRange(curves_num)) {
+    from_curve_indices[i] = global_selection.data()[2 * i].stroke_index;
+    to_curve_indices[i] = global_selection.data()[2 * i + 1].stroke_index;
+  }
 }
 
 static bke::CurvesGeometry interpolate_between_curves(const bke::CurvesGeometry &from_curves,
@@ -413,7 +429,7 @@ static std::optional<FramesMapKeyInterval> find_frames_interval(
   /* Skip over invalid keyframes on either side. */
   auto is_valid_keyframe = [&](const FramesMapKey key) {
     const GreasePencilFrame &frame = *layer.frame_at(key);
-    if (frame.is_null()) {
+    if (frame.is_end()) {
       return false;
     }
     if (exclude_breakdowns && frame.type == BEZT_KEYTYPE_BREAKDOWN) {
@@ -495,8 +511,11 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
       const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer, interval->second);
 
       if (data.interpolate_selected_only) {
-        find_curve_mapping_from_selection_order(
-            from_drawing, to_drawing, layer_data.from_curve_indices, layer_data.to_curve_indices);
+        find_curve_mapping_from_selection_order(layer,
+                                                from_drawing,
+                                                to_drawing,
+                                                layer_data.from_curve_indices,
+                                                layer_data.to_curve_indices);
       }
       else {
         /* Pair from/to curves by index. */
@@ -550,10 +569,13 @@ static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
 
 static bool grease_pencil_interpolate_poll(bContext *C)
 {
-  if (!ed::greasepencil::grease_pencil_painting_poll(C)) {
+  if (!ed::greasepencil::active_grease_pencil_poll(C)) {
     return false;
   }
-
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  if (!ts || !ts->gp_paint) {
+    return false;
+  }
   /* Only 3D view */
   ScrArea *area = CTX_wm_area(C);
   if (area && area->spacetype != SPACE_VIEW3D) {
