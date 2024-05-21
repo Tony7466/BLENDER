@@ -1141,9 +1141,9 @@ struct PBVHBatches {
                               GPUIndexBufBuilder &elb,
                               GPUIndexBufBuilder &elb_lines,
                               const BitGroupVector<> &grid_hidden,
-                              int gridsize,
-                              int skip,
-                              int totgrid)
+                              const int gridsize,
+                              const int skip,
+                              const int totgrid)
   {
     uint offset = 0;
     const uint grid_vert_len = gridsize * gridsize;
@@ -1190,9 +1190,9 @@ struct PBVHBatches {
                                GPUIndexBufBuilder &elb,
                                GPUIndexBufBuilder &elb_lines,
                                const BitGroupVector<> &grid_hidden,
-                               int gridsize,
-                               int skip,
-                               int totgrid)
+                               const int gridsize,
+                               const int skip,
+                               const int totgrid)
   {
     uint offset = 0;
     const uint grid_vert_len = square_uint(gridsize - 1) * 4;
