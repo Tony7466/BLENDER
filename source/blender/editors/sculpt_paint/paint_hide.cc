@@ -807,7 +807,8 @@ static void grow_shrink_visibility_mesh(Object &object,
 
   bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
       ".hide_vert", bke::AttrDomain::Point);
-  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+  const VArraySpan hide_poly = *attributes.lookup_or_default<bool>(
+      ".hide_poly", bke::AttrDomain::Face, false);
   Array<bool> orig_hide_vert(hide_vert.span.size());
 
   array_utils::copy(hide_vert.span.as_span(), orig_hide_vert.as_mutable_span());
