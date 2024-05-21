@@ -100,14 +100,14 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
  * \returns A summary of the successful and failed keyframe insertions, with
  * reasons for the failures.
  */
-CombinedKeyingResult insert_key_rna(Main *bmain,
-                                    ID &id,
-                                    std::optional<std::string> channel_group,
-                                    const blender::Span<RNAPath> rna_paths,
-                                    std::optional<float> scene_frame,
-                                    const AnimationEvalContext &anim_eval_context,
-                                    eBezTriple_KeyframeType key_type,
-                                    eInsertKeyFlags insert_key_flags);
+CombinedKeyingResult insert_keyframes(Main *bmain,
+                                      ID &id,
+                                      const blender::Span<RNAPath> rna_paths,
+                                      std::optional<std::string> channel_group,
+                                      std::optional<float> scene_frame,
+                                      const AnimationEvalContext &anim_eval_context,
+                                      eBezTriple_KeyframeType key_type,
+                                      eInsertKeyFlags insert_key_flags);
 
 /**
  * \brief Secondary Insert Key-framing API call.

@@ -142,11 +142,11 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<RNAPath> rn
 
   CombinedKeyingResult combined_result;
   for (PointerRNA ptr : sources) {
-    const CombinedKeyingResult result = insert_key_rna(
+    const CombinedKeyingResult result = insert_keyframes(
         bmain,
         *ptr.owner_id,
-        std::nullopt,
         rna_paths,
+        std::nullopt,
         scene_frame,
         anim_eval_context,
         eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
@@ -246,11 +246,11 @@ void autokeyframe_pose_channel(bContext *C,
 
   CombinedKeyingResult combined_result;
   for (PointerRNA &ptr : sources) {
-    const CombinedKeyingResult result = insert_key_rna(
+    const CombinedKeyingResult result = insert_keyframes(
         bmain,
         *ptr.owner_id,
-        std::nullopt,
         rna_paths,
+        std::nullopt,
         scene_frame,
         anim_eval_context,
         eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
@@ -335,14 +335,14 @@ bool autokeyframe_property(bContext *C,
        * all elements" or "not an array property". */
       const std::optional<int> array_index = rnaindex < 0 ? std::nullopt : std::optional(rnaindex);
 
-      CombinedKeyingResult result = insert_key_rna(bmain,
-                                                   *id,
-                                                   (fcu && fcu->grp) ? fcu->grp->name : nullptr,
-                                                   {{path, {}, array_index}},
-                                                   std::nullopt,
-                                                   anim_eval_context,
-                                                   eBezTriple_KeyframeType(ts->keyframe_type),
-                                                   flag);
+      CombinedKeyingResult result = insert_keyframes(bmain,
+                                                     *id,
+                                                     {{path, {}, array_index}},
+                                                     (fcu && fcu->grp) ? fcu->grp->name : nullptr,
+                                                     std::nullopt,
+                                                     anim_eval_context,
+                                                     eBezTriple_KeyframeType(ts->keyframe_type),
+                                                     flag);
       changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }

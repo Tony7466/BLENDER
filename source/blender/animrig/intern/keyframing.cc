@@ -794,14 +794,14 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   return combined_result;
 }
 
-CombinedKeyingResult insert_key_rna(Main *bmain,
-                                    ID &id,
-                                    const std::optional<std::string> channel_group,
-                                    const blender::Span<RNAPath> rna_paths,
-                                    const std::optional<float> scene_frame,
-                                    const AnimationEvalContext &anim_eval_context,
-                                    const eBezTriple_KeyframeType key_type,
-                                    const eInsertKeyFlags insert_key_flags)
+CombinedKeyingResult insert_keyframes(Main *bmain,
+                                      ID &id,
+                                      const blender::Span<RNAPath> rna_paths,
+                                      const std::optional<std::string> channel_group,
+                                      const std::optional<float> scene_frame,
+                                      const AnimationEvalContext &anim_eval_context,
+                                      const eBezTriple_KeyframeType key_type,
+                                      const eInsertKeyFlags insert_key_flags)
 
 {
   PointerRNA id_pointer = RNA_id_pointer_create(&id);

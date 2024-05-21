@@ -851,15 +851,15 @@ static void insert_fcurve_key(bAnimContext *ac,
    *   (TODO: add the full-blown PointerRNA relative parsing case here...)
    */
   if (ale->id && !ale->owner) {
-    CombinedKeyingResult result = insert_key_rna(ac->bmain,
-                                                 *ale->id,
-                                                 fcu->grp ? std::optional(fcu->grp->name) :
-                                                            std::nullopt,
-                                                 {{fcu->rna_path, {}, fcu->array_index}},
-                                                 std::nullopt,
-                                                 anim_eval_context,
-                                                 eBezTriple_KeyframeType(ts->keyframe_type),
-                                                 flag);
+    CombinedKeyingResult result = insert_keyframes(ac->bmain,
+                                                   *ale->id,
+                                                   {{fcu->rna_path, {}, fcu->array_index}},
+                                                   fcu->grp ? std::optional(fcu->grp->name) :
+                                                              std::nullopt,
+                                                   std::nullopt,
+                                                   anim_eval_context,
+                                                   eBezTriple_KeyframeType(ts->keyframe_type),
+                                                   flag);
     if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
       result.generate_reports(reports);
     }

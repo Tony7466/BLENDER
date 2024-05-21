@@ -402,14 +402,14 @@ static int insert_key(bContext *C, wmOperator *op)
     }
     Vector<RNAPath> rna_paths = construct_rna_paths(&id_ptr);
 
-    combined_result.merge(animrig::insert_key_rna(bmain,
-                                                  *selected_id,
-                                                  std::nullopt,
-                                                  rna_paths.as_span(),
-                                                  scene_frame,
-                                                  anim_eval_context,
-                                                  key_type,
-                                                  insert_key_flags));
+    combined_result.merge(animrig::insert_keyframes(bmain,
+                                                    *selected_id,
+                                                    rna_paths.as_span(),
+                                                    std::nullopt,
+                                                    scene_frame,
+                                                    anim_eval_context,
+                                                    key_type,
+                                                    insert_key_flags));
   }
 
   if (combined_result.get_count(animrig::SingleKeyingResult::SUCCESS) == 0) {
@@ -1026,7 +1026,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       /* standard properties */
       if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
         const char *identifier = RNA_property_identifier(prop);
-        const char *group = nullptr;
+        std::optional<std::string> group = std::nullopt;
 
         /* Special exception for keyframing transforms:
          * Set "group" for this manually, instead of having them appearing at the bottom
@@ -1054,14 +1054,14 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
                                                                     std::optional(index);
 
-        CombinedKeyingResult result = insert_key_rna(bmain,
-                                                     *ptr.owner_id,
-                                                     group,
-                                                     {{*path, {}, array_index}},
-                                                     std::nullopt,
-                                                     anim_eval_context,
-                                                     eBezTriple_KeyframeType(ts->keyframe_type),
-                                                     flag);
+        CombinedKeyingResult result = insert_keyframes(bmain,
+                                                       *ptr.owner_id,
+                                                       {{*path, {}, array_index}},
+                                                       group,
+                                                       std::nullopt,
+                                                       anim_eval_context,
+                                                       eBezTriple_KeyframeType(ts->keyframe_type),
+                                                       flag);
         changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       }
       else {
