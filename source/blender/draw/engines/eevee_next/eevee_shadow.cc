@@ -39,10 +39,7 @@ void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
   light_type = eLightType::LIGHT_SUN;
   is_area_side = false;
 
-  if (grid_shift == int2(0)) {
-    /* Only replace shift if it is not already dirty. */
-    grid_shift = origin_offset - grid_offset;
-  }
+  grid_shift = origin_offset - grid_offset;
   grid_offset = origin_offset;
 
   if (!equals_m4m4(object_mat.ptr(), object_mat_.ptr())) {
@@ -120,8 +117,8 @@ void ShadowTileMap::debug_draw() const
       {0.1f, 0.1f, 0.1f, 1.0f},
       {1.0f, 1.0f, 1.0f, 1.0f},
   };
-  float4 color =
-      debug_color[((projection_type == SHADOW_PROJECTION_CUBEFACE ? cubeface : level) + 9999) % 6];
+  float4 color = debug_color
+      [((projection_type == SHADOW_PROJECTION_CUBEFACE ? int(cubeface) : level) + 9999) % 6];
 
   float4x4 persinv = winmat * viewmat;
   drw_debug_matrix_as_bbox(math::invert(persinv), color);
@@ -575,7 +572,7 @@ void ShadowModule::init()
   bool update_lights = false;
   bool enable_shadow = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
   bool use_jitter = enable_shadow &&
-                    (!inst_.is_viewport() ||
+                    (inst_.is_image_render() ||
                      (!inst_.is_navigating() && !inst_.is_transforming() && !inst_.is_playback() &&
                       (scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT)));
   update_lights |= assign_if_different(enabled_, enable_shadow);
@@ -773,7 +770,8 @@ void ShadowModule::end_sync()
 {
   /* Delete unused shadows first to release tile-maps that could be reused for new lights. */
   for (Light &light : inst_.lights.light_map_.values()) {
-    if (!light.used || !enabled_) {
+    /* Do not discard lights in baking mode. See WORKAROUND in `surfels_create`. */
+    if ((!light.used || !enabled_) && !inst_.is_baking()) {
       light.shadow_discard_safe(*this);
     }
     else if (light.directional != nullptr) {
@@ -806,7 +804,8 @@ void ShadowModule::end_sync()
   auto it_end = objects_.items().end();
   for (auto it = objects_.items().begin(); it != it_end; ++it) {
     ShadowObject &shadow_ob = (*it).value;
-    if (!shadow_ob.used) {
+    /* Do not discard casters in baking mode. See WORKAROUND in `surfels_create`. */
+    if (!shadow_ob.used && !inst_.is_baking()) {
       /* May not be a caster, but it does not matter, be conservative. */
       past_casters_updated_.append(shadow_ob.resource_handle.raw);
       objects_.remove(it);
