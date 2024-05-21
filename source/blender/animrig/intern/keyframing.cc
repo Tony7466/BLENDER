@@ -1038,17 +1038,10 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
 
   action.ensure_layer();
   Layer *layer = action.get_layer_for_keyframing();
-  /* Since the semantics of finding a layer appropriate for keyframing isn't
-   * decided yet, we're being conservative here and checking for null despite
-   * ensuring that at least one layer exists above.
-   *
-   * TODO: revisit this once those semantics are hammered out. */
-  if (layer == nullptr) {
-    /* TODO: count the rna paths properly (e.g. accounting for multi-element
-     * properties). */
-    combined_result.add(SingleKeyingResult::NO_VALID_LAYER, rna_paths.size());
-    return combined_result;
-  }
+  /* TODO: since we haven't implemented actual layered animation yet, this
+   * currently should never be null.  But when we do implement layered
+   * animation, we'll presumably need to change this and handle null. */
+  BLI_assert(layer != nullptr);
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
@@ -1105,15 +1098,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   }
 
   bAction *action = id_action_ensure(bmain, id);
-  if (action == nullptr) {
-    /* TODO: count the rna paths properly (e.g. accounting for multi-element
-     * properties). */
-    /* TODO: is ID_NOT_ANIMATABLE the right result?  If that were the case,
-     * presumably we would have returned on the failed attempt to get the
-     * AnimData above.  But what *does* cause this case? */
-    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
-    return combined_result;
-  }
+  BLI_assert(action != nullptr);
 
   if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action->wrap().is_action_layered()) {
     /* TODO: Don't hardcode key settings. */
