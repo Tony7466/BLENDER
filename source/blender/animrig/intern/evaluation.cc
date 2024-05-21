@@ -158,7 +158,6 @@ static EvaluationResult evaluate_keyframe_strip(PointerRNA &animated_id_ptr,
              animated_id_ptr.owner_id->name);
       continue;
     }
-
     const float curval = calculate_fcurve(&anim_rna, fcu, &offset_eval_context);
     evaluation_result.store(fcu->rna_path, fcu->array_index, curval, anim_rna);
   }

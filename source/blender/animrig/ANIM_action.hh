@@ -605,14 +605,14 @@ FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index)
  * Creates a new `Action` that matches the old action but is converted to have layers.
  * Returns a nullptr if the action is empty or already layered.
  */
-Action *convert_to_layered_action(Main &bmain, Action &action);
+Action *convert_to_layered_action(Main &bmain, const Action &action);
 
 /**
- * Creates a new legacy `Action` that matches the layered `Action` in animation output.
- * All layers are flattened and baked into a single `BezTriple` array.
- * Returns a nullptr if the action is empty or is already a legacy action.
+ * Creates a new legacy `Action` that matches the layered `Action` for the given binding in
+ * animation output. All layers are flattened and baked into a single `BezTriple` array. Returns a
+ * nullptr if the action is empty or is already a legacy action.
  */
-Action *bake_to_legacy_action(Main &bmain, Action &action);
+Action *bake_to_legacy_action(Main &bmain, const Action &action, const Binding &binding);
 
 }  // namespace blender::animrig
 

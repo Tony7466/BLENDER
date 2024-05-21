@@ -724,7 +724,7 @@ static int convert_action_exec(bContext *C, wmOperator *op)
   }
   Main *bmain = CTX_data_main(C);
   if (anim.is_action_layered()) {
-    animrig::bake_to_legacy_action(*bmain, anim);
+    // animrig::bake_to_legacy_action(*bmain, anim);
   }
   else {
     animrig::convert_to_layered_action(*bmain, anim);

@@ -104,7 +104,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
   return fcu;
 }
 
-Action *convert_to_layered_action(Main &bmain, Action &legacy_action)
+Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
 {
   if (legacy_action.is_empty() || legacy_action.is_action_layered()) {
     return nullptr;
@@ -138,9 +138,12 @@ Action *convert_to_layered_action(Main &bmain, Action &legacy_action)
   return &converted_action;
 }
 
-Action *bake_to_legacy_action(Main &bmain, Action &layered_action)
+Action *bake_to_legacy_action(Main &bmain, const Action &layered_action, const Binding &binding)
 {
   if (layered_action.is_empty() || layered_action.is_action_legacy()) {
+    return nullptr;
+  }
+  if (!layered_action.is_binding_animated(binding.handle)) {
     return nullptr;
   }
 
@@ -149,6 +152,9 @@ Action *bake_to_legacy_action(Main &bmain, Action &layered_action)
   bAction *baction = BKE_action_add(&bmain, legacy_action_name);
 
   Action &converted_action = baction->wrap();
+
+  for (const Layer *layer : layered_action.layers()) {
+  }
 
   return &converted_action;
 }
