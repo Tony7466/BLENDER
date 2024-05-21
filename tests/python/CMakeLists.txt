@@ -791,10 +791,8 @@ if(WITH_COMPOSITOR_CPU)
         output
         color
         filter
-        keying
         mask
         tracking
-        transform
         utilities
         vector
 
@@ -802,7 +800,7 @@ if(WITH_COMPOSITOR_CPU)
     )
 
     if(WITH_LIBMV)
-      list(APPEND compositor_tests distort matte)
+      list(APPEND compositor_tests transform keying)
     endif()
 
     foreach(comp_test ${compositor_tests})
@@ -827,10 +825,8 @@ if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
         output
         color
         filter
-        keying
         mask
         tracking
-        transform
         utilities
         vector
 
@@ -838,7 +834,7 @@ if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
       )
 
     if(WITH_LIBMV)
-      list(APPEND compositor_tests distort matte)
+      list(APPEND compositor_tests transform keying)
     endif()
 
     foreach(comp_test ${compositor_tests})
