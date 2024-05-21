@@ -2244,13 +2244,12 @@ void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCach
       MutableSpan edge_positions = edge_vert_positions.slice(i * cache_verts_per_edge,
                                                              cache_verts_per_edge);
       for (const int j : IndexRange(cache_verts_per_edge)) {
-        bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
-                                                       coarse_edges,
-                                                       vert_to_edge_map,
-                                                       coarse_edge,
-                                                       is_simple,
-                                                       j * inv_resolution_1,
-                                                       edge_positions[j]);
+        edge_positions[j] = bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
+                                                                           coarse_edges,
+                                                                           vert_to_edge_map,
+                                                                           coarse_edge,
+                                                                           is_simple,
+                                                                           j * inv_resolution_1);
       }
     }
   });
