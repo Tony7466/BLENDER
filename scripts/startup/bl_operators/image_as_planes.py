@@ -416,7 +416,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
     )
 
     image_sequence: BoolProperty(
-        name="Animate Image Sequences",
+        name="Detect Image Sequences",
         default=False,
         description=(
             "Import sequentially numbered images as an animated "
@@ -670,113 +670,94 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
     def draw_import_config(self, _context):
         # --- Import Options --- #
         layout = self.layout
-        box = layout.box()
 
-        box.label(text="Import Options", icon='IMPORT')
-        row = box.row()
-        row.active = bpy.data.is_saved
-        row.prop(self, "relative")
-
-        box.prop(self, "force_reload")
-        box.prop(self, "image_sequence")
+        header, body = layout.panel("import_image_plane_options", default_closed=False)
+        header.label(text="Import Options", icon='IMPORT')
+        if body:
+            row = body.row()
+            row.active = bpy.data.is_saved
+            row.prop(self, "relative")
+            body.prop(self, "force_reload")
+            body.prop(self, "image_sequence")
 
     def draw_material_config(self, context):
         # --- Material / Rendering Properties --- #
-        '''
         layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        box = layout.box()
 
-        box.label(text="Compositing Nodes", icon='RENDERLAYERS')
-        box.prop(self, "compositing_nodes")
-        '''
+        header, body = layout.panel("import_image_plane_material", default_closed=False)
+        header.label(text="Material Settings", icon='MATERIAL')
+        if body:
+            body.prop(self, 'shader')
+            if self.shader == 'EMISSION':
+                body.prop(self, "emit_strength")
 
+            body.prop(self, 'blend_method')
+
+            body.prop(self, 'shadow_method')
+            if self.blend_method == 'BLEND':
+                body.prop(self, "show_transparent_back")
+
+            body.prop(self, "use_backface_culling")
+
+            engine = context.scene.render.engine
+            if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
+                body.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
+
+            body.prop(self, "overwrite_material")
+
+    def draw_texture_config(self, context):
+        # --- Texture Properties --- #
         layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        box = layout.box()
 
-        box.label(text="Material Settings", icon='MATERIAL')
-        row = box.row()
-        row.prop(self, "shader", expand=False)
-        if self.shader == 'EMISSION':
-            box.prop(self, "emit_strength")
+        header, body = layout.panel("import_image_plane_texture", default_closed=False)
+        header.label(text="Texture Settings", icon='TEXTURE')
+        if body:
+            body.prop(self, 'interpolation')
+            body.prop(self, 'extension')
 
-        row = box.row()
-        row.prop(self, "blend_method", expand=False)
+            row = body.row(align=False, heading="Alpha")
+            row.prop(self, "use_transparency", text="")
+            sub = row.row(align=True)
+            sub.active = self.use_transparency
+            sub.prop(self, "alpha_mode", text="")
 
-        if self.blend_method == 'BLEND':
-            row = box.row()
-            row.prop(self, "show_transparent_back")
-
-        box.label(text="Shadow Mode")
-        row = box.row()
-        row.prop(self, "shadow_method", expand=False)
-
-        row = box.row()
-        row.prop(self, "use_backface_culling")
-
-        engine = context.scene.render.engine
-        if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
-            box.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
-
-        row = box.row()
-        row.prop(self, "overwrite_material")
-
-        box = layout.box()
-        box.label(text="Texture Settings", icon='TEXTURE')
-        row = box.row()
-        row.prop(self, "interpolation", expand=False)
-        row = box.row()
-        row.prop(self, "extension", expand=False)
-        col = box.column(align=False, heading="Alpha")
-        row = col.row(align=True)
-        row.prop(self, "use_transparency", text="")
-        sub = row.row(align=True)
-        sub.active = self.use_transparency
-        sub.prop(self, "alpha_mode", text="")
-        row = box.row()
-        row.prop(self, "use_auto_refresh")
+            body.prop(self, "use_auto_refresh")
 
     def draw_spatial_config(self, _context):
         # --- Spatial Properties: Position, Size and Orientation --- #
         layout = self.layout
-        box = layout.box()
 
-        box.label(text="Transform", icon='SNAP_GRID')
+        header, body = layout.panel("import_image_plane_transform", default_closed=False)
+        header.label(text="Transform", icon='SNAP_GRID')
+        if body:
+            body.prop(self, "size_mode")
+            if self.size_mode == 'ABSOLUTE':
+                body.prop(self, "height")
+            elif self.size_mode == 'CAMERA':
+                body.prop(self, "fill_mode")
+            else:
+                body.prop(self, "factor")
 
-        row = box.row()
-        row.prop(self, "size_mode", expand=False)
-        if self.size_mode == 'ABSOLUTE':
-            box.prop(self, "height")
-        elif self.size_mode == 'CAMERA':
-            row = box.row()
-            row.prop(self, "fill_mode", expand=False)
-        else:
-            box.prop(self, "factor")
+            row = body.row()
+            row.enabled = 'CAM' not in self.size_mode
+            row.prop(self, "align_axis")
+            if 'CAM' in self.align_axis:
+                body.prop(self, "align_track")
 
-        row = box.row()
-        row.enabled = 'CAM' not in self.size_mode
-        row.prop(self, "align_axis")
-        if 'CAM' in self.align_axis:
-            row = box.row()
-            row.prop(self, "align_track")
-
-        row = box.row()
-        row.prop(self, "offset")
-        col = box.column()
-        row = col.row()
-        row.prop(self, "offset_axis", expand=False)
-        row = col.row()
-        row.prop(self, "offset_amount")
-        col.enabled = self.offset
+            body.prop(self, "offset")
+            col = body.column()
+            col.enabled = self.offset
+            col.prop(self, "offset_axis")
+            col.prop(self, "offset_amount", text="Distance")
 
     def draw(self, context):
-
         # Draw configuration sections.
+        layout = self.layout
+        layout.use_property_split = True
+
         self.draw_import_config(context)
         self.draw_material_config(context)
+        self.draw_texture_config(context)
         self.draw_spatial_config(context)
 
     # -------------------------------------------------------------------------
