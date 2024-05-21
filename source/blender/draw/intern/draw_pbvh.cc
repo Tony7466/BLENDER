@@ -1191,8 +1191,10 @@ struct PBVHBatches {
       for (int i = 0; i < totgrid; i++, offset += grid_vert_len) {
         uint v0, v1, v2, v3;
         bool grid_visible = false;
+
         const BoundedBitSpan gh = grid_hidden.is_empty() ? BoundedBitSpan() :
                                                            grid_hidden[args.grid_indices[i]];
+
         for (int j = 0; j < gridsize - skip; j += skip) {
           for (int k = 0; k < gridsize - skip; k += skip) {
             /* Skip hidden grid face */
@@ -1226,6 +1228,7 @@ struct PBVHBatches {
     else {
       uint offset = 0;
       const uint grid_vert_len = square_uint(gridsize - 1) * 4;
+
       for (int i = 0; i < totgrid; i++, offset += grid_vert_len) {
         bool grid_visible = false;
         const BoundedBitSpan gh = grid_hidden.is_empty() ? BoundedBitSpan() :
@@ -1240,6 +1243,7 @@ struct PBVHBatches {
             }
 
             v0 = (j * (gridsize - 1) + k) * 4;
+
             if (skip > 1) {
               v1 = (j * (gridsize - 1) + k + skip - 1) * 4;
               v2 = ((j + skip - 1) * (gridsize - 1) + k + skip - 1) * 4;
