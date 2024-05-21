@@ -3819,10 +3819,10 @@ class VIEW3D_MT_sculpt(Menu):
         props.action = 'HIDE'
 
         props = layout.operator("paint.visibility_filter", text="Grow Visibility")
-        props.mode = "GROW"
+        props.action = "GROW"
 
         props = layout.operator("paint.visibility_filter", text="Shrink Visibility")
-        props.mode = "SHRINK"
+        props.action = "SHRINK"
 
         layout.separator()
 
