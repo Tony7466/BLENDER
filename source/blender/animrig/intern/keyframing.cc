@@ -377,7 +377,8 @@ static eFCU_Cycle_Type remap_cyclic_keyframe_location(FCurve *fcu, float *px, fl
   return type;
 }
 
-static float nla_time_remap(const AnimationEvalContext *anim_eval_context,
+static float nla_time_remap(float time,
+                            const AnimationEvalContext *anim_eval_context,
                             PointerRNA *id_ptr,
                             AnimData *adt,
                             bAction *act,
@@ -388,13 +389,12 @@ static float nla_time_remap(const AnimationEvalContext *anim_eval_context,
     *r_nla_context = BKE_animsys_get_nla_keyframing_context(
         nla_cache, id_ptr, adt, anim_eval_context);
 
-    const float remapped_frame = BKE_nla_tweakedit_remap(
-        adt, anim_eval_context->eval_time, NLATIME_CONVERT_UNMAP);
+    const float remapped_frame = BKE_nla_tweakedit_remap(adt, time, NLATIME_CONVERT_UNMAP);
     return remapped_frame;
   }
 
   *r_nla_context = nullptr;
-  return anim_eval_context->eval_time;
+  return time;
 }
 
 /* Insert the specified keyframe value into a single F-Curve. */
@@ -548,175 +548,6 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
   }
 
   return result;
-}
-
-CombinedKeyingResult insert_keyframe(Main *bmain,
-                                     ID &id,
-                                     const char group[],
-                                     const char rna_path[],
-                                     int array_index,
-                                     const AnimationEvalContext *anim_eval_context,
-                                     eBezTriple_KeyframeType keytype,
-                                     eInsertKeyFlags flag)
-{
-  CombinedKeyingResult combined_result;
-
-  if (!BKE_id_is_editable(bmain, &id)) {
-    combined_result.add(SingleKeyingResult::ID_NOT_EDITABLE);
-    return combined_result;
-  }
-
-  PointerRNA ptr;
-  PropertyRNA *prop = nullptr;
-  PointerRNA id_ptr = RNA_id_pointer_create(&id);
-  if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
-    combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
-    return combined_result;
-  }
-
-  bAction *act = id_action_ensure(bmain, &id);
-  if (act == nullptr) {
-    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE);
-    return combined_result;
-  }
-
-  /* Apply NLA-mapping to frame to use (if applicable). */
-  NlaKeyframingContext *nla_context = nullptr;
-  ListBase nla_cache = {nullptr, nullptr};
-  AnimData *adt = BKE_animdata_from_id(&id);
-  const float nla_mapped_frame = nla_time_remap(
-      anim_eval_context, &id_ptr, adt, act, &nla_cache, &nla_context);
-
-  const bool visual_keyframing = flag & INSERTKEY_MATRIX;
-  Vector<float> values = get_keyframe_values(&ptr, prop, visual_keyframing);
-
-  bool force_all;
-  BitVector<> successful_remaps(values.size(), false);
-  BKE_animsys_nla_remap_keyframe_values(nla_context,
-                                        &ptr,
-                                        prop,
-                                        values,
-                                        array_index,
-                                        anim_eval_context,
-                                        &force_all,
-                                        successful_remaps);
-
-  /* Key the entire array. */
-  int key_count = 0;
-  if (array_index == -1 || force_all) {
-    /* In force mode, if any of the curves succeeds, drop the replace mode and restart. */
-    if (force_all && (flag & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0) {
-      int exclude = -1;
-
-      for (array_index = 0; array_index < values.size(); array_index++) {
-        if (!successful_remaps[array_index]) {
-          continue;
-        }
-        const SingleKeyingResult result = insert_keyframe_fcurve_value(bmain,
-                                                                       &ptr,
-                                                                       prop,
-                                                                       act,
-                                                                       group,
-                                                                       rna_path,
-                                                                       array_index,
-                                                                       nla_mapped_frame,
-                                                                       values[array_index],
-                                                                       keytype,
-                                                                       flag);
-        combined_result.add(result);
-        if (result == SingleKeyingResult::SUCCESS) {
-          key_count++;
-          exclude = array_index;
-          break;
-        }
-      }
-
-      if (exclude != -1) {
-        flag &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
-
-        for (array_index = 0; array_index < values.size(); array_index++) {
-          if (!successful_remaps[array_index]) {
-            continue;
-          }
-
-          if (array_index != exclude) {
-            const SingleKeyingResult result = insert_keyframe_fcurve_value(bmain,
-                                                                           &ptr,
-                                                                           prop,
-                                                                           act,
-                                                                           group,
-                                                                           rna_path,
-                                                                           array_index,
-                                                                           nla_mapped_frame,
-                                                                           values[array_index],
-                                                                           keytype,
-                                                                           flag);
-            combined_result.add(result);
-            if (result == SingleKeyingResult::SUCCESS) {
-              key_count++;
-            }
-          }
-        }
-      }
-    }
-    /* Simply insert all channels. */
-    else {
-      for (array_index = 0; array_index < values.size(); array_index++) {
-        if (!successful_remaps[array_index]) {
-          continue;
-        }
-
-        const SingleKeyingResult result = insert_keyframe_fcurve_value(bmain,
-                                                                       &ptr,
-                                                                       prop,
-                                                                       act,
-                                                                       group,
-                                                                       rna_path,
-                                                                       array_index,
-                                                                       nla_mapped_frame,
-                                                                       values[array_index],
-                                                                       keytype,
-                                                                       flag);
-        combined_result.add(result);
-        if (result == SingleKeyingResult::SUCCESS) {
-          key_count++;
-        }
-      }
-    }
-  }
-  /* Key a single index. */
-  else {
-    if (array_index >= 0 && array_index < values.size() && successful_remaps[array_index]) {
-      const SingleKeyingResult result = insert_keyframe_fcurve_value(bmain,
-                                                                     &ptr,
-                                                                     prop,
-                                                                     act,
-                                                                     group,
-                                                                     rna_path,
-                                                                     array_index,
-                                                                     nla_mapped_frame,
-                                                                     values[array_index],
-                                                                     keytype,
-                                                                     flag);
-      combined_result.add(result);
-      if (result == SingleKeyingResult::SUCCESS) {
-        key_count++;
-      }
-    }
-  }
-
-  BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
-
-  if (key_count > 0) {
-    if (act != nullptr) {
-      DEG_id_tag_update(&act->id, ID_RECALC_ANIMATION_NO_FLUSH);
-    }
-    if (adt != nullptr && adt->action != nullptr && adt->action != act) {
-      DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
-    }
-  }
-
-  return combined_result;
 }
 
 /* ************************************************** */
@@ -973,55 +804,55 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
                                     const eInsertKeyFlags insert_key_flags)
 
 {
-  PointerRNA rna_pointer = RNA_id_pointer_create(&id);
-  bAction *action = id_action_ensure(bmain, &id);
+  PointerRNA id_pointer = RNA_id_pointer_create(&id);
   CombinedKeyingResult combined_result;
 
-  const float frame = scene_frame.value_or(anim_eval_context.eval_time);
-
+  bAction *action = id_action_ensure(bmain, &id);
   if (action == nullptr) {
+    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE);
     return combined_result;
   }
 
   AnimData *adt = BKE_animdata_from_id(&id);
+  BLI_assert(adt != nullptr);
 
-  /* Keyframing functions can deal with the nla_context being a nullptr. */
+  /* NOTE: keyframing functions can deal with the nla_context being a nullptr. */
   ListBase nla_cache = {nullptr, nullptr};
   NlaKeyframingContext *nla_context = nullptr;
-
-  if (adt && adt->action == action) {
-    PointerRNA id_pointer = RNA_id_pointer_create(&id);
-    nla_context = BKE_animsys_get_nla_keyframing_context(
-        &nla_cache, &id_pointer, adt, &anim_eval_context);
-  }
-
-  const float nla_frame = BKE_nla_tweakedit_remap(adt, frame, NLATIME_CONVERT_UNMAP);
+  const float nla_frame = nla_time_remap(scene_frame.value_or(anim_eval_context.eval_time),
+                                         &anim_eval_context,
+                                         &id_pointer,
+                                         adt,
+                                         action,
+                                         &nla_cache,
+                                         &nla_context);
   const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
   for (const RNAPath &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        &rna_pointer, rna_path.path.c_str(), &ptr, &prop);
+        &id_pointer, rna_path.path.c_str(), &ptr, &prop);
     if (!path_resolved) {
+      combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
     }
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
                                                                                         prop);
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
-
     BitVector<> successful_remaps(rna_values.size(), false);
     BKE_animsys_nla_remap_keyframe_values(nla_context,
-                                          &rna_pointer,
+                                          &id_pointer,
                                           prop,
                                           rna_values.as_mutable_span(),
                                           rna_path.index.value_or(-1),
                                           &anim_eval_context,
                                           nullptr,
                                           successful_remaps);
+
     const CombinedKeyingResult result = insert_key_action(bmain,
                                                           action,
-                                                          &rna_pointer,
+                                                          &id_pointer,
                                                           prop,
                                                           channel_group,
                                                           rna_path_id_to_prop->c_str(),
@@ -1032,7 +863,15 @@ CombinedKeyingResult insert_key_rna(Main *bmain,
                                                           successful_remaps);
     combined_result.merge(result);
   }
+
   BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
+
+  if (combined_result.get_count(SingleKeyingResult::SUCCESS) > 0) {
+    DEG_id_tag_update(&action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    if (adt->action != nullptr && adt->action != action) {
+      DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+    }
+  }
 
   return combined_result;
 }

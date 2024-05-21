@@ -405,14 +405,15 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     ID *id = self->ptr.owner_id;
 
     BLI_assert(BKE_id_is_in_global_main(id));
-    CombinedKeyingResult combined_result = insert_keyframe(G_MAIN,
-                                                           *id,
-                                                           group_name,
-                                                           path_full,
-                                                           index,
-                                                           &anim_eval_context,
-                                                           eBezTriple_KeyframeType(keytype),
-                                                           eInsertKeyFlags(options));
+    CombinedKeyingResult combined_result = insert_key_rna(G_MAIN,
+                                                          *id,
+                                                          group_name ? std::optional(group_name) :
+                                                                       std::nullopt,
+                                                          {{path_full, {}, index}},
+                                                          std::nullopt,
+                                                          anim_eval_context,
+                                                          eBezTriple_KeyframeType(keytype),
+                                                          eInsertKeyFlags(options));
     const int success_count = combined_result.get_count(SingleKeyingResult::SUCCESS);
     if (success_count == 0) {
       combined_result.generate_reports(&reports);

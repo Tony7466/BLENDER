@@ -81,25 +81,33 @@ class CombinedKeyingResult {
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
 
 /**
- * \brief Main Insert Key-framing API call.
+ * \brief Main key-frame insertion API.
  *
- * Use this to create any necessary animation data, and then insert a keyframe
- * using the current value being keyframed, in the relevant place.
+ * Insert keys for `id` for all paths in `rna_paths`.  It creates any necessary
+ * animation data (AnimData, Action, ...) if it doesn't already exist in order
+ * to do this.
  *
- * \param flag: Used for special settings that alter the behavior of the keyframe insertion.
- * These include the 'visual' key-framing modes, quick refresh, and extra keyframe filtering.
+ * \param rna_paths: the RNA paths to insert keys for.  Note that an empty array
+ * index is treated as "key all elements" for array properties.
  *
- * \param array_index: The index to key or -1 keys all array indices.
- * \return The number of key-frames inserted.
+ * \param channel_group: the channel group to put any newly created fcurves
+ * under.  If not given, the standard groups for each RNA path are used.
+ *
+ * \param scene_frame: the frame to insert the keys at.  It should be in scene
+ * time, not NLA mapped (NLA mapping is already handled internally by this
+ * function).  If not given, the current scene time is used.
+ *
+ * \returns A summary of the successful and failed keyframe insertions, with
+ * reasons for the failures.
  */
-CombinedKeyingResult insert_keyframe(Main *bmain,
-                                     ID &id,
-                                     const char group[],
-                                     const char rna_path[],
-                                     int array_index,
-                                     const AnimationEvalContext *anim_eval_context,
-                                     eBezTriple_KeyframeType keytype,
-                                     eInsertKeyFlags flag);
+CombinedKeyingResult insert_key_rna(Main *bmain,
+                                    ID &id,
+                                    std::optional<std::string> channel_group,
+                                    const blender::Span<RNAPath> rna_paths,
+                                    std::optional<float> scene_frame,
+                                    const AnimationEvalContext &anim_eval_context,
+                                    eBezTriple_KeyframeType key_type,
+                                    eInsertKeyFlags insert_key_flags);
 
 /**
  * \brief Secondary Insert Key-framing API call.
@@ -254,20 +262,4 @@ CombinedKeyingResult insert_key_action(Main *bmain,
                                        eInsertKeyFlags insert_key_flag,
                                        eBezTriple_KeyframeType key_type,
                                        BitSpan keying_mask);
-
-/**
- * Insert keys to the ID of the given PointerRNA for the given RNA paths. Tries to create an
- * action if none exists yet.
- * \param scene_frame: is expected to be not NLA mapped as that happens within the function.
- * \returns How often keyframe insertion was successful and how often it failed / for which reason.
- */
-CombinedKeyingResult insert_key_rna(Main *bmain,
-                                    ID &id,
-                                    std::optional<std::string> channel_group,
-                                    const blender::Span<RNAPath> rna_paths,
-                                    std::optional<float> scene_frame,
-                                    const AnimationEvalContext &anim_eval_context,
-                                    eBezTriple_KeyframeType key_type,
-                                    eInsertKeyFlags insert_key_flags);
-
 }  // namespace blender::animrig
