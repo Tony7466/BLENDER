@@ -859,6 +859,11 @@ static void grow_shrink_visibility_mesh(Object &object,
   }
 }
 
+static int elem_xy_to_index(int x, int y, int grid_size)
+{
+  return y * grid_size + x;
+}
+
 static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         Object &object,
                                         PBVH &pbvh,
@@ -887,7 +892,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
       for (const int grid_index : grids) {
         for (const int y : IndexRange(key.grid_size)) {
           for (const int x : IndexRange(key.grid_size)) {
-            const int grid_elem_idx = y * key.grid_size + x;
+            const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
             if (orig_grid_hidden[grid_index][grid_elem_idx] != desired_state) {
               continue;
             }
@@ -902,7 +907,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
 
             for (const int j : neighbors.coords.index_range()) {
               const SubdivCCGCoord neighbor = neighbors.coords[j];
-              const int neighbor_grid_elem_idx = neighbor.y * key.grid_size + neighbor.x;
+              const int neighbor_grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
 
               grid_hidden[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
             }
