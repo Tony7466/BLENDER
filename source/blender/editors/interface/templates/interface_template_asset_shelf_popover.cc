@@ -36,49 +36,27 @@ void template_asset_shelf_popover(uiLayout &layout,
     return;
   }
 
+  const ARegion *region = CTX_wm_region(&C);
+  uiBlock *block = uiLayoutGetBlock(&layout);
+
   uiLayout *row = uiLayoutRow(&layout, true);
-  const ARegion *region = CTX_wm_region(&C);
-  const bool use_big_size = !RGN_TYPE_IS_HEADER_ANY(region->regiontype);
-  const short width = [&]() -> short {
-    if (use_big_size) {
-      return UI_UNIT_X * 6;
-    }
-    return UI_UNIT_X * (name.is_empty() ? 1.6f : 7);
-  }();
-  const short height = UI_UNIT_Y * (use_big_size ? 6 : 1);
-
-  uiLayoutSetContextString(row, "asset_shelf_idname", asset_shelf_id);
-  uiLayoutSetUnitsX(row, width / UI_UNIT_X);
-  uiLayoutSetUnitsY(row, height / UI_UNIT_Y);
-  uiItemPopoverPanel(row, &C, "ASSETSHELF_PT_popover_panel", name.c_str(), icon);
-
-#if 0
-  const ARegion *region = CTX_wm_region(&C);
   const bool use_big_size = !RGN_TYPE_IS_HEADER_ANY(region->regiontype);
   const bool use_preview_icon = use_big_size;
-  const short width = [&]() -> short {
-    if (use_big_size) {
-      return UI_UNIT_X * 6;
-    }
-    return UI_UNIT_X * (name.is_empty() ? 1.6f : 7);
-  }();
-  const short height = UI_UNIT_Y * (use_big_size ? 6 : 1);
 
-  uiBlock *block = uiLayoutGetBlock(&layout);
-  uiBut *but = uiDefBlockBut(
-      block, asset_shelf_block_fn, shelf_type, name, 0, 0, width, height, "Select an asset");
+  uiLayoutSetContextString(row, "asset_shelf_idname", asset_shelf_id);
+  if (use_big_size) {
+    uiLayoutSetScaleX(row, 6);
+    uiLayoutSetScaleY(row, 6);
+  }
+  else {
+    uiLayoutSetUnitsX(row, name.is_empty() ? 1.6f : 7);
+  }
+
+  uiItemPopoverPanel(row, &C, "ASSETSHELF_PT_popover_panel", name.c_str(), icon);
+  uiBut *but = static_cast<uiBut *>(block->buttons.last);
   if (use_preview_icon) {
     ui_def_but_icon(but, icon, UI_HAS_ICON | UI_BUT_ICON_PREVIEW);
   }
-  else {
-    ui_def_but_icon(but, icon, UI_HAS_ICON);
-    UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
-  }
-
-  if (ed::asset::shelf::type_poll_for_popup(C, shelf_type) == false) {
-    UI_but_flag_enable(but, UI_BUT_DISABLED);
-  }
-#endif
 }
 
 }  // namespace blender::ui
