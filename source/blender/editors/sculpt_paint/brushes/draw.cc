@@ -37,6 +37,8 @@ struct LocalData {
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float3 &offset,
+                       const Span<float3> positions_eval,
+                       const Span<float3> vert_normals,
                        const PBVHNode &node,
                        Object &object,
                        LocalData &tls,
@@ -47,10 +49,6 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const PBVH &pbvh = *ss.pbvh;
-
-  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
@@ -176,12 +174,24 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
+      const PBVH &pbvh = *ss.pbvh;
+      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
       MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces(sd, brush, offset, *nodes[i], object, tls, positions_sculpt, positions_mesh);
+          calc_faces(sd,
+                     brush,
+                     offset,
+                     positions_eval,
+                     vert_normals,
+                     *nodes[i],
+                     object,
+                     tls,
+                     positions_sculpt,
+                     positions_mesh);
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });

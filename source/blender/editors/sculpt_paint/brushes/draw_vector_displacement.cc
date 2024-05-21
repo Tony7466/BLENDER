@@ -58,6 +58,8 @@ static void calc_brush_texture_colors(SculptSession &ss,
 
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
+                       const Span<float3> positions_eval,
+                       const Span<float3> vert_normals,
                        const PBVHNode &node,
                        Object &object,
                        LocalData &tls,
@@ -68,10 +70,6 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  PBVH &pbvh = *ss.pbvh;
-
-  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
@@ -192,18 +190,30 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 
 void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
+  const SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
+      const PBVH &pbvh = *ss.pbvh;
+      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
       MutableSpan<float3> positions_orig = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> mesh_positions = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces(sd, brush, *nodes[i], object, tls, positions_orig, mesh_positions);
+          calc_faces(sd,
+                     brush,
+                     positions_eval,
+                     vert_normals,
+                     *nodes[i],
+                     object,
+                     tls,
+                     positions_orig,
+                     mesh_positions);
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
