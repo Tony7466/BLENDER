@@ -2661,6 +2661,9 @@ static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
 
     /* Find nodes to the left of boundary. */
     for (bNode *node : tree.all_nodes()) {
+      if (node->is_frame()) {
+        continue;
+      }
       if (final_nodes.contains(node)) {
         continue;
       }
@@ -2723,6 +2726,9 @@ static Vector<bNode *> find_nodes_to_slide_right(bNodeTree &tree,
 
     /* Find nodes to the right of boundary. */
     for (bNode *node : tree.all_nodes()) {
+      if (node->is_frame()) {
+        continue;
+      }
       if (final_nodes.contains(node)) {
         continue;
       }
