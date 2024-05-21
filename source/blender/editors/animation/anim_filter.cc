@@ -1714,8 +1714,8 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
       if (!key->adt || !key->adt->action) {
         return 0;
       }
-      animrig::Action &action = key->adt->action->wrap();
-      FCurve *first_fcu = static_cast<FCurve *>(action.curves.first);
+      bAction *action = key->adt->action;
+      FCurve *first_fcu = static_cast<FCurve *>(action->curves.first);
       for (FCurve *fcu = first_fcu;
            (fcu = animfilter_fcurve_next(
                 ads, fcu, ANIMTYPE_FCURVE, filter_mode, nullptr, (ID *)key));
@@ -1724,7 +1724,7 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
         /* Check if this is a "KEY_NORMAL" type keyframe */
         if (STREQ(fcu->rna_path, "eval_time") || BLI_str_endswith(fcu->rna_path, ".interpolation"))
         {
-          ANIMCHANNEL_NEW_CHANNEL(fcu, ANIMTYPE_FCURVE, (ID *)key, &action.id);
+          ANIMCHANNEL_NEW_CHANNEL(fcu, ANIMTYPE_FCURVE, (ID *)key, &action->id);
         }
       }
     }
