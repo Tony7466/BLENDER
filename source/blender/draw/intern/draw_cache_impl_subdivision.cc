@@ -2098,8 +2098,8 @@ static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache &cache,
   MEM_freeN(per_face_mat_offset);
 }
 
-static bool draw_subdiv_create_requested_buffers(Object *ob,
-                                                 Mesh *mesh,
+static bool draw_subdiv_create_requested_buffers(Object &ob,
+                                                 Mesh &mesh,
                                                  MeshBatchCache &batch_cache,
                                                  MeshBufferCache &mbc,
                                                  const bool is_editmode,
@@ -2113,18 +2113,18 @@ static bool draw_subdiv_create_requested_buffers(Object *ob,
                                                  const bool use_hide,
                                                  OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
-  SubsurfRuntimeData *runtime_data = mesh->runtime->subsurf_runtime_data;
+  SubsurfRuntimeData *runtime_data = mesh.runtime->subsurf_runtime_data;
   BLI_assert(runtime_data && runtime_data->has_gpu_subdiv);
 
   if (runtime_data->settings.level == 0) {
     return false;
   }
 
-  const Mesh *mesh_eval = mesh;
+  const Mesh *mesh_eval = &mesh;
   BMesh *bm = nullptr;
-  if (mesh->runtime->edit_mesh) {
-    mesh_eval = BKE_object_get_editmesh_eval_final(ob);
-    bm = mesh->runtime->edit_mesh->bm;
+  if (mesh.runtime->edit_mesh) {
+    mesh_eval = BKE_object_get_editmesh_eval_final(&ob);
+    bm = mesh.runtime->edit_mesh->bm;
   }
 
   draw_subdiv_invalidate_evaluator_for_orco(runtime_data->subdiv_gpu, mesh_eval);
@@ -2257,10 +2257,10 @@ void DRW_subdivide_loose_geom(DRWSubdivCache &subdiv_cache, const MeshBufferCach
 
 static OpenSubdiv_EvaluatorCache *g_evaluator_cache = nullptr;
 
-void DRW_create_subdivision(Object *ob,
-                            Mesh *mesh,
+void DRW_create_subdivision(Object &ob,
+                            Mesh &mesh,
                             MeshBatchCache &batch_cache,
-                            MeshBufferCache *mbc,
+                            MeshBufferCache &mbc,
                             const bool is_editmode,
                             const bool is_paint_mode,
                             const bool edit_mode_active,
@@ -2284,7 +2284,7 @@ void DRW_create_subdivision(Object *ob,
   if (!draw_subdiv_create_requested_buffers(ob,
                                             mesh,
                                             batch_cache,
-                                            *mbc,
+                                            mbc,
                                             is_editmode,
                                             is_paint_mode,
                                             edit_mode_active,
