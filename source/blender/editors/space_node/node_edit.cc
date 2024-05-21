@@ -2814,8 +2814,6 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
                            &initial_mouse.y);
   UI_view2d_region_to_view(
       &v2d, event->mval[0], event->mval[1], &current_mouse.x, &current_mouse.y);
-  initial_mouse /= UI_SCALE_FAC;
-  current_mouse /= UI_SCALE_FAC;
 
   switch (event->type) {
     case MOUSEMOVE: {
@@ -2825,7 +2823,7 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
         slide_data.nodes_to_slide_right.reset();
       }
 
-      const float node_diff_x = current_mouse.x - initial_mouse.x;
+      const float node_diff_x = (current_mouse.x - initial_mouse.x) * UI_INV_SCALE_FAC;
       if (node_diff_x < 0) {
         if (!slide_data.nodes_to_slide_left.has_value()) {
           slide_data.nodes_to_slide_left = find_nodes_to_slide_left(
