@@ -79,24 +79,20 @@ static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
-  if (pt->poll && (pt->poll(C, pt) == false)) {
-    /* cancel but allow event to pass through, just like operators do */
-    return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
-  }
+  /* Skip panel poll check here. Should usually be done, but requires passing the asset shelf type
+   * name via context store, which again requires a block/layout. Asset shelf type is polled above.
+   */
 
   std::string asset_shelf_id_str = asset_shelf_id;
-#if 0
-  // UI_popup_block_invoke(C, asset_shelf_block_fn, shelf_type, nullptr);
   ui_popover_panel_create(
       C,
       nullptr,
       nullptr,
       [asset_shelf_id_str](bContext *C, uiLayout *layout, void *arg_pt) {
-        // uiLayoutsetP
-        ui_item_paneltype_func(C, layout, arg_pt)
+        uiLayoutSetContextString(layout, "asset_shelf_idname", asset_shelf_id_str);
+        ui_item_paneltype_func(C, layout, arg_pt);
       },
       pt);
-#endif
 
   return OPERATOR_INTERFACE;
 }

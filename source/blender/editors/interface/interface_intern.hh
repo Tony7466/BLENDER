@@ -1001,10 +1001,12 @@ uiPopupBlockHandle *ui_popup_menu_create(
 
 /* `interface_region_popover.cc` */
 
+using uiPopoverCreateFunc = std::function<void(bContext *, uiLayout *, PanelType *)>;
+
 uiPopupBlockHandle *ui_popover_panel_create(bContext *C,
                                             ARegion *butregion,
                                             uiBut *but,
-                                            uiMenuCreateFunc menu_func,
+                                            uiPopoverCreateFunc popover_func,
                                             const PanelType *panel_type);
 
 /* `interface_region_menu_pie.cc` */
