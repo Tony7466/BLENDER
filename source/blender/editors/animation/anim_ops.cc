@@ -704,6 +704,61 @@ static void ANIM_OT_binding_unassign_object(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+static int convert_action_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return OPERATOR_CANCELLED;
+  }
+
+  AnimData *adt = BKE_animdata_from_id(&object->id);
+  if (!adt || !adt->action) {
+    return OPERATOR_CANCELLED;
+  }
+
+  animrig::Action &anim = adt->action->wrap();
+  if (anim.is_empty()) {
+    return OPERATOR_CANCELLED;
+  }
+  Main *bmain = CTX_data_main(C);
+  if (anim.is_action_layered()) {
+    animrig::bake_to_legacy_action(*bmain, anim);
+  }
+  else {
+    animrig::convert_to_layered_action(*bmain, anim);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static bool convert_action_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return false;
+  }
+  return true;
+}
+
+static void ANIM_OT_convert_action(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Convert Action";
+  ot->idname = "ANIM_OT_convert_action";
+  ot->description =
+      "Convert between layered and legacy action on the active object. The conversion from "
+      "layered to legacy is lossy";
+
+  /* api callbacks */
+  ot->exec = convert_action_exec;
+  ot->poll = convert_action_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -750,6 +805,7 @@ void ED_operatortypes_anim()
   WM_operatortype_append(ANIM_OT_keying_set_active_set);
 
   WM_operatortype_append(ANIM_OT_binding_unassign_object);
+  WM_operatortype_append(ANIM_OT_convert_action);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)

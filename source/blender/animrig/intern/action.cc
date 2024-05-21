@@ -11,6 +11,7 @@
 #include "BKE_action.h"
 #include "BKE_fcurve.hh"
 #include "BLI_listbase.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "DEG_depsgraph_build.hh"
 #include "DNA_anim_types.h"
@@ -103,30 +104,53 @@ FCurve *action_fcurve_ensure(Main *bmain,
   return fcu;
 }
 
-Action *convert_to_layered_action(Main &bmain, Action &action)
+Action *convert_to_layered_action(Main &bmain, Action &legacy_action)
 {
-  if (action.is_empty() || action.is_action_layered()) {
+  if (legacy_action.is_empty() || legacy_action.is_action_layered()) {
     return nullptr;
   }
 
   char layered_action_name[MAX_ID_NAME - 2];
-  SNPRINTF(layered_action_name, "%s_layered", action.id.name);
+  SNPRINTF(layered_action_name, "%s_layered", legacy_action.id.name);
   bAction *baction = BKE_action_add(&bmain, layered_action_name);
 
-  return nullptr;
+  Action &converted_action = baction->wrap();
+  Binding &binding = converted_action.binding_add();
+  Layer &layer = converted_action.layer_add(legacy_action.id.name);
+  Strip &strip = layer.strip_add(Strip::Type::Keyframe);
+  KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
+
+  LISTBASE_FOREACH (FCurve *, fcu, &legacy_action.curves) {
+    FCurve &new_fcu = key_strip.fcurve_find_or_create(binding, fcu->rna_path, fcu->array_index);
+    new_fcu.bezt = static_cast<BezTriple *>(
+        MEM_callocN(fcu->totvert * sizeof(BezTriple), "beztriple"));
+    memcpy(new_fcu.bezt, fcu->bezt, sizeof(BezTriple) * fcu->totvert);
+    new_fcu.totvert = fcu->totvert;
+    new_fcu.color_mode = fcu->color_mode;
+    copy_v3_v3(new_fcu.color, fcu->color);
+    new_fcu.active_keyframe_index = fcu->active_keyframe_index;
+    new_fcu.flag = fcu->flag;
+    new_fcu.extend = fcu->extend;
+    new_fcu.auto_smoothing = fcu->auto_smoothing;
+    copy_fmodifiers(&new_fcu.modifiers, &fcu->modifiers);
+  }
+
+  return &converted_action;
 }
 
-Action *bake_to_legacy_action(Main &bmain, Action &action)
+Action *bake_to_legacy_action(Main &bmain, Action &layered_action)
 {
-  if (action.is_empty() || action.is_action_legacy()) {
+  if (layered_action.is_empty() || layered_action.is_action_legacy()) {
     return nullptr;
   }
 
   char legacy_action_name[MAX_ID_NAME - 2];
-  SNPRINTF(legacy_action_name, "%s_legacy", action.id.name);
+  SNPRINTF(legacy_action_name, "%s_legacy", layered_action.id.name);
   bAction *baction = BKE_action_add(&bmain, legacy_action_name);
 
-  return nullptr;
+  Action &converted_action = baction->wrap();
+
+  return &converted_action;
 }
 
 }  // namespace blender::animrig
