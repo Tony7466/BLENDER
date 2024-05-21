@@ -23,61 +23,61 @@ namespace fs = std::filesystem;
 namespace blender::gpu {
 
 class SubprocessShader {
-  GLuint vert = 0;
-  GLuint frag = 0;
-  GLuint program = 0;
-  bool success = false;
+  GLuint vert_ = 0;
+  GLuint frag_ = 0;
+  GLuint program_ = 0;
+  bool success_ = false;
 
  public:
   SubprocessShader(const char *vert_src, const char *frag_src)
   {
     GLint status;
 
-    vert = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vert, 1, &vert_src, nullptr);
-    glCompileShader(vert);
-    glGetShaderiv(vert, GL_COMPILE_STATUS, &status);
+    vert_ = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vert_, 1, &vert_src, nullptr);
+    glCompileShader(vert_);
+    glGetShaderiv(vert_, GL_COMPILE_STATUS, &status);
     if (!status) {
       return;
     }
 
-    frag = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(frag, 1, &frag_src, nullptr);
-    glCompileShader(frag);
-    glGetShaderiv(frag, GL_COMPILE_STATUS, &status);
+    frag_ = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(frag_, 1, &frag_src, nullptr);
+    glCompileShader(frag_);
+    glGetShaderiv(frag_, GL_COMPILE_STATUS, &status);
     if (!status) {
       return;
     }
 
-    program = glCreateProgram();
-    glAttachShader(program, vert);
-    glAttachShader(program, frag);
-    glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    program_ = glCreateProgram();
+    glAttachShader(program_, vert_);
+    glAttachShader(program_, frag_);
+    glLinkProgram(program_);
+    glGetProgramiv(program_, GL_LINK_STATUS, &status);
     if (!status) {
       return;
     }
 
-    success = true;
+    success_ = true;
   }
 
   ~SubprocessShader()
   {
-    glDeleteShader(vert);
-    glDeleteShader(frag);
-    glDeleteProgram(program);
+    glDeleteShader(vert_);
+    glDeleteShader(frag_);
+    glDeleteProgram(program_);
   }
 
-  ShaderBinary *load_binary(void *memory)
+  ShaderBinary *get_binary(void *memory)
   {
     ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(memory);
     bin->size = 0;
     bin->format = 0;
 
-    if (success) {
-      glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH, &bin->size);
+    if (success_) {
+      glGetProgramiv(program_, GL_PROGRAM_BINARY_LENGTH, &bin->size);
       if (bin->size + sizeof(ShaderBinary) < ShaderBinary::max_data_size) {
-        glGetProgramBinary(program, bin->size, nullptr, &bin->format, &bin->data_start);
+        glGetProgramBinary(program_, bin->size, nullptr, &bin->format, &bin->data_start);
       }
     }
 
@@ -176,7 +176,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     }
 
     SubprocessShader shader(vert_src, frag_src);
-    ShaderBinary *binary = shader.load_binary(shared_mem.data);
+    ShaderBinary *binary = shader.get_binary(shared_mem.data);
 
     ipc_sem_increment(&end_semaphore);
 
