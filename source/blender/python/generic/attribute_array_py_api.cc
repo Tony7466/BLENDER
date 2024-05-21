@@ -251,8 +251,10 @@ static PyObject *foreach_getset(BPy_AttributeArray *self,
     return nullptr;
   }
 
-  const bool type_is_compatible = buffer.format ? (*buffer.format == (*data_type).buffer_format) :
-                                                  ((*data_type).buffer_format == 'B');
+  const bool type_is_compatible = buffer.format ?
+                                      (*buffer.format == (*data_type).buffer_format_a ||
+                                       *buffer.format == (*data_type).buffer_format_b) :
+                                      ((*data_type).buffer_format_a == 'B');
   const bool size_matches = (buffer.len ==
                              int64_t(self->data_layer->length) * (*data_type).item_size);
 
@@ -264,7 +266,7 @@ static PyObject *foreach_getset(BPy_AttributeArray *self,
     PyErr_Format(PyExc_TypeError,
                  "%s(array): array type mismatch (expected type '%.1s', got '%.1s')",
                  function_name,
-                 &(*data_type).buffer_format,
+                 &(*data_type).buffer_format_a,
                  buffer.format);
     return nullptr;
   }
@@ -392,7 +394,7 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
     }
 
     Py_DECREF(py_index);
-    const int first_index = maybe_first_index.value();
+    first_index = maybe_first_index.value();
     if (first_index < 0 || first_index >= self->data_layer->length) {
       PyErr_Format(PyExc_IndexError,
                    "AttributeArray.fill(value, indices): index %d out of range, size %d",
