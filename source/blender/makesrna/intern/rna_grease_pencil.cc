@@ -251,9 +251,10 @@ static void rna_GreasePencil_active_group_set(PointerRNA *ptr,
                                               PointerRNA value,
                                               ReportList * /*reports*/)
 {
+  using namespace blender::bke::greasepencil;
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(value.data);
-  if (node->wrap().is_group()) {
+  TreeNode *node = static_cast<TreeNode *>(value.data);
+  if (node->is_group()) {
     grease_pencil->set_active_node(node);
     WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
   }

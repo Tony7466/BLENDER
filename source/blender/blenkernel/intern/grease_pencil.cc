@@ -2665,7 +2665,7 @@ blender::bke::greasepencil::LayerGroup *GreasePencil::get_active_group()
   return &this->active_node->wrap().as_group();
 }
 
-void GreasePencil::set_active_node(GreasePencilLayerTreeNode *node)
+void GreasePencil::set_active_node(blender::bke::greasepencil::TreeNode *node)
 {
   this->active_node = node;
 }
