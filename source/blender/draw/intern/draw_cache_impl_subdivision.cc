@@ -832,8 +832,7 @@ static DRWSubdivCache &mesh_batch_cache_ensure_subdiv_cache(MeshBatchCache &mbc)
 {
   DRWSubdivCache *subdiv_cache = mbc.subdiv_cache;
   if (subdiv_cache == nullptr) {
-    subdiv_cache = static_cast<DRWSubdivCache *>(
-        MEM_callocN(sizeof(DRWSubdivCache), "DRWSubdivCache"));
+    subdiv_cache = MEM_new<DRWSubdivCache>(__func__);
   }
   mbc.subdiv_cache = subdiv_cache;
   return *subdiv_cache;
@@ -2270,14 +2269,8 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, MeshBufferCache *cac
       DRWSubdivLooseVertex &subd_v1 = loose_subd_verts[subd_vert_offset];
       subd_v1.coarse_vertex_index = (i == 0) ? coarse_edge[0] : -1u;
       const float u1 = i * inv_resolution_1;
-      bke::subdiv::mesh_interpolate_position_on_edge(
-          reinterpret_cast<const float(*)[3]>(coarse_positions.data()),
-          coarse_edges.data(),
-          vert_to_edge_map,
-          coarse_edge_index,
-          is_simple,
-          u1,
-          subd_v1.co);
+      subd_v1.co = bke::subdiv::mesh_interpolate_position_on_edge(
+          coarse_positions, coarse_edges, vert_to_edge_map, coarse_edge_index, is_simple, u1);
 
       subd_edge.loose_subdiv_v1_index = subd_vert_offset++;
 
@@ -2285,14 +2278,8 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, MeshBufferCache *cac
       DRWSubdivLooseVertex &subd_v2 = loose_subd_verts[subd_vert_offset];
       subd_v2.coarse_vertex_index = ((i + 1) == resolution - 1) ? coarse_edge[1] : -1u;
       const float u2 = (i + 1) * inv_resolution_1;
-      bke::subdiv::mesh_interpolate_position_on_edge(
-          reinterpret_cast<const float(*)[3]>(coarse_positions.data()),
-          coarse_edges.data(),
-          vert_to_edge_map,
-          coarse_edge_index,
-          is_simple,
-          u2,
-          subd_v2.co);
+      subd_v2.co = bke::subdiv::mesh_interpolate_position_on_edge(
+          coarse_positions, coarse_edges, vert_to_edge_map, coarse_edge_index, is_simple, u2);
 
       subd_edge.loose_subdiv_v2_index = subd_vert_offset++;
     }
