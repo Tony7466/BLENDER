@@ -13,6 +13,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
+#include "BLI_vector.hh"
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
@@ -129,42 +130,41 @@ void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXforma
   }
 
   eUSDXformOpMode xfOpMode = usd_export_context_.export_params.xform_op_mode;
+  blender::Vector<pxr::UsdGeomXformOp> xformOps;
 
-  if (xformOps_.empty()) {
-    switch (xfOpMode) {
-      case USD_XFORM_OP_TRS:
-        xformOps_.push_back(xf.AddTranslateOp());
-        xformOps_.push_back(xf.AddRotateXYZOp());
-        xformOps_.push_back(xf.AddScaleOp());
+  switch (xfOpMode) {
+    case USD_XFORM_OP_TRS:
+      xformOps.append(xf.AddTranslateOp());
+      xformOps.append(xf.AddRotateXYZOp());
+      xformOps.append(xf.AddScaleOp());
 
-        break;
-      case USD_XFORM_OP_TOS:
-        xformOps_.push_back(xf.AddTranslateOp());
-        xformOps_.push_back(xf.AddOrientOp());
-        xformOps_.push_back(xf.AddScaleOp());
-        break;
-      case USD_XFORM_OP_MAT:
-        xformOps_.push_back(xf.AddTransformOp());
-        break;
-      default:
-        printf("Warning: unknown XformOp type\n");
-        xformOps_.push_back(xf.AddTransformOp());
-        break;
-    }
+      break;
+    case USD_XFORM_OP_TOS:
+      xformOps.append(xf.AddTranslateOp());
+      xformOps.append(xf.AddOrientOp());
+      xformOps.append(xf.AddScaleOp());
+      break;
+    case USD_XFORM_OP_MAT:
+      xformOps.append(xf.AddTransformOp());
+      break;
+    default:
+      printf("Warning: unknown XformOp type\n");
+      xformOps.append(xf.AddTransformOp());
+      break;
   }
 
-  if (xformOps_.empty()) {
+  if (xformOps.is_empty()) {
     /* Shouldn't happen. */
     return;
   }
 
   pxr::UsdTimeCode time_code = get_export_time_code();
 
-  if (xformOps_.size() == 1) {
+  if (xformOps.size() == 1) {
     pxr::GfMatrix4d mat_val(xf_matrix);
-    usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), mat_val, time_code);
+    usd_value_writer_.SetAttribute(xformOps[0].GetAttr(), mat_val, time_code);
   }
-  else if (xformOps_.size() == 3) {
+  else if (xformOps.size() == 3) {
 
     float loc[3];
     float quat[4];
@@ -180,23 +180,23 @@ void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXforma
       rot[2] *= 180.0 / M_PI;
 
       pxr::GfVec3d loc_val(loc);
-      usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), loc_val, time_code);
+      usd_value_writer_.SetAttribute(xformOps[0].GetAttr(), loc_val, time_code);
 
       pxr::GfVec3f rot_val(rot);
-      usd_value_writer_.SetAttribute(xformOps_[1].GetAttr(), rot_val, time_code);
+      usd_value_writer_.SetAttribute(xformOps[1].GetAttr(), rot_val, time_code);
 
       pxr::GfVec3f scale_val(scale);
-      usd_value_writer_.SetAttribute(xformOps_[2].GetAttr(), scale_val, time_code);
+      usd_value_writer_.SetAttribute(xformOps[2].GetAttr(), scale_val, time_code);
     }
     else if (xfOpMode == USD_XFORM_OP_TOS) {
       pxr::GfVec3d loc_val(loc);
-      usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), loc_val, time_code);
+      usd_value_writer_.SetAttribute(xformOps[0].GetAttr(), loc_val, time_code);
 
       pxr::GfQuatf quat_val(quat[0], quat[1], quat[2], quat[3]);
-      usd_value_writer_.SetAttribute(xformOps_[1].GetAttr(), quat_val, time_code);
+      usd_value_writer_.SetAttribute(xformOps[1].GetAttr(), quat_val, time_code);
 
       pxr::GfVec3f scale_val(scale);
-      usd_value_writer_.SetAttribute(xformOps_[2].GetAttr(), scale_val, time_code);
+      usd_value_writer_.SetAttribute(xformOps[2].GetAttr(), scale_val, time_code);
     }
   }
 }
