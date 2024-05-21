@@ -470,11 +470,11 @@ RegionViewData region_init(ARegion &region, const int2 &win_size);
 void region_reset(ARegion &region, const RegionViewData &data);
 
 /**
- * Create and offscreen buffer for rendering.
+ * Create and off-screen buffer for rendering.
  */
 GPUOffScreen *image_render_begin(const int2 &win_size);
 /**
- * Finish rendering and convert the offscreen buffer into an image.
+ * Finish rendering and convert the off-screen buffer into an image.
  */
 Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
 
@@ -544,8 +544,7 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 const VArray<ColorGeometry4f> &colors,
                                 const float4x4 &layer_to_world,
                                 int mode,
-                                bool use_xray,
-                                bool fill_strokes);
+                                bool use_xray);
 
 }  // namespace image_render
 
