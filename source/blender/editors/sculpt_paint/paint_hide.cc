@@ -875,11 +875,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
 
   BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
 
-  BitGroupVector<> orig_grid_hidden(grid_hidden.size(), grid_hidden.group_size());
-  for (const int i : grid_hidden.index_range()) {
-    orig_grid_hidden[i].copy_from(grid_hidden[i].as_span());
-  }
-
+  BitGroupVector<> orig_grid_hidden(grid_hidden);
   const bool desired_state = action_to_hide(action);
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
 
