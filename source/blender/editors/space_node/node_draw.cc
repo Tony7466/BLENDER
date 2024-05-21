@@ -1919,7 +1919,7 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
       output << bke::nodeSocketLabel(&socket);
     }
 
-    if ((ntree.type == NTREE_GEOMETRY) && (socket.type != SOCK_CUSTOM)) {
+    if ((ntree.type == NTREE_GEOMETRY) && (StringRef(socket.idname) != "NodeSocketVirtual")) {
       output << ".\n\n";
       output << TIP_(
           "Unknown socket value. Either the socket was not used or its value was not logged "
