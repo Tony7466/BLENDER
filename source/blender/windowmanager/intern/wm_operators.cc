@@ -1631,6 +1631,8 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *user_d
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_MOVEMOUSE_QUIT);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_REGULAR);
 
+  UI_popup_dummy_panel_set(region, block);
+
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, data->width, 0, 0, style);
 
@@ -3470,7 +3472,7 @@ static void redraw_timer_window_swap(bContext *C)
   wmWindow *win = CTX_wm_window(C);
   bScreen *screen = CTX_wm_screen(C);
 
-  CTX_wm_menu_set(C, nullptr);
+  CTX_wm_region_popup_set(C, nullptr);
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     ED_area_tag_redraw(area);
@@ -3516,7 +3518,7 @@ static void redraw_timer_step(bContext *C,
     }
   }
   else if (type == eRTDrawRegionSwap) {
-    CTX_wm_menu_set(C, nullptr);
+    CTX_wm_region_popup_set(C, nullptr);
 
     ED_region_tag_redraw(region);
     wm_draw_update(C);
@@ -3526,7 +3528,7 @@ static void redraw_timer_step(bContext *C,
   else if (type == eRTDrawWindow) {
     bScreen *screen = WM_window_get_active_screen(win);
 
-    CTX_wm_menu_set(C, nullptr);
+    CTX_wm_region_popup_set(C, nullptr);
 
     LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
       CTX_wm_area_set(C, area_iter);
@@ -3704,7 +3706,7 @@ static void previews_id_ensure(bContext *C, Scene *scene, ID *id)
 
   /* Only preview non-library datablocks, lib ones do not pertain to this .blend file!
    * Same goes for ID with no user. */
-  if (!ID_IS_LINKED(id) && (id->us != 0)) {
+  if (ID_IS_EDITABLE(id) && (id->us != 0)) {
     UI_icon_render_id(C, scene, id, ICON_SIZE_ICON, false);
     UI_icon_render_id(C, scene, id, ICON_SIZE_PREVIEW, false);
   }

@@ -31,7 +31,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
     if (!valid_N && (cl.weight > 0.0)) {
       surface_N = cl.N;
     }
-    stack.cl[i] = closure_light_new(cl, V);
+    closure_light_set(stack, i, closure_light_new(cl, V));
   }
 
   /* TODO(fclem): If transmission (no SSS) is present, we could reduce LIGHT_CLOSURE_EVAL_COUNT
@@ -52,7 +52,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
 
     stack.cl[0] = closure_light_new(cl_transmit, V, thickness);
 
-    /* Note: Only evaluates `stack.cl[0]`. */
+    /* NOTE: Only evaluates `stack.cl[0]`. */
     light_eval_transmission(stack, g_data.P, surface_N, V, vPz, thickness);
 
 #  if defined(MAT_SUBSURFACE)
@@ -80,7 +80,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT; i++) {
     ClosureUndetermined cl = g_closure_get(i);
     if (cl.weight > 1e-5) {
-      vec3 direct_light = stack.cl[i].light_shadowed;
+      vec3 direct_light = closure_light_get(stack, i).light_shadowed;
       vec3 indirect_light = lightprobe_eval(samp, cl, g_data.P, V, thickness);
 
       if ((cl.type == CLOSURE_BSDF_TRANSLUCENT_ID ||
