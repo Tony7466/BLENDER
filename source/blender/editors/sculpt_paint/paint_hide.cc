@@ -49,6 +49,8 @@
 /* For undo push. */
 #include "sculpt_intern.hh"
 
+#include "BLI_timeit.hh"
+
 namespace blender::ed::sculpt_paint::hide {
 
 /* -------------------------------------------------------------------- */
@@ -792,8 +794,26 @@ static constexpr float VERTEX_ITERATION_THRESHOLD = 50000.0f;
 
 static void grow_shrink_visibility_mesh(Object &object,
                                         const Span<PBVHNode *> nodes,
-                                        const VisAction action)
+                                        const VisAction action,
+                                        const int iterations)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
+
+  struct DualBuffer {
+    Array<bool> front;
+    Array<bool> back;
+
+    MutableSpan<bool> write_buffer(int count)
+    {
+      return count % 2 == 0 ? back.as_mutable_span() : front.as_mutable_span();
+    }
+
+    Span<bool> read_buffer(int count)
+    {
+      return count % 2 == 0 ? front.as_span() : back.as_span();
+    }
+  };
+
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -809,54 +829,81 @@ static void grow_shrink_visibility_mesh(Object &object,
       ".hide_vert", bke::AttrDomain::Point);
   const VArraySpan hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", bke::AttrDomain::Face, false);
-  Array<bool> orig_hide_vert(hide_vert.span.size());
 
-  array_utils::copy(hide_vert.span.as_span(), orig_hide_vert.as_mutable_span());
+  DualBuffer buffers;
+  buffers.back.reinitialize(hide_vert.span.size());
+  buffers.front.reinitialize(hide_vert.span.size());
+  array_utils::copy(hide_vert.span.as_span(), buffers.back.as_mutable_span());
+  array_utils::copy(hide_vert.span.as_span(), buffers.front.as_mutable_span());
 
-  bool any_changed = false;
   const bool desired_state = action_to_hide(action);
 
-  threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.slice(range)) {
-      undo::push_node(object, node, undo::Type::HideVert);
+  printf(
+      "Hide Mesh: \n\tIterations: %d\n\tState:%s\n", iterations, desired_state ? "true" : "false");
+  for (int i = 0; i < iterations; i++) {
+    Span<bool> read_buffer = buffers.read_buffer(i);
+    MutableSpan<bool> write_buffer = buffers.write_buffer(i);
 
-      Vector<int> &face_indices = all_face_indices.local();
-      const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
-          tri_faces, *node, face_indices);
-      for (const int face_index : indices) {
-        if (!hide_poly[face_index]) {
-          continue;
-        }
+    bool any_changed = false;
 
-        const IndexRange face = faces[face_index];
-        for (const int corner : face) {
-          int vert = corner_verts[corner];
-          if (orig_hide_vert[vert] != desired_state) {
+    threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (PBVHNode *node : nodes.slice(range)) {
+
+        Vector<int> &face_indices = all_face_indices.local();
+        const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
+            tri_faces, *node, face_indices);
+        for (const int face_index : indices) {
+          if (!hide_poly[face_index]) {
             continue;
           }
 
-          any_changed = true;
+          const IndexRange face = faces[face_index];
+          for (const int corner : face) {
+            int vert = corner_verts[corner];
+            if (read_buffer[vert] != desired_state) {
+              continue;
+            }
 
-          const int prev = bke::mesh::face_corner_prev(face, corner);
-          const int prev_vert = corner_verts[prev];
-          hide_vert.span[prev_vert] = desired_state;
+            any_changed = true;
 
-          const int next = bke::mesh::face_corner_next(face, corner);
-          const int next_vert = corner_verts[next];
-          hide_vert.span[next_vert] = desired_state;
+            const int prev = bke::mesh::face_corner_prev(face, corner);
+            const int prev_vert = corner_verts[prev];
+            write_buffer[prev_vert] = desired_state;
+
+            const int next = bke::mesh::face_corner_next(face, corner);
+            const int next_vert = corner_verts[next];
+            write_buffer[next_vert] = desired_state;
+          }
         }
-      }
 
+        BKE_pbvh_node_mark_update_visibility(node);
+        bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
+      }
+    });
+
+    if (any_changed) {
+      flush_face_changes_node(mesh, nodes, write_buffer);
+      flush_edge_changes(mesh, write_buffer);
+    }
+  }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      undo::push_node(object, node, undo::Type::HideVert);
+    }
+  });
+
+  Span<bool> last_buffer = buffers.write_buffer(iterations - 1);
+  array_utils::copy(last_buffer, hide_vert.span);
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
       BKE_pbvh_node_mark_update_visibility(node);
       bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
     }
   });
-
   hide_vert.finish();
-  if (any_changed) {
-    bke::mesh_hide_vert_flush(mesh);
-  }
 }
 
 static int elem_xy_to_index(int x, int y, int grid_size)
@@ -868,59 +915,62 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         Object &object,
                                         PBVH &pbvh,
                                         const Span<PBVHNode *> nodes,
-                                        const VisAction action)
+                                        const VisAction action,
+                                        const int iterations)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
   BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
 
-  BitGroupVector<> orig_grid_hidden(grid_hidden);
   const bool desired_state = action_to_hide(action);
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
 
-  bool any_changed = false;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.slice(range)) {
-      undo::push_node(object, node, undo::Type::HideVert);
-      const Span<int> grids = bke::pbvh::node_grid_indices(*node);
+  for (int i = 0; i < iterations; i++) {
+    bool any_changed = false;
+    BitGroupVector<> orig_grid_hidden(grid_hidden);
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (PBVHNode *node : nodes.slice(range)) {
+        undo::push_node(object, node, undo::Type::HideVert);
+        const Span<int> grids = bke::pbvh::node_grid_indices(*node);
 
-      for (const int grid_index : grids) {
-        for (const int y : IndexRange(key.grid_size)) {
-          for (const int x : IndexRange(key.grid_size)) {
-            const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
-            if (orig_grid_hidden[grid_index][grid_elem_idx] != desired_state) {
-              continue;
-            }
+        for (const int grid_index : grids) {
+          for (const int y : IndexRange(key.grid_size)) {
+            for (const int x : IndexRange(key.grid_size)) {
+              const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
+              if (orig_grid_hidden[grid_index][grid_elem_idx] != desired_state) {
+                continue;
+              }
 
-            SubdivCCGCoord coord{};
-            coord.grid_index = grid_index;
-            coord.x = x;
-            coord.y = y;
+              SubdivCCGCoord coord{};
+              coord.grid_index = grid_index;
+              coord.x = x;
+              coord.y = y;
 
-            SubdivCCGNeighbors neighbors;
-            BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
+              SubdivCCGNeighbors neighbors;
+              BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
 
-            for (const int j : neighbors.coords.index_range()) {
-              const SubdivCCGCoord neighbor = neighbors.coords[j];
-              const int neighbor_grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
+              for (const int j : neighbors.coords.index_range()) {
+                const SubdivCCGCoord neighbor = neighbors.coords[j];
+                const int neighbor_grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
 
-              grid_hidden[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
+                grid_hidden[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
+              }
             }
           }
         }
+
+        any_changed = true;
+
+        BKE_pbvh_node_mark_update_visibility(node);
+        bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
       }
+    });
 
-      any_changed = true;
-
-      BKE_pbvh_node_mark_update_visibility(node);
-      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+    if (any_changed) {
+      multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
+      BKE_pbvh_sync_visibility_from_verts(pbvh, &mesh);
     }
-  });
-
-  if (any_changed) {
-    multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
-    BKE_pbvh_sync_visibility_from_verts(pbvh, &mesh);
   }
 }
 
@@ -939,28 +989,31 @@ static Array<bool> duplicate_visibility(const Object &object)
 static void grow_shrink_visibility_bmesh(Object &object,
                                          PBVH &pbvh,
                                          const Span<PBVHNode *> nodes,
-                                         const VisAction action)
+                                         const VisAction action,
+                                         const int iterations)
 {
 
   SculptSession &ss = *object.sculpt;
-  const Array<bool> prev_visibility = duplicate_visibility(object);
 
-  partialvis_update_bmesh_nodes(object, nodes, action, [&](const BMVert *vert) {
-    int vi = BM_elem_index_get(vert);
-    PBVHVertRef vref = BKE_pbvh_index_to_vertex(pbvh, vi);
-    SculptVertexNeighborIter ni;
+  for (int i = 0; i < iterations; i++) {
+    const Array<bool> prev_visibility = duplicate_visibility(object);
+    partialvis_update_bmesh_nodes(object, nodes, action, [&](const BMVert *vert) {
+      int vi = BM_elem_index_get(vert);
+      PBVHVertRef vref = BKE_pbvh_index_to_vertex(pbvh, vi);
+      SculptVertexNeighborIter ni;
 
-    bool should_change = false;
-    SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vref, ni) {
-      if (prev_visibility[ni.index] == action_to_hide(action)) {
-        /* Not returning instantly to avoid leaking memory. */
-        should_change = true;
-        break;
+      bool should_change = false;
+      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vref, ni) {
+        if (prev_visibility[ni.index] == action_to_hide(action)) {
+          /* Not returning instantly to avoid leaking memory. */
+          should_change = true;
+          break;
+        }
       }
-    }
-    SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
-    return should_change;
-  });
+      SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
+      return should_change;
+    });
+  }
 }
 
 static int visibility_filter_exec(bContext *C, wmOperator *op)
@@ -987,18 +1040,16 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
   }
 
   undo::push_begin(object, op);
-  for (int i = 0; i < iterations; i++) {
-    switch (BKE_pbvh_type(pbvh)) {
-      case PBVH_FACES:
-        grow_shrink_visibility_mesh(object, nodes, mode);
-        break;
-      case PBVH_GRIDS:
-        grow_shrink_visibility_grid(depsgraph, object, pbvh, nodes, mode);
-        break;
-      case PBVH_BMESH:
-        grow_shrink_visibility_bmesh(object, pbvh, nodes, mode);
-        break;
-    }
+  switch (BKE_pbvh_type(pbvh)) {
+    case PBVH_FACES:
+      grow_shrink_visibility_mesh(object, nodes, mode, iterations);
+      break;
+    case PBVH_GRIDS:
+      grow_shrink_visibility_grid(depsgraph, object, pbvh, nodes, mode, iterations);
+      break;
+    case PBVH_BMESH:
+      grow_shrink_visibility_bmesh(object, pbvh, nodes, mode, iterations);
+      break;
   }
   undo::push_end(object);
 
