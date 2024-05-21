@@ -318,7 +318,7 @@ static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache &subdiv_cac
                                      subdiv_full_vbo_size(mr, subdiv_cache));
   const int verts_per_edge = subdiv_verts_per_coarse_edge(subdiv_cache);
 
-  MutableSpan<EditLoopData> edge_data = vbo_data.slice(subdiv_cache.num_subdiv_edges,
+  MutableSpan<EditLoopData> edge_data = vbo_data.slice(subdiv_cache.num_subdiv_loops,
                                                        loose_edges.size() * verts_per_edge);
   threading::parallel_for(loose_edges.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
@@ -342,15 +342,13 @@ static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache &subdiv_cac
   MutableSpan<EditLoopData> vert_data = vbo_data.take_back(loose_verts.size());
   threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
-      const int vert_index = loose_verts[i];
-      if (BMVert *vert = mr.e_origindex ? bm_original_vert_get(mr, vert_index) :
-                                          BM_vert_at_index(mr.bm, vert_index))
+      EditLoopData value{};
+      if (BMVert *vert = mr.v_origindex ? bm_original_vert_get(mr, loose_verts[i]) :
+                                          BM_vert_at_index(mr.bm, loose_verts[i]))
       {
-        mesh_render_data_vert_flag(mr, vert, &vert_data[i]);
+        mesh_render_data_vert_flag(mr, vert, &value);
       }
-      else {
-        vert_data[i] = {};
-      }
+      vert_data[i] = value;
     }
   });
 }
