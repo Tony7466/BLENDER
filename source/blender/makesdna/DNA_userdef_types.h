@@ -637,7 +637,8 @@ typedef struct bUserExtensionRepo {
   char module[48];
 
   /**
-   * Secret access token for remote repositories.
+   * Secret access token for remote repositories (allocated).
+   * Only use when #USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN is set.
    */
   char *access_token;
 
