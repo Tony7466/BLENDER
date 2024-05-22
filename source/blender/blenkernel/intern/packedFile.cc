@@ -841,10 +841,15 @@ bool BKE_packedfile_id_check(const ID *id)
 
 void BKE_packedfile_id_unpack(Main *bmain, ID *id, ReportList *reports, enum ePF_FileStatus how)
 {
+  /* Dont unpack resources that are packed in linked IDs. */
+  if (ID_IS_LINKED(id)) {
+    return;
+  }
+
   switch (GS(id->name)) {
     case ID_IM: {
       Image *ima = (Image *)id;
-      if (BKE_image_has_packedfile(ima) && !ID_IS_LINKED(ima)) {
+      if (BKE_image_has_packedfile(ima)) {
         BKE_packedfile_unpack_image(bmain, reports, ima, how);
       }
       break;
