@@ -1636,8 +1636,6 @@ GLCompilerWorker::~GLCompilerWorker()
   compiler_ = nullptr;
 }
 
-#include <chrono>
-
 void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
 {
   BLI_assert(state_ == AVAILABLE);
