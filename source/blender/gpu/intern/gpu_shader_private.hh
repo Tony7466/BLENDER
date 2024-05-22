@@ -171,7 +171,7 @@ class ShaderCompiler {
   };
 
  public:
-  virtual Shader *compile(const shader::ShaderCreateInfo &info);
+  Shader *compile(const shader::ShaderCreateInfo &info);
 
   virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) = 0;
   virtual bool batch_is_ready(BatchHandle handle) = 0;
