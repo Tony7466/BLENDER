@@ -99,6 +99,7 @@ void Instance::init(const int2 &output_res,
   sampling.init(scene);
   camera.init();
   film.init(output_res, output_rect);
+  render_buffers.init();
   ambient_occlusion.init();
   velocity.init();
   raytracing.init();
@@ -139,6 +140,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   /* Film isn't used but init to avoid side effects in other module. */
   rcti empty_rect{0, 0, 0, 0};
   film.init(int2(1), &empty_rect);
+  render_buffers.init();
   velocity.init();
   depth_of_field.init();
   shadows.init();
@@ -189,9 +191,6 @@ void Instance::begin_sync()
   if (!shaders_are_ready_) {
     return;
   }
-
-  /* This should be renamed to init()?*/
-  render_buffers.sync();
 
   /* Needs to be first for sun light parameters. */
   world.sync();
