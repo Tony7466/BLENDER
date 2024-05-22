@@ -3580,8 +3580,12 @@ static bool subtree_contains_object(ListBase *lb)
   return false;
 }
 
-static void outliner_draw_hierarchy_line(
-    const uint pos, const int x, const int y1, const int y2, const bool draw_dashed)
+static void outliner_draw_hierarchy_line(const uint pos,
+                                         const int x,
+                                         const int y1,
+                                         const int y2,
+                                         const bool draw_dashed,
+                                         const bool draw_wide)
 {
   /* Small vertical padding. */
   const short line_padding = UI_UNIT_Y / 4.0f;
@@ -3589,12 +3593,21 @@ static void outliner_draw_hierarchy_line(
   /* >= is 1.0 for un-dashed lines. */
   immUniform1f("udash_factor", draw_dashed ? 0.5f : 1.0f);
 
-  immBegin(GPU_PRIM_LINES, 2);
-  /* Intentionally draw from top to bottom, so collapsing a child item doesn't make the dashes
-   * appear to move. */
-  immVertex2f(pos, x, y2 + line_padding);
-  immVertex2f(pos, x, y1 - line_padding);
-  immEnd();
+  if (draw_wide && !draw_dashed) {
+    immRectf(pos,
+             float(x) - U.pixelsize,
+             float(y1 - line_padding),
+             float(x) + U.pixelsize,
+             float(y2 + line_padding));
+  }
+  else {
+    immBegin(GPU_PRIM_LINES, 2);
+    /* Intentionally draw from top to bottom, so collapsing a child item doesn't make the dashes
+     * appear to move. */
+    immVertex2f(pos, x, y2 + line_padding);
+    immVertex2f(pos, x, y1 - line_padding);
+    immEnd();
+  }
 }
 
 static void outliner_draw_hierarchy_lines_recursive(uint pos,
@@ -3658,7 +3671,8 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
     if (draw_hierarchy_line) {
       const short alpha_fac = element_should_draw_faded(tvc, te, tselem) ? 127 : 255;
       uchar line_color[4];
-      if (color_tag != COLLECTION_COLOR_NONE) {
+      const bool has_color = (color_tag != COLLECTION_COLOR_NONE);
+      if (has_color) {
         copy_v4_v4_uchar(line_color, btheme->collection_color[color_tag].color);
       }
       else {
@@ -3667,7 +3681,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
 
       line_color[3] = alpha_fac;
       immUniformColor4ubv(line_color);
-      outliner_draw_hierarchy_line(pos, startx, y, *starty, is_object_line);
+      outliner_draw_hierarchy_line(pos, startx, y, *starty, is_object_line, has_color);
     }
   }
 }
