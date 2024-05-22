@@ -14,6 +14,7 @@
 #include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
+#include "UI_interface.hh"
 #include "UI_interface_c.hh"
 #include "UI_resources.hh"
 #include "interface_intern.hh"
@@ -59,33 +60,26 @@ void template_asset_shelf_popover(uiLayout &layout,
   }
 }
 
-}  // namespace blender::ui
-
-using namespace blender;
-
-static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+bool asset_shelf_popover_invoke(bContext &C, StringRef asset_shelf_idname, ReportList &reports)
 {
-  char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "asset_shelf", nullptr, 0, nullptr);
-  BLI_SCOPED_DEFER([&]() { MEM_freeN(asset_shelf_id); });
-
-  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_id);
-  if (ed::asset::shelf::type_poll_for_popup(*C, shelf_type) == false) {
-    return OPERATOR_CANCELLED;
+  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(asset_shelf_idname);
+  if (ed::asset::shelf::type_poll_for_popup(C, shelf_type) == false) {
+    return false;
   }
 
   PanelType *pt = WM_paneltype_find("ASSETSHELF_PT_popover_panel", true);
   if (pt == nullptr) {
-    BKE_reportf(op->reports, RPT_ERROR, "Asset shelf popover panel type not found");
-    return OPERATOR_CANCELLED;
+    BKE_reportf(&reports, RPT_ERROR, "Asset shelf popover panel type not found");
+    return false;
   }
 
   /* Skip panel poll check here. Should usually be done, but requires passing the asset shelf type
-   * name via context store, which again requires a block/layout. Asset shelf type is polled above.
-   */
+   * name via some context-store, but there's nothing to provide that here. Asset shelf type is
+   * polled above, so it's okay. */
 
-  std::string asset_shelf_id_str = asset_shelf_id;
+  std::string asset_shelf_id_str = asset_shelf_idname;
   ui_popover_panel_create(
-      C,
+      &C,
       nullptr,
       nullptr,
       [asset_shelf_id_str](bContext *C, uiLayout *layout, void *arg_pt) {
@@ -94,25 +88,14 @@ static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent
       },
       pt);
 
-  return OPERATOR_INTERFACE;
+  return true;
 }
 
-void UI_OT_asset_shelf_popover(wmOperatorType *ot)
+}  // namespace blender::ui
+
+using namespace blender;
+
+std::optional<StringRefNull> UI_asset_shelf_idname_from_button_context(const uiBut *but)
 {
-  /* identifiers */
-  ot->name = "Asset Shelf Popover";
-  ot->idname = "UI_OT_asset_shelf_popover";
-
-  /* api callbacks */
-  ot->invoke = asset_shelf_popover_invoke;
-
-  /* flags */
-  ot->flag = OPTYPE_INTERNAL;
-
-  RNA_def_string(ot->srna,
-                 "asset_shelf",
-                 nullptr,
-                 0,
-                 "Asset Shelf Name",
-                 "Identifier of the asset shelf to display");
+  return UI_but_context_string_get(but, "asset_shelf_idname");
 }

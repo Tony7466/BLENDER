@@ -5697,7 +5697,7 @@ def km_sculpt(params):
         ("brush.asset_select", {"type": 'M', "value": 'PRESS'},
          {"properties": [("asset_library_type", 'ESSENTIALS'),
                          ("relative_asset_identifier", "brushes/essentials_brushes.blend/Brush/Mask")]}),
-        ("ui.asset_shelf_popover", {"type": 'SPACE', "value": 'PRESS', "shift": True},
+        ("wm.call_asset_shelf_popover", {"type": 'SPACE', "value": 'PRESS', "shift": True},
          {"properties": [("asset_shelf", "VIEW3D_AST_brush_sculpt")]}),
     ])
 

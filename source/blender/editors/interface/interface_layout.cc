@@ -6106,6 +6106,11 @@ PanelType *UI_but_paneltype_get(const uiBut *but)
   return nullptr;
 }
 
+std::optional<blender::StringRefNull> UI_but_asset_shelf_type_idname_get(const uiBut *but)
+{
+  return UI_asset_shelf_idname_from_button_context(but);
+}
+
 void UI_menutype_draw(bContext *C, MenuType *mt, uiLayout *layout)
 {
   Menu menu{};
