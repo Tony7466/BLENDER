@@ -954,7 +954,14 @@ void blo_do_versions_userdef(UserDef *userdef)
     BKE_preferences_extension_repo_add_default_user(userdef);
   }
 
-  if (!USER_VERSION_ATLEAST(402, 29)) {
+  if (!USER_VERSION_ATLEAST(402, 42)) {
+    /* 80 was the old default. */
+    if (userdef->node_margin == 80) {
+      userdef->node_margin = 40;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 43)) {
     userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
   }
 
