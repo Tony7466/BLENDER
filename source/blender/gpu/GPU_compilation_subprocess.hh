@@ -10,11 +10,11 @@ namespace blender::gpu {
 constexpr size_t compilation_subprocess_shared_memory_size = 1024 * 1024 * 5; /* 5mB */
 
 struct ShaderBinaryHeader {
+  /* Size of the shader binary data. */
+  int32_t size;
   /* Magic number that identifies the format of this shader binary (Driver-defined).
    * This (and data_size) is set to 0 when the shader has failed to compile. */
   uint32_t format;
-  /* Size of the shader binary data. */
-  int32_t size;
   /* When casting a shared memory pool into a ShaderBinaryHeader*, this is the first byte of the
    * shader binary data. */
   uint8_t data_start;
