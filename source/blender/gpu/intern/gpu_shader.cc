@@ -786,7 +786,7 @@ void Shader::set_framebuffer_srgb_target(int use_srgb_to_linear)
 /** \name ShaderCompiler
  * \{ */
 
-Shader *ShaderCompilerBase::compile(const shader::ShaderCreateInfo &info)
+Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
 {
   using namespace blender::gpu::shader;
   const_cast<ShaderCreateInfo &>(info).finalize();
@@ -914,13 +914,13 @@ Shader *ShaderCompilerBase::compile(const shader::ShaderCreateInfo &info)
   return shader;
 }
 
-ShaderCompiler::~ShaderCompiler()
+ShaderCompilerGeneric::~ShaderCompilerGeneric()
 {
   /* Ensure all the requested batches have been retrieved. */
   BLI_assert(batches.is_empty());
 }
 
-BatchHandle ShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
+BatchHandle ShaderCompilerGeneric::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
 {
   BatchHandle handle = next_batch_handle++;
   batches.add(handle, {{}, infos, true});
@@ -933,13 +933,13 @@ BatchHandle ShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *>
   return handle;
 }
 
-bool ShaderCompiler::batch_is_ready(BatchHandle handle)
+bool ShaderCompilerGeneric::batch_is_ready(BatchHandle handle)
 {
   bool is_ready = batches.lookup(handle).is_ready;
   return is_ready;
 }
 
-Vector<Shader *> ShaderCompiler::batch_finalize(BatchHandle &handle)
+Vector<Shader *> ShaderCompilerGeneric::batch_finalize(BatchHandle &handle)
 {
   Vector<Shader *> shaders = batches.pop(handle).shaders;
   handle = 0;

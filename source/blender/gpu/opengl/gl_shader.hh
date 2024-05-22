@@ -238,7 +238,7 @@ class GLCompilerWorker {
   void release();
 };
 
-class GLShaderCompiler : public ShaderCompilerBase {
+class GLShaderCompiler : public ShaderCompiler {
  private:
   std::mutex mutex_;
   Vector<GLCompilerWorker *> workers_;

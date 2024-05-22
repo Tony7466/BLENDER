@@ -35,7 +35,7 @@ class Context {
   StateManager *state_manager = nullptr;
   Immediate *imm = nullptr;
 
-  ShaderCompilerBase *compiler = nullptr;
+  ShaderCompiler *compiler = nullptr;
 
   /**
    * All 4 window frame-buffers.

@@ -161,7 +161,7 @@ static inline const Shader *unwrap(const GPUShader *vert)
   return reinterpret_cast<const Shader *>(vert);
 }
 
-class ShaderCompilerBase {
+class ShaderCompiler {
  protected:
   struct Sources {
     std::string vert;
@@ -180,7 +180,7 @@ class ShaderCompilerBase {
   virtual void precompile_specializations(Vector<ShaderSpecialization> /*specializations*/){};
 };
 
-class ShaderCompiler : public ShaderCompilerBase {
+class ShaderCompilerGeneric : public ShaderCompiler {
  private:
   struct Batch {
     Vector<Shader *> shaders;
@@ -191,7 +191,7 @@ class ShaderCompiler : public ShaderCompilerBase {
   Map<BatchHandle, Batch> batches;
 
  public:
-  ~ShaderCompiler();
+  ~ShaderCompilerGeneric();
 
   virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;

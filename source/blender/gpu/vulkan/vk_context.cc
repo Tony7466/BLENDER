@@ -37,7 +37,7 @@ VKContext::VKContext(void *ghost_window,
   back_left = framebuffer;
   active_fb = framebuffer;
 
-  compiler = new ShaderCompiler();
+  compiler = new ShaderCompilerGeneric();
 }
 
 VKContext::~VKContext()
