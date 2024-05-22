@@ -1,2 +1,3 @@
 Referenced by pull request #121982, Fix #121944: Overlay Text Shadow not disabled after use
 Referenced by issue #121944, Text artifacts if theme text shadow size is 0
+Referenced by commit 374a84e10e34e161f457e1f11d037408bf9ac820, Fix #121944: Overlay Text Shadow not disabled after use
