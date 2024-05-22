@@ -6124,8 +6124,8 @@ static void rna_def_userdef_system(BlenderRNA *brna)
                            "Max Shader Compilation Subprocesses",
                            "Max number of parallel shader compilation subprocesses, "
                            "clamped at the max threads supported by the CPU "
-                           "(0 disables subprocess shader compilation) "
-                           "(requires restarting Blender for changes to take effect)");
+                           "(requires restarting Blender for changes to take effect). "
+                           "Setting it to 0 disables subprocess shader compilation ");
 
   /* Audio */
 
