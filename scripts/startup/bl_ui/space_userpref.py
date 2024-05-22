@@ -2169,8 +2169,10 @@ class USERPREF_PT_extensions_repos(Panel):
                 # valid UTF-8 which will raise a Python exception when passed in as text.
                 sub.prop(active_repo, "directory", text="")
 
-            row = layout_panel.row(align=True, heading="Authentication")
-            row.prop(active_repo, "use_access_token")
+            if active_repo.use_remote_url:
+                row = layout_panel.row(align=True, heading="Authentication")
+                row.prop(active_repo, "use_access_token")
+
             layout_panel.prop(active_repo, "use_cache")
             layout_panel.separator()
 
