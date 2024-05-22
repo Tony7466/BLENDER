@@ -328,11 +328,11 @@ static void interpolate_attribute_from_two_curves(const CurvesGeometry &from_cur
   });
 }
 
-static void interpolate_curves(const CurvesGeometry &from_curves,
-                               const CurvesGeometry &to_curves,
-                               const IndexMask &selection,
-                               const float mix_factor,
-                               CurvesGeometry &dst_curves)
+void interpolate_curves(const CurvesGeometry &from_curves,
+                        const CurvesGeometry &to_curves,
+                        const IndexMask &selection,
+                        const float mix_factor,
+                        CurvesGeometry &dst_curves)
 {
   if (from_curves.curves_range().is_empty() || to_curves.curves_range().is_empty()) {
     return;
@@ -488,7 +488,10 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
   const int dst_point_num = dst_curve_offsets.last();
 
   CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
-  dst_curves.offsets_for_write().copy_from(dst_curve_offsets);
+  /* Offsets are empty when there are no curves. */
+  if (dst_curve_num > 0) {
+    dst_curves.offsets_for_write().copy_from(dst_curve_offsets);
+  }
 
   interpolate_curves(from_curves, to_curves, selection, mix_factor, dst_curves);
 
