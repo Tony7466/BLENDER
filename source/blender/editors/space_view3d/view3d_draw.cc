@@ -1503,6 +1503,9 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
     float text_color[4], shadow_color[4];
     ED_view3d_text_colors_get(scene, v3d, text_color, shadow_color);
     BLF_color4fv(font_id, text_color);
+    BLF_enable(font_id, BLF_SHADOW);
+    BLF_shadow_offset(font_id, 0, 0);
+    BLF_shadow(font_id, FontShadowType::Outline, shadow_color);
 
     if ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
       if ((U.uiflag & USER_SHOW_FPS) && ED_screen_animation_no_scrub(wm)) {
