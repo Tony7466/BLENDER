@@ -24,7 +24,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
   /* When modeling object thickness as a sphere, the outgoing rays are distributed uniformly
    * over the sphere. We don't want the RAY_BIAS in this case. */
   if (cl.type != CLOSURE_BSDF_TRANSLUCENT_ID || thickness <= 0.0) {
-    random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - rng_bias);
+    random_point_on_cylinder.x = 1.0 - random_point_on_cylinder.x * (1.0 - rng_bias);
   }
 
   if (thickness != 0.0) {

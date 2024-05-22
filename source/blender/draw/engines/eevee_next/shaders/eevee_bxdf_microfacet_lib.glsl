@@ -24,6 +24,7 @@ float bxdf_ggx_smith_G1(float NX, float a2)
  * Returns a tangent space reflection or refraction direction following the GGX distribution.
  *
  * \param rand: random point on the unit cylinder (result of sample_cylinder).
+ *              The Z component can be biased towards 1.
  * \param alpha: roughness parameter.
  * \param Vt: View vector in tangent space.
  * \param do_reflection: true is sampling reflection.
@@ -71,7 +72,7 @@ BsdfSample bxdf_ggx_sample_visible_normals(
   float k = (1.0 - a2) * s2 / (s2 + a2 * square(Vt.z));
 
   /* Sample a spherical cap in (-Vh.z, 1]. */
-  float cos_theta = mix((do_reflection) ? -Vh.z * k : -Vh.z, 1.0, 1.0 - rand.x);
+  float cos_theta = mix((do_reflection) ? -Vh.z * k : -Vh.z, 1.0, rand.x);
   float sin_theta = sqrt(saturate(1.0 - square(cos_theta)));
   vec3 Lh = vec3(sin_theta * rand.yz, cos_theta);
 

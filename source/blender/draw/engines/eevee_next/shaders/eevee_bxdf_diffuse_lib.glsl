@@ -10,6 +10,13 @@
 /** \name Diffuse BSDF
  * \{ */
 
+/**
+ * Returns a tangent space diffuse direction following the Lambertian distribution.
+ *
+ * \param rand: random point on the unit cylinder (result of sample_cylinder).
+ *              The Z component can be biased towards 1.
+ * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
+ */
 BsdfSample bxdf_diffuse_sample(vec3 rand)
 {
   float cos_theta = safe_sqrt(rand.x);
@@ -32,6 +39,14 @@ BsdfEval bxdf_diffuse_eval(vec3 N, vec3 L)
 /** \name Translucent BSDF
  * \{ */
 
+/**
+ * Returns a tangent space diffuse direction following and inverted Lambertian distribution.
+ *
+ * \param rand: random point on the unit cylinder (result of sample_cylinder).
+ *              The Z component can be biased towards 1.
+ * \param thickness: Thickness of the object. 0 is considered thin.
+ * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
+ */
 BsdfSample bxdf_translucent_sample(vec3 rand, float thickness)
 {
   if (thickness > 0.0) {
