@@ -27,49 +27,57 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
     random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - rng_bias);
   }
 
+  if (thickness != 0.0) {
+    switch (cl.type) {
+      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
+        ClosureRefraction cl_refr = to_closure_refraction(cl);
+        float apparent_roughness = refraction_roughness_remapping(cl_refr.roughness, cl_refr.ior);
+        vec3 L = refraction_dominant_dir(cl.N, V, cl_refr.ior, apparent_roughness);
+        ThicknessIsect isect = thickness_shape_intersect(thickness, cl.N, L);
+        cl.N = -isect.hit_N;
+        // P += isect.hit_P;
+        V = -L;
+      } break;
+
+      case CLOSURE_BSDF_TRANSLUCENT_ID:
+        /* Ray direction is distributed on the whole sphere.
+         * Move the ray origin to the sphere surface (with bias to avoid self-intersection). */
+        // P += (ray.direction - cl.N) * thickness * 0.505;
+        break;
+      default:
+        break;
+    }
+  }
+
   mat3 tangent_to_world = from_up_axis(cl.N);
 
   BsdfSample samp;
+  samp.pdf = 0.0;
+  samp.direction = vec3(0.0);
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
       samp = bxdf_translucent_sample(random_point_on_cylinder, thickness);
-      samp.direction = tangent_to_world * samp.direction;
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
-    case CLOSURE_BSDF_DIFFUSE_ID: {
+    case CLOSURE_BSDF_DIFFUSE_ID:
       samp = bxdf_diffuse_sample(random_point_on_cylinder);
-      samp.direction = tangent_to_world * samp.direction;
       break;
-    }
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
-      float roughness = to_closure_reflection(cl).roughness;
-      vec3 Vt = V * tangent_to_world;
-      samp = bxdf_ggx_sample_reflection(random_point_on_cylinder, Vt, square(roughness));
-      samp.direction = tangent_to_world * samp.direction;
+      samp = bxdf_ggx_sample_reflection(random_point_on_cylinder,
+                                        V * tangent_to_world,
+                                        square(to_closure_reflection(cl).roughness));
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      float ior = to_closure_refraction(cl).ior;
-      float roughness = to_closure_refraction(cl).roughness;
-      if (thickness != 0.0) {
-        float apparent_roughness = refraction_roughness_remapping(roughness, ior);
-        vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
-        /* NOTE(fclem): Tracing origin is modified in the trace shader. */
-        cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
-        ior = 1.0 / ior;
-        V = -L;
-        tangent_to_world = from_up_axis(cl.N);
-      }
-      vec3 Vt = V * tangent_to_world;
-      samp = bxdf_ggx_sample_transmission(random_point_on_cylinder, Vt, square(roughness), ior);
-      samp.direction = tangent_to_world * samp.direction;
+      samp = bxdf_ggx_sample_transmission(random_point_on_cylinder,
+                                          V * tangent_to_world,
+                                          square(to_closure_refraction(cl).roughness),
+                                          to_closure_refraction(cl).ior,
+                                          thickness);
       break;
     }
-    case CLOSURE_NONE_ID:
-      /* TODO(fclem): Assert. */
-      samp.pdf = 0.0;
-      break;
   }
+  samp.direction = tangent_to_world * samp.direction;
 
   return samp;
 }

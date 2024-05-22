@@ -123,14 +123,20 @@ BsdfSample bxdf_ggx_sample_reflection(vec3 rand, vec3 Vt, float alpha)
   return bxdf_ggx_sample_visible_normals(rand, Vt, alpha, 1.0, true);
 }
 
-BsdfSample bxdf_ggx_sample_transmission(vec3 rand, vec3 Vt, float alpha, float ior)
+BsdfSample bxdf_ggx_sample_transmission(
+    vec3 rand, vec3 Vt, float alpha, float ior, float thickness)
 {
+  if (thickness != 0.0) {
+    ior = 1.0 / ior;
+  }
   return bxdf_ggx_sample_visible_normals(rand, Vt, alpha, ior, false);
 }
 
 /* Compute the GGX BxDF without the Fresnel term, multiplied by the cosine foreshortening term. */
 BsdfEval bxdf_ggx_eval(vec3 N, vec3 L, vec3 V, float alpha, float eta, const bool do_reflection)
 {
+  alpha = max(square(BSDF_ROUGHNESS_THRESHOLD), alpha);
+
   float LV = dot(L, V);
   float NV = dot(N, V);
   /* For transmission, `L` lies in the opposite hemisphere as `H`, therefore negate `L`. */
@@ -239,8 +245,12 @@ BsdfEval bxdf_ggx_eval_reflection(vec3 N, vec3 L, vec3 V, float alpha)
   return bxdf_ggx_eval(N, L, V, alpha, 1.0, true);
 }
 
-BsdfEval bxdf_ggx_eval_transmission(vec3 N, vec3 L, vec3 V, float alpha, float ior)
+BsdfEval bxdf_ggx_eval_transmission(
+    vec3 N, vec3 L, vec3 V, float alpha, float ior, float thickness)
 {
+  if (thickness != 0.0) {
+    ior = 1.0 / ior;
+  }
   return bxdf_ggx_eval(N, L, V, alpha, ior, false);
 }
 

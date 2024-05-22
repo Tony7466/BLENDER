@@ -33,21 +33,20 @@ float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
   vec3 Vt = V * tangent_to_world;
   vec3 Lt = L * tangent_to_world;
   switch (cl.type) {
-    case CLOSURE_BSDF_TRANSLUCENT_ID: {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
       return bxdf_translucent_eval(cl.N, L, thickness).pdf;
-    }
     case CLOSURE_BSSRDF_BURLEY_ID:
-    case CLOSURE_BSDF_DIFFUSE_ID: {
+      /* TODO(fclem): Sampled BSSDF. */
       return bxdf_diffuse_eval(cl.N, L).pdf;
-    }
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      return bxdf_diffuse_eval(cl.N, L).pdf;
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
-      float roughness = max(BSDF_ROUGHNESS_THRESHOLD, to_closure_reflection(cl).roughness);
-      return bxdf_ggx_eval_reflection(cl.N, L, V, square(roughness)).pdf;
+      ClosureReflection cl_ = to_closure_reflection(cl);
+      return bxdf_ggx_eval_reflection(cl.N, L, V, square(cl_.roughness)).pdf;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      float ior = to_closure_refraction(cl).ior;
-      float roughness = max(BSDF_ROUGHNESS_THRESHOLD, to_closure_refraction(cl).roughness);
-      return bxdf_ggx_eval_transmission(cl.N, L, V, square(roughness), ior).pdf;
+      ClosureRefraction cl_ = to_closure_refraction(cl);
+      return bxdf_ggx_eval_transmission(cl.N, L, V, square(cl_.roughness), cl_.ior, thickness).pdf;
     }
   }
   /* TODO(fclem): Assert. */
@@ -65,7 +64,6 @@ void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
       float apparent_roughness = refraction_roughness_remapping(roughness, ior);
       vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
       cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
-      cl.data.y = 1.0 / ior;
       V = -L;
     } break;
     default:
