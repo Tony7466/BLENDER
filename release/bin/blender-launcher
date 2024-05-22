@@ -1,5 +1,5 @@
 #!/bin/sh
-BF_DIST_BIN=$(dirname "$0")
+BF_DIST_BIN=$(dirname "$(realpath "$0")")
 BF_PROGRAM="blender"
 
 # Add own lib folder first, because Steam or other environments may set an
