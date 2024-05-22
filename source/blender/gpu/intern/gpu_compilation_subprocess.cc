@@ -104,26 +104,14 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
   CLG_init();
 
-  ipc_sharedmemory_ shared_mem = {0};
-  ipc_mem_init(&shared_mem, subprocess_name, compilation_subprocess_shared_memory_size);
-  if (ipc_mem_open_existing(&shared_mem) != 0) {
+  std::string name = subprocess_name;
+  SharedMemory shared_mem(name, compilation_subprocess_shared_memory_size, true);
+  if (!shared_mem.get_data()) {
     return;
   }
-
-  ipc_sharedsemaphore start_semaphore = {0};
-  std::string start_name = std::string(subprocess_name) + "_START";
-  ipc_sem_init(&start_semaphore, start_name.c_str());
-  ipc_sem_create(&start_semaphore, 0);
-
-  ipc_sharedsemaphore end_semaphore = {0};
-  std::string end_name = std::string(subprocess_name) + "_END";
-  ipc_sem_init(&end_semaphore, end_name.c_str());
-  ipc_sem_create(&end_semaphore, 0);
-
-  ipc_sharedsemaphore close_semaphore = {0};
-  std::string close_name = std::string(subprocess_name) + "_CLOSE";
-  ipc_sem_init(&close_semaphore, close_name.c_str());
-  ipc_sem_create(&close_semaphore, 0);
+  SharedSemaphore start_semaphore(name + "_START");
+  SharedSemaphore end_semaphore(name + "_END");
+  SharedSemaphore close_semaphore(name + "_CLOSE");
 
   GHOST_SystemHandle ghost_system = GHOST_CreateSystemBackground();
   BLI_assert(ghost_system);
@@ -143,13 +131,13 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   BLI_dir_create_recursive(cache_dir.c_str());
 
   while (true) {
-    ipc_sem_decrement(&start_semaphore);
+    start_semaphore.decrement();
 
-    if (ipc_sem_try_decrement(&close_semaphore)) {
+    if (close_semaphore.try_decrement()) {
       break;
     }
 
-    const char *shaders = reinterpret_cast<const char *>(shared_mem.data);
+    const char *shaders = reinterpret_cast<const char *>(shared_mem.get_data());
 
     const char *vert_src = shaders;
     const char *frag_src = shaders + strlen(shaders) + 1;
@@ -166,21 +154,21 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
       fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
       std::streamsize size = file.tellg();
       file.seekg(0, std::ios::beg);
-      file.read(reinterpret_cast<char *>(shared_mem.data), size);
+      file.read(reinterpret_cast<char *>(shared_mem.get_data()), size);
       /* Ensure it's valid. */
-      if (validate_binary(shared_mem.data)) {
-        ipc_sem_increment(&end_semaphore);
+      if (validate_binary(shared_mem.get_data())) {
+        end_semaphore.increment();
         continue;
       }
     }
 
     SubprocessShader shader(vert_src, frag_src);
-    ShaderBinaryHeader *binary = shader.get_binary(shared_mem.data);
+    ShaderBinaryHeader *binary = shader.get_binary(shared_mem.get_data());
 
-    ipc_sem_increment(&end_semaphore);
+    end_semaphore.increment();
 
     fstream file(cache_path, std::ios::binary | std::ios::out);
-    file.write(reinterpret_cast<char *>(shared_mem.data),
+    file.write(reinterpret_cast<char *>(shared_mem.get_data()),
                binary->size + offsetof(ShaderBinaryHeader, data_start));
   }
 
@@ -188,11 +176,6 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPU_context_discard(gpu_context);
   GHOST_DisposeGPUContext(ghost_system, ghost_context);
   GHOST_DisposeSystem(ghost_system);
-
-  ipc_mem_close(&shared_mem, false);
-  ipc_sem_close(&start_semaphore);
-  ipc_sem_close(&end_semaphore);
-  ipc_sem_close(&close_semaphore);
 }
 
 #else

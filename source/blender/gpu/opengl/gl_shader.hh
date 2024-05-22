@@ -218,10 +218,10 @@ class GLCompilerWorker {
 
  protected:
   FILE *compiler_ = nullptr;
-  ipc_sharedmemory_ pipe_ = {0};
-  ipc_sharedsemaphore start_semaphore_ = {0};
-  ipc_sharedsemaphore end_semaphore_ = {0};
-  ipc_sharedsemaphore close_semaphore_ = {0};
+  std::unique_ptr<SharedMemory> shared_mem_;
+  std::unique_ptr<SharedSemaphore> start_semaphore_;
+  std::unique_ptr<SharedSemaphore> end_semaphore_;
+  std::unique_ptr<SharedSemaphore> close_semaphore_;
   enum eState { COMPILATION_REQUESTED, COMPILATION_READY, COMPILATION_FINISHED, AVAILABLE };
   eState state_ = AVAILABLE;
   double compilation_start = 0;

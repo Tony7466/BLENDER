@@ -1599,39 +1599,26 @@ GLCompilerWorker::GLCompilerWorker()
   static size_t pipe_id = 0;
   pipe_id++;
 
-  std::string pipe_name = "BLENDER_SHADER_COMPILER_" + std::to_string(getpid()) + "_" +
-                          std::to_string(pipe_id);
-  ipc_mem_init(&pipe_, pipe_name.c_str(), compilation_subprocess_shared_memory_size);
-  ipc_mem_create(&pipe_);
+  std::string name = "BLENDER_SHADER_COMPILER_" + std::to_string(getpid()) + "_" +
+                     std::to_string(pipe_id);
 
-  std::string start_name = pipe_name + "_START";
-  ipc_sem_init(&start_semaphore_, start_name.c_str());
-  ipc_sem_create(&start_semaphore_, 0);
-
-  std::string end_name = pipe_name + "_END";
-  ipc_sem_init(&end_semaphore_, end_name.c_str());
-  ipc_sem_create(&end_semaphore_, 0);
-
-  std::string close_name = pipe_name + "_CLOSE";
-  ipc_sem_init(&close_semaphore_, close_name.c_str());
-  ipc_sem_create(&close_semaphore_, 0);
+  shared_mem_ = std::make_unique<SharedMemory>(
+      name, compilation_subprocess_shared_memory_size, false);
+  start_semaphore_ = std::make_unique<SharedSemaphore>(name + "_START");
+  end_semaphore_ = std::make_unique<SharedSemaphore>(name + "_END");
+  close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE");
 
   /* TODO: Pass max_size. */
-  std::string cmd = std::string(BKE_appdir_program_path()) + " --compilation-subprocess " +
-                    pipe_name;
+  std::string cmd = std::string(BKE_appdir_program_path()) + " --compilation-subprocess " + name;
 
   compiler_ = popen(cmd.c_str(), "w");
 }
 
 GLCompilerWorker::~GLCompilerWorker()
 {
-  ipc_sem_increment(&close_semaphore_);
+  close_semaphore_->increment();
   /* Flag start so the subprocess can reach the close semaphore. */
-  ipc_sem_increment(&start_semaphore_);
-  ipc_sem_close(&close_semaphore_);
-  ipc_sem_close(&start_semaphore_);
-  ipc_sem_close(&end_semaphore_);
-  ipc_mem_close(&pipe_, true);
+  start_semaphore_->increment();
   pclose(compiler_);
   compiler_ = nullptr;
 }
@@ -1640,10 +1627,10 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
 {
   BLI_assert(state_ == AVAILABLE);
 
-  strcpy((char *)pipe_.data, vert.c_str());
-  strcpy((char *)pipe_.data + vert.size() + 1, frag.c_str());
+  strcpy((char *)shared_mem_->get_data(), vert.c_str());
+  strcpy((char *)shared_mem_->get_data() + vert.size() + 1, frag.c_str());
 
-  ipc_sem_increment(&start_semaphore_);
+  start_semaphore_->increment();
 
   state_ = COMPILATION_REQUESTED;
   compilation_start = BLI_time_now_seconds();
@@ -1656,7 +1643,7 @@ bool GLCompilerWorker::poll()
     return true;
   }
 
-  if (ipc_sem_try_decrement(&end_semaphore_)) {
+  if (end_semaphore_->try_decrement()) {
     state_ = COMPILATION_READY;
   }
 
@@ -1675,7 +1662,7 @@ bool GLCompilerWorker::load_program_binary(GLint program)
 {
   BLI_assert(ELEM(state_, COMPILATION_REQUESTED, COMPILATION_READY));
   if (state_ == COMPILATION_REQUESTED) {
-    ipc_sem_decrement(&end_semaphore_);
+    end_semaphore_->decrement();
     state_ = COMPILATION_READY;
   }
 
@@ -1684,7 +1671,7 @@ bool GLCompilerWorker::load_program_binary(GLint program)
     GLuint format;
     GLubyte data_start;
   };
-  ShaderBinaryHeader *binary = (ShaderBinaryHeader *)pipe_.data;
+  ShaderBinaryHeader *binary = (ShaderBinaryHeader *)shared_mem_->get_data();
 
   state_ = COMPILATION_FINISHED;
 
