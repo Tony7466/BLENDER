@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <numeric>
+#include <string>
 
 #include <pxr/usd/usdGeom/basisCurves.h>
 #include <pxr/usd/usdGeom/curves.h>
@@ -361,11 +362,11 @@ void USDCurvesWriter::set_writer_attributes(pxr::UsdGeomCurves &usd_curves,
 }
 
 static std::optional<pxr::TfToken> convert_blender_domain_to_usd(
-    const bke::AttrDomain blender_domain)
+    const bke::AttrDomain blender_domain, bool is_bezier)
 {
   switch (blender_domain) {
     case bke::AttrDomain::Point:
-      return pxr::UsdGeomTokens->varying;
+      return is_bezier ? pxr::UsdGeomTokens->varying : pxr::UsdGeomTokens->vertex;
     case bke::AttrDomain::Curve:
       return pxr::UsdGeomTokens->uniform;
 
@@ -379,15 +380,19 @@ void USDCurvesWriter::write_generic_data(const bke::CurvesGeometry &curves,
                                          const bke::AttributeMetaData &meta_data,
                                          const pxr::UsdGeomCurves &usd_curves)
 {
-  const std::optional<pxr::TfToken> pv_interp = convert_blender_domain_to_usd(meta_data.domain);
+  const CurveType curve_type = CurveType(curves.curve_types().first());
+  const bool is_bezier = curve_type == CURVE_TYPE_BEZIER;
+
+  const std::optional<pxr::TfToken> pv_interp = convert_blender_domain_to_usd(meta_data.domain,
+                                                                              is_bezier);
   const std::optional<pxr::SdfValueTypeName> pv_type = convert_blender_type_to_usd(
       meta_data.data_type);
 
   if (!pv_interp || !pv_type) {
-    BKE_reportf(reports(),
+    BKE_reportf(this->reports(),
                 RPT_WARNING,
                 "Attribute '%s' (Blender domain %d, type %d) cannot be converted to USD",
-                attribute_id.name().data(),
+                std::string(attribute_id.name()).c_str(),
                 meta_data.domain,
                 meta_data.data_type);
     return;
@@ -405,15 +410,8 @@ void USDCurvesWriter::write_generic_data(const bke::CurvesGeometry &curves,
 
   pxr::UsdGeomPrimvar pv_attr = pv_api.CreatePrimvar(pv_name, *pv_type, *pv_interp);
 
-  const CurveType curve_type = CurveType(curves.curve_types().first());
-  if (meta_data.domain == bke::AttrDomain::Point && curve_type == CURVE_TYPE_BEZIER) {
-    copy_blender_attribute_to_primvar(
-        attribute, meta_data.data_type, timecode, pv_attr, usd_value_writer_);
-  }
-  else {
-    copy_blender_attribute_to_primvar(
-        attribute, meta_data.data_type, timecode, pv_attr, usd_value_writer_);
-  }
+  copy_blender_attribute_to_primvar(
+      attribute, meta_data.data_type, timecode, pv_attr, usd_value_writer_);
 }
 
 void USDCurvesWriter::write_uv_data(const bke::CurvesGeometry &curves,

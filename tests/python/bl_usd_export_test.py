@@ -265,15 +265,15 @@ class USDExportTest(AbstractUSDTest):
 
         prim = stage.GetPrimAtPath("/root/Curve_base/Curves/Curves")
 
-        self.check_primvar(prim, "p_bool", "VtArray<bool>", "varying", 24)
-        self.check_primvar(prim, "p_int8", "VtArray<int>", "varying", 24)
-        self.check_primvar(prim, "p_int32", "VtArray<int>", "varying", 24)
-        self.check_primvar(prim, "p_float", "VtArray<float>", "varying", 24)
+        self.check_primvar(prim, "p_bool", "VtArray<bool>", "vertex", 24)
+        self.check_primvar(prim, "p_int8", "VtArray<int>", "vertex", 24)
+        self.check_primvar(prim, "p_int32", "VtArray<int>", "vertex", 24)
+        self.check_primvar(prim, "p_float", "VtArray<float>", "vertex", 24)
         self.check_primvar_missing(prim, "p_color")
         self.check_primvar_missing(prim, "p_byte_color")
-        self.check_primvar(prim, "p_vec2", "VtArray<GfVec2f>", "varying", 24)
-        self.check_primvar(prim, "p_vec3", "VtArray<GfVec3f>", "varying", 24)
-        self.check_primvar(prim, "p_quat", "VtArray<GfQuatf>", "varying", 24)
+        self.check_primvar(prim, "p_vec2", "VtArray<GfVec2f>", "vertex", 24)
+        self.check_primvar(prim, "p_vec3", "VtArray<GfVec3f>", "vertex", 24)
+        self.check_primvar(prim, "p_quat", "VtArray<GfQuatf>", "vertex", 24)
         self.check_primvar_missing(prim, "p_mat4x4")
 
         self.check_primvar(prim, "sp_bool", "VtArray<bool>", "uniform", 2)
