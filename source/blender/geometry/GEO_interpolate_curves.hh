@@ -24,4 +24,10 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
                                   const IndexMask &selection,
                                   float mix_factor);
 
+void interpolate_curves(const CurvesGeometry &from_curves,
+                        const CurvesGeometry &to_curves,
+                        const IndexMask &selection,
+                        const float mix_factor,
+                        CurvesGeometry &dst_curves);
+
 }  // namespace blender::geometry

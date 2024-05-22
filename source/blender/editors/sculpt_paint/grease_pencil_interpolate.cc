@@ -8,6 +8,8 @@
 #include "BKE_report.hh"
 
 #include "BLI_array_utils.hh"
+#include "BLI_index_mask.hh"
+#include "BLI_multi_value_map.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 #include "BLI_virtual_array.hh"
@@ -28,6 +30,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include <climits>
 #include <iostream>
 
 namespace blender::ed::sculpt_paint::greasepencil {
@@ -55,22 +58,22 @@ enum class GreasePencilInterpolateLayerMode : int8_t {
 constexpr const float interpolate_factor_min = -1.0f;
 constexpr const float interpolate_factor_max = 2.0f;
 
+/* Pair of curves in a layer that get interpolated. */
+struct InterpolationPairs {
+  Vector<int> from_frames;
+  Vector<int> to_frames;
+  Vector<int> from_curves;
+  Vector<int> to_curves;
+};
+
 struct GreasePencilInterpolateOpData {
   struct LayerData {
-    /* Interval start frame on this layer. */
-    int from_frame_number;
-    /* Interval end frame on this layer. */
-    int to_frame_number;
-
-    /* Curve indices in the start frame. */
-    Vector<int> from_curve_indices;
-    /* Curve indices in the end frame. */
-    Vector<int> to_curve_indices;
+    /* Curve pairs to interpolate from this layer. */
+    InterpolationPairs curve_pairs;
 
     /* Geometry of the target frame before interpolation for restoring on cancel. */
-    bke::CurvesGeometry stored_curves;
-    /* Interpolated curves on the target frame. */
-    bke::CurvesGeometry interpolated_curves;
+    // TODO
+    // bke::CurvesGeometry stored_curves;
   };
 
   /* Layers to include. */
@@ -94,26 +97,87 @@ struct GreasePencilInterpolateOpData {
   int active_layer_index;
 };
 
-/* Build index lists for curve interpolation using index. */
-static void find_curve_mapping_from_index(const bke::greasepencil::Drawing &from_drawing,
-                                          const bke::greasepencil::Drawing &to_drawing,
-                                          Vector<int> &from_curve_indices,
-                                          Vector<int> &to_curve_indices)
+using FramesMapKeyInterval = std::pair<int, int>;
+
+static std::optional<FramesMapKeyInterval> find_frames_interval(
+    const bke::greasepencil::Layer &layer, const int frame_number, const bool exclude_breakdowns)
 {
-  const int curves_num = std::min(from_drawing.strokes().curves_num(),
-                                  to_drawing.strokes().curves_num());
-  from_curve_indices.reinitialize(curves_num);
-  to_curve_indices.reinitialize(curves_num);
-  array_utils::fill_index_range(from_curve_indices.as_mutable_span());
-  array_utils::fill_index_range(to_curve_indices.as_mutable_span());
+  using bke::greasepencil::FramesMapKey;
+  using SortedKeysIterator = Span<FramesMapKey>::iterator;
+
+  const Span<FramesMapKey> sorted_keys = layer.sorted_keys();
+  SortedKeysIterator next_key_it = std::upper_bound(
+      sorted_keys.begin(), sorted_keys.end(), frame_number);
+  if (next_key_it == sorted_keys.end() || next_key_it == sorted_keys.begin()) {
+    return std::nullopt;
+  }
+  SortedKeysIterator prev_key_it = next_key_it - 1;
+
+  /* Skip over invalid keyframes on either side. */
+  auto is_valid_keyframe = [&](const FramesMapKey key) {
+    const GreasePencilFrame &frame = *layer.frame_at(key);
+    if (frame.is_end()) {
+      return false;
+    }
+    if (exclude_breakdowns && frame.type == BEZT_KEYTYPE_BREAKDOWN) {
+      return false;
+    }
+    return true;
+  };
+
+  for (; next_key_it != sorted_keys.end(); ++next_key_it) {
+    if (is_valid_keyframe(*next_key_it)) {
+      break;
+    }
+  }
+  for (; prev_key_it != sorted_keys.begin(); --prev_key_it) {
+    if (is_valid_keyframe(*prev_key_it)) {
+      break;
+    }
+  }
+  if (next_key_it == sorted_keys.end() || !is_valid_keyframe(*prev_key_it)) {
+    return std::nullopt;
+  }
+
+  return std::make_pair(*prev_key_it, *next_key_it);
+}
+
+/* Build index lists for curve interpolation using index. */
+static void find_curve_mapping_from_index(const GreasePencil &grease_pencil,
+                                          const bke::greasepencil::Layer &layer,
+                                          const int current_frame,
+                                          const bool exclude_breakdowns,
+                                          InterpolationPairs &pairs)
+{
+  using bke::greasepencil::Drawing;
+
+  const std::optional<FramesMapKeyInterval> interval = find_frames_interval(
+      layer, current_frame, exclude_breakdowns);
+  if (!interval) {
+    return;
+  }
+
+  BLI_assert(layer.has_drawing_at(interval->first));
+  BLI_assert(layer.has_drawing_at(interval->second));
+  const Drawing &from_drawing = *grease_pencil.get_drawing_at(layer, interval->first);
+  const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer, interval->second);
+
+  const int pairs_num = std::min(from_drawing.strokes().curves_num(),
+                                 to_drawing.strokes().curves_num());
+
+  const int old_pairs_num = pairs.from_frames.size();
+  pairs.from_frames.append_n_times(interval->first, pairs_num);
+  pairs.to_frames.append_n_times(interval->first, pairs_num);
+  pairs.from_curves.reinitialize(old_pairs_num + pairs_num);
+  pairs.to_curves.reinitialize(old_pairs_num + pairs_num);
+  array_utils::fill_index_range(
+      pairs.from_curves.as_mutable_span().slice(old_pairs_num, pairs_num));
+  array_utils::fill_index_range(pairs.to_curves.as_mutable_span().slice(old_pairs_num, pairs_num));
 }
 
 /* Build index lists for curve interpolation between two frames. */
 static void find_curve_mapping_from_selection_order(const bke::greasepencil::Layer &layer,
-                                                    const bke::greasepencil::Drawing &from_drawing,
-                                                    const bke::greasepencil::Drawing &to_drawing,
-                                                    Vector<int> &from_curve_indices,
-                                                    Vector<int> &to_curve_indices)
+                                                    InterpolationPairs &pairs)
 {
   const bke::greasepencil::OrderedSelection &global_selection = layer.runtime->ordered_selection;
 
@@ -123,44 +187,136 @@ static void find_curve_mapping_from_selection_order(const bke::greasepencil::Lay
               << global_selection.data()[i].stroke_index << std::endl;
   }
 
-  const int curves_num = global_selection.data().size() / 2;
-  from_curve_indices.reinitialize(curves_num);
-  to_curve_indices.reinitialize(curves_num);
-  for (const int i : IndexRange(curves_num)) {
-    from_curve_indices[i] = global_selection.data()[2 * i].stroke_index;
-    to_curve_indices[i] = global_selection.data()[2 * i + 1].stroke_index;
+  const int pairs_num = global_selection.data().size() / 2;
+  pairs.from_frames.reinitialize(pairs_num);
+  pairs.to_frames.reinitialize(pairs_num);
+  pairs.from_curves.reinitialize(pairs_num);
+  pairs.to_curves.reinitialize(pairs_num);
+  for (const int i : IndexRange(pairs_num)) {
+    // TODO should do a range check and clamp here.
+    pairs.from_frames[i] = global_selection.data()[2 * i].frame_number;
+    pairs.to_frames[i] = global_selection.data()[2 * i + 1].frame_number;
+    pairs.from_curves[i] = global_selection.data()[2 * i].stroke_index;
+    pairs.to_curves[i] = global_selection.data()[2 * i + 1].stroke_index;
   }
 }
 
-static bke::CurvesGeometry interpolate_between_curves(const bke::CurvesGeometry &from_curves,
-                                                      const bke::CurvesGeometry &to_curves,
-                                                      const Span<int> from_curve_indices,
-                                                      const Span<int> to_curve_indices,
-                                                      const IndexMask &from_selection,
+static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease_pencil,
+                                                      const bke::greasepencil::Layer &layer,
+                                                      const InterpolationPairs &curve_pairs,
                                                       const float mix_factor)
 {
-  BLI_assert(from_curve_indices.size() == to_curve_indices.size());
-  const int dst_curve_num = from_curve_indices.size();
-  const OffsetIndices from_points_by_curve = from_curves.points_by_curve();
-  const OffsetIndices to_points_by_curve = to_curves.points_by_curve();
+  using namespace blender;
+  using bke::greasepencil::Drawing;
 
-  /* New point counts for each source curve for resampling. */
-  Array<int> dst_curve_sizes(dst_curve_num, 0);
-  for (const int i : IndexRange(dst_curve_num)) {
-    const int from_curve_i = from_curve_indices[i];
-    const int to_curve_i = to_curve_indices[i];
-    dst_curve_sizes[i] = std::max(from_points_by_curve[from_curve_i].size(),
-                                  to_points_by_curve[to_curve_i].size());
+  const int dst_curve_num = curve_pairs.from_curves.size();
+  BLI_assert(curve_pairs.to_curves.size() == dst_curve_num);
+  BLI_assert(curve_pairs.from_frames.size() == dst_curve_num);
+  BLI_assert(curve_pairs.to_frames.size() == dst_curve_num);
+
+  /* Sort pairs by unique to/from frame combinations.
+   * Curves for each frame pair are then interpolated together.
+   * Map entries are indices into the original curve_pairs array,
+   * so the order of strokes can be maintained. */
+  Array<int> sorted_pairs(dst_curve_num);
+  array_utils::fill_index_range(sorted_pairs.as_mutable_span());
+  std::sort(sorted_pairs.begin(), sorted_pairs.end(), [&](const int a, const int b) {
+    const int from_frame_a = curve_pairs.from_frames[a];
+    const int to_frame_a = curve_pairs.to_frames[a];
+    const int from_frame_b = curve_pairs.from_frames[b];
+    const int to_frame_b = curve_pairs.to_frames[b];
+    return from_frame_a < from_frame_b ||
+           (from_frame_a == from_frame_b && to_frame_a < to_frame_b);
+  });
+  /* Find ranges of sorted pairs with the same from/to frame intervals. */
+  Vector<int> pair_offsets;
+  const OffsetIndices curves_by_pair = [&]() {
+    int prev_from_frame = INT_MIN;
+    int prev_to_frame = INT_MIN;
+    int current_count = 0;
+    for (const int sorted_index : IndexRange(dst_curve_num)) {
+      const int pair_index = sorted_pairs[sorted_index];
+      const int from_frame = curve_pairs.from_frames[pair_index];
+      const int to_frame = curve_pairs.to_frames[pair_index];
+      if (from_frame != prev_from_frame || to_frame != prev_to_frame) {
+        /* New pair. */
+        if (current_count > 0) {
+          pair_offsets.append(current_count);
+        }
+        current_count = 0;
+      }
+    }
+    /* Last entry for overall size. */
+    if (pair_offsets.is_empty()) {
+      return OffsetIndices<int>{};
+    }
+
+    pair_offsets.append(0);
+    return offset_indices::accumulate_counts_to_offsets(pair_offsets);
+  }();
+
+  /* Compute curve length for each pair. */
+  Vector<int> dst_curve_offsets;
+  const OffsetIndices dst_points_by_curve = [&]() {
+    for (const int pair_range_i : curves_by_pair.index_range()) {
+      const IndexRange pair_range = curves_by_pair[pair_range_i];
+      BLI_assert(!pair_range.is_empty());
+
+      const int first_pair_index = sorted_pairs[pair_range.first()];
+      const int from_frame = curve_pairs.from_frames[first_pair_index];
+      const int to_frame = curve_pairs.to_frames[first_pair_index];
+      const Drawing *from_drawing = grease_pencil.get_drawing_at(layer, from_frame);
+      const Drawing *to_drawing = grease_pencil.get_drawing_at(layer, to_frame);
+      if (!from_drawing || !to_drawing) {
+        continue;
+      }
+
+      const OffsetIndices from_points_by_curve = from_drawing->strokes().points_by_curve();
+      const OffsetIndices to_points_by_curve = to_drawing->strokes().points_by_curve();
+      for (const int sorted_index : pair_range) {
+        const int pair_index = sorted_pairs[sorted_index];
+        const int from_curve = curve_pairs.from_curves[pair_index];
+        const int to_curve = curve_pairs.to_curves[pair_index];
+
+        dst_curve_offsets[pair_index] = std::max(from_points_by_curve[from_curve].size(),
+                                                 to_points_by_curve[to_curve].size());
+      }
+    }
+    /* Last entry for overall size. */
+    if (dst_curve_offsets.is_empty()) {
+      return OffsetIndices<int>{};
+    }
+
+    dst_curve_offsets.append(0);
+    return offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
+  }();
+  const int dst_point_num = dst_points_by_curve.total_size();
+
+  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+  /* Offsets are empty when there are no curves. */
+  if (dst_curve_num > 0) {
+    dst_curves.offsets_for_write().copy_from(dst_curve_offsets);
   }
 
-  bke::CurvesGeometry dst_curves = geometry::interpolate_curves(
-      from_curves,
-      to_curves,
-      from_curve_indices,
-      to_curve_indices,
-      VArray<int>::ForSpan(dst_curve_sizes),
-      from_selection,
-      mix_factor);
+  for (const int pair_range_i : curves_by_pair.index_range()) {
+    const IndexRange pair_range = curves_by_pair[pair_range_i];
+    const int first_pair_index = sorted_pairs[pair_range.first()];
+    const int from_frame = curve_pairs.from_frames[first_pair_index];
+    const int to_frame = curve_pairs.to_frames[first_pair_index];
+    const Drawing *from_drawing = grease_pencil.get_drawing_at(layer, from_frame);
+    const Drawing *to_drawing = grease_pencil.get_drawing_at(layer, to_frame);
+    if (!from_drawing || !to_drawing) {
+      continue;
+    }
+
+    /* Subset of target curves that are filled by this frame pair. */
+    IndexMaskMemory selection_memory;
+    const IndexMask selection = IndexMask::from_indices(sorted_pairs.as_span().slice(pair_range),
+                                                        selection_memory);
+
+    geometry::interpolate_curves(
+        from_drawing->strokes(), to_drawing->strokes(), selection, mix_factor, dst_curves);
+  }
 
   dst_curves.tag_topology_changed();
   return dst_curves;
@@ -387,18 +543,9 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
       return;
     }
 
-    const Drawing &from_drawing = *grease_pencil.get_drawing_at(layer,
-                                                                layer_data.from_frame_number);
-    const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer, layer_data.to_frame_number);
     const float mix_factor = opdata.init_factor + opdata.shift;
-    const IndexMask selection = IndexRange(layer_data.from_curve_indices.size());
     const bke::CurvesGeometry interpolated_curves = interpolate_between_curves(
-        from_drawing.strokes(),
-        to_drawing.strokes(),
-        layer_data.from_curve_indices,
-        layer_data.to_curve_indices,
-        selection,
-        mix_factor);
+        grease_pencil, layer, layer_data.curve_pairs, mix_factor);
 
     dst_drawing->strokes_for_write() = std::move(interpolated_curves);
     dst_drawing->tag_topology_changed();
@@ -408,51 +555,6 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
-}
-
-using FramesMapKeyInterval = std::pair<int, int>;
-
-static std::optional<FramesMapKeyInterval> find_frames_interval(
-    const bke::greasepencil::Layer &layer, const int frame_number, const bool exclude_breakdowns)
-{
-  using bke::greasepencil::FramesMapKey;
-  using SortedKeysIterator = Span<FramesMapKey>::iterator;
-
-  const Span<FramesMapKey> sorted_keys = layer.sorted_keys();
-  SortedKeysIterator next_key_it = std::upper_bound(
-      sorted_keys.begin(), sorted_keys.end(), frame_number);
-  if (next_key_it == sorted_keys.end() || next_key_it == sorted_keys.begin()) {
-    return std::nullopt;
-  }
-  SortedKeysIterator prev_key_it = next_key_it - 1;
-
-  /* Skip over invalid keyframes on either side. */
-  auto is_valid_keyframe = [&](const FramesMapKey key) {
-    const GreasePencilFrame &frame = *layer.frame_at(key);
-    if (frame.is_end()) {
-      return false;
-    }
-    if (exclude_breakdowns && frame.type == BEZT_KEYTYPE_BREAKDOWN) {
-      return false;
-    }
-    return true;
-  };
-
-  for (; next_key_it != sorted_keys.end(); ++next_key_it) {
-    if (is_valid_keyframe(*next_key_it)) {
-      break;
-    }
-  }
-  for (; prev_key_it != sorted_keys.begin(); --prev_key_it) {
-    if (is_valid_keyframe(*prev_key_it)) {
-      break;
-    }
-  }
-  if (next_key_it == sorted_keys.end() || !is_valid_keyframe(*prev_key_it)) {
-    return std::nullopt;
-  }
-
-  return std::make_pair(*prev_key_it, *next_key_it);
 }
 
 static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
@@ -500,50 +602,30 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
     const Layer &layer = *grease_pencil.layers()[layer_index];
     GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
 
-    if (const std::optional<FramesMapKeyInterval> interval = find_frames_interval(
-            layer, current_frame, data.exclude_breakdowns))
-    {
-      BLI_assert(layer.has_drawing_at(interval->first));
-      BLI_assert(layer.has_drawing_at(interval->second));
-      layer_data.from_frame_number = interval->first;
-      layer_data.to_frame_number = interval->second;
-      const Drawing &from_drawing = *grease_pencil.get_drawing_at(layer, interval->first);
-      const Drawing &to_drawing = *grease_pencil.get_drawing_at(layer, interval->second);
-
-      if (data.interpolate_selected_only) {
-        find_curve_mapping_from_selection_order(layer,
-                                                from_drawing,
-                                                to_drawing,
-                                                layer_data.from_curve_indices,
-                                                layer_data.to_curve_indices);
-      }
-      else {
-        /* Pair from/to curves by index. */
-        find_curve_mapping_from_index(
-            from_drawing, to_drawing, layer_data.from_curve_indices, layer_data.to_curve_indices);
-      }
-      return;
+    if (data.interpolate_selected_only) {
+      find_curve_mapping_from_selection_order(layer, layer_data.curve_pairs);
     }
-
-    layer_data.from_frame_number = 0;
-    layer_data.to_frame_number = 0;
-    layer_data.from_curve_indices = {};
-    layer_data.to_curve_indices = {};
+    else {
+      /* Pair from/to curves by index. */
+      find_curve_mapping_from_index(
+          grease_pencil, layer, current_frame, data.exclude_breakdowns, layer_data.curve_pairs);
+    }
   });
 
-  const GreasePencilInterpolateOpData::LayerData &active_layer_data =
-      data.layer_data[data.active_layer_index];
-  if (active_layer_data.from_frame_number == active_layer_data.to_frame_number) {
-    BKE_report(
-        op.reports,
-        RPT_ERROR,
-        "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
-    MEM_delete(&data);
-    op.customdata = nullptr;
-    return false;
-  }
-  data.init_factor = float(current_frame - active_layer_data.from_frame_number) /
-                     (active_layer_data.to_frame_number - active_layer_data.from_frame_number + 1);
+  // const GreasePencilInterpolateOpData::LayerData &active_layer_data =
+  //     data.layer_data[data.active_layer_index];
+  // if (active_layer_data.from_frame_number == active_layer_data.to_frame_number) {
+  //   BKE_report(
+  //       op.reports,
+  //       RPT_ERROR,
+  //       "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
+  //   MEM_delete(&data);
+  //   op.customdata = nullptr;
+  //   return false;
+  // }
+  // data.init_factor = float(current_frame - active_layer_data.from_frame_number) /
+  //                    (active_layer_data.to_frame_number - active_layer_data.from_frame_number +
+  //                    1);
 
   return true;
 }
