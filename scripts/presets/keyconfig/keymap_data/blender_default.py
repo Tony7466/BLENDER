@@ -2178,12 +2178,12 @@ def km_node_editor(params):
         ("node.select_link_viewer", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
         {"properties": [("run_in_geometry_nodes", True)]}),
-        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
-         {"properties": [("run_in_geometry_nodes", False)]}),
-        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
-         {"properties": [("run_in_geometry_nodes", False)]}),
-        # Second shortcut is added in shader editor as this operator is stand-in for absent viewer node functionality.
+        # Shortcut is added twice in shader editor as this operator is stand-in for absent viewer node functionality.
         # This way both shortcuts match to geometry nodes editor.
+        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
+        {"properties": [("run_in_geometry_nodes", False)]}),
+        ("node.connect_to_output", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "alt": True},
+        {"properties": [("run_in_geometry_nodes", False)]}),
         ("node.backimage_move", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
         ("node.backimage_zoom", {"type": 'V', "value": 'PRESS', "repeat": True},
          {"properties": [("factor", 1.0 / 1.2)]}),
