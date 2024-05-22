@@ -67,6 +67,31 @@ ccl_device float2 compute_2d_gabor_kernel(float2 position, float frequency, floa
   return windowed_gaussian_envelope * phasor;
 }
 
+/* Computes the approximate standard deviation of the zero mean normal distribution representing
+ * the amplitude distribution of the noise based on Equation (9) in the original Gabor noise paper.
+ * For simplicity, the Hann window is ignored and the orientation is fixed since the variance is
+ * orientation invariant. We start integrating the squared Gabor kernel with respect to x:
+ *
+ *   \int_{-\infty}^{-\infty} (e^{- \pi (x^2 + y^2)} cos(2 \pi f_0 x))^2 dx
+ *
+ * Which gives:
+ *
+ *  \frac{(e^{2 \pi f_0^2}-1) e^{-2 \pi y^2 - 2 pi f_0^2}}{2^\frac{3}{2}}
+ *
+ * Then we similarly integrate with respect to y to get:
+ *
+ *  \frac{1 - e^{-2 \pi f_0^2}}{4}
+ *
+ * Secondly, we note that the second moment of the weights distribution is 0.5 since it is a
+ * fair Bernoulli distribution. So the final standard deviation expression is square root the
+ * integral multiplied by the impulse density multiplied by the second moment. */
+ccl_device float compute_2d_gabor_standard_deviation(float impulse_density, float frequency)
+{
+  float integral_of_gabor_squared = (1.0f - expf(-2.0f * M_PI_F * frequency * frequency)) / 4.0f;
+  float second_moment = 0.5f;
+  return sqrtf(impulse_density * second_moment * integral_of_gabor_squared);
+}
+
 /* The original Gabor noise paper specifies that the impulses count for each cell should be
  * computed by sampling a Poisson distribution whose mean is the impulse density. However,
  * Tavernier's paper showed that stratified Poisson point sampling is better assuming the weights
@@ -170,6 +195,17 @@ ccl_device float2 compute_3d_gabor_kernel(float3 position, float frequency, floa
   float2 phasor = make_float2(cosf(angle), sinf(angle));
 
   return windowed_gaussian_envelope * phasor;
+}
+
+/* Identical to compute_2d_gabor_standard_deviation except we do triple integration in 3D. The only
+ * difference is the denominator in the integral expression, which is 2^{5 / 2} for the 3D case
+ * instead of 4 for the 2D case.  */
+ccl_device float compute_3d_gabor_standard_deviation(float impulse_density, float frequency)
+{
+  float integral_of_gabor_squared = (1.0f - expf(-2.0f * M_PI_F * frequency * frequency)) /
+                                    powf(2.0f, 5.0f / 2.0f);
+  float second_moment = 0.5f;
+  return sqrtf(impulse_density * second_moment * integral_of_gabor_squared);
 }
 
 /* Identical to compute_impulses_count_for_2d_cell but works on 3D cells. */
@@ -312,6 +348,7 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
   float isotropy = 1.0f - clamp(anisotropy, 0.0f, 1.0f);
 
   float2 phasor = make_float2(0.0f, 0.0f);
+  float standard_deviation = 1.0f;
   switch ((NodeGaborType)type) {
     case NODE_GABOR_TYPE_2D: {
       phasor = compute_2d_gabor_noise(make_float2(scaled_coordinates.x, scaled_coordinates.y),
@@ -319,20 +356,26 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
                                       frequency,
                                       isotropy,
                                       orientation_2d);
+      standard_deviation = compute_2d_gabor_standard_deviation(impulses_count, frequency);
       break;
     }
     case NODE_GABOR_TYPE_3D: {
       float3 orientation = normalize(orientation_3d);
       phasor = compute_3d_gabor_noise(
           scaled_coordinates, impulses_count, frequency, isotropy, orientation);
+      standard_deviation = compute_3d_gabor_standard_deviation(impulses_count, frequency);
       break;
     }
   }
 
+  /* Normalize the noise by dividing by triple the standard deviation, which should be good enough
+   * according to the empirical rule. */
+  float normalization_factor = 3.0f * standard_deviation;
+
   /* As discussed in compute_2d_gabor_kernel, we use the imaginary part of the phasor as the Gabor
    * value. */
   if (stack_valid(value_stack_offset)) {
-    stack_store_float(stack, value_stack_offset, phasor.y);
+    stack_store_float(stack, value_stack_offset, phasor.y / normalization_factor);
   }
 
   /* Compute the phase based on equation (9) in Tricard's paper. But remap the phase into the
@@ -344,7 +387,7 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
 
   /* Compute the intensity based on equation (8) in Tricard's paper. */
   if (stack_valid(intensity_stack_offset)) {
-    stack_store_float(stack, intensity_stack_offset, len(phasor));
+    stack_store_float(stack, intensity_stack_offset, len(phasor) / normalization_factor);
   }
 
   return offset;
