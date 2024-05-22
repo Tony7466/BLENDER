@@ -74,7 +74,7 @@ def is_visible_socket(socket):
 
 def is_viewer_socket(socket):
     # checks if a internal socket is a valid viewer socket.
-    return socket.name == viewer_socket_name and socket.ViewerSocket
+    return socket.name == viewer_socket_name and socket.is_inspect_output
 
 
 def is_viewer_link(link, output_node):

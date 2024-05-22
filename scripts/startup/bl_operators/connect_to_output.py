@@ -85,7 +85,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
             # Create viewer socket.
             viewer_socket = node_tree.interface.new_socket(
                 viewer_socket_name, in_out='OUTPUT', socket_type=socket_type)
-            viewer_socket.ViewerSocket = True
+            viewer_socket.is_inspect_output = True
         return viewer_socket
 
     @staticmethod
