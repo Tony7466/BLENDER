@@ -232,13 +232,6 @@ static void rna_GreasePencilLayer_matrix_local_get(PointerRNA *ptr, float *value
   std::copy_n(layer.local_transform().base_ptr(), 16, values);
 }
 
-static void rna_GreasePencilLayer_matrix_local_inverse_get(PointerRNA *ptr, float *values)
-{
-  const blender::bke::greasepencil::Layer &layer =
-      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
-  std::copy_n(blender::math::invert(layer.local_transform()).base_ptr(), 16, values);
-}
-
 static void rna_GreasePencilLayer_matrix_parent_inverse_get(PointerRNA *ptr, float *values)
 {
   const blender::bke::greasepencil::Layer &layer =
@@ -246,15 +239,7 @@ static void rna_GreasePencilLayer_matrix_parent_inverse_get(PointerRNA *ptr, flo
   std::copy_n(layer.parent_inverse().base_ptr(), 16, values);
 }
 
-static bool rna_GreasePencilLayer_is_parented_get(PointerRNA *ptr)
-{
-  const blender::bke::greasepencil::Layer &layer =
-      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
-
-  return (layer.parent != nullptr);
-}
-
-static PointerRNA rna_GreasePencilLayer_layer_group_get(PointerRNA *ptr)
+static PointerRNA rna_GreasePencilLayer_parent_layer_group_get(PointerRNA *ptr)
 {
   blender::bke::greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
   blender::bke::greasepencil::LayerGroup *layer_group = &layer.parent_group();
@@ -479,27 +464,6 @@ static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   grease_pencil->set_active_layer(static_cast<blender::bke::greasepencil::Layer *>(value.data));
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED | NA_SELECTED, grease_pencil);
-}
-
-static int rna_GreasePencil_active_layer_index_get(PointerRNA *ptr)
-{
-  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  if (!grease_pencil->has_active_layer()) {
-    return -1;
-  }
-  const blender::bke::greasepencil::Layer &layer = *grease_pencil->get_active_layer();
-  return *grease_pencil->get_layer_index(layer);
-}
-
-static void rna_GreasePencil_active_layer_index_set(PointerRNA *ptr, int value)
-{
-  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  if (value >= grease_pencil->layers().size()) {
-    return;
-  }
-  const blender::bke::greasepencil::Layer *layer = grease_pencil->layers()[value];
-  grease_pencil->set_active_layer(layer);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED | NA_SELECTED, grease_pencil);
 }
 
@@ -813,15 +777,6 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_float_funcs(prop, "rna_GreasePencilLayer_matrix_local_get", nullptr, nullptr);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
-  /* Inverse local transform of layer. */
-  prop = RNA_def_property(srna, "matrix_local_inverse", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "Inverse Local Matrix", "Inverse of layer's local transformation matrix");
-  RNA_def_property_float_funcs(
-      prop, "rna_GreasePencilLayer_matrix_local_inverse_get", nullptr, nullptr);
-
   /* Inverse transform of layer's parent. */
   prop = RNA_def_property(srna, "matrix_parent_inverse", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
@@ -831,18 +786,13 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_float_funcs(
       prop, "rna_GreasePencilLayer_matrix_parent_inverse_get", nullptr, nullptr);
 
-  /* Is parented. */
-  prop = RNA_def_property(srna, "is_parented", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_funcs(prop, "rna_GreasePencilLayer_is_parented_get", nullptr);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Is Parented", "True when the layer parent object is set");
-
-  /* Layer group. */
-  prop = RNA_def_property(srna, "layer_group", PROP_POINTER, PROP_NONE);
+  /* Parent layer group. */
+  prop = RNA_def_property(srna, "parent_group", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilLayerGroup");
   RNA_def_property_pointer_funcs(
-      prop, "rna_GreasePencilLayer_layer_group_get", nullptr, nullptr, nullptr);
-  RNA_def_property_ui_text(prop, "Layer Group", "The layer group this layer is part of");
+      prop, "rna_GreasePencilLayer_parent_layer_group_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Parent Layer Group", "The parent layer group this layer is part of");
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
@@ -928,14 +878,6 @@ static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cpro
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Layer", "Active Grease Pencil layer");
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
-
-  prop = RNA_def_property(srna, "active_layer_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_funcs(prop,
-                             "rna_GreasePencil_active_layer_index_get",
-                             "rna_GreasePencil_active_layer_index_set",
-                             "rna_GreasePencil_active_layer_index_range");
-  RNA_def_property_ui_text(prop, "Active Layer Index", "Index of the active Grease Pencil layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
 }
 
