@@ -245,7 +245,12 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
         }
         current_count = 0;
       }
+      ++current_count;
     }
+    if (current_count > 0) {
+      pair_offsets.append(current_count);
+    }
+
     /* Last entry for overall size. */
     if (pair_offsets.is_empty()) {
       return OffsetIndices<int>{};
@@ -278,8 +283,8 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
         const int from_curve = curve_pairs.from_curves[pair_index];
         const int to_curve = curve_pairs.to_curves[pair_index];
 
-        dst_curve_offsets[pair_index] = std::max(from_points_by_curve[from_curve].size(),
-                                                 to_points_by_curve[to_curve].size());
+        dst_curve_offsets.append(std::max(from_points_by_curve[from_curve].size(),
+                                          to_points_by_curve[to_curve].size()));
       }
     }
     /* Last entry for overall size. */
