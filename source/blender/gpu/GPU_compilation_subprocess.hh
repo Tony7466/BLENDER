@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <cstdint>
+#include "BLI_sys_types.h"
 
 namespace blender::gpu {
 
