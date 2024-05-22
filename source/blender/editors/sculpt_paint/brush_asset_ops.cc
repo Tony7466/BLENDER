@@ -65,7 +65,7 @@ static int brush_asset_select_exec(bContext *C, wmOperator *op)
 
   Paint *paint = BKE_paint_get_active_from_context(C);
 
-  if (!BKE_paint_brush_asset_set(paint, brush, brush_asset_reference)) {
+  if (!BKE_paint_brush_set(paint, brush)) {
     /* Note brush datablock was still added, so was not a no-op. */
     BKE_report(op->reports, RPT_WARNING, "Unable to select brush, wrong object mode");
     return OPERATOR_FINISHED;
@@ -87,26 +87,6 @@ void BRUSH_OT_asset_select(wmOperatorType *ot)
   ot->exec = brush_asset_select_exec;
 
   asset::operator_asset_reference_props_register(*ot->srna);
-}
-
-/* FIXME Quick dirty hack to generate a weak ref from 'raw' paths.
- * This needs to be properly implemented in assetlib code.
- */
-static AssetWeakReference brush_asset_create_weakref_hack(const bUserAssetLibrary *user_asset_lib,
-                                                          const std::string &file_path)
-{
-  AssetWeakReference asset_weak_ref{};
-
-  StringRef asset_root_path = user_asset_lib->dirpath;
-  BLI_assert(file_path.find(asset_root_path) == 0);
-  std::string relative_asset_path = file_path.substr(size_t(asset_root_path.size()) + 1);
-
-  asset_weak_ref.asset_library_type = ASSET_LIBRARY_CUSTOM;
-  asset_weak_ref.asset_library_identifier = BLI_strdup(user_asset_lib->name);
-  asset_weak_ref.relative_asset_identifier = BLI_strdupn(relative_asset_path.c_str(),
-                                                         relative_asset_path.size());
-
-  return asset_weak_ref;
 }
 
 static std::optional<AssetLibraryReference> library_to_library_ref(
@@ -267,8 +247,9 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     BKE_asset_metadata_catalog_id_set(&meta_data, catalog.catalog_id, catalog.simple_name.c_str());
   }
 
+  AssetWeakReference brush_asset_reference;
   const std::optional<std::string> final_full_asset_filepath = bke::asset_edit_id_save_as(
-      *bmain, brush->id, name, *user_library, *op->reports);
+      *bmain, brush->id, name, *user_library, brush_asset_reference, *op->reports);
   if (!final_full_asset_filepath) {
     return OPERATOR_CANCELLED;
   }
@@ -276,13 +257,10 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   library->catalog_service().write_to_disk(*final_full_asset_filepath);
   show_catalog_in_asset_shelf(*C, catalog_path);
 
-  AssetWeakReference new_brush_weak_ref = brush_asset_create_weakref_hack(
-      user_library, *final_full_asset_filepath);
-
   brush = reinterpret_cast<Brush *>(
-      bke::asset_edit_id_from_weak_reference(*bmain, ID_BR, new_brush_weak_ref));
+      bke::asset_edit_id_from_weak_reference(*bmain, ID_BR, brush_asset_reference));
 
-  if (!BKE_paint_brush_asset_set(paint, brush, new_brush_weak_ref)) {
+  if (!BKE_paint_brush_set(paint, brush)) {
     /* Note brush sset was still saved in editable asset library, so was not a no-op. */
     BKE_report(op->reports, RPT_WARNING, "Unable to activate just-saved brush asset");
   }
@@ -563,7 +541,7 @@ static bool brush_asset_edit_metadata_poll(bContext *C)
     CTX_wm_operator_poll_msg_set(C, "Asset library is not editable");
     return false;
   }
-  if (!bke::asset_edit_id_is_editable(brush->id)) {
+  if (!bke::asset_edit_id_is_writable(brush->id)) {
     CTX_wm_operator_poll_msg_set(C, "Asset file is not editable");
     return false;
   }
@@ -661,7 +639,7 @@ static bool brush_asset_delete_poll(bContext *C)
 
   /* Asset brush, check if belongs to an editable blend file. */
   if (ID_IS_ASSET(brush)) {
-    if (!bke::asset_edit_id_is_editable(brush->id)) {
+    if (!bke::asset_edit_id_is_writable(brush->id)) {
       CTX_wm_operator_poll_msg_set(C, "Asset blend file is not editable");
       return false;
     }
@@ -725,7 +703,7 @@ static bool brush_asset_update_poll(bContext *C)
     return false;
   }
 
-  if ((brush->id.tag & LIB_TAG_ASSET_EDIT_MAIN) == 0) {
+  if (!bke::asset_edit_id_is_editable(brush->id)) {
     return false;
   }
 
@@ -733,7 +711,7 @@ static bool brush_asset_update_poll(bContext *C)
     return false;
   }
 
-  if (!bke::asset_edit_id_is_editable(brush->id)) {
+  if (!bke::asset_edit_id_is_writable(brush->id)) {
     CTX_wm_operator_poll_msg_set(C, "Asset blend file is not editable");
     return false;
   }
@@ -783,7 +761,7 @@ static bool brush_asset_revert_poll(bContext *C)
     return false;
   }
 
-  return paint->brush_asset_reference && (brush->id.tag & LIB_TAG_ASSET_EDIT_MAIN);
+  return paint->brush_asset_reference && bke::asset_edit_id_is_editable(brush->id);
 }
 
 static int brush_asset_revert_exec(bContext *C, wmOperator *op)

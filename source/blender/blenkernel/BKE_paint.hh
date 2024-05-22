@@ -25,7 +25,6 @@
 
 #include "BKE_pbvh.hh"
 
-struct AssetWeakReference;
 struct BMFace;
 struct BMLog;
 struct BMesh;
@@ -211,14 +210,6 @@ bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name)
 void BKE_paint_brushes_set_default_references(ToolSettings *ts);
 void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
 
-/**
- * Set the active brush of given paint struct, and store the weak asset reference to it.
- * \note Takes ownership of the given `weak_asset_reference`.
- */
-bool BKE_paint_brush_asset_set(Paint *paint,
-                               Brush *brush,
-                               const AssetWeakReference &weak_asset_reference);
-
 /* Secondary eraser brush. */
 
 Brush *BKE_paint_eraser_brush(Paint *paint);
@@ -274,12 +265,14 @@ void BKE_paint_face_set_overlay_color_get(int face_set, int seed, uchar r_color[
 
 /* Stroke related. */
 
-bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
-                                   Brush *brush,
+bool paint_calculate_rake_rotation(UnifiedPaintSettings &ups,
+                                   const Brush &brush,
                                    const float mouse_pos[2],
                                    PaintMode paint_mode,
                                    bool stroke_has_started);
-void paint_update_brush_rake_rotation(UnifiedPaintSettings *ups, Brush *brush, float rotation);
+void paint_update_brush_rake_rotation(UnifiedPaintSettings &ups,
+                                      const Brush &brush,
+                                      float rotation);
 
 void BKE_paint_stroke_get_average(const Scene *scene, const Object *ob, float stroke[3]);
 
@@ -612,17 +605,17 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   SculptFakeNeighbors fake_neighbors = {};
 
   /* Transform operator */
-  blender::float3 pivot_pos;
-  float pivot_rot[4];
-  blender::float3 pivot_scale;
+  blender::float3 pivot_pos = {};
+  blender::float4 pivot_rot = {};
+  blender::float3 pivot_scale = {};
 
-  blender::float3 init_pivot_pos;
-  float init_pivot_rot[4];
-  blender::float3 init_pivot_scale;
+  blender::float3 init_pivot_pos = {};
+  blender::float4 init_pivot_rot = {};
+  blender::float3 init_pivot_scale = {};
 
-  blender::float3 prev_pivot_pos;
-  float prev_pivot_rot[4];
-  blender::float3 prev_pivot_scale;
+  blender::float3 prev_pivot_pos = {};
+  blender::float4 prev_pivot_rot = {};
+  blender::float3 prev_pivot_scale = {};
 
   struct {
     struct {
@@ -762,19 +755,6 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
  * drawing the mesh and all updates that come with it.
  */
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d);
-
-/* paint_vertex.cc */
-
-/**
- * Fills the object's active color attribute layer with the fill color.
- *
- * \param only_selected: Limit the fill to selected faces or vertices.
- *
- * \return #true if successful.
- */
-bool BKE_object_attributes_active_color_fill(Object *ob,
-                                             const float fill_color[4],
-                                             bool only_selected);
 
 /** C accessor for #Object::sculpt::pbvh. */
 PBVH *BKE_object_sculpt_pbvh_get(Object *object);

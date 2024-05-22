@@ -203,7 +203,7 @@ static void template_add_button_search_menu(const bContext *C,
       UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
     }
 
-    if ((idfrom && idfrom->lib) || !editable) {
+    if ((idfrom && !ID_IS_EDITABLE(idfrom)) || !editable) {
       UI_but_flag_enable(but, UI_BUT_DISABLED);
     }
     if (use_big_size) {
@@ -226,7 +226,7 @@ static void template_add_button_search_menu(const bContext *C,
     }
     UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
 
-    if ((idfrom && idfrom->lib) || !editable) {
+    if ((idfrom && !ID_IS_EDITABLE(idfrom)) || !editable) {
       UI_but_flag_enable(but, UI_BUT_DISABLED);
     }
   }
@@ -962,7 +962,6 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
   TemplateID *template_ui = (TemplateID *)arg_litem;
   PointerRNA idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
   ID *id = static_cast<ID *>(idptr.data);
-  Main *bmain = CTX_data_main_from_id(C, id);
   const int event = POINTER_AS_INT(arg_event);
   const char *undo_push_label = nullptr;
 
@@ -1013,6 +1012,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_LOCAL:
       if (id) {
+        Main *bmain = CTX_data_main(C);
         if (CTX_wm_window(C)->eventstate->modifier & KM_SHIFT) {
           template_id_liboverride_hierarchy_make(C, bmain, template_ui, &idptr, &undo_push_label);
         }
@@ -1033,6 +1033,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_OVERRIDE:
       if (id && ID_IS_OVERRIDE_LIBRARY(id)) {
+        Main *bmain = CTX_data_main(C);
         if (CTX_wm_window(C)->eventstate->modifier & KM_SHIFT) {
           template_id_liboverride_hierarchy_make(C, bmain, template_ui, &idptr, &undo_push_label);
         }
@@ -1053,12 +1054,14 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
 
         /* make copy */
         if (do_scene_obj) {
+          Main *bmain = CTX_data_main(C);
           Scene *scene = CTX_data_scene(C);
           blender::ed::object::object_single_user_make(bmain, scene, (Object *)id);
           WM_event_add_notifier(C, NC_WINDOW, nullptr);
           DEG_relations_tag_update(bmain);
         }
         else {
+          Main *bmain = CTX_data_main(C);
           id_single_user(C, id, &template_ui->ptr, template_ui->prop);
           DEG_relations_tag_update(bmain);
         }
@@ -1280,7 +1283,7 @@ static uiBut *template_id_def_new_but(uiBlock *block,
         but, template_id_cb, MEM_dupallocN(template_ui), POINTER_FROM_INT(UI_ID_ADD_NEW));
   }
 
-  if ((idfrom && idfrom->lib) || !editable) {
+  if ((idfrom && !ID_IS_EDITABLE(idfrom)) || !editable) {
     UI_but_flag_enable(but, UI_BUT_DISABLED);
   }
 
@@ -1379,7 +1382,7 @@ static void template_ID(const bContext *C,
 
     template_id_workspace_pin_extra_icon(template_ui, but);
 
-    if (!hide_buttons) {
+    if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
       if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
         if (id->tag & LIB_TAG_INDIRECT) {
@@ -1463,7 +1466,7 @@ static void template_ID(const bContext *C,
 
       UI_but_funcN_set(
           but, template_id_cb, MEM_dupallocN(template_ui), POINTER_FROM_INT(UI_ID_ALONE));
-      if (!BKE_id_copy_is_allowed(id) || (idfrom && idfrom->lib) || (!editable) ||
+      if (!BKE_id_copy_is_allowed(id) || (idfrom && !ID_IS_EDITABLE(idfrom)) || (!editable) ||
           /* object in editmode - don't change data */
           (idfrom && GS(idfrom->name) == ID_OB && (((Object *)idfrom)->mode & OB_MODE_EDIT)))
       {
@@ -1576,7 +1579,7 @@ static void template_ID(const bContext *C,
           but, template_id_cb, MEM_dupallocN(template_ui), POINTER_FROM_INT(UI_ID_OPEN));
     }
 
-    if ((idfrom && idfrom->lib) || !editable) {
+    if ((idfrom && !ID_IS_EDITABLE(idfrom)) || !editable) {
       UI_but_flag_enable(but, UI_BUT_DISABLED);
     }
   }
@@ -1628,7 +1631,7 @@ static void template_ID(const bContext *C,
     }
 
     if (but) {
-      if ((idfrom && idfrom->lib) || !editable) {
+      if ((idfrom && !ID_IS_EDITABLE(idfrom)) || !editable) {
         UI_but_flag_enable(but, UI_BUT_DISABLED);
       }
     }
@@ -1762,12 +1765,10 @@ static void ui_template_id(uiLayout *layout,
     flag |= UI_ID_OPEN;
   }
 
-  Main *bmain = (ptr->owner_id) ? CTX_data_main_from_id(C, ptr->owner_id) : CTX_data_main(C);
-
   StructRNA *type = RNA_property_pointer_type(ptr, prop);
   short idcode = RNA_type_to_ID_code(type);
   template_ui->idcode = idcode;
-  template_ui->idlb = which_libbase(bmain, idcode);
+  template_ui->idlb = which_libbase(CTX_data_main(C), idcode);
 
   /* create UI elements for this template
    * - template_ID makes a copy of the template data and assigns it to the relevant buttons
@@ -3249,7 +3250,7 @@ void uiTemplateConstraintHeader(uiLayout *layout, PointerRNA *ptr)
     return;
   }
 
-  UI_block_lock_set(uiLayoutGetBlock(layout), (ob && ID_IS_LINKED(ob)), ERROR_LIBDATA_MESSAGE);
+  UI_block_lock_set(uiLayoutGetBlock(layout), (ob && !ID_IS_EDITABLE(ob)), ERROR_LIBDATA_MESSAGE);
 
   draw_constraint_header(layout, ob, con);
 }
@@ -3894,7 +3895,7 @@ void uiTemplateColorRamp(uiLayout *layout, PointerRNA *ptr, const char *propname
   uiBlock *block = uiLayoutAbsoluteBlock(layout);
 
   ID *id = cptr.owner_id;
-  UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
+  UI_block_lock_set(block, (id && !ID_IS_EDITABLE(id)), ERROR_LIBDATA_MESSAGE);
 
   colorband_buttons_layout(
       layout, block, static_cast<ColorBand *>(cptr.data), &rect, RNAUpdateCb{*ptr, prop}, expand);
@@ -4988,7 +4989,7 @@ void uiTemplateCurveMapping(uiLayout *layout,
   }
 
   ID *id = cptr.owner_id;
-  UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
+  UI_block_lock_set(block, (id && !ID_IS_EDITABLE(id)), ERROR_LIBDATA_MESSAGE);
 
   curvemap_buttons_layout(
       layout, &cptr, type, levels, brush, neg_slope, tone, RNAUpdateCb{*ptr, prop});
@@ -5495,7 +5496,7 @@ void uiTemplateCurveProfile(uiLayout *layout, PointerRNA *ptr, const char *propn
   }
 
   ID *id = cptr.owner_id;
-  UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
+  UI_block_lock_set(block, (id && !ID_IS_EDITABLE(id)), ERROR_LIBDATA_MESSAGE);
 
   CurveProfile_buttons_layout(layout, &cptr, RNAUpdateCb{*ptr, prop});
 
@@ -6422,17 +6423,25 @@ static void ui_template_status_info_warnings_messages(Main *bmain,
                                                       Scene *scene,
                                                       ViewLayer *view_layer,
                                                       std::string &warning_message,
-                                                      std::string &regular_message,
-                                                      std::string &tooltip_message)
+                                                      std::string &regular_message)
 {
-  tooltip_message = "";
   char statusbar_info_flag = U.statusbar_flag;
 
   if (bmain->has_forward_compatibility_issues) {
     warning_message = ED_info_statusbar_string_ex(
         bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
     statusbar_info_flag &= ~STATUSBAR_SHOW_VERSION;
+  }
 
+  regular_message = ED_info_statusbar_string_ex(bmain, scene, view_layer, statusbar_info_flag);
+}
+
+static std::string ui_template_status_tooltip(bContext *C, void * /*argN*/, const char * /*tip*/)
+{
+  Main *bmain = CTX_data_main(C);
+  std::string tooltip_message = "";
+
+  if (bmain->has_forward_compatibility_issues) {
     char writer_ver_str[12];
     BKE_blender_version_blendfile_string_from_values(
         writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
@@ -6449,7 +6458,7 @@ static void ui_template_status_info_warnings_messages(Main *bmain,
         "Take care to avoid data loss when editing assets.");
   }
 
-  regular_message = ED_info_statusbar_string_ex(bmain, scene, view_layer, statusbar_info_flag);
+  return tooltip_message;
 }
 
 void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
@@ -6469,9 +6478,8 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 
   std::string warning_message;
   std::string regular_message;
-  std::string tooltip_message;
   ui_template_status_info_warnings_messages(
-      bmain, scene, view_layer, warning_message, regular_message, tooltip_message);
+      bmain, scene, view_layer, warning_message, regular_message);
 
   uiItemL(layout, regular_message.c_str(), ICON_NONE);
 
@@ -6525,12 +6533,6 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
   UI_block_align_end(block);
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
-  /* Tool tips have to be static currently.
-   * FIXME This is a horrible requirement from uiBut, should probably just store an std::string for
-   * the tooltip as well? */
-  static char tooltip_static_storage[256];
-  BLI_strncpy(tooltip_static_storage, tooltip_message.c_str(), sizeof(tooltip_static_storage));
-
   /* The warning icon itself. */
   but = uiDefIconBut(block,
                      UI_BTYPE_BUT,
@@ -6543,7 +6545,8 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
                      nullptr,
                      0.0f,
                      0.0f,
-                     tooltip_static_storage);
+                     nullptr);
+  UI_but_func_tooltip_set(but, ui_template_status_tooltip, nullptr, nullptr);
   UI_GetThemeColorType4ubv(TH_INFO_WARNING_TEXT, SPACE_INFO, but->col);
   but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
 
@@ -6560,7 +6563,8 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
                    nullptr,
                    0.0f,
                    0.0f,
-                   tooltip_static_storage);
+                   nullptr);
+    UI_but_func_tooltip_set(but, ui_template_status_tooltip, nullptr, nullptr);
   }
 
   UI_block_emboss_set(block, previous_emboss);

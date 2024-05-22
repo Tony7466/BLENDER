@@ -2364,9 +2364,9 @@ static void node_draw_sockets(const View2D &v2d,
 
 static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, void *ntree_argv)
 {
+  Main *bmain = CTX_data_main(C);
   bNodePanelState *panel_state = static_cast<bNodePanelState *>(panel_state_argv);
   bNodeTree *ntree = static_cast<bNodeTree *>(ntree_argv);
-  Main *bmain = CTX_data_main_from_id(C, &ntree->id);
 
   panel_state->flag ^= NODE_PANEL_COLLAPSED;
 
@@ -3104,7 +3104,13 @@ static void node_draw_extra_info_row(const bNode &node,
                              nullptr,
                              0,
                              0,
-                             "");
+                             extra_info_row.tooltip);
+
+  if (extra_info_row.tooltip_fn != nullptr) {
+    /* Don't pass tooltip free function because it's already used on the uiBut above. */
+    UI_but_func_tooltip_set(
+        but_text, extra_info_row.tooltip_fn, extra_info_row.tooltip_fn_arg, nullptr);
+  }
 
   if (node.flag & NODE_MUTED) {
     UI_but_flag_enable(but_text, UI_BUT_INACTIVE);

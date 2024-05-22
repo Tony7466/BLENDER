@@ -614,6 +614,10 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
 
 static bool paint_brush_set_from_asset_reference(Main *bmain, Paint *paint)
 {
+  /* Don't resolve this during file read, it will be done after. */
+  if (bmain->is_locked_for_linking) {
+    return false;
+  }
   /* Attempt to restore a valid active brush from brush asset information. */
   if (paint->brush != nullptr) {
     return false;
@@ -624,7 +628,7 @@ static bool paint_brush_set_from_asset_reference(Main *bmain, Paint *paint)
 
   Brush *brush = reinterpret_cast<Brush *>(blender::bke::asset_edit_id_from_weak_reference(
       *bmain, ID_BR, *paint->brush_asset_reference));
-  BLI_assert(brush == nullptr || (brush->id.tag & LIB_TAG_ASSET_EDIT_MAIN));
+  BLI_assert(brush == nullptr || blender::bke::asset_edit_id_is_editable(brush->id));
 
   /* Ensure we have a brush with appropriate mode to assign.
    * Could happen if contents of asset blend was manually changed. */
@@ -658,36 +662,18 @@ bool BKE_paint_brush_set(Paint *paint, Brush *brush)
   }
 
   paint->brush = brush;
-  return true;
-}
 
-static void paint_brush_asset_update(Paint &paint,
-                                     Brush *brush,
-                                     const AssetWeakReference &brush_asset_reference)
-{
-  BLI_assert(&brush_asset_reference != paint.brush_asset_reference);
-  MEM_delete(paint.brush_asset_reference);
-  paint.brush_asset_reference = nullptr;
+  MEM_delete(paint->brush_asset_reference);
+  paint->brush_asset_reference = nullptr;
 
-  if (brush == nullptr || brush != paint.brush || !(brush->id.tag & LIB_TAG_ASSET_EDIT_MAIN)) {
-    return;
+  if (brush != nullptr) {
+    std::optional<AssetWeakReference> weak_ref = blender::bke::asset_edit_weak_reference_from_id(
+        brush->id);
+    if (weak_ref.has_value()) {
+      paint->brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *weak_ref);
+    }
   }
 
-  paint.brush_asset_reference = MEM_new<AssetWeakReference>(__func__, brush_asset_reference);
-}
-
-bool BKE_paint_brush_asset_set(Paint *paint,
-                               Brush *brush,
-                               const AssetWeakReference &weak_asset_reference)
-{
-  /* Should not happen for users if brush assets are properly filtered by mode, but still protect
-   * against it in case of invalid API usage. */
-  if (brush && paint->runtime.ob_mode != brush->ob_mode) {
-    return false;
-  }
-
-  BKE_paint_brush_set(paint, brush);
-  paint_brush_asset_update(*paint, brush, weak_asset_reference);
   return true;
 }
 
@@ -838,6 +824,10 @@ void BKE_paint_brushes_validate(Main *bmain, Paint *paint)
 
 static bool paint_eraser_brush_set_from_asset_reference(Main *bmain, Paint *paint)
 {
+  /* Don't resolve this during file read, it will be done after. */
+  if (bmain->is_locked_for_linking) {
+    return false;
+  }
   /* Attempt to restore a valid active brush from brush asset information. */
   if (paint->eraser_brush != nullptr) {
     return false;
@@ -848,7 +838,7 @@ static bool paint_eraser_brush_set_from_asset_reference(Main *bmain, Paint *pain
 
   Brush *brush = reinterpret_cast<Brush *>(blender::bke::asset_edit_id_from_weak_reference(
       *bmain, ID_BR, *paint->eraser_brush_asset_reference));
-  BLI_assert(brush == nullptr || (brush->id.tag & LIB_TAG_ASSET_EDIT_MAIN));
+  BLI_assert(brush == nullptr || blender::bke::asset_edit_id_is_editable(brush->id));
 
   /* Ensure we have a brush with appropriate mode to assign.
    * Could happen if contents of asset blend was manually changed. */
@@ -882,6 +872,18 @@ bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush)
   }
 
   paint->eraser_brush = brush;
+
+  MEM_delete(paint->eraser_brush_asset_reference);
+  paint->eraser_brush_asset_reference = nullptr;
+
+  if (brush != nullptr) {
+    std::optional<AssetWeakReference> weak_ref = blender::bke::asset_edit_weak_reference_from_id(
+        brush->id);
+    if (weak_ref.has_value()) {
+      paint->eraser_brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *weak_ref);
+    }
+  }
+
   return true;
 }
 
@@ -1384,6 +1386,7 @@ bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint)
 
   paint_runtime_init(ts, paint);
   BKE_paint_brush_set_default(bmain, paint);
+  BKE_paint_eraser_brush_set_default(bmain, paint);
 
   return false;
 }
@@ -1514,20 +1517,22 @@ float paint_grid_paint_mask(const GridPaintMask *gpm, uint level, uint x, uint y
 }
 
 /* Threshold to move before updating the brush rotation, reduces jitter. */
-static float paint_rake_rotation_spacing(const UnifiedPaintSettings * /*ups*/, const Brush *brush)
+static float paint_rake_rotation_spacing(const UnifiedPaintSettings & /*ups*/, const Brush &brush)
 {
-  return brush->sculpt_tool == SCULPT_TOOL_CLAY_STRIPS ? 1.0f : 20.0f;
+  return brush.sculpt_tool == SCULPT_TOOL_CLAY_STRIPS ? 1.0f : 20.0f;
 }
 
-void paint_update_brush_rake_rotation(UnifiedPaintSettings *ups, Brush *brush, float rotation)
+void paint_update_brush_rake_rotation(UnifiedPaintSettings &ups,
+                                      const Brush &brush,
+                                      float rotation)
 {
-  ups->brush_rotation = rotation;
+  ups.brush_rotation = rotation;
 
-  if (brush->mask_mtex.brush_angle_mode & MTEX_ANGLE_RAKE) {
-    ups->brush_rotation_sec = rotation;
+  if (brush.mask_mtex.brush_angle_mode & MTEX_ANGLE_RAKE) {
+    ups.brush_rotation_sec = rotation;
   }
   else {
-    ups->brush_rotation_sec = 0.0f;
+    ups.brush_rotation_sec = 0.0f;
   }
 }
 
@@ -1542,14 +1547,14 @@ static const bool paint_rake_rotation_active(const Brush &brush, PaintMode paint
          BKE_brush_has_cube_tip(&brush, paint_mode);
 }
 
-bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
-                                   Brush *brush,
+bool paint_calculate_rake_rotation(UnifiedPaintSettings &ups,
+                                   const Brush &brush,
                                    const float mouse_pos[2],
-                                   PaintMode paint_mode,
+                                   const PaintMode paint_mode,
                                    bool stroke_has_started)
 {
   bool ok = false;
-  if (paint_rake_rotation_active(*brush, paint_mode)) {
+  if (paint_rake_rotation_active(brush, paint_mode)) {
     float r = paint_rake_rotation_spacing(ups, brush);
     float rotation;
 
@@ -1559,15 +1564,15 @@ bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
     }
 
     float dpos[2];
-    sub_v2_v2v2(dpos, mouse_pos, ups->last_rake);
+    sub_v2_v2v2(dpos, mouse_pos, ups.last_rake);
 
     /* Limit how often we update the angle to prevent jitter. */
     if (len_squared_v2(dpos) >= r * r) {
       rotation = atan2f(dpos[1], dpos[0]) + float(0.5f * M_PI);
 
-      copy_v2_v2(ups->last_rake, mouse_pos);
+      copy_v2_v2(ups.last_rake, mouse_pos);
 
-      ups->last_rake_angle = rotation;
+      ups.last_rake_angle = rotation;
 
       paint_update_brush_rake_rotation(ups, brush, rotation);
       ok = true;
@@ -1575,12 +1580,12 @@ bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
     /* Make sure we reset here to the last rotation to avoid accumulating
      * values in case a random rotation is also added. */
     else {
-      paint_update_brush_rake_rotation(ups, brush, ups->last_rake_angle);
+      paint_update_brush_rake_rotation(ups, brush, ups.last_rake_angle);
       ok = false;
     }
   }
   else {
-    ups->brush_rotation = ups->brush_rotation_sec = 0.0f;
+    ups.brush_rotation = ups.brush_rotation_sec = 0.0f;
     ok = true;
   }
   return ok;
