@@ -78,6 +78,12 @@ enum eSubdivExportMode {
   USD_SUBDIV_BEST_MATCH = 2,
 };
 
+typedef enum eUSDXformOpMode {
+  USD_XFORM_OP_TRS = 0,
+  USD_XFORM_OP_TOS = 1,
+  USD_XFORM_OP_MAT = 2,
+} eUSDXformOpMode;
+
 typedef enum eUSDZTextureDownscaleSize {
   USD_TEXTURE_SIZE_CUSTOM = -1,
   USD_TEXTURE_SIZE_KEEP = 0,
@@ -112,6 +118,7 @@ struct USDExportParams {
   bool convert_orientation = false;
   enum eIOAxis forward_axis = eIOAxis::IO_AXIS_NEGATIVE_Z;
   enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
+  eUSDXformOpMode xform_op_mode = eUSDXformOpMode::USD_XFORM_OP_TRS;
   eUSDZTextureDownscaleSize usdz_downscale_size = eUSDZTextureDownscaleSize::USD_TEXTURE_SIZE_KEEP;
   int usdz_downscale_custom_size = 128;
   char root_prim_path[1024] = ""; /* FILE_MAX */
