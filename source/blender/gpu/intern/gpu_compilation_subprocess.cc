@@ -66,15 +66,15 @@ class SubprocessShader {
     glDeleteProgram(program_);
   }
 
-  ShaderBinary *get_binary(void *memory)
+  ShaderBinaryHeader *get_binary(void *memory)
   {
-    ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(memory);
-    bin->size = 0;
+    ShaderBinaryHeader *bin = reinterpret_cast<ShaderBinaryHeader *>(memory);
     bin->format = 0;
+    bin->size = 0;
 
     if (success_) {
       glGetProgramiv(program_, GL_PROGRAM_BINARY_LENGTH, &bin->size);
-      if (bin->size + sizeof(ShaderBinary) < ShaderBinary::max_data_size) {
+      if (bin->size + sizeof(ShaderBinaryHeader) < compilation_subprocess_shared_memory_size) {
         glGetProgramBinary(program_, bin->size, nullptr, &bin->format, &bin->data_start);
       }
     }
@@ -86,7 +86,7 @@ class SubprocessShader {
 /* Check if the binary is valid and can be loaded by the driver. */
 static bool validate_binary(void *binary)
 {
-  ShaderBinary *bin = reinterpret_cast<ShaderBinary *>(binary);
+  ShaderBinaryHeader *bin = reinterpret_cast<ShaderBinaryHeader *>(binary);
   GLuint program = glCreateProgram();
   glProgramBinary(program, bin->format, &bin->data_start, bin->size);
   GLint status;
@@ -105,7 +105,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   CLG_init();
 
   ipc_sharedmemory_ shared_mem = {0};
-  ipc_mem_init(&shared_mem, subprocess_name, ShaderBinary::max_data_size);
+  ipc_mem_init(&shared_mem, subprocess_name, compilation_subprocess_shared_memory_size);
   if (ipc_mem_open_existing(&shared_mem) != 0) {
     return;
   }
@@ -175,13 +175,13 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     }
 
     SubprocessShader shader(vert_src, frag_src);
-    ShaderBinary *binary = shader.get_binary(shared_mem.data);
+    ShaderBinaryHeader *binary = shader.get_binary(shared_mem.data);
 
     ipc_sem_increment(&end_semaphore);
 
     fstream file(cache_path, std::ios::binary | std::ios::out);
     file.write(reinterpret_cast<char *>(shared_mem.data),
-               binary->size + offsetof(ShaderBinary, data_start));
+               binary->size + offsetof(ShaderBinaryHeader, data_start));
   }
 
   GPU_exit();

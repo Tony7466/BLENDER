@@ -1601,7 +1601,7 @@ GLCompilerWorker::GLCompilerWorker()
 
   std::string pipe_name = "BLENDER_SHADER_COMPILER_" + std::to_string(getpid()) + "_" +
                           std::to_string(pipe_id);
-  ipc_mem_init(&pipe_, pipe_name.c_str(), ShaderBinary::max_data_size);
+  ipc_mem_init(&pipe_, pipe_name.c_str(), compilation_subprocess_shared_memory_size);
   ipc_mem_create(&pipe_);
 
   std::string start_name = pipe_name + "_START";
@@ -1681,12 +1681,12 @@ bool GLCompilerWorker::load_program_binary(GLint program)
     state_ = COMPILATION_READY;
   }
 
-  struct ShaderBinary {
+  struct ShaderBinaryHeader {
     GLint size;
     GLuint format;
     GLubyte data_start;
   };
-  ShaderBinary *binary = (ShaderBinary *)pipe_.data;
+  ShaderBinaryHeader *binary = (ShaderBinaryHeader *)pipe_.data;
 
   state_ = COMPILATION_FINISHED;
 
@@ -1779,10 +1779,8 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
         item.fragment_src.append(src);
       }
 
-      size_t required_size = item.vertex_src.size() + item.fragment_src.size() +
-                             sizeof(ShaderBinary);
-
-      if (required_size < ShaderBinary::max_data_size) {
+      size_t required_size = item.vertex_src.size() + item.fragment_src.size();
+      if (required_size < compilation_subprocess_shared_memory_size) {
         item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
       }
       else {
