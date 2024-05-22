@@ -102,10 +102,10 @@ using FramesMapKeyInterval = std::pair<int, int>;
 static std::optional<FramesMapKeyInterval> find_frames_interval(
     const bke::greasepencil::Layer &layer, const int frame_number, const bool exclude_breakdowns)
 {
-  using bke::greasepencil::FramesMapKey;
-  using SortedKeysIterator = Span<FramesMapKey>::iterator;
+  using bke::greasepencil::FramesMapKeyT;
+  using SortedKeysIterator = Span<FramesMapKeyT>::iterator;
 
-  const Span<FramesMapKey> sorted_keys = layer.sorted_keys();
+  const Span<FramesMapKeyT> sorted_keys = layer.sorted_keys();
   SortedKeysIterator next_key_it = std::upper_bound(
       sorted_keys.begin(), sorted_keys.end(), frame_number);
   if (next_key_it == sorted_keys.end() || next_key_it == sorted_keys.begin()) {
@@ -114,7 +114,7 @@ static std::optional<FramesMapKeyInterval> find_frames_interval(
   SortedKeysIterator prev_key_it = next_key_it - 1;
 
   /* Skip over invalid keyframes on either side. */
-  auto is_valid_keyframe = [&](const FramesMapKey key) {
+  auto is_valid_keyframe = [&](const FramesMapKeyT key) {
     const GreasePencilFrame &frame = *layer.frame_at(key);
     if (frame.is_end()) {
       return false;
@@ -513,11 +513,11 @@ static bke::greasepencil::Drawing *get_or_create_drawing_at_frame(GreasePencil &
                                                                   bke::greasepencil::Layer &layer,
                                                                   const int frame_number)
 {
-  using bke::greasepencil::FramesMapKey;
+  using bke::greasepencil::Drawing;
+  using bke::greasepencil::FramesMapKeyT;
 
-  std::optional<FramesMapKey> frame_key = layer.frame_key_at(frame_number);
-  if (frame_key && *frame_key == frame_number) {
-    return grease_pencil.get_drawing_at(layer, frame_number);
+  if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
+    return drawing;
   }
 
   return grease_pencil.insert_frame(layer, frame_number);
