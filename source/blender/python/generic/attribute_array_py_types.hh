@@ -417,105 +417,221 @@ PyObject *get_attribute_byte_color(void *data, int index)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name BPy_AttributeArray Mapping of attribute types to functions
+/** \name BPy_AttributeArray Map attribute types to functions
  * \{ */
 
-struct CustomDataTypeMapping {
-  int item_size;
-  char buffer_format_a;
-  char buffer_format_b;
-  std::string description;
-  std::function<PyObject *(void *, int)> get_attribute;
-  std::function<bool(void *, int, PyObject *)> set_attribute;
-};
-
-std::unordered_map<int, CustomDataTypeMapping> data_types{
-    {int(CD_PROP_BOOL),
-     {sizeof(bool),
-      '?',
-      '?',
-      "bool value True/False or 0/1",
-      get_attribute_bool,
-      set_attribute_bool}},
-    {CD_PROP_FLOAT,
-     {sizeof(float), 'f', 'f', "a float", get_attribute_float, set_attribute_float}},
-    {CD_PROP_INT8,
-     {sizeof(int8_t),
-      'b',
-      'b',
-      "int8 between -128 and 127",
-      get_attribute_int8,
-      set_attribute_int8}},
-    {CD_PROP_INT32, {sizeof(int32_t), 'i', 'l', "int", get_attribute_int32, set_attribute_int32}},
-    {CD_PROP_INT32_2D,
-     {sizeof(int2),
-      'i',
-      'l',
-      "tuple (x, y) or list [x, y] of ints",
-      get_attribute_int2,
-      set_attribute_int2}},
-    {CD_PROP_STRING,
-     {sizeof(MStringProperty),
-      'B',
-      'B',
-      "string with a maximum of 254 characters",
-      get_attribute_string,
-      set_attribute_string}},
-    {CD_PROP_FLOAT2,
-     {sizeof(float2),
-      'f',
-      'f',
-      "mathutils.Vector((x, y)), tuple (x, y) or list [x, y]",
-      get_attribute_float2,
-      set_attribute_float2}},
-    {CD_PROP_FLOAT3,
-     {sizeof(float3),
-      'f',
-      'f',
-      "mathutils.Vector((x, y, z)), tuple (x, y, z) or list [x, y, z]",
-      get_attribute_float3,
-      set_attribute_float3}},
-    {CD_PROP_FLOAT4X4,
-     {sizeof(float4x4),
-      'f',
-      'f',
-      "mathutils.Matrix() with 4x4 dimensions",
-      get_attribute_float4x4,
-      set_attribute_float4x4}},
-    {CD_PROP_QUATERNION,
-     {sizeof(math::Quaternion),
-      'f',
-      'f',
-      "mathutils.Quaternion((w, x, y, z)), tuple (w, x, y, z) or list [w, x, y, z]",
-      get_attribute_quaternion,
-      set_attribute_quaternion}},
-    {CD_PROP_COLOR,
-     {sizeof(ColorGeometry4f),
-      'f',
-      'f',
-      "tuple (r, g, b, a) or list [r, g, b, a] of floats",
-      get_attribute_color,
-      set_attribute_color}},
-    {CD_PROP_BYTE_COLOR,
-     {sizeof(ColorGeometry4b),
-      'B',
-      'B',
-      "tuple (r, g, b, a) or list [r, g, b, a] of int in the range 0-255",
-      get_attribute_byte_color,
-      set_attribute_byte_color}},
-};
-
-std::optional<CustomDataTypeMapping> get_data_type(BPy_AttributeArray *self)
+bool set_attribute_by_type(BPy_AttributeArray *self, int index, PyObject *value)
 {
-  auto data_type = data_types.find(self->data_layer->type);
-  if (data_type == data_types.end()) {
-    PyErr_Format(
-        PyExc_TypeError,
-        "AttributeArray[index]: unexpected error, data type for attribute '%.200s' not found",
-        self->data_layer->name);
-    return std::nullopt;
+  void *data = self->data_layer->data;
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+      return set_attribute_bool(data, index, value);
+    case CD_PROP_FLOAT:
+      return set_attribute_float(data, index, value);
+    case CD_PROP_INT8:
+      return set_attribute_int8(data, index, value);
+    case CD_PROP_INT32:
+      return set_attribute_int32(data, index, value);
+    case CD_PROP_INT32_2D:
+      return set_attribute_int2(data, index, value);
+    case CD_PROP_STRING:
+      return set_attribute_string(data, index, value);
+    case CD_PROP_FLOAT2:
+      return set_attribute_float2(data, index, value);
+    case CD_PROP_FLOAT3:
+      return set_attribute_float3(data, index, value);
+    case CD_PROP_FLOAT4X4:
+      return set_attribute_float4x4(data, index, value);
+    case CD_PROP_QUATERNION:
+      return set_attribute_quaternion(data, index, value);
+    case CD_PROP_COLOR:
+      return set_attribute_color(data, index, value);
+    case CD_PROP_BYTE_COLOR:
+      return set_attribute_byte_color(data, index, value);
   }
-  return data_type->second;
+  return false;
+}
+
+PyObject *get_attribute_by_type(const BPy_AttributeArray *self, int index)
+{
+  void *data = self->data_layer->data;
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+      return get_attribute_bool(data, index);
+    case CD_PROP_FLOAT:
+      return get_attribute_float(data, index);
+    case CD_PROP_INT8:
+      return get_attribute_int8(data, index);
+    case CD_PROP_INT32:
+      return get_attribute_int32(data, index);
+    case CD_PROP_INT32_2D:
+      return get_attribute_int2(data, index);
+    case CD_PROP_STRING:
+      return get_attribute_string(data, index);
+    case CD_PROP_FLOAT2:
+      return get_attribute_float2(data, index);
+    case CD_PROP_FLOAT3:
+      return get_attribute_float3(data, index);
+    case CD_PROP_FLOAT4X4:
+      return get_attribute_float4x4(data, index);
+    case CD_PROP_QUATERNION:
+      return get_attribute_quaternion(data, index);
+    case CD_PROP_COLOR:
+      return get_attribute_color(data, index);
+    case CD_PROP_BYTE_COLOR:
+      return get_attribute_byte_color(data, index);
+  }
+  return nullptr;
+}
+
+int get_attribute_item_size(BPy_AttributeArray *self)
+{
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+      return sizeof(bool);
+    case CD_PROP_FLOAT:
+      return sizeof(float);
+    case CD_PROP_INT8:
+      return sizeof(int8_t);
+    case CD_PROP_INT32:
+      return sizeof(int32_t);
+    case CD_PROP_INT32_2D:
+      return sizeof(int2);
+    case CD_PROP_STRING:
+      return sizeof(MStringProperty);
+    case CD_PROP_FLOAT2:
+      return sizeof(float2);
+    case CD_PROP_FLOAT3:
+      return sizeof(float3);
+    case CD_PROP_FLOAT4X4:
+      return sizeof(float4x4);
+    case CD_PROP_QUATERNION:
+      return sizeof(math::Quaternion);
+    case CD_PROP_COLOR:
+      return sizeof(ColorGeometry4f);
+    case CD_PROP_BYTE_COLOR:
+      return sizeof(ColorGeometry4b);
+  }
+  return 0;
+}
+
+StringRef get_attribute_type_description(const BPy_AttributeArray *self)
+{
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+      return "bool value True/False or 0/1";
+    case CD_PROP_FLOAT:
+      return "float";
+    case CD_PROP_INT8:
+      return "int8 between -128 and 127";
+    case CD_PROP_INT32:
+      return "int";
+    case CD_PROP_INT32_2D:
+      return "tuple (x, y) or list [x, y] of ints";
+    case CD_PROP_STRING:
+      return "string with a maximum of 254 characters";
+    case CD_PROP_FLOAT2:
+      return "mathutils.Vector((x, y)), tuple (x, y) or list [x, y]";
+    case CD_PROP_FLOAT3:
+      return "mathutils.Vector((x, y, z)), tuple (x, y, z) or list [x, y, z]";
+    case CD_PROP_FLOAT4X4:
+      return "mathutils.Matrix() with 4x4 dimensions";
+    case CD_PROP_QUATERNION:
+      return "mathutils.Quaternion((w, x, y, z)), tuple (w, x, y, z) or list [w, x, y, z]";
+    case CD_PROP_COLOR:
+      return "tuple (r, g, b, a) or list [r, g, b, a] of floats";
+    case CD_PROP_BYTE_COLOR:
+      return "tuple (r, g, b, a) or list [r, g, b, a] of int in the range 0-255";
+  }
+  return "";
+}
+
+char get_buffer_format_by_type(BPy_AttributeArray *self)
+{
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+      return '?';
+    case CD_PROP_FLOAT:
+      return 'f';
+    case CD_PROP_INT8:
+      return 'b';
+    case CD_PROP_INT32:
+      return 'i';
+    case CD_PROP_INT32_2D:
+      return 'i';
+    case CD_PROP_STRING:
+      return 'B';
+    case CD_PROP_FLOAT2:
+      return 'f';
+    case CD_PROP_FLOAT3:
+      return 'f';
+    case CD_PROP_FLOAT4X4:
+      return 'f';
+    case CD_PROP_QUATERNION:
+      return 'f';
+    case CD_PROP_COLOR:
+      return 'f';
+    case CD_PROP_BYTE_COLOR:
+      return 'B';
+  }
+  return ' ';
+}
+
+bool check_buffer_format(const BPy_AttributeArray *self, const char *buffer_format)
+{
+  const char f = buffer_format ? *buffer_format : 'B';
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+      return f == '?';
+    case CD_PROP_FLOAT:
+      return f == 'f';
+    case CD_PROP_INT8:
+      return f == 'b';
+    case CD_PROP_INT32:
+      return f == 'i' || f == 'l';
+    case CD_PROP_INT32_2D:
+      return f == 'i' || f == 'l';
+    case CD_PROP_STRING:
+      return f == 'B';
+    case CD_PROP_FLOAT2:
+      return f == 'f';
+    case CD_PROP_FLOAT3:
+      return f == 'f';
+    case CD_PROP_FLOAT4X4:
+      return f == 'f';
+    case CD_PROP_QUATERNION:
+      return f == 'f';
+    case CD_PROP_COLOR:
+      return f == 'f';
+    case CD_PROP_BYTE_COLOR:
+      return f == 'B';
+  }
+  return false;
+}
+
+bool check_attribute_type(const BPy_AttributeArray *self)
+{
+  switch (self->data_layer->type) {
+    case CD_PROP_BOOL:
+    case CD_PROP_FLOAT:
+    case CD_PROP_INT8:
+    case CD_PROP_INT32:
+    case CD_PROP_INT32_2D:
+    case CD_PROP_STRING:
+    case CD_PROP_FLOAT2:
+    case CD_PROP_FLOAT3:
+    case CD_PROP_FLOAT4X4:
+    case CD_PROP_QUATERNION:
+    case CD_PROP_COLOR:
+    case CD_PROP_BYTE_COLOR:
+      return true;
+  }
+
+  PyErr_Format(
+      PyExc_TypeError,
+      "AttributeArray[index]: unexpected error, data type for attribute '%.200s' not found",
+      self->data_layer->name);
+  return false;
 }
 
 }  // namespace blender::python::attributearray

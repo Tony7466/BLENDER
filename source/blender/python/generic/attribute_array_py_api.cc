@@ -29,15 +29,15 @@ static int BPy_AttributeArray_assign_subscript_int(BPy_AttributeArray *self,
     return -1;
   }
 
-  std::optional<CustomDataTypeMapping> data_type = get_data_type(self);
-  if (!data_type.has_value()) {
+  if (!check_attribute_type(self)) {
     return -1;
   }
 
-  if (!(*data_type).set_attribute(self->data_layer->data, int(index), value_to_assign)) {
+  if (!set_attribute_by_type(self, int(index), value_to_assign)) {
+    StringRef type_description = get_attribute_type_description(self);
     PyErr_Format(PyExc_ValueError,
                  "AttributeArray[index] = value: invalid value type, expected a %.200s",
-                 data_type.value().description.c_str());
+                 type_description.data());
     return -1;
   }
   return 0;
@@ -48,15 +48,15 @@ static int BPy_AttributeArray_assign_subscript_slice(BPy_AttributeArray *self,
                                                      Py_ssize_t stop,
                                                      PyObject *values_to_assign)
 {
-  std::optional<CustomDataTypeMapping> data_type = get_data_type(self);
-  if (!data_type.has_value()) {
+  if (!check_attribute_type(self)) {
     return -1;
   }
 
   if (!PySequence_Check(values_to_assign)) {
+    StringRef type_description = get_attribute_type_description(self);
     PyErr_Format(PyExc_TypeError,
                  "AttributeArray[:] = value: invalid value type, expected a sequence of %.200s",
-                 (*data_type).description.c_str());
+                 type_description.data());
     return -1;
   }
 
@@ -74,10 +74,11 @@ static int BPy_AttributeArray_assign_subscript_slice(BPy_AttributeArray *self,
   for (int index = start; index < stop; index++) {
     PyObject *item = values_fast[index - start];
     if (item) {
-      if (!(*data_type).set_attribute(self->data_layer->data, index, item)) {
+      if (!set_attribute_by_type(self, index, item)) {
+        StringRef type_description = get_attribute_type_description(self);
         PyErr_Format(PyExc_ValueError,
                      "AttributeArray[index] = value: invalid value type, expected a %.200s",
-                     (*data_type).description.c_str());
+                     type_description.data());
         return -1;
       }
     }
@@ -147,12 +148,11 @@ static PyObject *BPy_AttributeArray_subscript_int(BPy_AttributeArray *self, Py_s
     return nullptr;
   }
 
-  std::optional<CustomDataTypeMapping> data_type = get_data_type(self);
-  if (!data_type.has_value()) {
+  if (!check_attribute_type(self)) {
     return nullptr;
   }
 
-  return (*data_type).get_attribute(self->data_layer->data, int(index));
+  return get_attribute_by_type(self, int(index));
 }
 
 static PyObject *BPy_AttributeArray_subscript_slice(BPy_AttributeArray *self,
@@ -246,27 +246,24 @@ static PyObject *foreach_getset(BPy_AttributeArray *self,
     return nullptr;
   }
 
-  std::optional<CustomDataTypeMapping> data_type = get_data_type(self);
-  if (!data_type.has_value()) {
+  if (!check_attribute_type(self)) {
     return nullptr;
   }
 
-  const bool type_is_compatible = buffer.format ?
-                                      (*buffer.format == (*data_type).buffer_format_a ||
-                                       *buffer.format == (*data_type).buffer_format_b) :
-                                      ((*data_type).buffer_format_a == 'B');
-  const bool size_matches = (buffer.len ==
-                             int64_t(self->data_layer->length) * (*data_type).item_size);
+  const bool type_is_compatible = check_buffer_format(self, buffer.format);
+  const int item_size = get_attribute_item_size(self);
+  const bool size_matches = (buffer.len == int64_t(self->data_layer->length) * item_size);
 
   if (!type_is_compatible || !size_matches) {
     PyBuffer_Release(&buffer);
   }
 
   if (!type_is_compatible) {
+    const char expected_buffer_format = get_buffer_format_by_type(self);
     PyErr_Format(PyExc_TypeError,
                  "%s(array): array type mismatch (expected type '%.1s', got '%.1s')",
                  function_name,
-                 &(*data_type).buffer_format_a,
+                 &expected_buffer_format,
                  buffer.format);
     return nullptr;
   }
@@ -275,7 +272,7 @@ static PyObject *foreach_getset(BPy_AttributeArray *self,
     PyErr_Format(PyExc_ValueError,
                  "%s(array): array length mismatch (expected %lld, got %lld)",
                  function_name,
-                 int64_t(self->data_layer->length) * (*data_type).item_size,
+                 int64_t(self->data_layer->length) * item_size,
                  buffer.len);
     return nullptr;
   }
@@ -355,8 +352,7 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
   if (!PyArg_ParseTuple(args, "O|O:AttributeArray.fill(value, indices)", &py_value, &py_indices)) {
     return nullptr;
   }
-  std::optional<CustomDataTypeMapping> data_type = get_data_type(self);
-  if (!data_type.has_value()) {
+  if (!check_attribute_type(self)) {
     return nullptr;
   }
 
@@ -405,20 +401,20 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
   }
 
   /* Set the first value. */
-  if (!(*data_type).set_attribute(self->data_layer->data, first_index, py_value)) {
+  if (!set_attribute_by_type(self, first_index, py_value)) {
+    StringRef type_description = get_attribute_type_description(self);
     PyErr_Format(PyExc_ValueError,
                  "AttributeArray.fill(value, ...): invalid value type, expected a %.200s",
-                 (*data_type).description.c_str());
+                 type_description.data());
     return nullptr;
   }
 
   /* Fill the entire array. */
   void *data = self->data_layer->data;
+  const int item_size = get_attribute_item_size(self);
   if (py_indices == nullptr) {
     for (int index = 1; index < self->data_layer->length; index++) {
-      memcpy(static_cast<int8_t *>(data) + index * (*data_type).item_size,
-             data,
-             (*data_type).item_size);
+      memcpy(static_cast<int8_t *>(data) + index * item_size, data, item_size);
     }
   }
   /* Fill the array using indices. */
@@ -445,9 +441,9 @@ static PyObject *BPy_AttributeArray_fill(BPy_AttributeArray *self, PyObject *arg
         return nullptr;
       }
 
-      memcpy(static_cast<int8_t *>(data) + index * (*data_type).item_size,
-             static_cast<int8_t *>(data) + first_index * (*data_type).item_size,
-             (*data_type).item_size);
+      memcpy(static_cast<int8_t *>(data) + index * item_size,
+             static_cast<int8_t *>(data) + first_index * item_size,
+             item_size);
     }
   }
 
