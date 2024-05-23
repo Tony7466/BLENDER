@@ -901,7 +901,7 @@ static void deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
     }
 
     blender::animrig::Action &action = ale->adt->action->wrap();
-    action.clear_key_selection();
+    action.deselect_keys();
 
     deselected_actions.add(ale->adt->action, true);
   }

@@ -306,7 +306,7 @@ static void deselect_action_keys(blender::Span<Object *> objects)
       continue;
     }
     blender::animrig::Action &action = adt->action->wrap();
-    action.clear_key_selection();
+    action.deselect_keys();
     deselected_actions.add(adt->action, true);
   }
 }

@@ -1042,7 +1042,7 @@ void deselect_action_keys(Span<Object *> objects)
       continue;
     }
     Action &action = adt->action->wrap();
-    action.clear_key_selection();
+    action.deselect_keys();
     deselected_actions.add(adt->action, true);
   }
 }

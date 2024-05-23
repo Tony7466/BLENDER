@@ -378,7 +378,7 @@ static void deselect_keys_of_selection(bContext *C)
       continue;
     }
     animrig::Action &action = adt->action->wrap();
-    action.clear_key_selection();
+    action.deselect_keys();
     deselected_actions.add(adt->action, true);
   }
 }
