@@ -38,6 +38,8 @@
 
 #include "ED_anim_api.hh"
 
+#include "ANIM_action.hh"
+
 /* **************************** depsgraph tagging ******************************** */
 
 void ANIM_list_elem_update(Main *bmain, Scene *scene, bAnimListElem *ale)
@@ -400,4 +402,27 @@ void ANIM_animdata_freelist(ListBase *anim_data)
 #else
   BLI_freelistN(anim_data);
 #endif
+}
+
+void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
+{
+  blender::Map<bAction *, bool> deselected_actions;
+  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
+    if (ale->type != ANIMTYPE_FCURVE) {
+      /* Maybe the same behavior should extend to Grease Pencil? */
+      continue;
+    }
+    if (!ale->adt || !ale->adt->action) {
+      continue;
+    }
+
+    if (deselected_actions.contains(ale->adt->action)) {
+      continue;
+    }
+
+    blender::animrig::Action &action = ale->adt->action->wrap();
+    action.deselect_keys();
+
+    deselected_actions.add(ale->adt->action, true);
+  }
 }

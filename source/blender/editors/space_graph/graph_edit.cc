@@ -104,29 +104,6 @@ static const EnumPropertyItem prop_graphkeys_insertkey_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void deselect_action_keys(ListBase *anim_data)
-{
-  blender::Map<bAction *, bool> deselected_actions;
-  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
-    if (ale->type != ANIMTYPE_FCURVE) {
-      /* Maybe the same behavior should extend to Grease Pencil? */
-      continue;
-    }
-    if (!ale->adt || !ale->adt->action) {
-      continue;
-    }
-
-    if (deselected_actions.contains(ale->adt->action)) {
-      continue;
-    }
-
-    blender::animrig::Action &action = ale->adt->action->wrap();
-    action.deselect_keys();
-
-    deselected_actions.add(ale->adt->action, true);
-  }
-}
-
 /* This function is responsible for snapping keyframes to frame-times. */
 static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
 {
@@ -168,7 +145,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
     return;
   }
 
-  deselect_action_keys(&anim_data);
+  ANIM_animdata_deselect_action_keys(&anim_data);
 
   /* Init key-framing flag. */
   eInsertKeyFlags flag = blender::animrig::get_keyframing_flags(scene);

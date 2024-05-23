@@ -524,6 +524,12 @@ void ANIM_animdata_freelist(ListBase *anim_data);
  */
 bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type);
 
+/**
+ * Deselect the keys of ALL actions that those `bAnimListElem` point to. Each action will only be
+ * visited once.
+ */
+void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data);
+
 /* ************************************************ */
 /* ANIMATION CHANNELS LIST */
 /* anim_channels_*.c */
