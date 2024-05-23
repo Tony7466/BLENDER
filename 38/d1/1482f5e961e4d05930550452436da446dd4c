@@ -2,3 +2,4 @@ Referenced by issue #121686, Regression: Context Menu has many operations disabl
 Referenced by commit 9ed5ed1a2badaefd1617dfc18c4c7a08c45415e9, Fix #121686: Regression: Context Menu has many operations disabled
 Referenced by commit 566a77f60533d42628b080d8eae6eff299334fc8, UI: restore assert in CTX_wm_region_popup_set
 Referenced by issue #122132, Crash cancelling the "Add Remove Repo" extensions popover
+Referenced by commit b25eefbf9acb51df61bb264686d9da42d2499e18, Fix #122132: Crash canceling nested popups
