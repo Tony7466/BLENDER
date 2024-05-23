@@ -323,6 +323,9 @@ class Result {
 
   /* Returns a reference to the domain of the result. See the Domain class. */
   const Domain &domain() const;
+
+  /* The pixels in the result represents data, which is not to be color-managed. */
+  bool is_data = false;
 };
 
 }  // namespace blender::realtime_compositor
