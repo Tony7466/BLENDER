@@ -61,7 +61,7 @@ const GPUShaderCreateInfo *GPU_shader_create_info_get(const char *info_name);
  */
 bool GPU_shader_create_info_check_error(const GPUShaderCreateInfo *_info, char r_error[128]);
 
-using BatchHandle = int;
+using BatchHandle = int64_t;
 /**
  * Request the creation of multiple shaders at once, allowing the backend to use multithreaded
  * compilation. Returns a handle that can be used to poll if all shaders have been compiled, and to
