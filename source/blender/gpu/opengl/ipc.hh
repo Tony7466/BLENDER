@@ -11,7 +11,7 @@
 #ifdef _WIN32
 typedef void *HANDLE;
 #else
-struct sem_t;
+#  include <semaphore.h>
 #endif
 
 namespace blender::gpu {

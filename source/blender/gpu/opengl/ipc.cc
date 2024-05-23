@@ -74,7 +74,6 @@ bool SharedSemaphore::try_decrement()
 
 #else
 #  include <fcntl.h>
-#  include <semaphore.h>
 #  include <stdlib.h>
 #  include <sys/mman.h>
 #  include <sys/stat.h>
