@@ -2218,7 +2218,7 @@ static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent
   BLI_SCOPED_DEFER([&]() { MEM_freeN(asset_shelf_id); });
 
   if (!blender::ui::asset_shelf_popover_invoke(*C, asset_shelf_id, *op->reports)) {
-    return OPERATOR_CANCELLED;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
   return OPERATOR_INTERFACE;
