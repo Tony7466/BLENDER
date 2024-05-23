@@ -794,7 +794,7 @@ void POSE_OT_reveal(wmOperatorType *ot)
 static int pose_flip_quats_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
-  KeyingSet *ks = ANIM_builtin_keyingset_get_named(ANIM_KS_LOC_ROT_SCALE_ID);
+  KeyingSet *ks = ANIM_builtin_keyingset_get_named(ANIM_KS_ROTATION_ID);
 
   bool changed_multi = false;
 
@@ -830,7 +830,7 @@ static int pose_flip_quats_exec(bContext *C, wmOperator * /*op*/)
 void POSE_OT_quaternions_flip(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Flip Quats";
+  ot->name = "Flip Quaternions";
   ot->idname = "POSE_OT_quaternions_flip";
   ot->description =
       "Flip quaternion values to achieve desired rotations, while maintaining the same "
