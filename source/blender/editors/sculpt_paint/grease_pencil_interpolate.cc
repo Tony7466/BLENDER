@@ -249,15 +249,7 @@ static bke::CurvesGeometry interpolate_between_curves(
     return from_frame_a < from_frame_b ||
            (from_frame_a == from_frame_b && to_frame_a < to_frame_b);
   });
-  /* Sorted map arrays that can be passed to the interpolation function directly.
-   * These index maps have the same order as the sorted indices, so slices of indices can be used
-   * for interpolating all curves of a frame pair at once. */
-  Array<int> sorted_from_curve_indices(dst_curve_num);
-  Array<int> sorted_to_curve_indices(dst_curve_num);
-  for (const int i : sorted_pairs.index_range()) {
-    sorted_from_curve_indices[i] = curve_pairs.from_curves[sorted_pairs[i]];
-    sorted_to_curve_indices[i] = curve_pairs.to_curves[sorted_pairs[i]];
-  }
+
   /* Find ranges of sorted pairs with the same from/to frame intervals. */
   Vector<int> pair_offsets;
   const OffsetIndices curves_by_pair = [&]() {
@@ -350,6 +342,12 @@ static bke::CurvesGeometry interpolate_between_curves(
     dst_curves.offsets_for_write().copy_from(dst_curve_offsets);
   }
 
+  /* Sorted map arrays that can be passed to the interpolation function directly.
+   * These index maps have the same order as the sorted indices, so slices of indices can be used
+   * for interpolating all curves of a frame pair at once. */
+  Array<int> sorted_from_curve_indices(dst_curve_num);
+  Array<int> sorted_to_curve_indices(dst_curve_num);
+
   for (const int pair_range_i : curves_by_pair.index_range()) {
     const IndexRange pair_range = curves_by_pair[pair_range_i];
     const int first_pair_index = sorted_pairs[pair_range.first()];
@@ -360,14 +358,22 @@ static bke::CurvesGeometry interpolate_between_curves(
     if (!from_drawing || !to_drawing) {
       continue;
     }
+    const IndexRange from_curves = from_drawing->strokes().points_range();
+    const IndexRange to_curves = to_drawing->strokes().points_range();
 
     /* Subset of target curves that are filled by this frame pair. */
     IndexMaskMemory selection_memory;
     const IndexMask selection = IndexMask::from_indices(sorted_pairs.as_span().slice(pair_range),
                                                         selection_memory);
-    const Span<int> pair_from_indices = sorted_from_curve_indices.as_span().slice(pair_range);
-    const Span<int> pair_to_indices = sorted_to_curve_indices.as_span().slice(pair_range);
-
+    MutableSpan<int> pair_from_indices = sorted_from_curve_indices.as_mutable_span().slice(
+        pair_range);
+    MutableSpan<int> pair_to_indices = sorted_to_curve_indices.as_mutable_span().slice(pair_range);
+    for (const int i : pair_range.index_range()) {
+      const int pair_index = sorted_pairs[pair_range[i]];
+      pair_from_indices[i] = std::clamp(
+          curve_pairs.from_curves[pair_index], 0, int(from_curves.last()));
+      pair_to_indices[i] = std::clamp(curve_pairs.to_curves[pair_index], 0, int(to_curves.last()));
+    }
     geometry::interpolate_curves(from_drawing->strokes(),
                                  to_drawing->strokes(),
                                  pair_from_indices,
