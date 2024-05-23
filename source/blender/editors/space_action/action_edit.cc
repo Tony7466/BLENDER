@@ -40,7 +40,6 @@
 #include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
-#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
