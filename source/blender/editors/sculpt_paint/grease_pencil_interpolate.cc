@@ -480,6 +480,7 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
   const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
 
   BLI_assert(grease_pencil.has_active_layer());
+  const Layer &active_layer = *grease_pencil.get_active_layer();
 
   op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__);
   GreasePencilInterpolateOpData &data = *static_cast<GreasePencilInterpolateOpData *>(
@@ -491,7 +492,7 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
   data.flipmode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
   data.smooth_factor = RNA_float_get(op.ptr, "smooth_factor");
   data.smooth_steps = RNA_int_get(op.ptr, "smooth_steps");
-  data.active_layer_index = *grease_pencil.get_layer_index(*grease_pencil.get_active_layer());
+  data.active_layer_index = *grease_pencil.get_layer_index(active_layer);
 
   const auto layer_mode = GreasePencilInterpolateLayerMode(RNA_enum_get(op.ptr, "layers"));
   switch (layer_mode) {
@@ -524,20 +525,12 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
     }
   });
 
-  // const GreasePencilInterpolateOpData::LayerData &active_layer_data =
-  //     data.layer_data[data.active_layer_index];
-  // if (active_layer_data.from_frame_number == active_layer_data.to_frame_number) {
-  //   BKE_report(
-  //       op.reports,
-  //       RPT_ERROR,
-  //       "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
-  //   MEM_delete(&data);
-  //   op.customdata = nullptr;
-  //   return false;
-  // }
-  // data.init_factor = float(current_frame - active_layer_data.from_frame_number) /
-  //                    (active_layer_data.to_frame_number - active_layer_data.from_frame_number +
-  //                    1);
+  const std::optional<FramesMapKeyInterval> active_layer_interval = find_frames_interval(
+      active_layer, current_frame, data.exclude_breakdowns);
+  data.init_factor = active_layer_interval ?
+                         float(current_frame - active_layer_interval->first) /
+                             (active_layer_interval->second - active_layer_interval->first + 1) :
+                         0.5f;
 
   return true;
 }
