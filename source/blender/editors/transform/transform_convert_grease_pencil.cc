@@ -73,6 +73,9 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
       curves_transform_data->positions.reinitialize(tc.data_len);
     }
+    else {
+      tc.custom.type.free_cb(t, &tc, &tc.custom.type);
+    }
   }
 
   /* Reuse the variable `layer_offset`. */
