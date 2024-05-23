@@ -199,7 +199,10 @@ static bool compute_auto_flip(const Span<float3> from_positions, const Span<floa
 
   /* If lines intersect at a sharp angle check distances. */
   if (isect_seg_seg_v2(from_first, to_first, from_last, to_last) == ISECT_LINE_LINE_CROSS) {
-    if (math::angle_between(to_first - from_first, to_last - from_last).radian() < min_angle) {
+    if (math::angle_between(math::normalize(to_first - from_first),
+                            math::normalize(to_last - from_last))
+            .radian() < min_angle)
+    {
       if (math::distance_squared(from_first, to_first) >=
           math::distance_squared(from_last, to_first))
       {
