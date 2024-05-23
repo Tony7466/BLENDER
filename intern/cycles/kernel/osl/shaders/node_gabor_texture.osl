@@ -366,3 +366,5 @@ shader node_gabor_texture(int use_mapping = 0,
   /* Compute the intensity based on equation (8) in Tricard's paper. */
   Intensity = length(phasor) / normalization_factor;
 }
+
+#undef vector3
