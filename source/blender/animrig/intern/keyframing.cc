@@ -742,6 +742,26 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
+static std::optional<StringRefNull> default_channel_group(const PointerRNA *ptr,
+                                                          const StringRef rna_path)
+{
+  if (ptr->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
+    return pose_channel->name;
+  }
+  else if (ptr->type == &RNA_Object) {
+    if (rna_path == "location" || rna_path == "scale" || rna_path == "rotation_euler" ||
+        rna_path == "rotation_quaternion" || rna_path == "rotation_axis_angle" ||
+        rna_path == "rotation_mode")
+    {
+
+      return "Object Transforms";
+    }
+  }
+
+  return std::nullopt;
+}
+
 CombinedKeyingResult insert_key_action(Main *bmain,
                                        bAction *action,
                                        PointerRNA *ptr,
@@ -757,16 +777,12 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
 
-  std::string group;
+  std::optional<StringRefNull> group;
   if (channel_group.has_value()) {
     group = *channel_group;
   }
-  else if (ptr->type == &RNA_PoseBone) {
-    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
-    group = pose_channel->name;
-  }
   else {
-    group = "Object Transforms";
+    group = default_channel_group(ptr, rna_path);
   }
 
   int property_array_index = 0;
@@ -777,17 +793,18 @@ CombinedKeyingResult insert_key_action(Main *bmain,
       property_array_index++;
       continue;
     }
-    const SingleKeyingResult keying_result = insert_keyframe_fcurve_value(bmain,
-                                                                          ptr,
-                                                                          prop,
-                                                                          action,
-                                                                          group.c_str(),
-                                                                          rna_path.c_str(),
-                                                                          property_array_index,
-                                                                          frame,
-                                                                          value,
-                                                                          key_type,
-                                                                          insert_key_flag);
+    const SingleKeyingResult keying_result = insert_keyframe_fcurve_value(
+        bmain,
+        ptr,
+        prop,
+        action,
+        group.has_value() ? group->c_str() : nullptr,
+        rna_path.c_str(),
+        property_array_index,
+        frame,
+        value,
+        key_type,
+        insert_key_flag);
     combined_result.add(keying_result);
     property_array_index++;
   }
