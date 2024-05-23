@@ -822,6 +822,11 @@ static void init_flood_fill(Object &ob, const FaceSetsFloodFillFn &test_fn)
 
 Set<int> gather_hidden_face_sets(const VArray<bool> &hide_poly, const Span<int> face_sets)
 {
+  if (const std::optional<bool> single = hide_poly.get_if_single()) {
+    if (!*single) {
+      return {};
+    }
+  }
   Set<int> hidden_face_sets;
   for (const int i : hide_poly.index_range()) {
     if (hide_poly[i]) {
