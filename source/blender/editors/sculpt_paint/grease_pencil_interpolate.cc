@@ -62,8 +62,7 @@ struct GreasePencilInterpolateOpData {
     InterpolationPairs curve_pairs;
 
     /* Geometry of the target frame before interpolation for restoring on cancel. */
-    // TODO
-    // bke::CurvesGeometry stored_curves;
+    std::optional<bke::CurvesGeometry> orig_curves;
   };
 
   /* Layers to include. */
@@ -406,15 +405,31 @@ static void grease_pencil_interpolate_status_indicators(
       &C, IFACE_("ESC/RMB to cancel, Enter/LMB to confirm, WHEEL/MOVE to adjust factor"));
 }
 
-static bke::greasepencil::Drawing *get_or_create_drawing_at_frame(GreasePencil &grease_pencil,
-                                                                  bke::greasepencil::Layer &layer,
-                                                                  const int frame_number)
+/* Utility function to get a drawing at the exact frame number. */
+static bke::greasepencil::Drawing *get_drawing_at_exact_frame(GreasePencil &grease_pencil,
+                                                              bke::greasepencil::Layer &layer,
+                                                              const int frame_number)
 {
   using bke::greasepencil::Drawing;
 
   const std::optional<int> start_frame = layer.start_frame_at(frame_number);
   if (start_frame && *start_frame == frame_number) {
     return grease_pencil.get_editable_drawing_at(layer, frame_number);
+  }
+  return nullptr;
+}
+
+static bke::greasepencil::Drawing *ensure_drawing_at_exact_frame(
+    GreasePencil &grease_pencil,
+    bke::greasepencil::Layer &layer,
+    GreasePencilInterpolateOpData::LayerData &layer_data,
+    const int frame_number)
+{
+  using bke::greasepencil::Drawing;
+
+  if (Drawing *drawing = get_drawing_at_exact_frame(grease_pencil, layer, frame_number)) {
+    layer_data.orig_curves = drawing->strokes();
+    return drawing;
   }
   return grease_pencil.insert_frame(layer, frame_number);
 }
@@ -435,7 +450,8 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
     Layer &layer = *grease_pencil.layers_for_write()[layer_index];
     const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
 
-    Drawing *dst_drawing = get_or_create_drawing_at_frame(grease_pencil, layer, current_frame);
+    /* Drawings must be created on operator invoke. */
+    Drawing *dst_drawing = get_drawing_at_exact_frame(grease_pencil, layer, current_frame);
     if (dst_drawing == nullptr) {
       return;
     }
@@ -469,6 +485,45 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
+/* Restore timeline changes when cancelled. */
+static void grease_pencil_interpolate_restore(bContext &C, wmOperator &op)
+{
+  using bke::greasepencil::Drawing;
+  using bke::greasepencil::Layer;
+
+  if (op.customdata == nullptr) {
+    return;
+  }
+
+  const auto &opdata = *static_cast<GreasePencilInterpolateOpData *>(op.customdata);
+  const Scene &scene = *CTX_data_scene(&C);
+  const int current_frame = scene.r.cfra;
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  opdata.layer_mask.foreach_index([&](const int layer_index) {
+    Layer &layer = *grease_pencil.layers_for_write()[layer_index];
+    const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
+
+    if (layer_data.orig_curves) {
+      /* Keyframe existed before the operator, restore geometry. */
+      Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, current_frame);
+      if (drawing) {
+        drawing->strokes_for_write() = *layer_data.orig_curves;
+        drawing->tag_topology_changed();
+        DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+        WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
+      }
+    }
+    else {
+      /* Frame was empty, remove the added drawing. */
+      grease_pencil.remove_frames(layer, {current_frame});
+      DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
+    }
+  });
+}
+
 static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
 {
   using bke::greasepencil::Drawing;
@@ -476,8 +531,8 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
 
   const Scene &scene = *CTX_data_scene(&C);
   const int current_frame = scene.r.cfra;
-  const Object &object = *CTX_data_active_object(&C);
-  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   BLI_assert(grease_pencil.has_active_layer());
   const Layer &active_layer = *grease_pencil.get_active_layer();
@@ -512,8 +567,10 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
 
   data.layer_data.reinitialize(grease_pencil.layers().size());
   data.layer_mask.foreach_index([&](const int layer_index) {
-    const Layer &layer = *grease_pencil.layers()[layer_index];
+    Layer &layer = *grease_pencil.layers_for_write()[layer_index];
     GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
+
+    ensure_drawing_at_exact_frame(grease_pencil, layer, layer_data, current_frame);
 
     if (data.interpolate_selected_only) {
       find_curve_mapping_from_selection_order(layer, layer_data.curve_pairs);
@@ -619,6 +676,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
           ED_workspace_status_text(C, nullptr);
           WM_cursor_modal_restore(&win);
 
+          grease_pencil_interpolate_restore(*C, *op);
           grease_pencil_interpolate_exit(*C, *op);
           return OPERATOR_CANCELLED;
         case InterpolateToolModalEvent::Confirm:
@@ -679,6 +737,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
 
 static void grease_pencil_interpolate_cancel(bContext *C, wmOperator *op)
 {
+  grease_pencil_interpolate_restore(*C, *op);
   grease_pencil_interpolate_exit(*C, *op);
 }
 
