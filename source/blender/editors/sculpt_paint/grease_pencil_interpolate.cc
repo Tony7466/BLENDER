@@ -8,6 +8,11 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_math_angle_types.hh"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_rotation.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 #include "BLT_translation.hh"
@@ -185,11 +190,31 @@ static bool compute_auto_flip(const Span<float3> from_positions, const Span<floa
     return false;
   }
 
-  // TODO GPv2 has some extra checks for narrow intersection angles, not sure if relevant.
+  constexpr const float min_angle = DEG2RADF(15);
 
-  const float3 from_delta = from_positions.last() - from_positions.first();
-  const float3 to_delta = to_positions.last() - to_positions.first();
-  return math::dot(from_delta, to_delta) < 0.0f;
+  const float3 &from_first = from_positions.first();
+  const float3 &from_last = from_positions.last();
+  const float3 &to_first = to_positions.first();
+  const float3 &to_last = to_positions.last();
+
+  /* If lines intersect at a sharp angle check distances. */
+  if (isect_seg_seg_v2(from_first, to_first, from_last, to_last) == ISECT_LINE_LINE_CROSS) {
+    if (math::angle_between(to_first - from_first, to_last - from_last).radian() < min_angle) {
+      if (math::distance_squared(from_first, to_first) >=
+          math::distance_squared(from_last, to_first))
+      {
+        return math::distance_squared(from_last, to_first) >=
+               math::distance_squared(from_last, to_last);
+      }
+
+      return math::distance_squared(from_first, to_first) <
+             math::distance_squared(from_first, to_last);
+    }
+
+    return true;
+  }
+
+  return math::dot(from_last - from_first, to_last - to_first) < 0.0f;
 }
 
 static bke::CurvesGeometry interpolate_between_curves(
