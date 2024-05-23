@@ -275,7 +275,7 @@ static void interpolate_attribute_from_two_curves(const CurvesGeometry &from_cur
       const IndexRange to_points = to_points_by_curve[i_to_curve];
       const IndexRange dst_points = dst_points_by_curve[i_dst_curve];
 
-      if (curve_types[i_dst_curve] == CURVE_TYPE_POLY) {
+      if (curve_types[i_from_curve] == CURVE_TYPE_POLY) {
         bilinear_interpolate(src_from.slice(from_points),
                              src_to.slice(to_points),
                              from_sample_indices.slice(dst_points),
