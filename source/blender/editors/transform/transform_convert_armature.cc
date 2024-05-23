@@ -1622,15 +1622,15 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
   else {
     const bool canceled = (t->state == TRANS_CANCEL);
 
-    blender::Vector<Object *> objects;
     if (blender::animrig::is_autokey_on(t->scene) && !canceled) {
+      blender::Vector<Object *> objects;
       FOREACH_TRANS_DATA_CONTAINER (t, tc) {
         for (int i = 0; i < tc->data_len; i++) {
           const TransData *td = &tc->data[i];
           objects.append(td->ob);
         }
-        blender::animrig::deselect_action_keys(objects);
       }
+      blender::animrig::deselect_action_keys(objects);
     }
 
     GSet *motionpath_updates = BLI_gset_ptr_new("motionpath updates");
