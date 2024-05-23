@@ -2108,43 +2108,27 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   return selected_node;
 }
 
-static bool node_can_be_inserted_on_link(const bNodeTree &tree,
-                                         const bNode &node,
-                                         const bNodeLink &link)
+static bool node_can_be_inserted_on_link(bNodeTree &tree, bNode &node, const bNodeLink &link)
 {
-  bool has_possible_input = false;
-  bool has_possible_output = false;
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &node.inputs) {
-    if (!socket->is_available()) {
-      continue;
-    }
-    if (!tree.typeinfo->validate_link) {
-      has_possible_input = true;
-      break;
-    }
-    if (tree.typeinfo->validate_link(eNodeSocketDatatype(link.fromsock->type),
-                                     eNodeSocketDatatype(socket->type)))
-    {
-      has_possible_input = true;
-      break;
-    }
+  const bNodeSocket *main_input = get_main_socket(tree, node, SOCK_IN);
+  const bNodeSocket *main_output = get_main_socket(tree, node, SOCK_IN);
+  if (ELEM(nullptr, main_input, main_output)) {
+    return false;
   }
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &node.outputs) {
-    if (!socket->is_available()) {
-      continue;
-    }
-    if (!tree.typeinfo->validate_link) {
-      has_possible_output = true;
-      break;
-    }
-    if (tree.typeinfo->validate_link(eNodeSocketDatatype(socket->type),
-                                     eNodeSocketDatatype(link.tosock->type)))
-    {
-      has_possible_output = true;
-      break;
-    }
+  if (!tree.typeinfo->validate_link) {
+    return true;
   }
-  return has_possible_input && has_possible_output;
+  if (!tree.typeinfo->validate_link(eNodeSocketDatatype(link.fromsock->type),
+                                    eNodeSocketDatatype(main_input->type)))
+  {
+    return false;
+  }
+  if (!tree.typeinfo->validate_link(eNodeSocketDatatype(main_output->type),
+                                    eNodeSocketDatatype(link.tosock->type)))
+  {
+    return false;
+  }
+  return true;
 }
 
 void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
