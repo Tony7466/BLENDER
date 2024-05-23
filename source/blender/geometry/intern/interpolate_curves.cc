@@ -17,34 +17,6 @@
 
 namespace blender::geometry {
 
-// static fn::Field<int> get_count_input_max_one(const fn::Field<int> &count_field)
-// {
-//   static auto max_one_fn = mf::build::SI1_SO<int, int>(
-//       "Clamp Above One",
-//       [](int value) { return std::max(1, value); },
-//       mf::build::exec_presets::AllSpanOrSingle());
-//   return fn::Field<int>(fn::FieldOperation::Create(max_one_fn, {count_field}));
-// }
-
-// static fn::Field<int> get_count_input_from_length(const fn::Field<float> &length_field)
-// {
-//   static auto get_count_fn = mf::build::SI2_SO<float, float, int>(
-//       "Length Input to Count",
-//       [](const float curve_length, const float sample_length) {
-//         /* Find the number of sampled segments by dividing the total length by
-//          * the sample length. Then there is one more sampled point than segment. */
-//         const int count = int(curve_length / sample_length) + 1;
-//         return std::max(1, count);
-//       },
-//       mf::build::exec_presets::AllSpanOrSingle());
-
-//   auto get_count_op = fn::FieldOperation::Create(
-//       get_count_fn,
-//       {fn::Field<float>(std::make_shared<bke::CurveLengthFieldInput>()), length_field});
-
-//   return fn::Field<int>(std::move(get_count_op));
-// }
-
 /**
  * Return true if the attribute should be copied/interpolated to the result curves.
  * Don't output attributes that correspond to curve types that have no curves in the result.
@@ -341,6 +313,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                         const Span<int> from_curve_indices,
                         const Span<int> to_curve_indices,
                         const IndexMask &selection,
+                        VArray<bool> curve_flip_direction,
                         const float mix_factor,
                         CurvesGeometry &dst_curves)
 {
@@ -420,11 +393,20 @@ void interpolate_curves(const CurvesGeometry &from_curves,
             to_sample_factors.as_mutable_span().slice(dst_points).fill(0.0f);
           }
           else {
-            length_parameterize::sample_uniform(
-                to_lengths,
-                !to_curves_cyclic[i_to_curve],
-                to_sample_indices.as_mutable_span().slice(dst_points),
-                to_sample_factors.as_mutable_span().slice(dst_points));
+            if (curve_flip_direction[i_dst_curve]) {
+              length_parameterize::sample_uniform_reverse(
+                  to_lengths,
+                  !to_curves_cyclic[i_to_curve],
+                  to_sample_indices.as_mutable_span().slice(dst_points),
+                  to_sample_factors.as_mutable_span().slice(dst_points));
+            }
+            else {
+              length_parameterize::sample_uniform(
+                  to_lengths,
+                  !to_curves_cyclic[i_to_curve],
+                  to_sample_indices.as_mutable_span().slice(dst_points),
+                  to_sample_factors.as_mutable_span().slice(dst_points));
+            }
           }
         }
 
@@ -501,8 +483,9 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
                                   const CurvesGeometry &to_curves,
                                   Span<int> from_curve_indices,
                                   Span<int> to_curve_indices,
-                                  VArray<int> dst_curve_counts,
                                   const IndexMask &selection,
+                                  VArray<int> dst_curve_counts,
+                                  VArray<bool> curve_flip_direction,
                                   const float mix_factor)
 {
   if (from_curves.curves_range().is_empty() || to_curves.curves_range().is_empty()) {
@@ -528,6 +511,7 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
                      from_curve_indices,
                      to_curve_indices,
                      selection,
+                     curve_flip_direction,
                      mix_factor,
                      dst_curves);
 

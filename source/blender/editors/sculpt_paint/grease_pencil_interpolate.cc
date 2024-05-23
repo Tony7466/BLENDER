@@ -5,14 +5,11 @@
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_report.hh"
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_multi_value_map.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
-#include "BLI_virtual_array.hh"
 #include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
@@ -35,25 +32,12 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
+using ed::greasepencil::GreasePencilInterpolateFlipMode;
+using ed::greasepencil::GreasePencilInterpolateLayerMode;
+
 /* -------------------------------------------------------------------- */
 /** \name Interpolate Operator
  * \{ */
-
-enum class GreasePencilInterpolateFlipMode : int8_t {
-  /* No flip. */
-  None = 0,
-  /* Flip always. */
-  Flip,
-  /* Flip if needed. */
-  FlipAuto,
-};
-
-enum class GreasePencilInterpolateLayerMode : int8_t {
-  /* Only interpolate on the active layer. */
-  Active = 0,
-  /* Interpolate strokes on every layer. */
-  All,
-};
 
 constexpr const float interpolate_factor_min = -1.0f;
 constexpr const float interpolate_factor_max = 2.0f;
@@ -181,12 +165,6 @@ static void find_curve_mapping_from_selection_order(const bke::greasepencil::Lay
 {
   const bke::greasepencil::OrderedSelection &global_selection = layer.runtime->ordered_selection;
 
-  std::cout << "Global Selection:" << std::endl;
-  for (const int i : global_selection.data().index_range()) {
-    std::cout << "  Frame " << global_selection.data()[i].frame_number << " Stroke "
-              << global_selection.data()[i].stroke_index << std::endl;
-  }
-
   const int pairs_num = global_selection.data().size() / 2;
   pairs.from_frames.reinitialize(pairs_num);
   pairs.to_frames.reinitialize(pairs_num);
@@ -201,10 +179,25 @@ static void find_curve_mapping_from_selection_order(const bke::greasepencil::Lay
   }
 }
 
-static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease_pencil,
-                                                      const bke::greasepencil::Layer &layer,
-                                                      const InterpolationPairs &curve_pairs,
-                                                      const float mix_factor)
+static bool compute_auto_flip(const Span<float3> from_positions, const Span<float3> to_positions)
+{
+  if (from_positions.size() < 2 || to_positions.size() < 2) {
+    return false;
+  }
+
+  // TODO GPv2 has some extra checks for narrow intersection angles, not sure if relevant.
+
+  const float3 from_delta = from_positions.last() - from_positions.first();
+  const float3 to_delta = to_positions.last() - to_positions.first();
+  return math::dot(from_delta, to_delta) < 0.0f;
+}
+
+static bke::CurvesGeometry interpolate_between_curves(
+    const GreasePencil &grease_pencil,
+    const bke::greasepencil::Layer &layer,
+    const InterpolationPairs &curve_pairs,
+    const float mix_factor,
+    const GreasePencilInterpolateFlipMode flip_mode)
 {
   using namespace blender;
   using bke::greasepencil::Drawing;
@@ -269,8 +262,9 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
     return offset_indices::accumulate_counts_to_offsets(pair_offsets);
   }();
 
-  /* Compute curve length for each pair. */
+  /* Compute curve length and flip mode for each pair. */
   Vector<int> dst_curve_offsets;
+  Vector<bool> dst_curve_flip;
   const OffsetIndices dst_points_by_curve = [&]() {
     for (const int pair_range_i : curves_by_pair.index_range()) {
       const IndexRange pair_range = curves_by_pair[pair_range_i];
@@ -284,16 +278,32 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
       if (!from_drawing || !to_drawing) {
         continue;
       }
-
       const OffsetIndices from_points_by_curve = from_drawing->strokes().points_by_curve();
       const OffsetIndices to_points_by_curve = to_drawing->strokes().points_by_curve();
+      const Span<float3> from_positions = from_drawing->strokes().positions();
+      const Span<float3> to_positions = to_drawing->strokes().positions();
+
       for (const int sorted_index : pair_range) {
         const int pair_index = sorted_pairs[sorted_index];
         const int from_curve = curve_pairs.from_curves[pair_index];
         const int to_curve = curve_pairs.to_curves[pair_index];
+        const IndexRange from_points = from_points_by_curve[from_curve];
+        const IndexRange to_points = to_points_by_curve[to_curve];
 
-        dst_curve_offsets.append(std::max(from_points_by_curve[from_curve].size(),
-                                          to_points_by_curve[to_curve].size()));
+        dst_curve_offsets.append(std::max(from_points.size(), to_points.size()));
+        switch (flip_mode) {
+          case GreasePencilInterpolateFlipMode::None:
+            dst_curve_flip.append(false);
+            break;
+          case GreasePencilInterpolateFlipMode::Flip:
+            dst_curve_flip.append(true);
+            break;
+          case GreasePencilInterpolateFlipMode::FlipAuto: {
+            dst_curve_flip.append(compute_auto_flip(from_positions.slice(from_points),
+                                                    to_positions.slice(to_points)));
+            break;
+          }
+        }
       }
     }
     /* Last entry for overall size. */
@@ -335,6 +345,7 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
                                  pair_from_indices,
                                  pair_to_indices,
                                  selection,
+                                 VArray<bool>::ForSpan(dst_curve_flip),
                                  mix_factor,
                                  dst_curves);
   }
@@ -342,55 +353,6 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
   dst_curves.tag_topology_changed();
   return dst_curves;
 }
-
-// /* Helper: Update all strokes interpolated */
-// static void gpencil_interpolate_update_strokes(bContext *C, tGPDinterpolate *tgpi)
-// {
-//   bGPdata *gpd = tgpi->gpd;
-//   const float shift = tgpi->shift;
-
-//   LISTBASE_FOREACH (tGPDinterpolate_layer *, tgpil, &tgpi->ilayers) {
-//     const float factor = tgpil->factor + shift;
-
-//     bGPDframe *gpf = tgpil->gpl->actframe;
-//     /* Free temp strokes used for display. */
-//     gpencil_interpolate_free_tagged_strokes(gpf);
-
-//     /* Clear previous interpolations. */
-//     gpencil_interpolate_free_tagged_strokes(tgpil->interFrame);
-
-//     LISTBASE_FOREACH (LinkData *, link, &tgpil->selected_strokes) {
-//       bGPDstroke *gps_from = static_cast<bGPDstroke *>(link->data);
-//       if (!BLI_ghash_haskey(tgpil->pair_strokes, gps_from)) {
-//         continue;
-//       }
-//       bGPDstroke *gps_to = (bGPDstroke *)BLI_ghash_lookup(tgpil->pair_strokes, gps_from);
-
-//       /* Create new stroke. */
-//       bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps_from, true, true);
-//       new_stroke->flag |= GP_STROKE_TAG;
-//       new_stroke->select_index = 0;
-
-//       /* Update points position. */
-//       gpencil_interpolate_update_points(gps_from, gps_to, new_stroke, factor);
-
-//       /* Calc geometry data. */
-//       BKE_gpencil_stroke_geometry_update(gpd, new_stroke);
-//       /* Add to strokes. */
-//       BLI_addtail(&tgpil->interFrame->strokes, new_stroke);
-
-//       /* Add temp strokes to display. */
-//       if (gpf) {
-//         bGPDstroke *gps_eval = BKE_gpencil_stroke_duplicate(new_stroke, true, true);
-//         gps_eval->flag |= GP_STROKE_TAG;
-//         BLI_addtail(&gpf->strokes, gps_eval);
-//       }
-//     }
-//   }
-
-//   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-//   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
-// }
 
 // /* Helper: Create internal strokes interpolated */
 // static void gpencil_interpolate_set_points(bContext *C, tGPDinterpolate *tgpi)
@@ -553,6 +515,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   const int current_frame = scene.r.cfra;
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  const auto flip_mode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layers_for_write()[layer_index];
@@ -565,7 +528,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
 
     const float mix_factor = opdata.init_factor + opdata.shift;
     const bke::CurvesGeometry interpolated_curves = interpolate_between_curves(
-        grease_pencil, layer, layer_data.curve_pairs, mix_factor);
+        grease_pencil, layer, layer_data.curve_pairs, mix_factor, flip_mode);
 
     dst_drawing->strokes_for_write() = std::move(interpolated_curves);
     dst_drawing->tag_topology_changed();
