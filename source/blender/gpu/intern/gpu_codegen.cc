@@ -102,7 +102,7 @@ struct GPUPass {
   uint32_t hash;
   /** Did we already tried to compile the attached GPUShader. */
   bool compiled;
-  /** If this pass is already being_compiled (A GPUPass can be shader by multiple GPUMaterials). */
+  /** If this pass is already being_compiled (A GPUPass can be shared by multiple GPUMaterials). */
   bool compilation_requested;
   /** Hint that an optimized variant of this pass should be created based on a complexity heuristic
    * during pass code generation. */
