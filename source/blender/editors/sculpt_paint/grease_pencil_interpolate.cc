@@ -176,7 +176,6 @@ static void find_curve_mapping_from_selection_order(const bke::greasepencil::Lay
   pairs.from_curves.reinitialize(pairs_num);
   pairs.to_curves.reinitialize(pairs_num);
   for (const int i : IndexRange(pairs_num)) {
-    // TODO should do a range check and clamp here.
     pairs.from_frames[i] = global_selection.data()[2 * i].frame_number;
     pairs.to_frames[i] = global_selection.data()[2 * i + 1].frame_number;
     pairs.from_curves[i] = global_selection.data()[2 * i].stroke_index;
