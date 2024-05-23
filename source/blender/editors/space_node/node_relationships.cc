@@ -2131,7 +2131,9 @@ static bool node_can_be_inserted_on_link(bNodeTree &tree, bNode &node, const bNo
   return true;
 }
 
-void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
+void node_insert_on_link_flags_set(SpaceNode &snode,
+                                   const ARegion &region,
+                                   const bool attach_enabled)
 {
   bNodeTree &node_tree = *snode.edittree;
   node_tree.ensure_topology_cache();
@@ -2179,7 +2181,7 @@ void node_insert_on_link_flags_set(SpaceNode &snode, const ARegion &region)
 
   if (selink) {
     selink->flag |= NODE_LINK_INSERT_TARGET;
-    if (!node_can_be_inserted_on_link(node_tree, *node_to_insert, *selink)) {
+    if (!attach_enabled || !node_can_be_inserted_on_link(node_tree, *node_to_insert, *selink)) {
       selink->flag |= NODE_LINK_INSERT_TARGET_INVALID;
     }
   }
