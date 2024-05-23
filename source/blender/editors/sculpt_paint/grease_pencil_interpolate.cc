@@ -412,11 +412,11 @@ static bke::greasepencil::Drawing *get_or_create_drawing_at_frame(GreasePencil &
 {
   using bke::greasepencil::Drawing;
 
-  const int sorted_key = layer.sorted_keys_index_at(frame_number);
-  if (sorted_key < 0 || layer.sorted_keys()[sorted_key] != frame_number) {
-    return grease_pencil.insert_frame(layer, frame_number);
+  const std::optional<int> start_frame = layer.start_frame_at(frame_number);
+  if (start_frame && *start_frame == frame_number) {
+    return grease_pencil.get_editable_drawing_at(layer, frame_number);
   }
-  return grease_pencil.get_editable_drawing_at(layer, frame_number);
+  return grease_pencil.insert_frame(layer, frame_number);
 }
 
 static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
