@@ -36,6 +36,10 @@ class VKIndexBuffer : public IndexBuf, public VKBindableResource {
   {
     return buffer_.vk_handle();
   }
+  VkIndexType vk_index_type() const
+  {
+    return to_vk_index_type(index_type_);
+  }
 
  private:
   void strip_restart_indices() override;

@@ -1210,6 +1210,25 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
   return vk_pipeline;
 }
 
+VkPipeline VKShader::ensure_and_get_graphics_pipeline()
+{
+  VKGraphicsInfo graphics_info = {};
+  graphics_info.specialization_constants.extend(constants.values);
+  graphics_info.vk_pipeline_layout = vk_pipeline_layout_;
+
+  graphics_info.pre_rasterization.vk_vertex_module = vertex_module_;
+  graphics_info.pre_rasterization.vk_geometry_module = geometry_module_;
+
+  graphics_info.fragment_shader.vk_fragment_module = fragment_module_;
+
+  VKDevice &device = VKBackend::get().device_get();
+  /* Store result in local variable to ensure thread safety. */
+  VkPipeline vk_pipeline = device.pipelines.get_or_create_graphics_pipeline(graphics_info,
+                                                                            vk_pipeline_);
+  vk_pipeline_ = vk_pipeline;
+  return vk_pipeline;
+}
+
 int VKShader::program_handle_get() const
 {
   return -1;

@@ -88,7 +88,15 @@ class VKShader : public Shader {
 
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
-  VkPipeline ensure_and_get_compute_pipeline();
+  VkPipeline ensure_and_get_pipeline()
+  {
+    if (is_compute_shader()) {
+      return ensure_and_get_compute_pipeline();
+    }
+    else {
+      return ensure_and_get_graphics_pipeline();
+    }
+  }
 
   VKPipeline &pipeline_get();
   VkPipelineLayout vk_pipeline_layout_get() const
@@ -143,6 +151,9 @@ class VKShader : public Shader {
    */
   std::string workaround_geometry_shader_source_create(const shader::ShaderCreateInfo &info);
   bool do_geometry_shader_injection(const shader::ShaderCreateInfo *info);
+
+  VkPipeline ensure_and_get_compute_pipeline();
+  VkPipeline ensure_and_get_graphics_pipeline();
 };
 
 static inline VKShader &unwrap(Shader &shader)

@@ -244,7 +244,7 @@ void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data
 {
   VKShader &vk_shader = unwrap(*shader);
   pipeline_data.vk_pipeline_layout = vk_shader.vk_pipeline_layout_get();
-  pipeline_data.vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();
+  pipeline_data.vk_pipeline = vk_shader.ensure_and_get_pipeline();
 
   /* Update push constants. */
   pipeline_data.push_constants_data = nullptr;

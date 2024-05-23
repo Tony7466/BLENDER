@@ -34,6 +34,92 @@ struct VKComputeInfo {
   };
 };
 
+/**
+ * Struct containing key information to identify graphics pipelines.
+ *
+ * The struct has already been separated into 4 stages to be compatible with
+ * `VK_EXT_graphics_pipeline_library` being vertex_in, pre_rasterization, fragment_shader and
+ * fragment_out.
+ */
+struct VKGraphicsInfo {
+  struct VertexIn {
+    bool operator==(const VertexIn & /*other*/) const
+    {
+      return true;
+    }
+    uint64_t hash() const
+    {
+      return 0;
+    }
+  };
+  struct PreRasterization {
+    VkShaderModule vk_vertex_module;
+    VkShaderModule vk_geometry_module;
+    bool operator==(const PreRasterization &other) const
+    {
+      return vk_vertex_module == other.vk_vertex_module &&
+             vk_geometry_module == other.vk_geometry_module;
+    }
+    uint64_t hash() const
+    {
+      uint64_t hash = 0;
+      hash = hash * 33 ^ uint64_t(vk_vertex_module);
+      hash = hash * 33 ^ uint64_t(vk_geometry_module);
+      return hash;
+    }
+  };
+  struct FragmentShader {
+    VkShaderModule vk_fragment_module;
+    bool operator==(const FragmentShader &other) const
+    {
+      return vk_fragment_module == other.vk_fragment_module;
+    }
+    uint64_t hash() const
+    {
+      uint64_t hash = 0;
+      hash = hash * 33 ^ uint64_t(vk_fragment_module);
+      return hash;
+    }
+  };
+  struct FragmentOut {
+    bool operator==(const FragmentOut & /*other*/) const
+    {
+      return true;
+    }
+    uint64_t hash() const
+    {
+      return 0;
+    }
+  };
+
+  VertexIn vertex_in;
+  PreRasterization pre_rasterization;
+  FragmentShader fragment_shader;
+  FragmentOut fragment_out;
+
+  VkPipelineLayout vk_pipeline_layout;
+  Vector<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants;
+
+  bool operator==(const VKGraphicsInfo &other) const
+  {
+    return vertex_in == other.vertex_in && pre_rasterization == other.pre_rasterization &&
+           fragment_shader == other.fragment_shader && fragment_out == other.fragment_out &&
+           vk_pipeline_layout == other.vk_pipeline_layout &&
+           specialization_constants == other.specialization_constants;
+  };
+  uint64_t hash() const
+  {
+    uint64_t hash = 0;
+    hash = hash * 33 ^ vertex_in.hash();
+    hash = hash * 33 ^ pre_rasterization.hash();
+    hash = hash * 33 ^ fragment_shader.hash();
+    hash = hash * 33 ^ fragment_out.hash();
+    hash = hash * 33 ^ uint64_t(vk_pipeline_layout);
+    hash = hash * 33 ^ get_default_hash(specialization_constants);
+    return hash;
+  }
+};
+
 }  // namespace gpu
 
 template<> struct DefaultHash<gpu::VKComputeInfo> {
@@ -85,8 +171,12 @@ class VKPipelinePool : public NonCopyable {
  public:
  private:
   Map<VKComputeInfo, VkPipeline> compute_pipelines_;
+  Map<VKGraphicsInfo, VkPipeline> graphic_pipelines_;
   /* Partially initialized structures to reuse. */
   VkComputePipelineCreateInfo vk_compute_pipeline_create_info_;
+  VkGraphicsPipelineCreateInfo vk_graphics_pipeline_create_info_;
+  VkPipelineShaderStageCreateInfo vk_pipeline_shader_stage_create_info_[3];
+
   VkSpecializationInfo vk_specialization_info_;
   Vector<VkSpecializationMapEntry> vk_specialization_map_entries_;
   VkPushConstantRange vk_push_constant_range_;
@@ -103,6 +193,15 @@ class VKPipelinePool : public NonCopyable {
    */
   VkPipeline get_or_create_compute_pipeline(VKComputeInfo &compute_info,
                                             VkPipeline vk_pipeline_base = VK_NULL_HANDLE);
+
+  /**
+   * Get an existing or create a new compute pipeline based on the provided ComputeInfo.
+   *
+   * When vk_pipeline_base is a valid pipeline handle, the pipeline base will be used to speed up
+   * pipeline creation process.
+   */
+  VkPipeline get_or_create_graphics_pipeline(VKGraphicsInfo &graphics_info,
+                                             VkPipeline vk_pipeline_base = VK_NULL_HANDLE);
 
   /**
    * Remove all shader pipelines that uses the given shader_module.

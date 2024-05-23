@@ -6,6 +6,7 @@
  * \ingroup gpu
  */
 
+#include "render_graph/vk_render_graph.hh"
 #include "vk_buffer.hh"
 #include "vk_common.hh"
 
@@ -40,6 +41,7 @@ class VKVertexAttributeObject {
   void clear();
 
   void bind(VKContext &context);
+  void bind(render_graph::VKVertexBufferBindings &r_vertex_buffer_bindings) const;
 
   /** Copy assignment operator. */
   VKVertexAttributeObject &operator=(const VKVertexAttributeObject &other);

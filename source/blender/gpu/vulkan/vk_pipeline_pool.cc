@@ -30,6 +30,26 @@ VKPipelinePool::VKPipelinePool()
   vk_pipeline_shader_stage_create_info.module = VK_NULL_HANDLE;
   vk_pipeline_shader_stage_create_info.pName = "main";
 
+  /* Initialize VkGraphicsPipelineCreateInfo */
+  vk_graphics_pipeline_create_info_ = {};
+  vk_graphics_pipeline_create_info_.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  vk_graphics_pipeline_create_info_.pNext = nullptr;
+  vk_graphics_pipeline_create_info_.stageCount = 0;
+  vk_graphics_pipeline_create_info_.pStages = vk_pipeline_shader_stage_create_info_;
+
+  /* Initialize VkPipelineShaderStageCreateInfo */
+  for (int i : IndexRange(3)) {
+    vk_pipeline_shader_stage_create_info_[i].sType =
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vk_pipeline_shader_stage_create_info_[i].pNext = nullptr;
+    vk_pipeline_shader_stage_create_info_[i].flags = 0;
+    vk_pipeline_shader_stage_create_info_[i].module = VK_NULL_HANDLE;
+    vk_pipeline_shader_stage_create_info_[i].pName = "main";
+  }
+  vk_pipeline_shader_stage_create_info_[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+  vk_pipeline_shader_stage_create_info_[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  vk_pipeline_shader_stage_create_info_[2].stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+
   /* Initialize VkSpecializationInfo. */
   vk_specialization_info_.mapEntryCount = 0;
   vk_specialization_info_.pMapEntries = nullptr;
@@ -98,6 +118,86 @@ VkPipeline VKPipelinePool::get_or_create_compute_pipeline(VKComputeInfo &compute
   vk_specialization_info_.pData = nullptr;
   vk_specialization_info_.mapEntryCount = 0;
   vk_specialization_info_.pMapEntries = nullptr;
+
+  return pipeline;
+}
+
+VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graphics_info,
+                                                           VkPipeline vk_pipeline_base)
+{
+  std::scoped_lock lock(mutex_);
+  const VkPipeline *found_pipeline = graphic_pipelines_.lookup_ptr(graphics_info);
+  if (found_pipeline) {
+    VkPipeline result = *found_pipeline;
+    BLI_assert(result != VK_NULL_HANDLE);
+    return result;
+  }
+
+  /* Specialization constants */
+  VkSpecializationInfo *specialization_info = nullptr;
+  if (!graphics_info.specialization_constants.is_empty()) {
+    specialization_info = &vk_specialization_info_;
+    while (vk_specialization_map_entries_.size() < graphics_info.specialization_constants.size()) {
+      uint32_t constant_id = vk_specialization_map_entries_.size();
+      VkSpecializationMapEntry vk_specialization_map_entry = {};
+      vk_specialization_map_entry.constantID = constant_id;
+      vk_specialization_map_entry.offset = constant_id * sizeof(uint32_t);
+      vk_specialization_map_entry.size = sizeof(uint32_t);
+      vk_specialization_map_entries_.append(vk_specialization_map_entry);
+    }
+    vk_compute_pipeline_create_info_.stage.pSpecializationInfo = &vk_specialization_info_;
+    vk_specialization_info_.dataSize = graphics_info.specialization_constants.size() *
+                                       sizeof(uint32_t);
+    vk_specialization_info_.pData = graphics_info.specialization_constants.data();
+    vk_specialization_info_.mapEntryCount = graphics_info.specialization_constants.size();
+    vk_specialization_info_.pMapEntries = vk_specialization_map_entries_.data();
+  }
+
+  /* Shader stages */
+  vk_graphics_pipeline_create_info_.stageCount =
+      graphics_info.pre_rasterization.vk_geometry_module == VK_NULL_HANDLE ? 2 : 3;
+  vk_pipeline_shader_stage_create_info_[0].module =
+      graphics_info.pre_rasterization.vk_vertex_module;
+  vk_pipeline_shader_stage_create_info_[0].pSpecializationInfo = specialization_info;
+  vk_pipeline_shader_stage_create_info_[1].module =
+      graphics_info.fragment_shader.vk_fragment_module;
+  vk_pipeline_shader_stage_create_info_[1].pSpecializationInfo = specialization_info;
+  vk_pipeline_shader_stage_create_info_[2].module =
+      graphics_info.pre_rasterization.vk_geometry_module;
+  vk_pipeline_shader_stage_create_info_[2].pSpecializationInfo = specialization_info;
+
+  /* Common values */
+  vk_graphics_pipeline_create_info_.layout = graphics_info.vk_pipeline_layout;
+  vk_graphics_pipeline_create_info_.basePipelineHandle = vk_pipeline_base;
+
+  /* Build pipeline. */
+  VKBackend &backend = VKBackend::get();
+  VKDevice &device = backend.device_get();
+  VK_ALLOCATION_CALLBACKS;
+
+  VkPipeline pipeline = VK_NULL_HANDLE;
+  vkCreateGraphicsPipelines(device.device_get(),
+                            device.vk_pipeline_cache_get(),
+                            1,
+                            &vk_graphics_pipeline_create_info_,
+                            vk_allocation_callbacks,
+                            &pipeline);
+  graphic_pipelines_.add(graphics_info, pipeline);
+
+  /* Reset values to initial value. */
+  vk_specialization_info_.dataSize = 0;
+  vk_specialization_info_.pData = nullptr;
+  vk_specialization_info_.mapEntryCount = 0;
+  vk_specialization_info_.pMapEntries = nullptr;
+  vk_graphics_pipeline_create_info_.stageCount = 0;
+  vk_graphics_pipeline_create_info_.layout = VK_NULL_HANDLE;
+  vk_graphics_pipeline_create_info_.basePipelineHandle = VK_NULL_HANDLE;
+  for (VkPipelineShaderStageCreateInfo &info :
+       MutableSpan<VkPipelineShaderStageCreateInfo>(vk_pipeline_shader_stage_create_info_, 3))
+  {
+    info.module = VK_NULL_HANDLE;
+    info.pSpecializationInfo = nullptr;
+  }
 
   return pipeline;
 }
