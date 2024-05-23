@@ -672,7 +672,8 @@ static int create_op_exec(bContext *C, wmOperator *op)
     case CreateMode::Selection: {
       const VArraySpan<bool> select_poly = *attributes.lookup_or_default<bool>(
           ".select_poly", bke::AttrDomain::Face, false);
-      const VArray<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+      const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly",
+                                                                  bke::AttrDomain::Face);
 
       face_sets_update(object, nodes, [&](const Span<int> indices, MutableSpan<int> face_sets) {
         for (const int i : indices.index_range()) {
@@ -765,9 +766,7 @@ static void init_flood_fill(Object &ob, const FaceSetsFloodFillFn &test_fn)
   }
 
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
-      ".hide_poly", bke::AttrDomain::Face, false);
-
+  const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   const Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
 
   int next_face_set = 1;
@@ -820,13 +819,12 @@ static void init_flood_fill(Object &ob, const FaceSetsFloodFillFn &test_fn)
   face_sets.finish();
 }
 
-Set<int> gather_hidden_face_sets(const VArray<bool> &hide_poly, const Span<int> face_sets)
+Set<int> gather_hidden_face_sets(const Span<bool> hide_poly, const Span<int> face_sets)
 {
-  if (const std::optional<bool> single = hide_poly.get_if_single()) {
-    if (!*single) {
-      return {};
-    }
+  if (hide_poly.is_empty()) {
+    return {};
   }
+
   Set<int> hidden_face_sets;
   for (const int i : hide_poly.index_range()) {
     if (hide_poly[i]) {
@@ -888,8 +886,8 @@ static int init_op_exec(bContext *C, wmOperator *op)
       bke::SpanAttributeWriter<int> face_sets = ensure_face_sets_mesh(ob);
       const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
-      const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
-          ".hide_poly", bke::AttrDomain::Face, false);
+      const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly",
+                                                                  bke::AttrDomain::Face);
       const Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
 
       int prev_material = material_indices[0];
