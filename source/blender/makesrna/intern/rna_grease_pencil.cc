@@ -351,7 +351,7 @@ static void rna_GreasePencil_layer_group_move_to_layer_group(GreasePencil *greas
 
 static GreasePencilLayer *rna_GreasePencil_layer_new(GreasePencil *grease_pencil,
                                                      const char *name,
-                                                     bool set_active,
+                                                     const bool set_active,
                                                      PointerRNA *layer_group_ptr)
 {
   using namespace blender::bke::greasepencil;
@@ -388,7 +388,7 @@ static void rna_GreasePencil_layer_remove(GreasePencil *grease_pencil, PointerRN
 
 static void rna_GreasePencil_layer_move(GreasePencil *grease_pencil,
                                         PointerRNA *layer_ptr,
-                                        int direction)
+                                        const int direction)
 {
   if (direction == 0) {
     return;
@@ -441,6 +441,9 @@ static void rna_GreasePencil_layer_move_to_layer_group(GreasePencil *grease_penc
   }
   else {
     layer_group = &grease_pencil->root_group();
+  }
+  if (layer_group == nullptr) {
+    return;
   }
   grease_pencil->move_node_into(layer_node, *layer_group);
 
