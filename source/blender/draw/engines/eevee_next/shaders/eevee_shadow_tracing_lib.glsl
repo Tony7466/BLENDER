@@ -173,7 +173,7 @@ ShadowRayDirectional shadow_ray_generate_directional(
   direction = shadow_ray_above_horizon_ensure(direction, lNg, max_tracing_distance);
 
   /* It only make sense to trace where there can be occluder. Clamp by distance to near plane. */
-  direction *= dist_to_near_plane / direction.z;
+  direction *= saturate(dist_to_near_plane / direction.z) + 0.0001;
 
   ShadowRayDirectional ray;
   ray.origin = lP;
@@ -242,9 +242,9 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
 
   vec3 direction;
   if (is_area_light(light.type)) {
-    random_2d *= light_area_data_get(light).size;
+    random_2d *= light_area_data_get(light).size * light_area_data_get(light).shadow_scale;
 
-    vec3 point_on_light_shape = vec3(random_2d * shape_radius, 0.0);
+    vec3 point_on_light_shape = vec3(random_2d, 0.0);
 
     direction = point_on_light_shape - lP;
     direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
@@ -257,7 +257,6 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     make_orthonormal_basis(lL, right, up);
 
     if (is_sphere_light(light.type)) {
-      /* FIXME(weizhen): this is not well-defined when `dist < light.spot.radius`. */
       shape_radius = light_sphere_disk_radius(shape_radius, dist);
     }
     random_2d *= shape_radius;
@@ -355,7 +354,7 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
       /* Uniform distribution everywhere. No distance scaling.
        * shadow_directional_level_fractional returns the cascade level, but all levels have the
        * same density as the level 0. So the effective density only depends on the `lod_bias`. */
-      scale = max(exp2(light.lod_bias), exp2(light.lod_min));
+      scale = exp2(float(light_sun_data_get(light).clipmap_lod_min));
     }
   }
   else {
