@@ -131,8 +131,10 @@ vec2 compute_2d_gabor_noise_cell(vec2 cell,
     vec3 seed_for_weight = vec3(cell, i * 3 + 2);
 
     /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
-     * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
-    float random_orientation = hash_vec3_to_float(seed_for_orientation) * 2.0 * M_PI;
+     * base orientation. Linearly interpolate between the two cases using the isotropy factor. Note
+     * that the random orientation range is to pi as opposed to two pi, that's because the Gabor
+     * kernel is symmetric around pi. */
+    float random_orientation = hash_vec3_to_float(seed_for_orientation) * M_PI;
     float orientation = base_orientation + random_orientation * isotropy;
 
     vec2 kernel_center = hash_vec3_to_vec2(seed_for_kernel_center);
@@ -232,8 +234,10 @@ vec3 compute_3d_orientation(vec3 orientation, float isotropy, vec4 seed)
   float azimuth = sign(orientation.y) * acos(orientation.x / length(orientation.xy));
 
   /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
-   * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
-  vec2 random_angles = hash_vec4_to_vec2(seed) * 2.0 * M_PI;
+   * base orientation. Linearly interpolate between the two cases using the isotropy factor. Note
+   * that the random orientation range is to pi as opposed to two pi, that's because the Gabor
+   * kernel is symmetric around pi. */
+  vec2 random_angles = hash_vec4_to_vec2(seed) * M_PI;
   inclination += random_angles.x * isotropy;
   azimuth += random_angles.y * isotropy;
 
@@ -312,6 +316,8 @@ void node_tex_gabor(vec3 coordinates,
 {
   vec3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0 - clamp(anisotropy, 0.0, 1.0);
+  frequency = max(0.0, frequency);
+  impulses_count = clamp(impulses_count, 0.0, 16.0);
 
   vec2 phasor = vec2(0.0);
   float standard_deviation = 1.0;
@@ -327,13 +333,13 @@ void node_tex_gabor(vec3 coordinates,
     standard_deviation = compute_3d_gabor_standard_deviation(impulses_count, frequency);
   }
 
-  /* Normalize the noise by dividing by triple the standard deviation, which should be good enough
-   * according to the empirical rule. */
-  float normalization_factor = 3.0 * standard_deviation;
+  /* Normalize the noise by dividing by six times the standard deviation, which was determined
+   * empirically. */
+  float normalization_factor = 6.0 * standard_deviation;
 
   /* As discussed in compute_2d_gabor_kernel, we use the imaginary part of the phasor as the Gabor
-   * value. */
-  output_value = phasor.y / normalization_factor;
+   * value. But remap to [0, 1] from [-1, 1]. */
+  output_value = (phasor.y / normalization_factor) * 0.5 + 0.5;
 
   /* Compute the phase based on equation (9) in Tricard's paper. But remap the phase into the
    * [0, 1] range. */

@@ -128,8 +128,10 @@ ccl_device float2 compute_2d_gabor_noise_cell(float2 cell,
     float3 seed_for_weight = make_float3(cell.x, cell.y, i * 3 + 2);
 
     /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
-     * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
-    float random_orientation = hash_float3_to_float(seed_for_orientation) * 2.0f * M_PI_F;
+     * base orientation. Linearly interpolate between the two cases using the isotropy factor. Note
+     * that the random orientation range is to pi as opposed to two pi, that's because the Gabor
+     * kernel is symmetric around pi. */
+    float random_orientation = hash_float3_to_float(seed_for_orientation) * M_PI_F;
     float orientation = base_orientation + random_orientation * isotropy;
 
     float2 kernel_center = hash_float3_to_float2(seed_for_kernel_center);
@@ -230,8 +232,10 @@ ccl_device float3 compute_3d_orientation(float3 orientation, float isotropy, flo
                   acos(orientation.x / len(make_float2(orientation.x, orientation.y)));
 
   /* For isotropic noise, add a random orientation amount, while for anisotropic noise, use the
-   * base orientation. Linearly interpolate between the two cases using the isotropy factor. */
-  float2 random_angles = hash_float4_to_float2(seed) * 2.0f * M_PI_F;
+   * base orientation. Linearly interpolate between the two cases using the isotropy factor. Note
+   * that the random orientation range is to pi as opposed to two pi, that's because the Gabor
+   * kernel is symmetric around pi. */
+  float2 random_angles = hash_float4_to_float2(seed) * M_PI_F;
   inclination += random_angles.x * isotropy;
   azimuth += random_angles.y * isotropy;
 
@@ -346,6 +350,8 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
 
   float3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0f - clamp(anisotropy, 0.0f, 1.0f);
+  frequency = max(0.0f, frequency);
+  impulses_count = clamp(impulses_count, 0.0f, 16.0f);
 
   float2 phasor = make_float2(0.0f, 0.0f);
   float standard_deviation = 1.0f;
@@ -368,14 +374,14 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
     }
   }
 
-  /* Normalize the noise by dividing by triple the standard deviation, which should be good enough
-   * according to the empirical rule. */
-  float normalization_factor = 3.0f * standard_deviation;
+  /* Normalize the noise by dividing by six times the standard deviation, which was determined
+   * empirically. */
+  float normalization_factor = 6.0f * standard_deviation;
 
   /* As discussed in compute_2d_gabor_kernel, we use the imaginary part of the phasor as the Gabor
-   * value. */
+   * value. But remap to [0, 1] from [-1, 1]. */
   if (stack_valid(value_stack_offset)) {
-    stack_store_float(stack, value_stack_offset, phasor.y / normalization_factor);
+    stack_store_float(stack, value_stack_offset, (phasor.y / normalization_factor) * 0.5f + 0.5f);
   }
 
   /* Compute the phase based on equation (9) in Tricard's paper. But remap the phase into the

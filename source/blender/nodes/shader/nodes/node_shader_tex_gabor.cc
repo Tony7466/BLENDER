@@ -20,8 +20,8 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Vector>("Vector").implicit_field(implicit_field_inputs::position);
   b.add_input<decl::Float>("Scale").default_value(5.0f);
-  b.add_input<decl::Float>("Impulses").default_value(16.0f);
-  b.add_input<decl::Float>("Frequency").default_value(2.0f);
+  b.add_input<decl::Float>("Impulses").default_value(8.0f).min(0.0f).max(16.0f);
+  b.add_input<decl::Float>("Frequency").default_value(2.0f).min(0.0f);
   b.add_input<decl::Float>("Anisotropy")
       .default_value(1.0f)
       .min(0.0f)
