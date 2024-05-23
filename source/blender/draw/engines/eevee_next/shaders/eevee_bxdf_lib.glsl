@@ -31,20 +31,14 @@ struct LightProbeRay {
   float perceptual_roughness;
 };
 
-/* -------------------------------------------------------------------- */
-/** \name Lambert
- *
- * Not really a microfacet model but fits this file.
- * \{ */
-
-float bsdf_lambert(vec3 N, vec3 L, out float pdf)
-{
-  float cos_theta = saturate(dot(N, L));
-  pdf = cos_theta;
-  return cos_theta;
-}
-
-/** \} */
+/**
+ * General purpose 3D ray.
+ */
+struct Ray {
+  vec3 origin;
+  vec3 direction;
+  float max_time;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Utils

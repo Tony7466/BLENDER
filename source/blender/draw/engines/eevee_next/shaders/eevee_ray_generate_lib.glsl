@@ -27,26 +27,10 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
     random_point_on_cylinder.x = 1.0 - random_point_on_cylinder.x * (1.0 - rng_bias);
   }
 
-  if (thickness != 0.0) {
-    switch (cl.type) {
-      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-        ClosureRefraction cl_refr = to_closure_refraction(cl);
-        float apparent_roughness = refraction_roughness_remapping(cl_refr.roughness, cl_refr.ior);
-        vec3 L = refraction_dominant_dir(cl.N, V, cl_refr.ior, apparent_roughness);
-        ThicknessIsect isect = thickness_shape_intersect(thickness, cl.N, L);
-        cl.N = -isect.hit_N;
-        // P += isect.hit_P;
-        V = -L;
-      } break;
-
-      case CLOSURE_BSDF_TRANSLUCENT_ID:
-        /* Ray direction is distributed on the whole sphere.
-         * Move the ray origin to the sphere surface (with bias to avoid self-intersection). */
-        // P += (ray.direction - cl.N) * thickness * 0.505;
-        break;
-      default:
-        break;
-    }
+  switch (cl.type) {
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      bxdf_ggx_context_amend_transmission(cl, V, thickness);
+      break;
   }
 
   mat3 tangent_to_world = from_up_axis(cl.N);

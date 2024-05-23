@@ -90,8 +90,36 @@ vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 P, vec3 L, float pdf)
   return radiance_sh;
 }
 
+LightProbeRay bxdf_lightprobe_ray(ClosureUndetermined cl, vec3 P, vec3 V, float thickness)
+{
+  switch (cl.type) {
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      bxdf_ggx_context_amend_transmission(cl, V, thickness);
+      break;
+  }
+
+  switch (cl.type) {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
+      return bxdf_translucent_lightprobe(cl.N, thickness);
+    case CLOSURE_BSSRDF_BURLEY_ID:
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      return bxdf_diffuse_lightprobe(cl.N);
+    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      return bxdf_ggx_lightprobe_reflection(to_closure_reflection(cl), V);
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      return bxdf_ggx_lightprobe_transmission(to_closure_refraction(cl), V, thickness);
+    default:
+      /* TODO: Assert. */
+      break;
+  }
+
+  LightProbeRay ray;
+  return ray;
+}
+
 #  ifdef EEVEE_UTILITY_TX
 
+/* TODO: Port that inside a BSSDF file. */
 vec3 lightprobe_eval(LightProbeSample samp, ClosureSubsurface cl, vec3 P, vec3 V, float thickness)
 {
   vec3 sss_profile = subsurface_transmission(cl.sss_radius, abs(thickness));
@@ -103,28 +131,7 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureSubsurface cl, vec3 P, vec3 V
 vec3 lightprobe_eval(
     LightProbeSample samp, ClosureUndetermined cl, vec3 P, vec3 V, float thickness)
 {
-  switch (cl.type) {
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-      bxdf_ggx_context_amend_transmission(cl, P, V, thickness, false, true, false);
-      break;
-  }
-
-  LightProbeRay ray;
-  switch (cl.type) {
-    case CLOSURE_BSDF_TRANSLUCENT_ID:
-      ray = bxdf_translucent_lightprobe(cl.N, thickness);
-      break;
-    case CLOSURE_BSSRDF_BURLEY_ID:
-    case CLOSURE_BSDF_DIFFUSE_ID:
-      ray = bxdf_diffuse_lightprobe(cl.N);
-      break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-      ray = bxdf_ggx_lightprobe_reflection(to_closure_reflection(cl), V);
-      break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-      ray = bxdf_ggx_lightprobe_transmission(to_closure_refraction(cl), V, thickness);
-      break;
-  }
+  LightProbeRay ray = bxdf_lightprobe_ray(cl, P, V, thickness);
 
   float lod = sphere_probe_roughness_to_lod(ray.perceptual_roughness);
   float fac = sphere_probe_roughness_to_mix_fac(ray.perceptual_roughness);

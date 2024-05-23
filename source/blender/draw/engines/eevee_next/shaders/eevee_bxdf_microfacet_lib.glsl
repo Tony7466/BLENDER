@@ -327,21 +327,25 @@ LightProbeRay bxdf_ggx_lightprobe_transmission(ClosureRefraction cl, vec3 V, flo
 }
 
 void bxdf_ggx_context_amend_transmission(inout ClosureUndetermined cl,
-                                         inout vec3 P,
                                          inout vec3 V,
-                                         float thickness,
-                                         const bool is_raytracing,
-                                         const bool is_lightprobe,
-                                         const bool is_light)
+                                         float thickness)
 {
   if (thickness != 0.0) {
     ClosureRefraction bsdf = to_closure_refraction(cl);
     vec3 L = refraction_dominant_dir(bsdf.N, V, bsdf.ior, bsdf.roughness);
-    ThicknessIsect isect = thickness_shape_intersect(thickness, bsdf.N, L);
-    cl.N = -isect.hit_N;
-    P += isect.hit_P;
+    cl.N = -thickness_shape_intersect(thickness, bsdf.N, L).hit_N;
     V = -L;
   }
+}
+
+Ray bxdf_ggx_ray_amend_transmission(ClosureUndetermined cl, vec3 V, Ray ray, float thickness)
+{
+  if (thickness != 0.0) {
+    ClosureRefraction bsdf = to_closure_refraction(cl);
+    vec3 L = refraction_dominant_dir(bsdf.N, V, bsdf.ior, bsdf.roughness);
+    ray.origin += thickness_shape_intersect(thickness, bsdf.N, L).hit_P;
+  }
+  return ray;
 }
 
 /** \} */

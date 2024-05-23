@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 
@@ -103,6 +104,16 @@ LightProbeRay bxdf_translucent_lightprobe(vec3 N, float thickness)
   /* If using the spherical assumption, discard any directionality from the lighting. */
   probe.dominant_direction = (thickness > 0.0) ? vec3(0.0) : -N;
   return probe;
+}
+
+Ray bxdf_translucent_ray_amend(ClosureUndetermined cl, vec3 V, Ray ray, float thickness)
+{
+  if (thickness > 0.0) {
+    /* Ray direction is distributed on the whole sphere.
+     * Move the ray origin to the sphere surface (with bias to avoid self-intersection). */
+    ray.origin += (ray.direction - cl.N) * thickness * 0.505;
+  }
+  return ray;
 }
 
 /** \} */
