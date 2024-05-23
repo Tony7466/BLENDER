@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
 /* -------------------------------------------------------------------- */
 /** \name Microfacet GGX distribution
@@ -253,6 +255,93 @@ BsdfEval bxdf_ggx_eval_transmission(
     ior = 1.0 / ior;
   }
   return bxdf_ggx_eval(N, L, V, alpha, ior, false);
+}
+
+float bxdf_ggx_perceived_roughness_reflection(float roughness)
+{
+  return roughness;
+}
+
+/* Return the equivalent reflective roughness resulting in a similar lobe. */
+float bxdf_ggx_perceived_roughness_transmission(float roughness, float ior)
+{
+  /* This is a very rough mapping used by manually curve fitting the apparent roughness
+   * (blurriness) of GGX reflections and GGX refraction.
+   * A better fit is desirable if it is in the same order of complexity.  */
+  if (ior > 1.0) {
+    return roughness * sqrt_fast(1.0 - 1.0 / ior);
+  }
+  else {
+    return roughness * sqrt_fast(saturate(1.0 - ior)) * 0.8;
+  }
+}
+
+/**
+ * Returns the dominant direction for one reflection event.
+ * `roughness` is expected to be the linear (from UI) roughness.
+ */
+vec3 bxdf_ggx_dominant_direction_reflection(vec3 N, vec3 V, float roughness)
+{
+  /* From Frostbite PBR Course
+   * http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf
+   * Listing 22.
+   * Note that the reference labels squared roughness (GGX input) as roughness. */
+  float m = square(roughness);
+  vec3 R = -reflect(V, N);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
+  return normalize(mix(N, R, fac));
+}
+
+/**
+ * Returns the dominant direction for one transmission event.
+ * `roughness` is expected to be the reflection roughness from `refraction_roughness_remapping`.
+ */
+vec3 bxdf_ggx_dominant_direction_transmission(vec3 N, vec3 V, float ior, float roughness)
+{
+  /* Reusing same thing as reflection_dominant_dir for now with the roughness mapped to
+   * reflection roughness. */
+  float m = square(roughness);
+  vec3 R = refract(-V, N, 1.0 / ior);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
+  return normalize(mix(-N, R, fac));
+}
+
+LightProbeRay bxdf_ggx_lightprobe_reflection(ClosureReflection cl, vec3 V)
+{
+  LightProbeRay probe;
+  probe.perceptual_roughness = cl.roughness;
+  probe.dominant_direction = bxdf_ggx_dominant_direction_reflection(
+      cl.N, V, probe.perceptual_roughness);
+  return probe;
+}
+
+LightProbeRay bxdf_ggx_lightprobe_transmission(ClosureRefraction cl, vec3 V, float thickness)
+{
+  LightProbeRay probe;
+  probe.perceptual_roughness = bxdf_ggx_perceived_roughness_transmission(cl.roughness, cl.ior);
+  probe.dominant_direction = bxdf_ggx_dominant_direction_transmission(
+      cl.N, V, thickness != 0.0 ? 1.0 / cl.ior : cl.ior, probe.perceptual_roughness);
+  return probe;
+}
+
+void bxdf_ggx_context_amend_transmission(inout ClosureUndetermined cl,
+                                         inout vec3 P,
+                                         inout vec3 V,
+                                         float thickness,
+                                         const bool is_raytracing,
+                                         const bool is_lightprobe,
+                                         const bool is_light)
+{
+  if (thickness != 0.0) {
+    ClosureRefraction bsdf = to_closure_refraction(cl);
+    vec3 L = refraction_dominant_dir(bsdf.N, V, bsdf.ior, bsdf.roughness);
+    ThicknessIsect isect = thickness_shape_intersect(thickness, bsdf.N, L);
+    cl.N = -isect.hit_N;
+    P += isect.hit_P;
+    V = -L;
+  }
 }
 
 /** \} */

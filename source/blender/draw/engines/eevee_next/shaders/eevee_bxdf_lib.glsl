@@ -20,6 +20,17 @@ struct BsdfEval {
   float pdf;
 };
 
+/* Represent an approximation of a bunch of rays from a BSDF. */
+struct LightProbeRay {
+  /* Average direction of sampled rays or its approximation.
+   * Magnitude will reduce directionnality of spherical harmonic evaluation. */
+  vec3 dominant_direction;
+  /* Perceptual roughness in [0..1] range.
+   * Modulate blur level of spherical probe and blend between sphere probe and spherical harmonic
+   * evaluation at higher roughness. */
+  float perceptual_roughness;
+};
+
 /* -------------------------------------------------------------------- */
 /** \name Lambert
  *

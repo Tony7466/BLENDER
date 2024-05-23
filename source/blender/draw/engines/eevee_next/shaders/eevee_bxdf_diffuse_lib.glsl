@@ -33,6 +33,19 @@ BsdfEval bxdf_diffuse_eval(vec3 N, vec3 L)
   return eval;
 }
 
+float bxdf_diffuse_perceived_roughness()
+{
+  return 1.0;
+}
+
+LightProbeRay bxdf_diffuse_lightprobe(vec3 N)
+{
+  LightProbeRay probe;
+  probe.perceptual_roughness = bxdf_diffuse_perceived_roughness();
+  probe.dominant_direction = N;
+  return probe;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -76,6 +89,20 @@ BsdfEval bxdf_translucent_eval(vec3 N, vec3 L, float thickness)
   BsdfEval eval;
   eval.throughput = eval.pdf = saturate(dot(-N, L));
   return eval;
+}
+
+float bxdf_translucent_perceived_roughness()
+{
+  return 1.0;
+}
+
+LightProbeRay bxdf_translucent_lightprobe(vec3 N, float thickness)
+{
+  LightProbeRay probe;
+  probe.perceptual_roughness = bxdf_translucent_perceived_roughness();
+  /* If using the spherical assumption, discard any directionality from the lighting. */
+  probe.dominant_direction = (thickness > 0.0) ? vec3(0.0) : -N;
+  return probe;
 }
 
 /** \} */
