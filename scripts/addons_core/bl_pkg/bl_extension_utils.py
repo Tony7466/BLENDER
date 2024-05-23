@@ -80,9 +80,9 @@ BLENDER_EXT_CMD = (
 # This directory is in the local repository.
 REPO_LOCAL_PRIVATE_DIR = ".blender_ext"
 # Locate inside `REPO_LOCAL_PRIVATE_DIR`.
-REPO_LOCAL_PRIVATE_LOCK = "bl_ext_repo.lock"
+REPO_LOCAL_PRIVATE_LOCK = "index.lock"
 
-PKG_REPO_LIST_FILENAME = "bl_ext_repo.json"
+PKG_REPO_LIST_FILENAME = "index.json"
 PKG_MANIFEST_FILENAME_TOML = "blender_manifest.toml"
 PKG_EXT = ".zip"
 
@@ -568,7 +568,8 @@ class CommandBatch_ExecNonBlockingResult(NamedTuple):
 class CommandBatch_StatusFlag(NamedTuple):
     flag: int
     failure_count: int
-    count: int
+    # This error seems to be a bug in `mypy-v1.10.0`.
+    count: int  # type: ignore
 
 
 class CommandBatch:

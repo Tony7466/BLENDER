@@ -797,6 +797,9 @@ class CommandHandle:
         handle.wm = context.window_manager
 
         handle.wm.modal_handler_add(op)
+        for window in handle.wm.windows:
+            window.cursor_modal_set('WAIT')
+
         op._runtime_handle = handle
         return {'RUNNING_MODAL'}
 
@@ -840,6 +843,10 @@ class CommandHandle:
             del op._runtime_handle
             context.workspace.status_text_set(None)
             repo_status_text.running = False
+
+            for window in self.wm.windows:
+                window.cursor_modal_restore()
+
             return {'FINISHED'}
 
         return {'RUNNING_MODAL'}
@@ -2267,9 +2274,12 @@ class BlPkgOnlineAccess(Operator):
                 # While not expected, we want to know if this ever occurs, don't fail silently.
                 self.report({'WARNING'}, "Repository \"{:s}\" not found!".format(remote_url))
 
-            # Run the first check for updates automatically.
-            if bpy.ops.bl_pkg.repo_sync_all.poll():
-                bpy.ops.bl_pkg.repo_sync_all()
+            if bpy.app.online_access:
+                # Run the first check for updates automatically.
+                # Invoke the modal operator so users can cancel by pressing "Escape".
+                assert bpy.ops.bl_pkg.repo_sync_all.poll()
+                bpy.ops.bl_pkg.repo_sync_all('INVOKE_DEFAULT')
+
         prefs.extensions.use_online_access_handled = True
 
         return {'FINISHED'}
