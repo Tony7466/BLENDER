@@ -2070,7 +2070,6 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
   const bool tweak = RNA_boolean_get(op->ptr, "tweak");
 
   if (tweak) {
-    eSeqHandle hand_dummy;
     int mval[2];
     float mouse_co[2];
     WM_event_drag_start_mval(event, region, mval);
