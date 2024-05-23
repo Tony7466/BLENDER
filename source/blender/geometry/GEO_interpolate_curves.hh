@@ -25,6 +25,9 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
                                   VArray<bool> curve_flip_direction,
                                   float mix_factor);
 
+/**
+ * Create new curves that are interpolated between "from" and "to" curves.
+ */
 void interpolate_curves(const CurvesGeometry &from_curves,
                         const CurvesGeometry &to_curves,
                         const Span<int> from_curve_indices,
