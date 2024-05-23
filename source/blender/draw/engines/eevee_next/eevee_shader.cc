@@ -28,12 +28,11 @@ namespace blender::eevee {
  * \{ */
 
 ShaderModule *ShaderModule::g_shader_module = nullptr;
-std::mutex ShaderModule::g_mutex = {};
 
 ShaderModule *ShaderModule::module_get()
 {
-  std::scoped_lock lock(g_mutex);
   if (g_shader_module == nullptr) {
+    /* TODO(@fclem) thread-safety. */
     g_shader_module = new ShaderModule();
   }
   return g_shader_module;
@@ -41,8 +40,8 @@ ShaderModule *ShaderModule::module_get()
 
 void ShaderModule::module_free()
 {
-  std::scoped_lock lock(g_mutex);
   if (g_shader_module != nullptr) {
+    /* TODO(@fclem) thread-safety. */
     delete g_shader_module;
     g_shader_module = nullptr;
   }
@@ -98,22 +97,12 @@ bool ShaderModule::is_ready(bool block)
     return true;
   }
 
-  std::scoped_lock lock(g_mutex);
-
-  /* Check again. Another thread could finish the compilation between the check and the lock. */
-  if (compilation_handle_ == 0) {
-    return true;
-  }
-
   if (block || GPU_shader_batch_is_ready(compilation_handle_)) {
-    BatchHandle handle_copy = compilation_handle_;
-    /* Pass a copy since GPU_shader_batch_finalize sets the handle to 0. */
-    Vector<GPUShader *> shaders = GPU_shader_batch_finalize(handle_copy);
+    Vector<GPUShader *> shaders = GPU_shader_batch_finalize(compilation_handle_);
     for (int i : IndexRange(MAX_SHADER_TYPE)) {
       shaders_[i] = shaders[i];
     }
-    /* Set the handle to 0 now that it's safe for other threads to retrieve a shader. */
-    compilation_handle_ = handle_copy;
+
     printf("Static Shaders: %fs\n", BLI_time_now_seconds() - start_time);
   }
 
@@ -346,11 +335,7 @@ GPUShader *ShaderModule::static_shader_get(eShaderType shader_type)
       BLI_assert(0);
     }
     else {
-      std::scoped_lock lock(g_mutex);
-      /* Check again. Another thread could compile the shader between the check and the lock. */
-      if (shaders_[shader_type] == nullptr) {
-        shaders_[shader_type] = GPU_shader_create_from_info_name(shader_name);
-      }
+      shaders_[shader_type] = GPU_shader_create_from_info_name(shader_name);
     }
   }
   return shaders_[shader_type];

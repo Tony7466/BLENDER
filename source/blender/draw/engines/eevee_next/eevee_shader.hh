@@ -12,7 +12,6 @@
 #pragma once
 
 #include <array>
-#include <mutex>
 #include <string>
 
 #include "BLI_string_ref.hh"
@@ -163,8 +162,6 @@ class ShaderModule {
 
   /** Shared shader module across all engine instances. */
   static ShaderModule *g_shader_module;
-  /** Global mutex for g_shader_module initialization. */
-  static std::mutex g_mutex;
 
  public:
   ShaderModule();
