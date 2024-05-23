@@ -294,23 +294,6 @@ static void object_clear_scale(Object *ob, const bool clear_delta)
   }
 }
 
-static void deselect_action_keys(blender::Span<Object *> objects)
-{
-  blender::Map<bAction *, bool> deselected_actions;
-  for (Object *ob : objects) {
-    AnimData *adt = BKE_animdata_from_id(&ob->id);
-    if (!adt || !adt->action) {
-      continue;
-    }
-    if (deselected_actions.contains(adt->action)) {
-      continue;
-    }
-    blender::animrig::Action &action = adt->action->wrap();
-    action.deselect_keys();
-    deselected_actions.add(adt->action, true);
-  }
-}
-
 /* generic exec for clear-transform operators */
 static int object_clear_transform_generic_exec(bContext *C,
                                                wmOperator *op,
@@ -361,7 +344,7 @@ static int object_clear_transform_generic_exec(bContext *C,
   ks = ANIM_get_keyingset_for_autokeying(scene, default_ksName);
 
   if (blender::animrig::is_autokey_on(scene)) {
-    deselect_action_keys(objects);
+    blender::animrig::deselect_action_keys(objects);
   }
 
   for (Object *ob : objects) {
