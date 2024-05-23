@@ -2691,13 +2691,17 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "before_current_frame", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(
-      prop, "Before Current Frame", "The color for data that is from a frame before the current");
+      prop,
+      "Before Current Frame",
+      "The color for things before the current frame (for onion skinning, motion paths, etc.)");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "after_current_frame", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(
-      prop, "After Current Frame", "The color for data that is from a frame after the current");
+      prop,
+      "After Current Frame",
+      "The color for things after the current frame (for onion skinning, motion paths, etc.)");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   /* misc */
