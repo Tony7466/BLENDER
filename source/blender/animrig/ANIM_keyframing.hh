@@ -87,15 +87,16 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
  * animation data (AnimData, Action, ...) if it doesn't already exist in order
  * to do this.
  *
- * \param rna_paths: the RNA paths to insert keys for.  Note that an empty array
- * index is treated as "key all elements" for array properties.
+ * \param rna_paths: the RNA paths to insert keys for.  Note that for paths to
+ * array properties, if the array index is specified then only that element is
+ * keyed, but if the index is not specified then *all* array elements are keyed.
  *
  * \param channel_group: the channel group to put any newly created fcurves
  * under.  If not given, the standard groups for each RNA path are used.
  *
- * \param scene_frame: the frame to insert the keys at.  It should be in scene
- * time, not NLA mapped (NLA mapping is already handled internally by this
- * function).  If not given, the current scene time is used.
+ * \param scene_frame: the frame to insert the keys at.  This is in scene time,
+ * not NLA mapped (NLA mapping is already handled internally by this function).
+ * If not given, the current scene time is used.
  *
  * \returns A summary of the successful and failed keyframe insertions, with
  * reasons for the failures.
