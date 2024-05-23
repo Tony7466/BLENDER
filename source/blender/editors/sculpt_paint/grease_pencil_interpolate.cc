@@ -519,13 +519,12 @@ static bke::greasepencil::Drawing *get_or_create_drawing_at_frame(GreasePencil &
                                                                   const int frame_number)
 {
   using bke::greasepencil::Drawing;
-  using bke::greasepencil::FramesMapKeyT;
 
-  if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
-    return drawing;
+  const int sorted_key = layer.sorted_keys_index_at(frame_number);
+  if (sorted_key < 0 || layer.sorted_keys()[sorted_key] != frame_number) {
+    return grease_pencil.insert_frame(layer, frame_number);
   }
-
-  return grease_pencil.insert_frame(layer, frame_number);
+  return grease_pencil.get_editable_drawing_at(layer, frame_number);
 }
 
 static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
