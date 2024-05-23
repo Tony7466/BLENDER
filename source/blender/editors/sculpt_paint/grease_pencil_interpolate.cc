@@ -26,6 +26,7 @@
 #include "ED_screen.hh"
 
 #include "GEO_interpolate_curves.hh"
+#include "GEO_smooth_curves.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -440,8 +441,23 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
     }
 
     const float mix_factor = opdata.init_factor + opdata.shift;
-    const bke::CurvesGeometry interpolated_curves = interpolate_between_curves(
+    bke::CurvesGeometry interpolated_curves = interpolate_between_curves(
         grease_pencil, layer, layer_data.curve_pairs, mix_factor, flip_mode);
+
+    if (opdata.smooth_factor > 0.0f && opdata.smooth_steps > 0) {
+      MutableSpan<float3> positions = interpolated_curves.positions_for_write();
+      geometry::smooth_curve_attribute(
+          interpolated_curves.curves_range(),
+          interpolated_curves.points_by_curve(),
+          VArray<bool>::ForSingle(true, interpolated_curves.points_num()),
+          interpolated_curves.cyclic(),
+          opdata.smooth_steps,
+          opdata.smooth_factor,
+          false,
+          false,
+          positions);
+      interpolated_curves.tag_positions_changed();
+    }
 
     dst_drawing->strokes_for_write() = std::move(interpolated_curves);
     dst_drawing->tag_topology_changed();
