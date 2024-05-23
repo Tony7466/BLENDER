@@ -26,6 +26,7 @@
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 
 namespace blender::io::usd {
+#pragma optimize("", off)
 static inline float3 to_float3(pxr::GfVec3f vec3f)
 {
   return float3(vec3f.data());
@@ -114,6 +115,7 @@ static const std::optional<bke::AttrDomain> convert_usd_interp_to_blender(
 {
   static const blender::Map<pxr::TfToken, bke::AttrDomain> domain_map = []() {
     blender::Map<pxr::TfToken, bke::AttrDomain> map;
+    map.add_new(pxr::UsdGeomTokens->vertex, bke::AttrDomain::Point);
     map.add_new(pxr::UsdGeomTokens->varying, bke::AttrDomain::Point);
     map.add_new(pxr::UsdGeomTokens->constant, bke::AttrDomain::Curve);
     map.add_new(pxr::UsdGeomTokens->uniform, bke::AttrDomain::Curve);
@@ -311,7 +313,7 @@ void USDCurvesReader::read_custom_data(bke::CurvesGeometry &curves,
                   pv_name.GetText(),
                   pv_interp.GetText(),
                   pv_type.GetAsToken().GetText());
-      return;
+      continue;
     }
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
