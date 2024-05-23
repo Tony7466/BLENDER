@@ -2214,7 +2214,7 @@ static void WM_OT_call_panel(wmOperatorType *ot)
 
 static int asset_shelf_popover_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "asset_shelf", nullptr, 0, nullptr);
+  char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "name", nullptr, 0, nullptr);
   BLI_SCOPED_DEFER([&]() { MEM_freeN(asset_shelf_id); });
 
   if (!blender::ui::asset_shelf_popover_invoke(*C, asset_shelf_id, *op->reports)) {
@@ -2238,7 +2238,7 @@ static void WM_OT_call_asset_shelf_popover(wmOperatorType *ot)
   ot->flag = OPTYPE_INTERNAL;
 
   RNA_def_string(ot->srna,
-                 "asset_shelf",
+                 "name",
                  nullptr,
                  0,
                  "Asset Shelf Name",

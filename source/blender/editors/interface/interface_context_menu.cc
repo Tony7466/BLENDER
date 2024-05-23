@@ -116,7 +116,7 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
 
   if (std::optional asset_shelf_idname = UI_but_asset_shelf_type_idname_get(but)) {
     IDProperty *prop = blender::bke::idprop::create_group(__func__).release();
-    IDP_AddToGroup(prop, bke::idprop::create("asset_shelf", *asset_shelf_idname).release());
+    IDP_AddToGroup(prop, bke::idprop::create("name", *asset_shelf_idname).release());
     *r_prop = prop;
     return "WM_OT_call_asset_shelf_popover";
   }
