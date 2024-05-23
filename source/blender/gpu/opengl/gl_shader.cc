@@ -1791,21 +1791,24 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
     }
 
     if (!item.do_async_compilation) {
+      /* Compile it locally. */
       item.shader = static_cast<GLShader *>(compile(*item.info, false));
       item.is_ready = true;
       continue;
     }
 
     if (!item.worker) {
+      /* Try to acquire an available worker. */
       item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     }
     else if (item.worker->poll()) {
+      /* Retrieve the binary compiled by the worker. */
       if (!item.worker->load_program_binary(item.shader->program_active_->program_id) ||
           !item.shader->post_finalize(item.info))
       {
+        /* Compilation failed, try to compile it locally. */
         delete item.shader;
         item.shader = nullptr;
-        /* Try to compile it locally. */
         item.do_async_compilation = false;
       }
       else {
@@ -1815,9 +1818,9 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       item.worker = nullptr;
     }
     else if (worker_is_lost(item.worker)) {
+      /* We lost the worker, try to compile it locally. */
       delete item.shader;
       item.shader = nullptr;
-      /* Try to compile it locally. */
       item.do_async_compilation = false;
     }
 
@@ -1897,6 +1900,7 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
 
   bool is_ready = false;
   while (!is_ready) {
+    /* Loop until ready, we can't defer the compilation of required specialization constants. */
     is_ready = true;
 
     for (SpecializationWork &item : items) {
@@ -1906,21 +1910,28 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
       std::scoped_lock lock(mutex_);
 
       if (item.worker == nullptr) {
+        /* Try to acquire an available worker. */
         item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
       }
       else if (item.worker->poll()) {
-        bool success = item.worker->load_program_binary(item.program);
-        BLI_assert(success);
+        /* Retrieve the binary compiled by the worker. */
+        if (!item.worker->load_program_binary(item.program)) {
+          /* Compilation failed, local compilation will be tried later on shader bind. */
+          glDeleteProgram(item.program);
+          item.program = 0;
+          item.shader->program_active_->program_id = 0;
+          item.shader->constants.is_dirty = true;
+        }
         item.worker->release();
         item.worker = nullptr;
         item.is_ready = true;
       }
       else if (worker_is_lost(item.worker)) {
+        /* We lost the worker, local compilation will be tried later on shader bind. */
         glDeleteProgram(item.program);
         item.program = 0;
         item.shader->program_active_->program_id = 0;
         item.shader->constants.is_dirty = true;
-        /* Will be compiled locally later. */
         item.is_ready = true;
       }
 
