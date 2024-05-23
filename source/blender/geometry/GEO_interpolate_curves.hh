@@ -26,6 +26,8 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
 
 void interpolate_curves(const CurvesGeometry &from_curves,
                         const CurvesGeometry &to_curves,
+                        const Span<int> from_curve_indices,
+                        const Span<int> to_curve_indices,
                         const IndexMask &selection,
                         const float mix_factor,
                         CurvesGeometry &dst_curves);

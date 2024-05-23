@@ -228,6 +228,15 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
     return from_frame_a < from_frame_b ||
            (from_frame_a == from_frame_b && to_frame_a < to_frame_b);
   });
+  /* Sorted map arrays that can be passed to the interpolation function directly.
+   * These index maps have the same order as the sorted indices, so slices of indices can be used
+   * for interpolating all curves of a frame pair at once. */
+  Array<int> sorted_from_curve_indices(dst_curve_num);
+  Array<int> sorted_to_curve_indices(dst_curve_num);
+  for (const int i : sorted_pairs.index_range()) {
+    sorted_from_curve_indices[i] = curve_pairs.from_curves[sorted_pairs[i]];
+    sorted_to_curve_indices[i] = curve_pairs.to_curves[sorted_pairs[i]];
+  }
   /* Find ranges of sorted pairs with the same from/to frame intervals. */
   Vector<int> pair_offsets;
   const OffsetIndices curves_by_pair = [&]() {
@@ -318,9 +327,16 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
     IndexMaskMemory selection_memory;
     const IndexMask selection = IndexMask::from_indices(sorted_pairs.as_span().slice(pair_range),
                                                         selection_memory);
+    const Span<int> pair_from_indices = sorted_from_curve_indices.as_span().slice(pair_range);
+    const Span<int> pair_to_indices = sorted_to_curve_indices.as_span().slice(pair_range);
 
-    geometry::interpolate_curves(
-        from_drawing->strokes(), to_drawing->strokes(), selection, mix_factor, dst_curves);
+    geometry::interpolate_curves(from_drawing->strokes(),
+                                 to_drawing->strokes(),
+                                 pair_from_indices,
+                                 pair_to_indices,
+                                 selection,
+                                 mix_factor,
+                                 dst_curves);
   }
 
   dst_curves.tag_topology_changed();
