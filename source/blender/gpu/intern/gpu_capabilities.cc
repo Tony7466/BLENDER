@@ -133,7 +133,7 @@ int GPU_max_samplers()
 
 bool GPU_use_parallel_compilation()
 {
-  return GCaps.use_parallel_compilation;
+  return GCaps.max_parallel_compilations > 0;
 }
 
 bool GPU_mip_render_workaround()

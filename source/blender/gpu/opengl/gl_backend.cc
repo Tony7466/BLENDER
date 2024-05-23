@@ -598,7 +598,6 @@ void GLBackend::capabilities_init()
 
   GCaps.max_parallel_compilations = std::min(int(U.max_shader_compilation_subprocesses),
                                              BLI_system_thread_count());
-  GCaps.use_parallel_compilation = GCaps.max_parallel_compilations > 0;
 
   /* Disable this feature entirely when not debugging. */
   if ((G.debug & G_DEBUG_GPU) == 0) {
