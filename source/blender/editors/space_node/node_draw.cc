@@ -2994,13 +2994,29 @@ static void node_get_invalid_links_extra_info(const SpaceNode &snode,
   if (link_errors.is_empty()) {
     return;
   }
-  for (const bke::NodeLinkError &link_error : link_errors) {
-    NodeExtraInfoRow row;
-    row.text = IFACE_("Invalid Link");
-    row.tooltip = link_error.tooltip.c_str();
-    row.icon = ICON_ERROR;
-    rows.append(std::move(row));
-  }
+  NodeExtraInfoRow row;
+  row.text = IFACE_("Invalid Link");
+
+  row.tooltip_fn = [](bContext *C, void *arg, const char * /*tip*/) {
+    const bNodeTree &tree = *CTX_wm_space_node(C)->edittree;
+    const bNode &node = *static_cast<const bNode *>(arg);
+    const Span<bke::NodeLinkError> link_errors = tree.runtime->link_errors_by_target_node.lookup(
+        node.identifier);
+    std::stringstream ss;
+    Set<StringRef> already_added_errors;
+    for (const int i : link_errors.index_range()) {
+      const StringRefNull tooltip = link_errors[i].tooltip;
+      if (already_added_errors.add_as(tooltip)) {
+        ss << "\u2022 " << tooltip << "\n";
+      }
+    }
+    ss << "\n";
+    ss << "Any invalid links are highlighted";
+    return ss.str();
+  };
+  row.tooltip_fn_arg = const_cast<bNode *>(&node);
+  row.icon = ICON_ERROR;
+  rows.append(std::move(row));
 }
 
 static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
