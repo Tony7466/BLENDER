@@ -153,12 +153,19 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
       /* Read cached binary. */
       fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
       std::streamsize size = file.tellg();
-      file.seekg(0, std::ios::beg);
-      file.read(reinterpret_cast<char *>(shared_mem.get_data()), size);
-      /* Ensure it's valid. */
-      if (validate_binary(shared_mem.get_data())) {
-        end_semaphore.increment();
-        continue;
+      if (size <= compilation_subprocess_shared_memory_size) {
+        file.seekg(0, std::ios::beg);
+        file.read(reinterpret_cast<char *>(shared_mem.get_data()), size);
+        /* Ensure it's valid. */
+        if (validate_binary(shared_mem.get_data())) {
+          end_semaphore.increment();
+          continue;
+        }
+      }
+      else {
+        /* This should never happen, since shaders larger than the pool size should be discarded
+         * and compiled in the main Blender process. */
+        BLI_assert_unreachable();
       }
     }
 
