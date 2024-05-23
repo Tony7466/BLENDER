@@ -36,7 +36,6 @@ void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
   projection_type = projection_type_;
   level = clipmap_level;
   light_type = eLightType::LIGHT_SUN;
-  is_area_side = false;
 
   grid_shift = origin_offset - grid_offset;
   grid_offset = origin_offset;
@@ -74,7 +73,6 @@ void ShadowTileMap::sync_cubeface(
   cubeface = face;
   grid_offset = int2(0);
   light_type = light_type_;
-  is_area_side = is_area_light(light_type) && (face != eCubeFace::Z_NEG);
 
   if ((clip_near != near_) || (clip_far != far_)) {
     set_dirty();
@@ -463,7 +461,8 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera
   light.type = LIGHT_SUN;
 
   /* Used for selecting the clipmap level. */
-  float3 location = camera.position() * float3x3(object_mat.view<3, 3>());
+  float3 location = transform_direction_transposed(light.object_to_world, camera.position());
+  /* Offset for smooth level transitions. */
   light.object_to_world.x.w = location.x;
   light.object_to_world.y.w = location.y;
   light.object_to_world.z.w = location.z;
