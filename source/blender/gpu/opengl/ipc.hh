@@ -10,6 +10,8 @@
 
 #ifdef _WIN32
 typedef void *HANDLE;
+#else
+struct sem_t;
 #endif
 
 namespace blender::gpu {
@@ -47,7 +49,7 @@ class SharedSemaphore : NonCopyable {
 #if defined(_WIN32)
   HANDLE handle_;
 #else
-  struct sem_t *handle_;
+  sem_t *handle_;
 #endif
 
  public:

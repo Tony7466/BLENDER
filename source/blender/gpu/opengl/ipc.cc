@@ -108,7 +108,7 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
 SharedMemory::~SharedMemory()
 {
   if (data_) {
-    munmap(data_, size);
+    munmap(data_, data_size_);
     if (is_owner_) {
       shm_unlink(name_.c_str());
     }
@@ -124,7 +124,7 @@ SharedSemaphore::~SharedSemaphore()
 {
   if (handle_) {
     sem_close(handle_);
-    sem_unlink(name.c_str());
+    sem_unlink(name_.c_str());
   }
 }
 
