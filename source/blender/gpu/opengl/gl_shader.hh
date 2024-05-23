@@ -139,7 +139,7 @@ class GLShader : public Shader {
   GLShader(const char *name);
   ~GLShader();
 
-  void init(const shader::ShaderCreateInfo &info) override;
+  void init(const shader::ShaderCreateInfo &info, bool is_batch_compilation) override;
 
   /** Return true on success. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
@@ -247,6 +247,7 @@ class GLShaderCompiler : public ShaderCompiler {
     GLCompilerWorker *worker = nullptr;
     GLShader *shader = nullptr;
     const shader::ShaderCreateInfo *info = nullptr;
+    bool do_async_compilation = false;
 
     std::string vertex_src;
     std::string fragment_src;

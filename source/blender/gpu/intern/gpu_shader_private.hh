@@ -78,7 +78,7 @@ class Shader {
   Shader(const char *name);
   virtual ~Shader();
 
-  virtual void init(const shader::ShaderCreateInfo &info) = 0;
+  virtual void init(const shader::ShaderCreateInfo &info, bool is_batch_compilation) = 0;
 
   virtual void vertex_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual void geometry_shader_from_glsl(MutableSpan<const char *> sources) = 0;
@@ -171,7 +171,7 @@ class ShaderCompiler {
   };
 
  public:
-  Shader *compile(const shader::ShaderCreateInfo &info);
+  Shader *compile(const shader::ShaderCreateInfo &info, bool is_batch_compilation);
 
   virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) = 0;
   virtual bool batch_is_ready(BatchHandle handle) = 0;

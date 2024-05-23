@@ -443,8 +443,6 @@ struct ShaderCreateInfo {
   StringRefNull name_;
   /** True if the shader is static and can be pre-compiled at compile time. */
   bool do_static_compilation_ = false;
-  /** True if the shader is compiled as part of a batch (Set by the ShaderCompiler). */
-  bool do_batch_compilation = false;
   /** If true, all additionally linked create info will be merged into this one. */
   bool finalized_ = false;
   /** If true, all resources will have an automatic location assigned. */

@@ -63,9 +63,9 @@ GLShader::~GLShader()
 #endif
 }
 
-void GLShader::init(const shader::ShaderCreateInfo &info)
+void GLShader::init(const shader::ShaderCreateInfo &info, bool is_batch_compilation)
 {
-  async_compilation_ = info.do_batch_compilation;
+  async_compilation_ = is_batch_compilation;
 
   /* Extract the constants names from info and store them locally. */
   for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
@@ -1747,16 +1747,14 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
 
   for (const shader::ShaderCreateInfo *info : infos) {
     const_cast<ShaderCreateInfo *>(info)->finalize();
-    const bool do_batch_compilation = !info->vertex_source_.is_empty() &&
-                                      !info->fragment_source_.is_empty() &&
-                                      info->compute_source_.is_empty() &&
-                                      info->geometry_source_.is_empty();
-    const_cast<shader::ShaderCreateInfo *>(info)->do_batch_compilation = do_batch_compilation;
-
     CompilationWork item = {};
     item.info = info;
-    if (info->do_batch_compilation) {
-      item.shader = static_cast<GLShader *>(compile(*info));
+    item.do_async_compilation = !info->vertex_source_.is_empty() &&
+                                !info->fragment_source_.is_empty() &&
+                                info->compute_source_.is_empty() &&
+                                info->geometry_source_.is_empty();
+    if (item.do_async_compilation) {
+      item.shader = static_cast<GLShader *>(compile(*info, true));
       for (const char *src : item.shader->vertex_sources_.sources_get()) {
         item.vertex_src.append(src);
       }
@@ -1769,7 +1767,8 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
         item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
       }
       else {
-        const_cast<shader::ShaderCreateInfo *>(info)->do_batch_compilation = false;
+        delete item.shader;
+        item.do_async_compilation = false;
       }
     }
     batch.items.append(item);
@@ -1791,8 +1790,8 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       continue;
     }
 
-    if (!item.info->do_batch_compilation) {
-      item.shader = static_cast<GLShader *>(compile(*item.info));
+    if (!item.do_async_compilation) {
+      item.shader = static_cast<GLShader *>(compile(*item.info, false));
       item.is_ready = true;
       continue;
     }
@@ -1807,7 +1806,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
         delete item.shader;
         item.shader = nullptr;
         /* Try to compile it locally. */
-        const_cast<shader::ShaderCreateInfo *>(item.info)->do_batch_compilation = false;
+        item.do_async_compilation = false;
       }
       else {
         item.is_ready = true;
@@ -1819,7 +1818,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       delete item.shader;
       item.shader = nullptr;
       /* Try to compile it locally. */
-      const_cast<shader::ShaderCreateInfo *>(item.info)->do_batch_compilation = false;
+      item.do_async_compilation = false;
     }
 
     if (!item.is_ready) {
