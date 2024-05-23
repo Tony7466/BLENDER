@@ -2230,7 +2230,7 @@ static void WM_OT_call_asset_shelf_popover(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Call Asset Shelf Popover";
   ot->idname = "WM_OT_call_asset_shelf_popover";
-  ot->description = "Open a predefined asset shelf in a temporary popup region";
+  ot->description = "Open a predefined asset shelf in a popup";
 
   /* api callbacks */
   ot->invoke = asset_shelf_popover_invoke;
