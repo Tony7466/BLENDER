@@ -26,6 +26,7 @@
 
 /* For menu, popup, icons, etc. */
 #include "ED_anim_api.hh"
+#include "ED_markers.hh"
 #include "ED_screen.hh"
 #include "ED_sequencer.hh"
 #include "ED_time_scrub_ui.hh"
@@ -66,6 +67,32 @@ void SEQUENCER_OT_sample(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Sequencer Frame All Operator
  * \{ */
+void SEQ_get_timeline_region_padding(const bContext *C, float *r_pad_top, float *r_pad_bottom)
+{
+  *r_pad_top = UI_TIME_SCRUB_MARGIN_Y;
+  const SpaceSeq *sseq = CTX_wm_space_seq(C);
+  if (sseq->flag & SEQ_SHOW_OVERLAY && sseq->cache_overlay.flag & SEQ_CACHE_SHOW &&
+      sseq->cache_overlay.flag & SEQ_CACHE_SHOW_FINAL_OUT)
+  {
+    *r_pad_top += UI_TIME_SCRUB_MARGIN_Y / 6.0f;
+  }
+
+  *r_pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ? V2D_SCROLL_HANDLE_HEIGHT :
+                                                                     UI_MARKER_MARGIN_Y;
+}
+
+void SEQ_add_timeline_region_padding(const bContext *C, rctf *view_box)
+{
+  /* Calculate and add margin to the view.
+   * This is needed so that the focused strips are not occluded by the scrub area or other
+   * overlays.
+   */
+  float pad_top, pad_bottom;
+  SEQ_get_timeline_region_padding(C, &pad_top, &pad_bottom);
+
+  ARegion *region = CTX_wm_region(C);
+  BLI_rctf_pad_y(view_box, region->winy, pad_bottom, pad_top);
+}
 
 static int sequencer_view_all_exec(bContext *C, wmOperator *op)
 {
@@ -85,14 +112,7 @@ static int sequencer_view_all_exec(bContext *C, wmOperator *op)
   }
   SEQ_timeline_expand_boundbox(scene, SEQ_active_seqbase_get(ed), &box);
 
-  View2D *v2d = &region->v2d;
-  rcti scrub_rect;
-  ED_time_scrub_region_rect_get(region, &scrub_rect);
-  const float pixel_view_size_y = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
-  const float scrub_bar_height = BLI_rcti_size_y(&scrub_rect) * pixel_view_size_y;
-
-  /* Channel n has range of <n, n+1>. */
-  box.ymax += 1.0f + scrub_bar_height;
+  SEQ_add_timeline_region_padding(C, &box);
 
   UI_view2d_smooth_view(C, region, &box, smooth_viewtx);
   return OPERATOR_FINISHED;
@@ -292,17 +312,15 @@ static void seq_view_collection_rect_preview(Scene *scene,
   BLI_rctf_scale(rect, 1.1f);
 }
 
-static void seq_view_collection_rect_timeline(Scene *scene,
+static void seq_view_collection_rect_timeline(bContext *C,
                                               blender::Span<Sequence *> strips,
                                               rctf *rect)
 {
+  Scene *scene = CTX_data_scene(C);
   int xmin = MAXFRAME * 2;
   int xmax = -MAXFRAME * 2;
   int ymin = MAXSEQ + 1;
   int ymax = 0;
-  int orig_height;
-  int ymid;
-  int ymargin = 1;
   int xmargin = FPS;
 
   for (Sequence *seq : strips) {
@@ -310,15 +328,14 @@ static void seq_view_collection_rect_timeline(Scene *scene,
     xmax = max_ii(xmax, SEQ_time_right_handle_frame_get(scene, seq));
 
     ymin = min_ii(ymin, seq->machine);
-    ymax = max_ii(ymax, seq->machine);
+    /* "+1" because each channel has a thickness of 1. */
+    ymax = max_ii(ymax, seq->machine + 1);
   }
 
   xmax += xmargin;
   xmin -= xmargin;
-  ymax += ymargin;
-  ymin -= ymargin;
 
-  orig_height = BLI_rctf_size_y(rect);
+  float orig_height = BLI_rctf_size_y(rect);
 
   rect->xmin = xmin;
   rect->xmax = xmax;
@@ -326,12 +343,31 @@ static void seq_view_collection_rect_timeline(Scene *scene,
   rect->ymin = ymin;
   rect->ymax = ymax;
 
-  /* Only zoom out vertically. */
-  if (orig_height > BLI_rctf_size_y(rect)) {
-    ymid = BLI_rctf_cent_y(rect);
+  SEQ_add_timeline_region_padding(C, rect);
 
-    rect->ymin = ymid - (orig_height / 2);
-    rect->ymax = ymid + (orig_height / 2);
+  /* Only zoom out vertically, don't zoom in. */
+  if (orig_height > BLI_rctf_size_y(rect)) {
+    /* Get the current max/min channel we can display. */
+    const Editing *ed = SEQ_editing_get(scene);
+    rctf box;
+    SEQ_timeline_boundbox(scene, SEQ_active_seqbase_get(ed), &box);
+    SEQ_add_timeline_region_padding(C, &box);
+    float timeline_ymin = box.ymin;
+    float timeline_ymax = box.ymax;
+
+    float ymid = BLI_rctf_cent_y(rect);
+
+    rect->ymin = ymid - (orig_height / 2.0f);
+    rect->ymax = ymid + (orig_height / 2.0f);
+
+    if (rect->ymin < timeline_ymin) {
+      rect->ymin = timeline_ymin;
+      rect->ymax = rect->ymin + orig_height;
+    }
+    else if (rect->ymax > timeline_ymax) {
+      rect->ymax = timeline_ymax;
+      rect->ymin = rect->ymax - orig_height;
+    }
   }
 }
 
@@ -355,7 +391,7 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
     seq_view_collection_rect_preview(scene, strips, &cur_new);
   }
   else {
-    seq_view_collection_rect_timeline(scene, strips, &cur_new);
+    seq_view_collection_rect_timeline(C, strips, &cur_new);
   }
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
