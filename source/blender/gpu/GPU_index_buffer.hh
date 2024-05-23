@@ -18,6 +18,9 @@
 
 namespace blender::gpu {
 
+/** Value for invisible elements in a #GPU_PRIM_POINTS index buffer. */
+constexpr uint32_t RESTART_INDEX = 0xFFFFFFFF;
+
 enum GPUIndexBufType {
   GPU_INDEX_U16,
   GPU_INDEX_U32,
@@ -50,6 +53,8 @@ class IndexBuf {
   bool is_subrange_ = false;
   /** True if buffer only contains restart indices. */
   bool is_empty_ = false;
+  /** #data_ is read-only, not owned by an index buffer. */
+  bool reference_data_ = false;
 
   union {
     /** Mapped buffer data. non-NULL indicates not yet sent to VRAM. */
@@ -67,7 +72,8 @@ class IndexBuf {
             uint min_index,
             uint max_index,
             GPUPrimType prim_type,
-            bool uses_restart_indices);
+            bool uses_restart_indices,
+            bool reference_data);
   void init_subrange(IndexBuf *elem_src, uint start, uint length);
   void init_build_on_device(uint index_len);
 

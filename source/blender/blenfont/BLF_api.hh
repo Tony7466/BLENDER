@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
 #include "BLI_string_ref.hh"
 #include "BLI_sys_types.h"
@@ -180,6 +181,13 @@ int BLF_str_offset_to_cursor(
     int fontid, const char *str, size_t str_len, size_t str_offset, float cursor_width);
 
 /**
+ * Return bounds of selection boxes. There is just one normally but there could
+ * be more for multi-line and when containing text of differing directions.
+ */
+blender::Vector<blender::Bounds<int>> BLF_str_selection_boxes(
+    int fontid, const char *str, size_t str_len, size_t sel_start, size_t sel_length);
+
+/**
  * Get the string byte offset that fits within a given width.
  */
 size_t BLF_width_to_strlen(int fontid,
@@ -307,15 +315,6 @@ int BLF_default();
  * Draw the string using the default font, size and DPI.
  */
 void BLF_draw_default(float x, float y, float z, const char *str, size_t str_len) ATTR_NONNULL();
-/**
- * As above but with a very contrasting dark shadow.
- */
-void BLF_draw_default_shadowed(float x,
-                               float y,
-                               float z,
-                               const char *str,
-                               size_t str_len,
-                               const float shadow_color[4] = nullptr) ATTR_NONNULL(4);
 /**
  * Set size and DPI, and return default font ID.
  */
