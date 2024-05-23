@@ -5,3 +5,4 @@ Referenced by issue #78766, Blender crashes after deleting vertices with Custom 
 Referenced by issue #68892,  Custom normals polishing
 Referenced by issue #121831, Custom split normal data on negative or non-uniform scaled geometries gets broken upon applying scale
 Referenced by pull request #121871, Fix #103562: preserve custom normals in BM_mesh_triangulate
+Referenced by commit f3c32a36bcfcad4fb948fb1eb205a2790967b1de, Fix #103562: preserve custom normals in BM_mesh_triangulate
