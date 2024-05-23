@@ -8783,8 +8783,7 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
 
 def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
     return [
-        ("sequencer.select", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("handles_only", True), ("wait_to_deselect_others", True)]}),
+        ("sequencer.select_handle", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         *_template_items_change_frame(params),
         # Frame change can be cancelled if click happens on strip handle. In such case move the handle.
         ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},

@@ -233,6 +233,7 @@ void SEQUENCER_OT_scene_frame_range_update(wmOperatorType *ot);
 
 void SEQUENCER_OT_select_all(wmOperatorType *ot);
 void SEQUENCER_OT_select(wmOperatorType *ot);
+void SEQUENCER_OT_select_handle(wmOperatorType *ot);
 void SEQUENCER_OT_select_side_of_frame(wmOperatorType *ot);
 void SEQUENCER_OT_select_more(wmOperatorType *ot);
 void SEQUENCER_OT_select_less(wmOperatorType *ot);

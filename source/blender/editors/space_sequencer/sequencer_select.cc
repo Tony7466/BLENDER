@@ -54,6 +54,19 @@
 /** \name Selection Utilities
  * \{ */
 
+class MouseCoords {
+ public:
+  int region[2];
+  float view[2];
+
+  MouseCoords(const View2D *v2d, int x, int y)
+  {
+    region[0] = x;
+    region[1] = y;
+    UI_view2d_region_to_view(v2d, x, y, &view[0], &view[1]);
+  }
+};
+
 blender::VectorSet<Sequence *> all_strips_from_context(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
@@ -833,7 +846,7 @@ bool ED_sequencer_handle_is_selected(const Sequence *seq, eSeqHandle handle)
          ((handle == SEQ_HANDLE_RIGHT) && (seq->flag & SEQ_RIGHTSEL));
 }
 
-static bool element_already_selected(StripSelection selection)
+static bool element_already_selected(const StripSelection selection)
 {
   if (selection.seq1 == nullptr) {
     return false;
@@ -943,8 +956,8 @@ static void strip_clickable_areas_get(const Scene *scene,
                                       rctf *r_right_handle)
 {
   seq_rectf(scene, seq, r_body);
-  memcpy(r_left_handle, r_body, sizeof(*r_left_handle));
-  memcpy(r_right_handle, r_body, sizeof(*r_right_handle));
+  *r_left_handle = *r_body;
+  *r_right_handle = *r_body;
 
   const float handsize = clickable_handle_size_get(scene, seq, v2d);
   BLI_rctf_pad(r_left_handle, handsize / 3, 0.0f);
@@ -1125,28 +1138,21 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   bool toggle = RNA_boolean_get(op->ptr, "toggle");
   bool center = RNA_boolean_get(op->ptr, "center");
 
-  int mval[2];
-  mval[0] = RNA_int_get(op->ptr, "mouse_x");
-  mval[1] = RNA_int_get(op->ptr, "mouse_y");
-  float mouse_co[2];
-  UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_co[0], &mouse_co[1]);
+  MouseCoords mouse_co = MouseCoords(
+      v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
 
   StripSelection selection;
   if (region->regiontype == RGN_TYPE_PREVIEW) {
-    selection.seq1 = seq_select_seq_from_preview(C, mval, toggle, extend, center);
+    selection.seq1 = seq_select_seq_from_preview(C, mouse_co.region, toggle, extend, center);
   }
   else {
-    selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co);
-  }
-
-  if (RNA_boolean_get(op->ptr, "handles_only") && selection.handle == SEQ_HANDLE_NONE) {
-    return OPERATOR_CANCELLED;
+    selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co.view);
   }
 
   /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one
    * keymap, therefore both properties can be true at the same time. */
   Sequence *seq_key_test = nullptr;
-  SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
+  SeqRetimingKey *key = retiming_mousover_key_get(C, mouse_co.region, &seq_key_test);
 
   /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one
    * keymap, therefore both properties can be true at the same time. */
@@ -1171,7 +1177,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     if (!extend && !toggle) {
       ED_sequencer_deselect_all(scene);
     }
-    sequencer_select_side_of_frame(C, v2d, mval, scene);
+    sequencer_select_side_of_frame(C, v2d, mouse_co.region, scene);
     sequencer_select_do_updates(C, scene);
     return OPERATOR_FINISHED;
   }
@@ -1192,9 +1198,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (already_selected && wait_to_deselect_others && !toggle &&
-      !RNA_boolean_get(op->ptr, "handles_only"))
-  {
+  if (already_selected && wait_to_deselect_others && !toggle) {
     return OPERATOR_RUNNING_MODAL;
   }
 
@@ -1202,7 +1206,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
     /* Realize "fake" key, if it is clicked on. */
     if (key == nullptr && seq_key_test != nullptr) {
-      key = try_to_realize_virtual_keys(C, seq_key_test, mval);
+      key = try_to_realize_virtual_keys(C, seq_key_test, mouse_co.region);
     }
 
     bool retiming_key_clicked = (key != nullptr);
@@ -1308,11 +1312,84 @@ void SEQUENCER_OT_select(wmOperatorType *ot)
       "Side of Frame",
       "Select all strips on same side of the current frame as the mouse cursor");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
 
-  /* Used for handle tweaking. */
-  prop = RNA_def_boolean(ot->srna, "handles_only", false, "Handles Only", "Select handles only");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  RNA_def_property_flag(prop, PROP_HIDDEN);
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Select Handle Operator
+ * \{ */
+
+static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
+{
+  const View2D *v2d = UI_view2d_fromcontext(C);
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+
+  if (ed == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (sequencer_retiming_mode_is_active(C) && retiming_keys_are_visible(CTX_wm_space_seq(C))) {
+    return sequencer_retiming_key_select_exec(C, op);
+  }
+
+  MouseCoords mouse_co = MouseCoords(
+      v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
+
+  StripSelection selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co.view);
+  if (selection.seq1 == nullptr || selection.handle == SEQ_HANDLE_NONE) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Ignore clicks on retiming keys. */
+  Sequence *seq_key_test = nullptr;
+  retiming_mousover_key_get(C, mouse_co.region, &seq_key_test);
+  if (use_retiming_mode(C, seq_key_test) && seq_key_test != nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bool changed = false;
+
+  if (element_already_selected(selection)) {
+    return OPERATOR_RUNNING_MODAL;
+  }
+  else {
+    changed |= ED_sequencer_deselect_all(scene);
+  }
+
+  /* Do actual selection. */
+  sequencer_select_strip_impl(ed, selection.seq1, selection.handle, false, false, false);
+  if (selection.seq2 != nullptr) {
+    /* Invert handle selection for second strip */
+    eSeqHandle seq2_handle_clicked = (selection.handle == SEQ_HANDLE_LEFT) ? SEQ_HANDLE_RIGHT :
+                                                                             SEQ_HANDLE_LEFT;
+    sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, false, false, false);
+  }
+
+  sequencer_select_do_updates(C, scene);
+  sequencer_select_set_active(scene, selection.seq1);
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_select_handle(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Select Handle";
+  ot->idname = "SEQUENCER_OT_select_handle";
+  ot->description = "Select strip handle";
+
+  /* Api callbacks. */
+  ot->exec = sequencer_select_handle_exec;
+  ot->invoke = sequencer_select_invoke;
+  ot->modal = WM_generic_select_modal;
+  ot->poll = ED_operator_sequencer_active;
+
+  /* Flags. */
+  ot->flag = OPTYPE_UNDO;
+
+  /* Properties. */
+  WM_operator_properties_generic_select(ot);
 }
 
 /** \} */
