@@ -1331,7 +1331,7 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
   }
 
   if (sequencer_retiming_mode_is_active(C) && retiming_keys_are_visible(CTX_wm_space_seq(C))) {
-    return sequencer_retiming_key_select_exec(C, op);
+    return OPERATOR_CANCELLED;
   }
 
   MouseCoords mouse_co = MouseCoords(
