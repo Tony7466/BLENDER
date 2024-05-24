@@ -1666,11 +1666,6 @@ bool GLCompilerWorker::load_program_binary(GLint program)
     state_ = COMPILATION_READY;
   }
 
-  struct ShaderBinaryHeader {
-    GLint size;
-    GLuint format;
-    GLubyte data_start;
-  };
   ShaderBinaryHeader *binary = (ShaderBinaryHeader *)shared_mem_->get_data();
 
   state_ = COMPILATION_FINISHED;
