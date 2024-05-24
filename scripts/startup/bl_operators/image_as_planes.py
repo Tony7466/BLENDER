@@ -36,8 +36,14 @@ from bpy_extras.io_utils import ImportHelper
 # Image loading
 
 ImageSpec = namedtuple(
-    'ImageSpec',
-    ['image', 'size', 'frame_start', 'frame_offset', 'frame_duration'])
+    "ImageSpec", (
+        "image",
+        "size",
+        "frame_start",
+        "frame_offset",
+        "frame_duration",
+    ),
+)
 
 
 def find_image_sequences(files):
@@ -50,13 +56,13 @@ def find_image_sequences(files):
     ...     "test2-001.jp2", "test2-002.jp2",
     ...     "test3-003.jp2", "test3-004.jp2", "test3-005.jp2", "test3-006.jp2",
     ...     "blaah"]))
-    [('blaah', 1, 1), ('test2-001.jp2', 1, 2), ('test3-003.jp2', 3, 4)]
+    [("blaah", 1, 1), ("test2-001.jp2", 1, 2), ("test3-003.jp2", 3, 4)]
 
     """
     from itertools import count
     import re
-    num_regex = re.compile('[0-9]')  # Find a single number
-    nums_regex = re.compile('[0-9]+')  # Find a set of numbers
+    num_regex = re.compile("[0-9]")  # Find a single number
+    nums_regex = re.compile("[0-9]+")  # Find a set of numbers
 
     files = iter(sorted(files))
     prev_file = None
@@ -65,7 +71,7 @@ def find_image_sequences(files):
     segment = None
     length = 1
     for filename in files:
-        new_pattern = num_regex.sub('#', filename)
+        new_pattern = num_regex.sub("#", filename)
         new_matches = list(map(int, nums_regex.findall(filename)))
         if new_pattern == pattern:
             # this file looks like it may be in sequence from the previous
