@@ -217,6 +217,45 @@ class CleanupPathsContext:
 # -----------------------------------------------------------------------------
 # Generic Functions
 
+
+class Platforms:
+    _all_platforms = {
+        "windows-amd64",
+        "windows-arm64",
+        "macos-arm64",
+        "macos-x86_64",
+        "linux-x86_64",
+    }
+
+    def __init__(self, manifest_dict: Dict):
+        self._platforms = manifest_dict.get("platforms", None)
+        if not self._platforms:
+            self._platforms = self._all_platforms
+        else:
+            self._platforms = set(self._platforms)
+
+    def is_valid(self) -> bool:
+        for platform in self._platforms:
+            if platform in self._all_platforms:
+                continue
+            print(f"Error: platform {platform} not valid!")
+            return False
+        return True
+
+    def __eq__(self, other):
+        return not self.__ne__(other)
+
+    def __ne__(self, other):
+        if not isinstance(other, Platforms):
+            return True
+
+        if self._platforms == other._platforms:
+            return False
+
+        # They are only considered different if there is no overlap between them.
+        return self._platforms.isdisjoint(other._platforms)
+
+
 class PkgRepoData(NamedTuple):
     version: str
     blocklist: List[str]
@@ -1267,13 +1306,7 @@ def pkg_manifest_validate_field_platforms(
     # Always strict for now as it doesn't seem as there are repositories using invalid values.
     strict = True
     if strict:
-        values_valid = {
-            "windows-amd64",
-            "windows-arm64",
-            "macos-arm64",
-            "macos-x86_64",
-            "linux-x86_64",
-        }
+        values_valid = Platforms._all_platforms
         for i, item in enumerate(value):
             if not isinstance(item, str):
                 return "at index {:d} must be a string not a {:s}".format(i, str(type(value)))
@@ -2055,8 +2088,30 @@ class subcmd_server:
             repo_data_idname_unique_len = len(repo_data_idname_unique)
             repo_data_idname_unique.add(manifest_dict["id"])
             if len(repo_data_idname_unique) == repo_data_idname_unique_len:
-                message_warn(msg_fn, "archive found with duplicate id {!r}, {!r}".format(manifest_dict["id"], filepath))
-                continue
+                # There is already an entry for this extension. Make sure the entry doesn't clash in terms of:
+                #   * version
+                #   * platform
+                is_duplicated = False
+
+                version = manifest_dict['version']
+                platforms = Platforms(manifest_dict)
+
+                for extension_iter in (ext for ext in repo_data if ext["id"] == manifest_dict["id"]):
+                    if version != extension_iter["version"]:
+                        continue
+
+                    # This comparison checks if they are different enough (i.e., there is no
+                    # overlap between their items)
+                    if platforms != Platforms(extension_iter):
+                        continue
+
+                    is_duplicated = True
+                    break
+
+                if is_duplicated:
+                    message_warn(
+                        msg_fn, "archive found with duplicate id/version/platforms {!r} ({!r}), {!r}".format(manifest_dict["id"], version, filepath))
+                    continue
 
             # Call all optional keys so the JSON never contains `null` items.
             for key, value in list(manifest_dict.items()):

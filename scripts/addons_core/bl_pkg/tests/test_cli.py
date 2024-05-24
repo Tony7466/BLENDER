@@ -174,7 +174,7 @@ def my_generate_repo(
 ) -> None:
     for template in templates:
         my_create_package(
-            dirpath, template.idname + PKG_EXT,
+            dirpath, template.idname + str(template.version) + PKG_EXT,
             metadata={
                 "schema_version": "1.0.0",
                 "id": template.idname,
@@ -312,6 +312,19 @@ class TestCLI_WithRepo(unittest.TestCase):
     def test_server_generate(self) -> None:
         output = command_output(["server-generate", "--repo-dir", self.dirpath])
         self.assertEqual(output, "found 3 packages.\n")
+
+    def test_server_generate_multi_version(self) -> None:
+        """Test support for multiple versions of the same package on the same .json"""
+        my_generate_repo(
+            self.dirpath,
+            templates=(
+                PkgTemplate(idname="kitsu", name="Kitsu", version="1.0.0"),
+                PkgTemplate(idname="kitsu", name="Kitsu", version="2.0.0"),
+                PkgTemplate(idname="kitsu", name="Kitsu", version="3.0.0"),
+            ),
+        )
+        output = command_output(["server-generate", "--repo-dir", self.dirpath])
+        self.assertEqual(output, "found 6 packages.\n")
 
     def test_client_list(self) -> None:
         # TODO: only run once.

@@ -92,6 +92,10 @@ test_path_pattern_match: FORCE
 	@env --chdir="$(BASE_DIR)" \
 	    $(PYTHON_BIN) ./tests/test_path_pattern_match.py
 
+test_platforms: FORCE
+	@env --chdir="$(BASE_DIR)" \
+	    $(PYTHON_BIN) ./tests/test_platforms.py
+
 watch_test: FORCE
 	@cd "$(BASE_DIR)" && \
 	while true; do \
