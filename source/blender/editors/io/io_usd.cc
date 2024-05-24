@@ -239,8 +239,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const bool convert_world_material = RNA_boolean_get(op->ptr, "convert_world_material");
 
-  const float light_intensity_scale = RNA_float_get(op->ptr, "light_intensity_scale");
-
   const eUSDXformOpMode xform_op_mode = eUSDXformOpMode(RNA_enum_get(op->ptr, "xform_op_mode"));
 
   char root_prim_path[FILE_MAX];
