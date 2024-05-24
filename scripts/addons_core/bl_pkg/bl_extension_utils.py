@@ -80,9 +80,9 @@ BLENDER_EXT_CMD = (
 # This directory is in the local repository.
 REPO_LOCAL_PRIVATE_DIR = ".blender_ext"
 # Locate inside `REPO_LOCAL_PRIVATE_DIR`.
-REPO_LOCAL_PRIVATE_LOCK = "bl_ext_repo.lock"
+REPO_LOCAL_PRIVATE_LOCK = "index.lock"
 
-PKG_REPO_LIST_FILENAME = "bl_ext_repo.json"
+PKG_REPO_LIST_FILENAME = "index.json"
 PKG_MANIFEST_FILENAME_TOML = "blender_manifest.toml"
 PKG_EXT = ".zip"
 
@@ -136,7 +136,7 @@ if sys.platform == "win32":
         if res == 0:
             print(WinError())
 
-    def file_handle_non_blocking_is_error_blocking(ex: BaseException) -> bool:
+    def file_handle_non_blocking_is_error_blocking(ex: Exception) -> bool:
         if not isinstance(ex, OSError):
             return False
         from ctypes import GetLastError
@@ -152,7 +152,7 @@ else:
         flags = fcntl.fcntl(file_handle.fileno(), fcntl.F_GETFL)
         fcntl.fcntl(file_handle, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
-    def file_handle_non_blocking_is_error_blocking(ex: BaseException) -> bool:
+    def file_handle_non_blocking_is_error_blocking(ex: Exception) -> bool:
         if not isinstance(ex, BlockingIOError):
             return False
         return True
@@ -170,7 +170,7 @@ def scandir_with_demoted_errors(path: str) -> Generator[os.DirEntry[str], None, 
     try:
         for entry in os.scandir(path):
             yield entry
-    except BaseException as ex:
+    except Exception as ex:
         print("Error: scandir", ex)
 
 
@@ -203,7 +203,7 @@ def command_output_from_json_0(
         # It's possible this is multiple chunks.
         try:
             chunk = stdout.read()
-        except BaseException as ex:
+        except Exception as ex:
             if not file_handle_non_blocking_is_error_blocking(ex):
                 raise ex
             chunk = b''
@@ -512,7 +512,7 @@ def pkg_repo_cache_clear(local_dir: str) -> None:
         # Should never fail unless the file-system has permissions issues or corruption.
         try:
             os.unlink(entry.path)
-        except BaseException as ex:
+        except Exception as ex:
             print("Error: unlink", ex)
 
 
@@ -568,7 +568,8 @@ class CommandBatch_ExecNonBlockingResult(NamedTuple):
 class CommandBatch_StatusFlag(NamedTuple):
     flag: int
     failure_count: int
-    count: int
+    # This error seems to be a bug in `mypy-v1.10.0`.
+    count: int  # type: ignore
 
 
 class CommandBatch:
@@ -828,7 +829,7 @@ class _RepoCacheEntry:
     def _json_data_ensure(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             check_files: bool = False,
             ignore_missing: bool = False,
     ) -> Any:
@@ -841,7 +842,7 @@ class _RepoCacheEntry:
 
         try:
             self._pkg_manifest_remote = json_from_filepath(filepath_json)
-        except BaseException as ex:
+        except Exception as ex:
             self._pkg_manifest_remote = None
             error_fn(ex)
 
@@ -866,7 +867,7 @@ class _RepoCacheEntry:
     def _json_data_refresh_from_toml(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             force: bool = False,
     ) -> None:
         assert self.remote_url == ""
@@ -884,7 +885,7 @@ class _RepoCacheEntry:
             # A symbolic-link that's followed (good), if it exists and is a file an error is raised here and returned.
             if not os.path.isdir(directory):
                 os.makedirs(directory, exist_ok=True)
-        except BaseException as ex:
+        except Exception as ex:
             error_fn(ex)
             return
         del directory
@@ -910,7 +911,7 @@ class _RepoCacheEntry:
     def _json_data_refresh(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             force: bool = False,
     ) -> None:
         if force or (self._pkg_manifest_remote is None) or (self._pkg_manifest_remote_mtime == 0):
@@ -933,7 +934,7 @@ class _RepoCacheEntry:
 
         try:
             self._pkg_manifest_remote = json_from_filepath(filepath_json)
-        except BaseException as ex:
+        except Exception as ex:
             self._pkg_manifest_remote = None
             error_fn(ex)
 
@@ -946,7 +947,7 @@ class _RepoCacheEntry:
     def pkg_manifest_from_local_ensure(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             ignore_missing: bool = False,
     ) -> Optional[Dict[str, Dict[str, Any]]]:
         # Important for local-only repositories (where the directory name defines the ID).
@@ -960,7 +961,7 @@ class _RepoCacheEntry:
             pkg_manifest_local = {}
             try:
                 dir_entries = os.scandir(self.directory)
-            except BaseException as ex:
+            except Exception as ex:
                 dir_entries = None
                 error_fn(ex)
 
@@ -985,7 +986,7 @@ class _RepoCacheEntry:
                 filepath_toml = os.path.join(self.directory, filename, PKG_MANIFEST_FILENAME_TOML)
                 try:
                     item_local = toml_from_filepath(filepath_toml)
-                except BaseException as ex:
+                except Exception as ex:
                     item_local = None
                     error_fn(ex)
 
@@ -1016,7 +1017,7 @@ class _RepoCacheEntry:
     def pkg_manifest_from_remote_ensure(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             ignore_missing: bool = False,
     ) -> Optional[Dict[str, Dict[str, Any]]]:
         if self._pkg_manifest_remote is None:
@@ -1068,7 +1069,7 @@ class RepoCacheStore:
             self,
             directory: str,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             force: bool = False,
     ) -> None:
         for repo_entry in self._repos:
@@ -1081,7 +1082,7 @@ class RepoCacheStore:
             self,
             directory: str,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             ignore_missing: bool = False,
             directory_subset: Optional[Set[str]] = None,
     ) -> Optional[Dict[str, Dict[str, Any]]]:
@@ -1098,7 +1099,7 @@ class RepoCacheStore:
     def pkg_manifest_from_remote_ensure(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             check_files: bool = False,
             ignore_missing: bool = False,
             directory_subset: Optional[Set[str]] = None,
@@ -1136,7 +1137,7 @@ class RepoCacheStore:
     def pkg_manifest_from_local_ensure(
             self,
             *,
-            error_fn: Callable[[BaseException], None],
+            error_fn: Callable[[Exception], None],
             check_files: bool = False,
             directory_subset: Optional[Set[str]] = None,
     ) -> Generator[Optional[Dict[str, Dict[str, Any]]], None, None]:
@@ -1197,7 +1198,7 @@ class RepoLock:
             try:
                 with open(local_lock_file, "r", encoding="utf8") as fh:
                     data = fh.read()
-            except BaseException as ex:
+            except Exception as ex:
                 return "lock file could not be read: {:s}".format(str(ex))
 
             # The lock is held.
@@ -1209,7 +1210,7 @@ class RepoLock:
             # The lock is held (but stale), remove it.
             try:
                 os.remove(local_lock_file)
-            except BaseException as ex:
+            except Exception as ex:
                 return "lock file could not be removed: {:s}".format(str(ex))
         return None
 
@@ -1240,12 +1241,12 @@ class RepoLock:
             try:
                 with open(local_lock_file, "w", encoding="utf8") as fh:
                     fh.write(self._cookie)
-            except BaseException as ex:
+            except Exception as ex:
                 result[directory] = "Lock could not be created: {:s}".format(str(ex))
                 # Remove if it was created (but failed to write)... disk-full?
                 try:
                     os.remove(local_lock_file)
-                except BaseException:
+                except Exception:
                     pass
                 continue
 
@@ -1267,7 +1268,7 @@ class RepoLock:
             try:
                 with open(local_lock_file, "r", encoding="utf8") as fh:
                     data = fh.read()
-            except BaseException as ex:
+            except Exception as ex:
                 result[directory] = "release(): lock file could not be read: {:s}".format(str(ex))
                 continue
             # Owned by another application, this shouldn't happen.
@@ -1278,7 +1279,7 @@ class RepoLock:
             # This is our lock file, we're allowed to remove it!
             try:
                 os.remove(local_lock_file)
-            except BaseException as ex:
+            except Exception as ex:
                 result[directory] = "release(): failed to remove file {!r}".format(ex)
 
         self._held = False
