@@ -384,9 +384,16 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
     # ----------------------
     # File dialog properties
-    files: CollectionProperty(type=bpy.types.OperatorFileListElement, options={'HIDDEN', 'SKIP_SAVE'})
+    files: CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
 
-    directory: StringProperty(maxlen=1024, subtype='FILE_PATH', options={'HIDDEN', 'SKIP_SAVE'})
+    directory: StringProperty(
+        maxlen=1024,
+        subtype='FILE_PATH',
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
 
     filter_image: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
     filter_movie: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
@@ -395,14 +402,18 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
     # ----------------------
     # Properties - Importing
     force_reload: BoolProperty(
-        name="Force Reload", default=False,
-        description="Force reloading of the image if already opened elsewhere in Blender"
+        name="Force Reload",
+        default=False,
+        description="Force reloading of the image if already opened elsewhere in Blender",
     )
 
     image_sequence: BoolProperty(
-        name="Animate Image Sequences", default=False,
-        description="Import sequentially numbered images as an animated "
-                    "image sequence instead of separate planes"
+        name="Animate Image Sequences",
+        default=False,
+        description=(
+            "Import sequentially numbered images as an animated "
+            "image sequence instead of separate planes"
+        ),
     )
 
     # -------------------------------------
@@ -416,24 +427,33 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         'Z-': Vector((0, 0, -1)),
     }
 
-    offset: BoolProperty(name="Offset Planes", default=True, description="Offset Planes From Each Other")
-
-    OFFSET_MODES = (
-        ('X+', "X+", "Side by Side to the Left"),
-        ('Y+', "Y+", "Side by Side, Downward"),
-        ('Z+', "Z+", "Stacked Above"),
-        ('X-', "X-", "Side by Side to the Right"),
-        ('Y-', "Y-", "Side by Side, Upward"),
-        ('Z-', "Z-", "Stacked Below"),
+    offset: BoolProperty(
+        name="Offset Planes",
+        default=True,
+        description="Offset Planes From Each Other",
     )
+
     offset_axis: EnumProperty(
-        name="Orientation", default='X+', items=OFFSET_MODES,
-        description="How planes are oriented relative to each others' local axis"
+        name="Orientation",
+        default='X+',
+        items=(
+            ('X+', "X+", "Side by Side to the Left"),
+            ('Y+', "Y+", "Side by Side, Downward"),
+            ('Z+', "Z+", "Stacked Above"),
+            ('X-', "X-", "Side by Side to the Right"),
+            ('Y-', "Y-", "Side by Side, Upward"),
+            ('Z-', "Z-", "Stacked Below"),
+        ),
+        description="How planes are oriented relative to each others' local axis",
     )
 
     offset_amount: FloatProperty(
-        name="Offset", soft_min=0, default=0.1, description="Space between planes",
-        subtype='DISTANCE', unit='LENGTH'
+        name="Offset",
+        soft_min=0,
+        default=0.1,
+        description="Space between planes",
+        subtype='DISTANCE',
+        unit='LENGTH',
     )
 
     AXIS_MODES = (
@@ -447,14 +467,21 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         ('CAM_AX', "Main Axis", "Facing the Camera's dominant axis"),
     )
     align_axis: EnumProperty(
-        name="Align", default='CAM_AX', items=AXIS_MODES,
-        description="How to align the planes"
+        name="Align",
+        default='CAM_AX',
+        items=AXIS_MODES,
+        description="How to align the planes",
     )
     # prev_align_axis is used only by update_size_model
     prev_align_axis: EnumProperty(
-        items=AXIS_MODES + (('NONE', '', ''),), default='NONE', options={'HIDDEN', 'SKIP_SAVE'})
+        items=AXIS_MODES + (('NONE', '', ''),),
+        default='NONE',
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
     align_track: BoolProperty(
-        name="Track Camera", default=False, description="Always face the camera"
+        name="Track Camera",
+        default=False,
+        description="Always face the camera",
     )
 
     # -----------------
@@ -471,111 +498,163 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
                 self.align_axis = self.prev_align_axis
                 self._prev_align_axis = 'NONE'
 
-    SIZE_MODES = (
-        ('ABSOLUTE', "Absolute", "Use absolute size"),
-        ('CAMERA', "Camera Relative", "Scale to the camera frame"),
-        ('DPI', "Dpi", "Use definition of the image as dots per inch"),
-        ('DPBU', "Dots/BU", "Use definition of the image as dots per Blender Unit"),
-    )
     size_mode: EnumProperty(
-        name="Size Mode", default='ABSOLUTE', items=SIZE_MODES,
+        name="Size Mode",
+        default='ABSOLUTE',
+        items=(
+            ('ABSOLUTE', "Absolute", "Use absolute size"),
+            ('CAMERA', "Camera Relative", "Scale to the camera frame"),
+            ('DPI', "Dpi", "Use definition of the image as dots per inch"),
+            ('DPBU', "Dots/BU", "Use definition of the image as dots per Blender Unit"),
+        ),
         update=update_size_mode,
-        description="How the size of the plane is computed")
-
-    FILL_MODES = (
-        ('FILL', "Fill", "Fill camera frame, spilling outside the frame"),
-        ('FIT', "Fit", "Fit entire image within the camera frame"),
+        description="How the size of the plane is computed",
     )
-    fill_mode: EnumProperty(name="Scale", default='FILL', items=FILL_MODES,
-                            description="How large in the camera frame is the plane")
 
-    height: FloatProperty(name="Height", description="Height of the created plane",
-                          default=1.0, min=0.001, soft_min=0.001, subtype='DISTANCE', unit='LENGTH')
+    fill_mode: EnumProperty(
+        name="Scale",
+        default='FILL',
+        items=(
+            ('FILL', "Fill", "Fill camera frame, spilling outside the frame"),
+            ('FIT', "Fit", "Fit entire image within the camera frame"),
+        ),
+        description="How large in the camera frame is the plane",
+    )
 
-    factor: FloatProperty(name="Definition", min=1.0, default=600.0,
-                          description="Number of pixels per inch or Blender Unit")
+    height: FloatProperty(
+        name="Height",
+        description="Height of the created plane",
+        default=1.0,
+        min=0.001,
+        soft_min=0.001,
+        subtype='DISTANCE',
+        unit='LENGTH',
+    )
+
+    factor: FloatProperty(
+        name="Definition",
+        min=1.0,
+        default=600.0,
+        description="Number of pixels per inch or Blender Unit",
+    )
 
     # ------------------------------
     # Properties - Material / Shader
-    SHADERS = (
-        ('PRINCIPLED', "Principled", "Principled Shader"),
-        ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
-        ('EMISSION', "Emit", "Emission Shader"),
+    shader: EnumProperty(
+        name="Shader",
+        items=(
+            ('PRINCIPLED', "Principled", "Principled Shader"),
+            ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
+            ('EMISSION', "Emit", "Emission Shader"),
+        ),
+        default='PRINCIPLED',
+        description="Node shader to use",
     )
-    shader: EnumProperty(name="Shader", items=SHADERS, default='PRINCIPLED', description="Node shader to use")
 
     emit_strength: FloatProperty(
-        name="Strength", min=0.0, default=1.0, soft_max=10.0,
-        step=100, description="Brightness of Emission Texture")
+        name="Strength",
+        min=0.0,
+        default=1.0,
+        soft_max=10.0,
+        step=100,
+        description="Brightness of Emission Texture",
+    )
 
     use_transparency: BoolProperty(
-        name="Use Alpha", default=True,
-        description="Use alpha channel for transparency")
-
-    BLEND_METHODS = (
-        ('BLEND', "Blend", "Render polygon transparent, depending on alpha channel of the texture"),
-        ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
-        ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
-        ('OPAQUE', "Opaque", "Render surface without transparency"),
+        name="Use Alpha",
+        default=True,
+        description="Use alpha channel for transparency",
     )
+
     blend_method: EnumProperty(
-        name="Blend Mode", items=BLEND_METHODS, default='BLEND',
-        description="Blend Mode for Transparent Faces", translation_context=i18n_contexts.id_material)
-
-    SHADOW_METHODS = (
-        ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
-        ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
-        ('OPAQUE', "Opaque", "Material will cast shadows without transparency"),
-        ('NONE', "None", "Material will cast no shadow"),
+        name="Blend Mode",
+        items=(
+            ('BLEND', "Blend", "Render polygon transparent, depending on alpha channel of the texture"),
+            ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
+            ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
+            ('OPAQUE', "Opaque", "Render surface without transparency"),
+        ),
+        default='BLEND',
+        description="Blend Mode for Transparent Faces",
+        translation_context=i18n_contexts.id_material,
     )
+
     shadow_method: EnumProperty(
-        name="Shadow Mode", items=SHADOW_METHODS, default='CLIP',
-        description="Shadow mapping method", translation_context=i18n_contexts.id_material)
+        name="Shadow Mode",
+        items=(
+            ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
+            ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
+            ('OPAQUE', "Opaque", "Material will cast shadows without transparency"),
+            ('NONE', "None", "Material will cast no shadow"),
+        ),
+        default='CLIP',
+        description="Shadow mapping method",
+        translation_context=i18n_contexts.id_material,
+    )
 
     use_backface_culling: BoolProperty(
-        name="Backface Culling", default=False,
-        description="Use back face culling to hide the back side of faces")
+        name="Backface Culling",
+        default=False,
+        description="Use back face culling to hide the back side of faces",
+    )
 
     show_transparent_back: BoolProperty(
-        name="Show Backface", default=True,
-        description="Render multiple transparent layers (may introduce transparency sorting problems)")
+        name="Show Backface",
+        default=True,
+        description="Render multiple transparent layers (may introduce transparency sorting problems)",
+    )
 
     overwrite_material: BoolProperty(
-        name="Overwrite Material", default=True,
-        description="Overwrite existing Material (based on material name)")
+        name="Overwrite Material",
+        default=True,
+        description="Overwrite existing Material (based on material name)",
+    )
 
     # ------------------
     # Properties - Image
-    INTERPOLATION_MODES = (
-        ('Linear', "Linear", "Linear interpolation"),
-        ('Closest', "Closest", "No interpolation (sample closest texel)"),
-        ('Cubic', "Cubic", "Cubic interpolation"),
-        ('Smart', "Smart", "Bicubic when magnifying, else bilinear (OSL only)"),
-    )
     interpolation: EnumProperty(
         name="Interpolation",
-        items=INTERPOLATION_MODES,
+        items=(
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation (sample closest texel)"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear (OSL only)"),
+        ),
         default='Linear',
-        description="Texture interpolation")
-
-    EXTENSION_MODES = (
-        ('CLIP', "Clip", "Clip to image size and set exterior pixels as transparent"),
-        ('EXTEND', "Extend", "Extend by repeating edge pixels of the image"),
-        ('REPEAT', "Repeat", "Cause the image to repeat horizontally and vertically"),
+        description="Texture interpolation",
     )
-    extension: EnumProperty(name="Extension", items=EXTENSION_MODES, default='CLIP',
-                            description="How the image is extrapolated past its original bounds")
+
+    extension: EnumProperty(
+        name="Extension",
+        items=(
+            ('CLIP', "Clip", "Clip to image size and set exterior pixels as transparent"),
+            ('EXTEND', "Extend", "Extend by repeating edge pixels of the image"),
+            ('REPEAT', "Repeat", "Cause the image to repeat horizontally and vertically"),
+        ),
+        default='CLIP',
+        description="How the image is extrapolated past its original bounds",
+    )
 
     t = bpy.types.Image.bl_rna.properties["alpha_mode"]
-    alpha_mode_items = tuple((e.identifier, e.name, e.description) for e in t.enum_items)
     alpha_mode: EnumProperty(
-        name=t.name, items=alpha_mode_items, default=t.default,
-        description=t.description)
+        name=t.name,
+        items=tuple((e.identifier, e.name, e.description) for e in t.enum_items),
+        default=t.default,
+        description=t.description,
+    )
 
     t = bpy.types.ImageUser.bl_rna.properties["use_auto_refresh"]
-    use_auto_refresh: BoolProperty(name=t.name, default=True, description=t.description)
+    use_auto_refresh: BoolProperty(
+        name=t.name,
+        default=True,
+        description=t.description,
+    )
 
-    relative: BoolProperty(name="Relative Paths", default=True, description="Use relative file paths")
+    relative: BoolProperty(
+        name="Relative Paths",
+        default=True,
+        description="Use relative file paths",
+    )
 
     # -------
     # Draw UI
@@ -753,7 +832,8 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
                 for plane in planes:
                     x, y = compute_camera_size(
                         context, plane.location,
-                        self.fill_mode, plane.dimensions.x / plane.dimensions.y)
+                        self.fill_mode, plane.dimensions.x / plane.dimensions.y,
+                    )
                     plane.dimensions = x, y, 0.0
 
         # setup new selection
