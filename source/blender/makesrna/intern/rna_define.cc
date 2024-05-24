@@ -3295,7 +3295,9 @@ void RNA_def_property_float_default_func(PropertyRNA *prop, const char *get_defa
     case PROP_FLOAT: {
       FloatPropertyRNA *fprop = reinterpret_cast<FloatPropertyRNA *>(prop);
       if (prop->arraydimension) {
-        /* TODO */
+        if (get_default) {
+          fprop->get_default_array = reinterpret_cast<PropFloatArrayGetFuncEx>(get_default);
+        }
       }
       else {
         if (get_default) {

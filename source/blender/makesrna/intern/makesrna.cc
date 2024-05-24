@@ -4464,7 +4464,10 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
       fprintf(f, ", ");
       rna_int_print(f, int(fprop->precision));
       fprintf(f, ", ");
-      fprintf(f, "%s", rna_function_string(fprop->get_default));
+      fprintf(f,
+              "%s, %s",
+              rna_function_string(fprop->get_default),
+              rna_function_string(fprop->get_default_array));
       fprintf(f, ", ");
       rna_float_print(f, fprop->defaultvalue);
       fprintf(f, ", ");

@@ -461,6 +461,7 @@ struct FloatPropertyRNA {
   int precision;
 
   PropFloatGetFuncEx get_default;
+  PropFloatArrayGetFuncEx get_default_array;
 
   float defaultvalue;
   const float *defaultarray;

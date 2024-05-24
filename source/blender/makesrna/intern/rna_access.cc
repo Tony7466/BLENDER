@@ -3207,6 +3207,11 @@ static void rna_property_float_get_default_array_values(PointerRNA *ptr,
                                                         FloatPropertyRNA *fprop,
                                                         float *r_values)
 {
+  if (fprop->get_default_array) {
+    fprop->get_default_array(ptr, &fprop->property, r_values);
+    return;
+  }
+
   int length = fprop->property.totarraylength;
   int out_length = RNA_property_array_length(ptr, (PropertyRNA *)fprop);
 
