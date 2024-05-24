@@ -265,6 +265,7 @@ void GPU_material_free(ListBase *gpumaterial);
  * multithreaded compilation.
  * Returns a handle that can be used to poll if all materials have been
  * compiled, and to retrieve the compiled result.
+ * NOTE: This function is asynchronous on OpenGL, but it's blocking on Vulkan and Metal.
  * WARNING: The material pointers and their pass->create_info should be valid until
  * `GPU_material_batch_finalize` has returned.
  */
