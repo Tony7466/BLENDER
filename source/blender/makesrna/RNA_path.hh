@@ -24,11 +24,14 @@ struct ListBase;
 struct IDProperty;
 
 /**
- * An RNA path to a property, including an optional index/key for array
- * properties.
+ * An RNA path to a property, including an optional key/index for array and
+ * collection properties.
  *
  * If both a key and index are specified, they indicate redundant ways to access
- * the same array element.
+ * the same array/collection element. This redundancy can be used when
+ * referencing an item in an RNA collection: items are generally referenced by
+ * name, but indices may be used as a fall-back in case the name of the item is
+ * changed.
  *
  * This type is intended to be convenient to construct with initializer lists:
  *
@@ -52,9 +55,9 @@ struct IDProperty;
 struct RNAPath {
   std::string path;
 
-  /* Key/index for array properties. Any combination of index and key can be
-   * specfied (including neither). In the case that both are specified, they
-   * should be redundant ways to access the same element. */
+  /* Key/index for array and collection properties. Any combination of index and
+   * key can be specfied (including neither). In the case that both are
+   * specified, they should be redundant ways to access the same element. */
   std::optional<std::string> key = std::nullopt;
   std::optional<int> index = std::nullopt;
 };
