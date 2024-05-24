@@ -82,7 +82,7 @@ GreasePencil *GreasePencilComponent::get_for_write()
 
 bool GreasePencilComponent::is_empty() const
 {
-  return grease_pencil_ == nullptr;
+  return grease_pencil_ == nullptr || grease_pencil_->drawings().is_empty();
 }
 
 bool GreasePencilComponent::owns_direct_data() const

@@ -87,7 +87,7 @@ PointCloud *PointCloudComponent::get_for_write()
 
 bool PointCloudComponent::is_empty() const
 {
-  return pointcloud_ == nullptr;
+  return pointcloud_ == nullptr || pointcloud_->totpoint == 0;
 }
 
 bool PointCloudComponent::owns_direct_data() const

@@ -97,7 +97,7 @@ Mesh *MeshComponent::get_for_write()
 
 bool MeshComponent::is_empty() const
 {
-  return mesh_ == nullptr;
+  return mesh_ == nullptr || mesh_->verts_num == 0;
 }
 
 bool MeshComponent::owns_direct_data() const

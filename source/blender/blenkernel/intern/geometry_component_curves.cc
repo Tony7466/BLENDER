@@ -102,7 +102,7 @@ Curves *CurveComponent::get_for_write()
 
 bool CurveComponent::is_empty() const
 {
-  return curves_ == nullptr;
+  return curves_ == nullptr || curves_->geometry.point_num == 0;
 }
 
 bool CurveComponent::owns_direct_data() const
