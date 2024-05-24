@@ -49,8 +49,6 @@
 /* For undo push. */
 #include "sculpt_intern.hh"
 
-#include "BLI_timeit.hh"
-
 namespace blender::ed::sculpt_paint::hide {
 
 /* -------------------------------------------------------------------- */
@@ -961,7 +959,6 @@ static void grow_shrink_visibility_mesh(Object &object,
                                         const VisAction action,
                                         const int iterations)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (!attributes.contains(".hide_vert")) {
@@ -1031,7 +1028,6 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         const VisAction action,
                                         const int iterations)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
