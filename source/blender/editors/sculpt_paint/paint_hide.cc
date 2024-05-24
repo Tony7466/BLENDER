@@ -194,7 +194,7 @@ enum class VisAction {
   Show = 1,
 };
 
-static bool action_to_hide(const VisAction action)
+constexpr static bool action_to_hide(const VisAction action)
 {
   return action == VisAction::Hide;
 }
@@ -252,6 +252,18 @@ static void flush_face_changes_node(Mesh &mesh,
       bke::pbvh::node_update_visibility_mesh(hide_vert, *node);
     }
   });
+  hide_poly.finish();
+}
+
+/* Updates a node's face's visibility based on the updated vertex visibility. */
+static void flush_face_changes(Mesh &mesh, const Span<bool> hide_vert)
+{
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+
+  bke::SpanAttributeWriter<bool> hide_poly = attributes.lookup_or_add_for_write_span<bool>(
+      ".hide_poly", bke::AttrDomain::Face);
+
+  bke::mesh_face_hide_from_vert(mesh.faces(), mesh.corner_verts(), hide_vert, hide_poly.span);
   hide_poly.finish();
 }
 
@@ -792,33 +804,165 @@ void PAINT_OT_visibility_invert(wmOperatorType *ot)
 /* Number of vertices per iteration step size when growing or shrinking visibility. */
 static constexpr float VERTEX_ITERATION_THRESHOLD = 50000.0f;
 
+/* For both this and the following #shrinK_face_visibility_mesh methods, extracting the loop
+ * and comparing against / writing with a constant `false` or `true` instead of using
+ * #action_to_hide results in a nearly 600ms speedup on a mesh with 1.5m verts. */
+static void grow_face_visibility_mesh(const IndexRange &face,
+                                      const Span<int> corner_verts,
+                                      const Span<bool> read_buffer,
+                                      MutableSpan<bool> write_buffer)
+{
+  for (const int corner : face) {
+    int vert = corner_verts[corner];
+    if (read_buffer[vert]) {
+      continue;
+    }
+
+    const int prev = bke::mesh::face_corner_prev(face, corner);
+    const int prev_vert = corner_verts[prev];
+    write_buffer[prev_vert] = false;
+
+    const int next = bke::mesh::face_corner_next(face, corner);
+    const int next_vert = corner_verts[next];
+    write_buffer[next_vert] = false;
+  }
+}
+
+static void shrink_face_visibility_mesh(const IndexRange &face,
+                                        const Span<int> corner_verts,
+                                        const Span<bool> read_buffer,
+                                        MutableSpan<bool> write_buffer)
+{
+  for (const int corner : face) {
+    int vert = corner_verts[corner];
+    if (!read_buffer[vert]) {
+      continue;
+    }
+
+    const int prev = bke::mesh::face_corner_prev(face, corner);
+    const int prev_vert = corner_verts[prev];
+    write_buffer[prev_vert] = true;
+
+    const int next = bke::mesh::face_corner_next(face, corner);
+    const int next_vert = corner_verts[next];
+    write_buffer[next_vert] = true;
+  }
+}
+
+struct DualBuffer {
+  Array<bool> front;
+  Array<bool> back;
+
+  MutableSpan<bool> write_buffer(int count)
+  {
+    return count % 2 == 0 ? back.as_mutable_span() : front.as_mutable_span();
+  }
+
+  Span<bool> read_buffer(int count)
+  {
+    return count % 2 == 0 ? front.as_span() : back.as_span();
+  }
+};
+
+static int propagate_vertex_visibility(Mesh &mesh,
+                                       DualBuffer &buffers,
+                                       const VArraySpan<bool> &hide_poly,
+                                       const VisAction action,
+                                       const int iterations)
+{
+  const OffsetIndices faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+
+  int last_changed_iteration = -1;
+  for (int i = 0; i < iterations; i++) {
+    Span<bool> read_buffer = buffers.read_buffer(i);
+    MutableSpan<bool> write_buffer = buffers.write_buffer(i);
+    threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+      for (const int face_index : range) {
+        if (!hide_poly[face_index]) {
+          continue;
+        }
+        const IndexRange face = faces[face_index];
+        if (action == VisAction::Hide) {
+          shrink_face_visibility_mesh(face, corner_verts, read_buffer, write_buffer);
+        }
+        else {
+          grow_face_visibility_mesh(face, corner_verts, read_buffer, write_buffer);
+        }
+      }
+    });
+
+    const bool any_changed = read_buffer != write_buffer;
+    if (any_changed) {
+      flush_face_changes(mesh, write_buffer);
+      last_changed_iteration = i;
+    }
+    else {
+      /* If nothing has changed for a given iteration, nothing will change in future iterations. */
+      break;
+    }
+  }
+
+  return last_changed_iteration;
+}
+
+static void update_undo_state(Object &object,
+                              const Span<PBVHNode *> nodes,
+                              const Span<bool> old_hide_vert,
+                              const Span<bool> new_hide_vert)
+{
+  threading::EnumerableThreadSpecific<Vector<bool>> all_new_hide;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    Vector<bool> &new_hide = all_new_hide.local();
+    for (PBVHNode *node : nodes.slice(range)) {
+      const Span<int> verts = bke::pbvh::node_unique_verts(*node);
+
+      new_hide.reinitialize(verts.size());
+      array_utils::gather(new_hide_vert, verts, new_hide.as_mutable_span());
+      if (array_utils::indexed_data_equal<bool>(old_hide_vert, verts, new_hide)) {
+        continue;
+      }
+
+      undo::push_node(object, node, undo::Type::HideVert);
+    }
+  });
+}
+
+static void update_node_visibility_from_face_changes(const Span<PBVHNode *> nodes,
+                                                     const Span<int> tri_faces,
+                                                     const Span<bool> orig_hide_poly,
+                                                     const Span<bool> new_hide_poly,
+                                                     const Span<bool> hide_vert)
+{
+  threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    Vector<int> &face_indices = all_face_indices.local();
+    for (PBVHNode *node : nodes.slice(range)) {
+      bool any_changed = false;
+      const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
+          tri_faces, *node, face_indices);
+      for (const int face_index : indices) {
+        if (orig_hide_poly[face_index] != new_hide_poly[face_index]) {
+          any_changed = true;
+          break;
+        }
+      }
+
+      if (any_changed) {
+        BKE_pbvh_node_mark_update_visibility(node);
+        bke::pbvh::node_update_visibility_mesh(hide_vert, *node);
+      }
+    }
+  });
+}
+
 static void grow_shrink_visibility_mesh(Object &object,
                                         const Span<PBVHNode *> nodes,
                                         const VisAction action,
                                         const int iterations)
 {
   SCOPED_TIMER_AVERAGED(__func__);
-
-  struct DualBuffer {
-    Array<bool> front;
-    Array<bool> back;
-
-    MutableSpan<bool> write_buffer(int count)
-    {
-      return count % 2 == 0 ? back.as_mutable_span() : front.as_mutable_span();
-    }
-
-    Span<bool> read_buffer(int count)
-    {
-      return count % 2 == 0 ? front.as_span() : back.as_span();
-    }
-  };
-
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const OffsetIndices faces = mesh.faces();
-  const Span<int> corner_verts = mesh.corner_verts();
-  const Span<int> tri_faces = mesh.corner_tri_faces();
-
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (!attributes.contains(".hide_vert")) {
     /* If the entire mesh is visible, we can neither grow nor shrink the boundary. */
@@ -836,76 +980,30 @@ static void grow_shrink_visibility_mesh(Object &object,
   array_utils::copy(hide_vert.span.as_span(), buffers.back.as_mutable_span());
   array_utils::copy(hide_vert.span.as_span(), buffers.front.as_mutable_span());
 
-  const bool desired_state = action_to_hide(action);
-
-  printf(
-      "Hide Mesh: \n\tIterations: %d\n\tState:%s\n", iterations, desired_state ? "true" : "false");
-  for (int i = 0; i < iterations; i++) {
-    Span<bool> read_buffer = buffers.read_buffer(i);
-    MutableSpan<bool> write_buffer = buffers.write_buffer(i);
-
-    bool any_changed = false;
-
-    threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      for (PBVHNode *node : nodes.slice(range)) {
-
-        Vector<int> &face_indices = all_face_indices.local();
-        const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
-            tri_faces, *node, face_indices);
-        for (const int face_index : indices) {
-          if (!hide_poly[face_index]) {
-            continue;
-          }
-
-          const IndexRange face = faces[face_index];
-          for (const int corner : face) {
-            int vert = corner_verts[corner];
-            if (read_buffer[vert] != desired_state) {
-              continue;
-            }
-
-            any_changed = true;
-
-            const int prev = bke::mesh::face_corner_prev(face, corner);
-            const int prev_vert = corner_verts[prev];
-            write_buffer[prev_vert] = desired_state;
-
-            const int next = bke::mesh::face_corner_next(face, corner);
-            const int next_vert = corner_verts[next];
-            write_buffer[next_vert] = desired_state;
-          }
-        }
-
-        BKE_pbvh_node_mark_update_visibility(node);
-        bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
-      }
-    });
-
-    if (any_changed) {
-      flush_face_changes_node(mesh, nodes, write_buffer);
-      flush_edge_changes(mesh, write_buffer);
-    }
+  Vector<bool> orig_hide_poly(hide_poly);
+  const int last_changed_iteration = propagate_vertex_visibility(
+      mesh, buffers, hide_poly, action, iterations);
+  if (last_changed_iteration == -1) {
+    /* No changes at all happened. */
+    hide_vert.finish();
+    return;
   }
 
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.slice(range)) {
-      undo::push_node(object, node, undo::Type::HideVert);
-    }
-  });
+  const Span<bool> last_buffer = buffers.write_buffer(last_changed_iteration);
 
-  Span<bool> last_buffer = buffers.write_buffer(iterations - 1);
+  update_undo_state(object, nodes, hide_vert.span, last_buffer);
+
+  /* We can wait until after all iterations are done to flush edge changes as they are
+   * not used for coarse filtering while iterating.*/
+  flush_edge_changes(mesh, last_buffer);
+
+  update_node_visibility_from_face_changes(
+      nodes, mesh.corner_tri_faces(), orig_hide_poly, hide_poly, last_buffer);
   array_utils::copy(last_buffer, hide_vert.span);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (PBVHNode *node : nodes.slice(range)) {
-      BKE_pbvh_node_mark_update_visibility(node);
-      bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
-    }
-  });
   hide_vert.finish();
 }
 
+/* TODO: This is probably better off as a member function of a CCGKey?*/
 static int elem_xy_to_index(int x, int y, int grid_size)
 {
   return y * grid_size + x;
@@ -952,7 +1050,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
 
               for (const int j : neighbors.coords.index_range()) {
                 const SubdivCCGCoord neighbor = neighbors.coords[j];
-                const int neighbor_grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
+                const int neighbor_grid_elem_idx = elem_xy_to_index(
+                    neighbor.x, neighbor.y, key.grid_size);
 
                 grid_hidden[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
               }
