@@ -45,7 +45,30 @@ bool USDHierarchyIterator::mark_as_weak_export(const Object *object) const
   if (params_.selected_objects_only && (object->base_flag & BASE_SELECTED) == 0) {
     return true;
   }
-  return false;
+
+  switch (object->type) {
+    case OB_EMPTY:
+      /* Always assume empties are being exported intentionally. */
+      return false;
+    case OB_MESH:
+    case OB_MBALL:
+      return !params_.export_meshes;
+    case OB_CAMERA:
+      return !params_.export_cameras;
+    case OB_LAMP:
+      return !params_.export_lights;
+    case OB_CURVES_LEGACY:
+    case OB_CURVES:
+      return !params_.export_curves;
+    case OB_VOLUME:
+      return !params_.export_volumes;
+    case OB_ARMATURE:
+      return !params_.export_armatures;
+
+    default:
+      /* Assume weak for all other types. */
+      return true;
+  }
 }
 
 void USDHierarchyIterator::release_writer(AbstractHierarchyWriter *writer)
