@@ -13,6 +13,8 @@
 #include "BLI_map.hh"
 #include "BLI_utility_mixins.hh"
 
+#include "gpu_state_private.hh"
+
 #include "vk_common.hh"
 
 namespace blender {
