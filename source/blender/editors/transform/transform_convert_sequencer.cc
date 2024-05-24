@@ -696,14 +696,6 @@ static void special_aftertrans_update__sequencer(bContext * /*C*/, TransInfo *t)
           &t->scene->markers, t->scene, TFM_TIME_EXTEND, t->values_final[0], t->frame_side);
     }
   }
-
-  if ((t->flag & T_HANDLE_TWEAK) != 0) {
-    TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-    blender::VectorSet<Sequence *> strips = seq_transform_collection_from_transdata(tc);
-    for (Sequence *seq : strips) {
-      seq->flag &= ~(SEQ_LEFTSEL | SEQ_RIGHTSEL);
-    }
-  }
 }
 
 void transform_convert_sequencer_channel_clamp(TransInfo *t, float r_val[2])
