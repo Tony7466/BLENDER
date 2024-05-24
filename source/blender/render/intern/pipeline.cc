@@ -229,6 +229,13 @@ static void stats_background(void * /*arg*/, RenderStats *rs)
   BLI_mutex_unlock(&mutex);
 }
 
+void RE_ReferenceRenderResult(RenderResult *rr)
+{
+  /* There is no need to lock as the user-counted render results are protected by mutex at the
+   * higher call stack level. */
+  ++rr->user_counter;
+}
+
 void RE_FreeRenderResult(RenderResult *rr)
 {
   render_result_free(rr);
@@ -1691,9 +1698,7 @@ static int check_compositor_output(Scene *scene)
 static bool is_compositing_possible_on_gpu(Scene *scene, ReportList *reports)
 {
   /* CPU compositor can always run. */
-  if (!U.experimental.use_full_frame_compositor ||
-      scene->r.compositor_device != SCE_COMPOSITOR_DEVICE_GPU)
-  {
+  if (scene->r.compositor_device != SCE_COMPOSITOR_DEVICE_GPU) {
     return true;
   }
 
