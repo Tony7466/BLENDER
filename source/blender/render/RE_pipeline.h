@@ -229,6 +229,7 @@ void RE_FreeRenderResult(struct RenderResult *rr);
  */
 struct RenderResult *RE_AcquireResultRead(struct Render *re);
 struct RenderResult *RE_AcquireResultWrite(struct Render *re);
+void RE_ReferenceRenderResult(struct RenderResult *rr);
 void RE_ReleaseResult(struct Render *re);
 /**
  * Same as #RE_AcquireResultImage but creating the necessary views to store the result

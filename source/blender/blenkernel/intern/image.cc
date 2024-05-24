@@ -3843,7 +3843,7 @@ RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima)
   }
 
   if (rr) {
-    ++rr->user_counter;
+    RE_ReferenceRenderResult(rr);
   }
 
   BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
