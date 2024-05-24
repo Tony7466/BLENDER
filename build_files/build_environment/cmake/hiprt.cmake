@@ -11,7 +11,7 @@ get_filename_component(_hip_path ${HIP_HIPCC_EXECUTABLE} DIRECTORY)
 get_filename_component(_hip_path ${_hip_path} DIRECTORY)
 
 if(WIN32)
-  set(hiprt_configure HIP_PATH=${_hip_path} .\tools\premake5\win\premake5.exe vs2019)
+  set(hiprt_configure set HIP_PATH=${_hip_path} && set PYTHON_BIN=${PYTHON_BINARY} && .\\tools\\premake5\\win\\premake5.exe vs2019)
   set(hiprt_build msbuild /m build/hiprt.sln /p:Configuration=Release)
 else()
   set(hiprt_configure HIP_PATH=${_hip_path} ./tools/premake5/linux64/premake5 gmake)
