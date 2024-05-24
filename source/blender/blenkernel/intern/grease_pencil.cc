@@ -1797,6 +1797,8 @@ void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
                   grease_pencil_src->layers().size());
 
   DEG_id_tag_update(&grease_pencil_dst->id, ID_RECALC_GEOMETRY);
+
+  BKE_id_free(nullptr, grease_pencil_src);
 }
 
 static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
