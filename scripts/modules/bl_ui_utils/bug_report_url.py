@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# Keep this script in line with /release/python_scripts/collect_bug_report_info.py
 
 def url_prefill_from_blender(*, addon_info=None):
     import bpy

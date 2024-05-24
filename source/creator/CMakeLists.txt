@@ -718,6 +718,7 @@ if(UNIX AND NOT APPLE)
         ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
         ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
         ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/blender-symbolic.svg
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender_collect_system_information.sh
       DESTINATION "."
     )
 
@@ -1486,6 +1487,7 @@ elseif(WIN32)
   if(NOT WITH_PYTHON_MODULE)
     install(
       FILES
+        ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_collect_system_information.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu_glitchworkaround.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_log.cmd
@@ -1626,6 +1628,14 @@ elseif(APPLE)
     )
   endif()
 
+  if(NOT WITH_PYTHON_MODULE)
+    install(
+      FILES
+        ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender_collect_system_information.sh
+      DESTINATION "./Blender.app/Contents/Resources"
+    )
+  endif()
+
   if(WITH_DRACO)
     install(
       PROGRAMS $<TARGET_FILE:extern_draco>
@@ -1657,6 +1667,15 @@ if(DEFINED TARGETDIR_TEXT)
     DIRECTORY ${CMAKE_SOURCE_DIR}/release/license
     DESTINATION "${TARGETDIR_TEXT}"
 )
+endif()
+
+if(NOT WITH_PYTHON_MODULE)
+    install(
+      FILES
+        ${CMAKE_SOURCE_DIR}/release/python_scripts/collect_bug_report_info.py
+      DESTINATION ${TARGETDIR_VER}
+    )
+    # TODO: Pick a better spot for the python script.
 endif()
 
 # Install more files specified elsewhere.
