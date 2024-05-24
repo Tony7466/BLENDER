@@ -3012,6 +3012,38 @@ static const EnumPropertyItem convert_target_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem *convert_target_itemf(bContext *C,
+                                                    PointerRNA * /*ptr*/,
+                                                    PropertyRNA * /*prop*/,
+                                                    bool *r_free)
+{
+  if (!C) { /* needed for docs */
+    return convert_target_items;
+  }
+
+  EnumPropertyItem *item = nullptr;
+  int totitem = 0;
+
+  RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_MESH);
+  RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_CURVES_LEGACY);
+  RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_CURVES);
+  if (U.experimental.use_new_point_cloud_type) {
+    RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_POINTCLOUD);
+  }
+  if (U.experimental.use_grease_pencil_version3) {
+    RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_GREASE_PENCIL);
+  }
+  else {
+    RNA_enum_items_add_value(&item, &totitem, convert_target_items, OB_GPENCIL_LEGACY);
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+
+  *r_free = true;
+
+  return item;
+}
+
 static void object_data_convert_curve_to_mesh(Main *bmain, Depsgraph *depsgraph, Object *ob)
 {
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
@@ -3865,8 +3897,10 @@ void OBJECT_OT_convert(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  ot->prop = RNA_def_enum(
+  ot->prop = prop = RNA_def_enum(
       ot->srna, "target", convert_target_items, OB_MESH, "Target", "Type of object to convert to");
+  RNA_def_enum_funcs(prop, convert_target_itemf);
+
   prop = RNA_def_boolean(ot->srna,
                          "keep_original",
                          false,
