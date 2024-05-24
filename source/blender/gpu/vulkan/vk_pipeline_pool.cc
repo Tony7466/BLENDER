@@ -42,6 +42,7 @@ VKPipelinePool::VKPipelinePool()
       &vk_pipeline_vertex_input_state_create_info_;
   vk_graphics_pipeline_create_info_.pRasterizationState =
       &vk_pipeline_rasterization_state_create_info_;
+  vk_graphics_pipeline_create_info_.pViewportState = &vk_pipeline_viewport_state_create_info_;
   vk_graphics_pipeline_create_info_.pMultisampleState =
       &vk_pipeline_multisample_state_create_info_;
 
@@ -78,6 +79,10 @@ VKPipelinePool::VKPipelinePool()
       VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
   vk_pipeline_rasterization_state_create_info_.lineWidth = 1.0f;
   vk_pipeline_rasterization_state_create_info_.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
+  vk_pipeline_viewport_state_create_info_ = {};
+  vk_pipeline_viewport_state_create_info_.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 
   /* Initialize VkPipelineMultisampleStateCreateInfo */
   vk_pipeline_multisample_state_create_info_ = {};
@@ -231,6 +236,16 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
     vk_pipeline_rasterization_state_create_info_.depthBiasEnable = VK_FALSE;
   }
 
+  /* Viewport state */
+  vk_pipeline_viewport_state_create_info_.pViewports =
+      graphics_info.fragment_shader.viewports.data();
+  vk_pipeline_viewport_state_create_info_.viewportCount =
+      graphics_info.fragment_shader.viewports.size();
+  vk_pipeline_viewport_state_create_info_.pScissors =
+      graphics_info.fragment_shader.scissors.data();
+  vk_pipeline_viewport_state_create_info_.scissorCount =
+      graphics_info.fragment_shader.scissors.size();
+
   /* Common values */
   vk_graphics_pipeline_create_info_.layout = graphics_info.vk_pipeline_layout;
   // TODO: based on `vk_pipeline_base` we should update the flags.
@@ -273,6 +288,10 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_rasterization_state_create_info_.depthBiasSlopeFactor = 0.0f;
   vk_pipeline_rasterization_state_create_info_.depthBiasConstantFactor = 0.0f;
   vk_pipeline_rasterization_state_create_info_.depthBiasClamp = 0.0f;
+  vk_pipeline_viewport_state_create_info_.pScissors = nullptr;
+  vk_pipeline_viewport_state_create_info_.scissorCount = 0;
+  vk_pipeline_viewport_state_create_info_.pViewports = nullptr;
+  vk_pipeline_viewport_state_create_info_.viewportCount = 0;
 
   return pipeline;
 }

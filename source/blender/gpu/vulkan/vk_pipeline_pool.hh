@@ -95,14 +95,32 @@ struct VKGraphicsInfo {
   };
   struct FragmentShader {
     VkShaderModule vk_fragment_module;
+    Vector<VkViewport> viewports;
+    Vector<VkRect2D> scissors;
+
     bool operator==(const FragmentShader &other) const
     {
-      return vk_fragment_module == other.vk_fragment_module;
+      // TODO: Do not use hash.
+      return vk_fragment_module == other.vk_fragment_module && hash() == other.hash();
     }
     uint64_t hash() const
     {
       uint64_t hash = 0;
       hash = hash * 33 ^ uint64_t(vk_fragment_module);
+      for (const VkViewport &vk_viewport : viewports) {
+        hash = hash * 33 ^ uint64_t(vk_viewport.x);
+        hash = hash * 33 ^ uint64_t(vk_viewport.y);
+        hash = hash * 33 ^ uint64_t(vk_viewport.width);
+        hash = hash * 33 ^ uint64_t(vk_viewport.height);
+        hash = hash * 33 ^ uint64_t(vk_viewport.minDepth);
+        hash = hash * 33 ^ uint64_t(vk_viewport.maxDepth);
+      }
+      for (const VkRect2D &scissor : scissors) {
+        hash = hash * 33 ^ uint64_t(scissor.offset.x);
+        hash = hash * 33 ^ uint64_t(scissor.offset.y);
+        hash = hash * 33 ^ uint64_t(scissor.extent.width);
+        hash = hash * 33 ^ uint64_t(scissor.extent.height);
+      }
       return hash;
     }
   };
@@ -215,6 +233,7 @@ class VKPipelinePool : public NonCopyable {
   VkPipelineVertexInputStateCreateInfo vk_pipeline_vertex_input_state_create_info_;
 
   VkPipelineRasterizationStateCreateInfo vk_pipeline_rasterization_state_create_info_;
+  VkPipelineViewportStateCreateInfo vk_pipeline_viewport_state_create_info_;
 
   VkPipelineMultisampleStateCreateInfo vk_pipeline_multisample_state_create_info_;
 

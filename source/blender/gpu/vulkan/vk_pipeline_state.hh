@@ -16,11 +16,10 @@ namespace blender::gpu {
 class VKFrameBuffer;
 
 class VKPipelineStateManager {
- private:
+ public:
   GPUState current_;
   GPUStateMutable current_mutable_;
 
- public:
   VkPipelineColorBlendStateCreateInfo pipeline_color_blend_state;
   VkPipelineColorBlendAttachmentState color_blend_attachment_template;
   Vector<VkPipelineColorBlendAttachmentState> color_blend_attachments;

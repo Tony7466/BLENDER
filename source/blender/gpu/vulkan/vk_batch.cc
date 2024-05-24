@@ -93,7 +93,8 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
       draw.node_data.first_vertex = vertex_first;
       draw.node_data.first_instance = instance_first;
       vao.bind(draw.node_data.vertex_buffers);
-      context.update_pipeline_data(draw.node_data.pipeline_data);
+      context.update_pipeline_data(prim_type, vao, draw.node_data.pipeline_data);
+
       context.render_graph.add_node(draw);
     }
   }

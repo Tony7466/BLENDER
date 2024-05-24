@@ -90,7 +90,10 @@ class VKShader : public Shader {
   int program_handle_get() const override;
 
   VkPipeline ensure_and_get_compute_pipeline();
-  VkPipeline ensure_and_get_graphics_pipeline(GPUPrimType primitive, VKVertexAttributeObject &vao);
+  VkPipeline ensure_and_get_graphics_pipeline(GPUPrimType primitive,
+                                              VKVertexAttributeObject &vao,
+                                              VKStateManager &state_manager,
+                                              VKFrameBuffer &framebuffer);
 
   VKPipeline &pipeline_get();
 

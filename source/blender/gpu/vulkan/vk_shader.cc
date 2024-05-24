@@ -13,9 +13,11 @@
 #include "vk_shader.hh"
 
 #include "vk_backend.hh"
+#include "vk_framebuffer.hh"
 #include "vk_memory.hh"
 #include "vk_shader_interface.hh"
 #include "vk_shader_log.hh"
+#include "vk_state_manager.hh"
 #include "vk_vertex_attribute_object.hh"
 
 #include "BLI_string_utils.hh"
@@ -1212,7 +1214,9 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
 }
 
 VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
-                                                      VKVertexAttributeObject &vao)
+                                                      VKVertexAttributeObject &vao,
+                                                      VKStateManager &state_manager,
+                                                      VKFrameBuffer &framebuffer)
 {
   BLI_assert_msg(
       primitive != GPU_PRIM_POINTS || interface_get().is_point_shader(),
@@ -1232,6 +1236,13 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
   graphics_info.pre_rasterization.vk_geometry_module = geometry_module_;
 
   graphics_info.fragment_shader.vk_fragment_module = fragment_module_;
+  graphics_info.state = state_manager.state;
+  graphics_info.mutable_state = state_manager.mutable_state;
+  // TODO: in stead of extend use a build pattern.
+  graphics_info.fragment_shader.viewports.clear();
+  graphics_info.fragment_shader.viewports.extend(framebuffer.vk_viewports_get());
+  graphics_info.fragment_shader.scissors.clear();
+  graphics_info.fragment_shader.scissors.extend(framebuffer.vk_render_areas_get());
 
   VKDevice &device = VKBackend::get().device_get();
   /* Store result in local variable to ensure thread safety. */
