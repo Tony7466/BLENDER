@@ -144,21 +144,15 @@ static void mesh_render_data_loose_geom_ensure(const MeshRenderData &mr, MeshBuf
   mesh_render_data_loose_geom_build(mr, cache);
 }
 
-void mesh_render_data_update_loose_geom(MeshRenderData &mr,
-                                        MeshBufferCache &cache,
-                                        const eMRIterType iter_type,
-                                        const eMRDataType data_flag)
+void mesh_render_data_update_loose_geom(MeshRenderData &mr, MeshBufferCache &cache)
 {
-  if ((iter_type & (MR_ITER_LOOSE_EDGE | MR_ITER_LOOSE_VERT)) || (data_flag & MR_DATA_LOOSE_GEOM))
-  {
-    mesh_render_data_loose_geom_ensure(mr, cache);
-    mr.loose_edges = cache.loose_geom.edges;
-    mr.loose_verts = cache.loose_geom.verts;
-    mr.loose_verts_num = cache.loose_geom.verts.size();
-    mr.loose_edges_num = cache.loose_geom.edges.size();
+  mesh_render_data_loose_geom_ensure(mr, cache);
+  mr.loose_edges = cache.loose_geom.edges;
+  mr.loose_verts = cache.loose_geom.verts;
+  mr.loose_verts_num = cache.loose_geom.verts.size();
+  mr.loose_edges_num = cache.loose_geom.edges.size();
 
-    mr.loose_indices_num = mr.loose_verts_num + (mr.loose_edges_num * 2);
-  }
+  mr.loose_indices_num = mr.loose_verts_num + (mr.loose_edges_num * 2);
 }
 
 /** \} */
@@ -609,17 +603,17 @@ MeshRenderData *mesh_render_data_create(Object &object,
 
       /* Use mapping from final to original mesh when the object is in edit mode. */
       if (edit_mode_active && do_final) {
-        mr->v_origindex = static_cast<const int *>(
+        mr->orig_index_vert = static_cast<const int *>(
             CustomData_get_layer(&mr->mesh->vert_data, CD_ORIGINDEX));
-        mr->e_origindex = static_cast<const int *>(
+        mr->orig_index_edge = static_cast<const int *>(
             CustomData_get_layer(&mr->mesh->edge_data, CD_ORIGINDEX));
-        mr->p_origindex = static_cast<const int *>(
+        mr->orig_index_face = static_cast<const int *>(
             CustomData_get_layer(&mr->mesh->face_data, CD_ORIGINDEX));
       }
       else {
-        mr->v_origindex = nullptr;
-        mr->e_origindex = nullptr;
-        mr->p_origindex = nullptr;
+        mr->orig_index_vert = nullptr;
+        mr->orig_index_edge = nullptr;
+        mr->orig_index_face = nullptr;
       }
     }
   }
@@ -630,17 +624,17 @@ MeshRenderData *mesh_render_data_create(Object &object,
     mr->hide_unmapped_edges = false;
 
     if (is_paint_mode && mr->mesh) {
-      mr->v_origindex = static_cast<const int *>(
+      mr->orig_index_vert = static_cast<const int *>(
           CustomData_get_layer(&mr->mesh->vert_data, CD_ORIGINDEX));
-      mr->e_origindex = static_cast<const int *>(
+      mr->orig_index_edge = static_cast<const int *>(
           CustomData_get_layer(&mr->mesh->edge_data, CD_ORIGINDEX));
-      mr->p_origindex = static_cast<const int *>(
+      mr->orig_index_face = static_cast<const int *>(
           CustomData_get_layer(&mr->mesh->face_data, CD_ORIGINDEX));
     }
     else {
-      mr->v_origindex = nullptr;
-      mr->e_origindex = nullptr;
-      mr->p_origindex = nullptr;
+      mr->orig_index_vert = nullptr;
+      mr->orig_index_edge = nullptr;
+      mr->orig_index_face = nullptr;
     }
   }
 
@@ -658,11 +652,11 @@ MeshRenderData *mesh_render_data_create(Object &object,
     mr->corner_verts = mr->mesh->corner_verts();
     mr->corner_edges = mr->mesh->corner_edges();
 
-    mr->v_origindex = static_cast<const int *>(
+    mr->orig_index_vert = static_cast<const int *>(
         CustomData_get_layer(&mr->mesh->vert_data, CD_ORIGINDEX));
-    mr->e_origindex = static_cast<const int *>(
+    mr->orig_index_edge = static_cast<const int *>(
         CustomData_get_layer(&mr->mesh->edge_data, CD_ORIGINDEX));
-    mr->p_origindex = static_cast<const int *>(
+    mr->orig_index_face = static_cast<const int *>(
         CustomData_get_layer(&mr->mesh->face_data, CD_ORIGINDEX));
 
     mr->normals_domain = mr->mesh->normals_domain();
