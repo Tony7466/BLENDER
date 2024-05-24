@@ -499,7 +499,7 @@ static void tree_element_grease_pencil_node_activate(bContext *C,
   GreasePencil &grease_pencil = *(GreasePencil *)tselem->id;
   bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
 
-  grease_pencil.active_node = &node;
+  grease_pencil.set_active_node(&node);
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 }
