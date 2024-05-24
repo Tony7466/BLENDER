@@ -954,9 +954,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "import_defined_only",
                   true,
-                  "Defined Primitives Only",
-                  "Turn this off to allow importing USD primitives which are not defined, "
-                  "for example, to load overrides with the Path Mask");
+                  "Import only defined USD primitives",
+                  "When disabled this allows importing USD primitives which are not defined,"
+                  "such as those with an override specifier");
 }
 
 namespace blender::ed::io {

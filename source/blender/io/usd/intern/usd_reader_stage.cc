@@ -367,7 +367,7 @@ USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
   pxr::Usd_PrimFlagsConjunction filter_flags = pxr::UsdPrimIsActive && pxr::UsdPrimIsLoaded &&
                                                !pxr::UsdPrimIsAbstract;
 
-  if (defined_prims_only && params_.import_defined_only) {
+  if (defined_prims_only) {
     filter_flags &= pxr::UsdPrimIsDefined;
   }
 
@@ -457,7 +457,7 @@ void USDStageReader::collect_readers()
   stage_->SetInterpolationType(pxr::UsdInterpolationType::UsdInterpolationTypeHeld);
 
   /* Create readers, skipping over prototype prims in this pass. */
-  collect_readers(root, instancer_proto_paths, true, readers_);
+  collect_readers(root, instancer_proto_paths, params_.import_defined_only, readers_);
 
   if (params_.support_scene_instancing) {
     /* Collect the scene-graph instance prototypes. */
