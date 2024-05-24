@@ -108,9 +108,7 @@ struct USDExportParams {
   bool convert_orientation = false;
   enum eIOAxis forward_axis = eIOAxis::IO_AXIS_NEGATIVE_Z;
   enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
-<<<<<<< HEAD
   bool convert_world_material = true;
-=======
   eUSDXformOpMode xform_op_mode = eUSDXformOpMode::USD_XFORM_OP_TRS;
   bool export_meshes = true;
   bool export_lights = true;
@@ -118,7 +116,6 @@ struct USDExportParams {
   bool export_curves = true;
   bool export_volumes = true;
 
->>>>>>> main
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 

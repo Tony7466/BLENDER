@@ -237,13 +237,11 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const int global_forward = RNA_enum_get(op->ptr, "export_global_forward_selection");
   const int global_up = RNA_enum_get(op->ptr, "export_global_up_selection");
 
-<<<<<<< HEAD
   const bool convert_world_material = RNA_boolean_get(op->ptr, "convert_world_material");
 
   const float light_intensity_scale = RNA_float_get(op->ptr, "light_intensity_scale");
-=======
+
   const eUSDXformOpMode xform_op_mode = eUSDXformOpMode(RNA_enum_get(op->ptr, "xform_op_mode"));
->>>>>>> main
 
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
@@ -273,16 +271,13 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       convert_orientation,
       eIOAxis(global_forward),
       eIOAxis(global_up),
-<<<<<<< HEAD
-      convert_world_material
-=======
+      convert_world_material,
       xform_op_mode,
       export_meshes,
       export_lights,
       export_cameras,
       export_curves,
-      export_volumes,
->>>>>>> main
+      export_volumes
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -604,7 +599,6 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Author USD custom attributes containing the original Blender object and "
                   "object data names");
 
-<<<<<<< HEAD
   RNA_def_boolean(
       ot->srna,
       "convert_world_material",
@@ -613,7 +607,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
       "Convert the world material to a USD dome light"
       "Currently works for simple materials, consisting of an environment texture "
       "connected to a background shader, with an optional vector multiply of the texture color");
-=======
+
   RNA_def_boolean(ot->srna, "export_meshes", true, "Meshes", "Export all meshes");
 
   RNA_def_boolean(ot->srna, "export_lights", true, "Lights", "Export all lights");
@@ -623,7 +617,6 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "export_curves", true, "Curves", "Export all curves");
 
   RNA_def_boolean(ot->srna, "export_volumes", true, "Volumes", "Export all volumes");
->>>>>>> main
 }
 
 /* ====== USD Import ====== */
