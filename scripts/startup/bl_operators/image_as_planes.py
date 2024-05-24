@@ -174,9 +174,10 @@ def compute_camera_size(context, center, fill_mode, aspect):
     scene = context.scene
     camera = scene.camera
     view_frame = camera.data.view_frame(scene=scene)
-    frame_size = \
-        Vector([max(v[i] for v in view_frame) for i in range(3)]) - \
+    frame_size = (
+        Vector([max(v[i] for v in view_frame) for i in range(3)]) -
         Vector([min(v[i] for v in view_frame) for i in range(3)])
+    )
     camera_aspect = frame_size.x / frame_size.y
 
     # Convert the frame size to the correct sizing at a given distance
@@ -190,8 +191,10 @@ def compute_camera_size(context, center, fill_mode, aspect):
     # Determine what axis to match to the camera
     match_axis = 0  # match the Y axis size
     match_aspect = aspect
-    if (fill_mode == 'FILL' and aspect > camera_aspect) or \
-            (fill_mode == 'FIT' and aspect < camera_aspect):
+    if (
+        (fill_mode == 'FILL' and aspect > camera_aspect) or
+        (fill_mode == 'FIT' and aspect < camera_aspect)
+    ):
         match_axis = 1  # match the X axis size
         match_aspect = 1.0 / aspect
 
@@ -215,8 +218,7 @@ def center_in_camera(scene, camera, obj, axis=(1, 1)):
     camera_y_mag = delta.dot(camera_matrix_col[1].xyz) * axis[1]
 
     # Now offset only along camera local axis
-    offset = camera_matrix_col[0].xyz * camera_x_mag + \
-        camera_matrix_col[1].xyz * camera_y_mag
+    offset = camera_matrix_col[0].xyz * camera_x_mag + camera_matrix_col[1].xyz * camera_y_mag
 
     obj.location = location + offset
 
@@ -950,8 +952,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             camera = context.scene.camera
             if (camera):
                 # Find the axis that best corresponds to the camera's view direction
-                axis = camera.matrix_world @ \
-                    Vector((0, 0, 1)) - camera.matrix_world.col[3].xyz
+                axis = camera.matrix_world @ Vector((0, 0, 1)) - camera.matrix_world.col[3].xyz
                 # pick the axis with the greatest magnitude
                 mag = max(map(abs, axis))
                 # And use that axis & direction
