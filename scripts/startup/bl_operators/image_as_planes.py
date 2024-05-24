@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import os
-import warnings
-import re
-from itertools import count, repeat
+__all__ = (
+    "classes",
+)
+
 from collections import namedtuple
-from math import pi
 
 import bpy
 from bpy.types import Operator
@@ -34,34 +33,11 @@ from bpy_extras.image_utils import load_image
 from bpy_extras.io_utils import ImportHelper
 
 # -----------------------------------------------------------------------------
-# Module-level Shared State
-
-watched_objects = {}  # used to trigger compositor updates on scene updates
-
-
-# -----------------------------------------------------------------------------
-# Misc utils.
-
-def add_driver_prop(driver, name, type, id, path):
-    """Configure a new driver variable."""
-    dv = driver.variables.new()
-    dv.name = name
-    dv.type = 'SINGLE_PROP'
-    target = dv.targets[0]
-    target.id_type = type
-    target.id = id
-    target.data_path = path
-
-
-# -----------------------------------------------------------------------------
 # Image loading
 
 ImageSpec = namedtuple(
     'ImageSpec',
     ['image', 'size', 'frame_start', 'frame_offset', 'frame_duration'])
-
-num_regex = re.compile('[0-9]')  # Find a single number
-nums_regex = re.compile('[0-9]+')  # Find a set of numbers
 
 
 def find_image_sequences(files):
@@ -77,6 +53,11 @@ def find_image_sequences(files):
     [('blaah', 1, 1), ('test2-001.jp2', 1, 2), ('test3-003.jp2', 3, 4)]
 
     """
+    from itertools import count
+    import re
+    num_regex = re.compile('[0-9]')  # Find a single number
+    nums_regex = re.compile('[0-9]+')  # Find a set of numbers
+
     files = iter(sorted(files))
     prev_file = None
     pattern = ""
@@ -135,6 +116,9 @@ def load_images(filenames, directory, force_reload=False, frame_start=1, find_se
     Loads a set of images, movies, or even image sequences
     Returns a generator of ImageSpec wrapper objects later used for texture setup
     """
+    import os
+    from itertools import repeat
+
     if find_sequences:  # if finding sequences, we need some pre-processing first
         file_iter = find_image_sequences(filenames)
     else:
@@ -381,204 +365,6 @@ def get_shadeless_node(dest_node_tree):
 
 
 # -----------------------------------------------------------------------------
-# Corner Pin Driver Helpers
-
-@bpy.app.handlers.persistent
-def check_drivers(*args, **kwargs):
-    """Check if watched objects in a scene have changed and trigger compositor update
-
-    This is part of a hack to ensure the compositor updates
-    itself when the objects used for drivers change.
-
-    It only triggers if transformation matricies change to avoid
-    a cyclic loop of updates.
-    """
-    if not watched_objects:
-        # if there is nothing to watch, don't bother running this
-        bpy.app.handlers.depsgraph_update_post.remove(check_drivers)
-        return
-
-    update = False
-    for name, matrix in list(watched_objects.items()):
-        try:
-            obj = bpy.data.objects[name]
-        except KeyError:
-            # The user must have removed this object
-            del watched_objects[name]
-        else:
-            new_matrix = tuple(map(tuple, obj.matrix_world)).__hash__()
-            if new_matrix != matrix:
-                watched_objects[name] = new_matrix
-                update = True
-
-    if update:
-        # Trick to re-evaluate drivers
-        bpy.context.scene.frame_current = bpy.context.scene.frame_current
-
-
-def register_watched_object(obj):
-    """Register an object to be monitored for transformation changes"""
-    name = obj.name
-
-    # known object? -> we're done
-    if name in watched_objects:
-        return
-
-    if not watched_objects:
-        # make sure check_drivers is active
-        bpy.app.handlers.depsgraph_update_post.append(check_drivers)
-
-    watched_objects[name] = None
-
-
-def find_plane_corner(object_name, x, y, axis, camera=None, *args, **kwargs):
-    """Find the location in camera space of a plane's corner"""
-    if args or kwargs:
-        # I've added args / kwargs as a compatibility measure with future versions
-        warnings.warn("Unknown Parameters Passed to \"Images as Planes\".  Maybe you need to upgrade?")
-
-    plane = bpy.data.objects[object_name]
-
-    # Passing in camera doesn't work before 2.78, so we use the current one
-    camera = camera or bpy.context.scene.camera
-
-    # Hack to ensure compositor updates on future changes
-    register_watched_object(camera)
-    register_watched_object(plane)
-
-    scale = plane.scale * 2.0
-    v = plane.dimensions.copy()
-    v.x *= x / scale.x
-    v.y *= y / scale.y
-    v = plane.matrix_world @ v
-
-    camera_vertex = world_to_camera_view(
-        bpy.context.scene, camera, v)
-
-    return camera_vertex[axis]
-
-
-@bpy.app.handlers.persistent
-def register_driver(*args, **kwargs):
-    """Register the find_plane_corner function for use with drivers"""
-    bpy.app.driver_namespace['import_image__find_plane_corner'] = find_plane_corner
-
-
-# -----------------------------------------------------------------------------
-# Compositing Helpers
-
-def group_in_frame(node_tree, name, nodes):
-    frame_node = node_tree.nodes.new("NodeFrame")
-    frame_node.label = name
-    frame_node.name = name + "_frame"
-
-    min_pos = Vector(nodes[0].location)
-    max_pos = min_pos.copy()
-
-    for node in nodes:
-        top_left = node.location
-        bottom_right = top_left + Vector((node.width, -node.height))
-
-        for i in (0, 1):
-            min_pos[i] = min(min_pos[i], top_left[i], bottom_right[i])
-            max_pos[i] = max(max_pos[i], top_left[i], bottom_right[i])
-
-        node.parent = frame_node
-
-    frame_node.width = max_pos[0] - min_pos[0] + 50
-    frame_node.height = max(max_pos[1] - min_pos[1] + 50, 450)
-    frame_node.shrink = True
-
-    return frame_node
-
-
-def position_frame_bottom_left(node_tree, frame_node):
-    newpos = Vector((100000, 100000))  # start reasonably far top / right
-
-    # Align with the furthest left
-    for node in node_tree.nodes.values():
-        if node != frame_node and node.parent != frame_node:
-            newpos.x = min(newpos.x, node.location.x + 30)
-
-    # As high as we can get without overlapping anything to the right
-    for node in node_tree.nodes.values():
-        if node != frame_node and not node.parent:
-            if node.location.x < newpos.x + frame_node.width:
-                print("Below", node.name, node.location, node.height, node.dimensions)
-                newpos.y = min(newpos.y, node.location.y - max(node.dimensions.y, node.height) - 20)
-
-    frame_node.location = newpos
-
-
-def setup_compositing(context, plane, img_spec):
-    # Node Groups only work with "new" dependency graph and even
-    # then it has some problems with not updating the first time
-    # So instead this groups with a node frame, which works reliably
-
-    scene = context.scene
-    scene.use_nodes = True
-    node_tree = scene.node_tree
-    name = plane.name
-
-    image_node = node_tree.nodes.new("CompositorNodeImage")
-    image_node.name = name + "_image"
-    image_node.image = img_spec.image
-    image_node.location = Vector((0, 0))
-    image_node.frame_start = img_spec.frame_start
-    image_node.frame_offset = img_spec.frame_offset
-    image_node.frame_duration = img_spec.frame_duration
-
-    scale_node = node_tree.nodes.new("CompositorNodeScale")
-    scale_node.name = name + "_scale"
-    scale_node.space = 'RENDER_SIZE'
-    scale_node.location = image_node.location + \
-        Vector((image_node.width + 20, 0))
-    scale_node.show_options = False
-
-    cornerpin_node = node_tree.nodes.new("CompositorNodeCornerPin")
-    cornerpin_node.name = name + "_cornerpin"
-    cornerpin_node.location = scale_node.location + \
-        Vector((0, -scale_node.height))
-
-    node_tree.links.new(scale_node.inputs[0], image_node.outputs[0])
-    node_tree.links.new(cornerpin_node.inputs[0], scale_node.outputs[0])
-
-    # Put all the nodes in a frame for organization
-    frame_node = group_in_frame(
-        node_tree, name,
-        (image_node, scale_node, cornerpin_node)
-    )
-
-    # Position frame at bottom / left
-    position_frame_bottom_left(node_tree, frame_node)
-
-    # Configure Drivers
-    for corner in cornerpin_node.inputs[1:]:
-        id = corner.identifier
-        x = -1 if 'Left' in id else 1
-        y = -1 if 'Lower' in id else 1
-        drivers = corner.driver_add('default_value')
-        for i, axis_fcurve in enumerate(drivers):
-            driver = axis_fcurve.driver
-            # Always use the current camera
-            add_driver_prop(driver, 'camera', 'SCENE', scene, 'camera')
-            # Track camera location to ensure Deps Graph triggers (not used in the call)
-            add_driver_prop(driver, 'cam_loc_x', 'OBJECT', scene.camera, 'location[0]')
-            # Don't break if the name changes
-            add_driver_prop(driver, 'name', 'OBJECT', plane, 'name')
-            driver.expression = "import_image__find_plane_corner(name or %s, %d, %d, %d, camera=camera)" % (
-                repr(plane.name),
-                x, y, i
-            )
-            driver.type = 'SCRIPTED'
-            driver.is_valid = True
-            axis_fcurve.is_valid = True
-            driver.expression = "%s" % driver.expression
-
-    context.view_layer.update()
-
-
-# -----------------------------------------------------------------------------
 # Operator
 
 class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
@@ -749,14 +535,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
     overwrite_material: BoolProperty(
         name="Overwrite Material", default=True,
         description="Overwrite existing Material (based on material name)")
-
-    # DISABLED: adds drivers and does evil things.
-    '''
-    compositing_nodes: BoolProperty(
-        name="Setup Corner Pin", default=False,
-        description="Build Compositor Nodes to reference this image "
-                    "without re-rendering")
-    '''
 
     # ------------------
     # Properties - Image
@@ -994,12 +772,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         # Assign Material
         plane.data.materials.append(material)
 
-        # If applicable, setup Corner Pin node
-        '''
-        if self.compositing_nodes:
-            setup_compositing(context, plane, img_spec)
-        '''
-
         return plane
 
     def apply_image_options(self, image):
@@ -1172,6 +944,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
     def align_plane(self, context, plane):
         """Pick an axis and align the plane to it"""
+        from math import pi
         if 'CAM' in self.align_axis:
             # Camera-aligned
             camera = context.scene.camera
