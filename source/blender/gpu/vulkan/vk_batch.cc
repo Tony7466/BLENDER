@@ -82,7 +82,7 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
       draw_indexed.node_data.index_buffer.buffer = index_buffer->vk_handle();
       draw_indexed.node_data.index_buffer.index_type = index_buffer->vk_index_type();
       vao.bind(draw_indexed.node_data.vertex_buffers);
-      context.update_pipeline_data(draw_indexed.node_data.pipeline_data);
+      context.update_pipeline_data(prim_type, vao, draw_indexed.node_data.pipeline_data);
 
       context.render_graph.add_node(draw_indexed);
     }

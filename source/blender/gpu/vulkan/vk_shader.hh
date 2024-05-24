@@ -33,7 +33,6 @@ class VKShader : public Shader {
    * The handle is owned by `VKDescriptorSetLayouts` of the device.
    */
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
-  VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   /* deprecated `when use_render_graph=true`. In that case use vk_pipeline_ */
   VKPipeline pipeline_;
   /**
@@ -44,6 +43,7 @@ class VKShader : public Shader {
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
 
  public:
+  VkPipelineLayout vk_pipeline_layout = VK_NULL_HANDLE;
   VKPushConstants push_constants;
 
   VKShader(const char *name);
@@ -88,21 +88,11 @@ class VKShader : public Shader {
 
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
-  VkPipeline ensure_and_get_pipeline()
-  {
-    if (is_compute_shader()) {
-      return ensure_and_get_compute_pipeline();
-    }
-    else {
-      return ensure_and_get_graphics_pipeline();
-    }
-  }
+
+  VkPipeline ensure_and_get_compute_pipeline();
+  VkPipeline ensure_and_get_graphics_pipeline(GPUPrimType primitive, VKVertexAttributeObject &vao);
 
   VKPipeline &pipeline_get();
-  VkPipelineLayout vk_pipeline_layout_get() const
-  {
-    return vk_pipeline_layout_;
-  }
 
   const VKShaderInterface &interface_get() const;
 
@@ -151,9 +141,6 @@ class VKShader : public Shader {
    */
   std::string workaround_geometry_shader_source_create(const shader::ShaderCreateInfo &info);
   bool do_geometry_shader_injection(const shader::ShaderCreateInfo *info);
-
-  VkPipeline ensure_and_get_compute_pipeline();
-  VkPipeline ensure_and_get_graphics_pipeline();
 };
 
 static inline VKShader &unwrap(Shader &shader)

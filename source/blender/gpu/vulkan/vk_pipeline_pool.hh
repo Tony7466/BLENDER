@@ -43,13 +43,36 @@ struct VKComputeInfo {
  */
 struct VKGraphicsInfo {
   struct VertexIn {
-    bool operator==(const VertexIn & /*other*/) const
+    VkPrimitiveTopology vk_topology;
+    Vector<VkVertexInputAttributeDescription> attributes;
+    Vector<VkVertexInputBindingDescription> bindings;
+
+    bool operator==(const VertexIn &other) const
     {
-      return true;
+      // TODO: use an exact implementation and remove the hash compare.
+      /*
+      return vk_topology == other.vk_topology && attributes.hash() == other.attributes.hash() &&
+             bindings.hash() == other.bindings.hash();
+      */
+      return hash() == other.hash();
     }
+
     uint64_t hash() const
     {
-      return 0;
+      uint64_t hash = 0;
+      hash = hash * 33 ^ uint64_t(vk_topology);
+      for (const VkVertexInputAttributeDescription &attribute : attributes) {
+        hash = hash * 33 ^ uint64_t(attribute.location);
+        hash = hash * 33 ^ uint64_t(attribute.binding);
+        hash = hash * 33 ^ uint64_t(attribute.format);
+        hash = hash * 33 ^ uint64_t(attribute.offset);
+      }
+      for (const VkVertexInputBindingDescription &binding : bindings) {
+        hash = hash * 33 ^ uint64_t(binding.binding);
+        hash = hash * 33 ^ uint64_t(binding.inputRate);
+        hash = hash * 33 ^ uint64_t(binding.stride);
+      }
+      return hash;
     }
   };
   struct PreRasterization {
@@ -174,8 +197,14 @@ class VKPipelinePool : public NonCopyable {
   Map<VKGraphicsInfo, VkPipeline> graphic_pipelines_;
   /* Partially initialized structures to reuse. */
   VkComputePipelineCreateInfo vk_compute_pipeline_create_info_;
+
   VkGraphicsPipelineCreateInfo vk_graphics_pipeline_create_info_;
+  VkPipelineRenderingCreateInfo vk_pipeline_rendering_create_info_;
   VkPipelineShaderStageCreateInfo vk_pipeline_shader_stage_create_info_[3];
+  VkPipelineInputAssemblyStateCreateInfo vk_pipeline_input_assembly_state_create_info_;
+  VkPipelineVertexInputStateCreateInfo vk_pipeline_vertex_input_state_create_info_;
+
+  VkPipelineMultisampleStateCreateInfo vk_pipeline_multisample_state_create_info_;
 
   VkSpecializationInfo vk_specialization_info_;
   Vector<VkSpecializationMapEntry> vk_specialization_map_entries_;
@@ -215,6 +244,11 @@ class VKPipelinePool : public NonCopyable {
    * that would be called after the device is removed.
    */
   void free_data();
+
+ private:
+  VkSpecializationInfo *specialization_info_update(
+      Span<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants);
+  void specialization_info_reset();
 };
 
 }  // namespace gpu

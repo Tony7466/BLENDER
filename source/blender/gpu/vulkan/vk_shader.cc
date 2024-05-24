@@ -16,6 +16,7 @@
 #include "vk_memory.hh"
 #include "vk_shader_interface.hh"
 #include "vk_shader_log.hh"
+#include "vk_vertex_attribute_object.hh"
 
 #include "BLI_string_utils.hh"
 #include "BLI_vector.hh"
@@ -595,9 +596,9 @@ VKShader::~VKShader()
     vkDestroyShaderModule(device.device_get(), compute_module_, vk_allocation_callbacks);
     compute_module_ = VK_NULL_HANDLE;
   }
-  if (vk_pipeline_layout_ != VK_NULL_HANDLE) {
-    vkDestroyPipelineLayout(device.device_get(), vk_pipeline_layout_, vk_allocation_callbacks);
-    vk_pipeline_layout_ = VK_NULL_HANDLE;
+  if (vk_pipeline_layout != VK_NULL_HANDLE) {
+    vkDestroyPipelineLayout(device.device_get(), vk_pipeline_layout, vk_allocation_callbacks);
+    vk_pipeline_layout = VK_NULL_HANDLE;
   }
   /* Reset not owning handles. */
   vk_descriptor_set_layout_ = VK_NULL_HANDLE;
@@ -686,7 +687,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
       BLI_assert(geometry_module_ == VK_NULL_HANDLE);
       BLI_assert(fragment_module_ == VK_NULL_HANDLE);
       BLI_assert(compute_module_ != VK_NULL_HANDLE);
-      pipeline_ = VKPipeline::create_compute_pipeline(compute_module_, vk_pipeline_layout_);
+      pipeline_ = VKPipeline::create_compute_pipeline(compute_module_, vk_pipeline_layout);
       result = pipeline_.is_valid();
     }
   }
@@ -720,7 +721,7 @@ bool VKShader::finalize_pipeline_layout(VkDevice vk_device,
   }
 
   if (vkCreatePipelineLayout(
-          vk_device, &pipeline_info, vk_allocation_callbacks, &vk_pipeline_layout_) != VK_SUCCESS)
+          vk_device, &pipeline_info, vk_allocation_callbacks, &vk_pipeline_layout) != VK_SUCCESS)
   {
     return false;
   };
@@ -772,7 +773,7 @@ void VKShader::update_graphics_pipeline(VKContext &context,
                           vertex_module_,
                           geometry_module_,
                           fragment_module_,
-                          vk_pipeline_layout_,
+                          vk_pipeline_layout,
                           prim_type,
                           vertex_attribute_object);
 }
@@ -1189,7 +1190,7 @@ bool VKShader::do_geometry_shader_injection(const shader::ShaderCreateInfo *info
 VkPipeline VKShader::ensure_and_get_compute_pipeline()
 {
   BLI_assert(compute_module_ != VK_NULL_HANDLE);
-  BLI_assert(vk_pipeline_layout_ != VK_NULL_HANDLE);
+  BLI_assert(vk_pipeline_layout != VK_NULL_HANDLE);
 
   /* Early exit when no specialization constants are used and the vk_pipeline_ is already
    * valid. This would handle most cases. */
@@ -1200,7 +1201,7 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
   VKComputeInfo compute_info = {};
   compute_info.specialization_constants.extend(constants.values);
   compute_info.vk_shader_module = compute_module_;
-  compute_info.vk_pipeline_layout = vk_pipeline_layout_;
+  compute_info.vk_pipeline_layout = vk_pipeline_layout;
 
   VKDevice &device = VKBackend::get().device_get();
   /* Store result in local variable to ensure thread safety. */
@@ -1210,11 +1211,22 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
   return vk_pipeline;
 }
 
-VkPipeline VKShader::ensure_and_get_graphics_pipeline()
+VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
+                                                      VKVertexAttributeObject &vao)
 {
+  BLI_assert_msg(
+      primitive != GPU_PRIM_POINTS || interface_get().is_point_shader(),
+      "GPU_PRIM_POINTS is used with a shader that doesn't set point size before "
+      "drawing fragments. Calling code should be adapted to use a shader that sets the "
+      "gl_PointSize before entering the fragment stage. For example `GPU_SHADER_3D_POINT_*`.");
+
   VKGraphicsInfo graphics_info = {};
   graphics_info.specialization_constants.extend(constants.values);
-  graphics_info.vk_pipeline_layout = vk_pipeline_layout_;
+  graphics_info.vk_pipeline_layout = vk_pipeline_layout;
+
+  graphics_info.vertex_in.vk_topology = to_vk_primitive_topology(primitive);
+  graphics_info.vertex_in.attributes = vao.attributes;
+  graphics_info.vertex_in.bindings = vao.bindings;
 
   graphics_info.pre_rasterization.vk_vertex_module = vertex_module_;
   graphics_info.pre_rasterization.vk_geometry_module = geometry_module_;
