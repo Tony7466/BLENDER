@@ -231,14 +231,6 @@ static void stats_background(void * /*arg*/, RenderStats *rs)
 
 void RE_FreeRenderResult(RenderResult *rr)
 {
-  /* Only actually free when RenderResult when the render result has zero users which is its
-   * default state.
-   * There is no need to lock as the user-counted render results are protected by mutex at the
-   * higher call stack level. */
-  if (rr->user_counter > 0) {
-    --rr->user_counter;
-    return;
-  }
   render_result_free(rr);
 }
 
