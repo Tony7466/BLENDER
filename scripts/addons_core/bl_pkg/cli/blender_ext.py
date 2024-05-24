@@ -303,6 +303,7 @@ class PkgManifest(NamedTuple):
     permissions: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     wheels: Optional[List[str]] = None
+    platforms: Optional[List[str]] = None
 
 
 class PkgManifest_Archive(NamedTuple):
@@ -1258,6 +1259,33 @@ def pkg_manifest_validate_field_permissions(
     return None
 
 
+def pkg_manifest_validate_field_platforms(
+        value: List[Any],
+        strict: bool,
+) -> Optional[str]:
+    _ = strict
+    # Always strict for now as it doesn't seem as there are repositories using invalid values.
+    strict = True
+    if strict:
+        values_valid = {
+            "windows-amd64",
+            "windows-arm64",
+            "macos-arm64",
+            "macos-x86_64",
+            "linux-x86_64",
+        }
+        for i, item in enumerate(value):
+            if not isinstance(item, str):
+                return "at index {:d} must be a string not a {:s}".format(i, str(type(value)))
+            if item not in values_valid:
+                return "at index {:d} must be a value in {!r}".format(i, tuple(values_valid))
+    else:
+        if (error := pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)) is not None:
+            return error
+
+    return None
+
+
 def pkg_manifest_validate_field_build_path_list(value: List[Any], strict: bool) -> Optional[str]:
     _ = strict
     value_duplicate_check: Set[str] = set()
@@ -1378,6 +1406,7 @@ pkg_manifest_known_keys_and_types: Tuple[
     ("permissions", list, pkg_manifest_validate_field_permissions),
     ("tags", list, pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings),
     ("wheels", list, pkg_manifest_validate_field_wheels),
+    ("platforms", list, pkg_manifest_validate_field_platforms),
 )
 
 # Keep in sync with `PkgManifest_Archive`.
