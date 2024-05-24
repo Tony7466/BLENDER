@@ -92,13 +92,6 @@ test_path_pattern_match: FORCE
 	@env --chdir="$(BASE_DIR)" \
 	    $(PYTHON_BIN) ./tests/test_path_pattern_match.py
 
-# https://www.cyberciti.biz/faq/howto-create-linux-ram-disk-filesystem/
-# mkfs -q /dev/ram1 8192
-# mkdir -p /ramcache
-# sudo mount /dev/ram1 /ramcache
-# sudo chmod 777 /ramcache
-# mkdir /ramcache/tmp
-
 watch_test: FORCE
 	@cd "$(BASE_DIR)" && \
 	while true; do \
