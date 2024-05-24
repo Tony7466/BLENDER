@@ -3600,12 +3600,12 @@ void RNA_def_property_float_default_func(PropertyRNA *prop, const char *get_defa
       FloatPropertyRNA *fprop = reinterpret_cast<FloatPropertyRNA *>(prop);
       if (prop->arraydimension) {
         if (get_default) {
-          fprop->get_default_array = reinterpret_cast<PropFloatArrayGetFuncEx>(get_default);
+          fprop->get_default_array = (PropFloatArrayGetFuncEx)get_default;
         }
       }
       else {
         if (get_default) {
-          fprop->get_default = reinterpret_cast<PropFloatGetFuncEx>(get_default);
+          fprop->get_default = (PropFloatGetFuncEx)get_default;
         }
       }
       break;
@@ -3631,12 +3631,12 @@ void RNA_def_property_int_default_func(PropertyRNA *prop, const char *get_defaul
       IntPropertyRNA *iprop = reinterpret_cast<IntPropertyRNA *>(prop);
       if (prop->arraydimension) {
         if (get_default) {
-          iprop->get_default_array = reinterpret_cast<PropIntArrayGetFuncEx>(get_default);
+          iprop->get_default_array = (PropIntArrayGetFuncEx)get_default;
         }
       }
       else {
         if (get_default) {
-          iprop->get_default = reinterpret_cast<PropIntGetFuncEx>(get_default);
+          iprop->get_default = (PropIntGetFuncEx)get_default;
         }
       }
       break;
@@ -3662,12 +3662,12 @@ void RNA_def_property_boolean_default_func(PropertyRNA *prop, const char *get_de
       BoolPropertyRNA *bprop = reinterpret_cast<BoolPropertyRNA *>(prop);
       if (prop->arraydimension) {
         if (get_default) {
-          bprop->get_default_array = reinterpret_cast<PropBooleanArrayGetFuncEx>(get_default);
+          bprop->get_default_array = (PropBooleanArrayGetFuncEx)get_default;
         }
       }
       else {
         if (get_default) {
-          bprop->get_default = reinterpret_cast<PropBooleanGetFuncEx>(get_default);
+          bprop->get_default = (PropBooleanGetFuncEx)get_default;
         }
       }
       break;
