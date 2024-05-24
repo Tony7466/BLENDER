@@ -362,8 +362,7 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
                   ANIMTYPE_ANIMDATA,
                   ANIMTYPE_NLAACTION,
                   ANIMTYPE_NLATRACK,
-                  ANIMTYPE_NLACURVE) ||
-             ELEM(ale->type,
+                  ANIMTYPE_NLACURVE,
                   ANIMTYPE_GREASE_PENCIL_LAYER,
                   ANIMTYPE_GREASE_PENCIL_LAYER_GROUP,
                   ANIMTYPE_GREASE_PENCIL_DATABLOCK))
