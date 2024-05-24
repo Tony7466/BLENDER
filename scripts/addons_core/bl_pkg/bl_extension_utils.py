@@ -286,6 +286,9 @@ def repo_sync(
         directory: str,
         remote_url: str,
         online_user_agent: str,
+        blender_version: str,
+        platform: str,
+        access_token: str,
         use_idle: bool,
         force_exit_ok: bool = False,
         extension_override: str = "",
@@ -299,6 +302,9 @@ def repo_sync(
         "--local-dir", directory,
         "--remote-url", remote_url,
         "--online-user-agent", online_user_agent,
+        "--blender-version", blender_version,
+        "--platform", platform,
+        "--access-token", access_token,
         *(("--force-exit-ok",) if force_exit_ok else ()),
         *(("--extension-override", extension_override) if extension_override else ()),
     ], use_idle=use_idle)
@@ -310,6 +316,8 @@ def repo_upgrade(
         directory: str,
         remote_url: str,
         online_user_agent: str,
+        blender_version: str,
+        platform: str,
         use_idle: bool,
 ) -> Generator[InfoItemSeq, None, None]:
     """
@@ -321,6 +329,8 @@ def repo_upgrade(
         "--local-dir", directory,
         "--remote-url", remote_url,
         "--online-user-agent", online_user_agent,
+        "--blender_version", blender_version,
+        "--platform", platform,
     ], use_idle=use_idle)
     yield [COMPLETE_ITEM]
 
@@ -367,6 +377,8 @@ def pkg_install(
         remote_url: str,
         pkg_id_sequence: Sequence[str],
         online_user_agent: str,
+        blender_version: str,
+        platform: str,
         use_cache: bool,
         use_idle: bool,
 ) -> Generator[InfoItemSeq, None, None]:
@@ -379,6 +391,8 @@ def pkg_install(
         "--local-dir", directory,
         "--remote-url", remote_url,
         "--online-user-agent", online_user_agent,
+        "--blender_version", blender_version,
+        "--platform", platform,
         "--local-cache", str(int(use_cache)),
     ], use_idle=use_idle)
     yield [COMPLETE_ITEM]

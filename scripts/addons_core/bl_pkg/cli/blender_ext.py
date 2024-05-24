@@ -905,13 +905,49 @@ class PathPatternMatch:
 # -----------------------------------------------------------------------------
 # URL Downloading
 
+
+def remove_empty_params(params: Optional[Dict[str, str]] = None) -> dict:
+    if params is None:
+        return {}
+    return {key: value for key, value in params.items() if value is not None and value != ""}
+
+
+def params_to_url(url: str, params: Optional[Dict[str, str]] = None) -> str:
+    params = remove_empty_params(params)
+
+    if not params:
+        return url
+
+    # Parse the URL to get its scheme, domain, and query parameters.
+    parsed_url = urllib.parse.urlparse(url)
+
+    # Combine existing query parameters with new parameters
+    existing_params = urllib.parse.parse_qsl(parsed_url.query)
+    all_params = dict(existing_params)
+    all_params.update(params)
+
+    # Encode all parameters into a new query string
+    new_query = urllib.parse.urlencode(all_params)
+
+    # Combine the scheme, netloc, path, and new query string to form the new URL
+    new_url = urllib.parse.urlunparse((
+        parsed_url.scheme,
+        parsed_url.netloc,
+        parsed_url.path,
+        parsed_url.params,
+        new_query,
+        parsed_url.fragment
+    ))
+
+    return new_url
+
+
 # Originally based on `urllib.request.urlretrieve`.
-
-
 def url_retrieve_to_data_iter(
         url: str,
         *,
         data: Optional[Any] = None,
+        params: Dict[str, str],
         headers: Dict[str, str],
         chunk_size: int,
         timeout_in_seconds: float,
@@ -934,8 +970,9 @@ def url_retrieve_to_data_iter(
     from urllib.error import ContentTooShortError
     from urllib.request import urlopen
 
+    url_with_params = params_to_url(url, params)
     request = urllib.request.Request(
-        url,
+        url_with_params,
         data=data,
         headers=headers,
     )
@@ -978,6 +1015,7 @@ def url_retrieve_to_filepath_iter(
         *,
         headers: Dict[str, str],
         data: Optional[Any] = None,
+        params: Dict[str, str] = None,
         chunk_size: int,
         timeout_in_seconds: float,
 ) -> Generator[Tuple[int, int, Any], None, None]:
@@ -987,6 +1025,7 @@ def url_retrieve_to_filepath_iter(
                 url,
                 headers=headers,
                 data=data,
+                params=params,
                 chunk_size=chunk_size,
                 timeout_in_seconds=timeout_in_seconds,
         ):
@@ -1014,6 +1053,7 @@ def filepath_retrieve_to_filepath_iter(
 def url_retrieve_to_data_iter_or_filesystem(
         url: str,
         headers: Dict[str, str],
+        params: Dict[str, str],
         chunk_size: int,
         timeout_in_seconds: float,
 ) -> Generator[bytes, None, None]:
@@ -1029,6 +1069,7 @@ def url_retrieve_to_data_iter_or_filesystem(
         ) in url_retrieve_to_data_iter(
             url,
             headers=headers,
+            params=params,
             chunk_size=chunk_size,
             timeout_in_seconds=timeout_in_seconds,
         ):
@@ -1039,6 +1080,7 @@ def url_retrieve_to_filepath_iter_or_filesystem(
         url: str,
         filepath: str,
         headers: Dict[str, str],
+        params: Dict[str, str],
         chunk_size: int,
         timeout_in_seconds: float,
 ) -> Generator[Tuple[int, int], None, None]:
@@ -1058,6 +1100,7 @@ def url_retrieve_to_filepath_iter_or_filesystem(
             url,
             filepath,
             headers=headers,
+            params=params,
             chunk_size=chunk_size,
             timeout_in_seconds=timeout_in_seconds,
         ):
@@ -1081,6 +1124,7 @@ def url_retrieve_exception_as_message(
     if isinstance(ex, urllib.error.URLError):
         return "{:s}: URL error ({:s}) reading {!r}!".format(prefix, str(ex), url)
 
+    # TODO: handle 403 and 401 when using secret
     return "{:s}: unexpected error ({:s}) reading {!r}!".format(prefix, str(ex), url)
 
 
@@ -1498,7 +1542,7 @@ def pkg_manifest_is_valid_or_error_all(
 # Standalone Utilities
 
 
-def url_request_headers_create(*, accept_json: bool, user_agent: str) -> Dict[str, str]:
+def url_request_headers_create(*, accept_json: bool, user_agent: str, access_token: str) -> Dict[str, str]:
     headers = {}
     if accept_json:
         # Default for JSON requests this allows top-level URL's to be used.
@@ -1507,6 +1551,10 @@ def url_request_headers_create(*, accept_json: bool, user_agent: str) -> Dict[st
     if user_agent:
         # Typically: `Blender/4.2.0 (Linux x84_64; cycle=alpha)`.
         headers["User-Agent"] = user_agent
+
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+
     return headers
 
 
@@ -1624,6 +1672,9 @@ def repo_sync_from_remote(
         remote_url: str,
         local_dir: str,
         online_user_agent: str,
+        blender_version: str,
+        platform: str,
+        access_token: str,
         timeout_in_seconds: float,
         extension_override: str,
 ) -> bool:
@@ -1656,12 +1707,20 @@ def repo_sync_from_remote(
 
         try:
             read_total = 0
-            for (read, size) in url_retrieve_to_filepath_iter_or_filesystem(
-                    remote_json_url,
-                    local_json_path_temp,
-                    headers=url_request_headers_create(accept_json=True, user_agent=online_user_agent),
-                    chunk_size=CHUNK_SIZE_DEFAULT,
-                    timeout_in_seconds=timeout_in_seconds,
+            for (
+                read,
+                size) in url_retrieve_to_filepath_iter_or_filesystem(
+                remote_json_url,
+                local_json_path_temp,
+                headers=url_request_headers_create(
+                    accept_json=True,
+                    user_agent=online_user_agent,
+                    access_token=access_token),
+                params={
+                    "blender_version": blender_version,
+                    "platform": platform},
+                chunk_size=CHUNK_SIZE_DEFAULT,
+                timeout_in_seconds=timeout_in_seconds,
             ):
                 request_exit |= message_progress(msg_fn, "Downloading...", read_total, size, 'BYTE')
                 if request_exit:
@@ -1937,6 +1996,45 @@ def generic_arg_online_user_agent(subparse: argparse.ArgumentParser) -> None:
     )
 
 
+def generic_arg_blender_version_param(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--blender-version",
+        dest="blender_version",
+        type=str,
+        help=(
+            "Blender version to pass as query argument for the remote repositories, so it can filter extensions based on this. "
+            "Some remote repositories may ignore this parameter."),
+        default="",
+        required=False,
+    )
+
+
+def generic_arg_platform_param(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--platform",
+        dest="platform",
+        type=str,
+        help=(
+            "Platform to pass as query argument for the remote repositories, so it can filter extensions based on this. "
+            "Some remote repositories may ignore this parameter."),
+        default="",
+        required=False,
+    )
+
+
+def generic_arg_access_token(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--access-token",
+        dest="access_token",
+        type=str,
+        help=(
+            "Access token for remote repositories which require authorized access."
+        ),
+        default="",
+        required=False,
+    )
+
+
 def generic_arg_timeout(subparse: argparse.ArgumentParser) -> None:
     subparse.add_argument(
         "--timeout",
@@ -2077,6 +2175,9 @@ class subcmd_client:
             msg_fn: MessageFn,
             remote_url: str,
             online_user_agent: str,
+            blender_version: str,
+            platform: str,
+            access_token: str,
             timeout_in_seconds: float,
     ) -> bool:
         remote_json_url = remote_url_get(remote_url)
@@ -2085,10 +2186,16 @@ class subcmd_client:
         try:
             result = io.BytesIO()
             for block in url_retrieve_to_data_iter_or_filesystem(
-                    remote_json_url,
-                    headers=url_request_headers_create(accept_json=True, user_agent=online_user_agent),
-                    chunk_size=CHUNK_SIZE_DEFAULT,
-                    timeout_in_seconds=timeout_in_seconds,
+                remote_json_url,
+                headers=url_request_headers_create(
+                    accept_json=True,
+                    user_agent=online_user_agent,
+                    access_token=access_token),
+                params={
+                    "blender_version": blender_version,
+                    "platform": platform},
+                chunk_size=CHUNK_SIZE_DEFAULT,
+                timeout_in_seconds=timeout_in_seconds,
             ):
                 result.write(block)
 
@@ -2122,6 +2229,9 @@ class subcmd_client:
             remote_url: str,
             local_dir: str,
             online_user_agent: str,
+            blender_version: str,
+            platform: str,
+            access_token: str,
             timeout_in_seconds: float,
             force_exit_ok: bool,
             extension_override: str,
@@ -2134,6 +2244,9 @@ class subcmd_client:
             remote_url=remote_url,
             local_dir=local_dir,
             online_user_agent=online_user_agent,
+            blender_version=blender_version,
+            platform=platform,
+            access_token=access_token,
             timeout_in_seconds=timeout_in_seconds,
             extension_override=extension_override,
         )
@@ -2281,6 +2394,9 @@ class subcmd_client:
             local_cache: bool,
             packages: Sequence[str],
             online_user_agent: str,
+            blender_version: str,
+            platform: str,
+            access_token: str,
             timeout_in_seconds: float,
     ) -> bool:
         # Extract...
@@ -2374,10 +2490,16 @@ class subcmd_client:
                     try:
                         with open(filepath_local_cache_archive, "wb") as fh_cache:
                             for block in url_retrieve_to_data_iter_or_filesystem(
-                                    filepath_remote_archive,
-                                    headers=url_request_headers_create(accept_json=False, user_agent=online_user_agent),
-                                    chunk_size=CHUNK_SIZE_DEFAULT,
-                                    timeout_in_seconds=timeout_in_seconds,
+                                filepath_remote_archive,
+                                headers=url_request_headers_create(
+                                    accept_json=False,
+                                    user_agent=online_user_agent,
+                                    access_token=access_token),
+                                params={
+                                    "blender_version": blender_version,
+                                    "platform": platform},
+                                chunk_size=CHUNK_SIZE_DEFAULT,
+                                timeout_in_seconds=timeout_in_seconds,
                             ):
                                 request_exit |= message_progress(
                                     msg_fn,
@@ -2937,6 +3059,9 @@ def argparse_create_client_list(subparsers: "argparse._SubParsersAction[argparse
     generic_arg_remote_url(subparse)
     generic_arg_local_dir(subparse)
     generic_arg_online_user_agent(subparse)
+    generic_arg_blender_version_param(subparse)
+    generic_arg_platform_param(subparse)
+    generic_arg_access_token(subparse)
 
     generic_arg_output_type(subparse)
     generic_arg_timeout(subparse)
@@ -2946,6 +3071,9 @@ def argparse_create_client_list(subparsers: "argparse._SubParsersAction[argparse
             msg_fn_from_args(args),
             args.remote_url,
             online_user_agent=args.online_user_agent,
+            blender_version=args.blender_version,
+            platform=args.platform,
+            access_token=args.access_token,
             timeout_in_seconds=args.timeout,
         ),
     )
@@ -2965,6 +3093,9 @@ def argparse_create_client_sync(subparsers: "argparse._SubParsersAction[argparse
     generic_arg_remote_url(subparse)
     generic_arg_local_dir(subparse)
     generic_arg_online_user_agent(subparse)
+    generic_arg_blender_version_param(subparse)
+    generic_arg_platform_param(subparse)
+    generic_arg_access_token(subparse)
 
     generic_arg_output_type(subparse)
     generic_arg_timeout(subparse)
@@ -2977,6 +3108,9 @@ def argparse_create_client_sync(subparsers: "argparse._SubParsersAction[argparse
             remote_url=args.remote_url,
             local_dir=args.local_dir,
             online_user_agent=args.online_user_agent,
+            blender_version=args.blender_version,
+            platform=args.platform,
+            access_token=args.access_token,
             timeout_in_seconds=args.timeout,
             force_exit_ok=args.force_exit_ok,
             extension_override=args.extension_override,
@@ -3018,6 +3152,9 @@ def argparse_create_client_install(subparsers: "argparse._SubParsersAction[argpa
     generic_arg_local_dir(subparse)
     generic_arg_local_cache(subparse)
     generic_arg_online_user_agent(subparse)
+    generic_arg_blender_version_param(subparse)
+    generic_arg_platform_param(subparse)
+    generic_arg_access_token(subparse)
 
     generic_arg_output_type(subparse)
     generic_arg_timeout(subparse)
@@ -3030,6 +3167,9 @@ def argparse_create_client_install(subparsers: "argparse._SubParsersAction[argpa
             local_cache=args.local_cache,
             packages=args.packages.split(","),
             online_user_agent=args.online_user_agent,
+            blender_version=args.blender_version,
+            platform=args.platform,
+            access_token=args.access_token,
             timeout_in_seconds=args.timeout,
         ),
     )

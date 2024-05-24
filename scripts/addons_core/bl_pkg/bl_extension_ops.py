@@ -194,6 +194,41 @@ def online_user_agent_from_blender():
     )
 
 
+def get_url_param_platform() -> str:
+    import platform
+
+    system = platform.system()
+    machine = platform.machine()
+
+    # Map platform system and machine to the desired format
+    if system == "Darwin":
+        if machine == "x86_64":
+            return "macos-x86_64"
+        elif machine == "arm64":
+            return "macos-arm64"
+    elif system == "Linux":
+        if machine == "x86_64":
+            return "linux-x86_64"
+        elif machine == "arm64":
+            return "linux-arm64"
+    elif system == "Windows":
+        if "64" in platform.architecture()[0]:
+            if machine == "AMD64":
+                return "windows-amd64"
+            elif machine == "ARM64":
+                return "windows-arm64"
+
+    # This should never happen, but since we don't want to fail
+    # Return a default value or handle unsupported platforms
+    return ""
+
+
+def get_url_param_blender_version():
+    return "{:d}.{:d}.{:d}".format(
+        *bpy.app.version,
+    )
+
+
 def lock_result_any_failed_with_report(op, lock_result, report_type='ERROR'):
     """
     Convert any locking errors from ``bl_extension_utils.RepoLock.acquire`` into reports.
@@ -264,6 +299,8 @@ class RepoItem(NamedTuple):
     remote_url: str
     module: str
     use_cache: bool
+    use_access_token: bool
+    access_token: str
 
 
 def repo_cache_store_refresh_from_prefs(include_disabled=False):
@@ -483,6 +520,8 @@ def extension_repos_read_index(index, *, include_disabled=False):
                 remote_url=remote_url,
                 module=repo_item.module,
                 use_cache=repo_item.use_cache,
+                use_access_token=repo_item.use_access_token,
+                access_token=repo_item.access_token,
             )
         index_test += 1
     return None
@@ -519,6 +558,8 @@ def extension_repos_read(*, include_disabled=False, use_active_only=False):
             remote_url=remote_url,
             module=repo_item.module,
             use_cache=repo_item.use_cache,
+            use_access_token=repo_item.use_access_token,
+            access_token=repo_item.access_token,
         ))
     return result
 
@@ -1002,6 +1043,8 @@ class BlPkgRepoSync(Operator, _BlPkgCmdMixIn):
                     directory=directory,
                     remote_url=repo_item.remote_url,
                     online_user_agent=online_user_agent_from_blender(),
+                    blender_version=get_url_param_blender_version(),
+                    platform=get_url_param_platform(),
                     use_idle=is_modal,
                 )
             )
@@ -1063,6 +1106,9 @@ class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
                     directory=repo_item.directory,
                     remote_url=repo_item.remote_url,
                     online_user_agent=online_user_agent_from_blender(),
+                    blender_version=get_url_param_blender_version(),
+                    access_token=repo_item.access_token if repo_item.use_access_token else "",
+                    platform=get_url_param_platform(),
                     use_idle=is_modal,
                 ))
 
@@ -1177,6 +1223,8 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
                 remote_url=repo_item.remote_url,
                 pkg_id_sequence=pkg_id_sequence,
                 online_user_agent=online_user_agent_from_blender(),
+                blender_version=get_url_param_blender_version(),
+                platform=get_url_param_platform(),
                 use_cache=repo_item.use_cache,
                 use_idle=is_modal,
             ))
@@ -1276,6 +1324,8 @@ class BlPkgPkgInstallMarked(Operator, _BlPkgCmdMixIn):
                 remote_url=repo_item.remote_url,
                 pkg_id_sequence=pkg_id_sequence,
                 online_user_agent=online_user_agent_from_blender(),
+                blender_version=get_url_param_blender_version(),
+                platform=get_url_param_platform(),
                 use_cache=repo_item.use_cache,
                 use_idle=is_modal,
             ))
@@ -1779,6 +1829,8 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
                     remote_url=repo_item.remote_url,
                     pkg_id_sequence=(pkg_id,),
                     online_user_agent=online_user_agent_from_blender(),
+                    blender_version=get_url_param_blender_version(),
+                    platform=get_url_param_platform(),
                     use_cache=repo_item.use_cache,
                     use_idle=is_modal,
                 )
