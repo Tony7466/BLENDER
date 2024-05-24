@@ -135,12 +135,12 @@ class _defs_view3d_generic:
                 kmi_remove = None
             return tip_(
                 "Measure distance and angles.\n"
-                "\u2022 %s anywhere for new measurement.\n"
+                "\u2022 {:s} anywhere for new measurement.\n"
                 "\u2022 Drag ruler segment to measure an angle.\n"
-                "\u2022 %s to remove the active ruler.\n"
+                "\u2022 {:s} to remove the active ruler.\n"
                 "\u2022 Ctrl while dragging to snap.\n"
                 "\u2022 Shift while dragging to measure surface thickness"
-            ) % (
+            ).format(
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_remove),
             )
@@ -506,11 +506,11 @@ class _defs_view3d_add:
             kmi_center = None
             kmi_fixed_aspect = None
         return tip_(
-            "%s\n"
-            "\u2022 %s toggles snap while dragging.\n"
-            "\u2022 %s toggles dragging from the center.\n"
-            "\u2022 %s toggles fixed aspect"
-        ) % (
+            "{:s}\n"
+            "\u2022 {:s} toggles snap while dragging.\n"
+            "\u2022 {:s} toggles dragging from the center.\n"
+            "\u2022 {:s} toggles fixed aspect"
+        ).format(
             prefix,
             kmi_to_string_or_none(kmi_snap),
             kmi_to_string_or_none(kmi_center),
@@ -779,10 +779,10 @@ class _defs_edit_mesh:
                 kmi_delete = None
             return tip_(
                 "Use multiple operators in an interactive way to add, delete, or move geometry.\n"
-                "\u2022 %s - Add geometry by moving the cursor close to an element.\n"
-                "\u2022 %s - Extrude edges by moving the cursor.\n"
-                "\u2022 %s - Delete mesh element"
-            ) % (
+                "\u2022 {:s} - Add geometry by moving the cursor close to an element.\n"
+                "\u2022 {:s} - Extrude edges by moving the cursor.\n"
+                "\u2022 {:s} - Delete mesh element"
+            ).format(
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_extrude),
                 kmi_to_string_or_none(kmi_delete),
@@ -1453,6 +1453,21 @@ class _defs_sculpt:
         )
 
     @ToolDef.from_fn
+    def hide_polyline():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_polyline_gesture")
+            layout.prop(props, "area", expand=False)
+
+        return dict(
+            idname="builtin.polyline_hide",
+            label="Polyline Hide",
+            icon="ops.sculpt.polyline_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def mask_border():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("paint.mask_box_gesture")
@@ -1559,6 +1574,23 @@ class _defs_sculpt:
             idname="builtin.lasso_trim",
             label="Lasso Trim",
             icon="ops.sculpt.lasso_trim",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def trim_line():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("sculpt.trim_line_gesture")
+            layout.prop(props, "trim_solver", expand=False)
+            layout.prop(props, "trim_orientation", expand=False)
+            layout.prop(props, "use_cursor_depth", expand=False)
+            layout.prop(props, "use_limit_to_segment", expand=False)
+        return dict(
+            idname="builtin.line_trim",
+            label="Line Trim",
+            icon="ops.sculpt.line_trim",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
@@ -1759,7 +1791,7 @@ class _defs_weight_paint:
                 weight = context.tool_settings.weight_paint.brush.weight
             else:
                 return
-            layout.label(text="Weight: %.3f" % weight)
+            layout.label(text="Weight: {:.3f}".format(weight))
         return dict(
             idname="builtin.sample_weight",
             label="Sample Weight",
@@ -1819,7 +1851,7 @@ class _defs_weight_paint:
         )
 
 
-class _defs_paint_grease_pencil:
+class _defs_grease_pencil_paint:
 
     # FIXME: Replace brush tools with code below once they are all implemented:
     #
@@ -1841,6 +1873,15 @@ class _defs_paint_grease_pencil:
             label="Draw",
             icon="brush.gpencil_draw.draw",
             data_block='DRAW',
+        )
+
+    @ToolDef.from_fn
+    def fill():
+        return dict(
+            idname="builtin_brush.Fill",
+            label="Fill",
+            icon="brush.gpencil_draw.fill",
+            data_block='FILL',
         )
 
     @ToolDef.from_fn
@@ -1908,7 +1949,7 @@ class _defs_paint_grease_pencil:
     def line():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_line")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.line",
@@ -1924,7 +1965,7 @@ class _defs_paint_grease_pencil:
     def polyline():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_polyline")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.polyline",
@@ -1940,7 +1981,7 @@ class _defs_paint_grease_pencil:
     def arc():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_arc")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.arc",
@@ -1956,7 +1997,7 @@ class _defs_paint_grease_pencil:
     def curve():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_curve")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.curve",
@@ -1972,7 +2013,7 @@ class _defs_paint_grease_pencil:
     def box():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_box")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.box",
@@ -1988,7 +2029,7 @@ class _defs_paint_grease_pencil:
     def circle():
         def draw_settings(context, layout, tool):
             props = tool.operator_properties("grease_pencil.primitive_circle")
-            _defs_paint_grease_pencil.grease_pencil_primitive_toolbar(context, layout, tool, props)
+            _defs_grease_pencil_paint.grease_pencil_primitive_toolbar(context, layout, tool, props)
 
         return dict(
             idname="builtin.circle",
@@ -2181,36 +2222,82 @@ class _defs_image_uv_edit:
 
 class _defs_image_uv_sculpt:
 
-    @staticmethod
-    def generate_from_brushes(context):
-        def draw_cursor(context, _tool, xy):
+    @ToolDef.from_fn
+    def grab():
+        def draw_settings(context, layout, tool):
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            layout.prop(uv_sculpt, "size")
+            layout.prop(uv_sculpt, "strength")
+            layout.popover("IMAGE_PT_uv_sculpt_curve")
+            layout.popover("IMAGE_PT_uv_sculpt_options")
+
+        def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            tool_settings = context.tool_settings
-            uv_sculpt = tool_settings.uv_sculpt
-            if not uv_sculpt.show_brush:
-                return
-            ups = tool_settings.unified_paint_settings
-            if ups.use_unified_size:
-                radius = ups.size
-            else:
-                brush = tool_settings.uv_sculpt.brush
-                if brush is None:
-                    return
-                radius = brush.size
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            radius = uv_sculpt.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
-        return generate_from_enum_ex(
-            context,
-            idname_prefix="builtin_brush.",
-            icon_prefix="brush.uv_sculpt.",
-            type=bpy.types.Brush,
-            attr="uv_sculpt_tool",
-            tooldef_keywords=dict(
-                operator="sculpt.uv_sculpt_stroke",
-                keymap="Image Editor Tool: Uv, Sculpt Stroke",
-                draw_cursor=draw_cursor,
-                options={'KEYMAP_FALLBACK'},
-            ),
+        return dict(
+            idname="sculpt.uv_sculpt_grab",
+            label="Grab",
+            icon="brush.uv_sculpt.grab",
+            keymap=(),
+            draw_cursor=draw_cursor,
+            draw_settings=draw_settings,
+            options={'KEYMAP_FALLBACK'},
+        )
+
+    @ToolDef.from_fn
+    def relax():
+        def draw_settings(context, layout, tool):
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            layout.prop(uv_sculpt, "size")
+            layout.prop(uv_sculpt, "strength")
+            layout.popover("IMAGE_PT_uv_sculpt_curve")
+            layout.popover("IMAGE_PT_uv_sculpt_options")
+
+            props = tool.operator_properties("sculpt.uv_sculpt_relax")
+            layout.prop(props, "relax_method", text="Method")
+
+        def draw_cursor(context, tool, xy):
+            from gpu_extras.presets import draw_circle_2d
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            radius = uv_sculpt.size
+            draw_circle_2d(xy, (1.0,) * 4, radius)
+
+        return dict(
+            idname="sculpt.uv_sculpt_relax",
+            label="Relax",
+            icon="brush.uv_sculpt.relax",
+            keymap=(),
+            draw_cursor=draw_cursor,
+            draw_settings=draw_settings,
+            options={'KEYMAP_FALLBACK'},
+        )
+
+    @ToolDef.from_fn
+    def pinch():
+        def draw_settings(context, layout, tool):
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            layout.prop(uv_sculpt, "size")
+            layout.prop(uv_sculpt, "strength")
+            layout.popover("IMAGE_PT_uv_sculpt_curve")
+            layout.popover("IMAGE_PT_uv_sculpt_options")
+
+        def draw_cursor(context, tool, xy):
+            from gpu_extras.presets import draw_circle_2d
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            radius = uv_sculpt.size
+            draw_circle_2d(xy, (1.0,) * 4, radius)
+
+        return dict(
+            idname="sculpt.uv_sculpt_pinch",
+            label="Pinch",
+            icon="brush.uv_sculpt.pinch",
+            keymap=(),
+            draw_cursor=draw_cursor,
+            draw_settings=draw_settings,
+            options={'KEYMAP_FALLBACK'},
         )
 
 
@@ -2910,17 +2997,17 @@ class _defs_sequencer_generic:
 
 class _defs_sequencer_select:
     @ToolDef.from_fn
-    def select():
+    def select_timeline():
         return dict(
             idname="builtin.select",
             label="Tweak",
             icon="ops.generic.select",
             widget=None,
-            keymap="Sequencer Tool: Tweak",
+            keymap="Sequencer Timeline Tool: Tweak",
         )
 
     @ToolDef.from_fn
-    def box():
+    def box_timeline():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sequencer.select_box")
             row = layout.row()
@@ -2931,7 +3018,33 @@ class _defs_sequencer_select:
             label="Select Box",
             icon="ops.generic.select_box",
             widget=None,
-            keymap="Sequencer Tool: Select Box",
+            keymap="Sequencer Timeline Tool: Select Box",
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def select_preview():
+        return dict(
+            idname="builtin.select",
+            label="Tweak",
+            icon="ops.generic.select",
+            widget=None,
+            keymap="Sequencer Preview Tool: Tweak",
+        )
+
+    @ToolDef.from_fn
+    def box_preview():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("sequencer.select_box")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", text="", expand=True, icon_only=True)
+        return dict(
+            idname="builtin.select_box",
+            label="Select Box",
+            icon="ops.generic.select_box",
+            widget=None,
+            keymap="Sequencer Preview Tool: Select Box",
             draw_settings=draw_settings,
         )
 
@@ -3014,11 +3127,9 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_image_uv_edit.rip_region,
             None,
-            lambda context: (
-                _defs_image_uv_sculpt.generate_from_brushes(context)
-                if _defs_image_generic.poll_uvedit(context)
-                else ()
-            ),
+            _defs_image_uv_sculpt.grab,
+            _defs_image_uv_sculpt.relax,
+            _defs_image_uv_sculpt.pinch,
         ],
         'MASK': [
             None,
@@ -3342,6 +3453,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_sculpt.hide_border,
                 _defs_sculpt.hide_lasso,
                 _defs_sculpt.hide_line,
+                _defs_sculpt.hide_polyline,
             ),
             (
                 _defs_sculpt.face_set_box,
@@ -3350,6 +3462,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             (
                 _defs_sculpt.trim_box,
                 _defs_sculpt.trim_lasso,
+                _defs_sculpt.trim_line,
             ),
             _defs_sculpt.project_line,
             None,
@@ -3422,17 +3535,18 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         'PAINT_GREASE_PENCIL': [
             _defs_view3d_generic.cursor,
             None,
-            _defs_paint_grease_pencil.draw,
-            _defs_paint_grease_pencil.erase,
-            _defs_paint_grease_pencil.cutter,
-            _defs_paint_grease_pencil.tint,
+            _defs_grease_pencil_paint.draw,
+            _defs_grease_pencil_paint.fill,
+            _defs_grease_pencil_paint.erase,
+            _defs_grease_pencil_paint.cutter,
+            _defs_grease_pencil_paint.tint,
             None,
-            _defs_paint_grease_pencil.line,
-            _defs_paint_grease_pencil.polyline,
-            _defs_paint_grease_pencil.arc,
-            _defs_paint_grease_pencil.curve,
-            _defs_paint_grease_pencil.box,
-            _defs_paint_grease_pencil.circle,
+            _defs_grease_pencil_paint.line,
+            _defs_grease_pencil_paint.polyline,
+            _defs_grease_pencil_paint.arc,
+            _defs_grease_pencil_paint.curve,
+            _defs_grease_pencil_paint.box,
+            _defs_grease_pencil_paint.circle,
         ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
@@ -3540,13 +3654,6 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
         yield from cls._tools.items()
 
     # Private tool lists for convenient reuse in `_tools`.
-
-    _tools_select = (
-        (
-            _defs_sequencer_select.select,
-            _defs_sequencer_select.box,
-        ),
-    )
     _tools_annotate = (
         (
             _defs_annotate.scribble,
@@ -3563,7 +3670,10 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
         None: [
         ],
         'PREVIEW': [
-            *_tools_select,
+            (
+                _defs_sequencer_select.select_preview,
+                _defs_sequencer_select.box_preview,
+            ),
             _defs_sequencer_generic.cursor,
             None,
             _defs_sequencer_generic.translate,
@@ -3575,12 +3685,13 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
         ],
         'SEQUENCER': [
-            *_tools_select,
+            (
+                _defs_sequencer_select.select_timeline,
+                _defs_sequencer_select.box_timeline,
+            ),
             _defs_sequencer_generic.blade,
         ],
         'SEQUENCER_PREVIEW': [
-            *_tools_select,
-            None,
             *_tools_annotate,
             None,
             _defs_sequencer_generic.blade,

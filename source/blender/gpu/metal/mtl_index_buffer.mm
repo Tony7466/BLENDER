@@ -139,7 +139,10 @@ void MTLIndexBuf::upload_data()
     }
 
     /* No need to keep copy of data_ in system memory. */
-    if (data_) {
+    if (reference_data_) {
+      data_ = nullptr;
+    }
+    else {
       MEM_SAFE_FREE(data_);
     }
   }
@@ -176,7 +179,7 @@ void MTLIndexBuf::update_sub(uint32_t start, uint32_t len, const void *data)
 
   /* Otherwise, we will inject a data update, using staged data, into the command stream.
    * Stage update contents in temporary buffer. */
-  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = MTLContext::get();
   BLI_assert(ctx);
   MTLTemporaryBuffer range = ctx->get_scratchbuffer_manager().scratch_buffer_allocate_range(len);
   memcpy(range.data, data, len);

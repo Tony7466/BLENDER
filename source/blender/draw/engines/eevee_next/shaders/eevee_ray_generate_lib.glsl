@@ -20,9 +20,6 @@ struct BsdfSample {
   float pdf;
 };
 
-/* Could maybe become parameters. */
-#define RAY_BIAS 0.05
-
 bool is_singular_ray(float roughness)
 {
   return roughness < BSDF_ROUGHNESS_THRESHOLD;
@@ -33,7 +30,8 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
 {
   vec3 random_point_on_cylinder = sample_cylinder(noise);
   /* Bias the rays so we never get really high energy rays almost parallel to the surface. */
-  random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - RAY_BIAS) + RAY_BIAS;
+  const float rng_bias = 0.08;
+  random_point_on_cylinder.x = random_point_on_cylinder.x * (1.0 - rng_bias);
 
   mat3 world_to_tangent = from_up_axis(cl.N);
 
@@ -65,7 +63,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
       if (is_singular_ray(to_closure_reflection(cl).roughness)) {
         samp.direction = reflect(-V, cl.N);
-        samp.pdf = 1.0;
+        samp.pdf = 1e6;
       }
       else {
         samp.direction = sample_ggx_reflect(random_point_on_cylinder,
@@ -81,11 +79,11 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
       float ior = to_closure_refraction(cl).ior;
       float roughness = to_closure_refraction(cl).roughness;
-      if (thickness > 0.0) {
+      if (thickness != 0.0) {
         float apparent_roughness = refraction_roughness_remapping(roughness, ior);
         vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
         /* NOTE(fclem): Tracing origin is modified in the trace shader. */
-        cl.N = -thickness_sphere_intersect(thickness, cl.N, L).hit_N;
+        cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
         ior = 1.0 / ior;
         V = -L;
         world_to_tangent = from_up_axis(cl.N);
@@ -93,7 +91,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
 
       if (is_singular_ray(roughness)) {
         samp.direction = refract(-V, cl.N, 1.0 / ior);
-        samp.pdf = 1.0;
+        samp.pdf = 1e6;
       }
       else {
         samp.direction = sample_ggx_refract(random_point_on_cylinder,

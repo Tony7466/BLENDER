@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include "../common/IO_orientation.hh"
+
 #include "DEG_depsgraph.hh"
 
 #include "RNA_types.hh"
@@ -76,6 +78,12 @@ enum eSubdivExportMode {
   USD_SUBDIV_BEST_MATCH = 2,
 };
 
+typedef enum eUSDXformOpMode {
+  USD_XFORM_OP_TRS = 0,
+  USD_XFORM_OP_TOS = 1,
+  USD_XFORM_OP_MAT = 2,
+} eUSDXformOpMode;
+
 struct USDExportParams {
   bool export_animation = false;
   bool export_hair = true;
@@ -97,6 +105,10 @@ struct USDExportParams {
   bool relative_paths = true;
   bool export_custom_properties = true;
   bool author_blender_name = true;
+  bool convert_orientation = false;
+  enum eIOAxis forward_axis = eIOAxis::IO_AXIS_NEGATIVE_Z;
+  enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
+  eUSDXformOpMode xform_op_mode = eUSDXformOpMode::USD_XFORM_OP_TRS;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
@@ -122,6 +134,7 @@ struct USDImportParams {
   bool import_shapes;
   bool import_skeletons;
   bool import_blendshapes;
+  bool import_points;
   char *prim_path_mask;
   bool import_subdiv;
   bool support_scene_instancing;

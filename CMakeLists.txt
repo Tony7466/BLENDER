@@ -120,24 +120,24 @@ enable_testing()
 if(CMAKE_COMPILER_IS_GNUCC)
   if("${CMAKE_C_COMPILER_VERSION}" VERSION_LESS "11.0.0")
     message(FATAL_ERROR "\
-The minimum supported version of GCC is 11.0.0, found ${CMAKE_C_COMPILER_VERSION}"
+The minimum supported version of GCC is 11.0.0, found C compiler: ${CMAKE_C_COMPILER_VERSION}"
     )
   endif()
   if("${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "11.0.0")
     message(FATAL_ERROR "\
-The minimum supported version of GCC is 11.0.0, found ${CMAKE_CXX_COMPILER_VERSION}"
+The minimum supported version of GCC is 11.0.0, found C++ compiler${CMAKE_CXX_COMPILER_VERSION}"
     )
   endif()
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   if(CMAKE_COMPILER_IS_GNUCC)
     if("${CMAKE_C_COMPILER_VERSION}" VERSION_LESS "8.0")
       message(FATAL_ERROR "\
-The minimum supported version of CLANG is 8.0, found ${CMAKE_C_COMPILER_VERSION}"
+The minimum supported version of CLANG is 8.0, found C compiler ${CMAKE_C_COMPILER_VERSION}"
       )
     endif()
     if("${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS "8.0")
       message(FATAL_ERROR "\
-The minimum supported version of CLANG is 8.0, found ${CMAKE_CXX_COMPILER_VERSION}"
+The minimum supported version of CLANG is 8.0, found C++ compiler ${CMAKE_CXX_COMPILER_VERSION}"
       )
     endif()
   endif()
@@ -306,7 +306,7 @@ option(WITH_IK_SOLVER "\
 Enable Legacy IK solver (only disable for development)"
   ON
 )
-option(WITH_FFTW3 "Enable FFTW3 support (Used for smoke, ocean sim, and audio effects)" ON)
+option(WITH_FFTW3 "Enable FFTW3 support (Used for smoke, ocean sim, glare, and audio effects)" ON)
 option(WITH_PUGIXML "Enable PugiXML support (Used for OpenImageIO, Grease Pencil SVG export)" ON)
 option(WITH_BULLET "Enable Bullet (Physics Engine)" ON)
 option(WITH_SYSTEM_BULLET "\
@@ -1308,17 +1308,6 @@ if(WITH_PYTHON)
     message(
       FATAL_ERROR
       "At least Python 3.11 is required to build, but found Python ${PYTHON_VERSION}"
-    )
-  endif()
-
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/scripts/addons")
-  list(LENGTH RESULT DIR_LEN)
-  if(DIR_LEN EQUAL 0)
-    message(
-      WARNING
-      "Addons path '${CMAKE_SOURCE_DIR}/scripts/addons' is missing. "
-      "This is an external repository which needs to be checked out. Use `make update` to do so. "
-      "* CONTINUING WITHOUT ADDONS *"
     )
   endif()
 endif()
