@@ -121,19 +121,15 @@ static void copy_image_packedfiles(ListBase *lb_dst, const ListBase *lb_src);
 static void image_runtime_reset(Image *image)
 {
   memset(&image->runtime, 0, sizeof(image->runtime));
-  image->runtime.cache_mutex = MEM_cnew<ThreadMutex>("image runtime cache_mutex");
-  image->runtime.render_result_mutex = MEM_cnew<ThreadMutex>("image runtime render_result_mutex");
+  image->runtime.cache_mutex = MEM_mallocN(sizeof(ThreadMutex), "image runtime cache_mutex");
   BLI_mutex_init(static_cast<ThreadMutex *>(image->runtime.cache_mutex));
-  BLI_mutex_init(static_cast<ThreadMutex *>(image->runtime.render_result_mutex));
 }
 
 /** Reset runtime image fields when data-block is being copied. */
 static void image_runtime_reset_on_copy(Image *image)
 {
-  image->runtime.cache_mutex = MEM_cnew<ThreadMutex>("image runtime cache_mutex");
-  image->runtime.render_result_mutex = MEM_cnew<ThreadMutex>("image runtime render_result_mutex");
+  image->runtime.cache_mutex = MEM_mallocN(sizeof(ThreadMutex), "image runtime cache_mutex");
   BLI_mutex_init(static_cast<ThreadMutex *>(image->runtime.cache_mutex));
-  BLI_mutex_init(static_cast<ThreadMutex *>(image->runtime.render_result_mutex));
 
   image->runtime.partial_update_register = nullptr;
   image->runtime.partial_update_user = nullptr;
@@ -145,11 +141,8 @@ static void image_runtime_reset_on_copy(Image *image)
 static void image_runtime_free_data(Image *image)
 {
   BLI_mutex_end(static_cast<ThreadMutex *>(image->runtime.cache_mutex));
-  BLI_mutex_end(static_cast<ThreadMutex *>(image->runtime.render_result_mutex));
   MEM_freeN(image->runtime.cache_mutex);
-  MEM_freeN(image->runtime.render_result_mutex);
   image->runtime.cache_mutex = nullptr;
-  image->runtime.render_result_mutex = nullptr;
 
   if (image->runtime.partial_update_user != nullptr) {
     BKE_image_partial_update_free(image->runtime.partial_update_user);
@@ -628,7 +621,6 @@ void BKE_image_free_buffers_ex(Image *ima, bool do_lock)
 {
   if (do_lock) {
     BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
-    BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
   }
   image_free_cached_frames(ima);
 
@@ -642,7 +634,6 @@ void BKE_image_free_buffers_ex(Image *ima, bool do_lock)
   BKE_image_free_gputextures(ima);
 
   if (do_lock) {
-    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
     BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
   }
 }
@@ -2495,7 +2486,6 @@ void BKE_image_multilayer_stamp_info_callback(void *data,
                                               bool noskip)
 {
   BLI_mutex_lock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
-  BLI_mutex_lock(static_cast<ThreadMutex *>(image.runtime.render_result_mutex));
 
   if (!image.rr || !image.rr->stamp_data) {
     BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
@@ -2504,7 +2494,6 @@ void BKE_image_multilayer_stamp_info_callback(void *data,
 
   BKE_stamp_info_callback(data, image.rr->stamp_data, callback, noskip);
 
-  BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.render_result_mutex));
   BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
 }
 
@@ -3130,7 +3119,6 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
   }
 
   BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
-  BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
 
   switch (signal) {
     case IMA_SIGNAL_FREE:
@@ -3314,7 +3302,6 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
       break;
   }
 
-  BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
   BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
 
   BKE_ntree_update_tag_id_changed(bmain, &ima->id);
@@ -3835,7 +3822,7 @@ static void image_init_multilayer_multiview(Image *ima, RenderResult *rr)
 
 RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima)
 {
-  BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
+  BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
 
   RenderResult *rr = nullptr;
 
@@ -3856,7 +3843,7 @@ RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima)
   }
 
   if (!rr) {
-    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
+    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
   }
 
   return rr;
@@ -3874,7 +3861,7 @@ void BKE_image_release_renderresult(Scene *scene, Image *ima, RenderResult *rend
   }
 
   if (render_result) {
-    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.render_result_mutex));
+    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
   }
 }
 
@@ -4827,7 +4814,6 @@ ImBuf *BKE_image_acquire_multilayer_view_ibuf(const RenderData &render_data,
                                               const char *view_name)
 {
   BLI_mutex_lock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
-  BLI_mutex_lock(static_cast<ThreadMutex *>(image.runtime.render_result_mutex));
 
   /* Local changes to the original ImageUser. */
   ImageUser local_user = image_user;
@@ -4841,7 +4827,6 @@ ImBuf *BKE_image_acquire_multilayer_view_ibuf(const RenderData &render_data,
     BLI_assert(pass_name);
 
     if (!image.rr) {
-      BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.render_result_mutex));
       BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
       return nullptr;
     }
@@ -4854,7 +4839,6 @@ ImBuf *BKE_image_acquire_multilayer_view_ibuf(const RenderData &render_data,
         &render_layer->passes, pass_name, offsetof(RenderPass, name));
 
     if (!BKE_image_multilayer_index(image.rr, &local_user)) {
-      BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.render_result_mutex));
       BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
       return nullptr;
     }
@@ -4865,7 +4849,6 @@ ImBuf *BKE_image_acquire_multilayer_view_ibuf(const RenderData &render_data,
 
   ImBuf *ibuf = image_acquire_ibuf(&image, &local_user, nullptr);
 
-  BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.render_result_mutex));
   BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
 
   return ibuf;

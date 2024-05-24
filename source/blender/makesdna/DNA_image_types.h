@@ -125,10 +125,9 @@ struct PartialUpdateRegister;
 struct PartialUpdateUser;
 
 typedef struct Image_Runtime {
-  /* Mutex used to guarantee thread-safe access to the cached ImBuf and render result of the
-   * corresponding image ID. */
+  /* Mutex used to guarantee thread-safe access to the cached ImBuf of the corresponding image ID.
+   */
   void *cache_mutex;
-  void *render_result_mutex;
 
   /** \brief Register containing partial updates. */
   struct PartialUpdateRegister *partial_update_register;

@@ -308,10 +308,11 @@ bool BKE_image_is_stereo(const struct Image *ima);
  *
  * It is allowed to call #BKE_image_release_renderresult with render_result of nullptr.
  *
- * NOTE: It is possible to use #BKE_image_acquire_ibuf from an image which currently has an
- * acquired render result, but it does not guarantee safety of the previously acquired render
- * result, as acquiring a new image of a sequence of multi-layer EXRs might free the previously
- * acquired render results.
+ * NOTE: It is not possible to use functions like #BKE_image_acquire_ibuf and
+ * #BKE_image_acquire_multilayer_view_ibuf as the same internal mutex as the image cache is used
+ * to protect the render result. When RenderResult is acquired, access image buffers directly from
+ * its passes, with user-increment when a more permanent reference is needed instead of the image
+ * buffer acquire/release functions.
  */
 RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima);
 void BKE_image_release_renderresult(Scene *scene, Image *ima, RenderResult *render_result);
