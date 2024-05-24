@@ -129,6 +129,9 @@ class Result {
   bool is_external_ = false;
 
  public:
+  /* The pixels in the result represents data, which is not to be color-managed. */
+  bool is_data = false;
+
   /* Construct a result of the given type and precision with the given texture pool that will be
    * used to allocate and release the result's texture. */
   Result(ResultType type, TexturePool &texture_pool, ResultPrecision precision);
@@ -323,9 +326,6 @@ class Result {
 
   /* Returns a reference to the domain of the result. See the Domain class. */
   const Domain &domain() const;
-
-  /* The pixels in the result represents data, which is not to be color-managed. */
-  bool is_data = false;
 };
 
 }  // namespace blender::realtime_compositor
