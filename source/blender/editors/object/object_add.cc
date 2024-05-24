@@ -3658,6 +3658,64 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       BKE_object_free_derived_caches(newob);
       BKE_object_free_modifiers(newob, 0);
     }
+    else if (ob->type == OB_CURVES && target == OB_GREASE_PENCIL) {
+      ob->flag |= OB_DONE;
+
+      Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+      bke::GeometrySet geometry;
+      if (ob_eval->runtime->geometry_set_eval != nullptr) {
+        geometry = *ob_eval->runtime->geometry_set_eval;
+      }
+
+      if (keep_original) {
+        basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, nullptr);
+        newob = basen->object;
+
+        Curves *curves = static_cast<Curves *>(newob->data);
+        id_us_min(&curves->id);
+
+        newob->data = BKE_id_copy(bmain, &curves->id);
+      }
+      else {
+        newob = ob;
+      }
+
+      GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
+          BKE_id_new(bmain, ID_GP, newob->id.name + 2));
+      newob->data = new_grease_pencil;
+      newob->type = OB_GREASE_PENCIL;
+
+      if (const GreasePencil *grease_pencil_eval = geometry.get_grease_pencil()) {
+        BKE_grease_pencil_nomain_to_grease_pencil(
+            BKE_grease_pencil_copy_for_eval(grease_pencil_eval), new_grease_pencil);
+        BKE_object_material_from_eval_data(bmain, newob, &grease_pencil_eval->id);
+        new_grease_pencil->attributes_for_write().remove_anonymous();
+      }
+      else if (const Curves *curves_eval = geometry.get_curves()) {
+        GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
+        /* Insert a default layer and place the drawing on frame 1. */
+        const std::string layer_name = "Layer";
+        const int frame_number = 1;
+        bke::greasepencil::Layer &layer = grease_pencil->add_layer(layer_name);
+        bke::greasepencil::Drawing *drawing = grease_pencil->insert_frame(layer, frame_number);
+        BLI_assert(drawing != nullptr);
+        drawing->strokes_for_write() = curves_eval->geometry.wrap();
+
+        BKE_grease_pencil_nomain_to_grease_pencil(grease_pencil, new_grease_pencil);
+        BKE_object_material_from_eval_data(bmain, newob, &curves_eval->id);
+      }
+      else {
+        BKE_reportf(op->reports,
+                    RPT_WARNING,
+                    "Object '%s' has no evaluated grease pencil or curves data",
+                    ob->id.name + 2);
+      }
+
+      BKE_object_free_derived_caches(newob);
+      BKE_object_free_modifiers(newob, 0);
+    }
+    else if (ob->type == OB_GREASE_PENCIL && target == OB_CURVES) {
+    }
     else {
       continue;
     }
