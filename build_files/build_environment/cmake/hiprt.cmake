@@ -36,7 +36,7 @@ ExternalProject_Add(external_hiprt
     cd ${BUILD_DIR}/hiprt/src/external_hiprt/ &&
     ${hiprt_build}
   INSTALL_COMMAND
-    ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/dist/bin/Release ${LIBDIR}/hiprt/bin &&
+    ${CMAKE_COMMAND} -E copy ${BUILD_DIR}/hiprt/src/external_hiprt/dist/bin/Release/${LIBPREFIX}hiprt${HIPRT_LIBRARY_VERSION}64${SHAREDLIBEXT} ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt64${SHAREDLIBEXT} &&
     ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/hiprt ${LIBDIR}/hiprt/include/hiprt &&
     ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/contrib/Orochi/ParallelPrimitives ${LIBDIR}/hiprt/include/orochi/ParallelPrimitives
 )
@@ -50,18 +50,8 @@ if(WIN32)
   if(BUILD_MODE STREQUAL Release)
     ExternalProject_Add_Step(external_hiprt after_install
       COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${LIBDIR}/hiprt/include
-        ${HARVEST_TARGET}/hiprt/include
-      COMMAND ${CMAKE_COMMAND} -E copy
-        ${LIBDIR}/hiprt/bin/hiprt*64.dll
-        ${HARVEST_TARGET}/hiprt/bin/
-      DEPENDEES install
-    )
-  else()
-    ExternalProject_Add_Step(external_hiprt after_install
-      COMMAND ${CMAKE_COMMAND} -E copy
-        ${LIBDIR}/hiprt/bin/hiprt*64D.dll
-        ${HARVEST_TARGET}/hiprt/bin/
+        ${LIBDIR}/hiprt
+        ${HARVEST_TARGET}/hiprt
       DEPENDEES install
     )
   endif()

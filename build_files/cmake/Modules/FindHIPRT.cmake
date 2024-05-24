@@ -42,9 +42,9 @@ if(HIPRT_INCLUDE_DIR)
 endif()
 
 if(WIN32)
-  set(HIPRT_DYNAMIC_LIB hiprt${HIPRT_VERSION}64.dll)
+  set(HIPRT_DYNAMIC_LIB hiprt64.dll hiprt${HIPRT_VERSION}64.dll)
 else()
-  set(HIPRT_DYNAMIC_LIB libhiprt${HIPRT_VERSION}64.so)
+  set(HIPRT_DYNAMIC_LIB libhiprt64.so libhiprt${HIPRT_VERSION}64.so)
 endif()
 
 find_path(HIPRT_LIB_DIR

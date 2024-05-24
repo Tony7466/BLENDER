@@ -1832,17 +1832,11 @@ endif()
 
 if(WIN32)
   if(WITH_CYCLES_DEVICE_HIPRT)
-    #place holder, HIPRT_VERSION is out of scope, this won't work
-    if(EXISTS ${LIBDIR}/hiprt/bin/hiprt${HIPRT_VERSION}64.dll)
+    if(EXISTS ${LIBDIR}/hiprt/bin/hiprt64.dll)
       windows_install_shared_manifest(
         FILES
-        ${LIBDIR}/hiprt/bin/hiprt${HIPRT_VERSION}64.dll
-        RELEASE
-      )
-      windows_install_shared_manifest(
-        FILES
-        ${LIBDIR}/hiprt/bin/hiprt${HIPRT_VERSION}64D.dll
-        DEBUG
+        ${LIBDIR}/hiprt/bin/hiprt64.dll
+        ALL
       )
     endif()
   endif()
