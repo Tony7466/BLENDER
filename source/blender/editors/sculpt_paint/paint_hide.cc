@@ -1009,6 +1009,21 @@ static int elem_xy_to_index(int x, int y, int grid_size)
   return y * grid_size + x;
 }
 
+struct DualBitBuffer {
+  BitGroupVector<> front;
+  BitGroupVector<> back;
+
+  BitGroupVector<> &write_buffer(int count)
+  {
+    return count % 2 == 0 ? back : front;
+  }
+
+  BitGroupVector<> &read_buffer(int count)
+  {
+    return count % 2 == 0 ? front : back;
+  }
+};
+
 static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         Object &object,
                                         PBVH &pbvh,
@@ -1016,6 +1031,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         const VisAction action,
                                         const int iterations)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
@@ -1024,19 +1040,23 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   const bool desired_state = action_to_hide(action);
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
 
+  DualBitBuffer buffers;
+  buffers.front = BitGroupVector<>(grid_hidden);
+  buffers.back = BitGroupVector<>(grid_hidden);
+
+  Array<bool> node_changed(nodes.size());
+
   for (int i = 0; i < iterations; i++) {
-    bool any_changed = false;
-    BitGroupVector<> orig_grid_hidden(grid_hidden);
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      for (PBVHNode *node : nodes.slice(range)) {
-        undo::push_node(object, node, undo::Type::HideVert);
+      for (const int node_index : range) {
+        PBVHNode *node = nodes[node_index];
         const Span<int> grids = bke::pbvh::node_grid_indices(*node);
 
         for (const int grid_index : grids) {
           for (const int y : IndexRange(key.grid_size)) {
             for (const int x : IndexRange(key.grid_size)) {
               const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
-              if (orig_grid_hidden[grid_index][grid_elem_idx] != desired_state) {
+              if (buffers.read_buffer(i)[grid_index][grid_elem_idx] != desired_state) {
                 continue;
               }
 
@@ -1053,24 +1073,48 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                 const int neighbor_grid_elem_idx = elem_xy_to_index(
                     neighbor.x, neighbor.y, key.grid_size);
 
-                grid_hidden[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
+                buffers.write_buffer(i)[neighbor.grid_index][neighbor_grid_elem_idx].set(
+                    desired_state);
               }
             }
           }
         }
 
-        any_changed = true;
-
-        BKE_pbvh_node_mark_update_visibility(node);
-        bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+        node_changed[node_index] = true;
       }
     });
+  }
 
-    if (any_changed) {
-      multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
-      BKE_pbvh_sync_visibility_from_verts(pbvh, &mesh);
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (const int node_index : range) {
+      if (!node_changed[node_index]) {
+        continue;
+      }
+      undo::push_node(object, nodes[node_index], undo::Type::HideVert);
+    }
+  });
+
+  BitGroupVector<> &last_buffer = buffers.write_buffer(iterations - 1);
+  for (int i = 0; i < grid_hidden.size(); i++) {
+    for (int j = 0; j < grid_hidden.group_size(); j++) {
+      grid_hidden[i][j].set_branchless(last_buffer[i][j]);
     }
   }
+
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (const int node_index : range) {
+      if (!node_changed[node_index]) {
+        continue;
+      }
+      PBVHNode *node = nodes[node_index];
+
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+    }
+  });
+
+  multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
+  BKE_pbvh_sync_visibility_from_verts(pbvh, &mesh);
 }
 
 static Array<bool> duplicate_visibility(const Object &object)
