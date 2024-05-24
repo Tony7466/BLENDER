@@ -45,7 +45,6 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
         return (node_editor_poll(cls, context) and
                 node_space_type_poll(cls, context, {'ShaderNodeTree', 'GeometryNodeTree'}))
 
-
     @staticmethod
     def get_output_sockets(node_tree):
         return [item for item in node_tree.interface.items_tree
@@ -213,7 +212,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
             tree = path_element.node_tree
             viewer_socket = self.ensure_viewer_socket(
                 tree, socket_type,
-                connect_socket = node.outputs[active_node_socket_id]
+                connect_socket=node.outputs[active_node_socket_id]
                 if path_index == 0 else None)
             if viewer_socket in self.delete_sockets:
                 self.delete_sockets.remove(viewer_socket)
@@ -238,7 +237,6 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
             if not self.has_socket_other_users(socket):
                 tree = socket.id_data
                 self.remove_socket(tree, socket)
-
 
     def invoke(self, context, event):
         space = context.space_data
@@ -291,7 +289,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
                     break
             if output_node_socket_index is None:
                 output_node_socket_index = self.ensure_viewer_socket(
-                    base_node_tree, socket_type, connect_socket = None)
+                    base_node_tree, socket_type, connect_socket=None)
 
         # For shader node trees, we connect to a material output.
         elif space.tree_type == 'ShaderNodeTree':
@@ -335,7 +333,6 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
         active.select = True
         force_update(context)
         return {'FINISHED'}
-
 
 
 classes = (
