@@ -435,6 +435,8 @@ struct IntPropertyRNA {
   int hardmin, hardmax;
   int step;
 
+  PropIntGetFuncEx get_default;
+  PropIntArrayGetFuncEx get_default_array;
   int defaultvalue;
   const int *defaultarray;
 };

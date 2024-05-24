@@ -379,6 +379,16 @@ float rna_NodeSocketStandard_float_default(PointerRNA *ptr, PropertyRNA * /*prop
   return decl->default_value;
 }
 
+int rna_NodeSocketStandard_int_default(PointerRNA *ptr, PropertyRNA * /*prop*/)
+{
+  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
+  if (!sock->runtime->declaration) {
+    return 0;
+  }
+  auto *decl = static_cast<const blender::nodes::decl::Int *>(sock->runtime->declaration);
+  return decl->default_value;
+}
+
 void rna_NodeSocketStandard_vector_default(PointerRNA *ptr,
                                            PropertyRNA * /*prop*/,
                                            float *r_values)
@@ -916,6 +926,7 @@ static void rna_def_node_socket_int(BlenderRNA *brna,
   RNA_def_property_int_sdna(prop, nullptr, "value");
   RNA_def_property_int_default(prop, value_default);
   RNA_def_property_int_funcs(prop, nullptr, nullptr, "rna_NodeSocketStandard_int_range");
+  RNA_def_property_int_default_func(prop, "rna_NodeSocketStandard_int_default");
   RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_update");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);

@@ -2854,6 +2854,11 @@ static void rna_property_int_get_default_array_values(PointerRNA *ptr,
                                                       IntPropertyRNA *iprop,
                                                       int *r_values)
 {
+  if (iprop->get_default_array) {
+    iprop->get_default_array(ptr, &iprop->property, r_values);
+    return;
+  }
+
   int length = iprop->property.totarraylength;
   int out_length = RNA_property_array_length(ptr, (PropertyRNA *)iprop);
 
@@ -3020,7 +3025,7 @@ void RNA_property_int_set_index(PointerRNA *ptr, PropertyRNA *prop, int index, i
   }
 }
 
-int RNA_property_int_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
+int RNA_property_int_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
   IntPropertyRNA *iprop = (IntPropertyRNA *)rna_ensure_property(prop);
 
@@ -3030,6 +3035,9 @@ int RNA_property_int_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
       const IDPropertyUIDataInt *ui_data = (const IDPropertyUIDataInt *)idprop->ui_data;
       return ui_data->default_value;
     }
+  }
+  if (iprop->get_default) {
+    return iprop->get_default(ptr, prop);
   }
 
   return iprop->defaultvalue;
