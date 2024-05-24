@@ -131,6 +131,10 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   BLI_dir_create_recursive(cache_dir.c_str());
 
   while (true) {
+    /* Process events to avoid crashes on Wayland.
+     * See https://bugreports.qt.io/browse/QTBUG-81504 */
+    GHOST_ProcessEvents(ghost_system, false);
+
     start_semaphore.decrement();
 
     if (close_semaphore.try_decrement()) {
