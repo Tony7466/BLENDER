@@ -187,7 +187,7 @@ bool bmesh_node_raycast_detail(PBVHNode *node,
  * For orthographic cameras, project the far away ray segment points to the root node so
  * we can have better precision.
  *
- * Note: the interval is not guaranteed to lie between ray_start and ray_end; this is
+ * \note the interval is not guaranteed to lie between ray_start and ray_end; this is
  * not necessary for orthographic views and is impossible anyhow due to the necessity of
  * projecting the far clipping plane into the local object space.  This works out to
  * dividing view3d->clip_end by the object scale, which for small object and large
@@ -557,11 +557,10 @@ void BKE_pbvh_update_active_vcol(PBVH &pbvh, Mesh *mesh);
 void BKE_pbvh_vertex_color_set(PBVH &pbvh,
                                blender::GroupedSpan<int> vert_to_face_map,
                                PBVHVertRef vertex,
-                               const float color[4]);
-void BKE_pbvh_vertex_color_get(const PBVH &pbvh,
-                               blender::GroupedSpan<int> vert_to_face_map,
-                               PBVHVertRef vertex,
-                               float r_color[4]);
+                               const blender::float4 &color);
+blender::float4 BKE_pbvh_vertex_color_get(const PBVH &pbvh,
+                                          blender::GroupedSpan<int> vert_to_face_map,
+                                          PBVHVertRef vertex);
 
 void BKE_pbvh_ensure_node_loops(PBVH &pbvh);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode &node);

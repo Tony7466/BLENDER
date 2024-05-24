@@ -145,8 +145,10 @@ class StepDrawingGeometry : public StepDrawingGeometryBase {
     drawing_geometry.geometry.wrap() = geometry_;
 
     /* TODO: Check if there is a way to tell if both stored and current geometry are still the
-     * same, to avoid recomputing the cache all the time for all drawings? */
+     * same, to avoid recomputing the caches all the time for all drawings? */
     drawing_geometry.runtime->triangles_cache.tag_dirty();
+    drawing_geometry.runtime->curve_plane_normals_cache.tag_dirty();
+    drawing_geometry.runtime->curve_texture_matrices.tag_dirty();
   }
 };
 
@@ -278,8 +280,8 @@ class StepObject {
     BLI_assert(layers_num_ == grease_pencil.layers().size());
 
     if (!active_layer_name_.empty()) {
-      const bke::greasepencil::TreeNode *active_node =
-          grease_pencil.root_group().find_node_by_name(active_layer_name_);
+      bke::greasepencil::TreeNode *active_node = grease_pencil.root_group().find_node_by_name(
+          active_layer_name_);
       if (active_node && active_node->is_layer()) {
         grease_pencil.set_active_layer(&active_node->as_layer());
       }

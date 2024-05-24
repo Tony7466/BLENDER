@@ -54,7 +54,6 @@ static void copy_with_stride(const IndexMask &mask,
   }
   BLI_assert(src_begin < src_step);
   BLI_assert(dst_begin < dst_step);
-  BLI_assert(src.size() / src_step == dst.size() / dst_step);
   mask.foreach_index_optimized<int>([&](const int64_t index) {
     dst[dst_begin + dst_step * index] = src[src_begin + src_step * index];
   });
@@ -190,11 +189,11 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_SEPARATE_MATRIX, "Separate Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

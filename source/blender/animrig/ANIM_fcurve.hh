@@ -14,6 +14,8 @@
 
 #include "DNA_anim_types.h"
 
+#include "ANIM_keyframing.hh"
+
 struct AnimData;
 struct FCurve;
 
@@ -72,29 +74,27 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
  *
  * Use this when validation of necessary animation data isn't necessary as it
  * already exists. It will insert a keyframe using the current value being keyframed.
- * Returns the index at which a keyframe was added (or -1 if failed).
  *
  * This function is a wrapper for #insert_bezt_fcurve(), and should be used when
  * adding a new keyframe to a curve, when the keyframe doesn't exist anywhere else yet.
- * It returns the index at which the keyframe was added.
  *
- * \returns The index of the keyframe array into which the bezt has been added.
+ * \returns Either success or an indicator of why keying failed.
  *
  * \param keyframe_type: The type of keyframe (#eBezTriple_KeyframeType).
  * \param flag: Optional flags (#eInsertKeyFlags) for controlling how keys get added
  * and/or whether updates get done.
  */
-int insert_vert_fcurve(FCurve *fcu,
-                       const float2 position,
-                       const KeyframeSettings &settings,
-                       eInsertKeyFlags flag);
+SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
+                                      const float2 position,
+                                      const KeyframeSettings &settings,
+                                      eInsertKeyFlags flag);
 
 /**
  * \param sample_rate: indicates how many samples per frame should be generated.
  * \param r_samples: Is expected to be an array large enough to hold `sample_count`.
  */
 void sample_fcurve_segment(
-    FCurve *fcu, float start_frame, float sample_rate, float *samples, int sample_count);
+    const FCurve *fcu, float start_frame, float sample_rate, float *samples, int sample_count);
 
 enum class BakeCurveRemove {
   NONE = 0,

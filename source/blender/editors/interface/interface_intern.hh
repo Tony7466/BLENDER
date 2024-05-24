@@ -658,7 +658,7 @@ void ui_but_to_pixelrect(rcti *rect,
                          const uiBut *but);
 rcti ui_to_pixelrect(const ARegion *region, const uiBlock *block, const rctf *src_rect);
 
-void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y);
+void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
 void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
 void ui_block_to_window(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_block_to_region_rctf(const ARegion *region,
@@ -868,7 +868,12 @@ struct uiPopupBlockHandle {
 
   /** Store data for refreshing popups. */
   uiPopupBlockCreate popup_create_vars;
-  /** True if we can re-create the popup using #uiPopupBlockHandle.popup_create_vars. */
+  /**
+   * True if we can re-create the popup using #uiPopupBlockHandle.popup_create_vars.
+   *
+   * \note Popups that can refresh are called with #bContext::wm::region_popup set
+   * to the #uiPopupBlockHandle::region both on initial creation and when refreshing.
+   */
   bool can_refresh;
   bool refresh;
 
@@ -985,7 +990,8 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
                                           uiBlockCreateFunc create_func,
                                           uiBlockHandleCreateFunc handle_create_func,
                                           void *arg,
-                                          uiFreeArgFunc arg_free);
+                                          uiFreeArgFunc arg_free,
+                                          bool can_refresh);
 uiPopupBlockHandle *ui_popup_menu_create(
     bContext *C, ARegion *butregion, uiBut *but, uiMenuCreateFunc menu_func, void *arg);
 
@@ -1298,8 +1304,14 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */
 
-void icon_draw_rect_input(
-    float x, float y, int w, int h, float alpha, short event_type, short event_value);
+void icon_draw_rect_input(float x,
+                          float y,
+                          int w,
+                          int h,
+                          float alpha,
+                          short event_type,
+                          short event_value,
+                          bool inverted = false);
 
 /* resources.cc */
 
@@ -1573,7 +1585,7 @@ namespace blender::interface::internal {
 /**
  * Get the driver(s) of the given property.
  *
- * Note: intended to be used in conjunction with `paste_property_drivers()` below.
+ * \note intended to be used in conjunction with `paste_property_drivers()` below.
  *
  * \param ptr: The RNA pointer of the property.
  * \param prop: The property RNA of the property.
@@ -1600,7 +1612,7 @@ blender::Vector<FCurve *> get_property_drivers(
  * property, just some elements of an array property, or a single driver for a
  * non-array property.
  *
- * Note: intended to be used in conjunction with `get_property_drivers()` above.
+ * \note intended to be used in conjunction with `get_property_drivers()` above.
  * The destination property should have the same type and (if an array property)
  * length as the source property passed to `get_property_drivers()`.
  *
