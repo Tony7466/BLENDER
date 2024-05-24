@@ -1082,12 +1082,13 @@ static int insert_key_to_keying_set_path(bContext *C,
   CombinedKeyingResult combined_result;
   for (; array_index < array_length; array_index++) {
     if (mode == ModifyKeyMode::INSERT) {
-      BLI_assert(array_index >= 0);
+      const std::optional<int> index = array_index >= 0 ? std::optional(array_index) :
+                                                          std::nullopt;
+      const std::optional<std::string> group = groupname ? std::optional(groupname) : std::nullopt;
       CombinedKeyingResult result = insert_keyframes(bmain,
                                                      *keyingset_path->id,
-                                                     {{keyingset_path->rna_path, {}, array_index}},
-                                                     groupname ? std::optional(groupname) :
-                                                                 std::nullopt,
+                                                     {{keyingset_path->rna_path, {}, index}},
+                                                     group,
                                                      std::nullopt,
                                                      anim_eval_context,
                                                      keytype,

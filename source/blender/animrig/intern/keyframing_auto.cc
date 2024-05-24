@@ -334,11 +334,12 @@ bool autokeyframe_property(bContext *C,
       /* NOTE: `rnaindex == -1` is a magic number, meaning either "operate on
        * all elements" or "not an array property". */
       const std::optional<int> array_index = rnaindex < 0 ? std::nullopt : std::optional(rnaindex);
+      const std::optional<std::string> group = (fcu && fcu->grp) ? fcu->grp->name : nullptr;
 
       CombinedKeyingResult result = insert_keyframes(bmain,
                                                      *id,
                                                      {{path, {}, array_index}},
-                                                     (fcu && fcu->grp) ? fcu->grp->name : nullptr,
+                                                     group,
                                                      std::nullopt,
                                                      anim_eval_context,
                                                      eBezTriple_KeyframeType(ts->keyframe_type),
