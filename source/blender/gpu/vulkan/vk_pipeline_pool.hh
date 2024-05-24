@@ -120,6 +120,8 @@ struct VKGraphicsInfo {
   FragmentShader fragment_shader;
   FragmentOut fragment_out;
 
+  GPUState state;
+  GPUStateMutable mutable_state;
   VkPipelineLayout vk_pipeline_layout;
   Vector<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants;
 
@@ -128,7 +130,8 @@ struct VKGraphicsInfo {
     return vertex_in == other.vertex_in && pre_rasterization == other.pre_rasterization &&
            fragment_shader == other.fragment_shader && fragment_out == other.fragment_out &&
            vk_pipeline_layout == other.vk_pipeline_layout &&
-           specialization_constants == other.specialization_constants;
+           specialization_constants == other.specialization_constants && state == other.state &&
+           mutable_state == other.mutable_state;
   };
   uint64_t hash() const
   {
@@ -139,6 +142,11 @@ struct VKGraphicsInfo {
     hash = hash * 33 ^ fragment_out.hash();
     hash = hash * 33 ^ uint64_t(vk_pipeline_layout);
     hash = hash * 33 ^ get_default_hash(specialization_constants);
+    hash = hash * 33 ^ state.data;
+    /* TODO: Fix mutable state. */
+    hash = hash * 33 ^ mutable_state.data[0];
+    hash = hash * 33 ^ mutable_state.data[1];
+    hash = hash * 33 ^ mutable_state.data[2];
     return hash;
   }
 };
@@ -203,6 +211,8 @@ class VKPipelinePool : public NonCopyable {
   VkPipelineShaderStageCreateInfo vk_pipeline_shader_stage_create_info_[3];
   VkPipelineInputAssemblyStateCreateInfo vk_pipeline_input_assembly_state_create_info_;
   VkPipelineVertexInputStateCreateInfo vk_pipeline_vertex_input_state_create_info_;
+
+  VkPipelineRasterizationStateCreateInfo vk_pipeline_rasterization_state_create_info_;
 
   VkPipelineMultisampleStateCreateInfo vk_pipeline_multisample_state_create_info_;
 

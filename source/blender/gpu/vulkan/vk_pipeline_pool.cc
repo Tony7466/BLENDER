@@ -40,6 +40,8 @@ VKPipelinePool::VKPipelinePool()
       &vk_pipeline_input_assembly_state_create_info_;
   vk_graphics_pipeline_create_info_.pVertexInputState =
       &vk_pipeline_vertex_input_state_create_info_;
+  vk_graphics_pipeline_create_info_.pRasterizationState =
+      &vk_pipeline_rasterization_state_create_info_;
   vk_graphics_pipeline_create_info_.pMultisampleState =
       &vk_pipeline_multisample_state_create_info_;
 
@@ -69,6 +71,13 @@ VKPipelinePool::VKPipelinePool()
   vk_pipeline_vertex_input_state_create_info_ = {};
   vk_pipeline_vertex_input_state_create_info_.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+  /* Initialize VkPipelineRasterizationStateCreateInfo */
+  vk_pipeline_rasterization_state_create_info_ = {};
+  vk_pipeline_rasterization_state_create_info_.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  vk_pipeline_rasterization_state_create_info_.lineWidth = 1.0f;
+  vk_pipeline_rasterization_state_create_info_.frontFace = VK_FRONT_FACE_CLOCKWISE;
 
   /* Initialize VkPipelineMultisampleStateCreateInfo */
   vk_pipeline_multisample_state_create_info_ = {};
@@ -206,6 +215,22 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_vertex_input_state_create_info_.vertexBindingDescriptionCount =
       graphics_info.vertex_in.bindings.size();
 
+  /* Rasterization state */
+  vk_pipeline_rasterization_state_create_info_.frontFace = graphics_info.state.invert_facing ?
+                                                               VK_FRONT_FACE_COUNTER_CLOCKWISE :
+                                                               VK_FRONT_FACE_CLOCKWISE;
+  vk_pipeline_rasterization_state_create_info_.cullMode = to_vk_cull_mode_flags(
+      graphics_info.state.culling_test);
+  if (graphics_info.state.shadow_bias) {
+    vk_pipeline_rasterization_state_create_info_.depthBiasEnable = VK_TRUE;
+    vk_pipeline_rasterization_state_create_info_.depthBiasSlopeFactor = 2.0f;
+    vk_pipeline_rasterization_state_create_info_.depthBiasConstantFactor = 1.0f;
+    vk_pipeline_rasterization_state_create_info_.depthBiasClamp = 0.0f;
+  }
+  else {
+    vk_pipeline_rasterization_state_create_info_.depthBiasEnable = VK_FALSE;
+  }
+
   /* Common values */
   vk_graphics_pipeline_create_info_.layout = graphics_info.vk_pipeline_layout;
   // TODO: based on `vk_pipeline_base` we should update the flags.
@@ -242,6 +267,12 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_vertex_input_state_create_info_.vertexAttributeDescriptionCount = 0;
   vk_pipeline_vertex_input_state_create_info_.pVertexBindingDescriptions = nullptr;
   vk_pipeline_vertex_input_state_create_info_.vertexBindingDescriptionCount = 0;
+  vk_pipeline_rasterization_state_create_info_.frontFace = VK_FRONT_FACE_CLOCKWISE;
+  vk_pipeline_rasterization_state_create_info_.cullMode = VK_CULL_MODE_NONE;
+  vk_pipeline_rasterization_state_create_info_.depthBiasEnable = VK_FALSE;
+  vk_pipeline_rasterization_state_create_info_.depthBiasSlopeFactor = 0.0f;
+  vk_pipeline_rasterization_state_create_info_.depthBiasConstantFactor = 0.0f;
+  vk_pipeline_rasterization_state_create_info_.depthBiasClamp = 0.0f;
 
   return pipeline;
 }
