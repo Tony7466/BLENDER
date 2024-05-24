@@ -625,7 +625,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
         engine = context.scene.render.engine
         if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
-            box.label(text=tip_("%s is not supported") % engine, icon='ERROR')
+            box.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
 
         box.prop(self, "overwrite_material")
         layout = self.layout
@@ -692,13 +692,14 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         engine = context.scene.render.engine
         if engine not in {'CYCLES', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}:
             if engine != 'BLENDER_WORKBENCH':
-                self.report({'ERROR'}, tip_("Cannot generate materials for unknown %s render engine") % engine)
+                self.report({'ERROR'}, tip_("Cannot generate materials for unknown {:s} render engine").format(engine))
                 return {'CANCELLED'}
             else:
                 self.report(
                     {'WARNING'},
-                    tip_("Generating Cycles/EEVEE compatible material, but won't be visible with %s engine") %
-                    engine)
+                    tip_("Generating Cycles/EEVEE compatible material, but won't be visible with {:s} engine").format(
+                        engine,
+                    ))
 
         return self.invoke_popup(context)
 
