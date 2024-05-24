@@ -10,9 +10,6 @@
 namespace blender::realtime_compositor {
 class RenderContext;
 }
-namespace blender::compositor {
-class ProfilerData;
-}
 
 struct Render;
 
@@ -103,8 +100,7 @@ void COM_execute(Render *render,
                  Scene *scene,
                  bNodeTree *node_tree,
                  const char *view_name,
-                 blender::realtime_compositor::RenderContext *render_context,
-                 blender::compositor::ProfilerData &profiler_data);
+                 blender::realtime_compositor::RenderContext *render_context);
 
 /**
  * \brief Deinitialize the compositor caches and allocated memory.

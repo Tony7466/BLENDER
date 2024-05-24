@@ -13,6 +13,7 @@
 #include "BKE_node_runtime.hh"
 
 #include "COM_context.hh"
+#include "COM_profiler.hh"
 #include "COM_render_context.hh"
 #include "COM_static_cache_manager.hh"
 #include "COM_texture_pool.hh"
@@ -34,6 +35,13 @@ bool Context::is_canceled() const
     return false;
   }
   return this->get_node_tree().runtime->test_break(get_node_tree().runtime->tbh);
+}
+
+void Context::reset()
+{
+  profiler_.reset();
+  texture_pool_.reset();
+  cache_manager_.reset();
 }
 
 int2 Context::get_compositing_region_size() const
@@ -108,6 +116,11 @@ TexturePool &Context::texture_pool()
 StaticCacheManager &Context::cache_manager()
 {
   return cache_manager_;
+}
+
+Profiler &Context::profiler()
+{
+  return profiler_;
 }
 
 }  // namespace blender::realtime_compositor

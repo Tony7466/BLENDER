@@ -27,20 +27,20 @@ Evaluator::Evaluator(Context &context) : context_(context) {}
 
 void Evaluator::evaluate()
 {
-  context_.cache_manager().reset();
-  context_.texture_pool().reset();
+  context_.reset();
 
   if (!is_compiled_) {
     compile_and_evaluate();
-    return;
   }
-
-  for (const std::unique_ptr<Operation> &operation : operations_stream_) {
-    if (context_.is_canceled()) {
-      return;
+  else {
+    for (const std::unique_ptr<Operation> &operation : operations_stream_) {
+      if (context_.is_canceled()) {
+        break;
+      }
+      operation->evaluate();
     }
-    operation->evaluate();
   }
+  context_.profiler().finalize(context_.get_scene(), *derived_node_tree_);
 }
 
 void Evaluator::reset()

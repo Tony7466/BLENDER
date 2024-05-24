@@ -15,6 +15,7 @@
 #include "GPU_texture.hh"
 
 #include "COM_domain.hh"
+#include "COM_profiler.hh"
 #include "COM_render_context.hh"
 #include "COM_result.hh"
 #include "COM_static_cache_manager.hh"
@@ -31,7 +32,7 @@ namespace blender::realtime_compositor {
  * where the output of the evaluator will be written. The class also provides a reference to the
  * texture pool which should be implemented by the caller and provided during construction.
  * Finally, the class have an instance of a static resource manager for acquiring cached resources
- * efficiently. */
+ * efficiently as well as a profiler for profiling the compositor evaluation. */
 class Context {
  private:
   /* A texture pool that can be used to allocate textures for the compositor efficiently. */
@@ -39,6 +40,9 @@ class Context {
   /* A static cache manager that can be used to acquire cached resources for the compositor
    * efficiently. */
   StaticCacheManager cache_manager_;
+  /* A profiler that profiles the compositor evaluation and provides information like execution
+   * time. */
+  Profiler profiler_;
 
  public:
   Context(TexturePool &texture_pool);
@@ -120,6 +124,10 @@ class Context {
    * executing as soon as possible. */
   virtual bool is_canceled() const;
 
+  /* Resets the context's internal structures like texture pool, cache manager, and profiler. This
+   * should be called before every evaluation. */
+  void reset();
+
   /* Get the size of the compositing region. See get_compositing_region(). The output size is
    * sanitized such that it is at least 1 in both dimensions. However, the developer is expected to
    * gracefully handled zero sizes regions by checking the is_valid_compositing_region method. */
@@ -163,6 +171,9 @@ class Context {
 
   /* Get a reference to the static cache manager of this context. */
   StaticCacheManager &cache_manager();
+
+  /* Get a reference to the profiler of this context. */
+  Profiler &profiler();
 };
 
 }  // namespace blender::realtime_compositor

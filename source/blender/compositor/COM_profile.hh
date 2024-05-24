@@ -8,6 +8,7 @@
 #include "BLI_timeit.hh"
 
 #include "DNA_node_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_node.hh"
 
@@ -36,7 +37,7 @@ class Profiler {
                                     const timeit::TimePoint &start,
                                     const timeit::TimePoint &end);
 
-  void finalize(const bNodeTree &node_tree);
+  void finalize(const Scene *scene, const bNodeTree &node_tree);
 
   const ProfilerData &get_data() const
   {

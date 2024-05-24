@@ -26,8 +26,6 @@ class RenderContext;
 
 namespace blender::compositor {
 
-class ProfilerData;
-
 /**
  * \page execution Execution model
  * In order to get to an efficient model for execution, several steps are being done. these steps
@@ -122,8 +120,6 @@ class ExecutionSystem {
   ThreadMutex work_mutex_;
   ThreadCondition work_finished_cond_;
 
-  ProfilerData &profiler_data_;
-
  public:
   /**
    * \brief Create a new ExecutionSystem and initialize it with the
@@ -137,8 +133,7 @@ class ExecutionSystem {
                   bNodeTree *editingtree,
                   bool rendering,
                   const char *view_name,
-                  realtime_compositor::RenderContext *render_context,
-                  ProfilerData &profiler_data);
+                  realtime_compositor::RenderContext *render_context);
 
   /**
    * Destructor

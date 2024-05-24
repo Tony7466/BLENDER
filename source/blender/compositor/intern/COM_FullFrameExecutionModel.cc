@@ -43,7 +43,7 @@ void FullFrameExecutionModel::execute(ExecutionSystem &exec_system)
   determine_areas_to_render_and_reads();
   render_operations();
 
-  profiler_.finalize(*node_tree);
+  profiler_.finalize(context_.get_scene(), *node_tree);
 }
 
 void FullFrameExecutionModel::determine_areas_to_render_and_reads()

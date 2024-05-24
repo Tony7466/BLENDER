@@ -5,6 +5,7 @@
 #include "COM_profile.hh"
 
 #include "BKE_node_runtime.hh"
+#include "BKE_scene_runtime.hh"
 
 #include "COM_NodeOperation.h"
 
@@ -34,9 +35,11 @@ void Profiler::add_execution_time(const bNodeInstanceKey key,
   data_.per_node_execution_time.lookup_or_add(key, timeit::Nanoseconds(0)) += execution_time;
 }
 
-void Profiler::finalize(const bNodeTree &node_tree)
+void Profiler::finalize(const Scene *scene, const bNodeTree &node_tree)
 {
   this->accumulate_node_group_times(node_tree);
+
+  scene->runtime->compositor.per_node_execution_time = this->get_data().per_node_execution_time;
 }
 
 timeit::Nanoseconds Profiler::accumulate_node_group_times(const bNodeTree &node_tree,

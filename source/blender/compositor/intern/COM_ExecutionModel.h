@@ -55,11 +55,6 @@ class ExecutionModel {
 
   virtual void execute(ExecutionSystem &exec_system) = 0;
 
-  const ProfilerData &get_profiler_data() const
-  {
-    return profiler_.get_data();
-  }
-
 #ifdef WITH_CXX_GUARDEDALLOC
   MEM_CXX_CLASS_ALLOC_FUNCS("COM:BaseExecutionModel")
 #endif

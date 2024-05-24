@@ -22,9 +22,7 @@ ExecutionSystem::ExecutionSystem(RenderData *rd,
                                  bNodeTree *editingtree,
                                  bool rendering,
                                  const char *view_name,
-                                 realtime_compositor::RenderContext *render_context,
-                                 ProfilerData &profiler_data)
-    : profiler_data_(profiler_data)
+                                 realtime_compositor::RenderContext *render_context)
 {
   num_work_threads_ = WorkScheduler::get_num_cpu_threads();
   context_.set_render_context(render_context);
@@ -72,8 +70,6 @@ void ExecutionSystem::execute()
     op->init_data();
   }
   execution_model_->execute(*this);
-
-  profiler_data_ = execution_model_->get_profiler_data();
 }
 
 void ExecutionSystem::execute_work(const rcti &work_rect,
