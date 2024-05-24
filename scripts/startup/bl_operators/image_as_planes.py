@@ -922,9 +922,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         name_compat = bpy.path.display_name_from_filepath(image.filepath)
         material = None
         if self.overwrite_material:
-            for mat in bpy.data.materials:
-                if mat.name == name_compat:
-                    material = mat
+            material = bpy.data.materials.get(name_compat)
         if not material:
             material = bpy.data.materials.new(name=name_compat)
 
