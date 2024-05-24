@@ -16,6 +16,7 @@
 #include "BLI_ghash.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_scene_types.h"
@@ -56,8 +57,8 @@
 
 class MouseCoords {
  public:
-  int region[2];
-  float view[2];
+  blender::int2 region;
+  blender::float2 view;
 
   MouseCoords(const View2D *v2d, int x, int y)
   {
@@ -1138,8 +1139,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   bool toggle = RNA_boolean_get(op->ptr, "toggle");
   bool center = RNA_boolean_get(op->ptr, "center");
 
-  MouseCoords mouse_co = MouseCoords(
-      v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
+  MouseCoords mouse_co(v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
 
   StripSelection selection;
   if (region->regiontype == RGN_TYPE_PREVIEW) {
@@ -1334,8 +1334,7 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  MouseCoords mouse_co = MouseCoords(
-      v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
+  MouseCoords mouse_co(v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
 
   StripSelection selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co.view);
   if (selection.seq1 == nullptr || selection.handle == SEQ_HANDLE_NONE) {
@@ -1349,13 +1348,11 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  bool changed = false;
-
   if (element_already_selected(selection)) {
     return OPERATOR_RUNNING_MODAL;
   }
   else {
-    changed |= ED_sequencer_deselect_all(scene);
+    ED_sequencer_deselect_all(scene);
   }
 
   /* Do actual selection. */
