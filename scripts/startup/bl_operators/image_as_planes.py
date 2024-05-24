@@ -61,8 +61,8 @@ def find_image_sequences(files):
     """
     from itertools import count
     import re
-    num_regex = re.compile("[0-9]")  # Find a single number
-    nums_regex = re.compile("[0-9]+")  # Find a set of numbers
+    num_regex = re.compile("[0-9]")  # Find a single number.
+    nums_regex = re.compile("[0-9]+")  # Find a set of numbers.
 
     files = iter(sorted(files))
     prev_file = None
@@ -74,19 +74,19 @@ def find_image_sequences(files):
         new_pattern = num_regex.sub("#", filename)
         new_matches = list(map(int, nums_regex.findall(filename)))
         if new_pattern == pattern:
-            # this file looks like it may be in sequence from the previous
+            # This file looks like it may be in sequence from the previous.
 
-            # if there are multiple sets of numbers, figure out what changed
+            # If there are multiple sets of numbers, figure out what changed.
             if segment is None:
                 for i, prev, cur in zip(count(), matches, new_matches):
                     if prev != cur:
                         segment = i
                         break
 
-            # did it only change by one?
+            # Did it only change by one?
             for i, prev, cur in zip(count(), matches, new_matches):
                 if i == segment:
-                    # We expect this to increment
+                    # We expect this to increment.
                     prev = prev + length
                 if prev != cur:
                     break
@@ -96,7 +96,7 @@ def find_image_sequences(files):
                 length += 1
                 continue
 
-        # No continuation -> spit out what we found and reset counters
+        # No continuation -> spit out what we found and reset counters.
         if prev_file:
             if length > 1:
                 yield prev_file, matches[segment], length
@@ -125,7 +125,7 @@ def load_images(filenames, directory, force_reload=False, frame_start=1, find_se
     import os
     from itertools import repeat
 
-    if find_sequences:  # if finding sequences, we need some pre-processing first
+    if find_sequences:  # If finding sequences, we need some pre-processing first.
         file_iter = find_image_sequences(filenames)
     else:
         file_iter = zip(filenames, repeat(1), repeat(1))
@@ -136,17 +136,17 @@ def load_images(filenames, directory, force_reload=False, frame_start=1, find_se
 
         image = load_image(filename, directory, check_existing=True, force_reload=force_reload)
 
-        # Size is unavailable for sequences, so we grab it early
+        # Size is unavailable for sequences, so we grab it early.
         size = tuple(image.size)
 
         if image.source == 'MOVIE':
             # Blender BPY BUG!
             # This number is only valid when read a second time in 2.77
-            # This repeated line is not a mistake
+            # This repeated line is not a mistake.
             frames = image.frame_duration
             frames = image.frame_duration
 
-        elif frames > 1:  # Not movie, but multiple frames -> image sequence
+        elif frames > 1:  # Not movie, but multiple frames -> image sequence.
             image.source = 'SEQUENCE'
 
         yield ImageSpec(image, size, frame_start, offset - 1, frames)
@@ -186,25 +186,25 @@ def compute_camera_size(context, center, fill_mode, aspect):
     )
     camera_aspect = frame_size.x / frame_size.y
 
-    # Convert the frame size to the correct sizing at a given distance
+    # Convert the frame size to the correct sizing at a given distance.
     if camera.type == 'ORTHO':
         frame_size = frame_size.xy
     else:
-        # Perspective transform
+        # Perspective transform.
         distance = world_to_camera_view(scene, camera, center).z
         frame_size = distance * frame_size.xy / (-view_frame[0].z)
 
-    # Determine what axis to match to the camera
-    match_axis = 0  # match the Y axis size
+    # Determine what axis to match to the camera.
+    match_axis = 0  # Match the Y axis size.
     match_aspect = aspect
     if (
         (fill_mode == 'FILL' and aspect > camera_aspect) or
         (fill_mode == 'FIT' and aspect < camera_aspect)
     ):
-        match_axis = 1  # match the X axis size
+        match_axis = 1  # Match the X axis size.
         match_aspect = 1.0 / aspect
 
-    # scale the other axis to the correct aspect
+    # Scale the other axis to the correct aspect.
     frame_size[1 - match_axis] = frame_size[match_axis] / match_aspect
 
     return frame_size
@@ -215,7 +215,7 @@ def center_in_camera(scene, camera, obj, axis=(1, 1)):
     camera_matrix_col = camera.matrix_world.col
     location = obj.location
 
-    # Vector from the camera's world coordinate center to the object's center
+    # Vector from the camera's world coordinate center to the object's center.
     delta = camera_matrix_col[3].xyz - location
 
     # How far off center we are along the camera's local X
@@ -223,14 +223,14 @@ def center_in_camera(scene, camera, obj, axis=(1, 1)):
     # How far off center we are along the camera's local Y
     camera_y_mag = delta.dot(camera_matrix_col[1].xyz) * axis[1]
 
-    # Now offset only along camera local axis
+    # Now offset only along camera local axis.
     offset = camera_matrix_col[0].xyz * camera_x_mag + camera_matrix_col[1].xyz * camera_y_mag
 
     obj.location = location + offset
 
 
 # -----------------------------------------------------------------------------
-# Cycles/Eevee utils
+# Cycles/EEVEE utils
 
 def get_input_nodes(node, links):
     """Get nodes that are a inputs to the given node"""
@@ -266,7 +266,7 @@ def auto_align_nodes(node_tree):
             output_node = node
             break
 
-    else:  # Just in case there is no output
+    else:  # Just in case there is no output.
         return
 
     def align(to_node):
@@ -287,7 +287,7 @@ def clean_node_tree(node_tree):
     Returns the output node
     """
     nodes = node_tree.nodes
-    for node in list(nodes):  # copy to avoid altering the loop's data source
+    for node in list(nodes):  # Copy to avoid altering the loop's data source.
         if not node.type == 'OUTPUT_MATERIAL':
             nodes.remove(node)
 
@@ -300,7 +300,7 @@ def get_shadeless_node(dest_node_tree):
         node_tree = bpy.data.node_groups['IAP_SHADELESS']
 
     except KeyError:
-        # need to build node shadeless node group
+        # Need to build node shadeless node group.
         node_tree = bpy.data.node_groups.new('IAP_SHADELESS', 'ShaderNodeTree')
         output_node = node_tree.nodes.new('NodeGroupOutput')
         input_node = node_tree.nodes.new('NodeGroupInput')
@@ -308,7 +308,7 @@ def get_shadeless_node(dest_node_tree):
         node_tree.interface.new_socket('Shader', in_out='OUTPUT', socket_type='NodeSocketShader')
         node_tree.interface.new_socket('Color', in_out='INPUT', socket_type='NodeSocketColor')
 
-        # This could be faster as a transparent shader, but then no ambient occlusion
+        # This could be faster as a transparent shader, but then no ambient occlusion.
         diffuse_shader = node_tree.nodes.new('ShaderNodeBsdfDiffuse')
         node_tree.links.new(diffuse_shader.inputs[0], input_node.outputs[0])
 
@@ -472,7 +472,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         items=AXIS_MODES,
         description="How to align the planes",
     )
-    # prev_align_axis is used only by update_size_model
+    # Prev_align_axis is used only by update_size_model.
     prev_align_axis: EnumProperty(
         items=AXIS_MODES + (('NONE', '', ''),),
         default='NONE',
@@ -492,8 +492,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             self.prev_align_axis = self.align_axis
             self.align_axis = 'CAM'
         else:
-            # if a different alignment was set revert to that when
-            # size mode is changed
+            # If a different alignment was set revert to that when size mode is changed.
             if self.prev_align_axis != 'NONE':
                 self.align_axis = self.prev_align_axis
                 self._prev_align_axis = 'NONE'
@@ -766,7 +765,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
     def draw(self, context):
 
-        # Draw configuration sections
+        # Draw configuration sections.
         self.draw_import_config(context)
         self.draw_material_config(context)
         self.draw_spatial_config(context)
@@ -792,7 +791,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         if not bpy.data.is_saved:
             self.relative = False
 
-        # this won't work in edit mode
+        # This won't work in edit mode.
         editmode = context.preferences.edit.use_enter_edit_mode
         context.preferences.edit.use_enter_edit_mode = False
         if context.active_object and context.active_object.mode != 'OBJECT':
@@ -806,7 +805,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
     def import_images(self, context):
 
-        # load images / sequences
+        # Load images / sequences.
         images = tuple(load_images(
             (fn.name for fn in self.files),
             self.directory,
@@ -818,12 +817,12 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             self.report({'WARNING'}, "Please select at least one image")
             return {'CANCELLED'}
 
-        # Create individual planes
+        # Create individual planes.
         planes = [self.single_image_spec_to_plane(context, img_spec) for img_spec in images]
 
         context.view_layer.update()
 
-        # Align planes relative to each other
+        # Align planes relative to each other.
         if self.offset:
             offset_axis = self.axis_id_to_vector[self.offset_axis]
             offset_planes(planes, self.offset_amount, offset_axis)
@@ -836,29 +835,29 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
                     )
                     plane.dimensions = x, y, 0.0
 
-        # setup new selection
+        # Setup new selection.
         for plane in planes:
             plane.select_set(True)
 
-        # all done!
+        # All done!
         self.report({'INFO'}, tip_("Added {} Image Plane(s)").format(len(planes)))
         return {'FINISHED'}
 
-    # operate on a single image
+    # Operate on a single image.
     def single_image_spec_to_plane(self, context, img_spec):
 
-        # Configure image
+        # Configure image.
         self.apply_image_options(img_spec.image)
 
-        # Configure material
+        # Configure material.
         engine = context.scene.render.engine
         if engine in {'CYCLES', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}:
             material = self.create_cycles_material(context, img_spec)
 
-        # Create and position plane object
+        # Create and position plane object.
         plane = self.create_image_plane(context, material.name, img_spec)
 
-        # Assign Material
+        # Assign Material.
         plane.data.materials.append(material)
 
         return plane
@@ -870,20 +869,20 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             image.alpha_mode = self.alpha_mode
 
         if self.relative:
-            try:  # can't always find the relative path (between drive letters on windows)
+            try:  # Can't always find the relative path (between drive letters on windows).
                 image.filepath = bpy.path.relpath(image.filepath)
             except ValueError:
                 pass
 
     def apply_texture_options(self, texture, img_spec):
-        # Shared by both Cycles and Blender Internal
+        # Shared by both Cycles and Blender Internal.
         image_user = texture.image_user
         image_user.use_auto_refresh = self.use_auto_refresh
         image_user.frame_start = img_spec.frame_start
         image_user.frame_offset = img_spec.frame_offset
         image_user.frame_duration = img_spec.frame_duration
 
-        # Image sequences need auto refresh to display reliably
+        # Image sequences need auto refresh to display reliably.
         if img_spec.image.source == 'SEQUENCE':
             image_user.use_auto_refresh = True
 
@@ -952,7 +951,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             core_shader.inputs['Base Color'].default_value = (0.0, 0.0, 0.0, 1.0)
             core_shader.inputs['Specular IOR Level'].default_value = 0.0
 
-        # Connect color from texture
+        # Connect color from texture.
         if self.shader in {'PRINCIPLED', 'SHADELESS'}:
             node_tree.links.new(core_shader.inputs[0], tex_image.outputs['Color'])
         elif self.shader == 'EMISSION':
@@ -981,7 +980,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
         width, height = self.compute_plane_size(context, img_spec)
 
-        # Create new mesh
+        # Create new mesh.
         bpy.ops.mesh.primitive_plane_add('INVOKE_REGION_WIN')
         plane = context.active_object
         # Why does mesh.primitive_plane_add leave the object in edit mode???
@@ -991,7 +990,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         plane.data.name = plane.name = name
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
-        # If sizing for camera, also insert into the camera's field of view
+        # If sizing for camera, also insert into the camera's field of view.
         if self.size_mode == 'CAMERA':
             offset_axis = self.axis_id_to_vector[self.offset_axis]
             translate_axis = [0 if offset_axis[i] else 1 for i in (0, 1)]
@@ -1005,7 +1004,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         """Given the image size in pixels and location, determine size of plane"""
         px, py = img_spec.size
 
-        # can't load data
+        # Can't load data.
         if px == 0 or py == 0:
             px = py = 1
 
@@ -1024,7 +1023,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             x = px * fact
             y = py * fact
 
-        else:  # elif self.size_mode == 'DPBU'
+        else:  # `elif self.size_mode == 'DPBU'`
             fact = 1 / self.factor
             x = px * fact
             y = py * fact
@@ -1035,27 +1034,27 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         """Pick an axis and align the plane to it"""
         from math import pi
         if 'CAM' in self.align_axis:
-            # Camera-aligned
+            # Camera-aligned.
             camera = context.scene.camera
             if (camera):
-                # Find the axis that best corresponds to the camera's view direction
+                # Find the axis that best corresponds to the camera's view direction.
                 axis = camera.matrix_world @ Vector((0, 0, 1)) - camera.matrix_world.col[3].xyz
-                # pick the axis with the greatest magnitude
+                # Pick the axis with the greatest magnitude.
                 mag = max(map(abs, axis))
-                # And use that axis & direction
+                # And use that axis & direction.
                 axis = Vector([
                     n / mag if abs(n) == mag else 0.0
                     for n in axis
                 ])
             else:
-                # No camera? Just face Z axis
+                # No camera? Just face Z axis.
                 axis = Vector((0, 0, 1))
                 self.align_axis = 'Z+'
         else:
-            # Axis-aligned
+            # Axis-aligned.
             axis = self.axis_id_to_vector[self.align_axis]
 
-        # rotate accordingly for x/y axiis
+        # Rotate accordingly for X/Y axis.
         if not axis.z:
             plane.rotation_euler.x = pi / 2
 
@@ -1068,7 +1067,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             elif axis.x < 0:
                 plane.rotation_euler.z = -pi / 2
 
-        # or flip 180 degrees for negative z
+        # Or flip 180 degrees for negative Z.
         elif axis.z < 0:
             plane.rotation_euler.y = pi
 
