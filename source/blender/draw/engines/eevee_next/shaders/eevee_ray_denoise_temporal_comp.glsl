@@ -167,10 +167,8 @@ void main()
   ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 
-  /* Check whether texel is out of bounds for all cases, so we can utilise fast texture funcs. */
-  if (any(greaterThanEqual(texel_fullres, textureSize(in_radiance_img, 0).xy)) ||
-      any(lessThan(texel_fullres, ivec2(0))))
-  {
+  /* Check if texel is out of bounds, so we can utilise fast texture funcs and early-out if not. */
+  if (any(greaterThanEqual(texel_fullres, imageSize(in_radiance_img).xy))) {
     return;
   }
 

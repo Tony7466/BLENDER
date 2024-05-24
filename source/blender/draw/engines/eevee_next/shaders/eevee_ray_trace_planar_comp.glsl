@@ -23,11 +23,8 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  /* Check whether texel is out of bounds for all cases, so we can utilise fast
-   * texture funcs and early exit if not. */
-  if (any(greaterThanEqual(texel, textureSize(ray_data_img, 0).xy)) ||
-      any(lessThan(texel, ivec2(0))))
-  {
+  /* Check if texel is out of bounds, so we can utilise fast texture funcs and early-out if not. */
+  if (any(greaterThanEqual(texel, imageSize(ray_time_img).xy))) {
     return;
   }
 
