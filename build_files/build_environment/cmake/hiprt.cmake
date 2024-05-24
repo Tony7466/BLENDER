@@ -7,14 +7,6 @@
 
 set(HIPRT_CMAKE_FLAGS ${DEFAULT_CMAKE_FLAGS})
 
-# TODO:
-# Do anything with these?
-# -DHIPRT_EXPORTS=ON
-# -D__USE_HIP__=ON
-# -DHIPRT_BITCODE_LINKING=ON
-# -DHIPRT_LOAD_FROM_STRING=OFF
-# -DORO_PRECOMPILED=ON
-
 get_filename_component(_hip_path ${HIP_HIPCC_EXECUTABLE} DIRECTORY)
 get_filename_component(_hip_path ${_hip_path} DIRECTORY)
 
@@ -33,27 +25,25 @@ ExternalProject_Add(external_hiprt
   PREFIX ${BUILD_DIR}/hiprt
   INSTALL_DIR ${LIBDIR}/hiprt
 
-  # TODO: should not be downloading git repos here
-  PATCH_COMMAND ${PATCH_CMD} -p 1 -d
-    ${BUILD_DIR}/hiprt/src/external_hiprt <
-    ${PATCH_DIR}/hiprt.diff &&
-    cd ${BUILD_DIR}/hiprt/src/external_hiprt/contrib &&
-    git clone git@github.com:amdadvtech/Orochi.git &&
-    cd Orochi && git checkout c82a229f5a424117855b86b78b480d003419bf66 && cd .. &&
-    git clone https://github.com/amdadvtech/easy-encryption
+  PATCH_COMMAND
+    ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/hiprt/src/external_hiprt < ${PATCH_DIR}/hiprt.diff &&
+    ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/orochi/src/external_orochi ${BUILD_DIR}/hiprt/src/external_hiprt/contrib/Orochi
 
-  # TODO: disabling unittest is not working, binary still gets written
   CONFIGURE_COMMAND
     cd ${BUILD_DIR}/hiprt/src/external_hiprt/ &&
-    ${hiprt_configure} --bitcode=true --unittest=false
+    ${hiprt_configure} --bitcode=true --no-unittest=true --no-encrypt=true
   BUILD_COMMAND
     cd ${BUILD_DIR}/hiprt/src/external_hiprt/ &&
     ${hiprt_build}
-  # TODO: does premake not have an install command?
   INSTALL_COMMAND
     ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/dist/bin/Release ${LIBDIR}/hiprt/bin &&
     ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/hiprt ${LIBDIR}/hiprt/include/hiprt &&
     ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/contrib/Orochi/ParallelPrimitives ${LIBDIR}/hiprt/include/orochi/ParallelPrimitives
+)
+
+add_dependencies(
+  external_hiprt
+  external_orochi
 )
 
 if(WIN32)
