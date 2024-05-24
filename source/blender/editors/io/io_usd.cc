@@ -288,7 +288,7 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   uiItemR(row, ptr, "author_blender_name", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiLayoutSetActive(row, RNA_boolean_get(op->ptr, "export_custom_properties"));
 
-  col = uiLayoutColumnWithHeading(box, true, IFACE_("Meshes"));
+  col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "triangulate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *sub = uiLayoutColumn(col, false);
