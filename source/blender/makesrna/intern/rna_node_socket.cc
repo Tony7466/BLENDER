@@ -369,6 +369,39 @@ void rna_NodeSocketStandard_float_range(
   *softmax = dval->max;
 }
 
+void rna_NodeSocketStandard_int_range(
+    PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
+{
+  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
+  bNodeSocketValueInt *dval = static_cast<bNodeSocketValueInt *>(sock->default_value);
+  int subtype = sock->typeinfo->subtype;
+
+  if (dval->max < dval->min) {
+    dval->max = dval->min;
+  }
+
+  *min = (subtype == PROP_UNSIGNED ? 0 : INT_MIN);
+  *max = INT_MAX;
+  *softmin = dval->min;
+  *softmax = dval->max;
+}
+
+void rna_NodeSocketStandard_vector_range(
+    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
+{
+  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
+  bNodeSocketValueVector *dval = static_cast<bNodeSocketValueVector *>(sock->default_value);
+
+  if (dval->max < dval->min) {
+    dval->max = dval->min;
+  }
+
+  *min = -FLT_MAX;
+  *max = FLT_MAX;
+  *softmin = dval->min;
+  *softmax = dval->max;
+}
+
 float rna_NodeSocketStandard_float_default(PointerRNA *ptr, PropertyRNA * /*prop*/)
 {
   bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
@@ -421,39 +454,6 @@ void rna_NodeSocketStandard_color_default(PointerRNA *ptr, PropertyRNA * /*prop*
   }
   auto *decl = static_cast<const blender::nodes::decl::Color *>(sock->runtime->declaration);
   std::copy_n(&decl->default_value.r, 4, r_values);
-}
-
-void rna_NodeSocketStandard_int_range(
-    PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
-{
-  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-  bNodeSocketValueInt *dval = static_cast<bNodeSocketValueInt *>(sock->default_value);
-  int subtype = sock->typeinfo->subtype;
-
-  if (dval->max < dval->min) {
-    dval->max = dval->min;
-  }
-
-  *min = (subtype == PROP_UNSIGNED ? 0 : INT_MIN);
-  *max = INT_MAX;
-  *softmin = dval->min;
-  *softmax = dval->max;
-}
-
-void rna_NodeSocketStandard_vector_range(
-    PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
-{
-  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-  bNodeSocketValueVector *dval = static_cast<bNodeSocketValueVector *>(sock->default_value);
-
-  if (dval->max < dval->min) {
-    dval->max = dval->min;
-  }
-
-  *min = -FLT_MAX;
-  *max = FLT_MAX;
-  *softmin = dval->min;
-  *softmax = dval->max;
 }
 
 /* using a context update function here, to avoid searching the node if possible */
