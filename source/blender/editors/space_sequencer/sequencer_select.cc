@@ -1349,7 +1349,7 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
   }
 
   if (element_already_selected(selection)) {
-    return OPERATOR_RUNNING_MODAL;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
     ED_sequencer_deselect_all(scene);
@@ -1366,7 +1366,20 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
 
   sequencer_select_do_updates(C, scene);
   sequencer_select_set_active(scene, selection.seq1);
-  return OPERATOR_FINISHED;
+  return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+}
+
+static int sequencer_select_handle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ARegion *region = CTX_wm_region(C);
+
+  int mval[2];
+  WM_event_drag_start_mval(event, region, mval);
+
+  RNA_int_set(op->ptr, "mouse_x", mval[0]);
+  RNA_int_set(op->ptr, "mouse_y", mval[1]);
+
+  return sequencer_select_handle_exec(C, op);
 }
 
 void SEQUENCER_OT_select_handle(wmOperatorType *ot)
@@ -1378,8 +1391,7 @@ void SEQUENCER_OT_select_handle(wmOperatorType *ot)
 
   /* Api callbacks. */
   ot->exec = sequencer_select_handle_exec;
-  ot->invoke = sequencer_select_invoke;
-  ot->modal = WM_generic_select_modal;
+  ot->invoke = sequencer_select_handle_invoke;
   ot->poll = ED_operator_sequencer_active;
 
   /* Flags. */
