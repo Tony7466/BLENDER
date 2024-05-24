@@ -50,6 +50,7 @@ set(SRC
   intern/gpu_batch_utils.cc
   intern/gpu_capabilities.cc
   intern/gpu_codegen.cc
+  intern/gpu_compilation_subprocess.cc
   intern/gpu_compute.cc
   intern/gpu_context.cc
   intern/gpu_debug.cc
@@ -88,6 +89,7 @@ set(SRC
   GPU_capabilities.hh
   GPU_common.hh
   GPU_common_types.hh
+  GPU_compilation_subprocess.hh
   GPU_compute.hh
   GPU_context.hh
   GPU_debug.hh
@@ -169,6 +171,8 @@ set(OPENGL_SRC
   opengl/gl_vertex_array.cc
   opengl/gl_vertex_buffer.cc
 
+  opengl/ipc.cc
+  
   opengl/gl_backend.hh
   opengl/gl_batch.hh
   opengl/gl_compute.hh
@@ -188,6 +192,8 @@ set(OPENGL_SRC
   opengl/gl_uniform_buffer.hh
   opengl/gl_vertex_array.hh
   opengl/gl_vertex_buffer.hh
+
+  opengl/ipc.hh
 )
 
 set(VULKAN_SRC
@@ -850,6 +856,10 @@ target_link_libraries(bf_gpu PUBLIC
   bf_draw_shaders
   bf_gpu_shaders
 )
+
+if(WITH_OPENGL_BACKEND AND UNIX)
+target_link_libraries(bf_gpu PUBLIC rt)
+endif()
 
 if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
