@@ -411,6 +411,8 @@ struct BoolPropertyRNA {
   PropBooleanArrayGetFuncEx getarray_ex;
   PropBooleanArraySetFuncEx setarray_ex;
 
+  PropBooleanGetFuncEx get_default;
+  PropBooleanArrayGetFuncEx get_default_array;
   bool defaultvalue;
   const bool *defaultarray;
 };

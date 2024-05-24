@@ -2512,6 +2512,11 @@ static void rna_property_boolean_get_default_array_values(PointerRNA *ptr,
                                                           BoolPropertyRNA *bprop,
                                                           bool *r_values)
 {
+  if (bprop->get_default_array) {
+    bprop->get_default_array(ptr, &bprop->property, r_values);
+    return;
+  }
+
   int length = bprop->property.totarraylength;
   int out_length = RNA_property_array_length(ptr, (PropertyRNA *)bprop);
 
@@ -2674,7 +2679,7 @@ void RNA_property_boolean_set_index(PointerRNA *ptr, PropertyRNA *prop, int inde
   }
 }
 
-bool RNA_property_boolean_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
+bool RNA_property_boolean_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
   /* TODO: Make defaults work for IDProperties. */
   BoolPropertyRNA *bprop = (BoolPropertyRNA *)rna_ensure_property(prop);
@@ -2700,6 +2705,9 @@ bool RNA_property_boolean_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
       }
     }
     return false;
+  }
+  if (bprop->get_default) {
+    return bprop->get_default(ptr, prop);
   }
 
   return bprop->defaultvalue;

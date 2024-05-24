@@ -474,6 +474,7 @@ void RNA_def_property_float_funcs(PropertyRNA *prop,
                                   const char *range);
 void RNA_def_property_float_default_func(PropertyRNA *prop, const char *get_default);
 void RNA_def_property_int_default_func(PropertyRNA *prop, const char *get_default);
+void RNA_def_property_boolean_default_func(PropertyRNA *prop, const char *get_default);
 void RNA_def_property_enum_funcs(PropertyRNA *prop,
                                  const char *get,
                                  const char *set,
