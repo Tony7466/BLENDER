@@ -790,6 +790,7 @@ class USDImportTest(AbstractUSDTest):
         self.check_attribute(curves, "sp_quat", 'CURVE', 'QUATERNION', 3)
         self.check_attribute_missing(curves, "sp_mat4x4")
 
+
 def main():
     global args
     import argparse
