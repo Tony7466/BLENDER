@@ -5,9 +5,13 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 
+#include "SIM_rigid_body.hh"
+
 #include "attribute_access_intern.hh"
 
 namespace blender::bke {
+
+using simulation::RigidBodyWorld;
 
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
@@ -51,7 +55,7 @@ void RigidBodyComponent::clear()
   }
 }
 
-bool RigidBodyComponent::has_rigid_body_world() const
+bool RigidBodyComponent::has_world() const
 {
   return rigid_body_world_ != nullptr;
 }
@@ -91,6 +95,21 @@ RigidBodyWorld *RigidBodyComponent::get_for_write()
 bool RigidBodyComponent::is_empty() const
 {
   return rigid_body_world_ == nullptr;
+}
+
+int RigidBodyComponent::bodies_num() const
+{
+  return rigid_body_world_ ? rigid_body_world_->bodies_num() : 0;
+}
+
+int RigidBodyComponent::constraints_num() const
+{
+  return rigid_body_world_ ? rigid_body_world_->constraints_num() : 0;
+}
+
+int RigidBodyComponent::shapes_num() const
+{
+  return rigid_body_world_ ? rigid_body_world_->shapes_num() : 0;
 }
 
 bool RigidBodyComponent::owns_direct_data() const

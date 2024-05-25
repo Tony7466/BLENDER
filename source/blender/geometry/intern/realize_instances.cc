@@ -734,6 +734,10 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         /* TODO. Do nothing for now. */
         break;
       }
+      case bke::GeometryComponent::Type::RigidBody: {
+        /* TODO. Do nothing for now. */
+        break;
+      }
     }
   }
 }

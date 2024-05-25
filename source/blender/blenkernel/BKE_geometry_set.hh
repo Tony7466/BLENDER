@@ -26,7 +26,6 @@ struct Mesh;
 struct PointCloud;
 struct Volume;
 struct GreasePencil;
-struct RigidBodyWorld;
 namespace blender::bke {
 class AnonymousAttributePropagationInfo;
 class AttributeIDRef;
@@ -41,6 +40,9 @@ class GreasePencilEditHints;
 class MutableAttributeAccessor;
 enum class AttrDomain : int8_t;
 }  // namespace blender::bke
+namespace blender::simulation {
+class RigidBodyWorld;
+}  // namespace blender::simulation
 
 namespace blender::bke {
 
@@ -764,6 +766,8 @@ class GreasePencilComponent : public GeometryComponent {
  * Geometry component for non-persistent simulation state.
  */
 class RigidBodyComponent : public GeometryComponent {
+  using RigidBodyWorld = simulation::RigidBodyWorld;
+
  private:
   RigidBodyWorld *rigid_body_world_ = nullptr;
   GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
@@ -776,7 +780,7 @@ class RigidBodyComponent : public GeometryComponent {
   GeometryComponentPtr copy() const override;
 
   void clear() override;
-  bool has_rigid_body_world() const;
+  bool has_world() const;
   /**
    * Clear the component and replace it with the new simulation state.
    */
@@ -788,6 +792,9 @@ class RigidBodyComponent : public GeometryComponent {
   RigidBodyWorld *get_for_write();
 
   bool is_empty() const final;
+  int bodies_num() const;
+  int constraints_num() const;
+  int shapes_num() const;
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;

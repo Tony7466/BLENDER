@@ -141,6 +141,9 @@ class GeometryInfoLog : public ValueLog {
   struct InstancesInfo {
     int instances_num;
   };
+  struct RigidBodyInfo {
+    int bodies_num, constraints_num, shapes_num;
+  };
   struct EditDataInfo {
     bool has_deformed_positions;
     bool has_deform_matrices;
@@ -151,6 +154,7 @@ class GeometryInfoLog : public ValueLog {
   std::optional<PointCloudInfo> pointcloud_info;
   std::optional<GreasePencilInfo> grease_pencil_info;
   std::optional<InstancesInfo> instances_info;
+  std::optional<RigidBodyInfo> rigid_body_info;
   std::optional<EditDataInfo> edit_data_info;
 
   GeometryInfoLog(const bke::GeometrySet &geometry_set);

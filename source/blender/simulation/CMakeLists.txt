@@ -6,7 +6,9 @@ set(INC
   .
   intern
   ../blenkernel
+  ../blenlib
   ../functions
+  ../geometry
   ../imbuf
   ../makesrna
   ../nodes
@@ -21,12 +23,14 @@ set(SRC
   intern/hair_volume.cc
   intern/implicit_blender.cc
   intern/implicit_eigen.cc
+  intern/rigid_body.cc
 
   intern/ConstrainedConjugateGradient.h
   intern/eigen_utils.h
   intern/implicit.h
 
   SIM_mass_spring.h
+  SIM_rigid_body.hh
 )
 
 set(LIB
@@ -37,6 +41,20 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
 )
 
+if(WITH_BULLET)
+  list(APPEND INC_SYS
+    ${BULLET_INCLUDE_DIRS}
+  )
+  list(APPEND INC
+    ../../../intern/rigidbody
+  )
+  list(APPEND LIB
+    bf_intern_rigidbody
+
+    ${BULLET_LIBRARIES}
+  )
+  add_definitions(-DWITH_BULLET)
+endif()
 
 if(WITH_OPENMP AND WITH_OPENMP_STATIC)
   list(APPEND LIB

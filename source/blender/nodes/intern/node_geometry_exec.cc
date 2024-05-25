@@ -109,6 +109,10 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
         message += RPT_("Grease Pencil");
         break;
       }
+      case GeometryComponent::Type::RigidBody: {
+        message += RPT_("Rigid Body");
+        break;
+      }
     }
     this->error_message_add(NodeWarningType::Info, std::move(message));
   }

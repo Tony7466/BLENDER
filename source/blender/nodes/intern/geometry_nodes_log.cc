@@ -134,6 +134,15 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         info.layers_num = grease_pencil_component.attribute_domain_size(bke::AttrDomain::Layer);
         break;
       }
+      case bke::GeometryComponent::Type::RigidBody: {
+        const auto &rigid_body_component = *static_cast<const bke::RigidBodyComponent *>(
+            component);
+        RigidBodyInfo &info = this->rigid_body_info.emplace();
+        info.bodies_num = rigid_body_component.bodies_num();
+        info.constraints_num = rigid_body_component.constraints_num();
+        info.shapes_num = rigid_body_component.shapes_num();
+        break;
+      }
     }
   }
 }

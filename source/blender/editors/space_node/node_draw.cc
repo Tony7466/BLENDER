@@ -1547,6 +1547,16 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
           break;
         }
       }
+      case bke::GeometryComponent::Type::RigidBody: {
+        const geo_log::GeometryInfoLog::RigidBodyInfo &rigid_body_info =
+            *value_log.rigid_body_info;
+        fmt::format_to(fmt::appender(buf),
+                       TIP_("\u2022 Rigid Body: {} bodies, {} constraints, {} shapes"),
+                       to_string(rigid_body_info.bodies_num),
+                       to_string(rigid_body_info.constraints_num),
+                       to_string(rigid_body_info.shapes_num));
+        break;
+      }
     }
     if (type != component_types.last()) {
       fmt::format_to(fmt::appender(buf), ".\n");
@@ -1597,6 +1607,10 @@ static void create_inspection_string_for_geometry_socket(fmt::memory_buffer &buf
       }
       case bke::GeometryComponent::Type::GreasePencil: {
         fmt::format_to(fmt::appender(buf), TIP_("Grease Pencil"));
+        break;
+      }
+      case bke::GeometryComponent::Type::RigidBody: {
+        fmt::format_to(fmt::appender(buf), TIP_("Rigid Body"));
         break;
       }
     }
