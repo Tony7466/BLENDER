@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -194,6 +195,69 @@ class SampleIndexFunction : public mf::MultiFunction {
   }
 };
 
+class SliceSampleFieldInput final : public bke::GeometryFieldInput {
+ private:
+  bool use_clamp_;
+
+  std::optional<bke::GeometryFieldContext> geometry_context_;
+  std::unique_ptr<FieldEvaluator> evaluator_;
+
+ public:
+  SliceSampleFieldInput(GeometrySet src_geometry,
+                        GField input,
+                        const AttrDomain source_domain,
+                        const bool use_clamp)
+      : bke::GeometryFieldInput(input.cpp_type(), "Total Value"), use_clamp_(use_clamp)
+  {
+    const GeometryComponent *component = find_source_component(src_geometry, source_domain);
+    if (component == nullptr) {
+      throw std::runtime_error("no component to sample");
+    }
+    this->evaluate_field(*component, source_domain, std::move(input));
+  }
+
+  void evaluate_field(const GeometryComponent &component,
+                      const AttrDomain source_domain,
+                      GField input)
+  {
+    const int domain_size = component.attribute_domain_size(source_domain);
+    geometry_context_.emplace(bke::GeometryFieldContext(component, source_domain));
+    evaluator_ = std::make_unique<FieldEvaluator>(*geometry_context_, domain_size);
+    evaluator_->add(std::move(input));
+    evaluator_->evaluate();
+  }
+
+  GVArray get_varray_for_context(const bke::GeometryFieldContext & /*context*/,
+                                 const IndexMask &mask) const final
+  {
+    const GVArray &values = evaluator_->get_evaluated(0);
+    const CPPType &type = values.type();
+    const int64_t src_size = values.size();
+
+    if (mask.min_array_size() <= src_size) {
+      return values;
+    }
+
+    GArray<> buffer(type, mask.min_array_size());
+
+    /* TODO: Try to pass implicitly shared and sliced VArray into return. */
+    const IndexMask front_mask = mask.slice_content(0, src_size);
+    const IndexMask back_mask = mask.slice_content(IndexRange(buffer.size()).drop_front(src_size));
+
+    array_utils::copy(values, front_mask, buffer.as_mutable_span());
+    if (use_clamp_) {
+      BUFFER_FOR_CPP_TYPE_VALUE(type, single_buffer);
+      values.get_to_uninitialized(0, single_buffer);
+      type.fill_construct_indices(single_buffer, buffer.data(), back_mask);
+      type.destruct(single_buffer);
+    }
+    else {
+      type.default_construct_indices(buffer.data(), back_mask);
+    }
+    return GVArray::ForGArray(std::move(buffer));
+  }
+};
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
@@ -206,10 +270,22 @@ static void node_geo_exec(GeoNodeExecParams params)
   const CPPType &cpp_type = value_field.cpp_type();
 
   if (index_value_variant.is_context_dependent_field()) {
+    Field<int> index_field = index_value_variant.extract<Field<int>>();
+    if (dynamic_cast<const fn::IndexFieldInput *>(&index_field.node())) {
+      try {
+        GField fron_source_slice{std::make_shared<SliceSampleFieldInput>(
+            std::move(geometry), std::move(value_field), domain, use_clamp)};
+        params.set_output("Value", std::move(fron_source_slice));
+      }
+      catch (const std::runtime_error &) {
+        params.set_default_remaining_outputs();
+      }
+      return;
+    }
     /* If the index is a field, the output has to be a field that still depends on the input. */
     auto fn = std::make_shared<SampleIndexFunction>(
         std::move(geometry), std::move(value_field), domain, use_clamp);
-    auto op = FieldOperation::Create(std::move(fn), {index_value_variant.extract<Field<int>>()});
+    auto op = FieldOperation::Create(std::move(fn), {std::move(index_field)});
     params.set_output("Value", GField(std::move(op)));
   }
   else if (const GeometryComponent *component = find_source_component(geometry, domain)) {
