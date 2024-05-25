@@ -298,6 +298,12 @@ struct GeometrySet {
    */
   static GeometrySet from_grease_pencil(
       GreasePencil *grease_pencil, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  /**
+   * Create a new geometry set that only contains the given rigid body world.
+   */
+  static GeometrySet from_rigid_body_world(
+      simulation::RigidBodyWorld *rigid_body_world,
+      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   /* Utility methods for access. */
   /**
@@ -328,6 +334,10 @@ struct GeometrySet {
    * Returns true when the geometry set has a Grease Pencil component that has grease pencil data.
    */
   bool has_grease_pencil() const;
+  /**
+   * Returns true when the geometry set has a rigid body component that has a world.
+   */
+  bool has_rigid_body_world() const;
   /**
    * Return true if the geometry set has any component that isn't empty.
    */
@@ -361,6 +371,10 @@ struct GeometrySet {
    * Returns a read-only Grease Pencil data-block or null.
    */
   const GreasePencil *get_grease_pencil() const;
+  /**
+   * Returns a read-only rigid body world or null.
+   */
+  const simulation::RigidBodyWorld *get_rigid_body_world() const;
 
   /**
    * Returns a mutable mesh or null. No ownership is transferred.
@@ -390,6 +404,10 @@ struct GeometrySet {
    * Returns a mutable Grease Pencil data-block or null. No ownership is transferred.
    */
   GreasePencil *get_grease_pencil_for_write();
+  /**
+   * Returns a mutable rigid body world or null. No ownership is transferred.
+   */
+  simulation::RigidBodyWorld *get_rigid_body_world_for_write();
 
   /* Utility methods for replacement. */
   /**
@@ -421,6 +439,11 @@ struct GeometrySet {
    */
   void replace_grease_pencil(GreasePencil *grease_pencil,
                              GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  /**
+   * Clear the existing rigid body world and replace it with the given one.
+   */
+  void replace_rigid_body_world(simulation::RigidBodyWorld *rigid_body_world,
+                                GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
   {

@@ -6,6 +6,8 @@
  * \ingroup sim
  */
 
+#include "MEM_guardedalloc.h"
+
 #include "SIM_rigid_body.hh"
 
 #ifdef WITH_BULLET
@@ -38,30 +40,6 @@ inline btQuaternion to_bullet(const math::Quaternion &q)
   return btQuaternion(q.x, q.y, q.z, q.w);
 }
 
-struct RigidBodyWorldImpl {
-  btCollisionConfiguration *config;
-  btCollisionDispatcher *dispatcher; 
-  btDynamicsWorld *world;
-  btBroadphaseInterface *broadphase;
-  btConstraintSolver *constraint_solver;
-  btOverlapFilterCallback *overlap_filter;
-
-  RigidBodyWorldImpl()
-  {
-    this->config = new btDefaultCollisionConfiguration();
-    this->dispatcher = new btCollisionDispatcher(this->config);
-    btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
-
-    this->broadphase = new btDbvtBroadphase();
-    this->overlap_filter = nullptr;
-
-    this->constraint_solver = new btSequentialImpulseConstraintSolver();
-
-    this->world = new btDiscreteDynamicsWorld(
-        this->dispatcher, this->broadphase, this->constraint_solver, this->config);
-  }
-};
-
 struct DefaultOverlapFilter : public btOverlapFilterCallback {
   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
   {
@@ -79,33 +57,63 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
 
   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
   {
-    const int64_t body0 =  int64_t(proxy0->m_clientObject);
+    const int64_t body0 = int64_t(proxy0->m_clientObject);
     const int64_t body1 = int64_t(proxy1->m_clientObject);
     return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
            (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask) && fn(body0, body1);
   }
 };
 
+struct RigidBodyWorldImpl {
+  btDiscreteDynamicsWorld *world;
+  btCollisionConfiguration *config;
+  btCollisionDispatcher *dispatcher;
+  btBroadphaseInterface *broadphase;
+  btConstraintSolver *constraint_solver;
+  btOverlapFilterCallback *overlap_filter;
+
+  RigidBodyWorldImpl()
+  {
+    this->config = MEM_new<btDefaultCollisionConfiguration>(__func__);
+    this->dispatcher = MEM_new<btCollisionDispatcher>(__func__, this->config);
+    btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
+
+    this->broadphase = MEM_new<btDbvtBroadphase>(__func__);
+    this->overlap_filter = MEM_new<DefaultOverlapFilter>(__func__);
+    this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
+
+    this->constraint_solver = MEM_new<btSequentialImpulseConstraintSolver>(__func__);
+
+    this->world = MEM_new<btDiscreteDynamicsWorld>(
+        __func__, this->dispatcher, this->broadphase, this->constraint_solver, this->config);
+  }
+
+  ~RigidBodyWorldImpl() {
+    /* XXX This leaks memory, but enabling it somehow causes memory corruption and crash.
+     * Possibly caused by alignment? */
+    // MEM_delete(this->world);
+    MEM_delete(this->constraint_solver);
+    MEM_delete(this->broadphase);
+    MEM_delete(this->dispatcher);
+    MEM_delete(this->config);
+    MEM_delete(this->overlap_filter);
+  }
+};
+
 RigidBodyWorld::RigidBodyWorld() {
-  impl_ = new RigidBodyWorldImpl();
+  impl_ = MEM_new<RigidBodyWorldImpl>(__func__);
 }
 
 RigidBodyWorld::RigidBodyWorld(const RigidBodyWorld &other)
 {
   // TODO copy bodies, constraints, shapes from other?
-  impl_ = new RigidBodyWorldImpl();
+  impl_ = MEM_new<RigidBodyWorldImpl>(__func__);
   UNUSED_VARS(other);
 }
 
 RigidBodyWorld::~RigidBodyWorld()
 {
-  delete impl_->world;
-  delete impl_->constraint_solver;
-  delete impl_->broadphase;
-  delete impl_->dispatcher;
-  delete impl_->config;
-  delete impl_->overlap_filter;
-  delete impl_;
+  MEM_delete(impl_);
 }
 
 int RigidBodyWorld::bodies_num() const
@@ -130,11 +138,11 @@ void RigidBodyWorld::set_overlap_filter(OverlapFilterFn fn)
 }
 
 void RigidBodyWorld::clear_overlap_filter() {
-  impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(nullptr);
   if (impl_->overlap_filter) {
     delete impl_->overlap_filter;
-    impl_->overlap_filter = nullptr;
+    impl_->overlap_filter = new DefaultOverlapFilter();
   }
+  impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
 }
 
 float3 RigidBodyWorld::gravity() const

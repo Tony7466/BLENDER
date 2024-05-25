@@ -352,6 +352,12 @@ const GreasePencil *GeometrySet::get_grease_pencil() const
   return (component == nullptr) ? nullptr : component->get();
 }
 
+const simulation::RigidBodyWorld *GeometrySet::get_rigid_body_world() const
+{
+  const RigidBodyComponent *component = this->get_component<RigidBodyComponent>();
+  return (component == nullptr) ? nullptr : component->get();
+}
+
 bool GeometrySet::has_pointcloud() const
 {
   const PointCloudComponent *component = this->get_component<PointCloudComponent>();
@@ -395,10 +401,17 @@ bool GeometrySet::has_grease_pencil() const
   return component != nullptr && component->has_grease_pencil();
 }
 
+bool GeometrySet::has_rigid_body_world() const
+{
+  const RigidBodyComponent *component = this->get_component<RigidBodyComponent>();
+  return component != nullptr && component->has_world();
+}
+
 bool GeometrySet::is_empty() const
 {
   return !(this->has_mesh() || this->has_curves() || this->has_pointcloud() ||
-           this->has_volume() || this->has_instances() || this->has_grease_pencil());
+           this->has_volume() || this->has_instances() || this->has_grease_pencil() ||
+           this->has_rigid_body_world());
 }
 
 GeometrySet GeometrySet::from_mesh(Mesh *mesh, GeometryOwnershipType ownership)
@@ -441,6 +454,14 @@ GeometrySet GeometrySet::from_grease_pencil(GreasePencil *grease_pencil,
 {
   GeometrySet geometry_set;
   geometry_set.replace_grease_pencil(grease_pencil, ownership);
+  return geometry_set;
+}
+
+GeometrySet GeometrySet::from_rigid_body_world(simulation::RigidBodyWorld *rigid_body_world,
+                                               GeometryOwnershipType ownership)
+{
+  GeometrySet geometry_set;
+  geometry_set.replace_rigid_body_world(rigid_body_world, ownership);
   return geometry_set;
 }
 
@@ -529,6 +550,21 @@ void GeometrySet::replace_grease_pencil(GreasePencil *grease_pencil,
   component.replace(grease_pencil, ownership);
 }
 
+void GeometrySet::replace_rigid_body_world(simulation::RigidBodyWorld *rigid_body_world,
+                                           GeometryOwnershipType ownership)
+{
+  if (rigid_body_world == nullptr) {
+    this->remove<RigidBodyComponent>();
+    return;
+  }
+  if (rigid_body_world == this->get_rigid_body_world()) {
+    return;
+  }
+  this->remove<RigidBodyComponent>();
+  RigidBodyComponent &component = this->get_component_for_write<RigidBodyComponent>();
+  component.replace(rigid_body_world, ownership);
+}
+
 Mesh *GeometrySet::get_mesh_for_write()
 {
   MeshComponent *component = this->get_component_ptr<MeshComponent>();
@@ -572,6 +608,12 @@ CurvesEditHints *GeometrySet::get_curve_edit_hints_for_write()
 GreasePencil *GeometrySet::get_grease_pencil_for_write()
 {
   GreasePencilComponent *component = this->get_component_ptr<GreasePencilComponent>();
+  return component == nullptr ? nullptr : component->get_for_write();
+}
+
+simulation::RigidBodyWorld *GeometrySet::get_rigid_body_world_for_write()
+{
+  RigidBodyComponent *component = this->get_component_ptr<RigidBodyComponent>();
   return component == nullptr ? nullptr : component->get_for_write();
 }
 
