@@ -316,18 +316,21 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
  * stochastic percentage closer filtering of shadow-maps. */
 vec3 shadow_pcf_offset(vec3 L, vec3 Ng, vec2 random)
 {
+  /* Angle between Light and normal. */
+  float cos_theta = abs(dot(L, Ng));
+  float sin_theta = sin_from_cos(cos_theta);
+  /* Slope of the receiver plane with respect to light direction. */
+  float receiver_slope = saturate(sin_theta / min(cos_theta, M_SQRT1_2));
   /* We choose a random disk distribution because it is rotationally invariant.
    * This sames us the trouble of getting the correct orientation for punctual. */
   vec2 disk_sample = sample_disk(random);
+  /* Set the samples as *on* a cone up to 45 degree. */
+  vec3 cone_sample = vec3(disk_sample, length(disk_sample) * receiver_slope);
   /* Compute the offset as a disk around the normal. */
-  mat3x3 tangent_frame = from_up_axis(Ng);
-  vec3 pcf_offset = tangent_frame[0] * disk_sample.x + tangent_frame[1] * disk_sample.y;
-
-  if (dot(pcf_offset, L) < 0.0) {
-    /* Reflect the offset to avoid overshadowing caused by moving the sampling point below another
-     * polygon behind the shading point. */
-    pcf_offset = reflect(pcf_offset, L);
-  }
+  mat3x3 light_to_world = from_up_axis(L);
+  /* Offset the disk in normal direction*/
+  vec3 pcf_offset = light_to_world * cone_sample;
+  pcf_offset += Ng * (1.0 - sin_theta);
   return pcf_offset;
 }
 
