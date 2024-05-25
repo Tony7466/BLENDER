@@ -147,11 +147,13 @@ BsdfEval bxdf_ggx_eval(vec3 N, vec3 L, vec3 V, float alpha, float eta, const boo
 
   if (do_reflection) {
     if (NV <= 0.0) {
+#if 0 /* TODO(fclem): Creates black areas when denoising. Find out why. */
       /* Impossible configuration for reflection. */
       BsdfEval eval;
       eval.throughput = 0.0;
       eval.pdf = 0.0;
       return eval;
+#endif
     }
   }
   else {
