@@ -48,6 +48,33 @@ float closure_evaluate_pdf(ClosureUndetermined cl, vec3 L, vec3 V, float thickne
   return 0.0;
 }
 
+LightProbeRay bxdf_lightprobe_ray(ClosureUndetermined cl, vec3 P, vec3 V, float thickness)
+{
+  switch (cl.type) {
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      bxdf_ggx_context_amend_transmission(cl, V, thickness);
+      break;
+  }
+
+  switch (cl.type) {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
+      return bxdf_translucent_lightprobe(cl.N, thickness);
+    case CLOSURE_BSSRDF_BURLEY_ID:
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      return bxdf_diffuse_lightprobe(cl.N);
+    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      return bxdf_ggx_lightprobe_reflection(to_closure_reflection(cl), V);
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      return bxdf_ggx_lightprobe_transmission(to_closure_refraction(cl), V, thickness);
+    default:
+      /* TODO: Assert. */
+      break;
+  }
+
+  LightProbeRay ray;
+  return ray;
+}
+
 #ifdef EEVEE_UTILITY_TX
 
 ClosureLight closure_light_new_ex(ClosureUndetermined cl,
