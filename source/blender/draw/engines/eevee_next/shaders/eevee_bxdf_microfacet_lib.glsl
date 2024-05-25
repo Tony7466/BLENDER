@@ -354,4 +354,39 @@ Ray bxdf_ggx_ray_amend_transmission(ClosureUndetermined cl, vec3 V, Ray ray, flo
   return ray;
 }
 
+#ifdef EEVEE_UTILITY_TX
+
+ClosureLight bxdf_ggx_light_reflection(ClosureReflection cl, vec3 V)
+{
+  float cos_theta = dot(cl.N, V);
+  ClosureLight light;
+  light.ltc_mat = utility_tx_sample_lut(utility_tx, cos_theta, cl.roughness, UTIL_LTC_MAT_LAYER);
+  light.N = cl.N;
+  light.type = LIGHT_SPECULAR;
+  return light;
+}
+
+ClosureLight bxdf_ggx_light_transmission(ClosureRefraction cl, vec3 V, float thickness)
+{
+  float perceptual_roughness = bxdf_ggx_perceived_roughness_transmission(cl.roughness, cl.ior);
+
+  if (thickness != 0.0) {
+    vec3 L = bxdf_ggx_dominant_direction_transmission(cl.N, V, cl.ior, perceptual_roughness);
+    cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
+    V = -L;
+  }
+  /* Ad-hoc solution to reuse the reflection LUT. To be eventually replaced by own precomputed
+   * table. */
+  vec3 R = refract(-V, cl.N, (thickness != 0.0) ? cl.ior : (1.0 / cl.ior));
+  float cos_theta = dot(-cl.N, R);
+
+  ClosureLight light;
+  light.ltc_mat = utility_tx_sample_lut(utility_tx, cos_theta, cl.roughness, UTIL_LTC_MAT_LAYER);
+  light.N = -cl.N;
+  light.type = LIGHT_TRANSMISSION;
+  return light;
+}
+
+#endif
+
 /** \} */

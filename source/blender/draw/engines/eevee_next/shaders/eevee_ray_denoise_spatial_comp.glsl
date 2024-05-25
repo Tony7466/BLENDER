@@ -27,32 +27,6 @@
 #pragma BLENDER_REQUIRE(eevee_closure_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
-float pdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
-{
-  mat3 tangent_to_world = from_up_axis(cl.N);
-  vec3 Vt = V * tangent_to_world;
-  vec3 Lt = L * tangent_to_world;
-  switch (cl.type) {
-    case CLOSURE_BSDF_TRANSLUCENT_ID:
-      return bxdf_translucent_eval(cl.N, L, thickness).pdf;
-    case CLOSURE_BSSRDF_BURLEY_ID:
-      /* TODO(fclem): Sampled BSSDF. */
-      return bxdf_diffuse_eval(cl.N, L).pdf;
-    case CLOSURE_BSDF_DIFFUSE_ID:
-      return bxdf_diffuse_eval(cl.N, L).pdf;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID: {
-      ClosureReflection cl_ = to_closure_reflection(cl);
-      return bxdf_ggx_eval_reflection(cl.N, L, V, square(cl_.roughness)).pdf;
-    }
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      ClosureRefraction cl_ = to_closure_refraction(cl);
-      return bxdf_ggx_eval_transmission(cl.N, L, V, square(cl_.roughness), cl_.ior, thickness).pdf;
-    }
-  }
-  /* TODO(fclem): Assert. */
-  return 0.0;
-}
-
 void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
                                           inout vec3 V,
                                           float thickness)
@@ -187,7 +161,7 @@ void main()
     /* Slide 54. */
     /* The reference is wrong.
      * The ratio estimator is `pdf_local / pdf_ray` instead of `bsdf_local / pdf_ray`. */
-    float pdf = pdf_eval(closure, ray_direction, V, thickness);
+    float pdf = closure_evaluate_pdf(closure, ray_direction, V, thickness);
     float weight = pdf * ray_pdf_inv;
 
     radiance_accum += ray_radiance.rgb * weight;

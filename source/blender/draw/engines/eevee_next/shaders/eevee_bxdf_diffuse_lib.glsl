@@ -47,6 +47,19 @@ LightProbeRay bxdf_diffuse_lightprobe(vec3 N)
   return probe;
 }
 
+#ifdef EEVEE_UTILITY_TX
+
+ClosureLight bxdf_diffuse_light(ClosureUndetermined cl)
+{
+  ClosureLight light;
+  light.ltc_mat = vec4(1.0, 0.0, 0.0, 1.0); /* No transform, just plain cosine distribution. */
+  light.N = cl.N;
+  light.type = LIGHT_DIFFUSE;
+  return light;
+}
+
+#endif
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -115,5 +128,26 @@ Ray bxdf_translucent_ray_amend(ClosureUndetermined cl, vec3 V, Ray ray, float th
   }
   return ray;
 }
+
+#ifdef EEVEE_UTILITY_TX
+
+ClosureLight bxdf_translucent_light(ClosureUndetermined cl, vec3 V, float thickness)
+{
+  /* A translucent sphere lit by a light outside the sphere transmits the
+   * light uniformly over the sphere. To mimic this phenomenon, we use the light vector
+   * as normal. This is done inside `light_eval_single`.
+   *
+   * For slab model, the approximation has little to no impact on the lighting in practice,
+   * only focusing the light a tiny bit. Using the flipped normal is good enough approximation.
+   */
+  ClosureLight light;
+  light.ltc_mat = vec4(1.0, 0.0, 0.0, 1.0); /* No transform, just plain cosine distribution. */
+  /* Tag for `is_translucent_with_thickness`. */
+  light.N = (thickness > 0.0) ? vec3(2.0) : -cl.N;
+  light.type = LIGHT_DIFFUSE;
+  return light;
+}
+
+#endif
 
 /** \} */
