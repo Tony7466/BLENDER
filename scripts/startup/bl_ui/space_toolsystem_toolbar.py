@@ -1548,6 +1548,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.face_set_line_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
+            layout.prop(props, "use_limit_to_segment", expand=False)
 
         return dict(
             idname="builtin.line_face_set",
