@@ -3641,6 +3641,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 43)) {
+    const World *default_world = DNA_struct_default_get(World);
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      world->sun_shadow_maximum_resolution = default_world->sun_shadow_maximum_resolution;
+      world->sun_shadow_filter_radius = default_world->sun_shadow_filter_radius;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 44)) {
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
