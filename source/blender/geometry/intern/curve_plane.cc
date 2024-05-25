@@ -33,9 +33,9 @@ static potrace_word from_bools(const Span<bool> src)
   return result;
 }
 
-static void gather_list(const potrace_path_t *element, Vector<const potrace_path_t *> &r_list)
+static void potrace_gather_curves(const potrace_state_t *potrace, Vector<const potrace_path_t *> &r_list)
 {
-  for (const potrace_path_t *iter = element; iter != nullptr; iter = iter->next) {
+  for (const potrace_path_t *iter = potrace_result->plist; iter != nullptr; iter = iter->next) {
     r_list.append(iter);
   }
 }
@@ -204,21 +204,26 @@ static std::array<float2, 3> extra_point_between(const std::array<float2, 3> &a_
 
 }  // namespace potrace
 
-static int count_different_types(const Span<int> segment_types)
+static int count_segment_groups(const Span<int> segment_types)
 {
-  const IndexRange range = segment_types.index_range().drop_front(1);
+  const IndexRange range = segment_types.index_range().drop_back(1);
   const int different_types_num = std::count_if(range.begin(), range.end(), [&](const int64_t i) {
-    return potrace::SegmentType(segment_types[i - 1]) != potrace::SegmentType(segment_types[i]);
+    return potrace::SegmentType(segment_types[i]) != potrace::SegmentType(segment_types[i + 1]);
   });
   return different_types_num;
 }
 
-static void copy_type_switch_indices(const Span<int> segment_types, MutableSpan<int> indices)
+static void type_group_sizes(const Span<int> segment_types, MutableSpan<int> indices)
 {
-  const IndexRange range = segment_types.index_range().drop_front(1);
-  std::copy_if(range.begin(), range.end(), indices.begin(), [&](const int64_t i) {
-    return potrace::SegmentType(segment_types[i - 1]) != potrace::SegmentType(segment_types[i]);
-  });
+  int offset = 0;
+  int last_i = 0;
+  for (const int i : segment_types.index_range().drop_front(1)) {
+    if (potrace::SegmentType(segment_types[i - 1]) != potrace::SegmentType(segment_types[i])) {
+      indices[offset] = i - last_i;
+      offset++;
+      last_i = i;
+    }
+  }
 }
 
 static int count_extra_points(const Span<potrace::CurveType> types)
@@ -286,6 +291,39 @@ static void transform_points(const int2 resolution,
       4096,
       points_data.cast<float2>(),
       [&](const float2 src_point) { return min_point + src_point * resolution_factor; });
+}
+
+static void potrace_curve_segments_group_size(const Span<const potrace_path_t *> src_curves, MutableSpan<int> sizes)
+{
+  threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
+      static const constexpr int zero_and_total_size_elements = 2;
+      r_curve_types_offset_data[curve_i] = count_different_types(segment_types) + zero_and_total_size_elements;
+    }
+  });
+}
+
+static void potrace_curve_count_segments_in_groups(const Span<const potrace_path_t *> src_curves, const OffsetIndices<int> offsets, MutableSpan<int> sizes)
+{
+  threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
+      MutableSpan<int> curve_type_indices_data = sizes.slice(offsets[curve_i]);
+      type_group_sizes(segment_types, curve_type_indices_data.drop_back(1));
+    }
+  }, threading::accumulated_task_sizes([&](const IndexRange range) { return offsets[range].size(); }));
+}
+
+static void curve_count_segments_in_groups(const Span<const potrace_path_t *> src_curves, const OffsetIndices<int> offsets, MutableSpan<int> sizes)
+{
+  threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const Span<int> segment_types(src_curves[curve_i]->curve.tag, src_curves[curve_i]->curve.n);
+      MutableSpan<int> curve_type_indices_data = sizes.slice(offsets[curve_i]);
+      type_group_sizes(segment_types, curve_type_indices_data.drop_back(1));
+    }
+  }, threading::accumulated_task_sizes([&](const IndexRange range) { return offsets[range].size(); }));
 }
 
 static void potrace_curve_slice_segments(const Span<const potrace_path_t *> src_curves,
@@ -763,14 +801,13 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
 {
   potrace_state_t *potrace_result = bools_to_potrace_curves(resolution, grid_color);
   if (potrace_result == nullptr) {
-    potrace_state_free(potrace_result);
     return nullptr;
   }
+  BLI_SCOPED_DEFER([&]() { potrace_state_free(potrace_result); });
 
   Vector<const potrace_path_t *> curves_list;
-  gather_list(potrace_result->plist, curves_list);
+  potrace_gather_curves(potrace_result, curves_list);
   if (curves_list.is_empty()) {
-    potrace_state_free(potrace_result);
     return std::nullopt;
   }
 
@@ -781,19 +818,21 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
 
   Array<int> offset_data(curves_list.size() + 1);
   potrace_curve_sizes(curves_list, offset_data);
-  const OffsetIndices<int> curve_offsets = offset_indices::accumulate_counts_to_offsets(
-      offset_data);
+  const OffsetIndices<int> curve_offsets = offset_indices::accumulate_counts_to_offsets(offset_data);
 
-  Array<int> curve_types_offset_data;
-  Array<int> curve_type_indices_data;
-  potrace_curve_slice_segments(curves_list, curve_types_offset_data, curve_type_indices_data);
-  const GroupedSpan<int> curve_type_indices(curve_types_offset_data.as_span(),
-                                            curve_type_indices_data);
+  Array<int> curve_group_segment_sizes(curves_list.size() + 1);
+  potrace_curve_segments_group_size(curves_list, curve_group_segment_sizes);
+  const OffsetIndices<int> group_offsets = offset_indices::accumulate_counts_to_offsets(curve_group_segment_sizes);
+
+  Array<int> group_segments_sizes(group_offsets.total_size());
+  potrace_curve_count_segments_in_groups(curves_list, group_offsets, group_segments_sizes);
+
+  Array<int> group_segments_result_sizes(group_offsets.total_size());
+  curve_count_segments_in_groups(curves_list, group_offsets, group_segments_sizes);
 
   Array<int> extra_curve_offset_data(curves_list.size() + 1);
   potrace_curve_extra_points(curves_list, curve_type_indices, extra_curve_offset_data);
-  const OffsetIndices<int> extra_point_offsets = offset_indices::accumulate_counts_to_offsets(
-      extra_curve_offset_data);
+  const OffsetIndices<int> extra_point_offsets = offset_indices::accumulate_counts_to_offsets(extra_curve_offset_data);
 
   Array<potrace::CurveType> curve_type_data(curves_list.size());
   potrace_curve_type(curves_list, extra_point_offsets, curve_type_data);
@@ -817,8 +856,6 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
                                    points_buffer,
                                    points_data);
   transform_points(resolution, min_point, max_point, points_data);
-
-  potrace_state_free(potrace_result);
 
   Curves *curves_id = bke::curves_new_nomain(total_vertices, curve_offsets.size());
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
