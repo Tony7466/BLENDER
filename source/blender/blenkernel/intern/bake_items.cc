@@ -78,7 +78,8 @@ void GeometryBakeItem::prepare_geometry_for_bake(GeometrySet &main_geometry,
                                       GeometryComponent::Type::Curve,
                                       GeometryComponent::Type::PointCloud,
                                       GeometryComponent::Type::Volume,
-                                      GeometryComponent::Type::Instance});
+                                      GeometryComponent::Type::Instance,
+                                      GeometryComponent::Type::RigidBody});
   });
 }
 
