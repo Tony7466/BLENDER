@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
@@ -199,51 +201,66 @@ class SliceSampleFieldInput final : public bke::GeometryFieldInput {
  private:
   bool use_clamp_;
 
+  GField input_;
+
   std::optional<bke::GeometryFieldContext> geometry_context_;
   std::unique_ptr<FieldEvaluator> evaluator_;
+  const GVArray *src_data_ = nullptr;
 
  public:
   SliceSampleFieldInput(GeometrySet src_geometry,
                         GField input,
                         const AttrDomain source_domain,
                         const bool use_clamp)
-      : bke::GeometryFieldInput(input.cpp_type(), "Total Value"), use_clamp_(use_clamp)
+      : bke::GeometryFieldInput(input.cpp_type(), "Total Value"), input_(std::move(input)), use_clamp_(use_clamp)
   {
+    src_geometry.ensure_owns_direct_data();
     const GeometryComponent *component = find_source_component(src_geometry, source_domain);
     if (component == nullptr) {
       throw std::runtime_error("no component to sample");
     }
-    this->evaluate_field(*component, source_domain, std::move(input));
+    this->evaluate_field(*component, source_domain);
   }
 
-  void evaluate_field(const GeometryComponent &component,
-                      const AttrDomain source_domain,
-                      GField input)
+  void evaluate_field(const GeometryComponent &component, const AttrDomain source_domain)
   {
     const int domain_size = component.attribute_domain_size(source_domain);
     geometry_context_.emplace(bke::GeometryFieldContext(component, source_domain));
     evaluator_ = std::make_unique<FieldEvaluator>(*geometry_context_, domain_size);
-    evaluator_->add(std::move(input));
+    evaluator_->add(input_);
     evaluator_->evaluate();
+    src_data_ = &evaluator_->get_evaluated(0);
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext & /*context*/,
-                                 const IndexMask &mask) const final
+                                 const IndexMask &mask) const final override
   {
-    const GVArray &values = evaluator_->get_evaluated(0);
+    std::cout << std::endl;
+    const GVArray &values = *src_data_;
     const CPPType &type = values.type();
     const int64_t src_size = values.size();
 
-    if (mask.min_array_size() <= src_size) {
-      return values;
-    }
+    std::cout << type.name() << ";\n";
 
     GArray<> buffer(type, mask.min_array_size());
+
+    std::cout << buffer.type().name() << ";\n";
 
     /* TODO: Try to pass implicitly shared and sliced VArray into return. */
     const IndexMask front_mask = mask.slice_content(0, src_size);
     const IndexMask back_mask = mask.slice_content(IndexRange(buffer.size()).drop_front(src_size));
 
+    std::cout << buffer.data() << std::endl;
+    std::cout << front_mask << std::endl;
+    std::cout << back_mask << std::endl;
+    std::cout << values.index_range() << std::endl;
+    std::cout << values.get_internal_span().typed<float3>().begin() << std::endl;
+    std::cout << values.get_internal_span().typed<float3>().end() << std::endl;
+    std::cout << values.get_internal_span().typed<float3>().size() << std::endl;
+
+    BLI_assert(front_mask.is_empty() || values.size() > front_mask.last());
+    BLI_assert(front_mask.is_empty() || buffer.size() > front_mask.last());
+    BLI_assert(back_mask.is_empty() || buffer.size() > back_mask.last());
     array_utils::copy(values, front_mask, buffer.as_mutable_span());
     if (use_clamp_) {
       BUFFER_FOR_CPP_TYPE_VALUE(type, single_buffer);
@@ -255,6 +272,25 @@ class SliceSampleFieldInput final : public bke::GeometryFieldInput {
       type.default_construct_indices(buffer.data(), back_mask);
     }
     return GVArray::ForGArray(std::move(buffer));
+  }
+
+  void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
+  {
+    input_.node().for_each_field_input_recursive(fn);
+  }
+
+  uint64_t hash() const override
+  {
+    return get_default_hash(use_clamp_, input_);
+  }
+
+  bool is_equal_to(const fn::FieldNode &other) const override
+  {
+    if (const SliceSampleFieldInput *other_sample = dynamic_cast<const SliceSampleFieldInput *>(&other))
+    {
+      return use_clamp_ == other_sample->use_clamp_ && input_ == other_sample->input_;
+    }
+    return false;
   }
 };
 
