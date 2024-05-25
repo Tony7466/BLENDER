@@ -937,6 +937,14 @@ int MeshEdgebreakerDecoderImpl<TraversalDecoder>::DecodeConnectivity(
   int num_vertices = corner_table_->num_vertices();
   // If any vertex was marked as isolated, we want to remove it from the corner
   // table to ensure that all vertices in range <0, num_vertices> are valid.
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable:4804)
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wrange-loop-construct"
+#endif
   for (const VertexIndex invalid_vert : invalid_vertices) {
     // Find the last valid vertex and swap it with the isolated vertex.
     VertexIndex src_vert(num_vertices - 1);
@@ -970,6 +978,12 @@ int MeshEdgebreakerDecoderImpl<TraversalDecoder>::DecodeConnectivity(
     // The last vertex is now invalid.
     num_vertices--;
   }
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
   return num_vertices;
 }
 

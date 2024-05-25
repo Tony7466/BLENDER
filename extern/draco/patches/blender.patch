@@ -1,11 +1,11 @@
 diff --git a/draco/src/draco/attributes/geometry_attribute.h b/draco/src/draco/attributes/geometry_attribute.h
-index fd478a4..c1c0148 100644
+index 734bd73e756..eb030a5cc2f 100644
 --- a/draco/src/draco/attributes/geometry_attribute.h
 +++ b/draco/src/draco/attributes/geometry_attribute.h
-@@ -285,11 +285,25 @@ class GeometryAttribute {
-       // Make sure the in_value fits within the range of values that OutT
+@@ -367,11 +367,25 @@ class GeometryAttribute {
+       // Make sure the |in_value| fits within the range of values that OutT
        // is able to represent. Perform the check only for integral types.
-       if (std::is_integral<T>::value && std::is_integral<OutT>::value) {
+       if (!std::is_same<T, bool>::value && std::is_integral<T>::value) {
 +#ifdef _MSC_VER
 +#  pragma warning(push)
 +#  pragma warning(disable:4804)
@@ -15,7 +15,7 @@ index fd478a4..c1c0148 100644
 +#  pragma GCC diagnostic ignored "-Wbool-compare"
 +#endif
          static constexpr OutT kOutMin =
-             std::is_signed<T>::value ? std::numeric_limits<OutT>::lowest() : 0;
+             std::is_signed<T>::value ? std::numeric_limits<OutT>::min() : 0;
          if (in_value < kOutMin || in_value > std::numeric_limits<OutT>::max()) {
            return false;
          }
@@ -26,5 +26,87 @@ index fd478a4..c1c0148 100644
 +#  pragma warning(pop)
 +#endif
        }
- 
-       out_value[i] = static_cast<OutT>(in_value);
+
+       // Check conversion of floating point |in_value| to integral value OutT.
+@@ -397,10 +411,24 @@ class GeometryAttribute {
+
+         // Make sure the floating point |in_value| fits within the range of
+         // values that integral type OutT is able to represent.
++#ifdef _MSC_VER
++#  pragma warning(push)
++#  pragma warning(disable:4804)
++#endif
++#if defined(__GNUC__) && !defined(__clang__)
++#  pragma GCC diagnostic push
++#  pragma GCC diagnostic ignored "-Wbool-compare"
++#endif
+         if (in_value < std::numeric_limits<OutT>::min() ||
+             in_value >= std::numeric_limits<OutT>::max()) {
+           return false;
+         }
++#ifdef __GNUC__
++#  pragma GCC diagnostic pop
++#endif
++#ifdef _MSC_VER
++#  pragma warning(pop)
++#endif
+       }
+     }
+
+@@ -412,11 +440,25 @@ class GeometryAttribute {
+       *out_value /= static_cast<OutT>(std::numeric_limits<T>::max());
+     } else if (std::is_floating_point<T>::value &&
+                std::is_integral<OutT>::value && normalized) {
++#ifdef _MSC_VER
++#  pragma warning(push)
++#  pragma warning(disable:4804)
++#endif
++#if defined(__GNUC__) && !defined(__clang__)
++#  pragma GCC diagnostic push
++#  pragma GCC diagnostic ignored "-Wbool-compare"
++#endif
+       // Converting from floating point to a normalized integer.
+       if (in_value > 1 || in_value < 0) {
+         // Normalized float values need to be between 0 and 1.
+         return false;
+       }
++#ifdef __GNUC__
++#  pragma GCC diagnostic pop
++#endif
++#ifdef _MSC_VER
++#  pragma warning(pop)
++#endif
+       // TODO(ostava): Consider allowing float to normalized integer conversion
+       // for 64-bit integer types. Currently it doesn't work because we don't
+       // have a floating point type that could store all 64 bit integers.
+diff --git a/draco/src/draco/compression/mesh/mesh_edgebreaker_decoder_impl.cc b/draco/src/draco/compression/mesh/mesh_edgebreaker_decoder_impl.cc
+index 0b89ba357f5..13038967cf7 100644
+--- a/draco/src/draco/compression/mesh/mesh_edgebreaker_decoder_impl.cc
++++ b/draco/src/draco/compression/mesh/mesh_edgebreaker_decoder_impl.cc
+@@ -937,6 +937,14 @@ int MeshEdgebreakerDecoderImpl<TraversalDecoder>::DecodeConnectivity(
+   int num_vertices = corner_table_->num_vertices();
+   // If any vertex was marked as isolated, we want to remove it from the corner
+   // table to ensure that all vertices in range <0, num_vertices> are valid.
++#ifdef _MSC_VER
++#  pragma warning(push)
++#  pragma warning(disable:4804)
++#endif
++#if defined(__GNUC__) && !defined(__clang__)
++#  pragma GCC diagnostic push
++#  pragma GCC diagnostic ignored "-Wrange-loop-construct"
++#endif
+   for (const VertexIndex invalid_vert : invalid_vertices) {
+     // Find the last valid vertex and swap it with the isolated vertex.
+     VertexIndex src_vert(num_vertices - 1);
+@@ -970,6 +978,12 @@ int MeshEdgebreakerDecoderImpl<TraversalDecoder>::DecodeConnectivity(
+     // The last vertex is now invalid.
+     num_vertices--;
+   }
++#ifdef __GNUC__
++#  pragma GCC diagnostic pop
++#endif
++#ifdef _MSC_VER
++#  pragma warning(pop)
++#endif
+   return num_vertices;
+ }

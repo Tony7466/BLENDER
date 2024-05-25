@@ -367,11 +367,25 @@ class GeometryAttribute {
       // Make sure the |in_value| fits within the range of values that OutT
       // is able to represent. Perform the check only for integral types.
       if (!std::is_same<T, bool>::value && std::is_integral<T>::value) {
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable:4804)
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wbool-compare"
+#endif
         static constexpr OutT kOutMin =
             std::is_signed<T>::value ? std::numeric_limits<OutT>::min() : 0;
         if (in_value < kOutMin || in_value > std::numeric_limits<OutT>::max()) {
           return false;
         }
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
       }
 
       // Check conversion of floating point |in_value| to integral value OutT.
@@ -397,10 +411,24 @@ class GeometryAttribute {
 
         // Make sure the floating point |in_value| fits within the range of
         // values that integral type OutT is able to represent.
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable:4804)
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wbool-compare"
+#endif
         if (in_value < std::numeric_limits<OutT>::min() ||
             in_value >= std::numeric_limits<OutT>::max()) {
           return false;
         }
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
       }
     }
 
@@ -412,11 +440,25 @@ class GeometryAttribute {
       *out_value /= static_cast<OutT>(std::numeric_limits<T>::max());
     } else if (std::is_floating_point<T>::value &&
                std::is_integral<OutT>::value && normalized) {
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable:4804)
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wbool-compare"
+#endif
       // Converting from floating point to a normalized integer.
       if (in_value > 1 || in_value < 0) {
         // Normalized float values need to be between 0 and 1.
         return false;
       }
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
       // TODO(ostava): Consider allowing float to normalized integer conversion
       // for 64-bit integer types. Currently it doesn't work because we don't
       // have a floating point type that could store all 64 bit integers.
