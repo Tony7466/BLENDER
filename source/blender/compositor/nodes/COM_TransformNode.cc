@@ -32,6 +32,7 @@ void TransformNode::convert_to_operations(NodeConverter &converter,
   converter.add_operation(rotate_operation);
 
   TranslateOperation *translate_operation = new TranslateCanvasOperation();
+  translate_operation->set_sampler(sampler);
   converter.add_operation(translate_operation);
 
   PixelSampler sampler = (PixelSampler)this->get_bnode()->custom1;
