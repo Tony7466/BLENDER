@@ -28,6 +28,7 @@ class RigidBodyWorld {
 
  public:
   RigidBodyWorld();
+  RigidBodyWorld(const RigidBodyWorld &other);
   ~RigidBodyWorld();
 
   int bodies_num() const;

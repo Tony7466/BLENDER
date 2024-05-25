@@ -45,13 +45,26 @@ struct RigidBodyWorldImpl {
   btBroadphaseInterface *broadphase;
   btConstraintSolver *constraint_solver;
   btOverlapFilterCallback *overlap_filter;
+
+  RigidBodyWorldImpl()
+  {
+    this->config = new btDefaultCollisionConfiguration();
+    this->dispatcher = new btCollisionDispatcher(this->config);
+    btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
+
+    this->broadphase = new btDbvtBroadphase();
+    this->overlap_filter = nullptr;
+
+    this->constraint_solver = new btSequentialImpulseConstraintSolver();
+
+    this->world = new btDiscreteDynamicsWorld(
+        this->dispatcher, this->broadphase, this->constraint_solver, this->config);
+  }
 };
 
 struct DefaultOverlapFilter : public btOverlapFilterCallback {
   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
   {
-    const int64_t body0 = int64_t(proxy0->m_clientObject);
-    const int64_t body1 = int64_t(proxy1->m_clientObject);
     return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
            (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask);
   }
@@ -74,20 +87,14 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
 };
 
 RigidBodyWorld::RigidBodyWorld() {
-  impl_ = new RigidBodyWorldImpl;
-  impl_->config = new btDefaultCollisionConfiguration();
-  impl_->dispatcher = new btCollisionDispatcher(impl_->config);
-  btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)impl_->dispatcher);
+  impl_ = new RigidBodyWorldImpl();
+}
 
-  impl_->broadphase = new btDbvtBroadphase();
-  impl_->overlap_filter = nullptr;
-
-  impl_->constraint_solver = new btSequentialImpulseConstraintSolver();
-
-  impl_->world = new btDiscreteDynamicsWorld(
-      impl_->dispatcher, impl_->broadphase, impl_->constraint_solver, impl_->config);
-
-  //RB_dworld_set_gravity(world, gravity);
+RigidBodyWorld::RigidBodyWorld(const RigidBodyWorld &other)
+{
+  // TODO copy bodies, constraints, shapes from other?
+  impl_ = new RigidBodyWorldImpl();
+  UNUSED_VARS(other);
 }
 
 RigidBodyWorld::~RigidBodyWorld()

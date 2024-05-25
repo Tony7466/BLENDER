@@ -36,8 +36,7 @@ GeometryComponentPtr RigidBodyComponent::copy() const
 {
   RigidBodyComponent *new_component = new RigidBodyComponent();
   if (rigid_body_world_ != nullptr) {
-    // TODO
-    // new_component->rigid_body_world_ = BKE_rigid_body_world_copy_for_eval(rigid_body_world_);
+    new_component->rigid_body_world_ = new RigidBodyWorld(*rigid_body_world_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return GeometryComponentPtr(new_component);
@@ -48,8 +47,7 @@ void RigidBodyComponent::clear()
   BLI_assert(this->is_mutable() || this->is_expired());
   if (rigid_body_world_ != nullptr) {
     if (ownership_ == GeometryOwnershipType::Owned) {
-      // TODO
-      // BKE_id_free(nullptr, rigid_body_world_);
+      delete rigid_body_world_;
     }
     rigid_body_world_ = nullptr;
   }
@@ -85,8 +83,7 @@ RigidBodyWorld *RigidBodyComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    // TODO
-    // rigid_body_world_ = BKE_rigid_body_world_copy_for_eval(rigid_body_world_);
+    rigid_body_world_ = new RigidBodyWorld(*rigid_body_world_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return rigid_body_world_;
@@ -122,8 +119,7 @@ void RigidBodyComponent::ensure_owns_direct_data()
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
     if (rigid_body_world_) {
-      // TODO
-      // rigid_body_world_ = BKE_rigid_body_world_copy_for_eval(rigid_body_world_);
+      rigid_body_world_ = new RigidBodyWorld(*rigid_body_world_);
     }
     ownership_ = GeometryOwnershipType::Owned;
   }
@@ -131,24 +127,6 @@ void RigidBodyComponent::ensure_owns_direct_data()
 
 static ComponentAttributeProviders create_attribute_providers_for_rigid_body_world()
 {
-  // TODO
-  // static CustomDataAccessInfo layers_access = {
-  //    [](void *owner) -> CustomData * {
-  //      RigidBodyWorld &rigid_body_world = *static_cast<RigidBodyWorld *>(owner);
-  //      return &rigid_body_world.layers_data;
-  //    },
-  //    [](const void *owner) -> const CustomData * {
-  //      const RigidBodyWorld &rigid_body_world = *static_cast<const RigidBodyWorld *>(owner);
-  //      return &rigid_body_world.layers_data;
-  //    },
-  //    [](const void *owner) -> int {
-  //      const RigidBodyWorld &rigid_body_world = *static_cast<const RigidBodyWorld *>(owner);
-  //      return rigid_body_world.layers().size();
-  //    }};
-
-  // static CustomDataAttributeProvider layer_custom_data(AttrDomain::Layer, layers_access);
-
-  // return ComponentAttributeProviders({}, {&layer_custom_data});
   return ComponentAttributeProviders({}, {});
 }
 
@@ -176,9 +154,9 @@ static AttributeAccessorFunctions get_rigid_body_world_accessor_functions()
     const RigidBodyWorld &rigid_body_world = *static_cast<const RigidBodyWorld *>(owner);
     switch (domain) {
       case AttrDomain::Point:
-        // TODO
-        // return int(rigid_body_world.bodies().size());
-        return 0;
+        return rigid_body_world.bodies_num();
+      case AttrDomain::Edge:
+        return rigid_body_world.constraints_num();
       default:
         return 0;
     }
