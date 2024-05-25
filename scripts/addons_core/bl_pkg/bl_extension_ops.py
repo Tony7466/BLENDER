@@ -381,13 +381,12 @@ def _preferences_ensure_enabled_all(*, addon_restore, handle_error):
         )
 
 
-def _preferences_install_post_enable_on_install(
+def _preferences_post_install(
         *,
+        enabled,
         directory,
         pkg_manifest_local,
         pkg_id_sequence,
-        # There were already installed and an attempt to enable it will have already been made.
-        pkg_id_sequence_upgrade,
         handle_error,
 ):
     import addon_utils
@@ -404,12 +403,11 @@ def _preferences_install_post_enable_on_install(
             return
 
         if item_local["type"] == "add-on":
-            # Check if the add-on will have been enabled from re-installing.
-            if pkg_id in pkg_id_sequence_upgrade:
-                continue
-
             addon_module_name = "bl_ext.{:s}.{:s}".format(repo_item.module, pkg_id)
-            addon_utils.enable(addon_module_name, default_set=True, handle_error=handle_error)
+            if enabled:
+                addon_utils.enable(addon_module_name, default_set=True, handle_error=handle_error)
+            else:
+                addon_utils.disable(addon_module_name, default_set=True, handle_error=handle_error)
         elif item_local["type"] == "theme":
             if has_theme:
                 continue
@@ -1331,15 +1329,13 @@ class BlPkgPkgInstallMarked(Operator, _BlPkgCmdMixIn):
                 error_fn=self.error_fn_from_exception,
             )
 
-            if self.enable_on_install:
-                _preferences_install_post_enable_on_install(
-                    directory=directory,
-                    pkg_manifest_local=pkg_manifest_local,
-                    pkg_id_sequence=pkg_id_sequence,
-                    # Installed packages are always excluded.
-                    pkg_id_sequence_upgrade=[],
-                    handle_error=handle_error,
-                )
+            _preferences_post_install(
+                enabled=self.enable_on_install,
+                directory=directory,
+                pkg_manifest_local=pkg_manifest_local,
+                pkg_id_sequence=pkg_id_sequence,
+                handle_error=handle_error,
+            )
 
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
@@ -1613,19 +1609,13 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         )
         _preferences_theme_state_restore(self._theme_restore)
 
-        if self._addon_restore:
-            pkg_id_sequence_upgrade = self._addon_restore[0][1]
-        else:
-            pkg_id_sequence_upgrade = []
-
-        if self.enable_on_install:
-            _preferences_install_post_enable_on_install(
-                directory=self.repo_directory,
-                pkg_manifest_local=pkg_manifest_local,
-                pkg_id_sequence=self.pkg_id_sequence,
-                pkg_id_sequence_upgrade=pkg_id_sequence_upgrade,
-                handle_error=handle_error,
-            )
+        _preferences_post_install(
+            enabled=self.enable_on_install,
+            directory=self.repo_directory,
+            pkg_manifest_local=pkg_manifest_local,
+            pkg_id_sequence=self.pkg_id_sequence,
+            handle_error=handle_error,
+        )
 
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
@@ -1810,19 +1800,13 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
         )
         _preferences_theme_state_restore(self._theme_restore)
 
-        if self._addon_restore:
-            pkg_id_sequence_upgrade = self._addon_restore[0][1]
-        else:
-            pkg_id_sequence_upgrade = []
-
-        if self.enable_on_install:
-            _preferences_install_post_enable_on_install(
-                directory=self.repo_directory,
-                pkg_manifest_local=pkg_manifest_local,
-                pkg_id_sequence=(self.pkg_id,),
-                pkg_id_sequence_upgrade=pkg_id_sequence_upgrade,
-                handle_error=handle_error,
-            )
+        _preferences_post_install(
+            enabled=self.enable_on_install,
+            directory=self.repo_directory,
+            pkg_manifest_local=pkg_manifest_local,
+            pkg_id_sequence=(self.pkg_id,),
+            handle_error=handle_error,
+        )
 
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
