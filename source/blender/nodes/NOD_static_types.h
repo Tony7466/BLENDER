@@ -210,7 +210,7 @@ DefNode(CompositorNode, CMP_NODE_KEYING,         def_cmp_keying,            "KEY
 DefNode(CompositorNode, CMP_NODE_TRACKPOS,       def_cmp_trackpos,          "TRACKPOS",        TrackPos,         "Track Position",      "Provide information about motion tracking points, such as x and y values")
 DefNode(CompositorNode, CMP_NODE_PIXELATE,       def_cmp_pixelate,          "PIXELATE",        Pixelate,         "Pixelate",            "Reduce detail in an image by making individual pixels more prominent, for a blocky or mosaic-like appearance")
 DefNode(CompositorNode, CMP_NODE_PLANETRACKDEFORM,def_cmp_planetrackdeform,"PLANETRACKDEFORM", PlaneTrackDeform, "Plane Track Deform",  "Replace flat planes in footage by another image, dectected by plane tracks from motion tracking")
-DefNode(CompositorNode, CMP_NODE_CORNERPIN,      0,                         "CORNERPIN",       CornerPin,        "Corner Pin",          "Plane warp transformation using explicit corner values")
+DefNode(CompositorNode, CMP_NODE_CORNERPIN,      def_cmp_cornerpin,         "CORNERPIN",       CornerPin,        "Corner Pin",          "Plane warp transformation using explicit corner values")
 DefNode(CompositorNode, CMP_NODE_SUNBEAMS,       def_cmp_sunbeams,          "SUNBEAMS",        SunBeams,         "Sun Beams",           "Create sun beams based on image brightness")
 DefNode(CompositorNode, CMP_NODE_CRYPTOMATTE,    def_cmp_cryptomatte,       "CRYPTOMATTE_V2",  CryptomatteV2,    "Cryptomatte",         "Generate matte for individual objects and materials using Cryptomatte render passes")
 DefNode(CompositorNode, CMP_NODE_CRYPTOMATTE_LEGACY, def_cmp_cryptomatte_legacy,"CRYPTOMATTE", Cryptomatte,      "Cryptomatte (Legacy)","Deprecated. Use Cryptomatte Node instead")
