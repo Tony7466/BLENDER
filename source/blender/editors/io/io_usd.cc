@@ -1027,12 +1027,6 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   true,
                   "Create Background Shader",
                   "Convert first discovered USD dome lights to world background shader");
-
-  RNA_def_boolean(ot->srna,
-                  "convert_light_from_nits",
-                  true,
-                  "Convert Light Units from Nits",
-                  "Convert light intensity units from nits");
 }
 
 namespace blender::ed::io {

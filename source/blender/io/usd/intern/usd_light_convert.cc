@@ -12,6 +12,8 @@
 #include <pxr/base/gf/matrix4f.h>
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec3f.h>
+
+#include <pxr/usd/ar/packageUtils.h>
 #include <pxr/usd/usdGeom/scope.h>
 #include <pxr/usd/usdGeom/xformCache.h>
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
@@ -425,7 +427,7 @@ void dome_light_to_world_material(const USDImportParams &params,
  /* Optionally copy the asset if it's inside a USDZ package or has a URI. */
 
  const bool import_textures = params.import_textures_mode != USD_TEX_IMPORT_NONE &&
-                              should_import_asset(tex_path_str);
+                              pxr::ArIsPackageRelativePath(tex_path_str);
 
  std::string imported_file_source_path;
  if (import_textures) {

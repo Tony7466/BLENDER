@@ -5,29 +5,20 @@
 #include "usd_asset_utils.hh"
 #include "usd.hh"
 
-#include <pxr/base/tf/pathUtils.h>
 #include <pxr/usd/ar/asset.h>
 #include <pxr/usd/ar/packageUtils.h>
 #include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/ar/writableAsset.h>
 
 #include "BKE_appdir.hh"
-#include "BKE_idprop.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 
-#include "BLI_fileops.h"
+#include "BLI_fileops.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.hh"
 
-#include "WM_api.hh"
-#include "WM_types.hh"
-
-#include <filesystem>
 #include <string_view>
-
-namespace fs = std::filesystem;
 
 static const char UDIM_PATTERN[] = "<UDIM>";
 static const char UDIM_PATTERN2[] = "%3CUDIM%3E";
@@ -340,82 +331,11 @@ bool is_udim_path(const std::string &path)
          path.find(UDIM_PATTERN2) != std::string::npos;
 }
 
-std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage)
-{
-  pxr::SdfLayerHandle layer = stage->GetRootLayer();
-
-  if (layer->IsAnonymous()) {
-    WM_reportf(
-        RPT_WARNING, "%s: Can't generate a textures directory path for anonymous stage", __func__);
-    return "";
-  }
-
-  pxr::ArResolvedPath stage_path = layer->GetResolvedPath();
-
-  if (stage_path.empty()) {
-    WM_reportf(RPT_WARNING, "%s: Can't get resolved path for stage", __func__);
-    return "";
-  }
-
-  pxr::ArResolver &ar = pxr::ArGetResolver();
-
-  /* Resolove the './textures' relative path, with the stage path as an anchor. */
-  std::string textures_dir = ar.CreateIdentifierForNewAsset("./textures", stage_path);
-
-  /* If parent of the stage path exists as a file system directory, try to create the
-   * textures directory. */
-  if (parent_dir_exists_on_file_system(stage_path.GetPathString().c_str())) {
-    BLI_dir_create_recursive(textures_dir.c_str());
-  }
-
-  return textures_dir;
-}
-
-bool parent_dir_exists_on_file_system(const char *path)
-{
-  char dir_path[FILE_MAX];
-  BLI_path_split_dir_part(path, dir_path, FILE_MAX);
-  return BLI_is_dir(dir_path);
-}
-
-bool should_import_asset(const std::string &path)
-{
-  if (path.empty()) {
-    return false;
-  }
-
-  if (BLI_path_is_rel(path.c_str())) {
-    return false;
-  }
-
-  if (pxr::ArIsPackageRelativePath(path)) {
-    return true;
-  }
-
-  if (is_udim_path(path) && parent_dir_exists_on_file_system(path.c_str())) {
-    return false;
-  }
-
-  return !BLI_is_file(path.c_str()) && asset_exists(path.c_str());
-}
-
-bool paths_equal(const char *p1, const char *p2)
-{
-  BLI_assert_msg(!BLI_path_is_rel(p1) && !BLI_path_is_rel(p2), "Paths arguments must be absolute");
-
-  pxr::ArResolver &ar = pxr::ArGetResolver();
-
-  std::string resolved_p1 = ar.ResolveForNewAsset(p1).GetPathString();
-  std::string resolved_p2 = ar.ResolveForNewAsset(p2).GetPathString();
-
-  return resolved_p1 == resolved_p2;
-}
-
-const char *temp_textures_dir()
+const char* temp_textures_dir()
 {
   static bool inited = false;
 
-  static char temp_dir[FILE_MAXDIR] = {'\0'};
+  static char temp_dir[FILE_MAXDIR] = { '\0' };
 
   if (!inited) {
     BLI_path_join(temp_dir, sizeof(temp_dir), BKE_tempdir_session(), "usd_textures_tmp", SEP_STR);
@@ -423,175 +343,6 @@ const char *temp_textures_dir()
   }
 
   return temp_dir;
-}
-
-bool write_to_path(const void *data, size_t size, const char *path, ReportList *reports)
-{
-  BLI_assert(data);
-  BLI_assert(path);
-  if (size == 0) {
-    return false;
-  }
-
-  pxr::ArResolver &ar = pxr::ArGetResolver();
-  pxr::ArResolvedPath resolved_path = ar.ResolveForNewAsset(path);
-
-  if (resolved_path.IsEmpty()) {
-    BKE_reportf(reports, RPT_ERROR, "Can't resolve path %s for writing", path);
-    return false;
-  }
-
-  std::string why_not;
-  if (!ar.CanWriteAssetToPath(resolved_path, &why_not)) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Can't write to asset %s:  %s",
-                resolved_path.GetPathString().c_str(),
-                why_not.c_str());
-    return false;
-  }
-
-  std::shared_ptr<pxr::ArWritableAsset> dst_asset = ar.OpenAssetForWrite(
-      resolved_path, pxr::ArResolver::WriteMode::Replace);
-  if (!dst_asset) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Can't open destination asset %s for writing",
-                resolved_path.GetPathString().c_str());
-    return false;
-  }
-
-  size_t bytes_written = dst_asset->Write(data, size, 0);
-
-  if (bytes_written == 0) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Error writing to destination asset %s",
-                resolved_path.GetPathString().c_str());
-  }
-
-  if (!dst_asset->Close()) {
-    BKE_reportf(reports,
-                RPT_ERROR,
-                "Couldn't close destination asset %s",
-                resolved_path.GetPathString().c_str());
-    return false;
-  }
-
-  return bytes_written > 0;
-}
-
-std::string get_relative_path(const std::string &path, const std::string &anchor)
-{
-  if (path.empty() || anchor.empty()) {
-    return path;
-  }
-
-  if (path == anchor) {
-    return path;
-  }
-
-  if (BLI_path_is_rel(path.c_str())) {
-    return path;
-  }
-
-  if (pxr::ArIsPackageRelativePath(path)) {
-    return path;
-  }
-
-  if (BLI_is_file(path.c_str()) && BLI_is_file(anchor.c_str())) {
-    /* Treat the paths as standard files. */
-    char rel_path[FILE_MAX];
-    STRNCPY(rel_path, path.c_str());
-    BLI_path_rel(rel_path, anchor.c_str());
-    if (!BLI_path_is_rel(rel_path)) {
-      return path;
-    }
-    BLI_string_replace_char(rel_path, '\\', '/');
-    return rel_path + 2;
-  }
-
-  /* if we got here, the paths may be URIs or files on on the
-   * file system. */
-
-  /* We don't have a library to compute relative paths for URIs
-   * so we use the standard fielsystem calls to do so.  This
-   * may not work for all URIs in theory, but is probably sufficient
-   * for the subset of URIs we are likely to encounter in practice
-   * currently.
-   * TODO(makowalski): provide better utilities for this. */
-
-  pxr::ArResolver &ar = pxr::ArGetResolver();
-
-  std::string resolved_path = ar.Resolve(path);
-  std::string resolved_anchor = ar.Resolve(anchor);
-
-  if (resolved_path.empty() || resolved_anchor.empty()) {
-    return path;
-  }
-
-  std::string prefix = pxr::TfStringGetCommonPrefix(path, anchor);
-  if (prefix.empty()) {
-    return path;
-  }
-
-  std::replace(prefix.begin(), prefix.end(), '\\', '/');
-
-  size_t last_slash_pos = prefix.find_last_of('/');
-  if (last_slash_pos == std::string::npos) {
-    /* Unexpected: The prefix doesn't contain a slash,
-     * so this was not an absolute path. */
-    return path;
-  }
-
-  /* Replace the common prefix up to the last slash with
-   * a fake root directory to allow computing the relative path
-   * excluding the URI.  We omit the URI because it might not
-   * be handled correctly by the standard filesystem path
-   * computaions. */
-  resolved_path = "/root" + resolved_path.substr(last_slash_pos);
-  resolved_anchor = "/root" + resolved_anchor.substr(last_slash_pos);
-
-  fs::path path_obj(resolved_path);
-  fs::path anchor_obj(resolved_anchor);
-
-  anchor_obj = anchor_obj.parent_path();
-
-  if (anchor_obj.empty()) {
-    return path;
-  }
-
-  std::string rel_path = fs::relative(path_obj, anchor_obj).generic_string();
-  if (!rel_path.empty()) {
-    return rel_path;
-  }
-
-  return path;
-}
-
-void USD_path_abs(char *path, const char *basepath, bool for_import)
-{
-  if (!BLI_path_is_rel(path)) {
-    pxr::ArResolvedPath resolved_path = for_import ? pxr::ArGetResolver().Resolve(path) :
-                                                     pxr::ArGetResolver().ResolveForNewAsset(path);
-
-    std::string path_str = resolved_path.GetPathString();
-
-    if (!path_str.empty()) {
-      if (path_str.length() < FILE_MAX) {
-        BLI_strncpy(path, path_str.c_str(), FILE_MAX);
-        return;
-      }
-      WM_reportf(RPT_ERROR,
-                 "In %s: resolved path %s exceeds path buffer length.",
-                 __func__,
-                 path_str.c_str());
-    }
-  }
-
-  /* If we got here, the path couldn't be resolved by the ArResolver, so we
-   * fall back on the standard Blender absolute path resolution. */
-  BLI_path_abs(path, basepath);
 }
 
 }  // namespace blender::io::usd
