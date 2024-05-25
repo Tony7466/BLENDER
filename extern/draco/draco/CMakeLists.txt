@@ -5,12 +5,17 @@
 remove_strict_flags()
 
 set(SRC
+  src/draco/animation/animation.cc
+  src/draco/animation/animation.h
   src/draco/animation/keyframe_animation.cc
   src/draco/animation/keyframe_animation.h
   src/draco/animation/keyframe_animation_decoder.cc
   src/draco/animation/keyframe_animation_decoder.h
   src/draco/animation/keyframe_animation_encoder.cc
   src/draco/animation/keyframe_animation_encoder.h
+  src/draco/animation/node_animation_data.h
+  src/draco/animation/skin.cc
+  src/draco/animation/skin.h
   src/draco/attributes/attribute_octahedron_transform.cc
   src/draco/attributes/attribute_octahedron_transform.h
   src/draco/attributes/attribute_quantization_transform.cc
@@ -125,6 +130,8 @@ set(SRC
   src/draco/compression/config/draco_options.h
   src/draco/compression/config/encoder_options.h
   src/draco/compression/config/encoding_features.h
+  src/draco/compression/draco_compression_options.cc
+  src/draco/compression/draco_compression_options.h
   src/draco/compression/decode.cc
   src/draco/compression/decode.h
   src/draco/compression/encode.cc
@@ -204,6 +211,7 @@ set(SRC
   src/draco/core/bit_utils.h
   src/draco/core/bounding_box.cc
   src/draco/core/bounding_box.h
+  src/draco/core/constants.h
   src/draco/core/cycle_timer.cc
   src/draco/core/cycle_timer.h
   src/draco/core/data_buffer.cc
@@ -226,6 +234,7 @@ set(SRC
   src/draco/core/options.cc
   src/draco/core/options.h
   src/draco/core/quantization_utils.cc
+  src/draco/core/status.cc
   src/draco/core/quantization_utils.h
   src/draco/core/status.h
   src/draco/core/status_or.h
@@ -243,10 +252,17 @@ set(SRC
   src/draco/mesh/mesh_attribute_corner_table.h
   src/draco/mesh/mesh_cleanup.cc
   src/draco/mesh/mesh_cleanup.h
+  src/draco/mesh/mesh_connected_components.h
+  src/draco/mesh/mesh_features.h
+  src/draco/mesh/mesh_indices.h
   src/draco/mesh/mesh_misc_functions.cc
   src/draco/mesh/mesh_misc_functions.h
+  src/draco/mesh/mesh_splitter.cc
+  src/draco/mesh/mesh_splitter.h
   src/draco/mesh/mesh_stripifier.cc
   src/draco/mesh/mesh_stripifier.h
+  src/draco/mesh/mesh_utils.cc
+  src/draco/mesh/mesh_utils.h
   src/draco/mesh/triangle_soup_mesh_builder.cc
   src/draco/mesh/triangle_soup_mesh_builder.h
   src/draco/mesh/valence_cache.h
@@ -258,10 +274,28 @@ set(SRC
   src/draco/metadata/metadata_decoder.h
   src/draco/metadata/metadata_encoder.cc
   src/draco/metadata/metadata_encoder.h
+  src/draco/metadata/property_attribute.h
+  src/draco/metadata/property_table.cc
+  src/draco/metadata/property_table.h
+  src/draco/metadata/structural_metadata_schema.cc
+  src/draco/metadata/structural_metadata_schema.h
+  src/draco/metadata/structural_metadata.cc
+  src/draco/metadata/structural_metadata.h
   src/draco/point_cloud/point_cloud.cc
   src/draco/point_cloud/point_cloud.h
   src/draco/point_cloud/point_cloud_builder.cc
   src/draco/point_cloud/point_cloud_builder.h
+  src/draco/texture/source_image.cc
+  src/draco/texture/source_image.h
+  src/draco/texture/texture.h
+  src/draco/texture/texture_library.cc
+  src/draco/texture/texture_library.h
+  src/draco/texture/texture_map.cc
+  src/draco/texture/texture_map.h
+  src/draco/texture/texture_transform.cc
+  src/draco/texture/texture_transform.h
+  src/draco/texture/texture_utils.cc
+  src/draco/texture/texture_utils.h
 )
 
 set(LIB

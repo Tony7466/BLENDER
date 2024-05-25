@@ -18,8 +18,10 @@
 #define DRACO_COMPRESSION_POINT_CLOUD_ALGORITHMS_DYNAMIC_INTEGER_POINTS_KD_TREE_DECODER_H_
 
 #include <array>
+#include <limits>
 #include <memory>
 #include <stack>
+#include <vector>
 
 #include "draco/compression/bit_coders/adaptive_rans_bit_decoder.h"
 #include "draco/compression/bit_coders/direct_bit_decoder.h"
@@ -92,16 +94,28 @@ class DynamicIntegerPointsKdTreeDecoder {
         base_stack_(32 * dimension + 1, VectorUint32(dimension, 0)),
         levels_stack_(32 * dimension + 1, VectorUint32(dimension, 0)) {}
 
-  // Decodes a integer point cloud from |buffer|.
+  // Decodes an integer point cloud from |buffer|. Optional |oit_max_points| can
+  // be used to tell the decoder the maximum number of points accepted by the
+  // iterator.
   template <class OutputIteratorT>
   bool DecodePoints(DecoderBuffer *buffer, OutputIteratorT &oit);
+
+  template <class OutputIteratorT>
+  bool DecodePoints(DecoderBuffer *buffer, OutputIteratorT &oit,
+                    uint32_t oit_max_points);
 
 #ifndef DRACO_OLD_GCC
   template <class OutputIteratorT>
   bool DecodePoints(DecoderBuffer *buffer, OutputIteratorT &&oit);
+  template <class OutputIteratorT>
+  bool DecodePoints(DecoderBuffer *buffer, OutputIteratorT &&oit,
+                    uint32_t oit_max_points);
 #endif  // DRACO_OLD_GCC
 
   const uint32_t dimension() const { return dimension_; }
+
+  // Returns the number of decoded points. Must be called after DecodePoints().
+  uint32_t num_decoded_points() const { return num_decoded_points_; }
 
  private:
   uint32_t GetAxis(uint32_t num_remaining_points, const VectorUint32 &levels,
@@ -146,8 +160,15 @@ template <int compression_level_t>
 template <class OutputIteratorT>
 bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodePoints(
     DecoderBuffer *buffer, OutputIteratorT &&oit) {
+  return DecodePoints(buffer, oit, std::numeric_limits<uint32_t>::max());
+}
+
+template <int compression_level_t>
+template <class OutputIteratorT>
+bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodePoints(
+    DecoderBuffer *buffer, OutputIteratorT &&oit, uint32_t oit_max_points) {
   OutputIteratorT local = std::forward<OutputIteratorT>(oit);
-  return DecodePoints(buffer, local);
+  return DecodePoints(buffer, local, oit_max_points);
 }
 #endif  // DRACO_OLD_GCC
 
@@ -155,6 +176,13 @@ template <int compression_level_t>
 template <class OutputIteratorT>
 bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodePoints(
     DecoderBuffer *buffer, OutputIteratorT &oit) {
+  return DecodePoints(buffer, oit, std::numeric_limits<uint32_t>::max());
+}
+
+template <int compression_level_t>
+template <class OutputIteratorT>
+bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodePoints(
+    DecoderBuffer *buffer, OutputIteratorT &oit, uint32_t oit_max_points) {
   if (!buffer->Decode(&bit_length_)) {
     return false;
   }
@@ -166,6 +194,9 @@ bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodePoints(
   }
   if (num_points_ == 0) {
     return true;
+  }
+  if (num_points_ > oit_max_points) {
+    return false;
   }
   num_decoded_points_ = 0;
 
@@ -274,8 +305,10 @@ bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodeInternal(
           p_[axes_[j]] = 0;
           const uint32_t num_remaining_bits = bit_length_ - levels[axes_[j]];
           if (num_remaining_bits) {
-            remaining_bits_decoder_.DecodeLeastSignificantBits32(
-                num_remaining_bits, &p_[axes_[j]]);
+            if (!remaining_bits_decoder_.DecodeLeastSignificantBits32(
+                    num_remaining_bits, &p_[axes_[j]])) {
+              return false;
+            }
           }
           p_[axes_[j]] = old_base[axes_[j]] | p_[axes_[j]];
         }
@@ -300,7 +333,12 @@ bool DynamicIntegerPointsKdTreeDecoder<compression_level_t>::DecodeInternal(
     uint32_t number = 0;
     DecodeNumber(incoming_bits, &number);
 
-    uint32_t first_half = num_remaining_points / 2 - number;
+    uint32_t first_half = num_remaining_points / 2;
+    if (first_half < number) {
+      // Invalid |number|.
+      return false;
+    }
+    first_half -= number;
     uint32_t second_half = num_remaining_points - first_half;
 
     if (first_half != second_half) {

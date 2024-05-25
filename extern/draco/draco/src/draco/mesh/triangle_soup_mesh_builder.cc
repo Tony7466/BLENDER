@@ -14,6 +14,8 @@
 //
 #include "draco/mesh/triangle_soup_mesh_builder.h"
 
+#include <string>
+
 namespace draco {
 
 void TriangleSoupMeshBuilder::Start(int num_faces) {
@@ -23,11 +25,23 @@ void TriangleSoupMeshBuilder::Start(int num_faces) {
   attribute_element_types_.clear();
 }
 
+#ifdef DRACO_TRANSCODER_SUPPORTED
+void TriangleSoupMeshBuilder::SetName(const std::string &name) {
+  mesh_->SetName(name);
+}
+#endif  // DRACO_TRANSCODER_SUPPORTED
+
 int TriangleSoupMeshBuilder::AddAttribute(
     GeometryAttribute::Type attribute_type, int8_t num_components,
     DataType data_type) {
+  return AddAttribute(attribute_type, num_components, data_type, false);
+}
+
+int TriangleSoupMeshBuilder::AddAttribute(
+    GeometryAttribute::Type attribute_type, int8_t num_components,
+    DataType data_type, bool normalized) {
   GeometryAttribute va;
-  va.Init(attribute_type, nullptr, num_components, data_type, false,
+  va.Init(attribute_type, nullptr, num_components, data_type, normalized,
           DataTypeLength(data_type) * num_components, 0);
   attribute_element_types_.push_back(-1);
   return mesh_->AddAttribute(va, true, mesh_->num_points());
@@ -83,5 +97,17 @@ std::unique_ptr<Mesh> TriangleSoupMeshBuilder::Finalize() {
   }
   return std::move(mesh_);
 }
+
+void TriangleSoupMeshBuilder::SetAttributeUniqueId(int att_id,
+                                                   uint32_t unique_id) {
+  mesh_->attribute(att_id)->set_unique_id(unique_id);
+}
+
+#ifdef DRACO_TRANSCODER_SUPPORTED
+void TriangleSoupMeshBuilder::SetAttributeName(int att_id,
+                                               const std::string &name) {
+  mesh_->attribute(att_id)->set_name(name);
+}
+#endif  // DRACO_TRANSCODER_SUPPORTED
 
 }  // namespace draco
