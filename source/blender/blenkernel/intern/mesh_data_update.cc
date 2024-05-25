@@ -894,28 +894,28 @@ static void editbmesh_build_data(Depsgraph &depsgraph,
    * with is in edit mode).
    * Convert edit mesh to mesh until the draw manager can draw mesh wrapper which is not in the
    * edit mode. */
-  if (!(obedit.mode & OB_MODE_EDIT)) {
-    MeshEditHints &edit_hints =
-        *geometry_set.get_component_for_write<GeometryComponentEditData>().mesh_edit_hints_;
-    const bool cage_mesh_shared = edit_hints.mesh_cage->get() == geometry_set.get_mesh();
-    Mesh *mesh = geometry_set.get_mesh_for_write();
-    BKE_mesh_wrapper_ensure_mdata(mesh);
-    if (cage_mesh_shared) {
-      save_cage_mesh(geometry_set);
-    }
-    else {
-      if (edit_hints.mesh_cage->is_mutable()) {
-        edit_hints.mesh_cage->tag_ensured_mutable();
-      }
-      else {
-        Mesh *mesh_copy = BKE_mesh_copy_for_eval(*edit_hints.mesh_cage->get());
-        MeshComponent *copy = new MeshComponent(mesh_copy);
-        edit_hints.mesh_cage = ImplicitSharingPtr<MeshComponent>(copy);
-      }
-      Mesh *mesh_cage = const_cast<MeshComponent &>(*edit_hints.mesh_cage).get_for_write();
-      BKE_mesh_wrapper_ensure_mdata(mesh_cage);
-    }
-  }
+  // if (!(obedit.mode & OB_MODE_EDIT)) {
+  //   MeshEditHints &edit_hints =
+  //       *geometry_set.get_component_for_write<GeometryComponentEditData>().mesh_edit_hints_;
+  //   const bool cage_mesh_shared = edit_hints.mesh_cage->get() == geometry_set.get_mesh();
+  //   Mesh *mesh = geometry_set.get_mesh_for_write();
+  //   BKE_mesh_wrapper_ensure_mdata(mesh);
+  //   if (cage_mesh_shared) {
+  //     save_cage_mesh(geometry_set);
+  //   }
+  //   else {
+  //     if (edit_hints.mesh_cage->is_mutable()) {
+  //       edit_hints.mesh_cage->tag_ensured_mutable();
+  //     }
+  //     else {
+  //       Mesh *mesh_copy = BKE_mesh_copy_for_eval(*edit_hints.mesh_cage->get());
+  //       MeshComponent *copy = new MeshComponent(mesh_copy);
+  //       edit_hints.mesh_cage = ImplicitSharingPtr<MeshComponent>(copy);
+  //     }
+  //     Mesh *mesh_cage = const_cast<MeshComponent &>(*edit_hints.mesh_cage).get_for_write();
+  //     BKE_mesh_wrapper_ensure_mdata(mesh_cage);
+  //   }
+  // }
 
   Mesh *mesh_final = const_cast<Mesh *>(geometry_set.get_mesh());
 
