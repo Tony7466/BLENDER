@@ -139,6 +139,7 @@ set(SRC
   intern/geometry_component_instances.cc
   intern/geometry_component_mesh.cc
   intern/geometry_component_pointcloud.cc
+  intern/geometry_component_rigid_body.cc
   intern/geometry_component_volume.cc
   intern/geometry_fields.cc
   intern/geometry_set.cc

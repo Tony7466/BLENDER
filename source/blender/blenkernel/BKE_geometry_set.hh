@@ -26,6 +26,7 @@ struct Mesh;
 struct PointCloud;
 struct Volume;
 struct GreasePencil;
+struct RigidBodyWorld;
 namespace blender::bke {
 class AnonymousAttributePropagationInfo;
 class AttributeIDRef;
@@ -43,12 +44,13 @@ enum class AttrDomain : int8_t;
 
 namespace blender::bke {
 
-#define GEO_COMPONENT_TYPE_ENUM_SIZE 7
+#define GEO_COMPONENT_TYPE_ENUM_SIZE 8
 
 enum class GeometryOwnershipType {
   /* The geometry is owned. This implies that it can be changed. */
   Owned = 0,
-  /* The geometry can be changed, but someone else is responsible for freeing it. */
+  /* The geometry can be changed, but someone else isGEO_COMPONENT_TYPE_ENUM_SIZE responsible for
+     freeing it. */
   Editable = 1,
   /* The geometry cannot be changed and someone else is responsible for freeing it. */
   ReadOnly = 2,
@@ -77,6 +79,7 @@ class GeometryComponent : public ImplicitSharingMixin {
     Curve = 4,
     Edit = 5,
     GreasePencil = 6,
+    RigidBody = 7,
   };
 
  private:
@@ -755,6 +758,44 @@ class GreasePencilComponent : public GeometryComponent {
 
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
+};
+
+/**
+ * Geometry component for non-persistent simulation state.
+ */
+class RigidBodyComponent : public GeometryComponent {
+ private:
+  RigidBodyWorld *rigid_body_world_ = nullptr;
+  GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
+
+ public:
+  RigidBodyComponent();
+  RigidBodyComponent(RigidBodyWorld *rigid_body_world,
+                     GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  ~RigidBodyComponent();
+  GeometryComponentPtr copy() const override;
+
+  void clear() override;
+  bool has_rigid_body_world() const;
+  /**
+   * Clear the component and replace it with the new simulation state.
+   */
+  void replace(RigidBodyWorld *rigid_body_world,
+               GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  RigidBodyWorld *release();
+
+  const RigidBodyWorld *get() const;
+  RigidBodyWorld *get_for_write();
+
+  bool is_empty() const final;
+
+  bool owns_direct_data() const override;
+  void ensure_owns_direct_data() override;
+
+  std::optional<AttributeAccessor> attributes() const final;
+  std::optional<MutableAttributeAccessor> attributes_for_write() final;
+
+  static constexpr inline GeometryComponent::Type static_type = Type::RigidBody;
 };
 
 }  // namespace blender::bke
