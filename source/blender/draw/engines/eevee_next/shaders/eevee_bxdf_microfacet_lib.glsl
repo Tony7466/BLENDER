@@ -381,7 +381,8 @@ ClosureLight bxdf_ggx_light_transmission(ClosureRefraction cl, vec3 V, float thi
   float cos_theta = dot(-cl.N, R);
 
   ClosureLight light;
-  light.ltc_mat = utility_tx_sample_lut(utility_tx, cos_theta, cl.roughness, UTIL_LTC_MAT_LAYER);
+  light.ltc_mat = utility_tx_sample_lut(
+      utility_tx, cos_theta, perceptual_roughness, UTIL_LTC_MAT_LAYER);
   light.N = -cl.N;
   light.type = LIGHT_TRANSMISSION;
   return light;
