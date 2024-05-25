@@ -15,6 +15,9 @@ CornerPinNode::CornerPinNode(bNode *editor_node) : Node(editor_node) {}
 void CornerPinNode::convert_to_operations(NodeConverter &converter,
                                           const CompositorContext & /*context*/) const
 {
+  const bNode *bnode = this->get_bnode();
+  const NodeCornerPinData *data = (const NodeCornerPinData *)bnode->storage;
+
   PlaneCornerPinMaskOperation *plane_mask_operation = new PlaneCornerPinMaskOperation();
   converter.add_operation(plane_mask_operation);
 
@@ -29,6 +32,18 @@ void CornerPinNode::convert_to_operations(NodeConverter &converter,
   PlaneCornerPinWarpImageOperation *warp_image_operation = new PlaneCornerPinWarpImageOperation();
   converter.add_operation(warp_image_operation);
   converter.map_input_socket(this->get_input_socket(0), warp_image_operation->get_input_socket(0));
+
+  switch (data->interpolation) {
+    case CMP_NODE_INTERPOLATION_NEAREST:
+      warp_image_operation->set_sampler(PixelSampler::Nearest);
+      break;
+    case CMP_NODE_INTERPOLATION_BILINEAR:
+      warp_image_operation->set_sampler(PixelSampler::Bilinear);
+      break;
+    case CMP_NODE_INTERPOLATION_BICUBIC:
+      warp_image_operation->set_sampler(PixelSampler::Bicubic);
+      break;
+  }
 
   /* NOTE: socket order differs between UI node and operations:
    * bNode uses intuitive order following top-down layout:

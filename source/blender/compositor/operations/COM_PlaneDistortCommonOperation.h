@@ -48,6 +48,9 @@ class PlaneDistortBaseOperation : public MultiThreadedOperation {
 };
 
 class PlaneDistortWarpImageOperation : public PlaneDistortBaseOperation {
+private:
+  PixelSampler sampler_;
+
  public:
   PlaneDistortWarpImageOperation();
 
@@ -57,6 +60,14 @@ class PlaneDistortWarpImageOperation : public PlaneDistortBaseOperation {
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;
+  PixelSampler get_sampler()
+  {
+    return sampler_;
+  }
+  void set_sampler(PixelSampler sampler)
+  {
+    sampler_ = sampler;
+  }
 };
 
 class PlaneDistortMaskOperation : public PlaneDistortBaseOperation {

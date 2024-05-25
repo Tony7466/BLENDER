@@ -99,7 +99,7 @@ void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *
   if (motion_blur_samples_ == 1) {
     for (; !it.is_end(); ++it) {
       warp_coord(it.x, it.y, samples_[0].perspective_matrix, uv, deriv);
-      input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], true, it.out);
+      input_img->read_elem_sampled(uv[0], uv[1], this->sampler_, it.out);
     }
   }
   else {
@@ -108,7 +108,7 @@ void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *
       for (const int sample : IndexRange(motion_blur_samples_)) {
         float color[4];
         warp_coord(it.x, it.y, samples_[sample].perspective_matrix, uv, deriv);
-        input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], true, color);
+        input_img->read_elem_sampled(uv[0], uv[1], this->sampler_, color);
         add_v4_v4(it.out, color);
       }
       mul_v4_fl(it.out, 1.0f / float(motion_blur_samples_));

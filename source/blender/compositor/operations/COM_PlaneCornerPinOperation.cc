@@ -125,10 +125,12 @@ void PlaneCornerPinMaskOperation::get_area_of_interest(const int /*input_idx*/,
 
 PlaneCornerPinWarpImageOperation::PlaneCornerPinWarpImageOperation()
 {
-  add_input_socket(DataType::Vector);
-  add_input_socket(DataType::Vector);
-  add_input_socket(DataType::Vector);
-  add_input_socket(DataType::Vector);
+  this->add_input_socket(DataType::Vector);
+  this->add_input_socket(DataType::Vector);
+  this->add_input_socket(DataType::Vector);
+  this->add_input_socket(DataType::Vector);
+
+  this->set_sampler(PixelSampler::Nearest);
 }
 
 void PlaneCornerPinWarpImageOperation::init_data()
