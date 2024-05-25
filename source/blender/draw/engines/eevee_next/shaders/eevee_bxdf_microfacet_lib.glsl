@@ -332,7 +332,8 @@ void bxdf_ggx_context_amend_transmission(inout ClosureUndetermined cl,
 {
   if (thickness != 0.0) {
     ClosureRefraction bsdf = to_closure_refraction(cl);
-    vec3 L = refraction_dominant_dir(bsdf.N, V, bsdf.ior, bsdf.roughness);
+    float perceptual_roughness = bxdf_ggx_perceived_roughness_transmission(cl.roughness, cl.ior);
+    vec3 L = bxdf_ggx_dominant_direction_transmission(bsdf.N, V, bsdf.ior, perceptual_roughness);
     cl.N = -thickness_shape_intersect(thickness, bsdf.N, L).hit_N;
     V = -L;
   }
@@ -342,7 +343,8 @@ Ray bxdf_ggx_ray_amend_transmission(ClosureUndetermined cl, vec3 V, Ray ray, flo
 {
   if (thickness != 0.0) {
     ClosureRefraction bsdf = to_closure_refraction(cl);
-    vec3 L = refraction_dominant_dir(bsdf.N, V, bsdf.ior, bsdf.roughness);
+    float perceptual_roughness = bxdf_ggx_perceived_roughness_transmission(cl.roughness, cl.ior);
+    vec3 L = bxdf_ggx_dominant_direction_transmission(bsdf.N, V, bsdf.ior, perceptual_roughness);
     ray.origin += thickness_shape_intersect(thickness, bsdf.N, L).hit_P;
   }
   return ray;
