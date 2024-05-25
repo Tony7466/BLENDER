@@ -319,18 +319,19 @@ vec3 shadow_pcf_offset(vec3 L, vec3 Ng, vec2 random)
   /* Angle between Light and normal. */
   float cos_theta = abs(dot(L, Ng));
   float sin_theta = sin_from_cos(cos_theta);
-  /* Slope of the receiver plane with respect to light direction. */
-  float receiver_slope = saturate(sin_theta / min(cos_theta, M_SQRT1_2));
+  /* Slope of the receiver plane with respect to light direction. Equal to `tan(theta)`.
+   * Stop at 45° angle to avoid large bias and peter panning artifacts. */
+  float cone_height = saturate(sin_theta * safe_rcp(cos_theta));
   /* We choose a random disk distribution because it is rotationally invariant.
-   * This sames us the trouble of getting the correct orientation for punctual. */
-  vec2 disk_sample = sample_disk(random);
-  /* Set the samples as *on* a cone up to 45 degree. */
-  vec3 cone_sample = vec3(disk_sample, length(disk_sample) * receiver_slope);
-  /* Compute the offset as a disk around the normal. */
-  mat3x3 light_to_world = from_up_axis(L);
-  /* Offset the disk in normal direction*/
-  vec3 pcf_offset = light_to_world * cone_sample;
-  pcf_offset += Ng * (1.0 - sin_theta);
+   * This saves us the trouble of getting the correct orientation for punctual. */
+  float distance_to_center = sqrt(random.x);
+  vec2 disk_sample = sample_circle(random.y) * distance_to_center;
+  /* Set the samples on a cone up to 45 degree. */
+  vec3 cone_sample = vec3(disk_sample, distance_to_center * cone_height);
+  /* Setup the cone around the light vector. */
+  vec3 pcf_offset = from_up_axis(L) * cone_sample;
+  /* Offset the cone in normal direction to avoid self shadowing when angle is greater than 45°. */
+  pcf_offset += Ng * saturate(sin_theta - cos_theta);
   return pcf_offset;
 }
 
