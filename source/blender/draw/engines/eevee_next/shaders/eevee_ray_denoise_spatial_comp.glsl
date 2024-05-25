@@ -58,15 +58,8 @@ void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
                                           float thickness)
 {
   switch (cl.type) {
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      float ior = to_closure_refraction(cl).ior;
-      float roughness = to_closure_refraction(cl).roughness;
-      float apparent_roughness = refraction_roughness_remapping(roughness, ior);
-      vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
-      cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
-      V = -L;
-    } break;
-    default:
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      bxdf_ggx_context_amend_transmission(cl, V, thickness);
       break;
   }
 }
