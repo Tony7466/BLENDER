@@ -257,23 +257,24 @@ BsdfEval bxdf_ggx_eval_transmission(
   return bxdf_ggx_eval(N, L, V, alpha, ior, false);
 }
 
+/**
+ * `roughness` is expected to be the linear (from UI) roughness.
+ */
 float bxdf_ggx_perceived_roughness_reflection(float roughness)
 {
   return roughness;
 }
 
-/* Return the equivalent reflective roughness resulting in a similar lobe. */
+/**
+ * Return the equivalent reflective roughness resulting in a similar lobe.
+ * `roughness` is expected to be the linear (from UI) roughness.
+ */
 float bxdf_ggx_perceived_roughness_transmission(float roughness, float ior)
 {
   /* This is a very rough mapping used by manually curve fitting the apparent roughness
    * (blurriness) of GGX reflections and GGX refraction.
    * A better fit is desirable if it is in the same order of complexity.  */
-  if (ior > 1.0) {
-    return roughness * sqrt_fast(1.0 - 1.0 / ior);
-  }
-  else {
-    return roughness * sqrt_fast(saturate(1.0 - ior)) * 0.8;
-  }
+  return roughness * sqrt_fast((ior > 1.0) ? (1.0 - 1.0 / ior) : (saturate(1.0 - ior) * 0.64));
 }
 
 /**
@@ -295,12 +296,13 @@ vec3 bxdf_ggx_dominant_direction_reflection(vec3 N, vec3 V, float roughness)
 
 /**
  * Returns the dominant direction for one transmission event.
- * `roughness` is expected to be the reflection roughness from `refraction_roughness_remapping`.
+ * `roughness` is expected to be the reflection roughness from
+ * `bxdf_ggx_perceived_roughness_transmission`.
  */
 vec3 bxdf_ggx_dominant_direction_transmission(vec3 N, vec3 V, float ior, float roughness)
 {
-  /* Reusing same thing as reflection_dominant_dir for now with the roughness mapped to
-   * reflection roughness. */
+  /* Reusing same thing as bxdf_ggx_dominant_direction_reflection for now with the roughness mapped
+   * to reflection roughness. */
   float m = square(roughness);
   vec3 R = refract(-V, N, 1.0 / ior);
   float smoothness = 1.0 - m;
@@ -332,8 +334,9 @@ void bxdf_ggx_context_amend_transmission(inout ClosureUndetermined cl,
 {
   if (thickness != 0.0) {
     ClosureRefraction bsdf = to_closure_refraction(cl);
-    float perceptual_roughness = bxdf_ggx_perceived_roughness_transmission(cl.roughness, cl.ior);
-    vec3 L = bxdf_ggx_dominant_direction_transmission(bsdf.N, V, bsdf.ior, perceptual_roughness);
+    float perceived_roughness = bxdf_ggx_perceived_roughness_transmission(bsdf.roughness,
+                                                                          bsdf.ior);
+    vec3 L = bxdf_ggx_dominant_direction_transmission(bsdf.N, V, bsdf.ior, perceived_roughness);
     cl.N = -thickness_shape_intersect(thickness, bsdf.N, L).hit_N;
     V = -L;
   }
@@ -343,8 +346,9 @@ Ray bxdf_ggx_ray_amend_transmission(ClosureUndetermined cl, vec3 V, Ray ray, flo
 {
   if (thickness != 0.0) {
     ClosureRefraction bsdf = to_closure_refraction(cl);
-    float perceptual_roughness = bxdf_ggx_perceived_roughness_transmission(cl.roughness, cl.ior);
-    vec3 L = bxdf_ggx_dominant_direction_transmission(bsdf.N, V, bsdf.ior, perceptual_roughness);
+    float perceived_roughness = bxdf_ggx_perceived_roughness_transmission(bsdf.roughness,
+                                                                          bsdf.ior);
+    vec3 L = bxdf_ggx_dominant_direction_transmission(bsdf.N, V, bsdf.ior, perceived_roughness);
     ray.origin += thickness_shape_intersect(thickness, bsdf.N, L).hit_P;
   }
   return ray;
