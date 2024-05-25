@@ -23,24 +23,21 @@ ccl_device_inline float area_light_rect_sample(float3 P,
                                                const float2 rand,
                                                bool sample_coord)
 {
-  /* In our name system we're using P for the center, which is o in the paper. */
-  float3 corner = *light_p - axis_u * len_u * 0.5f - axis_v * len_v * 0.5f;
   /* Compute local reference system R. */
   float3 x = axis_u;
   float3 y = axis_v;
   float3 z = cross(x, y);
   /* Compute rectangle coords in local reference system. */
-  float3 dir = corner - P;
+  float3 dir = *light_p - P;
   float z0 = dot(dir, z);
   /* Flip 'z' to make it point against Q. */
   if (z0 > 0.0f) {
     z *= -1.0f;
     z0 *= -1.0f;
   }
-  float x0 = dot(dir, x);
-  float y0 = dot(dir, y);
-  float x1 = x0 + len_u;
-  float y1 = y0 + len_v;
+  float xc = dot(dir, x), yc = dot(dir, y);
+  float x0 = xc - 0.5f * len_u, x1 = xc + 0.5f * len_u;
+  float y0 = yc - 0.5f * len_v, y1 = yc + 0.5f * len_v;
   /* Compute predefined constants. */
   float4 diff = make_float4(x0, y1, x1, y0) - make_float4(x1, y0, x0, y1);
   float4 nz = make_float4(y0, x1, y1, x0) * diff;
@@ -73,14 +70,11 @@ ccl_device_inline float area_light_rect_sample(float3 P,
     float xu = -(cu * z0) / max(sqrtf(1.0f - cu * cu), 1e-7f);
     xu = clamp(xu, x0, x1);
     /* Compute yv. */
-    float z0sq = z0 * z0;
-    float y0sq = y0 * y0;
-    float y1sq = y1 * y1;
-    float d = sqrtf(xu * xu + z0sq);
-    float h0 = y0 / sqrtf(d * d + y0sq);
-    float h1 = y1 / sqrtf(d * d + y1sq);
+    float d2 = sqr(xu) + sqr(z0);
+    float h0 = y0 / sqrtf(d2 + sqr(y0));
+    float h1 = y1 / sqrtf(d2 + sqr(y1));
     float hv = h0 + rand.y * (h1 - h0), hv2 = hv * hv;
-    float yv = (hv2 < 1.0f - 1e-6f) ? (hv * d) / sqrtf(1.0f - hv2) : y1;
+    float yv = (hv2 < 1.0f - 1e-6f) ? hv * sqrtf(d2 / (1.0f - hv2)) : y1;
 
     /* Transform (xu, yv, z0) to world coords. */
     *light_p = P + xu * x + yv * y + z0 * z;
