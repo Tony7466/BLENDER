@@ -734,27 +734,30 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
     }
 
     ScopedModifierTimer modifier_timer{*md};
-    Mesh *mesh = geometry_set.get_mesh_for_write();
 
     /* Add an orco mesh as layer if needed by this modifier. */
     if (mesh_orco && mti->required_data_mask) {
       CustomData_MeshMasks mask = {0};
       mti->required_data_mask(md, &mask);
       if (mask.vmask & CD_MASK_ORCO) {
-        add_orco_mesh(ob, &em_input, *mesh, mesh_orco, CD_ORCO);
+        if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+          add_orco_mesh(ob, &em_input, *mesh, mesh_orco, CD_ORCO);
+        }
       }
     }
 
     if (mti->type == ModifierTypeType::OnlyDeform) {
-      if (mti->deform_verts_EM) {
-        BKE_modifier_deform_vertsEM(
-            md, &mectx, &em_input, mesh, mesh_wrapper_vert_coords_ensure_for_write(mesh));
-        BKE_mesh_wrapper_tag_positions_changed(mesh);
-      }
-      else {
-        BKE_mesh_wrapper_ensure_mdata(mesh);
-        BKE_modifier_deform_verts(md, &mectx, mesh, mesh->vert_positions_for_write());
-        mesh->tag_positions_changed();
+      if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+        if (mti->deform_verts_EM) {
+          BKE_modifier_deform_vertsEM(
+              md, &mectx, &em_input, mesh, mesh_wrapper_vert_coords_ensure_for_write(mesh));
+          BKE_mesh_wrapper_tag_positions_changed(mesh);
+        }
+        else {
+          BKE_mesh_wrapper_ensure_mdata(mesh);
+          BKE_modifier_deform_verts(md, &mectx, mesh, mesh->vert_positions_for_write());
+          mesh->tag_positions_changed();
+        }
       }
     }
     else {
@@ -812,7 +815,7 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph &depsgraph,
     }
 
     if (i == cageIndex) {
-      blender::bke::save_cage_mesh(geometry_set);
+      save_cage_mesh(geometry_set);
     }
   }
 
