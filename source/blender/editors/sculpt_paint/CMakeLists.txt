@@ -42,7 +42,23 @@ set(SRC
   curves_sculpt_snake_hook.cc
   grease_pencil_draw_ops.cc
   grease_pencil_erase.cc
+  grease_pencil_fill.cc
   grease_pencil_paint.cc
+  grease_pencil_sculpt_clone.cc
+  grease_pencil_sculpt_common.cc
+  grease_pencil_sculpt_grab.cc
+  grease_pencil_sculpt_pinch.cc
+  grease_pencil_sculpt_push.cc
+  grease_pencil_sculpt_randomize.cc
+  grease_pencil_sculpt_smooth.cc
+  grease_pencil_sculpt_strength.cc
+  grease_pencil_sculpt_thickness.cc
+  grease_pencil_sculpt_twist.cc
+  grease_pencil_tint.cc
+  grease_pencil_weight_average.cc
+  grease_pencil_weight_blur.cc
+  grease_pencil_weight_draw.cc
+  grease_pencil_weight_smear.cc
   paint_canvas.cc
   paint_cursor.cc
   paint_curve.cc
@@ -83,13 +99,16 @@ set(SRC
   sculpt_paint_color.cc
   sculpt_paint_image.cc
   sculpt_pose.cc
+  sculpt_project.cc
   sculpt_smooth.cc
   sculpt_transform.cc
+  sculpt_trim.cc
   sculpt_undo.cc
   sculpt_uv.cc
 
   curves_sculpt_intern.hh
   grease_pencil_intern.hh
+  grease_pencil_weight_paint.hh
   paint_intern.hh
   sculpt_intern.hh
 )
@@ -130,7 +149,12 @@ if(WITH_GTESTS)
   blender_add_test_suite_lib(editor_sculpt_paint "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
 endif()
 
-blender_add_lib(bf_editor_sculpt_paint "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+# If compiling with msvc clang we need to add the D_LIBCPP_VERSION define
+# so we don't run into tbb errors when compiling with lib
+if(WITH_TBB AND MSVC_CLANG)
+  string(APPEND CMAKE_CXX_FLAGS " /D_LIBCPP_VERSION")
+endif()
 
+blender_add_lib(bf_editor_sculpt_paint "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 # RNA_prototypes.h
 add_dependencies(bf_editor_sculpt_paint bf_rna)

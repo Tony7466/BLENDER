@@ -11,7 +11,7 @@
 
 #include "DNA_userdef_types.h" /* For `U.glreslimit`. */
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "gpu_context_private.hh"
 
@@ -160,11 +160,6 @@ bool GPU_use_hq_normals_workaround()
 bool GPU_clear_viewport_workaround()
 {
   return GCaps.clear_viewport_workaround;
-}
-
-bool GPU_compute_shader_support()
-{
-  return GCaps.compute_shader_support;
 }
 
 bool GPU_geometry_shader_support()

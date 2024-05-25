@@ -11,8 +11,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_vec_types.h"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_domain.hh"
 #include "COM_render_context.hh"
@@ -80,7 +80,7 @@ class Context {
   /* Get the texture where the result of the compositor viewer should be written, given the domain
    * of the result to be viewed. This should be called by viewer output nodes to get their target
    * texture. */
-  virtual GPUTexture *get_viewer_output_texture(Domain domain) = 0;
+  virtual GPUTexture *get_viewer_output_texture(Domain domain, bool is_data) = 0;
 
   /* Get the texture where the given render pass is stored. This should be called by the Render
    * Layer node to populate its outputs. */
@@ -111,6 +111,10 @@ class Context {
    * the current render. It might be null if the compositor is not being evaluated as part of a
    * render pipeline. */
   virtual RenderContext *render_context() const;
+
+  /* Gets called after the evaluation of each compositor operation. See overrides for possible
+   * uses. */
+  virtual void evaluate_operation_post() const;
 
   /* Returns true if the compositor evaluation is canceled and that the evaluator should stop
    * executing as soon as possible. */

@@ -18,6 +18,7 @@
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_rect.h"
 #include "BLI_vector.hh"
 
 #include "BKE_context.hh"
@@ -36,7 +37,7 @@
 
 namespace blender::ed::sculpt_paint::gesture {
 
-void operator_properties(wmOperatorType *ot)
+void operator_properties(wmOperatorType *ot, ShapeType shapeType)
 {
   RNA_def_boolean(ot->srna,
                   "use_front_faces_only",
@@ -44,27 +45,28 @@ void operator_properties(wmOperatorType *ot)
                   "Front Faces Only",
                   "Affect only faces facing towards the view");
 
-  RNA_def_boolean(ot->srna,
-                  "use_limit_to_segment",
-                  false,
-                  "Limit to Segment",
-                  "Apply the gesture action only to the area that is contained within the "
-                  "segment without extending its effect to the entire line");
+  if (shapeType == ShapeType::Line) {
+    RNA_def_boolean(ot->srna,
+                    "use_limit_to_segment",
+                    false,
+                    "Limit to Segment",
+                    "Apply the gesture action only to the area that is contained within the "
+                    "segment without extending its effect to the entire line");
+  }
 }
 
 static void init_common(bContext *C, wmOperator *op, GestureData &gesture_data)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   gesture_data.vc = ED_view3d_viewcontext_init(C, depsgraph);
-  Object *ob = gesture_data.vc.obact;
+  Object &ob = *gesture_data.vc.obact;
 
   /* Operator properties. */
   gesture_data.front_faces_only = RNA_boolean_get(op->ptr, "use_front_faces_only");
-  gesture_data.line.use_side_planes = RNA_boolean_get(op->ptr, "use_limit_to_segment");
   gesture_data.selection_type = SelectionType::Inside;
 
   /* SculptSession */
-  gesture_data.ss = ob->sculpt;
+  gesture_data.ss = ob.sculpt;
 
   /* Symmetry. */
   gesture_data.symm = ePaintSymmetryFlags(SCULPT_mesh_symmetry_xyz_get(ob));
@@ -75,7 +77,7 @@ static void init_common(bContext *C, wmOperator *op, GestureData &gesture_data)
   copy_m3_m4(mat, gesture_data.vc.rv3d->viewinv);
   mul_m3_v3(mat, view_dir);
   normalize_v3_v3(gesture_data.world_space_view_normal, view_dir);
-  copy_m3_m4(mat, ob->world_to_object().ptr());
+  copy_m3_m4(mat, ob.world_to_object().ptr());
   mul_m3_v3(mat, view_dir);
   normalize_v3_v3(gesture_data.true_view_normal, view_dir);
 
@@ -93,6 +95,11 @@ static void lasso_px_cb(int x, int x_end, int y, void *user_data)
   do {
     lasso->mask_px[index].set();
   } while (++index != index_end);
+}
+
+std::unique_ptr<GestureData> init_from_polyline(bContext *C, wmOperator *op)
+{
+  return init_from_lasso(C, op);
 }
 
 std::unique_ptr<GestureData> init_from_lasso(bContext *C, wmOperator *op)
@@ -219,6 +226,7 @@ std::unique_ptr<GestureData> init_from_line(bContext *C, wmOperator *op)
 {
   std::unique_ptr<GestureData> gesture_data = std::make_unique<GestureData>();
   gesture_data->shape_type = ShapeType::Line;
+  gesture_data->line.use_side_planes = RNA_boolean_get(op->ptr, "use_limit_to_segment");
 
   init_common(C, op, *gesture_data);
 
@@ -227,6 +235,12 @@ std::unique_ptr<GestureData> init_from_line(bContext *C, wmOperator *op)
   line_points[0][1] = RNA_int_get(op->ptr, "ystart");
   line_points[1][0] = RNA_int_get(op->ptr, "xend");
   line_points[1][1] = RNA_int_get(op->ptr, "yend");
+
+  gesture_data->gesture_points.reinitialize(2);
+  gesture_data->gesture_points[0][0] = line_points[0][0];
+  gesture_data->gesture_points[0][1] = line_points[0][1];
+  gesture_data->gesture_points[1][0] = line_points[1][0];
+  gesture_data->gesture_points[1][1] = line_points[1][1];
 
   gesture_data->line.flip = RNA_boolean_get(op->ptr, "flip");
 
@@ -317,7 +331,7 @@ static Vector<PBVHNode *> update_affected_nodes_by_line_plane(GestureData &gestu
   frustum.planes = clip_planes;
   frustum.num_planes = gesture_data.line.use_side_planes ? 3 : 1;
 
-  return gesture_data.nodes = bke::pbvh::search_gather(ss->pbvh, [&](PBVHNode &node) {
+  return gesture_data.nodes = bke::pbvh::search_gather(*ss->pbvh, [&](PBVHNode &node) {
            return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
          });
 }
@@ -333,11 +347,17 @@ static void update_affected_nodes_by_clip_planes(GestureData &gesture_data)
   frustum.planes = clip_planes;
   frustum.num_planes = 4;
 
-  gesture_data.nodes = bke::pbvh::search_gather(ss->pbvh, [&](PBVHNode &node) {
+  gesture_data.nodes = bke::pbvh::search_gather(*ss->pbvh, [&](PBVHNode &node) {
     switch (gesture_data.selection_type) {
       case SelectionType::Inside:
         return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
       case SelectionType::Outside:
+        /* Certain degenerate cases of a lasso shape can cause the resulting
+         * frustum planes to enclose a node's AABB, therefore we must submit it
+         * to be more thoroughly evaluated. */
+        if (gesture_data.shape_type == ShapeType::Lasso) {
+          return true;
+        }
         return BKE_pbvh_node_frustum_exclude_AABB(&node, &frustum);
       default:
         BLI_assert_unreachable();
@@ -376,13 +396,21 @@ static bool is_affected_lasso(GestureData &gesture_data, const float co[3])
   /* Clip against lasso boundbox. */
   LassoData *lasso = &gesture_data.lasso;
   if (!BLI_rcti_isect_pt(&lasso->boundbox, scr_co_s[0], scr_co_s[1])) {
-    return false;
+    return gesture_data.selection_type == SelectionType::Outside;
   }
 
   scr_co_s[0] -= lasso->boundbox.xmin;
   scr_co_s[1] -= lasso->boundbox.ymin;
 
-  return lasso->mask_px[scr_co_s[1] * lasso->width + scr_co_s[0]].test();
+  const bool bitmap_result = lasso->mask_px[scr_co_s[1] * lasso->width + scr_co_s[0]].test();
+  switch (gesture_data.selection_type) {
+    case SelectionType::Inside:
+      return bitmap_result;
+    case SelectionType::Outside:
+      return !bitmap_result;
+  }
+  BLI_assert_unreachable();
+  return false;
 }
 
 bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vertex_normal)
@@ -416,7 +444,7 @@ bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vert
 void apply(bContext &C, GestureData &gesture_data, wmOperator &op)
 {
   Operation *operation = gesture_data.operation;
-  undo::push_begin(CTX_data_active_object(&C), &op);
+  undo::push_begin(*CTX_data_active_object(&C), &op);
 
   operation->begin(C, gesture_data);
 
@@ -431,8 +459,7 @@ void apply(bContext &C, GestureData &gesture_data, wmOperator &op)
 
   operation->end(C, gesture_data);
 
-  Object *ob = CTX_data_active_object(&C);
-  undo::push_end(ob);
+  undo::push_end(*CTX_data_active_object(&C));
 
   SCULPT_tag_update_overlays(&C);
 }

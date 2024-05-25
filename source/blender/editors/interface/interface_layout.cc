@@ -31,7 +31,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
@@ -167,6 +167,8 @@ struct uiLayout {
   eUIEmbossType emboss;
   /** for fixed width or height to avoid UI size changes */
   float units[2];
+  /** Is copied to uiButs created in this layout. */
+  float search_weight;
 };
 
 struct uiLayoutItemFlow {
@@ -1139,7 +1141,7 @@ void UI_context_active_but_prop_get_filebrowser(const bContext *C,
                                                 bool *r_is_undo,
                                                 bool *r_is_userdef)
 {
-  ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
+  ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
   uiBut *prevbut = nullptr;
 
   memset(r_ptr, 0, sizeof(*r_ptr));
@@ -1294,8 +1296,7 @@ static uiBut *uiItemFullO_ptr_ex(uiLayout *layout,
       opptr->data = properties;
     }
     else {
-      const IDPropertyTemplate val = {0};
-      opptr->data = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
+      opptr->data = blender::bke::idprop::create_group("wmOperatorProperties").release();
     }
     if (r_opptr) {
       *r_opptr = *opptr;
@@ -1475,7 +1476,7 @@ BLI_INLINE bool ui_layout_is_radial(const uiLayout *layout)
 
 void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorType *ot,
-                            PointerRNA ptr,
+                            const PointerRNA &ptr,
                             PropertyRNA *prop,
                             IDProperty *properties,
                             wmOperatorCallContext context,
@@ -2276,7 +2277,7 @@ void uiItemFullR(uiLayout *layout,
         char str[2] = {'\0'};
         for (int a = 0; a < len; a++) {
           str[0] = RNA_property_array_item_char(prop, a);
-          const bool use_prefix = (a == 0 && name && name[0]);
+          const bool use_prefix = (a == 0 && name[0]);
           if (use_prefix) {
             char *s = name_with_suffix;
             s += STRNCPY_RLEN(name_with_suffix, name);
@@ -2303,14 +2304,11 @@ void uiItemFullR(uiLayout *layout,
         }
       }
       else {
-        if (name) {
-          but = uiDefBut(
-              block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
-          but->drawflag |= UI_BUT_TEXT_RIGHT;
-          but->drawflag &= ~UI_BUT_TEXT_LEFT;
+        but = uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
+        but->drawflag |= UI_BUT_TEXT_RIGHT;
+        but->drawflag &= ~UI_BUT_TEXT_LEFT;
 
-          label_added = true;
-        }
+        label_added = true;
       }
 
       if (!label_added && heading_layout) {
@@ -3375,6 +3373,7 @@ void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
 {
   uiBlock *block = layout->root->block;
   const bool is_menu = ui_block_is_menu(block);
+  const bool is_pie = ui_block_is_pie_menu(block);
   if (is_menu && !UI_block_can_add_separator(block)) {
     return;
   }
@@ -3389,7 +3388,7 @@ void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
       but_type = UI_BTYPE_SEPR_LINE;
       break;
     case LayoutSeparatorType::Auto:
-      but_type = is_menu ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
+      but_type = (is_menu && !is_pie) ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
       break;
     default:
       but_type = UI_BTYPE_SEPR;
@@ -5277,6 +5276,16 @@ void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep)
   SET_FLAG_FROM_TEST(layout->item.flag, is_sep, UI_ITEM_PROP_DECORATE);
 }
 
+void uiLayoutSetSearchWeight(uiLayout *layout, const float weight)
+{
+  layout->search_weight = weight;
+}
+
+float uiLayoutGetSearchWeight(uiLayout *layout)
+{
+  return layout->search_weight;
+}
+
 Panel *uiLayoutGetRootPanel(uiLayout *layout)
 {
   return layout->root->block->panel;
@@ -5479,9 +5488,9 @@ bool UI_block_apply_search_filter(uiBlock *block, const char *search_filter)
 
   Panel *panel = block->panel;
 
-  if (panel != nullptr && panel->type->flag & PANEL_TYPE_NO_SEARCH) {
-    /* Panels for active blocks should always have a type, otherwise they wouldn't be created. */
-    BLI_assert(block->panel->type != nullptr);
+  if (panel != nullptr) {
+    /* Panels for active blocks should always have a valid `panel->type`,
+     * otherwise they wouldn't be created. */
     if (panel->type->flag & PANEL_TYPE_NO_SEARCH) {
       return false;
     }
@@ -5860,6 +5869,7 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
     BLI_addtail(&layout->items, bitem);
   }
   but->layout = layout;
+  but->search_weight = layout->search_weight;
 
   if (layout->context) {
     but->context = layout->context;
@@ -6029,7 +6039,7 @@ void uiLayoutSetTooltipFunc(uiLayout *layout,
     }
   }
 
-  if (!arg_used) {
+  if (free_arg != nullptr && !arg_used) {
     /* Free the original copy of arg in case the layout is empty. */
     free_arg(arg);
   }
@@ -6136,11 +6146,19 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
 
 static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout, bool show_header)
 {
+  uiBlock *block = uiLayoutGetBlock(layout);
   Panel *panel = BKE_panel_new(pt);
   panel->flag = PNL_POPOVER;
 
   if (pt->listener) {
-    ui_block_add_dynamic_listener(uiLayoutGetBlock(layout), pt->listener);
+    ui_block_add_dynamic_listener(block, pt->listener);
+  }
+
+  /* This check may be paranoid, this function might run outside the context of a popup or can run
+   * in popovers that are not supposed to support refreshing, see #ui_popover_create_block. */
+  if (block->handle && block->handle->region) {
+    /* Allow popovers to contain collapsible sections, see #uiItemPopoverPanel. */
+    UI_popup_dummy_panel_set(block->handle->region, block);
   }
 
   uiLayout *last_item = static_cast<uiLayout *>(layout->items.last);

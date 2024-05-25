@@ -330,10 +330,8 @@ bool space_image_main_region_poll(bContext *C)
 static bool space_image_main_area_not_uv_brush_poll(bContext *C)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
-  Scene *scene = CTX_data_scene(C);
-  ToolSettings *toolsettings = scene->toolsettings;
 
-  if (sima && !toolsettings->uvsculpt && (CTX_data_edit_object(C) == nullptr)) {
+  if (sima && (CTX_data_edit_object(C) == nullptr)) {
     return true;
   }
 
@@ -1264,14 +1262,20 @@ static void image_open_cancel(bContext * /*C*/, wmOperator *op)
 
 static Image *image_open_single(Main *bmain,
                                 wmOperator *op,
-                                ImageFrameRange *range,
-                                bool use_multiview)
+                                const ImageFrameRange *range,
+                                const bool use_multiview,
+                                const bool check_exists)
 {
   bool exists = false;
   Image *ima = nullptr;
 
   errno = 0;
-  ima = BKE_image_load_exists_ex(bmain, range->filepath, &exists);
+  if (check_exists) {
+    ima = BKE_image_load_exists_ex(bmain, range->filepath, &exists);
+  }
+  else {
+    ima = BKE_image_load(bmain, range->filepath);
+  }
 
   if (!ima) {
     if (op->customdata) {
@@ -1340,9 +1344,17 @@ static int image_open_exec(bContext *C, wmOperator *op)
     image_open_init(C, op);
   }
 
+  ImageOpenData *iod = static_cast<ImageOpenData *>(op->customdata);
+
+  /* For editable assets always create a new image datablock. We can't assign
+   * a local datablock to linked asset datablocks. */
+  const bool check_exists = !(iod->pprop.prop && iod->pprop.ptr.owner_id &&
+                              ID_IS_LINKED(iod->pprop.ptr.owner_id) &&
+                              ID_IS_EDITABLE(iod->pprop.ptr.owner_id));
+
   ListBase ranges = ED_image_filesel_detect_sequences(bmain, op, use_udim);
   LISTBASE_FOREACH (ImageFrameRange *, range, &ranges) {
-    Image *ima_range = image_open_single(bmain, op, range, use_multiview);
+    Image *ima_range = image_open_single(bmain, op, range, use_multiview, check_exists);
 
     /* take the first image */
     if ((ima == nullptr) && ima_range) {
@@ -1360,12 +1372,14 @@ static int image_open_exec(bContext *C, wmOperator *op)
   }
 
   /* hook into UI */
-  ImageOpenData *iod = static_cast<ImageOpenData *>(op->customdata);
-
   if (iod->pprop.prop) {
     /* when creating new ID blocks, use is already 1, but RNA
      * pointer use also increases user, so this compensates it */
     id_us_min(&ima->id);
+
+    if (iod->pprop.ptr.owner_id) {
+      BKE_id_move_to_same_lib(*bmain, ima->id, *iod->pprop.ptr.owner_id);
+    }
 
     PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
     RNA_property_pointer_set(&iod->pprop.ptr, iod->pprop.prop, imaptr, nullptr);
@@ -2348,7 +2362,7 @@ int ED_image_save_all_modified_info(const Main *bmain, ReportList *reports)
 
     if (image_should_be_saved(ima, &is_format_writable)) {
       if (BKE_image_has_packedfile(ima) || image_should_pack_during_save_all(ima)) {
-        if (!ID_IS_LINKED(ima)) {
+        if (ID_IS_EDITABLE(ima)) {
           num_saveable_images++;
         }
         else {
@@ -2591,6 +2605,10 @@ static int image_new_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&ima->id);
 
+    if (data->pprop.ptr.owner_id) {
+      BKE_id_move_to_same_lib(*bmain, ima->id, *data->pprop.ptr.owner_id);
+    }
+
     PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
     RNA_property_pointer_set(&data->pprop.ptr, data->pprop.prop, imaptr, nullptr);
     RNA_property_update(C, &data->pprop.ptr, data->pprop.prop);
@@ -2806,6 +2824,7 @@ static int image_flip_exec(bContext *C, wmOperator *op)
 
   BKE_image_partial_update_mark_full_update(ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -2881,6 +2900,7 @@ static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
 
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
   return OPERATOR_FINISHED;
@@ -3009,6 +3029,12 @@ static int image_clipboard_paste_exec(bContext *C, wmOperator *op)
 
 static bool image_clipboard_paste_poll(bContext *C)
 {
+  SpaceImage *sima = CTX_wm_space_image(C);
+  if (!sima) {
+    CTX_wm_operator_poll_msg_set(C, "Image Editor not found");
+    return false;
+  }
+
   if (!WM_clipboard_image_available()) {
     CTX_wm_operator_poll_msg_set(C, "No compatible images are on the clipboard");
     return false;
@@ -3121,6 +3147,8 @@ static int image_invert_exec(bContext *C, wmOperator *op)
   ED_image_undo_push_end();
 
   BKE_image_partial_update_mark_full_update(ima);
+
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
 
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 

@@ -17,6 +17,7 @@ set(INC
   ../makesrna
   ../modifiers
   ../nodes
+  ../nodes/geometry/include
   ../render
   ../sequencer
   ../shader_fx
@@ -46,7 +47,6 @@ set(SRC
   intern/CCGSubSurf.cc
   intern/CCGSubSurf_legacy.cc
   intern/CCGSubSurf_util.cc
-  intern/DerivedMesh.cc
   intern/action.cc
   intern/action_bones.cc
   intern/action_mirror.cc
@@ -55,7 +55,6 @@ set(SRC
   intern/anim_path.cc
   intern/anim_sys.cc
   intern/anim_visualization.cc
-  intern/animation.cc
   intern/anonymous_attribute_id.cc
   intern/appdir.cc
   intern/armature.cc
@@ -89,7 +88,6 @@ set(SRC
   intern/cachefile.cc
   intern/callbacks.cc
   intern/camera.cc
-  intern/cdderivedmesh.cc
   intern/cloth.cc
   intern/collection.cc
   intern/collision.cc
@@ -198,16 +196,17 @@ set(SRC
   intern/mball.cc
   intern/mball_tessellate.cc
   intern/mesh.cc
-  intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
   intern/mesh_compare.cc
   intern/mesh_convert.cc
+  intern/mesh_data_update.cc
   intern/mesh_debug.cc
   intern/mesh_evaluate.cc
   intern/mesh_fair.cc
   intern/mesh_flip_faces.cc
   intern/mesh_iterators.cc
   intern/mesh_legacy_convert.cc
+  intern/mesh_legacy_derived_mesh.cc
   intern/mesh_mapping.cc
   intern/mesh_merge_customdata.cc
   intern/mesh_mirror.cc
@@ -322,14 +321,12 @@ set(SRC
   intern/world.cc
   intern/writemovie.cc
 
-  BKE_DerivedMesh.hh
   BKE_action.h
   BKE_action.hh
   BKE_addon.h
   BKE_anim_data.hh
   BKE_anim_path.h
   BKE_anim_visualization.h
-  BKE_animation.hh
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
   BKE_appdir.hh
@@ -361,7 +358,6 @@ set(SRC
   BKE_callbacks.hh
   BKE_camera.h
   BKE_ccg.h
-  BKE_cdderivedmesh.h
   BKE_cloth.hh
   BKE_collection.hh
   BKE_collision.h
@@ -413,7 +409,6 @@ set(SRC
   BKE_grease_pencil_legacy_convert.hh
   BKE_grease_pencil_vertex_groups.hh
   BKE_icons.h
-  BKE_idprop.h
   BKE_idprop.hh
   BKE_idtype.hh
   BKE_image.h
@@ -446,11 +441,11 @@ set(SRC
   BKE_mball_tessellate.hh
   BKE_mesh.h
   BKE_mesh.hh
-  BKE_mesh_boolean_convert.hh
   BKE_mesh_compare.hh
   BKE_mesh_fair.hh
   BKE_mesh_iterators.hh
   BKE_mesh_legacy_convert.hh
+  BKE_mesh_legacy_derived_mesh.hh
   BKE_mesh_mapping.hh
   BKE_mesh_mirror.hh
   BKE_mesh_remap.hh
@@ -528,7 +523,7 @@ set(SRC
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
   BKE_wm_runtime.hh
-  BKE_workspace.h
+  BKE_workspace.hh
   BKE_world.h
   BKE_writemovie.hh
 
@@ -582,6 +577,7 @@ set(LIB
   bf_shader_fx
   bf_simulation
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf::extern::xxhash
   PRIVATE bf::intern::atomic
   # For `vfontdata_freetype.c`.
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
@@ -822,14 +818,6 @@ if(WITH_TBB)
   )
 endif()
 
-if(WITH_GMP)
-  add_definitions(-DWITH_GMP)
-
-  list(APPEND INC_SYS
-    ${GMP_INCLUDE_DIRS}
-  )
-endif()
-
 # # Warnings as errors, this is too strict!
 # if(MSVC)
 #    string(APPEND CMAKE_C_FLAGS " /WX")
@@ -859,6 +847,7 @@ if(WITH_GTESTS)
     intern/layer_test.cc
     intern/lib_id_remapper_test.cc
     intern/lib_id_test.cc
+    intern/lib_query_test.cc
     intern/lib_remap_test.cc
     intern/main_test.cc
     intern/nla_test.cc

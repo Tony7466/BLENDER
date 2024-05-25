@@ -31,8 +31,8 @@
 #include "ED_space_api.hh"
 #include "ED_time_scrub_ui.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -48,7 +48,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "graph_intern.h" /* own include */
+#include "graph_intern.hh" /* own include */
 
 /* ******************** default callbacks for ipo space ***************** */
 
@@ -242,8 +242,10 @@ static void graph_main_region_draw(const bContext *C, ARegion *region)
     graph_draw_curves(&ac, sipo, region, 1);
 
     /* XXX(ton): the slow way to set tot rect... but for nice sliders needed. */
+    /* Excluding handles from the calculation to save performance. This cuts the time it takes for
+     * this function to run in half which is a major performance bottleneck on heavy scenes.  */
     get_graph_keyframe_extents(
-        &ac, &v2d->tot.xmin, &v2d->tot.xmax, &v2d->tot.ymin, &v2d->tot.ymax, false, true);
+        &ac, &v2d->tot.xmin, &v2d->tot.xmax, &v2d->tot.ymin, &v2d->tot.ymax, false, false);
     /* extra offset so that these items are visible */
     v2d->tot.xmin -= 10.0f;
     v2d->tot.xmax += 10.0f;
@@ -530,7 +532,7 @@ static void graph_region_message_subscribe(const wmRegionMessageSubscribeParams 
   }
 
   /* All dopesheet filter settings, etc. affect the drawing of this editor,
-   * also same applies for all animation-related datatypes that may appear here,
+   * also same applies for all animation-related data-types that may appear here,
    * so just whitelist the entire structs for updates
    */
   {
@@ -869,7 +871,7 @@ static void graph_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceGraph *sipo = (SpaceGraph *)sl;
 
-  BLO_read_data_address(reader, &sipo->ads);
+  BLO_read_struct(reader, bDopeSheet, &sipo->ads);
   memset(&sipo->runtime, 0x0, sizeof(sipo->runtime));
 }
 

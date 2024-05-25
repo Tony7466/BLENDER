@@ -19,7 +19,8 @@
 #include "BLI_string_ref.hh"
 
 #include "BKE_animsys.h"
-#include "BKE_idprop.h"
+#include "BKE_grease_pencil_legacy_convert.hh"
+#include "BKE_idprop.hh"
 #include "BKE_ipo.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
@@ -100,10 +101,7 @@ ID *do_versions_rename_id(Main *bmain,
     }
   }
   if (id != nullptr) {
-    BKE_main_namemap_remove_name(bmain, id, id->name + 2);
-    BLI_strncpy(id->name + 2, name_dst, sizeof(id->name) - 2);
-    /* We know it's unique, this just sorts. */
-    BKE_libblock_ensure_unique_name(bmain, id);
+    BKE_libblock_rename(bmain, id, name_dst);
   }
   return id;
 }
@@ -191,11 +189,11 @@ bNodeSocket *version_node_add_socket_if_not_exist(bNodeTree *ntree,
                                                   const char *identifier,
                                                   const char *name)
 {
-  bNodeSocket *sock = nodeFindSocket(node, eNodeSocketInOut(in_out), identifier);
+  bNodeSocket *sock = blender::bke::nodeFindSocket(node, eNodeSocketInOut(in_out), identifier);
   if (sock != nullptr) {
     return sock;
   }
-  return nodeAddStaticSocket(
+  return blender::bke::nodeAddStaticSocket(
       ntree, node, eNodeSocketInOut(in_out), type, subtype, identifier, name);
 }
 
@@ -285,7 +283,8 @@ void node_tree_relink_with_socket_id_map(bNodeTree &ntree,
       bNodeSocket *old_socket = link->tosock;
       if (old_socket->is_available()) {
         if (const std::string *new_identifier = map.lookup_ptr_as(old_socket->identifier)) {
-          bNodeSocket *new_socket = nodeFindSocket(&new_node, SOCK_IN, new_identifier->c_str());
+          bNodeSocket *new_socket = blender::bke::nodeFindSocket(
+              &new_node, SOCK_IN, *new_identifier);
           link->tonode = &new_node;
           link->tosock = new_socket;
           old_socket->link = nullptr;
@@ -296,7 +295,8 @@ void node_tree_relink_with_socket_id_map(bNodeTree &ntree,
       bNodeSocket *old_socket = link->fromsock;
       if (old_socket->is_available()) {
         if (const std::string *new_identifier = map.lookup_ptr_as(old_socket->identifier)) {
-          bNodeSocket *new_socket = nodeFindSocket(&new_node, SOCK_OUT, new_identifier->c_str());
+          bNodeSocket *new_socket = blender::bke::nodeFindSocket(
+              &new_node, SOCK_OUT, *new_identifier);
           link->fromnode = &new_node;
           link->fromsock = new_socket;
           old_socket->link = nullptr;
@@ -329,15 +329,16 @@ void add_realize_instances_before_socket(bNodeTree *ntree,
       return;
     }
 
-    bNode *realize_node = nodeAddStaticNode(nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
+    bNode *realize_node = blender::bke::nodeAddStaticNode(
+        nullptr, ntree, GEO_NODE_REALIZE_INSTANCES);
     realize_node->parent = node->parent;
     realize_node->locx = node->locx - 100;
     realize_node->locy = node->locy;
-    nodeAddLink(ntree,
-                link->fromnode,
-                link->fromsock,
-                realize_node,
-                static_cast<bNodeSocket *>(realize_node->inputs.first));
+    blender::bke::nodeAddLink(ntree,
+                              link->fromnode,
+                              link->fromsock,
+                              realize_node,
+                              static_cast<bNodeSocket *>(realize_node->inputs.first));
     link->fromnode = realize_node;
     link->fromsock = static_cast<bNodeSocket *>(realize_node->outputs.first);
   }
@@ -374,6 +375,12 @@ IDProperty *version_cycles_properties_from_view_layer(ViewLayer *view_layer)
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
+IDProperty *version_cycles_properties_from_render_layer(SceneRenderLayer *render_layer)
+{
+  IDProperty *idprop = render_layer->prop;
+  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
+}
+
 float version_cycles_property_float(IDProperty *idprop, const char *name, float default_value)
 {
   IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_FLOAT);
@@ -388,14 +395,11 @@ int version_cycles_property_int(IDProperty *idprop, const char *name, int defaul
 
 void version_cycles_property_int_set(IDProperty *idprop, const char *name, int value)
 {
-  IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT);
-  if (prop) {
+  if (IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT)) {
     IDP_Int(prop) = value;
   }
   else {
-    IDPropertyTemplate val = {0};
-    val.i = value;
-    IDP_AddToGroup(idprop, IDP_New(IDP_INT, &val, name));
+    IDP_AddToGroup(idprop, blender::bke::idprop::create(name, value).release());
   }
 }
 
@@ -438,7 +442,7 @@ void version_update_node_input(
     }
 
     /* Replace links with updated equivalent */
-    nodeRemLink(ntree, link);
+    blender::bke::nodeRemLink(ntree, link);
     update_input_link(fromnode, fromsock, tonode, tosock);
 
     need_update = true;
@@ -448,7 +452,7 @@ void version_update_node_input(
    * Do this after the link update in case it changes the identifier. */
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (check_node(node)) {
-      bNodeSocket *input = nodeFindSocket(node, SOCK_IN, socket_identifier);
+      bNodeSocket *input = blender::bke::nodeFindSocket(node, SOCK_IN, socket_identifier);
       if (input != nullptr) {
         update_input(node, input);
       }
@@ -469,7 +473,7 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
+    if (!LIBRARY_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
       return false;
     }
   }
@@ -531,7 +535,16 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
     BKE_lib_override_library_main_hierarchy_root_ensure(new_bmain);
   }
 
-  if (!blendfile_or_libraries_versions_atleast(new_bmain, 401, 2)) {
+  if (!blendfile_or_libraries_versions_atleast(new_bmain, 402, 22)) {
+    /* Initial auto smooth versioning started at (401, 2), but a bug caused the legacy flag to not
+     * be cleared, so it is re-run in a later version when the bug is fixed and the versioning has
+     * been made idempotent. */
     BKE_main_mesh_legacy_convert_auto_smooth(*new_bmain);
+  }
+
+  if (U.experimental.use_grease_pencil_version3 &&
+      U.experimental.use_grease_pencil_version3_convert_on_load)
+  {
+    blender::bke::greasepencil::convert::legacy_main(*new_bmain, *reports);
   }
 }

@@ -12,7 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_index_buffer.h"
+#include "GPU_index_buffer.hh"
 
 #include "draw_subdivision.hh"
 #include "extract_mesh.hh"
@@ -26,6 +26,7 @@ namespace blender::draw {
 #define NO_EDGE INT_MAX
 
 struct MeshExtract_LineAdjacency_Data {
+  Span<int> corner_tri_faces;
   GPUIndexBufBuilder elb;
   Map<OrderedEdge, int> *eh;
   bool is_manifold;
@@ -54,10 +55,11 @@ static void extract_lines_adjacency_init(const MeshRenderData &mr,
   /* Similar to poly_to_tri_count().
    * There is always (loop + triangle - 1) edges inside a face.
    * Accumulate for all faces and you get : */
-  uint tess_edge_len = mr.loop_len + mr.tri_len - mr.face_len;
+  uint tess_edge_len = mr.corners_num + mr.corner_tris_num - mr.faces_num;
 
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(tls_data);
-  line_adjacency_data_init(data, mr.vert_len, mr.loop_len, tess_edge_len);
+  data->corner_tri_faces = mr.mesh->corner_tri_faces();
+  line_adjacency_data_init(data, mr.verts_num, mr.corners_num, tess_edge_len);
 }
 
 BLI_INLINE void lines_adjacency_triangle(
@@ -131,7 +133,7 @@ static void extract_lines_adjacency_iter_corner_tri_mesh(const MeshRenderData &m
                                                          void *_data)
 {
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
-  const int face_i = mr.corner_tri_faces[elt_index];
+  const int face_i = data->corner_tri_faces[elt_index];
   const bool hidden = mr.use_hide && !mr.hide_poly.is_empty() && mr.hide_poly[face_i];
   if (hidden) {
     return;
@@ -150,7 +152,7 @@ static void extract_lines_adjacency_finish(const MeshRenderData & /*mr*/,
                                            void *buf,
                                            void *_data)
 {
-  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buf);
+  gpu::IndexBuf *ibo = static_cast<gpu::IndexBuf *>(buf);
   MeshExtract_LineAdjacency_Data *data = static_cast<MeshExtract_LineAdjacency_Data *>(_data);
   /* Create edges for remaining non manifold edges. */
   for (const auto item : data->eh->items()) {
