@@ -26,7 +26,7 @@
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 
 namespace blender::io::usd {
-#pragma optimize("", off)
+
 static inline float3 to_float3(pxr::GfVec3f vec3f)
 {
   return float3(vec3f.data());
