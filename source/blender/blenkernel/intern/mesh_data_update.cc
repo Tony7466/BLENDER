@@ -865,10 +865,12 @@ static void mesh_build_data(Depsgraph &depsgraph,
   /* Make sure that drivers can target shapekey properties.
    * Note that this causes a potential inconsistency, as the shapekey may have a
    * different topology than the evaluated mesh. */
-  if (mesh_input.key) {
-    BLI_assert(DEG_is_evaluated_id(&mesh_input->key->id));
-    if (mesh_eval != &mesh_input) {
-      const_cast<Mesh *>(mesh_eval)->key = mesh_input.key;
+  if (Key *key = mesh_input.key) {
+    BLI_assert(DEG_is_evaluated_id(&key->id));
+    if (geometry_set.get_mesh() != &mesh_input) {
+      if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+        mesh->key = key;
+      }
     }
   }
 
@@ -917,17 +919,19 @@ static void editbmesh_build_data(Depsgraph &depsgraph,
   //   }
   // }
 
-  Mesh *mesh_final = const_cast<Mesh *>(geometry_set.get_mesh());
-
-  BKE_object_eval_assign_data(&obedit, &mesh_final->id, false);
-
   /* Make sure that drivers can target shapekey properties.
    * Note that this causes a potential inconsistency, as the shapekey may have a
    * different topology than the evaluated mesh. */
-  BLI_assert(mesh_input.key == nullptr || DEG_is_evaluated_id(&mesh_input.key->id));
-  if (mesh_input.key && !mesh_final->key) {
-    mesh_final->key = mesh_input.key;
+  if (Key *key = mesh_input.key) {
+    BLI_assert(DEG_is_evaluated_id(&key->id));
+    if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+      mesh->key = key;
+    }
   }
+
+  Mesh *mesh_final = const_cast<Mesh *>(geometry_set.get_mesh());
+
+  BKE_object_eval_assign_data(&obedit, &mesh_final->id, false);
 
   obedit.runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 
