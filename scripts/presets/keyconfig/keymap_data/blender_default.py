@@ -8184,6 +8184,7 @@ def km_3d_view_tool_sculpt_lasso_face_set(params):
         ]},
     )
 
+
 def km_3d_view_tool_sculpt_line_face_set(params):
     return (
         "3D View Tool: Sculpt, Line Face Set",
