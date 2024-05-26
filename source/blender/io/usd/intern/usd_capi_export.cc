@@ -260,10 +260,6 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
 
-  if (!params.selected_objects_only && params.convert_world_material) {
-    world_material_to_dome_light(params, scene, usd_stage);
-  }
-
   SubdivModifierDisabler mod_disabler(depsgraph);
 
   /* If we want to set the subdiv scheme, then we need to the export the mesh
@@ -345,6 +341,13 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
 
   if (params.export_shapekeys || params.export_armatures) {
     iter.process_usd_skel();
+  }
+
+  /* Creating dome lights should be called after writers have
+   * completed, to avoid a name collision when creating the light
+   * prim. */
+  if (!params.selected_objects_only && params.convert_world_material) {
+    world_material_to_dome_light(params, scene, usd_stage);
   }
 
   /* Set the default prim if it doesn't exist */
