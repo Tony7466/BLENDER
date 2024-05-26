@@ -123,6 +123,7 @@ struct RigidBodyWorldImpl {
   MemPool<btDefaultMotionState, 512, true> motion_state_pool;
 
   Vector<btRigidBody *> rigid_bodies;
+  Set<btCollisionShape *> collision_shapes;
 
   RigidBodyWorldImpl()
   {
@@ -142,9 +143,7 @@ struct RigidBodyWorldImpl {
 
   ~RigidBodyWorldImpl()
   {
-    for (btRigidBody *body : rigid_bodies) {
-      MEM_delete(body);
-    }
+    BLI_assert(this->rigid_bodies.is_empty());
 
     /* XXX This leaks memory, but enabling it somehow causes memory corruption and crash.
      * Possibly caused by alignment? */
@@ -164,6 +163,15 @@ struct RigidBodyWorldImpl {
   }
 };
 
+struct CollisionShapeImpl {
+  btCollisionShape *shape;
+
+  ~CollisionShapeImpl()
+  {
+    delete shape;
+  }
+};
+
 RigidBodyWorld::RigidBodyWorld()
 {
   impl_ = MEM_new<RigidBodyWorldImpl>(__func__);
@@ -178,12 +186,13 @@ RigidBodyWorld::RigidBodyWorld(const RigidBodyWorld &other)
 
 RigidBodyWorld::~RigidBodyWorld()
 {
+  this->clear_rigid_bodies();
   MEM_delete(impl_);
 }
 
 int RigidBodyWorld::bodies_num() const
 {
-  return impl_->rigid_body_pool.size();
+  return impl_->rigid_bodies.size();
 }
 
 int RigidBodyWorld::constraints_num() const
@@ -193,7 +202,7 @@ int RigidBodyWorld::constraints_num() const
 
 int RigidBodyWorld::shapes_num() const
 {
-  return 0;
+  return impl_->collision_shapes.size();
 }
 
 void RigidBodyWorld::set_overlap_filter(OverlapFilterFn fn)
@@ -239,19 +248,26 @@ VArray<RigidBodyID> RigidBodyWorld::body_ids() const {
       [&](const btRigidBody &body) { return body.getUserIndex(); });
 }
 
-IndexRange RigidBodyWorld::add_rigid_bodies(const VArray<float> &masses,
+IndexRange RigidBodyWorld::add_rigid_bodies(const Span<CollisionShape *> shape_library,
+                                            const VArray<int> &shape_indices,
+                                            const VArray<float> &masses,
                                             const VArray<float3> &inertiae)
 {
   const int num_add = masses.size();
-  BLI_assert(inertiae.size() == num_add);
+  BLI_assert(inertiae.is_empty() || inertiae.size() == num_add);
+  BLI_assert(shape_indices.size() == num_add);
 
   impl_->rigid_bodies.append_n_times(nullptr, num_add);
   const IndexRange new_bodies = impl_->rigid_bodies.index_range().take_back(num_add);
   for (const int i : new_bodies) {
     btMotionState *motion_state = impl_->motion_state_pool.alloc();
-    btCollisionShape *collision_shape = nullptr;
+    BLI_assert(shape_library.index_range().contains(shape_indices[i]));
+    btCollisionShape *shape = shape_library[shape_indices[i]]->impl_->shape;
+    const float mass = masses[i];
+    const float3 inertia = inertiae.is_empty() ? float3(0.0f) : inertiae[i];
+
     const btRigidBody::btRigidBodyConstructionInfo construction_info{
-        masses[i], motion_state, collision_shape, to_bullet(inertiae[i])};
+        masses[i], motion_state, shape, to_bullet(inertia)};
     btRigidBody *body = impl_->rigid_body_pool.alloc(construction_info);
     impl_->rigid_bodies[i] = body;
     impl_->world->addRigidBody(body);
@@ -276,6 +292,21 @@ void RigidBodyWorld::remove_rigid_bodies(const IndexMask &mask) {
   keep_mask.foreach_index(
       [&](const int index, const int pos) { new_rigid_bodies[pos] = impl_->rigid_bodies[index]; });
   impl_->rigid_bodies = std::move(new_rigid_bodies);
+}
+
+void RigidBodyWorld::clear_rigid_bodies()
+{
+  for (const int index : impl_->rigid_bodies.index_range()){
+    btRigidBody *body = impl_->rigid_bodies[index];
+
+    impl_->world->removeRigidBody(body);
+
+    impl_->motion_state_pool.free(static_cast<btDefaultMotionState *>(body->getMotionState()));
+    impl_->rigid_body_pool.free(body);
+  }
+
+  BLI_assert(impl_->rigid_body_pool.size() == 0);
+  impl_->rigid_bodies.clear();
 }
 
 //RigidBodyHandle RigidBodyWorld::add_rigid_body(const float mass, const float3 &inertia)
@@ -361,6 +392,47 @@ void RigidBodyWorld::remove_rigid_bodies(const IndexMask &mask) {
 //  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
 //  body->setDamping(body->getLinearDamping(), value);
 //}
+
+CollisionShape::CollisionShape() {}
+
+CollisionShape::~CollisionShape()
+{
+  delete impl_;
+}
+
+CollisionShape::ShapeType CollisionShape::type() const
+{
+  const auto bt_shape_type = BroadphaseNativeTypes(impl_->shape->getShapeType());
+  switch (bt_shape_type) {
+    case BOX_SHAPE_PROXYTYPE:
+      return ShapeType::Box;
+    case SPHERE_SHAPE_PROXYTYPE:
+      return ShapeType::Sphere;
+    case EMPTY_SHAPE_PROXYTYPE:
+    case INVALID_SHAPE_PROXYTYPE:
+    default:
+      return ShapeType::Unknown;
+  }
+}
+
+BoxCollisionShape::BoxCollisionShape(const float3 &half_extent)
+{
+  impl_ = new CollisionShapeImpl{new btBoxShape(to_bullet(half_extent))};
+}
+
+float3 BoxCollisionShape::half_extent() const {
+  return to_blender(static_cast<btBoxShape *>(impl_->shape)->getHalfExtentsWithoutMargin());
+}
+
+SphereCollisionShape::SphereCollisionShape(const float radius)
+{
+  impl_ = new CollisionShapeImpl{new btSphereShape(radius)};
+}
+
+float SphereCollisionShape::radius() const
+{
+  return static_cast<btSphereShape *>(impl_->shape)->getRadius();
+}
 
 #else
 
