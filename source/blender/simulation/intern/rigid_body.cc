@@ -248,7 +248,7 @@ VArray<RigidBodyID> RigidBodyWorld::body_ids() const {
       [&](const btRigidBody &body) { return body.getUserIndex(); });
 }
 
-IndexRange RigidBodyWorld::add_rigid_bodies(const Span<CollisionShape *> shape_library,
+IndexRange RigidBodyWorld::add_rigid_bodies(const Span<const CollisionShape *> shapes,
                                             const VArray<int> &shape_indices,
                                             const VArray<float> &masses,
                                             const VArray<float3> &inertiae)
@@ -261,8 +261,8 @@ IndexRange RigidBodyWorld::add_rigid_bodies(const Span<CollisionShape *> shape_l
   const IndexRange new_bodies = impl_->rigid_bodies.index_range().take_back(num_add);
   for (const int i : new_bodies) {
     btMotionState *motion_state = impl_->motion_state_pool.alloc();
-    BLI_assert(shape_library.index_range().contains(shape_indices[i]));
-    btCollisionShape *shape = shape_library[shape_indices[i]]->impl_->shape;
+    BLI_assert(shapes.index_range().contains(shape_indices[i]));
+    btCollisionShape *shape = shapes[shape_indices[i]]->impl_->shape;
     const float mass = masses[i];
     const float3 inertia = inertiae.is_empty() ? float3(0.0f) : inertiae[i];
 

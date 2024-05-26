@@ -48,13 +48,14 @@ class RigidBodyWorld {
   void set_solver_iterations(int num_solver_iterations);
   void set_split_impulse(bool split_impulse);
 
-  VArray<RigidBodyID> body_ids() const;
-  IndexRange add_rigid_bodies(const Span<CollisionShape *> shape_library,
+  IndexRange add_rigid_bodies(const Span<const CollisionShape *> shapes,
                               const VArray<int> &shape_indices,
                               const VArray<float> &masses,
                               const VArray<float3> &inertiae);
   void remove_rigid_bodies(const IndexMask &mask);
   void clear_rigid_bodies();
+
+  VArray<RigidBodyID> body_ids() const;
 
   //RigidBodyHandle add_rigid_body(float mass, const float3 &inertia = float3(0.0f));
   //void remove_rigid_body(RigidBodyHandle handle);
