@@ -1120,7 +1120,13 @@ def dump_addon_messages(addon_module_name, do_checks, settings):
         ver += ".".join(str(v) for v in addon_info["version"])
     rev = 0
     curr_time = time.gmtime()
-    pot = utils.I18nMessages.gen_empty_messages(settings.PARSER_TEMPLATE_ID, ver, rev, curr_time, default_copyright=False, settings=settings)
+    pot = utils.I18nMessages.gen_empty_messages(
+        settings.PARSER_TEMPLATE_ID,
+        ver,
+        rev,
+        curr_time,
+        default_copyright=False,
+        settings=settings)
     msgs = pot.msgs
 
     minus_pot = utils.I18nMessages.gen_empty_messages(
