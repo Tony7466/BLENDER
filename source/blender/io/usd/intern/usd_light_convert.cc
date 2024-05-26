@@ -1,6 +1,6 @@
 /* SPDX-FileCopyrightText: 2023 Blender Authors
-*
-* SPDX-License-Identifier: GPL-2.0-or-later */
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_light_convert.hh"
 
@@ -43,7 +43,7 @@
 #include <string>
 
 #include "CLG_log.h"
-static CLG_LogRef LOG = { "io.usd" };
+static CLG_LogRef LOG = {"io.usd"};
 
 namespace usdtokens {
 // Attribute names.
@@ -61,49 +61,50 @@ bool get_authored_value(const pxr::UsdAttribute attr,
                         const pxr::UsdPrim prim = pxr::UsdPrim(),
                         const pxr::TfToken fallback_attr_name = pxr::TfToken())
 {
- if (attr && attr.HasAuthoredValue()) {
-   return attr.Get<T>(r_value, motionSampleTime);
- }
+  if (attr && attr.HasAuthoredValue()) {
+    return attr.Get<T>(r_value, motionSampleTime);
+  }
 
- if (!prim || fallback_attr_name.IsEmpty()) {
-   return false;
- }
+  if (!prim || fallback_attr_name.IsEmpty()) {
+    return false;
+  }
 
- pxr::UsdAttribute fallback_attr = prim.GetAttribute(fallback_attr_name);
- if (fallback_attr && fallback_attr.HasAuthoredValue()) {
-   return fallback_attr.Get<T>(r_value, motionSampleTime);
- }
+  pxr::UsdAttribute fallback_attr = prim.GetAttribute(fallback_attr_name);
+  if (fallback_attr && fallback_attr.HasAuthoredValue()) {
+    return fallback_attr.Get<T>(r_value, motionSampleTime);
+  }
 
- return false;
+  return false;
 }
 
 struct WorldNtreeSearchResults {
- const blender::io::usd::USDExportParams params;
- pxr::UsdStageRefPtr stage;
+  const blender::io::usd::USDExportParams params;
+  pxr::UsdStageRefPtr stage;
 
- float world_color[3];
- float world_intensity;
- float tex_rot[3];
- float mapping_rot[3];
+  float world_color[3];
+  float world_intensity;
+  float tex_rot[3];
+  float mapping_rot[3];
 
- std::string file_path;
+  std::string file_path;
 
- float color_mult[3];
+  float color_mult[3];
 
- bool background_found;
- bool env_tex_found;
- bool mult_found;
- bool mapping_found;
+  bool background_found;
+  bool env_tex_found;
+  bool mult_found;
+  bool mapping_found;
 
- WorldNtreeSearchResults(const blender::io::usd::USDExportParams &in_params, pxr::UsdStageRefPtr in_stage)
-     : params(in_params),
-       stage(in_stage),
-       world_intensity(0.0f),
-       background_found(false),
-       env_tex_found(false),
-       mult_found(false)
- {
- }
+  WorldNtreeSearchResults(const blender::io::usd::USDExportParams &in_params,
+                          pxr::UsdStageRefPtr in_stage)
+      : params(in_params),
+        stage(in_stage),
+        world_intensity(0.0f),
+        background_found(false),
+        env_tex_found(false),
+        mult_found(false)
+  {
+  }
 };
 
 }  // End anonymous namespace.
@@ -125,34 +126,34 @@ static pxr::SdfPath get_unique_path(pxr::UsdStageRefPtr stage, const std::string
 
 /* Load the image at the given path.  Handle packing and copying based in the import options.
  * Return the opened image on succsss or a nullptr on failure. */
-static Image* load_image(std::string tex_path, Main* bmain, const USDImportParams& params)
+static Image *load_image(std::string tex_path, Main *bmain, const USDImportParams &params)
 {
   /* Optionally copy the asset if it's inside a USDZ package. */
   const bool import_textures = params.import_textures_mode != USD_TEX_IMPORT_NONE &&
-    pxr::ArIsPackageRelativePath(tex_path);
+                               pxr::ArIsPackageRelativePath(tex_path);
 
   if (import_textures) {
     /* If we are packing the imported textures, we first write them
      * to a temporary directory. */
-    const char* textures_dir = params.import_textures_mode == USD_TEX_IMPORT_PACK ?
-      temp_textures_dir() :
-      params.import_textures_dir;
+    const char *textures_dir = params.import_textures_mode == USD_TEX_IMPORT_PACK ?
+                                   temp_textures_dir() :
+                                   params.import_textures_dir;
 
     const eUSDTexNameCollisionMode name_collision_mode = params.import_textures_mode ==
-      USD_TEX_IMPORT_PACK ?
-      USD_TEX_NAME_COLLISION_OVERWRITE :
-      params.tex_name_collision_mode;
+                                                                 USD_TEX_IMPORT_PACK ?
+                                                             USD_TEX_NAME_COLLISION_OVERWRITE :
+                                                             params.tex_name_collision_mode;
 
     tex_path = import_asset(tex_path.c_str(), textures_dir, name_collision_mode, nullptr);
   }
 
-  Image* image = BKE_image_load_exists(bmain, tex_path.c_str());
+  Image *image = BKE_image_load_exists(bmain, tex_path.c_str());
   if (!image) {
     return nullptr;
   }
 
   if (import_textures && params.import_textures_mode == USD_TEX_IMPORT_PACK &&
-    !BKE_image_has_packedfile(image))
+      !BKE_image_has_packedfile(image))
   {
     BKE_image_packfiles(nullptr, image, ID_BLEND_PATH(bmain, &image->id));
     if (BLI_is_dir(temp_textures_dir())) {
@@ -163,11 +164,14 @@ static Image* load_image(std::string tex_path, Main* bmain, const USDImportParam
   return image;
 }
 
-static bNode* append_node(bNode* dst_node, int16_t new_node_type,
-                          const char *out_sock, const char *in_sock,
-                          bNodeTree *ntree, float offset)
+static bNode *append_node(bNode *dst_node,
+                          int16_t new_node_type,
+                          const char *out_sock,
+                          const char *in_sock,
+                          bNodeTree *ntree,
+                          float offset)
 {
-  bNode* src_node = bke::nodeAddStaticNode(NULL, ntree, new_node_type);
+  bNode *src_node = bke::nodeAddStaticNode(NULL, ntree, new_node_type);
 
   if (!src_node) {
     return nullptr;
@@ -187,347 +191,351 @@ static bNode* append_node(bNode* dst_node, int16_t new_node_type,
 
 static bool node_search(bNode *fromnode, bNode * /* tonode */, void *userdata, const bool reversed)
 {
- if (!(userdata && fromnode)) {
-   return true;
- }
+  if (!(userdata && fromnode)) {
+    return true;
+  }
 
- WorldNtreeSearchResults *res = reinterpret_cast<WorldNtreeSearchResults *>(userdata);
+  WorldNtreeSearchResults *res = reinterpret_cast<WorldNtreeSearchResults *>(userdata);
 
- if (!res->background_found && fromnode->type == SH_NODE_BACKGROUND) {
-   /* Get light color and intensity */
-   bNodeSocketValueRGBA *color_data =
-       (bNodeSocketValueRGBA *)((bNodeSocket *)BLI_findlink(&fromnode->inputs, 0))->default_value;
-   bNodeSocketValueFloat *strength_data = (bNodeSocketValueFloat *)((bNodeSocket *)BLI_findlink(
-                                                                        &fromnode->inputs, 1))
-                                              ->default_value;
+  if (!res->background_found && fromnode->type == SH_NODE_BACKGROUND) {
+    /* Get light color and intensity */
+    bNodeSocketValueRGBA *color_data =
+        (bNodeSocketValueRGBA *)((bNodeSocket *)BLI_findlink(&fromnode->inputs, 0))->default_value;
+    bNodeSocketValueFloat *strength_data = (bNodeSocketValueFloat *)((bNodeSocket *)BLI_findlink(
+                                                                         &fromnode->inputs, 1))
+                                               ->default_value;
 
-   res->background_found = true;
-   res->world_intensity = strength_data->value;
-   res->world_color[0] = color_data->value[0];
-   res->world_color[1] = color_data->value[1];
-   res->world_color[2] = color_data->value[2];
- }
- else if (!res->env_tex_found && fromnode->type == SH_NODE_TEX_ENVIRONMENT) {
-   /* Get env tex path. */
+    res->background_found = true;
+    res->world_intensity = strength_data->value;
+    res->world_color[0] = color_data->value[0];
+    res->world_color[1] = color_data->value[1];
+    res->world_color[2] = color_data->value[2];
+  }
+  else if (!res->env_tex_found && fromnode->type == SH_NODE_TEX_ENVIRONMENT) {
+    /* Get env tex path. */
 
-   res->file_path = get_tex_image_asset_filepath(fromnode, res->stage, res->params);
+    res->file_path = get_tex_image_asset_filepath(fromnode, res->stage, res->params);
 
-   if (!res->file_path.empty()) {
-     /* Get the rotation. */
-     NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(fromnode->storage);
-     copy_v3_v3(res->tex_rot, tex->base.tex_mapping.rot);
+    if (!res->file_path.empty()) {
+      /* Get the rotation. */
+      NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(fromnode->storage);
+      copy_v3_v3(res->tex_rot, tex->base.tex_mapping.rot);
 
-     res->env_tex_found = true;
+      res->env_tex_found = true;
 
-     if (res->params.export_textures) {
-       export_texture(fromnode, res->stage, res->params.overwrite_textures);
-     }
-   }
- }
- else if (!res->env_tex_found && !res->mult_found && fromnode->type == SH_NODE_VECTOR_MATH) {
+      if (res->params.export_textures) {
+        export_texture(fromnode, res->stage, res->params.overwrite_textures);
+      }
+    }
+  }
+  else if (!res->env_tex_found && !res->mult_found && fromnode->type == SH_NODE_VECTOR_MATH) {
 
-   if (fromnode->custom1 == NODE_VECTOR_MATH_MULTIPLY) {
-     res->mult_found = true;
+    if (fromnode->custom1 == NODE_VECTOR_MATH_MULTIPLY) {
+      res->mult_found = true;
 
-     bNodeSocket *vec_sock = bke::nodeFindSocket(fromnode, SOCK_IN, "Vector");
-     if (vec_sock) {
-       vec_sock = vec_sock->next;
-     }
+      bNodeSocket *vec_sock = bke::nodeFindSocket(fromnode, SOCK_IN, "Vector");
+      if (vec_sock) {
+        vec_sock = vec_sock->next;
+      }
 
-     if (vec_sock) {
-       copy_v3_v3(res->color_mult, ((bNodeSocketValueVector *)vec_sock->default_value)->value);
-     }
-   }
- }
- else if (res->env_tex_found && fromnode->type == SH_NODE_MAPPING) {
-   res->mapping_found = true;
-   copy_v3_fl(res->mapping_rot, 0.0f);
-   if (bNodeSocket* socket = bke::nodeFindSocket(fromnode, SOCK_IN, "Rotation")) {
-     bNodeSocketValueVector* rot_value = static_cast<bNodeSocketValueVector*>(socket->default_value);
-     copy_v3_v3(res->mapping_rot, rot_value->value);
-   }
- }
+      if (vec_sock) {
+        copy_v3_v3(res->color_mult, ((bNodeSocketValueVector *)vec_sock->default_value)->value);
+      }
+    }
+  }
+  else if (res->env_tex_found && fromnode->type == SH_NODE_MAPPING) {
+    res->mapping_found = true;
+    copy_v3_fl(res->mapping_rot, 0.0f);
+    if (bNodeSocket *socket = bke::nodeFindSocket(fromnode, SOCK_IN, "Rotation")) {
+      bNodeSocketValueVector *rot_value = static_cast<bNodeSocketValueVector *>(
+          socket->default_value);
+      copy_v3_v3(res->mapping_rot, rot_value->value);
+    }
+  }
 
- return true;
+  return true;
 }
 
 /* If the Blender scene has an environment texture,
-* export it as a USD dome light. */
+ * export it as a USD dome light. */
 void world_material_to_dome_light(const USDExportParams &params,
-                                 const Scene *scene,
-                                 pxr::UsdStageRefPtr stage)
+                                  const Scene *scene,
+                                  pxr::UsdStageRefPtr stage)
 {
- if (!(stage && scene && scene->world && scene->world->use_nodes && scene->world->nodetree)) {
-   return;
- }
+  if (!(stage && scene && scene->world && scene->world->use_nodes && scene->world->nodetree)) {
+    return;
+  }
 
- /* Find the world output. */
- const bNodeTree *ntree = scene->world->nodetree;
- ntree->ensure_topology_cache();
- const blender::Span<const bNode *> bsdf_nodes = ntree->nodes_by_type("ShaderNodeOutputWorld");
- const bNode *output = bsdf_nodes.is_empty() ? nullptr : bsdf_nodes.first();
+  /* Find the world output. */
+  const bNodeTree *ntree = scene->world->nodetree;
+  ntree->ensure_topology_cache();
+  const blender::Span<const bNode *> bsdf_nodes = ntree->nodes_by_type("ShaderNodeOutputWorld");
+  const bNode *output = bsdf_nodes.is_empty() ? nullptr : bsdf_nodes.first();
 
- if (!output) {
-   /* No output, no valid network to convert. */
-   return;
- }
+  if (!output) {
+    /* No output, no valid network to convert. */
+    return;
+  }
 
- WorldNtreeSearchResults res(params, stage);
+  WorldNtreeSearchResults res(params, stage);
 
- blender::bke::nodeChainIter(scene->world->nodetree, output, node_search, &res, true);
+  blender::bke::nodeChainIter(scene->world->nodetree, output, node_search, &res, true);
 
- if (!(res.background_found || res.env_tex_found)) {
-   /* No nodes to convert */
-   return;
- }
+  if (!(res.background_found || res.env_tex_found)) {
+    /* No nodes to convert */
+    return;
+  }
 
- /* Create USD dome light. */
+  /* Create USD dome light. */
 
- pxr::SdfPath env_light_path = get_unique_path(stage, std::string(params.root_prim_path) + "/env_light");
+  pxr::SdfPath env_light_path = get_unique_path(stage,
+                                                std::string(params.root_prim_path) + "/env_light");
 
- pxr::UsdLuxDomeLight dome_light = pxr::UsdLuxDomeLight::Define(
-     stage, env_light_path);
+  pxr::UsdLuxDomeLight dome_light = pxr::UsdLuxDomeLight::Define(stage, env_light_path);
 
- if (res.env_tex_found) {
-   pxr::SdfAssetPath path(res.file_path);
-   dome_light.CreateTextureFileAttr().Set(path);
+  if (res.env_tex_found) {
+    pxr::SdfAssetPath path(res.file_path);
+    dome_light.CreateTextureFileAttr().Set(path);
 
-   if (res.mult_found) {
-     pxr::GfVec3f color_val(res.color_mult[0], res.color_mult[1], res.color_mult[2]);
-     dome_light.CreateColorAttr().Set(color_val);
-   }
- }
- else {
-   pxr::GfVec3f color_val(res.world_color[0], res.world_color[1], res.world_color[2]);
-   dome_light.CreateColorAttr().Set(color_val);
- }
+    if (res.mult_found) {
+      pxr::GfVec3f color_val(res.color_mult[0], res.color_mult[1], res.color_mult[2]);
+      dome_light.CreateColorAttr().Set(color_val);
+    }
+  }
+  else {
+    pxr::GfVec3f color_val(res.world_color[0], res.world_color[1], res.world_color[2]);
+    dome_light.CreateColorAttr().Set(color_val);
+  }
 
- if (res.background_found) {
-   dome_light.CreateIntensityAttr().Set(res.world_intensity);
- }
+  if (res.background_found) {
+    dome_light.CreateIntensityAttr().Set(res.world_intensity);
+  }
 
- if (res.mapping_found) {
-   /* Convert radians to degrees. */
-   mul_v3_fl(res.mapping_rot, 180.0f / M_PI);
+  if (res.mapping_found) {
+    /* Convert radians to degrees. */
+    mul_v3_fl(res.mapping_rot, 180.0f / M_PI);
 
-   pxr::GfVec3f rot(-res.mapping_rot[0] + 90.f, -res.mapping_rot[1], -res.mapping_rot[2] + 90.0f);
+    pxr::GfVec3f rot(-res.mapping_rot[0] + 90.f, -res.mapping_rot[1], -res.mapping_rot[2] + 90.0f);
 
-   pxr::UsdGeomXformCommonAPI xform_api(dome_light);
+    pxr::UsdGeomXformCommonAPI xform_api(dome_light);
 
-   xform_api.SetRotate(rot, pxr::UsdGeomXformCommonAPI::RotationOrderXYZ);
- }
+    xform_api.SetRotate(rot, pxr::UsdGeomXformCommonAPI::RotationOrderXYZ);
+  }
 }
 
 /* Import the dome light as a world material. */
 
 void dome_light_to_world_material(const USDImportParams &params,
-                                 const ImportSettings &settings,
-                                 Scene *scene,
-                                 Main *bmain,
-                                 const pxr::UsdLuxDomeLight &dome_light,
-                                 const double time)
+                                  const ImportSettings &settings,
+                                  Scene *scene,
+                                  Main *bmain,
+                                  const pxr::UsdLuxDomeLight &dome_light,
+                                  const double time)
 {
- if (!(scene && scene->world && dome_light)) {
-   return;
- }
+  if (!(scene && scene->world && dome_light)) {
+    return;
+  }
 
- if (!scene->world->use_nodes) {
-   scene->world->use_nodes = true;
- }
+  if (!scene->world->use_nodes) {
+    scene->world->use_nodes = true;
+  }
 
- if (!scene->world->nodetree) {
-   scene->world->nodetree = bke::ntreeAddTree(NULL, "Shader Nodetree", "ShaderNodeTree");
-   if (!scene->world->nodetree) {
-     CLOG_WARN(&LOG, "Couldn't create world ntree");
-   }
- }
+  if (!scene->world->nodetree) {
+    scene->world->nodetree = bke::ntreeAddTree(NULL, "Shader Nodetree", "ShaderNodeTree");
+    if (!scene->world->nodetree) {
+      CLOG_WARN(&LOG, "Couldn't create world ntree");
+    }
+  }
 
- bNodeTree *ntree = scene->world->nodetree;
- bNode *output = nullptr;
- bNode *bgshader = nullptr;
+  bNodeTree *ntree = scene->world->nodetree;
+  bNode *output = nullptr;
+  bNode *bgshader = nullptr;
 
- /* We never delete existing nodes, but we might disconnect them
-  * and move them out of the way. */
+  /* We never delete existing nodes, but we might disconnect them
+   * and move them out of the way. */
 
- /* Look for the output and background shader nodes, which we will reuse. */
- for (bNode *node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
-   if (node->type == SH_NODE_OUTPUT_WORLD) {
-     output = node;
-   }
-   else if (node->type == SH_NODE_BACKGROUND) {
-     bgshader = node;
-   }
-   else {
-     /* Move existing node out of the way. */
-     node->locy += 300;
-   }
- }
+  /* Look for the output and background shader nodes, which we will reuse. */
+  for (bNode *node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
+    if (node->type == SH_NODE_OUTPUT_WORLD) {
+      output = node;
+    }
+    else if (node->type == SH_NODE_BACKGROUND) {
+      bgshader = node;
+    }
+    else {
+      /* Move existing node out of the way. */
+      node->locy += 300;
+    }
+  }
 
- /* Create the output and background shader nodes, if they don't exist. */
- if (!output) {
-   output = bke::nodeAddStaticNode(NULL, ntree, SH_NODE_OUTPUT_WORLD);
+  /* Create the output and background shader nodes, if they don't exist. */
+  if (!output) {
+    output = bke::nodeAddStaticNode(NULL, ntree, SH_NODE_OUTPUT_WORLD);
 
-   if (!output) {
-     CLOG_WARN(&LOG, "Couldn't create world output node");
-     return;
-   }
+    if (!output) {
+      CLOG_WARN(&LOG, "Couldn't create world output node");
+      return;
+    }
 
-   output->locx = 300.0f;
-   output->locy = 300.0f;
- }
+    output->locx = 300.0f;
+    output->locy = 300.0f;
+  }
 
- if (!bgshader) {
-   bgshader = append_node(output, SH_NODE_BACKGROUND, "Background", "Surface", ntree, 200);
+  if (!bgshader) {
+    bgshader = append_node(output, SH_NODE_BACKGROUND, "Background", "Surface", ntree, 200);
 
-   if (!bgshader) {
-     CLOG_WARN(&LOG, "Couldn't create world shader node");
-     return;
-   }
+    if (!bgshader) {
+      CLOG_WARN(&LOG, "Couldn't create world shader node");
+      return;
+    }
 
-   /* Set the default background color. */
-   bNodeSocket *color_sock = bke::nodeFindSocket(bgshader, SOCK_IN, "Color");
-   copy_v3_v3(((bNodeSocketValueRGBA *)color_sock->default_value)->value, &scene->world->horr);
- }
+    /* Set the default background color. */
+    bNodeSocket *color_sock = bke::nodeFindSocket(bgshader, SOCK_IN, "Color");
+    copy_v3_v3(((bNodeSocketValueRGBA *)color_sock->default_value)->value, &scene->world->horr);
+  }
 
- /* Make sure the first input to the shader node is disconnected. */
- bNodeSocket *shader_input = static_cast<bNodeSocket *>(BLI_findlink(&bgshader->inputs, 0));
+  /* Make sure the first input to the shader node is disconnected. */
+  bNodeSocket *shader_input = static_cast<bNodeSocket *>(BLI_findlink(&bgshader->inputs, 0));
 
- if (shader_input && shader_input->link) {
-   bke::nodeRemLink(ntree, shader_input->link);
- }
+  if (shader_input && shader_input->link) {
+    bke::nodeRemLink(ntree, shader_input->link);
+  }
 
- /* Set the background shader intensity. */
- float intensity = 1.0f;
- get_authored_value(dome_light.GetIntensityAttr(), time, &intensity,
-                    dome_light.GetPrim(), usdtokens::intensity);
+  /* Set the background shader intensity. */
+  float intensity = 1.0f;
+  get_authored_value(
+      dome_light.GetIntensityAttr(), time, &intensity, dome_light.GetPrim(), usdtokens::intensity);
 
- intensity *= params.light_intensity_scale;
+  intensity *= params.light_intensity_scale;
 
- bNodeSocket *strength_sock = bke::nodeFindSocket(bgshader, SOCK_IN, "Strength");
- ((bNodeSocketValueFloat *)strength_sock->default_value)->value = intensity;
+  bNodeSocket *strength_sock = bke::nodeFindSocket(bgshader, SOCK_IN, "Strength");
+  ((bNodeSocketValueFloat *)strength_sock->default_value)->value = intensity;
 
- /* Get the dome light texture file and color. */
- pxr::SdfAssetPath tex_path;
- bool has_tex = get_authored_value(dome_light.GetTextureFileAttr(), time, &tex_path,
-                                   dome_light.GetPrim(), usdtokens::texture_file);
+  /* Get the dome light texture file and color. */
+  pxr::SdfAssetPath tex_path;
+  bool has_tex = get_authored_value(dome_light.GetTextureFileAttr(),
+                                    time,
+                                    &tex_path,
+                                    dome_light.GetPrim(),
+                                    usdtokens::texture_file);
 
- pxr::GfVec3f color;
- bool has_color = get_authored_value(dome_light.GetColorAttr(), time, &color,
-                                     dome_light.GetPrim(), usdtokens::color);
+  pxr::GfVec3f color;
+  bool has_color = get_authored_value(
+      dome_light.GetColorAttr(), time, &color, dome_light.GetPrim(), usdtokens::color);
 
- if (!has_tex) {
-   /* No texture file is authored on the dome light.  Set the color, if it was authored,
-    * and return early. */
-   if (has_color) {
-     bNodeSocket *color_sock = bke::nodeFindSocket(bgshader, SOCK_IN, "Color");
-     copy_v3_v3(((bNodeSocketValueRGBA *)color_sock->default_value)->value, color.data());
-   }
+  if (!has_tex) {
+    /* No texture file is authored on the dome light.  Set the color, if it was authored,
+     * and return early. */
+    if (has_color) {
+      bNodeSocket *color_sock = bke::nodeFindSocket(bgshader, SOCK_IN, "Color");
+      copy_v3_v3(((bNodeSocketValueRGBA *)color_sock->default_value)->value, color.data());
+    }
 
-   bke::nodeSetActive(ntree, output);
-   BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+    bke::nodeSetActive(ntree, output);
+    BKE_ntree_update_main_tree(bmain, ntree, nullptr);
 
-   return;
- }
+    return;
+  }
 
- /* If the light has authored color, create a color multiply node for the environment
-  * texture output. */
- bNode *mult = nullptr;
+  /* If the light has authored color, create a color multiply node for the environment
+   * texture output. */
+  bNode *mult = nullptr;
 
- if (has_color) {
-   mult = append_node(bgshader, SH_NODE_VECTOR_MATH, "Vector", "Color", ntree, 200);
+  if (has_color) {
+    mult = append_node(bgshader, SH_NODE_VECTOR_MATH, "Vector", "Color", ntree, 200);
 
-   if (!mult) {
-     CLOG_WARN(&LOG, "Couldn't create vector multiply node");
-     return;
-   }
+    if (!mult) {
+      CLOG_WARN(&LOG, "Couldn't create vector multiply node");
+      return;
+    }
 
-   mult->custom1 = NODE_VECTOR_MATH_MULTIPLY;
+    mult->custom1 = NODE_VECTOR_MATH_MULTIPLY;
 
-   /* Set the color in the vector math node's second socket. */
-   bNodeSocket *vec_sock = bke::nodeFindSocket(mult, SOCK_IN, "Vector");
-   if (vec_sock) {
-     vec_sock = vec_sock->next;
-   }
+    /* Set the color in the vector math node's second socket. */
+    bNodeSocket *vec_sock = bke::nodeFindSocket(mult, SOCK_IN, "Vector");
+    if (vec_sock) {
+      vec_sock = vec_sock->next;
+    }
 
-   if (vec_sock) {
-     copy_v3_v3(((bNodeSocketValueVector *)vec_sock->default_value)->value, color.data());
-   }
-   else {
-     CLOG_WARN(&LOG, "Couldn't find vector multiply second vector socket");
-   }
- }
+    if (vec_sock) {
+      copy_v3_v3(((bNodeSocketValueVector *)vec_sock->default_value)->value, color.data());
+    }
+    else {
+      CLOG_WARN(&LOG, "Couldn't find vector multiply second vector socket");
+    }
+  }
 
- bNode* tex = nullptr;
+  bNode *tex = nullptr;
 
- /* Append an environment texture node to the mult node, if it was created, or directly to
-  * the background shader. */
- if (mult) {
-   tex = append_node(mult, SH_NODE_TEX_ENVIRONMENT, "Color", "Vector", ntree, 400);
- }
- else {
-   tex = append_node(bgshader, SH_NODE_TEX_ENVIRONMENT, "Color", "Color", ntree, 400);
- }
+  /* Append an environment texture node to the mult node, if it was created, or directly to
+   * the background shader. */
+  if (mult) {
+    tex = append_node(mult, SH_NODE_TEX_ENVIRONMENT, "Color", "Vector", ntree, 400);
+  }
+  else {
+    tex = append_node(bgshader, SH_NODE_TEX_ENVIRONMENT, "Color", "Color", ntree, 400);
+  }
 
- if (!tex) {
-   CLOG_WARN(&LOG, "Couldn't create world environment texture node");
-   return;
- }
+  if (!tex) {
+    CLOG_WARN(&LOG, "Couldn't create world environment texture node");
+    return;
+  }
 
- bNode* mapping = append_node(tex, SH_NODE_MAPPING, "Vector", "Vector", ntree, 200);
+  bNode *mapping = append_node(tex, SH_NODE_MAPPING, "Vector", "Vector", ntree, 200);
 
- if (!mapping) {
-   CLOG_WARN(&LOG, "Couldn't create mapping node");
-   return;
- }
+  if (!mapping) {
+    CLOG_WARN(&LOG, "Couldn't create mapping node");
+    return;
+  }
 
- bNode* tex_coord = append_node(mapping, SH_NODE_TEX_COORD, "Generated", "Vector", ntree, 200);
+  bNode *tex_coord = append_node(mapping, SH_NODE_TEX_COORD, "Generated", "Vector", ntree, 200);
 
- if (!tex_coord) {
-   CLOG_WARN(&LOG, "Couldn't create texture coordinate node");
-   return;
- }
+  if (!tex_coord) {
+    CLOG_WARN(&LOG, "Couldn't create texture coordinate node");
+    return;
+  }
 
- /* Load the texture image. */
- std::string resolved_path = tex_path.GetResolvedPath();
+  /* Load the texture image. */
+  std::string resolved_path = tex_path.GetResolvedPath();
 
- if (resolved_path.empty()) {
-   CLOG_WARN(&LOG, "Couldn't get resolved path for asset %s", tex_path.GetAssetPath().c_str());
-   return;
- }
+  if (resolved_path.empty()) {
+    CLOG_WARN(&LOG, "Couldn't get resolved path for asset %s", tex_path.GetAssetPath().c_str());
+    return;
+  }
 
- Image* image = load_image(resolved_path, bmain, params);
- if (!image) {
-   CLOG_WARN(&LOG, "Couldn't load image file %s", resolved_path.c_str());
-   return;
- }
+  Image *image = load_image(resolved_path, bmain, params);
+  if (!image) {
+    CLOG_WARN(&LOG, "Couldn't load image file %s", resolved_path.c_str());
+    return;
+  }
 
- tex->id = &image->id;
+  tex->id = &image->id;
 
- /* Set the transform. */
- pxr::UsdGeomXformCache xf_cache(time);
- pxr::GfMatrix4d xf = xf_cache.GetLocalToWorldTransform(dome_light.GetPrim());
+  /* Set the transform. */
+  pxr::UsdGeomXformCache xf_cache(time);
+  pxr::GfMatrix4d xf = xf_cache.GetLocalToWorldTransform(dome_light.GetPrim());
 
- pxr::GfRotation rot = xf.ExtractRotation();
+  pxr::GfRotation rot = xf.ExtractRotation();
 
- pxr::GfVec3d angles = rot.Decompose(pxr::GfVec3d::ZAxis(),
-                                     pxr::GfVec3d::YAxis(),
-                                     pxr::GfVec3d::XAxis());
+  pxr::GfVec3d angles = rot.Decompose(
+      pxr::GfVec3d::ZAxis(), pxr::GfVec3d::YAxis(), pxr::GfVec3d::XAxis());
 
- pxr::GfVec3f rot_vec(angles[0], angles[1], angles[2]);
+  pxr::GfVec3f rot_vec(angles[0], angles[1], angles[2]);
 
- rot_vec *= M_PI / 180.0f;
+  rot_vec *= M_PI / 180.0f;
 
- rot_vec[0] -= M_PI_2;
- rot_vec[2] -= M_PI_2;
+  rot_vec[0] -= M_PI_2;
+  rot_vec[2] -= M_PI_2;
 
- if (bNodeSocket* socket = bke::nodeFindSocket(mapping, SOCK_IN, "Rotation")) {
-   bNodeSocketValueVector* rot_value = static_cast<bNodeSocketValueVector*>(socket->default_value);
-   copy_v3_v3(rot_value->value, rot_vec.data());
- }
+  if (bNodeSocket *socket = bke::nodeFindSocket(mapping, SOCK_IN, "Rotation")) {
+    bNodeSocketValueVector *rot_value = static_cast<bNodeSocketValueVector *>(
+        socket->default_value);
+    copy_v3_v3(rot_value->value, rot_vec.data());
+  }
 
- bke::nodeSetActive(ntree, output);
- DEG_id_tag_update(&ntree->id, ID_RECALC_NTREE_OUTPUT);
- BKE_ntree_update_main_tree(bmain, ntree, nullptr);
+  bke::nodeSetActive(ntree, output);
+  DEG_id_tag_update(&ntree->id, ID_RECALC_NTREE_OUTPUT);
+  BKE_ntree_update_main_tree(bmain, ntree, nullptr);
 }
 
 }  // namespace blender::io::usd

@@ -331,11 +331,11 @@ bool is_udim_path(const std::string &path)
          path.find(UDIM_PATTERN2) != std::string::npos;
 }
 
-const char* temp_textures_dir()
+const char *temp_textures_dir()
 {
   static bool inited = false;
 
-  static char temp_dir[FILE_MAXDIR] = { '\0' };
+  static char temp_dir[FILE_MAXDIR] = {'\0'};
 
   if (!inited) {
     BLI_path_join(temp_dir, sizeof(temp_dir), BKE_tempdir_session(), "usd_textures_tmp", SEP_STR);

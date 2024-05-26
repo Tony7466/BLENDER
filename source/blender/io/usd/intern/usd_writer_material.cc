@@ -828,15 +828,16 @@ static std::string get_tex_image_asset_filepath(Image *ima)
   return std::string(filepath);
 }
 
-static std::string get_tex_image_asset_filepath(const USDExporterContext& usd_export_context,
-                                                bNode* node)
+static std::string get_tex_image_asset_filepath(const USDExporterContext &usd_export_context,
+                                                bNode *node)
 {
-  return get_tex_image_asset_filepath(node, usd_export_context.stage, usd_export_context.export_params);
+  return get_tex_image_asset_filepath(
+      node, usd_export_context.stage, usd_export_context.export_params);
 }
 
-std::string get_tex_image_asset_filepath(bNode* node,
+std::string get_tex_image_asset_filepath(bNode *node,
                                          const pxr::UsdStageRefPtr stage,
-                                         const USDExportParams& export_params)
+                                         const USDExportParams &export_params)
 {
   std::string stage_path = stage->GetRootLayer()->GetRealPath();
 
@@ -990,16 +991,18 @@ static void copy_single_file(Image *ima,
   }
 }
 
-static void export_texture(const USDExporterContext& usd_export_context, bNode* node)
+static void export_texture(const USDExporterContext &usd_export_context, bNode *node)
 {
-  export_texture(node, usd_export_context.stage, usd_export_context.export_params.overwrite_textures,
+  export_texture(node,
+                 usd_export_context.stage,
+                 usd_export_context.export_params.overwrite_textures,
                  usd_export_context.export_params.worker_status->reports);
 }
 
-void export_texture(bNode* node,
+void export_texture(bNode *node,
                     const pxr::UsdStageRefPtr stage,
                     const bool allow_overwrite,
-                    ReportList* reports)
+                    ReportList *reports)
 {
   if (!ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
     return;
@@ -1030,16 +1033,13 @@ void export_texture(bNode* node,
   std::string dest_dir(tex_dir_path);
 
   if (is_generated || is_dirty || is_packed) {
-    export_in_memory_texture(
-        ima, dest_dir, allow_overwrite, reports);
+    export_in_memory_texture(ima, dest_dir, allow_overwrite, reports);
   }
   else if (ima->source == IMA_SRC_TILED) {
-    copy_tiled_textures(
-        ima, dest_dir, allow_overwrite, reports);
+    copy_tiled_textures(ima, dest_dir, allow_overwrite, reports);
   }
   else {
-    copy_single_file(
-        ima, dest_dir, allow_overwrite, reports);
+    copy_single_file(ima, dest_dir, allow_overwrite, reports);
   }
 }
 
