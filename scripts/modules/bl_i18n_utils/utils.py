@@ -627,7 +627,7 @@ class I18nMessages:
                     if skey not in similar_pool[msgid]:
                         skey = tuple(similar_pool[msgid])[0]
                     # We keep org translation and comments, and mark message as fuzzy.
-                    msg, refmsg = self.msgs[skey].copy(), ref.msgs[key]
+                    msg, refmsg = self.msgs[skey].copy(), ref.msgs[key].copy()
                     msg.msgctxt = refmsg.msgctxt
                     msg.msgid = refmsg.msgid
                     msg.sources = refmsg.sources
@@ -635,10 +635,10 @@ class I18nMessages:
                     msg.is_commented = refmsg.is_commented
                     msgs[key] = msg
                 else:
-                    msgs[key] = ref.msgs[key]
+                    msgs[key] = ref.msgs[key].copy()
         else:
             for key in new_keys:
-                msgs[key] = ref.msgs[key]
+                msgs[key] = ref.msgs[key].copy()
 
         # Add back all "old" and already commented messages as commented ones, if required
         # (and translation was not void!).
