@@ -586,6 +586,7 @@ class I18nMessages:
             if (not sm.msgstr or replace or (sm.is_fuzzy and (not m.is_fuzzy or replace))):
                 sm.msgstr = m.msgstr
                 sm.is_fuzzy = m.is_fuzzy
+                sm.comment_lines = m.comment_lines
 
     def update(self, ref, use_similar=None, keep_old_commented=True):
         """
