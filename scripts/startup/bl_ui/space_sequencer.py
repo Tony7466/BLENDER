@@ -1080,9 +1080,12 @@ class SEQUENCER_MT_image_clear(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("sequencer.strip_transform_clear", text="Position").property = 'POSITION'
-        layout.operator("sequencer.strip_transform_clear", text="Scale").property = 'SCALE'
-        layout.operator("sequencer.strip_transform_clear", text="Rotation").property = 'ROTATION'
+        layout.operator("sequencer.strip_transform_clear", text="Position",
+                        text_ctxt=i18n_contexts.default).property = 'POSITION'
+        layout.operator("sequencer.strip_transform_clear", text="Scale",
+                        text_ctxt=i18n_contexts.default).property = 'SCALE'
+        layout.operator("sequencer.strip_transform_clear", text="Rotation",
+                        text_ctxt=i18n_contexts.default).property = 'ROTATION'
         layout.operator("sequencer.strip_transform_clear", text="All Transforms").property = 'ALL'
 
 
