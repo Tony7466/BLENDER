@@ -6,6 +6,9 @@
  * \ingroup sim
  */
 
+#include "BLI_mempool.h"
+#include "BLI_virtual_array.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "SIM_rigid_body.hh"
@@ -15,19 +18,63 @@
 #include "BulletCollision/Gimpact/btGImpactShape.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #include "btBulletDynamicsCommon.h"
+#include "BulletDynamics/Dynamics/btRigidBody.h"
 #endif
 
 namespace blender::simulation {
 
+template<typename T, int chunk_size, bool allow_iterator> class MemPool {
+ private:
+  BLI_mempool *pool_;
+
+ public:
+  MemPool(const int size = 0)
+  {
+    const int flag = allow_iterator ? BLI_MEMPOOL_ALLOW_ITER : BLI_MEMPOOL_NOP;
+    pool_ = BLI_mempool_create(sizeof(T), size, chunk_size, flag);
+  }
+
+  ~MemPool()
+  {
+    BLI_mempool_destroy(pool_);
+  }
+
+  template<typename... Args> T *alloc(Args &&...args)
+  {
+    return new (BLI_mempool_alloc(pool_)) T(std::forward<Args>(args)...);
+  }
+
+  void free(T *ptr)
+  {
+    BLI_mempool_free(pool_, ptr);
+  }
+
+  int size() const
+  {
+    return BLI_mempool_len(pool_);
+  }
+};
+
 #ifdef WITH_BULLET
 
-inline float3 to_blender(const btVector3 &v) {
-  return float3(v);
+inline float to_blender(const btScalar v)
+{
+  return float(v);
+}
+
+inline float3 to_blender(const btVector3 &v)
+{
+  return float3(v.x(), v.y(), v.z());
 }
 
 inline math::Quaternion to_blender(const btQuaternion &q)
 {
   return math::Quaternion(q.w(), q.x(), q.y(), q.z());
+}
+
+inline btScalar to_bullet(const float v)
+{
+  return btScalar(v);
 }
 
 inline btVector3 to_bullet(const float3 &v)
@@ -72,6 +119,11 @@ struct RigidBodyWorldImpl {
   btConstraintSolver *constraint_solver;
   btOverlapFilterCallback *overlap_filter;
 
+  MemPool<btRigidBody, 512, true> rigid_body_pool;
+  MemPool<btDefaultMotionState, 512, true> motion_state_pool;
+
+  Vector<btRigidBody *> rigid_bodies;
+
   RigidBodyWorldImpl()
   {
     this->config = MEM_new<btDefaultCollisionConfiguration>(__func__);
@@ -88,7 +140,12 @@ struct RigidBodyWorldImpl {
         __func__, this->dispatcher, this->broadphase, this->constraint_solver, this->config);
   }
 
-  ~RigidBodyWorldImpl() {
+  ~RigidBodyWorldImpl()
+  {
+    for (btRigidBody *body : rigid_bodies) {
+      MEM_delete(body);
+    }
+
     /* XXX This leaks memory, but enabling it somehow causes memory corruption and crash.
      * Possibly caused by alignment? */
     // MEM_delete(this->world);
@@ -98,9 +155,17 @@ struct RigidBodyWorldImpl {
     MEM_delete(this->config);
     MEM_delete(this->overlap_filter);
   }
+
+  template<typename T, typename GetFn> VArray<T> varray_for_rigid_bodies(GetFn get_fn)
+  {
+    return VArray<T>::ForFunc(this->rigid_bodies.size(), [&](const int64_t index) {
+      return get_fn(*this->rigid_bodies[index]);
+    });
+  }
 };
 
-RigidBodyWorld::RigidBodyWorld() {
+RigidBodyWorld::RigidBodyWorld()
+{
   impl_ = MEM_new<RigidBodyWorldImpl>(__func__);
 }
 
@@ -118,7 +183,7 @@ RigidBodyWorld::~RigidBodyWorld()
 
 int RigidBodyWorld::bodies_num() const
 {
-  return 0;
+  return impl_->rigid_body_pool.size();
 }
 
 int RigidBodyWorld::constraints_num() const
@@ -137,7 +202,8 @@ void RigidBodyWorld::set_overlap_filter(OverlapFilterFn fn)
   impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
 }
 
-void RigidBodyWorld::clear_overlap_filter() {
+void RigidBodyWorld::clear_overlap_filter()
+{
   if (impl_->overlap_filter) {
     delete impl_->overlap_filter;
     impl_->overlap_filter = new DefaultOverlapFilter();
@@ -167,6 +233,134 @@ void RigidBodyWorld::set_split_impulse(const bool split_impulse)
   /* Note: Bullet stores this as int, but it's used as a bool. */
   info.m_splitImpulse = int(split_impulse);
 }
+
+VArray<RigidBodyID> RigidBodyWorld::body_ids() const {
+  return impl_->varray_for_rigid_bodies<RigidBodyID>(
+      [&](const btRigidBody &body) { return body.getUserIndex(); });
+}
+
+IndexRange RigidBodyWorld::add_rigid_bodies(const VArray<float> &masses,
+                                            const VArray<float3> &inertiae)
+{
+  const int num_add = masses.size();
+  BLI_assert(inertiae.size() == num_add);
+
+  impl_->rigid_bodies.append_n_times(nullptr, num_add);
+  const IndexRange new_bodies = impl_->rigid_bodies.index_range().take_back(num_add);
+  for (const int i : new_bodies) {
+    btMotionState *motion_state = impl_->motion_state_pool.alloc();
+    btCollisionShape *collision_shape = nullptr;
+    const btRigidBody::btRigidBodyConstructionInfo construction_info{
+        masses[i], motion_state, collision_shape, to_bullet(inertiae[i])};
+    btRigidBody *body = impl_->rigid_body_pool.alloc(construction_info);
+    impl_->rigid_bodies[i] = body;
+    impl_->world->addRigidBody(body);
+  }
+  return new_bodies;
+}
+
+void RigidBodyWorld::remove_rigid_bodies(const IndexMask &mask) {
+  mask.foreach_index([&](const int index) {
+    btRigidBody *body = impl_->rigid_bodies[index];
+
+    impl_->world->removeRigidBody(body);
+
+    impl_->motion_state_pool.free(static_cast<btDefaultMotionState *>(body->getMotionState()));
+    impl_->rigid_body_pool.free(body);
+  });
+
+  /* Remove entries. */
+  IndexMaskMemory keep_mask_memory;
+  IndexMask keep_mask = mask.complement(impl_->rigid_bodies.index_range(), keep_mask_memory);
+  Vector<btRigidBody *> new_rigid_bodies(keep_mask.size());
+  keep_mask.foreach_index(
+      [&](const int index, const int pos) { new_rigid_bodies[pos] = impl_->rigid_bodies[index]; });
+  impl_->rigid_bodies = std::move(new_rigid_bodies);
+}
+
+//RigidBodyHandle RigidBodyWorld::add_rigid_body(const float mass, const float3 &inertia)
+//{
+//  btMotionState *motion_state = impl_->motion_state_pool.alloc();
+//  btCollisionShape *collision_shape = nullptr;
+//  const btRigidBody::btRigidBodyConstructionInfo construction_info{
+//      mass, motion_state, collision_shape, to_bullet(inertia)};
+//  btRigidBody *body = impl_->rigid_body_pool.alloc(construction_info);
+//
+//  impl_->world->addRigidBody(body);
+//
+//  return (RigidBodyHandle)body;
+//}
+//
+//void RigidBodyWorld::remove_rigid_body(RigidBodyHandle handle)
+//{
+//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//  impl_->world->removeRigidBody(body);
+//}
+//
+//float RigidBodyWorld::body_mass(RigidBodyHandle handle) const
+//{
+//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//  return body->getMass();
+//}
+//
+//float3 RigidBodyWorld::body_inertia(RigidBodyHandle handle) const
+//{
+//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//  return to_blender(body->getLocalInertia());
+//}
+//
+//void RigidBodyWorld::set_body_mass(RigidBodyHandle handle, const float mass, const float3 &inertia)
+//{
+//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//  body->setMassProps(mass, to_bullet(inertia));
+//}
+//
+//float RigidBodyWorld::body_friction(RigidBodyHandle handle) const {
+//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//  return body->getFriction();
+//}
+//
+//void RigidBodyWorld::set_body_friction(RigidBodyHandle handle, float value)
+//{
+//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//  body->setFriction(value);
+//}
+//
+//float RigidBodyWorld::body_restitution(RigidBodyHandle handle) const
+//{
+//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//  return body->getRestitution();
+//}
+//
+//void RigidBodyWorld::body_set_restitution(RigidBodyHandle handle, float value)
+//{
+//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//  body->setRestitution(value);
+//}
+//
+//float RigidBodyWorld::body_linear_damping(RigidBodyHandle handle) const
+//{
+//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//  return body->getLinearDamping();
+//}
+//
+//void RigidBodyWorld::body_set_linear_damping(RigidBodyHandle handle, float value)
+//{
+//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//  body->setDamping(value, body->getAngularDamping());
+//}
+//
+//float RigidBodyWorld::body_angular_damping(RigidBodyHandle handle) const
+//{
+//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//  return body->getAngularDamping();
+//}
+//
+//void RigidBodyWorld::body_set_angular_damping(RigidBodyHandle handle, float value)
+//{
+//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//  body->setDamping(body->getLinearDamping(), value);
+//}
 
 #else
 

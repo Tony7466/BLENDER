@@ -54,6 +54,7 @@ if(WITH_BULLET)
     ${BULLET_LIBRARIES}
   )
   add_definitions(-DWITH_BULLET)
+  add_definitions(-DBT_USE_DOUBLE_PRECISION)
 endif()
 
 if(WITH_OPENMP AND WITH_OPENMP_STATIC)
