@@ -813,6 +813,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "create_background_shader", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
