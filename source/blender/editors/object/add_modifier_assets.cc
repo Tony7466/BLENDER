@@ -219,7 +219,7 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
     uiItemL(layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
-  static Set<std::string> all_builtin_menus = [&]() {
+  Set<std::string> all_builtin_menus = [&]() {
     Set<std::string> menus;
     if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_LATTICE)) {
       menus.add_new("Edit");
@@ -229,6 +229,9 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
     }
     if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_LATTICE, OB_VOLUME)) {
       menus.add_new("Deform");
+    }
+    if (ELEM(object->type, OB_MESH)) {
+      menus.add_new("Normals");
     }
     if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_LATTICE)) {
       menus.add_new("Physics");
@@ -338,7 +341,7 @@ static int modifier_add_asset_exec(bContext *C, wmOperator *op)
 
 static int modifier_add_asset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  if (event->modifier & KM_ALT) {
+  if (event->modifier & KM_ALT || CTX_wm_view3d(C)) {
     RNA_boolean_set(op->ptr, "use_selected_objects", true);
   }
   return modifier_add_asset_exec(C, op);

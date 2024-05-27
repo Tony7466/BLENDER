@@ -213,6 +213,9 @@
     .gtao_focus = 0.05f, \
     .gtao_resolution = 2, \
  \
+    .fast_gi_step_count = 8, \
+    .fast_gi_ray_count = 2, \
+ \
     .bokeh_overblur = 5.0f, \
     .bokeh_max_size = 100.0f, \
     .bokeh_threshold = 1.0f, \
@@ -236,7 +239,7 @@
     .shadow_cascade_size = 1024, \
     .shadow_ray_count = 1, \
     .shadow_step_count = 6, \
-    .shadow_normal_bias = 0.02f, \
+    .shadow_resolution_scale = 1.0f, \
  \
     .ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN, \
  \
@@ -408,8 +411,7 @@
  \
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
-    .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
-\
+ \
     /* Placement */ \
     .snap_mode_tools = SCE_SNAP_TO_GEOM,\
     .plane_axis = 2,\
