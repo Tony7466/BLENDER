@@ -223,7 +223,7 @@ class GLCompilerWorker {
   std::unique_ptr<SharedSemaphore> end_semaphore_;
   std::unique_ptr<SharedSemaphore> close_semaphore_;
   enum eState {
-    /* The worker has been adquired and the compilation has been requested. */
+    /* The worker has been acquired and the compilation has been requested. */
     COMPILATION_REQUESTED,
     /* The shader binary result is ready to be read. */
     COMPILATION_READY,
