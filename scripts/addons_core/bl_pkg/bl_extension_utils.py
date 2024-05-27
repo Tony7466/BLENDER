@@ -301,12 +301,16 @@ def repo_sync(
         online_user_agent: str,
         use_idle: bool,
         force_exit_ok: bool = False,
+        dry_run: bool = False,
         extension_override: str = "",
 ) -> Generator[InfoItemSeq, None, None]:
     """
     Implementation:
     ``bpy.ops.ext.repo_sync(directory)``.
     """
+    if dry_run:
+        return [COMPLETE_ITEM]
+
     yield from command_output_from_json_0([
         "sync",
         "--local-dir", directory,
@@ -753,7 +757,8 @@ class CommandBatch:
         )
 
     @staticmethod
-    def calc_status_text_icon_from_data(status_data: CommandBatch_StatusFlag, update_count: int) -> Tuple[str, str]:
+    def calc_status_text_icon_from_data(status_data: CommandBatch_StatusFlag,
+                                        update_count: int, do_online_sync: bool) -> Tuple[str, str]:
         # Generate a nice UI string for a status-bar & splash screen (must be short).
         #
         # NOTE: this is (arguably) UI logic, it's just nice to have it here
@@ -769,7 +774,10 @@ class CommandBatch:
 
         if status_data.flag == 1 << CommandBatchItem.STATUS_NOT_YET_STARTED or \
            status_data.flag & 1 << CommandBatchItem.STATUS_RUNNING:
-            return "Checking for Extension Updates{:s}".format(fail_text), 'SORTTIME'
+            if do_online_sync:
+                return "Checking for Extension Updates Online{:s}".format(fail_text), 'SORTTIME'
+            else:
+                return "Checking for Extension Updates{:s}".format(fail_text), 'SORTTIME'
 
         if status_data.flag == 1 << CommandBatchItem.STATUS_COMPLETE:
             if update_count > 0:

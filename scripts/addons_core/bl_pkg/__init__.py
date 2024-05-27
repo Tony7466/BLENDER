@@ -141,8 +141,11 @@ def repos_to_notify():
         PKG_MANIFEST_FILENAME_TOML,
     )
 
+    repos_notify = []
+    do_online_sync = False
+
     if bpy.app.background:
-        return []
+        return repos_notify, do_online_sync
 
     # To use notifications on startup requires:
     # - The splash displayed.
@@ -150,9 +153,6 @@ def repos_to_notify():
     #
     # Since it's not all that common to disable the status bar just run notifications
     # if any repositories are marked to run notifications.
-
-    repos_notify = []
-    any_repo_outdated = False
 
     prefs = bpy.context.preferences
     extension_repos = prefs.extensions.repos
@@ -193,15 +193,13 @@ def repos_to_notify():
 
         # NOTE: offline checks are handled by the notification (not here).
         repos_notify.append(repo_item)
+
+        # Update all repos together or none, to avoid bothering users
+        # multiple times in a day.
         if repo_index_outdated(repo_item.directory):
-            any_repo_outdated = True
+            do_online_sync = True
 
-    # Update all repos together or none, to avoid bothering users
-    # multiple times in a day.
-    if not any_repo_outdated:
-        return []
-
-    return repos_notify
+    return repos_notify, do_online_sync
 
 
 # -----------------------------------------------------------------------------
@@ -522,10 +520,11 @@ def register():
     cli_commands.append(bpy.utils.register_cli_command("extension", cli_extension))
 
     global use_repos_to_notify
-    if (repos_notify := repos_to_notify()):
+    repos_notify, do_online_sync = repos_to_notify()
+    if repos_notify:
         use_repos_to_notify = True
         from . import bl_extension_notify
-        bl_extension_notify.register(repos_notify)
+        bl_extension_notify.register(repos_notify, do_online_sync)
     del repos_notify
 
     monkeypatch_install()
