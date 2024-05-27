@@ -707,14 +707,6 @@ def _bl_info_from_extension(mod_name, mod_path):
         return None, filepath_toml
     bl_info["blender"] = value
 
-    # Only print warnings since description is not a mandatory field.
-    if (value := data.get("tagline", None)) is None:
-        print("Warning: missing \"tagline\" from in", filepath_toml)
-    elif type(value) is not str:
-        print("Warning: \"tagline\" is not a string", filepath_toml)
-    else:
-        bl_info["description"] = value
-
     if (value := data.get("maintainer", None)) is None:
         print("Error: missing \"author\" from in", filepath_toml)
         return None, filepath_toml
