@@ -134,7 +134,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         info.layers_num = grease_pencil_component.attribute_domain_size(bke::AttrDomain::Layer);
         break;
       }
-      case bke::GeometryComponent::Type::RigidBody: {
+      case bke::GeometryComponent::Type::Physics: {
         const auto &rigid_body_component = *static_cast<const bke::RigidBodyComponent *>(
             component);
         RigidBodyInfo &info = this->rigid_body_info.emplace();

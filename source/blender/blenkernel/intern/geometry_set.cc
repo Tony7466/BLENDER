@@ -55,7 +55,7 @@ GeometryComponentPtr GeometryComponent::create(Type component_type)
       return GeometryComponentPtr(new GeometryComponentEditData());
     case Type::GreasePencil:
       return GeometryComponentPtr(new GreasePencilComponent());
-    case Type::RigidBody:
+    case Type::Physics:
       return GeometryComponentPtr(new PhysicsComponent());
   }
   BLI_assert_unreachable();
@@ -822,7 +822,7 @@ bool object_has_geometry_set_instances(const Object &object)
       case GeometryComponent::Type::GreasePencil:
         is_instance = object.type != OB_GREASE_PENCIL;
         break;
-      case GeometryComponent::Type::RigidBody:
+      case GeometryComponent::Type::Physics:
         break;
     }
     if (is_instance) {

@@ -5,135 +5,133 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 
+#include "SIM_physics_geometry.hh"
 #include "SIM_rigid_body.hh"
 
 #include "attribute_access_intern.hh"
 
 namespace blender::bke {
 
-using simulation::RigidBodyWorld;
+using simulation::PhysicsGeometry;
 
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
  * \{ */
 
-RigidBodyComponent::RigidBodyComponent() : GeometryComponent(Type::RigidBody) {}
+PhysicsComponent::PhysicsComponent() : GeometryComponent(Type::Physics) {}
 
-RigidBodyComponent::RigidBodyComponent(RigidBodyWorld *rigid_body_world,
-                                       GeometryOwnershipType ownership)
-    : GeometryComponent(Type::RigidBody),
-      rigid_body_world_(rigid_body_world),
-      ownership_(ownership)
+PhysicsComponent::PhysicsComponent(PhysicsGeometry *physics, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Physics), physics_(physics), ownership_(ownership)
 {
 }
 
-RigidBodyComponent::~RigidBodyComponent()
+PhysicsComponent::~PhysicsComponent()
 {
   this->clear();
 }
 
-GeometryComponentPtr RigidBodyComponent::copy() const
+GeometryComponentPtr PhysicsComponent::copy() const
 {
-  RigidBodyComponent *new_component = new RigidBodyComponent();
-  if (rigid_body_world_ != nullptr) {
-    new_component->rigid_body_world_ = new RigidBodyWorld(*rigid_body_world_);
+  PhysicsComponent *new_component = new PhysicsComponent();
+  if (physics_ != nullptr) {
+    new_component->physics_ = new PhysicsGeometry(*physics_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return GeometryComponentPtr(new_component);
 }
 
-void RigidBodyComponent::clear()
+void PhysicsComponent::clear()
 {
   BLI_assert(this->is_mutable() || this->is_expired());
-  if (rigid_body_world_ != nullptr) {
+  if (physics_ != nullptr) {
     if (ownership_ == GeometryOwnershipType::Owned) {
-      delete rigid_body_world_;
+      delete physics_;
     }
-    rigid_body_world_ = nullptr;
+    physics_ = nullptr;
   }
 }
 
-bool RigidBodyComponent::has_world() const
+bool PhysicsComponent::has_world() const
 {
-  return rigid_body_world_ != nullptr;
+  return physics_ != nullptr;
 }
 
-void RigidBodyComponent::replace(RigidBodyWorld *rigid_body_world, GeometryOwnershipType ownership)
+void PhysicsComponent::replace(PhysicsGeometry *physics, GeometryOwnershipType ownership)
 {
   BLI_assert(this->is_mutable());
   this->clear();
-  rigid_body_world_ = rigid_body_world;
+  physics_ = physics;
   ownership_ = ownership;
 }
 
-RigidBodyWorld *RigidBodyComponent::release()
+PhysicsGeometry *PhysicsComponent::release()
 {
   BLI_assert(this->is_mutable());
-  RigidBodyWorld *rigid_body_world = rigid_body_world_;
-  rigid_body_world_ = nullptr;
-  return rigid_body_world;
+  PhysicsGeometry *physics = physics_;
+  physics_ = nullptr;
+  return physics;
 }
 
-const RigidBodyWorld *RigidBodyComponent::get() const
+const PhysicsGeometry *PhysicsComponent::get() const
 {
-  return rigid_body_world_;
+  return physics_;
 }
 
-RigidBodyWorld *RigidBodyComponent::get_for_write()
+PhysicsGeometry *PhysicsComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    rigid_body_world_ = new RigidBodyWorld(*rigid_body_world_);
+    physics_ = new PhysicsGeometry(*physics_);
     ownership_ = GeometryOwnershipType::Owned;
   }
-  return rigid_body_world_;
+  return physics_;
 }
 
-bool RigidBodyComponent::is_empty() const
+bool PhysicsComponent::is_empty() const
 {
-  return rigid_body_world_ == nullptr;
+  return physics_ == nullptr;
 }
 
-int RigidBodyComponent::bodies_num() const
+int PhysicsComponent::bodies_num() const
 {
-  return rigid_body_world_ ? rigid_body_world_->bodies_num() : 0;
+  return physics_ ? physics_->rigid_bodies().size() : 0;
 }
 
-int RigidBodyComponent::constraints_num() const
+int PhysicsComponent::constraints_num() const
 {
-  return rigid_body_world_ ? rigid_body_world_->constraints_num() : 0;
+  return 0;
 }
 
-int RigidBodyComponent::shapes_num() const
+int PhysicsComponent::shapes_num() const
 {
-  return rigid_body_world_ ? rigid_body_world_->shapes_num() : 0;
+  return 0;
 }
 
-bool RigidBodyComponent::owns_direct_data() const
+bool PhysicsComponent::owns_direct_data() const
 {
   return ownership_ == GeometryOwnershipType::Owned;
 }
 
-void RigidBodyComponent::ensure_owns_direct_data()
+void PhysicsComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    if (rigid_body_world_) {
-      rigid_body_world_ = new RigidBodyWorld(*rigid_body_world_);
+    if (physics_) {
+      physics_ = new PhysicsGeometry(*physics_);
     }
     ownership_ = GeometryOwnershipType::Owned;
   }
 }
 
-static ComponentAttributeProviders create_attribute_providers_for_rigid_body_world()
+static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
   return ComponentAttributeProviders({}, {});
 }
 
-static GVArray adapt_rigid_body_attribute_domain(const RigidBodyWorld & /*rigid_body_world*/,
-                                                 const GVArray &varray,
-                                                 const AttrDomain from,
-                                                 const AttrDomain to)
+static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,
+                                              const GVArray &varray,
+                                              const AttrDomain from,
+                                              const AttrDomain to)
 {
   if (from == to) {
     return varray;
@@ -141,22 +139,21 @@ static GVArray adapt_rigid_body_attribute_domain(const RigidBodyWorld & /*rigid_
   return {};
 }
 
-static AttributeAccessorFunctions get_rigid_body_world_accessor_functions()
+static AttributeAccessorFunctions get_physics_accessor_functions()
 {
-  static const ComponentAttributeProviders providers =
-      create_attribute_providers_for_rigid_body_world();
+  static const ComponentAttributeProviders providers = create_attribute_providers_for_physics();
   AttributeAccessorFunctions fn =
       attribute_accessor_functions::accessor_functions_for_providers<providers>();
   fn.domain_size = [](const void *owner, const AttrDomain domain) {
     if (owner == nullptr) {
       return 0;
     }
-    const RigidBodyWorld &rigid_body_world = *static_cast<const RigidBodyWorld *>(owner);
+    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
     switch (domain) {
       case AttrDomain::Point:
-        return rigid_body_world.bodies_num();
+        return int(physics.rigid_bodies().size());
       case AttrDomain::Edge:
-        return rigid_body_world.constraints_num();
+        return 0;
       default:
         return 0;
     }
@@ -171,15 +168,15 @@ static AttributeAccessorFunctions get_rigid_body_world_accessor_functions()
     if (owner == nullptr) {
       return {};
     }
-    const RigidBodyWorld &rigid_body_world = *static_cast<const RigidBodyWorld *>(owner);
-    return adapt_rigid_body_attribute_domain(rigid_body_world, varray, from_domain, to_domain);
+    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
+    return adapt_physics_attribute_domain(physics, varray, from_domain, to_domain);
   };
   return fn;
 }
 
-static const AttributeAccessorFunctions &get_rigid_body_world_accessor_functions_ref()
+static const AttributeAccessorFunctions &get_physics_accessor_functions_ref()
 {
-  static const AttributeAccessorFunctions fn = get_rigid_body_world_accessor_functions();
+  static const AttributeAccessorFunctions fn = get_physics_accessor_functions();
   return fn;
 }
 
@@ -187,15 +184,15 @@ static const AttributeAccessorFunctions &get_rigid_body_world_accessor_functions
 
 namespace blender::bke {
 
-std::optional<AttributeAccessor> RigidBodyComponent::attributes() const
+std::optional<AttributeAccessor> PhysicsComponent::attributes() const
 {
-  return AttributeAccessor(rigid_body_world_, get_rigid_body_world_accessor_functions_ref());
+  return AttributeAccessor(physics_, get_physics_accessor_functions_ref());
 }
 
-std::optional<MutableAttributeAccessor> RigidBodyComponent::attributes_for_write()
+std::optional<MutableAttributeAccessor> PhysicsComponent::attributes_for_write()
 {
-  RigidBodyWorld *rigid_body_world = this->get_for_write();
-  return MutableAttributeAccessor(rigid_body_world, get_rigid_body_world_accessor_functions_ref());
+  PhysicsGeometry *physics = this->get_for_write();
+  return MutableAttributeAccessor(physics, get_physics_accessor_functions_ref());
 }
 
 }  // namespace blender::bke

@@ -117,7 +117,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       geometry_ = instances_component.get();
       break;
     }
-    case GeometryComponent::Type::RigidBody: {
+    case GeometryComponent::Type::Physics: {
       const RigidBodyComponent &rigid_body_component = static_cast<const RigidBodyComponent &>(
           component);
       geometry_ = rigid_body_component.get();

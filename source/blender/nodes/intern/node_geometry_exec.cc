@@ -109,7 +109,7 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
         message += RPT_("Grease Pencil");
         break;
       }
-      case GeometryComponent::Type::RigidBody: {
+      case GeometryComponent::Type::Physics: {
         message += RPT_("Rigid Body");
         break;
       }

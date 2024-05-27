@@ -81,7 +81,7 @@ class GeometryComponent : public ImplicitSharingMixin {
     Curve = 4,
     Edit = 5,
     GreasePencil = 6,
-    RigidBody = 7,
+    Physics = 7,
   };
 
  private:
@@ -791,7 +791,7 @@ class PhysicsComponent : public GeometryComponent {
   using PhysicsGeometry = simulation::PhysicsGeometry;
 
  private:
-  PhysicsGeometry *rigid_body_world_ = nullptr;
+  PhysicsGeometry *physics_ = nullptr;
   GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
 
  public:
@@ -824,7 +824,7 @@ class PhysicsComponent : public GeometryComponent {
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
-  static constexpr inline GeometryComponent::Type static_type = Type::RigidBody;
+  static constexpr inline GeometryComponent::Type static_type = Type::Physics;
 };
 
 }  // namespace blender::bke

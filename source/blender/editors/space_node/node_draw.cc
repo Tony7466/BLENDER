@@ -1547,7 +1547,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
           break;
         }
       }
-      case bke::GeometryComponent::Type::RigidBody: {
+      case bke::GeometryComponent::Type::Physics: {
         const geo_log::GeometryInfoLog::RigidBodyInfo &rigid_body_info =
             *value_log.rigid_body_info;
         fmt::format_to(fmt::appender(buf),
@@ -1609,7 +1609,7 @@ static void create_inspection_string_for_geometry_socket(fmt::memory_buffer &buf
         fmt::format_to(fmt::appender(buf), TIP_("Grease Pencil"));
         break;
       }
-      case bke::GeometryComponent::Type::RigidBody: {
+      case bke::GeometryComponent::Type::Physics: {
         fmt::format_to(fmt::appender(buf), TIP_("Rigid Body"));
         break;
       }
