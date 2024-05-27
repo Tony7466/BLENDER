@@ -672,7 +672,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         layout = self.layout
 
         header, body = layout.panel("import_image_plane_options", default_closed=False)
-        header.label(text="Import Options", icon='IMPORT')
+        header.label(text="Options")
         if body:
             row = body.row()
             row.active = bpy.data.is_saved
@@ -685,7 +685,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         layout = self.layout
 
         header, body = layout.panel("import_image_plane_material", default_closed=False)
-        header.label(text="Material Settings", icon='MATERIAL')
+        header.label(text="Material")
         if body:
             body.prop(self, 'shader')
             if self.shader == 'EMISSION':
@@ -710,7 +710,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         layout = self.layout
 
         header, body = layout.panel("import_image_plane_texture", default_closed=False)
-        header.label(text="Texture Settings", icon='TEXTURE')
+        header.label(text="Texture")
         if body:
             body.prop(self, 'interpolation')
             body.prop(self, 'extension')
@@ -728,7 +728,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         layout = self.layout
 
         header, body = layout.panel("import_image_plane_transform", default_closed=False)
-        header.label(text="Transform", icon='SNAP_GRID')
+        header.label(text="Transform")
         if body:
             body.prop(self, "size_mode")
             if self.size_mode == 'ABSOLUTE':
