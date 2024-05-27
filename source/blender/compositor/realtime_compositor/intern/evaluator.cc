@@ -40,7 +40,7 @@ void Evaluator::evaluate()
       operation->evaluate();
     }
   }
-  context_.profiler().finalize(context_.get_scene(), *derived_node_tree_);
+  context_.profiler().finalize(context_);
 }
 
 void Evaluator::reset()

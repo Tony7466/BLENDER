@@ -16,6 +16,8 @@
 
 namespace blender::realtime_compositor {
 
+class Context;
+
 /* -------------------------------------------------------------------------------------------------
  * Profiler
  *
@@ -34,18 +36,22 @@ class Profiler {
    * evaluation. */
   void reset();
 
+  /* Set the evaluation time of the node identified by the given node instance key. */
+  void set_node_evaluation_time(bNodeInstanceKey node_instance_key, timeit::Nanoseconds time);
+
   /* Set the evaluation time of the given node. */
   void set_node_evaluation_time(nodes::DNode node, timeit::Nanoseconds time);
 
   /* Finalize profiling by computing node group times and setting the timing information to the
    * scene compositor runtime profile data. This should be called after every evaluation. */
-  void finalize(const Scene &scene, const nodes::DerivedNodeTree &node_tree);
+  void finalize(const Context &context);
 
  private:
   /* Computes the evaluation time of every group node inside the given tree context recursively by
    * accumulating the evaluation time of its nodes, setting the computed time to the group nodes.
    * The time is returned since the method is called recursively. */
-  timeit::Nanoseconds accumulate_node_group_times(const nodes::DTreeContext &tree_context);
+  timeit::Nanoseconds accumulate_node_group_times(const bNodeTree &tree,
+                                                  bNodeInstanceKey instance_key);
 };
 
 }  // namespace blender::realtime_compositor
