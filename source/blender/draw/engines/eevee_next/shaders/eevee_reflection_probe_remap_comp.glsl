@@ -129,11 +129,13 @@ void main()
   if (extract_sun) {
     /* Parallel sum. Result is stored inside local_radiance[0]. */
     local_radiance[local_index] = radiance_sun.xyzz * sample_weight;
-    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+    uint stride = group_size / 2;
+    for (int i = 0 ; i < 10; i ++) {
       barrier();
       if (local_index < stride) {
         local_radiance[local_index] += local_radiance[local_index + stride];
       }
+      stride /= 2;
     }
     barrier();
 
@@ -145,11 +147,13 @@ void main()
     /* Reusing local_radiance for directions. */
     local_radiance[local_index] = vec4(normalize(direction), 1.0) * sample_weight *
                                   length(radiance_sun.xyz);
-    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+    uint stride = group_size / 2;
+    for (int i = 0 ; i < 10; i++) {
       barrier();
       if (local_index < stride) {
         local_radiance[local_index] += local_radiance[local_index + stride];
       }
+      stride /= 2;
     }
     barrier();
 
