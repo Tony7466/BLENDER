@@ -54,7 +54,8 @@ void COM_execute(Render *render,
                  Scene *scene,
                  bNodeTree *node_tree,
                  const char *view_name,
-                 blender::realtime_compositor::RenderContext *render_context)
+                 blender::realtime_compositor::RenderContext *render_context,
+                 blender::realtime_compositor::Profiler *profiler)
 {
   /* Initialize mutex, TODO: this mutex init is actually not thread safe and
    * should be done somewhere as part of blender startup, all the other
@@ -78,7 +79,8 @@ void COM_execute(Render *render,
 
   if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU) {
     /* GPU compositor. */
-    RE_compositor_execute(*render, *scene, *render_data, *node_tree, view_name, render_context);
+    RE_compositor_execute(
+        *render, *scene, *render_data, *node_tree, view_name, render_context, profiler);
   }
   else {
     /* CPU compositor. */
@@ -89,7 +91,7 @@ void COM_execute(Render *render,
     /* Execute. */
     const bool is_rendering = render_context != nullptr;
     blender::compositor::ExecutionSystem system(
-        render_data, scene, node_tree, is_rendering, view_name, render_context);
+        render_data, scene, node_tree, is_rendering, view_name, render_context, profiler);
     system.execute();
   }
 

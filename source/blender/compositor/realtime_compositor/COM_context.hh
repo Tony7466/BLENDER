@@ -40,9 +40,6 @@ class Context {
   /* A static cache manager that can be used to acquire cached resources for the compositor
    * efficiently. */
   StaticCacheManager cache_manager_;
-  /* A profiler that profiles the compositor evaluation and provides information like execution
-   * time. */
-  Profiler profiler_;
 
  public:
   Context(TexturePool &texture_pool);
@@ -116,6 +113,10 @@ class Context {
    * render pipeline. */
   virtual RenderContext *render_context() const;
 
+  /* Get a pointer to the profiler of this context. It might be null if the compositor context does
+   * not support profiling. */
+  virtual Profiler *profiler() const;
+
   /* Gets called after the evaluation of each compositor operation. See overrides for possible
    * uses. */
   virtual void evaluate_operation_post() const;
@@ -171,9 +172,6 @@ class Context {
 
   /* Get a reference to the static cache manager of this context. */
   StaticCacheManager &cache_manager();
-
-  /* Get a reference to the profiler of this context. */
-  Profiler &profiler();
 };
 
 }  // namespace blender::realtime_compositor

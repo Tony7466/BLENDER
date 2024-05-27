@@ -53,7 +53,9 @@ void NodeOperation::evaluate()
   const timeit::TimePoint before_time = timeit::Clock::now();
   Operation::evaluate();
   const timeit::TimePoint after_time = timeit::Clock::now();
-  context().profiler().set_node_evaluation_time(node_, after_time - before_time);
+  if (context().profiler()) {
+    context().profiler()->set_node_evaluation_time(node_.instance_key(), after_time - before_time);
+  }
 }
 
 void NodeOperation::compute_preview()

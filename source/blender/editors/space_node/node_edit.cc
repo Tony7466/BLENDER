@@ -27,6 +27,7 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
+#include "BKE_scene_runtime.hh"
 
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -67,6 +68,8 @@
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
+
+#include "COM_profiler.hh"
 
 namespace blender::ed::space_node {
 
@@ -291,14 +294,19 @@ static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
   BKE_callback_exec_id(cj->bmain, &scene->id, BKE_CB_EVT_COMPOSITE_PRE);
 
   if ((cj->scene->r.scemode & R_MULTIVIEW) == 0) {
-    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr);
+    realtime_compositor::Profiler profiler;
+    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr, &profiler);
+    scene->runtime->compositor.per_node_execution_time = profiler.get_nodes_evaluation_time();
   }
   else {
     LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
       if (BKE_scene_multiview_is_render_view_active(&scene->r, srv) == false) {
         continue;
       }
-      ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr);
+      realtime_compositor::Profiler profiler;
+      ntreeCompositExecTree(
+          cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr, &profiler);
+      scene->runtime->compositor.per_node_execution_time = profiler.get_nodes_evaluation_time();
     }
   }
 

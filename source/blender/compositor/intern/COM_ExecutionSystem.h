@@ -22,7 +22,8 @@
 
 namespace blender::realtime_compositor {
 class RenderContext;
-}
+class Profiler;
+}  // namespace blender::realtime_compositor
 
 namespace blender::compositor {
 
@@ -133,7 +134,8 @@ class ExecutionSystem {
                   bNodeTree *editingtree,
                   bool rendering,
                   const char *view_name,
-                  realtime_compositor::RenderContext *render_context);
+                  realtime_compositor::RenderContext *render_context,
+                  realtime_compositor::Profiler *profiler);
 
   /**
    * Destructor

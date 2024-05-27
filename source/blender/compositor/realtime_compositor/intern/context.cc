@@ -27,6 +27,11 @@ RenderContext *Context::render_context() const
   return nullptr;
 }
 
+Profiler *Context::profiler() const
+{
+  return nullptr;
+}
+
 void Context::evaluate_operation_post() const {}
 
 bool Context::is_canceled() const
@@ -39,7 +44,6 @@ bool Context::is_canceled() const
 
 void Context::reset()
 {
-  profiler_.reset();
   texture_pool_.reset();
   cache_manager_.reset();
 }
@@ -116,11 +120,6 @@ TexturePool &Context::texture_pool()
 StaticCacheManager &Context::cache_manager()
 {
   return cache_manager_;
-}
-
-Profiler &Context::profiler()
-{
-  return profiler_;
 }
 
 }  // namespace blender::realtime_compositor

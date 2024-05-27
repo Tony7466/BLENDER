@@ -8,9 +8,6 @@
 #include "BLI_timeit.hh"
 
 #include "DNA_node_types.h"
-#include "DNA_scene_types.h"
-
-#include "BKE_scene_runtime.hh"
 
 #include "NOD_derived_node_tree.hh"
 
@@ -32,25 +29,20 @@ class Profiler {
   Map<bNodeInstanceKey, timeit::Nanoseconds> nodes_evaluation_times_;
 
  public:
-  /* Resets the profiler by clearing the nodes evaluation times. This should be called before every
-   * evaluation. */
-  void reset();
+  /* Returns a reference to the nodes evaluation times. */
+  Map<bNodeInstanceKey, timeit::Nanoseconds> &get_nodes_evaluation_time();
 
   /* Set the evaluation time of the node identified by the given node instance key. */
   void set_node_evaluation_time(bNodeInstanceKey node_instance_key, timeit::Nanoseconds time);
 
-  /* Set the evaluation time of the given node. */
-  void set_node_evaluation_time(nodes::DNode node, timeit::Nanoseconds time);
-
-  /* Finalize profiling by computing node group times and setting the timing information to the
-   * scene compositor runtime profile data. This should be called after every evaluation. */
-  void finalize(const Context &context);
+  /* Finalize profiling by computing node group times. This should be called after evaluation. */
+  void finalize(const bNodeTree &node_tree);
 
  private:
   /* Computes the evaluation time of every group node inside the given tree recursively by
    * accumulating the evaluation time of its nodes, setting the computed time to the group nodes.
    * The time is returned since the method is called recursively. */
-  timeit::Nanoseconds accumulate_node_group_times(const bNodeTree &tree,
+  timeit::Nanoseconds accumulate_node_group_times(const bNodeTree &node_tree,
                                                   bNodeInstanceKey instance_key);
 };
 

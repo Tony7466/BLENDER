@@ -5,7 +5,6 @@
 #include "BLI_timeit.hh"
 
 #include "DNA_node_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_node.hh"
 
@@ -16,33 +15,25 @@
 
 namespace blender::realtime_compositor {
 
-void Profiler::reset()
+Map<bNodeInstanceKey, timeit::Nanoseconds> &Profiler::get_nodes_evaluation_time()
 {
-  nodes_evaluation_times_.clear();
+  return nodes_evaluation_times_;
 }
 
 void Profiler::set_node_evaluation_time(bNodeInstanceKey node_instance_key,
                                         timeit::Nanoseconds time)
 {
-  nodes_evaluation_times_.add_or_modify(
-      node_instance_key,
-      [&](timeit::Nanoseconds *total_time) { *total_time = time; },
-      [&](timeit::Nanoseconds *total_time) { *total_time += time; });
+  nodes_evaluation_times_.lookup_or_add(node_instance_key, timeit::Nanoseconds::zero()) += time;
 }
 
-void Profiler::set_node_evaluation_time(nodes::DNode node, timeit::Nanoseconds time)
-{
-  this->set_node_evaluation_time(node.instance_key(), time);
-}
-
-timeit::Nanoseconds Profiler::accumulate_node_group_times(const bNodeTree &tree,
+timeit::Nanoseconds Profiler::accumulate_node_group_times(const bNodeTree &node_tree,
                                                           bNodeInstanceKey instance_key)
 {
   timeit::Nanoseconds tree_evaluation_time = timeit::Nanoseconds::zero();
 
-  for (const bNode *node : tree.all_nodes()) {
+  for (const bNode *node : node_tree.all_nodes()) {
     const bNodeInstanceKey node_instance_key = bke::BKE_node_instance_key(
-        instance_key, &tree, node);
+        instance_key, &node_tree, node);
     if (!node->is_group()) {
       /* Non-group node, no need to recurse into. Simply accumulate the node's evaluation time to
        * the current tree's evaluation time. Note that not everey node might have an evaluation
@@ -72,12 +63,10 @@ timeit::Nanoseconds Profiler::accumulate_node_group_times(const bNodeTree &tree,
   return tree_evaluation_time;
 }
 
-void Profiler::finalize(const Context &context)
+void Profiler::finalize(const bNodeTree &node_tree)
 {
   /* Compute the evaluation time of all node groups starting from the root tree. */
-  this->accumulate_node_group_times(context.get_node_tree(), bke::NODE_INSTANCE_KEY_BASE);
-
-  context.get_scene().runtime->compositor.per_node_execution_time = nodes_evaluation_times_;
+  this->accumulate_node_group_times(node_tree, bke::NODE_INSTANCE_KEY_BASE);
 }
 
 }  // namespace blender::realtime_compositor

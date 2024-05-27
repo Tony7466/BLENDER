@@ -12,8 +12,6 @@
 #  include "MEM_guardedalloc.h"
 #endif
 
-#include "COM_profile.hh"
-
 namespace blender::compositor {
 
 class CompositorContext;
@@ -45,8 +43,6 @@ class ExecutionModel {
    * All operations being executed.
    */
   Span<NodeOperation *> operations_;
-
-  Profiler profiler_;
 
  public:
   ExecutionModel(CompositorContext &context, Span<NodeOperation *> operations);
