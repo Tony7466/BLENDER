@@ -8,6 +8,8 @@
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
+/* OpenGL/Intel drivers have known issues where it isn't able to compile barriers inside for loops.
+ */
 #define PARALLEL_SUM_INNER() \
   barrier(); \
   if (local_index < stride) { \
@@ -174,7 +176,7 @@ void main()
     /* Parallel sum. Result is stored inside local_radiance[0]. */
     local_radiance[local_index] = radiance.xyzz * sample_weight;
     PARALLEL_SUM
-    
+
     if (gl_LocalInvocationIndex == 0u) {
       /* Find the middle point of the whole thread-group. Use it as light vector.
        * Note that this is an approximation since the footprint of a thread-group is not
