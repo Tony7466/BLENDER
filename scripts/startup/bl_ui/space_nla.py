@@ -118,6 +118,8 @@ class NLA_MT_view(Menu):
         layout.operator("nla.view_selected")
         layout.operator("nla.view_all")
         layout.operator("nla.view_frame")
+        layout.operator("anim.scenerange_frame",
+                        text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
         layout.separator()
 
         layout.prop(st, "use_realtime_update")
@@ -308,13 +310,15 @@ class NLA_MT_snap_pie(Menu):
 class NLA_MT_view_pie(Menu):
     bl_label = "View"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
         pie = layout.menu_pie()
         pie.operator("nla.view_all")
         pie.operator("nla.view_selected", icon='ZOOM_SELECTED')
         pie.operator("nla.view_frame")
+        pie.operator("anim.scenerange_frame",
+                     text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
 
 
 class NLA_MT_context_menu(Menu):
