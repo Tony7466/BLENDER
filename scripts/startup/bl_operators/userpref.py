@@ -583,6 +583,7 @@ class PREFERENCES_OT_addon_refresh(Operator):
 
         return {'FINISHED'}
 
+
 # Note: shares some logic with PREFERENCES_OT_app_template_install
 # but not enough to de-duplicate. Fixed here may apply to both.
 class PREFERENCES_OT_addon_install(Operator):
