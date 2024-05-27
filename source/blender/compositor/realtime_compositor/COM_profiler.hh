@@ -30,7 +30,7 @@ class Profiler {
 
  public:
   /* Returns a reference to the nodes evaluation times. */
-  Map<bNodeInstanceKey, timeit::Nanoseconds> &get_nodes_evaluation_time();
+  Map<bNodeInstanceKey, timeit::Nanoseconds> &get_nodes_evaluation_times();
 
   /* Set the evaluation time of the node identified by the given node instance key. */
   void set_node_evaluation_time(bNodeInstanceKey node_instance_key, timeit::Nanoseconds time);

@@ -101,6 +101,8 @@ struct CompoJob {
   bool *do_update;
   float *progress;
   bool cancelled;
+
+  realtime_compositor::Profiler profiler;
 };
 
 float node_socket_calculate_height(const bNodeSocket &socket)
@@ -294,19 +296,15 @@ static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
   BKE_callback_exec_id(cj->bmain, &scene->id, BKE_CB_EVT_COMPOSITE_PRE);
 
   if ((cj->scene->r.scemode & R_MULTIVIEW) == 0) {
-    realtime_compositor::Profiler profiler;
-    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr, &profiler);
-    scene->runtime->compositor.per_node_execution_time = profiler.get_nodes_evaluation_time();
+    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr, &cj->profiler);
   }
   else {
     LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
       if (BKE_scene_multiview_is_render_view_active(&scene->r, srv) == false) {
         continue;
       }
-      realtime_compositor::Profiler profiler;
       ntreeCompositExecTree(
-          cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr, &profiler);
-      scene->runtime->compositor.per_node_execution_time = profiler.get_nodes_evaluation_time();
+          cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr, &cj->profiler);
     }
   }
 
@@ -322,6 +320,8 @@ static void compo_canceljob(void *cjv)
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_CANCEL);
   cj->cancelled = true;
+
+  scene->runtime->compositor.per_node_execution_time = cj->profiler.get_nodes_evaluation_times();
 }
 
 static void compo_completejob(void *cjv)
@@ -330,6 +330,8 @@ static void compo_completejob(void *cjv)
   Main *bmain = cj->bmain;
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_POST);
+
+  scene->runtime->compositor.per_node_execution_time = cj->profiler.get_nodes_evaluation_times();
 }
 
 /** \} */

@@ -32,7 +32,7 @@ namespace blender::realtime_compositor {
  * where the output of the evaluator will be written. The class also provides a reference to the
  * texture pool which should be implemented by the caller and provided during construction.
  * Finally, the class have an instance of a static resource manager for acquiring cached resources
- * efficiently as well as a profiler for profiling the compositor evaluation. */
+ * efficiently. */
 class Context {
  private:
   /* A texture pool that can be used to allocate textures for the compositor efficiently. */
@@ -125,8 +125,8 @@ class Context {
    * executing as soon as possible. */
   virtual bool is_canceled() const;
 
-  /* Resets the context's internal structures like texture pool, cache manager, and profiler. This
-   * should be called before every evaluation. */
+  /* Resets the context's internal structures like texture pool and cache manager. This should be
+   * called before every evaluation. */
   void reset();
 
   /* Get the size of the compositing region. See get_compositing_region(). The output size is

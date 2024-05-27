@@ -15,7 +15,7 @@
 
 namespace blender::realtime_compositor {
 
-Map<bNodeInstanceKey, timeit::Nanoseconds> &Profiler::get_nodes_evaluation_time()
+Map<bNodeInstanceKey, timeit::Nanoseconds> &Profiler::get_nodes_evaluation_times()
 {
   return nodes_evaluation_times_;
 }
