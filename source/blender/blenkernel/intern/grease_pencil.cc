@@ -1740,6 +1740,7 @@ void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
 {
   using namespace blender;
   using bke::greasepencil::Drawing;
+  using bke::greasepencil::DrawingReference;
 
   /* Drawings. */
   const int drawing_array_num = grease_pencil_src->drawing_array_num;
@@ -1759,27 +1760,21 @@ void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
       }
     }
     switch (grease_pencil_src->drawing_array[i]->type) {
-      case GP_DRAWING:
+      case GP_DRAWING: {
+        const Drawing &src_drawing =
+            reinterpret_cast<GreasePencilDrawing *>(grease_pencil_src->drawing_array[i])->wrap();
         grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-            MEM_new<bke::greasepencil::Drawing>(__func__));
+            MEM_new<Drawing>(__func__, src_drawing));
         break;
+      }
       case GP_DRAWING_REFERENCE:
+        const DrawingReference &src_drawing_ref = reinterpret_cast<GreasePencilDrawingReference *>(
+                                                      grease_pencil_src->drawing_array[i])
+                                                      ->wrap();
         grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-            MEM_new<bke::greasepencil::DrawingReference>(__func__));
+            MEM_new<DrawingReference>(__func__, src_drawing_ref));
         break;
     }
-
-    const GreasePencilDrawing &src_drawing = *reinterpret_cast<GreasePencilDrawing *>(
-        grease_pencil_src->drawing_array[i]);
-    GreasePencilDrawing &dst_drawing = *reinterpret_cast<GreasePencilDrawing *>(
-        grease_pencil_dst->drawing_array[i]);
-
-    dst_drawing.base.flag = src_drawing.base.flag;
-    dst_drawing.geometry.wrap() = src_drawing.geometry.wrap();
-
-    dst_drawing.runtime->triangles_cache.tag_dirty();
-    dst_drawing.runtime->curve_plane_normals_cache.tag_dirty();
-    dst_drawing.runtime->curve_texture_matrices.tag_dirty();
   }
 
   /* Layers. */
