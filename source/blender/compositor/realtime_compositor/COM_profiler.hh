@@ -47,7 +47,7 @@ class Profiler {
   void finalize(const Context &context);
 
  private:
-  /* Computes the evaluation time of every group node inside the given tree context recursively by
+  /* Computes the evaluation time of every group node inside the given tree recursively by
    * accumulating the evaluation time of its nodes, setting the computed time to the group nodes.
    * The time is returned since the method is called recursively. */
   timeit::Nanoseconds accumulate_node_group_times(const bNodeTree &tree,
