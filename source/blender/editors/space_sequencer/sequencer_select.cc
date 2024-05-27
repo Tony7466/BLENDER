@@ -1340,21 +1340,21 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
   }
 
   if (sequencer_retiming_mode_is_active(C) && retiming_keys_are_visible(CTX_wm_space_seq(C))) {
-    return OPERATOR_CANCELLED;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
   MouseCoords mouse_co(v2d, RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y"));
 
   StripSelection selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co.view);
   if (selection.seq1 == nullptr || selection.handle == SEQ_HANDLE_NONE) {
-    return OPERATOR_CANCELLED;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
   /* Ignore clicks on retiming keys. */
   Sequence *seq_key_test = nullptr;
   retiming_mousover_key_get(C, mouse_co.region, &seq_key_test);
   if (use_retiming_mode(C, seq_key_test) && seq_key_test != nullptr) {
-    return OPERATOR_CANCELLED;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
   SpaceSeq *sseq = CTX_wm_space_seq(C);
