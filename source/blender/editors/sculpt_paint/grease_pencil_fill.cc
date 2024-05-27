@@ -565,8 +565,14 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
     /* Calculate radius and opacity for the outline as if it was a user stroke with full pressure.
      */
     constexpr const float pressure = 1.0f;
-    radii.span[point_i] = ed::greasepencil::radius_from_input_sample(
-        pressure, position, view_context, &brush, &scene, brush.gpencil_settings);
+    radii.span[point_i] = ed::greasepencil::radius_from_input_sample(view_context.rv3d,
+                                                                     view_context.region,
+                                                                     &scene,
+                                                                     &brush,
+                                                                     pressure,
+                                                                     position,
+                                                                     placement.to_world_space(),
+                                                                     brush.gpencil_settings);
     opacities.span[point_i] = ed::greasepencil::opacity_from_input_sample(
         pressure, &brush, &scene, brush.gpencil_settings);
   }
@@ -946,6 +952,8 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
   const float2 fill_point_view = math::safe_divide(
                                      fill_point - win_center - offset * float2(win_size), zoom) +
                                  win_center;
+  /* Scale stroke radius by half to hide gaps between filled areas and boundaries. */
+  const float radius_scale = 0.5f;
 
   image_render::RegionViewData region_view_data = image_render::region_init(region, win_size);
 
@@ -960,7 +968,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
   const bool use_xray = false;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
-  ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
+  ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, &layer);
   const float3 fill_point_world = math::transform_point(layer_to_world,
                                                         placement.project(fill_point_view));
 
@@ -1001,7 +1009,8 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                              colors,
                                              layer_to_world,
                                              fill_draw_mode,
-                                             use_xray);
+                                             use_xray,
+                                             radius_scale);
   }
 
   image_render::clear_viewmat();
