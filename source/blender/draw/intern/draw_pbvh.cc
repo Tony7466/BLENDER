@@ -1165,8 +1165,7 @@ struct PBVHBatches {
     }
 
     for (const int grid_index : args.grid_indices) {
-      bool sharp = (!sharp_faces.is_empty() && sharp_faces[grid_to_face_map[grid_index]]);
-      if (sharp) {
+      if (!sharp_faces.is_empty() && sharp_faces[grid_to_face_map[grid_index]]) {
         needs_tri_index = false;
         break;
       }
