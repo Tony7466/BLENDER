@@ -935,8 +935,11 @@ typedef struct SpaceAction {
   /** Copied to region. */
   View2D v2d DNA_DEPRECATED;
 
-  /** The currently active action. */
+  /** The currently active action and its binding. */
   bAction *action;
+  int32_t action_binding_handle;
+  char _pad2[4];
+
   /** The currently active context (when not showing action). */
   bDopeSheet ads;
 
@@ -1213,4 +1216,6 @@ static_assert(
     std::is_same_v<decltype(ActionBinding::handle), decltype(bAction::last_binding_handle)>);
 static_assert(
     std::is_same_v<decltype(ActionBinding::handle), decltype(ActionChannelBag::binding_handle)>);
+static_assert(
+    std::is_same_v<decltype(ActionBinding::handle), decltype(SpaceAction::action_binding_handle)>);
 #endif

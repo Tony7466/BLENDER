@@ -194,8 +194,9 @@ struct bAnimListElem {
 /**
  * Some types for easier type-testing
  *
- * \note need to keep the order of these synchronized with the channels define code
- * which is used for drawing and handling channel lists for.
+ * \note need to keep the order of these synchronized with the channels define code (ACF_XXX must
+ * have the same value as ANIMTYPE_XXX below) which is used for drawing and handling channel lists
+ * for.
  */
 enum eAnim_ChannelType {
   ANIMTYPE_NONE = 0,
@@ -213,7 +214,8 @@ enum eAnim_ChannelType {
   ANIMTYPE_NLACURVE,
 
   ANIMTYPE_FILLACT_LAYERED, /* Layered Actions. */
-  ANIMTYPE_FILLACTD,        /* Legacy Actions. */
+  ANIMTYPE_ACTION_BINDING,
+  ANIMTYPE_FILLACTD, /* Legacy Actions. */
   ANIMTYPE_FILLDRIVERS,
 
   ANIMTYPE_DSMAT,
@@ -273,6 +275,7 @@ enum eAnim_KeyType {
   ALE_ACT,            /* Action summary (legacy). */
   ALE_GROUP,          /* Action Group summary (legacy). */
   ALE_ACTION_LAYERED, /* Action summary (layered). */
+  ALE_ACTION_BINDING, /* Action binding summary. */
 
   ALE_GREASE_PENCIL_CEL,   /* Grease Pencil Cels. */
   ALE_GREASE_PENCIL_DATA,  /* Grease Pencil Cels summary. */
