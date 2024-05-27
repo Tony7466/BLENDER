@@ -81,8 +81,7 @@ class CombinedKeyingResult {
  * For example, for object location/rotation/scale this returns the standard
  * object transforms channel group name.
  */
-const StringRefNull default_channel_group_for_path(const PointerRNA *ptr,
-                                                   const StringRef rna_path);
+const char *default_channel_group_for_path(const PointerRNA *ptr, const StringRef rna_path);
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Framing Management

@@ -1025,7 +1025,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       /* standard properties */
       if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
         const char *identifier = RNA_property_identifier(prop);
-        const blender::StringRefNull group = default_channel_group_for_path(&ptr, identifier);
+        const char *group = default_channel_group_for_path(&ptr, identifier);
 
         if (all) {
           /* -1 indicates operating on the entire array (or the property itself otherwise) */
@@ -1034,7 +1034,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
 
         CombinedKeyingResult result = insert_keyframe(bmain,
                                                       *ptr.owner_id,
-                                                      group.c_str(),
+                                                      group,
                                                       path->c_str(),
                                                       index,
                                                       &anim_eval_context,

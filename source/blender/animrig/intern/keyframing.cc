@@ -163,7 +163,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   BKE_report(reports, RPT_ERROR, error_message.c_str());
 }
 
-const StringRefNull default_channel_group_for_path(const PointerRNA *ptr, const StringRef rna_path)
+const char *default_channel_group_for_path(const PointerRNA *ptr, const StringRef rna_path)
 {
   if (ptr->type == &RNA_PoseBone) {
     bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
@@ -947,7 +947,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
 
-  const StringRefNull group = default_channel_group_for_path(ptr, rna_path);
+  const char *group = default_channel_group_for_path(ptr, rna_path);
 
   int property_array_index = 0;
   CombinedKeyingResult combined_result;
@@ -961,7 +961,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
                                                                           ptr,
                                                                           prop,
                                                                           action,
-                                                                          group.c_str(),
+                                                                          group,
                                                                           rna_path.c_str(),
                                                                           property_array_index,
                                                                           frame,
