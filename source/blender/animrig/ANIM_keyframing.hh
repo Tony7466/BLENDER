@@ -17,7 +17,7 @@
 #include "BLI_bit_span.hh"
 #include "BLI_vector.hh"
 #include "DNA_anim_types.h"
-#include "ED_transform.hh"
+#include "RNA_path.hh"
 #include "RNA_types.hh"
 
 struct ID;
@@ -33,6 +33,10 @@ namespace blender::animrig {
 
 enum class SingleKeyingResult {
   SUCCESS = 0,
+  /* TODO: remove `UNKNOWN_FAILURE` and replace all usages with proper, specific
+   * cases. This is needed right now as a stop-gap while progressively moving
+   * the keyframing code over to propagate errors properly.*/
+  UNKNOWN_FAILURE,
   CANNOT_CREATE_FCURVE,
   FCURVE_NOT_KEYFRAMEABLE,
   NO_KEY_NEEDED,
@@ -191,7 +195,7 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id);
  *
  * \param rna_paths: Only inserts keys on those RNA paths.
  */
-void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string> rna_paths);
+void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<RNAPath> rna_paths);
 /**
  * Auto-keyframing feature - for objects
  *
@@ -213,7 +217,7 @@ void autokeyframe_pose_channel(bContext *C,
                                Scene *scene,
                                Object *ob,
                                bPoseChannel *pose_channel,
-                               Span<std::string> rna_paths,
+                               Span<RNAPath> rna_paths,
                                short targetless_ik);
 /**
  * Use for auto-key-framing.
@@ -258,7 +262,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
  * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
 CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
-                                    const blender::Span<std::string> rna_paths,
+                                    const blender::Span<RNAPath> rna_paths,
                                     float scene_frame,
                                     eInsertKeyFlags insert_key_flags,
                                     eBezTriple_KeyframeType key_type,

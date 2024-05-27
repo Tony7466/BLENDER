@@ -187,6 +187,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY_READ(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputRadius")
         if context.space_data.geometry_nodes_type == 'TOOL':
             node_add_menu.add_node_type(layout, "GeometryNodeToolSelection")
+            node_add_menu.add_node_type(layout, "GeometryNodeToolActiveElement")
         node_add_menu.draw_assets_for_catalog(layout, "Geometry/Read")
 
 
@@ -596,6 +597,7 @@ class NODE_MT_category_GEO_UTILITIES_ROTATION(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeAlignRotationToVector")
+        node_add_menu.add_node_type(layout, "FunctionNodeAxesToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeAxisAngleToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeEulerToRotation")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertRotation")
@@ -718,6 +720,7 @@ class NODE_MT_geometry_node_volume_sample(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeSampleGrid")
+        node_add_menu.add_node_type(layout, "GeometryNodeSampleGridIndex")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Sample")
 
 
