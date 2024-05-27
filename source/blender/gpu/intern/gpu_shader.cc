@@ -908,6 +908,12 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info, bool is_ba
   return shader;
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name ShaderCompilerGeneric
+ * \{ */
+
 ShaderCompilerGeneric::~ShaderCompilerGeneric()
 {
   /* Ensure all the requested batches have been retrieved. */
