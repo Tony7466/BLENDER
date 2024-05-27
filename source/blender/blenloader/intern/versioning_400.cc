@@ -3282,12 +3282,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 11)) {
-    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-      light->shadow_resolution_scale = 1.0f;
-    }
-  }
-
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 12)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       versioning_node_hue_correct_set_wrappng(ntree);
@@ -3637,6 +3631,22 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     const Light *default_light = DNA_struct_default_get(Light);
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->shadow_jitter_overblur = default_light->shadow_jitter_overblur;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 43)) {
+    const World *default_world = DNA_struct_default_get(World);
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      world->sun_shadow_maximum_resolution = default_world->sun_shadow_maximum_resolution;
+      world->sun_shadow_filter_radius = default_world->sun_shadow_filter_radius;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 44)) {
+    const Scene *default_scene = DNA_struct_default_get(Scene);
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.fast_gi_step_count = default_scene->eevee.fast_gi_step_count;
+      scene->eevee.fast_gi_ray_count = default_scene->eevee.fast_gi_ray_count;
     }
   }
 
