@@ -1636,7 +1636,7 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   compilation_start = BLI_time_now_seconds();
 }
 
-bool GLCompilerWorker::poll()
+bool GLCompilerWorker::is_ready()
 {
   BLI_assert(ELEM(state_, COMPILATION_REQUESTED, COMPILATION_READY));
   if (state_ == COMPILATION_READY) {
@@ -1796,7 +1796,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       /* Try to acquire an available worker. */
       item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     }
-    else if (item.worker->poll()) {
+    else if (item.worker->is_ready()) {
       /* Retrieve the binary compiled by the worker. */
       if (!item.worker->load_program_binary(item.shader->program_active_->program_id) ||
           !item.shader->post_finalize(item.info))
