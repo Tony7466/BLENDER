@@ -69,7 +69,7 @@ void GLShader::init(const shader::ShaderCreateInfo &info, bool is_batch_compilat
   async_compilation_ = is_batch_compilation;
 
   /* Extract the constants names from info and store them locally. */
-  for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
+  for (const SpecializationConstant &constant : info.specialization_constants_) {
     specialization_constant_names_.append(constant.name.c_str());
   }
 }
@@ -618,8 +618,7 @@ std::string GLShader::constants_declare() const
   for (int constant_index : IndexRange(constants.types.size())) {
     const StringRefNull name = specialization_constant_names_[constant_index];
     gpu::shader::Type constant_type = constants.types[constant_index];
-    const shader::ShaderCreateInfo::SpecializationConstant::Value &value =
-        constants.values[constant_index];
+    const SpecializationConstant::Value &value = constants.values[constant_index];
 
     switch (constant_type) {
       case Type::INT:
@@ -1864,8 +1863,8 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
   for (auto &specialization : specializations) {
     GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
     for (auto &constant : specialization.constants) {
-      int location = sh->interface->constant_get(constant.name)->location;
-      sh->constants.values[location].u = constant.value.u;
+      int location = sh->interface->constant_get(constant.name.c_str())->location;
+      sh->constants.values[location].u = constant.default_value.u;
     }
     sh->constants.is_dirty = true;
     if (sh->program_cache_.contains(sh->constants.values)) {

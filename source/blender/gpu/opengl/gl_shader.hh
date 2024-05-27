@@ -81,7 +81,7 @@ class GLShader : public Shader {
     ~GLProgram();
   };
 
-  using GLProgramCacheKey = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
+  using GLProgramCacheKey = Vector<shader::SpecializationConstant::Value>;
   Map<GLProgramCacheKey, GLProgram> program_cache_;
 
   /**

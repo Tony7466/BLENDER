@@ -802,7 +802,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
 
   ss << "\n/* Specialization Constants (pass-through). */\n";
   uint constant_id = 0;
-  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+  for (const SpecializationConstant &sc : info.specialization_constants_) {
     ss << "layout (constant_id=" << constant_id++ << ") const ";
     switch (sc.type) {
       case Type::INT:

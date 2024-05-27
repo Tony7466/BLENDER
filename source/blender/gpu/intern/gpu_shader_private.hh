@@ -50,7 +50,7 @@ class Shader {
    * The backend is free to implement their support as they see fit.
    */
   struct Constants {
-    using Value = shader::ShaderCreateInfo::SpecializationConstant::Value;
+    using Value = shader::SpecializationConstant::Value;
     Vector<gpu::shader::Type> types;
     /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
      * that however it wants (i.e: bind another shader instead). */

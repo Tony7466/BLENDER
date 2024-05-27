@@ -465,7 +465,7 @@ void GPU_shader_transform_feedback_disable(GPUShader *shader)
 void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
 {
   using namespace shader;
-  for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+  for (const SpecializationConstant &sc : info.specialization_constants_) {
     constants.types.append(sc.type);
     constants.values.append(sc.default_value);
   }
