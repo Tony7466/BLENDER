@@ -140,54 +140,56 @@ def repos_to_notify():
         PKG_MANIFEST_FILENAME_TOML,
     )
 
-    repos_notify = []
-    if not bpy.app.background:
-        # To use notifications on startup requires:
-        # - The splash displayed.
-        # - The status bar displayed.
+    if bpy.app.background:
+        return []
+
+    # To use notifications on startup requires:
+    # - The splash displayed.
+    # - The status bar displayed.
+    #
+    # Since it's not all that common to disable the status bar just run notifications
+    # if any repositories are marked to run notifications.
+
+    prefs = bpy.context.preferences
+    extension_repos = prefs.extensions.repos
+    for repo_item in extension_repos:
+        if not repo_item.enabled:
+            continue
+        if not repo_item.use_sync_on_startup:
+            continue
+        if not repo_item.use_remote_url:
+            continue
+        remote_url = repo_item.remote_url
+        # Invalid, if there is no remote path this can't update.
+        if not remote_url:
+            continue
+
+        # WARNING: this could be a more expensive check, use a "reasonable" guess.
+        # This is technically incorrect because knowing if a repository has any installed
+        # packages requires reading it's meta-data and comparing it with the directory contents.
+        # Chances are - if the directory contains *any* directories containing a package manifest
+        # this means it has packages installed.
         #
-        # Since it's not all that common to disable the status bar just run notifications
-        # if any repositories are marked to run notifications.
+        # Simply check the repositories directory isn't empty (ignoring dot-files).
+        # Importantly, this may be false positives but *not* false negatives.
+        repo_is_empty = True
+        repo_directory = repo_item.directory
+        if os.path.isdir(repo_directory):
+            for entry in scandir_with_demoted_errors(repo_directory):
+                if not entry.is_dir():
+                    continue
+                if entry.name.startswith("."):
+                    continue
+                if not os.path.exists(os.path.join(entry.path, PKG_MANIFEST_FILENAME_TOML)):
+                    continue
+                repo_is_empty = False
+                break
+        if repo_is_empty:
+            continue
 
-        prefs = bpy.context.preferences
-        extension_repos = prefs.extensions.repos
-        for repo_item in extension_repos:
-            if not repo_item.enabled:
-                continue
-            if not repo_item.use_sync_on_startup:
-                continue
-            if not repo_item.use_remote_url:
-                continue
-            remote_url = repo_item.remote_url
-            # Invalid, if there is no remote path this can't update.
-            if not remote_url:
-                continue
+        # NOTE: offline checks are handled by the notification (not here).
+        repos_notify.append(repo_item)
 
-            # WARNING: this could be a more expensive check, use a "reasonable" guess.
-            # This is technically incorrect because knowing if a repository has any installed
-            # packages requires reading it's meta-data and comparing it with the directory contents.
-            # Chances are - if the directory contains *any* directories containing a package manifest
-            # this means it has packages installed.
-            #
-            # Simply check the repositories directory isn't empty (ignoring dot-files).
-            # Importantly, this may be false positives but *not* false negatives.
-            repo_is_empty = True
-            repo_directory = repo_item.directory
-            if os.path.isdir(repo_directory):
-                for entry in scandir_with_demoted_errors(repo_directory):
-                    if not entry.is_dir():
-                        continue
-                    if entry.name.startswith("."):
-                        continue
-                    if not os.path.exists(os.path.join(entry.path, PKG_MANIFEST_FILENAME_TOML)):
-                        continue
-                    repo_is_empty = False
-                    break
-            if repo_is_empty:
-                continue
-
-            # NOTE: offline checks are handled by the notification (not here).
-            repos_notify.append(repo_item)
     return repos_notify
 
 
