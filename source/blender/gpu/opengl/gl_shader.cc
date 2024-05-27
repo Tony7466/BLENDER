@@ -1824,13 +1824,6 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
     }
   }
 
-  int available = 0;
-  for (GLCompilerWorker *worker : workers_) {
-    if (worker->state_ == GLCompilerWorker::AVAILABLE) {
-      available++;
-    }
-  }
-
   return batch.is_ready;
 }
 
