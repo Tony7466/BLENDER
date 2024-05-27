@@ -420,6 +420,7 @@ DefNode(GeometryNode, GEO_NODE_OBJECT_INFO, 0, "OBJECT_INFO", ObjectInfo, "Objec
 DefNode(GeometryNode, GEO_NODE_OFFSET_POINT_IN_CURVE, 0, "OFFSET_POINT_IN_CURVE", OffsetPointInCurve, "Offset Point in Curve", "Offset a control point index within its curve")
 DefNode(GeometryNode, GEO_NODE_PHYSICS_WORLD, 0, "PHYSICS_WORLD", PhysicsWorld, "Physics World", "Generate a physics world for simulating rigid bodies")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_CURVES, 0, "POINTS_TO_CURVES", PointsToCurves, "Points to Curves", "Split all points to curve by its group ID and reorder by weight")
+DefNode(GeometryNode, GEO_NODE_POINTS_TO_RIGID_BODIES, 0, "POINTS_TO_RIGID_BODIES", PointsToRigidBodies, "Points to Rigid Bodies", "Create a rigid body for each point")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_SDF_GRID, 0, "POINTS_TO_SDF_GRID", PointsToSDFGrid, "Points to SDF Grid", "Create a signed distance volume grid from points")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_VERTICES, 0, "POINTS_TO_VERTICES", PointsToVertices, "Points to Vertices", "Generate a mesh vertex for each point cloud point")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_VOLUME, 0, "POINTS_TO_VOLUME", PointsToVolume, "Points to Volume", "Generate a fog volume sphere around every point")

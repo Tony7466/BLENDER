@@ -10,9 +10,6 @@
 
 #include "BLI_math_vector_types.hh"
 #include "BLI_math_quaternion_types.hh"
-#include "BLI_map.hh"
-#include "BLI_set.hh"
-#include "BLI_virtual_array_fwd.hh"
 
 #include <functional>
 
@@ -21,8 +18,8 @@ namespace blender::simulation {
 using RigidBodyID = int;
 
 class CollisionShape;
-class BoxCollisionShape;
-class SphereCollisionShape;
+class RigidBody;
+class RigidBodyWorld;
 
 class RigidBodyWorld {
  public:
@@ -38,7 +35,6 @@ class RigidBodyWorld {
 
   int bodies_num() const;
   int constraints_num() const;
-  int shapes_num() const;
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -48,21 +44,12 @@ class RigidBodyWorld {
   void set_solver_iterations(int num_solver_iterations);
   void set_split_impulse(bool split_impulse);
 
-  IndexRange add_rigid_bodies(const Span<const CollisionShape *> shapes,
-                              const VArray<int> &shape_indices,
-                              const VArray<float> &masses,
-                              const VArray<float3> &inertiae);
-  void remove_rigid_bodies(const IndexMask &mask);
-  void clear_rigid_bodies();
+  void add_rigid_body(RigidBody *body);
+  void remove_rigid_body(RigidBody *body);
 
-  VArray<RigidBodyID> body_ids() const;
-
-  //RigidBodyHandle add_rigid_body(float mass, const float3 &inertia = float3(0.0f));
-  //void remove_rigid_body(RigidBodyHandle handle);
-
-  //float body_mass(RigidBodyHandle handle) const;
-  //float3 body_inertia(RigidBodyHandle handle) const;
-  //void set_body_mass(RigidBodyHandle handle, float mass, const float3 &inertia = float3(0.0f));
+  float body_mass(RigidBody *body) const;
+  float3 body_inertia(RigidBody *body) const;
+  void set_body_mass(RigidBody *body, float mass, const float3 &inertia = float3(0.0f));
 
   //float body_friction(RigidBodyHandle handle) const;
   //void set_body_friction(RigidBodyHandle handle, float value);
@@ -130,7 +117,7 @@ class CollisionShape {
  protected:
   CollisionShape();
 
-  friend class RigidBodyWorld;
+  friend class PhysicsGeometry;
 };
 
 class BoxCollisionShape : public CollisionShape {

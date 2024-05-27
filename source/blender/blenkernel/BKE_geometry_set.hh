@@ -41,7 +41,7 @@ class MutableAttributeAccessor;
 enum class AttrDomain : int8_t;
 }  // namespace blender::bke
 namespace blender::simulation {
-class RigidBodyWorld;
+class PhysicsGeometry;
 }  // namespace blender::simulation
 
 namespace blender::bke {
@@ -301,9 +301,8 @@ struct GeometrySet {
   /**
    * Create a new geometry set that only contains the given rigid body world.
    */
-  static GeometrySet from_rigid_body_world(
-      simulation::RigidBodyWorld *rigid_body_world,
-      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  static GeometrySet from_physics(simulation::PhysicsGeometry *physics,
+                                  GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   /* Utility methods for access. */
   /**
@@ -337,7 +336,7 @@ struct GeometrySet {
   /**
    * Returns true when the geometry set has a rigid body component that has a world.
    */
-  bool has_rigid_body_world() const;
+  bool has_physics() const;
   /**
    * Return true if the geometry set has any component that isn't empty.
    */
@@ -374,7 +373,7 @@ struct GeometrySet {
   /**
    * Returns a read-only rigid body world or null.
    */
-  const simulation::RigidBodyWorld *get_rigid_body_world() const;
+  const simulation::PhysicsGeometry *get_physics() const;
 
   /**
    * Returns a mutable mesh or null. No ownership is transferred.
@@ -407,7 +406,7 @@ struct GeometrySet {
   /**
    * Returns a mutable rigid body world or null. No ownership is transferred.
    */
-  simulation::RigidBodyWorld *get_rigid_body_world_for_write();
+  simulation::PhysicsGeometry *get_physics_for_write();
 
   /* Utility methods for replacement. */
   /**
@@ -442,8 +441,8 @@ struct GeometrySet {
   /**
    * Clear the existing rigid body world and replace it with the given one.
    */
-  void replace_rigid_body_world(simulation::RigidBodyWorld *rigid_body_world,
-                                GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  void replace_physics(simulation::PhysicsGeometry *physics,
+                       GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
   {
@@ -788,18 +787,18 @@ class GreasePencilComponent : public GeometryComponent {
 /**
  * Geometry component for non-persistent simulation state.
  */
-class RigidBodyComponent : public GeometryComponent {
-  using RigidBodyWorld = simulation::RigidBodyWorld;
+class PhysicsComponent : public GeometryComponent {
+  using PhysicsGeometry = simulation::PhysicsGeometry;
 
  private:
-  RigidBodyWorld *rigid_body_world_ = nullptr;
+  PhysicsGeometry *rigid_body_world_ = nullptr;
   GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
 
  public:
-  RigidBodyComponent();
-  RigidBodyComponent(RigidBodyWorld *rigid_body_world,
+  PhysicsComponent();
+  PhysicsComponent(PhysicsGeometry *geometry,
                      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
-  ~RigidBodyComponent();
+  ~PhysicsComponent();
   GeometryComponentPtr copy() const override;
 
   void clear() override;
@@ -807,12 +806,12 @@ class RigidBodyComponent : public GeometryComponent {
   /**
    * Clear the component and replace it with the new simulation state.
    */
-  void replace(RigidBodyWorld *rigid_body_world,
+  void replace(PhysicsGeometry *physics,
                GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
-  RigidBodyWorld *release();
+  PhysicsGeometry *release();
 
-  const RigidBodyWorld *get() const;
-  RigidBodyWorld *get_for_write();
+  const PhysicsGeometry *get() const;
+  PhysicsGeometry *get_for_write();
 
   bool is_empty() const final;
   int bodies_num() const;

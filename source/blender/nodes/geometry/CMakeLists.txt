@@ -156,6 +156,7 @@ set(SRC
   nodes/node_geo_physics_world.cc
   nodes/node_geo_points.cc
   nodes/node_geo_points_to_curves.cc
+  nodes/node_geo_points_to_rigid_bodies.cc
   nodes/node_geo_points_to_sdf_grid.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc

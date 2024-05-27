@@ -56,7 +56,7 @@ GeometryComponentPtr GeometryComponent::create(Type component_type)
     case Type::GreasePencil:
       return GeometryComponentPtr(new GreasePencilComponent());
     case Type::RigidBody:
-      return GeometryComponentPtr(new RigidBodyComponent());
+      return GeometryComponentPtr(new PhysicsComponent());
   }
   BLI_assert_unreachable();
   return {};
@@ -352,9 +352,9 @@ const GreasePencil *GeometrySet::get_grease_pencil() const
   return (component == nullptr) ? nullptr : component->get();
 }
 
-const simulation::RigidBodyWorld *GeometrySet::get_rigid_body_world() const
+const simulation::PhysicsGeometry *GeometrySet::get_physics() const
 {
-  const RigidBodyComponent *component = this->get_component<RigidBodyComponent>();
+  const PhysicsComponent *component = this->get_component<PhysicsComponent>();
   return (component == nullptr) ? nullptr : component->get();
 }
 
@@ -401,9 +401,9 @@ bool GeometrySet::has_grease_pencil() const
   return component != nullptr && component->has_grease_pencil();
 }
 
-bool GeometrySet::has_rigid_body_world() const
+bool GeometrySet::has_physics() const
 {
-  const RigidBodyComponent *component = this->get_component<RigidBodyComponent>();
+  const PhysicsComponent *component = this->get_component<PhysicsComponent>();
   return component != nullptr && component->has_world();
 }
 
@@ -411,7 +411,7 @@ bool GeometrySet::is_empty() const
 {
   return !(this->has_mesh() || this->has_curves() || this->has_pointcloud() ||
            this->has_volume() || this->has_instances() || this->has_grease_pencil() ||
-           this->has_rigid_body_world());
+           this->has_physics());
 }
 
 GeometrySet GeometrySet::from_mesh(Mesh *mesh, GeometryOwnershipType ownership)
@@ -457,11 +457,11 @@ GeometrySet GeometrySet::from_grease_pencil(GreasePencil *grease_pencil,
   return geometry_set;
 }
 
-GeometrySet GeometrySet::from_rigid_body_world(simulation::RigidBodyWorld *rigid_body_world,
-                                               GeometryOwnershipType ownership)
+GeometrySet GeometrySet::from_physics(simulation::PhysicsGeometry *physics,
+                                      GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
-  geometry_set.replace_rigid_body_world(rigid_body_world, ownership);
+  geometry_set.replace_physics(physics, ownership);
   return geometry_set;
 }
 
@@ -550,19 +550,19 @@ void GeometrySet::replace_grease_pencil(GreasePencil *grease_pencil,
   component.replace(grease_pencil, ownership);
 }
 
-void GeometrySet::replace_rigid_body_world(simulation::RigidBodyWorld *rigid_body_world,
-                                           GeometryOwnershipType ownership)
+void GeometrySet::replace_physics(simulation::PhysicsGeometry *physics,
+                                  GeometryOwnershipType ownership)
 {
-  if (rigid_body_world == nullptr) {
-    this->remove<RigidBodyComponent>();
+  if (physics == nullptr) {
+    this->remove<PhysicsComponent>();
     return;
   }
-  if (rigid_body_world == this->get_rigid_body_world()) {
+  if (physics== this->get_physics()) {
     return;
   }
-  this->remove<RigidBodyComponent>();
-  RigidBodyComponent &component = this->get_component_for_write<RigidBodyComponent>();
-  component.replace(rigid_body_world, ownership);
+  this->remove<PhysicsComponent>();
+  PhysicsComponent &component = this->get_component_for_write<PhysicsComponent>();
+  component.replace(physics, ownership);
 }
 
 Mesh *GeometrySet::get_mesh_for_write()
@@ -611,9 +611,9 @@ GreasePencil *GeometrySet::get_grease_pencil_for_write()
   return component == nullptr ? nullptr : component->get_for_write();
 }
 
-simulation::RigidBodyWorld *GeometrySet::get_rigid_body_world_for_write()
+simulation::PhysicsGeometry *GeometrySet::get_physics_for_write()
 {
-  RigidBodyComponent *component = this->get_component_ptr<RigidBodyComponent>();
+  PhysicsComponent *component = this->get_component_ptr<PhysicsComponent>();
   return component == nullptr ? nullptr : component->get_for_write();
 }
 

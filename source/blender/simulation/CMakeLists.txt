@@ -23,6 +23,7 @@ set(SRC
   intern/hair_volume.cc
   intern/implicit_blender.cc
   intern/implicit_eigen.cc
+  intern/physics_geometry.cc
   intern/rigid_body.cc
 
   intern/ConstrainedConjugateGradient.h
@@ -30,6 +31,7 @@ set(SRC
   intern/implicit.h
 
   SIM_mass_spring.h
+  SIM_physics_geometry.hh
   SIM_rigid_body.hh
 )
 
