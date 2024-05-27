@@ -1536,6 +1536,10 @@ static void template_ID(const bContext *C,
 
     RNA_string_set(but->opptr, "id_name", id->name + 2);
     RNA_int_set(but->opptr, "id_type", GS(id->name));
+
+    if (!ID_IS_EDITABLE(id)) {
+      UI_but_flag_enable(but, UI_BUT_DISABLED);
+    }
   }
   else if (flag & UI_ID_OPEN) {
     const char *button_text = (id) ? "" : IFACE_("Open");
@@ -2080,6 +2084,11 @@ static void template_search_add_button_name(uiBlock *block,
                                             PointerRNA *active_ptr,
                                             const StructRNA *type)
 {
+  /* Skip text button without an active item. */
+  if (active_ptr->data == nullptr) {
+    return;
+  }
+
   PropertyRNA *name_prop = RNA_struct_name_property(type);
   const int width = template_search_textbut_width(active_ptr, name_prop);
   const int height = template_search_textbut_height();
