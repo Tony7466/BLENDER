@@ -930,9 +930,9 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   if (combined_result.get_count(SingleKeyingResult::SUCCESS) > 0) {
     DEG_id_tag_update(&action->id, ID_RECALC_ANIMATION_NO_FLUSH);
 
-    /* TODO: it's not entirely clear when the action we got won't be the same as
-     * the action in AnimData. Further, it's not clear why it would neet to be
-     * tagged for a depsgraph update regardless. This code is here because it
+    /* TODO: it's not entirely clear why the action we got wouldn't be the same
+     * as the action in AnimData. Further, it's not clear why it would need to
+     * be tagged for a depsgraph update regardless. This code is here because it
      * was part of the function this one was refactored from, but at some point
      * this should be investigated and either documented or removed. */
     if (adt->action != nullptr && adt->action != action) {
