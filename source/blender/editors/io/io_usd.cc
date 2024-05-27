@@ -250,7 +250,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
 
-<<<<<<< HEAD
   USDExportParams params = {export_animation,
                             export_hair,
                             export_uvmaps,
@@ -271,6 +270,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                             relative_paths,
                             export_custom_properties,
                             author_blender_name,
+                            triangulate_meshes,
+                            quad_method,
+                            ngon_method,
                             convert_orientation,
                             eIOAxis(global_forward),
                             eIOAxis(global_up),
@@ -281,42 +283,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
                             export_cameras,
                             export_curves,
                             export_volumes};
-=======
-  USDExportParams params = {
-      export_animation,
-      export_hair,
-      export_uvmaps,
-      export_normals,
-      export_mesh_colors,
-      export_materials,
-      export_armatures,
-      export_shapekeys,
-      only_deform_bones,
-      export_subdiv,
-      selected_objects_only,
-      visible_objects_only,
-      use_instancing,
-      eEvaluationMode(evaluation_mode),
-      generate_preview_surface,
-      export_textures,
-      overwrite_textures,
-      relative_paths,
-      export_custom_properties,
-      author_blender_name,
-      triangulate_meshes,
-      quad_method,
-      ngon_method,
-      convert_orientation,
-      eIOAxis(global_forward),
-      eIOAxis(global_up),
-      xform_op_mode,
-      export_meshes,
-      export_lights,
-      export_cameras,
-      export_curves,
-      export_volumes,
-  };
->>>>>>> main
 
   STRNCPY(params.root_prim_path, root_prim_path);
   RNA_string_get(op->ptr, "collection", params.collection);
@@ -1096,18 +1062,18 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "(when disabled, data may be imported which causes crashes displaying or editing)");
 
   RNA_def_boolean(ot->srna,
-<<<<<<< HEAD
+
                   "create_background_shader",
                   true,
                   "Create Background Shader",
                   "Convert first discovered USD dome lights to world background shader");
-=======
+
+  RNA_def_boolean(ot->srna,
                   "import_defined_only",
                   true,
                   "Import only defined USD primitives",
                   "When disabled this allows importing USD primitives which are not defined,"
                   "such as those with an override specifier");
->>>>>>> main
 }
 
 namespace blender::ed::io {
