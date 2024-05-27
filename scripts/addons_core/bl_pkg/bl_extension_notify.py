@@ -372,7 +372,7 @@ def splash_draw_status_fn(self, context):
         _notify.splash_region = context.region_popup
 
     if _notify.sync_info is None:
-        self.layout.label(text="Updates starting...")
+        self.layout.label(text="Checking for Extension Updates")
     elif _notify.sync_info[0] is STATE_DATA_ALL_OFFLINE:
         # The special case is ugly but showing this operator doesn't fit well with other kinds of status updates.
         self.layout.operator("bl_pkg.extensions_show_online_prefs", text="Offline mode", icon='ORPHAN_DATA')
