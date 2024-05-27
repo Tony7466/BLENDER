@@ -392,9 +392,9 @@ class DOPESHEET_MT_view(Menu):
 
         layout.operator("action.view_selected")
         layout.operator("action.view_all")
-        layout.operator("action.view_frame")
         layout.operator("anim.scenerange_frame",
                         text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        layout.operator("action.view_frame")
         layout.separator()
 
         layout.prop(st.dopesheet, "use_multi_word_filter", text="Multi-Word Match Search")
