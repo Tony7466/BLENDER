@@ -11,6 +11,7 @@
 #include <cstring>
 #include <optional>
 
+#include "BKE_curves.hh"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
@@ -96,6 +97,8 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
+
+#include "GEO_join_geometries.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -3378,6 +3381,49 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_derived_caches(newob);
         BKE_object_free_modifiers(newob, 0);
       }
+      else if (geometry.has_grease_pencil()) {
+        if (keep_original) {
+          basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, nullptr);
+          newob = basen->object;
+
+          /* Decrement original curve's usage count. */
+          Curve *legacy_curve = static_cast<Curve *>(newob->data);
+          id_us_min(&legacy_curve->id);
+
+          /* Make a copy of the curve. */
+          newob->data = BKE_id_copy(bmain, &legacy_curve->id);
+        }
+        else {
+          newob = ob;
+        }
+
+        Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+        newob->data = new_curves;
+        newob->type = OB_CURVES;
+
+        if (const Curves *curves_eval = geometry.get_curves()) {
+          new_curves->geometry.wrap() = curves_eval->geometry.wrap();
+          BKE_object_material_from_eval_data(bmain, newob, &curves_eval->id);
+        }
+        else if (const GreasePencil *grease_pencil = geometry.get_grease_pencil()) {
+          const Vector<ed::greasepencil::DrawingInfo> drawings =
+              ed::greasepencil::retrieve_visible_drawings(*scene, *grease_pencil, false);
+          Array<bke::GeometrySet> geometries(drawings.size());
+          for (const int i : drawings.index_range()) {
+            Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
+            curves_id->geometry.wrap() = drawings[i].drawing.strokes();
+            geometries[i] = bke::GeometrySet::from_curves(curves_id);
+          }
+          bke::GeometrySet joined_curves = geometry::join_geometries(geometries, {});
+
+          new_curves->geometry.wrap() = joined_curves.get_curves()->geometry.wrap();
+          new_curves->geometry.wrap().tag_topology_changed();
+          BKE_object_material_from_eval_data(bmain, newob, &joined_curves.get_curves()->id);
+        }
+
+        BKE_object_free_derived_caches(newob);
+        BKE_object_free_modifiers(newob, 0);
+      }
       else {
         BKE_reportf(
             op->reports, RPT_WARNING, "Object '%s' has no evaluated curves data", ob->id.name + 2);
@@ -3745,8 +3791,6 @@ static int object_convert_exec(bContext *C, wmOperator *op)
 
       BKE_object_free_derived_caches(newob);
       BKE_object_free_modifiers(newob, 0);
-    }
-    else if (ob->type == OB_GREASE_PENCIL && target == OB_CURVES) {
     }
     else {
       continue;
