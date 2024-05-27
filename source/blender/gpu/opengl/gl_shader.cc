@@ -1628,7 +1628,7 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   BLI_assert(state_ == AVAILABLE);
 
   strcpy((char *)shared_mem_->get_data(), vert.c_str());
-  strcpy((char *)shared_mem_->get_data() + vert.size() + 1, frag.c_str());
+  strcpy((char *)shared_mem_->get_data() + vert.size() + sizeof('\0'), frag.c_str());
 
   start_semaphore_->increment();
 
@@ -1848,6 +1848,5 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
   handle = 0;
   return result;
 }
-
 
 /** \} */
