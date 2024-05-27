@@ -163,6 +163,28 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   BKE_report(reports, RPT_ERROR, error_message.c_str());
 }
 
+const StringRefNull default_channel_group_for_path(const PointerRNA *ptr, const StringRef rna_path)
+{
+  if (ptr->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
+    return pose_channel->name;
+  }
+
+  if (ptr->type == &RNA_Object) {
+    if (rna_path == "location" || rna_path == "scale" || rna_path == "rotation_euler" ||
+        rna_path == "rotation_quaternion" || rna_path == "rotation_axis_angle" ||
+        rna_path == "rotation_mode")
+    {
+      /* NOTE: Keep this label in sync with the "ID" case in
+       * keyingsets_utils.py :: get_transform_generators_base_info()
+       */
+      return "Object Transforms";
+    }
+  }
+
+  return nullptr;
+}
+
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
 {
   /* Set additional flags for the F-Curve (i.e. only integer values). */
@@ -925,14 +947,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
 
-  std::string group;
-  if (ptr->type == &RNA_PoseBone) {
-    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
-    group = pose_channel->name;
-  }
-  else {
-    group = "Object Transforms";
-  }
+  const StringRefNull group = default_channel_group_for_path(ptr, rna_path);
 
   int property_array_index = 0;
   CombinedKeyingResult combined_result;
