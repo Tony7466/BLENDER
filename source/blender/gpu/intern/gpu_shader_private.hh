@@ -78,6 +78,8 @@ class Shader {
   Shader(const char *name);
   virtual ~Shader();
 
+  /* `is_batch_compilation` is true when the shader is being compiled as part of a
+   * `GPU_shader_batch`. Backends that use the `ShaderCompilerGeneric` can ignore it. */
   virtual void init(const shader::ShaderCreateInfo &info, bool is_batch_compilation) = 0;
 
   virtual void vertex_shader_from_glsl(MutableSpan<const char *> sources) = 0;
@@ -180,6 +182,8 @@ class ShaderCompiler {
   virtual void precompile_specializations(Vector<ShaderSpecialization> /*specializations*/){};
 };
 
+/* Generic (fully synchronous) implementation for backends that don't implement their own
+ * ShaderCompiler. Used by Vulkan and Metal. */
 class ShaderCompilerGeneric : public ShaderCompiler {
  private:
   struct Batch {

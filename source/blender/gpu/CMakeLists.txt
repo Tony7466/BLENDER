@@ -50,7 +50,6 @@ set(SRC
   intern/gpu_batch_utils.cc
   intern/gpu_capabilities.cc
   intern/gpu_codegen.cc
-  intern/gpu_compilation_subprocess.cc
   intern/gpu_compute.cc
   intern/gpu_context.cc
   intern/gpu_debug.cc
@@ -152,6 +151,7 @@ set(OPENGL_SRC
 
   opengl/gl_backend.cc
   opengl/gl_batch.cc
+  opengl/gl_compilation_subprocess.cc
   opengl/gl_compute.cc
   opengl/gl_context.cc
   opengl/gl_debug.cc
@@ -175,6 +175,7 @@ set(OPENGL_SRC
   
   opengl/gl_backend.hh
   opengl/gl_batch.hh
+  opengl/gl_compilation_subprocess.hh
   opengl/gl_compute.hh
   opengl/gl_context.hh
   opengl/gl_debug.hh

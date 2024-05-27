@@ -216,26 +216,35 @@ class GLShader : public Shader {
 class GLCompilerWorker {
   friend class GLShaderCompiler;
 
- protected:
+ private:
   FILE *compiler_ = nullptr;
   std::unique_ptr<SharedMemory> shared_mem_;
   std::unique_ptr<SharedSemaphore> start_semaphore_;
   std::unique_ptr<SharedSemaphore> end_semaphore_;
   std::unique_ptr<SharedSemaphore> close_semaphore_;
-  enum eState { COMPILATION_REQUESTED, COMPILATION_READY, COMPILATION_FINISHED, AVAILABLE };
+  enum eState {
+    /* The worker has been acquired and the compilation has been requested. */
+    COMPILATION_REQUESTED,
+    /* The shader binary result is ready to be read. */
+    COMPILATION_READY,
+    /* The binary result has been loaded into a program and the worker can be released. */
+    COMPILATION_FINISHED,
+    /* The worker is not currently in use and can be acquired. */
+    AVAILABLE
+  };
   eState state_ = AVAILABLE;
   double compilation_start = 0;
 
- public:
-  bool poll();
-  bool load_program_binary(GLint program);
-  bool is_lost();
-
- private:
   GLCompilerWorker();
   ~GLCompilerWorker();
+
   void compile(StringRefNull vert, StringRefNull frag);
+  bool is_ready();
+  bool load_program_binary(GLint program);
   void release();
+
+  /* Check if the process may have closed/crashed/hanged. */
+  bool is_lost();
 };
 
 class GLShaderCompiler : public ShaderCompiler {

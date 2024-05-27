@@ -27,6 +27,7 @@
 #include "gl_debug.hh"
 #include "gl_vertex_buffer.hh"
 
+#include "gl_compilation_subprocess.hh"
 #include "gl_shader.hh"
 #include "gl_shader_interface.hh"
 
@@ -1628,7 +1629,7 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   BLI_assert(state_ == AVAILABLE);
 
   strcpy((char *)shared_mem_->get_data(), vert.c_str());
-  strcpy((char *)shared_mem_->get_data() + vert.size() + 1, frag.c_str());
+  strcpy((char *)shared_mem_->get_data() + vert.size() + sizeof('\0'), frag.c_str());
 
   start_semaphore_->increment();
 
@@ -1636,7 +1637,7 @@ void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
   compilation_start = BLI_time_now_seconds();
 }
 
-bool GLCompilerWorker::poll()
+bool GLCompilerWorker::is_ready()
 {
   BLI_assert(ELEM(state_, COMPILATION_REQUESTED, COMPILATION_READY));
   if (state_ == COMPILATION_READY) {
@@ -1796,7 +1797,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
       /* Try to acquire an available worker. */
       item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     }
-    else if (item.worker->poll()) {
+    else if (item.worker->is_ready()) {
       /* Retrieve the binary compiled by the worker. */
       if (!item.worker->load_program_binary(item.shader->program_active_->program_id) ||
           !item.shader->post_finalize(item.info))
@@ -1821,13 +1822,6 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
 
     if (!item.is_ready) {
       batch.is_ready = false;
-    }
-  }
-
-  int available = 0;
-  for (GLCompilerWorker *worker : workers_) {
-    if (worker->state_ == GLCompilerWorker::AVAILABLE) {
-      available++;
     }
   }
 
@@ -1908,7 +1902,7 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
         /* Try to acquire an available worker. */
         item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
       }
-      else if (item.worker->poll()) {
+      else if (item.worker->is_ready()) {
         /* Retrieve the binary compiled by the worker. */
         if (!item.worker->load_program_binary(item.program)) {
           /* Compilation failed, local compilation will be tried later on shader bind. */

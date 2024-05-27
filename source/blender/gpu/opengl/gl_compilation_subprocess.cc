@@ -2,21 +2,20 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "GPU_compilation_subprocess.hh"
+#include "gl_compilation_subprocess.hh"
 
-#ifdef WITH_OPENGL_BACKEND
-
-#  include "BKE_appdir.hh"
-#  include "BLI_fileops.hh"
-#  include "BLI_hash.hh"
-#  include "BLI_path_util.h"
-#  include "CLG_log.h"
-#  include "GHOST_C-api.h"
-#  include "GPU_context.hh"
-#  include "GPU_init_exit.hh"
-#  include "opengl/ipc.hh"
-#  include <epoxy/gl.h>
-#  include <string>
+#include "BKE_appdir.hh"
+#include "BLI_fileops.hh"
+#include "BLI_hash.hh"
+#include "BLI_path_util.h"
+#include "CLG_log.h"
+#include "GHOST_C-api.h"
+#include "GPU_context.hh"
+#include "GPU_init_exit.hh"
+#include "opengl/ipc.hh"
+#include <epoxy/gl.h>
+#include <iostream>
+#include <string>
 
 namespace blender::gpu {
 
@@ -107,6 +106,8 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   std::string name = subprocess_name;
   SharedMemory shared_mem(name, compilation_subprocess_shared_memory_size, true);
   if (!shared_mem.get_data()) {
+    std::cerr << "Compilation Subprocess: Failed to open shared memory " << subprocess_name
+              << "\n";
     return;
   }
   SharedSemaphore start_semaphore(name + "_START");
@@ -119,6 +120,8 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   gpu_settings.context_type = GHOST_kDrawingContextTypeOpenGL;
   GHOST_ContextHandle ghost_context = GHOST_CreateGPUContext(ghost_system, gpu_settings);
   if (ghost_context == nullptr) {
+    std::cerr << "Compilation Subprocess: Failed to initialize GHOST context for "
+              << subprocess_name << "\n";
     GHOST_DisposeSystem(ghost_system);
     return;
   }
@@ -165,10 +168,16 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
           end_semaphore.increment();
           continue;
         }
+        else {
+          std::cout << "Compilation Subprocess: Failed to load cached shader binary " << hash_str
+                    << "\n";
+        }
       }
       else {
         /* This should never happen, since shaders larger than the pool size should be discarded
          * and compiled in the main Blender process. */
+        std::cerr << "Compilation Subprocess: Wrong size for cached shader binary " << hash_str
+                  << "\n";
         BLI_assert_unreachable();
       }
     }
@@ -188,14 +197,3 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GHOST_DisposeGPUContext(ghost_system, ghost_context);
   GHOST_DisposeSystem(ghost_system);
 }
-
-#else
-
-#  include "BLI_assert.h"
-
-void GPU_compilation_subprocess_run(const char *subprocess_name)
-{
-  BLI_assert_unreachable();
-}
-
-#endif
