@@ -364,9 +364,9 @@ struct uiHandleButtonMulti {
  * Data for editing the value of the button as text.
  */
 struct TextEdit {
-  /* use 'ui_textedit_string_set' to assign new strings */
-  char *str;
-  char *origstr;
+  /** The currently displayed/edited string, use 'ui_textedit_string_set' to assign new strings. */
+  char *edit_string;
+  char *original_string;
   /* size of 'str' (including terminator) */
   int str_maxncpy;
   /* Allow reallocating str/editstr and using 'maxlen' to track alloc size (maxlen + 1) */
@@ -1216,25 +1216,25 @@ static void ui_apply_but_LISTROW(bContext *C, uiBlock *block, uiBut *but, uiHand
 
 static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  if (!data->text_edit.str) {
+  if (!data->text_edit.edit_string) {
     return;
   }
 
-  ui_but_string_set(C, but, data->text_edit.str);
+  ui_but_string_set(C, but, data->text_edit.edit_string);
   ui_but_update_edited(but);
 
   /* give butfunc a copy of the original text too.
    * feature used for bone renaming, channels, etc.
    * afterfunc frees rename_orig */
-  if (data->text_edit.origstr && (but->flag & UI_BUT_TEXTEDIT_UPDATE)) {
+  if (data->text_edit.original_string && (but->flag & UI_BUT_TEXTEDIT_UPDATE)) {
     /* In this case, we need to keep origstr available,
      * to restore real org string in case we cancel after having typed something already. */
-    but->rename_orig = BLI_strdup(data->text_edit.origstr);
+    but->rename_orig = BLI_strdup(data->text_edit.original_string);
   }
   /* only if there are afterfuncs, otherwise 'renam_orig' isn't freed */
   else if (ui_afterfunc_check(but->block, but)) {
-    but->rename_orig = data->text_edit.origstr;
-    data->text_edit.origstr = nullptr;
+    but->rename_orig = data->text_edit.original_string;
+    data->text_edit.original_string = nullptr;
   }
 
   void *orig_arg2 = but->func_arg2;
@@ -1258,8 +1258,8 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_apply_but_TAB(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  if (data->text_edit.str) {
-    ui_but_string_set(C, but, data->text_edit.str);
+  if (data->text_edit.edit_string) {
+    ui_but_string_set(C, but, data->text_edit.edit_string);
     ui_but_update_edited(but);
   }
   else {
@@ -1273,7 +1273,7 @@ static void ui_apply_but_TAB(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_apply_but_NUM(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  if (data->text_edit.str) {
+  if (data->text_edit.edit_string) {
     /* This is intended to avoid unnecessary updates when the value stays the same, however there
      * are issues with the current implementation. It does not work with multi-button editing
      * (#89996) or operator popups where a number button requires an update even if the value is
@@ -1291,7 +1291,7 @@ static void ui_apply_but_NUM(bContext *C, uiBut *but, uiHandleButtonData *data)
     }
 #endif
 
-    if (ui_but_string_set(C, but, data->text_edit.str)) {
+    if (ui_but_string_set(C, but, data->text_edit.edit_string)) {
       data->value = ui_but_value_get(but);
     }
     else {
@@ -1559,10 +1559,10 @@ static void ui_multibut_states_apply(bContext *C, uiHandleButtonData *data, uiBl
 
     BLI_assert(active_back == nullptr);
     /* No need to check 'data->state' here. */
-    if (data->text_edit.str) {
+    if (data->text_edit.edit_string) {
       /* Entering text (set all). */
       but->active->value = data->value;
-      ui_but_string_set(C, but, data->text_edit.str);
+      ui_but_string_set(C, but, data->text_edit.edit_string);
     }
     else {
       /* Dragging (use delta). */
@@ -2232,11 +2232,11 @@ static void ui_apply_but(
       return;
     }
 
-    if (data->text_edit.str) {
-      MEM_freeN(data->text_edit.str);
+    if (data->text_edit.edit_string) {
+      MEM_freeN(data->text_edit.edit_string);
     }
-    data->text_edit.str = data->text_edit.origstr;
-    data->text_edit.origstr = nullptr;
+    data->text_edit.edit_string = data->text_edit.original_string;
+    data->text_edit.original_string = nullptr;
     data->value = data->origvalue;
     copy_v3_v3(data->vec, data->origvec);
     /* postpone clearing origdata */
@@ -3018,10 +3018,10 @@ void ui_but_active_string_clear_and_exit(bContext *C, uiBut *but)
   }
 
   /* most likely nullptr, but let's check, and give it temp zero string */
-  if (!but->active->text_edit.str) {
-    but->active->text_edit.str = static_cast<char *>(MEM_callocN(1, "temp str"));
+  if (!but->active->text_edit.edit_string) {
+    but->active->text_edit.edit_string = static_cast<char *>(MEM_callocN(1, "temp str"));
   }
-  but->active->text_edit.str[0] = 0;
+  but->active->text_edit.edit_string[0] = 0;
 
   ui_apply_but_TEX(C, but, but->active);
   button_activate_state(C, but, BUTTON_STATE_EXIT);
@@ -3030,11 +3030,11 @@ void ui_but_active_string_clear_and_exit(bContext *C, uiBut *but)
 static void ui_textedit_string_ensure_max_length(uiBut *but, TextEdit &text_edit, int str_maxncpy)
 {
   BLI_assert(text_edit.is_str_dynamic);
-  BLI_assert(text_edit.str == but->editstr);
+  BLI_assert(text_edit.edit_string == but->editstr);
 
   if (str_maxncpy > text_edit.str_maxncpy) {
-    text_edit.str = but->editstr = static_cast<char *>(
-        MEM_reallocN(text_edit.str, sizeof(char) * str_maxncpy));
+    text_edit.edit_string = but->editstr = static_cast<char *>(
+        MEM_reallocN(text_edit.edit_string, sizeof(char) * str_maxncpy));
     text_edit.str_maxncpy = str_maxncpy;
   }
 }
@@ -3046,16 +3046,16 @@ static void ui_textedit_string_set(uiBut *but, TextEdit &text_edit, const char *
   }
 
   if (UI_but_is_utf8(but)) {
-    BLI_strncpy_utf8(text_edit.str, str, text_edit.str_maxncpy);
+    BLI_strncpy_utf8(text_edit.edit_string, str, text_edit.str_maxncpy);
   }
   else {
-    BLI_strncpy(text_edit.str, str, text_edit.str_maxncpy);
+    BLI_strncpy(text_edit.edit_string, str, text_edit.str_maxncpy);
   }
 }
 
 static bool ui_textedit_delete_selection(uiBut *but, TextEdit &text_edit)
 {
-  char *str = text_edit.str;
+  char *str = text_edit.edit_string;
   const int len = strlen(str);
   bool changed = false;
   if (but->selsta != but->selend && len) {
@@ -3149,7 +3149,7 @@ static void ui_textedit_set_cursor_select(uiBut *but, uiHandleButtonData *data, 
  */
 static bool ui_textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int buf_len)
 {
-  int len = strlen(text_edit.str);
+  int len = strlen(text_edit.edit_string);
   const int str_maxncpy_new = len - (but->selend - but->selsta) + 1;
   bool changed = false;
 
@@ -3158,7 +3158,7 @@ static bool ui_textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *
   }
 
   if (str_maxncpy_new <= text_edit.str_maxncpy) {
-    char *str = text_edit.str;
+    char *str = text_edit.edit_string;
     size_t step = buf_len;
 
     /* type over the current selection */
@@ -3203,7 +3203,7 @@ static void ui_textedit_move(uiBut *but,
                              const bool select,
                              eStrCursorJumpType jump)
 {
-  const char *str = text_edit.str;
+  const char *str = text_edit.edit_string;
   const int len = strlen(str);
   const int pos_prev = but->pos;
   const bool has_sel = (but->selend - but->selsta) > 0;
@@ -3256,7 +3256,7 @@ static bool ui_textedit_delete(uiBut *but,
                                eStrCursorJumpDirection direction,
                                eStrCursorJumpType jump)
 {
-  char *str = text_edit.str;
+  char *str = text_edit.edit_string;
   const int len = strlen(str);
 
   bool changed = false;
@@ -3304,11 +3304,11 @@ static bool ui_textedit_delete(uiBut *but,
 
 static int ui_textedit_autocomplete(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  char *str = data->text_edit.str;
+  char *str = data->text_edit.edit_string;
 
   int changed;
   if (data->searchbox) {
-    changed = ui_searchbox_autocomplete(C, data->searchbox, but, data->text_edit.str);
+    changed = ui_searchbox_autocomplete(C, data->searchbox, but, data->text_edit.edit_string);
   }
   else {
     changed = but->autocomplete_func(C, str, but->autofunc_arg);
@@ -3352,7 +3352,7 @@ static bool ui_textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mod
     char *buf = static_cast<char *>(
         MEM_mallocN(sizeof(char) * (sellen + 1), "ui_textedit_copypaste"));
 
-    memcpy(buf, text_edit.str + but->selsta, sellen);
+    memcpy(buf, text_edit.edit_string + but->selsta, sellen);
     buf[sellen] = '\0';
 
     WM_clipboard_text_set(buf, false);
@@ -3418,7 +3418,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   const bool is_num_but = ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER);
   bool no_zero_strip = false;
 
-  MEM_SAFE_FREE(text_edit.str);
+  MEM_SAFE_FREE(text_edit.edit_string);
 
 #ifdef USE_DRAG_MULTINUM
   /* this can happen from multi-drag */
@@ -3444,39 +3444,43 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   /* retrieve string */
   text_edit.str_maxncpy = ui_but_string_get_maxncpy(but);
   if (text_edit.str_maxncpy != 0) {
-    text_edit.str = static_cast<char *>(
+    text_edit.edit_string = static_cast<char *>(
         MEM_callocN(sizeof(char) * text_edit.str_maxncpy, "textedit str"));
     /* We do not want to truncate precision to default here, it's nice to show value,
      * not to edit it - way too much precision is lost then. */
-    ui_but_string_get_ex(
-        but, text_edit.str, text_edit.str_maxncpy, UI_PRECISION_FLOAT_MAX, true, &no_zero_strip);
+    ui_but_string_get_ex(but,
+                         text_edit.edit_string,
+                         text_edit.str_maxncpy,
+                         UI_PRECISION_FLOAT_MAX,
+                         true,
+                         &no_zero_strip);
   }
   else {
     text_edit.is_str_dynamic = true;
-    text_edit.str = ui_but_string_get_dynamic(but, &text_edit.str_maxncpy);
+    text_edit.edit_string = ui_but_string_get_dynamic(but, &text_edit.str_maxncpy);
   }
 
   if (ui_but_is_float(but) && !ui_but_is_unit(but) &&
       !ui_but_anim_expression_get(but, nullptr, 0) && !no_zero_strip)
   {
-    BLI_str_rstrip_float_zero(text_edit.str, '\0');
+    BLI_str_rstrip_float_zero(text_edit.edit_string, '\0');
   }
 
   if (is_num_but) {
     BLI_assert(text_edit.is_str_dynamic == false);
-    ui_but_convert_to_unit_alt_name(but, text_edit.str, text_edit.str_maxncpy);
+    ui_but_convert_to_unit_alt_name(but, text_edit.edit_string, text_edit.str_maxncpy);
 
     ui_numedit_begin_set_values(but, data);
   }
 
   /* won't change from now on */
-  const int len = strlen(text_edit.str);
+  const int len = strlen(text_edit.edit_string);
 
-  text_edit.origstr = BLI_strdupn(text_edit.str, len);
+  text_edit.original_string = BLI_strdupn(text_edit.edit_string, len);
   text_edit.sel_pos_init = 0;
 
   /* set cursor pos to the end of the text */
-  but->editstr = text_edit.str;
+  but->editstr = text_edit.edit_string;
   but->pos = len;
   if (bool(but->flag2 & UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT)) {
     but->selsta = len;
@@ -3797,14 +3801,14 @@ static void ui_do_but_textedit(
       /* only select a word in button if there was no selection before */
       if (event->val == KM_DBL_CLICK && had_selection == false) {
         if (is_press_in_button) {
-          const int str_len = strlen(data->text_edit.str);
+          const int str_len = strlen(data->text_edit.edit_string);
           /* This may not be necessary, additional check to ensure `pos` is never out of range,
            * since negative values aren't acceptable, see: #113154. */
           CLAMP(but->pos, 0, str_len);
 
           int selsta, selend;
           BLI_str_cursor_step_bounds_utf8(
-              data->text_edit.str, str_len, but->pos, &selsta, &selend);
+              data->text_edit.edit_string, str_len, but->pos, &selsta, &selend);
           but->pos = short(selend);
           but->selsta = short(selsta);
           but->selend = short(selend);
@@ -4039,7 +4043,7 @@ static void ui_do_but_textedit(
   if (changed) {
     /* The undo stack may be nullptr if an event exits editing. */
     if ((skip_undo_push == false) && (data->undo_stack_text != nullptr)) {
-      ui_textedit_undo_push(data->undo_stack_text, data->text_edit.str, but->pos);
+      ui_textedit_undo_push(data->undo_stack_text, data->text_edit.edit_string, but->pos);
     }
 
     /* only do live update when but flag request it (UI_BUT_TEXTEDIT_UPDATE). */
@@ -8278,7 +8282,7 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
           /* --> (uiHandleButtonMulti::INIT_ENABLE) */
           const float margin_x = DRAG_MULTINUM_THRESHOLD_DRAG_X / sqrtf(block->aspect);
           /* Check if we're don't setting buttons. */
-          if ((data->text_edit.str &&
+          if ((data->text_edit.edit_string &&
                ELEM(data->state, BUTTON_STATE_TEXT_EDITING, BUTTON_STATE_NUM_EDITING)) ||
               ((abs(data->multi_data.drag_lock_x - event->xy[0]) > margin_x) &&
                /* Just to be sure, check we're dragging more horizontally then vertically. */
@@ -8791,11 +8795,11 @@ static void button_activate_exit(
   ui_blocks_set_tooltips(data->region, false);
 
   /* clean up */
-  if (data->text_edit.str) {
-    MEM_freeN(data->text_edit.str);
+  if (data->text_edit.edit_string) {
+    MEM_freeN(data->text_edit.edit_string);
   }
-  if (data->text_edit.origstr) {
-    MEM_freeN(data->text_edit.origstr);
+  if (data->text_edit.original_string) {
+    MEM_freeN(data->text_edit.original_string);
   }
 
 #ifdef USE_ALLSELECT
@@ -9509,11 +9513,11 @@ static int ui_handle_button_event(bContext *C, const wmEvent *event, uiBut *but)
     const uiButtonActivateType post_type = data->posttype;
 
     /* Reset the button value when empty text is typed. */
-    if ((data->cancel == false) && (data->text_edit.str != nullptr) &&
-        (data->text_edit.str[0] == '\0') &&
+    if ((data->cancel == false) && (data->text_edit.edit_string != nullptr) &&
+        (data->text_edit.edit_string[0] == '\0') &&
         (but->rnaprop && ELEM(RNA_property_type(but->rnaprop), PROP_FLOAT, PROP_INT)))
     {
-      MEM_SAFE_FREE(data->text_edit.str);
+      MEM_SAFE_FREE(data->text_edit.edit_string);
       ui_button_value_default(but, &data->value);
 
 #ifdef USE_DRAG_MULTINUM
