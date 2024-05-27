@@ -5,8 +5,8 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 
+#include "SIM_collision_shape.hh"
 #include "SIM_physics_geometry.hh"
-#include "SIM_rigid_body.hh"
 
 #include "attribute_access_intern.hh"
 
@@ -94,12 +94,12 @@ bool PhysicsComponent::is_empty() const
 
 int PhysicsComponent::bodies_num() const
 {
-  return physics_ ? physics_->rigid_bodies().size() : 0;
+  return physics_ ? physics_->rigid_bodies_num() : 0;
 }
 
 int PhysicsComponent::constraints_num() const
 {
-  return 0;
+  return physics_ ? physics_->constraints_num() : 0;
 }
 
 int PhysicsComponent::shapes_num() const
@@ -151,9 +151,9 @@ static AttributeAccessorFunctions get_physics_accessor_functions()
     const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
     switch (domain) {
       case AttrDomain::Point:
-        return int(physics.rigid_bodies().size());
+        return int(physics.rigid_bodies_num());
       case AttrDomain::Edge:
-        return 0;
+        return int(physics.constraints_num());
       default:
         return 0;
     }

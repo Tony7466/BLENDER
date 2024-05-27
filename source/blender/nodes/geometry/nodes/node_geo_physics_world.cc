@@ -12,7 +12,6 @@
 #include "RNA_enum_types.hh"
 
 #include "SIM_physics_geometry.hh"
-#include "SIM_rigid_body.hh"
 
 #include "node_geometry_util.hh"
 
@@ -33,9 +32,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const float3 gravity = params.extract_input<float3>("Gravity");
 
   auto physics = new simulation::PhysicsGeometry();
-
-  simulation::RigidBodyWorld *world = physics->ensure_world();
-  world->set_gravity(gravity);
+  physics->set_world(true);
+  physics->set_gravity(gravity);
 
   params.set_output("Geometry", GeometrySet::from_physics(physics));
 }

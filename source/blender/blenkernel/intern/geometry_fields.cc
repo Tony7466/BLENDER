@@ -118,9 +118,9 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       break;
     }
     case GeometryComponent::Type::Physics: {
-      const RigidBodyComponent &rigid_body_component = static_cast<const RigidBodyComponent &>(
+      const PhysicsComponent &physics_component = static_cast<const PhysicsComponent &>(
           component);
-      geometry_ = rigid_body_component.get();
+      geometry_ = physics_component.get();
       break;
     }
     case GeometryComponent::Type::Volume:

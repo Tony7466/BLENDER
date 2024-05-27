@@ -488,6 +488,7 @@ class NODE_MT_category_GEO_POINT(Menu):
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodePoints")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToCurves")
+        node_add_menu.add_node_type(layout, "GeometryNodePointsToRigidBodies")
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodePointsToSDFGrid")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVertices")

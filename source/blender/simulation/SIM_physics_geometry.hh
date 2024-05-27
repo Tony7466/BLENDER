@@ -20,25 +20,37 @@ namespace blender::simulation {
 using RigidBodyID = int;
 
 class CollisionShape;
-class RigidBody;
-class RigidBodyWorld;
+struct PhysicsImpl;
 
 class PhysicsGeometry {
  private:
-  Array<RigidBody *> rigid_bodies_;
-
-  RigidBodyWorld *world_ = nullptr;
+  PhysicsImpl *impl_;
 
  public:
+  using OverlapFilterFn = std::function<bool(const RigidBodyID a, const RigidBodyID b)>;
+
+  PhysicsGeometry();
+  PhysicsGeometry(const PhysicsGeometry &other);
+  ~PhysicsGeometry();
+
+  PhysicsGeometry copy() const;
+
   bool has_world() const;
-  RigidBodyWorld *world() const;
+  void set_world(bool enable);
 
-  RigidBodyWorld *ensure_world();
+  void set_overlap_filter(OverlapFilterFn fn);
+  void clear_overlap_filter();
+  
+  float3 gravity() const;
+  void set_gravity(const float3 &gravity);
+  void set_solver_iterations(int num_solver_iterations);
+  void set_split_impulse(bool split_impulse);
+  
+  int rigid_bodies_num() const;
+  int constraints_num() const;
+  int shapes_num() const;
 
-  Span<const RigidBody *> rigid_bodies() const;
-  Span<RigidBody *> rigid_bodies_for_write();
-
-  Span<RigidBody *> add_rigid_bodies(const Span<const CollisionShape *> shapes,
+  IndexRange add_rigid_bodies(const Span<const CollisionShape *> shapes,
                                      const VArray<int> &shape_indices,
                                      const VArray<float> &masses,
                                      const VArray<float3> &inertiae,

@@ -20,19 +20,20 @@ set(INC_SYS
 
 set(SRC
   intern/SIM_mass_spring.cc
+  intern/collision_shape.cc
   intern/hair_volume.cc
   intern/implicit_blender.cc
   intern/implicit_eigen.cc
   intern/physics_geometry.cc
-  intern/rigid_body.cc
 
   intern/ConstrainedConjugateGradient.h
   intern/eigen_utils.h
   intern/implicit.h
+  intern/physics_impl.hh
 
+  SIM_collision_shape.hh
   SIM_mass_spring.h
   SIM_physics_geometry.hh
-  SIM_rigid_body.hh
 )
 
 set(LIB

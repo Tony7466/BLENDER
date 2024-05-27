@@ -9,13 +9,14 @@
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 
+#include "SIM_collision_shape.hh"
 #include "SIM_physics_geometry.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_points_to_rigid_bodies_cc {
 
-using simulation::RigidBodyWorld;
+using simulation::PhysicsGeometry;
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -27,7 +28,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void geometry_set_points_to_rigid_bodies(
     GeometrySet &geometry_set,
     Field<bool> &selection_field,
-    const AnonymousAttributePropagationInfo &propagation_info)
+    const AnonymousAttributePropagationInfo & /*propagation_info*/)
 {
   const PointCloud *points = geometry_set.get_pointcloud();
   if (points == nullptr) {
@@ -45,9 +46,24 @@ static void geometry_set_points_to_rigid_bodies(
   selection_evaluator.evaluate();
   const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);
 
-  auto *physics = new simulation::PhysicsGeometry();
+  const int num_bodies = selection.size();
+  Array<simulation::CollisionShape *> shapes(3);
+  shapes[0] = new simulation::BoxCollisionShape(float3(.3f, .5f, .7f));
+  shapes[1] = new simulation::BoxCollisionShape(float3(1, 1, .1f));
+  shapes[2] = new simulation::SphereCollisionShape(1.2f);
+  Array<int> shape_indices(num_bodies, 0);
+  Array<float> masses(num_bodies, 1.0f);
+  Array<float3> inertiae(num_bodies, float3(0.0f));
+  VArray<bool> simulated = VArray<bool>::ForSingle(true, num_bodies);
 
-  //physics->add_rigid_bodies(
+  auto *physics = new simulation::PhysicsGeometry();
+  physics->add_rigid_bodies(shapes,
+                            VArray<int>::ForSpan(shape_indices),
+                            VArray<float>::ForSpan(masses),
+                            VArray<float3>::ForSpan(inertiae),
+                            simulated);
+
+  // physics->add_rigid_bodies(
 
   //  Map<AttributeIDRef, AttributeKind> attributes;
   //  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::PointCloud},
@@ -91,7 +107,7 @@ static void geometry_set_points_to_rigid_bodies(
   //  mesh->tag_overlapping_none();
 
   geometry_set.replace_physics(physics);
-  geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::Physics});
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -120,59 +136,3 @@ static void node_register()
 NOD_REGISTER_NODE(node_register)
 
 }  // namespace blender::nodes::node_geo_points_to_rigid_bodies_cc
-
-
-//#include "NOD_rna_define.hh"
-//
-//#include "UI_interface.hh"
-//#include "UI_resources.hh"
-//
-//#include "GEO_separate_geometry.hh"
-//
-//#include "RNA_enum_types.hh"
-//
-//#include "SIM_rigid_body.hh"
-//
-//#include "node_geometry_util.hh"
-//
-//namespace blender::nodes::node_geo_physics_world_cc {
-//
-//static void node_declare(NodeDeclarationBuilder &b)
-//{
-//  b.add_input<decl::Vector>("Gravity").default_value(float3(0, 0, -9.81)).hide_value();
-//  b.add_output<decl::Geometry>("Geometry");
-//}
-//
-//static void node_layout(uiLayout * /*layout*/, bContext * /*C*/, PointerRNA * /*ptr*/) {}
-//
-//static void node_init(bNodeTree * /*tree*/, bNode * /*node*/) {}
-//
-//static void node_geo_exec(GeoNodeExecParams params)
-//{
-//  const float3 gravity = params.extract_input<float3>("Gravity");
-//
-//  auto *world = new simulation::RigidBodyWorld();
-//  world->set_gravity(gravity);
-//
-//  params.set_output("Geometry", GeometrySet::from_rigid_body_world(world));
-//}
-//
-//static void node_rna(StructRNA * /*srna*/) {}
-//
-//static void node_register()
-//{
-//  static blender::bke::bNodeType ntype;
-//
-//  geo_node_type_base(&ntype, GEO_NODE_PHYSICS_WORLD, "Physics World", NODE_CLASS_GEOMETRY);
-//
-//  ntype.initfunc = node_init;
-//  ntype.declare = node_declare;
-//  ntype.geometry_node_execute = node_geo_exec;
-//  ntype.draw_buttons = node_layout;
-//  blender::bke::nodeRegisterType(&ntype);
-//
-//  node_rna(ntype.rna_ext.srna);
-//}
-//NOD_REGISTER_NODE(node_register)
-//
-//}  // namespace blender::nodes::node_geo_physics_world_cc

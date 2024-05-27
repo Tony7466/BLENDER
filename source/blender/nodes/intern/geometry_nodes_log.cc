@@ -135,12 +135,12 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         break;
       }
       case bke::GeometryComponent::Type::Physics: {
-        const auto &rigid_body_component = *static_cast<const bke::RigidBodyComponent *>(
+        const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(
             component);
         RigidBodyInfo &info = this->rigid_body_info.emplace();
-        info.bodies_num = rigid_body_component.bodies_num();
-        info.constraints_num = rigid_body_component.constraints_num();
-        info.shapes_num = rigid_body_component.shapes_num();
+        info.bodies_num = physics_component.bodies_num();
+        info.constraints_num = physics_component.constraints_num();
+        info.shapes_num = physics_component.shapes_num();
         break;
       }
     }
