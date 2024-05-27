@@ -226,7 +226,7 @@ ccl_device_inline void hair_attenuation(
   Ap_energy[3] *= fac;
 }
 
-/* Updates sin_theta_o and cos_theta_o to account for scale tilt for each bounce. */
+/* Update sin_theta_o and cos_theta_o to account for scale tilt for each bounce. */
 ccl_device_inline void hair_alpha_angles(float sin_theta_o,
                                          float cos_theta_o,
                                          float alpha,
@@ -351,8 +351,7 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
   const float3 Z = safe_normalize(cross(X, Y));
 
   /* wo in pbrt. */
-  const float3 local_O = make_float3(
-      dot(sd->wi, X), dot(sd->wi, Y), dot(sd->wi, Z));
+  const float3 local_O = make_float3(dot(sd->wi, X), dot(sd->wi, Y), dot(sd->wi, Z));
 
   const float sin_theta_o = local_O.x;
   const float cos_theta_o = cos_from_sin(sin_theta_o);
@@ -401,7 +400,7 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
     cos_theta_o_tilted = angles[2 * p + 1];
   }
   rand.z = max(rand.z, 1e-5f);
-  const float fac = 1.0f + v * logf(rand.z + (1.0f - rand.z) * expf(-2.0f / v)); /*cosTheta*/
+  const float fac = 1.0f + v * logf(rand.z + (1.0f - rand.z) * expf(-2.0f / v));
   float sin_theta_i = -fac * sin_theta_o_tilted +
                       sin_from_cos(fac) * cosf(M_2PI_F * rand.y) * cos_theta_o_tilted;
   float cos_theta_i = cos_from_sin(sin_theta_i);
