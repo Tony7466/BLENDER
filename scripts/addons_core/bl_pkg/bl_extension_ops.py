@@ -1699,6 +1699,11 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
         header, body = layout.panel("legacy", default_closed=True)
         header.label(text="Legacy Add-ons")
+
+        row = header.row()
+        row.alignment = 'RIGHT'
+        row.operator("wm.doc_view_manual", icon='QUESTION', text="").doc_id = "preferences.addon_install"
+
         if body:
             body.prop(self, "target", text="Target Path")
             body.prop(self, "overwrite", text="Overwrite")
