@@ -15,7 +15,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Translation").subtype(PROP_TRANSLATION);
   b.add_input<decl::Rotation>("Rotation");
   b.add_input<decl::Vector>("Scale").default_value(float3(1)).subtype(PROP_XYZ);
-  b.add_output<decl::Matrix>("Transform");
+  b.add_output<decl::Matrix>("Transform").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 }
 
 class CombineTransformFunction : public mf::MultiFunction {

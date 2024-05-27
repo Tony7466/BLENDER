@@ -12,7 +12,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.add_input<decl::Vector>("Vector").subtype(PROP_XYZ);
-  b.add_input<decl::Matrix>("Transform");
+  b.add_input<decl::Matrix>("Transform").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
   b.add_output<decl::Vector>("Vector").subtype(PROP_XYZ);
 }
 

@@ -12,7 +12,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Matrix>("Transform")
       .field_on_all()
-      .implicit_field(implicit_field_inputs::instance_transform);
+      .implicit_field(implicit_field_inputs::instance_transform)
+      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
   b.add_output<decl::Geometry>("Instances").propagate_all();
 }
 
