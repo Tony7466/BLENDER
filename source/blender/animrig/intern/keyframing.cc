@@ -858,6 +858,11 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                                                                         prop);
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
     BitVector<> successful_remaps(rna_values.size(), false);
+    /* NOTE: in addition to remapping, this also marks what elements of an array
+     * property will actually get keyed by `insert_key_action()` below via
+     * `successful_remaps`.  Importantly, for quaternion properties it may choose
+     * to key all array elements regardless of the passed index parameter,
+     * depending on the NLA setup. */
     BKE_animsys_nla_remap_keyframe_values(nla_context,
                                           &id_pointer,
                                           prop,
