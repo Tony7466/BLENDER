@@ -2,21 +2,19 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "GPU_compilation_subprocess.hh"
+#include "gl_compilation_subprocess.hh"
 
-#ifdef WITH_OPENGL_BACKEND
-
-#  include "BKE_appdir.hh"
-#  include "BLI_fileops.hh"
-#  include "BLI_hash.hh"
-#  include "BLI_path_util.h"
-#  include "CLG_log.h"
-#  include "GHOST_C-api.h"
-#  include "GPU_context.hh"
-#  include "GPU_init_exit.hh"
-#  include "opengl/ipc.hh"
-#  include <epoxy/gl.h>
-#  include <string>
+#include "BKE_appdir.hh"
+#include "BLI_fileops.hh"
+#include "BLI_hash.hh"
+#include "BLI_path_util.h"
+#include "CLG_log.h"
+#include "GHOST_C-api.h"
+#include "GPU_context.hh"
+#include "GPU_init_exit.hh"
+#include "opengl/ipc.hh"
+#include <epoxy/gl.h>
+#include <string>
 
 namespace blender::gpu {
 
@@ -188,14 +186,3 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GHOST_DisposeGPUContext(ghost_system, ghost_context);
   GHOST_DisposeSystem(ghost_system);
 }
-
-#else
-
-#  include "BLI_assert.h"
-
-void GPU_compilation_subprocess_run(const char *subprocess_name)
-{
-  BLI_assert_unreachable();
-}
-
-#endif

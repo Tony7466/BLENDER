@@ -19,7 +19,6 @@
 #include BLI_SYSTEM_PID_H
 
 #include "GPU_capabilities.hh"
-#include "GPU_compilation_subprocess.hh"
 #include "GPU_platform.hh"
 #include "gpu_capabilities_private.hh"
 #include "gpu_shader_dependency_private.hh"
@@ -27,6 +26,7 @@
 #include "gl_debug.hh"
 #include "gl_vertex_buffer.hh"
 
+#include "gl_compilation_subprocess.hh"
 #include "gl_shader.hh"
 #include "gl_shader_interface.hh"
 
