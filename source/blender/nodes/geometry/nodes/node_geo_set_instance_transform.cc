@@ -31,7 +31,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SET_INSTANCE_TRANSFORM, "Set Instance Transform", NODE_CLASS_GEOMETRY);
