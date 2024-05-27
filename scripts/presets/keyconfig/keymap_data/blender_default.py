@@ -1316,6 +1316,8 @@ def km_outliner(params):
         ("outliner.collection_exclude_clear", {"type": 'E', "value": 'PRESS', "alt": True}, None),
         ("outliner.hide", {"type": 'H', "value": 'PRESS'}, None),
         ("outliner.unhide_all", {"type": 'H', "value": 'PRESS', "alt": True}, None),
+        ("outliner.start_filter", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
+        ("outliner.clear_filter", {"type": 'F', "value": 'PRESS', "alt": True}, None),
         # Copy/paste.
         ("outliner.id_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("outliner.id_paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
@@ -4792,7 +4794,7 @@ def km_grease_pencil_fill_tool(_params):
         ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("on_back", False)]}),
         ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("on_back", False)]}),
+         {"properties": [("on_back", False), ("invert", True)]}),
         # Use regular stroke operator when holding shift to draw lines.
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          None),
@@ -4820,10 +4822,10 @@ def km_grease_pencil_fill_tool_modal_map(params):
         ("EXTENSIONS_SHORTEN", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'}, None),
         ("EXTENSIONS_DRAG", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         ("EXTENSIONS_COLLIDE", {"type": 'D', "value": 'PRESS'}, None),
-        ("INVERT", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("INVERT", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
-        ("PRECISION", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
-        ("PRECISION", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
+        ("INVERT", {"type": 'LEFT_CTRL', "value": 'ANY', "any": True}, None),
+        ("INVERT", {"type": 'RIGHT_CTRL', "value": 'ANY', "any": True}, None),
+        ("PRECISION", {"type": 'LEFT_SHIFT', "value": 'ANY', "any": True}, None),
+        ("PRECISION", {"type": 'RIGHT_SHIFT', "value": 'ANY', "any": True}, None),
     ])
 
     return keymap
@@ -8785,7 +8787,7 @@ def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
     return [
         ("sequencer.select_handle", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         *_template_items_change_frame(params),
-        # Frame change can be cancelled if click happens on strip handle. In such case move the handle.
+        # Frame change can be canceled if click happens on strip handle. In such case move the handle.
         ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("view2d_edge_pan", True)]}),
     ]
