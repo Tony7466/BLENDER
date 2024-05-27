@@ -9,9 +9,9 @@
 #pragma once
 
 #include "BLI_index_mask_fwd.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_math_quaternion_types.hh"
 #include "BLI_map.hh"
+#include "BLI_math_quaternion_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_virtual_array_fwd.hh"
 
@@ -38,10 +38,11 @@ class PhysicsGeometry {
   Span<const RigidBody *> rigid_bodies() const;
   Span<RigidBody *> rigid_bodies_for_write();
 
-  IndexRange add_rigid_bodies(const Span<const CollisionShape *> shapes,
-                              const VArray<int> &shape_indices,
-                              const VArray<float> &masses,
-                              const VArray<float3> &inertiae);
+  Span<RigidBody *> add_rigid_bodies(const Span<const CollisionShape *> shapes,
+                                     const VArray<int> &shape_indices,
+                                     const VArray<float> &masses,
+                                     const VArray<float3> &inertiae,
+                                     const VArray<bool> &simulated);
   void remove_rigid_bodies(const IndexMask &mask);
   void clear_rigid_bodies();
 

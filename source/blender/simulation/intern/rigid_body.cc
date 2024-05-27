@@ -13,13 +13,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "SIM_rigid_body.hh"
+#include <LinearMath/btDefaultMotionState.h>
 
 #ifdef WITH_BULLET
-#include "BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h"
-#include "BulletCollision/Gimpact/btGImpactShape.h"
-#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
-#include "btBulletDynamicsCommon.h"
-#include "BulletDynamics/Dynamics/btRigidBody.h"
+#  include "BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h"
+#  include "BulletCollision/Gimpact/btGImpactShape.h"
+#  include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#  include "BulletDynamics/Dynamics/btRigidBody.h"
+#  include "btBulletDynamicsCommon.h"
 #endif
 
 namespace blender::simulation {
@@ -90,30 +91,46 @@ struct RigidBodyWorldImpl {
 
   RigidBodyWorldImpl()
   {
-    this->config = MEM_new<btDefaultCollisionConfiguration>(__func__);
-    this->dispatcher = MEM_new<btCollisionDispatcher>(__func__, this->config);
+    this->config = new btDefaultCollisionConfiguration();
+    this->dispatcher = new btCollisionDispatcher(this->config);
     btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
 
-    this->broadphase = MEM_new<btDbvtBroadphase>(__func__);
-    this->overlap_filter = MEM_new<DefaultOverlapFilter>(__func__);
+    this->broadphase = new btDbvtBroadphase();
+    this->overlap_filter = new DefaultOverlapFilter();
     this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
 
-    this->constraint_solver = MEM_new<btSequentialImpulseConstraintSolver>(__func__);
+    this->constraint_solver = new btSequentialImpulseConstraintSolver();
 
-    this->world = MEM_new<btDiscreteDynamicsWorld>(
-        __func__, this->dispatcher, this->broadphase, this->constraint_solver, this->config);
+    this->world = new btDiscreteDynamicsWorld(
+        this->dispatcher, this->broadphase, this->constraint_solver, this->config);
   }
 
   ~RigidBodyWorldImpl()
   {
     /* XXX This leaks memory, but enabling it somehow causes memory corruption and crash.
      * Possibly caused by alignment? */
-    // MEM_delete(this->world);
-    MEM_delete(this->constraint_solver);
-    MEM_delete(this->broadphase);
-    MEM_delete(this->dispatcher);
-    MEM_delete(this->config);
-    MEM_delete(this->overlap_filter);
+    // delete this->world;
+    delete this->constraint_solver;
+    delete this->broadphase;
+    delete this->dispatcher;
+    delete this->config;
+    delete this->overlap_filter;
+  }
+};
+
+struct RigidBodyImpl {
+  btRigidBody *body;
+  btMotionState *motion_state;
+
+  RigidBodyImpl(btCollisionShape *collision_shape, float mass, const btVector3 &local_inertia)
+  {
+    this->motion_state = new btDefaultMotionState();
+    this->body = new btRigidBody(mass, this->motion_state, collision_shape, local_inertia);
+  }
+
+  ~RigidBodyImpl()
+  {
+    delete this->body;
   }
 };
 
@@ -128,19 +145,19 @@ struct CollisionShapeImpl {
 
 RigidBodyWorld::RigidBodyWorld()
 {
-  impl_ = MEM_new<RigidBodyWorldImpl>(__func__);
+  impl_ = new RigidBodyWorldImpl();
 }
 
 RigidBodyWorld::RigidBodyWorld(const RigidBodyWorld &other)
 {
   // TODO copy bodies, constraints, shapes from other?
-  impl_ = MEM_new<RigidBodyWorldImpl>(__func__);
+  impl_ = new RigidBodyWorldImpl();
   UNUSED_VARS(other);
 }
 
 RigidBodyWorld::~RigidBodyWorld()
 {
-  MEM_delete(impl_);
+  delete impl_;
 }
 
 int RigidBodyWorld::bodies_num() const
@@ -191,91 +208,93 @@ void RigidBodyWorld::set_split_impulse(const bool split_impulse)
   info.m_splitImpulse = int(split_impulse);
 }
 
-RigidBodyHandle RigidBodyWorld::add_rigid_body(const float mass, const float3 &inertia)
+void RigidBodyWorld::add_rigid_body(RigidBody *body)
 {
-  btMotionState *motion_state = impl_->motion_state_pool.alloc();
-  btCollisionShape *collision_shape = nullptr;
-  const btRigidBody::btRigidBodyConstructionInfo construction_info{
-      mass, motion_state, collision_shape, to_bullet(inertia)};
-  btRigidBody *body = impl_->rigid_body_pool.alloc(construction_info);
-
-  impl_->world->addRigidBody(body);
-
-  return (RigidBodyHandle)body;
+  impl_->world->addRigidBody(body->impl_->body);
 }
 
-void RigidBodyWorld::remove_rigid_body(RigidBodyHandle handle)
+void RigidBodyWorld::remove_rigid_body(RigidBody *body)
 {
-  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
-  impl_->world->removeRigidBody(body);
+  impl_->world->removeRigidBody(body->impl_->body);
 }
 
-//float RigidBodyWorld::body_mass(RigidBodyHandle handle) const
+// float RigidBodyWorld::body_mass(RigidBodyHandle handle) const
 //{
-//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
-//  return body->getMass();
-//}
+//   const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//   return body->getMass();
+// }
 //
-//float3 RigidBodyWorld::body_inertia(RigidBodyHandle handle) const
+// float3 RigidBodyWorld::body_inertia(RigidBodyHandle handle) const
 //{
-//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
-//  return to_blender(body->getLocalInertia());
-//}
+//   const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//   return to_blender(body->getLocalInertia());
+// }
 //
-//void RigidBodyWorld::set_body_mass(RigidBodyHandle handle, const float mass, const float3 &inertia)
+// void RigidBodyWorld::set_body_mass(RigidBodyHandle handle, const float mass, const float3
+// &inertia)
 //{
-//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
-//  body->setMassProps(mass, to_bullet(inertia));
-//}
+//   btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//   body->setMassProps(mass, to_bullet(inertia));
+// }
 //
-//float RigidBodyWorld::body_friction(RigidBodyHandle handle) const {
-//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
-//  return body->getFriction();
-//}
+// float RigidBodyWorld::body_friction(RigidBodyHandle handle) const {
+//   const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//   return body->getFriction();
+// }
 //
-//void RigidBodyWorld::set_body_friction(RigidBodyHandle handle, float value)
+// void RigidBodyWorld::set_body_friction(RigidBodyHandle handle, float value)
 //{
-//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
-//  body->setFriction(value);
-//}
+//   btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//   body->setFriction(value);
+// }
 //
-//float RigidBodyWorld::body_restitution(RigidBodyHandle handle) const
+// float RigidBodyWorld::body_restitution(RigidBodyHandle handle) const
 //{
-//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
-//  return body->getRestitution();
-//}
+//   const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//   return body->getRestitution();
+// }
 //
-//void RigidBodyWorld::body_set_restitution(RigidBodyHandle handle, float value)
+// void RigidBodyWorld::body_set_restitution(RigidBodyHandle handle, float value)
 //{
-//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
-//  body->setRestitution(value);
-//}
+//   btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//   body->setRestitution(value);
+// }
 //
-//float RigidBodyWorld::body_linear_damping(RigidBodyHandle handle) const
+// float RigidBodyWorld::body_linear_damping(RigidBodyHandle handle) const
 //{
-//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
-//  return body->getLinearDamping();
-//}
+//   const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//   return body->getLinearDamping();
+// }
 //
-//void RigidBodyWorld::body_set_linear_damping(RigidBodyHandle handle, float value)
+// void RigidBodyWorld::body_set_linear_damping(RigidBodyHandle handle, float value)
 //{
-//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
-//  body->setDamping(value, body->getAngularDamping());
-//}
+//   btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//   body->setDamping(value, body->getAngularDamping());
+// }
 //
-//float RigidBodyWorld::body_angular_damping(RigidBodyHandle handle) const
+// float RigidBodyWorld::body_angular_damping(RigidBodyHandle handle) const
 //{
-//  const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
-//  return body->getAngularDamping();
-//}
+//   const btRigidBody *body = reinterpret_cast<const btRigidBody *>(handle);
+//   return body->getAngularDamping();
+// }
 //
-//void RigidBodyWorld::body_set_angular_damping(RigidBodyHandle handle, float value)
+// void RigidBodyWorld::body_set_angular_damping(RigidBodyHandle handle, float value)
 //{
-//  btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
-//  body->setDamping(body->getLinearDamping(), value);
-//}
+//   btRigidBody *body = reinterpret_cast<btRigidBody *>(handle);
+//   body->setDamping(body->getLinearDamping(), value);
+// }
 
-CollisionShape::CollisionShape() {}
+RigidBody::RigidBody(const CollisionShape *shape, float mass, const float3 &local_inertia)
+{
+  impl_ = new RigidBodyImpl(shape->impl_->shape, mass, to_bullet(local_inertia));
+}
+
+RigidBody::~RigidBody()
+{
+  delete impl_;
+}
+
+CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl) {}
 
 CollisionShape::~CollisionShape()
 {
@@ -298,17 +317,18 @@ CollisionShape::ShapeType CollisionShape::type() const
 }
 
 BoxCollisionShape::BoxCollisionShape(const float3 &half_extent)
+    : CollisionShape(new CollisionShapeImpl{new btBoxShape(to_bullet(half_extent))})
 {
-  impl_ = new CollisionShapeImpl{new btBoxShape(to_bullet(half_extent))};
 }
 
-float3 BoxCollisionShape::half_extent() const {
+float3 BoxCollisionShape::half_extent() const
+{
   return to_blender(static_cast<btBoxShape *>(impl_->shape)->getHalfExtentsWithoutMargin());
 }
 
 SphereCollisionShape::SphereCollisionShape(const float radius)
+    : CollisionShape(new CollisionShapeImpl{new btSphereShape(radius)})
 {
-  impl_ = new CollisionShapeImpl{new btSphereShape(radius)};
 }
 
 float SphereCollisionShape::radius() const

@@ -10,14 +10,11 @@
 #include "BLI_mempool.h"
 #include "BLI_virtual_array.hh"
 
-#include "MEM_guardedalloc.h"
-
 #include "SIM_physics_geometry.hh"
 #include "SIM_rigid_body.hh"
 
 #ifdef WITH_BULLET
 #  include "BulletDynamics/Dynamics/btRigidBody.h"
-#  include "btBulletDynamicsCommon.h"
 #endif
 
 namespace blender::simulation {
@@ -98,33 +95,32 @@ VArray<RigidBodyID> PhysicsGeometry::body_ids() const
       *this, [&](const btRigidBody &body) { return body.getUserIndex(); });
 }
 
-IndexRange PhysicsGeometry::add_rigid_bodies(const Span<const CollisionShape *> shapes,
-                                            const VArray<int> &shape_indices,
-                                            const VArray<float> &masses,
-                                            const VArray<float3> &inertiae)
+Span<RigidBody *> PhysicsGeometry::add_rigid_bodies(const Span<const CollisionShape *> shapes,
+                                                    const VArray<int> &shape_indices,
+                                                    const VArray<float> &masses,
+                                                    const VArray<float3> &inertiae,
+                                                    const VArray<bool> &simulated)
 {
   const int num_add = masses.size();
   BLI_assert(inertiae.is_empty() || inertiae.size() == num_add);
   BLI_assert(shape_indices.size() == num_add);
 
-  //rigid_bodies_.append_n_times(nullptr, num_add);
+  // rigid_bodies_.append_n_times(nullptr, num_add);
   Array<RigidBody *> new_rigid_bodies(rigid_bodies_.size() + num_add);
   array_utils::copy(rigid_bodies_.as_span(), new_rigid_bodies.as_mutable_span());
   const IndexRange new_bodies_range = new_rigid_bodies.index_range().take_back(num_add);
   for (const int i : new_bodies_range) {
-    btMotionState *motion_state = new btDefaultMotionState();
     BLI_assert(shapes.index_range().contains(shape_indices[i]));
-    btCollisionShape *shape = shapes[shape_indices[i]]->impl_->shape;
-    const float mass = masses[i];
-    const float3 inertia = inertiae.is_empty() ? float3(0.0f) : inertiae[i];
+    const CollisionShape *shape = shapes[shape_indices[i]];
+    const float3 inertia = inertiae ? inertiae[i] : float3(0.0f);
+    const bool simulate = simulated ? simulated[i] : true;
 
-    const btRigidBody::btRigidBodyConstructionInfo construction_info{
-        masses[i], motion_state, shape, to_bullet(inertia)};
-    btRigidBody *body = new btRigidBody(construction_info);
-    rigid_bodies_[i] = body;
-    impl_->world->addRigidBody(body);
+    rigid_bodies_[i] = new RigidBody(shape, masses[i], inertia);
+    if (simulate && world_ != nullptr) {
+      world_->add_rigid_body(rigid_bodies_[i]);
+    }
   }
-  return new_bodies_range;
+  return new_rigid_bodies.as_span().slice(new_bodies_range);
 }
 
 void PhysicsGeometry::remove_rigid_bodies(const IndexMask &mask)
