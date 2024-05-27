@@ -1026,28 +1026,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
       /* standard properties */
       if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
         const char *identifier = RNA_property_identifier(prop);
-        std::optional<std::string> group = std::nullopt;
-
-        /* Special exception for keyframing transforms:
-         * Set "group" for this manually, instead of having them appearing at the bottom
-         * (ungrouped) part of the channels list.
-         * Leaving these ungrouped is not a nice user behavior in this case.
-         *
-         * TODO: Perhaps we can extend this behavior in future for other properties...
-         */
-        if (ptr.type == &RNA_PoseBone) {
-          bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr.data);
-          group = pchan->name;
-        }
-        else if ((ptr.type == &RNA_Object) &&
-                 (strstr(identifier, "location") || strstr(identifier, "rotation") ||
-                  strstr(identifier, "scale")))
-        {
-          /* NOTE: Keep this label in sync with the "ID" case in
-           * keyingsets_utils.py :: get_transform_generators_base_info()
-           */
-          group = "Object Transforms";
-        }
+        std::optional<std::string> group = default_channel_group_for_path(&ptr, identifier);
 
         /* NOTE: `index == -1` is a magic number, meaning either "operate on all
          * elements" or "not an array property". */

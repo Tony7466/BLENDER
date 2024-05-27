@@ -742,8 +742,8 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-static std::optional<StringRefNull> default_channel_group_for_path(const PointerRNA *ptr,
-                                                                   const StringRef rna_path)
+std::optional<StringRefNull> default_channel_group_for_path(const PointerRNA *ptr,
+                                                            const StringRef rna_path)
 {
   if (ptr->type == &RNA_PoseBone) {
     bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
