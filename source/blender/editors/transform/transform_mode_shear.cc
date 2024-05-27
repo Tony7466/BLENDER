@@ -320,8 +320,8 @@ static void apply_shear(TransInfo *t)
   status.item(IFACE_("Cancel"), ICON_MOUSE_RMB);
   status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 1) % 3, ICON_EVENT_X);
   status.item_bool({}, t->orient_axis_ortho == (t->orient_axis + 2) % 3, ICON_EVENT_Y);
-  status.item(IFACE_("Shear axis"), ICON_NONE);
-  status.item(IFACE_("Swap axes"), ICON_MOUSE_MMB);
+  status.item(IFACE_("Shear Axis"), ICON_NONE);
+  status.item(IFACE_("Swap Axes"), ICON_MOUSE_MMB);
 }
 
 static void initShear(TransInfo *t, wmOperator * /*op*/)
