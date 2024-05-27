@@ -342,20 +342,28 @@ ccl_device_inline bool area_light_sample(const ccl_global KernelLight *klight,
   }
 
   const float3 inplane = ls->P - klight->co;
-  const float light_u = dot(inplane, klight->area.axis_u) / klight->area.len_u;
-  const float light_v = dot(inplane, klight->area.axis_v) / klight->area.len_v;
+  float light_u = dot(inplane, klight->area.axis_u);
+  float light_v = dot(inplane, klight->area.axis_v);
 
-  if (!in_volume_segment) {
+  if (!in_volume_segment && klight->area.normalize_spread > 0) {
     const bool is_ellipse = area_light_is_ellipse(&klight->area);
 
-    /* Sampled point lies outside of the area light. */
-    if (is_ellipse && (sqr(light_u) + sqr(light_v) > 0.25f)) {
+    /* Check whether the sampled point lies outside of the area light.
+     * For very small area lights, numerical issues can cause this to be
+     * slightly off since the sampling logic clamps the result right at the border,
+     * so allow for a small margin of error. */
+    const float len_u_epsilon = ((0.5f + 1e-7f) * klight->area.len_u + 1e-6f);
+    const float len_v_epsilon = ((0.5f + 1e-7f) * klight->area.len_v + 1e-6f);
+    if (is_ellipse && (sqr(light_u / len_u_epsilon) + sqr(light_v / len_v_epsilon) > 1.0f)) {
       return false;
     }
-    if (!is_ellipse && (fabsf(light_u) > 0.5f || fabsf(light_v) > 0.5f)) {
+    if (!is_ellipse && (fabsf(light_u) > len_u_epsilon || fabsf(light_v) > len_v_epsilon)) {
       return false;
     }
   }
+
+  light_u /= klight->area.len_u;
+  light_v /= klight->area.len_v;
 
   /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
   ls->u = light_v + 0.5f;
