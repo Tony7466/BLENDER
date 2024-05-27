@@ -232,7 +232,6 @@ ccl_device_inline void hair_alpha_angles(float sin_theta_o,
                                          float alpha,
                                          ccl_private float *angles)
 {
-
   float sin_1alpha = sinf(alpha);
   float cos_1alpha = cos_from_sin(sin_1alpha);
   float sin_2alpha = 2.0f * sin_1alpha * cos_1alpha;
