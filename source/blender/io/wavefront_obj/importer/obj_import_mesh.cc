@@ -71,9 +71,10 @@ Object *MeshFromGeometry::create_mesh(Main *bmain,
 #endif
     BKE_mesh_validate(mesh, verbose_validate, false);
   }
-  transform_object(obj, import_params);
 
   BKE_mesh_nomain_to_mesh(mesh, static_cast<Mesh *>(obj->data), obj);
+
+  transform_object(obj, import_params);
 
   /* NOTE: vertex groups have to be created after final mesh is assigned to the object. */
   create_vertex_groups(obj);
