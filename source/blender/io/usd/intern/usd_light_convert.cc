@@ -54,6 +54,15 @@ static const pxr::TfToken texture_file("texture:file", pxr::TfToken::Immortal);
 
 namespace {
 
+/* If the given attribute has an authored value, return its value in the r_value
+ * out parameter.
+ *
+ * We wish to support older UsdLux APIs in older versions of USD.  For example,
+ * in previous versions of the API, shader input attibutes did not have the
+ * "inputs:" prefix.  One can provide the older input attibute name in the
+ * 'fallback_attr_name' argument, and that attribute will be queried if 'attr'
+ * doesn't exist or doesn't have an authored value.
+ */
 template<typename T>
 bool get_authored_value(const pxr::UsdAttribute attr,
                         const double motionSampleTime,
@@ -77,13 +86,14 @@ bool get_authored_value(const pxr::UsdAttribute attr,
   return false;
 }
 
+/* Helper struct for retrieving shader information when traversing a world material
+ * node chain, provided as user data for bke::nodeChainIter(). */
 struct WorldNtreeSearchResults {
   const blender::io::usd::USDExportParams params;
   pxr::UsdStageRefPtr stage;
 
   float world_color[3];
   float world_intensity;
-  float tex_rot[3];
   float mapping_rot[3];
 
   std::string file_path;
@@ -164,6 +174,8 @@ static Image *load_image(std::string tex_path, Main *bmain, const USDImportParam
   return image;
 }
 
+/* Create a new node of type 'new_node_type' and connect it
+ * as an upstream source to 'dst_node' with the given sockets. */
 static bNode *append_node(bNode *dst_node,
                           int16_t new_node_type,
                           const char *out_sock,
@@ -189,6 +201,9 @@ static bNode *append_node(bNode *dst_node,
   return src_node;
 }
 
+/* Callback function for iterating over a shader node chain to retrieve data
+ * necessary for converting a world material to a USD dome light. It also
+ * handles copying textures, if required. */
 static bool node_search(bNode *fromnode, bNode * /* tonode */, void *userdata, const bool reversed)
 {
   if (!(userdata && fromnode)) {
@@ -217,12 +232,7 @@ static bool node_search(bNode *fromnode, bNode * /* tonode */, void *userdata, c
     res->file_path = get_tex_image_asset_filepath(fromnode, res->stage, res->params);
 
     if (!res->file_path.empty()) {
-      /* Get the rotation. */
-      NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(fromnode->storage);
-      copy_v3_v3(res->tex_rot, tex->base.tex_mapping.rot);
-
       res->env_tex_found = true;
-
       if (res->params.export_textures) {
         export_texture(fromnode, res->stage, res->params.overwrite_textures);
       }
@@ -279,7 +289,7 @@ void world_material_to_dome_light(const USDExportParams &params,
 
   WorldNtreeSearchResults res(params, stage);
 
-  blender::bke::nodeChainIter(scene->world->nodetree, output, node_search, &res, true);
+  bke::nodeChainIter(scene->world->nodetree, output, node_search, &res, true);
 
   if (!(res.background_found || res.env_tex_found)) {
     /* No nodes to convert */
