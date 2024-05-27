@@ -163,17 +163,18 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   BKE_report(reports, RPT_ERROR, error_message.c_str());
 }
 
-const char *default_channel_group_for_path(const PointerRNA *ptr, const StringRef rna_path)
+const char *default_channel_group_for_path(const PointerRNA *animated_struct,
+                                           const StringRef prop_rna_path)
 {
-  if (ptr->type == &RNA_PoseBone) {
-    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
+  if (animated_struct->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(animated_struct->data);
     return pose_channel->name;
   }
 
-  if (ptr->type == &RNA_Object) {
-    if (rna_path == "location" || rna_path == "scale" || rna_path == "rotation_euler" ||
-        rna_path == "rotation_quaternion" || rna_path == "rotation_axis_angle" ||
-        rna_path == "rotation_mode")
+  if (animated_struct->type == &RNA_Object) {
+    if (prop_rna_path.find("location") != StringRef::not_found ||
+        prop_rna_path.find("rotation") != StringRef::not_found ||
+        prop_rna_path.find("scale") != StringRef::not_found)
     {
       /* NOTE: Keep this label in sync with the "ID" case in
        * keyingsets_utils.py :: get_transform_generators_base_info()
