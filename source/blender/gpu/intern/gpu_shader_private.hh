@@ -178,6 +178,8 @@ class ShaderCompiler {
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) = 0;
 };
 
+/* Generic (fully synchronous) implementation for backends that don't implement their own
+ * ShaderCompiler. Used by Vulkan and Metal. */
 class ShaderCompilerGeneric : public ShaderCompiler {
  private:
   struct Batch {
