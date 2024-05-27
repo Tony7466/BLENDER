@@ -1475,6 +1475,19 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
     enable_on_install: rna_prop_enable_on_install
 
+    # Properties matching the legacy operator, not used by extension packages.
+    target: EnumProperty(
+        name="Legacy Target Path",
+        items=bpy.types.PREFERENCES_OT_addon_install._target_path_items,
+        description="Path to install legacy add-on packages to",
+    )
+
+    overwrite: BoolProperty(
+        name="Legacy Overwrite",
+        description="Remove existing add-ons with the same ID",
+        default=True,
+    )
+
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
 
@@ -1550,7 +1563,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
         # Install legacy add-ons
         for source_filepath in pkg_legacy_files:
-            bpy.ops.preferences.addon_install(filepath=source_filepath, enable_on_install=self.enable_on_install)
+            self.exec_legacy(source_filepath)
 
         if not pkg_files:
             return None
@@ -1645,6 +1658,12 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
 
+    def exec_legacy(self, filepath):
+        backup_filepath = self.filepath
+        self.filepath = filepath
+        bpy.types.PREFERENCES_OT_addon_install.execute(self, bpy.context)
+        self.filepath = backup_filepath
+
     @classmethod
     def poll(cls, context):
         if next(repo_iter_valid_local_only(context), None) is None:
@@ -1669,11 +1688,20 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         # Override draw because the repository names may be over-long and not fit well in the UI.
         # Show the text & repository names in two separate rows.
         layout = self.layout
-        col = layout.column()
-        col.label(text="Local Repository:")
-        col.prop(self, "repo", text="")
-
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         layout.prop(self, "enable_on_install")
+
+        header, body = layout.panel("extensions")
+        header.label(text="Extensions")
+        if body:
+            body.prop(self, "repo", text="Repository")
+
+        header, body = layout.panel("legacy", default_closed=True)
+        header.label(text="Legacy Add-ons")
+        if body:
+            body.prop(self, "target", text="Target Path")
+            body.prop(self, "overwrite", text="Overwrite")
 
     def _invoke_for_drop(self, context, event):
         self._drop_variables = True
