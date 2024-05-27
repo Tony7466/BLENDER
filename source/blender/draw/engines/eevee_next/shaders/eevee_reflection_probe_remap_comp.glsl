@@ -9,7 +9,7 @@
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 /* OpenGL/Intel drivers have known issues where it isn't able to compile barriers inside for loops.
- * Macros are needed for complex shaders as the driver doesn't unroll in these cases. */
+ * Macros are needed as driver can decide to not unroll in shaders with more complexity. */
 #define PARALLEL_SUM_INNER() \
   barrier(); \
   if (local_index < stride) { \
