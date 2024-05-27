@@ -40,7 +40,7 @@ void main()
   /* Parallel sum. */
   const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
   uint stride = group_size / 2;
-  for (int i = 0; i < 10; i ++) {
+  for (int i = 0; i < 10; i++) {
     barrier();
     if (local_index < stride) {
       local_radiance[local_index] += local_radiance[local_index + stride];
