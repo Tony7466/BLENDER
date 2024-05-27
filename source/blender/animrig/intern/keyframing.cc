@@ -818,7 +818,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                       const std::optional<float> scene_frame,
                                       const AnimationEvalContext &anim_eval_context,
                                       const eBezTriple_KeyframeType key_type,
-                                      const eInsertKeyFlags insert_key_flags)
+                                      eInsertKeyFlags insert_key_flags)
 
 {
   PointerRNA id_pointer = RNA_id_pointer_create(&id);
@@ -857,10 +857,11 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
                                                                                         prop);
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
-    BitVector<> successful_remaps(rna_values.size(), false);
+    bool force_all;
+    BitVector<> elements_to_key(rna_values.size(), false);
     /* NOTE: in addition to remapping, this also marks what elements of an array
      * property will actually get keyed by `insert_key_action()` below via
-     * `successful_remaps`.  Importantly, for quaternion properties it may choose
+     * `elements_to_key`.  Importantly, for quaternion properties it may choose
      * to key all array elements regardless of the passed index parameter,
      * depending on the NLA setup. */
     BKE_animsys_nla_remap_keyframe_values(nla_context,
@@ -869,8 +870,46 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                           rna_values.as_mutable_span(),
                                           rna_path.index.value_or(-1),
                                           &anim_eval_context,
-                                          nullptr,
-                                          successful_remaps);
+                                          &force_all,
+                                          elements_to_key);
+
+    /* There is a conflict between forcing all elements to be keyed and
+     * replace-only or only-insert-available being enabled when not all elements
+     * meet the prerequisites to be keyed with those flags.
+     *
+     * One choice would be to fail keying all elements if any element isn't
+     * keyable with those flags. Another is to override the flags and insert
+     * keys on all elements anyway if any element *is* keyable with those flags.
+     * We take the latter approach here. */
+    if (force_all && rna_values.size() > 0 &&
+        (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0)
+    {
+      /* Determine if at least one element would succeed getting keyed given the
+       * state of the `INSERTKEY_REPLACE` and `INSERTKEY_AVAILABLE` flags. */
+      bool at_least_one_would_succeed = false;
+      for (int i = 0; i < rna_values.size(); i++) {
+        const FCurve *fcu = action_fcurve_find(action, rna_path_id_to_prop->c_str(), i);
+        if (!fcu) {
+          continue;
+        }
+        else if (!(insert_key_flags & INSERTKEY_REPLACE)) {
+          at_least_one_would_succeed = true;
+          break;
+        }
+
+        bool replace;
+        BKE_fcurve_bezt_binarysearch_index(fcu->bezt, nla_frame, fcu->totvert, &replace);
+        if (replace) {
+          at_least_one_would_succeed = true;
+          break;
+        }
+      }
+
+      if (at_least_one_would_succeed) {
+        insert_key_flags &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
+        break;
+      }
+    }
 
     const CombinedKeyingResult result = insert_key_action(bmain,
                                                           action,
@@ -882,7 +921,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                                           rna_values.as_span(),
                                                           insert_key_flags,
                                                           key_type,
-                                                          successful_remaps);
+                                                          elements_to_key);
     combined_result.merge(result);
   }
 
