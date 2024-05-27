@@ -1690,12 +1690,12 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
-        layout.prop(self, "enable_on_install")
 
         header, body = layout.panel("extensions")
         header.label(text="Extensions")
         if body:
             body.prop(self, "repo", text="Repository")
+            body.prop(self, "enable_on_install")
 
         header, body = layout.panel("legacy", default_closed=True)
         header.label(text="Legacy Add-ons")
