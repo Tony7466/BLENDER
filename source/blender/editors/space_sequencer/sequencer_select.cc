@@ -20,6 +20,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_scene_types.h"
+#include "DNA_space_types.h"
 
 #include "BKE_context.hh"
 #include "BKE_report.hh"
@@ -1196,6 +1197,14 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool already_selected = element_already_selected(selection);
 
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  if (selection.handle != SEQ_HANDLE_NONE && already_selected) {
+    sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
+  }
+  else {
+    sseq->flag |= SPACE_SEQ_DESELECT_STRIP_HANDLE;
+  }
+
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
   if (already_selected && wait_to_deselect_others && !toggle) {
@@ -1348,10 +1357,14 @@ static int sequencer_select_handle_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+
   if (element_already_selected(selection)) {
+    sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
+    sseq->flag |= SPACE_SEQ_DESELECT_STRIP_HANDLE;
     ED_sequencer_deselect_all(scene);
   }
 

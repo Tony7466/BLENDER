@@ -697,13 +697,15 @@ static void special_aftertrans_update__sequencer(bContext * /*C*/, TransInfo *t)
     }
   }
 
-  if ((t->flag & T_HANDLE_TWEAK) != 0) {
+  if ((sseq->flag & SPACE_SEQ_DESELECT_STRIP_HANDLE) != 0) {
     TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
     blender::VectorSet<Sequence *> strips = seq_transform_collection_from_transdata(tc);
     for (Sequence *seq : strips) {
       seq->flag &= ~(SEQ_LEFTSEL | SEQ_RIGHTSEL);
     }
   }
+
+  sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
 }
 
 void transform_convert_sequencer_channel_clamp(TransInfo *t, float r_val[2])
