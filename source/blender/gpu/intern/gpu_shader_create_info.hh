@@ -709,14 +709,14 @@ struct ShaderCreateInfo {
     constant.name = name;
     switch (type) {
       case Type::INT:
-        constant.default_value.i = static_cast<int>(default_value);
+        constant.value.i = static_cast<int>(default_value);
         break;
       case Type::BOOL:
       case Type::UINT:
-        constant.default_value.u = static_cast<uint>(default_value);
+        constant.value.u = static_cast<uint>(default_value);
         break;
       case Type::FLOAT:
-        constant.default_value.f = static_cast<float>(default_value);
+        constant.value.f = static_cast<float>(default_value);
         break;
       default:
         BLI_assert_msg(0, "Only scalar types can be used as constants");

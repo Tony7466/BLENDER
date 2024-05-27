@@ -1864,7 +1864,7 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
     GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
     for (auto &constant : specialization.constants) {
       int location = sh->interface->constant_get(constant.name.c_str())->location;
-      sh->constants.values[location].u = constant.default_value.u;
+      sh->constants.values[location].u = constant.value.u;
     }
     sh->constants.is_dirty = true;
     if (sh->program_cache_.contains(sh->constants.values)) {

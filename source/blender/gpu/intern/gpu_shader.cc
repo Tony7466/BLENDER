@@ -467,7 +467,7 @@ void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
   using namespace shader;
   for (const SpecializationConstant &sc : info.specialization_constants_) {
     constants.types.append(sc.type);
-    constants.values.append(sc.default_value);
+    constants.values.append(sc.value);
   }
   constants.is_dirty = true;
 }

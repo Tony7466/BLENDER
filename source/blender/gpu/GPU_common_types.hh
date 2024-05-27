@@ -189,33 +189,33 @@ struct SpecializationConstant {
 
   Type type;
   StringRefNull name;
-  Value default_value;
+  Value value;
 
   SpecializationConstant() {}
 
   SpecializationConstant(const char *name, uint32_t value) : type(Type::UINT), name(name)
   {
-    this->default_value.u = value;
+    this->value.u = value;
   }
 
   SpecializationConstant(const char *name, int value) : type(Type::INT), name(name)
   {
-    this->default_value.i = value;
+    this->value.i = value;
   }
 
   SpecializationConstant(const char *name, float value) : type(Type::FLOAT), name(name)
   {
-    this->default_value.f = value;
+    this->value.f = value;
   }
 
   SpecializationConstant(const char *name, bool value) : type(Type::BOOL), name(name)
   {
-    this->default_value.u = value ? 1 : 0;
+    this->value.u = value ? 1 : 0;
   }
 
   inline bool operator==(const SpecializationConstant &b) const
   {
-    return this->type == b.type && this->name == b.name && this->default_value == b.default_value;
+    return this->type == b.type && this->name == b.name && this->value == b.value;
   }
 };
 
