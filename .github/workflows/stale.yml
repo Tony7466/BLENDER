@@ -26,7 +26,7 @@ jobs:
           days-before-pr-close: 0
           # Message posted when closing a pull request.
           stale-pr-message: |
-            This pull request has been automatically closed because this repository is read-only. Blender development happens on [projects.blender.org](https://projects.blender.org).
+            This pull request has been automatically closed because this repository is a read-only mirror. Blender development happens on [projects.blender.org](https://projects.blender.org).
 
             To contribute code, please read:
             https://developer.blender.org/docs/handbook/contributing/
