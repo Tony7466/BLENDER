@@ -29,12 +29,6 @@
 using namespace blender;
 using namespace blender::gpu;
 
-static GLShaderCompiler *global_compiler()
-{
-  static GLShaderCompiler compiler = GLShaderCompiler();
-  return &compiler;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Constructor / Destructor
  * \{ */
@@ -91,7 +85,7 @@ GLContext::GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list
   static_cast<GLStateManager *>(state_manager)->active_fb = static_cast<GLFrameBuffer *>(
       active_fb);
 
-  compiler = global_compiler();
+  compiler = GLBackend::get()->get_compiler();
 }
 
 GLContext::~GLContext()
