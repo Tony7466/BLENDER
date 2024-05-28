@@ -195,18 +195,21 @@ string BVHEmbree::get_last_error_message()
     case RTC_ERROR_UNSUPPORTED_CPU:
       return "unsupported cpu error";
     case RTC_ERROR_CANCELLED:
-      return "cancelation error";
+      return "cancelled";
+    default:
+      /* We should never end here unless enum for RTC errors would change. */
+      return "unknown error";
   }
 }
 
 #  if WITH_EMBREE_GPU && RTC_VERSION >= 40302
-bool BVHEmbree::offload_scenes_to_gpu(vector<RTCScene> scenes)
+bool BVHEmbree::offload_scenes_to_gpu(const vector<RTCScene> &scenes)
 {
   /* Having BVH on GPU is more performance-critical than texture data.
    * In order to ensure good performance even when running out of GPU
    * memory, we force BVH to migrate to GPU before allocating other textures
    * that may not fit. */
-  for (RTCScene &embree_scene : scenes) {
+  for (const RTCScene &embree_scene : scenes) {
     RTCSceneFlags scene_flags = rtcGetSceneFlags(embree_scene);
     scene_flags = scene_flags | RTC_SCENE_FLAG_PREFETCH_USM_SHARED_ON_GPU;
     rtcSetSceneFlags(embree_scene, scene_flags);
