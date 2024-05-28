@@ -135,7 +135,6 @@ void VKContext::end_frame()
 void VKContext::flush()
 {
   if (use_render_graph) {
-    render_graph.submit();
   }
   else {
     command_buffers_.submit();
