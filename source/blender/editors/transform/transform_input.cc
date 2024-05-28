@@ -445,8 +445,16 @@ void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode)
         WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
       }
       /* Only use special cursor, when tweaking strips with mouse. */
-      if (t->mode == TFM_SEQ_SLIDE && (t->launch_event == 1 || t->launch_event == 3)) {
-        WM_cursor_modal_set(win, transform_seq_slide_cursor_get(t));
+      if (t->mode == TFM_SEQ_SLIDE) {
+        if ((t->launch_event == 1 || t->launch_event == 3)) {
+          WM_cursor_modal_set(win, transform_seq_slide_cursor_get(t));
+        }
+        else {
+          SpaceSeq *sseq = CTX_wm_space_seq(t->context);
+          if (sseq != nullptr) {
+            sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
+          }
+        }
       }
 
       break;
