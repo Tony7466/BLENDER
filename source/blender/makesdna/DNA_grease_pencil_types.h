@@ -157,8 +157,8 @@ typedef struct GreasePencilFrame {
   int8_t type;
   char _pad[3];
 #ifdef __cplusplus
-  static GreasePencilFrame null();
-  bool is_null() const;
+  static GreasePencilFrame end();
+  bool is_end() const;
   bool is_implicit_hold() const;
   bool is_selected() const;
 #endif
@@ -508,7 +508,7 @@ typedef struct GreasePencil {
   bool has_active_layer() const;
   const blender::bke::greasepencil::Layer *get_active_layer() const;
   blender::bke::greasepencil::Layer *get_active_layer();
-  void set_active_layer(const blender::bke::greasepencil::Layer *layer);
+  void set_active_layer(blender::bke::greasepencil::Layer *layer);
   bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
   void autolock_inactive_layers();
 
@@ -516,6 +516,11 @@ typedef struct GreasePencil {
   bool has_active_group() const;
   const blender::bke::greasepencil::LayerGroup *get_active_group() const;
   blender::bke::greasepencil::LayerGroup *get_active_group();
+
+  /* Active node functions. */
+  const blender::bke::greasepencil::TreeNode *get_active_node() const;
+  blender::bke::greasepencil::TreeNode *get_active_node();
+  void set_active_node(blender::bke::greasepencil::TreeNode *node);
 
   /* Adding layers and layer groups. */
   /** Adds a new layer with the given name to the top of root group. */

@@ -100,13 +100,18 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
                                     float search_distance,
                                     float global_thickness,
                                     float angle_bias,
+                                    const int slice_count,
                                     const int sample_count,
-                                    const bool reversed)
+                                    const bool reversed,
+                                    const bool ao_only)
 {
   vec3 vV = drw_view_incident_vector(vP);
 
-  const int slice_len = 2;
-  vec2 v_dir = sample_circle(noise.x * (0.5 / float(slice_len)));
+  vec2 v_dir;
+  if (slice_count <= 2) {
+    /* We cover half the circle because we trace in both directions. */
+    v_dir = sample_circle(noise.x / float(2 * slice_count));
+  }
 
   float weight_accum = 0.0;
   float occlusion_accum = 0.0;
@@ -116,10 +121,11 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
 /* NOTE: Full loop unroll hint increases performance on Apple Silicon. */
 #  pragma clang loop unroll(full)
 #endif
-  for (int slice = 0; slice < slice_len; slice++) {
-#if 0 /* For debug purpose. For when slice_len is greater than 2. */
-    vec2 v_dir = sample_circle(((float(slice) + noise.x) / float(slice_len)));
-#endif
+  for (int slice = 0; slice < slice_count; slice++) {
+    if (slice_count > 2) {
+      /* We cover half the circle because we trace in both directions. */
+      v_dir = sample_circle(((float(slice) + noise.x) / float(2 * slice_count)));
+    }
 
     /* Setup integration domain around V. */
     vec3 vB = normalize(cross(vV, vec3(v_dir, 0.0)));
@@ -163,7 +169,7 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
           time += 1.0;
         }
 
-        float lod = 1.0 + (float(j >> 2) / (1.0 + uniform_buf.ao.quality));
+        float lod = 1.0 + float(j >> 2) * uniform_buf.ao.lod_factor;
 
         vec2 sample_uv = ssray.origin.xy + ssray.direction.xy * time;
         float sample_depth = textureLod(hiz_tx, sample_uv * uniform_buf.hiz.uv_scale, lod).r;
@@ -206,15 +212,13 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
         /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
         theta = (side == 0) ? theta.xy : -theta.yx;
 
-        vec3 sample_radiance = horizon_scan_sample_radiance(sample_uv);
+        vec3 sample_radiance = ao_only ? vec3(0.0) : horizon_scan_sample_radiance(sample_uv);
         /* Take emitter surface normal into consideration. */
         vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
         /* Discard back-facing samples.
          * The 2 factor is to avoid loosing too much energy (which is something not
          * explained in the paper...). Likely to be wrong, but we need a soft falloff. */
         float facing_weight = saturate(-dot(sample_normal, vL_front) * 2.0);
-
-        float sample_weight = facing_weight * bsdf_lambert(vN, vL_front);
 
         /* Angular bias shrinks the visibility bitmask around the projected normal. */
         vec2 biased_theta = (theta - vN_angle) * angle_bias;

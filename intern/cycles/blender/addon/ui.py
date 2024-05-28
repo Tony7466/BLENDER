@@ -1620,7 +1620,7 @@ class CYCLES_LIGHT_PT_light(CyclesButtonsPanel, Panel):
 
         sub = col.column(align=True)
         sub.active = not (light.type == 'AREA' and clamp.is_portal)
-        sub.prop(clamp, "cast_shadow")
+        sub.prop(light, "use_shadow", text="Cast Shadow")
         sub.prop(clamp, "use_multiple_importance_sampling", text="Multiple Importance")
         if use_mnee(context):
             sub.prop(clamp, "is_caustics_light", text="Shadow Caustics")
@@ -2437,7 +2437,7 @@ class CYCLES_VIEW3D_PT_shading_lighting(Panel):
             sub.template_icon_view(shading, "studio_light", scale_popup=3)
 
             col = split.column()
-            col.operator("preferences.studiolight_show", emboss=False, text="", icon='PREFERENCES')
+            col.operator("screen.userpref_show", emboss=False, text="", icon='PREFERENCES').section = 'LIGHTS'
 
             split = layout.split(factor=0.9)
             col = split.column()

@@ -54,13 +54,13 @@
 
 const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_INTERFACE, "INTERFACE", 0, "Interface", ""},
-    {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
     {USER_SECTION_VIEWPORT, "VIEWPORT", 0, "Viewport", ""},
     {USER_SECTION_LIGHT, "LIGHTS", 0, "Lights", ""},
     {USER_SECTION_EDITING, "EDITING", 0, "Editing", ""},
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     RNA_ENUM_ITEM_SEPR,
-    {USER_SECTION_ADDONS, "ADDONS", 0, "Add-ons", ""},
+    {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
+    {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
 #if 0 /* def WITH_USERDEF_WORKSPACES */
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_WORKSPACE_CONFIG, "WORKSPACE_CONFIG", 0, "Configuration File", ""},
@@ -307,19 +307,6 @@ static void rna_userdef_screen_update_header_default(Main *bmain, Scene *scene, 
   USERDEF_TAG_DIRTY;
 }
 
-static void rna_PreferencesExperimental_use_extension_repos_set(PointerRNA * /*ptr*/, bool value)
-{
-  Main *bmain = G.main;
-  if (bool(U.experimental.use_extension_repos) != value) {
-    BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE);
-    U.experimental.use_extension_repos = value;
-    BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
-  }
-
-  /* Needed to redraw the preferences window. */
-  WM_main_add_notifier(NC_WINDOW, nullptr);
-}
-
 static void rna_userdef_font_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
   BLF_cache_clear();
@@ -398,6 +385,32 @@ static int rna_userdef_extension_repo_directory_length(PointerRNA *ptr)
   return BKE_preferences_extension_repo_dirpath_get(repo, dirpath, sizeof(dirpath));
 }
 
+static void rna_userdef_extension_repo_access_token_get(PointerRNA *ptr, char *value)
+{
+  const bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  if (repo->access_token) {
+    strcpy(value, repo->access_token);
+  }
+  else {
+    value[0] = '\0';
+  }
+}
+
+static int rna_userdef_extension_repo_access_token_length(PointerRNA *ptr)
+{
+  const bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  return (repo->access_token) ? strlen(repo->access_token) : 0;
+}
+
+static void rna_userdef_extension_repo_access_token_set(PointerRNA *ptr, const char *value)
+{
+  bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  if (repo->access_token) {
+    MEM_freeN(repo->access_token);
+  }
+  repo->access_token = value[0] ? BLI_strdup(value) : nullptr;
+}
+
 static void rna_userdef_extension_repo_generic_flag_set_impl(PointerRNA *ptr,
                                                              const bool value,
                                                              const int flag)
@@ -439,6 +452,45 @@ static void rna_userdef_script_autoexec_update(Main * /*bmain*/,
   }
 
   USERDEF_TAG_DIRTY;
+}
+
+static void rna_userdef_use_online_access_set(PointerRNA *ptr, bool value)
+{
+  /* A `set` function is needed to clear the override flags. */
+  UserDef *userdef = (UserDef *)ptr->data;
+
+  if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
+    if (G.f & G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE) {
+      /* The `editable` check should account for this, assert since this is security related. */
+      BLI_assert_unreachable();
+      return;
+    }
+  }
+
+  if (value) {
+    userdef->flag |= USER_INTERNET_ALLOW;
+    G.f |= G_FLAG_INTERNET_ALLOW;
+  }
+  else {
+    userdef->flag &= ~USER_INTERNET_ALLOW;
+    G.f &= ~G_FLAG_INTERNET_ALLOW;
+  }
+
+  /* Once the user edits this option (even to set it to the value it was)
+   * it's no longer considered overridden. */
+  G.f &= ~G_FLAG_INTERNET_OVERRIDE_PREF_ANY;
+}
+
+static int rna_userdef_use_online_access_editable(const PointerRNA * /*ptr*/, const char **r_info)
+{
+  if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
+    /* Return 0 when blender was invoked with `--offline-mode` "forced". */
+    if (G.f & G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE) {
+      *r_info = "Launched with \"--offline-mode\", cannot be changed";
+      return 0;
+    }
+  }
+  return PROP_EDITABLE;
 }
 
 static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *value)
@@ -721,9 +773,8 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext * /*C*/,
   UserDef *userdef = static_cast<UserDef *>(ptr->data);
 
   const bool use_developer_ui = (userdef->flag & USER_DEVELOPER_UI) != 0;
-  const bool use_extension_repos = use_developer_ui && U.experimental.use_extension_repos;
 
-  if (use_developer_ui && use_extension_repos == false) {
+  if (use_developer_ui) {
     *r_free = false;
     return rna_enum_preference_section_items;
   }
@@ -741,13 +792,6 @@ static const EnumPropertyItem *rna_UseDef_active_section_itemf(bContext * /*C*/,
     }
 
     RNA_enum_item_add(&items, &totitem, it);
-
-    /* Rename "Add-ons" to "Extensions" when extensions are enabled. */
-    if (it->value == USER_SECTION_ADDONS) {
-      if (use_extension_repos) {
-        items[totitem - 1].name = "Extensions";
-      }
-    }
   }
 
   RNA_enum_item_end(&items, &totitem);
@@ -4825,9 +4869,9 @@ static void rna_def_userdef_view(BlenderRNA *brna)
       {USER_TIMECODE_MILLISECONDS,
        "MILLISECONDS",
        0,
-       "Compact with Milliseconds",
-       "Similar to SMPTE (Compact), except that instead of frames, "
-       "milliseconds are shown instead"},
+       "Compact with Decimals",
+       "Similar to SMPTE (Compact), except that the decimal part of the second is shown instead "
+       "of frames"},
       {USER_TIMECODE_SECONDS_ONLY,
        "SECONDS_ONLY",
        0,
@@ -6139,6 +6183,19 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       "GPU Backend",
       "GPU backend to use (requires restarting Blender for changes to take effect)");
 
+  /* Network. */
+
+  prop = RNA_def_property(srna, "use_online_access", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_INTERNET_ALLOW);
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_userdef_use_online_access_set");
+  RNA_def_property_ui_text(
+      prop,
+      "Allow Online Access",
+      "Allow internet access. Blender may access configured online extension repositories. "
+      "Installed third party add-ons may access the internet for their own functionality");
+  RNA_def_property_editable_func(prop, "rna_userdef_use_online_access_editable");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
   /* Audio */
 
   prop = RNA_def_property(srna, "audio_mixing_buffer", PROP_ENUM, PROP_NONE);
@@ -6706,9 +6763,21 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "remote_url", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "remote_url");
-  RNA_def_property_ui_text(prop, "URL", "Remote URL or path for extension repository");
+  RNA_def_property_ui_text(
+      prop,
+      "URL",
+      "Remote URL to the extension repository, "
+      "the file-system may be referenced using the file URI scheme: \"file://\"");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "access_token", PROP_STRING, PROP_PASSWORD);
+  RNA_def_property_ui_text(
+      prop, "Secret", "Personal access token, may be required by some repositories");
+  RNA_def_property_string_funcs(prop,
+                                "rna_userdef_extension_repo_access_token_get",
+                                "rna_userdef_extension_repo_access_token_length",
+                                "rna_userdef_extension_repo_access_token_set");
 
   /* NOTE(@ideasman42): this is intended to be used by a package manger component
    * which is not yet integrated. */
@@ -6727,6 +6796,10 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP);
   RNA_def_property_ui_text(
       prop, "Check for Updates on Startup", "Allow Blender to check for updates upon launch");
+
+  prop = RNA_def_property(srna, "use_access_token", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN);
+  RNA_def_property_ui_text(prop, "Requires Access Token", "Repository requires an access token");
 
   prop = RNA_def_property(srna, "use_custom_directory", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
@@ -7279,14 +7352,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Shader Node Previews", "Enables previews in the shader node editor");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
-
-  prop = RNA_def_property(srna, "use_extension_repos", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop,
-                           "Extensions",
-                           "Enables support for extensions, accessible from the \"Extensions\" "
-                           "section of the preferences");
-  RNA_def_property_boolean_funcs(
-      prop, nullptr, "rna_PreferencesExperimental_use_extension_repos_set");
 
   prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(

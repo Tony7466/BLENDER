@@ -25,6 +25,7 @@
 #include "BLI_memory_utils.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.hh"
@@ -3373,6 +3374,7 @@ void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
 {
   uiBlock *block = layout->root->block;
   const bool is_menu = ui_block_is_menu(block);
+  const bool is_pie = ui_block_is_pie_menu(block);
   if (is_menu && !UI_block_can_add_separator(block)) {
     return;
   }
@@ -3387,7 +3389,7 @@ void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
       but_type = UI_BTYPE_SEPR_LINE;
       break;
     case LayoutSeparatorType::Auto:
-      but_type = is_menu ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
+      but_type = (is_menu && !is_pie) ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
       break;
     default:
       but_type = UI_BTYPE_SEPR;
@@ -5998,6 +6000,12 @@ void uiLayoutSetContextPointer(uiLayout *layout, const char *name, PointerRNA *p
   layout->context = CTX_store_add(block->contexts, name, ptr);
 }
 
+void uiLayoutSetContextString(uiLayout *layout, const char *name, blender::StringRef value)
+{
+  uiBlock *block = layout->root->block;
+  layout->context = CTX_store_add(block->contexts, name, value);
+}
+
 bContextStore *uiLayoutGetContextStore(uiLayout *layout)
 {
   return layout->context;
@@ -6038,7 +6046,7 @@ void uiLayoutSetTooltipFunc(uiLayout *layout,
     }
   }
 
-  if (!arg_used) {
+  if (free_arg != nullptr && !arg_used) {
     /* Free the original copy of arg in case the layout is empty. */
     free_arg(arg);
   }

@@ -39,12 +39,14 @@ void main()
 
   /* Parallel sum. */
   const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
-  for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+  uint stride = group_size / 2;
+  for (int i = 0; i < 10; i++) {
     barrier();
     if (local_index < stride) {
       local_radiance[local_index] += local_radiance[local_index + stride];
       local_direction[local_index] += local_direction[local_index + stride];
     }
+    stride /= 2;
   }
 
   barrier();
@@ -54,7 +56,8 @@ void main()
     /* Normalize the sum to get the mean direction. The length of the vector gives us the size of
      * the sun light. */
     float len;
-    vec3 direction = normalize_and_get_length(local_direction[0].xyz / local_direction[0].w, len);
+    vec3 direction = safe_normalize_and_get_length(local_direction[0].xyz / local_direction[0].w,
+                                                   len);
 
     mat3x3 tx = transpose(from_up_axis(direction));
     /* Convert to transform. */
@@ -79,12 +82,6 @@ void main()
     sunlight_buf.power[LIGHT_TRANSMISSION] = shape_power;
     sunlight_buf.power[LIGHT_VOLUME] = point_power;
 
-#if USE_LIGHT_UNION
-    sunlight_buf.sun.radius = sun_radius;
-    sunlight_buf.sun.shadow_angle = sun_angle;
-#else
-    sunlight_buf.do_not_access_directly.radius_squared = sun_radius;
-    sunlight_buf.do_not_access_directly._pad1 = sun_angle;
-#endif
+    /* NOTE: Use the radius from UI instead of auto sun size for now. */
   }
 }

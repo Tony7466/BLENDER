@@ -2261,7 +2261,7 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
   /* Mode toggling handles its own undo state because undo steps need to be grouped. */
   UI_but_flag_disable(but, UI_BUT_UNDO);
 
-  if (ID_IS_LINKED(&ob->id) ||
+  if (!ID_IS_EDITABLE(&ob->id) ||
       (ID_IS_OVERRIDE_LIBRARY_REAL(ob) &&
        (ob->id.override_library->flag & LIBOVERRIDE_FLAG_SYSTEM_DEFINED) != 0))
   {
@@ -3434,9 +3434,7 @@ static void outliner_draw_tree_element(bContext *C,
     if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
       /* Scene collection in view layer can't expand/collapse. */
     }
-    else if (te->subtree.first || ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_SCE)) ||
-             (te->flag & TE_PRETEND_HAS_CHILDREN))
-    {
+    else if (te->subtree.first || (te->flag & TE_PRETEND_HAS_CHILDREN)) {
       /* Open/close icon, only when sub-levels, except for scene. */
       int icon_x = startx;
 
