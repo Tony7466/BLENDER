@@ -6296,6 +6296,7 @@ def km_edit_curves(params):
         ("curves.cyclic_toggle", {"type": 'C', "value": 'PRESS', "alt": True}, None),
         ("curves.handle_type_set", {"type": 'V', "value": 'PRESS'}, None),
         op_menu("VIEW3D_MT_edit_curves_add", {"type": 'A', "value": 'PRESS', "shift": True}),
+        *_template_items_context_menu("VIEW3D_MT_edit_curves_context_menu", params.context_menu_event),
     ])
 
     return keymap
@@ -8786,7 +8787,7 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
 def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
     return [
         *_template_items_change_frame(params),
-        # Frame change can be cancelled if click happens on strip handle. In such case move the handle.
+        # Frame change can be canceled if click happens on strip handle. In such case move the handle.
         ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("view2d_edge_pan", True)]}),
     ]
