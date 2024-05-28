@@ -1085,7 +1085,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   BKE_pbvh_sync_visibility_from_verts(pbvh, &mesh);
 }
 
-static Array<bool> duplicate_visibility(const Object &object)
+static Array<bool> duplicate_visibility_bmesh(const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
   BMesh &bm = *ss.bm;
@@ -1108,7 +1108,7 @@ static void grow_shrink_visibility_bmesh(Object &object,
 
   for (const int i : IndexRange(iterations)) {
     UNUSED_VARS(i);
-    const Array<bool> prev_visibility = duplicate_visibility(object);
+    const Array<bool> prev_visibility = duplicate_visibility_bmesh(object);
     partialvis_update_bmesh_nodes(object, nodes, action, [&](const BMVert *vert) {
       int vi = BM_elem_index_get(vert);
       PBVHVertRef vref = BKE_pbvh_index_to_vertex(pbvh, vi);
