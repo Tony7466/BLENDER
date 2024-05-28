@@ -877,33 +877,32 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
     if (uv_map_output_socket != nullptr) {
       continue;
     }
-    uv_map_output_socket = blender::bke::nodeAddStaticSocket(
-        &ntree, node, SOCK_OUT, SOCK_VECTOR, PROP_NONE, "UV Map", "UV Map");
+    uv_map_output_socket = &version_node_add_socket(
+        ntree, *node, SOCK_OUT, "NodeSocketVector", "UV Map");
 
-    bNode *store_attribute_node = blender::bke::nodeAddStaticNode(
-        nullptr, &ntree, GEO_NODE_STORE_NAMED_ATTRIBUTE);
+    bNode *store_attribute_node = &version_node_add_empty(ntree,
+                                                          "GeometryNodeStoreNamedAttribute");
     new_nodes.append(store_attribute_node);
     store_attribute_node->parent = node->parent;
     store_attribute_node->locx = node->locx + 25;
     store_attribute_node->locy = node->locy;
     store_attribute_node->offsetx = node->offsetx;
     store_attribute_node->offsety = node->offsety;
-    NodeGeometryStoreNamedAttribute &storage = *static_cast<NodeGeometryStoreNamedAttribute *>(
-        store_attribute_node->storage);
+    auto &storage = *MEM_cnew<NodeGeometryStoreNamedAttribute>(__func__);
+    store_attribute_node->storage = &storage;
     storage.domain = int8_t(blender::bke::AttrDomain::Corner);
     /* Intentionally use 3D instead of 2D vectors, because 2D vectors did not exist in older
      * releases and would make the file crash when trying to open it. */
     storage.data_type = CD_PROP_FLOAT3;
 
-    blender::nodes::update_node_declaration_and_sockets(ntree, *store_attribute_node);
-
-    bNodeSocket *store_attribute_geometry_input = static_cast<bNodeSocket *>(
-        store_attribute_node->inputs.first);
-    bNodeSocket *store_attribute_name_input = store_attribute_geometry_input->next->next;
-    bNodeSocket *store_attribute_value_input = store_attribute_geometry_input->next->next->next;
-    BLI_assert(store_attribute_value_input->type == SOCK_VECTOR);
-    bNodeSocket *store_attribute_geometry_output = static_cast<bNodeSocket *>(
-        store_attribute_node->outputs.first);
+    bNodeSocket *store_attribute_geometry_input = &version_node_add_socket(
+        ntree, *store_attribute_node, SOCK_IN, "NodeSocketGeometry", "Geometry");
+    bNodeSocket *store_attribute_name_input = &version_node_add_socket(
+        ntree, *store_attribute_node, SOCK_IN, "NodeSocketString", "Name");
+    bNodeSocket *store_attribute_value_input = &version_node_add_socket(
+        ntree, *store_attribute_node, SOCK_IN, "NodeSocketVector", "Value");
+    bNodeSocket *store_attribute_geometry_output = &version_node_add_socket(
+        ntree, *store_attribute_node, SOCK_OUT, "NodeSocketGeometry", "Geometry");
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
       if (link->fromsock == primitive_output_socket) {
         link->fromnode = store_attribute_node;
@@ -917,13 +916,13 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
                                                                                  "uv_map";
     STRNCPY(name_value->value, uv_map_name);
 
-    blender::bke::nodeAddLink(&ntree,
-                              node,
-                              primitive_output_socket,
-                              store_attribute_node,
-                              store_attribute_geometry_input);
-    blender::bke::nodeAddLink(
-        &ntree, node, uv_map_output_socket, store_attribute_node, store_attribute_value_input);
+    version_node_add_link(ntree,
+                          *node,
+                          *primitive_output_socket,
+                          *store_attribute_node,
+                          *store_attribute_geometry_input);
+    version_node_add_link(
+        ntree, *node, *uv_map_output_socket, *store_attribute_node, *store_attribute_value_input);
   }
 
   /* Move nodes to the front so that they are drawn behind existing nodes. */

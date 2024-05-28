@@ -224,7 +224,9 @@ bNodeSocket &version_node_add_socket(bNodeTree &ntree,
   socket->runtime = MEM_new<blender::bke::bNodeSocketRuntime>(__func__);
   socket->in_out = in_out;
   socket->limit = (in_out == SOCK_IN ? 1 : 0xFFF);
+  socket->type = stype->type;
 
+  STRNCPY(socket->idname, idname);
   STRNCPY(socket->identifier, identifier);
   STRNCPY(socket->name, identifier);
 
