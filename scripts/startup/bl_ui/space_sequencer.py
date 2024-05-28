@@ -174,18 +174,16 @@ class SEQUENCER_HT_header(Header):
 
         if st.view_type == 'PREVIEW':
             layout.prop(sequencer_tool_settings, "pivot_point", text="", icon_only=True)
-            layout.separator_spacer()
 
         if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
             row = layout.row(align=True)
             row.prop(sequencer_tool_settings, "overlap_mode", text="")
 
-        if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
-            row = layout.row(align=True)
-            row.prop(tool_settings, "use_snap_sequencer", text="")
-            sub = row.row(align=True)
-            sub.popover(panel="SEQUENCER_PT_snapping")
-            layout.separator_spacer()
+        row = layout.row(align=True)
+        row.prop(tool_settings, "use_snap_sequencer", text="")
+        sub = row.row(align=True)
+        sub.popover(panel="SEQUENCER_PT_snapping")
+        layout.separator_spacer()
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
             layout.prop(st, "display_mode", text="", icon_only=True)
@@ -2816,11 +2814,50 @@ class SEQUENCER_PT_custom_props(SequencerButtonsPanel, PropertyPanel, Panel):
     _property_type = (bpy.types.Sequence,)
     bl_category = "Strip"
 
-
 class SEQUENCER_PT_snapping(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = ""
+
+    def draw(self, _context):
+        pass
+
+class SEQUENCER_PT_preview_snapping(Panel):
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_parent_id = "SEQUENCER_PT_snapping"
+    bl_label = "Preview Snapping"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        return st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}
+
+
+    def draw(self, context):
+        tool_settings = context.tool_settings
+        sequencer_tool_settings = tool_settings.sequencer_tool_settings
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column(heading="Bounds", align=True)
+        col.prop(sequencer_tool_settings, "snap_bounds_to_borders")
+
+        col = layout.column(heading="Pivot", align=True)
+        col.prop(sequencer_tool_settings, "snap_pivot_to_centers")
+
+class SEQUENCER_PT_sequencer_snapping(Panel):
+    bl_space_type = 'SEQUENCE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_parent_id = "SEQUENCER_PT_snapping"
+    bl_label = "Sequencer Snapping"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        return st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}
 
     def draw(self, context):
         tool_settings = context.tool_settings
@@ -2841,6 +2878,7 @@ class SEQUENCER_PT_snapping(Panel):
 
         col = layout.column(heading="Current Frame", align=True)
         col.prop(sequencer_tool_settings, "use_snap_current_frame_to_strips", text="Snap to Strips")
+
 
 
 classes = (
@@ -2931,6 +2969,8 @@ classes = (
     SEQUENCER_PT_annotation_onion,
 
     SEQUENCER_PT_snapping,
+    SEQUENCER_PT_sequencer_snapping,
+    SEQUENCER_PT_preview_snapping,
 )
 
 if __name__ == "__main__":  # only for live edit.
