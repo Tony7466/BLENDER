@@ -190,16 +190,16 @@ void version_node_output_socket_name(bNodeTree *ntree,
 
 bNode &version_node_add_empty(bNodeTree &ntree, const char *idname)
 {
-  bNodeType *ntype = nodeTypeFind(idname);
+  blender::bke::bNodeType *ntype = blender::bke::nodeTypeFind(idname);
 
   bNode *node = MEM_cnew<bNode>(__func__);
   node->runtime = MEM_new<blender::bke::bNodeRuntime>(__func__);
   BLI_addtail(&ntree.nodes, node);
-  nodeUniqueID(&ntree, node);
+  blender::bke::nodeUniqueID(&ntree, node);
 
   STRNCPY(node->idname, idname);
   STRNCPY_UTF8(node->name, DATA_(ntype->ui_name));
-  nodeUniqueName(&ntree, node);
+  blender::bke::nodeUniqueName(&ntree, node);
 
   node->flag = NODE_SELECT | NODE_OPTIONS | NODE_INIT;
   node->width = ntype->width;
@@ -218,7 +218,7 @@ bNodeSocket &version_node_add_socket(bNodeTree &ntree,
                                      const char *idname,
                                      const char *identifier)
 {
-  bNodeSocketType *stype = nodeSocketTypeFind(idname);
+  blender::bke::bNodeSocketType *stype = blender::bke::nodeSocketTypeFind(idname);
 
   bNodeSocket *socket = MEM_cnew<bNodeSocket>(__func__);
   socket->runtime = MEM_new<blender::bke::bNodeSocketRuntime>(__func__);
