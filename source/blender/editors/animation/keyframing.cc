@@ -1033,9 +1033,9 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
          * elements" or "not an array property". */
         const std::optional<int> array_index = (all || index < 0) ? std::nullopt :
                                                                     std::optional(index);
-
+        PointerRNA owner_ptr = RNA_id_pointer_create(ptr.owner_id);
         CombinedKeyingResult result = insert_keyframes(bmain,
-                                                       &ptr,
+                                                       &owner_ptr,
                                                        {{*path, {}, array_index}},
                                                        group,
                                                        std::nullopt,
