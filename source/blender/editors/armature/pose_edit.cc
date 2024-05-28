@@ -810,7 +810,7 @@ static int pose_flip_quats_exec(bContext *C, wmOperator * /*op*/)
         negate_v4(pchan->quat);
 
         blender::animrig::autokeyframe_pose_channel(
-            C, scene, ob_iter, pchan, {std::string("rotation_quaternion")}, false);
+            C, scene, ob_iter, pchan, {{"rotation_quaternion"}}, false);
       }
     }
     FOREACH_PCHAN_SELECTED_IN_OBJECT_END;
