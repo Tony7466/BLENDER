@@ -360,6 +360,84 @@ static void invert_fill(ImageBufferAccessor &buffer)
   }
 }
 
+static void dilate(ImageBufferAccessor &buffer, int iterations = 1)
+{
+  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
+
+  blender::Stack<int> active_pixels;
+  auto check_neighbor = [&](const int index, const int2 &neighbor_coord) {
+    if (buffer.is_valid_coord(neighbor_coord) &&
+        get_flag(buffer.pixel_from_coord(neighbor_coord), ColorFlag::Fill))
+    {
+      active_pixels.push(index);
+    }
+  };
+
+  for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
+    for (const int i : pixels.index_range()) {
+      /* Ignore already filled pixels */
+      if (get_flag(pixels[i], ColorFlag::Fill)) {
+        continue;
+      }
+      const int2 coord = buffer.coord_from_index(i);
+
+      /* Add to stack if any neighbor is filled. */
+      check_neighbor(i, coord + int2(1, 0));
+      check_neighbor(i, coord + int2(1, 1));
+      check_neighbor(i, coord + int2(0, 1));
+      check_neighbor(i, coord + int2(-1, 1));
+      check_neighbor(i, coord + int2(-1, 0));
+      check_neighbor(i, coord + int2(-1, -1));
+      check_neighbor(i, coord + int2(0, -1));
+      check_neighbor(i, coord + int2(1, -1));
+    }
+
+    while (!active_pixels.is_empty()) {
+      const int index = active_pixels.pop();
+      set_flag(buffer.pixels()[index], ColorFlag::Fill, true);
+    }
+  }
+}
+
+static void erode(ImageBufferAccessor &buffer, int iterations = 1)
+{
+  const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
+
+  blender::Stack<int> active_pixels;
+  auto check_neighbor = [&](const int index, const int2 &neighbor_coord) {
+    if (buffer.is_valid_coord(neighbor_coord) &&
+        !get_flag(buffer.pixel_from_coord(neighbor_coord), ColorFlag::Fill))
+    {
+      active_pixels.push(index);
+    }
+  };
+
+  for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
+    for (const int i : pixels.index_range()) {
+      /* Ignore empty pixels */
+      if (!get_flag(pixels[i], ColorFlag::Fill)) {
+        continue;
+      }
+      const int2 coord = buffer.coord_from_index(i);
+
+      /* Add to stack if any neighbor is empty. */
+      check_neighbor(i, coord + int2(1, 0));
+      check_neighbor(i, coord + int2(1, 1));
+      check_neighbor(i, coord + int2(0, 1));
+      check_neighbor(i, coord + int2(-1, 1));
+      check_neighbor(i, coord + int2(-1, 0));
+      check_neighbor(i, coord + int2(-1, -1));
+      check_neighbor(i, coord + int2(0, -1));
+      check_neighbor(i, coord + int2(1, -1));
+    }
+
+    while (!active_pixels.is_empty()) {
+      const int index = active_pixels.pop();
+      set_flag(buffer.pixels()[index], ColorFlag::Fill, false);
+    }
+  }
+}
+
 constexpr const int num_directions = 8;
 static const int2 offset_by_direction[num_directions] = {
     {-1, -1},
@@ -655,6 +733,14 @@ static bke::CurvesGeometry process_image(Image &ima,
     if (fill_result != FillResult::Success) {
       return {};
     }
+  }
+
+  const int dilate_pixels = brush.gpencil_settings->dilate_pixels;
+  if (dilate_pixels > 0) {
+    dilate(buffer, dilate_pixels);
+  }
+  else if (dilate_pixels < 0) {
+    erode(buffer, -dilate_pixels);
   }
 
   const FillBoundary boundary = build_fill_boundary(buffer);
