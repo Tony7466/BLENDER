@@ -1866,6 +1866,11 @@ typedef struct SceneEEVEE {
 
   int fast_gi_step_count;
   int fast_gi_ray_count;
+  float fast_gi_distance;
+  float fast_gi_thickness_near;
+  float fast_gi_thickness_far;
+  char fast_gi_method;
+  char _pad0[3];
 
   float bokeh_overblur;
   float bokeh_max_size;
@@ -2862,6 +2867,11 @@ typedef enum RaytraceEEVEE_Method {
   /* TODO(fclem): Hardware ray-tracing. */
   // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,
 } RaytraceEEVEE_Method;
+
+typedef enum FastGI_Method {
+  FAST_GI_FULL = 0,
+  FAST_GI_AO_ONLY = 1,
+} FastGI_Method;
 
 /** #SceneEEVEE::shadow_method */
 enum {
