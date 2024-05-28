@@ -332,6 +332,14 @@ static int screen_render_exec(bContext *C, wmOperator *op)
 
   re = RE_NewSceneRender(scene);
 
+  /* The render pipeline assumes the system GPU context is nullptr when doing a blocking render,
+   * that is, a render from the main thread. And while the render pipeline cleanups after every
+   * render to ensure a nullptr system GPU context, the GPU compositor initializes the system GPU
+   * context once and doesn't discard it to improve interactive editing, since context creation is
+   * relatively expensive. So we need to ensure a nullptr system GPU context here before executing
+   * the render. */
+  RE_system_gpu_context_free(re);
+
   G.is_break = false;
 
   RE_draw_lock_cb(re, nullptr, nullptr);
