@@ -68,7 +68,16 @@ ccl_device_inline void integrate_light(KernelGlobals kg,
     path_state_rng_load(state, &rng_state);
 
     /* FIXME(weizhen): this has artefacts when `num_hits > 1` due to transparent lights. */
-    film_write_surface_emission_to_reservoir(kg, state, light_eval, ls, &rng_state, render_buffer);
+    if (INTEGRATOR_STATE(state, path, bounce) == 1) {
+      film_write_surface_emission_to_reservoir_di(
+          kg, state, light_eval, ls, &rng_state, render_buffer);
+    }
+    else {
+      const Spectrum contribution = INTEGRATOR_STATE(state, path, throughput) * light_eval *
+                                    mis_weight;
+      ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+      film_write_pass_reservoir_pt(kg, path_flag, contribution, &rng_state, buffer);
+    }
   }
   else {
     film_write_surface_emission(kg, state, light_eval, mis_weight, render_buffer, ls.group);

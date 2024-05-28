@@ -162,7 +162,14 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
     triangle_light_sample_from_intersection(kg, state, sd, &ls);
     ls.pdf = nee_pdf;
 
-    film_write_surface_emission_to_reservoir(kg, state, L, ls, rng_state, render_buffer);
+    if (INTEGRATOR_STATE(state, path, bounce) == 1) {
+      film_write_surface_emission_to_reservoir_di(kg, state, L, ls, rng_state, render_buffer);
+    }
+    else {
+      const Spectrum contribution = INTEGRATOR_STATE(state, path, throughput) * L * mis_weight;
+      ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+      film_write_pass_reservoir_pt(kg, path_flag, contribution, rng_state, buffer);
+    }
   }
   else {
     film_write_surface_emission(

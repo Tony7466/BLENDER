@@ -417,7 +417,7 @@ ccl_device_forceinline bool light_is_direct_illumination(IntegratorState state)
 
 ccl_device_forceinline bool path_use_restir(KernelGlobals kg, IntegratorState state)
 {
-  return INTEGRATOR_STATE(state, path, bounce) == 1 && kernel_data.integrator.use_restir &&
+  return INTEGRATOR_STATE(state, path, bounce) >= 1 && kernel_data.integrator.use_restir &&
          kernel_data.integrator.use_direct_light;
 }
 
