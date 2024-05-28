@@ -445,7 +445,8 @@ static void rna_uiItemL(uiLayout *layout,
                         const char *text_ctxt,
                         bool translate,
                         int icon,
-                        int icon_value)
+                        int icon_value,
+                        const char *icon_overlay)
 {
   /* Get translated name (label). */
   name = rna_translate_ui_text(name, text_ctxt, nullptr, nullptr, translate);
@@ -454,7 +455,10 @@ static void rna_uiItemL(uiLayout *layout,
     icon = icon_value;
   }
 
-  uiItemL(layout, name, icon);
+  uiBut *but = uiItemL_ex(layout, name, icon, false, false);
+  if (icon_overlay) {
+    UI_but_icon_indicator_set(but, icon_overlay);
+  }
 }
 
 static void rna_uiItemM(uiLayout *layout,
@@ -1506,6 +1510,9 @@ void RNA_api_ui_layout(StructRNA *srna)
   api_ui_item_common(func);
   parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_ui_text(parm, "Icon Value", "Override automatic icon of the item");
+  parm = RNA_def_property(func, "icon_overlay", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      parm, "Icon Overlay", "Text displayed on top of the icon at bottom-right");
 
   func = RNA_def_function(srna, "menu", "rna_uiItemM");
   parm = RNA_def_string(func, "menu", nullptr, 0, "", "Identifier of the menu");
