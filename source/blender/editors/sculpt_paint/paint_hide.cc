@@ -1060,13 +1060,10 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
     });
   }
 
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int node_index : range) {
-      if (!node_changed[node_index]) {
-        continue;
-      }
-      undo::push_node(object, nodes[node_index], undo::Type::HideVert);
-    }
+  IndexMaskMemory memory;
+  IndexMask mask = IndexMask::from_bools(node_changed, memory);
+  mask.foreach_index(GrainSize(1), [&](const int64_t index) {
+    undo::push_node(object, nodes[index], undo::Type::HideVert);
   });
 
   BitGroupVector<> &last_buffer = buffers.write_buffer(iterations - 1);
