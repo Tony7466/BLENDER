@@ -2235,7 +2235,7 @@ void rna_Node_update_relations(Main *bmain, Scene *scene, PointerRNA *ptr)
   DEG_relations_tag_update(bmain);
 }
 
-static void rna_Node_update_node_labels(Main *bmain, Scene *scene, PointerRNA *ptr)
+static void rna_Node_update_node_labels(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
   const bNode &node = *static_cast<bNode *>(ptr->data);
