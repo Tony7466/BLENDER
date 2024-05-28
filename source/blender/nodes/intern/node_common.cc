@@ -667,7 +667,7 @@ static void propagate_reroute_type_from_start_socket(
   }
 }
 
-void update_reroute_node_socket_types(bNodeTree *ntree)
+static void update_reroute_node_socket_types(bNodeTree *ntree)
 {
   /* Contains nodes that are linked to at least one reroute node. */
   Set<bNode *> nodes_linked_with_reroutes;
