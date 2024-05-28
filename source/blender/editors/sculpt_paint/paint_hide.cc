@@ -841,16 +841,15 @@ struct DualBuffer {
   }
 };
 
-static int propagate_vertex_visibility(Mesh &mesh,
-                                       DualBuffer &buffers,
-                                       const VArraySpan<bool> &hide_poly,
-                                       const VisAction action,
-                                       const int iterations)
+static void propagate_vertex_visibility(Mesh &mesh,
+                                        DualBuffer &buffers,
+                                        const VArraySpan<bool> &hide_poly,
+                                        const VisAction action,
+                                        const int iterations)
 {
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
 
-  int last_changed_iteration = -1;
   for (const int i : IndexRange(iterations)) {
     Span<bool> read_buffer = buffers.read_buffer(i);
     MutableSpan<bool> write_buffer = buffers.write_buffer(i);
@@ -869,16 +868,8 @@ static int propagate_vertex_visibility(Mesh &mesh,
       }
     });
 
-    if (read_buffer == write_buffer) {
-      /* If nothing has changed for a given iteration, nothing will change in future iterations. */
-      break;
-    }
-
     flush_face_changes(mesh, write_buffer);
-    last_changed_iteration = i;
   }
-
-  return last_changed_iteration;
 }
 
 static void update_undo_state(Object &object,
@@ -950,15 +941,9 @@ static void grow_shrink_visibility_mesh(Object &object,
   array_utils::copy(hide_vert.span.as_span(), buffers.front.as_mutable_span());
 
   Array<bool> orig_hide_poly(hide_poly);
-  const int last_changed_iteration = propagate_vertex_visibility(
-      mesh, buffers, hide_poly, action, iterations);
-  if (last_changed_iteration == -1) {
-    /* No changes at all happened. */
-    hide_vert.finish();
-    return;
-  }
+  propagate_vertex_visibility(mesh, buffers, hide_poly, action, iterations);
 
-  const Span<bool> last_buffer = buffers.write_buffer(last_changed_iteration);
+  const Span<bool> last_buffer = buffers.write_buffer(iterations - 1);
 
   update_undo_state(object, nodes, hide_vert.span, last_buffer);
 
