@@ -607,13 +607,6 @@ FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index)
  */
 Action *convert_to_layered_action(Main &bmain, const Action &action);
 
-/**
- * Creates a new legacy `Action` that matches the layered `Action` for the given binding in
- * animation output. All layers are flattened and baked into a single `BezTriple` array. Returns a
- * nullptr if the action is empty or is already a legacy action.
- */
-Action *bake_to_legacy_action(Main &bmain, const Action &action, const Binding &binding);
-
 }  // namespace blender::animrig
 
 /* Wrap functions for the DNA structs. */
