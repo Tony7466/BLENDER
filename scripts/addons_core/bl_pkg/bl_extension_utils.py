@@ -25,6 +25,7 @@ __all__ = (
 
     # Public Stand-Alone Utilities.
     "pkg_theme_file_list",
+    "platform_from_this_system",
     "url_params_append_for_blender",
     "file_mtime_or_none",
 
@@ -278,6 +279,19 @@ def pkg_theme_file_list(directory: str, pkg_idname: str) -> Tuple[str, List[str]
     return theme_dir, theme_files
 
 
+def platform_from_this_system() -> str:
+    import platform
+    system_replace = {
+        "darwin": "macos",
+    }
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    return "{:s}-{:s}".format(
+        system_replace.get(system, system),
+        machine,
+    )
+
+
 def _url_params_append(url: str, params: Dict[str, str]) -> str:
     import urllib
     import urllib.parse
@@ -319,6 +333,7 @@ def url_params_append_for_blender(url: str, blender_version: Tuple[int, int, int
         return url
 
     params = {
+        "platform": platform_from_this_system(),
         "blender_version": "{:d}.{:d}.{:d}".format(*blender_version),
     }
     return _url_params_append(url, params)
