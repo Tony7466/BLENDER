@@ -1067,11 +1067,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   });
 
   BitGroupVector<> &last_buffer = buffers.write_buffer(iterations - 1);
-  for (int i = 0; i < grid_hidden.size(); i++) {
-    for (int j = 0; j < grid_hidden.group_size(); j++) {
-      grid_hidden[i][j].set_branchless(last_buffer[i][j]);
-    }
-  }
+  grid_hidden = std::move(last_buffer);
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int node_index : range) {
