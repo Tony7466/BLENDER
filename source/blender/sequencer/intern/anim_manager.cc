@@ -283,6 +283,9 @@ void AnimManager::parallel_load_anims(const Scene *scene,
   // XXX why is this needed, when cache_entry_get is locking vector? if this is not done before
   // parallel for loop, it causes use after free in ShareableAnim::anims...
   for (Sequence *seq : strips) {
+    if (seq->type != SEQ_TYPE_MOVIE) {
+      continue;
+    }
     cache_entry_get(scene, seq);
   }
 
@@ -290,6 +293,10 @@ void AnimManager::parallel_load_anims(const Scene *scene,
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (int i : range) {
       Sequence *seq = strips[i];
+      if (seq->type != SEQ_TYPE_MOVIE) {
+        continue;
+      }
+
       ShareableAnim &sh_anim = cache_entry_get(scene, seq);
       if (!sh_anim.mutex->try_lock()) {
         continue;
@@ -349,6 +356,9 @@ void AnimManager::strip_anims_laod_and_lock(const Scene *scene,
 void AnimManager::strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
   for (Sequence *seq : strips) {
+    if (seq->type != SEQ_TYPE_MOVIE) {  // XXX this should not be needed?
+      continue;
+    }
     ShareableAnim &sh_anim = cache_entry_get(scene, seq);
     sh_anim.unlock();
   }

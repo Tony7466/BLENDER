@@ -153,7 +153,7 @@ static void thumbnail_start_job(void *data, wmJobWorkerStatus *worker_status)
           val->seq_dupli, tj->pixelx, tj->pixely, &frame_step, tj->thumb_height, nullptr, nullptr);
       SEQ_render_thumbnails(
           &tj->context, val->seq_dupli, seq_orig, frame_step, tj->view_area, &worker_status->stop);
-      // SEQ_relations_sequence_free_anim(scene, val->seq_dupli);
+      SEQ_relations_sequence_free_anim(scene, val->seq_dupli);
     }
     BLI_ghashIterator_step(&gh_iter);
   }
@@ -170,7 +170,7 @@ static void thumbnail_start_job(void *data, wmJobWorkerStatus *worker_status)
           val->seq_dupli, tj->pixelx, tj->pixely, &frame_step, tj->thumb_height, nullptr, nullptr);
       SEQ_render_thumbnails_base_set(
           &tj->context, val->seq_dupli, seq_orig, tj->view_area, &worker_status->stop);
-      // SEQ_relations_sequence_free_anim(scene, val->seq_dupli);
+      SEQ_relations_sequence_free_anim(scene, val->seq_dupli);
     }
     BLI_ghashIterator_step(&gh_iter);
   }
