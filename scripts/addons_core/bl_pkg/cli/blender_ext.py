@@ -1657,7 +1657,7 @@ def repo_sync_from_remote(
     Load package information into the local path.
     """
     request_exit = False
-    request_exit |= message_status(msg_fn, f'Checking repository "{remote_name}" for updates...')
+    request_exit |= message_status(msg_fn, "Checking repository \"{:s}\" for updates...".format(remote_name))
     if request_exit:
         return False
 
@@ -1676,7 +1676,7 @@ def repo_sync_from_remote(
 
     with CleanupPathsContext(files=(local_json_path_temp,), directories=()):
         # TODO: time-out.
-        request_exit |= message_status(msg_fn, f'Refreshing extensions list for "{remote_name}"...')
+        request_exit |= message_status(msg_fn, "Refreshing extensions list for \"{:s}\"...".format(remote_name))
         if request_exit:
             return False
 
@@ -1707,11 +1707,15 @@ def repo_sync_from_remote(
 
         error_msg = repo_json_is_valid_or_error(local_json_path_temp)
         if error_msg is not None:
-            message_error(msg_fn, f'Repository error: invalid manifest ({error_msg}) for repository "{remote_name}"!')
+            message_error(
+                msg_fn,
+                "Repository error: invalid manifest ({:s}) for repository \"{:s}\"!".format(
+                    error_msg,
+                    remote_name))
             return False
         del error_msg
 
-        request_exit |= message_status(msg_fn, f'Extensions list for "{remote_name}" updated')
+        request_exit |= message_status(msg_fn, "Extensions list for \"{:s}\" updated".format(remote_name))
         if request_exit:
             return False
 
