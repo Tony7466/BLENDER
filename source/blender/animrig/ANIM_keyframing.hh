@@ -115,7 +115,7 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
 CombinedKeyingResult insert_keyframes(Main *bmain,
                                       ID &id,
                                       const blender::Span<RNAPath> rna_paths,
-                                      std::optional<std::string> channel_group,
+                                      std::optional<StringRefNull> channel_group,
                                       std::optional<float> scene_frame,
                                       const AnimationEvalContext &anim_eval_context,
                                       eBezTriple_KeyframeType key_type,
