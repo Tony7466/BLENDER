@@ -851,7 +851,7 @@ static int propagate_vertex_visibility(Mesh &mesh,
   const Span<int> corner_verts = mesh.corner_verts();
 
   int last_changed_iteration = -1;
-  for (int i = 0; i < iterations; i++) {
+  for (const int i : IndexRange(iterations)) {
     Span<bool> read_buffer = buffers.read_buffer(i);
     MutableSpan<bool> write_buffer = buffers.write_buffer(i);
     threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
@@ -1019,7 +1019,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
 
   Array<bool> node_changed(nodes.size(), false);
 
-  for (int i = 0; i < iterations; i++) {
+  for (const int i : IndexRange(iterations)) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int node_index : range) {
         PBVHNode *node = nodes[node_index];
@@ -1111,7 +1111,7 @@ static void grow_shrink_visibility_bmesh(Object &object,
 
   SculptSession &ss = *object.sculpt;
 
-  for (int i = 0; i < iterations; i++) {
+  for (const int i : IndexRange(iterations)) {
     const Array<bool> prev_visibility = duplicate_visibility(object);
     partialvis_update_bmesh_nodes(object, nodes, action, [&](const BMVert *vert) {
       int vi = BM_elem_index_get(vert);
