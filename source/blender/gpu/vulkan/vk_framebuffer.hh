@@ -148,6 +148,11 @@ class VKFrameBuffer : public FrameBuffer {
    */
   void rendering_end(VKContext &context);
 
+  bool is_rendering() const
+  {
+    return is_rendering_;
+  }
+
   /**
    * Return the number of color attachments of this frame buffer, including unused color
    * attachments.

@@ -118,6 +118,15 @@ void VKContext::activate()
 
 void VKContext::deactivate()
 {
+  if (use_render_graph) {
+    if (has_active_framebuffer()) {
+      VKFrameBuffer &framebuffer = *active_framebuffer_get();
+      if (framebuffer.is_rendering()) {
+        framebuffer.rendering_end(*this);
+      }
+    }
+    render_graph.submit();
+  }
   immDeactivate();
   is_active_ = false;
 }
@@ -126,7 +135,13 @@ void VKContext::begin_frame() {}
 
 void VKContext::end_frame()
 {
-  if (!use_render_graph) {
+  if (use_render_graph) {
+    if (has_active_framebuffer()) {
+      active_framebuffer_get()->rendering_end(*this);
+    }
+    render_graph.submit();
+  }
+  else {
     VKDevice &device = VKBackend::get().device_get();
     device.destroy_discarded_resources();
   }
