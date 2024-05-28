@@ -15,3 +15,4 @@ Referenced by issue #120736, Snap Closest from Bezier Curve object has one unit 
 Referenced by issue #120990, EXCEPTION_ACCESS_VIOLATION
 Referenced by issue #121459, Invalid mesh from `BKE_object_get_pre_modified_mesh` and `BKE_object_get_evaluated_mesh` during export.
 Referenced by issue #121841, Image Separate/Combine XYZ to File Output with EXR leads to incorrect result
+Referenced by issue #122310, Can't rename Material to a name if there's an orphaned material with the same name
