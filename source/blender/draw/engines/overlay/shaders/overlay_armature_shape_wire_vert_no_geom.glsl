@@ -33,7 +33,7 @@ void main()
   float wire_width = bone_color.a * width_compression;
   geometry_out.wire_width = wire_width;
 
-  /* Verch vertex positions and transform to clip space ("vertex shader"). */
+  /* Fetch vertex positions and transform to clip space ("vertex shader"). */
   int quad_id = gl_VertexID / 6;
   int quad_vertex_id = gl_VertexID % 6;
   uint src_index_a = quad_id * 2;
