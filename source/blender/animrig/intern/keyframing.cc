@@ -818,7 +818,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
 }
 
 CombinedKeyingResult insert_keyframes(Main *bmain,
-                                      ID &id,
+                                      PointerRNA *struct_pointer,
                                       const blender::Span<RNAPath> rna_paths,
                                       const std::optional<StringRefNull> channel_group,
                                       const std::optional<float> scene_frame,
@@ -827,16 +827,17 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                       eInsertKeyFlags insert_key_flags)
 
 {
-  PointerRNA id_pointer = RNA_id_pointer_create(&id);
+  ID *id = struct_pointer->owner_id;
+  PointerRNA id_pointer = RNA_id_pointer_create(id);
   CombinedKeyingResult combined_result;
 
-  bAction *action = id_action_ensure(bmain, &id);
+  bAction *action = id_action_ensure(bmain, id);
   if (action == nullptr) {
     combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE);
     return combined_result;
   }
 
-  AnimData *adt = BKE_animdata_from_id(&id);
+  AnimData *adt = BKE_animdata_from_id(id);
   BLI_assert(adt != nullptr);
 
   /* NOTE: keyframing functions can deal with the nla_context being a nullptr. */
@@ -855,7 +856,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        &id_pointer, rna_path.path.c_str(), &ptr, &prop);
+        struct_pointer, rna_path.path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
@@ -866,7 +867,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     bool force_all;
 
     /* NOTE: this function call is complex with interesting effects. Of
-     * particular note is that in addition to doing time remapping, it also:
+     * particular note is that in addition to doing value remapping, it also:
      * - Fills in `elements_to_key`, flagging which elements of an array
      *   property should actually get keyed.
      * - Sets `force_all`, which if true means that an array property should be
@@ -874,7 +875,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
      *   regardless of how keying flags might have otherwise treated different
      *   elements differently. */
     BKE_animsys_nla_remap_keyframe_values(nla_context,
-                                          &id_pointer,
+                                          struct_pointer,
                                           prop,
                                           rna_values.as_mutable_span(),
                                           rna_path.index.value_or(-1),
@@ -920,7 +921,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
 
     const CombinedKeyingResult result = insert_key_action(bmain,
                                                           action,
-                                                          &id_pointer,
+                                                          struct_pointer,
                                                           prop,
                                                           channel_group,
                                                           rna_path_id_to_prop->c_str(),

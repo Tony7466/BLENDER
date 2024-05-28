@@ -1085,8 +1085,9 @@ static int insert_key_to_keying_set_path(bContext *C,
       const std::optional<int> index = array_index >= 0 ? std::optional(array_index) :
                                                           std::nullopt;
       const std::optional<std::string> group = groupname ? std::optional(groupname) : std::nullopt;
+      PointerRNA id_rna_pointer = RNA_id_pointer_create(keyingset_path->id);
       CombinedKeyingResult result = insert_keyframes(bmain,
-                                                     *keyingset_path->id,
+                                                     &id_rna_pointer,
                                                      {{keyingset_path->rna_path, {}, index}},
                                                      group,
                                                      std::nullopt,

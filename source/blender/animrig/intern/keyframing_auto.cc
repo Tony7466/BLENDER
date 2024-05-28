@@ -144,7 +144,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<RNAPath> rn
   for (PointerRNA ptr : sources) {
     const CombinedKeyingResult result = insert_keyframes(
         bmain,
-        *ptr.owner_id,
+        &ptr,
         rna_paths,
         std::nullopt,
         scene_frame,
@@ -248,7 +248,7 @@ void autokeyframe_pose_channel(bContext *C,
   for (PointerRNA &ptr : sources) {
     const CombinedKeyingResult result = insert_keyframes(
         bmain,
-        *ptr.owner_id,
+        &ptr,
         rna_paths,
         std::nullopt,
         scene_frame,
@@ -337,7 +337,7 @@ bool autokeyframe_property(bContext *C,
       const std::optional<std::string> group = (fcu && fcu->grp) ? fcu->grp->name : nullptr;
 
       CombinedKeyingResult result = insert_keyframes(bmain,
-                                                     *id,
+                                                     ptr,
                                                      {{path, {}, array_index}},
                                                      group,
                                                      std::nullopt,

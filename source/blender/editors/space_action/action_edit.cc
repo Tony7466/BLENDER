@@ -852,8 +852,9 @@ static void insert_fcurve_key(bAnimContext *ac,
   const std::optional<std::string> channel_group = fcu->grp ? std::optional(fcu->grp->name) :
                                                               std::nullopt;
   if (ale->id && !ale->owner) {
+    PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
     CombinedKeyingResult result = insert_keyframes(ac->bmain,
-                                                   *ale->id,
+                                                   &id_rna_pointer,
                                                    {{fcu->rna_path, {}, fcu->array_index}},
                                                    channel_group,
                                                    std::nullopt,

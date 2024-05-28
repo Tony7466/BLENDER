@@ -403,7 +403,7 @@ static int insert_key(bContext *C, wmOperator *op)
     Vector<RNAPath> rna_paths = construct_rna_paths(&id_ptr);
 
     combined_result.merge(animrig::insert_keyframes(bmain,
-                                                    *selected_id,
+                                                    &id_ptr,
                                                     rna_paths.as_span(),
                                                     std::nullopt,
                                                     scene_frame,
@@ -1034,7 +1034,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
                                                                     std::optional(index);
 
         CombinedKeyingResult result = insert_keyframes(bmain,
-                                                       *ptr.owner_id,
+                                                       &ptr,
                                                        {{*path, {}, array_index}},
                                                        group,
                                                        std::nullopt,

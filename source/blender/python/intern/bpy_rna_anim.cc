@@ -407,7 +407,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     BLI_assert(BKE_id_is_in_global_main(id));
     CombinedKeyingResult combined_result = insert_keyframes(
         G_MAIN,
-        *id,
+        &self->ptr,
         {{path_full, {}, index}},
         group_name ? std::optional(group_name) : std::nullopt,
         std::nullopt,
