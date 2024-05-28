@@ -1481,12 +1481,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
 
   if (value_log.grid_info) {
     const geo_log::GeometryInfoLog::GridInfo &grid_info = *value_log.grid_info;
-    if (grid_info.is_empty) {
-      ss << TIP_("\u2022 Empty Grid");
-    }
-    else {
-      ss << TIP_("\u2022 Grid");
-    }
+    fmt::format_to(fmt::appender(buf),
+                   grid_info.is_empty ? TIP_("Empty Grid") : TIP_("\u2022 Grid"));
     return;
   }
 
