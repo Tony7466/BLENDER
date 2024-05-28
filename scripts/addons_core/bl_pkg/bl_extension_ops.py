@@ -2223,11 +2223,17 @@ class BlPkgRepoUnlock(Operator):
 
 # NOTE: this is a modified version of `PREFERENCES_OT_addon_show`.
 # It would make most sense to extend this operator to support showing extensions to upgrade (eventually).
-class BlPkgShowUpgrade(Operator):
-    """Show add-on preferences"""
-    bl_idname = "bl_pkg.extensions_show_for_update"
+class BlPkgShowExtensions(Operator):
+    """Show extension preferences"""
+    bl_idname = "bl_pkg.extensions_show"
     bl_label = ""
     bl_options = {'INTERNAL'}
+
+    for_update: BoolProperty(
+        name="Show for Update",
+        description="Show only extensions with updates",
+        default=False,
+    )
 
     def execute(self, context):
         wm = context.window_manager
@@ -2236,9 +2242,8 @@ class BlPkgShowUpgrade(Operator):
         prefs.active_section = 'EXTENSIONS'
         prefs.view.show_addons_enabled_only = False
 
-        # Show only extensions that will be updated.
         wm.extension_installed_only = False
-        wm.extension_updates_only = True
+        wm.extension_updates_only = self.for_update
 
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
 
@@ -2318,7 +2323,7 @@ classes = (
     BlPkgRepoLock,
     BlPkgRepoUnlock,
 
-    BlPkgShowUpgrade,
+    BlPkgShowExtensions,
     BlPkgShowOnlinePreference,
 
     # Dummy, just shows a message.

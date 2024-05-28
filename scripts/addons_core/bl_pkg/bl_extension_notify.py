@@ -366,31 +366,40 @@ def _ui_refresh_timer():
     return default_wait
 
 
-def splash_draw_status_fn(self, context):
+def splash_draw_status_fn(layout, context):
+    if not bpy.app.online_access:
+        return
+
     if _notify.splash_region is None:
         _notify.splash_region = context.region_popup
 
-    if _notify.sync_info is None:
-        self.layout.label(text="Checking for Extension Updates")
-    elif _notify.sync_info[0] is STATE_DATA_ALL_OFFLINE:
-        # The special case is ugly but showing this operator doesn't fit well with other kinds of status updates.
-        self.layout.operator("bl_pkg.extensions_show_online_prefs", text="Offline mode", icon='ORPHAN_DATA')
-    else:
-        status_data, update_count, extra_warnings = _notify.sync_info
-        do_online_sync = _notify.do_online_sync
-        text, icon = bl_extension_utils.CommandBatch.calc_status_text_icon_from_data(
-            status_data, update_count, do_online_sync)
-        # Not more than 1-2 of these (failed to lock, some repositories offline .. etc).
-        for warning in extra_warnings:
-            text = text + warning
-        row = self.layout.row(align=True)
-        if update_count > 0:
-            row.operator("bl_pkg.extensions_show_for_update", text=text, icon=icon)
-        else:
-            row.label(text=text, icon=icon)
+    text = "Extensions"
+    syncing = False
+    failure = False
+    update_count = 0
 
-    self.layout.separator()
-    self.layout.separator()
+    if _notify.sync_info is None:
+        syncing = True
+    elif _notify.sync_info[0] is STATE_DATA_ALL_OFFLINE:
+        pass
+    else:
+        status_data, update_count, _ = _notify.sync_info
+        syncing = bl_extension_utils.CommandBatch.calc_status_syncing(status_data)
+        failure = status_data.failure_count > 0
+
+    if update_count > 0:
+        text = "Extension Updates Available ({:d})".format(update_count)
+    else:
+        text = "Extensions"
+
+    row = layout.row()
+    props = row.operator("bl_pkg.extensions_show", text=text, icon='SCRIPTPLUGINS')
+    props.for_update = update_count > 0
+    if _notify.do_online_sync:
+        if syncing:
+            row.label(text="", icon='UV_SYNC_SELECT')
+        elif update_count == 0 and not failure:
+            row.label(text="", icon='CHECKMARK')
 
 
 # -----------------------------------------------------------------------------
@@ -400,7 +409,7 @@ def splash_draw_status_fn(self, context):
 def register(repos_notify, do_online_sync):
     global _notify
     _notify = NotifyHandle(repos_notify, do_online_sync)
-    bpy.types.WM_MT_splash.append(splash_draw_status_fn)
+    bpy.types.WM_MT_splash.add_extensions(splash_draw_status_fn)
     bpy.app.timers.register(_ui_refresh_timer, first_interval=TIME_WAIT_INIT)
 
 
@@ -409,6 +418,6 @@ def unregister():
     assert _notify is not None
     _notify = None
 
-    bpy.types.WM_MT_splash.remove(splash_draw_status_fn)
+    bpy.types.WM_MT_splash.remove_extensions()
     # This timer is responsible for un-registering itself.
     # `bpy.app.timers.unregister(_ui_refresh_timer)`

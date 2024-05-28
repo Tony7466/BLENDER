@@ -3344,13 +3344,29 @@ class WM_MT_splash(Menu):
         sub.operator("wm.open_mainfile", text="Open...", icon='FILE_FOLDER')
         col1.operator("wm.recover_last_session", icon='RECOVER_LAST')
 
+        if hasattr(WM_MT_splash, 'draw_extensions'):
+            WM_MT_splash.draw_extensions(col1, context)
+
         col2 = split.column()
 
         col2.operator("wm.url_open_preset", text="Donate", icon='FUND').type = 'FUND'
         col2.operator("wm.url_open_preset", text="What's New", icon='URL').type = 'RELEASE_NOTES'
 
+        # For balance, could be replaced if we have another thing to put here.
+        if hasattr(WM_MT_splash, 'draw_extensions') and found_recent:
+            col2.operator("wm.url_open_preset", text="Manual", icon='URL').type = 'MANUAL'
+
         layout.separator()
         layout.separator()
+
+    @classmethod
+    def add_extensions(cls, draw):
+        cls.draw_extensions = draw
+
+    @classmethod
+    def remove_extensions(cls):
+        delattr(cls, 'draw_extensions')
+
 
 
 class WM_MT_splash_about(Menu):
