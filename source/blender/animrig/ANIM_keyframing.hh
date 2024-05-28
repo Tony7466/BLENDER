@@ -79,10 +79,10 @@ class CombinedKeyingResult {
  * path, or none if it has no default.
  *
  * For example, for object location/rotation/scale this returns the standard
- * object transforms channel group name.
+ * "Object Transforms" channel group name.
  */
-std::optional<StringRefNull> default_channel_group_for_path(const PointerRNA *ptr,
-                                                            const StringRef rna_path);
+const std::optional<StringRefNull> default_channel_group_for_path(
+    const PointerRNA *animated_struct, const StringRef prop_rna_path);
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Framing Management

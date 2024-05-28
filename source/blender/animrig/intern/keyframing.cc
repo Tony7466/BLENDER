@@ -163,6 +163,29 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   BKE_report(reports, RPT_ERROR, error_message.c_str());
 }
 
+const std::optional<StringRefNull> default_channel_group_for_path(
+    const PointerRNA *animated_struct, const StringRef prop_rna_path)
+{
+  if (animated_struct->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(animated_struct->data);
+    return pose_channel->name;
+  }
+
+  if (animated_struct->type == &RNA_Object) {
+    if (prop_rna_path.find("location") != StringRef::not_found ||
+        prop_rna_path.find("rotation") != StringRef::not_found ||
+        prop_rna_path.find("scale") != StringRef::not_found)
+    {
+      /* NOTE: Keep this label in sync with the "ID" case in
+       * keyingsets_utils.py :: get_transform_generators_base_info()
+       */
+      return "Object Transforms";
+    }
+  }
+
+  return std::nullopt;
+}
+
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
 {
   /* Set additional flags for the F-Curve (i.e. only integer values). */
@@ -742,26 +765,6 @@ int clear_keyframe(Main *bmain,
   return key_count;
 }
 
-std::optional<StringRefNull> default_channel_group_for_path(const PointerRNA *ptr,
-                                                            const StringRef rna_path)
-{
-  if (ptr->type == &RNA_PoseBone) {
-    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
-    return pose_channel->name;
-  }
-  else if (ptr->type == &RNA_Object) {
-    if (rna_path == "location" || rna_path == "scale" || rna_path == "rotation_euler" ||
-        rna_path == "rotation_quaternion" || rna_path == "rotation_axis_angle" ||
-        rna_path == "rotation_mode")
-    {
-
-      return "Object Transforms";
-    }
-  }
-
-  return std::nullopt;
-}
-
 CombinedKeyingResult insert_key_action(Main *bmain,
                                        bAction *action,
                                        PointerRNA *ptr,
@@ -777,12 +780,14 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
 
-  std::optional<StringRefNull> group;
+  const char *group;
   if (channel_group.has_value()) {
-    group = *channel_group;
+    group = channel_group->c_str();
   }
   else {
-    group = default_channel_group_for_path(ptr, rna_path);
+    const std::optional<StringRefNull> default_group = default_channel_group_for_path(ptr,
+                                                                                      rna_path);
+    group = default_group.has_value() ? default_group->c_str() : nullptr;
   }
 
   int property_array_index = 0;
@@ -793,18 +798,18 @@ CombinedKeyingResult insert_key_action(Main *bmain,
       property_array_index++;
       continue;
     }
-    const SingleKeyingResult keying_result = insert_keyframe_fcurve_value(
-        bmain,
-        ptr,
-        prop,
-        action,
-        group.has_value() ? group->c_str() : nullptr,
-        rna_path.c_str(),
-        property_array_index,
-        frame,
-        value,
-        key_type,
-        insert_key_flag);
+
+    const SingleKeyingResult keying_result = insert_keyframe_fcurve_value(bmain,
+                                                                          ptr,
+                                                                          prop,
+                                                                          action,
+                                                                          group,
+                                                                          rna_path.c_str(),
+                                                                          property_array_index,
+                                                                          frame,
+                                                                          value,
+                                                                          key_type,
+                                                                          insert_key_flag);
     combined_result.add(keying_result);
     property_array_index++;
   }
