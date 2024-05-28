@@ -163,6 +163,8 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   if (!USER_VERSION_ATLEAST(402, 42)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.before_current_frame);
     FROM_DEFAULT_V4_UCHAR(space_view3d.after_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.before_current_frame);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.after_current_frame);
   }
 
   /**
