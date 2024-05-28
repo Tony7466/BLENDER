@@ -317,8 +317,11 @@ bool MetalDevice::check_peer_access(Device * /*peer_device*/)
   return false;
 }
 
-bool MetalDevice::use_adaptive_compilation()
+bool MetalDevice::use_adaptive_compilation(MetalPipelineType pso_type)
 {
+  if (pso_type == PSO_GENERIC) {
+    return false;
+  }
   return DebugFlags().metal.adaptive_compile;
 }
 
@@ -332,7 +335,7 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
                                       string *source)
 {
   string global_defines;
-  if (use_adaptive_compilation()) {
+  if (use_adaptive_compilation(pso_type)) {
     global_defines += "#define __KERNEL_FEATURES__ " + to_string(kernel_features) + "\n";
   }
 

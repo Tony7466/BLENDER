@@ -114,7 +114,7 @@ class MetalDevice : public Device {
 
   bool check_peer_access(Device *peer_device) override;
 
-  bool use_adaptive_compilation();
+  bool use_adaptive_compilation(MetalPipelineType pso_type);
 
   bool use_local_atomic_sort() const;
 

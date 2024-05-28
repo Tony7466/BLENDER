@@ -69,8 +69,8 @@ void DebugFlags::HIP::reset()
 
 void DebugFlags::Metal::reset()
 {
-  if (getenv("CYCLES_METAL_ADAPTIVE_COMPILE") != NULL) {
-    adaptive_compile = true;
+  if (auto str = getenv("CYCLES_METAL_ADAPTIVE_COMPILE")) {
+    adaptive_compile = (atoi(str) != 0);
   }
 
   if (auto str = getenv("CYCLES_METAL_LOCAL_ATOMIC_SORT")) {

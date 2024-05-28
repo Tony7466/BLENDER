@@ -91,7 +91,7 @@ class DebugFlags {
     void reset();
 
     /* Whether adaptive feature based runtime compile is enabled or not. */
-    bool adaptive_compile = false;
+    bool adaptive_compile = true;
 
     /* Whether local atomic sorting is enabled or not. */
     bool use_local_atomic_sort = true;
