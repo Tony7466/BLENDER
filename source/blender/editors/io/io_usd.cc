@@ -582,11 +582,12 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Generate an approximate USD Preview Surface shader "
                   "representation of a Principled BSDF node network");
 
-  RNA_def_boolean(ot->srna,
-                  "convert_orientation",
-                  false,
-                  "Convert Orientation",
-                  "The USD exporter will convert scene orientation axis");
+  RNA_def_boolean(
+      ot->srna,
+      "convert_orientation",
+      false,
+      "Convert Orientation",
+      "Convert orientation axis to a different convention to match other applications");
 
   prop = RNA_def_enum(ot->srna,
                       "export_global_forward_selection",
@@ -875,72 +876,108 @@ static void wm_usd_import_cancel(bContext * /*C*/, wmOperator *op)
   free_operator_customdata(op);
 }
 
-static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
+static void wm_usd_import_draw(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   PointerRNA *ptr = op->ptr;
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiLayout *box = uiLayoutBox(layout);
-  uiLayout *col = uiLayoutColumnWithHeading(box, true, IFACE_("Data Types"));
-  uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_points", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(box, ptr, "prim_path_mask", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(box, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  box = uiLayoutBox(layout);
-  col = uiLayoutColumnWithHeading(box, true, IFACE_("Mesh Data"));
-  uiItemR(col, ptr, "read_mesh_uvs", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "read_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  col = uiLayoutColumnWithHeading(box, true, IFACE_("Include"));
-  uiItemR(col, ptr, "import_subdiv", UI_ITEM_NONE, IFACE_("Subdivision"), ICON_NONE);
-  uiItemR(col, ptr, "support_scene_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_visible_only", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_defined_only", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_guide", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_proxy", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_render", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_general", false, IFACE_("General"))) {
+    uiLayout *col = uiLayoutColumn(panel, false);
 
-  col = uiLayoutColumnWithHeading(box, true, IFACE_("Options"));
-  uiItemR(col, ptr, "set_frame_range", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "create_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "prim_path_mask", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  box = uiLayoutBox(layout);
-  col = uiLayoutColumnWithHeading(box, true, IFACE_("Materials"));
-  uiItemR(col, ptr, "import_all_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "import_usd_preview", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "import_materials"));
-  uiLayout *row = uiLayoutRow(col, true);
-  uiItemR(row, ptr, "set_material_blend", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiLayoutSetEnabled(row, RNA_boolean_get(ptr, "import_usd_preview"));
-  uiItemR(col, ptr, "mtl_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayout *sub = uiLayoutColumnWithHeading(col, true, IFACE_("Include"));
+    uiItemR(sub, ptr, "import_visible_only", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(sub, ptr, "import_defined_only", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  box = uiLayoutBox(layout);
-  col = uiLayoutColumn(box, true);
-  uiItemR(col, ptr, "import_textures_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
-  bool copy_textures = RNA_enum_get(op->ptr, "import_textures_mode") == USD_TEX_IMPORT_COPY;
-  row = uiLayoutRow(col, true);
-  uiItemR(row, ptr, "import_textures_dir", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiLayoutSetEnabled(row, copy_textures);
-  row = uiLayoutRow(col, true);
-  uiItemR(row, ptr, "tex_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiLayoutSetEnabled(row, copy_textures);
-  uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "import_materials"));
+    col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "set_frame_range", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    uiItemR(col, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(
+          C, layout, "USD_import_types", false, IFACE_("Object Types")))
+  {
+    uiLayout *col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_points", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    col = uiLayoutColumnWithHeading(panel, true, IFACE_("USD Purpose"));
+    uiItemR(col, ptr, "import_render", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_proxy", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_guide", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_geometry", true, IFACE_("Geometry")))
+  {
+    uiLayout *col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "read_mesh_uvs", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "read_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_subdiv", UI_ITEM_NONE, IFACE_("Subdivision"), ICON_NONE);
+
+    col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_material", true, IFACE_("Materials")))
+  {
+    uiLayout *col = uiLayoutColumn(panel, false);
+
+    uiItemR(col, ptr, "import_all_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_usd_preview", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "import_materials"));
+
+    uiLayout *row = uiLayoutRow(col, true);
+    uiItemR(row, ptr, "set_material_blend", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayoutSetEnabled(row, RNA_boolean_get(ptr, "import_usd_preview"));
+    uiItemR(col, ptr, "mtl_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_lights", true, IFACE_("Lights"))) {
+    uiLayout *col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "create_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_texture", true, IFACE_("Textures"))) {
+    uiLayout *col = uiLayoutColumn(panel, false);
+
+    uiItemR(col, ptr, "import_textures_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+    bool copy_textures = RNA_enum_get(op->ptr, "import_textures_mode") == USD_TEX_IMPORT_COPY;
+
+    uiLayout *row = uiLayoutRow(col, true);
+    uiItemR(row, ptr, "import_textures_dir", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayoutSetEnabled(row, copy_textures);
+    row = uiLayoutRow(col, true);
+    uiItemR(row, ptr, "tex_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayoutSetEnabled(row, copy_textures);
+    uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "import_materials"));
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(
+          C, layout, "USD_import_instancing", true, IFACE_("Particles and Instancing")))
+  {
+    uiLayout *col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "support_scene_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
 }
 
 void WM_OT_usd_import(wmOperatorType *ot)
@@ -1044,7 +1081,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna, "import_guide", false, "Guide", "Import guide geometry");
 
-  RNA_def_boolean(ot->srna, "import_proxy", true, "Proxy", "Import proxy geometry");
+  RNA_def_boolean(ot->srna, "import_proxy", false, "Proxy", "Import proxy geometry");
 
   RNA_def_boolean(ot->srna, "import_render", true, "Render", "Import final render geometry");
 
@@ -1134,9 +1171,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "import_defined_only",
                   true,
-                  "Import only defined USD primitives",
-                  "When disabled this allows importing USD primitives which are not defined,"
-                  "such as those with an override specifier");
+                  "Defined Primitives Only",
+                  "Import only defined USD primitives. When disabled this allows importing USD "
+                  "primitives which are not defined, such as those with an override specifier");
 }
 
 namespace blender::ed::io {
