@@ -532,10 +532,8 @@ struct ShapeKeyCurvePoint {
 };
 
 /* Build a mapping array for Curve objects with mixed sub-curve types. */
-static void rna_ShapeKey_data_begin_mixed(CollectionPropertyIterator *iter,
-                                          Key *key,
-                                          KeyBlock *kb,
-                                          Curve *cu)
+static void rna_ShapeKey_data_begin_mixed(
+    CollectionPropertyIterator *iter, PointerRNA *ptr, Key *key, KeyBlock *kb, Curve *cu)
 {
   int point_count = rna_ShapeKey_curve_find_index(key, kb->totelem);
 
@@ -560,7 +558,7 @@ static void rna_ShapeKey_data_begin_mixed(CollectionPropertyIterator *iter,
     }
   }
 
-  rna_iterator_array_begin(iter, points, sizeof(*points), point_count, true, nullptr);
+  rna_iterator_array_begin(iter, ptr, points, sizeof(*points), point_count, true, nullptr);
 }
 
 static void rna_ShapeKey_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -588,7 +586,7 @@ static void rna_ShapeKey_data_begin(CollectionPropertyIterator *iter, PointerRNA
 
     /* If types are mixed, build a mapping array. */
     if (type == nullptr) {
-      rna_ShapeKey_data_begin_mixed(iter, key, kb, cu);
+      rna_ShapeKey_data_begin_mixed(iter, ptr, key, kb, cu);
       return;
     }
     else {
@@ -597,7 +595,7 @@ static void rna_ShapeKey_data_begin(CollectionPropertyIterator *iter, PointerRNA
     }
   }
 
-  rna_iterator_array_begin(iter, (void *)kb->data, size, tot, 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, (void *)kb->data, size, tot, 0, nullptr);
 }
 
 static int rna_ShapeKey_data_length(PointerRNA *ptr)
@@ -679,7 +677,7 @@ static void rna_ShapeKey_points_begin(CollectionPropertyIterator *iter, PointerR
     /* Legacy curves have only curve points and bezier points. */
     tot = 0;
   }
-  rna_iterator_array_begin(iter, (void *)kb->data, key->elemsize, tot, 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, (void *)kb->data, key->elemsize, tot, 0, nullptr);
 }
 
 static int rna_ShapeKey_points_length(PointerRNA *ptr)

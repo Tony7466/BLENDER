@@ -1174,10 +1174,10 @@ static void rna_Scene_all_keyingsets_begin(CollectionPropertyIterator *iter, Poi
    * but only if we have any Keying Sets to use...
    */
   if (scene->keyingsets.first) {
-    rna_iterator_listbase_begin(iter, &scene->keyingsets, nullptr);
+    rna_iterator_listbase_begin(iter, ptr, &scene->keyingsets, nullptr);
   }
   else {
-    rna_iterator_listbase_begin(iter, &builtin_keyingsets, nullptr);
+    rna_iterator_listbase_begin(iter, ptr, &builtin_keyingsets, nullptr);
   }
 }
 
@@ -1233,7 +1233,7 @@ static bool rna_RenderSettings_stereoViews_skip(CollectionPropertyIterator *iter
 static void rna_RenderSettings_stereoViews_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   RenderData *rd = (RenderData *)ptr->data;
-  rna_iterator_listbase_begin(iter, &rd->views, rna_RenderSettings_stereoViews_skip);
+  rna_iterator_listbase_begin(iter, ptr, &rd->views, rna_RenderSettings_stereoViews_skip);
 }
 
 static std::optional<std::string> rna_RenderSettings_path(const PointerRNA * /*ptr*/)
@@ -2194,8 +2194,13 @@ static void rna_Scene_transform_orientation_slots_begin(CollectionPropertyIterat
 {
   Scene *scene = (Scene *)ptr->owner_id;
   TransformOrientationSlot *orient_slot = &scene->orientation_slots[0];
-  rna_iterator_array_begin(
-      iter, orient_slot, sizeof(*orient_slot), ARRAY_SIZE(scene->orientation_slots), 0, nullptr);
+  rna_iterator_array_begin(iter,
+                           ptr,
+                           orient_slot,
+                           sizeof(*orient_slot),
+                           ARRAY_SIZE(scene->orientation_slots),
+                           0,
+                           nullptr);
 }
 
 static int rna_Scene_transform_orientation_slots_length(PointerRNA * /*ptr*/)

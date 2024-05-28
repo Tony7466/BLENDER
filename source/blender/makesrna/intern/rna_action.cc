@@ -134,15 +134,19 @@ static animrig::ChannelBag &rna_data_channelbag(const PointerRNA *ptr)
 }
 
 template<typename T>
-static void rna_iterator_array_begin(CollectionPropertyIterator *iter, Span<T *> items)
+static void rna_iterator_array_begin(CollectionPropertyIterator *iter,
+                                     PointerRNA *ptr,
+                                     Span<T *> items)
 {
-  rna_iterator_array_begin(iter, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
 }
 
 template<typename T>
-static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSpan<T *> items)
+static void rna_iterator_array_begin(CollectionPropertyIterator *iter,
+                                     PointerRNA *ptr,
+                                     MutableSpan<T *> items)
 {
-  rna_iterator_array_begin(iter, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
 }
 
 static ActionBinding *rna_Action_bindings_new(bAction *anim_id,
@@ -176,7 +180,7 @@ static ActionBinding *rna_Action_bindings_new(bAction *anim_id,
 static void rna_iterator_action_layers_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   animrig::Action &anim = rna_action(ptr);
-  rna_iterator_array_begin(iter, anim.layers());
+  rna_iterator_array_begin(iter, ptr, anim.layers());
 }
 
 static int rna_iterator_action_layers_length(PointerRNA *ptr)
@@ -233,7 +237,7 @@ static void rna_iterator_animation_bindings_begin(CollectionPropertyIterator *it
                                                   PointerRNA *ptr)
 {
   animrig::Action &anim = rna_action(ptr);
-  rna_iterator_array_begin(iter, anim.bindings());
+  rna_iterator_array_begin(iter, ptr, anim.bindings());
 }
 
 static int rna_iterator_animation_bindings_length(PointerRNA *ptr)
@@ -327,7 +331,7 @@ static void rna_iterator_ActionLayer_strips_begin(CollectionPropertyIterator *it
                                                   PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
-  rna_iterator_array_begin(iter, layer.strips());
+  rna_iterator_array_begin(iter, ptr, layer.strips());
 }
 
 static int rna_iterator_ActionLayer_strips_length(PointerRNA *ptr)
@@ -411,7 +415,7 @@ static void rna_iterator_keyframestrip_channelbags_begin(CollectionPropertyItera
                                                          PointerRNA *ptr)
 {
   animrig::KeyframeStrip &key_strip = rna_data_keyframe_strip(ptr);
-  rna_iterator_array_begin(iter, key_strip.channelbags());
+  rna_iterator_array_begin(iter, ptr, key_strip.channelbags());
 }
 
 static int rna_iterator_keyframestrip_channelbags_length(PointerRNA *ptr)
@@ -454,7 +458,7 @@ static void rna_iterator_ChannelBag_fcurves_begin(CollectionPropertyIterator *it
                                                   PointerRNA *ptr)
 {
   animrig::ChannelBag &bag = rna_data_channelbag(ptr);
-  rna_iterator_array_begin(iter, bag.fcurves());
+  rna_iterator_array_begin(iter, ptr, bag.fcurves());
 }
 
 static int rna_iterator_ChannelBag_fcurves_length(PointerRNA *ptr)

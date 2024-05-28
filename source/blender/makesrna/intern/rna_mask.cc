@@ -140,7 +140,7 @@ static void rna_Mask_layers_begin(CollectionPropertyIterator *iter, PointerRNA *
 {
   Mask *mask = (Mask *)ptr->owner_id;
 
-  rna_iterator_listbase_begin(iter, &mask->masklayers, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &mask->masklayers, nullptr);
 }
 
 static int rna_Mask_layer_active_index_get(PointerRNA *ptr)
@@ -197,7 +197,7 @@ static void rna_MaskLayer_splines_begin(CollectionPropertyIterator *iter, Pointe
 {
   MaskLayer *masklay = (MaskLayer *)ptr->data;
 
-  rna_iterator_listbase_begin(iter, &masklay->splines, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &masklay->splines, nullptr);
 }
 
 static void rna_MaskLayer_name_set(PointerRNA *ptr, const char *value)

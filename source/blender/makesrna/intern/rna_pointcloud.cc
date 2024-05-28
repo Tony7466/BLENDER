@@ -72,6 +72,7 @@ static void rna_PointCloud_points_begin(CollectionPropertyIterator *iter, Pointe
 {
   PointCloud *pointcloud = rna_pointcloud(ptr);
   rna_iterator_array_begin(iter,
+                           ptr,
                            get_pointcloud_positions(pointcloud),
                            sizeof(float[3]),
                            pointcloud->totpoint,

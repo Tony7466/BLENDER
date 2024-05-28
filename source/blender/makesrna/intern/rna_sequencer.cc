@@ -323,6 +323,7 @@ static void rna_Sequence_elements_begin(CollectionPropertyIterator *iter, Pointe
 {
   Sequence *seq = (Sequence *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            (void *)seq->strip->stripdata,
                            sizeof(StripElem),
                            rna_SequenceEditor_elements_length(ptr),
@@ -340,6 +341,7 @@ static void rna_SequenceEditor_retiming_keys_begin(CollectionPropertyIterator *i
 {
   Sequence *seq = (Sequence *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            (void *)seq->retiming_keys,
                            sizeof(SeqRetimingKey),
                            SEQ_retiming_keys_count(seq),

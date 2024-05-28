@@ -894,7 +894,7 @@ static void rna_Object_vertex_groups_begin(CollectionPropertyIterator *iter, Poi
   ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
   iter->valid = defbase != nullptr;
 
-  rna_iterator_listbase_begin(iter, defbase, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, defbase, nullptr);
 }
 
 static void rna_VertexGroup_name_set(PointerRNA *ptr, const char *value)

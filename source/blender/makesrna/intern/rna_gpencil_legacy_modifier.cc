@@ -813,14 +813,20 @@ static void rna_Lineart_end_level_set(PointerRNA *ptr, int value)
 static void rna_GpencilDash_segments_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   DashGpencilModifierData *dmd = (DashGpencilModifierData *)ptr->data;
-  rna_iterator_array_begin(
-      iter, dmd->segments, sizeof(DashGpencilModifierSegment), dmd->segments_len, false, nullptr);
+  rna_iterator_array_begin(iter,
+                           ptr,
+                           dmd->segments,
+                           sizeof(DashGpencilModifierSegment),
+                           dmd->segments_len,
+                           false,
+                           nullptr);
 }
 
 static void rna_GpencilTime_segments_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            gpmd->segments,
                            sizeof(TimeGpencilModifierSegment),
                            gpmd->segments_len,

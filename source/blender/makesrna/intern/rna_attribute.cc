@@ -337,7 +337,7 @@ static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRN
   const size_t struct_size = CustomData_get_elem_size(layer);
   CustomData_ensure_data_is_mutable(layer, length);
 
-  rna_iterator_array_begin(iter, layer->data, struct_size, length, 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, layer->data, struct_size, length, 0, nullptr);
 }
 
 static int rna_Attribute_data_length(PointerRNA *ptr)
@@ -465,6 +465,7 @@ static bool rna_Attributes_noncolor_layer_skip(CollectionPropertyIterator *iter,
  * array iterators to loop over all. */
 static void rna_AttributeGroup_next_domain(ID *id,
                                            CollectionPropertyIterator *iter,
+                                           PointerRNA *ptr,
                                            bool(skip)(CollectionPropertyIterator *iter,
                                                       void *data))
 {
@@ -478,14 +479,14 @@ static void rna_AttributeGroup_next_domain(ID *id,
       return;
     }
     rna_iterator_array_begin(
-        iter, customdata->layers, sizeof(CustomDataLayer), customdata->totlayer, false, skip);
+        iter, ptr, customdata->layers, sizeof(CustomDataLayer), customdata->totlayer, false, skip);
   } while (!iter->valid);
 }
 
 void rna_AttributeGroup_iterator_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   memset(&iter->internal.array, 0, sizeof(iter->internal.array));
-  rna_AttributeGroup_next_domain(ptr->owner_id, iter, rna_Attributes_layer_skip);
+  rna_AttributeGroup_next_domain(ptr->owner_id, iter, ptr, rna_Attributes_layer_skip);
 }
 
 void rna_AttributeGroup_iterator_next(CollectionPropertyIterator *iter)
@@ -494,7 +495,7 @@ void rna_AttributeGroup_iterator_next(CollectionPropertyIterator *iter)
 
   if (!iter->valid) {
     ID *id = iter->parent.owner_id;
-    rna_AttributeGroup_next_domain(id, iter, rna_Attributes_layer_skip);
+    rna_AttributeGroup_next_domain(id, iter, &iter->parent, rna_Attributes_layer_skip);
   }
 }
 
@@ -512,7 +513,7 @@ PointerRNA rna_AttributeGroup_iterator_get(CollectionPropertyIterator *iter)
 void rna_AttributeGroup_color_iterator_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   memset(&iter->internal.array, 0, sizeof(iter->internal.array));
-  rna_AttributeGroup_next_domain(ptr->owner_id, iter, rna_Attributes_noncolor_layer_skip);
+  rna_AttributeGroup_next_domain(ptr->owner_id, iter, ptr, rna_Attributes_noncolor_layer_skip);
 }
 
 void rna_AttributeGroup_color_iterator_next(CollectionPropertyIterator *iter)
@@ -521,7 +522,7 @@ void rna_AttributeGroup_color_iterator_next(CollectionPropertyIterator *iter)
 
   if (!iter->valid) {
     ID *id = iter->parent.owner_id;
-    rna_AttributeGroup_next_domain(id, iter, rna_Attributes_noncolor_layer_skip);
+    rna_AttributeGroup_next_domain(id, iter, &iter->parent, rna_Attributes_noncolor_layer_skip);
   }
 }
 

@@ -924,7 +924,7 @@ static bool rna_Window_modal_handler_skip(CollectionPropertyIterator * /*iter*/,
 static void rna_Window_modal_operators_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   wmWindow *window = static_cast<wmWindow *>(ptr->data);
-  rna_iterator_listbase_begin(iter, &window->modalhandlers, rna_Window_modal_handler_skip);
+  rna_iterator_listbase_begin(iter, ptr, &window->modalhandlers, rna_Window_modal_handler_skip);
 }
 
 static PointerRNA rna_Window_modal_operators_get(CollectionPropertyIterator *iter)
@@ -946,7 +946,7 @@ static void rna_KeyMap_modal_event_values_items_begin(CollectionPropertyIterator
 
   const int totitem = RNA_enum_items_count(items);
 
-  rna_iterator_array_begin(iter, (void *)items, sizeof(EnumPropertyItem), totitem, false, nullptr);
+  rna_iterator_array_begin(iter, ptr,(void *)items, sizeof(EnumPropertyItem), totitem, false, nullptr);
 }
 
 static PointerRNA rna_KeyMapItem_properties_get(PointerRNA *ptr)

@@ -119,6 +119,7 @@ PointerRNA RNA_main_pointer_create(Main *main)
   ptr.owner_id = nullptr;
   ptr.type = &RNA_BlendData;
   ptr.data = main;
+  ptr.ancestors_num = 0;
   return ptr;
 }
 
@@ -145,6 +146,7 @@ PointerRNA RNA_id_pointer_create(ID *id)
   ptr.owner_id = id;
   ptr.type = idtype;
   ptr.data = id;
+  ptr.ancestors_num = 0;
   return ptr;
 }
 
@@ -164,6 +166,7 @@ PointerRNA RNA_pointer_create(ID *id, StructRNA *type, void *data)
   ptr.owner_id = id;
   ptr.type = type;
   ptr.data = data;
+  ptr.ancestors_num = 0;
 
   if (data) {
     while (ptr.type && ptr.type->refine) {
@@ -179,6 +182,30 @@ PointerRNA RNA_pointer_create(ID *id, StructRNA *type, void *data)
   return ptr;
 }
 
+PointerRNA RNA_pointer_create(const PointerRNA &parent, StructRNA *type, void *data)
+{
+  return rna_pointer_inherit_refine(&parent, type, data);
+}
+
+PointerRNA RNA_ancestor_pointer_create(const PointerRNA &ptr, const int ancestor_idx)
+{
+  if (ancestor_idx >= ptr.ancestors_num || ancestor_idx >= ANCESTOR_POINTERRNA_MAX) {
+    return PointerRNA_NULL;
+  }
+
+  PointerRNA ancestor_ptr = PointerRNA_NULL;
+  ancestor_ptr.owner_id = ptr.owner_id;
+  ancestor_ptr.type = ptr.ancestors[ancestor_idx].type;
+  ancestor_ptr.data = ptr.ancestors[ancestor_idx].data;
+  if (ancestor_idx > 0) {
+    for (int i = 0; i < ancestor_idx; i++) {
+      ancestor_ptr.ancestors[i] = ptr.ancestors[i];
+    }
+  }
+
+  return ancestor_ptr;
+}
+
 bool RNA_pointer_is_null(const PointerRNA *ptr)
 {
   return (ptr->data == nullptr) || (ptr->owner_id == nullptr) || (ptr->type == nullptr);
@@ -190,9 +217,25 @@ static void rna_pointer_inherit_id(const StructRNA *type,
 {
   if (type && type->flag & STRUCT_ID) {
     ptr->owner_id = static_cast<ID *>(ptr->data);
+    ptr->ancestors_num = 0;
+    memset(ptr->ancestors, 0, sizeof(ptr->ancestors));
   }
   else {
     ptr->owner_id = parent->owner_id;
+    for (int i = 0; i < parent->ancestors_num; i++) {
+      if (i >= ANCESTOR_POINTERRNA_MAX) {
+        break;
+      }
+      ptr->ancestors[i] = parent->ancestors[i];
+    }
+    if (parent->ancestors_num >= 0 && parent->ancestors_num < ANCESTOR_POINTERRNA_MAX) {
+      ptr->ancestors[parent->ancestors_num].type = parent->type;
+      ptr->ancestors[parent->ancestors_num].data = parent->data;
+      ptr->ancestors_num = parent->ancestors_num + 1;
+    }
+    else {
+      ptr->ancestors_num = parent->ancestors_num;
+    }
   }
 }
 
@@ -202,6 +245,7 @@ PointerRNA RNA_blender_rna_pointer_create()
   ptr.owner_id = nullptr;
   ptr.type = &RNA_BlenderRNA;
   ptr.data = &BLENDER_RNA;
+  ptr.ancestors_num = 0;
   return ptr;
 }
 
@@ -211,6 +255,7 @@ PointerRNA rna_pointer_inherit_refine(const PointerRNA *ptr, StructRNA *type, vo
     PointerRNA result;
     result.data = data;
     result.type = type;
+    result.ancestors_num = 0;
     rna_pointer_inherit_id(type, ptr, &result);
 
     while (result.type->refine) {
@@ -4044,10 +4089,10 @@ void RNA_property_collection_begin(PointerRNA *ptr,
 
     if (idprop) {
       rna_iterator_array_begin(
-          iter, IDP_IDPArray(idprop), sizeof(IDProperty), idprop->len, false, nullptr);
+          iter, ptr, IDP_IDPArray(idprop), sizeof(IDProperty), idprop->len, false, nullptr);
     }
     else {
-      rna_iterator_array_begin(iter, nullptr, sizeof(IDProperty), 0, false, nullptr);
+      rna_iterator_array_begin(iter, ptr, nullptr, sizeof(IDProperty), 0, false, nullptr);
     }
 
     if (iter->valid) {
@@ -5116,9 +5161,12 @@ int RNA_property_collection_raw_set(ReportList *reports,
 /* Standard iterator functions */
 
 void rna_iterator_listbase_begin(CollectionPropertyIterator *iter,
+                                 PointerRNA *ptr,
                                  ListBase *lb,
                                  IteratorSkipFunc skip)
 {
+  iter->parent = *ptr;
+
   ListBaseIterator *internal = &iter->internal.listbase;
 
   internal->link = (lb) ? static_cast<Link *>(lb->first) : nullptr;
@@ -5163,26 +5211,29 @@ PointerRNA rna_listbase_lookup_int(PointerRNA *ptr, StructRNA *type, ListBase *l
 }
 
 void rna_iterator_array_begin(CollectionPropertyIterator *iter,
-                              void *ptr,
+                              PointerRNA *ptr,
+                              void *data,
                               int itemsize,
                               int length,
                               bool free_ptr,
                               IteratorSkipFunc skip)
 {
+  iter->parent = *ptr;
+
   ArrayIterator *internal;
 
-  if (ptr == nullptr) {
+  if (data == nullptr) {
     length = 0;
   }
   else if (length == 0) {
-    ptr = nullptr;
+    data = nullptr;
     itemsize = 0;
   }
 
   internal = &iter->internal.array;
-  internal->ptr = static_cast<char *>(ptr);
-  internal->free_ptr = free_ptr ? ptr : nullptr;
-  internal->endptr = ((char *)ptr) + length * itemsize;
+  internal->ptr = static_cast<char *>(data);
+  internal->free_ptr = free_ptr ? data : nullptr;
+  internal->endptr = ((char *)data) + length * itemsize;
   internal->itemsize = itemsize;
   internal->skip = skip;
   internal->length = length;

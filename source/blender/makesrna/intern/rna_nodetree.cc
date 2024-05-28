@@ -2125,7 +2125,7 @@ static void rna_Node_internal_links_begin(CollectionPropertyIterator *iter, Poin
   bNodeLink *begin;
   int len;
   blender::bke::nodeInternalLinks(node, &begin, &len);
-  rna_iterator_array_begin(iter, begin, sizeof(bNodeLink), len, false, nullptr);
+  rna_iterator_array_begin(iter, ptr,begin, sizeof(bNodeLink), len, false, nullptr);
 }
 
 /**
@@ -3135,7 +3135,7 @@ static void rna_Image_Node_update_id(Main *bmain, Scene *scene, PointerRNA *ptr)
 static void rna_NodeOutputFile_slots_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
-  rna_iterator_listbase_begin(iter, &node->inputs, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &node->inputs, nullptr);
 }
 
 static PointerRNA rna_NodeOutputFile_slot_file_get(CollectionPropertyIterator *iter)

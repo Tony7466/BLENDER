@@ -64,7 +64,7 @@ static void rna_CacheFile_dependency_update(Main *bmain, Scene *scene, PointerRN
 static void rna_CacheFile_object_paths_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   CacheFile *cache_file = (CacheFile *)ptr->data;
-  rna_iterator_listbase_begin(iter, &cache_file->object_paths, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &cache_file->object_paths, nullptr);
 }
 
 static PointerRNA rna_CacheFile_active_layer_get(PointerRNA *ptr)

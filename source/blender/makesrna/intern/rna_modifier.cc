@@ -854,7 +854,7 @@ static void rna_UVProject_projectors_begin(CollectionPropertyIterator *iter, Poi
 {
   UVProjectModifierData *uvp = (UVProjectModifierData *)ptr->data;
   rna_iterator_array_begin(
-      iter, (void *)uvp->projectors, sizeof(Object *), uvp->projectors_num, 0, nullptr);
+      iter, ptr, (void *)uvp->projectors, sizeof(Object *), uvp->projectors_num, 0, nullptr);
 }
 
 static StructRNA *rna_Modifier_refine(PointerRNA *ptr)
@@ -2149,6 +2149,7 @@ static void rna_GreasePencilDashModifier_segments_begin(CollectionPropertyIterat
 {
   auto *dmd = static_cast<GreasePencilDashModifierData *>(ptr->data);
   rna_iterator_array_begin(iter,
+                           ptr,
                            dmd->segments_array,
                            sizeof(GreasePencilDashModifierSegment),
                            dmd->segments_num,
@@ -2252,6 +2253,7 @@ static void rna_GreasePencilTimeModifier_segments_begin(CollectionPropertyIterat
 {
   auto *tmd = static_cast<GreasePencilTimeModifierData *>(ptr->data);
   rna_iterator_array_begin(iter,
+                           ptr,
                            tmd->segments_array,
                            sizeof(GreasePencilTimeModifierSegment),
                            tmd->segments_num,

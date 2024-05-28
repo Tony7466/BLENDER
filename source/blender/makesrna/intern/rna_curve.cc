@@ -388,6 +388,7 @@ static void rna_BPoint_array_begin(CollectionPropertyIterator *iter, PointerRNA 
 {
   Nurb *nu = static_cast<Nurb *>(ptr->data);
   rna_iterator_array_begin(iter,
+                           ptr,
                            static_cast<void *>(nu->bp),
                            sizeof(BPoint),
                            nu->pntsv > 0 ? nu->pntsu * nu->pntsv : nu->pntsu,
@@ -819,7 +820,7 @@ static std::optional<std::string> rna_TextBox_path(const PointerRNA *ptr)
 static void rna_Curve_splines_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Curve *cu = reinterpret_cast<Curve *>(ptr->owner_id);
-  rna_iterator_listbase_begin(iter, BKE_curve_nurbs_get(cu), nullptr);
+  rna_iterator_listbase_begin(iter, ptr, BKE_curve_nurbs_get(cu), nullptr);
 }
 
 static bool rna_Curve_is_editmode_get(PointerRNA *ptr)

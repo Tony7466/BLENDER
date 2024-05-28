@@ -36,13 +36,40 @@ struct bContext;
  * in some cases this information is needed to correctly get/set
  * the properties and validate them. */
 
-struct PointerRNA {
-  ID *owner_id;
+#define ANCESTOR_POINTERRNA_MAX 8
+/**
+ * An ancestor of a given PointerRNA. The owner ID is not needed here, it is assumed to always be
+ * the same as the owner ID of the PropertyRNA itself.
+ */
+struct AncestorPointerRNA {
   StructRNA *type;
   void *data;
 };
 
-constexpr PointerRNA PointerRNA_NULL{nullptr, nullptr, nullptr};
+struct PointerRNA {
+  ID *owner_id;
+  StructRNA *type;
+  void *data;
+
+  /**
+   * A chain of ancestors of this PointerRNA, if known. The last item is the closest ancestor.
+   *
+   * E.g. Parsing `vgroup = C.object.data.vertices[0].groups[0]` would result in the PointerRNA of
+   * `vgroup` having two ancestors: `vertices[0]` and `data` (aka the Mesh ID).
+   *
+   * For PointerRNA of IDs, this should always be empty (TODO: unless maybe for embedded IDs? But
+   * should not be needed currently).
+   *
+   * There is no guarantee that this chani is always (fully) valid and will lead to thr root owner
+   * of the wrapped data (typically and ID). Depending on how the PointerRNA was created, and the
+   * available information at that time, it could be empty or only feature a partial ancestors
+   * chain.
+   */
+  AncestorPointerRNA ancestors[ANCESTOR_POINTERRNA_MAX];
+  int ancestors_num;
+};
+
+constexpr PointerRNA PointerRNA_NULL{nullptr, nullptr, nullptr, {{nullptr, nullptr}}, 0};
 
 struct PropertyPointerRNA {
   PointerRNA ptr;

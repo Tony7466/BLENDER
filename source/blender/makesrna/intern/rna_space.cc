@@ -1047,7 +1047,7 @@ static void rna_SpaceView3D_region_quadviews_begin(CollectionPropertyIterator *i
     }
   }
 
-  rna_iterator_listbase_begin(iter, &lb, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &lb, nullptr);
 }
 
 static PointerRNA rna_SpaceView3D_region_quadviews_get(CollectionPropertyIterator *iter)

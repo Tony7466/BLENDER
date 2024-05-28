@@ -461,13 +461,13 @@ static void rna_RenderEngine_engine_frame_set(RenderEngine *engine, int frame, f
 static void rna_RenderResult_views_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   RenderResult *rr = (RenderResult *)ptr->data;
-  rna_iterator_listbase_begin(iter, &rr->views, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &rr->views, nullptr);
 }
 
 static void rna_RenderResult_layers_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   RenderResult *rr = (RenderResult *)ptr->data;
-  rna_iterator_listbase_begin(iter, &rr->layers, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &rr->layers, nullptr);
 }
 
 static void rna_RenderResult_stamp_data_add_field(RenderResult *rr,
@@ -480,7 +480,7 @@ static void rna_RenderResult_stamp_data_add_field(RenderResult *rr,
 static void rna_RenderLayer_passes_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   RenderLayer *rl = (RenderLayer *)ptr->data;
-  rna_iterator_listbase_begin(iter, &rl->passes, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &rl->passes, nullptr);
 }
 
 static int rna_RenderPass_rect_get_length(const PointerRNA *ptr,

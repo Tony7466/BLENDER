@@ -342,6 +342,7 @@ static void rna_Mesh_loop_triangles_begin(CollectionPropertyIterator *iter, Poin
   const Mesh *mesh = rna_mesh(ptr);
   const blender::Span<blender::int3> corner_tris = mesh->corner_tris();
   rna_iterator_array_begin(iter,
+                           ptr,
                            const_cast<blender::int3 *>(corner_tris.data()),
                            sizeof(blender::int3),
                            corner_tris.size(),
@@ -373,6 +374,7 @@ static void rna_Mesh_loop_triangle_polygons_begin(CollectionPropertyIterator *it
 {
   const Mesh *mesh = rna_mesh(ptr);
   rna_iterator_array_begin(iter,
+                           ptr,
                            const_cast<int *>(mesh->corner_tri_faces().data()),
                            sizeof(int),
                            BKE_mesh_runtime_corner_tris_len(mesh),
@@ -778,10 +780,11 @@ static void rna_MeshVertex_groups_begin(CollectionPropertyIterator *iter, Pointe
     const int index = rna_MeshVertex_index_get(ptr);
     MDeformVert *dvert = &dverts[index];
 
-    rna_iterator_array_begin(iter, dvert->dw, sizeof(MDeformWeight), dvert->totweight, 0, nullptr);
+    rna_iterator_array_begin(
+        iter, ptr, dvert->dw, sizeof(MDeformWeight), dvert->totweight, 0, nullptr);
   }
   else {
-    rna_iterator_array_begin(iter, nullptr, 0, 0, 0, nullptr);
+    rna_iterator_array_begin(iter, ptr, nullptr, 0, 0, 0, nullptr);
   }
 }
 
@@ -943,7 +946,7 @@ static void rna_MeshUVLoopLayer_data_begin(CollectionPropertyIterator *iter, Poi
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
   const int length = (mesh->runtime->edit_mesh) ? 0 : mesh->corners_num;
   CustomData_ensure_data_is_mutable(layer, length);
-  rna_iterator_array_begin(iter, layer->data, sizeof(float[2]), length, 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, layer->data, sizeof(float[2]), length, 0, nullptr);
 }
 
 static int rna_MeshUVLoopLayer_data_length(PointerRNA *ptr)
@@ -976,6 +979,7 @@ static void bool_layer_begin(CollectionPropertyIterator *iter,
   layername_func(layer->name, bool_layer_name);
 
   rna_iterator_array_begin(iter,
+                           ptr,
                            MeshUVLoopLayer_get_bool_layer(mesh, bool_layer_name),
                            sizeof(MBoolProperty),
                            (mesh->runtime->edit_mesh) ? 0 : mesh->corners_num,
@@ -1047,6 +1051,7 @@ static void rna_MeshUVLoopLayer_uv_begin(CollectionPropertyIterator *iter, Point
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
 
   rna_iterator_array_begin(iter,
+                           ptr,
                            layer->data,
                            sizeof(float[2]),
                            (mesh->runtime->edit_mesh) ? 0 : mesh->corners_num,
@@ -1157,6 +1162,7 @@ static void rna_MeshLoopColorLayer_data_begin(CollectionPropertyIterator *iter, 
   Mesh *mesh = rna_mesh(ptr);
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            layer->data,
                            sizeof(MLoopCol),
                            (mesh->runtime->edit_mesh) ? 0 : mesh->corners_num,
@@ -1229,6 +1235,7 @@ static void rna_MeshSkinVertexLayer_data_begin(CollectionPropertyIterator *iter,
   Mesh *mesh = rna_mesh(ptr);
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            layer->data,
                            sizeof(MVertSkin),
                            (mesh->runtime->edit_mesh) ? 0 : mesh->verts_num,
@@ -1521,6 +1528,7 @@ static void rna_Mesh_vertices_begin(CollectionPropertyIterator *iter, PointerRNA
 {
   Mesh *mesh = rna_mesh(ptr);
   rna_iterator_array_begin(iter,
+                           ptr,
                            mesh->vert_positions_for_write().data(),
                            sizeof(blender::float3),
                            mesh->verts_num,
@@ -1550,7 +1558,8 @@ static void rna_Mesh_edges_begin(CollectionPropertyIterator *iter, PointerRNA *p
   Mesh *mesh = rna_mesh(ptr);
   blender::int2 *edges = static_cast<blender::int2 *>(CustomData_get_layer_named_for_write(
       &mesh->edge_data, CD_PROP_INT32_2D, ".edge_verts", mesh->edges_num));
-  rna_iterator_array_begin(iter, edges, sizeof(blender::int2), mesh->edges_num, false, nullptr);
+  rna_iterator_array_begin(
+      iter, ptr, edges, sizeof(blender::int2), mesh->edges_num, false, nullptr);
 }
 static int rna_Mesh_edges_length(PointerRNA *ptr)
 {
@@ -1575,8 +1584,13 @@ bool rna_Mesh_edges_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 static void rna_Mesh_polygons_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Mesh *mesh = rna_mesh(ptr);
-  rna_iterator_array_begin(
-      iter, mesh->face_offsets_for_write().data(), sizeof(int), mesh->faces_num, false, nullptr);
+  rna_iterator_array_begin(iter,
+                           ptr,
+                           mesh->face_offsets_for_write().data(),
+                           sizeof(int),
+                           mesh->faces_num,
+                           false,
+                           nullptr);
 }
 static int rna_Mesh_polygons_length(PointerRNA *ptr)
 {
@@ -1598,8 +1612,13 @@ bool rna_Mesh_polygons_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 static void rna_Mesh_loops_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Mesh *mesh = rna_mesh(ptr);
-  rna_iterator_array_begin(
-      iter, mesh->corner_verts_for_write().data(), sizeof(int), mesh->corners_num, false, nullptr);
+  rna_iterator_array_begin(iter,
+                           ptr,
+                           mesh->corner_verts_for_write().data(),
+                           sizeof(int),
+                           mesh->corners_num,
+                           false,
+                           nullptr);
 }
 static int rna_Mesh_loops_length(PointerRNA *ptr)
 {
@@ -1628,6 +1647,7 @@ static void rna_Mesh_vertex_normals_begin(CollectionPropertyIterator *iter, Poin
   const Mesh *mesh = rna_mesh(ptr);
   const blender::Span<blender::float3> normals = mesh->vert_normals();
   rna_iterator_array_begin(iter,
+                           ptr,
                            const_cast<blender::float3 *>(normals.data()),
                            sizeof(blender::float3),
                            normals.size(),
@@ -1659,6 +1679,7 @@ static void rna_Mesh_poly_normals_begin(CollectionPropertyIterator *iter, Pointe
   const Mesh *mesh = rna_mesh(ptr);
   const blender::Span<blender::float3> normals = mesh->face_normals();
   rna_iterator_array_begin(iter,
+                           ptr,
                            const_cast<blender::float3 *>(normals.data()),
                            sizeof(blender::float3),
                            normals.size(),
@@ -1694,7 +1715,7 @@ static void rna_Mesh_corner_normals_begin(CollectionPropertyIterator *iter, Poin
     return;
   }
   rna_iterator_array_begin(
-      iter, (void *)normals.data(), sizeof(float[3]), mesh->corners_num, false, nullptr);
+      iter, ptr, (void *)normals.data(), sizeof(float[3]), mesh->corners_num, false, nullptr);
 }
 
 static int rna_Mesh_corner_normals_length(PointerRNA *ptr)

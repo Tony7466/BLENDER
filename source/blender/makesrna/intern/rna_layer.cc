@@ -213,7 +213,7 @@ static void rna_LayerObjects_selected_begin(CollectionPropertyIterator *iter, Po
 {
   ViewLayer *view_layer = (ViewLayer *)ptr->data;
   rna_iterator_listbase_begin(
-      iter, BKE_view_layer_object_bases_get(view_layer), rna_ViewLayer_objects_selected_skip);
+      iter, ptr, BKE_view_layer_object_bases_get(view_layer), rna_ViewLayer_objects_selected_skip);
 }
 
 static void rna_ViewLayer_update_tagged(ID *id_ptr,
@@ -383,7 +383,7 @@ void rna_LayerCollection_children_begin(CollectionPropertyIterator *iter, Pointe
   ViewLayer *view_layer = BKE_view_layer_find_from_collection(scene, lc);
   BKE_view_layer_synced_ensure(scene, view_layer);
 
-  rna_iterator_listbase_begin(iter, &lc->layer_collections, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &lc->layer_collections, nullptr);
 }
 
 static bool rna_LayerCollection_children_lookupint(PointerRNA *ptr, int key, PointerRNA *r_ptr)

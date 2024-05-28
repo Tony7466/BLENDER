@@ -102,6 +102,7 @@ static void rna_Curves_curve_offset_data_begin(CollectionPropertyIterator *iter,
 {
   Curves *curves = rna_curves(ptr);
   rna_iterator_array_begin(iter,
+                           ptr,
                            curves->geometry.wrap().offsets_for_write().data(),
                            sizeof(int),
                            curves->geometry.curve_num + 1,
@@ -143,6 +144,7 @@ static void rna_Curves_curves_begin(CollectionPropertyIterator *iter, PointerRNA
 {
   Curves *curves = rna_curves(ptr);
   rna_iterator_array_begin(iter,
+                           ptr,
                            curves->geometry.wrap().offsets_for_write().data(),
                            sizeof(int),
                            curves->geometry.curve_num,
@@ -190,6 +192,7 @@ static void rna_Curves_position_data_begin(CollectionPropertyIterator *iter, Poi
 {
   Curves *curves = rna_curves(ptr);
   rna_iterator_array_begin(iter,
+                           ptr,
                            get_curves_positions_for_write(*curves),
                            sizeof(float[3]),
                            curves->geometry.point_num,
@@ -288,7 +291,7 @@ static void rna_CurveSlice_points_begin(CollectionPropertyIterator *iter, Pointe
   const int size = rna_CurveSlice_points_length_get(ptr);
   float(*positions)[3] = get_curves_positions_for_write(*curves);
   float(*co)[3] = positions + offset;
-  rna_iterator_array_begin(iter, co, sizeof(float[3]), size, 0, nullptr);
+  rna_iterator_array_begin(iter, ptr, co, sizeof(float[3]), size, 0, nullptr);
 }
 
 static void rna_Curves_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -296,7 +299,7 @@ static void rna_Curves_normals_begin(CollectionPropertyIterator *iter, PointerRN
   Curves *curves = rna_curves(ptr);
   float(*positions)[3] = blender::ed::curves::point_normals_array_create(curves);
   const int size = curves->geometry.point_num;
-  rna_iterator_array_begin(iter, positions, sizeof(float[3]), size, true, nullptr);
+  rna_iterator_array_begin(iter, ptr, positions, sizeof(float[3]), size, true, nullptr);
 }
 
 static void rna_Curves_add_curves(Curves *curves_id,

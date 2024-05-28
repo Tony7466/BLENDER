@@ -25,7 +25,7 @@
   { \
     CustomData *data = rna_mesh_##customdata_type(ptr); \
     if (data) { \
-      rna_iterator_array_begin(iter, \
+      rna_iterator_array_begin(iter, ptr,\
                                (void *)data->layers, \
                                sizeof(CustomDataLayer), \
                                data->totlayer, \
@@ -33,7 +33,7 @@
                                rna_##collection_name##_check); \
     } \
     else { \
-      rna_iterator_array_begin(iter, NULL, 0, 0, 0, NULL); \
+      rna_iterator_array_begin(iter, ptr,NULL, 0, 0, 0, NULL); \
     } \
   } \
   /* length */ \

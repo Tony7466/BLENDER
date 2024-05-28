@@ -959,7 +959,7 @@ static StructRNA *rna_GizmoGroup_refine(PointerRNA *gzgroup_ptr)
 static void rna_GizmoGroup_gizmos_begin(CollectionPropertyIterator *iter, PointerRNA *gzgroup_ptr)
 {
   wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(gzgroup_ptr->data);
-  rna_iterator_listbase_begin(iter, &gzgroup->gizmos, nullptr);
+  rna_iterator_listbase_begin(iter, gzgroup_ptr, &gzgroup->gizmos, nullptr);
 }
 
 /** \} */

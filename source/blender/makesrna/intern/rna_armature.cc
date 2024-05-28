@@ -192,6 +192,7 @@ static void rna_iterator_bone_collections_all_begin(CollectionPropertyIterator *
 {
   bArmature *arm = (bArmature *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            arm->collection_array,
                            sizeof(BoneCollection *),
                            arm->collection_array_num,
@@ -209,6 +210,7 @@ static void rna_iterator_bone_collections_roots_begin(CollectionPropertyIterator
 {
   bArmature *arm = (bArmature *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            arm->collection_array,
                            sizeof(BoneCollection *),
                            arm->collection_root_count,
@@ -236,6 +238,7 @@ static void rna_iterator_bone_collection_children_begin(CollectionPropertyIterat
   bArmature *arm = (bArmature *)ptr->owner_id;
   const BoneCollection *bcoll = (BoneCollection *)ptr->data;
   rna_iterator_array_begin(iter,
+                           ptr,
                            arm->collection_array + bcoll->child_index,
                            sizeof(BoneCollection *),
                            bcoll->child_count,
@@ -465,7 +468,7 @@ static void rna_BoneCollection_bones_begin(CollectionPropertyIterator *iter, Poi
   }
 
   BoneCollection *bcoll = (BoneCollection *)ptr->data;
-  rna_iterator_listbase_begin(iter, &bcoll->bones, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &bcoll->bones, nullptr);
 }
 
 static PointerRNA rna_BoneCollection_bones_get(CollectionPropertyIterator *iter)
@@ -481,7 +484,7 @@ static void rna_Bone_collections_begin(CollectionPropertyIterator *iter, Pointer
 {
   Bone *bone = (Bone *)ptr->data;
   ListBase /*BoneCollectionReference*/ bone_collection_refs = bone->runtime.collections;
-  rna_iterator_listbase_begin(iter, &bone_collection_refs, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &bone_collection_refs, nullptr);
 }
 
 static PointerRNA rna_Bone_collections_get(CollectionPropertyIterator *iter)
@@ -497,7 +500,7 @@ static void rna_EditBone_collections_begin(CollectionPropertyIterator *iter, Poi
 {
   EditBone *ebone = (EditBone *)ptr->data;
   ListBase /*BoneCollectionReference*/ bone_collection_refs = ebone->bone_collections;
-  rna_iterator_listbase_begin(iter, &bone_collection_refs, nullptr);
+  rna_iterator_listbase_begin(iter, ptr, &bone_collection_refs, nullptr);
 }
 
 /* Armature.collections library override support. */
