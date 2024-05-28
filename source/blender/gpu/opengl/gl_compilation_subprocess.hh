@@ -13,6 +13,15 @@ namespace blender::gpu {
 /* The size of the memory pools shared by Blender and the compilation subprocesses. */
 constexpr size_t compilation_subprocess_shared_memory_size = 1024 * 1024 * 5; /* 5mB */
 
+struct ShaderSourceHeader {
+  enum Type { COMPUTE, GRAPHICS, GRAPHICS_GEOM };
+  /* The type of program being compiled. */
+  Type type;
+  /* When casting a shared memory pool into a ShaderSourceHeader*, this is the first char of the
+   * first stage source. The stages follows the execution order (eg. vert > geom > frag). */
+  char source_start;
+};
+
 struct ShaderBinaryHeader {
   /* Size of the shader binary data. */
   int32_t size;
