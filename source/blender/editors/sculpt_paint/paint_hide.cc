@@ -1020,6 +1020,9 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   Array<bool> node_changed(nodes.size(), false);
 
   for (const int i : IndexRange(iterations)) {
+    BitGroupVector<> &read_buffer = buffers.read_buffer(i);
+    BitGroupVector<> &write_buffer = buffers.write_buffer(i);
+
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       for (const int node_index : range) {
         PBVHNode *node = nodes[node_index];
@@ -1029,7 +1032,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
           for (const int y : IndexRange(key.grid_size)) {
             for (const int x : IndexRange(key.grid_size)) {
               const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
-              if (buffers.read_buffer(i)[grid_index][grid_elem_idx] != desired_state) {
+              if (read_buffer[grid_index][grid_elem_idx] != desired_state) {
                 continue;
               }
 
@@ -1046,8 +1049,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                 const int neighbor_grid_elem_idx = elem_xy_to_index(
                     neighbor.x, neighbor.y, key.grid_size);
 
-                buffers.write_buffer(i)[neighbor.grid_index][neighbor_grid_elem_idx].set(
-                    desired_state);
+                write_buffer[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
               }
             }
           }
