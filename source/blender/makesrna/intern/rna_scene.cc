@@ -4217,6 +4217,17 @@ static void rna_def_sequencer_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Markers", "Snap to markers");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
+  prop = RNA_def_property(srna, "snap_bounds_to_borders", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "snap_mode", SEQ_SNAP_BOUNDS_TO_BORDERS);
+  RNA_def_property_ui_text(prop, "Borders", "Snap bounding boxes to preview borders");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_pivot_to_centers", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "snap_mode", SEQ_SNAP_PIVOT_TO_CENTERS);
+  RNA_def_property_ui_text(
+      prop, "Centers", "Snap pivot to horizontal and vertical preview centers");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
+
   prop = RNA_def_property(srna, "snap_ignore_muted", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag", SEQ_SNAP_IGNORE_MUTED);
   RNA_def_property_ui_text(prop, "Ignore Muted Strips", "Don't snap to hidden strips");

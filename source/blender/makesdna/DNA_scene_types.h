@@ -2436,6 +2436,9 @@ enum {
   SEQ_SNAP_TO_CURRENT_FRAME = 1 << 1,
   SEQ_SNAP_TO_STRIP_HOLD = 1 << 2,
   SEQ_SNAP_TO_MARKERS = 1 << 3,
+
+  SEQ_SNAP_BOUNDS_TO_BORDERS = 1 << 4,
+  SEQ_SNAP_PIVOT_TO_CENTERS = 1 << 5,
 };
 
 /** #SequencerToolSettings::snap_flag */
