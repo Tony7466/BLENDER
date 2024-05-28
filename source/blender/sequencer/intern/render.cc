@@ -1212,9 +1212,6 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
                                      float timeline_frame,
                                      bool *r_is_proxy_image)
 {
-  /* Load all the videos. */
-  // seq_open_anim_file(context->scene, seq, false);
-
   ImBuf *ibuf = nullptr;
   const int totfiles = seq_num_files(context->scene, seq->views_format, true);
   bool is_multiview_render = (seq->flag & SEQ_USE_VIEWS) != 0 &&
