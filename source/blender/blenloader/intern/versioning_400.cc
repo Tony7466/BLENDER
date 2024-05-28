@@ -3668,7 +3668,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
           if (sl->spacetype == SPACE_NODE) {
-            SpaceNode *snode = (SpaceNode *)sl;
+            SpaceNode *snode = reinterpret_cast<SpaceNode *>(sl);
             snode->overlay.flag |= SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS;
           }
         }
