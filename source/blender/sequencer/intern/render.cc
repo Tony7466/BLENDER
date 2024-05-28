@@ -1213,15 +1213,16 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
                                      bool *r_is_proxy_image)
 {
   ImBuf *ibuf = nullptr;
+
+  Scene *scene = context->scene;
+  AnimManager *anim_manager = seq_anim_manager_ensure(SEQ_editing_get(context->scene));
+  blender::Vector<ImBufAnim *> anims = anim_manager->strip_anims_get(scene, seq);
+
+  const int anim_count = anims.size();
   const int totfiles = seq_num_files(context->scene, seq->views_format, true);
   bool is_multiview_render = (seq->flag & SEQ_USE_VIEWS) != 0 &&
                              (context->scene->r.scemode & R_MULTIVIEW) != 0 &&
-                             BLI_listbase_count_at_most(&seq->anims, totfiles + 1) == totfiles;
-
-  Scene *scene = context->scene;
-  Editing *ed = SEQ_editing_get(context->scene);
-  AnimManager *anim_manager = seq_anim_manager_ensure(ed);
-  blender::Vector<ImBufAnim *> anims = anim_manager->strip_anims_get(scene, seq);
+                             std::min(anim_count, totfiles + 1) == totfiles;
 
   if (anims.size() == 0) {
     return nullptr;
@@ -1229,8 +1230,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
 
   if (is_multiview_render) {
     ImBuf **ibuf_arr;
-    int totviews = std::min(BKE_scene_multiview_num_views_get(&context->scene->r),
-                            int(anims.size()));
+    int totviews = std::min(BKE_scene_multiview_num_views_get(&context->scene->r), anim_count);
     ibuf_arr = static_cast<ImBuf **>(
         MEM_callocN(sizeof(ImBuf *) * totviews, "Sequence Image Views Imbufs"));
 

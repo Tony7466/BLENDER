@@ -200,7 +200,6 @@ ImBuf *seq_proxy_fetch(const SeqRenderData *context, Sequence *seq, int timeline
   StripProxy *proxy = seq->strip->proxy;
   const eSpaceSeq_Proxy_RenderSize psize = eSpaceSeq_Proxy_RenderSize(
       context->preview_render_size);
-  StripAnim *sanim;
 
   /* only use proxies, if they are enabled (even if present!) */
   if (!SEQ_can_use_proxy(context, seq, SEQ_rendersize_to_proxysize(psize))) {
@@ -223,11 +222,14 @@ ImBuf *seq_proxy_fetch(const SeqRenderData *context, Sequence *seq, int timeline
       return nullptr;
     }
 
-    // seq_open_anim_file(context->scene, seq, true);
-    sanim = static_cast<StripAnim *>(seq->anims.first);
+    AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(context->scene));
+    manager->strip_anims_load_and_lock(context->scene, seq);
+    blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(context->scene, seq);
+    ImBufAnim *anim = anims.size() > 0 ? anims[0] : nullptr;
 
+    // XXX what in hell is this????
     frameno = IMB_anim_index_get_frame_index(
-        sanim ? sanim->anim : nullptr, IMB_Timecode_Type(seq->strip->proxy->tc), frameno);
+        anim, IMB_Timecode_Type(seq->strip->proxy->tc), frameno);
 
     return IMB_anim_absolute(proxy->anim, frameno, IMB_TC_NONE, IMB_PROXY_NONE);
   }
@@ -369,6 +371,16 @@ static bool seq_proxy_multiview_context_invalid(Sequence *seq,
   return false;
 }
 
+static int seq_anims_count(const Scene *scene, Sequence *seq)
+{
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+  manager->strip_anims_load_and_lock(scene, seq);
+  blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+  int count = anims.size();
+  manager->strip_anims_unlock(scene, seq);
+  return count;
+}
+
 /**
  * This returns the maximum possible number of required contexts
  */
@@ -382,7 +394,7 @@ static int seq_proxy_context_count(Sequence *seq, Scene *scene)
 
   switch (seq->type) {
     case SEQ_TYPE_MOVIE: {
-      num_views = BLI_listbase_count(&seq->anims);
+      num_views = seq_anims_count(scene, seq);
       break;
     }
     case SEQ_TYPE_IMAGE: {
@@ -439,6 +451,9 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     return true;
   }
 
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+  manager->strip_anims_load_and_lock(scene, seq);
+
   num_files = seq_proxy_context_count(seq, scene);
 
   MultiViewPrefixVars prefix_vars; /* Initialized by #seq_proxy_multiview_context_invalid. */
@@ -449,13 +464,13 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
 
     /* Check if proxies are already built here, because actually opening anims takes a lot of
      * time. */
-    // seq_open_anim_file(scene, seq, false);
-    StripAnim *sanim = static_cast<StripAnim *>(BLI_findlink(&seq->anims, i));
-    if (sanim->anim && !seq_proxy_need_rebuild(seq, sanim->anim)) {
+    blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+    if (anims.size() <= i && !seq_proxy_need_rebuild(seq, anims[i])) {
       continue;
     }
 
-    SEQ_relations_sequence_free_anim(scene, seq);
+    manager->strip_anims_unlock(scene, seq);
+    manager->free_anims_by_seq(scene, seq);
 
     context = static_cast<SeqIndexBuildContext *>(
         MEM_callocN(sizeof(SeqIndexBuildContext), "seq proxy rebuild context"));
@@ -477,12 +492,11 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     context->view_id = i; /* only for images */
 
     if (nseq->type == SEQ_TYPE_MOVIE) {
-      // seq_open_anim_file(scene, nseq, true);
-      sanim = static_cast<StripAnim *>(BLI_findlink(&nseq->anims, i));
-
-      if (sanim->anim) {
+      manager->strip_anims_load_and_lock(scene, seq);
+      anims = manager->strip_anims_get(scene, seq);
+      if (anims.size() <= i) {
         context->index_context = IMB_anim_index_rebuild_context(
-            sanim->anim,
+            anims[i],
             IMB_Timecode_Type(context->tc_flags),
             context->size_flags,
             context->quality,
@@ -491,6 +505,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
             build_only_on_bad_performance);
       }
       if (!context->index_context) {
+        manager->strip_anims_unlock(scene, seq);
         MEM_freeN(context);
         return false;
       }
@@ -500,6 +515,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     BLI_addtail(queue, link);
   }
 
+  manager->strip_anims_unlock(scene, seq);
   return true;
 }
 
@@ -575,14 +591,20 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, wmJobWorkerStatus *worker_
 
 void SEQ_proxy_rebuild_finish(SeqIndexBuildContext *context, bool stop)
 {
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(context->scene));
+  manager->strip_anims_load_and_lock(context->scene, context->seq);
+
   if (context->index_context) {
-    LISTBASE_FOREACH (StripAnim *, sanim, &context->seq->anims) {
-      IMB_close_anim_proxies(sanim->anim);
+    blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(context->scene, context->seq);
+
+    for (ImBufAnim *anim : anims) {
+      IMB_close_anim_proxies(anim);
     }
 
     IMB_anim_index_rebuild_finish(context->index_context, stop);
   }
 
+  manager->strip_anims_unlock(context->scene, context->seq);
   seq_free_sequence_recurse(nullptr, context->seq, true);
 
   MEM_freeN(context);

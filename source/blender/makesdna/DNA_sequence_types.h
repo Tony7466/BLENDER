@@ -212,7 +212,7 @@ typedef struct Sequence {
   /** For MASK strips. */
   struct Mask *mask;
   /** For MOVIE strips. */
-  ListBase anims;
+  ListBase anims DNA_DEPRECATED;
 
   float effect_fader;
   /* DEPRECATED, only used for versioning. */

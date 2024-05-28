@@ -608,14 +608,15 @@ void SEQ_add_movie_reload_if_needed(
    * This function will return true only if there is at least one 'anim' AND all anims can
    * produce frames. */
 
-  if (BLI_listbase_is_empty(&seq->anims)) {
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+  manager->strip_anims_load_and_lock(scene, seq);
+  blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+
+  if (anims.size() == 0) {
     /* No anim present, so reloading is always necessary. */
     must_reload = true;
   }
   else {
-    AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
-    manager->strip_anims_load_and_lock(scene, seq);
-    blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
     for (ImBufAnim *anim : anims) {
       if (!IMB_anim_can_produce_frames(anim)) {
         /* Anim cannot produce frames, try reloading. */
@@ -623,8 +624,8 @@ void SEQ_add_movie_reload_if_needed(
         break;
       }
     }
-    manager->strip_anims_unlock(scene, seq);
   }
+  manager->strip_anims_unlock(scene, seq);
 
   if (!must_reload) {
     /* There are one or more anims, and all can produce frames. */
@@ -636,24 +637,27 @@ void SEQ_add_movie_reload_if_needed(
   SEQ_add_reload_new_file(bmain, scene, seq, true);
   *r_was_reloaded = true;
 
-  if (BLI_listbase_is_empty(&seq->anims)) {
+  manager->strip_anims_load_and_lock(scene, seq);
+  anims = manager->strip_anims_get(scene, seq);
+
+  if (anims.size() == 0) {
     /* No anims present after reloading => no frames can be produced. */
     *r_can_produce_frames = false;
+    manager->strip_anims_unlock(scene, seq);
     return;
   }
 
   /* Check if there are still anims that cannot produce frames. */
-  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
-  manager->strip_anims_load_and_lock(scene, seq);
-  blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
   for (ImBufAnim *anim : anims) {
     if (!IMB_anim_can_produce_frames(anim)) {
       /* There still is an anim that cannot produce frames. */
+      manager->strip_anims_unlock(scene, seq);
       *r_can_produce_frames = false;
       return;
     }
   };
 
+  manager->strip_anims_unlock(scene, seq);
   /* There are one or more anims, and all can produce frames. */
   *r_can_produce_frames = true;
 }
