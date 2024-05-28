@@ -49,24 +49,22 @@ const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
                                                            bool *r_free)
 {
   *r_free = true;
-  return enum_items_filter(rna_enum_attribute_type_items,
-                           [](const EnumPropertyItem &item) -> bool {
-                             return generic_attribute_type_supported(item) &&
-                                    !ELEM(item.value, CD_PROP_BYTE_COLOR, CD_PROP_FLOAT2);
-                           });
+  return enum_items_filter(
+      rna_enum_attribute_type_items, [](const EnumPropertyItem &item) -> bool {
+        return generic_attribute_type_supported(item) &&
+               !ELEM(item.value, CD_PROP_INT8, CD_PROP_BYTE_COLOR, CD_PROP_FLOAT2);
+      });
 }
 
 bool generic_attribute_type_supported(const EnumPropertyItem &item)
 {
-  if (item.value == SOCK_MATRIX) {
-    return U.experimental.use_new_matrix_socket;
-  }
   return ELEM(item.value,
               CD_PROP_FLOAT,
               CD_PROP_FLOAT2,
               CD_PROP_FLOAT3,
               CD_PROP_COLOR,
               CD_PROP_BOOL,
+              CD_PROP_INT8,
               CD_PROP_INT32,
               CD_PROP_BYTE_COLOR,
               CD_PROP_QUATERNION,
@@ -144,7 +142,7 @@ void node_geo_exec_with_missing_openvdb(GeoNodeExecParams &params)
 
 }  // namespace blender::nodes
 
-bool geo_node_poll_default(const bNodeType * /*ntype*/,
+bool geo_node_poll_default(const blender::bke::bNodeType * /*ntype*/,
                            const bNodeTree *ntree,
                            const char **r_disabled_hint)
 {
@@ -155,7 +153,7 @@ bool geo_node_poll_default(const bNodeType * /*ntype*/,
   return true;
 }
 
-void geo_node_type_base(bNodeType *ntype, int type, const char *name, short nclass)
+void geo_node_type_base(blender::bke::bNodeType *ntype, int type, const char *name, short nclass)
 {
   blender::bke::node_type_base(ntype, type, name, nclass);
   ntype->poll = geo_node_poll_default;

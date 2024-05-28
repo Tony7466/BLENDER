@@ -276,9 +276,7 @@ static void BMD_mesh_intersection(BMesh *bm,
   /* Main BMesh intersection setup. */
   /* Create tessellation & intersect. */
   const int looptris_tot = poly_to_tri_count(bm->totface, bm->totloop);
-  BMLoop *(*looptris)[3] = (BMLoop * (*)[3])
-      MEM_malloc_arrayN(looptris_tot, sizeof(*looptris), __func__);
-
+  blender::Array<std::array<BMLoop *, 3>> looptris(looptris_tot);
   BM_mesh_calc_tessellation_beauty(bm, looptris);
 
   /* postpone this until after tessellating
@@ -332,6 +330,9 @@ static void BMD_mesh_intersection(BMesh *bm,
       if (LIKELY(efa->mat_nr < operand_ob->totcol)) {
         efa->mat_nr = material_remap[efa->mat_nr];
       }
+      else {
+        efa->mat_nr = 0;
+      }
 
       if (++i == i_faces_end) {
         break;
@@ -356,7 +357,6 @@ static void BMD_mesh_intersection(BMesh *bm,
 
   BM_mesh_intersect(bm,
                     looptris,
-                    looptris_tot,
                     bm_face_isect_pair,
                     nullptr,
                     false,
@@ -367,8 +367,6 @@ static void BMD_mesh_intersection(BMesh *bm,
                     false,
                     bmd->operation,
                     bmd->double_threshold);
-
-  MEM_freeN(looptris);
 }
 
 #ifdef WITH_GMP
@@ -378,9 +376,9 @@ static void BMD_mesh_intersection(BMesh *bm,
  * or to zero if there aren't enough slots in the destination. */
 static Array<short> get_material_remap_index_based(Object *dest_ob, Object *src_ob)
 {
-  int n = src_ob->totcol;
+  const int n = src_ob->totcol;
   if (n <= 0) {
-    n = 1;
+    return Array<short>(1, 0);
   }
   Array<short> remap(n);
   BKE_object_material_remap_calc(dest_ob, src_ob, remap.data());

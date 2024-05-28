@@ -275,7 +275,9 @@ typedef struct uiListDyn {
   void *customdata;
 
   /* Filtering data. */
-  /** Items_len length. */
+  /** This bit-field is effectively exposed in Python, and scripts are explicitly allowed to assign
+   * any own meaning to the lower 16 ones.
+   * #items_len length. */
   int *items_filter_flags;
   /** Org_idx -> new_idx, items_len length. */
   int *items_filter_neworder;
@@ -629,10 +631,18 @@ enum {
 /** Value (in number of items) we have to go below minimum shown items to enable auto size. */
 #define UI_LIST_AUTO_SIZE_THRESHOLD 1
 
-/* uiList filter flags (dyn_data) */
-/* WARNING! Those values are used by integer RNA too, which does not handle well values > INT_MAX.
- *          So please do not use 32nd bit here. */
+/** uiList filter flags (dyn_data)
+ *
+ * \warning Lower 16 bits are meant for custom use in Python, don't use them here! Only use the
+ *          higher 16 bits.
+ * \warning Those values are used by integer RNA too, which does not handle well values > INT_MAX.
+ *          So please do not use 32nd bit here.
+ */
 enum {
+  /* Don't use (1 << 0) to (1 << 15) here! See warning above. */
+
+  /* Filtering returned #UI_LIST_ITEM_NEVER_SHOW. */
+  UILST_FLT_ITEM_NEVER_SHOW = (1 << 16),
   UILST_FLT_ITEM = 1 << 30, /* This item has passed the filter process successfully. */
 };
 
@@ -789,7 +799,7 @@ typedef struct AssetShelfSettings {
 
   AssetLibraryReference asset_library_reference;
 
-  ListBase enabled_catalog_paths; /* #LinkData */
+  ListBase enabled_catalog_paths; /* #AssetCatalogPathLink */
   /** If not set (null or empty string), all assets will be displayed ("All" catalog behavior). */
   const char *active_catalog_path;
 
@@ -823,6 +833,7 @@ typedef struct AssetShelf {
 
   AssetShelfSettings settings;
 
+  /** Only for the permanent asset shelf regions, not asset shelves in temporary popups. */
   short preferred_row_count;
   char _pad[6];
 } AssetShelf;
@@ -845,6 +856,8 @@ typedef struct RegionAssetShelf {
   AssetShelf *active_shelf; /* Non-owning. */
 #ifdef __cplusplus
   static RegionAssetShelf *get_from_asset_shelf_region(const ARegion &region);
+  /** Creates the asset shelf region data if necessary, and returns it. */
+  static RegionAssetShelf *ensure_from_asset_shelf_region(ARegion &region);
 #endif
 } RegionAssetShelf;
 

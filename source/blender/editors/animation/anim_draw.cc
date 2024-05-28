@@ -36,8 +36,8 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 /* *************************************************** */
 /* CURRENT FRAME DRAWING */
@@ -332,7 +332,7 @@ short ANIM_get_normalization_flags(SpaceLink *space_link)
 }
 
 static void fcurve_scene_coord_range_get(Scene *scene,
-                                         FCurve *fcu,
+                                         const FCurve *fcu,
                                          float *r_min_coord,
                                          float *r_max_coord)
 {

@@ -16,7 +16,7 @@
 
 #include "BKE_blender_version.h"
 
-#include "GPU_platform.h"
+#include "GPU_platform_backend_enum.h"
 
 #include "BLO_userdef_default.h" /* own include */
 
@@ -78,7 +78,7 @@ const UserDef U_default = {
     .virtual_pixel = 0,
 
     .scrollback = 256,
-    .node_margin = 80,
+    .node_margin = 40,
     .node_preview_res = 120,
     .transopts = USER_TR_TOOLTIPS,
     .menuthreshold1 = 5,

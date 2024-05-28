@@ -261,7 +261,7 @@ void MTLVertBuf::bind()
 void MTLVertBuf::update_sub(uint start, uint len, const void *data)
 {
   /* Fetch and verify active context. */
-  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = MTLContext::get();
   BLI_assert(ctx);
   BLI_assert(ctx->device);
 
@@ -332,7 +332,7 @@ void MTLVertBuf::bind_as_texture(uint binding)
 
   /* Create texture from vertex buffer. */
   if (buffer_texture_ == nullptr) {
-    buffer_texture_ = GPU_texture_create_from_vertbuf("vertbuf_as_texture", wrap(this));
+    buffer_texture_ = GPU_texture_create_from_vertbuf("vertbuf_as_texture", this);
   }
 
   /* Verify successful creation and bind. */

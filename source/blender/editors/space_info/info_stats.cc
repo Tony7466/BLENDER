@@ -61,7 +61,7 @@
 
 #include "UI_resources.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 ENUM_OPERATORS(eUserpref_StatusBar_Flag, STATUSBAR_SHOW_VERSION)
 
@@ -234,7 +234,7 @@ static void stats_object_edit(Object *obedit, SceneStats *stats)
     stats->totface += em->bm->totface;
     stats->totfacesel += em->bm->totfacesel;
 
-    stats->tottri += em->tottri;
+    stats->tottri += em->looptris.size();
   }
   else if (obedit->type == OB_ARMATURE) {
     /* Armature Edit */
@@ -369,7 +369,7 @@ static void stats_object_sculpt(const Object *ob, SceneStats *stats)
     return;
   }
 
-  switch (BKE_pbvh_type(ss->pbvh)) {
+  switch (BKE_pbvh_type(*ss->pbvh)) {
     case PBVH_FACES:
       stats->totvertsculpt = ss->totvert;
       stats->totfacesculpt = ss->totfaces;
@@ -379,8 +379,8 @@ static void stats_object_sculpt(const Object *ob, SceneStats *stats)
       stats->tottri = ob->sculpt->bm->totface;
       break;
     case PBVH_GRIDS:
-      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(ss->pbvh);
-      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(ss->pbvh);
+      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(*ss->pbvh);
+      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(*ss->pbvh);
       break;
   }
 }
@@ -748,10 +748,10 @@ static void stats_row(int col1,
                       int height)
 {
   *y -= height;
-  BLF_draw_default_shadowed(col1, *y, 0.0f, key, 128);
+  BLF_draw_default(col1, *y, 0.0f, key, 128);
   char values[128];
   SNPRINTF(values, (value2) ? "%s / %s" : "%s", value1, value2);
-  BLF_draw_default_shadowed(col2, *y, 0.0f, values, sizeof(values));
+  BLF_draw_default(col2, *y, 0.0f, values, sizeof(values));
 }
 
 void ED_info_draw_stats(
@@ -768,8 +768,6 @@ void ED_info_draw_stats(
   Object *obedit = OBEDIT_FROM_OBACT(ob);
   eObjectMode object_mode = ob ? (eObjectMode)ob->mode : OB_MODE_OBJECT;
   const int font_id = BLF_default();
-
-  UI_FontThemeColor(font_id, TH_TEXT_HI);
 
   /* Translated labels for each stat row. */
   enum {
@@ -821,22 +819,20 @@ void ED_info_draw_stats(
   }
   else if (any_objects) {
     stats_row(col1, labels[OBJ], col2, stats_fmt.totobj, nullptr, y, height);
+    /* Show scene totals if nothing is selected. */
+    stats_row(col1, labels[VERTS], col2, stats_fmt.totvert, nullptr, y, height);
+    stats_row(col1, labels[EDGES], col2, stats_fmt.totedge, nullptr, y, height);
+    stats_row(col1, labels[FACES], col2, stats_fmt.totface, nullptr, y, height);
+    stats_row(col1, labels[TRIS], col2, stats_fmt.tottri, nullptr, y, height);
+    return;
+  }
+  else if (!(object_mode & OB_MODE_SCULPT)) {
+    /* No objects in scene. */
+    stats_row(col1, labels[OBJ], col2, 0, nullptr, y, height);
+    return;
   }
 
-  if (!any_selected) {
-    if (any_objects) {
-      /* Show scene totals if nothing is selected. */
-      stats_row(col1, labels[VERTS], col2, stats_fmt.totvert, nullptr, y, height);
-      stats_row(col1, labels[EDGES], col2, stats_fmt.totedge, nullptr, y, height);
-      stats_row(col1, labels[FACES], col2, stats_fmt.totface, nullptr, y, height);
-      stats_row(col1, labels[TRIS], col2, stats_fmt.tottri, nullptr, y, height);
-    }
-    else {
-      /* No objects in scene. */
-      stats_row(col1, labels[OBJ], col2, stats_fmt.totobj, nullptr, y, height);
-    }
-  }
-  else if ((ob) && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
+  if ((ob) && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
     stats_row(col1, labels[LAYERS], col2, stats_fmt.totgplayer, nullptr, y, height);
     stats_row(col1, labels[FRAMES], col2, stats_fmt.totgpframe, nullptr, y, height);
     stats_row(col1, labels[STROKES], col2, stats_fmt.totgpstroke, nullptr, y, height);
