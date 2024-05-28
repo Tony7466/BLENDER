@@ -358,7 +358,6 @@ static void poly_copy_as_bezier_left_handles(const Span<potrace_dpoint_t[3]> src
                                              const potrace::SegmentType prev,
                                              const potrace::SegmentType next,
                                              const potrace_dpoint_t (&prev_point)[3],
-                                             const potrace_dpoint_t (&next_point)[3],
                                              MutableSpan<float3> dst)
 {
   const int extra_point = next == potrace::SegmentType::Bezier ? 1 : 0;
@@ -382,9 +381,7 @@ static void poly_copy_as_bezier_left_handles(const Span<potrace_dpoint_t[3]> src
 }
 
 static void bezier_copy_as_bezier_right_handles(const Span<potrace_dpoint_t[3]> src,
-                                                const potrace::SegmentType prev,
                                                 const potrace::SegmentType next,
-                                                const potrace_dpoint_t (&prev_point)[3],
                                                 const potrace_dpoint_t (&next_point)[3],
                                                 MutableSpan<float3> dst)
 {
@@ -404,9 +401,7 @@ static void bezier_copy_as_bezier_right_handles(const Span<potrace_dpoint_t[3]> 
 }
 
 static void poly_copy_as_bezier_right_handles(const Span<potrace_dpoint_t[3]> src,
-                                              const potrace::SegmentType prev,
                                               const potrace::SegmentType next,
-                                              const potrace_dpoint_t (&prev_point)[3],
                                               const potrace_dpoint_t (&next_point)[3],
                                               MutableSpan<float3> dst)
 {
@@ -440,52 +435,56 @@ static void potrace_fill_bezier_or_poly_curve(
           const IndexRange src_segments = potrace_curve_segments_groups[segments_i];
           const IndexRange dst_segments = sum(src_segments,
                                               extra_curve_segments_group_points[segments_i]);
-          const int prev_i = math::mod_periodic<int64_t>(src_segments.first() - 1,
-                                                         potrace_curve.curve.n);
+
           const int next_i = math::mod_periodic<int64_t>(src_segments.last() + 1,
                                                          potrace_curve.curve.n);
-          const potrace::SegmentType current_type = potrace::SegmentType(
-              segment_types[src_segments.first()]);
-          const potrace::SegmentType prev_type = potrace::SegmentType(segment_types[prev_i]);
-          const potrace::SegmentType next_type = potrace::SegmentType(segment_types[next_i]);
-          const potrace_dpoint_t(&prev_point)[3] = src_curve[prev_i];
           const potrace_dpoint_t(&next_point)[3] = src_curve[next_i];
-          switch (current_type) {
+          const potrace::SegmentType next_type = potrace::SegmentType(segment_types[next_i]);
+          switch (potrace::SegmentType(segment_types[src_segments.first()])) {
             case potrace::SegmentType::Poly: {
+              const int prev_i = math::mod_periodic<int64_t>(src_segments.first() - 1,
+                                                             potrace_curve.curve.n);
+              const potrace::SegmentType prev_type = potrace::SegmentType(segment_types[prev_i]);
+              const potrace_dpoint_t(&prev_point)[3] = src_curve[prev_i];
               poly_copy_as_bezier_positions(
                   src_curve.slice(src_segments), next_type, positions.slice(dst_segments));
               poly_copy_as_bezier_left_handles(src_curve.slice(src_segments),
                                                prev_type,
                                                next_type,
                                                prev_point,
-                                               next_point,
                                                positions_left.slice(dst_segments));
               poly_copy_as_bezier_right_handles(src_curve.slice(src_segments),
-                                                prev_type,
                                                 next_type,
-                                                prev_point,
                                                 next_point,
                                                 positions_right.slice(dst_segments));
               break;
             }
-            case potrace::SegmentType::Bezier: {
+            case potrace::SegmentType::Bezier:
               bezier_copy_as_bezier_positions(src_curve.slice(src_segments),
                                               positions.slice(dst_segments));
               bezier_copy_as_bezier_left_handles(src_curve.slice(src_segments),
                                                  positions_left.slice(dst_segments));
               bezier_copy_as_bezier_right_handles(src_curve.slice(src_segments),
-                                                  prev_type,
                                                   next_type,
-                                                  prev_point,
                                                   next_point,
                                                   positions_right.slice(dst_segments));
               break;
-            }
           }
         }
       },
       threading::accumulated_task_sizes(
           [&](const IndexRange range) { return potrace_curve_segments_groups[range].size(); }));
+}
+
+static void transform_points(const int2 resolution,
+                             const float2 min_point,
+                             const float2 max_point,
+                             MutableSpan<float3> data)
+{
+  const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
+  parallel_transform(data.as_span(), 4096, data, [&](const float3 vector) {
+    return float3(min_point + vector.xy() * resolution_factor, 0.0f);
+  });
 }
 
 std::optional<Curves *> plane_to_curve(const int2 resolution,
@@ -494,7 +493,6 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
                                        const float2 max_point,
                                        const bke::AttributeIDRef &parent_index_id)
 {
-  std::cout << "\n";
   potrace_state_t *potrace_result = bools_to_potrace_curves(resolution, grid_color);
   if (potrace_result == nullptr) {
     return nullptr;
@@ -593,10 +591,6 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
   MutableSpan<float3> positions_left = curves.handle_positions_left_for_write();
   MutableSpan<float3> positions_right = curves.handle_positions_right_for_write();
 
-  positions.fill(float3(0.0f, 0.0f, -1.0f));
-  positions_left.fill(float3(0.0f, 0.0f, -2.0f));
-  positions_right.fill(float3(0.0f, 0.0f, -3.0f));
-
   poly_curves_mask.foreach_index(GrainSize(4096), [&](const int curve_i) {
     potrace_fill_poly_curve(*curves_list[curve_i], positions.slice(curve_offsets[curve_i]));
   });
@@ -616,14 +610,16 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
                                       positions_right.slice(curve_offsets[curve_i]));
   });
 
+  transform_points(resolution, min_point, max_point, positions);
+  transform_points(resolution, min_point, max_point, positions_left);
+  transform_points(resolution, min_point, max_point, positions_right);
+
   if (!parent_index_data.is_empty()) {
     bke::SpanAttributeWriter<int> parent_attribute =
         curves.attributes_for_write().lookup_or_add_for_write_only_span<int>(
             parent_index_id, bke::AttrDomain::Curve);
     array_utils::copy(parent_index_data.as_span(), parent_attribute.span);
   }
-
-  // transform_points(resolution, min_point, max_point, points_data);
 
   curves.update_curve_types();
   curves.tag_topology_changed();
