@@ -799,7 +799,6 @@ CombinedKeyingResult insert_key_action(Main *bmain,
       property_array_index++;
       continue;
     }
-
     const SingleKeyingResult keying_result = insert_keyframe_fcurve_value(bmain,
                                                                           ptr,
                                                                           prop,

@@ -205,8 +205,9 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
        *   If this is set, then it's a driver. If we don't check for this, we'd end
        *   up adding the keyframes on a new F-Curve in the action data instead.
        */
-      const std::optional<std::string> channel_group = fcu->grp ? std::optional(fcu->grp->name) :
-                                                                  std::nullopt;
+      const std::optional<blender::StringRefNull> channel_group = fcu->grp ? std::optional(
+                                                                                 fcu->grp->name) :
+                                                                             std::nullopt;
       if (ale->id && !ale->owner && !fcu->driver) {
         PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
         CombinedKeyingResult result = insert_keyframes(ac->bmain,

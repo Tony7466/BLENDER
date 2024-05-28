@@ -849,8 +849,9 @@ static void insert_fcurve_key(bAnimContext *ac,
    *   so it's easier for now to just read the F-Curve directly.
    *   (TODO: add the full-blown PointerRNA relative parsing case here...)
    */
-  const std::optional<std::string> channel_group = fcu->grp ? std::optional(fcu->grp->name) :
-                                                              std::nullopt;
+  const std::optional<blender::StringRefNull> channel_group = fcu->grp ?
+                                                                  std::optional(fcu->grp->name) :
+                                                                  std::nullopt;
   if (ale->id && !ale->owner) {
     PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
     CombinedKeyingResult result = insert_keyframes(ac->bmain,
