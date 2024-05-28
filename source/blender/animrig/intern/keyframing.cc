@@ -860,11 +860,10 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
     }
-    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
-                                                                                        prop);
+
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
-    bool force_all;
     BitVector<> elements_to_key(rna_values.size(), false);
+    bool force_all;
 
     /* NOTE: this function call is complex with interesting effects. Of
      * particular note is that in addition to doing time remapping, it also:
@@ -882,6 +881,9 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                           &anim_eval_context,
                                           &force_all,
                                           elements_to_key);
+
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
+                                                                                        prop);
 
     /* Handle the `force_all` condition mentioned above, ensuring the
      * "all-or-nothing" behavior if needed. */
