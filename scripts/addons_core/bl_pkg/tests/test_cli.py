@@ -352,9 +352,9 @@ class TestCLI_WithRepo(unittest.TestCase):
             ], exclude_types={"PROGRESS"})
             self.assertEqual(
                 output_json, [
-                    ('STATUS', 'Sync repo: ' + self.dirpath_url),
-                    ('STATUS', 'Sync downloading remote data'),
-                    ('STATUS', 'Sync complete: ' + self.dirpath_url),
+                    ('STATUS', f'Checking repository "{self.dirpath_url}" for updates...'),
+                    ('STATUS', f'Refreshing extensions list for "{self.dirpath_url}"...'),
+                    ('STATUS', f'Extensions list for "{self.dirpath_url}" updated'),
                 ]
             )
 
