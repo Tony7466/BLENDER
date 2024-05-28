@@ -1017,7 +1017,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   buffers.front = grid_hidden;
   buffers.back = grid_hidden;
 
-  Array<bool> node_changed(nodes.size());
+  Array<bool> node_changed(nodes.size(), false);
 
   for (int i = 0; i < iterations; i++) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
