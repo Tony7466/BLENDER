@@ -428,12 +428,12 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
     # -------------------------------------
     # Properties - Position and Orientation
     axis_id_to_vector = {
-        'X+': Vector((1.0, 0.0, 0.0)),
-        'Y+': Vector((0.0, 1.0, 0.0)),
-        'Z+': Vector((0.0, 0.0, 1.0)),
-        'X-': Vector((-1.0, 0.0, 0.0)),
-        'Y-': Vector((0.0, -1.0, 0.0)),
-        'Z-': Vector((0.0, 0.0, -1.0)),
+        '+X': Vector((1.0, 0.0, 0.0)),
+        '+Y': Vector((0.0, 1.0, 0.0)),
+        '+Z': Vector((0.0, 0.0, 1.0)),
+        '-X': Vector((-1.0, 0.0, 0.0)),
+        '-Y': Vector((0.0, -1.0, 0.0)),
+        '-Z': Vector((0.0, 0.0, -1.0)),
     }
 
     offset: BoolProperty(
@@ -445,14 +445,14 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
     offset_axis: EnumProperty(
         name="Offset Direction",
-        default='X+',
+        default='+X',
         items=(
-            ('X+', "X+", "Side by Side to the Left"),
-            ('Y+', "Y+", "Side by Side, Downward"),
-            ('Z+', "Z+", "Stacked Above"),
-            ('X-', "X-", "Side by Side to the Right"),
-            ('Y-', "Y-", "Side by Side, Upward"),
-            ('Z-', "Z-", "Stacked Below"),
+            ('+X', "+X", "Side by Side to the Left"),
+            ('+Y', "+Y", "Side by Side, Downward"),
+            ('+Z', "+Z", "Stacked Above"),
+            ('-X', "-X", "Side by Side to the Right"),
+            ('-Y', "-Y", "Side by Side, Upward"),
+            ('-Z', "-Z", "Stacked Below"),
         ),
         description="How planes are oriented relative to each others' local axis",
     )
@@ -467,12 +467,12 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
     )
 
     AXIS_MODES = (
-        ('X+', "X+", "Facing positive X"),
-        ('Y+', "Y+", "Facing positive Y"),
-        ('Z+', "Z+", "Facing positive Z"),
-        ('X-', "X-", "Facing negative X"),
-        ('Y-', "Y-", "Facing negative Y"),
-        ('Z-', "Z-", "Facing negative Z"),
+        ('+X', "+X", "Facing positive X"),
+        ('+Y', "+Y", "Facing positive Y"),
+        ('+Z', "+Z", "Facing positive Z"),
+        ('-X', "-X", "Facing negative X"),
+        ('-Y', "-Y", "Facing negative Y"),
+        ('-Z', "-Z", "Facing negative Z"),
         ('CAM', "Face Camera", "Facing camera"),
         ('CAM_AX', "Camera's Main Axis", "Facing the camera's dominant axis"),
     )
@@ -516,7 +516,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             ('DPBU', "Pixels per Blender Unit", "Scale based on pixels per Blender Unit"),
         ),
         update=update_size_mode,
-        description="Set how the size of the plane is computed",
+        description="Method for computing the plane size",
     )
 
     fill_mode: EnumProperty(
@@ -1036,7 +1036,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             else:
                 # No camera? Just face Z axis.
                 axis = Vector((0.0, 0.0, 1.0))
-                self.align_axis = 'Z+'
+                self.align_axis = '+Z'
         else:
             # Axis-aligned.
             axis = self.axis_id_to_vector[self.align_axis]
