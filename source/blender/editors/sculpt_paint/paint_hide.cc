@@ -886,19 +886,14 @@ static void update_undo_state(Object &object,
                               const Span<bool> old_hide_vert,
                               const Span<bool> new_hide_vert)
 {
-  threading::EnumerableThreadSpecific<Vector<bool>> all_new_hide;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    Vector<bool> &new_hide = all_new_hide.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      const Span<int> verts = bke::pbvh::node_unique_verts(*node);
-
-      new_hide.reinitialize(verts.size());
-      array_utils::gather(new_hide_vert, verts, new_hide.as_mutable_span());
-      if (array_utils::indexed_data_equal<bool>(old_hide_vert, verts, new_hide)) {
-        continue;
+      for (const int vert : bke::pbvh::node_unique_verts(*node)) {
+        if (old_hide_vert[vert] != new_hide_vert[vert]) {
+          undo::push_node(object, node, undo::Type::HideVert);
+          break;
+        }
       }
-
-      undo::push_node(object, node, undo::Type::HideVert);
     }
   });
 }
