@@ -387,6 +387,7 @@ enum {
   MA_DISPLACEMENT_BUMP = 0,
   MA_DISPLACEMENT_DISPLACE = 1,
   MA_DISPLACEMENT_BOTH = 2,
+  MA_DISPLACEMENT_NORMAL_MAP = 3,
 };
 
 /** #Material::thickness_mode */

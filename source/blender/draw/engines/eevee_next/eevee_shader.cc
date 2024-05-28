@@ -626,7 +626,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   if (pipeline_type != MAT_PIPE_VOLUME_OCCUPANCY) {
     frag_gen << (!codegen.material_functions.empty() ? codegen.material_functions : "\n");
 
-    if (!codegen.displacement.empty()) {
+    if (!codegen.displacement.empty() &&
+        (displacement_type != MAT_DISPLACEMENT_VERTEX_WITH_ORIGINAL_NORMAL))
+    {
       /* Bump displacement. Needed to recompute normals after displacement. */
       info.define("MAT_DISPLACEMENT_BUMP");
 

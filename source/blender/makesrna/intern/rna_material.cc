@@ -889,6 +889,12 @@ void RNA_def_material(BlenderRNA *brna)
        0,
        "Displacement and Bump",
        "Combination of true displacement and bump mapping for finer detail"},
+      {MA_DISPLACEMENT_NORMAL_MAP,
+       "DISPLACEMENT_WITH_NORMAL_MAP",
+       0,
+       "Displacement and Normal Map",
+       "Use true displacement but doesn't alter the shading normal. "
+       "To be used with normal maps baked onto the original mesh"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

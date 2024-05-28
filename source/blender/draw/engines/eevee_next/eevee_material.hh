@@ -62,6 +62,7 @@ static inline bool geometry_type_has_surface(eMaterialGeometry geometry_type)
 enum eMaterialDisplacement {
   MAT_DISPLACEMENT_BUMP = 0,
   MAT_DISPLACEMENT_VERTEX_WITH_BUMP,
+  MAT_DISPLACEMENT_VERTEX_WITH_ORIGINAL_NORMAL,
 };
 
 static inline eMaterialDisplacement to_displacement_type(int displacement_method)
@@ -72,6 +73,8 @@ static inline eMaterialDisplacement to_displacement_type(int displacement_method
       ATTR_FALLTHROUGH;
     case MA_DISPLACEMENT_BOTH:
       return MAT_DISPLACEMENT_VERTEX_WITH_BUMP;
+    case MA_DISPLACEMENT_NORMAL_MAP:
+      return MAT_DISPLACEMENT_VERTEX_WITH_ORIGINAL_NORMAL;
     default:
       return MAT_DISPLACEMENT_BUMP;
   }
@@ -109,12 +112,12 @@ static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
   const uint64_t geometry_mask = ((1u << 4u) - 1u);
   const uint64_t pipeline_mask = ((1u << 4u) - 1u);
   const uint64_t thickness_mask = ((1u << 1u) - 1u);
-  const uint64_t displacement_mask = ((1u << 1u) - 1u);
+  const uint64_t displacement_mask = ((1u << 2u) - 1u);
   geometry_type = static_cast<eMaterialGeometry>(shader_uuid & geometry_mask);
   pipeline_type = static_cast<eMaterialPipeline>((shader_uuid >> 4u) & pipeline_mask);
   displacement_type = static_cast<eMaterialDisplacement>((shader_uuid >> 8u) & displacement_mask);
-  thickness_type = static_cast<eMaterialThickness>((shader_uuid >> 9u) & thickness_mask);
-  transparent_shadows = (shader_uuid >> 10u) & 1u;
+  thickness_type = static_cast<eMaterialThickness>((shader_uuid >> 10u) & thickness_mask);
+  transparent_shadows = (shader_uuid >> 11u) & 1u;
 }
 
 static inline uint64_t shader_uuid_from_material_type(
@@ -124,7 +127,7 @@ static inline uint64_t shader_uuid_from_material_type(
     eMaterialThickness thickness_type = MAT_THICKNESS_SPHERE,
     char blend_flags = 0)
 {
-  BLI_assert(displacement_type < (1 << 1));
+  BLI_assert(displacement_type < (1 << 2));
   BLI_assert(thickness_type < (1 << 1));
   BLI_assert(geometry_type < (1 << 4));
   BLI_assert(pipeline_type < (1 << 4));
@@ -134,8 +137,8 @@ static inline uint64_t shader_uuid_from_material_type(
   uuid = geometry_type;
   uuid |= pipeline_type << 4;
   uuid |= displacement_type << 8;
-  uuid |= thickness_type << 9;
-  uuid |= transparent_shadows << 10;
+  uuid |= thickness_type << 10;
+  uuid |= transparent_shadows << 11;
   return uuid;
 }
 
