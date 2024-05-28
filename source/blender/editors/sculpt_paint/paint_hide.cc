@@ -1178,18 +1178,18 @@ void PAINT_OT_visibility_filter(wmOperatorType *ot)
        "GROW",
        0,
        "Grow Visibility",
-       "Grows the visibility by one face based on mesh topology"},
+       "Grow the visibility by one face based on mesh topology"},
       {int(VisAction::Hide),
        "SHRINK",
        0,
        "Shrink Visibility",
-       "Shrinks the visibility by one face based on mesh topology"},
+       "Shrink the visibility by one face based on mesh topology"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   ot->name = "Visibility Filter";
   ot->idname = "PAINT_OT_visibility_filter";
-  ot->description = "Edits the visibility of the current mesh";
+  ot->description = "Edit the visibility of the current mesh";
 
   ot->exec = visibility_filter_exec;
   ot->poll = SCULPT_mode_poll_view3d;
