@@ -137,13 +137,56 @@ void VKBatch::multi_draw_indirect(const VkBuffer indirect_buffer,
                                   const intptr_t offset,
                                   const intptr_t stride)
 {
+  VKContext &context = *VKContext::get();
   if (use_render_graph) {
-    NOT_YET_IMPLEMENTED
+    render_graph::VKResourceAccessInfo &resource_access_info =
+        context.update_and_get_access_info();
+    VKStateManager &state_manager = context.state_manager_get();
+    state_manager.apply_state();
+
+    VKVertexAttributeObject vao;
+    vao.update_bindings(context, *this);
+
+    VKIndexBuffer *index_buffer = index_buffer_get();
+    const bool draw_indexed = index_buffer != nullptr;
+
+    /* Upload geometry */
+    vao.ensure_vbos_uploaded();
+    if (draw_indexed) {
+      index_buffer->upload_data();
+    }
+    context.active_framebuffer_get()->rendering_ensure(context);
+
+    if (draw_indexed) {
+      render_graph::VKDrawIndexedIndirectNode::CreateInfo draw_indexed_indirect(
+          resource_access_info);
+      draw_indexed_indirect.node_data.indirect_buffer = indirect_buffer;
+      draw_indexed_indirect.node_data.offset = offset;
+      draw_indexed_indirect.node_data.draw_count = count;
+      draw_indexed_indirect.node_data.stride = stride;
+
+      draw_indexed_indirect.node_data.index_buffer.buffer = index_buffer->vk_handle();
+      draw_indexed_indirect.node_data.index_buffer.index_type = index_buffer->vk_index_type();
+      vao.bind(draw_indexed_indirect.node_data.vertex_buffers);
+      context.update_pipeline_data(prim_type, vao, draw_indexed_indirect.node_data.pipeline_data);
+
+      context.render_graph.add_node(draw_indexed_indirect);
+    }
+    else {
+      render_graph::VKDrawIndirectNode::CreateInfo draw(resource_access_info);
+      draw.node_data.indirect_buffer = indirect_buffer;
+      draw.node_data.offset = offset;
+      draw.node_data.draw_count = count;
+      draw.node_data.stride = stride;
+      vao.bind(draw.node_data.vertex_buffers);
+      context.update_pipeline_data(prim_type, vao, draw.node_data.pipeline_data);
+
+      context.render_graph.add_node(draw);
+    }
   }
   else {
     draw_setup();
 
-    VKContext &context = *VKContext::get();
     VKIndexBuffer *index_buffer = index_buffer_get();
     const bool draw_indexed = index_buffer != nullptr;
     VKCommandBuffers &command_buffers = context.command_buffers_get();

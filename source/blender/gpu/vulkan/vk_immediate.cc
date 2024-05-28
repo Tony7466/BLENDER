@@ -11,6 +11,7 @@
 #include "vk_immediate.hh"
 #include "vk_backend.hh"
 #include "vk_data_conversion.hh"
+#include "vk_framebuffer.hh"
 #include "vk_state_manager.hh"
 
 namespace blender::gpu {
@@ -50,12 +51,28 @@ void VKImmediate::end()
     vertex_format_converter.convert(data, data, vertex_idx);
   }
 
+  VKContext &context = *VKContext::get();
+  BLI_assert(context.shader == unwrap(shader));
   if (use_render_graph) {
-    NOT_YET_IMPLEMENTED
+    render_graph::VKResourceAccessInfo &resource_access_info =
+        context.update_and_get_access_info();
+    VKStateManager &state_manager = context.state_manager_get();
+    state_manager.apply_state();
+    vertex_attributes_.update_bindings(*this);
+    vertex_attributes_.ensure_vbos_uploaded();
+    context.active_framebuffer_get()->rendering_ensure(context);
+
+    render_graph::VKDrawNode::CreateInfo draw(resource_access_info);
+    draw.node_data.vertex_count = vertex_idx;
+    draw.node_data.instance_count = 1;
+    draw.node_data.first_vertex = 0;
+    draw.node_data.first_instance = 0;
+    vertex_attributes_.bind(draw.node_data.vertex_buffers);
+    context.update_pipeline_data(prim_type, vertex_attributes_, draw.node_data.pipeline_data);
+
+    context.render_graph.add_node(draw);
   }
   else {
-    VKContext &context = *VKContext::get();
-    BLI_assert(context.shader == unwrap(shader));
     VKStateManager &state_manager = context.state_manager_get();
     state_manager.apply_state();
     render_graph::VKResourceAccessInfo resource_access_info = {};

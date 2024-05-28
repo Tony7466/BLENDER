@@ -451,6 +451,16 @@ void VKPipelinePool::remove(Span<VkShaderModule> vk_shader_modules)
     }
     return false;
   });
+  graphic_pipelines_.remove_if([&](auto item) {
+    if (vk_shader_modules.contains(item.key.pre_rasterization.vk_vertex_module) ||
+        vk_shader_modules.contains(item.key.pre_rasterization.vk_geometry_module) ||
+        vk_shader_modules.contains(item.key.fragment_shader.vk_fragment_module))
+    {
+      pipelines_to_destroy.append(item.value);
+      return true;
+    }
+    return false;
+  });
 
   VKDevice &device = VKBackend::get().device_get();
   VK_ALLOCATION_CALLBACKS;
@@ -464,6 +474,10 @@ void VKPipelinePool::free_data()
   std::scoped_lock lock(mutex_);
   VKDevice &device = VKBackend::get().device_get();
   VK_ALLOCATION_CALLBACKS;
+  for (VkPipeline &vk_pipeline : graphic_pipelines_.values()) {
+    vkDestroyPipeline(device.device_get(), vk_pipeline, vk_allocation_callbacks);
+  }
+  graphic_pipelines_.clear();
   for (VkPipeline &vk_pipeline : compute_pipelines_.values()) {
     vkDestroyPipeline(device.device_get(), vk_pipeline, vk_allocation_callbacks);
   }

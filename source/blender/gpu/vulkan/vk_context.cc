@@ -134,12 +134,21 @@ void VKContext::end_frame()
 
 void VKContext::flush()
 {
-  command_buffers_.submit();
+  if (use_render_graph) {
+    render_graph.submit();
+  }
+  else {
+    command_buffers_.submit();
+  }
 }
 
 void VKContext::finish()
 {
-  command_buffers_.finish();
+  if (use_render_graph) {
+  }
+  else {
+    command_buffers_.finish();
+  }
 }
 
 void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)
