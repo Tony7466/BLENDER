@@ -96,6 +96,11 @@ ccl_device_inline void path_state_init_integrator(KernelGlobals kg,
     INTEGRATOR_STATE_WRITE(state, path, mis_ray_object) = OBJECT_NONE;
   }
 #endif
+
+  /* TODO(weizhen): if has kernel features. */
+  if (true) {
+    INTEGRATOR_STATE_WRITE(state, path, last_bounce_is_rough) = false;
+  }
 }
 
 ccl_device_inline void path_state_next(KernelGlobals kg,

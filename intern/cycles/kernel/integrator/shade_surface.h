@@ -526,7 +526,8 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     KernelGlobals kg,
     IntegratorState state,
     ccl_private ShaderData *sd,
-    ccl_private const RNGState *rng_state)
+    ccl_private const RNGState *rng_state,
+    ccl_global float *ccl_restrict render_buffer)
 {
   /* Sample BSDF or BSSRDF. */
   if (!(sd->flag & (SD_BSDF | SD_BSSRDF))) {
@@ -636,6 +637,8 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
   }
 
   path_state_next(kg, state, label, sd->flag);
+
+  film_write_reconnection_vertex(kg, state, bsdf_sampled_roughness, sd->ray_length, render_buffer);
 
   guiding_record_surface_bounce(kg,
                                 state,
@@ -881,7 +884,8 @@ ccl_device int integrate_surface(KernelGlobals kg,
 #endif
 
     PROFILING_EVENT(PROFILING_SHADE_SURFACE_INDIRECT_LIGHT);
-    continue_path_label = integrate_surface_bsdf_bssrdf_bounce(kg, state, &sd, &rng_state);
+    continue_path_label = integrate_surface_bsdf_bssrdf_bounce(
+        kg, state, &sd, &rng_state, render_buffer);
 #ifdef __VOLUME__
   }
   else {

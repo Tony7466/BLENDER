@@ -477,7 +477,7 @@ ccl_device_inline void film_add_reservoir_pt(KernelGlobals kg,
 
   if (reservoir.add_sample(throughput, rand)) {
     film_overwrite_pass_float(ptr + 1, (float)path_flag);
-    film_overwrite_pass_float3(ptr + 2, reservoir.radiance);
+    film_overwrite_pass_float3(ptr + 3, reservoir.radiance);
   }
   film_overwrite_pass_float(ptr, reservoir.total_weight);
 }
@@ -670,6 +670,7 @@ ccl_device_inline void film_clear_pass_reservoir(KernelGlobals kg,
 
   ptr = buffer + kernel_data.film.pass_restir_pt_reservoir;
   film_overwrite_pass_float(ptr, 0.0f);
+  film_overwrite_pass_float(ptr + 2, 0.0f);
 
   ptr = buffer + kernel_data.film.pass_restir_pt_previous_reservoir;
   film_overwrite_pass_float(ptr, 0.0f);

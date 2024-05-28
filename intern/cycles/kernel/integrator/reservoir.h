@@ -253,6 +253,9 @@ struct GlobalReservoir {
   float total_weight = 0.0f;
   uint32_t path_flag;
 
+  /* Information about the reconnection vertex (rcv). */
+  int rcv_index;
+
   float3 rgb_to_y;
 
   GlobalReservoir() = default;
@@ -313,7 +316,8 @@ ccl_device_inline bool restir_unpack_reservoir_pt(KernelGlobals kg,
 
   reservoir->total_weight = kernel_read_pass_float(buffer);
   reservoir->path_flag = (uint32_t)kernel_read_pass_float(buffer + 1);
-  reservoir->radiance = kernel_read_pass_float3(buffer + 2);
+  reservoir->rcv_index = (int)kernel_read_pass_float(buffer + 2);
+  reservoir->radiance = kernel_read_pass_float3(buffer + 3);
 
   return !reservoir->is_empty();
 }
