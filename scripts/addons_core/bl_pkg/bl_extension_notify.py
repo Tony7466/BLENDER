@@ -373,9 +373,10 @@ def splash_draw_status_fn(self, context):
     if _notify.splash_region is None:
         _notify.splash_region = context.region_popup
 
-    if bpy.app.online_access_override and not bpy.app.online_access:
-        # Since there is nothing to do in this case, we show no operator.
-        self.layout.label(text="Running in Offline Mode", icon='INTERNET')
+    if not bpy.app.online_access:
+        if bpy.app.online_access_override:
+            # Since there is nothing to do in this case, we show no operator.
+            self.layout.label(text="Running in Offline Mode", icon='INTERNET')
     elif _notify.sync_info is None:
         self.layout.label(text="Updates starting...")
     else:
