@@ -82,11 +82,11 @@ void VKImmediate::end()
     vertex_attributes_.bind(context);
 
     context.command_buffers_get().draw(0, vertex_idx, 0, 1);
-
-    buffer_offset_ += current_subbuffer_len_;
-    current_subbuffer_len_ = 0;
-    vertex_format_converter.reset();
   }
+
+  buffer_offset_ += current_subbuffer_len_;
+  current_subbuffer_len_ = 0;
+  vertex_format_converter.reset();
 }
 
 VkDeviceSize VKImmediate::subbuffer_offset_get()
