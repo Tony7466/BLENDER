@@ -360,19 +360,23 @@ static void invert_fill(ImageBufferAccessor &buffer)
   }
 }
 
+constexpr const int num_directions = 8;
+static const int2 offset_by_direction[num_directions] = {
+    {-1, -1},
+    {0, -1},
+    {1, -1},
+    {1, 0},
+    {1, 1},
+    {0, 1},
+    {-1, 1},
+    {-1, 0},
+};
+
 static void dilate(ImageBufferAccessor &buffer, int iterations = 1)
 {
   const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
 
   blender::Stack<int> active_pixels;
-  auto check_neighbor = [&](const int index, const int2 &neighbor_coord) {
-    if (buffer.is_valid_coord(neighbor_coord) &&
-        get_flag(buffer.pixel_from_coord(neighbor_coord), ColorFlag::Fill))
-    {
-      active_pixels.push(index);
-    }
-  };
-
   for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
     for (const int i : pixels.index_range()) {
       /* Ignore already filled pixels */
@@ -382,14 +386,13 @@ static void dilate(ImageBufferAccessor &buffer, int iterations = 1)
       const int2 coord = buffer.coord_from_index(i);
 
       /* Add to stack if any neighbor is filled. */
-      check_neighbor(i, coord + int2(1, 0));
-      check_neighbor(i, coord + int2(1, 1));
-      check_neighbor(i, coord + int2(0, 1));
-      check_neighbor(i, coord + int2(-1, 1));
-      check_neighbor(i, coord + int2(-1, 0));
-      check_neighbor(i, coord + int2(-1, -1));
-      check_neighbor(i, coord + int2(0, -1));
-      check_neighbor(i, coord + int2(1, -1));
+      for (const int2 offset : offset_by_direction) {
+        if (buffer.is_valid_coord(coord + offset) &&
+            get_flag(buffer.pixel_from_coord(coord + offset), ColorFlag::Fill))
+        {
+          active_pixels.push(i);
+        }
+      }
     }
 
     while (!active_pixels.is_empty()) {
@@ -404,14 +407,6 @@ static void erode(ImageBufferAccessor &buffer, int iterations = 1)
   const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
 
   blender::Stack<int> active_pixels;
-  auto check_neighbor = [&](const int index, const int2 &neighbor_coord) {
-    if (buffer.is_valid_coord(neighbor_coord) &&
-        !get_flag(buffer.pixel_from_coord(neighbor_coord), ColorFlag::Fill))
-    {
-      active_pixels.push(index);
-    }
-  };
-
   for ([[maybe_unused]] const int iter : IndexRange(iterations)) {
     for (const int i : pixels.index_range()) {
       /* Ignore empty pixels */
@@ -421,14 +416,13 @@ static void erode(ImageBufferAccessor &buffer, int iterations = 1)
       const int2 coord = buffer.coord_from_index(i);
 
       /* Add to stack if any neighbor is empty. */
-      check_neighbor(i, coord + int2(1, 0));
-      check_neighbor(i, coord + int2(1, 1));
-      check_neighbor(i, coord + int2(0, 1));
-      check_neighbor(i, coord + int2(-1, 1));
-      check_neighbor(i, coord + int2(-1, 0));
-      check_neighbor(i, coord + int2(-1, -1));
-      check_neighbor(i, coord + int2(0, -1));
-      check_neighbor(i, coord + int2(1, -1));
+      for (const int2 offset : offset_by_direction) {
+        if (buffer.is_valid_coord(coord + offset) &&
+            !get_flag(buffer.pixel_from_coord(coord + offset), ColorFlag::Fill))
+        {
+          active_pixels.push(i);
+        }
+      }
     }
 
     while (!active_pixels.is_empty()) {
@@ -437,18 +431,6 @@ static void erode(ImageBufferAccessor &buffer, int iterations = 1)
     }
   }
 }
-
-constexpr const int num_directions = 8;
-static const int2 offset_by_direction[num_directions] = {
-    {-1, -1},
-    {0, -1},
-    {1, -1},
-    {1, 0},
-    {1, 1},
-    {0, 1},
-    {-1, 1},
-    {-1, 0},
-};
 
 /* Wrap to valid direction, must be less than 3 * num_directions. */
 static int wrap_dir_3n(const int dir)
