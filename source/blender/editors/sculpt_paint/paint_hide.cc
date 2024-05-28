@@ -869,15 +869,13 @@ static int propagate_vertex_visibility(Mesh &mesh,
       }
     });
 
-    const bool any_changed = read_buffer != write_buffer;
-    if (any_changed) {
-      flush_face_changes(mesh, write_buffer);
-      last_changed_iteration = i;
-    }
-    else {
+    if (read_buffer == write_buffer) {
       /* If nothing has changed for a given iteration, nothing will change in future iterations. */
       break;
     }
+
+    flush_face_changes(mesh, write_buffer);
+    last_changed_iteration = i;
   }
 
   return last_changed_iteration;
