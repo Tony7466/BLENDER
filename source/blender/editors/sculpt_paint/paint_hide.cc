@@ -1107,6 +1107,7 @@ static void grow_shrink_visibility_bmesh(Object &object,
   SculptSession &ss = *object.sculpt;
 
   for (const int i : IndexRange(iterations)) {
+    UNUSED_VARS(i);
     const Array<bool> prev_visibility = duplicate_visibility(object);
     partialvis_update_bmesh_nodes(object, nodes, action, [&](const BMVert *vert) {
       int vi = BM_elem_index_get(vert);
