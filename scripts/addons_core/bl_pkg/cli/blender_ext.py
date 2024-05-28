@@ -3056,7 +3056,7 @@ def argparse_create_client_sync(subparsers: "argparse._SubParsersAction[argparse
         func=lambda args: subcmd_client.sync(
             msg_fn_from_args(args),
             remote_url=args.remote_url,
-            remote_name=args.remote_name if args.remote_name else args.remote_url,
+            remote_name=args.remote_name if args.remote_name else remote_url_params_strip(args.remote_url),
             local_dir=args.local_dir,
             online_user_agent=args.online_user_agent,
             access_token=args.access_token,
