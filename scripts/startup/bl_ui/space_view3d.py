@@ -6159,6 +6159,7 @@ class VIEW3D_MT_edit_curves_control_points(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator("curves.extrude_move")
         layout.operator_menu_enum("curves.handle_type_set", "type")
 
 
@@ -6170,6 +6171,18 @@ class VIEW3D_MT_edit_curves_segments(Menu):
 
         layout.operator("curves.subdivide")
         layout.operator("curves.switch_direction")
+
+
+class VIEW3D_MT_edit_curves_context_menu(Menu):
+    bl_label = "Curves"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator_context = 'INVOKE_DEFAULT'
+
+        layout.operator("curves.subdivide")
+        layout.operator("curves.extrude_move")
 
 
 class VIEW3D_MT_edit_pointcloud(Menu):
@@ -9334,6 +9347,7 @@ classes = (
     VIEW3D_MT_edit_curves_add,
     VIEW3D_MT_edit_curves_segments,
     VIEW3D_MT_edit_curves_control_points,
+    VIEW3D_MT_edit_curves_context_menu,
     VIEW3D_MT_edit_pointcloud,
     VIEW3D_MT_object_mode_pie,
     VIEW3D_MT_view_pie,

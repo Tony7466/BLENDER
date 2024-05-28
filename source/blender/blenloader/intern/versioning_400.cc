@@ -2847,8 +2847,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
      * Material::blend_flag. */
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool is_eevee = scene && (STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE) ||
-                              STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT));
+    bool is_eevee = scene && STR_ELEM(scene->r.engine,
+                                      RE_engine_id_BLENDER_EEVEE,
+                                      RE_engine_id_BLENDER_EEVEE_NEXT);
     LISTBASE_FOREACH (Material *, material, &bmain->materials) {
       bool transparent_shadows = true;
       if (is_eevee) {
@@ -3655,7 +3656,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
           if (sl->spacetype == SPACE_VIEW3D) {
-            View3D *v3d = static_cast<View3D *>(area->spacedata.first);
+            View3D *v3d = reinterpret_cast<View3D *>(sl);
             v3d->flag2 |= V3D_SHOW_CAMERA_GUIDES;
           }
         }
