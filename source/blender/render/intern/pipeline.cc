@@ -6,6 +6,8 @@
  * \ingroup render
  */
 
+#include <fmt/format.h>
+
 #include <cerrno>
 #include <climits>
 #include <cmath>
@@ -2212,25 +2214,23 @@ static bool do_write_image_or_movie(Render *re,
   re->i.lastframetime = BLI_time_now_seconds() - re->i.starttime;
 
   BLI_timecode_string_from_time_simple(filepath, sizeof(filepath), re->i.lastframetime);
-  char *message = BLI_sprintfN("Time: %s", filepath);
+  std::string message = fmt::format("Time: {}", filepath);
 
   if (do_write_file) {
     BLI_timecode_string_from_time_simple(
         filepath, sizeof(filepath), re->i.lastframetime - render_time);
-    message = BLI_sprintfN("%s (Saving: %s)", message, filepath);
+    message = fmt::format("{} (Saving: {})", message, filepath);
   }
-  printf("%s\n", message);
+  printf("%s\n", message.c_str());
   /* Flush stdout to be sure python callbacks are printing stuff after blender. */
   fflush(stdout);
 
   /* NOTE: using G_MAIN seems valid here???
    * Not sure it's actually even used anyway, we could as well pass nullptr? */
-  render_callback_exec_string(re, G_MAIN, BKE_CB_EVT_RENDER_STATS, message);
+  render_callback_exec_string(re, G_MAIN, BKE_CB_EVT_RENDER_STATS, message.c_str());
 
   fputc('\n', stdout);
   fflush(stdout);
-
-  MEM_freeN(message);
 
   return ok;
 }
