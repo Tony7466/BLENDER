@@ -954,7 +954,7 @@ static void grow_shrink_visibility_mesh(Object &object,
   array_utils::copy(hide_vert.span.as_span(), buffers.back.as_mutable_span());
   array_utils::copy(hide_vert.span.as_span(), buffers.front.as_mutable_span());
 
-  Vector<bool> orig_hide_poly(hide_poly);
+  Array<bool> orig_hide_poly(hide_poly);
   const int last_changed_iteration = propagate_vertex_visibility(
       mesh, buffers, hide_poly, action, iterations);
   if (last_changed_iteration == -1) {
