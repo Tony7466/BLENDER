@@ -1014,8 +1014,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
   const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
 
   DualBitBuffer buffers;
-  buffers.front = BitGroupVector<>(grid_hidden);
-  buffers.back = BitGroupVector<>(grid_hidden);
+  buffers.front = grid_hidden;
+  buffers.back = grid_hidden;
 
   Array<bool> node_changed(nodes.size());
 
