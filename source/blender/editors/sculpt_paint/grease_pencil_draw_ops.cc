@@ -31,6 +31,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "GEO_join_geometries.hh"
+#include "GEO_smooth_curves.hh"
 
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
@@ -696,6 +697,35 @@ static Vector<FillToolTargetInfo> ensure_editable_drawings(const Scene &scene,
   return drawings;
 }
 
+void smooth_fill_strokes(bke::CurvesGeometry &curves, const IndexMask &stroke_mask)
+{
+  const int iterations = 20;
+  if (curves.points_num() == 0) {
+    return;
+  }
+  if (stroke_mask.is_empty()) {
+    return;
+  }
+
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+  const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
+
+  bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
+  geometry::smooth_curve_attribute(stroke_mask,
+                                   points_by_curve,
+                                   point_selection,
+                                   cyclic,
+                                   iterations,
+                                   1.0f,
+                                   false,
+                                   true,
+                                   positions.span);
+  positions.finish();
+  curves.tag_positions_changed();
+}
+
 static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent &event)
 {
   using bke::greasepencil::Layer;
@@ -748,6 +778,8 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
                                                    fit_method,
                                                    op_data.material_index,
                                                    keep_images);
+
+    smooth_fill_strokes(fill_curves, fill_curves.curves_range());
 
     Curves *dst_curves_id = curves_new_nomain(std::move(info.target.drawing.strokes_for_write()));
     Curves *fill_curves_id = curves_new_nomain(fill_curves);
