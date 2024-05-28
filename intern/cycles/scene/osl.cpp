@@ -1252,7 +1252,8 @@ void OSLCompiler::compile(OSLGlobals *og, Shader *shader)
     ShaderGraph *graph = shader->graph;
     ShaderNode *output = (graph) ? graph->output() : NULL;
 
-    bool has_bump = (shader->get_displacement_method() != DISPLACE_TRUE) &&
+    bool has_bump = (shader->get_displacement_method() == DISPLACE_BUMP ||
+                     shader->get_displacement_method() == DISPLACE_BOTH) &&
                     output->input("Surface")->link && output->input("Displacement")->link;
 
     /* finalize */

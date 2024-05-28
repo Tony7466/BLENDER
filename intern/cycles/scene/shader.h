@@ -55,6 +55,7 @@ enum DisplacementMethod {
   DISPLACE_BUMP = 0,
   DISPLACE_TRUE = 1,
   DISPLACE_BOTH = 2,
+  DISPLACE_AND_NORMAL_MAP = 3,
 
   DISPLACE_NUM_METHODS,
 };

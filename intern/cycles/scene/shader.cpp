@@ -80,6 +80,7 @@ NODE_DEFINE(Shader)
   displacement_method_enum.insert("bump", DISPLACE_BUMP);
   displacement_method_enum.insert("true", DISPLACE_TRUE);
   displacement_method_enum.insert("both", DISPLACE_BOTH);
+  displacement_method_enum.insert("normal_map", DISPLACE_AND_NORMAL_MAP);
   SOCKET_ENUM(displacement_method, "Displacement Method", displacement_method_enum, DISPLACE_BUMP);
 
   SOCKET_INT(pass_id, "Pass ID", 0);
