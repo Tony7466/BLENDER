@@ -67,10 +67,14 @@ void version_node_output_socket_name(bNodeTree *ntree,
 
 /**
  * Adds a new node for versioning purposes. This is intended to be used to create raw dna that
- * might have been read from a file. This can be used instead of #nodeAddNode when the node has
- * changed too much.
+ * might have been read from a file. The created node does not have storage or sockets. Both have
+ * to be added manually afterwards.
  *
- * TODO: Improve description.
+ * This may seem redundant because the set of sockets is already part of the node declaration.
+ * However, the declaration should not be used here, because it changes over time. The versioning
+ * code generally expects to get the sockets that the node had at the time of writing the
+ * versioning code. Changing the declaration later can break the versioning code in ways that are
+ * hard to detect.
  */
 bNode &version_node_add_empty(bNodeTree &ntree, const char *idname);
 bNodeSocket &version_node_add_socket(bNodeTree &ntree,

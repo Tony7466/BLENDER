@@ -895,23 +895,23 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
      * releases and would make the file crash when trying to open it. */
     storage.data_type = CD_PROP_FLOAT3;
 
-    bNodeSocket *store_attribute_geometry_input = &version_node_add_socket(
+    bNodeSocket &store_attribute_geometry_input = version_node_add_socket(
         ntree, *store_attribute_node, SOCK_IN, "NodeSocketGeometry", "Geometry");
-    bNodeSocket *store_attribute_name_input = &version_node_add_socket(
+    bNodeSocket &store_attribute_name_input = version_node_add_socket(
         ntree, *store_attribute_node, SOCK_IN, "NodeSocketString", "Name");
-    bNodeSocket *store_attribute_value_input = &version_node_add_socket(
+    bNodeSocket &store_attribute_value_input = version_node_add_socket(
         ntree, *store_attribute_node, SOCK_IN, "NodeSocketVector", "Value");
-    bNodeSocket *store_attribute_geometry_output = &version_node_add_socket(
+    bNodeSocket &store_attribute_geometry_output = version_node_add_socket(
         ntree, *store_attribute_node, SOCK_OUT, "NodeSocketGeometry", "Geometry");
     LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
       if (link->fromsock == primitive_output_socket) {
         link->fromnode = store_attribute_node;
-        link->fromsock = store_attribute_geometry_output;
+        link->fromsock = &store_attribute_geometry_output;
       }
     }
 
     bNodeSocketValueString *name_value = static_cast<bNodeSocketValueString *>(
-        store_attribute_name_input->default_value);
+        store_attribute_name_input.default_value);
     const char *uv_map_name = node->type == GEO_NODE_MESH_PRIMITIVE_ICO_SPHERE ? "UVMap" :
                                                                                  "uv_map";
     STRNCPY(name_value->value, uv_map_name);
@@ -920,9 +920,9 @@ static void version_geometry_nodes_primitive_uv_maps(bNodeTree &ntree)
                           *node,
                           *primitive_output_socket,
                           *store_attribute_node,
-                          *store_attribute_geometry_input);
+                          store_attribute_geometry_input);
     version_node_add_link(
-        ntree, *node, *uv_map_output_socket, *store_attribute_node, *store_attribute_value_input);
+        ntree, *node, *uv_map_output_socket, *store_attribute_node, store_attribute_value_input);
   }
 
   /* Move nodes to the front so that they are drawn behind existing nodes. */
