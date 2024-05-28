@@ -36,6 +36,7 @@
 
 #include "BLT_translation.hh"
 
+#include "BKE_callbacks.hh"
 #include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_idtype.hh"
 #include "BKE_key.hh"
@@ -1420,6 +1421,8 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
     char lib_id_name[MAX_ID_NAME];
     STRNCPY(lib_id_name, id->name);
 
+    BKE_callback_exec_string(bmain, BKE_CB_EVT_APPEND_PRE, lib_id_name);
+
     switch (item->action) {
       case LINK_APPEND_ACT_COPY_LOCAL:
         BKE_lib_id_make_local(bmain, id, make_local_common_flags | LIB_ID_MAKELOCAL_FORCE_COPY);
@@ -1461,6 +1464,8 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
           id_fake_user_set(local_appended_new_id);
         }
       }
+
+      BKE_callback_exec_id(bmain, local_appended_new_id, BKE_CB_EVT_APPEND_POST);
     }
   }
 
@@ -1693,6 +1698,8 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
         continue;
       }
 
+      BKE_callback_exec_string(mainl, BKE_CB_EVT_LINK_PRE, item->name);
+
       new_id = BLO_library_link_named_part(
           mainl, &lib_context->blo_handle, item->idcode, item->name, lapp_context->params);
 
@@ -1702,6 +1709,8 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
         BLI_bitmap_set_all(item->libraries, false, lapp_context->num_libraries);
         item->new_id = new_id;
         item->source_library = new_id->lib;
+
+        BKE_callback_exec_id(mainl, new_id, BKE_CB_EVT_LINK_POST);
       }
     }
 

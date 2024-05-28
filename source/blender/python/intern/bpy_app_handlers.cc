@@ -98,6 +98,10 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"_extension_repos_upgrade", "on upgrading the active repository"},
     {"_extension_repos_files_clear",
      "remove files from the repository directory (uses as a string argument)"},
+    {"append_pre", "on appending an ID (before)"},
+    {"append_post", "on appending an ID (after)"},
+    {"link_pre", "on linking an ID (before)"},
+    {"link_post", "on linking an ID (after)"},
 
 /* sets the permanent tag */
 #define APP_CB_OTHER_FIELDS 1
