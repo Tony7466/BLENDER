@@ -42,12 +42,15 @@ class AnimManager {
   /**
    * Load anims used by strips and lock them so they won't be freed.
    */
-  void strip_anims_laod_and_lock(const Scene *scene,
-                                 blender::Vector<Sequence *> &strips);  // acquire?
+  // acquire?
+  void strip_anims_load_and_lock(const Scene *scene, blender::Vector<Sequence *> &strips);
+  void strip_anims_load_and_lock(const Scene *scene, Sequence *seq);
   /**
    * Unlock anims used by strips.
    */
-  void strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips);  // release?
+  // release?
+  void strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips);
+  void strip_anims_unlock(const Scene *scene, Sequence *seq);
   /**
    * Get anims used by `seq`.
    */
@@ -59,10 +62,9 @@ class AnimManager {
 
  private:
   ShareableAnim &cache_entry_get(const Scene *scene, const Sequence *seq);
-  void free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &strips);
+  void free_unused_anims(blender::Vector<Sequence *> &strips);
   void free_unused_and_prefetch_anims(const Scene *scene);
   void parallel_load_anims(const Scene *scene, blender::Vector<Sequence *> &strips, bool unlock);
 };
 
-void seq_open_anim_file(const Scene *scene, Sequence *seq, bool openfile);
-AnimManager *seq_anim_lookup_ensure(Editing *ed);
+AnimManager *seq_anim_manager_ensure(Editing *ed);

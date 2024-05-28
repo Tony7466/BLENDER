@@ -48,6 +48,7 @@
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
 
+#include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
 #include "sequencer.hh"
@@ -379,63 +380,40 @@ Sequence *SEQ_add_meta_strip(Scene *scene, ListBase *seqbase, SeqLoadData *load_
   return seqm;
 }
 
-Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqLoadData *load_data)
+Sequence *SEQ_add_movie_strip(Main * /*bmain*/,
+                              Scene *scene,
+                              ListBase *seqbase,
+                              SeqLoadData *load_data)
 {
-  char path[sizeof(load_data->path)];
-  STRNCPY(path, load_data->path);
-  BLI_path_abs(path, BKE_main_blendfile_path(bmain));
 
-  char colorspace[64] = "\0"; /* MAX_COLORSPACE_NAME */
-  bool is_multiview_loaded = false;
-  const int totfiles = seq_num_files(scene, load_data->views_format, load_data->use_multiview);
-  ImBufAnim **anim_arr = static_cast<ImBufAnim **>(
-      MEM_callocN(sizeof(ImBufAnim *) * totfiles, "Video files"));
-  int i;
-  int orig_width = 0;
-  int orig_height = 0;
+  Sequence *seq = SEQ_sequence_alloc(
+      seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_MOVIE);
+  Strip *strip = seq->strip;
+  /* We only need 1 element for MOVIE strips. */
+  strip->stripdata = static_cast<StripElem *>(MEM_callocN(sizeof(StripElem), "stripelem"));
+  StripElem *se = strip->stripdata;
+  BLI_path_split_dir_file(
+      load_data->path, strip->dirpath, sizeof(strip->dirpath), se->filename, sizeof(se->filename));
 
-  if (load_data->use_multiview && (load_data->views_format == R_IMF_VIEWS_INDIVIDUAL)) {
-    char prefix[FILE_MAX];
-    const char *ext = nullptr;
-    size_t j = 0;
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+  manager->strip_anims_load_and_lock(scene, seq);
+  blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
 
-    BKE_scene_multiview_view_prefix_get(scene, path, prefix, &ext);
-
-    if (prefix[0] != '\0') {
-      for (i = 0; i < totfiles; i++) {
-        char filepath[FILE_MAX];
-
-        seq_multiview_name(scene, i, prefix, ext, filepath, sizeof(filepath));
-        anim_arr[j] = openanim(filepath, IB_rect, 0, colorspace);
-
-        if (anim_arr[j]) {
-          seq_anim_add_suffix(scene, anim_arr[j], i);
-          j++;
-        }
-      }
-      is_multiview_loaded = true;
-    }
-  }
-
-  if (is_multiview_loaded == false) {
-    anim_arr[0] = openanim(path, IB_rect, 0, colorspace);
-  }
-
-  if (anim_arr[0] == nullptr && !load_data->allow_invalid_file) {
-    MEM_freeN(anim_arr);
+  if (anims.size() == 0 && !load_data->allow_invalid_file) {
+    manager->strip_anims_unlock(scene, seq);
+    BLI_remlink(seqbase, seq);
+    SEQ_sequence_free(scene, seq);
     return nullptr;
   }
 
-  float video_fps = 0.0f;
-  load_data->r_video_stream_start = 0.0;
-
-  if (anim_arr[0] != nullptr) {
+  // Do FPS and stuff
+  if (anims.size() > 0) {
     short fps_denom;
     float fps_num;
 
-    IMB_anim_get_fps(anim_arr[0], true, &fps_denom, &fps_num);
+    IMB_anim_get_fps(anims[0], true, &fps_denom, &fps_num);
 
-    video_fps = fps_denom / fps_num;
+    strip->stripdata->orig_fps = fps_denom / fps_num;
 
     /* Adjust scene's frame rate settings to match. */
     if (load_data->flags & SEQ_LOAD_MOVIE_SYNC_FPS) {
@@ -444,11 +422,8 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
       DEG_id_tag_update(&scene->id, ID_RECALC_AUDIO_FPS | ID_RECALC_SEQUENCER_STRIPS);
     }
 
-    load_data->r_video_stream_start = IMD_anim_get_offset(anim_arr[0]);
+    load_data->r_video_stream_start = IMD_anim_get_offset(anims[0]);
   }
-
-  Sequence *seq = SEQ_sequence_alloc(
-      seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_MOVIE);
 
   /* Multiview settings. */
   if (load_data->use_multiview) {
@@ -459,31 +434,22 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     seq->stereo3d_format = load_data->stereo3d_format;
   }
 
-  for (i = 0; i < totfiles; i++) {
-    if (anim_arr[i]) {
-      StripAnim *sanim = static_cast<StripAnim *>(MEM_mallocN(sizeof(StripAnim), "Strip Anim"));
-      BLI_addtail(&seq->anims, sanim);
-      sanim->anim = anim_arr[i];
-    }
-    else {
-      break;
-    }
-  }
+  int orig_width = 0;
+  int orig_height = 0;
+  if (anims.size() > 0) {
+    seq->len = IMB_anim_get_duration(anims[0], IMB_TC_RECORD_RUN);
 
-  if (anim_arr[0] != nullptr) {
-    seq->len = IMB_anim_get_duration(anim_arr[0], IMB_TC_RECORD_RUN);
-
-    IMB_anim_load_metadata(anim_arr[0]);
+    IMB_anim_load_metadata(anims[0]);
 
     /* Set initial scale based on load_data->fit_method. */
-    orig_width = IMB_anim_get_image_width(anim_arr[0]);
-    orig_height = IMB_anim_get_image_height(anim_arr[0]);
+    orig_width = IMB_anim_get_image_width(anims[0]);
+    orig_height = IMB_anim_get_image_height(anims[0]);
     SEQ_set_scale_to_fit(
         seq, orig_width, orig_height, scene->r.xsch, scene->r.ysch, load_data->fit_method);
 
     short frs_sec;
     float frs_sec_base;
-    if (IMB_anim_get_fps(anim_arr[0], true, &frs_sec, &frs_sec_base)) {
+    if (IMB_anim_get_fps(anims[0], true, &frs_sec, &frs_sec_base)) {
       seq->media_playback_rate = float(frs_sec) / frs_sec_base;
     }
   }
@@ -493,23 +459,17 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     seq->flag |= SEQ_AUTO_PLAYBACK_RATE;
   }
 
-  STRNCPY(seq->strip->colorspace_settings.name, colorspace);
-
-  Strip *strip = seq->strip;
-  /* We only need 1 element for MOVIE strips. */
-  StripElem *se;
-  strip->stripdata = se = static_cast<StripElem *>(MEM_callocN(sizeof(StripElem), "stripelem"));
   strip->stripdata->orig_width = orig_width;
   strip->stripdata->orig_height = orig_height;
-  strip->stripdata->orig_fps = video_fps;
-  BLI_path_split_dir_file(
-      load_data->path, strip->dirpath, sizeof(strip->dirpath), se->filename, sizeof(se->filename));
+
+  char colorspace[64] = "\0"; /* MAX_COLORSPACE_NAME */
+  STRNCPY(seq->strip->colorspace_settings.name, colorspace);
 
   seq_add_set_view_transform(scene, seq, load_data);
   seq_add_set_name(scene, seq, load_data);
   seq_add_generic_update(scene, seq);
 
-  MEM_freeN(anim_arr);
+  manager->strip_anims_unlock(scene, seq);
   return seq;
 }
 
@@ -550,74 +510,23 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
       break;
     }
     case SEQ_TYPE_MOVIE: {
-      char filepath[FILE_MAX];
-      StripAnim *sanim;
-      bool is_multiview_loaded = false;
-      const bool is_multiview = (seq->flag & SEQ_USE_VIEWS) != 0 &&
-                                (scene->r.scemode & R_MULTIVIEW) != 0;
+      AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+      manager->free_anims_by_seq(scene, seq);
+      manager->strip_anims_load_and_lock(scene, seq);
+      blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
 
-      BLI_path_join(
-          filepath, sizeof(filepath), seq->strip->dirpath, seq->strip->stripdata->filename);
-      BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
-
-      SEQ_relations_sequence_free_anim(scene, seq);
-
-      if (is_multiview && (seq->views_format == R_IMF_VIEWS_INDIVIDUAL)) {
-        char prefix[FILE_MAX];
-        const char *ext = nullptr;
-        const int totfiles = seq_num_files(scene, seq->views_format, true);
-        int i = 0;
-
-        BKE_scene_multiview_view_prefix_get(scene, filepath, prefix, &ext);
-
-        if (prefix[0] != '\0') {
-          for (i = 0; i < totfiles; i++) {
-            ImBufAnim *anim;
-            char filepath_view[FILE_MAX];
-
-            seq_multiview_name(scene, i, prefix, ext, filepath_view, sizeof(filepath_view));
-            anim = openanim(filepath_view,
-                            IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
-                            seq->streamindex,
-                            seq->strip->colorspace_settings.name);
-
-            if (anim) {
-              seq_anim_add_suffix(scene, anim, i);
-              sanim = static_cast<StripAnim *>(MEM_mallocN(sizeof(StripAnim), "Strip Anim"));
-              BLI_addtail(&seq->anims, sanim);
-              sanim->anim = anim;
-            }
-          }
-          is_multiview_loaded = true;
-        }
-      }
-
-      if (is_multiview_loaded == false) {
-        ImBufAnim *anim;
-        anim = openanim(filepath,
-                        IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
-                        seq->streamindex,
-                        seq->strip->colorspace_settings.name);
-        if (anim) {
-          sanim = static_cast<StripAnim *>(MEM_mallocN(sizeof(StripAnim), "Strip Anim"));
-          BLI_addtail(&seq->anims, sanim);
-          sanim->anim = anim;
-        }
-      }
-
-      /* use the first video as reference for everything */
-      sanim = static_cast<StripAnim *>(seq->anims.first);
-
-      if ((!sanim) || (!sanim->anim)) {
+      if (anims.size() == 0) {
         return;
       }
 
-      IMB_anim_load_metadata(sanim->anim);
+      IMB_anim_load_metadata(anims[0]);
 
       seq->len = IMB_anim_get_duration(
-          sanim->anim,
+          anims[0],
           IMB_Timecode_Type(seq->strip->proxy ? IMB_Timecode_Type(seq->strip->proxy->tc) :
                                                 IMB_TC_RECORD_RUN));
+
+      manager->strip_anims_unlock(scene, seq);
 
       seq->len -= seq->anim_startofs;
       seq->len -= seq->anim_endofs;
@@ -704,13 +613,17 @@ void SEQ_add_movie_reload_if_needed(
     must_reload = true;
   }
   else {
-    LISTBASE_FOREACH (StripAnim *, sanim, &seq->anims) {
-      if (!IMB_anim_can_produce_frames(sanim->anim)) {
+    AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+    manager->strip_anims_load_and_lock(scene, seq);
+    blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+    for (ImBufAnim *anim : anims) {
+      if (!IMB_anim_can_produce_frames(anim)) {
         /* Anim cannot produce frames, try reloading. */
         must_reload = true;
         break;
       }
-    };
+    }
+    manager->strip_anims_unlock(scene, seq);
   }
 
   if (!must_reload) {
@@ -730,8 +643,11 @@ void SEQ_add_movie_reload_if_needed(
   }
 
   /* Check if there are still anims that cannot produce frames. */
-  LISTBASE_FOREACH (StripAnim *, sanim, &seq->anims) {
-    if (!IMB_anim_can_produce_frames(sanim->anim)) {
+  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+  manager->strip_anims_load_and_lock(scene, seq);
+  blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+  for (ImBufAnim *anim : anims) {
+    if (!IMB_anim_can_produce_frames(anim)) {
       /* There still is an anim that cannot produce frames. */
       *r_can_produce_frames = false;
       return;

@@ -326,18 +326,20 @@ float SEQ_time_sequence_get_fps(Scene *scene, Sequence *seq)
 {
   switch (seq->type) {
     case SEQ_TYPE_MOVIE: {
-      seq_open_anim_file(scene, seq, true);  // This is bit annoying, but think it is legal to have
-                                             // API to open anim on demand anyway...
-      if (BLI_listbase_is_empty(&seq->anims)) {
+
+      AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+      manager->strip_anims_load_and_lock(scene, seq);
+      blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
+
+      if (anims.size() == 0) {
+        manager->strip_anims_unlock(scene, seq);
         return 0.0f;
       }
-      StripAnim *strip_anim = static_cast<StripAnim *>(seq->anims.first);
-      if (strip_anim->anim == nullptr) {
-        return 0.0f;
-      }
+
       short frs_sec;
       float frs_sec_base;
-      if (IMB_anim_get_fps(strip_anim->anim, true, &frs_sec, &frs_sec_base)) {
+      if (IMB_anim_get_fps(anims[0], true, &frs_sec, &frs_sec_base)) {
+        manager->strip_anims_unlock(scene, seq);
         return float(frs_sec) / frs_sec_base;
       }
       break;

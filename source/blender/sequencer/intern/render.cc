@@ -1220,25 +1220,26 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
 
   Scene *scene = context->scene;
   Editing *ed = SEQ_editing_get(context->scene);
-  AnimManager *anim_manager = seq_anim_lookup_ensure(ed);
+  AnimManager *anim_manager = seq_anim_manager_ensure(ed);
   blender::Vector<ImBufAnim *> anims = anim_manager->strip_anims_get(scene, seq);
+
+  if (anims.size() == 0) {
+    return nullptr;
+  }
 
   if (is_multiview_render) {
     ImBuf **ibuf_arr;
-    int totviews = BKE_scene_multiview_num_views_get(&context->scene->r);
+    int totviews = std::min(BKE_scene_multiview_num_views_get(&context->scene->r),
+                            int(anims.size()));
     ibuf_arr = static_cast<ImBuf **>(
         MEM_callocN(sizeof(ImBuf *) * totviews, "Sequence Image Views Imbufs"));
 
-    int ibuf_view_id = 0;
-    for (ImBufAnim *anim : anims) {
-      if (anim) {
-        ibuf_arr[ibuf_view_id] = seq_render_movie_strip_view(
-            context, seq, timeline_frame, anim, r_is_proxy_image);
-      }
-      ibuf_view_id++;
+    for (int view_id = 0; view_id < totviews; view_id++) {
+      ibuf_arr[view_id] = seq_render_movie_strip_view(
+          context, seq, timeline_frame, anims[view_id], r_is_proxy_image);
     }
 
-    if (seq->views_format == R_IMF_VIEWS_STEREO_3D) {
+    if (seq->views_format == R_IMF_VIEWS_STEREO_3D && totviews == 2) {
       if (ibuf_arr[0] == nullptr) {
         /* Probably proxy hasn't been created yet. */
         MEM_freeN(ibuf_arr);
@@ -1259,7 +1260,9 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
     }
 
     /* Return the original requested ImBuf. */
-    ibuf = ibuf_arr[context->view_id];
+    if (context->view_id < totviews) {
+      ibuf = ibuf_arr[context->view_id];
+    }
 
     /* Remove the others (decrease their refcount). */
     for (int view_id = 0; view_id < totviews; view_id++) {
@@ -2104,12 +2107,12 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
 
   seq_cache_free_temp_cache(context->scene, context->task_id, timeline_frame);
 
-  AnimManager *anim_manager = seq_anim_lookup_ensure(ed);
+  AnimManager *anim_manager = seq_anim_manager_ensure(ed);
 
   if (!strips.is_empty() && !out) {
     BLI_mutex_lock(&seq_render_mutex);
     /* Load anims in main thread for the first time and lock them, so they can't be freed. */
-    anim_manager->strip_anims_laod_and_lock(scene, strips);
+    anim_manager->strip_anims_load_and_lock(scene, strips);
 
     out = seq_render_strip_stack(context, &state, channels, seqbasep, timeline_frame, chanshown);
 

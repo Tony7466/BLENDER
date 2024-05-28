@@ -216,11 +216,6 @@ void ShareableAnim::unlock()
   mutex->unlock();
 }
 
-void seq_open_anim_file(const Scene *scene, Sequence *seq, bool openfile)
-{
-  /// xxx
-}
-
 static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
 {
   Editing *ed = SEQ_editing_get(scene);
@@ -248,7 +243,7 @@ static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
   return strips_sorted;
 }
 
-AnimManager *seq_anim_lookup_ensure(Editing *ed)
+AnimManager *seq_anim_manager_ensure(Editing *ed)
 {
   if (ed->runtime.anim_lookup == nullptr) {
     ed->runtime.anim_lookup = MEM_new<AnimManager>(__func__);
@@ -256,7 +251,7 @@ AnimManager *seq_anim_lookup_ensure(Editing *ed)
   return ed->runtime.anim_lookup;
 }
 
-void AnimManager::free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &strips)
+void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
 {
   mutex.lock();
   for (ShareableAnim &sh_anim : anims.values()) {
@@ -319,10 +314,9 @@ void AnimManager::parallel_load_anims(const Scene *scene,
 
 void AnimManager::free_unused_and_prefetch_anims(const Scene *scene)
 {
-  Editing *ed = SEQ_editing_get(scene);
   blender::Vector<Sequence *> strips = strips_to_prefetch_get(scene);
 
-  free_unused_anims(ed, strips);
+  free_unused_anims(strips);
   parallel_load_anims(scene, strips, true);
 }
 
@@ -347,10 +341,22 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   return sh_anim;
 }
 
-void AnimManager::strip_anims_laod_and_lock(const Scene *scene,
+void AnimManager::strip_anims_load_and_lock(const Scene *scene,
                                             blender::Vector<Sequence *> &strips)
 {
   parallel_load_anims(scene, strips, false);
+}
+
+void AnimManager::strip_anims_load_and_lock(const Scene *scene, Sequence *seq)
+{
+  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+  if (!sh_anim.mutex->try_lock()) {
+    return;
+  }
+
+  if (!sh_anim.has_anim(scene, seq)) {
+    sh_anim.acquire_anims(scene, seq, true);
+  }
 }
 
 void AnimManager::strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips)
@@ -362,6 +368,12 @@ void AnimManager::strip_anims_unlock(const Scene *scene, blender::Vector<Sequenc
     ShareableAnim &sh_anim = cache_entry_get(scene, seq);
     sh_anim.unlock();
   }
+}
+
+void AnimManager::strip_anims_unlock(const Scene *scene, Sequence *seq)
+{
+  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+  sh_anim.unlock();
 }
 
 blender::Vector<ImBufAnim *> &AnimManager::strip_anims_get(const Scene *scene, const Sequence *seq)

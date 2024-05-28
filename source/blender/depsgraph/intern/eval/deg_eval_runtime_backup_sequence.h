@@ -29,7 +29,6 @@ class SequenceBackup {
   bool isEmpty() const;
 
   void *scene_sound;
-  ListBase anims;
 };
 
 }  // namespace blender::deg
