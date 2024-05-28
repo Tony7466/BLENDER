@@ -68,7 +68,8 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
                                     vec2 noise,
                                     vec2 pixel_size,
                                     float search_distance,
-                                    float global_thickness,
+                                    float thickness_near,
+                                    float thickness_far,
                                     float angle_bias,
                                     const int slice_count,
                                     const int sample_count,
@@ -156,17 +157,21 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
         vec3 vP_sample = drw_point_screen_to_view(vec3(sample_uv, sample_depth));
 
         float sample_distance;
-        vec3 vL = normalize_and_get_length(vP_sample - vP, sample_distance);
+        vec3 vL_front = normalize_and_get_length(vP_sample - vP, sample_distance);
+        if (sample_distance > search_distance) {
+          continue;
+        }
 
+        vec3 vL_back = normalize_and_get_length((vP_sample - vV * thickness_near) - vP,
+                                                sample_distance);
         if (sample_distance > search_distance) {
           continue;
         }
 
         /* Ordered pair of angle. Minimum in X, Maximum in Y.
          * Front will always have the smallest angle here since it is the closest to the view. */
-        vec2 theta;
-        theta.x = acos_fast(dot(vL, vV));
-        theta.y = theta.x + global_thickness;
+        vec2 theta = acos_fast(vec2(dot(vL_front, vV), dot(vL_back, vV)));
+        theta.y = max(theta.x + thickness_far, theta.y);
         /* If we are tracing backward, the angles are negative. Swizzle to keep correct order. */
         theta = (side == 0) ? theta.xy : -theta.yx;
 
@@ -174,9 +179,9 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
         /* Take emitter surface normal into consideration. */
         vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
         /* Discard back-facing samples.
-         * The 2 factor is to avoid loosing too much energy (which is something not
+         * The 2 factor is to avoid loosing too much energy v(which is something not
          * explained in the paper...). Likely to be wrong, but we need a soft falloff. */
-        float facing_weight = saturate(-dot(sample_normal, vL) * 2.0);
+        float facing_weight = saturate(-dot(sample_normal, vL_front) * 2.0);
 
         /* Angular bias shrinks the visibility bitmask around the projected normal. */
         vec2 biased_theta = (theta - vN_angle) * angle_bias;
@@ -186,7 +191,7 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
 
         sample_radiance *= facing_weight * weight_bitmask;
         spherical_harmonics_encode_signal_sample(
-            vL, vec4(sample_radiance, weight_bitmask), sh_slice);
+            vL_front, vec4(sample_radiance, weight_bitmask), sh_slice);
 
         slice_bitmask |= sample_bitmask;
       }

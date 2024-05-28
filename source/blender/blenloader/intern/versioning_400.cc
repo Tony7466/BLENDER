@@ -3653,7 +3653,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 45)) {
     const Scene *default_scene = DNA_struct_default_get(Scene);
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->eevee.fast_gi_thickness = default_scene->eevee.fast_gi_thickness;
+      scene->eevee.fast_gi_thickness_near = default_scene->eevee.fast_gi_thickness_near;
+      scene->eevee.fast_gi_thickness_far = default_scene->eevee.fast_gi_thickness_far;
     }
   }
 
