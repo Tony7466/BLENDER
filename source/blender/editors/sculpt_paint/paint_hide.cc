@@ -802,48 +802,27 @@ void PAINT_OT_visibility_invert(wmOperatorType *ot)
 /* Number of vertices per iteration step size when growing or shrinking visibility. */
 static constexpr float VERTEX_ITERATION_THRESHOLD = 50000.0f;
 
-/* For both this and the following #shrinK_face_visibility_mesh methods, extracting the loop
- * and comparing against / writing with a constant `false` or `true` instead of using
- * #action_to_hide results in a nearly 600ms speedup on a mesh with 1.5m verts. */
-static void grow_face_visibility_mesh(const IndexRange &face,
-                                      const Span<int> corner_verts,
-                                      const Span<bool> read_buffer,
-                                      MutableSpan<bool> write_buffer)
+/* Extracting the loop and comparing against / writing with a constant `false` or `true` instead of
+ * using #action_to_hide results in a nearly 600ms speedup on a mesh with 1.5m verts. */
+template<bool value>
+static void affect_visibility_mesh(const IndexRange face,
+                                   const Span<int> corner_verts,
+                                   const Span<bool> read_buffer,
+                                   MutableSpan<bool> write_buffer)
 {
   for (const int corner : face) {
     int vert = corner_verts[corner];
-    if (read_buffer[vert]) {
+    if (read_buffer[vert] != value) {
       continue;
     }
 
     const int prev = bke::mesh::face_corner_prev(face, corner);
     const int prev_vert = corner_verts[prev];
-    write_buffer[prev_vert] = false;
+    write_buffer[prev_vert] = value;
 
     const int next = bke::mesh::face_corner_next(face, corner);
     const int next_vert = corner_verts[next];
-    write_buffer[next_vert] = false;
-  }
-}
-
-static void shrink_face_visibility_mesh(const IndexRange &face,
-                                        const Span<int> corner_verts,
-                                        const Span<bool> read_buffer,
-                                        MutableSpan<bool> write_buffer)
-{
-  for (const int corner : face) {
-    int vert = corner_verts[corner];
-    if (!read_buffer[vert]) {
-      continue;
-    }
-
-    const int prev = bke::mesh::face_corner_prev(face, corner);
-    const int prev_vert = corner_verts[prev];
-    write_buffer[prev_vert] = true;
-
-    const int next = bke::mesh::face_corner_next(face, corner);
-    const int next_vert = corner_verts[next];
-    write_buffer[next_vert] = true;
+    write_buffer[next_vert] = value;
   }
 }
 
@@ -882,10 +861,10 @@ static int propagate_vertex_visibility(Mesh &mesh,
         }
         const IndexRange face = faces[face_index];
         if (action == VisAction::Hide) {
-          shrink_face_visibility_mesh(face, corner_verts, read_buffer, write_buffer);
+          affect_visibility_mesh<true>(face, corner_verts, read_buffer, write_buffer);
         }
         else {
-          grow_face_visibility_mesh(face, corner_verts, read_buffer, write_buffer);
+          affect_visibility_mesh<false>(face, corner_verts, read_buffer, write_buffer);
         }
       }
     });
