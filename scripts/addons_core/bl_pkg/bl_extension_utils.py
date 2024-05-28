@@ -284,11 +284,15 @@ def platform_from_this_system() -> str:
     system_replace = {
         "darwin": "macos",
     }
+    machine_replace = {
+        "x86_64": "x64",
+        "amd64": "x64",
+    }
     system = platform.system().lower()
     machine = platform.machine().lower()
     return "{:s}-{:s}".format(
         system_replace.get(system, system),
-        machine,
+        machine_replace.get(machine, machine),
     )
 
 
