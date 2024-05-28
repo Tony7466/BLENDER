@@ -60,9 +60,6 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
     VKVertexAttributeObject vao;
     vao.update_bindings(context, *this);
 
-    // create pipeline
-
-    NOT_YET_IMPLEMENTED
     VKIndexBuffer *index_buffer = index_buffer_get();
     const bool draw_indexed = index_buffer != nullptr;
 
