@@ -696,12 +696,15 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   }
   is_rendering_ = true;
 
+  // TODO: add depth + stencil attachment.
+
   render_graph::VKResourceAccessInfo access_info;
   render_graph::VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
   begin_rendering.node_data.vk_rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
   begin_rendering.node_data.vk_rendering_info.layerCount = 1;
   begin_rendering.node_data.vk_rendering_info.renderArea = vk_render_areas_get()[0];
 
+  color_attachment_formats_.clear();
   for (const GPUAttachment &attachment :
        Span<GPUAttachment>(&attachments_[GPU_FB_COLOR_ATTACHMENT0], GPU_FB_MAX_COLOR_ATTACHMENT))
   {
@@ -730,12 +733,26 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
         {color_texture.vk_image_handle(),
          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
          VK_IMAGE_ASPECT_COLOR_BIT});
+    color_attachment_formats_.append(to_vk_format(color_texture.format_get()));
 
     begin_rendering.node_data.vk_rendering_info.pColorAttachments =
         begin_rendering.node_data.color_attachments;
   }
 
   context.render_graph.add_node(begin_rendering);
+}
+
+VkFormat VKFrameBuffer::depth_attachment_format_get() const
+{
+  return depth_attachment_format_;
+}
+VkFormat VKFrameBuffer::stencil_attachment_format_get() const
+{
+  return stencil_attachment_format_;
+};
+Span<VkFormat> VKFrameBuffer::color_attachment_formats_get() const
+{
+  return color_attachment_formats_;
 }
 
 void VKFrameBuffer::rendering_end(VKContext &context)

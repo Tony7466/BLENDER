@@ -38,6 +38,10 @@ class VKFrameBuffer : public FrameBuffer {
   bool enabled_srgb_;
   bool is_rendering_ = false;
 
+  VkFormat depth_attachment_format_ = VK_FORMAT_UNDEFINED;
+  VkFormat stencil_attachment_format_ = VK_FORMAT_UNDEFINED;
+  Vector<VkFormat> color_attachment_formats_;
+
  public:
   /**
    * Create a conventional frame-buffer to attach texture to.
@@ -102,6 +106,9 @@ class VKFrameBuffer : public FrameBuffer {
 
   Array<VkViewport, 16> vk_viewports_get() const;
   Array<VkRect2D, 16> vk_render_areas_get() const;
+  VkFormat depth_attachment_format_get() const;
+  VkFormat stencil_attachment_format_get() const;
+  Span<VkFormat> color_attachment_formats_get() const;
 
   void depth_attachment_layout_ensure(VKContext &context, VkImageLayout requested_layout);
   void color_attachment_layout_ensure(VKContext &context,

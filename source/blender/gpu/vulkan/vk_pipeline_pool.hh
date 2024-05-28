@@ -125,13 +125,25 @@ struct VKGraphicsInfo {
     }
   };
   struct FragmentOut {
-    bool operator==(const FragmentOut & /*other*/) const
+    VkFormat depth_attachment_format;
+    VkFormat stencil_attachment_format;
+    Vector<VkFormat> color_attachment_formats;
+
+    bool operator==(const FragmentOut &other) const
     {
-      return true;
+      return hash() == other.hash();
     }
+
     uint64_t hash() const
     {
-      return 0;
+      uint64_t hash = 0;
+      hash = hash * 33 ^ uint64_t(depth_attachment_format);
+      hash = hash * 33 ^ uint64_t(stencil_attachment_format);
+      for (VkFormat color_attachment_format : color_attachment_formats) {
+        hash = hash * 33 ^ uint64_t(color_attachment_format);
+      }
+
+      return hash;
     }
   };
 
@@ -236,6 +248,10 @@ class VKPipelinePool : public NonCopyable {
   VkPipelineViewportStateCreateInfo vk_pipeline_viewport_state_create_info_;
 
   VkPipelineMultisampleStateCreateInfo vk_pipeline_multisample_state_create_info_;
+
+  Vector<VkPipelineColorBlendAttachmentState> vk_pipeline_color_blend_attachment_states_;
+  VkPipelineColorBlendStateCreateInfo vk_pipeline_color_blend_state_create_info_;
+  VkPipelineColorBlendAttachmentState vk_pipeline_color_blend_attachment_state_template_;
 
   VkSpecializationInfo vk_specialization_info_;
   Vector<VkSpecializationMapEntry> vk_specialization_map_entries_;

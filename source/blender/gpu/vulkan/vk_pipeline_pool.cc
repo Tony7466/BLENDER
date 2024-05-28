@@ -45,6 +45,7 @@ VKPipelinePool::VKPipelinePool()
   vk_graphics_pipeline_create_info_.pViewportState = &vk_pipeline_viewport_state_create_info_;
   vk_graphics_pipeline_create_info_.pMultisampleState =
       &vk_pipeline_multisample_state_create_info_;
+  vk_graphics_pipeline_create_info_.pColorBlendState = &vk_pipeline_color_blend_state_create_info_;
 
   /* Initialize VkPipelineRenderingCreateInfo */
   vk_pipeline_rendering_create_info_ = {};
@@ -90,6 +91,15 @@ VKPipelinePool::VKPipelinePool()
       VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
   vk_pipeline_multisample_state_create_info_.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
   vk_pipeline_multisample_state_create_info_.minSampleShading = 1.0f;
+
+  /* Initialize VkPipelineColorBlendStateCreateInfo */
+  vk_pipeline_color_blend_state_create_info_ = {};
+  vk_pipeline_color_blend_state_create_info_.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+  vk_pipeline_color_blend_attachment_state_template_.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                                                      VK_COLOR_COMPONENT_G_BIT |
+                                                                      VK_COLOR_COMPONENT_B_BIT |
+                                                                      VK_COLOR_COMPONENT_A_BIT;
 
   /* Initialize VkSpecializationInfo. */
   vk_specialization_info_.mapEntryCount = 0;
@@ -246,6 +256,134 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_viewport_state_create_info_.scissorCount =
       graphics_info.fragment_shader.scissors.size();
 
+  /* Color blending */
+  {
+    VkPipelineColorBlendStateCreateInfo &cb = vk_pipeline_color_blend_state_create_info_;
+    VkPipelineColorBlendAttachmentState &att_state =
+        vk_pipeline_color_blend_attachment_state_template_;
+
+    att_state.blendEnable = VK_TRUE;
+    att_state.alphaBlendOp = VK_BLEND_OP_ADD;
+    att_state.colorBlendOp = VK_BLEND_OP_ADD;
+    att_state.srcColorBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
+    att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cb.blendConstants[0] = 1.0f;
+    cb.blendConstants[1] = 1.0f;
+    cb.blendConstants[2] = 1.0f;
+    cb.blendConstants[3] = 1.0f;
+
+    switch (graphics_info.state.blend) {
+      default:
+      case GPU_BLEND_ALPHA:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        break;
+
+      case GPU_BLEND_ALPHA_PREMULT:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        break;
+
+      case GPU_BLEND_ADDITIVE:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        break;
+
+      case GPU_BLEND_SUBTRACT:
+      case GPU_BLEND_ADDITIVE_PREMULT:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        break;
+
+      case GPU_BLEND_MULTIPLY:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_DST_COLOR;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        break;
+
+      case GPU_BLEND_INVERT:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        break;
+
+      case GPU_BLEND_OIT:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        break;
+
+      case GPU_BLEND_BACKGROUND:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        break;
+
+      case GPU_BLEND_ALPHA_UNDER_PREMUL:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        break;
+
+      case GPU_BLEND_CUSTOM:
+        att_state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstColorBlendFactor = VK_BLEND_FACTOR_SRC1_COLOR;
+        att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_SRC1_ALPHA;
+        break;
+    }
+
+    if (graphics_info.state.blend == GPU_BLEND_SUBTRACT) {
+      att_state.alphaBlendOp = VK_BLEND_OP_REVERSE_SUBTRACT;
+      att_state.colorBlendOp = VK_BLEND_OP_REVERSE_SUBTRACT;
+    }
+    else {
+      att_state.alphaBlendOp = VK_BLEND_OP_ADD;
+      att_state.colorBlendOp = VK_BLEND_OP_ADD;
+    }
+
+    if (graphics_info.state.blend != GPU_BLEND_NONE) {
+      att_state.blendEnable = VK_TRUE;
+    }
+    else {
+      att_state.blendEnable = VK_FALSE;
+    }
+
+    vk_pipeline_color_blend_attachment_states_.clear();
+    vk_pipeline_color_blend_attachment_states_.append_n_times(
+        vk_pipeline_color_blend_attachment_state_template_,
+        graphics_info.fragment_out.color_attachment_formats.size());
+    vk_pipeline_color_blend_state_create_info_.attachmentCount =
+        vk_pipeline_color_blend_attachment_states_.size();
+    vk_pipeline_color_blend_state_create_info_.pAttachments =
+        vk_pipeline_color_blend_attachment_states_.data();
+  }
+
+  /* VK_KHR_dynamic_rendering */
+  vk_pipeline_rendering_create_info_.depthAttachmentFormat =
+      graphics_info.fragment_out.depth_attachment_format;
+  vk_pipeline_rendering_create_info_.stencilAttachmentFormat =
+      graphics_info.fragment_out.stencil_attachment_format;
+  vk_pipeline_rendering_create_info_.colorAttachmentCount =
+      graphics_info.fragment_out.color_attachment_formats.size();
+  vk_pipeline_rendering_create_info_.pColorAttachmentFormats =
+      graphics_info.fragment_out.color_attachment_formats.data();
+
   /* Common values */
   vk_graphics_pipeline_create_info_.layout = graphics_info.vk_pipeline_layout;
   // TODO: based on `vk_pipeline_base` we should update the flags.
@@ -292,6 +430,12 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_viewport_state_create_info_.scissorCount = 0;
   vk_pipeline_viewport_state_create_info_.pViewports = nullptr;
   vk_pipeline_viewport_state_create_info_.viewportCount = 0;
+  vk_pipeline_color_blend_state_create_info_.attachmentCount = 0;
+  vk_pipeline_color_blend_state_create_info_.pAttachments = nullptr;
+  vk_pipeline_rendering_create_info_.colorAttachmentCount = 0;
+  vk_pipeline_rendering_create_info_.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+  vk_pipeline_rendering_create_info_.pColorAttachmentFormats = nullptr;
+  vk_pipeline_rendering_create_info_.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
   return pipeline;
 }

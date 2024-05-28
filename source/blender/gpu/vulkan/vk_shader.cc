@@ -1224,6 +1224,7 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
       "drawing fragments. Calling code should be adapted to use a shader that sets the "
       "gl_PointSize before entering the fragment stage. For example `GPU_SHADER_3D_POINT_*`.");
 
+  /* TODO: Graphics info should be cached in VKContext and only the changes should be applied. */
   VKGraphicsInfo graphics_info = {};
   graphics_info.specialization_constants.extend(constants.values);
   graphics_info.vk_pipeline_layout = vk_pipeline_layout;
@@ -1243,6 +1244,12 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
   graphics_info.fragment_shader.viewports.extend(framebuffer.vk_viewports_get());
   graphics_info.fragment_shader.scissors.clear();
   graphics_info.fragment_shader.scissors.extend(framebuffer.vk_render_areas_get());
+
+  graphics_info.fragment_out.depth_attachment_format = framebuffer.depth_attachment_format_get();
+  graphics_info.fragment_out.stencil_attachment_format =
+      framebuffer.stencil_attachment_format_get();
+  graphics_info.fragment_out.color_attachment_formats.extend(
+      framebuffer.color_attachment_formats_get());
 
   VKDevice &device = VKBackend::get().device_get();
   /* Store result in local variable to ensure thread safety. */
