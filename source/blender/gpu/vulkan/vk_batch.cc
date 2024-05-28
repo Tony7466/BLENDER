@@ -9,6 +9,7 @@
 #include "vk_batch.hh"
 
 #include "vk_context.hh"
+#include "vk_framebuffer.hh"
 #include "vk_index_buffer.hh"
 #include "vk_state_manager.hh"
 #include "vk_storage_buffer.hh"
@@ -70,6 +71,7 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
     if (draw_indexed) {
       index_buffer->upload_data();
     }
+    context.active_framebuffer_get()->rendering_ensure(context);
 
     if (draw_indexed) {
       render_graph::VKDrawIndexedNode::CreateInfo draw_indexed(resource_access_info);
