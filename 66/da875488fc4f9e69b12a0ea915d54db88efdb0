@@ -1,0 +1,1 @@
+Referenced by issue #119980, `bmesh.ops.bisect_plane()['geom_cut']` doesn't seem to include all the new edges
