@@ -35,12 +35,27 @@ class AnimManager {
   std::mutex mutex;
   std::thread prefetch_thread;
 
+  /**
+   * Free anims of strips behind current frame and prefetch anims that are to be played.
+   */
   void manage_anims(const Scene *scene);
-
-  void strip_anims_laod_and_lock(const Scene *scene, blender::Vector<Sequence *> &strips);
-  void strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips);
-
+  /**
+   * Load anims used by strips and lock them so they won't be freed.
+   */
+  void strip_anims_laod_and_lock(const Scene *scene,
+                                 blender::Vector<Sequence *> &strips);  // acquire?
+  /**
+   * Unlock anims used by strips.
+   */
+  void strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips);  // release?
+  /**
+   * Get anims used by `seq`.
+   */
   blender::Vector<ImBufAnim *> &strip_anims_get(const Scene *scene, const Sequence *seq);
+  /**
+   * Free anims used by `seq`.
+   */
+  void free_anims_by_seq(const Scene *scene, const Sequence *seq);
 
  private:
   ShareableAnim &cache_entry_get(const Scene *scene, const Sequence *seq);

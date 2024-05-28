@@ -58,3 +58,8 @@ Sequence *SEQ_find_metastrip_by_sequence(ListBase *seqbase /* = ed->seqbase */,
                                          Sequence *meta /* = NULL */,
                                          Sequence *seq);
 bool SEQ_exists_in_seqbase(const Sequence *seq, const ListBase *seqbase);
+
+/**
+ * Function to free imbuf and anim data on changes.
+ */
+void SEQ_relations_sequence_free_anim(const Scene *scene, const Sequence *seq);

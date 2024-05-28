@@ -29,6 +29,7 @@
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 
+#include "anim_manager.hh"
 #include "effects.hh"
 #include "image_cache.hh"
 #include "utils.hh"
@@ -256,7 +257,7 @@ void SEQ_relations_free_imbuf(Scene *scene, ListBase *seqbase, bool for_render)
 
     if (seq->strip) {
       if (seq->type == SEQ_TYPE_MOVIE) {
-        // SEQ_relations_sequence_free_anim(scene, seq);
+        SEQ_relations_sequence_free_anim(scene, seq);
       }
       if (seq->type == SEQ_TYPE_SPEED) {
         seq_effect_speed_rebuild_map(scene, seq);
@@ -413,4 +414,11 @@ bool SEQ_exists_in_seqbase(const Sequence *seq, const ListBase *seqbase)
     }
   }
   return false;
+}
+
+/* This function frees anim from `seq`. */
+void SEQ_relations_sequence_free_anim(const Scene *scene, const Sequence *seq)
+{
+  AnimManager *manager = seq_anim_lookup_ensure(SEQ_editing_get(scene));
+  manager->free_anims_by_seq(scene, seq);
 }

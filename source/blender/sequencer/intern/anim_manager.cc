@@ -359,3 +359,9 @@ blender::Vector<ImBufAnim *> &AnimManager::strip_anims_get(const Scene *scene, c
   ShareableAnim &sh_anim = cache_entry_get(scene, seq);
   return sh_anim.anims;
 }
+
+void AnimManager::free_anims_by_seq(const Scene *scene, const Sequence *seq)
+{
+  ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+  sh_anim.release_from_all_strips();
+}

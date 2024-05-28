@@ -659,7 +659,7 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
       Sequence *seq = cb_data.r_seq;
 
       if (seq) {
-        // SEQ_relations_sequence_free_anim(scene, seq);
+        SEQ_relations_sequence_free_anim(scene, seq);
 
         if (seq->strip->proxy && seq->strip->proxy->anim) {
           IMB_free_anim(seq->strip->proxy->anim);

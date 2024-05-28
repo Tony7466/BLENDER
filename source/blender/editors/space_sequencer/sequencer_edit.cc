@@ -2786,7 +2786,7 @@ static int sequencer_change_path_exec(bContext *C, wmOperator *op)
     prop = RNA_struct_find_property(&seq_ptr, "filepath");
     RNA_property_string_set(&seq_ptr, prop, filepath);
     RNA_property_update(C, &seq_ptr, prop);
-    // SEQ_relations_sequence_free_anim(scene, seq);
+    SEQ_relations_sequence_free_anim(scene, seq);
   }
 
   SEQ_relations_invalidate_cache_raw(scene, seq);

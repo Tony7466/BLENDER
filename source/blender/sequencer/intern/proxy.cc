@@ -455,7 +455,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
       continue;
     }
 
-    // SEQ_relations_sequence_free_anim(scene, seq);
+    SEQ_relations_sequence_free_anim(scene, seq);
 
     context = static_cast<SeqIndexBuildContext *>(
         MEM_callocN(sizeof(SeqIndexBuildContext), "seq proxy rebuild context"));

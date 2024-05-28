@@ -560,7 +560,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
           filepath, sizeof(filepath), seq->strip->dirpath, seq->strip->stripdata->filename);
       BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
 
-      // SEQ_relations_sequence_free_anim(scene, seq);
+      SEQ_relations_sequence_free_anim(scene, seq);
 
       if (is_multiview && (seq->views_format == R_IMF_VIEWS_INDIVIDUAL)) {
         char prefix[FILE_MAX];
