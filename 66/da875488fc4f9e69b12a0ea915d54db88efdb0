@@ -1,1 +1,2 @@
 Referenced by issue #119980, `bmesh.ops.bisect_plane()['geom_cut']` doesn't seem to include all the new edges
+Referenced by commit 29186025869596eeb106a9e7f4a9ca68c3efed3d, Fix #119980: BMesh copy functions can clear selection
