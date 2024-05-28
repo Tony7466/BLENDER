@@ -865,11 +865,15 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
     bool force_all;
     BitVector<> elements_to_key(rna_values.size(), false);
-    /* NOTE: in addition to remapping, this also marks what elements of an array
-     * property will actually get keyed by `insert_key_action()` below via
-     * `elements_to_key`.  Importantly, for quaternion properties it may choose
-     * to key all array elements regardless of the passed index parameter,
-     * depending on the NLA setup. */
+
+    /* NOTE: this function call is complex with interesting effects. Of
+     * particular note is that in addition to doing time remapping, it also:
+     * - Fills in `elements_to_key`, flagging which elements of an array
+     *   property should actually get keyed.
+     * - Sets `force_all`, which if true means that an array property should be
+     *   treated as all-or-nothing: either all elements get keyed or none do,
+     *   regardless of how keying flags might have otherwise treated different
+     *   elements differently. */
     BKE_animsys_nla_remap_keyframe_values(nla_context,
                                           &id_pointer,
                                           prop,
@@ -879,19 +883,12 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                           &force_all,
                                           elements_to_key);
 
-    /* There is a conflict between forcing all elements to be keyed and
-     * replace-only or only-insert-available being enabled when not all elements
-     * meet the prerequisites to be keyed with those flags.
-     *
-     * One choice would be to fail keying all elements if any element isn't
-     * keyable with those flags. Another is to override the flags and insert
-     * keys on all elements anyway if any element *is* keyable with those flags.
-     * We take the latter approach here. */
+    /* Handle the `force_all` condition mentioned above, ensuring the
+     * "all-or-nothing" behavior if needed. */
     if (force_all && rna_values.size() > 0 &&
         (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0)
     {
-      /* Determine if at least one element would succeed getting keyed given the
-       * state of the `INSERTKEY_REPLACE` and `INSERTKEY_AVAILABLE` flags. */
+      /* Determine if at least one element would succeed getting keyed. */
       bool at_least_one_would_succeed = false;
       for (int i = 0; i < rna_values.size(); i++) {
         const FCurve *fcu = action_fcurve_find(action, rna_path_id_to_prop->c_str(), i);
@@ -911,6 +908,8 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
         }
       }
 
+      /* If at least one would succeed, then we disable all keying flags that
+       * would prevent the other elements from getting keyed as well. */
       if (at_least_one_would_succeed) {
         insert_key_flags &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
         break;
