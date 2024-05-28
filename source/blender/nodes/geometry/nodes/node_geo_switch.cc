@@ -56,6 +56,10 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
+  if (params.other_socket().type == SOCK_TEXTURE) {
+    return;
+  }
+
   if (params.in_out() == SOCK_OUT) {
     params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeSwitch");
