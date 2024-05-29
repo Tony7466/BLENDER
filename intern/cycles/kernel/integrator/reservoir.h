@@ -306,6 +306,18 @@ struct GlobalReservoir {
     radiance *= total_weight;
     return true;
   }
+
+  void add_reservoir(GlobalReservoir &other, const float rand)
+  {
+    if (other.is_empty()) {
+      return;
+    }
+
+    if (add_sample(other.radiance, rand)) {
+      path_flag = other.path_flag;
+      rcv_index = other.rcv_index;
+    }
+  }
 };
 
 ccl_device_inline bool restir_unpack_reservoir_pt(KernelGlobals kg,

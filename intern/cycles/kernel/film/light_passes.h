@@ -482,6 +482,26 @@ ccl_device_inline void film_add_reservoir_pt(KernelGlobals kg,
   film_overwrite_pass_float(ptr, reservoir.total_weight);
 }
 
+ccl_device_inline void film_write_pass_reservoir_pt(KernelGlobals kg,
+                                                    ConstIntegratorState state,
+                                                    ccl_private GlobalReservoir *reservoir,
+                                                    ccl_global float *ccl_restrict render_buffer,
+                                                    const bool write_prev = false)
+{
+  kernel_assert(kernel_data.integrator.use_restir);
+
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+
+  ccl_global float *ptr = buffer + (write_prev ?
+                                        kernel_data.film.pass_restir_pt_previous_reservoir :
+                                        kernel_data.film.pass_restir_pt_reservoir);
+
+  film_overwrite_pass_float(ptr, reservoir->total_weight);
+  film_overwrite_pass_float(ptr + 1, (float)reservoir->path_flag);
+  film_overwrite_pass_float(ptr + 2, (float)reservoir->rcv_index);
+  film_overwrite_pass_float3(ptr + 3, reservoir->radiance);
+}
+
 /* Write light contribution to render buffer. */
 ccl_device_inline void film_write_direct_light(KernelGlobals kg,
                                                ConstIntegratorShadowState state,

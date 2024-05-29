@@ -353,6 +353,24 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
                        DEVICE_KERNEL_INTEGRATOR_RESTIR_PT_EVALUATION);
 }
 
+ccl_device_inline void streaming_pt_samples(KernelGlobals kg,
+                                            IntegratorState state,
+                                            const ccl_private SpatialResampling *resampling,
+                                            ccl_private GlobalReservoir *reservoir,
+                                            const ccl_private RNGState *rng_state,
+                                            ccl_global float *ccl_restrict render_buffer)
+{
+  PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
+  const bool read_prev = state->spatial_iteration % 2;
+  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
+
+  GlobalReservoir canonical(kg);
+  integrator_restir_unpack_reservoir(kg, &canonical, render_pixel_index, render_buffer, read_prev);
+  if (canonical.finalize()) {
+    reservoir->add_reservoir(canonical, 0.0f);
+  }
+}
+
 /* Evaluate ReSTIR PT final samples. */
 /* TODO(weizhen): merge with restir DI. */
 ccl_device void integrator_evaluate_restir_pt(KernelGlobals kg,
@@ -360,8 +378,7 @@ ccl_device void integrator_evaluate_restir_pt(KernelGlobals kg,
                                               ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
-  const bool read_prev = false;
-
+  const bool read_prev = state->spatial_iteration % 2;
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
 
   GlobalReservoir reservoir(kg);
@@ -419,8 +436,12 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   streaming_di_samples(
       kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
 
+  GlobalReservoir current_pt(kg);
+  streaming_pt_samples(kg, state, &spatial_resampling, &current_pt, &rng_state, render_buffer);
+
   const bool write_prev = (state->spatial_iteration + 1) % 2;
   film_write_pass_reservoir(kg, state, &current.reservoir, render_buffer, write_prev);
+  film_write_pass_reservoir_pt(kg, state, &current_pt, render_buffer, write_prev);
   return true;
 }
 
