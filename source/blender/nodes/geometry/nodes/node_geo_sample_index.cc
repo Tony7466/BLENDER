@@ -28,6 +28,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supported_type({GeometryComponent::Type::Mesh,
                        GeometryComponent::Type::PointCloud,
                        GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::Physics,
                        GeometryComponent::Type::Instance});
   if (node != nullptr) {
     const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
@@ -95,6 +96,7 @@ static const GeometryComponent *find_source_component(const GeometrySet &geometr
       GeometryComponent::Type::Mesh,
       GeometryComponent::Type::PointCloud,
       GeometryComponent::Type::Curve,
+      GeometryComponent::Type::Physics,
       GeometryComponent::Type::Instance};
   for (const GeometryComponent::Type src_type : supported_types) {
     if (component_is_available(geometry, src_type, domain)) {

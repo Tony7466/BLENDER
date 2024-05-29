@@ -92,6 +92,7 @@ GeometryFieldContext::GeometryFieldContext(const void *geometry,
                   GeometryComponent::Type::Curve,
                   GeometryComponent::Type::PointCloud,
                   GeometryComponent::Type::GreasePencil,
+                  GeometryComponent::Type::Physics,
                   GeometryComponent::Type::Instance));
 }
 
@@ -202,6 +203,9 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
       return drawing->strokes().attributes();
     }
   }
+  if (const PhysicsGeometry *physics = this->physics()) {
+    return physics->attributes();
+  }
   if (const Instances *instances = this->instances()) {
     return instances->attributes();
   }
@@ -296,6 +300,13 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
     return this->get_varray_for_context({grease_pencil_context->grease_pencil(),
                                          grease_pencil_context->domain(),
                                          grease_pencil_context->layer_index()},
+                                        mask);
+  }
+  if (const PhysicsFieldContext *physics_context = dynamic_cast<const PhysicsFieldContext *>(
+          &context))
+  {
+    return this->get_varray_for_context({physics_context->physics(),
+                                         physics_context->domain()},
                                         mask);
   }
   if (const InstancesFieldContext *instances_context = dynamic_cast<const InstancesFieldContext *>(
