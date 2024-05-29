@@ -2,17 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_collision_shape.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.hh"
-
-#include "SIM_collision_shape.hh"
-#include "SIM_physics_geometry.hh"
+#include "BKE_physics_geometry.hh"
 
 #include "attribute_access_intern.hh"
 
 namespace blender::bke {
-
-using simulation::PhysicsGeometry;
 
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
@@ -195,18 +191,14 @@ std::optional<MutableAttributeAccessor> PhysicsComponent::attributes_for_write()
   return MutableAttributeAccessor(physics, get_physics_accessor_functions_ref());
 }
 
+AttributeAccessor PhysicsGeometry::attributes() const
+{
+  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+}
+
+MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
+{
+  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+}
+
 }  // namespace blender::bke
-
-namespace blender::simulation {
-
-bke::AttributeAccessor PhysicsGeometry::attributes() const
-{
-  return bke::AttributeAccessor(this, bke::get_physics_accessor_functions_ref());
-}
-
-bke::MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
-{
-  return bke::MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
-}
-
-}  // namespace blender::simulation

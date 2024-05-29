@@ -2,21 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_array_utils.hh"
-
 #include "DNA_pointcloud_types.h"
 
-#include "BKE_customdata.hh"
-#include "BKE_mesh.hh"
-
-#include "SIM_collision_shape.hh"
-#include "SIM_physics_geometry.hh"
+#include "BKE_collision_shape.hh"
+#include "BKE_physics_geometry.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_points_to_rigid_bodies_cc {
-
-using simulation::PhysicsGeometry;
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -47,13 +40,13 @@ static void geometry_set_points_to_rigid_bodies(
   const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);
 
   const int num_bodies = selection.size();
-  Array<simulation::CollisionShape *> shapes_library(3);
-  shapes_library[0] = new simulation::BoxCollisionShape(float3(.3f, .5f, .7f));
-  shapes_library[1] = new simulation::BoxCollisionShape(float3(1, 1, .1f));
-  shapes_library[2] = new simulation::SphereCollisionShape(1.2f);
+  Array<bke::CollisionShape *> shapes_library(3);
+  shapes_library[0] = new bke::BoxCollisionShape(float3(.3f, .5f, .7f));
+  shapes_library[1] = new bke::BoxCollisionShape(float3(1, 1, .1f));
+  shapes_library[2] = new bke::SphereCollisionShape(1.2f);
 
-  auto *physics = new simulation::PhysicsGeometry(num_bodies);
-  VMutableArray<simulation::CollisionShape *> shapes = physics->body_collision_shapes_for_write();
+  auto *physics = new bke::PhysicsGeometry(num_bodies);
+  VMutableArray<bke::CollisionShape *> shapes = physics->body_collision_shapes_for_write();
   VMutableArray<float> masses = physics->body_masses_for_write();
   VMutableArray<float3> inertias = physics->body_inertias_for_write();
 

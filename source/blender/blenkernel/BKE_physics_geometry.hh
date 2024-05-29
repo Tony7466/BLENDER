@@ -20,7 +20,7 @@ class AttributeAccessor;
 class MutableAttributeAccessor;
 }  // namespace blender::bke
 
-namespace blender::simulation {
+namespace blender::bke {
 
 using RigidBodyID = int;
 using CollisionShapeID = int;
@@ -85,4 +85,4 @@ class PhysicsGeometry {
   bke::MutableAttributeAccessor attributes_for_write();
 };
 
-}  // namespace blender::simulation
+}  // namespace blender::bke

@@ -11,6 +11,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
+#include "BKE_physics_geometry.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_type_conversions.hh"
 
@@ -18,7 +19,6 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BLT_translation.hh"
-#include "SIM_physics_geometry.hh"
 
 #include <fmt/format.h>
 
@@ -170,7 +170,7 @@ GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil,
       grease_pencil_layer_index_(layer_index)
 {
 }
-GeometryFieldContext::GeometryFieldContext(const simulation::PhysicsGeometry &physics)
+GeometryFieldContext::GeometryFieldContext(const PhysicsGeometry &physics)
     : geometry_(&physics), type_(GeometryComponent::Type::Physics), domain_(AttrDomain::Point)
 {
 }
@@ -251,10 +251,10 @@ const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
   }
   return nullptr;
 }
-const simulation::PhysicsGeometry *GeometryFieldContext::physics() const
+const PhysicsGeometry *GeometryFieldContext::physics() const
 {
   return this->type() == GeometryComponent::Type::Physics ?
-             static_cast<const simulation::PhysicsGeometry *>(geometry_) :
+             static_cast<const PhysicsGeometry *>(geometry_) :
              nullptr;
 }
 const Instances *GeometryFieldContext::instances() const
@@ -382,8 +382,6 @@ GVArray PhysicsFieldInput::get_varray_for_context(const fn::FieldContext &contex
                                                   const IndexMask &mask,
                                                   ResourceScope & /*scope*/) const
 {
-  using simulation::PhysicsGeometry;
-
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
   {
@@ -401,7 +399,7 @@ GVArray PhysicsFieldInput::get_varray_for_context(const fn::FieldContext &contex
 }
 
 std::optional<AttrDomain> PhysicsFieldInput::preferred_domain(
-    const simulation::PhysicsGeometry & /*physics*/) const
+    const PhysicsGeometry & /*physics*/) const
 {
   return std::nullopt;
 }

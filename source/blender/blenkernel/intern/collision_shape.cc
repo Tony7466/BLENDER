@@ -6,26 +6,16 @@
  * \ingroup sim
  */
 
-#include "BLI_array_utils.hh"
-#include "BLI_mempool.h"
-#include "BLI_virtual_array.hh"
+#include "BKE_collision_shape.hh"
 
-#include "MEM_guardedalloc.h"
-
-#include "SIM_collision_shape.hh"
-
-#include "physics_impl.hh"
+#include "physics_geometry_impl.hh"
 
 #ifdef WITH_BULLET
-#  include "BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h"
-#  include "BulletCollision/Gimpact/btGImpactShape.h"
-#  include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
-#  include "BulletDynamics/Dynamics/btRigidBody.h"
-#  include "btBulletDynamicsCommon.h"
 #  include <LinearMath/btDefaultMotionState.h>
+#  include <btBulletCollisionCommon.h>
 #endif
 
-namespace blender::simulation {
+namespace blender::bke {
 
 #ifdef WITH_BULLET
 
@@ -375,4 +365,4 @@ float SphereCollisionShape::radius() const
 
 #endif
 
-}  // namespace blender::simulation
+}  // namespace blender::bke

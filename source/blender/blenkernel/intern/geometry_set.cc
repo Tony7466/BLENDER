@@ -352,7 +352,7 @@ const GreasePencil *GeometrySet::get_grease_pencil() const
   return (component == nullptr) ? nullptr : component->get();
 }
 
-const simulation::PhysicsGeometry *GeometrySet::get_physics() const
+const PhysicsGeometry *GeometrySet::get_physics() const
 {
   const PhysicsComponent *component = this->get_component<PhysicsComponent>();
   return (component == nullptr) ? nullptr : component->get();
@@ -457,8 +457,7 @@ GeometrySet GeometrySet::from_grease_pencil(GreasePencil *grease_pencil,
   return geometry_set;
 }
 
-GeometrySet GeometrySet::from_physics(simulation::PhysicsGeometry *physics,
-                                      GeometryOwnershipType ownership)
+GeometrySet GeometrySet::from_physics(PhysicsGeometry *physics, GeometryOwnershipType ownership)
 {
   GeometrySet geometry_set;
   geometry_set.replace_physics(physics, ownership);
@@ -550,14 +549,13 @@ void GeometrySet::replace_grease_pencil(GreasePencil *grease_pencil,
   component.replace(grease_pencil, ownership);
 }
 
-void GeometrySet::replace_physics(simulation::PhysicsGeometry *physics,
-                                  GeometryOwnershipType ownership)
+void GeometrySet::replace_physics(PhysicsGeometry *physics, GeometryOwnershipType ownership)
 {
   if (physics == nullptr) {
     this->remove<PhysicsComponent>();
     return;
   }
-  if (physics== this->get_physics()) {
+  if (physics == this->get_physics()) {
     return;
   }
   this->remove<PhysicsComponent>();
@@ -611,7 +609,7 @@ GreasePencil *GeometrySet::get_grease_pencil_for_write()
   return component == nullptr ? nullptr : component->get_for_write();
 }
 
-simulation::PhysicsGeometry *GeometrySet::get_physics_for_write()
+PhysicsGeometry *GeometrySet::get_physics_for_write()
 {
   PhysicsComponent *component = this->get_component_ptr<PhysicsComponent>();
   return component == nullptr ? nullptr : component->get_for_write();

@@ -4,14 +4,14 @@
 
 #include "NOD_rna_define.hh"
 
+#include "BKE_physics_geometry.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "GEO_separate_geometry.hh"
 
 #include "RNA_enum_types.hh"
-
-#include "SIM_physics_geometry.hh"
 
 #include "node_geometry_util.hh"
 
@@ -31,7 +31,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   const float3 gravity = params.extract_input<float3>("Gravity");
 
-  auto physics = new simulation::PhysicsGeometry();
+  auto physics = new bke::PhysicsGeometry();
   physics->set_world(true);
   physics->set_gravity(gravity);
 

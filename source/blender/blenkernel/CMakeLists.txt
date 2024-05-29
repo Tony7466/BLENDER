@@ -91,6 +91,7 @@ set(SRC
   intern/cloth.cc
   intern/collection.cc
   intern/collision.cc
+  intern/collision_shape.cc
   intern/colorband.cc
   intern/colortools.cc
   intern/compute_contexts.cc
@@ -265,6 +266,8 @@ set(SRC
   intern/pbvh_pixels.cc
   intern/pbvh_pixels_copy.cc
   intern/pbvh_uv_islands.cc
+  intern/physics_geometry.cc
+  intern/physics_geometry_impl.hh
   intern/pointcache.cc
   intern/pointcloud.cc
   intern/pose_backup.cc
@@ -362,6 +365,7 @@ set(SRC
   BKE_cloth.hh
   BKE_collection.hh
   BKE_collision.h
+  BKE_collision_shape.hh
   BKE_colorband.hh
   BKE_colortools.hh
   BKE_compute_contexts.hh
@@ -480,6 +484,7 @@ set(SRC
   BKE_pbvh.hh
   BKE_pbvh_api.hh
   BKE_pbvh_pixels.hh
+  BKE_physics_geometry.hh
   BKE_pointcache.h
   BKE_pointcloud.hh
   BKE_pose_backup.h
@@ -627,6 +632,7 @@ if(WITH_BULLET)
     ${BULLET_LIBRARIES}
   )
   add_definitions(-DWITH_BULLET)
+  add_definitions(-DBT_USE_DOUBLE_PRECISION)
 endif()
 
 if(WITH_IMAGE_OPENEXR)

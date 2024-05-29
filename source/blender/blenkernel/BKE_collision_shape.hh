@@ -8,14 +8,15 @@
 
 #pragma once
 
+#include "BKE_physics_geometry.hh"
+
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_utility_mixins.hh"
-#include "SIM_physics_geometry.hh"
 
 #include <functional>
 
-namespace blender::simulation {
+namespace blender::bke {
 
 // using RigidBodyID = int;
 
@@ -160,4 +161,4 @@ class SphereCollisionShape : public CollisionShape {
   float radius() const;
 };
 
-}  // namespace blender::simulation
+}  // namespace blender::bke

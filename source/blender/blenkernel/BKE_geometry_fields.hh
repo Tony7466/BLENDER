@@ -21,11 +21,9 @@ namespace blender::bke {
 
 class CurvesGeometry;
 class GeometryFieldInput;
+class PhysicsGeometry;
 namespace greasepencil {
 class Drawing;
-}
-namespace simulation {
-class PhysicsGeometry;
 }
 
 class MeshFieldContext : public fn::FieldContext {
@@ -127,16 +125,16 @@ class GreasePencilLayerFieldContext : public fn::FieldContext {
 
 class PhysicsFieldContext : public fn::FieldContext {
  private:
-  const simulation::PhysicsGeometry &physics_;
+  const PhysicsGeometry &physics_;
   AttrDomain domain_;
 
  public:
-  PhysicsFieldContext(const simulation::PhysicsGeometry &physics, AttrDomain domain)
+  PhysicsFieldContext(const PhysicsGeometry &physics, AttrDomain domain)
       : physics_(physics), domain_(domain)
   {
   }
 
-  const simulation::PhysicsGeometry &physics() const
+  const PhysicsGeometry &physics() const
   {
     return physics_;
   }
@@ -198,7 +196,7 @@ class GeometryFieldContext : public fn::FieldContext {
   GeometryFieldContext(const GreasePencil &grease_pencil);
   GeometryFieldContext(const GreasePencil &grease_pencil, AttrDomain domain, int layer_index);
   GeometryFieldContext(const PointCloud &points);
-  GeometryFieldContext(const simulation::PhysicsGeometry &physics);
+  GeometryFieldContext(const PhysicsGeometry &physics);
   GeometryFieldContext(const Instances &instances);
 
   const void *geometry() const
@@ -231,7 +229,7 @@ class GeometryFieldContext : public fn::FieldContext {
   const greasepencil::Drawing *grease_pencil_layer_drawing() const;
   const Instances *instances() const;
   const CurvesGeometry *curves_or_strokes() const;
-  const simulation::PhysicsGeometry *physics() const;
+  const PhysicsGeometry *physics() const;
 };
 
 class GeometryFieldInput : public fn::FieldInput {
@@ -285,11 +283,10 @@ class PhysicsFieldInput : public fn::FieldInput {
   GVArray get_varray_for_context(const fn::FieldContext &context,
                                  const IndexMask &mask,
                                  ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const simulation::PhysicsGeometry &physics,
+  virtual GVArray get_varray_for_context(const PhysicsGeometry &physics,
                                          AttrDomain domain,
                                          const IndexMask &mask) const = 0;
-  virtual std::optional<AttrDomain> preferred_domain(
-      const simulation::PhysicsGeometry &curves) const;
+  virtual std::optional<AttrDomain> preferred_domain(const PhysicsGeometry &curves) const;
 };
 
 class InstancesFieldInput : public fn::FieldInput {

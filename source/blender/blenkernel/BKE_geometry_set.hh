@@ -38,11 +38,9 @@ class Instances;
 class GeometryComponent;
 class GreasePencilEditHints;
 class MutableAttributeAccessor;
+class PhysicsGeometry;
 enum class AttrDomain : int8_t;
 }  // namespace blender::bke
-namespace blender::simulation {
-class PhysicsGeometry;
-}  // namespace blender::simulation
 
 namespace blender::bke {
 
@@ -301,7 +299,7 @@ struct GeometrySet {
   /**
    * Create a new geometry set that only contains the given rigid body world.
    */
-  static GeometrySet from_physics(simulation::PhysicsGeometry *physics,
+  static GeometrySet from_physics(PhysicsGeometry *physics,
                                   GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   /* Utility methods for access. */
@@ -373,7 +371,7 @@ struct GeometrySet {
   /**
    * Returns a read-only rigid body world or null.
    */
-  const simulation::PhysicsGeometry *get_physics() const;
+  const PhysicsGeometry *get_physics() const;
 
   /**
    * Returns a mutable mesh or null. No ownership is transferred.
@@ -406,7 +404,7 @@ struct GeometrySet {
   /**
    * Returns a mutable rigid body world or null. No ownership is transferred.
    */
-  simulation::PhysicsGeometry *get_physics_for_write();
+  PhysicsGeometry *get_physics_for_write();
 
   /* Utility methods for replacement. */
   /**
@@ -441,7 +439,7 @@ struct GeometrySet {
   /**
    * Clear the existing rigid body world and replace it with the given one.
    */
-  void replace_physics(simulation::PhysicsGeometry *physics,
+  void replace_physics(PhysicsGeometry *physics,
                        GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
 
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
@@ -788,8 +786,6 @@ class GreasePencilComponent : public GeometryComponent {
  * Geometry component for non-persistent simulation state.
  */
 class PhysicsComponent : public GeometryComponent {
-  using PhysicsGeometry = simulation::PhysicsGeometry;
-
  private:
   PhysicsGeometry *physics_ = nullptr;
   GeometryOwnershipType ownership_ = GeometryOwnershipType::Owned;
@@ -797,7 +793,7 @@ class PhysicsComponent : public GeometryComponent {
  public:
   PhysicsComponent();
   PhysicsComponent(PhysicsGeometry *geometry,
-                     GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+                   GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~PhysicsComponent();
   GeometryComponentPtr copy() const override;
 

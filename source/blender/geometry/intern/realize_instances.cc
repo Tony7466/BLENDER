@@ -16,10 +16,9 @@
 #include "BKE_instances.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
+#include "BKE_physics_geometry.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_type_conversions.hh"
-
-#include "SIM_physics_geometry.hh"
 
 namespace blender::geometry {
 
@@ -30,6 +29,7 @@ using blender::bke::AttributeMetaData;
 using blender::bke::GSpanAttributeWriter;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
+using blender::bke::PhysicsGeometry;
 using blender::bke::SpanAttributeWriter;
 
 /**
@@ -178,7 +178,7 @@ struct RealizeCurveTask {
 };
 
 struct RealizePhysicsInfo {
-  const simulation::PhysicsGeometry *physics = nullptr;
+  const PhysicsGeometry *physics = nullptr;
 };
 
 struct PhysicsElementStartIndices {
@@ -238,7 +238,7 @@ struct AllCurvesInfo {
 
 struct AllPhysicsInfo {
   /** Ordering of the original physics geometries that are joined. */
-  VectorSet<const simulation::PhysicsGeometry *> order;
+  VectorSet<const PhysicsGeometry *> order;
   /** Preprocessed data about every original curve. This is ordered by #order. */
   Array<RealizePhysicsInfo> realize_info;
 };
@@ -719,7 +719,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       }
       case bke::GeometryComponent::Type::Physics: {
         const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
-        const simulation::PhysicsGeometry *physics = physics_component.get();
+        const PhysicsGeometry *physics = physics_component.get();
         if (physics != nullptr && physics->rigid_bodies_num() > 0) {
           const int physics_index = gather_info.physics.order.index_of(physics);
           const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
@@ -1972,10 +1972,8 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
  * \{ */
 
 static void gather_physics_to_realize(const bke::GeometrySet &geometry_set,
-                                      VectorSet<const simulation::PhysicsGeometry *> &r_physics)
+                                      VectorSet<const PhysicsGeometry *> &r_physics)
 {
-  using simulation::PhysicsGeometry;
-
   if (const PhysicsGeometry *physics = geometry_set.get_physics()) {
     if (physics->rigid_bodies_num() != 0) {
       r_physics.add(physics);
@@ -1992,8 +1990,6 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
                                          const RealizeInstancesOptions &options,
                                          const VariedDepthOptions &varied_depth_option)
 {
-  using simulation::PhysicsGeometry;
-
   UNUSED_VARS(options, varied_depth_option);
 
   AllPhysicsInfo info;
@@ -2011,11 +2007,9 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          const AllPhysicsInfo &all_physics_info,
                                          const RealizePhysicsTask &task,
                                          const OrderedAttributes &ordered_attributes,
-                                         simulation::PhysicsGeometry &dst_physics,
+                                         PhysicsGeometry &dst_physics,
                                          MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
 {
-  using simulation::PhysicsGeometry;
-
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const PhysicsGeometry &physics = *physics_info.physics;
 
@@ -2036,8 +2030,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
                                           const OrderedAttributes &ordered_attributes,
                                           bke::GeometrySet &r_realized_geometry)
 {
-  using simulation::PhysicsGeometry;
-
   if (tasks.is_empty()) {
     return;
   }

@@ -6,20 +6,19 @@
  * \ingroup sim
  */
 
+#include "BKE_collision_shape.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_physics_geometry.hh"
 
 #include "BLI_mempool.h"
 #include "BLI_virtual_array.hh"
-
-#include "SIM_collision_shape.hh"
-#include "SIM_physics_geometry.hh"
 
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <LinearMath/btMotionState.h>
 #include <LinearMath/btTransform.h>
 #include <functional>
 
-#include "physics_impl.hh"
+#include "physics_geometry_impl.hh"
 
 #ifdef WITH_BULLET
 #  include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
@@ -30,7 +29,7 @@
 #  include <btBulletDynamicsCommon.h>
 #endif
 
-namespace blender::simulation {
+namespace blender::bke {
 
 template<typename T, int chunk_size, bool allow_iterator> class MemPool {
  private:
@@ -120,38 +119,38 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
   }
 };
 
-/**
- * Provider for builtin rigid body attributes.
- */
-class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
-  using UpdateOnChange = void (*)(void *owner);
-  const CustomDataAccessInfo custom_data_access_;
-  const UpdateOnChange update_on_change_;
+// /**
+//  * Provider for builtin rigid body attributes.
+//  */
+// class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
+//   using UpdateOnChange = void (*)(void *owner);
+//   const CustomDataAccessInfo custom_data_access_;
+//   const UpdateOnChange update_on_change_;
 
- public:
-  BuiltinCustomDataLayerProvider(std::string attribute_name,
-                                 const AttrDomain domain,
-                                 const eCustomDataType data_type,
-                                 const DeletableEnum deletable,
-                                 const CustomDataAccessInfo custom_data_access,
-                                 const UpdateOnChange update_on_change,
-                                 const AttributeValidator validator = {})
-      : BuiltinAttributeProvider(
-            std::move(attribute_name), domain, data_type, deletable, validator),
-        custom_data_access_(custom_data_access),
-        update_on_change_(update_on_change)
-  {
-  }
+//  public:
+//   BuiltinCustomDataLayerProvider(std::string attribute_name,
+//                                  const AttrDomain domain,
+//                                  const eCustomDataType data_type,
+//                                  const DeletableEnum deletable,
+//                                  const CustomDataAccessInfo custom_data_access,
+//                                  const UpdateOnChange update_on_change,
+//                                  const AttributeValidator validator = {})
+//       : BuiltinAttributeProvider(
+//             std::move(attribute_name), domain, data_type, deletable, validator),
+//         custom_data_access_(custom_data_access),
+//         update_on_change_(update_on_change)
+//   {
+//   }
 
-  GAttributeReader try_get_for_read(const void *owner) const final;
-  GAttributeWriter try_get_for_write(void *owner) const final;
-  bool try_delete(void *owner) const final;
-  bool try_create(void *owner, const AttributeInit &initializer) const final;
-  bool exists(const void *owner) const final;
+//   GAttributeReader try_get_for_read(const void *owner) const final;
+//   GAttributeWriter try_get_for_write(void *owner) const final;
+//   bool try_delete(void *owner) const final;
+//   bool try_create(void *owner, const AttributeInit &initializer) const final;
+//   bool exists(const void *owner) const final;
 
- private:
-  bool layer_exists(const CustomData &custom_data) const;
-};
+//  private:
+//   bool layer_exists(const CustomData &custom_data) const;
+// };
 
 PhysicsGeometry::PhysicsGeometry() : PhysicsGeometry(0) {}
 
@@ -510,4 +509,4 @@ void PhysicsGeometry::tag_body_transforms_changed() {}
 
 #endif
 
-}  // namespace blender::simulation
+}  // namespace blender::bke

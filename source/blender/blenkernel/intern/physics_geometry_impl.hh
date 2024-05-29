@@ -8,10 +8,10 @@
 
 #pragma once
 
+#include "BKE_physics_geometry.hh"
+
 #include "BLI_array.hh"
 #include "BLI_map.hh"
-
-#include "SIM_physics_geometry.hh"
 
 class btDiscreteDynamicsWorld;
 class btCollisionConfiguration;
@@ -23,7 +23,7 @@ class btRigidBody;
 class btMotionState;
 class btCollisionShape;
 
-namespace blender::simulation {
+namespace blender::bke {
 
 struct PhysicsImpl {
   btDiscreteDynamicsWorld *world;
@@ -69,4 +69,4 @@ struct CollisionShapeImpl {
   }
 };
 
-}  // namespace blender::simulation
+}  // namespace blender::bke

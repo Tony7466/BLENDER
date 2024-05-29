@@ -8,7 +8,6 @@ set(INC
   ../blenkernel
   ../blenlib
   ../functions
-  ../geometry
   ../imbuf
   ../makesrna
   ../nodes
@@ -20,20 +19,15 @@ set(INC_SYS
 
 set(SRC
   intern/SIM_mass_spring.cc
-  intern/collision_shape.cc
   intern/hair_volume.cc
   intern/implicit_blender.cc
   intern/implicit_eigen.cc
-  intern/physics_geometry.cc
 
   intern/ConstrainedConjugateGradient.h
   intern/eigen_utils.h
   intern/implicit.h
-  intern/physics_impl.hh
 
-  SIM_collision_shape.hh
   SIM_mass_spring.h
-  SIM_physics_geometry.hh
 )
 
 set(LIB
@@ -43,22 +37,6 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
-
-if(WITH_BULLET)
-  list(APPEND INC_SYS
-    ${BULLET_INCLUDE_DIRS}
-  )
-  list(APPEND INC
-    ../../../intern/rigidbody
-  )
-  list(APPEND LIB
-    bf_intern_rigidbody
-
-    ${BULLET_LIBRARIES}
-  )
-  add_definitions(-DWITH_BULLET)
-  add_definitions(-DBT_USE_DOUBLE_PRECISION)
-endif()
 
 if(WITH_OPENMP AND WITH_OPENMP_STATIC)
   list(APPEND LIB
