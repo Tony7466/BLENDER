@@ -34,7 +34,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (node != nullptr) {
     const NodeGeometryAttributeCapture &storage = node_storage(*node);
     for (const NodeGeometryAttributeCaptureItem &item :
-         Span{storage.capture_items, storage.capture_items_num})
+         Span(storage.capture_items, storage.capture_items_num))
     {
       const eCustomDataType data_type = eCustomDataType(item.data_type);
       const std::string input_identifier =
@@ -125,6 +125,17 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
             up_down_col, "node.capture_attribute_item_move", "", ICON_TRIA_UP, "direction", 0);
         uiItemEnumO(
             up_down_col, "node.capture_attribute_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+      bNode &node = *static_cast<bNode *>(ptr->data);
+      auto &storage = node_storage(node);
+      if (storage.active_index >= 0 && storage.active_index < storage.capture_items_num) {
+        NodeGeometryAttributeCaptureItem &active_item =
+            storage.capture_items[storage.active_index];
+        PointerRNA item_ptr = RNA_pointer_create(
+            ptr->owner_id, CaptureAttributeItemsAccessor::item_srna, &active_item);
+        uiLayoutSetPropSep(panel, true);
+        uiLayoutSetPropDecorate(panel, false);
+        uiItemR(panel, &item_ptr, "data_type", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
     }
   }
