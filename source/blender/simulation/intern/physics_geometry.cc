@@ -13,18 +13,20 @@
 #include "SIM_collision_shape.hh"
 #include "SIM_physics_geometry.hh"
 
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <LinearMath/btMotionState.h>
+#include <LinearMath/btTransform.h>
 #include <functional>
 
 #include "physics_impl.hh"
 
 #ifdef WITH_BULLET
-#  include <BulletDynamics/Dynamics/btRigidBody.h>
 #  include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 #  include <BulletCollision/Gimpact/btGImpactShape.h>
 #  include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #  include <BulletDynamics/Dynamics/btRigidBody.h>
-#  include <btBulletDynamicsCommon.h>
 #  include <LinearMath/btDefaultMotionState.h>
+#  include <btBulletDynamicsCommon.h>
 #endif
 
 namespace blender::simulation {
@@ -117,17 +119,44 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
   }
 };
 
-PhysicsGeometry::PhysicsGeometry() {
+PhysicsGeometry::PhysicsGeometry()
+{
   impl_ = new PhysicsImpl{};
 }
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
   impl_ = new PhysicsImpl{};
-  // TODO
+
+  if (other.has_world()) {
+    this->set_world(true);
+  }
+
+  // TODO is this possible and/or necessary?
+
+  // impl_->rigid_bodies.reinitialize(other.impl_->rigid_bodies.size());
+  // impl_->motion_states.reinitialize(other.impl_->motion_states.size());
+  // for (const int i : other.impl_->rigid_bodies.index_range()) {
+  //   const btRigidBody &src_body = *other.impl_->rigid_bodies[i];
+  //   const btMotionState &src_motion_state = *other.impl_->motion_states[i];
+  //   btTransform start_transform, center_of_mass;
+  //   src_motion_state.getWorldTransform(start_transform);
+  //   btMotionState *dst_motion_state = new btDefaultMotionState(start_transform);
+  //   const float3 local_inertia = float3(0.0f);
+
+  //   const CollisionShapeID shape_id = src_body.getCollisionShape()->getUserIndex();
+  //   std::shared_ptr<CollisionShape> shape = impl_->collision_shapes.lookup(shape_id);
+  //   btCollisionShape *bt_shape = shape ? &shape->impl_->as_bullet_shape() : nullptr;
+
+  //   btRigidBody::btRigidBodyConstructionInfo constructionInfo(
+  //       src_body.getMass(), dst_motion_state, bt_shape, to_bullet(local_inertia));
+
+  //   impl_->rigid_bodies[i] = other.impl_->rigid_bodies[i];
+  // }
 }
 
-PhysicsGeometry::~PhysicsGeometry() {
+PhysicsGeometry::~PhysicsGeometry()
+{
   clear_rigid_bodies();
   set_world(false);
 }
@@ -137,7 +166,8 @@ bool PhysicsGeometry::has_world() const
   return impl_->world != nullptr;
 }
 
-void PhysicsGeometry::set_world(bool enable) {
+void PhysicsGeometry::set_world(bool enable)
+{
   if (enable) {
     if (impl_->world == nullptr) {
       impl_->config = new btDefaultCollisionConfiguration();
@@ -146,7 +176,8 @@ void PhysicsGeometry::set_world(bool enable) {
 
       impl_->broadphase = new btDbvtBroadphase();
       impl_->overlap_filter = new DefaultOverlapFilter();
-      impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
+      impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(
+          impl_->overlap_filter);
 
       impl_->constraint_solver = new btSequentialImpulseConstraintSolver();
 
@@ -276,7 +307,7 @@ IndexRange PhysicsGeometry::add_rigid_bodies(const Span<const CollisionShape *> 
     new_motion_states[i] = new btDefaultMotionState();
     new_rigid_bodies[i] = new btRigidBody(masses[i],
                                           new_motion_states[i],
-                                          shape ? shape->impl().shape : nullptr,
+                                          shape ? &shape->impl_->as_bullet_shape() : nullptr,
                                           to_bullet(inertia));
     if (simulate && impl_->world) {
       impl_->world->addRigidBody(new_rigid_bodies[i]);
@@ -342,6 +373,8 @@ VArray<RigidBodyID> PhysicsGeometry::body_ids() const
 }
 
 #else
+
+// TODO add stub functions for when Bullet is disabled
 
 #endif
 

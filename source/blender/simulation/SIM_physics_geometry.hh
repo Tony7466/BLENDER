@@ -15,9 +15,12 @@
 #include "BLI_set.hh"
 #include "BLI_virtual_array_fwd.hh"
 
+#include <functional>
+
 namespace blender::simulation {
 
 using RigidBodyID = int;
+using CollisionShapeID = int;
 
 class CollisionShape;
 struct PhysicsImpl;
@@ -40,21 +43,21 @@ class PhysicsGeometry {
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
-  
+
   float3 gravity() const;
   void set_gravity(const float3 &gravity);
   void set_solver_iterations(int num_solver_iterations);
   void set_split_impulse(bool split_impulse);
-  
+
   int rigid_bodies_num() const;
   int constraints_num() const;
   int shapes_num() const;
 
   IndexRange add_rigid_bodies(const Span<const CollisionShape *> shapes,
-                                     const VArray<int> &shape_indices,
-                                     const VArray<float> &masses,
-                                     const VArray<float3> &inertiae,
-                                     const VArray<bool> &simulated);
+                              const VArray<int> &shape_indices,
+                              const VArray<float> &masses,
+                              const VArray<float3> &inertiae,
+                              const VArray<bool> &simulated);
   void remove_rigid_bodies(const IndexMask &mask);
   void clear_rigid_bodies();
 

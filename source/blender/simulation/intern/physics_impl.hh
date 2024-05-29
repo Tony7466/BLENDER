@@ -9,6 +9,9 @@
 #pragma once
 
 #include "BLI_array.hh"
+#include "BLI_map.hh"
+
+#include "SIM_physics_geometry.hh"
 
 class btDiscreteDynamicsWorld;
 class btCollisionConfiguration;
@@ -35,7 +38,35 @@ struct PhysicsImpl {
 };
 
 struct CollisionShapeImpl {
-  btCollisionShape *shape;
+  btCollisionShape &as_bullet_shape()
+  {
+    return *reinterpret_cast<btCollisionShape *>(this);
+  }
+
+  const btCollisionShape &as_bullet_shape() const
+  {
+    return *reinterpret_cast<const btCollisionShape *>(this);
+  }
+
+  operator btCollisionShape *()
+  {
+    return reinterpret_cast<btCollisionShape *>(this);
+  }
+
+  operator const btCollisionShape *() const
+  {
+    return reinterpret_cast<const btCollisionShape *>(this);
+  }
+
+  static CollisionShapeImpl *wrap(btCollisionShape *shape)
+  {
+    return reinterpret_cast<CollisionShapeImpl *>(shape);
+  }
+
+  static const CollisionShapeImpl *wrap(const btCollisionShape *shape)
+  {
+    return reinterpret_cast<const CollisionShapeImpl *>(shape);
+  }
 };
 
 }  // namespace blender::simulation

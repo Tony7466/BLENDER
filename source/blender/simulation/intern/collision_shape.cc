@@ -59,157 +59,159 @@ inline btQuaternion to_bullet(const math::Quaternion &q)
   return btQuaternion(q.x, q.y, q.z, q.w);
 }
 
-//struct DefaultOverlapFilter : public btOverlapFilterCallback {
-//  virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
-//  {
-//    return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
-//           (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask);
-//  }
-//};
+// struct DefaultOverlapFilter : public btOverlapFilterCallback {
+//   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1)
+//   const
+//   {
+//     return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
+//            (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask);
+//   }
+// };
 //
-//struct OverlapFilterWrapper : public btOverlapFilterCallback {
-//  using OverlapFilterFn = RigidBodyWorld::OverlapFilterFn;
+// struct OverlapFilterWrapper : public btOverlapFilterCallback {
+//   using OverlapFilterFn = RigidBodyWorld::OverlapFilterFn;
 //
-//  OverlapFilterFn fn;
+//   OverlapFilterFn fn;
 //
-//  OverlapFilterWrapper(OverlapFilterFn fn) : fn(fn) {}
+//   OverlapFilterWrapper(OverlapFilterFn fn) : fn(fn) {}
 //
-//  virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
-//  {
-//    const int64_t body0 = int64_t(proxy0->m_clientObject);
-//    const int64_t body1 = int64_t(proxy1->m_clientObject);
-//    return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
-//           (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask) && fn(body0, body1);
-//  }
-//};
+//   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1)
+//   const
+//   {
+//     const int64_t body0 = int64_t(proxy0->m_clientObject);
+//     const int64_t body1 = int64_t(proxy1->m_clientObject);
+//     return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
+//            (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask) && fn(body0, body1);
+//   }
+// };
 //
-//struct RigidBodyWorldImpl {
-//  btDiscreteDynamicsWorld *world;
-//  btCollisionConfiguration *config;
-//  btCollisionDispatcher *dispatcher;
-//  btBroadphaseInterface *broadphase;
-//  btConstraintSolver *constraint_solver;
-//  btOverlapFilterCallback *overlap_filter;
+// struct RigidBodyWorldImpl {
+//   btDiscreteDynamicsWorld *world;
+//   btCollisionConfiguration *config;
+//   btCollisionDispatcher *dispatcher;
+//   btBroadphaseInterface *broadphase;
+//   btConstraintSolver *constraint_solver;
+//   btOverlapFilterCallback *overlap_filter;
 //
-//  RigidBodyWorldImpl()
-//  {
-//    this->config = new btDefaultCollisionConfiguration();
-//    this->dispatcher = new btCollisionDispatcher(this->config);
-//    btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
+//   RigidBodyWorldImpl()
+//   {
+//     this->config = new btDefaultCollisionConfiguration();
+//     this->dispatcher = new btCollisionDispatcher(this->config);
+//     btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
 //
-//    this->broadphase = new btDbvtBroadphase();
-//    this->overlap_filter = new DefaultOverlapFilter();
-//    this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
+//     this->broadphase = new btDbvtBroadphase();
+//     this->overlap_filter = new DefaultOverlapFilter();
+//     this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
 //
-//    this->constraint_solver = new btSequentialImpulseConstraintSolver();
+//     this->constraint_solver = new btSequentialImpulseConstraintSolver();
 //
-//    this->world = new btDiscreteDynamicsWorld(
-//        this->dispatcher, this->broadphase, this->constraint_solver, this->config);
-//  }
+//     this->world = new btDiscreteDynamicsWorld(
+//         this->dispatcher, this->broadphase, this->constraint_solver, this->config);
+//   }
 //
-//  ~RigidBodyWorldImpl()
-//  {
-//    /* XXX This leaks memory, but enabling it somehow causes memory corruption and crash.
-//     * Possibly caused by alignment? */
-//    // delete this->world;
-//    delete this->constraint_solver;
-//    delete this->broadphase;
-//    delete this->dispatcher;
-//    delete this->config;
-//    delete this->overlap_filter;
-//  }
-//};
+//   ~RigidBodyWorldImpl()
+//   {
+//     /* XXX This leaks memory, but enabling it somehow causes memory corruption and crash.
+//      * Possibly caused by alignment? */
+//     // delete this->world;
+//     delete this->constraint_solver;
+//     delete this->broadphase;
+//     delete this->dispatcher;
+//     delete this->config;
+//     delete this->overlap_filter;
+//   }
+// };
 
-//struct RigidBodyImpl {
-//  btRigidBody *body;
-//  btMotionState *motion_state;
+// struct RigidBodyImpl {
+//   btRigidBody *body;
+//   btMotionState *motion_state;
 //
-//  RigidBodyImpl(btCollisionShape *collision_shape, float mass, const btVector3 &local_inertia)
-//  {
-//    this->motion_state = new btDefaultMotionState();
-//    this->body = new btRigidBody(mass, this->motion_state, collision_shape, local_inertia);
-//  }
+//   RigidBodyImpl(btCollisionShape *collision_shape, float mass, const btVector3 &local_inertia)
+//   {
+//     this->motion_state = new btDefaultMotionState();
+//     this->body = new btRigidBody(mass, this->motion_state, collision_shape, local_inertia);
+//   }
 //
-//  ~RigidBodyImpl()
-//  {
-//    delete this->body;
-//  }
-//};
+//   ~RigidBodyImpl()
+//   {
+//     delete this->body;
+//   }
+// };
 
-//RigidBodyWorld::RigidBodyWorld()
+// RigidBodyWorld::RigidBodyWorld()
 //{
-//  impl_ = new RigidBodyWorldImpl();
-//}
+//   impl_ = new RigidBodyWorldImpl();
+// }
 //
-//RigidBodyWorld::RigidBodyWorld(const RigidBodyWorld &other)
+// RigidBodyWorld::RigidBodyWorld(const RigidBodyWorld &other)
 //{
-//  // TODO copy bodies, constraints, shapes from other?
-//  impl_ = new RigidBodyWorldImpl();
-//  UNUSED_VARS(other);
-//}
+//   // TODO copy bodies, constraints, shapes from other?
+//   impl_ = new RigidBodyWorldImpl();
+//   UNUSED_VARS(other);
+// }
 //
-//RigidBodyWorld::~RigidBodyWorld()
+// RigidBodyWorld::~RigidBodyWorld()
 //{
-//  delete impl_;
-//}
+//   delete impl_;
+// }
 //
-//int RigidBodyWorld::bodies_num() const
+// int RigidBodyWorld::bodies_num() const
 //{
-//  return impl_->world->getNumCollisionObjects();
-//}
+//   return impl_->world->getNumCollisionObjects();
+// }
 //
-//int RigidBodyWorld::constraints_num() const
+// int RigidBodyWorld::constraints_num() const
 //{
-//  return impl_->world->getNumConstraints();
-//}
+//   return impl_->world->getNumConstraints();
+// }
 //
-//void RigidBodyWorld::set_overlap_filter(OverlapFilterFn fn)
+// void RigidBodyWorld::set_overlap_filter(OverlapFilterFn fn)
 //{
-//  impl_->overlap_filter = new OverlapFilterWrapper(std::move(fn));
-//  impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
-//}
+//   impl_->overlap_filter = new OverlapFilterWrapper(std::move(fn));
+//   impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
+// }
 //
-//void RigidBodyWorld::clear_overlap_filter()
+// void RigidBodyWorld::clear_overlap_filter()
 //{
-//  if (impl_->overlap_filter) {
-//    delete impl_->overlap_filter;
-//    impl_->overlap_filter = new DefaultOverlapFilter();
-//  }
-//  impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
-//}
+//   if (impl_->overlap_filter) {
+//     delete impl_->overlap_filter;
+//     impl_->overlap_filter = new DefaultOverlapFilter();
+//   }
+//   impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
+// }
 //
-//float3 RigidBodyWorld::gravity() const
+// float3 RigidBodyWorld::gravity() const
 //{
-//  return to_blender(impl_->world->getGravity());
-//}
+//   return to_blender(impl_->world->getGravity());
+// }
 //
-//void RigidBodyWorld::set_gravity(const float3 &gravity)
+// void RigidBodyWorld::set_gravity(const float3 &gravity)
 //{
-//  impl_->world->setGravity(to_bullet(gravity));
-//}
+//   impl_->world->setGravity(to_bullet(gravity));
+// }
 //
-//void RigidBodyWorld::set_solver_iterations(const int num_solver_iterations)
+// void RigidBodyWorld::set_solver_iterations(const int num_solver_iterations)
 //{
-//  btContactSolverInfo &info = impl_->world->getSolverInfo();
-//  info.m_numIterations = num_solver_iterations;
-//}
+//   btContactSolverInfo &info = impl_->world->getSolverInfo();
+//   info.m_numIterations = num_solver_iterations;
+// }
 //
-//void RigidBodyWorld::set_split_impulse(const bool split_impulse)
+// void RigidBodyWorld::set_split_impulse(const bool split_impulse)
 //{
-//  btContactSolverInfo &info = impl_->world->getSolverInfo();
-//  /* Note: Bullet stores this as int, but it's used as a bool. */
-//  info.m_splitImpulse = int(split_impulse);
-//}
+//   btContactSolverInfo &info = impl_->world->getSolverInfo();
+//   /* Note: Bullet stores this as int, but it's used as a bool. */
+//   info.m_splitImpulse = int(split_impulse);
+// }
 //
-//void RigidBodyWorld::add_rigid_body(RigidBody *body)
+// void RigidBodyWorld::add_rigid_body(RigidBody *body)
 //{
-//  impl_->world->addRigidBody(body->impl_->body);
-//}
+//   impl_->world->addRigidBody(body->impl_->body);
+// }
 //
-//void RigidBodyWorld::remove_rigid_body(RigidBody *body)
+// void RigidBodyWorld::remove_rigid_body(RigidBody *body)
 //{
-//  impl_->world->removeRigidBody(body->impl_->body);
-//}
+//   impl_->world->removeRigidBody(body->impl_->body);
+// }
 
 // float RigidBodyWorld::body_mass(RigidBodyHandle handle) const
 //{
@@ -277,15 +279,17 @@ inline btQuaternion to_bullet(const math::Quaternion &q)
 //   body->setDamping(body->getLinearDamping(), value);
 // }
 
-//RigidBody::RigidBody(const CollisionShape *shape, float mass, const float3 &local_inertia)
+// RigidBody::RigidBody(const CollisionShape *shape, float mass, const float3 &local_inertia)
 //{
-//  impl_ = new RigidBodyImpl(shape->impl_->shape, mass, to_bullet(local_inertia));
-//}
+//   impl_ = new RigidBodyImpl(shape->impl_->shape, mass, to_bullet(local_inertia));
+// }
 //
-//RigidBody::~RigidBody()
+// RigidBody::~RigidBody()
 //{
-//  delete impl_;
-//}
+//   delete impl_;
+// }
+
+CollisionShape::CollisionShape() : impl_(nullptr) {}
 
 CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl) {}
 
@@ -301,7 +305,7 @@ const CollisionShapeImpl &CollisionShape::impl() const
 
 CollisionShape::ShapeType CollisionShape::type() const
 {
-  const auto bt_shape_type = BroadphaseNativeTypes(impl_->shape->getShapeType());
+  const auto bt_shape_type = BroadphaseNativeTypes(impl_->as_bullet_shape().getShapeType());
   switch (bt_shape_type) {
     case BOX_SHAPE_PROXYTYPE:
       return ShapeType::Box;
@@ -315,49 +319,50 @@ CollisionShape::ShapeType CollisionShape::type() const
 }
 
 BoxCollisionShape::BoxCollisionShape(const float3 &half_extent)
-    : CollisionShape(new CollisionShapeImpl{new btBoxShape(to_bullet(half_extent))})
+    : CollisionShape(CollisionShapeImpl::wrap(new btBoxShape(to_bullet(half_extent))))
 {
 }
 
 float3 BoxCollisionShape::half_extent() const
 {
-  return to_blender(static_cast<btBoxShape *>(impl_->shape)->getHalfExtentsWithoutMargin());
+  return to_blender(
+      static_cast<const btBoxShape &>(impl_->as_bullet_shape()).getHalfExtentsWithoutMargin());
 }
 
 SphereCollisionShape::SphereCollisionShape(const float radius)
-    : CollisionShape(new CollisionShapeImpl{new btSphereShape(radius)})
+    : CollisionShape(CollisionShapeImpl::wrap(new btSphereShape(radius)))
 {
 }
 
 float SphereCollisionShape::radius() const
 {
-  return static_cast<btSphereShape *>(impl_->shape)->getRadius();
+  return static_cast<const btSphereShape &>(impl_->as_bullet_shape()).getRadius();
 }
 
 #else
 
-//RigidBodyWorld::RigidBodyWorld() {}
+// RigidBodyWorld::RigidBodyWorld() {}
 //
-//RigidBodyWorld::~RigidBodyWorld() {}
+// RigidBodyWorld::~RigidBodyWorld() {}
 //
-//int RigidBodyWorld::bodies_num() const
+// int RigidBodyWorld::bodies_num() const
 //{
-//  return 0;
-//}
+//   return 0;
+// }
 //
-//int RigidBodyWorld::constraints_num() const
+// int RigidBodyWorld::constraints_num() const
 //{
-//  return 0;
-//}
+//   return 0;
+// }
 //
-//int RigidBodyWorld::shapes_num() const
+// int RigidBodyWorld::shapes_num() const
 //{
-//  return 0;
-//}
+//   return 0;
+// }
 //
-//void RigidBodyWorld::set_overlap_filter(OverlapFilterFn /*fn*/) {}
+// void RigidBodyWorld::set_overlap_filter(OverlapFilterFn /*fn*/) {}
 //
-//void RigidBodyWorld::clear_overlap_filter() {}
+// void RigidBodyWorld::clear_overlap_filter() {}
 
 #endif
 
