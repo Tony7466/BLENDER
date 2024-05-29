@@ -148,7 +148,7 @@ static float3 calculate_next_normal(const float3 &last_normal,
   const float angle = angle_normalized_v3v3(last_tangent, current_tangent);
   if (angle != 0.0f) {
     const float3 axis = math::normalize(math::cross(last_tangent, current_tangent));
-    if (!math::is_zero(axis)) {
+    if (LIKELY(!math::is_zero(axis))) {
       /* The iterative process here (computing the current normal by rotating the previous one) can
        * accumulate small floating point errors, leading to 'not enough' normalized results at some
        * point (see #121169).  */
@@ -172,7 +172,7 @@ void calculate_normals_minimum(const Span<float3> tangents,
 
   /* Set initial normal. */
   const float3 &first_tangent = tangents.first();
-  if (fabs(first_tangent.x) + fabs(first_tangent.y) < epsilon) {
+  if (UNLIKELY(fabs(first_tangent.x) + fabs(first_tangent.y) < epsilon)) {
     normals.first() = {1.0f, 0.0f, 0.0f};
   }
   else {
@@ -202,7 +202,7 @@ void calculate_normals_minimum(const Span<float3> tangents,
   const float angle_step = correction_angle / normals.size();
   for (const int i : normals.index_range()) {
     const float3 axis = tangents[i];
-    if (math::is_zero(axis)) {
+    if (UNLIKELY(math::is_zero(axis))) {
       continue;
     }
     const float angle = angle_step * i;
