@@ -24,6 +24,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const std::string path = params.extract_input<std::string>("Path");
 
   if (path.empty()) {
+    params.error_message_add(NodeWarningType::Error, TIP_("File path can't be empty"));
     params.set_default_remaining_outputs();
     return;
   }
@@ -45,6 +46,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
   }
   else {
+    params.error_message_add(NodeWarningType::Error, TIP_("STL Import Failed"));
     params.set_default_remaining_outputs();
   }
 }
