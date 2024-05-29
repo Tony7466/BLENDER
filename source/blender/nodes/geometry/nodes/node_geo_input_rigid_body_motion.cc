@@ -3,19 +3,34 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_node.hh"
+#include "BKE_physics_geometry.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_input_rigid_body_motion_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Bool>("Smooth").field_source();
+  b.add_output<decl::Vector>("Position").field_source();
+  b.add_output<decl::Rotation>("Rotation").field_source();
+  b.add_output<decl::Vector>("Velocity").field_source();
+  b.add_output<decl::Vector>("Angular Velocity").field_source();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  Field<bool> sharp = AttributeFieldInput::Create<bool>("sharp_face");
-  params.set_output("Smooth", fn::invert_boolean_field(std::move(sharp)));
+  params.set_output(
+      "Position",
+      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.position));
+  params.set_output("Rotation",
+                    AttributeFieldInput::Create<math::Quaternion>(
+                        bke::PhysicsGeometry::builtin_attributes.rotation));
+  params.set_output(
+      "Velocity",
+      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.velocity));
+  params.set_output(
+      "Angular Velocity",
+      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.angular_velocity));
 }
 
 static void node_register()

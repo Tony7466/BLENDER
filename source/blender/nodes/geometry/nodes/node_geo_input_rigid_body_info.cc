@@ -3,19 +3,27 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_node.hh"
+#include "BKE_physics_geometry.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_input_rigid_body_info_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Bool>("Smooth").field_source();
+  b.add_output<decl::Int>("ID").field_source();
+  b.add_output<decl::Float>("Mass").field_source();
+  b.add_output<decl::Vector>("Inertia").field_source();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  Field<bool> sharp = AttributeFieldInput::Create<bool>("sharp_face");
-  params.set_output("Smooth", fn::invert_boolean_field(std::move(sharp)));
+  params.set_output("ID",
+                    AttributeFieldInput::Create<int>(bke::PhysicsGeometry::builtin_attributes.id));
+  params.set_output("Mass",
+                    AttributeFieldInput::Create<float>(bke::PhysicsGeometry::builtin_attributes.mass));
+  params.set_output("Inertia",
+                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.inertia));
 }
 
 static void node_register()
