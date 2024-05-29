@@ -199,7 +199,8 @@ GeometrySet join_geometries(const Span<GeometrySet> geometries,
                                                                GeometryComponent::Type::Instance,
                                                                GeometryComponent::Type::Volume,
                                                                GeometryComponent::Type::Curve,
-                                                               GeometryComponent::Type::Edit});
+                                                               GeometryComponent::Type::Edit,
+                                                               GeometryComponent::Type::Physics});
   for (const GeometryComponent::Type type : supported_types) {
     join_component_type(type, geometries, propagation_info, result);
   }
