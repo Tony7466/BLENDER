@@ -121,6 +121,63 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
   }
 };
 
+PhysicsImpl::PhysicsImpl() {}
+
+PhysicsImpl::~PhysicsImpl()
+{
+  destroy_world();
+
+  for (const int i : this->rigid_bodies.index_range()) {
+    delete this->rigid_bodies[i];
+  }
+
+  for (const int i : this->motion_states.index_range()) {
+    delete this->motion_states[i];
+  }
+}
+
+void PhysicsImpl::delete_self()
+{
+  delete this;
+}
+
+void PhysicsImpl::create_world()
+{
+  if (this->world != nullptr) {
+    return;
+  }
+
+  this->config = new btDefaultCollisionConfiguration();
+  this->dispatcher = new btCollisionDispatcher(this->config);
+  btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
+
+  this->broadphase = new btDbvtBroadphase();
+  this->overlap_filter = new DefaultOverlapFilter();
+  this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
+
+  this->constraint_solver = new btSequentialImpulseConstraintSolver();
+
+  this->world = new btDiscreteDynamicsWorld(
+      this->dispatcher, this->broadphase, this->constraint_solver, this->config);
+}
+
+void PhysicsImpl::destroy_world()
+{
+  delete this->world;
+  delete this->constraint_solver;
+  delete this->broadphase;
+  delete this->dispatcher;
+  delete this->config;
+  delete this->overlap_filter;
+
+  this->world = 0;
+  this->constraint_solver = 0;
+  this->broadphase = 0;
+  this->dispatcher = 0;
+  this->config = 0;
+  this->overlap_filter = 0;
+}
+
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "id", "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
 
@@ -144,39 +201,15 @@ PhysicsGeometry::PhysicsGeometry(int rigid_bodies_num)
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
-  impl_ = new PhysicsImpl{};
-
-  if (other.has_world()) {
-    this->set_world(true);
+  impl_ = other.impl_;
+  if (impl_) {
+    impl_->add_user();
   }
-
-  // TODO is this possible and/or necessary?
-
-  // impl_->rigid_bodies.reinitialize(other.impl_->rigid_bodies.size());
-  // impl_->motion_states.reinitialize(other.impl_->motion_states.size());
-  // for (const int i : other.impl_->rigid_bodies.index_range()) {
-  //   const btRigidBody &src_body = *other.impl_->rigid_bodies[i];
-  //   const btMotionState &src_motion_state = *other.impl_->motion_states[i];
-  //   btTransform start_transform, center_of_mass;
-  //   src_motion_state.getWorldTransform(start_transform);
-  //   btMotionState *dst_motion_state = new btDefaultMotionState(start_transform);
-  //   const float3 local_inertia = float3(0.0f);
-
-  //   const CollisionShapeID shape_id = src_body.getCollisionShape()->getUserIndex();
-  //   std::shared_ptr<CollisionShape> shape = impl_->collision_shapes.lookup(shape_id);
-  //   btCollisionShape *bt_shape = shape ? &shape->impl_->as_bullet_shape() : nullptr;
-
-  //   btRigidBody::btRigidBodyConstructionInfo constructionInfo(
-  //       src_body.getMass(), dst_motion_state, bt_shape, to_bullet(local_inertia));
-
-  //   impl_->rigid_bodies[i] = other.impl_->rigid_bodies[i];
-  // }
 }
 
 PhysicsGeometry::~PhysicsGeometry()
 {
-  // clear_rigid_bodies();
-  set_world(false);
+  impl_->remove_user_and_delete_if_last();
 }
 
 PhysicsImpl &PhysicsGeometry::impl()
@@ -197,31 +230,10 @@ bool PhysicsGeometry::has_world() const
 void PhysicsGeometry::set_world(bool enable)
 {
   if (enable) {
-    if (impl_->world == nullptr) {
-      impl_->config = new btDefaultCollisionConfiguration();
-      impl_->dispatcher = new btCollisionDispatcher(impl_->config);
-      btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)impl_->dispatcher);
-
-      impl_->broadphase = new btDbvtBroadphase();
-      impl_->overlap_filter = new DefaultOverlapFilter();
-      impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(
-          impl_->overlap_filter);
-
-      impl_->constraint_solver = new btSequentialImpulseConstraintSolver();
-
-      impl_->world = new btDiscreteDynamicsWorld(
-          impl_->dispatcher, impl_->broadphase, impl_->constraint_solver, impl_->config);
-    }
+    impl_->create_world();
   }
   else {
-    if (impl_->world != nullptr) {
-      delete impl_->world;
-      delete impl_->constraint_solver;
-      delete impl_->broadphase;
-      delete impl_->dispatcher;
-      delete impl_->config;
-      delete impl_->overlap_filter;
-    }
+    impl_->destroy_world();
   }
 }
 

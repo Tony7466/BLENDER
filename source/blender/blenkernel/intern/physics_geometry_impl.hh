@@ -11,6 +11,7 @@
 #include "BKE_physics_geometry.hh"
 
 #include "BLI_array.hh"
+#include "BLI_implicit_sharing.h"
 #include "BLI_map.hh"
 
 class btDiscreteDynamicsWorld;
@@ -25,16 +26,24 @@ class btCollisionShape;
 
 namespace blender::bke {
 
-struct PhysicsImpl {
-  btDiscreteDynamicsWorld *world;
-  btCollisionConfiguration *config;
-  btCollisionDispatcher *dispatcher;
-  btBroadphaseInterface *broadphase;
-  btConstraintSolver *constraint_solver;
-  btOverlapFilterCallback *overlap_filter;
+struct PhysicsImpl : public ImplicitSharingMixin {
+  btDiscreteDynamicsWorld *world = nullptr;
+  btCollisionConfiguration *config = nullptr;
+  btCollisionDispatcher *dispatcher = nullptr;
+  btBroadphaseInterface *broadphase = nullptr;
+  btConstraintSolver *constraint_solver = nullptr;
+  btOverlapFilterCallback *overlap_filter = nullptr;
 
   Array<btRigidBody *> rigid_bodies;
   Array<btMotionState *> motion_states;
+
+  PhysicsImpl();
+  ~PhysicsImpl();
+
+  void create_world();
+  void destroy_world();
+
+  void delete_self() override;
 };
 
 struct CollisionShapeImpl {

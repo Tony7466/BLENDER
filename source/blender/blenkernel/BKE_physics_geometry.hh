@@ -8,12 +8,13 @@
 
 #pragma once
 
-#include "BKE_attribute.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_virtual_array_fwd.hh"
+
+#include "BKE_attribute.hh"
 
 #include <functional>
 
@@ -31,7 +32,7 @@ class PhysicsGeometry {
  private:
   PhysicsImpl *impl_;
 
- public:
+public:
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
   static const struct BuiltinAttributes {
@@ -51,8 +52,6 @@ class PhysicsGeometry {
 
   PhysicsImpl &impl();
   const PhysicsImpl &impl() const;
-
-  //PhysicsGeometry copy() const;
 
   bool has_world() const;
   void set_world(bool enable);
