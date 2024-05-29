@@ -121,31 +121,6 @@ static float3 to_float3(const potrace_dpoint_s &point)
   return float3(point.x, point.y, 0.0f);
 }
 
-template<typename T, int num>
-std::ostream &operator<<(std::ostream &stream, const std::array<T, num> &data)
-{
-  stream << "{";
-  for (const int64_t i : IndexRange(num)) {
-    stream << data[i] << (num - 1 == i ? "" : ", ");
-  }
-  stream << "}";
-  return stream;
-}
-
-template<typename T> std::ostream &operator<<(std::ostream &stream, const Span<T> span)
-{
-  for (const int64_t i : span.index_range()) {
-    stream << span[i] << (span.size() - 1 == i ? "" : ", ");
-  }
-  return stream;
-}
-
-template<typename T> std::ostream &operator<<(std::ostream &stream, MutableSpan<T> span)
-{
-  stream << span.as_span();
-  return stream;
-}
-
 template<typename In, typename Out, typename Func>
 static void parallel_transform(const Span<In> src,
                                const int64_t grain_size,
@@ -238,8 +213,6 @@ static void potrace_curve_type_switch_sizes(const Span<const potrace_path_t *> s
           MutableSpan<int> type_switch_sizes_num = src_type_switch_sizes_num.slice(
               curve_type_switch_offset[curve_i]);
           type_group_sizes(segment_types, type_switch_sizes_num);
-          // std::cout << "potrace_curve_type_switch_sizes: " << segment_types << ";\n";
-          // std::cout << "potrace_curve_type_switch_sizes: " << type_switch_sizes_num << ";\n";
         }
       },
       threading::accumulated_task_sizes(
@@ -278,9 +251,6 @@ static void potrace_curve_type_switch_extra_sizes(
           MutableSpan<int> type_switch_sizes_num = extra_type_switch_sizes_num.slice(
               curve_type_switch_offset[curve_i]);
           type_switch_extra_sizes(segment_types, type_switch_sizes_num);
-          // std::cout << "potrace_curve_type_switch_extra_sizes: " << segment_types << ";\n";
-          // std::cout << "potrace_curve_type_switch_extra_sizes: " << type_switch_sizes_num <<
-          // ";\n";
         }
       },
       threading::accumulated_task_sizes(
@@ -310,7 +280,7 @@ static void copy_poly_curve(const potrace_path_t &potrace_curve, MutableSpan<flo
 {
   const Span<potrace_dpoint_t[3]> src_curve(potrace_curve.curve.c, potrace_curve.curve.n);
   parallel_transform(src_curve, 4096, positions, [&](const potrace_dpoint_t(&point)[3]) -> float3 {
-    return to_float3(point[1]);
+    return to_float3(point[poly_control]);
   });
 }
 
@@ -486,17 +456,6 @@ static void potrace_fill_bezier_or_poly_curve(
           [&](const IndexRange range) { return potrace_curve_segments_groups[range].size(); }));
 }
 
-static void transform_points(const int2 resolution,
-                             const float2 min_point,
-                             const float2 max_point,
-                             MutableSpan<float3> data)
-{
-  const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
-  parallel_transform(data.as_span(), 4096, data, [&](const float3 vector) {
-    return float3(min_point + vector.xy() * resolution_factor, 0.0f);
-  });
-}
-
 Curves *plane_to_curve(const potrace_state_t *potrace_result,
                        const bke::AttributeIDRef &parent_index_id)
 {
@@ -605,10 +564,6 @@ Curves *plane_to_curve(const potrace_state_t *potrace_result,
                                       positions_left.slice(curve_offsets[curve_i]),
                                       positions_right.slice(curve_offsets[curve_i]));
   });
-
-  // transform_points(resolution, min_point, max_point, positions);
-  // transform_points(resolution, min_point, max_point, positions_left);
-  // transform_points(resolution, min_point, max_point, positions_right);
 
   if (!parent_index_data.is_empty()) {
     bke::SpanAttributeWriter<int> parent_attribute =
