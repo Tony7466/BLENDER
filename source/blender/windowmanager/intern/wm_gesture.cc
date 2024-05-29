@@ -351,6 +351,49 @@ static void draw_filled_lasso(wmGesture *gt)
   }
 }
 
+/* TODO: Extract this common functionality so it can be shared between Sculpt brushes, the annotate
+ * tool, and this common logic. */
+static void draw_lasso_stroke_line(wmGesture *gt, const uint shdr_pos)
+{
+  short(*lasso)[2] = static_cast<short int(*)[2]>(gt->customdata);
+  short last_x = lasso[gt->points - 1][0] /* + gt->winrct.xmin*/;
+  short last_y = lasso[gt->points - 1][1] /* + gt->winrct.ymin*/;
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  GPU_line_smooth(true);
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  GPU_line_width(1.25f);
+  const float color[3] = {1.0f, 0.39f, 0.39f};
+
+  const float radius = 4.0f;
+
+  /* Draw Inner Ring */
+  immUniformColor4f(color[0], color[1], color[2], 0.8f);
+  imm_draw_circle_wire_2d(
+      shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y, radius, 40);
+
+  /* Draw Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
+  float darkcolor[3];
+  mul_v3_v3fl(darkcolor, color, 0.40f);
+  immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
+  imm_draw_circle_wire_2d(
+      shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y, radius + 1, 40);
+
+  /* Draw line from the last saved position to the current mouse position. */
+  immUniformColor4f(color[0], color[1], color[2], 0.8f);
+  immBegin(GPU_PRIM_LINES, 2);
+  immVertex2f(shdr_pos,
+              gt->current_mouse_position.x /* + gt->winrct.xmin */,
+              gt->current_mouse_position.y /* + gt->winrct.ymin */);
+  immVertex2f(shdr_pos, last_x, last_y);
+  immEnd();
+
+  GPU_blend(GPU_BLEND_NONE);
+  GPU_line_smooth(false);
+  immUnbindProgram();
+}
+
 static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
 {
   const short *lasso = (short *)gt->customdata;
@@ -392,45 +435,7 @@ static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
   immUnbindProgram();
 
   if (gt->use_smooth) {
-    short(*lasso)[2] = static_cast<short int(*)[2]>(gt->customdata);
-    short last_x = lasso[gt->points - 1][0] /* + gt->winrct.xmin*/;
-    short last_y = lasso[gt->points - 1][1] /* + gt->winrct.ymin*/;
-
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    GPU_line_smooth(true);
-    GPU_blend(GPU_BLEND_ALPHA);
-    GPU_line_width(1.25f);
-    const float color[3] = {1.0f, 0.39f, 0.39f};
-
-    // default radius and color
-    float darkcolor[3];
-    const float radius = 4.0f;
-
-    // Inner Ring: Color from UI panel
-    immUniformColor4f(color[0], color[1], color[2], 0.8f);
-    imm_draw_circle_wire_2d(
-        shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y, radius, 40);
-
-    // Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white)
-    mul_v3_v3fl(darkcolor, color, 0.40f);
-    immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
-    imm_draw_circle_wire_2d(
-        shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y, radius + 1, 40);
-
-    // Rope Simple.
-    immUniformColor4f(color[0], color[1], color[2], 0.8f);
-    immBegin(GPU_PRIM_LINES, 2);
-    immVertex2f(shdr_pos,
-                gt->current_mouse_position.x /* + gt->winrct.xmin */,
-                gt->current_mouse_position.y /* + gt->winrct.ymin */);
-    immVertex2f(shdr_pos, last_x, last_y);
-    immEnd();
-
-    // Returns back all GPU settings
-    GPU_blend(GPU_BLEND_NONE);
-    GPU_line_smooth(false);
-
-    immUnbindProgram();
+    draw_lasso_stroke_line(gt, shdr_pos);
   }
 }
 

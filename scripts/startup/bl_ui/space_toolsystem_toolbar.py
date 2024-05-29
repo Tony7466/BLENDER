@@ -1410,6 +1410,14 @@ class _defs_sculpt:
             use_separators=False,
         )
 
+    @staticmethod
+    def draw_lasso_settings(layout, props):
+        layout.prop(props, "use_smooth_stroke", text="Stabilize Stroke")
+        subrow = layout.row(align=False)
+        subrow.active = props.use_smooth_stroke
+        subrow.prop(props, "smooth_stroke_radius", text="Radius", slider=True)
+        subrow.prop(props, "smooth_stroke_factor", text="Factor", slider=True)
+
     @ToolDef.from_fn
     def hide_border():
         def draw_settings(_context, layout, tool):
@@ -1430,11 +1438,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("paint.hide_show_lasso_gesture")
             layout.prop(props, "area", expand=False)
-            layout.prop(props, "use_stabilize_stroke", text="Stabilize Stroke")
-            subrow = layout.row(align=False)
-            subrow.active = props.use_stabilize_stroke
-            subrow.prop(props, "smooth_stroke_radius", text="Radius", slider=True)
-            subrow.prop(props, "smooth_stroke_factor", text="Factor", slider=True)
+            _defs_sculpt.draw_lasso_settings(layout, props)
 
         return dict(
             idname="builtin.lasso_hide",
@@ -1495,6 +1499,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("paint.mask_lasso_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
+            _defs_sculpt.draw_lasso_settings(layout, props)
 
         return dict(
             idname="builtin.lasso_mask",
@@ -1556,6 +1561,7 @@ class _defs_sculpt:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.face_set_lasso_gesture")
             layout.prop(props, "use_front_faces_only", expand=False)
+            _defs_sculpt.draw_lasso_settings(layout, props)
 
         return dict(
             idname="builtin.lasso_face_set",
@@ -1624,6 +1630,7 @@ class _defs_sculpt:
             layout.prop(props, "trim_orientation", expand=False)
             layout.prop(props, "trim_extrude_mode", expand=False)
             layout.prop(props, "use_cursor_depth", expand=False)
+            _defs_sculpt.draw_lasso_settings(layout, props)
         return dict(
             idname="builtin.lasso_trim",
             label="Lasso Trim",

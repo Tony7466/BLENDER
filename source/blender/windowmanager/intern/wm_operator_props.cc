@@ -527,32 +527,28 @@ void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna,
-                         "use_stabilize_stroke",
+                         "use_smooth_stroke",
                          false,
                          "Stabilize Stroke",
-                         "Helper to draw smooth and clean lines. Press Shift for an invert effect "
-                         "(even if this option is not active)");
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+                         "Selection lags behind mouse and follows a smoother path");
   prop = RNA_def_float(ot->srna,
                        "smooth_stroke_factor",
                        0.75f,
-                       0.0f,
-                       1.0f,
-                       "Stabilizer Stroke Factor",
+                       0.5f,
+                       0.99f,
+                       "Smooth Stroke Factor",
                        "Higher values gives a smoother stroke",
-                       0.0f,
-                       1.0f);
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+                       0.5f,
+                       0.99f);
   prop = RNA_def_int(ot->srna,
                      "smooth_stroke_radius",
                      35,
-                     0,
+                     10,
                      200,
-                     "Stabilizer Stroke Radius",
-                     "Minimum distance from last point before stroke continues",
-                     1,
-                     100);
-  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+                     "Smooth Stroke Radius",
+                     "Minimum distance from last point before selection continues",
+                     10,
+                     200);
   RNA_def_property_subtype(prop, PROP_PIXEL);
 }
 
