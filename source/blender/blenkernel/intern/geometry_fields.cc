@@ -1084,6 +1084,32 @@ std::optional<AttrDomain> try_detect_field_domain(const GeometryComponent &compo
       }
     }
   }
+  if (component_type == GeometryComponent::Type::Physics) {
+    const PhysicsComponent &physics_component = static_cast<const PhysicsComponent &>(component);
+    const PhysicsGeometry *physics = physics_component.get();
+    if (physics == nullptr) {
+      return std::nullopt;
+    }
+    for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
+      if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
+              &field_input))
+      {
+        if (!handle_domain(geometry_field_input->preferred_domain(component))) {
+          return std::nullopt;
+        }
+      }
+      else if (const auto *physics_field_input = dynamic_cast<const PhysicsFieldInput *>(
+                   &field_input))
+      {
+        if (!handle_domain(physics_field_input->preferred_domain(*physics))) {
+          return std::nullopt;
+        }
+      }
+      else {
+        return std::nullopt;
+      }
+    }
+  }
   return output_domain;
 }
 
