@@ -119,86 +119,18 @@ void PhysicsComponent::ensure_owns_direct_data()
   }
 }
 
-static ComponentAttributeProviders create_attribute_providers_for_physics()
-{
-  return ComponentAttributeProviders({}, {});
-}
-
-static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,
-                                              const GVArray &varray,
-                                              const AttrDomain from,
-                                              const AttrDomain to)
-{
-  if (from == to) {
-    return varray;
-  }
-  return {};
-}
-
-static AttributeAccessorFunctions get_physics_accessor_functions()
-{
-  static const ComponentAttributeProviders providers = create_attribute_providers_for_physics();
-  AttributeAccessorFunctions fn =
-      attribute_accessor_functions::accessor_functions_for_providers<providers>();
-  fn.domain_size = [](const void *owner, const AttrDomain domain) {
-    if (owner == nullptr) {
-      return 0;
-    }
-    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
-    switch (domain) {
-      case AttrDomain::Point:
-        return int(physics.rigid_bodies_num());
-      case AttrDomain::Edge:
-        return int(physics.constraints_num());
-      default:
-        return 0;
-    }
-  };
-  fn.domain_supported = [](const void * /*owner*/, const AttrDomain domain) {
-    return ELEM(domain, AttrDomain::Point, AttrDomain::Edge);
-  };
-  fn.adapt_domain = [](const void *owner,
-                       const GVArray &varray,
-                       const AttrDomain from_domain,
-                       const AttrDomain to_domain) -> GVArray {
-    if (owner == nullptr) {
-      return {};
-    }
-    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
-    return adapt_physics_attribute_domain(physics, varray, from_domain, to_domain);
-  };
-  return fn;
-}
-
-static const AttributeAccessorFunctions &get_physics_accessor_functions_ref()
-{
-  static const AttributeAccessorFunctions fn = get_physics_accessor_functions();
-  return fn;
-}
-
 }  // namespace blender::bke
 
 namespace blender::bke {
 
 std::optional<AttributeAccessor> PhysicsComponent::attributes() const
 {
-  return AttributeAccessor(physics_, get_physics_accessor_functions_ref());
+  return physics_->attributes();
 }
 
 std::optional<MutableAttributeAccessor> PhysicsComponent::attributes_for_write()
 {
-  PhysicsGeometry *physics = this->get_for_write();
-  return MutableAttributeAccessor(physics, get_physics_accessor_functions_ref());
-}
-
-AttributeAccessor PhysicsGeometry::attributes() const
-{
-  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref());
-}
-
-MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
-{
-  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+  return physics_->attributes_for_write();
 }
 
 }  // namespace blender::bke

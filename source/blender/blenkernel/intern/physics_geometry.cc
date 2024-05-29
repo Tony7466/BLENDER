@@ -6,6 +6,7 @@
  * \ingroup sim
  */
 
+#include "BKE_attribute.hh"
 #include "BKE_collision_shape.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
@@ -18,6 +19,7 @@
 #include <LinearMath/btTransform.h>
 #include <functional>
 
+#include "attribute_access_intern.hh"
 #include "physics_geometry_impl.hh"
 
 #ifdef WITH_BULLET
@@ -119,39 +121,6 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
   }
 };
 
-// /**
-//  * Provider for builtin rigid body attributes.
-//  */
-// class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
-//   using UpdateOnChange = void (*)(void *owner);
-//   const CustomDataAccessInfo custom_data_access_;
-//   const UpdateOnChange update_on_change_;
-
-//  public:
-//   BuiltinCustomDataLayerProvider(std::string attribute_name,
-//                                  const AttrDomain domain,
-//                                  const eCustomDataType data_type,
-//                                  const DeletableEnum deletable,
-//                                  const CustomDataAccessInfo custom_data_access,
-//                                  const UpdateOnChange update_on_change,
-//                                  const AttributeValidator validator = {})
-//       : BuiltinAttributeProvider(
-//             std::move(attribute_name), domain, data_type, deletable, validator),
-//         custom_data_access_(custom_data_access),
-//         update_on_change_(update_on_change)
-//   {
-//   }
-
-//   GAttributeReader try_get_for_read(const void *owner) const final;
-//   GAttributeWriter try_get_for_write(void *owner) const final;
-//   bool try_delete(void *owner) const final;
-//   bool try_create(void *owner, const AttributeInit &initializer) const final;
-//   bool exists(const void *owner) const final;
-
-//  private:
-//   bool layer_exists(const CustomData &custom_data) const;
-// };
-
 PhysicsGeometry::PhysicsGeometry() : PhysicsGeometry(0) {}
 
 PhysicsGeometry::PhysicsGeometry(int rigid_bodies_num)
@@ -205,6 +174,16 @@ PhysicsGeometry::~PhysicsGeometry()
 {
   // clear_rigid_bodies();
   set_world(false);
+}
+
+PhysicsImpl &PhysicsGeometry::impl()
+{
+  return *impl_;
+}
+
+const PhysicsImpl &PhysicsGeometry::impl() const
+{
+  return *impl_;
 }
 
 bool PhysicsGeometry::has_world() const
@@ -502,6 +481,190 @@ VMutableArray<float3> PhysicsGeometry::body_positions_for_write()
 void PhysicsGeometry::tag_collision_shapes_changed() {}
 
 void PhysicsGeometry::tag_body_transforms_changed() {}
+
+/**
+ * Utility to group together multiple functions that are used to access custom data on geometry
+ * components in a generic way.
+ */
+struct PhysicsAccessInfo {
+  using PhysicsGetter = PhysicsGeometry *(*)(void *owner);
+  using ConstPhysicsGetter = const PhysicsGeometry *(*)(const void *owner);
+
+  PhysicsGetter get_physics;
+  ConstPhysicsGetter get_const_physics;
+};
+
+template<typename T> static void dummy_set_fn(btRigidBody *& /*body*/, T /*value*/) {}
+
+/**
+ * Provider for builtin rigid body attributes.
+ */
+template<typename T,
+         T (*GetFn)(const btRigidBody *const &),
+         void (*SetFn)(btRigidBody *&, T) = dummy_set_fn>
+class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
+  using UpdateOnChange = void (*)(void *owner);
+  const PhysicsAccessInfo physics_access_;
+  const UpdateOnChange update_on_change_;
+
+ public:
+  BuiltinRigidBodyAttributeProvider(std::string attribute_name,
+                                    const AttrDomain domain,
+                                    const DeletableEnum deletable,
+                                    const PhysicsAccessInfo physics_access,
+                                    const UpdateOnChange update_on_change,
+                                    const AttributeValidator validator = {})
+      : BuiltinAttributeProvider(std::move(attribute_name),
+                                 domain,
+                                 cpp_type_to_custom_data_type(CPPType::get<T>()),
+                                 deletable,
+                                 validator),
+        physics_access_(physics_access),
+        update_on_change_(update_on_change)
+  {
+  }
+
+  /* Wrapper around GetFn that takes a const pointer.
+   * Necessary because VArray::ForDerivedSpan expects a callback for const pointers,
+   * but VMutableArray::ForDerivedSpan wants a non-const pointer instead.
+   * This wrapper allows us to use the same callback for both cases.
+   */
+  static T get_fn_mutable(btRigidBody *const &body)
+  {
+    return GetFn(body);
+  }
+
+  GAttributeReader try_get_for_read(const void *owner) const final
+  {
+    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    GVArray varray = VArray<T>::template ForDerivedSpan<const btRigidBody *, GetFn>(
+        physics->impl().rigid_bodies);
+
+    return {varray, domain_, nullptr};
+  }
+
+  GAttributeWriter try_get_for_write(void *owner) const final
+  {
+    PhysicsGeometry *physics = physics_access_.get_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    std::function<void()> tag_modified_fn;
+    if (update_on_change_ != nullptr) {
+      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
+    }
+
+    GVMutableArray varray =
+        VMutableArray<T>::template ForDerivedSpan<btRigidBody *, get_fn_mutable, SetFn>(
+            physics->impl().rigid_bodies);
+
+    return {varray, domain_, std::move(tag_modified_fn)};
+  }
+
+  bool try_delete(void * /*owner*/) const final
+  {
+    if (deletable_ != Deletable) {
+      return false;
+    }
+    return false;
+  }
+
+  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
+  {
+    return false;
+  }
+
+  bool exists(const void * /*owner*/) const final
+  {
+    return true;
+  }
+};
+
+static ComponentAttributeProviders create_attribute_providers_for_physics()
+{
+  static PhysicsAccessInfo physics_access = {
+      [](void *owner) -> PhysicsGeometry * { return static_cast<PhysicsGeometry *>(owner); },
+      [](const void *owner) -> const PhysicsGeometry * {
+        return static_cast<const PhysicsGeometry *>(owner);
+      }};
+
+  auto get_fn = [](const btRigidBody *const &body) -> RigidBodyID { return body->getUserIndex(); };
+  static BuiltinRigidBodyAttributeProvider<RigidBodyID, get_fn> body_id(
+      "position",
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
+  return ComponentAttributeProviders({&body_id}, {});
+}
+
+static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,
+                                              const GVArray &varray,
+                                              const AttrDomain from,
+                                              const AttrDomain to)
+{
+  if (from == to) {
+    return varray;
+  }
+  return {};
+}
+
+static AttributeAccessorFunctions get_physics_accessor_functions()
+{
+  static const ComponentAttributeProviders providers = create_attribute_providers_for_physics();
+  AttributeAccessorFunctions fn =
+      attribute_accessor_functions::accessor_functions_for_providers<providers>();
+  fn.domain_size = [](const void *owner, const AttrDomain domain) {
+    if (owner == nullptr) {
+      return 0;
+    }
+    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
+    switch (domain) {
+      case AttrDomain::Point:
+        return int(physics.rigid_bodies_num());
+      case AttrDomain::Edge:
+        return int(physics.constraints_num());
+      default:
+        return 0;
+    }
+  };
+  fn.domain_supported = [](const void * /*owner*/, const AttrDomain domain) {
+    return ELEM(domain, AttrDomain::Point, AttrDomain::Edge);
+  };
+  fn.adapt_domain = [](const void *owner,
+                       const GVArray &varray,
+                       const AttrDomain from_domain,
+                       const AttrDomain to_domain) -> GVArray {
+    if (owner == nullptr) {
+      return {};
+    }
+    const PhysicsGeometry &physics = *static_cast<const PhysicsGeometry *>(owner);
+    return adapt_physics_attribute_domain(physics, varray, from_domain, to_domain);
+  };
+  return fn;
+}
+
+static const AttributeAccessorFunctions &get_physics_accessor_functions_ref()
+{
+  static const AttributeAccessorFunctions fn = get_physics_accessor_functions();
+  return fn;
+}
+
+AttributeAccessor PhysicsGeometry::attributes() const
+{
+  return AttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+}
+
+MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
+{
+  return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+}
 
 #else
 

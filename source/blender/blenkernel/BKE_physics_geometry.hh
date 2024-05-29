@@ -40,6 +40,9 @@ class PhysicsGeometry {
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
+  PhysicsImpl &impl();
+  const PhysicsImpl &impl() const;
+
   PhysicsGeometry copy() const;
 
   bool has_world() const;
