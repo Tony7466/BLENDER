@@ -2347,10 +2347,8 @@ void SCULPT_do_displacement_smear_brush(const Sculpt &sd, Object &ob, Span<PBVHN
   SculptSession &ss = *ob.sculpt;
   Mesh *mesh = BKE_mesh_from_object(&ob);
 
-  /* Fix for ##86114 */
+  /* Fix for ##86114: dispalcement smear brush and dyntopo currently don't play along nicely. */
   if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
-    /* dispalcement smear brush and dyntopo currently
-     don't play along nicely.  */
     return;
   }
 
