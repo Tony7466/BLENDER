@@ -363,6 +363,7 @@ def url_params_append_for_blender(url: str, blender_version: Tuple[int, int, int
 def repo_sync(
         *,
         directory: str,
+        remote_name: str,
         remote_url: str,
         online_user_agent: str,
         access_token: str,
@@ -376,11 +377,13 @@ def repo_sync(
     ``bpy.ops.ext.repo_sync(directory)``.
     """
     if dry_run:
-        return [COMPLETE_ITEM]
+        yield [COMPLETE_ITEM]
+        return
 
     yield from command_output_from_json_0([
         "sync",
         "--local-dir", directory,
+        "--remote-name", remote_name,
         "--remote-url", remote_url,
         "--online-user-agent", online_user_agent,
         "--access-token", access_token,
@@ -827,6 +830,42 @@ class CommandBatch:
             failure_count=failure_count,
             count=len(self._batch),
         )
+
+    @staticmethod
+    def calc_status_text_icon_from_data(
+            status_data: CommandBatch_StatusFlag,
+            update_count: int,
+            do_online_sync: bool,
+    ) -> Tuple[str, str]:
+        # Generate a nice UI string for a status-bar & splash screen (must be short).
+        #
+        # NOTE: this is (arguably) UI logic, it's just nice to have it here
+        # as it avoids using low-level flags externally.
+        #
+        # FIXME: this text assumed a "sync" operation.
+        if status_data.failure_count == 0:
+            fail_text = ""
+        elif status_data.failure_count == status_data.count:
+            fail_text = ", failed"
+        else:
+            fail_text = ", some actions failed"
+
+        if status_data.flag == 1 << CommandBatchItem.STATUS_NOT_YET_STARTED or \
+           status_data.flag & 1 << CommandBatchItem.STATUS_RUNNING:
+            if do_online_sync:
+                return "Checking for Extension Updates Online{:s}".format(fail_text), 'SORTTIME'
+            else:
+                return "Checking for Extension Updates{:s}".format(fail_text), 'SORTTIME'
+
+        if status_data.flag == 1 << CommandBatchItem.STATUS_COMPLETE:
+            if update_count > 0:
+                # NOTE: the UI design in #120612 has the number of extensions available in icon.
+                # Include in the text as this is not yet supported.
+                return "Extensions Updates Available ({:d}){:s}".format(update_count, fail_text), 'INTERNET'
+            return "All Extensions Up-to-date{:s}".format(fail_text), 'CHECKMARK'
+
+        # Should never reach this line!
+        return "Internal error, unknown state!{:s}".format(fail_text), 'ERROR'
 
     @staticmethod
     def calc_status_syncing(status_data: CommandBatch_StatusFlag) -> bool:

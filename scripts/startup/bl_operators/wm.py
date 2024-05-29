@@ -3352,10 +3352,6 @@ class WM_MT_splash(Menu):
         col2.operator("wm.url_open_preset", text="Donate", icon='FUND').type = 'FUND'
         col2.operator("wm.url_open_preset", text="What's New", icon='URL').type = 'RELEASE_NOTES'
 
-        # For balance, could be replaced if we have another thing to put here.
-        if hasattr(WM_MT_splash, 'draw_extensions') and found_recent:
-            col2.operator("wm.url_open_preset", text="Manual", icon='URL').type = 'MANUAL'
-
         layout.separator()
         layout.separator()
 
@@ -3365,7 +3361,8 @@ class WM_MT_splash(Menu):
 
     @classmethod
     def remove_extensions(cls):
-        delattr(cls, 'draw_extensions')
+        if hasattr(cls, "draw_extensions"):
+            delattr(cls, 'draw_extensions')
 
 
 
