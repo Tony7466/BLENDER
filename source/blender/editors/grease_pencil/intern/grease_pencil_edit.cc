@@ -1891,11 +1891,9 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
 {
   using namespace bke::greasepencil;
 
-  Layer layer_src = *grease_pencil_src.layers().get(layer_index, &layer_src);
-
-  const int dst_layer_index = grease_pencil_dst.layers_for_write().first_index_try(&layer_src);
-  if (dst_layer_index != -1) {
-    return *grease_pencil_dst.layers_for_write()[dst_layer_index];
+  const Layer &layer_src = *grease_pencil_src.layer(layer_index);
+  if (TreeNode *node = grease_pencil_dst.find_node_by_name(layer_src.name())) {
+    return node->as_layer();
   }
 
   Layer &dst_layer = grease_pencil_dst.add_layer(layer_src.name());
