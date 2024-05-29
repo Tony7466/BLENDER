@@ -28,6 +28,7 @@
 #include "BKE_ccg.h"
 #include "BKE_colortools.hh"
 #include "BKE_kelvinlet.h"
+#include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -2344,6 +2345,14 @@ void SCULPT_do_displacement_smear_brush(const Sculpt &sd, Object &ob, Span<PBVHN
   using namespace blender;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   SculptSession &ss = *ob.sculpt;
+  Mesh *mesh = BKE_mesh_from_object(&ob);
+
+  /* Fix for ##86114 */
+  if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
+    /* dispalcement smear brush and dyntopo currently
+     don't play along nicely.  */
+    return;
+  }
 
   BKE_curvemapping_init(brush.curve);
 
