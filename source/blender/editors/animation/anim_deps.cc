@@ -378,7 +378,8 @@ void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
         ale->update &= ~ANIM_UPDATE_DEPS;
         ANIM_list_elem_update(ac->bmain, ac->scene, ale);
       }
-      /* Order appears to be already handled in `grease_pencil_layer_apply_trans_data` when translating. */
+      /* Order appears to be already handled in `grease_pencil_layer_apply_trans_data` when
+       * translating. */
       ale->update &= ~(ANIM_UPDATE_HANDLES | ANIM_UPDATE_ORDER);
     }
     else if (ale->update) {
