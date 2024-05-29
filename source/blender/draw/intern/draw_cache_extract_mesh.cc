@@ -531,11 +531,11 @@ static void mesh_extract_render_data_node_exec(void *__restrict task_data)
   MeshBufferList &buffers = update_task_data->cache->buff;
 
   const bool request_face_normals = DRW_vbo_requested(buffers.vbo.nor) ||
-                                    (data_flag & (MR_DATA_POLY_NOR | MR_DATA_LOOP_NOR |
-                                                  MR_DATA_TAN_LOOP_NOR)) != 0;
+                                    DRW_vbo_requested(buffers.vbo.tan) ||
+                                    (data_flag & (MR_DATA_POLY_NOR | MR_DATA_LOOP_NOR)) != 0;
   const bool request_corner_normals = DRW_vbo_requested(buffers.vbo.nor) ||
                                       (data_flag & MR_DATA_LOOP_NOR) != 0;
-  const bool force_corner_normals = (data_flag & MR_DATA_TAN_LOOP_NOR) != 0;
+  const bool force_corner_normals = DRW_vbo_requested(buffers.vbo.tan);
 
   if (request_face_normals) {
     mesh_render_data_update_face_normals(mr);
@@ -643,7 +643,6 @@ void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
   } while (0)
 
   EXTRACT_ADD_REQUESTED(vbo, uv);
-  EXTRACT_ADD_REQUESTED(vbo, tan);
   EXTRACT_ADD_REQUESTED(vbo, sculpt_data);
   EXTRACT_ADD_REQUESTED(vbo, orco);
   EXTRACT_ADD_REQUESTED(vbo, edge_fac);
@@ -680,7 +679,7 @@ void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
       !DRW_ibo_requested(buffers.ibo.lines_loose) && !DRW_ibo_requested(buffers.ibo.tris) &&
       !DRW_ibo_requested(buffers.ibo.points) && !DRW_vbo_requested(buffers.vbo.pos) &&
       !DRW_vbo_requested(buffers.vbo.nor) && !DRW_vbo_requested(buffers.vbo.vnor) &&
-      !DRW_vbo_requested(buffers.vbo.edit_data))
+      !DRW_vbo_requested(buffers.vbo.tan) && !DRW_vbo_requested(buffers.vbo.edit_data))
   {
     return;
   }
@@ -829,6 +828,23 @@ void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
         [](void *task_data) { delete static_cast<TaskData *>(task_data); });
     BLI_task_graph_edge_create(task_node_mesh_render_data, task_node);
   }
+  if (DRW_vbo_requested(buffers.vbo.tan)) {
+    struct TaskData {
+      MeshRenderData &mr;
+      MeshBufferList &buffers;
+      MeshBatchCache &cache;
+      bool do_hq_normals;
+    };
+    TaskNode *task_node = BLI_task_graph_node_create(
+        &task_graph,
+        [](void *__restrict task_data) {
+          const TaskData &data = *static_cast<TaskData *>(task_data);
+          extract_tangents(data.mr, data.cache, data.do_hq_normals, *data.buffers.vbo.tan);
+        },
+        new TaskData{*mr, buffers, cache, do_hq_normals},
+        [](void *task_data) { delete static_cast<TaskData *>(task_data); });
+    BLI_task_graph_edge_create(task_node_mesh_render_data, task_node);
+  }
 
   if (use_thread) {
     /* First run the requested extractors that do not support asynchronous ranges. */
@@ -939,7 +955,6 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   EXTRACT_ADD_REQUESTED(vbo, edituv_data);
   /* Make sure UVs are computed before edituv stuffs. */
   EXTRACT_ADD_REQUESTED(vbo, uv);
-  EXTRACT_ADD_REQUESTED(vbo, tan);
   EXTRACT_ADD_REQUESTED(vbo, edituv_stretch_area);
   EXTRACT_ADD_REQUESTED(vbo, edituv_stretch_angle);
   EXTRACT_ADD_REQUESTED(ibo, lines_paint_mask);
@@ -953,7 +968,7 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
       !DRW_ibo_requested(buffers.ibo.lines_loose) && !DRW_ibo_requested(buffers.ibo.tris) &&
       !DRW_ibo_requested(buffers.ibo.points) && !DRW_vbo_requested(buffers.vbo.pos) &&
       !DRW_vbo_requested(buffers.vbo.orco) && !DRW_vbo_requested(buffers.vbo.nor) &&
-      !DRW_vbo_requested(buffers.vbo.edit_data))
+      !DRW_vbo_requested(buffers.vbo.tan) && !DRW_vbo_requested(buffers.vbo.edit_data))
   {
     return;
   }
@@ -981,6 +996,9 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   }
   if (DRW_vbo_requested(buffers.vbo.edit_data)) {
     extract_edit_data_subdiv(mr, subdiv_cache, *buffers.vbo.edit_data);
+  }
+  if (DRW_vbo_requested(buffers.vbo.tan)) {
+    extract_tangents_subdiv(mr, subdiv_cache, cache, *buffers.vbo.tan);
   }
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);
