@@ -37,6 +37,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Int>("Layer Count").make_available([](bNode &node) {
     node.custom1 = int16_t(GeometryComponent::Type::GreasePencil);
   });
+  b.add_output<decl::Int>("Rigid Body Count").make_available([](bNode &node) {
+    node.custom1 = int16_t(GeometryComponent::Type::Physics);
+  });
+  b.add_output<decl::Int>("Constraint Count").make_available([](bNode &node) {
+    node.custom1 = int16_t(GeometryComponent::Type::Physics);
+  });
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -58,6 +64,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *spline_socket = face_corner_socket->next;
   bNodeSocket *instances_socket = spline_socket->next;
   bNodeSocket *layers_socket = instances_socket->next;
+  bNodeSocket *rigid_bodies_socket = layers_socket->next;
+  bNodeSocket *constraints_socket = rigid_bodies_socket->next;
 
   bke::nodeSetSocketAvailability(ntree,
                                  point_socket,
@@ -77,6 +85,10 @@ static void node_update(bNodeTree *ntree, bNode *node)
       ntree, instances_socket, node->custom1 == int16_t(GeometryComponent::Type::Instance));
   bke::nodeSetSocketAvailability(
       ntree, layers_socket, node->custom1 == int16_t(GeometryComponent::Type::GreasePencil));
+  bke::nodeSetSocketAvailability(
+      ntree, rigid_bodies_socket, node->custom1 == int16_t(GeometryComponent::Type::Physics));
+  bke::nodeSetSocketAvailability(
+      ntree, constraints_socket, node->custom1 == int16_t(GeometryComponent::Type::Physics));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -136,6 +148,17 @@ static void node_geo_exec(GeoNodeExecParams params)
       {
         const AttributeAccessor attributes = *component->attributes();
         params.set_output("Layer Count", attributes.domain_size(AttrDomain::Layer));
+      }
+      else {
+        params.set_default_remaining_outputs();
+      }
+      break;
+    }
+    case GeometryComponent::Type::Physics: {
+      if (const PhysicsComponent *component = geometry_set.get_component<PhysicsComponent>()) {
+        const AttributeAccessor attributes = *component->attributes();
+        params.set_output("Rigid Body Count", attributes.domain_size(AttrDomain::Point));
+        params.set_output("Constraint Count", attributes.domain_size(AttrDomain::Edge));
       }
       else {
         params.set_default_remaining_outputs();

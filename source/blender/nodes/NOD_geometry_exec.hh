@@ -47,6 +47,7 @@ using bke::GSpanAttributeWriter;
 using bke::InstancesComponent;
 using bke::MeshComponent;
 using bke::MutableAttributeAccessor;
+using bke::PhysicsComponent;
 using bke::PointCloudComponent;
 using bke::SocketValueVariant;
 using bke::SpanAttributeWriter;

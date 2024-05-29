@@ -90,6 +90,11 @@ const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
      ICON_GREASEPENCIL,
      "Grease Pencil",
      "Grease Pencil component containing layers and curves data"},
+    {int(blender::bke::GeometryComponent::Type::Physics),
+     "PHYSICS",
+     ICON_PHYSICS,
+     "Physics",
+     "Physics component containing rigid bodies and constraints"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
