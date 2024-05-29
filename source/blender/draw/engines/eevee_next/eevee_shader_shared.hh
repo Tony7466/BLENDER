@@ -824,6 +824,9 @@ enum LightingType : uint32_t {
   LIGHT_SPECULAR = 1u,
   LIGHT_TRANSMISSION = 2u,
   LIGHT_VOLUME = 3u,
+  /* WORKAROUND: Special value used to tag translucent BSDF with thickness.
+   * Fallback to LIGHT_DIFFUSE. */
+  LIGHT_TRANSLUCENT_WITH_THICKNESS = 4u,
 };
 
 static inline bool is_area_light(eLightType type)
@@ -918,7 +921,8 @@ struct LightAreaData {
 
   /** Shape size. */
   float2 size;
-  float _pad5;
+  /** Scale to apply on top of `size` to get shadow tracing shape size. */
+  float shadow_scale;
   float _pad6;
 };
 BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightLocalData), "Data size must match")
@@ -984,7 +988,7 @@ struct LightData {
   /** Index of the first tile-map. Set to LIGHT_NO_SHADOW if light is not casting shadow. */
   int tilemap_index;
   /* Radius in pixels for shadow filtering. */
-  float pcf_radius;
+  float filter_radius;
 
   /* Shadow Map resolution bias. */
   float lod_bias;
@@ -1174,6 +1178,7 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT2(size, _pad3)
+  SAFE_ASSIGN_FLOAT(shadow_scale, _pad4)
   return SAFE_READ_END();
 }
 
@@ -1309,12 +1314,11 @@ struct ShadowTileMapData {
   int clip_data_index;
   /** Light type this tilemap is from. */
   eLightType light_type;
-  /** True if the tilemap is part of area light shadow and is one of the side projections. */
-  bool32_t is_area_side;
   /** Entire tilemap (all tiles) needs to be tagged as dirty. */
   bool32_t is_dirty;
 
   float _pad1;
+  float _pad2;
   /** Near and far clip distances for punctual. */
   float clip_near;
   float clip_far;
@@ -1332,9 +1336,7 @@ struct ShadowRenderView {
   /**
    * Is either:
    * - positive radial distance for point lights.
-   * - negative distance to light plane (divided by sqrt3) for area lights side projections.
    * - zero if disabled.
-   * Use sign to determine with case we are in.
    */
   float clip_distance_inv;
   /** Viewport to submit the geometry of this tile-map view to. */
@@ -1486,7 +1488,7 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 struct ShadowSamplingTile {
   /** Page inside the virtual shadow map atlas. */
   uint3 page;
-  /** LOD pointed to LOD 0 tile page. */
+  /** LOD pointed by LOD 0 tile page. */
   uint lod;
   /** Offset to the texel position to align with the LOD page start. (directional only). */
   uint2 lod_offset;
@@ -1933,10 +1935,15 @@ BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 struct AOData {
   float2 pixel_size;
   float distance;
-  float quality;
+  float lod_factor;
 
-  float thickness;
+  float thickness_near;
+  float thickness_far;
   float angle_bias;
+  float gi_distance;
+
+  float lod_factor_ao;
+  float _pad0;
   float _pad1;
   float _pad2;
 };

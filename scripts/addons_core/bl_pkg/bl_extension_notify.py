@@ -24,6 +24,9 @@ from . import bl_extension_utils
 # only keep this as a reference and in case we can speed up forcing them to exit.
 USE_GRACEFUL_EXIT = False
 
+# Special value to signal no packages can be updated because all repositories are blocked by being offline.
+STATE_DATA_ALL_OFFLINE = object()
+
 
 # -----------------------------------------------------------------------------
 # Internal Utilities
@@ -130,7 +133,7 @@ def sync_apply_locked(repos_notify, repos_notify_files, unique_ext):
     return any_lock_errors
 
 
-def sync_status_generator(repos_notify):
+def sync_status_generator(repos_notify, do_online_sync):
 
     # Generator results...
     # -> None: do nothing.
@@ -140,7 +143,18 @@ def sync_status_generator(repos_notify):
     # Setup The Update #
     # ################ #
 
+    repos_notify_orig = repos_notify
+    if not bpy.app.online_access:
+        repos_notify = [repo for repo in repos_notify if repo.remote_url.startswith("file://")]
+        if not repos_notify:
+            # Special case, early exit.
+            yield (STATE_DATA_ALL_OFFLINE, 0, ())
+            return
+
     yield None
+
+    any_offline = len(repos_notify) != len(repos_notify_orig)
+    del repos_notify_orig
 
     # An extension unique to this session.
     unique_ext = "@{:x}".format(os.getpid())
@@ -154,14 +168,17 @@ def sync_status_generator(repos_notify):
         cmd_batch_partial.append(partial(
             bl_extension_utils.repo_sync,
             directory=repo_item.directory,
-            remote_url=repo_item.remote_url,
+            remote_name=repo_item.name,
+            remote_url=bl_extension_ops.url_params_append_defaults(repo_item.remote_url),
             online_user_agent=bl_extension_ops.online_user_agent_from_blender(),
+            access_token=repo_item.access_token if repo_item.use_access_token else "",
             # Never sleep while there is no input, as this blocks Blender.
             use_idle=False,
             # Needed so the user can exit blender without warnings about a broken pipe.
             # TODO: write to a temporary location, once done:
             # There is no chance of corrupt data as the data isn't written directly to the target JSON.
             force_exit_ok=not USE_GRACEFUL_EXIT,
+            dry_run=not do_online_sync,
             extension_override=unique_ext,
         ))
 
@@ -244,10 +261,15 @@ def sync_status_generator(repos_notify):
         # TODO: more elegant way to detect changes.
         # Re-calculating the same information each time then checking if it's different isn't great.
         if command_result.status_data_changed:
+            extra_warnings = []
             if command_result.all_complete:
                 any_lock_errors = sync_apply_locked(repos_notify, repos_notify_files, unique_ext)
                 update_total = sync_status_count_outdated_extensions(repos_notify)
-            yield (cmd_batch.calc_status_data(), update_total, any_lock_errors)
+                if any_lock_errors:
+                    extra_warnings.append(" Failed to acquire lock!")
+            if any_offline:
+                extra_warnings.append(" Skipping online repositories!")
+            yield (cmd_batch.calc_status_data(), update_total, extra_warnings)
         else:
             yield None
 
@@ -275,10 +297,6 @@ TIME_WAIT_INIT = 0.05
 # The time between calling the timer.
 TIME_WAIT_STEP = 0.1
 
-state_text = (
-    "Checking for updates...",
-)
-
 
 class NotifyHandle:
     __slots__ = (
@@ -287,15 +305,17 @@ class NotifyHandle:
 
         "sync_generator",
         "sync_info",
+        "do_online_sync",
     )
 
-    def __init__(self, repos_notify):
+    def __init__(self, repos_notify, do_online_sync):
         self.splash_region = None
         self.state = 0
         # We could start the generator separately, this seems OK here for now.
-        self.sync_generator = iter(sync_status_generator(repos_notify))
-        # TEXT/ICON_ID/COUNT
+        self.sync_generator = iter(sync_status_generator(repos_notify, do_online_sync))
+        # status_data, update_count, extra_warnings.
         self.sync_info = None
+        self.do_online_sync = do_online_sync
 
 
 # When non-null, the timer is running.
@@ -352,13 +372,21 @@ def splash_draw_status_fn(self, context):
     if _notify.splash_region is None:
         _notify.splash_region = context.region_popup
 
-    if _notify.sync_info is None:
-        self.layout.label(text="Updates starting...")
+    if not bpy.app.online_access:
+        if bpy.app.online_access_override:
+            # Since there is nothing to do in this case, we show no operator.
+            self.layout.label(text="Running in Offline Mode", icon='INTERNET')
+    elif _notify.sync_info is None:
+        self.layout.label(text="Checking for Extension Updates")
     else:
-        status_data, update_count, any_lock_errors = _notify.sync_info
-        text, icon = bl_extension_utils.CommandBatch.calc_status_text_icon_from_data(status_data, update_count)
-        if any_lock_errors:
-            text = text + " - failed to acquire lock!"
+        status_data, update_count, extra_warnings = _notify.sync_info
+        do_online_sync = _notify.do_online_sync
+        text, icon = bl_extension_utils.CommandBatch.calc_status_text_icon_from_data(
+            status_data, update_count, do_online_sync,
+        )
+        # Not more than 1-2 of these (failed to lock, some repositories offline .. etc).
+        for warning in extra_warnings:
+            text = text + warning
         row = self.layout.row(align=True)
         if update_count > 0:
             row.operator("bl_pkg.extensions_show_for_update", text=text, icon=icon)
@@ -373,9 +401,9 @@ def splash_draw_status_fn(self, context):
 # Public API
 
 
-def register(repos_notify):
+def register(repos_notify, do_online_sync):
     global _notify
-    _notify = NotifyHandle(repos_notify)
+    _notify = NotifyHandle(repos_notify, do_online_sync)
     bpy.types.WM_MT_splash.append(splash_draw_status_fn)
     bpy.app.timers.register(_ui_refresh_timer, first_interval=TIME_WAIT_INIT)
 
