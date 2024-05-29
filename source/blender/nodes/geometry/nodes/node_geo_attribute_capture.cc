@@ -212,7 +212,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   Vector<const NodeGeometryAttributeCaptureItem *> used_items;
   Vector<GField> fields;
-  Vector<AnonymousAttributeIDPtr> attribute_ids;
+  Vector<AnonymousAttributeIDPtr> attribute_id_ptrs;
   Set<AttributeIDRef> used_attribute_ids_set;
   for (const NodeGeometryAttributeCaptureItem &item :
        Span{storage.capture_items, storage.capture_items_num})
@@ -228,7 +228,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     used_attribute_ids_set.add(*attribute_id);
     fields.append(params.extract_input<GField>(input_identifier));
-    attribute_ids.append(std::move(attribute_id));
+    attribute_id_ptrs.append(std::move(attribute_id));
     used_items.append(&item);
   }
 
@@ -238,14 +238,13 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const auto capture_on = [&](GeometryComponent &component) {
-    for (const int i : fields.index_range()) {
-      const AnonymousAttributeID &attribute_id = *attribute_ids[i];
-      const GField &field = fields[i];
+  Array<AttributeIDRef> attribute_ids(attribute_id_ptrs.size());
+  for (const int i : attribute_id_ptrs.index_range()) {
+    attribute_ids[i] = *attribute_id_ptrs[i];
+  }
 
-      /* TODO: Capture all fields at once. */
-      bke::try_capture_field_on_geometry(component, attribute_id, domain, field);
-    }
+  const auto capture_on = [&](GeometryComponent &component) {
+    bke::try_capture_fields_on_geometry(component, attribute_ids, domain, fields);
     /* Changing of the anonymous attributes may require removing attributes that are no longer
      * needed. */
     clean_unused_attributes(
