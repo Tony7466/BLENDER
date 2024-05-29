@@ -2629,7 +2629,8 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
                          GPUViewport *viewport,
                          const bool use_gpencil,
                          const bool use_basic,
-                         const bool use_overlay)
+                         const bool use_overlay,
+                         const bool use_only_selected)
 {
   using namespace blender::draw;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -2710,6 +2711,9 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
         continue;
       }
       if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+        continue;
+      }
+      if (use_only_selected && !(ob->base_flag & BASE_SELECTED)) {
         continue;
       }
       DST.dupli_parent = data_.dupli_parent;
@@ -2880,7 +2884,7 @@ void DRW_draw_depth_object(
     case OB_MESH: {
       blender::gpu::Batch *batch;
 
-      Mesh *mesh = static_cast<Mesh *>(object->data);
+      Mesh &mesh = *static_cast<Mesh *>(object->data);
 
       if (object->mode & OB_MODE_EDIT) {
         batch = DRW_mesh_batch_cache_get_edit_triangles(mesh);
@@ -2889,7 +2893,7 @@ void DRW_draw_depth_object(
         batch = DRW_mesh_batch_cache_get_surface(mesh);
       }
       TaskGraph *task_graph = BLI_task_graph_create();
-      DRW_mesh_batch_cache_create_requested(task_graph, object, mesh, scene, false, true);
+      DRW_mesh_batch_cache_create_requested(*task_graph, *object, mesh, *scene, false, true);
       BLI_task_graph_work_and_wait(task_graph);
       BLI_task_graph_free(task_graph);
 
