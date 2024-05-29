@@ -1340,6 +1340,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_SET_RIGID_BODY_INERTIA 2142
 #define GEO_NODE_SET_RIGID_BODY_VELOCITY 2143
 #define GEO_NODE_SET_RIGID_BODY_ANGULAR_VELOCITY 2144
+#define GEO_NODE_PHYSICS_TIME_STEP 2145
 
 /** \} */
 

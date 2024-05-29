@@ -40,10 +40,12 @@ struct PhysicsImpl : public ImplicitSharingMixin {
   PhysicsImpl();
   ~PhysicsImpl();
 
+  void delete_self() override;
+
+  PhysicsImpl *copy() const;
+
   void create_world();
   void destroy_world();
-
-  void delete_self() override;
 };
 
 struct CollisionShapeImpl {

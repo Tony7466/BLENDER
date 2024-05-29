@@ -420,6 +420,7 @@ DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_OFFSET_CORNER_IN_FACE, 0, "OFFSET_C
 DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_VERTEX_OF_CORNER, 0, "VERTEX_OF_CORNER", VertexOfCorner, "Vertex of Corner", "Retrieve the vertex each face corner is attached to")
 DefNode(GeometryNode, GEO_NODE_OBJECT_INFO, 0, "OBJECT_INFO", ObjectInfo, "Object Info", "Retrieve information from an object")
 DefNode(GeometryNode, GEO_NODE_OFFSET_POINT_IN_CURVE, 0, "OFFSET_POINT_IN_CURVE", OffsetPointInCurve, "Offset Point in Curve", "Offset a control point index within its curve")
+DefNode(GeometryNode, GEO_NODE_PHYSICS_TIME_STEP, 0, "PHYSICS_TIME_STEP", PhysicsTimeStep, "Physics Time Step", "Advance rigid bodies over a time interval and resolve collisions")
 DefNode(GeometryNode, GEO_NODE_PHYSICS_WORLD, 0, "PHYSICS_WORLD", PhysicsWorld, "Physics World", "Generate a physics world for simulating rigid bodies")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_CURVES, 0, "POINTS_TO_CURVES", PointsToCurves, "Points to Curves", "Split all points to curve by its group ID and reorder by weight")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_RIGID_BODIES, 0, "POINTS_TO_RIGID_BODIES", PointsToRigidBodies, "Points to Rigid Bodies", "Create a rigid body for each point")

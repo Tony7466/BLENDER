@@ -141,6 +141,15 @@ void PhysicsImpl::delete_self()
   delete this;
 }
 
+PhysicsImpl *PhysicsImpl::copy() const {
+  PhysicsImpl *result = new PhysicsImpl{};
+  if (this->world != nullptr) {
+    result->create_world();
+  }
+  // TODO copy all the rest: motion states, bodies, constraints, shapes, ...
+  return result;
+}
+
 void PhysicsImpl::create_world()
 {
   if (this->world != nullptr) {
@@ -292,6 +301,23 @@ void PhysicsGeometry::set_split_impulse(const bool split_impulse)
     /* Note: Bullet stores this as int, but it's used as a bool. */
     info.m_splitImpulse = int(split_impulse);
   }
+}
+
+void PhysicsGeometry::step_simulation(float delta_time) {
+  if (!impl_->world) {
+    return;
+  }
+
+  if (impl_->is_mutable()) {
+    impl_->tag_ensured_mutable();
+  }
+  else {
+    impl_ = impl_->copy();
+  }
+
+  constexpr const float fixed_time_step = 1.0f / 60.0f;
+
+  impl_->world->stepSimulation(delta_time, fixed_time_step);
 }
 
 int PhysicsGeometry::rigid_bodies_num() const

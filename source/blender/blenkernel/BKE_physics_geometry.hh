@@ -64,6 +64,8 @@ public:
   void set_solver_iterations(int num_solver_iterations);
   void set_split_impulse(bool split_impulse);
 
+  void step_simulation(float delta_time);
+
   int rigid_bodies_num() const;
   int constraints_num() const;
   int shapes_num() const;
