@@ -22,6 +22,7 @@ _modules = [
     "geometry_nodes",
     "image",
     "image_as_planes",
+    "lazy_connect",
     "mesh",
     "node",
     "object",
@@ -44,6 +45,7 @@ _modules = [
 ]
 
 import bpy
+from . import lazy_connect
 
 if bpy.app.build_options.freestyle:
     _modules.append("freestyle")
@@ -60,6 +62,8 @@ def register():
         for cls in mod.classes:
             register_class(cls)
 
+    lazy_connect.register()
+
 
 def unregister():
     from bpy.utils import unregister_class
@@ -67,3 +71,5 @@ def unregister():
         for cls in reversed(mod.classes):
             if cls.is_registered:
                 unregister_class(cls)
+
+    lazy_connect.unregister()

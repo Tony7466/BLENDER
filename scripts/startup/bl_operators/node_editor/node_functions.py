@@ -1,8 +1,7 @@
-# SPDX-FileCopyrightText: 2024 Blender Authors
-#
-# SPDX-License-Identifier: GPL-2.0-or-later
-
 import bpy
+from math import hypot
+from bpy_extras.node_utils import connect_sockets
+
 
 viewer_socket_name = "tmp_viewer"
 
@@ -91,6 +90,117 @@ def is_viewer_link(link, output_node):
     return False
 
 
+def dpi_fac():
+    prefs = bpy.context.preferences.system
+    return prefs.dpi / 72
+
+
+def abs_node_location(node):
+    abs_location = node.location
+    if node.parent is None:
+        return abs_location
+    return abs_location + abs_node_location(node.parent)
+
+
+def store_mouse_cursor(context, event):
+    space = context.space_data
+    tree = space.edit_tree
+
+    # convert mouse position to the View2D for later node placement
+    if context.region.type == 'WINDOW':
+        space.cursor_location_from_region(event.mouse_region_x, event.mouse_region_y)
+    else:
+        space.cursor_location = tree.view_center
+
+
+def node_under_cursor(nodes, context, event):
+    nodes_under_mouse = []
+    target_node = None
+
+    store_mouse_cursor(context, event)
+    x, y = context.space_data.cursor_location
+
+    # Make a list of each corner (and middle of border) for each node.
+    # Will be sorted to find nearest point and thus nearest node
+    node_points_with_dist = []
+    for node in nodes:
+        skipnode = False
+        if node.type != 'FRAME':  # no point trying to link to a frame node
+            dimx = node.dimensions.x / dpi_fac()
+            dimy = node.dimensions.y / dpi_fac()
+            locx, locy = abs_node_location(node)
+
+            if not skipnode:
+                node_points_with_dist.append([node, hypot(x - locx, y - locy)])  # Top Left
+                node_points_with_dist.append([node, hypot(x - (locx + dimx), y - locy)])  # Top Right
+                node_points_with_dist.append([node, hypot(x - locx, y - (locy - dimy))])  # Bottom Left
+                node_points_with_dist.append([node, hypot(x - (locx + dimx), y - (locy - dimy))])  # Bottom Right
+
+                node_points_with_dist.append([node, hypot(x - (locx + (dimx / 2)), y - locy)])  # Mid Top
+                node_points_with_dist.append([node, hypot(x - (locx + (dimx / 2)), y - (locy - dimy))])  # Mid Bottom
+                node_points_with_dist.append([node, hypot(x - locx, y - (locy - (dimy / 2)))])  # Mid Left
+                node_points_with_dist.append([node, hypot(x - (locx + dimx), y - (locy - (dimy / 2)))])  # Mid Right
+
+    nearest_node = sorted(node_points_with_dist, key=lambda k: k[1])[0][0]
+
+    for node in nodes:
+        if node.type != 'FRAME' and skipnode == False:
+            locx, locy = abs_node_location(node)
+            dimx = node.dimensions.x / dpi_fac()
+            dimy = node.dimensions.y / dpi_fac()
+            if (locx <= x <= locx + dimx) and \
+               (locy - dimy <= y <= locy):
+                nodes_under_mouse.append(node)
+
+    if len(nodes_under_mouse) == 1:
+        if nodes_under_mouse[0] != nearest_node:
+            target_node = nodes_under_mouse[0]  # use the node under the mouse if there is one and only one
+        else:
+            target_node = nearest_node  # else use the nearest node
+    else:
+        target_node = nearest_node
+    return target_node
+
+
+def autolink(node1, node2):
+    available_inputs = [inp for inp in node2.inputs if inp.enabled]
+    available_outputs = [outp for outp in node1.outputs if outp.enabled]
+    for outp in available_outputs:
+        for inp in available_inputs:
+            if not inp.is_linked and inp.name == outp.name:
+                connect_sockets(outp, inp)
+                return True
+
+    for outp in available_outputs:
+        for inp in available_inputs:
+            if not inp.is_linked and inp.type == outp.type:
+                connect_sockets(outp, inp)
+                return True
+
+    # force some connection even if the type doesn't match
+    if available_outputs:
+        for inp in available_inputs:
+            if not inp.is_linked:
+                connect_sockets(available_outputs[0], inp)
+                return True
+
+    # even if no sockets are open, force one of matching type
+    for outp in available_outputs:
+        for inp in available_inputs:
+            if inp.type == outp.type:
+                connect_sockets(outp, inp)
+                return True
+
+    # do something!
+    for outp in available_outputs:
+        for inp in available_inputs:
+            connect_sockets(outp, inp)
+            return True
+
+    print("Could not make a link from " + node1.name + " to " + node2.name)
+    return False
+
+
 def force_update(context):
     context.space_data.node_tree.update_tag()
 
@@ -99,3 +209,12 @@ class NodeEditorBase:
     @classmethod
     def poll(cls, context):
         return node_editor_poll(cls, context)
+
+
+class NodeEditorMenuBase:
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        return (space.type == 'NODE_EDITOR'
+                and space.node_tree is not None
+                and space.node_tree.library is None)
