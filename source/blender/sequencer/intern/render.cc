@@ -2111,7 +2111,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
   if (!strips.is_empty() && !out) {
     BLI_mutex_lock(&seq_render_mutex);
     /* Load anims in main thread for the first time and lock them, so they can't be freed. */
-    anim_manager->strip_anims_load_and_lock(scene, strips);
+    anim_manager->strip_anims_acquire(scene, strips);
 
     out = seq_render_strip_stack(context, &state, channels, seqbasep, timeline_frame, chanshown);
 
@@ -2124,7 +2124,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
     }
 
     BLI_mutex_unlock(&seq_render_mutex);
-    anim_manager->strip_anims_unlock(scene, strips);
+    anim_manager->strip_anims_release(scene, strips);
   }
   seq_prefetch_start(context, timeline_frame);
   anim_manager->manage_anims(scene);

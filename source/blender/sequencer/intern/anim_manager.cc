@@ -278,10 +278,9 @@ void AnimManager::parallel_load_anims(const Scene *scene,
   // XXX why is this needed, when cache_entry_get is locking vector? if this is not done before
   // parallel for loop, it causes use after free in ShareableAnim::anims...
   for (Sequence *seq : strips) {
-    if (seq->type != SEQ_TYPE_MOVIE) {
-      continue;
+    if (seq->type == SEQ_TYPE_MOVIE) {
+      cache_entry_get(scene, seq);
     }
-    cache_entry_get(scene, seq);
   }
 
   using namespace blender;
@@ -341,13 +340,12 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   return sh_anim;
 }
 
-void AnimManager::strip_anims_load_and_lock(const Scene *scene,
-                                            blender::Vector<Sequence *> &strips)
+void AnimManager::strip_anims_acquire(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
   parallel_load_anims(scene, strips, false);
 }
 
-void AnimManager::strip_anims_load_and_lock(const Scene *scene, Sequence *seq)
+void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = cache_entry_get(scene, seq);
   if (!sh_anim.mutex->try_lock()) {
@@ -359,18 +357,17 @@ void AnimManager::strip_anims_load_and_lock(const Scene *scene, Sequence *seq)
   }
 }
 
-void AnimManager::strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips)
+void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
   for (Sequence *seq : strips) {
-    if (seq->type != SEQ_TYPE_MOVIE) {  // XXX this should not be needed?
-      continue;
+    if (seq->type == SEQ_TYPE_MOVIE) {
+      ShareableAnim &sh_anim = cache_entry_get(scene, seq);
+      sh_anim.unlock();
     }
-    ShareableAnim &sh_anim = cache_entry_get(scene, seq);
-    sh_anim.unlock();
   }
 }
 
-void AnimManager::strip_anims_unlock(const Scene *scene, Sequence *seq)
+void AnimManager::strip_anims_release(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = cache_entry_get(scene, seq);
   sh_anim.unlock();

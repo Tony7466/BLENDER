@@ -396,17 +396,16 @@ Sequence *SEQ_add_movie_strip(Main * /*bmain*/,
       load_data->path, strip->dirpath, sizeof(strip->dirpath), se->filename, sizeof(se->filename));
 
   AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
-  manager->strip_anims_load_and_lock(scene, seq);
+  manager->strip_anims_acquire(scene, seq);
   blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
 
   if (anims.size() == 0 && !load_data->allow_invalid_file) {
-    manager->strip_anims_unlock(scene, seq);
+    manager->strip_anims_release(scene, seq);
     BLI_remlink(seqbase, seq);
     SEQ_sequence_free(scene, seq);
     return nullptr;
   }
 
-  // Do FPS and stuff
   if (anims.size() > 0) {
     short fps_denom;
     float fps_num;
@@ -469,7 +468,7 @@ Sequence *SEQ_add_movie_strip(Main * /*bmain*/,
   seq_add_set_name(scene, seq, load_data);
   seq_add_generic_update(scene, seq);
 
-  manager->strip_anims_unlock(scene, seq);
+  manager->strip_anims_release(scene, seq);
   return seq;
 }
 
@@ -512,7 +511,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
     case SEQ_TYPE_MOVIE: {
       AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
       manager->free_anims_by_seq(scene, seq);
-      manager->strip_anims_load_and_lock(scene, seq);
+      manager->strip_anims_acquire(scene, seq);
       blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
 
       if (anims.size() == 0) {
@@ -526,7 +525,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
           IMB_Timecode_Type(seq->strip->proxy ? IMB_Timecode_Type(seq->strip->proxy->tc) :
                                                 IMB_TC_RECORD_RUN));
 
-      manager->strip_anims_unlock(scene, seq);
+      manager->strip_anims_release(scene, seq);
 
       seq->len -= seq->anim_startofs;
       seq->len -= seq->anim_endofs;
@@ -609,7 +608,7 @@ void SEQ_add_movie_reload_if_needed(
    * produce frames. */
 
   AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
-  manager->strip_anims_load_and_lock(scene, seq);
+  manager->strip_anims_acquire(scene, seq);
   blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
 
   if (anims.size() == 0) {
@@ -625,7 +624,7 @@ void SEQ_add_movie_reload_if_needed(
       }
     }
   }
-  manager->strip_anims_unlock(scene, seq);
+  manager->strip_anims_release(scene, seq);
 
   if (!must_reload) {
     /* There are one or more anims, and all can produce frames. */
@@ -637,13 +636,13 @@ void SEQ_add_movie_reload_if_needed(
   SEQ_add_reload_new_file(bmain, scene, seq, true);
   *r_was_reloaded = true;
 
-  manager->strip_anims_load_and_lock(scene, seq);
+  manager->strip_anims_acquire(scene, seq);
   anims = manager->strip_anims_get(scene, seq);
 
   if (anims.size() == 0) {
     /* No anims present after reloading => no frames can be produced. */
     *r_can_produce_frames = false;
-    manager->strip_anims_unlock(scene, seq);
+    manager->strip_anims_release(scene, seq);
     return;
   }
 
@@ -651,13 +650,13 @@ void SEQ_add_movie_reload_if_needed(
   for (ImBufAnim *anim : anims) {
     if (!IMB_anim_can_produce_frames(anim)) {
       /* There still is an anim that cannot produce frames. */
-      manager->strip_anims_unlock(scene, seq);
+      manager->strip_anims_release(scene, seq);
       *r_can_produce_frames = false;
       return;
     }
   };
 
-  manager->strip_anims_unlock(scene, seq);
+  manager->strip_anims_release(scene, seq);
   /* There are one or more anims, and all can produce frames. */
   *r_can_produce_frames = true;
 }

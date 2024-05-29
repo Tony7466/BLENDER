@@ -2667,7 +2667,7 @@ ImBufAnim *openanim(const char *filepath,
       printf("not an anim: %s\n", filepath);
     }
     else {
-      // xxx printf("anim file doesn't exist: %s\n", filepath);
+      printf("anim file doesn't exist: %s\n", filepath);
     }
     IMB_free_anim(anim);
     return nullptr;

@@ -42,15 +42,13 @@ class AnimManager {
   /**
    * Load anims used by strips and lock them so they won't be freed.
    */
-  // acquire?
-  void strip_anims_load_and_lock(const Scene *scene, blender::Vector<Sequence *> &strips);
-  void strip_anims_load_and_lock(const Scene *scene, Sequence *seq);
+  void strip_anims_acquire(const Scene *scene, blender::Vector<Sequence *> &strips);
+  void strip_anims_acquire(const Scene *scene, Sequence *seq);
   /**
    * Unlock anims used by strips.
    */
-  // release?
-  void strip_anims_unlock(const Scene *scene, blender::Vector<Sequence *> &strips);
-  void strip_anims_unlock(const Scene *scene, Sequence *seq);
+  void strip_anims_release(const Scene *scene, blender::Vector<Sequence *> &strips);
+  void strip_anims_release(const Scene *scene, Sequence *seq);
   /**
    * Get anims used by `seq`.
    */
