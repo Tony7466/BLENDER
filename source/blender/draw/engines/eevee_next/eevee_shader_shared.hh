@@ -824,6 +824,9 @@ enum LightingType : uint32_t {
   LIGHT_SPECULAR = 1u,
   LIGHT_TRANSMISSION = 2u,
   LIGHT_VOLUME = 3u,
+  /* WORKAROUND: Special value used to tag translucent BSDF with thickness.
+   * Fallback to LIGHT_DIFFUSE. */
+  LIGHT_TRANSLUCENT_WITH_THICKNESS = 4u,
 };
 
 static inline bool is_area_light(eLightType type)
@@ -1932,10 +1935,15 @@ BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 struct AOData {
   float2 pixel_size;
   float distance;
-  float quality;
+  float lod_factor;
 
-  float thickness;
+  float thickness_near;
+  float thickness_far;
   float angle_bias;
+  float gi_distance;
+
+  float lod_factor_ao;
+  float _pad0;
   float _pad1;
   float _pad2;
 };
