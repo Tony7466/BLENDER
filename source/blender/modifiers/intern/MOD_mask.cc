@@ -109,10 +109,9 @@ static void compute_vertex_mask__armature_mode(const MDeformVert *dvert,
 
     /* check the groups that vertex is assigned to, and see if it was any use */
     for (const MDeformWeight &dw : weights) {
-      if (total_size <= dw.def_nr) {
+      if (dw.def_nr >= total_size) {
         continue;
       }
-      BLI_assert(dw.def_nr >= 0);
       if (selected_bone_uses_group[dw.def_nr]) {
         if (dw.weight > threshold) {
           r_vertex_mask[i] = true;
