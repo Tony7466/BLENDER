@@ -637,11 +637,8 @@ static Vector<float2> get_viewer_node_position_candidates(const float2 initial,
 
 /**
  * Positions the viewer node so that it is slightly to the right and top of the node to view. The
- * viewer is placed so that it does not overlap any existing nodes. The algorithm will iteratively
- * try different places until a good position for the viewer is found.
- *
- * If possible, the viewer is aligned to another node that is close by to result in a better
- * looking node position.
+ * algorithm tries to avoid moving the viewer to a place where it would overlap with other nodes.
+ * For that it iterates over many possible locations with increasing distance to the node to view.
  */
 static void position_viewer_node(bNodeTree &tree,
                                  bNode &viewer_node,
