@@ -647,9 +647,19 @@ static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
 static void position_viewer_node(bNodeTree &tree,
                                  bNode &viewer_node,
                                  const bNode &node_to_view,
-                                 const bNodeSocket &socket_to_view)
+                                 const bNodeSocket &socket_to_view,
+                                 const ARegion &region)
 {
   tree.ensure_topology_cache();
+
+  const View2D &v2d = region.v2d;
+  rctf region_rect;
+  region_rect.xmin = 0;
+  region_rect.xmax = region.winx;
+  region_rect.ymin = 0;
+  region_rect.ymax = region.winy;
+  rctf region_bounds;
+  UI_view2d_region_to_view_rctf(&v2d, &region_rect, &region_bounds);
 
   viewer_node.ui_order = tree.all_nodes().size();
   tree_draw_order_update(tree);
@@ -678,6 +688,12 @@ static void position_viewer_node(bNodeTree &tree,
     candidate.xmax = candidate_pos.x + viewer_width;
     candidate.ymin = candidate_pos.y - viewer_height;
     candidate.ymax = candidate_pos.y;
+
+    if (!BLI_rctf_inside_rctf(&region_bounds, &candidate)) {
+      /* Avoid moving viewer outside of visible region. */
+      continue;
+    }
+
     rctf padded_candidate = candidate;
     BLI_rctf_pad(&padded_candidate, default_padding_x - 1, default_padding_y - 1);
 
@@ -704,6 +720,8 @@ static int view_socket(const bContext &C,
                        bNode &bnode_to_view,
                        bNodeSocket &bsocket_to_view)
 {
+  ARegion &region = *CTX_wm_region(&C);
+
   bNode *viewer_node = nullptr;
   /* Try to find a viewer that is already active. */
   for (bNode *node : btree.all_nodes()) {
@@ -721,7 +739,7 @@ static int view_socket(const bContext &C,
     bNode &target_node = *link->tonode;
     if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
       finalize_viewer_link(C, snode, target_node, *link);
-      position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view);
+      position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view, region);
       return OPERATOR_FINISHED;
     }
   }
@@ -763,7 +781,7 @@ static int view_socket(const bContext &C,
     BKE_ntree_update_tag_link_changed(&btree);
   }
   finalize_viewer_link(C, snode, *viewer_node, *viewer_link);
-  position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view);
+  position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view, region);
   return OPERATOR_CANCELLED;
 }
 
