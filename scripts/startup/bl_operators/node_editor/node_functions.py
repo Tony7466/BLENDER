@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Blender Foundation
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from math import hypot
 from bpy_extras.node_utils import connect_sockets
