@@ -613,8 +613,7 @@ static const bNode *find_overlapping_node(const bNodeTree &tree,
  * Builds a list of possible locations for the viewer node that follows some search pattern where
  * positions closer to the initial position come first.
  */
-static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
-                                                          const float initial_y,
+static Vector<float2> get_viewer_node_position_candidates(const float2 initial,
                                                           const float step_distance,
                                                           const float max_distance)
 {
@@ -622,14 +621,14 @@ static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
   const float y_scale = 0.5f;
 
   Vector<float2> candidates;
-  candidates.append({initial_x, initial_y});
+  candidates.append(initial);
   for (float distance = step_distance; distance <= max_distance; distance += step_distance) {
     const float arc_length = distance * M_PI;
     const int checks = std::max<int>(2, ceilf(arc_length / step_distance));
     for (const int i : IndexRange(checks)) {
       const float angle = i / float(checks - 1) * M_PI;
-      const float candidate_x = initial_x + distance * std::sin(angle);
-      const float candidate_y = initial_y + distance * std::cos(angle) * y_scale;
+      const float candidate_x = initial.x + distance * std::sin(angle);
+      const float candidate_y = initial.y + distance * std::cos(angle) * y_scale;
       candidates.append({candidate_x, candidate_y});
     }
   }
@@ -665,7 +664,7 @@ static void position_viewer_node(bNodeTree &tree,
 
   const float default_padding_x = U.node_margin;
   const float default_padding_y = 10;
-  const float viewer_width = viewer_node.width;
+  const float viewer_width = BLI_rctf_size_x(&viewer_node.runtime->totr);
   float viewer_height = BLI_rctf_size_y(&viewer_node.runtime->totr);
   if (viewer_height == 0) {
     /* Can't use if the viewer node has only just been added and the actual height is not yet
@@ -673,14 +672,13 @@ static void position_viewer_node(bNodeTree &tree,
     viewer_height = 100;
   }
 
-  const float main_candidate_x = node_to_view.runtime->totr.xmax + default_padding_x;
-  const float main_candidate_y = node_to_view.runtime->totr.ymax + viewer_height +
-                                 default_padding_y;
+  const float2 main_candidate{node_to_view.runtime->totr.xmax + default_padding_x,
+                              node_to_view.runtime->totr.ymax + viewer_height + default_padding_y};
 
   std::optional<float2> new_viewer_position;
 
   const Vector<float2> position_candidates = get_viewer_node_position_candidates(
-      main_candidate_x, main_candidate_y, 50, 800);
+      main_candidate, 50 * UI_SCALE_FAC, 800 * UI_SCALE_FAC);
   for (const float2 &candidate_pos : position_candidates) {
     rctf candidate;
     candidate.xmin = candidate_pos.x;
@@ -705,7 +703,30 @@ static void position_viewer_node(bNodeTree &tree,
   }
 
   if (!new_viewer_position) {
-    new_viewer_position = float2(main_candidate_x, main_candidate_y);
+    new_viewer_position = main_candidate;
+  }
+
+  const float2 old_position = float2(viewer_node.locx, viewer_node.locy) * UI_SCALE_FAC;
+  if (old_position.x > node_to_view.runtime->totr.xmax) {
+    if (BLI_rctf_inside_rctf(&region_bounds, &viewer_node.runtime->totr)) {
+      /* Measure distance from right edge of the node to view and the left edge of the
+       * viewer node. */
+      const float2 node_to_view_top_right{node_to_view.runtime->totr.xmax,
+                                          node_to_view.runtime->totr.ymax};
+      const float2 node_to_view_bottom_right{node_to_view.runtime->totr.xmax,
+                                             node_to_view.runtime->totr.ymin};
+      const float old_distance = dist_seg_seg_v2(old_position,
+                                                 old_position + float2(0, viewer_height),
+                                                 node_to_view_top_right,
+                                                 node_to_view_bottom_right);
+      const float new_distance = dist_seg_seg_v2(*new_viewer_position,
+                                                 *new_viewer_position + float2(0, viewer_height),
+                                                 node_to_view_top_right,
+                                                 node_to_view_bottom_right);
+      if (old_distance <= new_distance) {
+        new_viewer_position = old_position;
+      }
+    }
   }
 
   viewer_node.locx = new_viewer_position->x / UI_SCALE_FAC;
