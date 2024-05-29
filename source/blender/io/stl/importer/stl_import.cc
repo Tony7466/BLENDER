@@ -56,7 +56,7 @@ Mesh *read_stl_file(const STLImportParams &import_params)
                 RPT_ERROR,
                 "STL Import: Cannot open file '%s'",
                 import_params.filepath);
-    return;
+    return nullptr;
   }
   BLI_SCOPED_DEFER([&]() { fclose(file); });
 
@@ -73,7 +73,7 @@ Mesh *read_stl_file(const STLImportParams &import_params)
                 RPT_ERROR,
                 "STL Import: Failed to read file '%s'",
                 import_params.filepath);
-    return;
+    return nullptr;
   }
   bool is_ascii_stl = (file_size != (BINARY_HEADER_SIZE + 4 + BINARY_STRIDE * num_tri));
 
@@ -87,7 +87,7 @@ Mesh *read_stl_file(const STLImportParams &import_params)
                 RPT_ERROR,
                 "STL Import: Failed to import mesh from file '%s'",
                 import_params.filepath);
-    return;
+    return nullptr;
   }
 
   if (import_params.use_mesh_validate) {
