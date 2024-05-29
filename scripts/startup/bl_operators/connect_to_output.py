@@ -15,7 +15,6 @@ from .node_editor.node_functions import (
     get_output_location,
     get_internal_socket,
     is_visible_socket,
-    is_viewer_socket,
     is_viewer_link,
     viewer_socket_name,
     force_update,
@@ -65,7 +64,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
         output_sockets = self.get_output_sockets(node_tree)
         if len(output_sockets):
             for i, socket in enumerate(output_sockets):
-                if is_viewer_socket(socket) and socket.socket_type == socket_type:
+                if socket.is_inspect_output and socket.socket_type == socket_type:
                     # If viewer output is already used but leads to the same socket we can still use it.
                     is_used = self.has_socket_other_users(socket)
                     if is_used:
@@ -114,7 +113,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
                     for socket_index, socket in enumerate(next_node.node_tree.interface.items_tree):
                         if socket.identifier == external_socket.identifier:
                             break
-                    if is_viewer_socket(socket) and socket not in r_sockets:
+                    if socket.is_inspect_output and socket not in r_sockets:
                         r_sockets.append(socket)
                         # continue search inside of node group but restrict socket to where we came from.
                         groupout = get_group_output_node(next_node.node_tree)
@@ -122,13 +121,13 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
 
     @classmethod
     def scan_nodes(cls, tree, sockets):
-        """Recursively get all viewer sockets in a material tree"""
+        """Recursively get all viewer sockets in a node tree"""
         for node in tree.nodes:
             if hasattr(node, "node_tree"):
                 if node.node_tree is None:
                     continue
                 for socket in cls.get_output_sockets(node.node_tree):
-                    if is_viewer_socket(socket) and (socket not in sockets):
+                    if socket.is_inspect_output and (socket not in sockets):
                         sockets.append(socket)
                 cls.scan_nodes(node.node_tree, sockets)
 
