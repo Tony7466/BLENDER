@@ -170,6 +170,14 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
                                                      bke::AttrDomain::Instance,
                                                      IFACE_("Instances"),
                                                      ICON_EMPTY_AXIS);
+
+    GeometryDataSetTreeViewItem &physics = this->add_tree_item<GeometryDataSetTreeViewItem>(
+        bke::GeometryComponent::Type::Physics, IFACE_("Physics"), ICON_PHYSICS);
+    physics.uncollapse_by_default();
+    physics.add_tree_item<GeometryDataSetTreeViewItem>(bke::GeometryComponent::Type::Physics,
+                                                       bke::AttrDomain::Point,
+                                                       IFACE_("Rigid Bodies"),
+                                                       ICON_PHYSICS);
   }
 };
 

@@ -595,11 +595,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
 
   auto get_fn = [](const btRigidBody *const &body) -> RigidBodyID { return body->getUserIndex(); };
   static BuiltinRigidBodyAttributeProvider<RigidBodyID, get_fn> body_id(
-      "position",
-      AttrDomain::Point,
-      BuiltinAttributeProvider::NonDeletable,
-      physics_access,
-      nullptr);
+      "ID", AttrDomain::Point, BuiltinAttributeProvider::NonDeletable, physics_access, nullptr);
 
   return ComponentAttributeProviders({&body_id}, {});
 }
