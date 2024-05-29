@@ -591,17 +591,6 @@ static void finalize_viewer_link(const bContext &C,
   ED_node_tree_propagate_change(&C, bmain, snode.edittree);
 }
 
-static Vector<const bNode *> find_nodes_overlapping_rect(const bNodeTree &tree, const rctf &rect)
-{
-  Vector<const bNode *> nodes;
-  for (const bNode *node : tree.all_nodes()) {
-    if (BLI_rctf_isect(&rect, &node->runtime->totr, nullptr)) {
-      nodes.append(node);
-    }
-  }
-  return nodes;
-}
-
 static const bNode *find_overlapping_node(const bNodeTree &tree,
                                           const rctf &rect,
                                           const Span<const bNode *> ignored_nodes)
@@ -620,11 +609,16 @@ static const bNode *find_overlapping_node(const bNodeTree &tree,
   return nullptr;
 }
 
+/**
+ * Builds a list of possible locations for the viewer node that follows some search pattern where
+ * positions closer to the initial position come first.
+ */
 static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
                                                           const float initial_y,
                                                           const float step_distance,
                                                           const float max_distance)
 {
+  /* Prefer moving viewer a bit further horizontally than vertically. */
   const float y_scale = 0.5f;
 
   Vector<float2> candidates;
@@ -640,64 +634,6 @@ static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
     }
   }
   return candidates;
-}
-
-static std::optional<float2> try_find_aligned_viewer_location(const bNodeTree &tree,
-                                                              const bNode &node_to_view,
-                                                              const bNodeSocket &socket_to_view,
-                                                              const bNode &viewer_node,
-                                                              const float viewer_width,
-                                                              const float viewer_height,
-                                                              const float padding_x,
-                                                              const float padding_y)
-{
-  Vector<const bNode *> nodes_to_consider = tree.all_nodes();
-  nodes_to_consider.remove_if([&](const bNode *node) {
-    if (node->is_frame()) {
-      return true;
-    }
-    if (ELEM(node, &node_to_view, &viewer_node)) {
-      return true;
-    }
-    return false;
-  });
-  auto get_node_distance = [&](const bNode &node) {
-    const rctf &r = node.runtime->totr;
-    return dist_squared_to_line_segment_v2(
-        socket_to_view.runtime->location, float2(r.xmin, r.ymin), float2(r.xmin, r.ymax));
-    return 0.0f;
-  };
-  std::sort(
-      nodes_to_consider.begin(), nodes_to_consider.end(), [&](const bNode *a, const bNode *b) {
-        return get_node_distance(*a) < get_node_distance(*b);
-      });
-
-  for (const bNode *node : nodes_to_consider.as_span().take_front(20)) {
-    const rctf &r = node->runtime->totr;
-    if (r.xmin - 5 < node_to_view.runtime->totr.xmax) {
-      continue;
-    }
-    rctf candidate;
-    candidate.xmin = r.xmin;
-    candidate.xmax = r.xmin + viewer_width;
-    candidate.ymin = r.ymax + padding_y + 1;
-    candidate.ymax = candidate.ymin + viewer_height;
-    rctf padded_candidate = candidate;
-    BLI_rctf_pad(&padded_candidate, padding_x, padding_y);
-
-    bool found_collision = false;
-    for (const bNode *other_node : nodes_to_consider) {
-      if (BLI_rctf_isect(&padded_candidate, &other_node->runtime->totr, nullptr)) {
-        found_collision = true;
-        break;
-      }
-    }
-    if (found_collision) {
-      continue;
-    }
-    return float2{candidate.xmin, candidate.ymax};
-  }
-  return std::nullopt;
 }
 
 /**
@@ -732,23 +668,7 @@ static void position_viewer_node(bNodeTree &tree,
   const float main_candidate_y = node_to_view.runtime->totr.ymax + viewer_height +
                                  default_padding_y;
 
-  viewer_node.parent = nullptr;
-  // if (const std::optional<float2> pos = try_find_aligned_viewer_location(tree,
-  //                                                                        node_to_view,
-  //                                                                        socket_to_view,
-  //                                                                        viewer_node,
-  //                                                                        viewer_width,
-  //                                                                        viewer_height,
-  //                                                                        default_padding_x,
-  //                                                                        default_padding_y))
-  // {
-  //   viewer_node.locx = pos->x / UI_SCALE_FAC;
-  //   viewer_node.locy = pos->y / UI_SCALE_FAC;
-  //   return;
-  // }
-
-  // viewer_node.locx = (socket_to_view.runtime->location.x + default_padding_x) / UI_SCALE_FAC;
-  // viewer_node.locy = socket_to_view.runtime->location.y / UI_SCALE_FAC;
+  std::optional<float2> new_viewer_position;
 
   const Vector<float2> position_candidates = get_viewer_node_position_candidates(
       main_candidate_x, main_candidate_y, 50, 800);
@@ -764,14 +684,18 @@ static void position_viewer_node(bNodeTree &tree,
     const bNode *overlapping_node = find_overlapping_node(
         tree, padded_candidate, {&viewer_node, &node_to_view});
     if (!overlapping_node) {
-      viewer_node.locx = candidate_pos.x / UI_SCALE_FAC;
-      viewer_node.locy = candidate_pos.y / UI_SCALE_FAC;
-      return;
+      new_viewer_position = candidate_pos;
+      break;
     }
   }
 
-  viewer_node.locx = main_candidate_x / UI_SCALE_FAC;
-  viewer_node.locy = main_candidate_y / UI_SCALE_FAC;
+  if (!new_viewer_position) {
+    new_viewer_position = float2(main_candidate_x, main_candidate_y);
+  }
+
+  viewer_node.locx = new_viewer_position->x / UI_SCALE_FAC;
+  viewer_node.locy = new_viewer_position->y / UI_SCALE_FAC;
+  viewer_node.parent = nullptr;
 }
 
 static int view_socket(const bContext &C,
