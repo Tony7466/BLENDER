@@ -1609,7 +1609,8 @@ GLCompilerWorker::GLCompilerWorker()
   close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE");
 
   /* TODO: Pass max_size. */
-  std::string cmd = std::string(BKE_appdir_program_path()) + " --compilation-subprocess " + name;
+  std::string cmd = '"' + std::string(BKE_appdir_program_path()) + '"' +
+                    " --compilation-subprocess " + name;
 
   compiler_ = popen(cmd.c_str(), "w");
 }
