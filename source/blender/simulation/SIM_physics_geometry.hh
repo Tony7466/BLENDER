@@ -9,13 +9,16 @@
 #pragma once
 
 #include "BLI_index_mask_fwd.hh"
-#include "BLI_map.hh"
-#include "BLI_math_quaternion_types.hh"
+#include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_set.hh"
 #include "BLI_virtual_array_fwd.hh"
 
 #include <functional>
+
+namespace blender::bke {
+class AttributeAccessor;
+class MutableAttributeAccessor;
+}  // namespace blender::bke
 
 namespace blender::simulation {
 
@@ -77,6 +80,9 @@ class PhysicsGeometry {
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
+
+  bke::AttributeAccessor attributes() const;
+  bke::MutableAttributeAccessor attributes_for_write();
 };
 
 }  // namespace blender::simulation

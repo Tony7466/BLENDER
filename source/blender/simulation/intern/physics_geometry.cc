@@ -6,11 +6,11 @@
  * \ingroup sim
  */
 
-#include "BLI_array_utils.hh"
+#include "BKE_geometry_set.hh"
+
 #include "BLI_mempool.h"
 #include "BLI_virtual_array.hh"
 
-#include "DNA_scene_types.h"
 #include "SIM_collision_shape.hh"
 #include "SIM_physics_geometry.hh"
 
@@ -118,6 +118,39 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
     return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
            (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask) && fn(body0, body1);
   }
+};
+
+/**
+ * Provider for builtin rigid body attributes.
+ */
+class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
+  using UpdateOnChange = void (*)(void *owner);
+  const CustomDataAccessInfo custom_data_access_;
+  const UpdateOnChange update_on_change_;
+
+ public:
+  BuiltinCustomDataLayerProvider(std::string attribute_name,
+                                 const AttrDomain domain,
+                                 const eCustomDataType data_type,
+                                 const DeletableEnum deletable,
+                                 const CustomDataAccessInfo custom_data_access,
+                                 const UpdateOnChange update_on_change,
+                                 const AttributeValidator validator = {})
+      : BuiltinAttributeProvider(
+            std::move(attribute_name), domain, data_type, deletable, validator),
+        custom_data_access_(custom_data_access),
+        update_on_change_(update_on_change)
+  {
+  }
+
+  GAttributeReader try_get_for_read(const void *owner) const final;
+  GAttributeWriter try_get_for_write(void *owner) const final;
+  bool try_delete(void *owner) const final;
+  bool try_create(void *owner, const AttributeInit &initializer) const final;
+  bool exists(const void *owner) const final;
+
+ private:
+  bool layer_exists(const CustomData &custom_data) const;
 };
 
 PhysicsGeometry::PhysicsGeometry() : PhysicsGeometry(0) {}

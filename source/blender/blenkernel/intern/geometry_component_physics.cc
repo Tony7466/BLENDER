@@ -196,3 +196,17 @@ std::optional<MutableAttributeAccessor> PhysicsComponent::attributes_for_write()
 }
 
 }  // namespace blender::bke
+
+namespace blender::simulation {
+
+bke::AttributeAccessor PhysicsGeometry::attributes() const
+{
+  return bke::AttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+}
+
+bke::MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
+{
+  return bke::MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
+}
+
+}  // namespace blender::simulation
