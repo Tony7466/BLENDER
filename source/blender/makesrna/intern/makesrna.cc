@@ -459,9 +459,6 @@ static char *rna_alloc_function_name(const char *structname,
 {
   char buffer[2048];
   rna_construct_function_name(buffer, sizeof(buffer), structname, propname, type);
-  // printf("%s\n", buffer);
-  // if (strstr(buffer, "QWERASD")) {
-  // }
   return static_cast<char *>(rna_alloc_from_buffer(buffer, strlen(buffer) + 1));
 }
 
