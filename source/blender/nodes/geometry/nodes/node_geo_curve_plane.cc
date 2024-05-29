@@ -143,6 +143,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (potrace_image == nullptr) {
     params.error_message_add(NodeWarningType::Warning, TIP_("Can not generate curve"));
     params.set_default_remaining_outputs();
+    return;
   }
 
   BLI_SCOPED_DEFER([&]() { geometry::potrace::free_image(potrace_image); });
