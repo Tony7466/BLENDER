@@ -149,7 +149,7 @@ struct Reservoir {
     add_sample(ls, radiance, mis_weight / bsdf_pdf_in_area, rand);
   }
 
-  void add_reservoir(KernelGlobals kg, Reservoir &other, const float rand);
+  void add_reservoir(Reservoir &other, const float rand);
 };
 
 /* TODO(weizhen): maybe it should be determined when the sample is drawn, not afterwards. */
@@ -177,7 +177,7 @@ ccl_device_inline bool sample_copy_direction(KernelGlobals kg,
   return false;
 }
 
-void Reservoir::add_reservoir(KernelGlobals kg, Reservoir &other, const float rand)
+void Reservoir::add_reservoir(Reservoir &other, const float rand)
 {
   if (other.is_empty()) {
     return;
@@ -213,9 +213,9 @@ struct SpatialReservoir {
     return reservoir.is_empty();
   }
 
-  void add_reservoir(KernelGlobals kg, SpatialReservoir &other, const float rand)
+  void add_reservoir(SpatialReservoir &other, const float rand)
   {
-    reservoir.add_reservoir(kg, other.reservoir, rand);
+    reservoir.add_reservoir(other.reservoir, rand);
   }
 };
 

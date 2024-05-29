@@ -163,12 +163,12 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
     ls.pdf = nee_pdf;
 
     if (INTEGRATOR_STATE(state, path, bounce) == 1) {
-      film_write_surface_emission_to_reservoir_di(kg, state, L, ls, rng_state, render_buffer);
+      film_add_reservoir_di(kg, state, L, ls, rng_state, render_buffer);
     }
     else {
       const Spectrum contribution = INTEGRATOR_STATE(state, path, throughput) * L * mis_weight;
       ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
-      film_write_pass_reservoir_pt(kg, path_flag, contribution, rng_state, buffer);
+      film_add_reservoir_pt(kg, path_flag, contribution, rng_state, buffer);
     }
   }
   else {
@@ -503,6 +503,8 @@ ccl_device
   if (reservoir.is_empty()) {
     return;
   }
+
+  /* TODO(weizhen): write reconnection vertex. Treat as rough if at least one closure is rough. */
 
   if (use_restir_di) {
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);

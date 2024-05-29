@@ -108,6 +108,20 @@ ccl_device_inline bool integrator_restir_unpack_reservoir(KernelGlobals kg,
   return restir_unpack_reservoir(kg, reservoir, buffer);
 }
 
+ccl_device_inline bool integrator_restir_unpack_reservoir(KernelGlobals kg,
+                                                          ccl_private GlobalReservoir *reservoir,
+                                                          uint32_t render_pixel_index,
+                                                          ccl_global float *ccl_restrict
+                                                              render_buffer,
+                                                          const bool read_prev)
+{
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
+  ccl_global float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
+                             (read_prev ? kernel_data.film.pass_restir_pt_previous_reservoir :
+                                          kernel_data.film.pass_restir_pt_reservoir);
+  return restir_unpack_reservoir_pt(kg, reservoir, buffer);
+}
+
 ccl_device_inline void ray_setup(KernelGlobals kg,
                                  ConstIntegratorState state,
                                  ccl_private Ray *ccl_restrict ray,
@@ -185,6 +199,10 @@ float compute_luminance(KernelGlobals kg, const ccl_private BsdfEval &radiance)
   return dot(spectrum_to_rgb(radiance.sum), float4_to_float3(kernel_data.film.rgb_to_y));
 }
 
+/* TODO(weizhen): this is also pairwise, but with worse MIS weight. Keep this for debugging now,
+ * probably just delete the option in the future. */
+/* TODO(weizhen): this is biased because we have no access of the jacobian when
+ * `sample_copy_direction()`. */
 ccl_device_inline bool streaming_samples(KernelGlobals kg,
                                          IntegratorState state,
                                          const ccl_private SpatialResampling *resampling,
@@ -217,7 +235,7 @@ ccl_device_inline bool streaming_samples(KernelGlobals kg,
     radiance_eval(
         kg, state, &current->sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
-    current->add_reservoir(kg, neighbor, rand.z);
+    current->add_reservoir(neighbor, rand.z);
   }
 
   PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
@@ -335,7 +353,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     neighbor.reservoir.total_weight *= mis_weight_pairwise(
         neighbor.reservoir.luminance, neighbor_at_canonical, neighbors);
 
-    current->add_reservoir(kg, neighbor, rand.z);
+    current->add_reservoir(neighbor, rand.z);
   }
 
   if (!canonical.is_empty()) {
@@ -343,7 +361,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     radiance_eval(kg, state, &current->sd, &canonical.ls, &canonical.radiance, visibility);
     canonical.total_weight *= canonical_mis_weight;
     const float rand = path_branched_rng_3D(kg, rng_state, 0, samples, PRNG_SPATIAL_RESAMPLING).z;
-    current->reservoir.add_reservoir(kg, canonical, rand);
+    current->reservoir.add_reservoir(canonical, rand);
   }
 
   current->reservoir.total_weight /= valid_neighbors;
@@ -377,7 +395,7 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   light_sample_from_uv(kg, &current.sd, current.path_flag, &reservoir.ls);
   radiance_eval(kg, state, &current.sd, &reservoir.ls, &reservoir.radiance);
 
-  current.reservoir.add_reservoir(kg, reservoir, 0.0f);
+  current.reservoir.add_reservoir(reservoir, 0.0f);
   current.reservoir.finalize();
 
   bsdf_eval_mul(&current.reservoir.radiance, current.reservoir.total_weight);
@@ -400,17 +418,17 @@ ccl_device void integrator_evaluate_restir_pt(KernelGlobals kg,
                                               IntegratorState state,
                                               ccl_global float *ccl_restrict render_buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
   const bool read_prev = false;
-  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
-  ccl_global float *reservoir_buffer = buffer +
-                                       (read_prev ?
-                                            kernel_data.film.pass_restir_pt_previous_reservoir :
-                                            kernel_data.film.pass_restir_pt_reservoir);
+  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
 
   GlobalReservoir reservoir(kg);
-  if (restir_unpack_reservoir_pt(kg, &reservoir, reservoir_buffer)) {
+  if (integrator_restir_unpack_reservoir(
+          kg, &reservoir, render_pixel_index, render_buffer, read_prev))
+  {
     const int sample = INTEGRATOR_STATE(state, path, sample);
+    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
     reservoir.finalize();
 
@@ -453,23 +471,12 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   SpatialResampling spatial_resampling(tile, radius);
 
   const bool visibility = kernel_data.integrator.restir_unbiased;
-  const bool pairwise_mis = kernel_data.integrator.restir_pairwise_mis;
 
   /* Uniformly sample neighboring reservoirs within a radius. There is probability to pick the same
    * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
    * samples are used. */
-  if (true) {
-    streaming_samples_pairwise(
-        kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
-  }
-  else {
-    /* TODO(weizhen): this is also pairwise, but with worse MIS weight. Keep this for debugging
-     * now, probably just delete the option in the future. */
-    /* TODO(weizhen): this is biased because we have no access of the jacobian when
-     * `sample_copy_direction()`. */
-    streaming_samples(
-        kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
-  }
+  streaming_samples_pairwise(
+      kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
 
   const bool write_prev = !(state->read_previous_reservoir);
   film_write_pass_reservoir(kg, state, &current.reservoir, render_buffer, write_prev);
