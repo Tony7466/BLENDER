@@ -112,6 +112,8 @@ set(SRC
   nodes/node_geo_input_normal.cc
   nodes/node_geo_input_position.cc
   nodes/node_geo_input_radius.cc
+  nodes/node_geo_input_rigid_body_info.cc
+  nodes/node_geo_input_rigid_body_motion.cc
   nodes/node_geo_input_scene_time.cc
   nodes/node_geo_input_shortest_edge_paths.cc
   nodes/node_geo_input_spline_cyclic.cc
@@ -188,6 +190,10 @@ set(SRC
   nodes/node_geo_set_material_index.cc
   nodes/node_geo_set_point_radius.cc
   nodes/node_geo_set_position.cc
+  nodes/node_geo_set_rigid_body_angular_velocity.cc
+  nodes/node_geo_set_rigid_body_inertia.cc
+  nodes/node_geo_set_rigid_body_mass.cc
+  nodes/node_geo_set_rigid_body_velocity.cc
   nodes/node_geo_set_shade_smooth.cc
   nodes/node_geo_set_spline_cyclic.cc
   nodes/node_geo_set_spline_resolution.cc
