@@ -33,6 +33,7 @@ class PhysicsGeometry {
   using OverlapFilterFn = std::function<bool(const RigidBodyID a, const RigidBodyID b)>;
 
   PhysicsGeometry();
+  explicit PhysicsGeometry(int rigid_bodies_num);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
@@ -53,18 +54,29 @@ class PhysicsGeometry {
   int constraints_num() const;
   int shapes_num() const;
 
-  IndexRange add_rigid_bodies(const Span<const CollisionShape *> shapes,
-                              const VArray<int> &shape_indices,
-                              const VArray<float> &masses,
-                              const VArray<float3> &inertiae,
-                              const VArray<bool> &simulated);
-  void remove_rigid_bodies(const IndexMask &mask);
-  void clear_rigid_bodies();
+  IndexRange rigid_bodies_range() const;
+  IndexRange constraints_range() const;
+  IndexRange shapes_range() const;
 
   void set_bodies_simulated(const IndexMask &selection, bool enable);
   void set_all_bodies_simulated(bool enable);
 
   VArray<RigidBodyID> body_ids() const;
+
+  VArray<const CollisionShape *> body_collision_shapes() const;
+  VMutableArray<CollisionShape *> body_collision_shapes_for_write();
+
+  VArray<float> body_masses() const;
+  VMutableArray<float> body_masses_for_write();
+
+  VArray<float3> body_inertias() const;
+  VMutableArray<float3> body_inertias_for_write();
+
+  VArray<float3> body_positions() const;
+  VMutableArray<float3> body_positions_for_write();
+
+  void tag_collision_shapes_changed();
+  void tag_body_transforms_changed();
 };
 
 }  // namespace blender::simulation

@@ -1551,8 +1551,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
           fmt::format_to(fmt::appender(buf),
                          TIP_("\u2022 Grease Pencil: {} layers"),
                          to_string(grease_pencil_info.layers_num));
-          break;
         }
+        break;
       }
       case bke::GeometryComponent::Type::Physics: {
         const geo_log::GeometryInfoLog::RigidBodyInfo &rigid_body_info =

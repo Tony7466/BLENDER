@@ -257,6 +257,7 @@ struct GatherTasks {
   Vector<RealizePointCloudTask> pointcloud_tasks;
   Vector<RealizeMeshTask> mesh_tasks;
   Vector<RealizeCurveTask> curve_tasks;
+  Vector<RealizePhysicsTask> physics_tasks;
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
@@ -269,6 +270,7 @@ struct GatherOffsets {
   int pointcloud_offset = 0;
   MeshElementStartIndices mesh_offsets;
   CurvesElementStartIndices curves_offsets;
+  PhysicsElementStartIndices physics_offsets;
 };
 
 struct GatherTasksInfo {
@@ -276,6 +278,7 @@ struct GatherTasksInfo {
   const AllPointCloudsInfo &pointclouds;
   const AllMeshesInfo &meshes;
   const AllCurvesInfo &curves;
+  const AllPhysicsInfo &physics;
   const OrderedAttributes &instances_attriubutes;
   bool create_id_attribute_on_any_component = false;
 
@@ -714,6 +717,18 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         }
         break;
       }
+      case bke::GeometryComponent::Type::Physics: {
+        const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
+        const simulation::PhysicsGeometry *physics = physics_component.get();
+        if (physics != nullptr && physics->rigid_bodies_num() > 0) {
+          const int physics_index = gather_info.physics.order.index_of(physics);
+          const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
+          gather_info.r_tasks.physics_tasks.append(
+              {gather_info.r_offsets.physics_offsets, &physics_info});
+          gather_info.r_offsets.physics_offsets.rigid_body += physics->rigid_bodies_num();
+        }
+        break;
+      }
       case bke::GeometryComponent::Type::Instance: {
         if (current_depth == target_depth) {
           gather_info.instances.attribute_fallback.append(base_instance_context.instances);
@@ -755,10 +770,6 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
-        /* TODO. Do nothing for now. */
-        break;
-      }
-      case bke::GeometryComponent::Type::Physics: {
         /* TODO. Do nothing for now. */
         break;
       }
@@ -1983,23 +1994,25 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
 {
   using simulation::PhysicsGeometry;
 
+  UNUSED_VARS(options, varied_depth_option);
+
   AllPhysicsInfo info;
 
   gather_physics_to_realize(geometry_set, info.order);
   info.realize_info.reinitialize(info.order.size());
   for (const int physics_index : info.realize_info.index_range()) {
-    RealizePhysicsInfo &curve_info = info.realize_info[physics_index];
-    curve_info.physics = info.order[physics_index];
+    RealizePhysicsInfo &physics_info = info.realize_info[physics_index];
+    physics_info.physics = info.order[physics_index];
   }
   return info;
 }
 
 static void execute_realize_physics_task(const RealizeInstancesOptions &options,
-                                       const AllPhysicsInfo &all_physics_info,
-                                       const RealizePhysicsTask &task,
-                                       const OrderedAttributes &ordered_attributes,
-                                       simulation::PhysicsGeometry &dst_physics,
-                                       MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
+                                         const AllPhysicsInfo &all_physics_info,
+                                         const RealizePhysicsTask &task,
+                                         const OrderedAttributes &ordered_attributes,
+                                         simulation::PhysicsGeometry &dst_physics,
+                                         MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
 {
   using simulation::PhysicsGeometry;
 
@@ -2009,14 +2022,19 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   const IndexRange dst_rigid_body_range{task.start_indices.rigid_body, physics.rigid_bodies_num()};
 
   // TODO
-  UNUSED_VARS(dst_rigid_body_range);
+  UNUSED_VARS(options,
+              all_physics_info,
+              ordered_attributes,
+              dst_physics,
+              dst_attribute_writers,
+              dst_rigid_body_range);
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
-                                        const AllPhysicsInfo &all_physics_info,
-                                        const Span<RealizePhysicsTask> tasks,
-                                        const OrderedAttributes &ordered_attributes,
-                                        bke::GeometrySet &r_realized_geometry)
+                                          const AllPhysicsInfo &all_physics_info,
+                                          const Span<RealizePhysicsTask> tasks,
+                                          const OrderedAttributes &ordered_attributes,
+                                          bke::GeometrySet &r_realized_geometry)
 {
   using simulation::PhysicsGeometry;
 
@@ -2025,110 +2043,49 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   }
 
   const RealizePhysicsTask &last_task = tasks.last();
-  const Curves &last_curves = *last_task.curve_info->curves;
-  const int points_num = last_task.start_indices.point + last_curves.geometry.point_num;
-  const int curves_num = last_task.start_indices.curve + last_curves.geometry.curve_num;
+  const PhysicsGeometry &last_physics = *last_task.physics_info->physics;
+  const int rigid_bodies_num = last_task.start_indices.rigid_body +
+                               last_physics.rigid_bodies_num();
 
   /* Allocate new curves data-block. */
-  Curves *dst_curves_id = bke::curves_new_nomain(points_num, curves_num);
-  bke::CurvesGeometry &dst_curves = dst_curves_id->geometry.wrap();
-  dst_curves.offsets_for_write().last() = points_num;
-  r_realized_geometry.replace_curves(dst_curves_id);
-  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  PhysicsGeometry *dst_physics = new PhysicsGeometry(rigid_bodies_num);
+  r_realized_geometry.replace_physics(dst_physics);
+  // bke::MutableAttributeAccessor dst_attributes = dst_physics.attributes_for_write();
 
   /* Copy settings from the first input geometry set with curves. */
-  const RealizeCurveTask &first_task = tasks.first();
-  const Curves &first_curves_id = *first_task.curve_info->curves;
-  bke::curves_copy_parameters(first_curves_id, *dst_curves_id);
-
-  /* Prepare id attribute. */
-  SpanAttributeWriter<int> point_ids;
-  if (all_curves_info.create_id_attribute) {
-    point_ids = dst_attributes.lookup_or_add_for_write_only_span<int>("id",
-                                                                      bke::AttrDomain::Point);
-  }
+  const RealizePhysicsTask &first_task = tasks.first();
+  const PhysicsGeometry &first_physics = *first_task.physics_info->physics;
+  // bke::curves_copy_parameters(first_physics, *dst_physics);
 
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;
-  for (const int attribute_index : ordered_attributes.index_range()) {
-    const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
-    const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
-    const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
-    dst_attribute_writers.append(
-        dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
-  }
+  // for (const int attribute_index : ordered_attributes.index_range()) {
+  //   const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
+  //   const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
+  //   const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
+  //   dst_attribute_writers.append(
+  //       dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
+  // }
 
-  /* Prepare handle position attributes if necessary. */
-  SpanAttributeWriter<float3> handle_left;
-  SpanAttributeWriter<float3> handle_right;
-  if (all_curves_info.create_handle_postion_attributes) {
-    handle_left = dst_attributes.lookup_or_add_for_write_only_span<float3>("handle_left",
-                                                                           bke::AttrDomain::Point);
-    handle_right = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-        "handle_right", bke::AttrDomain::Point);
-  }
-
-  SpanAttributeWriter<float> radius;
-  if (all_curves_info.create_radius_attribute) {
-    radius = dst_attributes.lookup_or_add_for_write_only_span<float>("radius",
-                                                                     bke::AttrDomain::Point);
-  }
-  SpanAttributeWriter<float> nurbs_weight;
-  if (all_curves_info.create_nurbs_weight_attribute) {
-    nurbs_weight = dst_attributes.lookup_or_add_for_write_only_span<float>("nurbs_weight",
-                                                                           bke::AttrDomain::Point);
-  }
-  SpanAttributeWriter<int> resolution;
-  if (all_curves_info.create_resolution_attribute) {
-    resolution = dst_attributes.lookup_or_add_for_write_only_span<int>("resolution",
-                                                                       bke::AttrDomain::Curve);
-  }
-  SpanAttributeWriter<float3> custom_normal;
-  if (all_curves_info.create_custom_normal_attribute) {
-    custom_normal = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-        "custom_normal", bke::AttrDomain::Point);
-  }
+  UNUSED_VARS(rigid_bodies_num, first_physics);
 
   /* Actually execute all tasks. */
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
-      const RealizeCurveTask &task = tasks[task_index];
-      execute_realize_curve_task(options,
-                                 all_curves_info,
-                                 task,
-                                 ordered_attributes,
-                                 dst_curves,
-                                 dst_attribute_writers,
-                                 point_ids.span,
-                                 handle_left.span,
-                                 handle_right.span,
-                                 radius.span,
-                                 nurbs_weight.span,
-                                 resolution.span,
-                                 custom_normal.span);
+      const RealizePhysicsTask &task = tasks[task_index];
+      execute_realize_physics_task(options,
+                                   all_physics_info,
+                                   task,
+                                   ordered_attributes,
+                                   *dst_physics,
+                                   dst_attribute_writers);
     }
   });
-
-  /* Type counts have to be updated eagerly. */
-  dst_curves.runtime->type_counts.fill(0);
-  for (const RealizeCurveTask &task : tasks) {
-    for (const int i : IndexRange(CURVE_TYPES_NUM)) {
-      dst_curves.runtime->type_counts[i] +=
-          task.curve_info->curves->geometry.runtime->type_counts[i];
-    }
-  }
 
   /* Tag modified attributes. */
   for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
     dst_attribute.finish();
   }
-  point_ids.finish();
-  radius.finish();
-  resolution.finish();
-  nurbs_weight.finish();
-  handle_left.finish();
-  handle_right.finish();
-  custom_normal.finish();
 }
 
 /** \} */
@@ -2223,6 +2180,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   GatherTasksInfo gather_info = {all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
+                                 all_physics_info,
                                  all_instance_attributes,
                                  create_id_attribute,
                                  varied_depth_option.selection,
@@ -2270,6 +2228,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                 gather_info.r_tasks.curve_tasks,
                                 all_curves_info.attributes,
                                 new_geometry_set);
+    execute_realize_physics_tasks(
+        options, all_physics_info, gather_info.r_tasks.physics_tasks, {}, new_geometry_set);
   });
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);

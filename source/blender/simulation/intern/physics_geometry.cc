@@ -10,6 +10,7 @@
 #include "BLI_mempool.h"
 #include "BLI_virtual_array.hh"
 
+#include "DNA_scene_types.h"
 #include "SIM_collision_shape.hh"
 #include "SIM_physics_geometry.hh"
 
@@ -119,9 +120,22 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
   }
 };
 
-PhysicsGeometry::PhysicsGeometry()
+PhysicsGeometry::PhysicsGeometry() : PhysicsGeometry(0) {}
+
+PhysicsGeometry::PhysicsGeometry(int rigid_bodies_num)
 {
   impl_ = new PhysicsImpl{};
+
+  impl_->rigid_bodies.reinitialize(rigid_bodies_num);
+  impl_->motion_states.reinitialize(rigid_bodies_num);
+  for (const int i : IndexRange(rigid_bodies_num)) {
+    const float mass = 1.0f;
+    const float3 inertia = float3(0.0f);
+
+    impl_->motion_states[i] = new btDefaultMotionState();
+    impl_->rigid_bodies[i] = new btRigidBody(
+        mass, impl_->motion_states[i], nullptr, to_bullet(inertia));
+  }
 }
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
@@ -157,7 +171,7 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 
 PhysicsGeometry::~PhysicsGeometry()
 {
-  clear_rigid_bodies();
+  // clear_rigid_bodies();
   set_world(false);
 }
 
@@ -269,108 +283,193 @@ int PhysicsGeometry::shapes_num() const
   return 0;
 }
 
-template<typename T, typename GetFn>
-static VArray<T> varray_for_rigid_bodies(const PhysicsImpl &impl, GetFn get_fn)
+IndexRange PhysicsGeometry::rigid_bodies_range() const
 {
-  return VArray<T>::ForFunc(impl.rigid_bodies.size(), [&](const int64_t index) {
-    return get_fn(*impl.rigid_bodies[index]);
-  });
+  return impl_->rigid_bodies.index_range();
 }
 
-IndexRange PhysicsGeometry::add_rigid_bodies(const Span<const CollisionShape *> shapes,
-                                             const VArray<int> &shape_indices,
-                                             const VArray<float> &masses,
-                                             const VArray<float3> &inertiae,
-                                             const VArray<bool> &simulated)
+IndexRange PhysicsGeometry::constraints_range() const
 {
-  const int num_add = masses.size();
-  BLI_assert(inertiae.is_empty() || inertiae.size() == num_add);
-  BLI_assert(shape_indices.size() == num_add);
-
-  const IndexRange old_bodies_range = impl_->rigid_bodies.index_range();
-  const IndexRange new_bodies_range = old_bodies_range.after(num_add);
-  if (new_bodies_range.is_empty()) {
-    return new_bodies_range;
-  }
-  Array<btRigidBody *> new_rigid_bodies(impl_->rigid_bodies.size() + num_add);
-  Array<btMotionState *> new_motion_states(impl_->motion_states.size() + num_add);
-  array_utils::copy(impl_->rigid_bodies.as_span(),
-                    new_rigid_bodies.as_mutable_span().slice(old_bodies_range));
-  array_utils::copy(impl_->motion_states.as_span(),
-                    new_motion_states.as_mutable_span().slice(old_bodies_range));
-  for (const int i : new_bodies_range) {
-    BLI_assert(shapes.index_range().contains(shape_indices[i]));
-    const CollisionShape *shape = shapes[shape_indices[i]];
-    const float3 inertia = inertiae ? inertiae[i] : float3(0.0f);
-    const bool simulate = simulated ? simulated[i] : true;
-
-    new_motion_states[i] = new btDefaultMotionState();
-    new_rigid_bodies[i] = new btRigidBody(masses[i],
-                                          new_motion_states[i],
-                                          shape ? &shape->impl_->as_bullet_shape() : nullptr,
-                                          to_bullet(inertia));
-    if (simulate && impl_->world) {
-      impl_->world->addRigidBody(new_rigid_bodies[i]);
-    }
-  }
-  impl_->motion_states = std::move(new_motion_states);
-  impl_->rigid_bodies = std::move(new_rigid_bodies);
-  return new_bodies_range;
+  return IndexRange();
 }
 
-void PhysicsGeometry::remove_rigid_bodies(const IndexMask &mask)
+IndexRange PhysicsGeometry::shapes_range() const
 {
-  mask.foreach_index([&](const int index) {
-    btRigidBody *body = impl_->rigid_bodies[index];
-    btMotionState *motion_state = impl_->motion_states[index];
-    BLI_assert(body != nullptr);
-    BLI_assert(motion_state != nullptr);
-
-    if (impl_->world) {
-      impl_->world->removeRigidBody(body);
-    }
-
-    delete impl_->rigid_bodies[index];
-    delete impl_->motion_states[index];
-  });
-
-  /* Remove entries. */
-  IndexMaskMemory keep_mask_memory;
-  IndexMask keep_mask = mask.complement(impl_->rigid_bodies.index_range(), keep_mask_memory);
-  Array<btRigidBody *> new_rigid_bodies(impl_->rigid_bodies.size() - mask.size());
-  Array<btMotionState *> new_motion_states(impl_->motion_states.size() - mask.size());
-  array_utils::copy(impl_->rigid_bodies.as_span(), keep_mask, new_rigid_bodies.as_mutable_span());
-  array_utils::copy(
-      impl_->motion_states.as_span(), keep_mask, new_motion_states.as_mutable_span());
-  impl_->rigid_bodies = std::move(new_rigid_bodies);
-  impl_->motion_states = std::move(new_motion_states);
+  return IndexRange();
 }
 
-void PhysicsGeometry::clear_rigid_bodies()
-{
-  for (const int index : impl_->rigid_bodies.index_range()) {
-    btRigidBody *body = impl_->rigid_bodies[index];
-    btMotionState *motion_state = impl_->motion_states[index];
-    BLI_assert(body != nullptr);
-    BLI_assert(motion_state != nullptr);
+// IndexRange PhysicsGeometry::add_rigid_bodies(const Span<const CollisionShape *> shapes,
+//                                              const VArray<int> &shape_indices,
+//                                              const VArray<float> &masses,
+//                                              const VArray<float3> &inertiae,
+//                                              const VArray<bool> &simulated)
+// {
+//   const int num_add = masses.size();
+//   BLI_assert(inertiae.is_empty() || inertiae.size() == num_add);
+//   BLI_assert(shape_indices.size() == num_add);
 
-    if (impl_->world) {
-      impl_->world->removeRigidBody(body);
-    }
+//   const IndexRange old_bodies_range = impl_->rigid_bodies.index_range();
+//   const IndexRange new_bodies_range = old_bodies_range.after(num_add);
+//   if (new_bodies_range.is_empty()) {
+//     return new_bodies_range;
+//   }
+//   Array<btRigidBody *> new_rigid_bodies(impl_->rigid_bodies.size() + num_add);
+//   Array<btMotionState *> new_motion_states(impl_->motion_states.size() + num_add);
+//   array_utils::copy(impl_->rigid_bodies.as_span(),
+//                     new_rigid_bodies.as_mutable_span().slice(old_bodies_range));
+//   array_utils::copy(impl_->motion_states.as_span(),
+//                     new_motion_states.as_mutable_span().slice(old_bodies_range));
+//   for (const int i : new_bodies_range) {
+//     BLI_assert(shapes.index_range().contains(shape_indices[i]));
+//     const CollisionShape *shape = shapes[shape_indices[i]];
+//     const float3 inertia = inertiae ? inertiae[i] : float3(0.0f);
+//     const bool simulate = simulated ? simulated[i] : true;
 
-    delete body;
-    delete motion_state;
-  }
+//     new_motion_states[i] = new btDefaultMotionState();
+//     new_rigid_bodies[i] = new btRigidBody(masses[i],
+//                                           new_motion_states[i],
+//                                           shape ? &shape->impl_->as_bullet_shape() : nullptr,
+//                                           to_bullet(inertia));
+//     if (simulate && impl_->world) {
+//       impl_->world->addRigidBody(new_rigid_bodies[i]);
+//     }
+//   }
+//   impl_->motion_states = std::move(new_motion_states);
+//   impl_->rigid_bodies = std::move(new_rigid_bodies);
+//   return new_bodies_range;
+// }
 
-  impl_->rigid_bodies = {};
-  impl_->motion_states = {};
-}
+// void PhysicsGeometry::remove_rigid_bodies(const IndexMask &mask)
+// {
+//   mask.foreach_index([&](const int index) {
+//     btRigidBody *body = impl_->rigid_bodies[index];
+//     btMotionState *motion_state = impl_->motion_states[index];
+//     BLI_assert(body != nullptr);
+//     BLI_assert(motion_state != nullptr);
+
+//     if (impl_->world) {
+//       impl_->world->removeRigidBody(body);
+//     }
+
+//     delete impl_->rigid_bodies[index];
+//     delete impl_->motion_states[index];
+//   });
+
+//   /* Remove entries. */
+//   IndexMaskMemory keep_mask_memory;
+//   IndexMask keep_mask = mask.complement(impl_->rigid_bodies.index_range(), keep_mask_memory);
+//   Array<btRigidBody *> new_rigid_bodies(impl_->rigid_bodies.size() - mask.size());
+//   Array<btMotionState *> new_motion_states(impl_->motion_states.size() - mask.size());
+//   array_utils::copy(impl_->rigid_bodies.as_span(), keep_mask,
+//   new_rigid_bodies.as_mutable_span()); array_utils::copy(
+//       impl_->motion_states.as_span(), keep_mask, new_motion_states.as_mutable_span());
+//   impl_->rigid_bodies = std::move(new_rigid_bodies);
+//   impl_->motion_states = std::move(new_motion_states);
+// }
+
+// void PhysicsGeometry::clear_rigid_bodies()
+// {
+//   for (const int index : impl_->rigid_bodies.index_range()) {
+//     btRigidBody *body = impl_->rigid_bodies[index];
+//     btMotionState *motion_state = impl_->motion_states[index];
+//     BLI_assert(body != nullptr);
+//     BLI_assert(motion_state != nullptr);
+
+//     if (impl_->world) {
+//       impl_->world->removeRigidBody(body);
+//     }
+
+//     delete body;
+//     delete motion_state;
+//   }
+
+//   impl_->rigid_bodies = {};
+//   impl_->motion_states = {};
+// }
 
 VArray<RigidBodyID> PhysicsGeometry::body_ids() const
 {
-  return varray_for_rigid_bodies<RigidBodyID>(
-      *impl_, [&](const btRigidBody &body) { return body.getUserIndex(); });
+  auto get_fn = [](const btRigidBody *const &body) -> RigidBodyID { return body->getUserIndex(); };
+  return VArray<RigidBodyID>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
 }
+
+VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
+{
+  auto get_fn = [](const btRigidBody *const &body) -> const CollisionShape * {
+    return static_cast<CollisionShape *>(body->getCollisionShape()->getUserPointer());
+  };
+  return VArray<const CollisionShape *>::ForDerivedSpan<const btRigidBody *, get_fn>(
+      impl_->rigid_bodies);
+}
+
+VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
+{
+  auto get_fn = [](btRigidBody *const &body) -> CollisionShape * {
+    return static_cast<CollisionShape *>(body->getCollisionShape()->getUserPointer());
+  };
+  auto set_fn = [](btRigidBody *&body, CollisionShape *value) {
+    body->setCollisionShape(&value->impl().as_bullet_shape());
+  };
+  return VMutableArray<CollisionShape *>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(
+      impl_->rigid_bodies);
+}
+
+VArray<float> PhysicsGeometry::body_masses() const
+{
+  auto get_fn = [](const btRigidBody *const &body) -> float { return body->getMass(); };
+  return VArray<float>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+}
+
+VMutableArray<float> PhysicsGeometry::body_masses_for_write()
+{
+  auto get_fn = [](btRigidBody *const &body) -> float { return body->getMass(); };
+  auto set_fn = [](btRigidBody *&body, float value) {
+    body->setMassProps(value, body->getLocalInertia());
+  };
+  return VMutableArray<float>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(impl_->rigid_bodies);
+}
+
+VArray<float3> PhysicsGeometry::body_inertias() const
+{
+  auto get_fn = [](const btRigidBody *const &body) -> float3 {
+    return to_blender(body->getLocalInertia());
+  };
+  return VArray<float3>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+}
+
+VMutableArray<float3> PhysicsGeometry::body_inertias_for_write()
+{
+  auto get_fn = [](btRigidBody *const &body) -> float3 {
+    return to_blender(body->getLocalInertia());
+  };
+  auto set_fn = [](btRigidBody *&body, float3 value) {
+    body->setMassProps(body->getMass(), to_bullet(value));
+  };
+  return VMutableArray<float3>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(impl_->rigid_bodies);
+}
+
+VArray<float3> PhysicsGeometry::body_positions() const
+{
+  auto get_fn = [](const btRigidBody *const &body) -> float3 {
+    return to_blender(body->getWorldTransform().getOrigin());
+  };
+  return VArray<float3>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+}
+
+VMutableArray<float3> PhysicsGeometry::body_positions_for_write()
+{
+  auto get_fn = [](btRigidBody *const &body) -> float3 {
+    return to_blender(body->getWorldTransform().getOrigin());
+  };
+  auto set_fn = [](btRigidBody *&body, float3 value) {
+    body->getWorldTransform().setOrigin(to_bullet(value));
+  };
+  return VMutableArray<float3>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(impl_->rigid_bodies);
+}
+
+void PhysicsGeometry::tag_collision_shapes_changed() {}
+
+void PhysicsGeometry::tag_body_transforms_changed() {}
 
 #else
 

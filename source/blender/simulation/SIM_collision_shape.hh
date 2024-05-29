@@ -118,6 +118,7 @@ class CollisionShape : public NonCopyable {
   CollisionShape();
   ~CollisionShape();
 
+  CollisionShapeImpl &impl();
   const CollisionShapeImpl &impl() const;
 
   ShapeType type() const;

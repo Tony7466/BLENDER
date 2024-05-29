@@ -291,11 +291,20 @@ inline btQuaternion to_bullet(const math::Quaternion &q)
 
 CollisionShape::CollisionShape() : impl_(nullptr) {}
 
-CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl) {}
+CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl)
+{
+  /* Set the internal pointer, this allows finding the CollisionShape from the Bullet shape. */
+  impl_->as_bullet_shape().setUserPointer(this);
+}
 
 CollisionShape::~CollisionShape()
 {
   delete impl_;
+}
+
+CollisionShapeImpl &CollisionShape::impl()
+{
+  return *impl_;
 }
 
 const CollisionShapeImpl &CollisionShape::impl() const
