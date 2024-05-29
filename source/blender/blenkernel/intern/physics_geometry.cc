@@ -106,7 +106,7 @@ struct DefaultOverlapFilter : public btOverlapFilterCallback {
 };
 
 struct OverlapFilterWrapper : public btOverlapFilterCallback {
-  using OverlapFilterFn = std::function<bool(const RigidBodyID a, const RigidBodyID b)>;
+  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
   OverlapFilterFn fn;
 
@@ -122,7 +122,7 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
 };
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
-    "id", "mass", "inertia", "position", "rotation"};
+    "id", "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
 
 PhysicsGeometry::PhysicsGeometry() : PhysicsGeometry(0) {}
 
@@ -333,9 +333,14 @@ VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write
       impl_->rigid_bodies);
 }
 
-VArray<RigidBodyID> PhysicsGeometry::body_ids() const
+VArray<int> PhysicsGeometry::body_ids() const
 {
-  return attributes().lookup(builtin_attributes.id).varray.typed<RigidBodyID>();
+  return attributes().lookup(builtin_attributes.id).varray.typed<int>();
+}
+
+AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.id);
 }
 
 VArray<float> PhysicsGeometry::body_masses() const
@@ -343,9 +348,9 @@ VArray<float> PhysicsGeometry::body_masses() const
   return attributes().lookup(builtin_attributes.mass).varray.typed<float>();
 }
 
-VMutableArray<float> PhysicsGeometry::body_masses_for_write()
+AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
 {
-  return attributes_for_write().lookup_for_write(builtin_attributes.mass).varray.typed<float>();
+  return attributes_for_write().lookup_for_write<float>(builtin_attributes.mass);
 }
 
 VArray<float3> PhysicsGeometry::body_inertias() const
@@ -353,11 +358,9 @@ VArray<float3> PhysicsGeometry::body_inertias() const
   return attributes().lookup(builtin_attributes.inertia).varray.typed<float3>();
 }
 
-VMutableArray<float3> PhysicsGeometry::body_inertias_for_write()
+AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
 {
-  return attributes_for_write()
-      .lookup_for_write(builtin_attributes.inertia)
-      .varray.typed<float3>();
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.inertia);
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
@@ -365,9 +368,9 @@ VArray<float3> PhysicsGeometry::body_positions() const
   return attributes().lookup(builtin_attributes.position).varray.typed<float3>();
 }
 
-VMutableArray<float3> PhysicsGeometry::body_positions_for_write()
+AttributeWriter<float3> PhysicsGeometry::body_positions_for_write()
 {
-  return attributes_for_write().lookup_for_write(builtin_attributes.position).varray.typed<float3>();
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.position);
 }
 
 VArray<math::Quaternion> PhysicsGeometry::body_rotations() const
@@ -375,11 +378,29 @@ VArray<math::Quaternion> PhysicsGeometry::body_rotations() const
   return attributes().lookup(builtin_attributes.rotation).varray.typed<math::Quaternion>();
 }
 
-VMutableArray<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
+AttributeWriter<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
 {
-  return attributes_for_write()
-      .lookup_for_write(builtin_attributes.rotation)
-      .varray.typed<math::Quaternion>();
+  return attributes_for_write().lookup_for_write<math::Quaternion>(builtin_attributes.rotation);
+}
+
+VArray<float3> PhysicsGeometry::body_velocities() const
+{
+  return attributes().lookup(builtin_attributes.velocity).varray.typed<float3>();
+}
+
+AttributeWriter<float3> PhysicsGeometry::body_velocities_for_write()
+{
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.velocity);
+}
+
+VArray<float3> PhysicsGeometry::body_angular_velocities() const
+{
+  return attributes().lookup(builtin_attributes.angular_velocity).varray.typed<float3>();
+}
+
+AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
+{
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.angular_velocity);
 }
 
 void PhysicsGeometry::tag_collision_shapes_changed() {}
@@ -497,11 +518,16 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         return static_cast<const PhysicsGeometry *>(owner);
       }};
 
-  constexpr auto id_get_fn = [](const btRigidBody *const &body) -> RigidBodyID {
+  constexpr auto id_get_fn = [](const btRigidBody *const &body) -> int {
     return body->getUserIndex();
   };
-  static BuiltinRigidBodyAttributeProvider<RigidBodyID, id_get_fn> body_id(
-      PhysicsGeometry::builtin_attributes.id, AttrDomain::Point, BuiltinAttributeProvider::NonDeletable, physics_access, nullptr);
+  constexpr auto id_set_fn = [](btRigidBody *&body, int value) { body->setUserIndex(value); };
+  static BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
+      PhysicsGeometry::builtin_attributes.id,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
 
   constexpr auto mass_get_fn = [](const btRigidBody *const &body) -> float {
     return body->getMass();
@@ -510,7 +536,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body->setMassProps(value, body->getLocalInertia());
   };
   static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
-      PhysicsGeometry::builtin_attributes.mass, AttrDomain::Point, BuiltinAttributeProvider::NonDeletable, physics_access, nullptr);
+      PhysicsGeometry::builtin_attributes.mass,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
 
   constexpr auto inertia_get_fn = [](const btRigidBody *const &body) -> float3 {
     return to_blender(body->getLocalInertia());
@@ -544,14 +574,49 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   constexpr auto rotation_set_fn = [](btRigidBody *&body, math::Quaternion value) {
     body->getWorldTransform().setRotation(to_bullet(value));
   };
-  static BuiltinRigidBodyAttributeProvider<math::Quaternion, rotation_get_fn, rotation_set_fn> body_rotation(
-      PhysicsGeometry::builtin_attributes.rotation,
+  static BuiltinRigidBodyAttributeProvider<math::Quaternion, rotation_get_fn, rotation_set_fn>
+      body_rotation(PhysicsGeometry::builtin_attributes.rotation,
+                    AttrDomain::Point,
+                    BuiltinAttributeProvider::NonDeletable,
+                    physics_access,
+                    nullptr);
+
+  constexpr auto velocity_get_fn = [](const btRigidBody *const &body) -> float3 {
+    return to_blender(body->getLinearVelocity());
+  };
+  constexpr auto velocity_set_fn = [](btRigidBody *&body, float3 value) {
+    body->setLinearVelocity(to_bullet(value));
+  };
+  static BuiltinRigidBodyAttributeProvider<float3, velocity_get_fn, velocity_set_fn> body_velocity(
+      PhysicsGeometry::builtin_attributes.velocity,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr);
 
-  return ComponentAttributeProviders({&body_id, &body_mass, &body_inertia, &body_position, &body_rotation}, {});
+  constexpr auto angular_velocity_get_fn = [](const btRigidBody *const &body) -> float3 {
+    return to_blender(body->getAngularVelocity());
+  };
+  constexpr auto angular_velocity_set_fn = [](btRigidBody *&body, float3 value) {
+    body->setAngularVelocity(to_bullet(value));
+  };
+  static BuiltinRigidBodyAttributeProvider<float3,
+                                           angular_velocity_get_fn,
+                                           angular_velocity_set_fn>
+      body_angular_velocity(PhysicsGeometry::builtin_attributes.angular_velocity,
+                            AttrDomain::Point,
+                            BuiltinAttributeProvider::NonDeletable,
+                            physics_access,
+                            nullptr);
+
+  return ComponentAttributeProviders({&body_id,
+                                      &body_mass,
+                                      &body_inertia,
+                                      &body_position,
+                                      &body_rotation,
+                                      &body_velocity,
+                                      &body_angular_velocity},
+                                     {});
 }
 
 static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,

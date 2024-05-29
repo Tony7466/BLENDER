@@ -12,6 +12,7 @@
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_virtual_array_fwd.hh"
 
 #include <functional>
@@ -23,9 +24,6 @@ class MutableAttributeAccessor;
 
 namespace blender::bke {
 
-using RigidBodyID = int;
-using CollisionShapeID = int;
-
 class CollisionShape;
 struct PhysicsImpl;
 
@@ -34,7 +32,7 @@ class PhysicsGeometry {
   PhysicsImpl *impl_;
 
  public:
-  using OverlapFilterFn = std::function<bool(const RigidBodyID a, const RigidBodyID b)>;
+  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
   static const struct BuiltinAttributes {
     std::string id;
@@ -42,6 +40,8 @@ class PhysicsGeometry {
     std::string inertia;
     std::string position;
     std::string rotation;
+    std::string velocity;
+    std::string angular_velocity;
   } builtin_attributes;
 
   PhysicsGeometry();
@@ -79,19 +79,26 @@ class PhysicsGeometry {
   VArray<const CollisionShape *> body_collision_shapes() const;
   VMutableArray<CollisionShape *> body_collision_shapes_for_write();
 
-  VArray<RigidBodyID> body_ids() const;
+  VArray<int> body_ids() const;
+  AttributeWriter<int> body_ids_for_write();
 
   VArray<float> body_masses() const;
-  VMutableArray<float> body_masses_for_write();
+  AttributeWriter<float> body_masses_for_write();
 
   VArray<float3> body_inertias() const;
-  VMutableArray<float3> body_inertias_for_write();
+  AttributeWriter<float3> body_inertias_for_write();
 
   VArray<float3> body_positions() const;
-  VMutableArray<float3> body_positions_for_write();
+  AttributeWriter<float3> body_positions_for_write();
 
   VArray<math::Quaternion> body_rotations() const;
-  VMutableArray<math::Quaternion> body_rotations_for_write();
+  AttributeWriter<math::Quaternion> body_rotations_for_write();
+
+  VArray<float3> body_velocities() const;
+  AttributeWriter<float3> body_velocities_for_write();
+
+  VArray<float3> body_angular_velocities() const;
+  AttributeWriter<float3> body_angular_velocities_for_write();
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
