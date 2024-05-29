@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Blender Foundation
+# SPDX-FileCopyrightText: 2024 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -66,7 +66,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
     shader = gpu.shader.from_builtin('UNIFORM_COLOR')
     shader.uniform_float("color", colour)
 
-    # Top left corner
+    # Top left corner.
     mx, my = bpy.context.region.view2d.view_to_region(nlocx, nlocy, clip=False)
     vertices = [(mx, my)]
     for i in range(sides + 1):
@@ -79,7 +79,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
     batch = batch_for_shader(shader, 'TRI_FAN', {"pos": vertices})
     batch.draw(shader)
 
-    # Top right corner
+    # Top right corner.
     mx, my = bpy.context.region.view2d.view_to_region(nlocx + ndimx, nlocy, clip=False)
     vertices = [(mx, my)]
     for i in range(sides + 1):
@@ -92,7 +92,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
     batch = batch_for_shader(shader, 'TRI_FAN', {"pos": vertices})
     batch.draw(shader)
 
-    # Bottom left corner
+    # Bottom left corner.
     mx, my = bpy.context.region.view2d.view_to_region(nlocx, nlocy - ndimy, clip=False)
     vertices = [(mx, my)]
     for i in range(sides + 1):
@@ -105,7 +105,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
     batch = batch_for_shader(shader, 'TRI_FAN', {"pos": vertices})
     batch.draw(shader)
 
-    # Bottom right corner
+    # Bottom right corner.
     mx, my = bpy.context.region.view2d.view_to_region(nlocx + ndimx, nlocy - ndimy, clip=False)
     vertices = [(mx, my)]
     for i in range(sides + 1):
@@ -118,12 +118,12 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
     batch = batch_for_shader(shader, 'TRI_FAN', {"pos": vertices})
     batch.draw(shader)
 
-    # prepare drawing all edges in one batch
+    # Prepare drawing all edges in one batch.
     vertices = []
     indices = []
     id_last = 0
 
-    # Left edge
+    # Left edge.
     m1x, m1y = bpy.context.region.view2d.view_to_region(nlocx, nlocy, clip=False)
     m2x, m2y = bpy.context.region.view2d.view_to_region(nlocx, nlocy - ndimy, clip=False)
     if m1x < area_width and m2x < area_width:
@@ -133,7 +133,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
                         (id_last + 3, id_last + 1, id_last + 2)])
         id_last += 4
 
-    # Top edge
+    # Top edge.
     m1x, m1y = bpy.context.region.view2d.view_to_region(nlocx, nlocy, clip=False)
     m2x, m2y = bpy.context.region.view2d.view_to_region(nlocx + ndimx, nlocy, clip=False)
     m1x = min(m1x, area_width)
@@ -144,7 +144,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
                     (id_last + 3, id_last + 1, id_last + 2)])
     id_last += 4
 
-    # Right edge
+    # Right edge.
     m1x, m1y = bpy.context.region.view2d.view_to_region(nlocx + ndimx, nlocy, clip=False)
     m2x, m2y = bpy.context.region.view2d.view_to_region(nlocx + ndimx, nlocy - ndimy, clip=False)
     if m1x < area_width and m2x < area_width:
@@ -154,7 +154,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
                         (id_last + 3, id_last + 1, id_last + 2)])
         id_last += 4
 
-    # Bottom edge
+    # Bottom edge.
     m1x, m1y = bpy.context.region.view2d.view_to_region(nlocx, nlocy - ndimy, clip=False)
     m2x, m2y = bpy.context.region.view2d.view_to_region(nlocx + ndimx, nlocy - ndimy, clip=False)
     m1x = min(m1x, area_width)
@@ -164,13 +164,13 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
     indices.extend([(id_last, id_last + 1, id_last + 3),
                     (id_last + 3, id_last + 1, id_last + 2)])
 
-    # now draw all edges in one batch
+    # Draw all edges in one batch.
     if len(vertices) != 0:
         batch = batch_for_shader(shader, 'TRIS', {"pos": vertices}, indices=indices)
         batch.draw(shader)
 
 
-def draw_callback_node_outline(self, context, mode):
+def draw_callback_node_outline(self, context, mode, lazy_connect_props):
     if self.mouse_path:
         gpu.state.blend_set('ALPHA')
 
@@ -194,27 +194,27 @@ def draw_callback_node_outline(self, context, mode):
         m2x = self.mouse_path[-1][0]
         m2y = self.mouse_path[-1][1]
 
-        n1 = nodes[context.window_manager.nodes_lazy_source]
-        n2 = nodes[context.window_manager.nodes_lazy_target]
+        node1 = nodes[lazy_connect_props.nodes_lazy_source]
+        node2 = nodes[lazy_connect_props.nodes_lazy_target]
 
-        if n1 == n2:
+        if node1 == node2:
             col_outer = (0.4, 0.4, 0.4, 0.4)
             col_inner = (0.0, 0.0, 0.0, 0.5)
             col_circle_inner = (0.2, 0.2, 0.2, 1.0)
 
-        draw_rounded_node_border(n1, radius=6, colour=col_outer)  # outline
-        draw_rounded_node_border(n1, radius=5, colour=col_inner)  # inner
-        draw_rounded_node_border(n2, radius=6, colour=col_outer)  # outline
-        draw_rounded_node_border(n2, radius=5, colour=col_inner)  # inner
+        draw_rounded_node_border(node1, radius=6, colour=col_outer)  # outline
+        draw_rounded_node_border(node1, radius=5, colour=col_inner)  # inner
+        draw_rounded_node_border(node2, radius=6, colour=col_outer)  # outline
+        draw_rounded_node_border(node2, radius=5, colour=col_inner)  # inner
 
         draw_line(m1x, m1y, m2x, m2y, 5, col_outer)  # line outline
         draw_line(m1x, m1y, m2x, m2y, 2, col_inner)  # line inner
 
-        # circle outline
+        # Circle outline.
         draw_circle_2d_filled(m1x, m1y, 7, col_outer)
         draw_circle_2d_filled(m2x, m2y, 7, col_outer)
 
-        # circle inner
+        # Circle inner.
         draw_circle_2d_filled(m1x, m1y, 5, col_circle_inner)
         draw_circle_2d_filled(m2x, m2y, 5, col_circle_inner)
 
