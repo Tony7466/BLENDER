@@ -620,6 +620,86 @@ static const bNode *find_overlapping_node(const bNodeTree &tree,
   return nullptr;
 }
 
+static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
+                                                          const float initial_y,
+                                                          const float step_distance,
+                                                          const float max_distance)
+{
+  const float y_scale = 0.5f;
+
+  Vector<float2> candidates;
+  candidates.append({initial_x, initial_y});
+  for (float distance = step_distance; distance <= max_distance; distance += step_distance) {
+    const float arc_length = distance * M_PI;
+    const int checks = std::max<int>(2, ceilf(arc_length / step_distance));
+    for (const int i : IndexRange(checks)) {
+      const float angle = i / float(checks - 1) * M_PI;
+      const float candidate_x = initial_x + distance * std::sin(angle);
+      const float candidate_y = initial_y + distance * std::cos(angle) * y_scale;
+      candidates.append({candidate_x, candidate_y});
+    }
+  }
+  return candidates;
+}
+
+static std::optional<float2> try_find_aligned_viewer_location(const bNodeTree &tree,
+                                                              const bNode &node_to_view,
+                                                              const bNodeSocket &socket_to_view,
+                                                              const bNode &viewer_node,
+                                                              const float viewer_width,
+                                                              const float viewer_height,
+                                                              const float padding_x,
+                                                              const float padding_y)
+{
+  Vector<const bNode *> nodes_to_consider = tree.all_nodes();
+  nodes_to_consider.remove_if([&](const bNode *node) {
+    if (node->is_frame()) {
+      return true;
+    }
+    if (ELEM(node, &node_to_view, &viewer_node)) {
+      return true;
+    }
+    return false;
+  });
+  auto get_node_distance = [&](const bNode &node) {
+    const rctf &r = node.runtime->totr;
+    return dist_squared_to_line_segment_v2(
+        socket_to_view.runtime->location, float2(r.xmin, r.ymin), float2(r.xmin, r.ymax));
+    return 0.0f;
+  };
+  std::sort(
+      nodes_to_consider.begin(), nodes_to_consider.end(), [&](const bNode *a, const bNode *b) {
+        return get_node_distance(*a) < get_node_distance(*b);
+      });
+
+  for (const bNode *node : nodes_to_consider.as_span().take_front(20)) {
+    const rctf &r = node->runtime->totr;
+    if (r.xmin - 5 < node_to_view.runtime->totr.xmax) {
+      continue;
+    }
+    rctf candidate;
+    candidate.xmin = r.xmin;
+    candidate.xmax = r.xmin + viewer_width;
+    candidate.ymin = r.ymax + padding_y + 1;
+    candidate.ymax = candidate.ymin + viewer_height;
+    rctf padded_candidate = candidate;
+    BLI_rctf_pad(&padded_candidate, padding_x, padding_y);
+
+    bool found_collision = false;
+    for (const bNode *other_node : nodes_to_consider) {
+      if (BLI_rctf_isect(&padded_candidate, &other_node->runtime->totr, nullptr)) {
+        found_collision = true;
+        break;
+      }
+    }
+    if (found_collision) {
+      continue;
+    }
+    return float2{candidate.xmin, candidate.ymax};
+  }
+  return std::nullopt;
+}
+
 /**
  * Positions the viewer node so that it is slightly to the right and top of the node to view. The
  * viewer is placed so that it does not overlap any existing nodes. The algorithm will iteratively
@@ -628,12 +708,15 @@ static const bNode *find_overlapping_node(const bNodeTree &tree,
  * If possible, the viewer is aligned to another node that is close by to result in a better
  * looking node position.
  */
-static void position_viewer_node(const bNodeTree &tree,
+static void position_viewer_node(bNodeTree &tree,
                                  bNode &viewer_node,
                                  const bNode &node_to_view,
                                  const bNodeSocket &socket_to_view)
 {
   tree.ensure_topology_cache();
+
+  viewer_node.ui_order = tree.all_nodes().size();
+  tree_draw_order_update(tree);
 
   const float default_padding_x = U.node_margin;
   const float default_padding_y = 10;
@@ -645,53 +728,50 @@ static void position_viewer_node(const bNodeTree &tree,
     viewer_height = 100;
   }
 
-  const float main_candidate_x = socket_to_view.runtime->location.x + 30;
-  float current_y = node_to_view.runtime->totr.ymax + viewer_height + 10;
-  float final_x;
+  const float main_candidate_x = socket_to_view.runtime->location.x + default_padding_x;
+  const float main_candidate_y = node_to_view.runtime->totr.ymax + viewer_height +
+                                 default_padding_y;
 
-  while (true) {
-    rctf main_candidate_rect;
-    main_candidate_rect.xmin = main_candidate_x;
-    main_candidate_rect.xmax = main_candidate_x + viewer_width;
-    main_candidate_rect.ymax = current_y;
-    main_candidate_rect.ymin = current_y - viewer_height;
-    BLI_rctf_pad(&main_candidate_rect, default_padding_x, default_padding_y);
+  viewer_node.parent = nullptr;
+  // if (const std::optional<float2> pos = try_find_aligned_viewer_location(tree,
+  //                                                                        node_to_view,
+  //                                                                        socket_to_view,
+  //                                                                        viewer_node,
+  //                                                                        viewer_width,
+  //                                                                        viewer_height,
+  //                                                                        default_padding_x,
+  //                                                                        default_padding_y))
+  // {
+  //   viewer_node.locx = pos->x / UI_SCALE_FAC;
+  //   viewer_node.locy = pos->y / UI_SCALE_FAC;
+  //   return;
+  // }
 
-    const bNode *collided_node = find_overlapping_node(
-        tree, main_candidate_rect, {&viewer_node, &node_to_view});
-    if (!collided_node) {
-      final_x = main_candidate_x;
-      break;
-    }
-    current_y = collided_node->runtime->totr.ymax + viewer_height + default_padding_y + 1;
+  // viewer_node.locx = (socket_to_view.runtime->location.x + default_padding_x) / UI_SCALE_FAC;
+  // viewer_node.locy = socket_to_view.runtime->location.y / UI_SCALE_FAC;
 
-    const float align_node_x = collided_node->runtime->totr.xmin;
-    if (align_node_x < socket_to_view.runtime->location.x + 5 ||
-        align_node_x > socket_to_view.runtime->location.x + 300)
-    {
-      /* The collided node is too far from the socket to view, so don't attempt to align to it. */
-      continue;
-    }
+  const Vector<float2> position_candidates = get_viewer_node_position_candidates(
+      main_candidate_x, main_candidate_y, 50, 800);
+  for (const float2 &candidate_pos : position_candidates) {
+    rctf candidate;
+    candidate.xmin = candidate_pos.x;
+    candidate.xmax = candidate_pos.x + viewer_width;
+    candidate.ymin = candidate_pos.y - viewer_height;
+    candidate.ymax = candidate_pos.y;
+    rctf padded_candidate = candidate;
+    BLI_rctf_pad(&padded_candidate, default_padding_x - 1, default_padding_y - 1);
 
-    rctf aligned_candidate_rect;
-    aligned_candidate_rect.xmin = align_node_x;
-    aligned_candidate_rect.xmax = aligned_candidate_rect.xmin + viewer_width;
-    aligned_candidate_rect.ymin = current_y - viewer_height;
-    aligned_candidate_rect.ymax = current_y;
-    BLI_rctf_pad(&aligned_candidate_rect, default_padding_x, default_padding_y);
-
-    bool found_collision_for_aligned_rect = find_overlapping_node(
-        tree, aligned_candidate_rect, {&viewer_node, &node_to_view});
-    if (!found_collision_for_aligned_rect) {
-      /* Align to the found node. */
-      final_x = align_node_x;
-      break;
+    const bNode *overlapping_node = find_overlapping_node(
+        tree, padded_candidate, {&viewer_node, &node_to_view});
+    if (!overlapping_node) {
+      viewer_node.locx = candidate_pos.x / UI_SCALE_FAC;
+      viewer_node.locy = candidate_pos.y / UI_SCALE_FAC;
+      return;
     }
   }
 
-  viewer_node.parent = nullptr;
-  viewer_node.locx = final_x / UI_SCALE_FAC;
-  viewer_node.locy = current_y / UI_SCALE_FAC;
+  viewer_node.locx = main_candidate_x / UI_SCALE_FAC;
+  viewer_node.locy = main_candidate_y / UI_SCALE_FAC;
 }
 
 static int view_socket(const bContext &C,
