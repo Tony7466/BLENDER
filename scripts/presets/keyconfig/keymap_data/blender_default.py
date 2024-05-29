@@ -6562,7 +6562,6 @@ def km_gesture_lasso(_params):
 
     items.extend([
         ("MOVE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
-        ("SMOOTH", {"type": 'LEFT_SHIFT', "value": 'ANY', "any": True}, None),
     ])
 
     return keymap
