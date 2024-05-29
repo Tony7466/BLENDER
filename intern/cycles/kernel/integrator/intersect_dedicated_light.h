@@ -39,8 +39,6 @@ ccl_device int shadow_linking_pick_mesh_intersection(KernelGlobals kg,
 
   const uint visibility = path_state_ray_visibility(state);
 
-  const int volume_max_bounce = kernel_data.integrator.max_volume_bounce;
-  const int transparent_max_bounce = kernel_data.integrator.transparent_max_bounce;
   int transparent_bounce = INTEGRATOR_STATE(state, path, transparent_bounce);
   int volume_bounce = INTEGRATOR_STATE(state, path, volume_bounce);
 
@@ -89,7 +87,7 @@ ccl_device int shadow_linking_pick_mesh_intersection(KernelGlobals kg,
        * consider them as fully blocked and only consider lights prior to this intersection.  */
       if (shader_flags & SD_HAS_TRANSPARENT_SHADOW) {
         ++transparent_bounce;
-        if (transparent_bounce >= transparent_max_bounce) {
+        if (transparent_bounce >= kernel_data.integrator.transparent_max_bounce) {
           ray->tmax = current_isect.t;
           break;
         }
@@ -97,7 +95,7 @@ ccl_device int shadow_linking_pick_mesh_intersection(KernelGlobals kg,
       else {
         kernel_assert(shader_flags & SD_HAS_ONLY_VOLUME);
         ++volume_bounce;
-        if (volume_bounce >= volume_max_bounce) {
+        if (volume_bounce >= kernel_data.integrator.max_volume_bounce) {
           ray->tmax = current_isect.t;
           break;
         }
