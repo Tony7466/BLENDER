@@ -19,7 +19,6 @@
 #define MAX_RGB9E5_EXP (RGB9E5_MAX_VALID_BIASED_EXP - RGB9E5_EXP_BIAS)
 #define RGB9E5_MANTISSA_VALUES (1 << RGB9E5_MANTISSA_BITS)
 #define MAX_RGB9E5_MANTISSA (RGB9E5_MANTISSA_VALUES - 1)
-#define MAX_RGB9E5 (((float)MAX_RGB9E5_MANTISSA) / RGB9E5_MANTISSA_VALUES * (1 << MAX_RGB9E5_EXP))
 
 int rgb9e5_floor_log2(float x)
 {
@@ -43,7 +42,9 @@ struct rgb9e5_t {
 
 rgb9e5_t rgb9e5_from_float3(vec3 color)
 {
-  color = clamp(color, 0.0, MAX_RGB9E5);
+  const float max_rgb9e5 = float(MAX_RGB9E5_MANTISSA) /
+                           float(RGB9E5_MANTISSA_VALUES * (1 << MAX_RGB9E5_EXP));
+  color = clamp(color, 0.0, max_rgb9e5);
 
   float max_component = max(max(color.r, color.g), color.b);
   int log2_floored = rgb9e5_floor_log2(max_component);
