@@ -18,6 +18,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BLT_translation.hh"
+#include "SIM_physics_geometry.hh"
 
 #include <fmt/format.h>
 
@@ -51,6 +52,19 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
       }
     }
     return {};
+  }
+  return field_input.get_varray_for_context(*this, mask, scope);
+}
+
+GVArray PhysicsFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
+                                                  const IndexMask &mask,
+                                                  ResourceScope &scope) const
+{
+  if (const PhysicsFieldInput *physics_field_input = dynamic_cast<const PhysicsFieldInput *>(
+          &field_input))
+  {
+    const PhysicsFieldContext context{this->physics(), this->domain()};
+    return physics_field_input->get_varray_for_context(context, mask, scope);
   }
   return field_input.get_varray_for_context(*this, mask, scope);
 }
@@ -118,8 +132,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       break;
     }
     case GeometryComponent::Type::Physics: {
-      const PhysicsComponent &physics_component = static_cast<const PhysicsComponent &>(
-          component);
+      const PhysicsComponent &physics_component = static_cast<const PhysicsComponent &>(component);
       geometry_ = physics_component.get();
       break;
     }
@@ -155,6 +168,10 @@ GeometryFieldContext::GeometryFieldContext(const GreasePencil &grease_pencil,
       type_(GeometryComponent::Type::GreasePencil),
       domain_(domain),
       grease_pencil_layer_index_(layer_index)
+{
+}
+GeometryFieldContext::GeometryFieldContext(const simulation::PhysicsGeometry &physics)
+    : geometry_(&physics), type_(GeometryComponent::Type::Physics), domain_(AttrDomain::Point)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const Instances &instances)
@@ -233,6 +250,12 @@ const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
     return &drawing->strokes();
   }
   return nullptr;
+}
+const simulation::PhysicsGeometry *GeometryFieldContext::physics() const
+{
+  return this->type() == GeometryComponent::Type::Physics ?
+             static_cast<const simulation::PhysicsGeometry *>(geometry_) :
+             nullptr;
 }
 const Instances *GeometryFieldContext::instances() const
 {
@@ -353,6 +376,34 @@ GVArray PointCloudFieldInput::get_varray_for_context(const fn::FieldContext &con
     return this->get_varray_for_context(point_context->pointcloud(), mask);
   }
   return {};
+}
+
+GVArray PhysicsFieldInput::get_varray_for_context(const fn::FieldContext &context,
+                                                  const IndexMask &mask,
+                                                  ResourceScope & /*scope*/) const
+{
+  using simulation::PhysicsGeometry;
+
+  if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
+          &context))
+  {
+    if (const PhysicsGeometry *physics = geometry_context->physics()) {
+      return this->get_varray_for_context(*physics, geometry_context->domain(), mask);
+    }
+  }
+  if (const PhysicsFieldContext *physics_context = dynamic_cast<const PhysicsFieldContext *>(
+          &context))
+  {
+    return this->get_varray_for_context(
+        physics_context->physics(), physics_context->domain(), mask);
+  }
+  return {};
+}
+
+std::optional<AttrDomain> PhysicsFieldInput::preferred_domain(
+    const simulation::PhysicsGeometry & /*physics*/) const
+{
+  return std::nullopt;
 }
 
 GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &context,
