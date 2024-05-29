@@ -237,8 +237,94 @@ def center_in_camera(camera, ob, axis=(1, 1)):
     ob.location = location + offset
 
 
+def get_ref_object_space_coord(o):
+    size = o.empty_display_size
+    x,y = o.empty_image_offset
+    img = o.data
+
+    res_x, res_y = img.size
+    scaling = 1 / max(res_x, res_y)
+
+    corners = [
+        Vector((0,0)),
+        Vector((res_x, 0)),
+        Vector((0, res_y)),
+        Vector((res_x, res_y)),
+        ]
+
+    obj_space_corners = []
+    for co in corners:
+        nco_x = ((co.x + (x * res_x)) * size) * scaling
+        nco_y = ((co.y + (y * res_y)) * size) * scaling
+        obj_space_corners.append(Vector((nco_x, nco_y, 0)))
+    return obj_space_corners
+
+
 # -----------------------------------------------------------------------------
 # Cycles/EEVEE utils
+
+def create_cycles_texnode(self, node_tree, img_spec):
+    tex_image = node_tree.nodes.new('ShaderNodeTexImage')
+    tex_image.image = img_spec.image
+    tex_image.show_texture = True
+    tex_image.interpolation = self.interpolation
+    tex_image.extension = self.extension
+    self.apply_texture_options(tex_image, img_spec)
+    return tex_image
+
+def create_cycles_material(self, img_spec, name):
+    material = None
+    if self.overwrite_material:
+        material = bpy.data.materials.get((name, None))
+    if material is None:
+        material = bpy.data.materials.new(name=name)
+
+    material.use_nodes = True
+
+    material.blend_method = self.blend_method
+    material.shadow_method = self.shadow_method
+
+    material.use_backface_culling = self.use_backface_culling
+    material.show_transparent_back = self.show_transparent_back
+
+    node_tree = material.node_tree
+    out_node = clean_node_tree(node_tree)
+
+    tex_image = create_cycles_texnode(self, node_tree, img_spec)
+
+    if self.shader == 'PRINCIPLED':
+        core_shader = node_tree.nodes.new('ShaderNodeBsdfPrincipled')
+    elif self.shader == 'SHADELESS':
+        core_shader = get_shadeless_node(node_tree)
+    elif self.shader == 'EMISSION':
+        core_shader = node_tree.nodes.new('ShaderNodeBsdfPrincipled')
+        core_shader.inputs["Emission Strength"].default_value = self.emit_strength
+        core_shader.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+        core_shader.inputs["Specular IOR Level"].default_value = 0.0
+
+    # Connect color from texture.
+    if self.shader in {'PRINCIPLED', 'SHADELESS'}:
+        node_tree.links.new(core_shader.inputs[0], tex_image.outputs["Color"])
+    elif self.shader == 'EMISSION':
+        node_tree.links.new(core_shader.inputs["Emission Color"], tex_image.outputs["Color"])
+
+    if self.use_transparency:
+        if self.shader in {'PRINCIPLED', 'EMISSION'}:
+            node_tree.links.new(core_shader.inputs["Alpha"], tex_image.outputs["Alpha"])
+        else:
+            bsdf_transparent = node_tree.nodes.new('ShaderNodeBsdfTransparent')
+
+            mix_shader = node_tree.nodes.new('ShaderNodeMixShader')
+            node_tree.links.new(mix_shader.inputs["Fac"], tex_image.outputs["Alpha"])
+            node_tree.links.new(mix_shader.inputs[1], bsdf_transparent.outputs["BSDF"])
+            node_tree.links.new(mix_shader.inputs[2], core_shader.outputs[0])
+            core_shader = mix_shader
+
+    node_tree.links.new(out_node.inputs["Surface"], core_shader.outputs[0])
+
+    auto_align_nodes(node_tree)
+    return material
+
 
 def get_input_nodes(node, links):
     """Get nodes that are a inputs to the given node"""
@@ -845,7 +931,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
         # Configure material.
         # TODO: check `context.scene.render.engine` and support other engines.
-        material = self.create_cycles_material(img_spec, name)
+        material = create_cycles_material(self, img_spec, name)
 
         # Create and position plane object.
         plane = self.create_image_plane(context, name, img_spec)
@@ -898,70 +984,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         material.use_shadeless = (shader == 'SHADELESS')
         material.use_transparent_shadows = (shader == 'DIFFUSE')
         material.emit = self.emit_strength if shader == 'EMISSION' else 0.0
-
-    # -------------------------------------------------------------------------
-    # Cycles/EEVEE
-    def create_cycles_texnode(self, node_tree, img_spec):
-        tex_image = node_tree.nodes.new('ShaderNodeTexImage')
-        tex_image.image = img_spec.image
-        tex_image.show_texture = True
-        tex_image.interpolation = self.interpolation
-        tex_image.extension = self.extension
-        self.apply_texture_options(tex_image, img_spec)
-        return tex_image
-
-    def create_cycles_material(self, img_spec, name):
-        material = None
-        if self.overwrite_material:
-            material = bpy.data.materials.get((name, None))
-        if material is None:
-            material = bpy.data.materials.new(name=name)
-
-        material.use_nodes = True
-
-        material.blend_method = self.blend_method
-        material.shadow_method = self.shadow_method
-
-        material.use_backface_culling = self.use_backface_culling
-        material.show_transparent_back = self.show_transparent_back
-
-        node_tree = material.node_tree
-        out_node = clean_node_tree(node_tree)
-
-        tex_image = self.create_cycles_texnode(node_tree, img_spec)
-
-        if self.shader == 'PRINCIPLED':
-            core_shader = node_tree.nodes.new('ShaderNodeBsdfPrincipled')
-        elif self.shader == 'SHADELESS':
-            core_shader = get_shadeless_node(node_tree)
-        elif self.shader == 'EMISSION':
-            core_shader = node_tree.nodes.new('ShaderNodeBsdfPrincipled')
-            core_shader.inputs["Emission Strength"].default_value = self.emit_strength
-            core_shader.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
-            core_shader.inputs["Specular IOR Level"].default_value = 0.0
-
-        # Connect color from texture.
-        if self.shader in {'PRINCIPLED', 'SHADELESS'}:
-            node_tree.links.new(core_shader.inputs[0], tex_image.outputs["Color"])
-        elif self.shader == 'EMISSION':
-            node_tree.links.new(core_shader.inputs["Emission Color"], tex_image.outputs["Color"])
-
-        if self.use_transparency:
-            if self.shader in {'PRINCIPLED', 'EMISSION'}:
-                node_tree.links.new(core_shader.inputs["Alpha"], tex_image.outputs["Alpha"])
-            else:
-                bsdf_transparent = node_tree.nodes.new('ShaderNodeBsdfTransparent')
-
-                mix_shader = node_tree.nodes.new('ShaderNodeMixShader')
-                node_tree.links.new(mix_shader.inputs["Fac"], tex_image.outputs["Alpha"])
-                node_tree.links.new(mix_shader.inputs[1], bsdf_transparent.outputs["BSDF"])
-                node_tree.links.new(mix_shader.inputs[2], core_shader.outputs[0])
-                core_shader = mix_shader
-
-        node_tree.links.new(out_node.inputs["Surface"], core_shader.outputs[0])
-
-        auto_align_nodes(node_tree)
-        return material
 
     # -------------------------------------------------------------------------
     # Geometry Creation
@@ -1075,6 +1097,135 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             constraint.lock_axis = 'LOCK_Y'
 
 
+class IMAGE_OT_convert_to_mesh_plane(Operator):
+    """Convert selected reference images to textured mesh plane"""
+    bl_idname = "image.convert_to_mesh_plane"
+    bl_label = "Convert Empty Image to Mesh Plane"
+    bl_options = {'REGISTER', 'PRESET', 'UNDO'}
+
+    shader: EnumProperty(
+        name="Shader",
+        items=(
+            ('PRINCIPLED', "Principled", "Principled Shader"),
+            ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
+            ('EMISSION', "Emit", "Emission Shader"),
+        ),
+        default='PRINCIPLED',
+        description="Node shader to use",
+    )
+
+    name_from: EnumProperty(
+        name="Name After",
+        items=[
+            ('OBJECT',"Source Object","Name after object source with a suffix"),
+            ('IMAGE', "Source Image", "name from laoded image"),
+        ],
+        default='OBJECT',
+        description="Name for new mesh object and material"
+    )
+    
+    delete_ref: BoolProperty(
+        name="Delete Reference Object",
+        default=True,
+        description="Delete empty image object once mesh plane is created"
+    )
+
+    @staticmethod
+    def _is_ref(o):
+        return o and o.type == 'EMPTY' and o.empty_display_type == 'IMAGE' and o.data
+
+    def invoke(self, context, _event):
+        engine = context.scene.render.engine
+        if engine not in COMPATIBLE_ENGINES:
+            self.report({'ERROR'}, tip_("Cannot generate materials for unknown {:s} render engine").format(engine))
+            return {'CANCELLED'}
+
+        if engine == 'BLENDER_WORKBENCH':
+            self.report(
+                {'WARNING'},
+                tip_("Generating Cycles/EEVEE compatible material, but won't be visible with {:s} engine").format(
+                    engine,
+                ))
+
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        pool = [o for o in context.selected_objects]
+        if context.object and context.object not in pool:
+            pool.append(context.object)
+        converted = 0
+
+        for o in pool:
+            if not self._is_ref(o):
+                continue
+
+            img = o.data
+            img_user = o.image_user
+            col = o.users_collection[0]
+            o_name = o.name
+
+            # Give Name
+            if self.name_from == 'IMAGE':
+                name = bpy.path.display_name(img.name, title_case=False)
+            if self.name_from == 'OBJECT':
+                name = o_name
+            new_name = name
+
+            i=0
+            while new_name in [ob.name for ob in col.all_objects]:
+                i+=1
+                new_name = f'{name}.{i:03d}'
+            name = new_name
+
+            # Create Mesh Plane
+            obj_space_corners = get_ref_object_space_coord(o)
+
+            fac = [(0, 1, 3, 2)]
+            mesh = bpy.data.meshes.new(name)
+            mesh.from_pydata(obj_space_corners, [], fac)
+            plane = bpy.data.objects.new(name, mesh)
+            mesh.uv_layers.new(name='UVMap')
+
+            # Link in the Same Collection
+            col.objects.link(plane)
+
+            # Assign Parent
+            plane.parent = o.parent
+            plane.matrix_local = o.matrix_local
+            plane.matrix_parent_inverse = o.matrix_parent_inverse
+
+            # Create Material
+            img_spec = ImageSpec(img, (img.size[0], img.size[1]), img_user.frame_start, img_user.frame_offset, img_user.frame_duration)
+            material = create_cycles_material(context, img_spec, name)
+            plane.data.materials.append(material)
+
+            # Delete Empty
+            if self.delete_ref:
+                bpy.data.objects.remove(o)
+                mesh.name = o_name
+                plane.name = o_name
+            
+            plane.select_set(True)
+            converted += 1
+
+        if not converted:
+            self.report({'ERROR'}, 'No images converted')
+            return {"CANCELLED"}
+
+        self.report({'INFO'}, f'{converted} image(s) converted to mesh plane(s)')
+        return {"FINISHED"}
+
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        col = layout.column(align=False)
+        col.prop(self, 'shader')
+        col.prop(self, 'name_from')
+        col.prop(self, 'delete_ref')
+
+
 classes = (
     IMAGE_OT_import_as_mesh_planes,
+    IMAGE_OT_convert_to_mesh_plane,
 )

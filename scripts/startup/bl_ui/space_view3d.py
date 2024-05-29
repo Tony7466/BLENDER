@@ -3108,6 +3108,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             layout.separator()
 
             if obj.empty_display_type == 'IMAGE':
+                layout.operator("image.convert_to_mesh_plane", text="Convert to Mesh Plane")
                 layout.operator("gpencil.trace_image")
 
                 layout.separator()
