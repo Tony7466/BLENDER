@@ -647,7 +647,6 @@ static Vector<float2> get_viewer_node_position_candidates(const float initial_x,
 static void position_viewer_node(bNodeTree &tree,
                                  bNode &viewer_node,
                                  const bNode &node_to_view,
-                                 const bNodeSocket &socket_to_view,
                                  const ARegion &region)
 {
   tree.ensure_topology_cache();
@@ -674,7 +673,7 @@ static void position_viewer_node(bNodeTree &tree,
     viewer_height = 100;
   }
 
-  const float main_candidate_x = socket_to_view.runtime->location.x + default_padding_x;
+  const float main_candidate_x = node_to_view.runtime->totr.xmax + default_padding_x;
   const float main_candidate_y = node_to_view.runtime->totr.ymax + viewer_height +
                                  default_padding_y;
 
@@ -739,7 +738,7 @@ static int view_socket(const bContext &C,
     bNode &target_node = *link->tonode;
     if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
       finalize_viewer_link(C, snode, target_node, *link);
-      position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view, region);
+      position_viewer_node(btree, *viewer_node, bnode_to_view, region);
       return OPERATOR_FINISHED;
     }
   }
@@ -781,7 +780,7 @@ static int view_socket(const bContext &C,
     BKE_ntree_update_tag_link_changed(&btree);
   }
   finalize_viewer_link(C, snode, *viewer_node, *viewer_link);
-  position_viewer_node(btree, *viewer_node, bnode_to_view, bsocket_to_view, region);
+  position_viewer_node(btree, *viewer_node, bnode_to_view, region);
   return OPERATOR_CANCELLED;
 }
 
