@@ -1891,10 +1891,7 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
 {
   using namespace bke::greasepencil;
 
-  Layer layer_src;
-  if (grease_pencil_src.layers().index_range().contains(layer_index)) {
-    layer_src = *grease_pencil_src.layers()[layer_index];
-  }
+  Layer layer_src = *grease_pencil_src.layers().get(layer_index, &layer_src);
 
   const int dst_layer_index = grease_pencil_dst.layers_for_write().first_index_try(&layer_src);
   if (dst_layer_index != -1) {
