@@ -400,8 +400,7 @@ IndexRange PhysicsGeometry::shapes_range() const
 
 VArray<RigidBodyID> PhysicsGeometry::body_ids() const
 {
-  auto get_fn = [](const btRigidBody *const &body) -> RigidBodyID { return body->getUserIndex(); };
-  return VArray<RigidBodyID>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+  return attributes().lookup("ID").varray.typed<RigidBodyID>();
 }
 
 VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
@@ -427,55 +426,32 @@ VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write
 
 VArray<float> PhysicsGeometry::body_masses() const
 {
-  auto get_fn = [](const btRigidBody *const &body) -> float { return body->getMass(); };
-  return VArray<float>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+  return attributes().lookup("mass").varray.typed<float>();
 }
 
 VMutableArray<float> PhysicsGeometry::body_masses_for_write()
 {
-  auto get_fn = [](btRigidBody *const &body) -> float { return body->getMass(); };
-  auto set_fn = [](btRigidBody *&body, float value) {
-    body->setMassProps(value, body->getLocalInertia());
-  };
-  return VMutableArray<float>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(impl_->rigid_bodies);
+  return attributes_for_write().lookup_for_write("mass").varray.typed<float>();
 }
 
 VArray<float3> PhysicsGeometry::body_inertias() const
 {
-  auto get_fn = [](const btRigidBody *const &body) -> float3 {
-    return to_blender(body->getLocalInertia());
-  };
-  return VArray<float3>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+  return attributes().lookup("inertia").varray.typed<float3>();
 }
 
 VMutableArray<float3> PhysicsGeometry::body_inertias_for_write()
 {
-  auto get_fn = [](btRigidBody *const &body) -> float3 {
-    return to_blender(body->getLocalInertia());
-  };
-  auto set_fn = [](btRigidBody *&body, float3 value) {
-    body->setMassProps(body->getMass(), to_bullet(value));
-  };
-  return VMutableArray<float3>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(impl_->rigid_bodies);
+  return attributes_for_write().lookup_for_write("inertia").varray.typed<float3>();
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
 {
-  auto get_fn = [](const btRigidBody *const &body) -> float3 {
-    return to_blender(body->getWorldTransform().getOrigin());
-  };
-  return VArray<float3>::ForDerivedSpan<const btRigidBody *, get_fn>(impl_->rigid_bodies);
+  return attributes().lookup("position").varray.typed<float3>();
 }
 
 VMutableArray<float3> PhysicsGeometry::body_positions_for_write()
 {
-  auto get_fn = [](btRigidBody *const &body) -> float3 {
-    return to_blender(body->getWorldTransform().getOrigin());
-  };
-  auto set_fn = [](btRigidBody *&body, float3 value) {
-    body->getWorldTransform().setOrigin(to_bullet(value));
-  };
-  return VMutableArray<float3>::ForDerivedSpan<btRigidBody *, get_fn, set_fn>(impl_->rigid_bodies);
+  return attributes_for_write().lookup_for_write("position").varray.typed<float3>();
 }
 
 void PhysicsGeometry::tag_collision_shapes_changed() {}
@@ -593,11 +569,46 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         return static_cast<const PhysicsGeometry *>(owner);
       }};
 
-  auto get_fn = [](const btRigidBody *const &body) -> RigidBodyID { return body->getUserIndex(); };
-  static BuiltinRigidBodyAttributeProvider<RigidBodyID, get_fn> body_id(
-      "ID", AttrDomain::Point, BuiltinAttributeProvider::NonDeletable, physics_access, nullptr);
+  auto id_get_fn = [](const btRigidBody *const &body) -> RigidBodyID {
+    return body->getUserIndex();
+  };
+  static BuiltinRigidBodyAttributeProvider<RigidBodyID, id_get_fn> body_id(
+      "id", AttrDomain::Point, BuiltinAttributeProvider::NonDeletable, physics_access, nullptr);
 
-  return ComponentAttributeProviders({&body_id}, {});
+  auto mass_get_fn = [](const btRigidBody *const &body) -> float { return body->getMass(); };
+  auto mass_set_fn = [](btRigidBody *&body, float value) {
+    body->setMassProps(value, body->getLocalInertia());
+  };
+  static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
+      "mass", AttrDomain::Point, BuiltinAttributeProvider::NonDeletable, physics_access, nullptr);
+
+  auto inertia_get_fn = [](const btRigidBody *const &body) -> float3 {
+    return to_blender(body->getLocalInertia());
+  };
+  auto inertia_set_fn = [](btRigidBody *&body, float3 value) {
+    body->setMassProps(body->getMass(), to_bullet(value));
+  };
+  static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
+      "inertia",
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
+  auto position_get_fn = [](const btRigidBody *const &body) -> float3 {
+    return to_blender(body->getWorldTransform().getOrigin());
+  };
+  auto position_set_fn = [](btRigidBody *&body, float3 value) {
+    body->getWorldTransform().setOrigin(to_bullet(value));
+  };
+  static BuiltinRigidBodyAttributeProvider<float3, position_get_fn, position_set_fn> body_position(
+      "position",
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
+  return ComponentAttributeProviders({&body_id, &body_mass, &body_inertia, &body_position}, {});
 }
 
 static GVArray adapt_physics_attribute_domain(const PhysicsGeometry & /*physics*/,
