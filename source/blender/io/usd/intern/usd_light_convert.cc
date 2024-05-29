@@ -325,11 +325,23 @@ void world_material_to_dome_light(const USDExportParams &params,
     /* Convert radians to degrees. */
     mul_v3_fl(res.mapping_rot, 180.0f / M_PI);
 
-    pxr::GfVec3f rot(-res.mapping_rot[0] + 90.f, -res.mapping_rot[1], -res.mapping_rot[2] + 90.0f);
+    pxr::GfMatrix4d xf =
+        pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), 90.0)) *
+        pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0)) *
+        pxr::GfMatrix4d().SetRotate(
+            pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), -res.mapping_rot[2])) *
+        pxr::GfMatrix4d().SetRotate(
+            pxr::GfRotation(pxr::GfVec3d(0.0, 1.0, 0.0), -res.mapping_rot[1])) *
+        pxr::GfMatrix4d().SetRotate(
+            pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -res.mapping_rot[0]));
+
+    pxr::GfVec3d angles = xf.DecomposeRotation(
+        pxr::GfVec3d::ZAxis(), pxr::GfVec3d::YAxis(), pxr::GfVec3d::XAxis());
+
+    pxr::GfVec3f rot_vec(angles[2], angles[1], angles[0]);
 
     pxr::UsdGeomXformCommonAPI xform_api(dome_light);
-
-    xform_api.SetRotate(rot, pxr::UsdGeomXformCommonAPI::RotationOrderXYZ);
+    xform_api.SetRotate(rot_vec, pxr::UsdGeomXformCommonAPI::RotationOrderXYZ);
   }
 }
 
@@ -525,17 +537,15 @@ void dome_light_to_world_material(const USDImportParams &params,
   pxr::UsdGeomXformCache xf_cache(time);
   pxr::GfMatrix4d xf = xf_cache.GetLocalToWorldTransform(dome_light.GetPrim());
 
-  pxr::GfRotation rot = xf.ExtractRotation();
+  xf = pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), -90.0)) *
+       pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -90.0)) * xf;
 
-  pxr::GfVec3d angles = rot.Decompose(
-      pxr::GfVec3d::ZAxis(), pxr::GfVec3d::YAxis(), pxr::GfVec3d::XAxis());
+  pxr::GfVec3d angles = xf.DecomposeRotation(
+      pxr::GfVec3d::XAxis(), pxr::GfVec3d::YAxis(), pxr::GfVec3d::ZAxis());
+  pxr::GfVec3f rot_vec(-angles[0], -angles[1], -angles[2]);
 
-  pxr::GfVec3f rot_vec(angles[0], angles[1], angles[2]);
-
+  /* Convert degrees to radians. */
   rot_vec *= M_PI / 180.0f;
-
-  rot_vec[0] -= M_PI_2;
-  rot_vec[2] -= M_PI_2;
 
   if (bNodeSocket *socket = bke::nodeFindSocket(mapping, SOCK_IN, "Rotation")) {
     bNodeSocketValueVector *rot_value = static_cast<bNodeSocketValueVector *>(
