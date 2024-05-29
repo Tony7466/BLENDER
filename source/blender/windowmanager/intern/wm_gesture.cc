@@ -353,11 +353,11 @@ static void draw_filled_lasso(wmGesture *gt)
 
 /* TODO: Extract this common functionality so it can be shared between Sculpt brushes, the annotate
  * tool, and this common logic. */
-static void draw_lasso_stroke_line(wmGesture *gt, const uint shdr_pos)
+static void draw_lasso_smooth_stroke_indicator(wmGesture *gt, const uint shdr_pos)
 {
   short(*lasso)[2] = static_cast<short int(*)[2]>(gt->customdata);
-  short last_x = lasso[gt->points - 1][0] /* + gt->winrct.xmin*/;
-  short last_y = lasso[gt->points - 1][1] /* + gt->winrct.ymin*/;
+  short last_x = lasso[gt->points - 1][0];
+  short last_y = lasso[gt->points - 1][1];
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_line_smooth(true);
@@ -383,9 +383,7 @@ static void draw_lasso_stroke_line(wmGesture *gt, const uint shdr_pos)
   /* Draw line from the last saved position to the current mouse position. */
   immUniformColor4f(color[0], color[1], color[2], 0.8f);
   immBegin(GPU_PRIM_LINES, 2);
-  immVertex2f(shdr_pos,
-              gt->current_mouse_position.x /* + gt->winrct.xmin */,
-              gt->current_mouse_position.y /* + gt->winrct.ymin */);
+  immVertex2f(shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y);
   immVertex2f(shdr_pos, last_x, last_y);
   immEnd();
 
@@ -435,7 +433,7 @@ static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
   immUnbindProgram();
 
   if (gt->use_smooth) {
-    draw_lasso_stroke_line(gt, shdr_pos);
+    draw_lasso_smooth_stroke_indicator(gt, shdr_pos);
   }
 }
 
