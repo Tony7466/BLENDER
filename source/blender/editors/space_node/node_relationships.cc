@@ -591,6 +591,24 @@ static void finalize_viewer_link(const bContext &C,
   ED_node_tree_propagate_change(&C, bmain, snode.edittree);
 }
 
+static const bNode *find_overlapping_node(const bNodeTree &tree,
+                                          const rctf &rect,
+                                          const Span<const bNode *> ignored_nodes)
+{
+  for (const bNode *node : tree.all_nodes()) {
+    if (node->is_frame()) {
+      continue;
+    }
+    if (ignored_nodes.contains(node)) {
+      continue;
+    }
+    if (BLI_rctf_isect(&rect, &node->runtime->totr, nullptr)) {
+      return node;
+    }
+  }
+  return nullptr;
+}
+
 /**
  * Positions the viewer node so that it is slightly to the right and top of the node to view. The
  * viewer is placed so that it does not overlap any existing nodes. The algorithm will iteratively
@@ -605,6 +623,7 @@ static void position_viewer_node(const bNodeTree &tree,
                                  const bNodeSocket &socket_to_view)
 {
   tree.ensure_topology_cache();
+
   const float default_padding = 10;
   const float viewer_width = viewer_node.width;
   float viewer_height = BLI_rctf_size_y(&viewer_node.runtime->totr);
@@ -625,20 +644,8 @@ static void position_viewer_node(const bNodeTree &tree,
     main_candidate_rect.ymin = current_y - viewer_height;
     BLI_rctf_pad(&main_candidate_rect, default_padding, default_padding);
 
-    const bNode *collided_node = nullptr;
-    for (const bNode *node : tree.all_nodes()) {
-      if (node->is_frame()) {
-        continue;
-      }
-      if (ELEM(node, &viewer_node, &node_to_view)) {
-        continue;
-      }
-      if (!BLI_rctf_isect(&main_candidate_rect, &node->runtime->totr, nullptr)) {
-        continue;
-      }
-      collided_node = node;
-      break;
-    }
+    const bNode *collided_node = find_overlapping_node(
+        tree, main_candidate_rect, {&viewer_node, &node_to_view});
     if (!collided_node) {
       final_x = main_candidate_x;
       break;
@@ -660,20 +667,8 @@ static void position_viewer_node(const bNodeTree &tree,
     aligned_candidate_rect.ymax = current_y;
     BLI_rctf_pad(&aligned_candidate_rect, default_padding, default_padding);
 
-    bool found_collision_for_aligned_rect = false;
-    for (const bNode *node : tree.all_nodes()) {
-      if (node->is_frame()) {
-        continue;
-      }
-      if (ELEM(node, &viewer_node, &node_to_view)) {
-        continue;
-      }
-      if (BLI_rctf_isect(&aligned_candidate_rect, &node->runtime->totr, nullptr)) {
-        found_collision_for_aligned_rect = true;
-        break;
-      }
-    }
-
+    bool found_collision_for_aligned_rect = find_overlapping_node(
+        tree, aligned_candidate_rect, {&viewer_node, &node_to_view});
     if (!found_collision_for_aligned_rect) {
       /* Align to the found node. */
       final_x = align_node_x;
