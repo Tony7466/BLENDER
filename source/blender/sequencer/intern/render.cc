@@ -1131,7 +1131,6 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
 
   if (proxy->anim == nullptr) {
     if (seq_proxy_get_custom_file_filepath(seq, filepath, context->view_id)) {
-      // eeeh probably should be managed by anim_manager as well
       proxy->anim = openanim(filepath, IB_rect, 0, seq->strip->colorspace_settings.name);
     }
     if (proxy->anim == nullptr) {

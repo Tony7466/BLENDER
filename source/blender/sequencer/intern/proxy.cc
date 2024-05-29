@@ -451,9 +451,6 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     return true;
   }
 
-  AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
-  manager->strip_anims_load_and_lock(scene, seq);
-
   num_files = seq_proxy_context_count(seq, scene);
 
   MultiViewPrefixVars prefix_vars; /* Initialized by #seq_proxy_multiview_context_invalid. */
@@ -464,13 +461,14 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
 
     /* Check if proxies are already built here, because actually opening anims takes a lot of
      * time. */
+    AnimManager *manager = seq_anim_manager_ensure(SEQ_editing_get(scene));
+    manager->strip_anims_load_and_lock(scene, seq);
     blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
-    if (anims.size() <= i && !seq_proxy_need_rebuild(seq, anims[i])) {
+    if (anims.size() >= i && !seq_proxy_need_rebuild(seq, anims[i])) {
+      manager->strip_anims_unlock(scene, seq);
       continue;
     }
-
     manager->strip_anims_unlock(scene, seq);
-    manager->free_anims_by_seq(scene, seq);
 
     context = static_cast<SeqIndexBuildContext *>(
         MEM_callocN(sizeof(SeqIndexBuildContext), "seq proxy rebuild context"));
@@ -492,9 +490,9 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     context->view_id = i; /* only for images */
 
     if (nseq->type == SEQ_TYPE_MOVIE) {
-      manager->strip_anims_load_and_lock(scene, seq);
-      anims = manager->strip_anims_get(scene, seq);
-      if (anims.size() <= i) {
+      manager->strip_anims_load_and_lock(scene, nseq);
+      anims = manager->strip_anims_get(scene, nseq);
+      if (anims.size() > i) {
         context->index_context = IMB_anim_index_rebuild_context(
             anims[i],
             IMB_Timecode_Type(context->tc_flags),
@@ -509,13 +507,13 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
         MEM_freeN(context);
         return false;
       }
+      manager->strip_anims_unlock(scene, nseq);
     }
 
     link = BLI_genericNodeN(context);
     BLI_addtail(queue, link);
   }
 
-  manager->strip_anims_unlock(scene, seq);
   return true;
 }
 
