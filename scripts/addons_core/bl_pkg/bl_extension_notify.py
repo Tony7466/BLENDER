@@ -241,9 +241,10 @@ def sync_status_generator(repos_notify, do_online_sync):
                         repos_notify_files[i].append(msg)
                         continue
 
-                    # Always show warnings & errors in the output, otherwise there is no way
-                    # to troubleshoot when checking for updates fails.
-                    if not (is_debug or ty in {'WARN', 'ERROR'}):
+                    # Don't show console output here, as errors are expected when
+                    # the computer is not connected to the internet. Either runn
+                    # with debugging, or manually click update button in preferences.
+                    if not is_debug:
                         continue
 
                     # TODO: output this information to a place for users, if they want to debug.
