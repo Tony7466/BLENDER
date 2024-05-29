@@ -133,11 +133,6 @@ static void potrace_curve_parent_index(const Span<const potrace_path_t *> src_cu
   });
 }
 
-static float2 to_float2(const potrace_dpoint_s &point)
-{
-  return float2(point.x, point.y);
-}
-
 static float3 to_float3(const potrace_dpoint_s &point)
 {
   return float3(point.x, point.y, 0.0f);
@@ -315,9 +310,8 @@ static void bezier_copy_as_bezier_right_handles(const Span<potrace_dpoint_t[3]> 
       dst.last() = to_float3(next_point[potrace::bezier_prev_right_handle]);
       break;
     case potrace::SegmentType::Poly:
-      dst.last() = float3(math::midpoint(to_float2(next_point[potrace::poly_control]),
-                                         to_float2(src.last()[potrace::bezier_control])),
-                          0.0f);
+      dst.last() = math::midpoint(to_float3(next_point[potrace::poly_control]),
+                                  to_float3(src.last()[potrace::bezier_control]));
       break;
   }
 }
@@ -348,9 +342,8 @@ static void poly_copy_as_bezier_left_handles(const Span<potrace_dpoint_t[3]> src
       dst.first() = to_float3(prev_point[potrace::poly_right_handle]);
       break;
     case potrace::SegmentType::Bezier:
-      dst.first() = float3(math::midpoint(to_float2(prev_point[potrace::bezier_control]),
-                                          to_float2(src.first()[potrace::poly_control])),
-                           0.0f);
+      dst.first() = math::midpoint(to_float3(prev_point[potrace::bezier_control]),
+                                   to_float3(src.first()[potrace::poly_control]));
       break;
   }
   parallel_transform(src.drop_back(1),
@@ -360,9 +353,8 @@ static void poly_copy_as_bezier_left_handles(const Span<potrace_dpoint_t[3]> src
                        return to_float3(point[potrace::poly_next_left_handle]);
                      });
   if (next == potrace::SegmentType::Bezier) {
-    dst.last() = float3(math::midpoint(to_float2(src.last()[potrace::poly_control]),
-                                       to_float2(src.last()[potrace::poly_next_left_handle])),
-                        0.0f);
+    dst.last() = math::midpoint(to_float3(src.last()[potrace::poly_control]),
+                                to_float3(src.last()[potrace::poly_next_left_handle]));
   }
 }
 
@@ -383,9 +375,8 @@ static void poly_copy_as_bezier_right_handles(const Span<potrace_dpoint_t[3]> sr
       dst.last() = to_float3(src.last()[potrace::poly_right_handle]);
       break;
     case potrace::SegmentType::Bezier:
-      dst.last(1) = float3(math::midpoint(to_float2(src.last()[potrace::poly_control]),
-                                          to_float2(src.last()[potrace::poly_right_handle])),
-                           0.0f);
+      dst.last(1) = math::midpoint(to_float3(src.last()[potrace::poly_control]),
+                                   to_float3(src.last()[potrace::poly_right_handle]));
       dst.last(0) = to_float3(next_point[potrace::bezier_prev_right_handle]);
       break;
   }
