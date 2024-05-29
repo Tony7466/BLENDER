@@ -883,7 +883,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       nodes::MenuSwitchItemsAccessor::blend_write(writer, *node);
     }
     if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
-      blender::nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
+      nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
     }
   }
 
@@ -1163,7 +1163,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           break;
         }
         case GEO_NODE_CAPTURE_ATTRIBUTE: {
-          blender::nodes::CaptureAttributeItemsAccessor::blend_read_data(reader, *node);
+          nodes::CaptureAttributeItemsAccessor::blend_read_data(reader, *node);
           break;
         }
 
