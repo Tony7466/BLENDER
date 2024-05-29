@@ -36,21 +36,36 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 #ifdef WITH_POTRACE
 
+static void fill_line(const float3 first, const float3 last, MutableSpan<float3> points)
+{
+  const float delta_fator = 1.0f / float(points.size() - 1);
+  for (const int64_t i : points.index_range()) {
+    points[i] = bke::attribute_math::mix2(float(i) * delta_fator, first, last);
+  }
+}
+
 class ImageBitMapFieldContext : public FieldContext {
  private:
+  int2 data_resolution_;
   int2 resolution_;
   const float2 min_point_;
   const float2 max_point_;
 
  public:
-  ImageBitMapFieldContext(const int2 resolution, const float2 min_point, const float2 max_point)
-      : resolution_(resolution), min_point_(min_point), max_point_(max_point)
+  ImageBitMapFieldContext(const int2 data_resolution,
+                          const int2 resolution,
+                          const float2 min_point,
+                          const float2 max_point)
+      : data_resolution_(data_resolution),
+        resolution_(resolution),
+        min_point_(min_point),
+        max_point_(max_point)
   {
   }
 
   int64_t points_num() const
   {
-    return int64_t(resolution_.x) * int64_t(resolution_.y);
+    return int64_t(data_resolution_.x) * int64_t(data_resolution_.y);
   }
 
   GVArray get_varray_for_input(const FieldInput &field_input,
@@ -67,20 +82,18 @@ class ImageBitMapFieldContext : public FieldContext {
     }
 
     Array<float3> positions(this->points_num());
-
     threading::parallel_for(
         IndexRange(resolution_.y),
         4096,
         [&](const IndexRange range) {
+          const float delta_fator = 1.0f / float(resolution_.y - 1);
           for (const int y_index : range) {
-            int64_t start_offset = y_index * resolution_.x;
-            const float y_factor = bke::attribute_math::mix2(
-                float(y_index) / float(resolution_.y - 1), min_point_[1], max_point_[1]);
-            for (const int64_t x_index : IndexRange(resolution_.x)) {
-              const float x_factor = bke::attribute_math::mix2(
-                  float(x_index) / float(resolution_.x - 1), min_point_[0], max_point_[0]);
-              positions[start_offset + x_index] = float3(x_factor, y_factor, 0.0f);
-            }
+            const float y_position = bke::attribute_math::mix2(
+                float(y_index) * delta_fator, min_point_.y, max_point_.y);
+            fill_line(
+                float3(min_point_.x, y_position, 0.0f),
+                float3(max_point_.x, y_position, 0.0f),
+                positions.as_mutable_span().slice(y_index * data_resolution_.x, resolution_.x));
           }
         },
         threading::accumulated_task_sizes(
@@ -109,7 +122,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const ImageBitMapFieldContext context(resolution, min_point, max_point);
+  const int2 fixed_res = geometry::potrace::fixed_resolution(resolution);
+  const ImageBitMapFieldContext context(fixed_res, resolution, min_point, max_point);
 
   FieldEvaluator evaluator(context, context.points_num());
 
@@ -120,15 +134,29 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   AnonymousAttributeIDPtr parent_curve_id = params.get_output_anonymous_attribute_id_if_needed(
       "Parent Curve");
-  std::optional<Curves *> curve = geometry::plane_to_curve(
-      resolution, byte_map, min_point, max_point, parent_curve_id.get());
-  if (!curve.has_value()) {
+
+  potrace_state_t *potrace_image = geometry::potrace::image_for_predicate(
+      resolution, [&](const int64_t /* line_i */, const int64_t pixel_index) -> bool {
+        return byte_map[pixel_index];
+      });
+
+  if (potrace_image == nullptr) {
     params.error_message_add(NodeWarningType::Warning, TIP_("Can not generate curve"));
+    params.set_default_remaining_outputs();
+  }
+
+  BLI_SCOPED_DEFER([&]() { geometry::potrace::free_image(potrace_image); });
+
+  Curves *curve = geometry::plane_to_curve(potrace_image, parent_curve_id.get());
+  if (curve == nullptr) {
     params.set_default_remaining_outputs();
     return;
   }
 
-  params.set_output("Curve", GeometrySet::from_curves(*curve));
+  curve->geometry.wrap().transform(
+      geometry::transformation_potrace_to_plane(resolution, min_point, max_point));
+
+  params.set_output("Curve", GeometrySet::from_curves(curve));
 }
 
 #else

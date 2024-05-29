@@ -13,49 +13,48 @@
 
 #  include "BLI_array_utils.hh"
 #  include "BLI_map.hh"
+#  include "BLI_math_matrix.hh"
+#  include "BLI_math_matrix_types.hh"
+#  include "BLI_math_quaternion_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_offset_indices.hh"
 #  include "BLI_task.hh"
 
+#  include "GEO_curve_plane.hh"
+
 namespace blender::geometry {
 
-static constexpr const int segment_size = sizeof(potrace_word) * 8;
+namespace potrace {
 
-static potrace_word from_bools(const Span<bool> src)
+int2 fixed_resolution(const int2 resolution)
 {
-  BLI_assert(src.size() <= segment_size);
-  potrace_word result = 0;
-  for (const int64_t i : src.index_range()) {
-    const potrace_word bit(src[i]);
-    BLI_assert(ELEM(bit, 0, 1));
-    result |= bit << (segment_size - 1 - i);
-  }
-  return result;
+  const int extra = resolution.x % segment_size;
+  const int segments_num = resolution.x / segment_size + int(extra != 0);
+  return int2(segments_num * segment_size, resolution.y);
 }
 
-static potrace_state_t *bools_to_potrace_curves(const int2 resolution, const Span<bool> grid_color)
+potrace_state_t *image_from_line_segments(
+    const int2 resolution,
+    const FunctionRef<
+        void(int64_t line_i, int64_t segments_start, int64_t segments_num, char *r_segments)> func)
 {
-  const int full_segments_num = resolution.x / segment_size;
-  const int extra_bits_num = resolution.x % segment_size;
-  const int extra_segment = extra_bits_num == 0 ? 0 : 1;
-  const int segments_num = full_segments_num + extra_segment;
+  static_assert(alignof(potrace_word) == alignof(LineSegment));
+  static_assert(sizeof(potrace_word) == sizeof(LineSegment));
 
-  Array<potrace_word> segments(segments_num * resolution.y);
+  const int2 segments_resolution = fixed_resolution(resolution) / int2(segment_size, 1);
+  Array<potrace_word> segments(segments_resolution.x * segments_resolution.y);
+
   threading::parallel_for(
       IndexRange(resolution.y),
       4096,
       [&](const IndexRange range) {
-        for (const int y_index : range) {
-          const Span<bool> src_line = grid_color.slice(y_index * resolution.x, resolution.x);
-          MutableSpan<potrace_word> line = segments.as_mutable_span().slice(y_index * segments_num,
-                                                                            segments_num);
-          for (const int i : IndexRange(full_segments_num)) {
-            line[i] = from_bools(src_line.slice(i * segment_size, segment_size));
-          }
-          if (extra_bits_num > 0) {
-            line.last() = from_bools(
-                src_line.slice(full_segments_num * segment_size, extra_bits_num));
-          }
+        for (const int64_t line_i : range) {
+          MutableSpan<potrace_word> line = segments.as_mutable_span().slice(
+              line_i * segments_resolution.x, segments_resolution.x);
+          func(line_i,
+               line_i * segments_resolution.x,
+               segments_resolution.x,
+               line.cast<char>().data());
         }
       },
       threading::accumulated_task_sizes(
@@ -64,14 +63,21 @@ static potrace_state_t *bools_to_potrace_curves(const int2 resolution, const Spa
   potrace_bitmap_t bitmap;
   bitmap.w = resolution.x;
   bitmap.h = resolution.y;
-  bitmap.dy = segments_num;
+  bitmap.dy = segments_resolution.x;
   bitmap.map = segments.data();
   potrace_param_t *params = potrace_param_default();
+  BLI_assert(params != nullptr);
   BLI_SCOPED_DEFER([&]() { potrace_param_free(params); });
 
-  BLI_assert(params != nullptr);
   return potrace_trace(params, &bitmap);
 }
+
+void free_image(potrace_state_t *image)
+{
+  potrace_state_free(image);
+}
+
+}  // namespace potrace
 
 static void potrace_gather_curves(const potrace_state_t *potrace,
                                   Vector<const potrace_path_t *> &r_list)
@@ -491,22 +497,13 @@ static void transform_points(const int2 resolution,
   });
 }
 
-std::optional<Curves *> plane_to_curve(const int2 resolution,
-                                       const Span<bool> grid_color,
-                                       const float2 min_point,
-                                       const float2 max_point,
-                                       const bke::AttributeIDRef &parent_index_id)
+Curves *plane_to_curve(const potrace_state_t *potrace_result,
+                       const bke::AttributeIDRef &parent_index_id)
 {
-  potrace_state_t *potrace_result = bools_to_potrace_curves(resolution, grid_color);
-  if (potrace_result == nullptr) {
-    return nullptr;
-  }
-  BLI_SCOPED_DEFER([&]() { potrace_state_free(potrace_result); });
-
   Vector<const potrace_path_t *> curves_list;
   potrace_gather_curves(potrace_result, curves_list);
   if (curves_list.is_empty()) {
-    return std::nullopt;
+    return nullptr;
   }
 
   Array<int> parent_index_data;
@@ -533,7 +530,7 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
 
   const int64_t total_vertices = src_total_segments + extra_total_segments;
   if (total_vertices == 0) {
-    return std::nullopt;
+    return nullptr;
   }
 
   Curves *curves_id = bke::curves_new_nomain(total_vertices, curves_list.size());
@@ -609,9 +606,9 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
                                       positions_right.slice(curve_offsets[curve_i]));
   });
 
-  transform_points(resolution, min_point, max_point, positions);
-  transform_points(resolution, min_point, max_point, positions_left);
-  transform_points(resolution, min_point, max_point, positions_right);
+  // transform_points(resolution, min_point, max_point, positions);
+  // transform_points(resolution, min_point, max_point, positions_left);
+  // transform_points(resolution, min_point, max_point, positions_right);
 
   if (!parent_index_data.is_empty()) {
     bke::SpanAttributeWriter<int> parent_attribute =
@@ -625,6 +622,15 @@ std::optional<Curves *> plane_to_curve(const int2 resolution,
   curves.tag_positions_changed();
 
   return curves_id;
+}
+
+float4x4 transformation_potrace_to_plane(const int2 resolution,
+                                         const float2 min_point,
+                                         const float2 max_point)
+{
+  const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
+  return math::from_loc_rot_scale<float4x4>(
+      float3(min_point, 0.0f), math::Quaternion::identity(), float3(resolution_factor, 1.0f));
 }
 
 }  // namespace blender::geometry
