@@ -77,6 +77,28 @@ void free_image(potrace_state_t *image)
   potrace_state_free(image);
 }
 
+enum struct SegmentType : int8_t {
+  Bezier = POTRACE_CURVETO,
+  Poly = POTRACE_CORNER,
+};
+
+static bool extra_bezier_point_between(const SegmentType a_segment_type,
+                                       const SegmentType b_segment_type)
+{
+  if (a_segment_type == SegmentType::Poly && b_segment_type == SegmentType::Bezier) {
+    return true;
+  }
+  return false;
+}
+
+static const constexpr int bezier_prev_right_handle = 0;
+static const constexpr int bezier_left_handle = 1;
+static const constexpr int bezier_control = 2;
+
+static const constexpr int poly_control = 1;
+static const constexpr int poly_right_handle = 2;
+static const constexpr int poly_next_left_handle = 2;
+
 }  // namespace potrace
 
 static void potrace_gather_curves(const potrace_state_t *potrace,
@@ -134,32 +156,6 @@ static void parallel_transform(const Span<In> src,
     std::transform(src_slice.begin(), src_slice.end(), dst_slice.begin(), func);
   });
 }
-
-namespace potrace {
-
-enum struct SegmentType : int8_t {
-  Bezier = POTRACE_CURVETO,
-  Poly = POTRACE_CORNER,
-};
-
-static bool extra_bezier_point_between(const SegmentType a_segment_type,
-                                       const SegmentType b_segment_type)
-{
-  if (a_segment_type == SegmentType::Poly && b_segment_type == SegmentType::Bezier) {
-    return true;
-  }
-  return false;
-}
-
-static const constexpr int bezier_prev_right_handle = 0;
-static const constexpr int bezier_left_handle = 1;
-static const constexpr int bezier_control = 2;
-
-static const constexpr int poly_control = 1;
-static const constexpr int poly_right_handle = 2;
-static const constexpr int poly_next_left_handle = 2;
-
-}  // namespace potrace
 
 static void potrace_curve_count_type_switch(const Span<const potrace_path_t *> src_curves,
                                             MutableSpan<int> curve_type_switch_offset_num)
@@ -280,7 +276,7 @@ static void copy_poly_curve(const potrace_path_t &potrace_curve, MutableSpan<flo
 {
   const Span<potrace_dpoint_t[3]> src_curve(potrace_curve.curve.c, potrace_curve.curve.n);
   parallel_transform(src_curve, 4096, positions, [&](const potrace_dpoint_t(&point)[3]) -> float3 {
-    return to_float3(point[poly_control]);
+    return to_float3(point[potrace::poly_control]);
   });
 }
 
