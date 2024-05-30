@@ -45,7 +45,9 @@ void main()
   screen_space_pos[0] = pos0.xy / pos0.w;
   screen_space_pos[1] = pos1.xy / pos1.w;
 
-  const float wire_width = geometry_in[0].wire_width * sizeEdge;
+  /* `sizeEdge` is defined as the distance from the center to the outer edge. As such to get the
+   total width it needs to be doubled. */
+  const float wire_width = geometry_in[0].wire_width * (sizeEdge * 2);
   geometry_out.wire_width = wire_width;
   float half_size = max(wire_width / 2.0, 0.5);
 

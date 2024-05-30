@@ -30,8 +30,10 @@ void main()
 
   geometry_out.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
   geometry_out.finalColor.a = 1.0;
-  /* Because the packing clamps the value, the wire width is passed in compressed. */
-  float wire_width = bone_color.a * WIRE_WIDTH_COMPRESSION * sizeEdge;
+  /* Because the packing clamps the value, the wire width is passed in compressed.
+  `sizeEdge` is defined as the distance from the center to the outer edge. As such to get the total
+   width it needs to be doubled. */
+  float wire_width = bone_color.a * WIRE_WIDTH_COMPRESSION * (sizeEdge * 2);
   geometry_out.wire_width = wire_width;
 
   /* Fetch vertex positions and transform to clip space ("vertex shader"). */
