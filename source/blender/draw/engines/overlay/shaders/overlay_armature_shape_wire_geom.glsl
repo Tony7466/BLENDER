@@ -57,19 +57,33 @@ void main()
   }
 
   const vec2 line = (screen_space_pos[0] - screen_space_pos[1]) * sizeViewport.xy;
-  const vec2 line_norm = normalize(vec2(line[1], -line[0]));
-  vec2 edge_ofs = (half_size * line_norm) * sizeViewportInv;
+  const vec2 line_normalized = normalize(line);
+  const vec2 line_normal = normalize(vec2(line[1], -line[0]));
+  vec2 edge_ofs = (half_size * line_normal) * sizeViewportInv;
+  vec2 cap_ofs = (half_size * line_normalized) * sizeViewportInv;
 
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
+
   const vec4 final_color = geometry_in[0].finalColor;
+  /* Sinus and Cosinus at 45 are the same value. */
+  const float sin_cos_45 = 0.707;
+
+  do_vertex(final_color, pos0, 0, cap_ofs);
+  do_vertex(final_color, pos0, 0, cap_ofs*sin_cos_45 + edge_ofs*sin_cos_45);
+  do_vertex(final_color, pos0, 0, cap_ofs*sin_cos_45 - edge_ofs*sin_cos_45);
+
   do_vertex(final_color, pos0, half_size, edge_ofs);
   do_vertex(final_color, pos0, -half_size, -edge_ofs);
 
   view_clipping_distances_set(gl_in[1]);
   do_vertex(final_color, pos1, half_size, edge_ofs);
   do_vertex(final_color, pos1, -half_size, -edge_ofs);
+
+  do_vertex(final_color, pos1, 0, -cap_ofs*sin_cos_45 + edge_ofs*sin_cos_45);
+  do_vertex(final_color, pos1, 0, -cap_ofs*sin_cos_45 - edge_ofs*sin_cos_45);
+  do_vertex(final_color, pos1, 0, -cap_ofs);
 
   EndPrimitive();
 }
