@@ -7,6 +7,7 @@
  * This also fills the different render passes.
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_shared_exponent_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
@@ -15,11 +16,11 @@ vec3 load_radiance_direct(ivec2 texel, int i)
 {
   switch (i) {
     case 0:
-      return texelFetch(direct_radiance_1_tx, texel, 0).rgb;
+      return rgb9e5_decode(texelFetch(direct_radiance_1_tx, texel, 0).r);
     case 1:
-      return texelFetch(direct_radiance_2_tx, texel, 0).rgb;
+      return rgb9e5_decode(texelFetch(direct_radiance_2_tx, texel, 0).r);
     case 2:
-      return texelFetch(direct_radiance_3_tx, texel, 0).rgb;
+      return rgb9e5_decode(texelFetch(direct_radiance_3_tx, texel, 0).r);
     default:
       return vec3(0);
   }
