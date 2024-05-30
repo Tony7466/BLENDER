@@ -188,14 +188,6 @@ class TOPBAR_MT_editor_menus(Menu):
         else:
             layout.menu("TOPBAR_MT_blender", text="Blender")
 
-        layout.menu("TOPBAR_MT_file")
-        layout.menu("TOPBAR_MT_edit")
-
-        layout.menu("TOPBAR_MT_render")
-
-        layout.menu("TOPBAR_MT_window")
-        layout.menu("TOPBAR_MT_help")
-
 
 class TOPBAR_MT_blender(Menu):
     bl_label = "Blender"

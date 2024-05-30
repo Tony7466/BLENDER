@@ -580,7 +580,7 @@ GHOST_TSuccess GHOST_SystemCocoa::init()
       if ([NSApp mainMenu] == nil) {
         NSMenu *mainMenubar = [[NSMenu alloc] init];
         NSMenuItem *menuItem;
-        NSMenu *windowMenu;
+        NSMenu *fileMenu, *editMenu, *renderMenu, *windowMenu, *helpMenu;
         NSMenu *appMenu;
 
         /* Create the application menu. */
@@ -640,11 +640,20 @@ GHOST_TSuccess GHOST_SystemCocoa::init()
                                   keyEquivalent:@"w"];
         [menuItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
 
-        menuItem = [[NSMenuItem alloc] init];
-        [menuItem setSubmenu:windowMenu];
+        // Fake menus
+        fileMenu = [[NSMenu alloc] initWithTitle:@"File"];
+        editMenu = [[NSMenu alloc] initWithTitle:@"Edit"];
+        renderMenu = [[NSMenu alloc] initWithTitle:@"Render"];
+        helpMenu = [[NSMenu alloc] initWithTitle:@"Help"];
 
-        [mainMenubar addItem:menuItem];
-        [menuItem release];
+        for (NSMenu *sub_menu : {fileMenu, editMenu, renderMenu, windowMenu, helpMenu}) {
+          menuItem = [[NSMenuItem alloc] init];
+          [menuItem setSubmenu:sub_menu];
+
+          [mainMenubar addItem:menuItem];
+          [menuItem release];
+        }
+
 
         [NSApp setMainMenu:mainMenubar];
         [NSApp setWindowsMenu:windowMenu];
