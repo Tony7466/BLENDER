@@ -694,14 +694,14 @@ static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
   bool changed = false;
   if (mode == DeleteFrameMode::ACTIVE_FRAME && grease_pencil.has_active_layer()) {
     bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
-    if (layer.is_editable() && layer.frame_key_at(current_frame)) {
-      changed |= grease_pencil.remove_frames(layer, {*layer.frame_key_at(current_frame)});
+    if (layer.is_editable() && layer.start_frame_at(current_frame)) {
+      changed |= grease_pencil.remove_frames(layer, {*layer.start_frame_at(current_frame)});
     }
   }
   else if (mode == DeleteFrameMode::ALL_FRAMES) {
     for (bke::greasepencil::Layer *layer : grease_pencil.layers_for_write()) {
-      if (layer->is_editable() && layer->frame_key_at(current_frame)) {
-        changed |= grease_pencil.remove_frames(*layer, {*layer->frame_key_at(current_frame)});
+      if (layer->is_editable() && layer->start_frame_at(current_frame)) {
+        changed |= grease_pencil.remove_frames(*layer, {*layer->start_frame_at(current_frame)});
       }
     }
   }
@@ -1875,7 +1875,7 @@ static Object *duplicate_grease_pencil_object(Main *bmain,
                                               Scene *scene,
                                               ViewLayer *view_layer,
                                               Base *base_prev,
-                                              GreasePencil &grease_pencil_src)
+                                              const GreasePencil &grease_pencil_src)
 {
   const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
   Base *base_new = object::add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
@@ -1891,14 +1891,14 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
 {
   using namespace bke::greasepencil;
 
-  Layer layer_src = *grease_pencil_src.layers().get(layer_index, &layer_src);
-
-  const int dst_layer_index = grease_pencil_dst.layers_for_write().first_index_try(&layer_src);
-  if (dst_layer_index != -1) {
-    return *grease_pencil_dst.layers_for_write()[dst_layer_index];
+  /* This assumes that the index is valid. Will cause an assert if it is not. */
+  const Layer &layer_src = *grease_pencil_src.layer(layer_index);
+  if (TreeNode *node = grease_pencil_dst.find_node_by_name(layer_src.name())) {
+    return node->as_layer();
   }
 
-  Layer &dst_layer = grease_pencil_dst.add_layer(layer_src.name());
+  /* If the layer can't be found in `grease_pencil_dst` by name add a new layer. */
+  Layer &new_layer = grease_pencil_dst.add_layer(layer_src.name());
 
   /* Transfer Layer attributes. */
   bke::gather_attributes(grease_pencil_src.attributes(),
@@ -1908,7 +1908,7 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
                          Span({layer_index}),
                          grease_pencil_dst.attributes_for_write());
 
-  return dst_layer;
+  return new_layer;
 }
 
 static bool grease_pencil_separate_selected(bContext &C,

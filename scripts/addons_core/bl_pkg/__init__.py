@@ -134,29 +134,81 @@ use_repos_to_notify = False
 
 
 def repos_to_notify():
-    repos_notify = []
-    if not bpy.app.background:
-        # To use notifications on startup requires:
-        # - The splash displayed.
-        # - The status bar displayed.
-        #
-        # Since it's not all that common to disable the status bar just run notifications
-        # if any repositories are marked to run notifications.
+    import os
+    from .bl_extension_utils import (
+        repo_index_outdated,
+        scandir_with_demoted_errors,
+        PKG_MANIFEST_FILENAME_TOML,
+    )
 
-        prefs = bpy.context.preferences
-        extension_repos = prefs.extensions.repos
-        for repo_item in extension_repos:
-            if not repo_item.enabled:
-                continue
-            if not repo_item.use_sync_on_startup:
-                continue
-            if not repo_item.use_remote_url:
-                continue
-            # Invalid, if there is no remote path this can't update.
-            if not repo_item.remote_url:
-                continue
-            repos_notify.append(repo_item)
-    return repos_notify
+    repos_notify = []
+    do_online_sync = False
+
+    if bpy.app.background:
+        return repos_notify, do_online_sync
+
+    # To use notifications on startup requires:
+    # - The splash displayed.
+    # - The status bar displayed.
+    #
+    # Since it's not all that common to disable the status bar just run notifications
+    # if any repositories are marked to run notifications.
+
+    prefs = bpy.context.preferences
+    extension_repos = prefs.extensions.repos
+    for repo_item in extension_repos:
+        if not repo_item.enabled:
+            continue
+        if not repo_item.use_sync_on_startup:
+            continue
+        if not repo_item.use_remote_url:
+            continue
+        remote_url = repo_item.remote_url
+        # Invalid, if there is no remote path this can't update.
+        if not remote_url:
+            continue
+
+        # WARNING: this could be a more expensive check, use a "reasonable" guess.
+        # This is technically incorrect because knowing if a repository has any installed
+        # packages requires reading it's meta-data and comparing it with the directory contents.
+        # Chances are - if the directory contains *any* directories containing a package manifest
+        # this means it has packages installed.
+        #
+        # Simply check the repositories directory isn't empty (ignoring dot-files).
+        # Importantly, this may be false positives but *not* false negatives.
+        repo_is_empty = True
+        repo_directory = repo_item.directory
+        if os.path.isdir(repo_directory):
+            for entry in scandir_with_demoted_errors(repo_directory):
+                if not entry.is_dir():
+                    continue
+                if entry.name.startswith("."):
+                    continue
+                if not os.path.exists(os.path.join(entry.path, PKG_MANIFEST_FILENAME_TOML)):
+                    continue
+                repo_is_empty = False
+                break
+        if repo_is_empty:
+            continue
+
+        # NOTE: offline checks are handled by the notification (not here).
+        repos_notify.append(
+            bl_extension_ops.RepoItem(
+                name=repo_item.name,
+                directory=repo_directory,
+                remote_url=remote_url,
+                module=repo_item.module,
+                use_cache=repo_item.use_cache,
+                access_token=repo_item.access_token if repo_item.use_access_token else "",
+            ),
+        )
+
+        # Update all repos together or none, to avoid bothering users
+        # multiple times in a day.
+        if repo_index_outdated(repo_item.directory):
+            do_online_sync = True
+
+    return repos_notify, do_online_sync
 
 
 # -----------------------------------------------------------------------------
@@ -212,7 +264,10 @@ def extenion_repos_files_clear(directory, _):
     # has the potential to wipe user data #119481.
     import shutil
     import os
-    from .bl_extension_utils import scandir_with_demoted_errors
+    from .bl_extension_utils import (
+        scandir_with_demoted_errors,
+        PKG_MANIFEST_FILENAME_TOML,
+    )
     # Unlikely but possible a new repository is immediately removed before initializing,
     # avoid errors in this case.
     if not os.path.isdir(directory):
@@ -221,18 +276,18 @@ def extenion_repos_files_clear(directory, _):
     if os.path.isdir(path := os.path.join(directory, ".blender_ext")):
         try:
             shutil.rmtree(path)
-        except BaseException as ex:
+        except Exception as ex:
             print("Failed to remove files", ex)
 
     for entry in scandir_with_demoted_errors(directory):
         if not entry.is_dir():
             continue
         path = entry.path
-        if not os.path.exists(os.path.join(path, "blender_manifest.toml")):
+        if not os.path.exists(os.path.join(path, PKG_MANIFEST_FILENAME_TOML)):
             continue
         try:
             shutil.rmtree(path)
-        except BaseException as ex:
+        except Exception as ex:
             print("Failed to remove files", ex)
 
 
@@ -287,11 +342,11 @@ def monkeypatch_extensions_repos_update_pre(*_):
     print_debug("PRE:")
     try:
         monkeypatch_extenions_repos_update_pre_impl()
-    except BaseException as ex:
+    except Exception as ex:
         print_debug("ERROR", str(ex))
     try:
         monkeypatch_extensions_repos_update_pre._fn_orig()
-    except BaseException as ex:
+    except Exception as ex:
         print_debug("ERROR", str(ex))
 
 
@@ -300,11 +355,11 @@ def monkeypatch_extenions_repos_update_post(*_):
     print_debug("POST:")
     try:
         monkeypatch_extenions_repos_update_post._fn_orig()
-    except BaseException as ex:
+    except Exception as ex:
         print_debug("ERROR", str(ex))
     try:
         monkeypatch_extenions_repos_update_post_impl()
-    except BaseException as ex:
+    except Exception as ex:
         print_debug("ERROR", str(ex))
 
 
@@ -434,14 +489,12 @@ def register():
     )
     WindowManager.extension_type = EnumProperty(
         items=(
-            ('ALL', "All", "Show all extensions"),
-            None,
             ('ADDON', "Add-ons", "Only show add-ons"),
             ('THEME', "Themes", "Only show themes"),
         ),
         name="Filter by Type",
         description="Show extensions by type",
-        default='ALL',
+        default='ADDON',
     )
     WindowManager.extension_enabled_only = BoolProperty(
         name="Show Enabled Extensions",
@@ -476,10 +529,12 @@ def register():
     cli_commands.append(bpy.utils.register_cli_command("extension", cli_extension))
 
     global use_repos_to_notify
-    if (repos_notify := repos_to_notify()):
+    repos_notify, do_online_sync = repos_to_notify()
+    if repos_notify:
         use_repos_to_notify = True
         from . import bl_extension_notify
-        bl_extension_notify.register(repos_notify)
+        bl_extension_notify.register()
+        bl_extension_notify.update_non_blocking(repos=repos_notify, do_online_sync=do_online_sync)
     del repos_notify
 
     monkeypatch_install()

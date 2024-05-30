@@ -189,6 +189,29 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   BKE_report(reports, RPT_ERROR, error_message.c_str());
 }
 
+const char *default_channel_group_for_path(const PointerRNA *animated_struct,
+                                           const StringRef prop_rna_path)
+{
+  if (animated_struct->type == &RNA_PoseBone) {
+    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(animated_struct->data);
+    return pose_channel->name;
+  }
+
+  if (animated_struct->type == &RNA_Object) {
+    if (prop_rna_path.find("location") != StringRef::not_found ||
+        prop_rna_path.find("rotation") != StringRef::not_found ||
+        prop_rna_path.find("scale") != StringRef::not_found)
+    {
+      /* NOTE: Keep this label in sync with the "ID" case in
+       * keyingsets_utils.py :: get_transform_generators_base_info()
+       */
+      return "Object Transforms";
+    }
+  }
+
+  return nullptr;
+}
+
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
 {
   /* Set additional flags for the F-Curve (i.e. only integer values). */
@@ -957,14 +980,7 @@ static CombinedKeyingResult insert_key_legacy_action(Main *bmain,
   BLI_assert(action != nullptr);
   BLI_assert(action->wrap().is_action_legacy());
 
-  std::string group;
-  if (ptr->type == &RNA_PoseBone) {
-    bPoseChannel *pose_channel = static_cast<bPoseChannel *>(ptr->data);
-    group = pose_channel->name;
-  }
-  else {
-    group = "Object Transforms";
-  }
+  const char *group = default_channel_group_for_path(ptr, rna_path);
 
   int property_array_index = 0;
   CombinedKeyingResult combined_result;
@@ -978,7 +994,7 @@ static CombinedKeyingResult insert_key_legacy_action(Main *bmain,
                                                                           ptr,
                                                                           prop,
                                                                           action,
-                                                                          group.c_str(),
+                                                                          group,
                                                                           rna_path.c_str(),
                                                                           property_array_index,
                                                                           frame,
@@ -1016,7 +1032,7 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
 static CombinedKeyingResult insert_key_layered_action(Action &action,
                                                       const int32_t binding_handle,
                                                       PointerRNA *rna_pointer,
-                                                      const blender::Span<std::string> rna_paths,
+                                                      const blender::Span<RNAPath> rna_paths,
                                                       const float scene_frame,
                                                       const KeyframeSettings &key_settings,
                                                       const eInsertKeyFlags insert_key_flags)
@@ -1045,16 +1061,16 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
-  for (const std::string &rna_path : rna_paths) {
+  for (const RNAPath &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.c_str(), &ptr, &prop);
+        rna_pointer, rna_path.path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       std::fprintf(stderr,
                    "Failed to insert key on binding %s due to unresolved RNA path: %s\n",
                    binding->name,
-                   rna_path.c_str());
+                   rna_path.path.c_str());
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
     }
@@ -1079,7 +1095,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
 }
 
 CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
-                                    const blender::Span<std::string> rna_paths,
+                                    const blender::Span<RNAPath> rna_paths,
                                     const float scene_frame,
                                     const eInsertKeyFlags insert_key_flags,
                                     const eBezTriple_KeyframeType key_type,
@@ -1127,11 +1143,11 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
   const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
 
-  for (const std::string &rna_path : rna_paths) {
+  for (const RNAPath &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.c_str(), &ptr, &prop);
+        rna_pointer, rna_path.path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
@@ -1145,7 +1161,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                           rna_pointer,
                                           prop,
                                           rna_values.as_mutable_span(),
-                                          -1,
+                                          rna_path.index.value_or(-1),
                                           &anim_eval_context,
                                           nullptr,
                                           successful_remaps);

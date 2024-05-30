@@ -13,7 +13,7 @@
 
 #include "eevee_instance.hh"
 
-#include "eevee_irradiance_cache.hh"
+#include "eevee_lightprobe_volume.hh"
 
 namespace blender::eevee {
 
@@ -611,7 +611,7 @@ void VolumeProbeModule::display_pass_draw(View &view, GPUFrameBuffer *view_fb)
     display_grids_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                                 DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK);
     display_grids_ps_.framebuffer_set(&view_fb);
-    display_grids_ps_.shader_set(inst_.shaders.static_shader_get(DISPLAY_PROBE_GRID));
+    display_grids_ps_.shader_set(inst_.shaders.static_shader_get(DISPLAY_PROBE_VOLUME));
 
     display_grids_ps_.push_constant("sphere_radius", grid.viewport_display_size);
     display_grids_ps_.push_constant("grid_resolution", grid_size);
@@ -958,6 +958,10 @@ void IrradianceBake::surfels_create(const Object &probe_object)
 
   /* WORKAROUND: Sync camera with correct bounds for light culling. */
   inst_.camera.sync();
+  /* WORKAROUND: Sync shadows tile-maps count again with new camera bounds. Fixes issues with sun
+   * lights. */
+  inst_.shadows.end_sync();
+  inst_.lights.end_sync();
 
   DRW_stats_group_start("IrradianceBake.SurfelsCount");
 
