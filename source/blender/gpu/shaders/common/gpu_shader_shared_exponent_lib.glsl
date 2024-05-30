@@ -42,8 +42,7 @@ struct rgb9e5_t {
 
 rgb9e5_t rgb9e5_from_float3(vec3 color)
 {
-  const float max_rgb9e5 = float(MAX_RGB9E5_MANTISSA) /
-                           float(RGB9E5_MANTISSA_VALUES * (1 << MAX_RGB9E5_EXP));
+  const float max_rgb9e5 = float(0xFF80u);
   color = clamp(color, 0.0, max_rgb9e5);
 
   float max_component = max(max(color.r, color.g), color.b);
@@ -52,7 +51,7 @@ rgb9e5_t rgb9e5_from_float3(vec3 color)
   float denom = rgb9e5_exponent_factor(exp_shared);
   int maxm = int(max_component / denom + 0.5);
   if (maxm == MAX_RGB9E5_MANTISSA + 1) {
-    denom *= 2;
+    denom *= 2.0;
     exp_shared += 1;
   }
 
@@ -73,6 +72,7 @@ uint rgb9e5_encode(vec3 color)
 vec3 rgb9e5_decode(uint data)
 {
   int exp_shared = int(data >> (RGB9E5_MANTISSA_BITS * 3));
-  uvec3 mantissa = (uvec3(data) >> (RGB9E5_MANTISSA_BITS * uvec3(0, 1, 2))) & RGB9E5_MANTISSA_BITS;
+  uvec3 mantissa = (uvec3(data) >> (RGB9E5_MANTISSA_BITS * uvec3(0, 1, 2))) &
+                   uint(MAX_RGB9E5_MANTISSA);
   return mantissa * rgb9e5_exponent_factor(exp_shared);
 }
