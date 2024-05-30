@@ -15,10 +15,19 @@ CCL_NAMESPACE_BEGIN
 ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
                                                        ccl_private const Ray *ccl_restrict ray)
 {
-#ifdef PACKED_STATE
+#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
   ((ccl_private float4&)ray->P).w = ray->dP;
   ((ccl_private float4&)ray->D).w = ray->dD;
   INTEGRATOR_STATE_WRITE(state, ray, packed) = (ccl_private packed_ray&)*ray;
+
+  /* Ensure that we can correctly cast between Ray and the generated packed_ray struct. */
+  static_assert(offsetof(packed_ray, P) == offsetof(Ray, P), "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, D) == offsetof(Ray, D), "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, tmin) == offsetof(Ray, tmin), "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, tmax) == offsetof(Ray, tmax), "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, time) == offsetof(Ray, time), "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, dP) == 12 + offsetof(Ray, P), "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, dD) == 12 + offsetof(Ray, D), "Generated packed_ray struct is misaligned with Ray struct");
 #else
   INTEGRATOR_STATE_WRITE(state, ray, P) = ray->P;
   INTEGRATOR_STATE_WRITE(state, ray, D) = ray->D;
@@ -33,7 +42,7 @@ ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
 ccl_device_forceinline void integrator_state_read_ray(ConstIntegratorState state,
                                                       ccl_private Ray *ccl_restrict ray)
 {
-#ifdef PACKED_STATE
+#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
   *((ccl_private packed_ray*)ray) = INTEGRATOR_STATE(state, ray, packed);
   ray->dP = ((ccl_private float4&)ray->P).w;
   ray->dD = ((ccl_private float4&)ray->D).w;
@@ -108,8 +117,16 @@ ccl_device_forceinline void integrator_state_read_shadow_ray_self(
 ccl_device_forceinline void integrator_state_write_isect(
     IntegratorState state, ccl_private const Intersection *ccl_restrict isect)
 {
-#ifdef PACKED_STATE
-  INTEGRATOR_STATE_WRITE(state, isect, packed) = *isect;
+#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+  INTEGRATOR_STATE_WRITE(state, isect, packed) = (ccl_private packed_isect&)*isect;
+
+  /* Ensure that we can correctly cast between Intersection and the generated packed_isect struct. */
+  static_assert(offsetof(packed_isect, t) == offsetof(Intersection, t), "Generated packed_isect struct is misaligned with Intersection struct");
+  static_assert(offsetof(packed_isect, u) == offsetof(Intersection, u), "Generated packed_isect struct is misaligned with Intersection struct");
+  static_assert(offsetof(packed_isect, v) == offsetof(Intersection, v), "Generated packed_isect struct is misaligned with Intersection struct");
+  static_assert(offsetof(packed_isect, object) == offsetof(Intersection, object), "Generated packed_isect struct is misaligned with Intersection struct");
+  static_assert(offsetof(packed_isect, prim) == offsetof(Intersection, prim), "Generated packed_isect struct is misaligned with Intersection struct");
+  static_assert(offsetof(packed_isect, type) == offsetof(Intersection, type), "Generated packed_isect struct is misaligned with Intersection struct");
 #else
   INTEGRATOR_STATE_WRITE(state, isect, t) = isect->t;
   INTEGRATOR_STATE_WRITE(state, isect, u) = isect->u;
@@ -123,8 +140,8 @@ ccl_device_forceinline void integrator_state_write_isect(
 ccl_device_forceinline void integrator_state_read_isect(
     ConstIntegratorState state, ccl_private Intersection *ccl_restrict isect)
 {
-#ifdef PACKED_STATE
-  *isect = INTEGRATOR_STATE(state, isect, packed);
+#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+  *((ccl_private packed_isect*)isect) = INTEGRATOR_STATE(state, isect, packed);
 #else
   isect->prim = INTEGRATOR_STATE(state, isect, prim);
   isect->object = INTEGRATOR_STATE(state, isect, object);
@@ -271,7 +288,14 @@ ccl_device_inline void integrator_state_copy_only(KernelGlobals kg,
     }
 
 #ifdef PACKED_STATE
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct) \
+    KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
 #  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
+#else
+#  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct)
 #endif
 
 #  define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
@@ -296,15 +320,13 @@ ccl_device_inline void integrator_state_copy_only(KernelGlobals kg,
 #  include "kernel/integrator/state_template.h"
 
 #  undef KERNEL_STRUCT_BEGIN
+#  undef KERNEL_STRUCT_BEGIN_PACKED
 #  undef KERNEL_STRUCT_MEMBER
+#  undef KERNEL_STRUCT_MEMBER_PACKED
 #  undef KERNEL_STRUCT_ARRAY_MEMBER
 #  undef KERNEL_STRUCT_END
 #  undef KERNEL_STRUCT_END_ARRAY
 #  undef KERNEL_STRUCT_VOLUME_STACK_SIZE
-
-#ifdef PACKED_STATE
-#  undef KERNEL_STRUCT_MEMBER_PACKED
-#endif
 }
 
 ccl_device_inline void integrator_state_move(KernelGlobals kg,
@@ -335,7 +357,14 @@ ccl_device_inline void integrator_shadow_state_copy_only(KernelGlobals kg,
     }
 
 #ifdef PACKED_STATE
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct) \
+    KERNEL_STRUCT_MEMBER(parent_struct, type, packed, feature)
 #  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
+#else
+#  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct)
 #endif
 
 #  define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
@@ -360,15 +389,13 @@ ccl_device_inline void integrator_shadow_state_copy_only(KernelGlobals kg,
 #  include "kernel/integrator/shadow_state_template.h"
 
 #  undef KERNEL_STRUCT_BEGIN
+#  undef KERNEL_STRUCT_BEGIN_PACKED
 #  undef KERNEL_STRUCT_MEMBER
+#  undef KERNEL_STRUCT_MEMBER_PACKED
 #  undef KERNEL_STRUCT_ARRAY_MEMBER
 #  undef KERNEL_STRUCT_END
 #  undef KERNEL_STRUCT_END_ARRAY
 #  undef KERNEL_STRUCT_VOLUME_STACK_SIZE
-
-#ifdef PACKED_STATE
-#  undef KERNEL_STRUCT_MEMBER_PACKED
-#endif
 }
 
 ccl_device_inline void integrator_shadow_state_move(KernelGlobals kg,

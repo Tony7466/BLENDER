@@ -2,11 +2,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#ifndef KERNEL_STRUCT_MEMBER_PACKED
-#define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define undef_KERNEL_STRUCT_MEMBER_PACKED
-#endif
-
 /********************************* Shadow Path State **************************/
 
 KERNEL_STRUCT_BEGIN(shadow_path)
@@ -61,8 +56,7 @@ KERNEL_STRUCT_END(shadow_path)
 
 /********************************** Shadow Ray *******************************/
 
-KERNEL_STRUCT_BEGIN(shadow_ray)
-KERNEL_STRUCT_MEMBER(shadow_ray, packed_shadow_ray, packed, KERNEL_FEATURE_PATH_TRACING)
+KERNEL_STRUCT_BEGIN_PACKED(shadow_ray, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER_PACKED(shadow_ray, packed_float3, P, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER_PACKED(shadow_ray, packed_float3, D, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER_PACKED(shadow_ray, float, tmin, KERNEL_FEATURE_PATH_TRACING)
@@ -94,8 +88,3 @@ KERNEL_STRUCT_ARRAY_MEMBER(shadow_volume_stack, int, shader, KERNEL_FEATURE_VOLU
 KERNEL_STRUCT_END_ARRAY(shadow_volume_stack,
                         KERNEL_STRUCT_VOLUME_STACK_SIZE,
                         KERNEL_STRUCT_VOLUME_STACK_SIZE)
-
-#ifdef undef_KERNEL_STRUCT_MEMBER_PACKED
-#undef KERNEL_STRUCT_MEMBER_PACKED
-#undef undef_KERNEL_STRUCT_MEMBER_PACKED
-#endif
