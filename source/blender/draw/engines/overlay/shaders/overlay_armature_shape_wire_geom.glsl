@@ -58,7 +58,7 @@ void main()
 
   const vec2 line = (screen_space_pos[0] - screen_space_pos[1]) * sizeViewport.xy;
   const vec2 line_normalized = normalize(line);
-  const vec2 line_normal = normalize(vec2(line[1], -line[0]));
+  const vec2 line_normal = vec2(line_normalized[1], -line_normalized[0]);
   vec2 edge_ofs = (half_size * line_normal) * sizeViewportInv;
   vec2 cap_ofs = (half_size * line_normalized) * sizeViewportInv;
 
