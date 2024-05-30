@@ -10,6 +10,6 @@ for %%a in (%PYTHON%) do (
 )
 
 REM Use -B to avoid writing __pycache__ in lib directory and causing update conflicts.
-%PYTHON% -B %FORMAT_PATHS%  --autopep8-command "%PEP8_LOCATION%" %FORMAT_ARGS%
+%PYTHON% -B %FORMAT_PATHS%  --autopep8-command "%PEP8_LOCATION%" --no-subprocess %FORMAT_ARGS%
 
 :EOF
