@@ -31,6 +31,7 @@
 
 #include "transform.hh"
 #include "transform_convert.hh"
+#include "transform_mode.hh"
 
 #define SEQ_EDGE_PAN_INSIDE_PAD 3.5
 #define SEQ_EDGE_PAN_OUTSIDE_PAD 0 /* Disable clamping for panning, use whole screen. */
@@ -672,7 +673,9 @@ static void recalcData_sequencer(TransInfo *t)
 static void special_aftertrans_update__sequencer(bContext * /*C*/, TransInfo *t)
 {
   SpaceSeq *sseq = (SpaceSeq *)t->area->spacedata.first;
-  if ((sseq->flag & SPACE_SEQ_DESELECT_STRIP_HANDLE) != 0) {
+  if ((sseq->flag & SPACE_SEQ_DESELECT_STRIP_HANDLE) != 0 &&
+      transform_mode_edge_seq_slide_use_restore_handle_selection(t))
+  {
     TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
     blender::VectorSet<Sequence *> strips = seq_transform_collection_from_transdata(tc);
     for (Sequence *seq : strips) {

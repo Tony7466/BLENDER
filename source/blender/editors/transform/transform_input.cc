@@ -446,7 +446,7 @@ void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode)
       }
       /* Only use special cursor, when tweaking strips with mouse. */
       if (t->mode == TFM_SEQ_SLIDE) {
-        if ((t->launch_event == 1 || t->launch_event == 3)) {
+        if (transform_mode_edge_seq_slide_use_restore_handle_selection(t)) {
           WM_cursor_modal_set(win, transform_seq_slide_cursor_get(t));
         }
         else {
