@@ -695,8 +695,12 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
     return;
   }
   is_rendering_ = true;
+  dirty_attachments_ = false;
+  dirty_state_ = false;
 
   // TODO: add depth + stencil attachment.
+  viewport_reset();
+  scissor_reset();
 
   render_graph::VKResourceAccessInfo access_info;
   render_graph::VKBeginRenderingNode::CreateInfo begin_rendering(access_info);

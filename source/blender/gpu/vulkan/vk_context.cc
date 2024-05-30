@@ -276,8 +276,6 @@ void VKContext::update_pipeline_data(GPUPrimType primitive,
   VKShader &vk_shader = unwrap(*shader);
   BLI_assert(vk_shader.is_graphics_shader());
   VKFrameBuffer &framebuffer = *active_framebuffer_get();
-  // TODO: This should be done somewhere else. Now resets always.
-  framebuffer.viewport_reset();
   update_pipeline_data(
       vk_shader,
       vk_shader.ensure_and_get_graphics_pipeline(primitive, vao, state_manager_get(), framebuffer),
