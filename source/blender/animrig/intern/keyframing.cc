@@ -823,7 +823,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                       const std::optional<float> scene_frame,
                                       const AnimationEvalContext &anim_eval_context,
                                       const eBezTriple_KeyframeType key_type,
-                                      eInsertKeyFlags insert_key_flags)
+                                      const eInsertKeyFlags insert_key_flags)
 
 {
   ID *id = struct_pointer->owner_id;
@@ -887,6 +887,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
 
     /* Handle the `force_all` condition mentioned above, ensuring the
      * "all-or-nothing" behavior if needed. */
+    eInsertKeyFlags insert_key_flags_adjusted = insert_key_flags;
     if (force_all && rna_values.size() > 0 &&
         (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0)
     {
@@ -913,7 +914,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
       /* If at least one would succeed, then we disable all keying flags that
        * would prevent the other elements from getting keyed as well. */
       if (at_least_one_would_succeed) {
-        insert_key_flags &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
+        insert_key_flags_adjusted &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
         break;
       }
     }
@@ -926,7 +927,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                                           rna_path_id_to_prop->c_str(),
                                                           nla_frame,
                                                           rna_values.as_span(),
-                                                          insert_key_flags,
+                                                          insert_key_flags_adjusted,
                                                           key_type,
                                                           elements_to_key);
     combined_result.merge(result);
