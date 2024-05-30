@@ -369,7 +369,7 @@ struct uiTextEdit {
   /* Maximum string size the button accepts, and as such the maximum size for #edit_string
    * (including terminator). */
   int max_string_size;
-  /* Allow reallocating #edit_str and using 'maxlen' to track alloc size (maxlen + 1) */
+  /* Allow reallocating #edit_string and using #max_string_size to track alloc size (maxlen + 1) */
   bool is_str_dynamic;
   char *original_string;
 
@@ -3026,7 +3026,9 @@ void ui_but_active_string_clear_and_exit(bContext *C, uiBut *but)
   button_activate_state(C, but, BUTTON_STATE_EXIT);
 }
 
-static void ui_textedit_string_ensure_max_length(uiBut *but, uiTextEdit &text_edit, int str_maxncpy)
+static void ui_textedit_string_ensure_max_length(uiBut *but,
+                                                 uiTextEdit &text_edit,
+                                                 int str_maxncpy)
 {
   BLI_assert(text_edit.is_str_dynamic);
   BLI_assert(text_edit.edit_string == but->editstr);
