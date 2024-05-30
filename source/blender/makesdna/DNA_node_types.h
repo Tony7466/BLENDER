@@ -2308,6 +2308,7 @@ typedef enum NodeMathOperation {
   NODE_MATH_SMOOTH_MIN = 38,
   NODE_MATH_SMOOTH_MAX = 39,
   NODE_MATH_FLOORED_MODULO = 40,
+  NODE_MATH_ROOT = 41,
 } NodeMathOperation;
 
 typedef enum NodeVectorMathOperation {

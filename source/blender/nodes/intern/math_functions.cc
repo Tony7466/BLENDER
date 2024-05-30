@@ -69,6 +69,8 @@ const FloatMathOperationInfo *get_float_math_operation_info(const int operation)
       RETURN_OPERATION_INFO("Sqrt", "math_sqrt");
     case NODE_MATH_INV_SQRT:
       RETURN_OPERATION_INFO("Inverse Sqrt", "math_inversesqrt");
+    case NODE_MATH_ROOT:
+      RETURN_OPERATION_INFO("Root", "math_root");
     case NODE_MATH_SIGN:
       RETURN_OPERATION_INFO("Sign", "math_sign");
     case NODE_MATH_EXPONENT:

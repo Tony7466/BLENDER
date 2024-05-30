@@ -28,6 +28,8 @@ shader node_math(string math_type = "add",
     Value = safe_sqrt(Value1);
   else if (math_type == "inversesqrt")
     Value = inversesqrt(Value1);
+  else if (math_type == "root")
+    Value = (Value1 > 0.0 && Value2 > 0.0) ? pow(Value1, 1.0 / Value2) : 0.0;
   else if (math_type == "absolute")
     Value = fabs(Value1);
   else if (math_type == "radians")

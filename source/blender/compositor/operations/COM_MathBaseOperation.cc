@@ -275,6 +275,23 @@ void MathInverseSqrtOperation::update_memory_buffer_partial(BuffersIterator<floa
   }
 }
 
+void MathRootOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
+{
+  for (; !it.is_end(); ++it) {
+    const float value1 = *it.in(0);
+    const float value2 = *it.in(1);
+
+    if (value1 > 0.0 && value2 > 0.0) {
+      *it.out = pow(value1, 1.0 / value2);
+    }
+    else {
+      *it.out = 0.0f;
+    }
+
+    clamp_when_enabled(it.out);
+  }
+}
+
 void MathSignOperation::update_memory_buffer_partial(BuffersIterator<float> &it)
 {
   for (; !it.is_end(); ++it) {

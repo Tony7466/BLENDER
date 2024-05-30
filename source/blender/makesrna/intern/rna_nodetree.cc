@@ -159,6 +159,7 @@ const EnumPropertyItem rna_enum_node_math_items[] = {
     {NODE_MATH_LOGARITHM, "LOGARITHM", 0, "Logarithm", "Logarithm A base B"},
     {NODE_MATH_SQRT, "SQRT", 0, "Square Root", "Square root of A"},
     {NODE_MATH_INV_SQRT, "INVERSE_SQRT", 0, "Inverse Square Root", "1 / Square root of A"},
+    {NODE_MATH_ROOT, "ROOT", 0, "Root", "Root of A index B"},
     {NODE_MATH_ABSOLUTE, "ABSOLUTE", 0, "Absolute", "Magnitude of A"},
     {NODE_MATH_EXPONENT, "EXPONENT", 0, "Exponent", "exp(A)"},
     RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Comparison"), nullptr),

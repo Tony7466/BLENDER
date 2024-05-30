@@ -251,6 +251,16 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
       break;
     }
 
+    case NODE_MATH_ROOT: {
+      if (in0 > 0.0f && in1 > 0.0f) {
+        *out = pow(in0, 1.0f / in1);
+      }
+      else {
+        *out = 0.0f;
+      }
+      break;
+    }
+
     case NODE_MATH_TRUNC: {
       if (in0 > 0.0f) {
         *out = floorf(in0);

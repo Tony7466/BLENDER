@@ -140,6 +140,8 @@ inline bool try_dispatch_float_math_fl_fl_to_fl(const int operation, Callback &&
       return dispatch(exec_preset_fast, [](float a, float b) { return safe_divide(a, b); });
     case NODE_MATH_POWER:
       return dispatch(exec_preset_slow, [](float a, float b) { return safe_powf(a, b); });
+    case NODE_MATH_ROOT:
+      return dispatch(exec_preset_slow, [](float a, float b) { return (a > 0.0 && b > 0.0) ? safe_powf(a, 1.0 / b) : 0.0; });
     case NODE_MATH_LOGARITHM:
       return dispatch(exec_preset_slow, [](float a, float b) { return safe_logf(a, b); });
     case NODE_MATH_MINIMUM:

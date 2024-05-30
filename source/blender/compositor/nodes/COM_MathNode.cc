@@ -106,6 +106,9 @@ void MathNode::convert_to_operations(NodeConverter &converter,
     case NODE_MATH_INV_SQRT:
       operation = new MathInverseSqrtOperation();
       break;
+    case NODE_MATH_ROOT:
+      operation = new MathRootOperation();
+      break;
     case NODE_MATH_SIGN:
       operation = new MathSignOperation();
       break;

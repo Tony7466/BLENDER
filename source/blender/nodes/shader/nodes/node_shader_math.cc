@@ -272,6 +272,9 @@ NODE_SHADER_MATERIALX_BEGIN
         case NODE_MATH_POWER:
           res = x ^ y;
           break;
+        case NODE_MATH_ROOT:
+          res = x ^ (val(1.0f) / y);
+          break;
         case NODE_MATH_LOGARITHM:
           res = x.ln() / y.ln();
           break;

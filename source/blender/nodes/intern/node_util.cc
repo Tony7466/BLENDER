@@ -168,6 +168,9 @@ void node_math_update(bNodeTree *ntree, bNode *node)
     case NODE_MATH_SMOOTH_MIN:
       node_sock_label(sock3, "Distance");
       break;
+    case NODE_MATH_ROOT:
+      node_sock_label(sock2, "Index");
+      break;
   }
 }
 

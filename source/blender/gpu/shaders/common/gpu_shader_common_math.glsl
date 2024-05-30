@@ -55,6 +55,16 @@ void math_inversesqrt(float a, float b, float c, out float result)
   result = inversesqrt(a);
 }
 
+void math_root(float a, float b, float c, out float result)
+{
+  if (a > 0.0 && b > 0.0) {
+    result = compatible_pow(a, 1.0 / b);
+  }
+  else {
+    result = 0.0;
+  }
+}
+
 void math_absolute(float a, float b, float c, out float result)
 {
   result = abs(a);

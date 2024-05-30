@@ -6383,6 +6383,7 @@ NODE_DEFINE(MathNode)
   type_enum.insert("pingpong", NODE_MATH_PINGPONG);
   type_enum.insert("sqrt", NODE_MATH_SQRT);
   type_enum.insert("inversesqrt", NODE_MATH_INV_SQRT);
+  type_enum.insert("root", NODE_MATH_ROOT);
   type_enum.insert("sign", NODE_MATH_SIGN);
   type_enum.insert("exponent", NODE_MATH_EXPONENT);
   type_enum.insert("radians", NODE_MATH_RADIANS);

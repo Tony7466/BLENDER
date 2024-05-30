@@ -188,6 +188,11 @@ class MathInverseSqrtOperation : public MathBaseOperation {
   void update_memory_buffer_partial(BuffersIterator<float> &it) override;
 };
 
+class MathRootOperation : public MathBaseOperation {
+ protected:
+  void update_memory_buffer_partial(BuffersIterator<float> &it) override;
+};
+
 class MathSignOperation : public MathBaseOperation {
  protected:
   void update_memory_buffer_partial(BuffersIterator<float> &it) override;

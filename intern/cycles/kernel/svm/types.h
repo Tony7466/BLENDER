@@ -183,6 +183,7 @@ typedef enum NodeMathType {
   NODE_MATH_SMOOTH_MIN,
   NODE_MATH_SMOOTH_MAX,
   NODE_MATH_FLOORED_MODULO,
+  NODE_MATH_ROOT,
 } NodeMathType;
 
 typedef enum NodeVectorMathType {

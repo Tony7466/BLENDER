@@ -121,6 +121,8 @@ ccl_device float svm_math(NodeMathType type, float a, float b, float c)
       return safe_sqrtf(a);
     case NODE_MATH_INV_SQRT:
       return inversesqrtf(a);
+    case NODE_MATH_ROOT:
+      return (a > 0.0 && b > 0.0) ? safe_powf(a, 1.0 / b) : 0.0;
     case NODE_MATH_ABSOLUTE:
       return fabsf(a);
     case NODE_MATH_RADIANS:
