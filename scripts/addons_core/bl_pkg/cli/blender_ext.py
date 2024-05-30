@@ -692,7 +692,6 @@ def pkg_is_legacy_addon(filepath: str) -> bool:
     return False
 
 
-
 def remote_url_has_filename_suffix(url: str) -> bool:
     # When the URL ends with `.json` it's assumed to be a URL that is inside a directory.
     # In these cases the file is stripped before constricting relative paths.

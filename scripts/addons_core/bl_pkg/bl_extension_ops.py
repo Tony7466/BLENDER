@@ -1808,7 +1808,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         filepath = self.url
         print(filepath)
 
-        from .bl_extension_utils import  pkg_is_legacy_addon
+        from .bl_extension_utils import pkg_is_legacy_addon
 
         if not pkg_is_legacy_addon(filepath):
             self._drop_variables = True
@@ -1864,7 +1864,6 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         layout.prop(self, "target", text="Target")
         layout.prop(self, "overwrite", text="Overwrite")
         layout.prop(self, "enable_on_install")
-
 
 
 class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
