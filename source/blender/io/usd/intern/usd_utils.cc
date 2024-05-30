@@ -4,6 +4,8 @@
 
 #include "usd_utils.hh"
 
+#include "BLI_string_utf8.h"
+
 #include <pxr/base/tf/stringUtils.h>
 #include <pxr/base/tf/unicodeUtils.h>
 
@@ -20,24 +22,26 @@ std::string make_safe_name(const std::string &name, [[maybe_unused]] bool allow_
     return "_";
   }
 
-  const pxr::TfUtf8CodePoint cp_underscore = pxr::TfUtf8CodePointFromAscii('_');
+  std::string buf;
+  buf.resize(name.size());  // We won't be exceeding the size of the incoming string
 
   bool first = true;
-  std::stringstream str;
+  size_t offset = 0;
   for (auto cp : pxr::TfUtf8CodePointView{name}) {
+    constexpr pxr::TfUtf8CodePoint cp_underscore = pxr::TfUtf8CodePointFromAscii('_');
     const bool cp_allowed = first ? (cp == cp_underscore || pxr::TfIsUtf8CodePointXidStart(cp)) :
                                     pxr::TfIsUtf8CodePointXidContinue(cp);
     if (!cp_allowed) {
-      str << '_';
+      offset += BLI_str_utf8_from_unicode(uint32_t('_'), buf.data() + offset, buf.size() - offset);
     }
     else {
-      str << cp;
+      offset += BLI_str_utf8_from_unicode(cp.AsUInt32(), buf.data() + offset, buf.size() - offset);
     }
 
     first = false;
   }
 
-  return str.str();
+  return buf;
 #else
   return pxr::TfMakeValidIdentifier(name);
 #endif
