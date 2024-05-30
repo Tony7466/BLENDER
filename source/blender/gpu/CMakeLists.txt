@@ -271,6 +271,8 @@ set(VULKAN_SRC
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
   vulkan/render_graph/nodes/vk_blit_image_node.hh
+  vulkan/render_graph/nodes/vk_begin_rendering_node.hh
+  vulkan/render_graph/nodes/vk_clear_attachments_node.hh
   vulkan/render_graph/nodes/vk_clear_color_image_node.hh
   vulkan/render_graph/nodes/vk_clear_depth_stencil_image_node.hh
   vulkan/render_graph/nodes/vk_copy_buffer_node.hh
@@ -278,6 +280,7 @@ set(VULKAN_SRC
   vulkan/render_graph/nodes/vk_copy_image_node.hh
   vulkan/render_graph/nodes/vk_copy_image_to_buffer_node.hh
   vulkan/render_graph/nodes/vk_dispatch_node.hh
+  vulkan/render_graph/nodes/vk_end_rendering_node.hh
   vulkan/render_graph/nodes/vk_fill_buffer_node.hh
   vulkan/render_graph/nodes/vk_node_info.hh
   vulkan/render_graph/nodes/vk_pipeline_data.hh
@@ -385,7 +388,6 @@ endif()
 
 
 if(WITH_VULKAN_BACKEND)
-
   if(APPLE)
     list(APPEND INC_SYS
       ${MOLTENVK_INCLUDE_DIRS}
@@ -711,13 +713,13 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_depth_of_field_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_irradiance_cache_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_volume_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_sphere_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lookdev_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lut_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_reflection_probe_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_subsurface_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_tracing_info.hh
@@ -944,6 +946,7 @@ if(WITH_GTESTS)
       vulkan/tests/vk_memory_layout_test.cc
       vulkan/render_graph/tests/vk_render_graph_test_compute.cc
       vulkan/render_graph/tests/vk_render_graph_test_present.cc
+      vulkan/render_graph/tests/vk_render_graph_test_render.cc
       vulkan/render_graph/tests/vk_render_graph_test_transfer.cc
     )
   endif()

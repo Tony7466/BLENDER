@@ -82,6 +82,7 @@
 #include "BKE_node.hh" /* for tree type defines */
 #include "BKE_object.hh"
 #include "BKE_packedFile.h"
+#include "BKE_preferences.h"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -351,6 +352,9 @@ void blo_join_main(ListBase *mainlist)
     mainl->id_map = nullptr;
   }
 
+  /* Will no longer be valid after joining. */
+  BKE_main_namemap_clear(mainl);
+
   while ((tojoin = mainl->next)) {
     add_main_to_main(mainl, tojoin);
     BLI_remlink(mainlist, tojoin);
@@ -395,6 +399,9 @@ void blo_split_main(ListBase *mainlist, Main *main)
     BKE_main_idmap_destroy(main->id_map);
     main->id_map = nullptr;
   }
+
+  /* Will no longer be valid after splitting. */
+  BKE_main_namemap_clear(main);
 
   /* (Library.temp_index -> Main), lookup table */
   const uint lib_main_array_len = BLI_listbase_count(&main->libraries);
@@ -975,7 +982,7 @@ static bool read_file_dna(FileData *fd, const char **r_error_message)
       }
       /* We can't use read_global because this needs 'DNA1' to be decoded,
        * however the first 4 chars are _always_ the subversion. */
-      FileGlobal *fg = reinterpret_cast<FileGlobal *>(&bhead[1]);
+      const FileGlobal *fg = reinterpret_cast<const FileGlobal *>(&bhead[1]);
       BLI_STATIC_ASSERT(offsetof(FileGlobal, subvstr) == 0, "Must be first: subvstr")
       char num[5];
       memcpy(num, fg->subvstr, 4);
@@ -1317,7 +1324,7 @@ FileData *blo_filedata_from_memfile(MemFile *memfile,
 void blo_filedata_free(FileData *fd)
 {
   /* Free all BHeadN data blocks */
-#ifndef NDEBUG
+#ifdef NDEBUG
   BLI_freelistN(&fd->bhead_list);
 #else
   /* Sanity check we're not keeping memory we don't need. */
@@ -1892,7 +1899,7 @@ static void after_liblink_id_embedded_id_process(BlendLibReader *reader, ID *id)
 {
 
   /* Handle 'private IDs'. */
-  bNodeTree *nodetree = ntreeFromID(id);
+  bNodeTree *nodetree = blender::bke::ntreeFromID(id);
   if (nodetree != nullptr) {
     after_liblink_id_process(reader, &nodetree->id);
 
@@ -1971,13 +1978,13 @@ static void direct_link_id_embedded_id(BlendDataReader *reader,
                                        ID *id_old)
 {
   /* Handle 'private IDs'. */
-  bNodeTree **nodetree = BKE_ntree_ptr_from_id(id);
+  bNodeTree **nodetree = blender::bke::BKE_ntree_ptr_from_id(id);
   if (nodetree != nullptr && *nodetree != nullptr) {
     BLO_read_struct(reader, bNodeTree, nodetree);
     direct_link_id_common(reader,
                           current_library,
                           (ID *)*nodetree,
-                          id_old != nullptr ? (ID *)ntreeFromID(id_old) : nullptr,
+                          id_old != nullptr ? (ID *)blender::bke::ntreeFromID(id_old) : nullptr,
                           0);
     blender::bke::ntreeBlendReadData(reader, id, *nodetree);
   }
@@ -3424,6 +3431,10 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
     IDP_BlendDataRead(reader, &addon->prop);
   }
 
+  LISTBASE_FOREACH (bUserExtensionRepo *, repo_ref, &user->extension_repos) {
+    BKE_preferences_extension_repo_read_data(reader, repo_ref);
+  }
+
   LISTBASE_FOREACH (bUserAssetShelfSettings *, shelf_settings, &user->asset_shelves_settings) {
     BKE_asset_catalog_path_list_blend_read_data(reader, shelf_settings->enabled_catalog_paths);
   }
@@ -3943,6 +3954,7 @@ static ID *library_id_is_yet_read(FileData *fd, Main *mainvar, BHead *bhead)
 struct BlendExpander {
   FileData *fd;
   Main *main;
+  BLOExpandDoitCallback callback;
 };
 
 static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
@@ -4059,13 +4071,6 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
   }
 }
 
-static BLOExpandDoitCallback expand_doit;
-
-void BLO_main_expander(BLOExpandDoitCallback expand_doit_func)
-{
-  expand_doit = expand_doit_func;
-}
-
 static int expand_cb(LibraryIDLinkCallbackData *cb_data)
 {
   /* Embedded IDs are not known by lib_link code, so they would be remapped to `nullptr`. But there
@@ -4091,15 +4096,15 @@ static int expand_cb(LibraryIDLinkCallbackData *cb_data)
   BlendExpander *expander = static_cast<BlendExpander *>(cb_data->user_data);
   ID *id = *(cb_data->id_pointer);
 
-  expand_doit(expander->fd, expander->main, id);
+  expander->callback(expander->fd, expander->main, id);
 
   return IDWALK_RET_NOP;
 }
 
-void BLO_expand_main(void *fdhandle, Main *mainvar)
+void BLO_expand_main(void *fdhandle, Main *mainvar, BLOExpandDoitCallback callback)
 {
   FileData *fd = static_cast<FileData *>(fdhandle);
-  BlendExpander expander = {fd, mainvar};
+  BlendExpander expander = {fd, mainvar, callback};
 
   for (bool do_it = true; do_it;) {
     do_it = false;
@@ -4311,11 +4316,8 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
     mainl->id_map = BKE_main_idmap_create(mainl, false, nullptr, MAIN_IDMAP_TYPE_NAME);
   }
 
-  /* expander now is callback function */
-  BLO_main_expander(expand_doit_library);
-
   /* make main consistent */
-  BLO_expand_main(*fd, mainl);
+  BLO_expand_main(*fd, mainl, expand_doit_library);
 
   /* Do this when expand found other libraries. */
   read_libraries(*fd, (*fd)->mainlist);
@@ -4409,6 +4411,8 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
   fix_relpaths_library(BKE_main_blendfile_path(mainvar), mainvar);
 
   /* patch to prevent switch_endian happens twice */
+  /* FIXME This is extremely bad design, #library_link_end should probably _always_ free the file
+   * data? */
   if ((*fd)->flags & FD_FLAGS_SWITCH_ENDIAN) {
     blo_filedata_free(*fd);
     *fd = nullptr;
@@ -4688,9 +4692,6 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
   Main *mainl = static_cast<Main *>(mainlist->first);
   bool do_it = true;
 
-  /* Expander is now callback function. */
-  BLO_main_expander(expand_doit_library);
-
   /* At this point the base blend file has been read, and each library blend
    * encountered so far has a main with placeholders for linked data-blocks.
    *
@@ -4729,7 +4730,7 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 
         /* Test if linked data-blocks need to read further linked data-blocks
          * and create link placeholders for them. */
-        BLO_expand_main(fd, mainptr);
+        BLO_expand_main(fd, mainptr, expand_doit_library);
       }
     }
   }

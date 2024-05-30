@@ -165,6 +165,7 @@ set(SRC
   nodes/node_geo_repeat.cc
   nodes/node_geo_rotate_instances.cc
   nodes/node_geo_sample_grid.cc
+  nodes/node_geo_sample_grid_index.cc
   nodes/node_geo_sample_index.cc
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
@@ -180,6 +181,7 @@ set(SRC
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
   nodes/node_geo_set_id.cc
+  nodes/node_geo_set_instance_transform.cc
   nodes/node_geo_set_material.cc
   nodes/node_geo_set_material_index.cc
   nodes/node_geo_set_point_radius.cc
@@ -197,6 +199,7 @@ set(SRC
   nodes/node_geo_subdivision_surface.cc
   nodes/node_geo_switch.cc
   nodes/node_geo_tool_3d_cursor.cc
+  nodes/node_geo_tool_active_element.cc
   nodes/node_geo_tool_face_set.cc
   nodes/node_geo_tool_selection.cc
   nodes/node_geo_tool_set_face_set.cc
