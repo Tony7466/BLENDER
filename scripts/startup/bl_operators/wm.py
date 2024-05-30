@@ -510,7 +510,6 @@ class WM_OT_context_toggle(Operator):
             return {'PASS_THROUGH'}
 
         exec("base.{:s} = not (base.{:s})".format(data_path, data_path))
-        context.area.tag_redraw()
 
         return operator_path_undo_return(base, data_path)
 

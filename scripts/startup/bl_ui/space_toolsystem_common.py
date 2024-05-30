@@ -748,8 +748,7 @@ class ToolSelectPanelHelper:
     def _tool_key_from_context(context, *, space_type=None):
         if space_type is None:
             space_data = context.space_data
-            if space_data is not None:
-                space_type = space_data.type
+            space_type = space_data.type
         else:
             space_data = None
 

@@ -105,36 +105,6 @@ class Context(StructRNA):
 
         return new_context
 
-    @property
-    def active_tool_operators(self):
-        """
-        Mapping of current active tool operators.
-
-        Allows access to the active tool's operator properties
-        """
-        # Returns a mappable object.
-        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
-        space_type, mode = ToolSelectPanelHelper._tool_key_from_context(self)
-
-        if space_type is None:
-            return None
-
-        cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
-        _, tool, _ = cls._tool_get_active(self, space_type, mode, with_icon=False)
-
-        class TempMappable:
-            __slots__ = (
-                "_tool",
-            )
-
-            def __init__(self, *, tool):
-                self._tool = tool
-
-            def __getitem__(self, key):
-                return self._tool.operator_properties(key)
-
-        return TempMappable(tool=tool)
-
 
 class Library(bpy_types.ID):
     __slots__ = ()

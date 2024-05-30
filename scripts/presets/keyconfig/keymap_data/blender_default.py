@@ -8120,8 +8120,6 @@ def km_3d_view_tool_sculpt_lasso_hide(params):
              {"properties": [("action", 'SHOW')]}),
             ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
              {"properties": [("action", 'SHOW')]}),
-            ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path", 'active_tool_operators["paint.hide_show_lasso_gesture"].use_smooth_stroke')]}),
         ]},
     )
 
@@ -8176,8 +8174,6 @@ def km_3d_view_tool_sculpt_lasso_mask(params):
              {"properties": [("value", 1.0)]}),
             ("paint.mask_lasso_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
              {"properties": [("value", 0.0)]}),
-            ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path", 'active_tool_operators["paint.mask_lasso_gesture"].use_smooth_stroke')]}),
         ]},
     )
 
@@ -8211,8 +8207,6 @@ def km_3d_view_tool_sculpt_lasso_face_set(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("sculpt.face_set_lasso_gesture", params.tool_maybe_tweak_event, None),
-            ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path", 'active_tool_operators["sculpt.face_set_lasso_gesture"].use_smooth_stroke')]}),
         ]},
     )
 
@@ -8253,8 +8247,6 @@ def km_3d_view_tool_sculpt_lasso_trim(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("sculpt.trim_lasso_gesture", params.tool_maybe_tweak_event, None),
-            ("wm.context_toggle", {"type": 'S', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path", 'active_tool_operators["sculpt.trim_lasso_gesture"].use_smooth_stroke')]}),
         ]},
     )
 
