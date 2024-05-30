@@ -262,6 +262,20 @@ def repo_iter_valid_local_only(context):
         yield repo_item
 
 
+# A named-tuple copy of `context.preferences.extensions.repos` (`bpy.types.UserExtensionRepo`).
+# This is done for the following reasons.
+#
+# - Booleans `use_remote_url` & `use_access_token` have been "applied", so every time `remote_url`
+#   is accessed there is no need to check `use_remote_url` first (same for access tokens).
+#
+# - When checking for updates in the background, it's possible the repository is freed between
+#   starting a check for updates and when the check runs. Using a copy means there is no risk
+#   accessing freed memory & crashing, although these cases still need to be handled logically
+#   even if the crashes are avoided.
+#
+# - In practically all cases this data is read-only when used via package management.
+#   A named tuple makes that explicit.
+#
 class RepoItem(NamedTuple):
     name: str
     directory: str
@@ -1007,6 +1021,7 @@ class BlPkgRepoSync(Operator, _BlPkgCmdMixIn):
                 partial(
                     bl_extension_utils.repo_sync,
                     directory=directory,
+                    remote_name=repo_item.name,
                     remote_url=url_params_append_defaults(repo_item.remote_url),
                     online_user_agent=online_user_agent_from_blender(),
                     access_token=repo_item.access_token,
@@ -1048,14 +1063,16 @@ class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
     )
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         if not bpy.app.online_access:
             if bpy.app.online_access_override:
                 cls.poll_message_set(
-                    "Online access required to check for updates. Launch Blender without --offline-mode")
+                    "Online access required to check for updates. Launch Blender without --offline-mode"
+                )
             else:
                 cls.poll_message_set(
-                    "Online access required to check for updates. Enable online access in System preferences")
+                    "Online access required to check for updates. Enable online access in System preferences"
+                )
             return False
 
         repos_all = extension_repos_read(use_active_only=False)
@@ -1068,6 +1085,13 @@ class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
     def exec_command_iter(self, is_modal):
         use_active_only = self.use_active_only
         repos_all = extension_repos_read(use_active_only=use_active_only)
+
+        if not repos_all:
+            if use_active_only:
+                self.report({'INFO'}, "The active repository has invalid settings")
+            else:
+                assert False, "unreachable"  # Poll prevents this.
+            return None
 
         for repo_item in repos_all:
             if not os.path.exists(repo_item.directory):
@@ -1084,6 +1108,7 @@ class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
                 cmd_batch.append(partial(
                     bl_extension_utils.repo_sync,
                     directory=repo_item.directory,
+                    remote_name=repo_item.name,
                     remote_url=url_params_append_defaults(repo_item.remote_url),
                     online_user_agent=online_user_agent_from_blender(),
                     access_token=repo_item.access_token,
@@ -1135,7 +1160,7 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
     )
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         if not bpy.app.online_access:
             if bpy.app.online_access_override:
                 cls.poll_message_set("Online access required to install updates. Launch Blender without --offline-mode")
@@ -1160,6 +1185,13 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
         use_active_only = self.use_active_only
         repos_all = extension_repos_read(use_active_only=use_active_only)
         repo_directory_supset = [repo_entry.directory for repo_entry in repos_all] if use_active_only else None
+
+        if not repos_all:
+            if use_active_only:
+                self.report({'INFO'}, "The active repository has invalid settings")
+            else:
+                assert False, "unreachable"  # Poll prevents this.
+            return None
 
         # NOTE: Unless we have a "clear-cache" operator - there isn't a great place to apply cache-clearing.
         # So when cache is disabled simply clear all cache before performing an update.
@@ -1754,7 +1786,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
 
 class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
-    """Download, install and enable the extension"""
+    """Download and install the extension"""
     bl_idname = "bl_pkg.pkg_install"
     bl_label = "Install Extension"
     __slots__ = _BlPkgCmdMixIn.cls_slots
@@ -2279,7 +2311,7 @@ class BlPkgRepoUnlock(Operator):
 # NOTE: this is a modified version of `PREFERENCES_OT_addon_show`.
 # It would make most sense to extend this operator to support showing extensions to upgrade (eventually).
 class BlPkgShowUpgrade(Operator):
-    """Show add-on preferences"""
+    """Open extensions preferences"""
     bl_idname = "bl_pkg.extensions_show_for_update"
     bl_label = ""
     bl_options = {'INTERNAL'}
@@ -2317,12 +2349,56 @@ class BlPkgShowOnlinePreference(Operator):
         return True
 
     def execute(self, context):
-        wm = context.window_manager
-        prefs = context.preferences
-
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
-
         return {'FINISHED'}
+
+
+# NOTE: this is a wrapper for `bl_pkg.extensions_show_online_prefs`.
+# It exists *only* show a dialog.
+class BlPkgShowOnlinePreferencePopup(Operator):
+    """Show system preferences "Network" panel to allow online access"""
+    bl_idname = "bl_pkg.extensions_show_online_prefs_popup"
+    bl_label = ""
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context):
+        bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        if bpy.app.online_access_override:
+            # No Cancel/Confirm buttons.
+            wm.invoke_popup(
+                self,
+                width=400,
+            )
+        else:
+            wm.invoke_props_dialog(
+                self,
+                width=400,
+                confirm_text="Go to Settings",
+                title="Install Extension",
+            )
+        return {'RUNNING_MODAL'}
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        if bpy.app.online_access_override:
+            lines = (
+                "Online access required to install or update.",
+                "",
+                "Launch Blender without --offline-mode"
+            )
+        else:
+            lines = (
+                "Please turn Online Access on the System settings.",
+                "",
+                "Internet access is required to install extensions from the internet."
+            )
+        for line in lines:
+            col.label(text=line)
 
 
 class BlPkgEnableNotInstalled(Operator):
@@ -2375,6 +2451,7 @@ classes = (
 
     BlPkgShowUpgrade,
     BlPkgShowOnlinePreference,
+    BlPkgShowOnlinePreferencePopup,
 
     # Dummy, just shows a message.
     BlPkgEnableNotInstalled,
