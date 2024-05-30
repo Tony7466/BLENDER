@@ -697,6 +697,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   is_rendering_ = true;
   dirty_attachments_ = false;
   dirty_state_ = false;
+  depth_attachment_format_ = VK_FORMAT_UNDEFINED;
+  stencil_attachment_format_ = VK_FORMAT_UNDEFINED;
 
   // TODO: add depth + stencil attachment.
   viewport_reset();
@@ -733,6 +735,7 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
     /* TODO add load store ops. */
     attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
     access_info.images.append(
         {color_texture.vk_image_handle(),
          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -741,6 +744,65 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
 
     begin_rendering.node_data.vk_rendering_info.pColorAttachments =
         begin_rendering.node_data.color_attachments;
+  }
+
+  bool is_depth_stencil = false;
+  for (const GPUAttachment &attachment :
+       Span<GPUAttachment>(&attachments_[GPU_FB_DEPTH_ATTACHMENT], 2))
+  {
+    bool is_stencil_attachment = is_depth_stencil;
+    is_depth_stencil = true;
+
+    if (attachment.tex == nullptr) {
+      continue;
+    }
+    VKTexture &depth_texture = *unwrap(unwrap(attachment.tex));
+    VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
+                                       IndexRange(max_ii(attachment.layer, 0), 1),
+                                       IndexRange(attachment.mip, 1),
+                                       {'r', 'g', 'b', 'a'},
+                                       is_depth_stencil,
+                                       false};
+    VkImageView depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
+    {
+      VkRenderingAttachmentInfo &attachment_info = begin_rendering.node_data.depth_attachment;
+      attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+      attachment_info.imageView = depth_image_view;
+      attachment_info.imageLayout = is_stencil_attachment ?
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+
+      /* TODO add load store ops. */
+      attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      depth_attachment_format_ = to_vk_format(depth_texture.format_get());
+      begin_rendering.node_data.vk_rendering_info.pDepthAttachment =
+          &begin_rendering.node_data.depth_attachment;
+    }
+
+    if (is_stencil_attachment) {
+      // TODO: fill in stencil attachment.
+      VkRenderingAttachmentInfo &attachment_info = begin_rendering.node_data.stencil_attachment;
+      attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+      attachment_info.imageView = depth_image_view;
+      attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+      /* TODO add load store ops. */
+      attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      stencil_attachment_format_ = to_vk_format(depth_texture.format_get());
+      begin_rendering.node_data.vk_rendering_info.pStencilAttachment =
+          &begin_rendering.node_data.stencil_attachment;
+    }
+
+    access_info.images.append({depth_texture.vk_image_handle(),
+                               VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                               is_stencil_attachment ?
+                                   static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT |
+                                                                   VK_IMAGE_ASPECT_STENCIL_BIT) :
+                                   VK_IMAGE_ASPECT_DEPTH_BIT});
+    break;
   }
 
   context.render_graph.add_node(begin_rendering);

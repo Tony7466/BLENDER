@@ -246,6 +246,7 @@ class VKPipelinePool : public NonCopyable {
 
   VkPipelineRasterizationStateCreateInfo vk_pipeline_rasterization_state_create_info_;
   VkPipelineViewportStateCreateInfo vk_pipeline_viewport_state_create_info_;
+  VkPipelineDepthStencilStateCreateInfo vk_pipeline_depth_stencil_state_create_info_;
 
   VkPipelineMultisampleStateCreateInfo vk_pipeline_multisample_state_create_info_;
 

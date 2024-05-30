@@ -100,6 +100,10 @@ VKPipelinePool::VKPipelinePool()
                                                                       VK_COLOR_COMPONENT_G_BIT |
                                                                       VK_COLOR_COMPONENT_B_BIT |
                                                                       VK_COLOR_COMPONENT_A_BIT;
+  /* Initialize VkPipelineDepthStencilStateCreateInfo */
+  vk_pipeline_depth_stencil_state_create_info_ = {};
+  vk_pipeline_depth_stencil_state_create_info_.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 
   /* Initialize VkSpecializationInfo. */
   vk_specialization_info_.mapEntryCount = 0;
@@ -269,6 +273,7 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
     att_state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
     att_state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     att_state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    att_state.colorWriteMask = 0;
     cb.blendConstants[0] = 1.0f;
     cb.blendConstants[1] = 1.0f;
     cb.blendConstants[2] = 1.0f;
@@ -364,6 +369,20 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
       att_state.blendEnable = VK_FALSE;
     }
 
+    /* Adjust the template with the color components in the write mask. */
+    if ((graphics_info.state.write_mask & GPU_WRITE_RED) != 0) {
+      att_state.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
+    }
+    if ((graphics_info.state.write_mask & GPU_WRITE_GREEN) != 0) {
+      att_state.colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
+    }
+    if ((graphics_info.state.write_mask & GPU_WRITE_BLUE) != 0) {
+      att_state.colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
+    }
+    if ((graphics_info.state.write_mask & GPU_WRITE_ALPHA) != 0) {
+      att_state.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
+    }
+
     vk_pipeline_color_blend_attachment_states_.clear();
     vk_pipeline_color_blend_attachment_states_.append_n_times(
         vk_pipeline_color_blend_attachment_state_template_,
@@ -372,6 +391,45 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
         vk_pipeline_color_blend_attachment_states_.size();
     vk_pipeline_color_blend_state_create_info_.pAttachments =
         vk_pipeline_color_blend_attachment_states_.data();
+  }
+
+  if (graphics_info.fragment_out.depth_attachment_format != VK_FORMAT_UNDEFINED) {
+    vk_graphics_pipeline_create_info_.pDepthStencilState =
+        &vk_pipeline_depth_stencil_state_create_info_;
+    vk_pipeline_depth_stencil_state_create_info_.depthWriteEnable =
+        (graphics_info.state.write_mask & GPU_WRITE_DEPTH) ? VK_TRUE : VK_FALSE;
+
+    vk_pipeline_depth_stencil_state_create_info_.depthTestEnable = VK_TRUE;
+    switch (graphics_info.state.depth_test) {
+      case GPU_DEPTH_LESS:
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_LESS;
+        break;
+      case GPU_DEPTH_LESS_EQUAL:
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        break;
+      case GPU_DEPTH_EQUAL:
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_EQUAL;
+        break;
+      case GPU_DEPTH_GREATER:
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_GREATER;
+        break;
+      case GPU_DEPTH_GREATER_EQUAL:
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp =
+            VK_COMPARE_OP_GREATER_OR_EQUAL;
+        break;
+      case GPU_DEPTH_ALWAYS:
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+        break;
+      case GPU_DEPTH_NONE:
+        vk_pipeline_depth_stencil_state_create_info_.depthTestEnable = VK_FALSE;
+        vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_NEVER;
+        break;
+    }
+  }
+
+  if (graphics_info.fragment_out.stencil_attachment_format != VK_FORMAT_UNDEFINED) {
+    vk_graphics_pipeline_create_info_.pDepthStencilState =
+        &vk_pipeline_depth_stencil_state_create_info_;
   }
 
   /* VK_KHR_dynamic_rendering */
@@ -436,6 +494,11 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_rendering_create_info_.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
   vk_pipeline_rendering_create_info_.pColorAttachmentFormats = nullptr;
   vk_pipeline_rendering_create_info_.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+  vk_pipeline_depth_stencil_state_create_info_.depthTestEnable = VK_FALSE;
+  vk_pipeline_depth_stencil_state_create_info_.depthWriteEnable = VK_FALSE;
+  vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_NEVER;
+  vk_pipeline_depth_stencil_state_create_info_.stencilTestEnable = VK_FALSE;
+  vk_graphics_pipeline_create_info_.pDepthStencilState = nullptr;
 
   return pipeline;
 }
