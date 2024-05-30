@@ -25,6 +25,7 @@ NODE_STORAGE_FUNCS(NodeGeometryAttributeCapture)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  const bNodeTree *tree = b.tree_or_null();
   const bNode *node = b.node_or_null();
   b.use_custom_socket_order();
   b.allow_any_socket_order();
@@ -41,7 +42,9 @@ static void node_declare(NodeDeclarationBuilder &b)
           CaptureAttributeItemsAccessor::input_socket_identifier_for_item(item);
       const std::string output_identifier =
           CaptureAttributeItemsAccessor::output_socket_identifier_for_item(item);
-      b.add_input(data_type, item.name, input_identifier).field_on_all();
+      b.add_input(data_type, item.name, input_identifier)
+          .field_on_all()
+          .socket_name_ptr(&tree->id, CaptureAttributeItemsAccessor::item_srna, &item, "name");
       b.add_output(data_type, item.name, output_identifier).field_on_all().align_with_previous();
     }
   }
