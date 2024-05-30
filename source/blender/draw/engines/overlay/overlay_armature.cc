@@ -464,7 +464,6 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
       DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
-      DRW_shgroup_uniform_float_copy(grp, "width_compression", WIRE_WIDTH_COMPRESSION);
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_state_enable(grp, DRW_STATE_BLEND_ALPHA);
 

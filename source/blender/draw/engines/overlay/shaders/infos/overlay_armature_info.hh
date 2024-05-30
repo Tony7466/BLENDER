@@ -151,7 +151,6 @@ GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_noperspective_iface,
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .do_static_compilation(true)
     .push_constant(Type::BOOL, "do_smooth_wire")
-    .push_constant(Type::FLOAT, "width_compression")
     .sampler(0, ImageType::DEPTH_2D, "depthTex")
     .vertex_in(0, Type::VEC3, "pos")
     /* Per instance. */
@@ -163,6 +162,7 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
     .geometry_source("overlay_armature_shape_wire_geom.glsl")
     .fragment_source("overlay_armature_shape_wire_frag.glsl")
+    .typedef_source("overlay_shader_shared.h")
     .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_clipped)
@@ -174,7 +174,6 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_no_geom)
     .metal_backend_only(true)
     .do_static_compilation(true)
     .push_constant(Type::BOOL, "do_smooth_wire")
-    .push_constant(Type::FLOAT, "width_compression")
     .sampler(0, ImageType::DEPTH_2D, "depthTex")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(2, Type::MAT4, "inst_obmat")
@@ -182,6 +181,7 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_no_geom)
     .vertex_out(overlay_armature_shape_wire_geom_noperspective_iface)
     .vertex_source("overlay_armature_shape_wire_vert_no_geom.glsl")
     .fragment_source("overlay_armature_shape_wire_frag.glsl")
+    .typedef_source("overlay_shader_shared.h")
     .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
 #endif
 

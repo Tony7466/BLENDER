@@ -16,7 +16,7 @@ void main()
   geometry_in.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
   geometry_in.finalColor.a = 1.0;
   /* Because the packing clamps the value, the wire width is passed in compressed. */
-  geometry_in.wire_width = bone_color.a * width_compression;
+  geometry_in.wire_width = bone_color.a * WIRE_WIDTH_COMPRESSION;
 
   view_clipping_distances(world_pos);
 }

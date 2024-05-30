@@ -268,12 +268,6 @@ typedef struct bPoseChannel_Runtime {
 
 /* PoseChannel ------------------------------------ */
 
-#ifdef __cplusplus
-/* Used in the armature drawing code. Due to the encoding clamping the passed in floats, the wire
- * width needs to be scaled down. */
-static constexpr float WIRE_WIDTH_COMPRESSION = 16.0f;
-#endif
-
 /**
  * PoseChannel
  *
