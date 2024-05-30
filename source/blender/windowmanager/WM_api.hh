@@ -575,6 +575,9 @@ void WM_event_modal_handler_area_replace(wmWindow *win,
 void WM_event_modal_handler_region_replace(wmWindow *win,
                                            const ARegion *old_region,
                                            ARegion *new_region);
+void WM_event_ui_handler_region_popup_replace(wmWindow *win,
+                                              const ARegion *old_region,
+                                              ARegion *new_region);
 
 /**
  * Called on exit or remove area, only here call cancel callback.
@@ -1894,7 +1897,7 @@ bool WM_region_use_viewport(ScrArea *area, ARegion *region);
 /**
  * \return Success.
  */
-bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_msg);
+bool WM_platform_associate_set(bool do_register, bool all_users, char **r_error_msg);
 
 #ifdef WITH_XR_OPENXR
 /* `wm_xr_session.cc` */

@@ -421,7 +421,7 @@ void AnimationImporter::Assign_transform_animations(
           break;
         }
         case COLLADAFW::AnimationList::AXISANGLE:
-        /* TODO: convert axis-angle to quat? or XYZ? */
+        /* TODO: convert axis-angle to quaternion? or XYZ? */
         default:
           unused_fcurve(curves);
           fprintf(stderr,
@@ -1336,7 +1336,7 @@ bool AnimationImporter::evaluate_animation(COLLADAFW::Transformation *tm,
         COLLADABU::Math::Matrix4 matrix;
         int mi = 0, mj = 0;
 
-        for (FCurve *curve : curves) {
+        for (const FCurve *curve : curves) {
           matrix.setElement(mi, mj, evaluate_fcurve(curve, fra));
           mj++;
           if (mj == 4) {
