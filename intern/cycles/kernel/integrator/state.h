@@ -94,7 +94,7 @@ typedef struct IntegratorStateCPU {
   IntegratorShadowStateCPU shadow;
   IntegratorShadowStateCPU ao;
   /* TODO(weizhen): add equivalency for GPU. */
-  bool read_previous_reservoir;
+  int spatial_iteration;
   bool setup_restir;
   bool final_evaluation;
 } IntegratorStateCPU;

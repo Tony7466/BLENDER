@@ -254,8 +254,7 @@ void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kern
 
   IntegratorStateCPU *state = &integrator_states[0];
 
-  /* Ping-pong between two reservoirs. */
-  state->read_previous_reservoir = iteration % 2;
+  state->spatial_iteration = iteration;
   state->setup_restir = true;
   state->final_evaluation = false;
 
@@ -283,8 +282,7 @@ void PathTraceWorkCPU::render_samples_evaluate_final(KernelGlobalsCPU *kernel_gl
 
   IntegratorStateCPU *state = &integrator_states[0];
 
-  /* Ping-pong between two reservoirs. */
-  state->read_previous_reservoir = iteration % 2;
+  state->spatial_iteration = iteration;
   state->setup_restir = false;
   state->final_evaluation = true;
 
