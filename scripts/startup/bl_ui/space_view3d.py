@@ -3099,7 +3099,6 @@ class VIEW3D_MT_object_context_menu(Menu):
         elif obj.type == 'EMPTY':
             layout.operator_context = 'INVOKE_REGION_WIN'
 
-            layout.operator("image.convert_to_mesh_plane")
             props = layout.operator("wm.context_modal_mouse", text="Adjust Empty Display Size")
             props.data_path_iter = "selected_editable_objects"
             props.data_path_item = "empty_display_size"
@@ -3811,7 +3810,7 @@ class VIEW3D_MT_sculpt(Menu):
         layout.operator("sculpt.project_line_gesture", text="Line Project")
 
         # Trim/Add
-        layout.menu("VIEW3D_MT_sculpt_trimadd", text="Trim/Add")
+        layout.menu("VIEW3D_MT_sculpt_trim", text="Trim/Add")
 
         layout.separator()
 
@@ -3843,6 +3842,11 @@ class VIEW3D_MT_sculpt(Menu):
 
         # Rebuild BVH
         layout.operator("sculpt.optimize")
+
+        layout.operator(
+            "sculpt.dynamic_topology_toggle",
+            icon='CHECKBOX_HLT' if context.sculpt_object.use_dynamic_topology_sculpting else 'CHECKBOX_DEHLT',
+        )
 
         layout.separator()
 
@@ -3897,7 +3901,7 @@ class VIEW3D_MT_sculpt_showhide(Menu):
         props.action = 'SHOW'
 
 
-class VIEW3D_MT_sculpt_trimadd(Menu):
+class VIEW3D_MT_sculpt_trim(Menu):
     bl_label = "Trim/Add"
 
     def draw(self, _context):
@@ -9296,7 +9300,7 @@ classes = (
     VIEW3D_MT_sculpt_set_pivot,
     VIEW3D_MT_sculpt_transform,
     VIEW3D_MT_sculpt_showhide,
-    VIEW3D_MT_sculpt_trimadd,
+    VIEW3D_MT_sculpt_trim,
     VIEW3D_MT_mask,
     VIEW3D_MT_face_sets,
     VIEW3D_MT_face_sets_init,
