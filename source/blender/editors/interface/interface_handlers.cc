@@ -401,8 +401,6 @@ struct uiHandleButtonData {
 
   TextEdit text_edit;
 
-  /* use 'ui_textedit_string_set' to assign new strings */
-  char *str;
   double value, origvalue, startvalue;
   float vec[3], origvec[3];
   ColorBand *coba;
