@@ -1,0 +1,1 @@
+Referenced by pull request #122482, BLI math: Do not use `BLI_ASSERT_` C-style checks in modern cpp code.
