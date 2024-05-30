@@ -150,6 +150,12 @@ extern const short ui_radial_dir_to_angle[8];
 /** Use new 'align' computation code. */
 #define USE_UIBUT_SPATIAL_ALIGN
 
+/**
+ * The buffer side used for password strings, where the password is stored internally,
+ * but not displayed.
+ */
+#define UI_MAX_PASSWORD_STR 128
+
 /** #PieMenuData.flags */
 enum {
   /** Use initial center of pie menu to calculate direction. */

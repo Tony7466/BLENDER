@@ -76,6 +76,7 @@ set(SRC
   templates/interface_template_search_menu.cc
   templates/interface_template_search_operator.cc
   templates/interface_templates.cc
+  interface_button_text_editing.cc
   interface_undo.cc
   interface_utils.cc
   interface_widgets.cc
@@ -94,6 +95,7 @@ set(SRC
   eyedroppers/eyedropper_intern.hh
   interface_intern.hh
   regions/interface_regions_intern.hh
+  interface_button_text_editing.hh
   view2d_intern.hh
 )
 
