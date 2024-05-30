@@ -365,6 +365,14 @@ ccl_device_inline float3 path_state_rng_3D(KernelGlobals kg,
       kg, rng_state->rng_pixel, rng_state->sample, rng_state->rng_offset + dimension);
 }
 
+ccl_device_inline float4 path_state_rng_4D(KernelGlobals kg,
+                                           ccl_private const RNGState *rng_state,
+                                           const int dimension)
+{
+  return path_rng_4D(
+      kg, rng_state->rng_pixel, rng_state->sample, rng_state->rng_offset + dimension);
+}
+
 ccl_device_inline float path_branched_rng_1D(KernelGlobals kg,
                                              ccl_private const RNGState *rng_state,
                                              const int branch,
@@ -396,6 +404,18 @@ ccl_device_inline float3 path_branched_rng_3D(KernelGlobals kg,
                                               const int dimension)
 {
   return path_rng_3D(kg,
+                     rng_state->rng_pixel,
+                     rng_state->sample * num_branches + branch,
+                     rng_state->rng_offset + dimension);
+}
+
+ccl_device_inline float4 path_branched_rng_4D(KernelGlobals kg,
+                                              ccl_private const RNGState *rng_state,
+                                              const int branch,
+                                              const int num_branches,
+                                              const int dimension)
+{
+  return path_rng_4D(kg,
                      rng_state->rng_pixel,
                      rng_state->sample * num_branches + branch,
                      rng_state->rng_offset + dimension);

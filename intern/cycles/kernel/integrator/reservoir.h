@@ -249,8 +249,10 @@ ccl_device_inline bool restir_unpack_reservoir(KernelGlobals kg,
 }
 
 struct GlobalReservoir {
+  /* TODO(weizhen): Compress with rgbe. http://www.graphics.cornell.edu/online/formats/rgbe */
   Spectrum radiance;
   float total_weight = 0.0f;
+  ShaderData sd;
   uint32_t path_flag;
 
   /* Information about the reconnection vertex (rcv). */

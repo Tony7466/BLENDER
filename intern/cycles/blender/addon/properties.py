@@ -619,7 +619,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     restir_spatial_iterations: IntProperty(
         name="Iterations",
         description="Perform multiple iterations of spatial resampling, at the cost of increased correlation",
-        min=1, max=5,
+        min=0, max=5,
         default=2,
     )
 
