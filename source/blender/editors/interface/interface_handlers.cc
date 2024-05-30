@@ -375,6 +375,9 @@ struct TextEdit {
   /* Button text selection:
    * extension direction, selextend, inside ui_do_but_TEX */
   int sel_pos_init;
+
+  /* Text field undo. */
+  uiUndoStack_Text *undo_stack_text;
 };
 
 struct uiHandleButtonData {
@@ -460,9 +463,6 @@ struct uiHandleButtonData {
 #endif
 
   uiBlockInteraction_Handle *custom_interaction_handle;
-
-  /* Text field undo. */
-  uiUndoStack_Text *undo_stack_text;
 
   /* post activate */
   uiButtonActivateType posttype;
@@ -3491,8 +3491,8 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   but->selend = len;
 
   /* Initialize undo history tracking. */
-  data->undo_stack_text = ui_textedit_undo_stack_create();
-  ui_textedit_undo_push(data->undo_stack_text, but->editstr, but->pos);
+  text_edit.undo_stack_text = ui_textedit_undo_stack_create();
+  ui_textedit_undo_push(text_edit.undo_stack_text, but->editstr, but->pos);
 
   /* optional searchbox */
   if (but->type == UI_BTYPE_SEARCH_MENU) {
@@ -3537,6 +3537,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
+  TextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
 
   if (but) {
@@ -3591,8 +3592,8 @@ static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
   GHOST_SetAutoFocus(true);
 
   /* Free text undo history text blocks. */
-  ui_textedit_undo_stack_destroy(data->undo_stack_text);
-  data->undo_stack_text = nullptr;
+  ui_textedit_undo_stack_destroy(text_edit.undo_stack_text);
+  text_edit.undo_stack_text = nullptr;
 
 #ifdef WITH_INPUT_IME
   /* See #wm_window_IME_end code-comments for details. */
@@ -3696,6 +3697,7 @@ static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
+  TextEdit &text_edit = data->text_edit;
   int retval = WM_UI_HANDLER_CONTINUE;
   bool changed = false, inbox = false, update = false, skip_undo_push = false;
 
@@ -3783,7 +3785,7 @@ static void ui_do_but_textedit(
         if (is_press_in_button) {
           ui_textedit_set_cursor_pos(but, data->region, event->xy[0]);
           but->selsta = but->selend = but->pos;
-          data->text_edit.sel_pos_init = but->pos;
+          text_edit.sel_pos_init = but->pos;
 
           button_activate_state(C, but, BUTTON_STATE_TEXT_SELECTING);
           retval = WM_UI_HANDLER_BREAK;
@@ -3801,19 +3803,19 @@ static void ui_do_but_textedit(
       /* only select a word in button if there was no selection before */
       if (event->val == KM_DBL_CLICK && had_selection == false) {
         if (is_press_in_button) {
-          const int str_len = strlen(data->text_edit.edit_string);
+          const int str_len = strlen(text_edit.edit_string);
           /* This may not be necessary, additional check to ensure `pos` is never out of range,
            * since negative values aren't acceptable, see: #113154. */
           CLAMP(but->pos, 0, str_len);
 
           int selsta, selend;
           BLI_str_cursor_step_bounds_utf8(
-              data->text_edit.edit_string, str_len, but->pos, &selsta, &selend);
+              text_edit.edit_string, str_len, but->pos, &selsta, &selend);
           but->pos = short(selend);
           but->selsta = short(selsta);
           but->selend = short(selend);
           /* Anchor selection to the left side unless the last word. */
-          data->text_edit.sel_pos_init = ((selend == str_len) && (selsta != 0)) ? selend : selsta;
+          text_edit.sel_pos_init = ((selend == str_len) && (selsta != 0)) ? selend : selsta;
           retval = WM_UI_HANDLER_BREAK;
           changed = true;
         }
@@ -3842,13 +3844,13 @@ static void ui_do_but_textedit(
 #endif
         {
           if (event->type == EVT_VKEY) {
-            changed = ui_textedit_copypaste(but, data->text_edit, UI_TEXTEDIT_PASTE);
+            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
           }
           else if (event->type == EVT_CKEY) {
-            changed = ui_textedit_copypaste(but, data->text_edit, UI_TEXTEDIT_COPY);
+            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_COPY);
           }
           else if (event->type == EVT_XKEY) {
-            changed = ui_textedit_copypaste(but, data->text_edit, UI_TEXTEDIT_CUT);
+            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_CUT);
           }
 
           retval = WM_UI_HANDLER_BREAK;
@@ -3860,7 +3862,7 @@ static void ui_do_but_textedit(
                                                       STRCUR_DIR_NEXT :
                                                       STRCUR_DIR_PREV;
         const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        ui_textedit_move(but, data->text_edit, direction, event->modifier & KM_SHIFT, jump);
+        ui_textedit_move(but, text_edit, direction, event->modifier & KM_SHIFT, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
       }
@@ -3879,7 +3881,7 @@ static void ui_do_but_textedit(
         ATTR_FALLTHROUGH;
       case EVT_ENDKEY:
         ui_textedit_move(
-            but, data->text_edit, STRCUR_DIR_NEXT, event->modifier & KM_SHIFT, STRCUR_JUMP_ALL);
+            but, text_edit, STRCUR_DIR_NEXT, event->modifier & KM_SHIFT, STRCUR_JUMP_ALL);
         retval = WM_UI_HANDLER_BREAK;
         break;
       case WHEELUPMOUSE:
@@ -3897,7 +3899,7 @@ static void ui_do_but_textedit(
         ATTR_FALLTHROUGH;
       case EVT_HOMEKEY:
         ui_textedit_move(
-            but, data->text_edit, STRCUR_DIR_PREV, event->modifier & KM_SHIFT, STRCUR_JUMP_ALL);
+            but, text_edit, STRCUR_DIR_PREV, event->modifier & KM_SHIFT, STRCUR_JUMP_ALL);
         retval = WM_UI_HANDLER_BREAK;
         break;
       case EVT_PADENTER:
@@ -3910,7 +3912,7 @@ static void ui_do_but_textedit(
         const eStrCursorJumpDirection direction = (event->type == EVT_DELKEY) ? STRCUR_DIR_NEXT :
                                                                                 STRCUR_DIR_PREV;
         const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        changed = ui_textedit_delete(but, data->text_edit, direction, jump);
+        changed = ui_textedit_delete(but, text_edit, direction, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
       }
@@ -3925,8 +3927,8 @@ static void ui_do_but_textedit(
         if (event->modifier == KM_CTRL)
 #endif
         {
-          ui_textedit_move(but, data->text_edit, STRCUR_DIR_PREV, false, STRCUR_JUMP_ALL);
-          ui_textedit_move(but, data->text_edit, STRCUR_DIR_NEXT, true, STRCUR_JUMP_ALL);
+          ui_textedit_move(but, text_edit, STRCUR_DIR_PREV, false, STRCUR_JUMP_ALL);
+          ui_textedit_move(but, text_edit, STRCUR_DIR_NEXT, true, STRCUR_JUMP_ALL);
           retval = WM_UI_HANDLER_BREAK;
         }
         break;
@@ -3965,9 +3967,9 @@ static void ui_do_but_textedit(
         {
           int undo_pos;
           const char *undo_str = ui_textedit_undo(
-              data->undo_stack_text, is_redo ? 1 : -1, &undo_pos);
+              text_edit.undo_stack_text, is_redo ? 1 : -1, &undo_pos);
           if (undo_str != nullptr) {
-            ui_textedit_string_set(but, data->text_edit, undo_str);
+            ui_textedit_string_set(but, text_edit, undo_str);
 
             /* Set the cursor & clear selection. */
             but->pos = undo_pos;
@@ -4003,7 +4005,7 @@ static void ui_do_but_textedit(
       if (utf8_buf[0]) {
         const int utf8_buf_len = BLI_str_utf8_size_or_error(utf8_buf);
         BLI_assert(utf8_buf_len != -1);
-        changed = ui_textedit_insert_buf(but, data->text_edit, utf8_buf, utf8_buf_len);
+        changed = ui_textedit_insert_buf(but, text_edit, utf8_buf, utf8_buf_len);
       }
 
       retval = WM_UI_HANDLER_BREAK;
@@ -4018,7 +4020,7 @@ static void ui_do_but_textedit(
   if (event->type == WM_IME_COMPOSITE_START) {
     changed = true;
     if (but->selend > but->selsta) {
-      ui_textedit_delete_selection(but, data->text_edit);
+      ui_textedit_delete_selection(but, text_edit);
     }
   }
   else if (event->type == WM_IME_COMPOSITE_EVENT) {
@@ -4031,7 +4033,7 @@ static void ui_do_but_textedit(
         ui_textedit_insert_ascii(but, data, '.');
       }
       else {
-        ui_textedit_insert_buf(but, data->text_edit, ime_data->str_result, ime_data->result_len);
+        ui_textedit_insert_buf(but, text_edit, ime_data->str_result, ime_data->result_len);
       }
     }
   }
@@ -4042,8 +4044,8 @@ static void ui_do_but_textedit(
 
   if (changed) {
     /* The undo stack may be nullptr if an event exits editing. */
-    if ((skip_undo_push == false) && (data->undo_stack_text != nullptr)) {
-      ui_textedit_undo_push(data->undo_stack_text, data->text_edit.edit_string, but->pos);
+    if ((skip_undo_push == false) && (text_edit.undo_stack_text != nullptr)) {
+      ui_textedit_undo_push(text_edit.undo_stack_text, text_edit.edit_string, but->pos);
     }
 
     /* only do live update when but flag request it (UI_BUT_TEXTEDIT_UPDATE). */
