@@ -313,7 +313,6 @@ class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInstanceOnPoints", search_weight=2.0)
         node_add_menu.add_node_type(layout, "GeometryNodeInstancesToPoints")
         layout.separator()
-        node_add_menu.add_node_type(layout, "GeometryNodeTransformInstances")
         node_add_menu.add_node_type(layout, "GeometryNodeRealizeInstances", search_weight=1.0)
         node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
