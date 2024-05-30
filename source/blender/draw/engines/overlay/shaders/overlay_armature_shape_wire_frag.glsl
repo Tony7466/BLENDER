@@ -36,7 +36,14 @@ float edge_step(float dist)
 
 void main()
 {
-  const float dist = abs(geometry_noperspective_out.edgeCoord) - geometry_out.wire_width / 2.0;
+  float wire_width = geometry_out.wire_width;
+  if (do_smooth_wire){
+    wire_width -= 0.5;
+  }
+
+  float half_size = wire_width / 2.0;
+
+  float dist = abs(geometry_noperspective_out.edgeCoord) - half_size;
   const float mix_w = clamp(edge_step(dist), 0.0, 1.0);
 
   fragColor = mix(vec4(geometry_out.finalColor.rgb, alpha), vec4(0), mix_w);
