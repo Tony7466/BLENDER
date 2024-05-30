@@ -469,4 +469,38 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
   EXPECT_EQ(1, channels->fcurves()[1]->totvert);
 }
 
+TEST_F(ActionLayersTest, conversion_to_layered)
+{
+  EXPECT_TRUE(anim->is_empty());
+  FCurve *legacy_fcu_0 = action_fcurve_ensure(bmain, anim, "Test", nullptr, "location", 0);
+  FCurve *legacy_fcu_1 = action_fcurve_ensure(bmain, anim, "Test", nullptr, "location", 1);
+
+  KeyframeSettings settings;
+  settings.handle = HD_AUTO;
+  settings.interpolation = BEZT_IPO_BEZ;
+  settings.keyframe_type = BEZT_KEYTYPE_KEYFRAME;
+  insert_vert_fcurve(legacy_fcu_0, {0, 0}, settings, INSERTKEY_NOFLAGS);
+  insert_vert_fcurve(legacy_fcu_0, {1, 1}, settings, INSERTKEY_NOFLAGS);
+  add_fmodifier(&legacy_fcu_1->modifiers, FMODIFIER_TYPE_NOISE, legacy_fcu_1);
+
+  Action *converted = convert_to_layered_action(*bmain, *anim);
+  Strip *strip = converted->layers()[0]->strips()[0];
+  KeyframeStrip key_strip = strip->as<KeyframeStrip>();
+  ChannelBag *bag = key_strip.channelbags()[0];
+  ASSERT_EQ(bag->fcurve_array_num, 2);
+  ASSERT_EQ(bag->fcurve_array[0]->totvert, 2);
+
+  ASSERT_TRUE(bag->fcurve_array[0]->modifiers.first == nullptr);
+  ASSERT_TRUE(bag->fcurve_array[1]->modifiers.first != nullptr);
+
+  Action *long_name_action = static_cast<Action *>(BKE_id_new(
+      bmain, ID_AC, "name_for_an_action_that_is_exactly_64_chars_which_is_MAX_ID_NAME"));
+  action_fcurve_ensure(bmain, long_name_action, "Long", nullptr, "location", 0);
+  converted = convert_to_layered_action(*bmain, *long_name_action);
+  /* AC gets added automatically by Blender, the long name is shortened to make space for
+   * "_layered". */
+  EXPECT_STREQ(converted->id.name,
+               "ACname_for_an_action_that_is_exactly_64_chars_which_is_MA_layered");
+}
+
 }  // namespace blender::animrig::tests

@@ -1082,7 +1082,11 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   }
 
   char layered_action_name[MAX_ID_NAME - 2];
-  SNPRINTF(layered_action_name, "%s_layered", legacy_action.id.name);
+  /* In case the legacy action has a long name it is shortened to make space for "_layered". */
+  char max_legacy_name[MAX_ID_NAME - 8];
+  SNPRINTF(max_legacy_name, "%s", legacy_action.id.name);
+  /* Offsetting the id.name to remove the ID prefix (AC) which gets added back later. */
+  SNPRINTF(layered_action_name, "%s_layered", max_legacy_name + 2);
   bAction *baction = BKE_action_add(&bmain, layered_action_name);
 
   Action &converted_action = baction->wrap();
