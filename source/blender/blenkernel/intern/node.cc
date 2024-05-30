@@ -846,12 +846,15 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
       }
       else if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
         auto &storage = *static_cast<NodeGeometryAttributeCapture *>(node->storage);
-        /* Set data type based on the first item for better forward-compatibility. */
-        if (storage.capture_items_num > 1) {
-          storage.data_type_legacy = storage.capture_items[0].data_type;
-        }
-        else {
-          storage.data_type_legacy = CD_PROP_FLOAT;
+        /* Improve forward compatibility. */
+        storage.data_type_legacy = CD_PROP_FLOAT;
+        for (const NodeGeometryAttributeCaptureItem &item :
+             Span{storage.capture_items, storage.capture_items_num})
+        {
+          if (item.identifier == 0) {
+            storage.data_type_legacy = item.data_type;
+            break;
+          }
         }
         BLO_write_struct(writer, NodeGeometryAttributeCapture, node->storage);
         nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
