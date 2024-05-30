@@ -329,7 +329,8 @@ const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 PhysicsWorld *PhysicsGeometry::world_for_write()
 {
   if (world_ && !world_->is_mutable()) {
-    return world_->copy();
+    world_ = world_->copy();
+    BLI_assert(world_->is_mutable());
   }
   return const_cast<PhysicsWorld *>(world_);
 }

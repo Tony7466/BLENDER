@@ -30,13 +30,6 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    if (physics->world_for_write()->is_mutable()) {
-      physics->world_for_write()->tag_ensured_mutable();
-    }
-    else {
-      physics->set_world(physics->world_for_write()->copy());
-    }
-
     physics->world_for_write()->step_simulation(delta_time);
   });
 
