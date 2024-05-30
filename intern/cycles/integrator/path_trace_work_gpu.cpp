@@ -27,18 +27,17 @@ static size_t estimate_single_state_size(const uint kernel_features)
   for (int array_index = 0;; array_index++) {
 
 #ifdef PACKED_STATE
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
-  state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
-#define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature)  \
-  KERNEL_STRUCT_BEGIN(parent_struct) \
-  KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
+#  define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+    state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
+#  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct) \
+    KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
 #else
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
-  state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
-#define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature)  \
-  KERNEL_STRUCT_BEGIN(parent_struct)
+#  define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+    state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
+#  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) KERNEL_STRUCT_BEGIN(parent_struct)
 #endif
 
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
@@ -144,25 +143,29 @@ void PathTraceWorkGPU::alloc_integrator_soa()
   for (int array_index = 0;; array_index++) {
 #define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
   if ((kernel_features & (feature)) && (integrator_state_gpu_.parent_struct.name == nullptr)) { \
-    string name_str = string_printf("%sintegrator_state_" #parent_struct "_" #name, shadow ? "shadow_" : ""); \
+    string name_str = string_printf("%sintegrator_state_" #parent_struct "_" #name, \
+                                    shadow ? "shadow_" : ""); \
     device_only_memory<type> *array = new device_only_memory<type>(device_, name_str.c_str()); \
     array->alloc_to_device(max_num_paths_); \
     integrator_state_soa_.emplace_back(array); \
-    memcpy(&integrator_state_gpu_.parent_struct.name, &array->device_pointer, sizeof(array->device_pointer)); \
+    memcpy(&integrator_state_gpu_.parent_struct.name, \
+           &array->device_pointer, \
+           sizeof(array->device_pointer)); \
   }
 #ifdef PACKED_STATE
-#define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
-  if ((kernel_features & (feature))) { \
-    string name_str = string_printf("%sintegrator_state_" #parent_struct "_" #name, shadow ? "shadow_" : ""); \
-    VLOG_WORK << "Skipping " << name_str << " -- data is packed inside integrator_state_" #parent_struct "_packed"; \
-  }
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
-  KERNEL_STRUCT_BEGIN(parent_struct) \
-  KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
+#  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
+    if ((kernel_features & (feature))) { \
+      string name_str = string_printf("%sintegrator_state_" #parent_struct "_" #name, \
+                                      shadow ? "shadow_" : ""); \
+      VLOG_WORK << "Skipping " << name_str \
+                << " -- data is packed inside integrator_state_" #parent_struct "_packed"; \
+    }
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct) \
+    KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
 #else
-#define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
-  KERNEL_STRUCT_BEGIN(parent_struct)
+#  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) KERNEL_STRUCT_BEGIN(parent_struct)
 #endif
 
 #define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
@@ -174,7 +177,9 @@ void PathTraceWorkGPU::alloc_integrator_soa()
     device_only_memory<type> *array = new device_only_memory<type>(device_, name_str.c_str()); \
     array->alloc_to_device(max_num_paths_); \
     integrator_state_soa_.emplace_back(array); \
-    memcpy(&integrator_state_gpu_.parent_struct[array_index].name, &array->device_pointer, sizeof(array->device_pointer)); \
+    memcpy(&integrator_state_gpu_.parent_struct[array_index].name, \
+           &array->device_pointer, \
+           sizeof(array->device_pointer)); \
   }
 #define KERNEL_STRUCT_END(name) \
   (void)array_index; \

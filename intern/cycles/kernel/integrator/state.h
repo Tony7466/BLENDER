@@ -105,29 +105,34 @@ typedef struct IntegratorQueueCounter {
 
 #if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
 
-/* Generate wrapper structs for all integrator state fields. This allows us to access state uniformly, regardless of whether it stored in a packed struct or separate arrays. */
-#define KERNEL_STRUCT_BEGIN(name)
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) struct Wrapped_##parent_struct##_##name { type name; void operator=(type) {} };
-#define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+/* Generate wrapper structs for all integrator state fields. This allows us to access state
+ * uniformly, regardless of whether it stored in a packed struct or separate arrays. */
+#  define KERNEL_STRUCT_BEGIN(name)
+#  define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+    struct Wrapped_##parent_struct##_##name { \
+      type name; \
+      void operator=(type) {} \
+    };
+#  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
     KERNEL_STRUCT_BEGIN(parent_struct) \
     KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
-#define KERNEL_STRUCT_ARRAY_MEMBER KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_END(name)
-#define KERNEL_STRUCT_END_ARRAY(name, cpu_size, gpu_size)
-#define KERNEL_STRUCT_VOLUME_STACK_SIZE MAX_VOLUME_STACK_SIZE
+#  define KERNEL_STRUCT_ARRAY_MEMBER KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_END(name)
+#  define KERNEL_STRUCT_END_ARRAY(name, cpu_size, gpu_size)
+#  define KERNEL_STRUCT_VOLUME_STACK_SIZE MAX_VOLUME_STACK_SIZE
 
-#include "kernel/integrator/state_template.h"
-#include "kernel/integrator/shadow_state_template.h"
+#  include "kernel/integrator/shadow_state_template.h"
+#  include "kernel/integrator/state_template.h"
 
-#undef KERNEL_STRUCT_BEGIN
-#undef KERNEL_STRUCT_BEGIN_PACKED
-#undef KERNEL_STRUCT_MEMBER
-#undef KERNEL_STRUCT_MEMBER_PACKED
-#undef KERNEL_STRUCT_ARRAY_MEMBER
-#undef KERNEL_STRUCT_END
-#undef KERNEL_STRUCT_END_ARRAY
-#undef KERNEL_STRUCT_VOLUME_STACK_SIZE
+#  undef KERNEL_STRUCT_BEGIN
+#  undef KERNEL_STRUCT_BEGIN_PACKED
+#  undef KERNEL_STRUCT_MEMBER
+#  undef KERNEL_STRUCT_MEMBER_PACKED
+#  undef KERNEL_STRUCT_ARRAY_MEMBER
+#  undef KERNEL_STRUCT_END
+#  undef KERNEL_STRUCT_END_ARRAY
+#  undef KERNEL_STRUCT_VOLUME_STACK_SIZE
 
 #endif
 
@@ -139,28 +144,34 @@ typedef struct IntegratorStateGPU {
 
 #ifdef PACKED_STATE
 
-#ifdef __KERNEL_GPU__
+#  ifdef __KERNEL_GPU__
 
-/* If we've opted in to packed layouts, generate member functions that return a pointer to a wrapper type so we can access state using uniform syntax. */
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
-  ccl_global Wrapped_##parent_struct##_##name *name; \
-  ccl_device_inline ccl_global Wrapped_##parent_struct##_##name *name##_fn() ccl_constant { return (ccl_global Wrapped_##parent_struct##_##name*)name; }
-#define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
-  ccl_device_inline ccl_global packed_##parent_struct *name##_fn() ccl_constant { return (ccl_global packed_##parent_struct*)packed; }
+/* If we've opted in to packed layouts, generate member functions that return a pointer to a
+ * wrapper type so we can access state using uniform syntax. */
+#    define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+      ccl_global Wrapped_##parent_struct##_##name *name; \
+      ccl_device_inline ccl_global Wrapped_##parent_struct##_##name *name##_fn() ccl_constant \
+      { \
+        return (ccl_global Wrapped_##parent_struct##_##name *)name; \
+      }
+#    define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
+      ccl_device_inline ccl_global packed_##parent_struct *name##_fn() ccl_constant \
+      { \
+        return (ccl_global packed_##parent_struct *)packed; \
+      }
+#  else
+#    define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) ccl_global type *name;
+#    define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
+#  endif
+
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
+    KERNEL_STRUCT_BEGIN(parent_struct) \
+    KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
+
 #else
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) ccl_global type *name;
-#define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
-#endif
-
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
-  KERNEL_STRUCT_BEGIN(parent_struct) \
-  KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
-
-#else
-#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) ccl_global type *name;
-#define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
-#define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
-  KERNEL_STRUCT_BEGIN(parent_struct)
+#  define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) ccl_global type *name;
+#  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
+#  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) KERNEL_STRUCT_BEGIN(parent_struct)
 #endif
 #define KERNEL_STRUCT_ARRAY_MEMBER KERNEL_STRUCT_MEMBER
 #define KERNEL_STRUCT_END(name) \
@@ -243,16 +254,17 @@ typedef int ConstIntegratorShadowState;
 
 #  ifdef PACKED_STATE
 
-/* If we've opted in to packed layouts, we use the generated accessor functions (member##_fn) to resolve different layouts (packed vs separate). */
+/* If we've opted in to packed layouts, we use the generated accessor functions (member##_fn) to
+ * resolve different layouts (packed vs separate). */
 #    define INTEGRATOR_STATE(state, nested_struct, member) \
-    kernel_integrator_state.nested_struct.member##_fn()[state].member
+      kernel_integrator_state.nested_struct.member##_fn()[state].member
 #    define INTEGRATOR_STATE_ARRAY(state, nested_struct, array_index, member) \
-    kernel_integrator_state.nested_struct[array_index].member##_fn()[state].member
+      kernel_integrator_state.nested_struct[array_index].member##_fn()[state].member
 #  else
 #    define INTEGRATOR_STATE(state, nested_struct, member) \
-    kernel_integrator_state.nested_struct.member[state]
+      kernel_integrator_state.nested_struct.member[state]
 #    define INTEGRATOR_STATE_ARRAY(state, nested_struct, array_index, member) \
-    kernel_integrator_state.nested_struct[array_index].member[state]
+      kernel_integrator_state.nested_struct[array_index].member[state]
 #  endif
 
 #  define INTEGRATOR_STATE_WRITE(state, nested_struct, member) \
