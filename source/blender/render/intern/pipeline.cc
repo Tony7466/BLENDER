@@ -657,7 +657,7 @@ void RE_FreeUnusedGPUResources()
 
     LISTBASE_FOREACH (const wmWindow *, win, &wm->windows) {
       const Scene *scene = WM_window_get_active_scene(win);
-      if (re != RE_GetSceneRender(scene)) {
+      if (re != RE_GetSceneRender(scene) && re != RE_GetRender(COMPOSITOR_RENDER_NAME)) {
         continue;
       }
 

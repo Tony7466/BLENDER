@@ -32,6 +32,8 @@ struct bMovieHandle;
 extern "C" {
 #endif
 
+#define COMPOSITOR_RENDER_NAME "GPU Compositor Render"
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 /* this include is what is exposed of render to outside world */
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
