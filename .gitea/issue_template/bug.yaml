@@ -29,7 +29,7 @@ body:
                Graphics card:
 
                **Blender Version**
-               Broken: (example: 2.80, edbf15d3c044, main, 2018-11-28)
+               Broken: (example: 2.80, `edbf15d3c044`, main, 2018-11-28)
                Worked: (newest version of Blender that worked as expected)
 
                **Short description of error**
