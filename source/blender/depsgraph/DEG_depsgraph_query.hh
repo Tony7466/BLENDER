@@ -108,8 +108,8 @@ ID *DEG_get_original_id(ID *id);
 /**
  * Check whether given ID is an original.
  *
- * Original IDs are considered all the IDs which are not covered by copy-on-write system and are
- * not out-of-main localized data-blocks.
+ * Original IDs are considered all the IDs which are not covered by copy-on-evaluation system and
+ * are not out-of-main localized data-blocks.
  */
 bool DEG_is_original_id(const ID *id);
 bool DEG_is_original_object(const Object *object);
@@ -127,6 +127,12 @@ bool DEG_is_evaluated_object(const Object *object);
  * - Nothing is tagged for update.
  */
 bool DEG_is_fully_evaluated(const Depsgraph *depsgraph);
+
+/**
+ * Check every component of the data-block is evaluated. For example, an object disabled in the
+ * viewport is not fully evaluated, even though the copy-on-eval data-block is created.
+ */
+bool DEG_id_is_fully_evaluated(const Depsgraph *depsgraph, const ID *id_eval);
 
 /** \} */
 

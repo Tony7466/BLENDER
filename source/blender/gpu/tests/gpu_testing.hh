@@ -4,11 +4,11 @@
 
 #include "testing/testing.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "GHOST_C-api.h"
 
-#include "GPU_platform.h"
+#include "GPU_platform.hh"
 
 struct GPUContext;
 

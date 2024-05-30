@@ -5,13 +5,16 @@
 #include "integrator/denoiser.h"
 
 #include "device/device.h"
+
 #include "integrator/denoiser_oidn.h"
 #ifdef WITH_OPENIMAGEDENOISE
 #  include "integrator/denoiser_oidn_gpu.h"
 #endif
 #include "integrator/denoiser_optix.h"
 #include "session/buffers.h"
+
 #include "util/log.h"
+#include "util/openimagedenoise.h"
 #include "util/progress.h"
 
 CCL_NAMESPACE_BEGIN
@@ -37,11 +40,43 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoise_device, const DenoiseParam
 #endif
   }
 
-  /* Always fallback to OIDN. */
+#ifdef WITH_OPTIX
+  /* Use OptiX on GPU if supported. */
+  if (params.type == DENOISER_OPTIX && Device::available_devices(DEVICE_MASK_OPTIX).size()) {
+    return make_unique<OptiXDenoiser>(path_trace_device, params);
+  }
+#endif
+
+  /* Always fallback to OIDN on CPU. */
   DenoiseParams oidn_params = params;
   oidn_params.type = DENOISER_OPENIMAGEDENOISE;
   oidn_params.use_gpu = false;
   return make_unique<OIDNDenoiser>(denoise_device, oidn_params);
+}
+
+DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &path_trace_device_info)
+{
+#ifdef WITH_OPENIMAGEDENOISE
+  if (path_trace_device_info.type != DEVICE_CPU &&
+      OIDNDenoiserGPU::is_device_supported(path_trace_device_info))
+  {
+    return DENOISER_OPENIMAGEDENOISE;
+  }
+#endif
+
+#ifdef WITH_OPTIX
+  if (!Device::available_devices(DEVICE_MASK_OPTIX).empty()) {
+    return DENOISER_OPTIX;
+  }
+#endif
+
+#ifdef WITH_OPENIMAGEDENOISE
+  if (openimagedenoise_supported()) {
+    return DENOISER_OPENIMAGEDENOISE;
+  }
+#endif
+
+  return DENOISER_NONE;
 }
 
 Denoiser::Denoiser(Device *path_trace_device, const DenoiseParams &params)

@@ -6,13 +6,12 @@
  * \ingroup spseq
  */
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_scene_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -21,8 +20,6 @@
 
 #include "UI_view2d.hh"
 
-#include "SEQ_iterator.hh"
-#include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
@@ -30,6 +27,7 @@
 /* For menu, popup, icons, etc. */
 #include "ED_anim_api.hh"
 #include "ED_screen.hh"
+#include "ED_sequencer.hh"
 #include "ED_time_scrub_ui.hh"
 #include "ED_util_imbuf.hh"
 
@@ -222,7 +220,7 @@ void SEQUENCER_OT_view_all_preview(wmOperatorType *ot)
 
 static int sequencer_view_zoom_ratio_exec(bContext *C, wmOperator *op)
 {
-  RenderData *rd = &CTX_data_scene(C)->r;
+  const RenderData *rd = &CTX_data_scene(C)->r;
   View2D *v2d = UI_view2d_fromcontext(C);
 
   float ratio = RNA_float_get(op->ptr, "ratio");
@@ -341,7 +339,7 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
-  blender::VectorSet strips = selected_strips_from_context(C);
+  blender::VectorSet strips = ED_sequencer_selected_strips_from_context(C);
   View2D *v2d = UI_view2d_fromcontext(C);
   rctf cur_new = v2d->cur;
 

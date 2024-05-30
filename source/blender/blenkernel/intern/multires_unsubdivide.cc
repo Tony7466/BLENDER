@@ -20,18 +20,11 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_customdata.hh"
-#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
-#include "BKE_subdiv.hh"
 #include "BKE_subsurf.hh"
 
 #include "bmesh.hh"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "multires_reshape.hh"
 #include "multires_unsubdivide.hh"
@@ -848,17 +841,27 @@ static void multires_unsubdivide_get_grid_corners_on_base_mesh(BMFace *f1,
   /* Do an edge step until it finds a tagged vertex, which is part of the base mesh. */
   /* x axis */
   edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
-  while (!BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
+  while (edge_x && !BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
     edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
   }
-  (*r_corner_x) = current_vertex_x;
+  if (edge_x) {
+    *r_corner_x = current_vertex_x;
+  }
+  else {
+    *r_corner_x = nullptr;
+  }
 
   /* Same for y axis */
   edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
-  while (!BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
+  while (edge_y && !BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
     edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
   }
-  (*r_corner_y) = current_vertex_y;
+  if (edge_y) {
+    *r_corner_y = current_vertex_y;
+  }
+  else {
+    *r_corner_y = nullptr;
+  }
 }
 
 static BMesh *get_bmesh_from_mesh(Mesh *mesh)
@@ -1050,6 +1053,9 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
        * base mesh of the face of grid that is going to be extracted. */
       BMVert *corner_x, *corner_y;
       multires_unsubdivide_get_grid_corners_on_base_mesh(l->f, l->e, &corner_x, &corner_y);
+      if (!corner_x || !corner_y) {
+        continue;
+      }
 
       /* Map the two obtained vertices to the base mesh. */
       const int corner_x_index = orig_to_base_vmap[BM_elem_index_get(corner_x)];

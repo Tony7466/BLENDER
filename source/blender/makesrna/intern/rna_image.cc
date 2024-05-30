@@ -58,9 +58,9 @@ static const EnumPropertyItem image_source_items[] = {
 #  include "BLI_math_base.h"
 #  include "BLI_math_vector.h"
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 
-#  include "GPU_texture.h"
+#  include "GPU_texture.hh"
 
 #  include "IMB_imbuf.hh"
 #  include "IMB_imbuf_types.hh"
@@ -276,6 +276,8 @@ static std::optional<std::string> rna_ImageUser_path(const PointerRNA *ptr)
         return rna_Node_ImageUser_path(ptr);
       case ID_CA:
         return rna_CameraBackgroundImage_image_or_movieclip_user_path(ptr);
+      case ID_SCR:
+        return " ... image_user";
       default:
         break;
     }

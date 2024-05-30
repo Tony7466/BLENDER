@@ -202,7 +202,7 @@ void GpencilExporterSVG::export_gpencil_layers()
         /* Apply layer thickness change. */
         gps_duplicate->thickness += gpl->line_change;
         /* Apply object scale to thickness. */
-        const float scalef = mat4_to_scale(ob->object_to_world);
+        const float scalef = mat4_to_scale(ob->object_to_world().ptr());
         gps_duplicate->thickness = ceilf(float(gps_duplicate->thickness) * scalef);
         CLAMP_MIN(gps_duplicate->thickness, 1.0f);
 
@@ -375,7 +375,7 @@ void GpencilExporterSVG::add_rect(pugi::xml_node node,
                                   float width,
                                   float height,
                                   float thickness,
-                                  std::string hexcolor)
+                                  const std::string &hexcolor)
 {
   pugi::xml_node rect_node = node.append_child("rect");
   rect_node.append_attribute("x").set_value(x);
@@ -392,9 +392,9 @@ void GpencilExporterSVG::add_rect(pugi::xml_node node,
 void GpencilExporterSVG::add_text(pugi::xml_node node,
                                   float x,
                                   float y,
-                                  std::string text,
+                                  const std::string &text,
                                   const float size,
-                                  std::string hexcolor)
+                                  const std::string &hexcolor)
 {
   pugi::xml_node nodetxt = node.append_child("text");
 

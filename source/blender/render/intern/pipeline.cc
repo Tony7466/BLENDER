@@ -6,6 +6,8 @@
  * \ingroup render
  */
 
+#include <fmt/format.h>
+
 #include <cerrno>
 #include <climits>
 #include <cmath>
@@ -29,9 +31,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
-#include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
@@ -39,14 +39,14 @@
 #include "BLI_timecode.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h" /* <------ should this be here?, needed for sequencer update */
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_camera.h"
 #include "BKE_colortools.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
@@ -56,14 +56,12 @@
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.hh"
 #include "BKE_pointcache.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_sound.h"
-#include "BKE_writeavi.h" /* <------ should be replaced once with generic movie module */
+#include "BKE_writemovie.hh"
 
 #include "NOD_composite.hh"
 
@@ -86,8 +84,8 @@
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
 #include "WM_api.hh"
 #include "wm_window.hh"
 
@@ -139,12 +137,12 @@ static struct {
 /** \name Callbacks
  * \{ */
 
-static void render_callback_exec_null(Render *re, Main *bmain, eCbEvent evt)
+static void render_callback_exec_string(Render *re, Main *bmain, eCbEvent evt, const char *str)
 {
   if (re->r.scemode & R_BUTS_PREVIEW) {
     return;
   }
-  BKE_callback_exec_null(bmain, evt);
+  BKE_callback_exec_string(bmain, evt, str);
 }
 
 static void render_callback_exec_id(Render *re, Main *bmain, ID *id, eCbEvent evt)
@@ -202,34 +200,40 @@ static void stats_background(void * /*arg*/, RenderStats *rs)
   megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
 
   BLI_timecode_string_from_time_simple(
-      info_time_str, sizeof(info_time_str), BLI_check_seconds_timer() - rs->starttime);
+      info_time_str, sizeof(info_time_str), BLI_time_now_seconds() - rs->starttime);
 
   /* Compositor calls this from multiple threads, mutex lock to ensure we don't
    * get garbled output. */
   static ThreadMutex mutex = BLI_MUTEX_INITIALIZER;
   BLI_mutex_lock(&mutex);
 
-  fprintf(stdout,
-          RPT_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
-          rs->cfra,
-          megs_used_memory,
-          megs_peak_memory);
-
-  fprintf(stdout, RPT_("| Time:%s | "), info_time_str);
-
-  fprintf(stdout, "%s", rs->infostr);
+  char *message = BLI_sprintfN(RPT_("Fra:%d Mem:%.2fM (Peak %.2fM) | Time:%s | %s"),
+                               rs->cfra,
+                               megs_used_memory,
+                               megs_peak_memory,
+                               info_time_str,
+                               rs->infostr);
+  fprintf(stdout, "%s\n", message);
 
   /* Flush stdout to be sure python callbacks are printing stuff after blender. */
   fflush(stdout);
 
   /* NOTE: using G_MAIN seems valid here???
    * Not sure it's actually even used anyway, we could as well pass nullptr? */
-  BKE_callback_exec_null(G_MAIN, BKE_CB_EVT_RENDER_STATS);
+  BKE_callback_exec_string(G_MAIN, BKE_CB_EVT_RENDER_STATS, message);
 
-  fputc('\n', stdout);
   fflush(stdout);
 
+  MEM_freeN(message);
+
   BLI_mutex_unlock(&mutex);
+}
+
+void RE_ReferenceRenderResult(RenderResult *rr)
+{
+  /* There is no need to lock as the user-counted render results are protected by mutex at the
+   * higher call stack level. */
+  ++rr->user_counter;
 }
 
 void RE_FreeRenderResult(RenderResult *rr)
@@ -565,8 +569,9 @@ void RE_InitRenderCB(Render *re)
   else {
     re->stats_draw_cb = stats_nothing;
   }
+  re->draw_lock_cb = nullptr;
   /* clear callback handles */
-  re->dih = re->dch = re->duh = re->sdh = re->prh = re->tbh = nullptr;
+  re->dih = re->dch = re->duh = re->sdh = re->prh = re->tbh = re->dlh = nullptr;
 }
 
 void RE_FreeRender(Render *re)
@@ -666,10 +671,10 @@ void RE_FreeUnusedGPUResources()
         break;
       }
 
-      /* Detect if scene is using realtime compositing, and if either a node editor is
+      /* Detect if scene is using GPU compositing, and if either a node editor is
        * showing the nodes, or an image editor is showing the render result or viewer. */
       if (!(scene->use_nodes && scene->nodetree &&
-            scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME))
+            scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU))
       {
         continue;
       }
@@ -791,7 +796,7 @@ void RE_InitState(Render *re,
 
   re->ok = true; /* maybe flag */
 
-  re->i.starttime = BLI_check_seconds_timer();
+  re->i.starttime = BLI_time_now_seconds();
 
   /* copy render data and render layers for thread safety */
   render_copy_renderdata(&re->r, rd);
@@ -828,6 +833,9 @@ void RE_InitState(Render *re,
   if (single_layer) {
     STRNCPY(re->single_view_layer, single_layer->name);
     re->r.scemode |= R_SINGLE_LAYER;
+  }
+  else {
+    re->r.scemode &= ~R_SINGLE_LAYER;
   }
 
   /* if preview render, we try to keep old result */
@@ -1100,7 +1108,7 @@ static void do_render_compositor_scene(Render *re, Scene *sce, int cfra)
 
   BKE_scene_camera_switch_update(sce);
 
-  /* exception: scene uses own size (unfinished code) */
+  /* exception: scene uses its own size (unfinished code) */
   if (false) {
     BKE_render_resolution(&sce->r, false, &winx, &winy);
   }
@@ -1306,10 +1314,9 @@ static void do_render_compositor(Render *re)
                                 re->pipeline_scene_eval,
                                 ntree,
                                 &re->r,
-                                true,
-                                G.background == 0,
                                 rv->name,
-                                &compositor_render_context);
+                                &compositor_render_context,
+                                nullptr);
         }
         compositor_render_context.save_file_outputs(re->pipeline_scene_eval);
 
@@ -1328,6 +1335,23 @@ static void do_render_compositor(Render *re)
   }
 }
 
+static void renderresult_set_passes_metadata(Render *re)
+{
+  RenderResult *render_result = re->result;
+
+  BLI_rw_mutex_lock(&re->resultmutex, THREAD_LOCK_WRITE);
+
+  LISTBASE_FOREACH (RenderLayer *, render_layer, &render_result->layers) {
+    LISTBASE_FOREACH_BACKWARD (RenderPass *, render_pass, &render_layer->passes) {
+      if (render_pass->ibuf) {
+        BKE_imbuf_stamp_info(render_result, render_pass->ibuf);
+      }
+    }
+  }
+
+  BLI_rw_mutex_unlock(&re->resultmutex);
+}
+
 static void renderresult_stampinfo(Render *re)
 {
   RenderResult rres;
@@ -1341,12 +1365,11 @@ static void renderresult_stampinfo(Render *re)
     Object *ob_camera_eval = DEG_get_evaluated_object(re->pipeline_depsgraph, RE_GetCamera(re));
     BKE_image_stamp_buf(re->scene,
                         ob_camera_eval,
-                        (re->r.stamp & R_STAMP_STRIPMETA) ? rres.stamp_data : nullptr,
+                        (re->scene->r.stamp & R_STAMP_STRIPMETA) ? rres.stamp_data : nullptr,
                         rres.ibuf->byte_buffer.data,
                         rres.ibuf->float_buffer.data,
                         rres.rectx,
-                        rres.recty,
-                        4);
+                        rres.recty);
     RE_ReleaseResultImage(re);
     nr++;
   }
@@ -1439,7 +1462,7 @@ static void do_render_sequencer(Render *re)
       /* copy ibuf into combined pixel rect */
       RE_render_result_rect_from_ibuf(rr, ibuf_arr[view_id], view_id);
 
-      if (ibuf_arr[view_id]->metadata && (re->r.stamp & R_STAMP_STRIPMETA)) {
+      if (ibuf_arr[view_id]->metadata && (re->scene->r.stamp & R_STAMP_STRIPMETA)) {
         /* ensure render stamp info first */
         BKE_render_result_stamp_info(nullptr, nullptr, rr, true);
         BKE_stamp_info_from_imbuf(rr, ibuf_arr[view_id]);
@@ -1490,7 +1513,7 @@ static void do_render_full_pipeline(Render *re)
 
   BKE_scene_camera_switch_update(re->scene);
 
-  re->i.starttime = BLI_check_seconds_timer();
+  re->i.starttime = BLI_time_now_seconds();
 
   /* ensure no images are in memory from previous animated sequences */
   BKE_image_all_free_anim_ibufs(re->main, re->r.cfra);
@@ -1513,20 +1536,22 @@ static void do_render_full_pipeline(Render *re)
     do_render_compositor(re);
   }
 
-  re->i.lastframetime = BLI_check_seconds_timer() - re->i.starttime;
+  re->i.lastframetime = BLI_time_now_seconds() - re->i.starttime;
 
   re->stats_draw(&re->i);
 
   /* save render result stamp if needed */
   if (re->result != nullptr) {
     /* sequence rendering should have taken care of that already */
-    if (!(render_seq && (re->r.stamp & R_STAMP_STRIPMETA))) {
+    if (!(render_seq && (re->scene->r.stamp & R_STAMP_STRIPMETA))) {
       Object *ob_camera_eval = DEG_get_evaluated_object(re->pipeline_depsgraph, RE_GetCamera(re));
       BKE_render_result_stamp_info(re->scene, ob_camera_eval, re->result, false);
     }
 
+    renderresult_set_passes_metadata(re);
+
     /* stamp image info here */
-    if ((re->r.stamp & R_STAMP_ALL) && (re->r.stamp & R_STAMP_DRAW)) {
+    if ((re->scene->r.stamp & R_STAMP_ALL) && (re->scene->r.stamp & R_STAMP_DRAW)) {
       renderresult_stampinfo(re);
       re->display_update(re->result, nullptr);
     }
@@ -1675,9 +1700,7 @@ static int check_compositor_output(Scene *scene)
 static bool is_compositing_possible_on_gpu(Scene *scene, ReportList *reports)
 {
   /* CPU compositor can always run. */
-  if (!U.experimental.use_full_frame_compositor ||
-      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_REALTIME)
-  {
+  if (scene->r.compositor_device != SCE_COMPOSITOR_DEVICE_GPU) {
     return true;
   }
 
@@ -2093,9 +2116,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
                             rd,
                             preview ? scene->r.psfra : scene->r.sfra,
                             scene->r.cfra,
-                            (int *)ibuf->byte_buffer.data,
-                            ibuf->x,
-                            ibuf->y,
+                            ibuf,
                             suffix,
                             reports))
       {
@@ -2127,9 +2148,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
                           rd,
                           preview ? scene->r.psfra : scene->r.sfra,
                           scene->r.cfra,
-                          (int *)ibuf_arr[2]->byte_buffer.data,
-                          ibuf_arr[2]->x,
-                          ibuf_arr[2]->y,
+                          ibuf_arr[2],
                           "",
                           reports))
     {
@@ -2195,23 +2214,23 @@ static bool do_write_image_or_movie(Render *re,
   }
 
   render_time = re->i.lastframetime;
-  re->i.lastframetime = BLI_check_seconds_timer() - re->i.starttime;
+  re->i.lastframetime = BLI_time_now_seconds() - re->i.starttime;
 
   BLI_timecode_string_from_time_simple(filepath, sizeof(filepath), re->i.lastframetime);
-  printf("Time: %s", filepath);
+  std::string message = fmt::format("Time: {}", filepath);
 
+  if (do_write_file) {
+    BLI_timecode_string_from_time_simple(
+        filepath, sizeof(filepath), re->i.lastframetime - render_time);
+    message = fmt::format("{} (Saving: {})", message, filepath);
+  }
+  printf("%s\n", message.c_str());
   /* Flush stdout to be sure python callbacks are printing stuff after blender. */
   fflush(stdout);
 
   /* NOTE: using G_MAIN seems valid here???
    * Not sure it's actually even used anyway, we could as well pass nullptr? */
-  render_callback_exec_null(re, G_MAIN, BKE_CB_EVT_RENDER_STATS);
-
-  if (do_write_file) {
-    BLI_timecode_string_from_time_simple(
-        filepath, sizeof(filepath), re->i.lastframetime - render_time);
-    printf(" (Saving: %s)\n", filepath);
-  }
+  render_callback_exec_string(re, G_MAIN, BKE_CB_EVT_RENDER_STATS, message.c_str());
 
   fputc('\n', stdout);
   fflush(stdout);
