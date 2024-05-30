@@ -679,7 +679,9 @@ static void ANIM_OT_scene_range_frame(wmOperatorType *ot)
 {
   ot->name = "Frame Scene/Preview Range";
   ot->idname = "ANIM_OT_scene_range_frame";
-  ot->description = "Move the view to the scene (preview) range";
+  ot->description =
+      "Reset the horizontal view to the current scene frame range, taking the preview range into "
+      "account if it is active";
 
   ot->exec = scene_range_frame_exec;
   ot->poll = ED_operator_animview_active;
