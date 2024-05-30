@@ -2345,11 +2345,6 @@ void SCULPT_do_displacement_smear_brush(const Sculpt &sd, Object &ob, Span<PBVHN
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   SculptSession &ss = *ob.sculpt;
 
-  /* Fix for ##86114: disable for dispalcement smear brush and dyntopo for now */
-  if (!ss.pbvh || BKE_pbvh_type(*ss.pbvh) == PBVH_BMESH) {
-    return;
-  }
-
   BKE_curvemapping_init(brush.curve);
 
   const int totvert = SCULPT_vertex_count_get(ss);
