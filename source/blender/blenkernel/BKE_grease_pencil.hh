@@ -65,8 +65,8 @@ class DrawingRuntime {
 
   /**
    * Number of users for this drawing. The users are the frames in the Grease Pencil layers.
-   * Different frames can refer to the same drawing, so we need to make sure we count these
-   * users and remove a drawing if it has zero users.
+   * Different frames can refer to the same drawing, so we need to make sure we count these users
+   * and remove a drawing if it has zero users.
    */
   mutable std::atomic<int> user_count = 1;
 };
@@ -342,27 +342,6 @@ struct LayerTransformData {
  */
 using FramesMapKeyT = int;
 
-/* List of selected strokes over all drawings in a layer. */
-class OrderedSelection {
-  /* Weak reference to a stroke at a given frame. */
-  struct StrokeIndex {
-    int frame_number;
-    int stroke_index;
-  };
-
-  std::mutex mutex_;
-  std::atomic<bool> cache_valid_ = false;
-  Vector<StrokeIndex> data_;
-
- public:
-  void tag_dirty();
-  void ensure();
-  void clear();
-  void append(int frame_number, int stroke_index);
-
-  Span<StrokeIndex> data() const;
-};
-
 class LayerRuntime {
  public:
   /**
@@ -403,9 +382,6 @@ class LayerRuntime {
 
   /* Runtime data used for frame transformations. */
   LayerTransformData trans_data_;
-
-  /* Ordered selection across all frames. */
-  mutable OrderedSelection ordered_selection;
 
  public:
   /* Reset all runtime data. */

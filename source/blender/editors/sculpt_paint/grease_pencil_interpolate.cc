@@ -68,8 +68,6 @@ struct GreasePencilInterpolateOpData {
   /* Layers to include. */
   IndexMaskMemory layer_mask_memory;
   IndexMask layer_mask;
-  /* Interpolate only selected keyframes. */
-  bool interpolate_selected_only;
   /* Exclude breakdown keyframes when finding intervals. */
   bool exclude_breakdowns;
 
@@ -162,25 +160,6 @@ static void find_curve_mapping_from_index(const GreasePencil &grease_pencil,
   array_utils::fill_index_range(
       pairs.from_curves.as_mutable_span().slice(old_pairs_num, pairs_num));
   array_utils::fill_index_range(pairs.to_curves.as_mutable_span().slice(old_pairs_num, pairs_num));
-}
-
-/* Build index lists for curve interpolation between two frames. */
-static void find_curve_mapping_from_selection_order(const bke::greasepencil::Layer &layer,
-                                                    InterpolationPairs &pairs)
-{
-  const bke::greasepencil::OrderedSelection &global_selection = layer.runtime->ordered_selection;
-
-  const int pairs_num = global_selection.data().size() / 2;
-  pairs.from_frames.reinitialize(pairs_num);
-  pairs.to_frames.reinitialize(pairs_num);
-  pairs.from_curves.reinitialize(pairs_num);
-  pairs.to_curves.reinitialize(pairs_num);
-  for (const int i : IndexRange(pairs_num)) {
-    pairs.from_frames[i] = global_selection.data()[2 * i].frame_number;
-    pairs.to_frames[i] = global_selection.data()[2 * i + 1].frame_number;
-    pairs.from_curves[i] = global_selection.data()[2 * i].stroke_index;
-    pairs.to_curves[i] = global_selection.data()[2 * i + 1].stroke_index;
-  }
 }
 
 static bool compute_auto_flip(const Span<float3> from_positions, const Span<float3> to_positions)
@@ -547,7 +526,6 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
       op.customdata);
 
   data.shift = RNA_float_get(op.ptr, "shift");
-  data.interpolate_selected_only = RNA_boolean_get(op.ptr, "interpolate_selected_only");
   data.exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
   data.flipmode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
   data.smooth_factor = RNA_float_get(op.ptr, "smooth_factor");
@@ -577,14 +555,9 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
 
     ensure_drawing_at_exact_frame(grease_pencil, layer, layer_data, current_frame);
 
-    if (data.interpolate_selected_only) {
-      find_curve_mapping_from_selection_order(layer, layer_data.curve_pairs);
-    }
-    else {
-      /* Pair from/to curves by index. */
-      find_curve_mapping_from_index(
-          grease_pencil, layer, current_frame, data.exclude_breakdowns, layer_data.curve_pairs);
-    }
+    /* Pair from/to curves by index. */
+    find_curve_mapping_from_index(
+        grease_pencil, layer, current_frame, data.exclude_breakdowns, layer_data.curve_pairs);
   });
 
   const std::optional<FramesMapKeyInterval> active_layer_interval = find_frames_interval(
@@ -793,12 +766,6 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
                0,
                "Layer",
                "Layers included in the interpolation");
-
-  RNA_def_boolean(ot->srna,
-                  "interpolate_selected_only",
-                  false,
-                  "Only Selected",
-                  "Interpolate only selected strokes");
 
   RNA_def_boolean(ot->srna,
                   "exclude_breakdowns",

@@ -7,7 +7,6 @@
  */
 
 #include <iostream>
-#include <memory>
 #include <optional>
 
 #include "BKE_action.h"
@@ -290,44 +289,6 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
     span.fill(default_value);
   }
   return span;
-}
-
-void OrderedSelection::tag_dirty()
-{
-  cache_valid_.store(false);
-}
-
-void OrderedSelection::ensure()
-{
-  if (cache_valid_.load(std::memory_order_acquire)) {
-    return;
-  }
-  std::scoped_lock lock{mutex_};
-  /* Double checked lock. */
-  if (cache_valid_.load(std::memory_order_relaxed)) {
-    return;
-  }
-
-  data_.clear();
-
-  cache_valid_.store(true, std::memory_order_release);
-}
-
-void OrderedSelection::clear()
-{
-  std::scoped_lock lock{mutex_};
-  data_.clear();
-}
-
-void OrderedSelection::append(int frame_number, int stroke_index)
-{
-  std::scoped_lock lock{mutex_};
-  data_.append({frame_number, stroke_index});
-}
-
-Span<OrderedSelection::StrokeIndex> OrderedSelection::data() const
-{
-  return data_;
 }
 
 Drawing::Drawing()
@@ -783,8 +744,6 @@ void Drawing::tag_positions_changed()
 void Drawing::tag_topology_changed()
 {
   this->tag_positions_changed();
-  // TODO tag layer ordered selection as dirty
-  // layer->ordered_selection.tag_dirty();
 }
 
 DrawingReference::DrawingReference()
@@ -2282,7 +2241,7 @@ void GreasePencil::resize_drawings(const int new_num)
   }
   if (new_num > prev_num) {
     const int add_num = new_num - prev_num;
-    grow_array(&this->drawing_array, &this->drawing_array_num, add_num);
+    grow_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, add_num);
   }
   else { /* if (new_num < prev_num) */
     const int shrink_num = prev_num - new_num;
@@ -2302,11 +2261,11 @@ void GreasePencil::add_empty_drawings(const int add_num)
   using namespace blender;
   BLI_assert(add_num > 0);
   const int prev_num = this->drawings().size();
-  grow_array(&this->drawing_array, &this->drawing_array_num, add_num);
+  grow_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, add_num);
   MutableSpan<GreasePencilDrawingBase *> new_drawings = this->drawings().drop_front(prev_num);
   for (const int i : new_drawings.index_range()) {
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-        MEM_new<bke::greasepencil::Drawing>(__func__));
+        MEM_new<blender::bke::greasepencil::Drawing>(__func__));
   }
 }
 
@@ -2316,12 +2275,10 @@ void GreasePencil::add_duplicate_drawings(const int duplicate_num,
   using namespace blender;
   BLI_assert(duplicate_num > 0);
   const int prev_num = this->drawings().size();
-  grow_array(&this->drawing_array, &this->drawing_array_num, duplicate_num);
+  grow_array<GreasePencilDrawingBase *>(
+      &this->drawing_array, &this->drawing_array_num, duplicate_num);
   MutableSpan<GreasePencilDrawingBase *> new_drawings = this->drawings().drop_front(prev_num);
   for (const int i : new_drawings.index_range()) {
-    new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
-        MEM_new<bke::greasepencil::Drawing>(__func__, drawing));
-
     new_drawings[i] = reinterpret_cast<GreasePencilDrawingBase *>(
         MEM_new<bke::greasepencil::Drawing>(__func__, drawing));
   }
@@ -3259,7 +3216,6 @@ void GreasePencil::print_layer_tree()
 
 static void read_drawing_array(GreasePencil &grease_pencil, BlendDataReader *reader)
 {
-  using namespace blender;
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil.drawing_array));
   for (int i = 0; i < grease_pencil.drawing_array_num; i++) {
     BLO_read_struct(reader, GreasePencilDrawingBase, &grease_pencil.drawing_array[i]);

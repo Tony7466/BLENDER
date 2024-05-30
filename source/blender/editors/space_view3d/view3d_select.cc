@@ -3202,8 +3202,6 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
 }
 
 struct ClosestGreasePencilDrawing {
-  int layer_index;
-  int frame_number;
   blender::bke::greasepencil::Drawing *drawing = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3266,8 +3264,6 @@ static bool ed_grease_pencil_select_pick(bContext *C,
                                                          new_closest.elem);
           if (new_closest_elem) {
             new_closest.elem = *new_closest_elem;
-            new_closest.layer_index = info.layer_index;
-            new_closest.frame_number = info.frame_number;
             new_closest.drawing = &info.drawing;
           }
         }
@@ -3311,14 +3307,6 @@ static bool ed_grease_pencil_select_pick(bContext *C,
     }
     return deselected;
   }
-
-  const bke::greasepencil::Layer &layer = *grease_pencil.layers()[closest.layer_index];
-  layer.runtime->ordered_selection.ensure();
-  if (deselected) {
-    layer.runtime->ordered_selection.clear();
-  }
-  /* Record the selected element in the global order list. */
-  layer.runtime->ordered_selection.append(closest.frame_number, closest.elem.index);
 
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
       closest.drawing->strokes_for_write(), selection_domain, CD_PROP_BOOL);

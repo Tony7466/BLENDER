@@ -2136,7 +2136,6 @@ class _defs_grease_pencil_edit:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("grease_pencil.interpolate")
             layout.prop(props, "layers")
-            layout.prop(props, "interpolate_selected_only")
             layout.prop(props, "exclude_breakdowns")
             layout.prop(props, "flip")
             layout.prop(props, "smooth_factor")
