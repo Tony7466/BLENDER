@@ -117,7 +117,7 @@ class NLA_MT_view(Menu):
 
         layout.operator("nla.view_selected")
         layout.operator("nla.view_all")
-        layout.operator("anim.scenerange_frame",
+        layout.operator("anim.scene_range_frame",
                         text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
         layout.operator("nla.view_frame")
         layout.separator()
@@ -317,7 +317,7 @@ class NLA_MT_view_pie(Menu):
         pie.operator("nla.view_all")
         pie.operator("nla.view_selected", icon='ZOOM_SELECTED')
         pie.operator("nla.view_frame")
-        pie.operator("anim.scenerange_frame",
+        pie.operator("anim.scene_range_frame",
                      text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
 
 

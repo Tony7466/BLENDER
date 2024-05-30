@@ -653,7 +653,7 @@ static void ANIM_OT_previewrange_clear(wmOperatorType *ot)
 /** \name Frame Scene/Preview Range Operator
  * \{ */
 
-static int scenerange_frame_exec(bContext *C, wmOperator * /*op*/)
+static int scene_range_frame_exec(bContext *C, wmOperator * /*op*/)
 {
   ARegion *region = CTX_wm_region(C);
   const Scene *scene = CTX_data_scene(C);
@@ -675,13 +675,13 @@ static int scenerange_frame_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-static void ANIM_OT_scenerange_frame(wmOperatorType *ot)
+static void ANIM_OT_scene_range_frame(wmOperatorType *ot)
 {
   ot->name = "Frame Scene/Preview Range";
-  ot->idname = "ANIM_OT_scenerange_frame";
+  ot->idname = "ANIM_OT_scene_range_frame";
   ot->description = "Move the view to the scene (preview) range";
 
-  ot->exec = scenerange_frame_exec;
+  ot->exec = scene_range_frame_exec;
   ot->poll = ED_operator_animview_active;
 
   ot->flag = OPTYPE_REGISTER;
@@ -761,7 +761,7 @@ void ED_operatortypes_anim()
   WM_operatortype_append(ANIM_OT_previewrange_set);
   WM_operatortype_append(ANIM_OT_previewrange_clear);
 
-  WM_operatortype_append(ANIM_OT_scenerange_frame);
+  WM_operatortype_append(ANIM_OT_scene_range_frame);
 
   /* Entire UI --------------------------------------- */
   WM_operatortype_append(ANIM_OT_keyframe_insert);
