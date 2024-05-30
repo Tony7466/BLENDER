@@ -44,7 +44,7 @@ class PhysicsWorld : public ImplicitSharingMixin {
 
   void delete_self() override;
 
-  PhysicsWorldImpl &impl_for_write();
+  PhysicsWorldImpl &impl();
   const PhysicsWorldImpl &impl() const;
 
   PhysicsWorld *copy() const;
@@ -70,6 +70,7 @@ class PhysicsGeometry {
  public:
   static const struct BuiltinAttributes {
     std::string id;
+    std::string simulated;
     std::string mass;
     std::string inertia;
     std::string position;
@@ -98,14 +99,14 @@ class PhysicsGeometry {
   IndexRange constraints_range() const;
   IndexRange shapes_range() const;
 
-  // void set_bodies_simulated(const IndexMask &selection, bool enable);
-  // void set_all_bodies_simulated(bool enable);
-
   VArray<const CollisionShape *> body_collision_shapes() const;
   VMutableArray<CollisionShape *> body_collision_shapes_for_write();
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
+
+  VArray<bool> body_is_simulated() const;
+  AttributeWriter<bool> body_is_simulated_for_write();
 
   VArray<float> body_masses() const;
   AttributeWriter<float> body_masses_for_write();
