@@ -3969,6 +3969,7 @@ class VIEW3D_MT_mask(Menu):
         props.value = 0
 
         props = layout.operator("paint.mask_lasso_gesture", text="Lasso Mask")
+        props = layout.operator("paint.mask_line_gesture", text="Line Mask")
         props = layout.operator("paint.mask_polyline_gesture", text="Polyline Mask")
 
         layout.separator()
