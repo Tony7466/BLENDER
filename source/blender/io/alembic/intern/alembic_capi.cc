@@ -521,10 +521,10 @@ static void import_file(ImportJobData *data, const char *filepath, float progres
   data->readers.extend(readers);
 
   const float size = float(readers.size());
-  size_t i = 0;
 
   ISampleSelector sample_sel(0.0);
   std::vector<AbcObjectReader *>::iterator iter;
+  const float read_object_progress_step = (0.6f / size) * progress_factor;
   for (iter = readers.begin(); iter != readers.end(); ++iter) {
     AbcObjectReader *reader = *iter;
 
@@ -538,8 +538,7 @@ static void import_file(ImportJobData *data, const char *filepath, float progres
       std::cerr << "Object " << reader->name() << " in Alembic file " << filepath
                 << " is invalid.\n";
     }
-
-    *data->progress += 0.6f * (++i / size) * progress_factor;
+    *data->progress += read_object_progress_step;
     *data->do_update = true;
 
     if (G.is_break) {
@@ -563,12 +562,12 @@ static void import_file(ImportJobData *data, const char *filepath, float progres
   }
 
   /* Setup transformations and constraints. */
-  i = 0;
+  const float setup_object_transform_progress_step = (0.3f / size) * progress_factor;
   for (iter = readers.begin(); iter != readers.end(); ++iter) {
     AbcObjectReader *reader = *iter;
     reader->setupObjectTransform(0.0);
 
-    *data->progress += 0.3f * (++i / size) * progress_factor;
+    *data->progress += setup_object_transform_progress_step;
     *data->do_update = true;
 
     if (G.is_break) {
