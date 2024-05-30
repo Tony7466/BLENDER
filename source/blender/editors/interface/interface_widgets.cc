@@ -4055,6 +4055,24 @@ static void widget_icon_has_anim(uiBut *but,
     /* Draw menu buttons still with down arrow. */
     widget_menubut_embossn(but, wcol, rect, state, roundboxalign);
   }
+  else if (but->type == UI_BTYPE_TEXT) {
+
+    if (state->but_flag & UI_HOVER && !(state->but_flag & UI_SELECT)) {
+      rcti draw_rect = *rect;
+
+      uiWidgetBase wtb;
+      widget_init(&wtb);
+
+      wtb.draw_outline = false;
+      const float rad = widget_radius_from_zoom(zoom, wcol);
+      round_box_edges(&wtb, UI_CNR_ALL, &draw_rect, rad);
+
+      copy_v3_v3_uchar(wcol->inner, wcol->text);
+      wcol->inner[3] = 20;
+
+      widgetbase_draw(&wtb, wcol);
+    }
+  }
 }
 
 static void widget_textbut(uiWidgetColors *wcol,
@@ -4224,6 +4242,7 @@ static void widget_list_itembut(uiBut *but,
   round_box_edges(&wtb, UI_CNR_ALL, &draw_rect, rad);
 
   if (state->but_flag & UI_HOVER && !(state->but_flag & UI_SELECT)) {
+    /* This sets up the color for lists. */
     copy_v3_v3_uchar(wcol->inner, wcol->text);
     wcol->inner[3] = 20;
   }

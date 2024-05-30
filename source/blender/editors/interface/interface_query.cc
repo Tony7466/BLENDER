@@ -90,11 +90,11 @@ bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool
   if (but->flag & UI_SCROLLED) {
     return false;
   }
-  if ((but->type == UI_BTYPE_TEXT) &&
-      ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS) && !labeledit)
-  {
-    return false;
-  }
+  // if ((but->type == UI_BTYPE_TEXT) &&
+  //     ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS) && !labeledit)
+  // {
+  //   return false;
+  // }
   if ((but->type == UI_BTYPE_LISTROW) && labeledit) {
     return false;
   }
