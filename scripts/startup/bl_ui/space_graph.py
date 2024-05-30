@@ -435,11 +435,11 @@ class GRAPH_MT_view_pie(Menu):
         pie = layout.menu_pie()
         pie.operator("graph.view_all")
         pie.operator("graph.view_selected", icon='ZOOM_SELECTED')
+        pie.operator("graph.view_frame")
         if context.scene.use_preview_range:
             pie.operator("anim.scene_range_frame", text="Frame Preview Range")
         else:
             pie.operator("anim.scene_range_frame", text="Frame Scene Range")
-        pie.operator("graph.view_frame")
 
 
 class GRAPH_MT_delete(Menu):
