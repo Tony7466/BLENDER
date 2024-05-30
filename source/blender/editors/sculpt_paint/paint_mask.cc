@@ -495,7 +495,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
 
   BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
 
-  undo::push_begin(&object, op);
+  undo::push_begin(object, op);
   switch (mode) {
     case FloodFillMode::Value:
       fill_mask(bmain, scene, depsgraph, object, value);
@@ -508,7 +508,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  undo::push_end(&object);
+  undo::push_end(object);
 
   SCULPT_tag_update_overlays(C);
 
@@ -592,9 +592,8 @@ static void gesture_apply_task(gesture::GestureData &gesture_data,
   bool redraw = false;
 
   BKE_pbvh_vertex_iter_begin (*gesture_data.ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    float vertex_normal[3];
-    const float *co = SCULPT_vertex_co_get(gesture_data.ss, vd.vertex);
-    SCULPT_vertex_normal_get(gesture_data.ss, vd.vertex, vertex_normal);
+    const float *co = SCULPT_vertex_co_get(*gesture_data.ss, vd.vertex);
+    const float3 vertex_normal = SCULPT_vertex_normal_get(*gesture_data.ss, vd.vertex);
 
     if (gesture::is_affected(gesture_data, co, vertex_normal)) {
       float prevmask = vd.mask;
@@ -624,7 +623,7 @@ static void gesture_apply_task(gesture::GestureData &gesture_data,
 
 static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureData &gesture_data)
 {
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(gesture_data.ss);
+  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(*gesture_data.ss);
   threading::parallel_for(gesture_data.nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
       gesture_apply_task(gesture_data, mask_write, gesture_data.nodes[i]);
@@ -709,6 +708,17 @@ static int gesture_line_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int gesture_polyline_exec(bContext *C, wmOperator *op)
+{
+  std::unique_ptr<gesture::GestureData> gesture_data = gesture::init_from_polyline(C, op);
+  if (!gesture_data) {
+    return OPERATOR_CANCELLED;
+  }
+  init_operation(*C, *gesture_data, *op);
+  gesture::apply(*C, *gesture_data, *op);
+  return OPERATOR_FINISHED;
+}
+
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot)
 {
   ot->name = "Mask Lasso Gesture";
@@ -765,6 +775,26 @@ void PAINT_OT_mask_line_gesture(wmOperatorType *ot)
 
   WM_operator_properties_gesture_straightline(ot, WM_CURSOR_EDIT);
   gesture::operator_properties(ot, gesture::ShapeType::Line);
+
+  gesture_operator_properties(ot);
+}
+
+void PAINT_OT_mask_polyline_gesture(wmOperatorType *ot)
+{
+  ot->name = "Mask Polyline Gesture";
+  ot->idname = "PAINT_OT_mask_polyline_gesture";
+  ot->description = "Mask within a shape defined by the cursor";
+
+  ot->invoke = WM_gesture_polyline_invoke;
+  ot->modal = WM_gesture_polyline_modal;
+  ot->exec = gesture_polyline_exec;
+
+  ot->poll = SCULPT_mode_poll_view3d;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
+
+  WM_operator_properties_gesture_polyline(ot);
+  gesture::operator_properties(ot, gesture::ShapeType::Lasso);
 
   gesture_operator_properties(ot);
 }

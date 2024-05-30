@@ -80,8 +80,8 @@ typedef struct Light {
 
   float att_dist;
   float shadow_filter_radius;
-  float shadow_resolution_scale;
   float shadow_maximum_resolution;
+  float shadow_jitter_overblur;
   char _pad3[4];
 
   /* Preview */
@@ -147,6 +147,7 @@ enum {
   LA_USE_SOFT_FALLOFF = 1 << 21,
   /** Use absolute resolution clamping instead of relative. */
   LA_SHAD_RES_ABSOLUTE = 1 << 22,
+  LA_SHADOW_JITTER = 1 << 23,
 };
 
 /** #Light::falloff_type */

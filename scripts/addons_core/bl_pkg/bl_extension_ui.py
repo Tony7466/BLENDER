@@ -286,6 +286,47 @@ class display_errors:
             box_contents.label(text=err)
 
 
+class notify_info:
+    """
+    This singleton class holds notification status.
+    """
+    # None: not yet started.
+    # False: updates running.
+    # True: updates complete.
+    _update_state = None
+
+    @staticmethod
+    def update_ensure(context, repos):
+        """
+        Ensure updates are triggered if the preferences display extensions
+        and an online sync has not yet run.
+
+        Return true if updates are in progress.
+        """
+        in_progress = False
+        match notify_info._update_state:
+            case True:
+                pass
+            case None:
+                from .bl_extension_notify import update_non_blocking
+                if repos_notify := [repo for repo in repos if repo.remote_url]:
+                    update_non_blocking(repos=repos_notify, do_online_sync=True)
+                    notify_info._update_state = False
+                    # Starting.
+                    in_progress = True
+                else:
+                    # Nothing to do, finished.
+                    notify_info._update_state = True
+            case False:
+                from .bl_extension_notify import update_in_progress
+                if update_in_progress():
+                    # Not yet finished.
+                    in_progress = True
+                else:
+                    notify_info._update_state = True
+        return in_progress
+
+
 def extensions_panel_draw_online_extensions_request_impl(
         self,
         context,
@@ -296,16 +337,21 @@ def extensions_panel_draw_online_extensions_request_impl(
     if layout_panel is not None:
         # Text wrapping isn't supported, manually wrap.
         for line in (
-                "Welcome! Access community-made add-ons and themes from the",
+                "Welcome! Access community-made add-ons and themes from the ",
                 "extensions.blender.org repository.",
                 "",
-                "This requires internet access.",
+                "This requires online access which must be enabled in \"System\" preferences.",
         ):
             layout_panel.label(text=line)
 
         row = layout.row()
-        row.operator("bl_pkg.extension_online_access", text="Dismiss", icon='X').enable = False
-        row.operator("bl_pkg.extension_online_access", text="Enable Repository", icon='CHECKMARK').enable = True
+        props = row.operator("wm.context_set_boolean", text="Dismiss", icon='X')
+        props.data_path = "preferences.extensions.use_online_access_handled"
+        props.value = True
+
+        # The only reason to prefer this over `screen.userpref_show`
+        # is it will be disabled when `--offline-mode` is forced with a useful error for why.
+        row.operator("bl_pkg.extensions_show_online_prefs", text="Go to System")
 
 
 def extensions_panel_draw_impl(
@@ -351,6 +397,15 @@ def extensions_panel_draw_impl(
     layout_topmost = layout.column()
 
     repos_all = extension_repos_read()
+
+    if bpy.app.online_access:
+        if notify_info.update_ensure(context, repos_all):
+            # TODO: should be part of the status bar.
+            from .bl_extension_notify import update_ui_text
+            text, icon = update_ui_text()
+            if text:
+                layout_topmost.box().label(text=text, icon=icon)
+            del text, icon
 
     # To access enabled add-ons.
     show_addons = filter_by_type in {"", "add-on"}
@@ -833,7 +888,16 @@ def extensions_panel_draw(panel, context):
         if repo_status_text.running:
             return
 
-    if not prefs.extensions.use_online_access_handled:
+    # Check if the extensions "Welcome" panel should be displayed.
+    # Even though it can be dismissed it's quite "in-your-face" so only show when it's needed.
+    if (
+            # The user didn't dismiss.
+            (not prefs.extensions.use_online_access_handled) and
+            # Running offline.
+            (not bpy.app.online_access) and
+            # There is one or more repositories that require remote access.
+            any(repo for repo in prefs.extensions.repos if repo.enabled and repo.use_remote_url)
+    ):
         extensions_panel_draw_online_extensions_request_impl(panel, context)
 
     extensions_panel_draw_impl(
