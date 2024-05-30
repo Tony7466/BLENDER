@@ -129,8 +129,10 @@ class TIME_MT_view(Menu):
 
         # NOTE: "action" now, since timeline is in the dopesheet editor, instead of as own editor
         layout.operator("action.view_all")
-        layout.operator("anim.scene_range_frame",
-                        text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        if context.scene.use_preview_range:
+            layout.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            layout.operator("anim.scene_range_frame", text="Frame Scene Range")
         layout.operator("action.view_frame")
         layout.separator()
 

@@ -392,8 +392,10 @@ class DOPESHEET_MT_view(Menu):
 
         layout.operator("action.view_selected")
         layout.operator("action.view_all")
-        layout.operator("anim.scene_range_frame",
-                        text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        if context.scene.use_preview_range:
+            layout.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            layout.operator("anim.scene_range_frame", text="Frame Scene Range")
         layout.operator("action.view_frame")
         layout.separator()
 
@@ -441,8 +443,10 @@ class DOPESHEET_MT_view_pie(Menu):
         pie.operator("action.view_all")
         pie.operator("action.view_selected", icon='ZOOM_SELECTED')
         pie.operator("action.view_frame")
-        pie.operator("anim.scene_range_frame",
-                     text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        if context.scene.use_preview_range:
+            pie.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            pie.operator("anim.scene_range_frame", text="Frame Scene Range")
 
 
 class DOPESHEET_MT_select(Menu):

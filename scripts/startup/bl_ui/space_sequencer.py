@@ -1275,8 +1275,10 @@ class SEQUENCER_MT_view_pie(Menu):
         pie.operator("sequencer.view_all")
         pie.operator("sequencer.view_selected", text="Frame Selected", icon='ZOOM_SELECTED')
         pie.separator()
-        pie.operator("anim.scene_range_frame",
-                     text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        if context.scene.use_preview_range:
+            pie.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            pie.operator("anim.scene_range_frame", text="Frame Scene Range")
 
 
 class SEQUENCER_MT_preview_view_pie(Menu):

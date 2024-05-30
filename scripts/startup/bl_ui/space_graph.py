@@ -153,8 +153,10 @@ class GRAPH_MT_view(Menu):
 
         layout.operator("graph.view_selected")
         layout.operator("graph.view_all")
-        layout.operator("anim.scene_range_frame",
-                        text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        if context.scene.use_preview_range:
+            layout.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            layout.operator("anim.scene_range_frame", text="Frame Scene Range")
         layout.operator("graph.view_frame")
         layout.separator()
 
@@ -433,8 +435,10 @@ class GRAPH_MT_view_pie(Menu):
         pie = layout.menu_pie()
         pie.operator("graph.view_all")
         pie.operator("graph.view_selected", icon='ZOOM_SELECTED')
-        pie.operator("anim.scene_range_frame",
-                     text="Frame Preview Range" if context.scene.use_preview_range else "Frame Scene Range")
+        if context.scene.use_preview_range:
+            pie.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            pie.operator("anim.scene_range_frame", text="Frame Scene Range")
         pie.operator("graph.view_frame")
 
 
