@@ -65,8 +65,6 @@ class VIEW3D_PT_animation_layers(Panel):
             internal_sub.prop(adt, 'action_binding_handle', text="handle")
             if binding:
                 internal_sub.prop(binding, 'name', text="Internal Name")
-        else:
-            col.prop(adt, 'action_binding', text="Binding")
 
         if adt:
             col.prop(adt, 'action_binding_name', text="ADT Binding Name")
