@@ -3334,6 +3334,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->eevee.clamp_surface_indirect = 10.0f;
+      /* Make contribution of indirect lighting very small (but non-null) to avoid world lighting
+       * and volume lightprobe changing the appearance of volume objects. */
+      scene->eevee.clamp_volume_indirect = 1e-8f;
     }
   }
 
@@ -3665,6 +3668,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 46)) {
+    const Scene *default_scene = DNA_struct_default_get(Scene);
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.fast_gi_thickness_near = default_scene->eevee.fast_gi_thickness_near;
+      scene->eevee.fast_gi_thickness_far = default_scene->eevee.fast_gi_thickness_far;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 48)) {
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       if (!ob->pose) {
         continue;
