@@ -852,6 +852,8 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
              Span{storage.capture_items, storage.capture_items_num})
         {
           if (item.identifier == 0) {
+            /* The sockets of this item have the same identifiers that have been used by older
+             * Blender versions before the node supported capturing multiple attributes. */
             storage.data_type_legacy = item.data_type;
             break;
           }
