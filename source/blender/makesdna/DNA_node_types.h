@@ -1797,6 +1797,10 @@ typedef struct NodeGeometryAttributeCaptureItem {
   /** #eCustomDataType. */
   int8_t data_type;
   char _pad[3];
+  /**
+   * If the identifier is zero, the item supports forward-compatibility with older versions of
+   * Blender when it was only possible to capture a single attribute at a time.
+   */
   int identifier;
   char *name;
 } NodeGeometryAttributeCaptureItem;

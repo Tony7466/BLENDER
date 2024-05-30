@@ -828,13 +828,15 @@ bool try_capture_fields_on_geometry(MutableAttributeAccessor attributes,
                                     const fn::Field<bool> &selection,
                                     const Span<fn::GField> fields)
 {
+  BLI_assert(attribute_ids.size() == fields.size());
   const int domain_size = attributes.domain_size(domain);
   if (domain_size == 0) {
+    bool all_added = true;
     for (const int i : attribute_ids.index_range()) {
       const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(fields[i].cpp_type());
-      attributes.add(attribute_ids[i], domain, data_type, AttributeInitConstruct{});
+      all_added &= attributes.add(attribute_ids[i], domain, data_type, AttributeInitConstruct{});
     }
-    return true;
+    return all_added;
   }
 
   fn::FieldEvaluator evaluator{field_context, domain_size};
