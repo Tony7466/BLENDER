@@ -1531,6 +1531,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         "pkg_id_sequence"
     )
     _drop_variables = None
+    _legacy_drop = None
 
     filter_glob: StringProperty(default="*.zip;*.py", options={'HIDDEN'})
 
@@ -1766,6 +1767,8 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
     def draw(self, context):
         if self._drop_variables is not None:
             return self._draw_for_drop(context)
+        elif self._legacy_drop is not None:
+            return self._draw_for_legacy_drop(context)
 
         # Override draw because the repository names may be over-long and not fit well in the UI.
         # Show the text & repository names in two separate rows.
@@ -1792,7 +1795,6 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
             body.prop(self, "overwrite", text="Overwrite")
 
     def _invoke_for_drop(self, context, event):
-        self._drop_variables = True
         # Drop logic.
         print("DROP FILE:", self.url)
 
@@ -1804,23 +1806,33 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         # These are not supported for dropping. Since at the time of dropping it's not known that the
         # path is referenced from a "local" repository or a "remote" that uses a `file://` URL.
         filepath = self.url
+        print(filepath)
 
-        from .bl_extension_ops import repo_iter_valid_local_only
-        from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
+        from .bl_extension_utils import  pkg_is_legacy_addon
 
-        if not list(repo_iter_valid_local_only(bpy.context)):
-            self.report({'ERROR'}, "No Local Repositories")
-            return {'CANCELLED'}
+        if not pkg_is_legacy_addon(filepath):
+            self._drop_variables = True
+            self._legacy_drop = None
 
-        if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
-            self.report({'ERROR'}, "Error in manifest {:s}".format(result))
-            return {'CANCELLED'}
+            from .bl_extension_ops import repo_iter_valid_local_only
+            from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
 
-        pkg_id = result["id"]
-        pkg_type = result["type"]
-        del result
+            if not list(repo_iter_valid_local_only(bpy.context)):
+                self.report({'ERROR'}, "No Local Repositories")
+                return {'CANCELLED'}
 
-        self._drop_variables = pkg_id, pkg_type
+            if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
+                self.report({'ERROR'}, "Error in manifest {:s}".format(result))
+                return {'CANCELLED'}
+
+            pkg_id = result["id"]
+            pkg_type = result["type"]
+            del result
+
+            self._drop_variables = pkg_id, pkg_type
+        else:
+            self._drop_variables = None
+            self._legacy_drop = True
 
         # Set to it's self to the property is considered "set".
         self.repo = self.repo
@@ -1842,6 +1854,17 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         layout.prop(self, "repo", text="")
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[pkg_type])
+
+    def _draw_for_legacy_drop(self, context):
+
+        layout = self.layout
+        layout.operator_context = 'EXEC_DEFAULT'
+
+        layout.label(text="Legacy Add-on")
+        layout.prop(self, "target", text="Target")
+        layout.prop(self, "overwrite", text="Overwrite")
+        layout.prop(self, "enable_on_install")
+
 
 
 class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
