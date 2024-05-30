@@ -8,11 +8,11 @@
 #include "BLI_fileops.hh"
 #include "BLI_hash.hh"
 #include "BLI_path_util.h"
+#include "BLI_subprocess.hh"
 #include "CLG_log.h"
 #include "GHOST_C-api.h"
 #include "GPU_context.hh"
 #include "GPU_init_exit.hh"
-#include "opengl/ipc.hh"
 #include <epoxy/gl.h>
 #include <iostream>
 #include <string>

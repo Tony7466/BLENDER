@@ -4,13 +4,13 @@
 
 /* Based on https://github.com/jarikomppa/ipc (Unlicense) */
 
-#include "ipc.hh"
+#include "BLI_subprocess.hh"
 #include "BLI_assert.h"
 
 #ifdef _WIN32
 #  include <windows.h>
 
-namespace blender::gpu {
+namespace blender {
 
 SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
     : name_(name), is_owner_(!already_exists)
@@ -70,7 +70,7 @@ bool SharedSemaphore::try_decrement()
   return WaitForSingleObject(handle_, 0) == WAIT_OBJECT_0;
 }
 
-}  // namespace blender::gpu
+}  // namespace blender
 
 #else
 #  include <fcntl.h>
@@ -79,7 +79,7 @@ bool SharedSemaphore::try_decrement()
 #  include <sys/stat.h>
 #  include <unistd.h>
 
-namespace blender::gpu {
+namespace blender {
 
 SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
     : name_(name), is_owner_(!already_exists)
@@ -142,6 +142,6 @@ bool SharedSemaphore::try_decrement()
   return sem_trywait(handle_) == 0;
 }
 
-}  // namespace blender::gpu
+}  // namespace blender
 
 #endif

@@ -493,6 +493,13 @@ if(UNIX AND NOT APPLE)
   )
 endif()
 
+if(NOT APPLE)
+  list(APPEND SRC
+    BLI_subprocess.hh
+    intern/BLI_subprocess.cc
+  )
+endif()
+
 # no need to compile object files for inline headers.
 set_source_files_properties(
   intern/math_base_inline.c
