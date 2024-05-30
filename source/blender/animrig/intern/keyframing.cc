@@ -1080,9 +1080,13 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, use_visual_keyframing);
 
     for (int property_index : rna_values.index_range()) {
-      KeyInsertData key_data;
-      key_data.array_index = property_index;
-      key_data.position = {scene_frame, rna_values[property_index]};
+      /* If we're only keying one array element, skip all elements other than
+       * that one. */
+      if (rna_path.index.has_value() && *rna_path.index != property_index) {
+        continue;
+      }
+
+      const KeyInsertData key_data = {{scene_frame, rna_values[property_index]}, property_index};
       const SingleKeyingResult result = insert_key_layer(
           *layer, *binding, *rna_path_id_to_prop, key_data, key_settings, insert_key_flags);
       combined_result.add(result);
