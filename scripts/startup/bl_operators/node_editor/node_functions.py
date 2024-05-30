@@ -4,8 +4,6 @@
 
 import bpy
 
-viewer_socket_name = "tmp_viewer"
-
 
 def node_editor_poll(cls, context):
     space = context.space_data

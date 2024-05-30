@@ -6,6 +6,7 @@ import bpy
 from bpy.types import Operator
 from bpy.props import BoolProperty
 from bpy_extras.node_utils import connect_sockets
+from bpy.app.translations import pgettext_data as data_
 
 from .node_editor.node_functions import (
     NodeEditorBase,
@@ -16,7 +17,6 @@ from .node_editor.node_functions import (
     get_internal_socket,
     is_visible_socket,
     is_viewer_link,
-    viewer_socket_name,
     force_update,
 )
 
@@ -81,7 +81,7 @@ class NODE_OT_connect_to_output(Operator, NodeEditorBase):
         if viewer_socket is None:
             # Create viewer socket.
             viewer_socket = node_tree.interface.new_socket(
-                viewer_socket_name, in_out='OUTPUT', socket_type=socket_type)
+                data_("(Viewer)"), in_out='OUTPUT', socket_type=socket_type)
             viewer_socket.is_inspect_output = True
         return viewer_socket
 
