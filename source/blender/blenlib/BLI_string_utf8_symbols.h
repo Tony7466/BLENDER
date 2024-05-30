@@ -77,10 +77,16 @@ extern "C" {
 #define BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE "\xe2\x96\xb8"
 /** u2B7E: `⭾` */
 #define BLI_STR_UTF8_HORIZONTAL_TAB_KEY "\xe2\xad\xbe"
+/** u2611: `☑` */
+#define BLI_STR_UTF8_BALLOT_BOX_WITH_CHECK "\xe2\x98\x91"
 /** u270E: `✎` Tablet Pen */
 #define BLI_STR_UTF8_LOWER_RIGHT_PENCIL "\xe2\x9c\x8e"
 /** u2710: `✐` Tablet Eraser */
 #define BLI_STR_UTF8_UPPER_RIGHT_PENCIL "\xe2\x9c\x90"
+/** u2713: `✓` Check Mark */
+#define BLI_STR_UTF8_CHECK_MARK "\xe2\x9c\x93"
+/** u2714: `✔` Heavy Check Mark */
+#define BLI_STR_UTF8_HEAVY_CHECK_MARK "\xe2\x9c\x94"
 /** u2756: `❖` */
 #define BLI_STR_UTF8_BLACK_DIAMOND_MINUS_WHITE_X "\xe2\x9d\x96"
 /** u29BE: `⦾` Use for 3D Mice  */

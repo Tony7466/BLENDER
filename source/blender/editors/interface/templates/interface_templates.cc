@@ -6432,21 +6432,73 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 {
   Main *bmain = CTX_data_main(C);
+  wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
+  uiLayout *row = uiLayoutRow(layout, true);
+
+  const char *status_info_txt = ED_info_statusbar_string_ex(
+      bmain, scene, view_layer, (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
+  uiItemL(row, status_info_txt, ICON_NONE);
+
+  if (U.statusbar_flag & STATUSBAR_SHOW_EXTENSION_UPDATES) {
+    const bool offline = (G.f & G_FLAG_INTERNET_ALLOW) == 0;
+    const int updates = offline ? 0 : wm->extensions_updates;
+    int icon = offline ? ICON_INTERNET_OFFLINE : ICON_INTERNET;
+    if (updates == WM_EXTENSIONS_UPDATE_CHECKING) {
+      icon = ICON_FILE_REFRESH;
+    }
+
+    if (U.statusbar_flag & (STATUSBAR_SHOW_MEMORY | STATUSBAR_SHOW_VRAM | STATUSBAR_SHOW_STATS |
+                            STATUSBAR_SHOW_SCENE_DURATION))
+    {
+      uiItemS_ex(row, -0.5f);
+      uiItemL(row, "|", ICON_NONE);
+      uiItemS_ex(row, -0.5f);
+    }
+    uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+    uiItemO(row, "", icon, "SCREEN_OT_userpref_show");
+    uiBut *but = static_cast<uiBut *>(uiLayoutGetBlock(layout)->buttons.last);
+    uchar color[4];
+    UI_GetThemeColor4ubv(TH_TEXT, color);
+    copy_v4_v4_uchar(but->col, color);
+
+    if (!offline) {
+      if (updates == 0) {
+        UI_but_icon_indicator_set(but, BLI_STR_UTF8_BALLOT_BOX_WITH_CHECK);
+        UI_GetThemeColor4ubv(TH_TEXT, color);
+        UI_but_icon_indicator_color_set(but, color);
+      }
+      else if (updates > 0) {
+        BLI_str_format_integer_unit(but->icon_overlay_text.text, updates);
+        UI_GetThemeColor4ubv(TH_TEXT, color);
+        UI_but_icon_indicator_color_set(but, color);
+      }
+    }
+
+    PointerRNA *but_opptr = UI_but_operator_ptr_ensure(but);
+    RNA_enum_set(but_opptr, "section", USER_SECTION_EXTENSIONS);
+    uiItemS_ex(row, (updates > 0) ? 1.0f : 0.6f);
+  }
 
   if (!bmain->has_forward_compatibility_issues) {
-    const char *status_info_txt = ED_info_statusbar_string(bmain, scene, view_layer);
-    uiItemL(layout, status_info_txt, ICON_NONE);
+    if (U.statusbar_flag & STATUSBAR_SHOW_VERSION) {
+      if (U.statusbar_flag & (STATUSBAR_SHOW_MEMORY | STATUSBAR_SHOW_VRAM | STATUSBAR_SHOW_STATS |
+                              STATUSBAR_SHOW_SCENE_DURATION | STATUSBAR_SHOW_EXTENSION_UPDATES))
+      {
+        uiItemS_ex(row, -0.5f);
+        uiItemL(row, "|", ICON_NONE);
+        uiItemS_ex(row, -0.5f);
+      }
+      const char *status_info_d_txt = ED_info_statusbar_string_ex(
+          bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
+      uiItemL(row, status_info_d_txt, ICON_NONE);
+    }
     return;
   }
 
   /* Blender version part is shown as warning area when there are forward compatibility issues with
    * currently loaded .blend file. */
-
-  const char *status_info_txt = ED_info_statusbar_string_ex(
-      bmain, scene, view_layer, (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
-  uiItemL(layout, status_info_txt, ICON_NONE);
 
   status_info_txt = ED_info_statusbar_string_ex(bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
 
