@@ -1097,7 +1097,7 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
 
   LISTBASE_FOREACH (FCurve *, fcu, &legacy_action.curves) {
     FCurve *new_fcu = BKE_fcurve_copy(fcu);
-    // grow_array_and_append(&bag->fcurve_array, &bag->fcurve_array_num, new_fcu);
+    grow_array_and_append(&bag->fcurve_array, &bag->fcurve_array_num, new_fcu);
   }
 
   return &converted_action;
