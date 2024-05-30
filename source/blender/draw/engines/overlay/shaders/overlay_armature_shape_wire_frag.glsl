@@ -37,7 +37,7 @@ float edge_step(float dist)
 void main()
 {
   float wire_width = geometry_out.wire_width;
-  if (do_smooth_wire){
+  if (do_smooth_wire) {
     wire_width -= 0.5;
   }
 
