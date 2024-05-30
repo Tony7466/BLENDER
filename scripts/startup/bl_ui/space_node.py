@@ -238,8 +238,8 @@ class NODE_PT_gizmo_display(Panel):
 
     def draw(self, context):
         layout = self.layout
-
         snode = context.space_data
+        is_compositor = snode.tree_type == 'CompositorNodeTree'
 
         col = layout.column()
         col.label(text="Viewport Gizmos")
@@ -248,6 +248,9 @@ class NODE_PT_gizmo_display(Panel):
         col.active = snode.show_gizmo
         colsub = col.column()
         colsub.prop(snode, "show_gizmo_navigate", text="Navigate")
+
+        if is_compositor:
+            colsub.prop(snode, "show_gizmo_active_node", text="Active Node")
 
 
 class NODE_MT_editor_menus(Menu):

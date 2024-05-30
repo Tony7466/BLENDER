@@ -616,7 +616,9 @@ static void node_composit_buts_combsep_color(uiLayout *layout, bContext * /*C*/,
 static void node_composit_backdrop_viewer(
     SpaceNode *snode, ImBuf *backdrop, bNode *node, int x, int y)
 {
-  //  node_composit_backdrop_canvas(snode, backdrop, node, x, y);
+  if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_ACTIVE_NODE)) {
+    return;
+  }
   if (node->custom1 == 0) {
     const float backdropWidth = backdrop->x;
     const float backdropHeight = backdrop->y;
@@ -645,6 +647,9 @@ static void node_composit_backdrop_viewer(
 static void node_composit_backdrop_boxmask(
     SpaceNode *snode, ImBuf *backdrop, bNode *node, int x, int y)
 {
+  if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_ACTIVE_NODE)) {
+    return;
+  }
   NodeBoxMask *boxmask = (NodeBoxMask *)node->storage;
   const float backdropWidth = backdrop->x;
   const float backdropHeight = backdrop->y;
@@ -690,6 +695,9 @@ static void node_composit_backdrop_boxmask(
 static void node_composit_backdrop_ellipsemask(
     SpaceNode *snode, ImBuf *backdrop, bNode *node, int x, int y)
 {
+  if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_ACTIVE_NODE)) {
+    return;
+  }
   NodeEllipseMask *ellipsemask = (NodeEllipseMask *)node->storage;
   const float backdropWidth = backdrop->x;
   const float backdropHeight = backdrop->y;

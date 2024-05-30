@@ -62,6 +62,14 @@ static void node_gizmo_calc_matrix_space_with_image_dims(const SpaceNode *snode,
                        ((image_dims.y / 2.0f - image_offset.y) * snode->zoom);
 }
 
+static bool node_gizmo_is_set_visible(const bContext *C)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+
+  return (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT &&
+          !(snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_ACTIVE_NODE)));
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -101,7 +109,7 @@ static bool WIDGETGROUP_node_transform_poll(const bContext *C, wmGizmoGroupType 
     return false;
   }
 
-  if (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT) {
+  if (node_gizmo_is_set_visible(C)) {
     bNode *node = bke::nodeGetActive(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_VIEWER)) {
@@ -304,7 +312,7 @@ static bool WIDGETGROUP_node_crop_poll(const bContext *C, wmGizmoGroupType * /*g
     return false;
   }
 
-  if (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT) {
+  if (node_gizmo_is_set_visible(C)) {
     bNode *node = bke::nodeGetActive(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_CROP)) {
@@ -417,7 +425,7 @@ static bool WIDGETGROUP_node_sbeam_poll(const bContext *C, wmGizmoGroupType * /*
     return false;
   }
 
-  if (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT) {
+  if (node_gizmo_is_set_visible(C)) {
     bNode *node = bke::nodeGetActive(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_SUNBEAMS)) {
@@ -524,7 +532,7 @@ static bool WIDGETGROUP_node_corner_pin_poll(const bContext *C, wmGizmoGroupType
     return false;
   }
 
-  if (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT) {
+  if (node_gizmo_is_set_visible(C)) {
     bNode *node = bke::nodeGetActive(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_CORNERPIN)) {
