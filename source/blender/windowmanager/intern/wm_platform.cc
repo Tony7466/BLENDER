@@ -23,10 +23,10 @@
 #endif
 
 /* -------------------------------------------------------------------- */
-/** \name Register File Assosiation
+/** \name Register File Association
  * \{ */
 
-bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_msg)
+bool WM_platform_associate_set(bool do_register, bool all_users, char **r_error_msg)
 {
   bool result = false;
   *r_error_msg = nullptr;

@@ -838,8 +838,8 @@ static void graph_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
     return;
   }
 
-  BKE_LIB_FOREACHID_PROCESS_ID(data, sgraph->ads->source, IDWALK_CB_NOP);
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sgraph->ads->filter_grp, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sgraph->ads->source, IDWALK_CB_DIRECT_WEAK_LINK);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sgraph->ads->filter_grp, IDWALK_CB_DIRECT_WEAK_LINK);
 
   if (!is_readonly) {
     /* Force recalc of list of channels (i.e. including calculating F-Curve colors) to
@@ -871,7 +871,7 @@ static void graph_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceGraph *sipo = (SpaceGraph *)sl;
 
-  BLO_read_data_address(reader, &sipo->ads);
+  BLO_read_struct(reader, bDopeSheet, &sipo->ads);
   memset(&sipo->runtime, 0x0, sizeof(sipo->runtime));
 }
 

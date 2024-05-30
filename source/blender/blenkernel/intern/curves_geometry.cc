@@ -795,7 +795,11 @@ static void rotate_directions_around_axes(MutableSpan<float3> directions,
                                           const Span<float> angles)
 {
   for (const int i : directions.index_range()) {
-    directions[i] = math::rotate_direction_around_axis(directions[i], axes[i], angles[i]);
+    const float3 axis = axes[i];
+    if (UNLIKELY(math::is_zero(axis))) {
+      continue;
+    }
+    directions[i] = math::rotate_direction_around_axis(directions[i], axis, angles[i]);
   }
 }
 
@@ -1555,7 +1559,7 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
         });
   }
 
-  BLO_read_list(&reader, &this->vertex_group_names);
+  BLO_read_struct_list(&reader, bDeformGroup, &this->vertex_group_names);
 
   /* Recalculate curve type count cache that isn't saved in files. */
   this->update_curve_types();

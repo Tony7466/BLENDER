@@ -11,11 +11,13 @@
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
+#include "render_graph/vk_resource_state_tracker.hh"
 #include "vk_buffer.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
 #include "vk_descriptor_set_layouts.hh"
+#include "vk_pipeline_pool.hh"
 #include "vk_samplers.hh"
 #include "vk_timeline_semaphore.hh"
 
@@ -109,6 +111,22 @@ class VKDevice : public NonCopyable {
   std::string glsl_patch_;
 
  public:
+  render_graph::VKResourceStateTracker resources;
+  VKPipelinePool pipelines;
+
+  /**
+   * This struct contains the functions pointer to extension provided functions.
+   */
+  struct {
+    /* Extension: VK_KHR_dynamic_rendering */
+    PFN_vkCmdBeginRendering vkCmdBeginRendering = nullptr;
+    PFN_vkCmdEndRendering vkCmdEndRendering = nullptr;
+
+    /* Extension: VK_EXT_debug_utils */
+    PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabel = nullptr;
+    PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabel = nullptr;
+  } functions;
+
   VkPhysicalDevice physical_device_get() const
   {
     return vk_physical_device_;
@@ -261,6 +279,10 @@ class VKDevice : public NonCopyable {
   void init_debug_callbacks();
   void init_memory_allocator();
   void init_pipeline_cache();
+  /**
+   * Initialize the functions struct with extension specific function pointer.
+   */
+  void init_functions();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

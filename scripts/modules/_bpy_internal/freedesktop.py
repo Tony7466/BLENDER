@@ -46,7 +46,7 @@ BLENDER_ENV = "bpy" in sys.modules
 # -----------------------------------------------------------------------------
 # Programs
 
-# The command `xdg-mime` handles most of the file assosiation actions.
+# The command `xdg-mime` handles most of the file association actions.
 XDG_MIME_PROG = shutil.which("xdg-mime") or ""
 
 # Initialize by `bpy` or command line arguments.
@@ -453,6 +453,20 @@ def register_impl(do_register: bool, all_users: bool) -> Optional[str]:
 
     global BLENDER_BIN
     global BLENDER_DIR
+
+    if BLENDER_ENV:
+        # File association expects a "portable" build (see `WITH_INSTALL_PORTABLE` CMake option),
+        # while it's possible support registering a "system" installation, the paths aren't located
+        # relative to the blender binary and in general it's not needed because system installations
+        # are used by package managers which can handle file association themselves.
+        # The Linux builds provided by https://blender.org are portable, register is intended to be used for these.
+        if __import__("bpy").utils.resource_path('SYSTEM'):
+            return "System Installation, registration is handled by the package manager"
+        # While snap builds are portable, the snap system handled file associations.
+        # Blender is also launched via a wrapper, again, we could support this if it were
+        # important but we can rely on the snap packaging in this case.
+        if os.environ.get("SNAP"):
+            return "Snap Package Installation, registration is handled by the package manager"
 
     if BLENDER_ENV:
         # Only use of `bpy`.

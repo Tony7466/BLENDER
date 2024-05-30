@@ -95,6 +95,11 @@ static void rna_CurveMapping_clip_set(PointerRNA *ptr, bool value)
 {
   CurveMapping *cumap = (CurveMapping *)ptr->data;
 
+  /* Clipping is always done for wrapped curves, so don't allow user to change it. */
+  if (cumap->flag & CUMA_USE_WRAPPING) {
+    return;
+  }
+
   if (value) {
     cumap->flag |= CUMA_DO_CLIP;
   }
@@ -1199,7 +1204,6 @@ static void rna_def_scopes(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, "Scopes", "vecscope_alpha");
   RNA_def_property_range(prop, 0, 1);
   RNA_def_property_ui_text(prop, "Vectorscope Opacity", "Opacity of the points");
-  RNA_def_property_update(prop, 0, "rna_Scopes_update");
 }
 
 static void rna_def_colormanage(BlenderRNA *brna)
