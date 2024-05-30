@@ -324,7 +324,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   rect.size.height = height;
 
   NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
-                                NSWindowStyleMaskResizable;
+                                NSWindowStyleMaskResizable | NSWindowStyleMaskFullSizeContentView;
   if (!is_dialog) {
     styleMask |= NSWindowStyleMaskMiniaturizable;
   }
@@ -340,6 +340,9 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   minSize.width = 320;
   minSize.height = 240;
   [m_window setContentMinSize:minSize];
+
+  [m_window setTitlebarAppearsTransparent: YES];
+  [m_window setTitleVisibility:NSWindowTitleHidden];
 
   /* Create NSView inside the window. */
   id<MTLDevice> metalDevice = MTLCreateSystemDefaultDevice();
