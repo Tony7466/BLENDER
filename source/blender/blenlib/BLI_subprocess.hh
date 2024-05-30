@@ -26,8 +26,6 @@ class Subprocess : NonCopyable {
  private:
 #ifdef _WIN32
   HANDLE handle_ = nullptr;
-#else
-  FILE *handle_ = nullptr;
 #endif
  public:
   ~Subprocess();

@@ -197,7 +197,9 @@ bool SharedSemaphore::try_decrement()
 }  // namespace blender
 
 #else
+#  include "BLI_vector.hh"
 #  include <fcntl.h>
+#  include <linux/limits.h>
 #  include <stdlib.h>
 #  include <sys/mman.h>
 #  include <sys/stat.h>
@@ -207,7 +209,36 @@ namespace blender {
 
 bool Subprocess::init(Span<StringRefNull> args)
 {
-  return true;
+  char path[PATH_MAX];
+  size_t len = readlink("/proc/self/exe", path, PATH_MAX);
+  if (len == -1) {
+    return false;
+  }
+
+  Vector<char *> char_args;
+  /** NOTE: execv doesn't pass the program path as argv[0],
+   * so we have to add it manually. */
+  char_args.append(path);
+  for (StringRefNull arg : args) {
+    char_args.append((char *)arg.data());
+  }
+  char_args.append(nullptr);
+
+  pid_t pid = fork();
+  if (pid < 0) {
+    return false;
+  }
+  else if (pid > 0) {
+    return true;
+  }
+
+  /* Child process initialization. */
+  execv(path, char_args.data());
+
+  BLI_assert_unreachable();
+  exit(errno);
+
+  return false;
 }
 
 Subprocess::~Subprocess() {}
