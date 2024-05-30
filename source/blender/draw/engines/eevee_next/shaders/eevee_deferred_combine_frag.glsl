@@ -14,17 +14,21 @@
 
 vec3 load_radiance_direct(ivec2 texel, int i)
 {
+  uint data = 0u;
   switch (i) {
     case 0:
-      return rgb9e5_decode(texelFetch(direct_radiance_1_tx, texel, 0).r);
+      data = texelFetch(direct_radiance_1_tx, texel, 0).r;
+      break;
     case 1:
-      return rgb9e5_decode(texelFetch(direct_radiance_2_tx, texel, 0).r);
+      data = texelFetch(direct_radiance_2_tx, texel, 0).r;
+      break;
     case 2:
-      return rgb9e5_decode(texelFetch(direct_radiance_3_tx, texel, 0).r);
+      data = texelFetch(direct_radiance_3_tx, texel, 0).r;
+      break;
     default:
-      return vec3(0);
+      break;
   }
-  return vec3(0);
+  return rgb9e5_decode(data);
 }
 
 vec3 load_radiance_indirect(ivec2 texel, int i)
