@@ -45,7 +45,9 @@ void main()
   screen_space_pos[0] = pos0.xy / pos0.w;
   screen_space_pos[1] = pos1.xy / pos1.w;
 
-  const float wire_width = geometry_in[0].wire_width;
+  /* `sizeEdge` is defined as the distance from the center to the outer edge. As such to get the
+   total width it needs to be doubled. */
+  const float wire_width = geometry_in[0].wire_width * (sizeEdge * 2);
   geometry_out.wire_width = wire_width;
   float half_size = max(wire_width / 2.0, 0.5);
 
@@ -55,31 +57,19 @@ void main()
   }
 
   const vec2 line = (screen_space_pos[0] - screen_space_pos[1]) * sizeViewport.xy;
-  const vec2 line_normalized = normalize(line);
-  const vec2 line_normal = normalize(vec2(line[1], -line[0]));
-  vec2 edge_ofs = (half_size * line_normal) * sizeViewportInv;
-  vec2 cap_ofs = (half_size * line_normalized) * sizeViewportInv;
+  const vec2 line_norm = normalize(vec2(line[1], -line[0]));
+  vec2 edge_ofs = (half_size * line_norm) * sizeViewportInv;
 
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
   const vec4 final_color = geometry_in[0].finalColor;
-  /* Sinus and Cosinus at 45 are the same value. */
-  const float sin_cos_45 = 0.707;
-  do_vertex(final_color, pos0, 0, cap_ofs);
-  do_vertex(final_color, pos0, 0, cap_ofs*sin_cos_45 + edge_ofs*sin_cos_45);
-  do_vertex(final_color, pos0, 0, cap_ofs*sin_cos_45 - edge_ofs*sin_cos_45);
-
   do_vertex(final_color, pos0, half_size, edge_ofs);
   do_vertex(final_color, pos0, -half_size, -edge_ofs);
 
   view_clipping_distances_set(gl_in[1]);
   do_vertex(final_color, pos1, half_size, edge_ofs);
   do_vertex(final_color, pos1, -half_size, -edge_ofs);
-
-  do_vertex(final_color, pos1, 0, -cap_ofs*sin_cos_45 + edge_ofs*sin_cos_45);
-  do_vertex(final_color, pos1, 0, -cap_ofs*sin_cos_45 - edge_ofs*sin_cos_45);
-  do_vertex(final_color, pos1, 0, -cap_ofs);
 
   EndPrimitive();
 }
