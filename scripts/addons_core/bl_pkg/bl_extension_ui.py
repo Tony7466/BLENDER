@@ -340,18 +340,24 @@ def extensions_panel_draw_online_extensions_request_impl(
                 "Welcome! Access community-made add-ons and themes from the ",
                 "extensions.blender.org repository.",
                 "",
-                "This requires online access which must be enabled in \"System\" preferences.",
+                "This requires Internet access. You can adjust this from \"System\" preferences.",
         ):
             layout_panel.label(text=line)
 
-        row = layout.row()
+        row = layout_panel.row(align=True)
+        row.alignment = 'LEFT'
+        row.label(text="To continue offline, \"Install from Disk\" instead.")
+        row.operator("wm.url_open", text="", icon='URL', emboss=False).url = 'https://docs.blender.org/manual/en/dev/editors/preferences/extensions.html#install'
+        layout_panel.separator()
+
+        row = layout_panel.row()
         props = row.operator("wm.context_set_boolean", text="Dismiss", icon='X')
         props.data_path = "preferences.extensions.use_online_access_handled"
         props.value = True
 
         # The only reason to prefer this over `screen.userpref_show`
         # is it will be disabled when `--offline-mode` is forced with a useful error for why.
-        row.operator("bl_pkg.extensions_show_online_prefs", text="Go to System")
+        row.operator("bl_pkg.extensions_show_online_prefs", text="Allow Online Access", icon='CHECKMARK')
 
 
 def extensions_panel_draw_impl(
