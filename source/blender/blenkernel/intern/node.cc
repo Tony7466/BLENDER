@@ -844,6 +844,18 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         }
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, storage);
       }
+      else if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
+        auto &storage = *static_cast<NodeGeometryAttributeCapture *>(node->storage);
+        /* Set data type based on the first item for better forward-compatibility. */
+        if (storage.capture_items_num > 1) {
+          storage.data_type_legacy = storage.capture_items[0].data_type;
+        }
+        else {
+          storage.data_type_legacy = CD_PROP_FLOAT;
+        }
+        BLO_write_struct(writer, NodeGeometryAttributeCapture, node->storage);
+        nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
+      }
       else if (node->typeinfo != &NodeTypeUndefined) {
         BLO_write_struct_by_name(writer, node->typeinfo->storagename, node->storage);
       }
@@ -881,9 +893,6 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     }
     if (node->type == GEO_NODE_MENU_SWITCH) {
       nodes::MenuSwitchItemsAccessor::blend_write(writer, *node);
-    }
-    if (node->type == GEO_NODE_CAPTURE_ATTRIBUTE) {
-      nodes::CaptureAttributeItemsAccessor::blend_write(writer, *node);
     }
   }
 
