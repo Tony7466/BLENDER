@@ -13,13 +13,12 @@
 #include <epoxy/gl.h>
 
 #include "BLI_map.hh"
+#include "BLI_subprocess.hh"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_private.hh"
 
 #include <functional>
-
-#include "ipc.hh"
 
 namespace blender::gpu {
 

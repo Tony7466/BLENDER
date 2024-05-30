@@ -4,6 +4,10 @@
 
 #pragma once
 
+#ifdef __APPLE__
+#  error Subprocess API is only supported on Windows and Linux
+#endif
+
 #include "BLI_sys_types.h"
 #include "BLI_utility_mixins.hh"
 #include <string>
@@ -14,7 +18,7 @@ typedef void *HANDLE;
 #  include <semaphore.h>
 #endif
 
-namespace blender::gpu {
+namespace blender {
 
 class SharedMemory : NonCopyable {
  private:
@@ -61,4 +65,4 @@ class SharedSemaphore : NonCopyable {
   bool try_decrement();
 };
 
-}  // namespace blender::gpu
+}  // namespace blender
