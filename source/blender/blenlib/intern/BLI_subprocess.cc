@@ -205,11 +205,17 @@ bool SharedSemaphore::try_decrement()
 
 namespace blender {
 
-Subprocess::Subprocess(Span<StringRefNull> args) {}
+bool Subprocess::init(Span<StringRefNull> args)
+{
+  return true;
+}
 
 Subprocess::~Subprocess() {}
 
-bool Subprocess::is_running() {}
+bool Subprocess::is_running()
+{
+  return true;
+}
 
 SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
     : name_(name), is_owner_(!already_exists)
@@ -219,6 +225,9 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
   }
   else {
     handle_ = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0755);
+    if (handle_) {
+      ftruncate(handle_, size);
+    }
   }
 
   if (handle_) {
