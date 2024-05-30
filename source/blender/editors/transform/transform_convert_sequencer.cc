@@ -671,13 +671,22 @@ static void recalcData_sequencer(TransInfo *t)
 
 static void special_aftertrans_update__sequencer(bContext * /*C*/, TransInfo *t)
 {
+  SpaceSeq *sseq = (SpaceSeq *)t->area->spacedata.first;
+  if ((sseq->flag & SPACE_SEQ_DESELECT_STRIP_HANDLE) != 0) {
+    TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+    blender::VectorSet<Sequence *> strips = seq_transform_collection_from_transdata(tc);
+    for (Sequence *seq : strips) {
+      seq->flag &= ~(SEQ_LEFTSEL | SEQ_RIGHTSEL);
+    }
+  }
+
+  sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
+
+  /* #freeSeqData in `transform_conversions.cc` does this
+   * keep here so the else at the end won't run. */
   if (t->state == TRANS_CANCEL) {
     return;
   }
-  /* #freeSeqData in `transform_conversions.cc` does this
-   * keep here so the else at the end won't run. */
-
-  SpaceSeq *sseq = (SpaceSeq *)t->area->spacedata.first;
 
   /* Marker transform, not especially nice but we may want to move markers
    * at the same time as strips in the Video Sequencer. */
@@ -696,16 +705,6 @@ static void special_aftertrans_update__sequencer(bContext * /*C*/, TransInfo *t)
           &t->scene->markers, t->scene, TFM_TIME_EXTEND, t->values_final[0], t->frame_side);
     }
   }
-
-  if ((sseq->flag & SPACE_SEQ_DESELECT_STRIP_HANDLE) != 0) {
-    TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-    blender::VectorSet<Sequence *> strips = seq_transform_collection_from_transdata(tc);
-    for (Sequence *seq : strips) {
-      seq->flag &= ~(SEQ_LEFTSEL | SEQ_RIGHTSEL);
-    }
-  }
-
-  sseq->flag &= ~SPACE_SEQ_DESELECT_STRIP_HANDLE;
 }
 
 void transform_convert_sequencer_channel_clamp(TransInfo *t, float r_val[2])
