@@ -485,11 +485,13 @@ void PathTrace::adaptive_sample(RenderWork &render_work)
 
 void PathTrace::set_denoiser_params(const DenoiseParams &params)
 {
-  bool need_to_recreate_denoiser = false;
   if (!params.use) {
     denoiser_.reset();
+    return;
   }
-  else if (denoiser_) {
+
+  bool need_to_recreate_denoiser = false;
+  if (denoiser_) {
     const DenoiseParams old_denoiser_params = denoiser_->get_params();
 
     const bool is_cpu_denoising = old_denoiser_params.type == DENOISER_OPENIMAGEDENOISE &&
