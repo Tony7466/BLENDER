@@ -366,11 +366,12 @@ struct uiHandleButtonMulti {
 struct TextEdit {
   /** The currently displayed/edited string, use 'ui_textedit_string_set' to assign new strings. */
   char *edit_string;
-  char *original_string;
-  /* size of 'str' (including terminator) */
-  int str_maxncpy;
-  /* Allow reallocating str/editstr and using 'maxlen' to track alloc size (maxlen + 1) */
+  /* Maximum string size the button accepts, and as such the maximum size for #edit_string
+   * (including terminator). */
+  int max_string_size;
+  /* Allow reallocating #edit_str and using 'maxlen' to track alloc size (maxlen + 1) */
   bool is_str_dynamic;
+  char *original_string;
 
   /* Button text selection:
    * extension direction, selextend, inside ui_do_but_TEX */
@@ -3030,10 +3031,10 @@ static void ui_textedit_string_ensure_max_length(uiBut *but, TextEdit &text_edit
   BLI_assert(text_edit.is_str_dynamic);
   BLI_assert(text_edit.edit_string == but->editstr);
 
-  if (str_maxncpy > text_edit.str_maxncpy) {
+  if (str_maxncpy > text_edit.max_string_size) {
     text_edit.edit_string = but->editstr = static_cast<char *>(
         MEM_reallocN(text_edit.edit_string, sizeof(char) * str_maxncpy));
-    text_edit.str_maxncpy = str_maxncpy;
+    text_edit.max_string_size = str_maxncpy;
   }
 }
 
@@ -3044,10 +3045,10 @@ static void ui_textedit_string_set(uiBut *but, TextEdit &text_edit, const char *
   }
 
   if (UI_but_is_utf8(but)) {
-    BLI_strncpy_utf8(text_edit.edit_string, str, text_edit.str_maxncpy);
+    BLI_strncpy_utf8(text_edit.edit_string, str, text_edit.max_string_size);
   }
   else {
-    BLI_strncpy(text_edit.edit_string, str, text_edit.str_maxncpy);
+    BLI_strncpy(text_edit.edit_string, str, text_edit.max_string_size);
   }
 }
 
@@ -3155,7 +3156,7 @@ static bool ui_textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *
     ui_textedit_string_ensure_max_length(but, text_edit, str_maxncpy_new + buf_len);
   }
 
-  if (str_maxncpy_new <= text_edit.str_maxncpy) {
+  if (str_maxncpy_new <= text_edit.max_string_size) {
     char *str = text_edit.edit_string;
     size_t step = buf_len;
 
@@ -3165,17 +3166,17 @@ static bool ui_textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *
       len = strlen(str);
     }
 
-    if ((len + step >= text_edit.str_maxncpy) && (text_edit.str_maxncpy - (len + 1) > 0)) {
+    if ((len + step >= text_edit.max_string_size) && (text_edit.max_string_size - (len + 1) > 0)) {
       if (UI_but_is_utf8(but)) {
         /* Shorten 'step' to a utf8 aligned size that fits. */
-        BLI_strnlen_utf8_ex(buf, text_edit.str_maxncpy - (len + 1), &step);
+        BLI_strnlen_utf8_ex(buf, text_edit.max_string_size - (len + 1), &step);
       }
       else {
-        step = text_edit.str_maxncpy - (len + 1);
+        step = text_edit.max_string_size - (len + 1);
       }
     }
 
-    if (step && (len + step < text_edit.str_maxncpy)) {
+    if (step && (len + step < text_edit.max_string_size)) {
       memmove(&str[but->pos + step], &str[but->pos], (len + 1) - but->pos);
       memcpy(&str[but->pos], buf, step * sizeof(char));
       but->pos += step;
@@ -3440,22 +3441,22 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 #endif
 
   /* retrieve string */
-  text_edit.str_maxncpy = ui_but_string_get_maxncpy(but);
-  if (text_edit.str_maxncpy != 0) {
+  text_edit.max_string_size = ui_but_string_get_maxncpy(but);
+  if (text_edit.max_string_size != 0) {
     text_edit.edit_string = static_cast<char *>(
-        MEM_callocN(sizeof(char) * text_edit.str_maxncpy, "textedit str"));
+        MEM_callocN(sizeof(char) * text_edit.max_string_size, "textedit str"));
     /* We do not want to truncate precision to default here, it's nice to show value,
      * not to edit it - way too much precision is lost then. */
     ui_but_string_get_ex(but,
                          text_edit.edit_string,
-                         text_edit.str_maxncpy,
+                         text_edit.max_string_size,
                          UI_PRECISION_FLOAT_MAX,
                          true,
                          &no_zero_strip);
   }
   else {
     text_edit.is_str_dynamic = true;
-    text_edit.edit_string = ui_but_string_get_dynamic(but, &text_edit.str_maxncpy);
+    text_edit.edit_string = ui_but_string_get_dynamic(but, &text_edit.max_string_size);
   }
 
   if (ui_but_is_float(but) && !ui_but_is_unit(but) &&
@@ -3466,7 +3467,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   if (is_num_but) {
     BLI_assert(text_edit.is_str_dynamic == false);
-    ui_but_convert_to_unit_alt_name(but, text_edit.edit_string, text_edit.str_maxncpy);
+    ui_but_convert_to_unit_alt_name(but, text_edit.edit_string, text_edit.max_string_size);
 
     ui_numedit_begin_set_values(but, data);
   }
