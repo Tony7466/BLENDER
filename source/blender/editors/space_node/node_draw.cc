@@ -1558,10 +1558,11 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         const geo_log::GeometryInfoLog::RigidBodyInfo &rigid_body_info =
             *value_log.rigid_body_info;
         fmt::format_to(fmt::appender(buf),
-                       TIP_("\u2022 Rigid Body: {} bodies, {} constraints, {} shapes"),
+                       TIP_("\u2022 Rigid Body: {} bodies, {} constraints, {} shapes {}"),
                        to_string(rigid_body_info.bodies_num),
                        to_string(rigid_body_info.constraints_num),
-                       to_string(rigid_body_info.shapes_num));
+                       to_string(rigid_body_info.shapes_num),
+                       rigid_body_info.has_world ? ", has world" : "");
         break;
       }
     }

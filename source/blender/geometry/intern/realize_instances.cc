@@ -722,7 +722,8 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       case bke::GeometryComponent::Type::Physics: {
         const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
         const PhysicsGeometry *physics = physics_component.get();
-        if (physics != nullptr && physics->rigid_bodies_num() > 0) {
+        if (physics != nullptr && (physics->world() != nullptr || physics->rigid_bodies_num() > 0))
+        {
           const int physics_index = gather_info.physics.order.index_of(physics);
           const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
           gather_info.r_tasks.physics_tasks.append(
@@ -1977,7 +1978,7 @@ static void gather_physics_to_realize(const bke::GeometrySet &geometry_set,
                                       VectorSet<const PhysicsGeometry *> &r_physics)
 {
   if (const PhysicsGeometry *physics = geometry_set.get_physics()) {
-    if (physics->rigid_bodies_num() != 0) {
+    if (physics->world() != nullptr || physics->rigid_bodies_num() != 0) {
       r_physics.add(physics);
     }
   }
@@ -2031,7 +2032,8 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   bke::AttributeWriter<float3> dst_positions = dst_physics.body_positions_for_write();
   bke::AttributeWriter<math::Quaternion> dst_rotations = dst_physics.body_rotations_for_write();
   bke::AttributeWriter<float3> dst_velocities = dst_physics.body_velocities_for_write();
-  bke::AttributeWriter<float3> dst_angular_velocities = dst_physics.body_angular_velocities_for_write();
+  bke::AttributeWriter<float3> dst_angular_velocities =
+      dst_physics.body_angular_velocities_for_write();
 
   threading::parallel_for(physics.rigid_bodies_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
@@ -2047,6 +2049,14 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
           dst_i, math::transform_direction(task.transform, src_angular_velocities[i]));
     }
   });
+
+  dst_ids.finish();
+  dst_masses.finish();
+  dst_inertias.finish();
+  dst_positions.finish();
+  dst_rotations.finish();
+  dst_velocities.finish();
+  dst_angular_velocities.finish();
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
@@ -2069,10 +2079,14 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   r_realized_geometry.replace_physics(dst_physics);
   // bke::MutableAttributeAccessor dst_attributes = dst_physics.attributes_for_write();
 
-  /* Copy settings from the first input geometry set with curves. */
-  const RealizePhysicsTask &first_task = tasks.first();
-  const PhysicsGeometry &first_physics = *first_task.physics_info->physics;
-  // bke::curves_copy_parameters(first_physics, *dst_physics);
+  /* Copy physics world from the first component that has a world. */
+  for (const RealizePhysicsTask &task : tasks) {
+    if (const bke::PhysicsWorld *world = task.physics_info->physics->world()) {
+      world->add_user();
+      dst_physics->set_world(world);
+      break;
+    }
+  }
 
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;
@@ -2083,8 +2097,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   //   dst_attribute_writers.append(
   //       dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
   // }
-
-  UNUSED_VARS(rigid_bodies_num, first_physics);
 
   /* Actually execute all tasks. */
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {

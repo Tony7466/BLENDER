@@ -49,7 +49,7 @@ void PhysicsComponent::clear()
 
 bool PhysicsComponent::has_world() const
 {
-  return physics_ != nullptr;
+  return physics_ != nullptr && physics_->world() != nullptr;
 }
 
 void PhysicsComponent::replace(PhysicsGeometry *physics, GeometryOwnershipType ownership)

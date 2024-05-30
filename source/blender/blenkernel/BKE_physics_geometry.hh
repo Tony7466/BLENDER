@@ -8,10 +8,11 @@
 
 #pragma once
 
+#include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
-#include "BLI_math_vector_types.hh"
 #include "BLI_math_quaternion_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_virtual_array_fwd.hh"
 
 #include "BKE_attribute.hh"
@@ -26,15 +27,47 @@ class MutableAttributeAccessor;
 namespace blender::bke {
 
 class CollisionShape;
-struct PhysicsImpl;
+struct PhysicsGeometryImpl;
+struct PhysicsWorldImpl;
+
+class PhysicsWorld : public ImplicitSharingMixin {
+ public:
+  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
+
+ private:
+  PhysicsWorldImpl *impl_ = nullptr;
+
+ public:
+  PhysicsWorld();
+  PhysicsWorld(const PhysicsWorld &other);
+  ~PhysicsWorld();
+
+  void delete_self() override;
+
+  PhysicsWorldImpl &impl_for_write();
+  const PhysicsWorldImpl &impl() const;
+
+  PhysicsWorld *copy() const;
+
+  void set_overlap_filter(OverlapFilterFn fn);
+  void clear_overlap_filter();
+
+  float3 gravity() const;
+  void set_gravity(const float3 &gravity);
+  void set_solver_iterations(int num_solver_iterations);
+  void set_split_impulse(bool split_impulse);
+
+  void step_simulation(float delta_time);
+};
+
+using PhysicsWorldPtr = ImplicitSharingPtr<PhysicsWorld>;
 
 class PhysicsGeometry {
  private:
-  PhysicsImpl *impl_;
+  const PhysicsGeometryImpl *impl_ = nullptr;
+  const PhysicsWorld *world_ = nullptr;
 
-public:
-  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
-
+ public:
   static const struct BuiltinAttributes {
     std::string id;
     std::string mass;
@@ -50,21 +83,12 @@ public:
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
-  PhysicsImpl &impl();
-  const PhysicsImpl &impl() const;
+  PhysicsGeometryImpl &impl_for_write();
+  const PhysicsGeometryImpl &impl() const;
 
-  bool has_world() const;
-  void set_world(bool enable);
-
-  void set_overlap_filter(OverlapFilterFn fn);
-  void clear_overlap_filter();
-
-  float3 gravity() const;
-  void set_gravity(const float3 &gravity);
-  void set_solver_iterations(int num_solver_iterations);
-  void set_split_impulse(bool split_impulse);
-
-  void step_simulation(float delta_time);
+  PhysicsWorld *world_for_write();
+  const PhysicsWorld *world() const;
+  void set_world(const PhysicsWorld *world);
 
   int rigid_bodies_num() const;
   int constraints_num() const;
@@ -74,8 +98,8 @@ public:
   IndexRange constraints_range() const;
   IndexRange shapes_range() const;
 
-  //void set_bodies_simulated(const IndexMask &selection, bool enable);
-  //void set_all_bodies_simulated(bool enable);
+  // void set_bodies_simulated(const IndexMask &selection, bool enable);
+  // void set_all_bodies_simulated(bool enable);
 
   VArray<const CollisionShape *> body_collision_shapes() const;
   VMutableArray<CollisionShape *> body_collision_shapes_for_write();

@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_implicit_sharing_ptr.hh"
 #include "NOD_rna_define.hh"
 
 #include "BKE_physics_geometry.hh"
@@ -31,9 +32,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   const float3 gravity = params.extract_input<float3>("Gravity");
 
-  auto physics = new bke::PhysicsGeometry();
-  physics->set_world(true);
-  physics->set_gravity(gravity);
+  bke::PhysicsWorld *world = new bke::PhysicsWorld();
+  world->set_gravity(gravity);
+
+  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry();
+  physics->set_world(world);
+  world->remove_user_and_delete_if_last();
 
   params.set_output("Geometry", GeometrySet::from_physics(physics));
 }

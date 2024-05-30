@@ -143,6 +143,7 @@ class GeometryInfoLog : public ValueLog {
     int instances_num;
   };
   struct RigidBodyInfo {
+    bool has_world;
     int bodies_num, constraints_num, shapes_num;
   };
   struct EditDataInfo {

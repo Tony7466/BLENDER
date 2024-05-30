@@ -2,10 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_pointcloud_types.h"
-
-#include "BLI_array_utils.hh"
-
 #include "BKE_physics_geometry.hh"
 
 #include "node_geometry_util.hh"
@@ -29,7 +25,19 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    geometry_set.get_physics_for_write()->step_simulation(delta_time);
+    bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write();
+    if (physics->world_for_write() == nullptr) {
+      return;
+    }
+
+    if (physics->world_for_write()->is_mutable()) {
+      physics->world_for_write()->tag_ensured_mutable();
+    }
+    else {
+      physics->set_world(physics->world_for_write()->copy());
+    }
+
+    physics->world_for_write()->step_simulation(delta_time);
   });
 
   params.set_output("Physics", std::move(geometry_set));
@@ -39,8 +47,7 @@ static void node_register()
 {
   static blender::bke::bNodeType ntype;
 
-  geo_node_type_base(
-      &ntype, GEO_NODE_PHYSICS_TIME_STEP, "Physics Time Step", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype, GEO_NODE_PHYSICS_TIME_STEP, "Physics Time Step", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   blender::bke::nodeRegisterType(&ntype);

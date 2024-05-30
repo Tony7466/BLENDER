@@ -138,9 +138,9 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         break;
       }
       case bke::GeometryComponent::Type::Physics: {
-        const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(
-            component);
+        const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
         RigidBodyInfo &info = this->rigid_body_info.emplace();
+        info.has_world = physics_component.has_world();
         info.bodies_num = physics_component.bodies_num();
         info.constraints_num = physics_component.constraints_num();
         info.shapes_num = physics_component.shapes_num();
