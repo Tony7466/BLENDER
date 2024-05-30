@@ -190,6 +190,8 @@ struct RealizePhysicsTask {
   PhysicsElementStartIndices start_indices;
   /** Preprocessed information about the point cloud. */
   const RealizePhysicsInfo *physics_info;
+  /** Transformation applied to the position of control points and handles. */
+  float4x4 transform;
 };
 
 struct AllPointCloudsInfo {
@@ -724,7 +726,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           const int physics_index = gather_info.physics.order.index_of(physics);
           const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
           gather_info.r_tasks.physics_tasks.append(
-              {gather_info.r_offsets.physics_offsets, &physics_info});
+              {gather_info.r_offsets.physics_offsets, &physics_info, base_transform});
           gather_info.r_offsets.physics_offsets.rigid_body += physics->rigid_bodies_num();
         }
         break;
@@ -2015,13 +2017,36 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
 
   const IndexRange dst_rigid_body_range{task.start_indices.rigid_body, physics.rigid_bodies_num()};
 
-  // TODO
-  UNUSED_VARS(options,
-              all_physics_info,
-              ordered_attributes,
-              dst_physics,
-              dst_attribute_writers,
-              dst_rigid_body_range);
+  const VArray<int> src_ids = physics.body_ids();
+  const VArray<float> src_masses = physics.body_masses();
+  const VArray<float3> src_inertias = physics.body_inertias();
+  const VArray<float3> src_positions = physics.body_positions();
+  const VArray<math::Quaternion> src_rotations = physics.body_rotations();
+  const VArray<float3> src_velocities = physics.body_velocities();
+  const VArray<float3> src_angular_velocities = physics.body_angular_velocities();
+
+  bke::AttributeWriter<int> dst_ids = dst_physics.body_ids_for_write();
+  bke::AttributeWriter<float> dst_masses = dst_physics.body_masses_for_write();
+  bke::AttributeWriter<float3> dst_inertias = dst_physics.body_inertias_for_write();
+  bke::AttributeWriter<float3> dst_positions = dst_physics.body_positions_for_write();
+  bke::AttributeWriter<math::Quaternion> dst_rotations = dst_physics.body_rotations_for_write();
+  bke::AttributeWriter<float3> dst_velocities = dst_physics.body_velocities_for_write();
+  bke::AttributeWriter<float3> dst_angular_velocities = dst_physics.body_angular_velocities_for_write();
+
+  threading::parallel_for(physics.rigid_bodies_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      const int dst_i = dst_rigid_body_range[i];
+      dst_ids.varray.set(dst_i, src_ids[i]);
+      dst_masses.varray.set(dst_i, src_masses[i]);
+      dst_inertias.varray.set(dst_i, src_inertias[i]);
+      dst_positions.varray.set(dst_i, math::transform_point(task.transform, src_positions[i]));
+      dst_rotations.varray.set(dst_i, math::to_quaternion(task.transform) * src_rotations[i]);
+      dst_velocities.varray.set(dst_i,
+                                math::transform_direction(task.transform, src_velocities[i]));
+      dst_angular_velocities.varray.set(
+          dst_i, math::transform_direction(task.transform, src_angular_velocities[i]));
+    }
+  });
 }
 
 static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
