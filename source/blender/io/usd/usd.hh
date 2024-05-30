@@ -119,6 +119,8 @@ struct USDExportParams {
   bool export_curves = true;
   bool export_volumes = true;
 
+  bool allow_unicode = false;
+
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 

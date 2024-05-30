@@ -244,6 +244,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const eUSDXformOpMode xform_op_mode = eUSDXformOpMode(RNA_enum_get(op->ptr, "xform_op_mode"));
 
+  const bool allow_unicode = RNA_boolean_get(op->ptr, "allow_unicode");
+
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
@@ -281,6 +283,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_cameras,
       export_curves,
       export_volumes,
+      allow_unicode,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -319,6 +322,7 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   row = uiLayoutRow(col, true);
   uiItemR(row, ptr, "author_blender_name", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiLayoutSetActive(row, RNA_boolean_get(op->ptr, "export_custom_properties"));
+  uiItemR(col, ptr, "allow_unicode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "triangulate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -607,6 +611,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Blender Names",
                   "Author USD custom attributes containing the original Blender object and "
                   "object data names");
+
+  RNA_def_boolean(
+      ot->srna,
+      "allow_unicode",
+      false,
+      "Allow Unicode",
+      "Preserve UTF-8 encoded characters when writing USD prim and property names "
+      "(requires software utilizing USD 24.03 or greater when opening the resulting files)");
 
   RNA_def_boolean(ot->srna, "export_meshes", true, "Meshes", "Export all meshes");
 
