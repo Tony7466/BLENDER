@@ -152,11 +152,11 @@
  * \{ */
 
 struct uiBlockInteraction_Handle;
-struct TextEdit;
+struct uiTextEdit;
 
 static int ui_do_but_EXIT(bContext *C, uiBut *but, uiHandleButtonData *data, const wmEvent *event);
 static bool ui_but_find_select_in_enum__cmp(const uiBut *but_a, const uiBut *but_b);
-static void ui_textedit_string_set(uiBut *but, TextEdit &text_edit, const char *str);
+static void ui_textedit_string_set(uiBut *but, uiTextEdit &text_edit, const char *str);
 static void button_tooltip_timer_reset(bContext *C, uiBut *but);
 
 static void ui_block_interaction_begin_ensure(bContext *C,
@@ -363,7 +363,7 @@ struct uiHandleButtonMulti {
 /**
  * Data for editing the value of the button as text.
  */
-struct TextEdit {
+struct uiTextEdit {
   /** The currently displayed/edited string, use 'ui_textedit_string_set' to assign new strings. */
   char *edit_string;
   /* Maximum string size the button accepts, and as such the maximum size for #edit_string
@@ -400,7 +400,7 @@ struct uiHandleButtonData {
   bool changed_cursor;
   wmTimer *flashtimer;
 
-  TextEdit text_edit;
+  uiTextEdit text_edit;
 
   double value, origvalue, startvalue;
   float vec[3], origvec[3];
@@ -3026,7 +3026,7 @@ void ui_but_active_string_clear_and_exit(bContext *C, uiBut *but)
   button_activate_state(C, but, BUTTON_STATE_EXIT);
 }
 
-static void ui_textedit_string_ensure_max_length(uiBut *but, TextEdit &text_edit, int str_maxncpy)
+static void ui_textedit_string_ensure_max_length(uiBut *but, uiTextEdit &text_edit, int str_maxncpy)
 {
   BLI_assert(text_edit.is_str_dynamic);
   BLI_assert(text_edit.edit_string == but->editstr);
@@ -3038,7 +3038,7 @@ static void ui_textedit_string_ensure_max_length(uiBut *but, TextEdit &text_edit
   }
 }
 
-static void ui_textedit_string_set(uiBut *but, TextEdit &text_edit, const char *str)
+static void ui_textedit_string_set(uiBut *but, uiTextEdit &text_edit, const char *str)
 {
   if (text_edit.is_str_dynamic) {
     ui_textedit_string_ensure_max_length(but, text_edit, strlen(str) + 1);
@@ -3052,7 +3052,7 @@ static void ui_textedit_string_set(uiBut *but, TextEdit &text_edit, const char *
   }
 }
 
-static bool ui_textedit_delete_selection(uiBut *but, TextEdit &text_edit)
+static bool ui_textedit_delete_selection(uiBut *but, uiTextEdit &text_edit)
 {
   char *str = text_edit.edit_string;
   const int len = strlen(str);
@@ -3146,7 +3146,7 @@ static void ui_textedit_set_cursor_select(uiBut *but, uiHandleButtonData *data, 
  *
  * For unicode buttons, \a buf is treated as unicode.
  */
-static bool ui_textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int buf_len)
+static bool ui_textedit_insert_buf(uiBut *but, uiTextEdit &text_edit, const char *buf, int buf_len)
 {
   int len = strlen(text_edit.edit_string);
   const int str_maxncpy_new = len - (but->selend - but->selsta) + 1;
@@ -3197,7 +3197,7 @@ static bool ui_textedit_insert_ascii(uiBut *but, uiHandleButtonData *data, const
 #endif
 
 static void ui_textedit_move(uiBut *but,
-                             TextEdit &text_edit,
+                             uiTextEdit &text_edit,
                              eStrCursorJumpDirection direction,
                              const bool select,
                              eStrCursorJumpType jump)
@@ -3251,7 +3251,7 @@ static void ui_textedit_move(uiBut *but,
 }
 
 static bool ui_textedit_delete(uiBut *but,
-                               TextEdit &text_edit,
+                               uiTextEdit &text_edit,
                                eStrCursorJumpDirection direction,
                                eStrCursorJumpType jump)
 {
@@ -3326,7 +3326,7 @@ enum {
   UI_TEXTEDIT_CUT,
 };
 
-static bool ui_textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mode)
+static bool ui_textedit_copypaste(uiBut *but, uiTextEdit &text_edit, const int mode)
 {
   bool changed = false;
 
@@ -3412,7 +3412,7 @@ const wmIMEData *ui_but_ime_data_get(uiBut *but)
 
 static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  TextEdit &text_edit = data->text_edit;
+  uiTextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
   const bool is_num_but = ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER);
   bool no_zero_strip = false;
@@ -3536,7 +3536,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
 static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  TextEdit &text_edit = data->text_edit;
+  uiTextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
 
   if (but) {
@@ -3696,7 +3696,7 @@ static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
-  TextEdit &text_edit = data->text_edit;
+  uiTextEdit &text_edit = data->text_edit;
   int retval = WM_UI_HANDLER_CONTINUE;
   bool changed = false, inbox = false, update = false, skip_undo_push = false;
 
