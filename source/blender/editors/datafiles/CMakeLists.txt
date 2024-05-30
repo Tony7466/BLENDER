@@ -613,7 +613,6 @@ set(ICON_NAMES
   outliner_data_volume
   volume_data
   pointcloud_point
-  internet_ok
   internet_offline
   internet
   current_file
