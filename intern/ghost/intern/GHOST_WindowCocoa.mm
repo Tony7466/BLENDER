@@ -27,6 +27,17 @@
 
 #include <sys/sysctl.h>
 
+@interface DraggableAreaView : NSView
+@end
+
+@implementation DraggableAreaView
+  // Not overriding mouseDown as to still be able to click in the topbar
+  - (void)mouseDragged:(NSEvent *)event {
+    [[self window] performWindowDragWithEvent:event];
+  }
+@end
+
+
 #pragma mark Cocoa window delegate object
 
 @interface CocoaWindowDelegate : NSObject <NSWindowDelegate>
@@ -394,6 +405,13 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
       [view setWantsBestResolutionOpenGLSurface:YES];
     }
   }
+
+  // Inline-Titlebar / topbar draggable view
+  CGFloat draggableRectHeight = 20;
+  NSRect draggableRect = NSMakeRect(0, height - draggableRectHeight, width, draggableRectHeight);
+  DraggableAreaView *draggableView = [[DraggableAreaView alloc] initWithFrame:draggableRect];
+  [draggableView setAutoresizingMask: NSViewWidthSizable | NSViewMinYMargin];
+  [view addSubview:draggableView];
 
   [m_window setContentView:view];
   [m_window setInitialFirstResponder:view];
