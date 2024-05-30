@@ -1191,10 +1191,6 @@ CurvesGeometry curves_copy_point_selection(
     const IndexMask &points_to_copy,
     const AnonymousAttributePropagationInfo &propagation_info)
 {
-  if (points_to_copy.is_empty()) {
-    return {};
-  }
-
   const Array<int> point_to_curve_map = curves.point_to_curve_map();
   Array<int> curve_point_counts(curves.curves_num(), 0);
   points_to_copy.foreach_index(
@@ -1213,6 +1209,9 @@ CurvesGeometry curves_copy_point_selection(
   threading::parallel_invoke(
       dst_curves.curves_num() > 1024,
       [&]() {
+        if (curves_to_copy.is_empty()) {
+          return;
+        }
         MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
         array_utils::gather(
             curve_point_counts.as_span(), curves_to_copy, new_curve_offsets.drop_back(1));
