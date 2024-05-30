@@ -36,6 +36,8 @@
 
 #include <optional>
 
+#include <iostream>
+
 namespace blender::ed::sculpt_paint::greasepencil {
 
 static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
@@ -499,15 +501,14 @@ struct PaintOperationExecutor {
     const ARegion *region = CTX_wm_region(&C);
 
     const float3 position = self.placement_.project(coords);
-    const float radius = ed::greasepencil::radius_from_input_sample(
-        rv3d,
-        region,
-        scene_,
-        brush_,
-        extension_sample.pressure,
-        position,
-        self.placement_.to_world_space(),
-        settings_);
+    float radius = ed::greasepencil::radius_from_input_sample(rv3d,
+                                                              region,
+                                                              scene_,
+                                                              brush_,
+                                                              extension_sample.pressure,
+                                                              position,
+                                                              self.placement_.to_world_space(),
+                                                              settings_);
     const float opacity = ed::greasepencil::opacity_from_input_sample(
         extension_sample.pressure, brush_, scene_, settings_);
     Scene *scene = CTX_data_scene(&C);
@@ -539,6 +540,23 @@ struct PaintOperationExecutor {
       return;
     }
 
+    /* Simulate brush with non-circular shape by changing the radius based on the angle. */
+    if (settings_->draw_angle_factor > 0.0f) {
+      const float angle = settings_->draw_angle;
+      const float2 angle_vec = float2(math::cos(angle), math::sin(angle));
+      for (const int i : self.screen_space_coords_orig_.index_range()) {
+        const float2 vec = coords - self.screen_space_coords_orig_.last(i);
+        /* TODO: Use some average of the last few samples instead? */
+        if (math::length(vec) >= 20) {
+          float angle_factor = 1.0f - math::abs(math::dot(angle_vec, math::normalize(vec)));
+          // std::cout << "angle_factor: " << angle_factor << std::endl;
+          angle_factor = math::interpolate(angle_factor, 1.0f, settings_->draw_angle_factor);
+          radius = math::interpolate(radius * angle_factor, prev_radius, 0.3f);
+          break;
+        }
+      }
+    }
+    
     /* If the next sample is far away, we subdivide the segment to add more points. */
     int new_points_num = 1;
     const float distance_px = math::distance(coords, prev_coords);
