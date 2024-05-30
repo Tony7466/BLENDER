@@ -18,9 +18,9 @@
 #include "interface_button_text_editing.hh"
 #include "interface_intern.hh"
 
-static void ui_textedit_string_ensure_max_length(uiBut *but,
-                                                 uiTextEdit &text_edit,
-                                                 int str_maxncpy)
+namespace blender::ui {
+
+static void ui_textedit_string_ensure_max_length(uiBut *but, TextEdit &text_edit, int str_maxncpy)
 {
   BLI_assert(text_edit.is_str_dynamic);
   BLI_assert(text_edit.edit_string == but->editstr);
@@ -32,10 +32,7 @@ static void ui_textedit_string_ensure_max_length(uiBut *but,
   }
 }
 
-int ui_textedit_autocomplete(bContext *C,
-                             uiBut *but,
-                             uiTextEdit &text_edit,
-                             ARegion *searchbox_region)
+int textedit_autocomplete(bContext *C, uiBut *but, TextEdit &text_edit, ARegion *searchbox_region)
 {
   char *str = text_edit.edit_string;
 
@@ -53,18 +50,18 @@ int ui_textedit_autocomplete(bContext *C,
   return changed;
 }
 
-bool ui_textedit_copypaste(uiBut *but, uiTextEdit &text_edit, const int mode)
+bool textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mode)
 {
   bool changed = false;
 
   /* paste */
-  if (mode == UI_TEXTEDIT_PASTE) {
+  if (mode == TEXTEDIT_PASTE) {
     /* extract the first line from the clipboard */
     int buf_len;
     char *pbuf = WM_clipboard_text_get_firstline(false, UI_but_is_utf8(but), &buf_len);
 
     if (pbuf) {
-      ui_textedit_insert_buf(but, text_edit, pbuf, buf_len);
+      textedit_insert_buf(but, text_edit, pbuf, buf_len);
 
       changed = true;
 
@@ -72,11 +69,11 @@ bool ui_textedit_copypaste(uiBut *but, uiTextEdit &text_edit, const int mode)
     }
   }
   /* cut & copy */
-  else if (ELEM(mode, UI_TEXTEDIT_COPY, UI_TEXTEDIT_CUT)) {
+  else if (ELEM(mode, TEXTEDIT_COPY, TEXTEDIT_CUT)) {
     /* copy the contents to the copypaste buffer */
     const int sellen = but->selend - but->selsta;
     char *buf = static_cast<char *>(
-        MEM_mallocN(sizeof(char) * (sellen + 1), "ui_textedit_copypaste"));
+        MEM_mallocN(sizeof(char) * (sellen + 1), "textedit_copypaste"));
 
     memcpy(buf, text_edit.edit_string + but->selsta, sellen);
     buf[sellen] = '\0';
@@ -85,9 +82,9 @@ bool ui_textedit_copypaste(uiBut *but, uiTextEdit &text_edit, const int mode)
     MEM_freeN(buf);
 
     /* for cut only, delete the selection afterwards */
-    if (mode == UI_TEXTEDIT_CUT) {
+    if (mode == TEXTEDIT_CUT) {
       if ((but->selend - but->selsta) > 0) {
-        changed = ui_textedit_delete_selection(but, text_edit);
+        changed = textedit_delete_selection(but, text_edit);
       }
     }
   }
@@ -95,7 +92,7 @@ bool ui_textedit_copypaste(uiBut *but, uiTextEdit &text_edit, const int mode)
   return changed;
 }
 
-void ui_textedit_set_cursor_pos(uiBut *but, const ARegion *region, const float x)
+void textedit_set_cursor_pos(uiBut *but, const ARegion *region, const float x)
 {
   /* XXX pass on as arg. */
   uiFontStyle fstyle = UI_style_get()->widget;
@@ -152,12 +149,12 @@ void ui_textedit_set_cursor_pos(uiBut *but, const ARegion *region, const float x
   ui_but_text_password_hide(password_str, but, true);
 }
 
-void ui_textedit_set_cursor_select(uiBut *but,
-                                   const ARegion *region,
-                                   uiTextEdit &text_edit,
-                                   const float x)
+void textedit_set_cursor_select(uiBut *but,
+                                const ARegion *region,
+                                TextEdit &text_edit,
+                                const float x)
 {
-  ui_textedit_set_cursor_pos(but, region, x);
+  textedit_set_cursor_pos(but, region, x);
 
   but->selsta = but->pos;
   but->selend = text_edit.sel_pos_init;
@@ -168,11 +165,11 @@ void ui_textedit_set_cursor_select(uiBut *but,
   ui_but_update(but);
 }
 
-void ui_textedit_move(uiBut *but,
-                      uiTextEdit &text_edit,
-                      eStrCursorJumpDirection direction,
-                      const bool select,
-                      eStrCursorJumpType jump)
+void textedit_move(uiBut *but,
+                   TextEdit &text_edit,
+                   eStrCursorJumpDirection direction,
+                   const bool select,
+                   eStrCursorJumpType jump)
 {
   const char *str = text_edit.edit_string;
   const int len = strlen(str);
@@ -222,10 +219,10 @@ void ui_textedit_move(uiBut *but,
   }
 }
 
-bool ui_textedit_delete(uiBut *but,
-                        uiTextEdit &text_edit,
-                        eStrCursorJumpDirection direction,
-                        eStrCursorJumpType jump)
+bool textedit_delete(uiBut *but,
+                     TextEdit &text_edit,
+                     eStrCursorJumpDirection direction,
+                     eStrCursorJumpType jump)
 {
   char *str = text_edit.edit_string;
   const int len = strlen(str);
@@ -241,7 +238,7 @@ bool ui_textedit_delete(uiBut *but,
   }
   else if (direction) { /* delete */
     if ((but->selend - but->selsta) > 0) {
-      changed = ui_textedit_delete_selection(but, text_edit);
+      changed = textedit_delete_selection(but, text_edit);
     }
     else if (but->pos >= 0 && but->pos < len) {
       int pos = but->pos;
@@ -255,7 +252,7 @@ bool ui_textedit_delete(uiBut *but,
   else { /* backspace */
     if (len != 0) {
       if ((but->selend - but->selsta) > 0) {
-        changed = ui_textedit_delete_selection(but, text_edit);
+        changed = textedit_delete_selection(but, text_edit);
       }
       else if (but->pos > 0) {
         int pos = but->pos;
@@ -273,7 +270,7 @@ bool ui_textedit_delete(uiBut *but,
   return changed;
 }
 
-void ui_textedit_string_set(uiBut *but, uiTextEdit &text_edit, const char *str)
+void textedit_string_set(uiBut *but, TextEdit &text_edit, const char *str)
 {
   if (text_edit.is_str_dynamic) {
     ui_textedit_string_ensure_max_length(but, text_edit, strlen(str) + 1);
@@ -287,7 +284,7 @@ void ui_textedit_string_set(uiBut *but, uiTextEdit &text_edit, const char *str)
   }
 }
 
-bool ui_textedit_delete_selection(uiBut *but, uiTextEdit &text_edit)
+bool textedit_delete_selection(uiBut *but, TextEdit &text_edit)
 {
   char *str = text_edit.edit_string;
   const int len = strlen(str);
@@ -301,7 +298,7 @@ bool ui_textedit_delete_selection(uiBut *but, uiTextEdit &text_edit)
   return changed;
 }
 
-bool ui_textedit_insert_buf(uiBut *but, uiTextEdit &text_edit, const char *buf, int buf_len)
+bool textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int buf_len)
 {
   int len = strlen(text_edit.edit_string);
   const int str_maxncpy_new = len - (but->selend - but->selsta) + 1;
@@ -317,7 +314,7 @@ bool ui_textedit_insert_buf(uiBut *but, uiTextEdit &text_edit, const char *buf, 
 
     /* type over the current selection */
     if ((but->selend - but->selsta) > 0) {
-      changed = ui_textedit_delete_selection(but, text_edit);
+      changed = textedit_delete_selection(but, text_edit);
       len = strlen(str);
     }
 
@@ -343,10 +340,12 @@ bool ui_textedit_insert_buf(uiBut *but, uiTextEdit &text_edit, const char *buf, 
 }
 
 #ifdef WITH_INPUT_IME
-bool ui_textedit_insert_ascii(uiBut *but, uiTextEdit &text_edit, const char ascii)
+bool textedit_insert_ascii(uiBut *but, TextEdit &text_edit, const char ascii)
 {
   BLI_assert(isascii(ascii));
   const char buf[2] = {ascii, '\0'};
-  return ui_textedit_insert_buf(but, text_edit, buf, sizeof(buf) - 1);
+  return textedit_insert_buf(but, text_edit, buf, sizeof(buf) - 1);
 }
 #endif
+
+}  // namespace blender::ui

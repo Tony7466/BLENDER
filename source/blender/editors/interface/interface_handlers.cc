@@ -72,6 +72,8 @@
 #  include "wm_window.hh"
 #endif
 
+namespace ui = blender::ui;
+
 /* -------------------------------------------------------------------- */
 /** \name Feature Defines
  *
@@ -370,7 +372,7 @@ struct uiHandleButtonData {
   bool changed_cursor;
   wmTimer *flashtimer;
 
-  uiTextEdit text_edit;
+  ui::TextEdit text_edit;
 
   double value, origvalue, startvalue;
   float vec[3], origvec[3];
@@ -1213,7 +1215,7 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
     uiButSearch *search_but = (uiButSearch *)but;
     but->func_arg2 = search_but->item_active;
     if ((U.flag & USER_FLAG_RECENT_SEARCHES_DISABLE) == 0) {
-      blender::ui::string_search::add_recent_search(search_but->item_active_str);
+      ui::string_search::add_recent_search(search_but->item_active_str);
     }
   }
 
@@ -2970,7 +2972,7 @@ void ui_but_set_string_interactive(bContext *C, uiBut *but, const char *value)
   BLI_assert((but->flag & UI_BUT_DISABLED) == 0);
 
   button_activate_state(C, but, BUTTON_STATE_TEXT_EDITING);
-  ui_textedit_string_set(but, but->active->text_edit, value);
+  ui::textedit_string_set(but, but->active->text_edit, value);
 
   if (but->type == UI_BTYPE_SEARCH_MENU && but->active) {
     but->changed = true;
@@ -3040,7 +3042,7 @@ const wmIMEData *ui_but_ime_data_get(uiBut *but)
 
 static void ui_but_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  uiTextEdit &text_edit = data->text_edit;
+  ui::TextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
   const bool is_num_but = ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER);
   bool no_zero_strip = false;
@@ -3164,7 +3166,7 @@ static void ui_but_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *d
 
 static void ui_but_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
-  uiTextEdit &text_edit = data->text_edit;
+  ui::TextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
 
   if (but) {
@@ -3324,7 +3326,7 @@ static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
 static void ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
-  uiTextEdit &text_edit = data->text_edit;
+  ui::TextEdit &text_edit = data->text_edit;
   int retval = WM_UI_HANDLER_CONTINUE;
   bool changed = false, inbox = false, update = false, skip_undo_push = false;
 
@@ -3410,7 +3412,7 @@ static void ui_do_but_textedit(
        * (selects all text, no cursor pos) */
       if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK)) {
         if (is_press_in_button) {
-          ui_textedit_set_cursor_pos(but, data->region, event->xy[0]);
+          ui::textedit_set_cursor_pos(but, data->region, event->xy[0]);
           but->selsta = but->selend = but->pos;
           text_edit.sel_pos_init = but->pos;
 
@@ -3471,13 +3473,13 @@ static void ui_do_but_textedit(
 #endif
         {
           if (event->type == EVT_VKEY) {
-            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_PASTE);
+            changed = ui::textedit_copypaste(but, text_edit, ui::TEXTEDIT_PASTE);
           }
           else if (event->type == EVT_CKEY) {
-            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_COPY);
+            changed = ui::textedit_copypaste(but, text_edit, ui::TEXTEDIT_COPY);
           }
           else if (event->type == EVT_XKEY) {
-            changed = ui_textedit_copypaste(but, text_edit, UI_TEXTEDIT_CUT);
+            changed = ui::textedit_copypaste(but, text_edit, ui::TEXTEDIT_CUT);
           }
 
           retval = WM_UI_HANDLER_BREAK;
@@ -3489,7 +3491,7 @@ static void ui_do_but_textedit(
                                                       STRCUR_DIR_NEXT :
                                                       STRCUR_DIR_PREV;
         const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        ui_textedit_move(but, text_edit, direction, event->modifier & KM_SHIFT, jump);
+        ui::textedit_move(but, text_edit, direction, event->modifier & KM_SHIFT, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
       }
@@ -3507,7 +3509,7 @@ static void ui_do_but_textedit(
         }
         ATTR_FALLTHROUGH;
       case EVT_ENDKEY:
-        ui_textedit_move(
+        ui::textedit_move(
             but, text_edit, STRCUR_DIR_NEXT, event->modifier & KM_SHIFT, STRCUR_JUMP_ALL);
         retval = WM_UI_HANDLER_BREAK;
         break;
@@ -3525,7 +3527,7 @@ static void ui_do_but_textedit(
         }
         ATTR_FALLTHROUGH;
       case EVT_HOMEKEY:
-        ui_textedit_move(
+        ui::textedit_move(
             but, text_edit, STRCUR_DIR_PREV, event->modifier & KM_SHIFT, STRCUR_JUMP_ALL);
         retval = WM_UI_HANDLER_BREAK;
         break;
@@ -3539,7 +3541,7 @@ static void ui_do_but_textedit(
         const eStrCursorJumpDirection direction = (event->type == EVT_DELKEY) ? STRCUR_DIR_NEXT :
                                                                                 STRCUR_DIR_PREV;
         const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        changed = ui_textedit_delete(but, text_edit, direction, jump);
+        changed = ui::textedit_delete(but, text_edit, direction, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
       }
@@ -3554,8 +3556,8 @@ static void ui_do_but_textedit(
         if (event->modifier == KM_CTRL)
 #endif
         {
-          ui_textedit_move(but, text_edit, STRCUR_DIR_PREV, false, STRCUR_JUMP_ALL);
-          ui_textedit_move(but, text_edit, STRCUR_DIR_NEXT, true, STRCUR_JUMP_ALL);
+          ui::textedit_move(but, text_edit, STRCUR_DIR_PREV, false, STRCUR_JUMP_ALL);
+          ui::textedit_move(but, text_edit, STRCUR_DIR_NEXT, true, STRCUR_JUMP_ALL);
           retval = WM_UI_HANDLER_BREAK;
         }
         break;
@@ -3563,7 +3565,7 @@ static void ui_do_but_textedit(
       case EVT_TABKEY:
         /* There is a key conflict here, we can't tab with auto-complete. */
         if (but->autocomplete_func || data->searchbox) {
-          const int autocomplete = ui_textedit_autocomplete(
+          const int autocomplete = ui::textedit_autocomplete(
               C, but, data->text_edit, data->searchbox);
           changed = autocomplete != AUTOCOMPLETE_NO_MATCH;
 
@@ -3597,7 +3599,7 @@ static void ui_do_but_textedit(
           const char *undo_str = ui_textedit_undo(
               text_edit.undo_stack_text, is_redo ? 1 : -1, &undo_pos);
           if (undo_str != nullptr) {
-            ui_textedit_string_set(but, text_edit, undo_str);
+            ui::textedit_string_set(but, text_edit, undo_str);
 
             /* Set the cursor & clear selection. */
             but->pos = undo_pos;
@@ -3633,7 +3635,7 @@ static void ui_do_but_textedit(
       if (utf8_buf[0]) {
         const int utf8_buf_len = BLI_str_utf8_size_or_error(utf8_buf);
         BLI_assert(utf8_buf_len != -1);
-        changed = ui_textedit_insert_buf(but, text_edit, utf8_buf, utf8_buf_len);
+        changed = ui::textedit_insert_buf(but, text_edit, utf8_buf, utf8_buf_len);
       }
 
       retval = WM_UI_HANDLER_BREAK;
@@ -3648,7 +3650,7 @@ static void ui_do_but_textedit(
   if (event->type == WM_IME_COMPOSITE_START) {
     changed = true;
     if (but->selend > but->selsta) {
-      ui_textedit_delete_selection(but, text_edit);
+      ui::textedit_delete_selection(but, text_edit);
     }
   }
   else if (event->type == WM_IME_COMPOSITE_EVENT) {
@@ -3658,10 +3660,10 @@ static void ui_do_but_textedit(
           STREQ(ime_data->str_result, "\xE3\x80\x82"))
       {
         /* Convert Ideographic Full Stop (U+3002) to decimal point when entering numbers. */
-        ui_textedit_insert_ascii(but, text_edit, '.');
+        ui::textedit_insert_ascii(but, text_edit, '.');
       }
       else {
-        ui_textedit_insert_buf(but, text_edit, ime_data->str_result, ime_data->result_len);
+        ui::textedit_insert_buf(but, text_edit, ime_data->str_result, ime_data->result_len);
       }
     }
   }
@@ -3711,7 +3713,7 @@ static void ui_do_but_textedit_select(
       int my = event->xy[1];
       ui_window_to_block(data->region, block, &mx, &my);
 
-      ui_textedit_set_cursor_select(but, data->region, data->text_edit, event->xy[0]);
+      ui::textedit_set_cursor_select(but, data->region, data->text_edit, event->xy[0]);
       retval = WM_UI_HANDLER_BREAK;
       break;
     }
