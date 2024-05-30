@@ -298,11 +298,11 @@ static void import_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 
   archive->collect_readers();
 
-  if (data->params.import_lights && data->params.create_background_shader &&
-      !archive->dome_lights().empty())
+  if (data->params.import_lights && data->params.create_world_material &&
+      !archive->dome_lights().is_empty())
   {
     dome_light_to_world_material(
-        data->params, data->settings, data->scene, data->bmain, archive->dome_lights().front());
+        data->params, data->settings, data->scene, data->bmain, archive->dome_lights().first());
   }
 
   if (data->params.import_materials && data->params.import_all_materials) {

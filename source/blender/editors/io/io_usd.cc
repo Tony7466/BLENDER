@@ -250,39 +250,41 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
 
-  USDExportParams params = {export_animation,
-                            export_hair,
-                            export_uvmaps,
-                            export_normals,
-                            export_mesh_colors,
-                            export_materials,
-                            export_armatures,
-                            export_shapekeys,
-                            only_deform_bones,
-                            export_subdiv,
-                            selected_objects_only,
-                            visible_objects_only,
-                            use_instancing,
-                            eEvaluationMode(evaluation_mode),
-                            generate_preview_surface,
-                            export_textures,
-                            overwrite_textures,
-                            relative_paths,
-                            export_custom_properties,
-                            author_blender_name,
-                            triangulate_meshes,
-                            quad_method,
-                            ngon_method,
-                            convert_orientation,
-                            eIOAxis(global_forward),
-                            eIOAxis(global_up),
-                            convert_world_material,
-                            xform_op_mode,
-                            export_meshes,
-                            export_lights,
-                            export_cameras,
-                            export_curves,
-                            export_volumes};
+  USDExportParams params = {
+      export_animation,
+      export_hair,
+      export_uvmaps,
+      export_normals,
+      export_mesh_colors,
+      export_materials,
+      export_armatures,
+      export_shapekeys,
+      only_deform_bones,
+      export_subdiv,
+      selected_objects_only,
+      visible_objects_only,
+      use_instancing,
+      eEvaluationMode(evaluation_mode),
+      generate_preview_surface,
+      export_textures,
+      overwrite_textures,
+      relative_paths,
+      export_custom_properties,
+      author_blender_name,
+      triangulate_meshes,
+      quad_method,
+      ngon_method,
+      convert_orientation,
+      eIOAxis(global_forward),
+      eIOAxis(global_up),
+      convert_world_material,
+      xform_op_mode,
+      export_meshes,
+      export_lights,
+      export_cameras,
+      export_curves,
+      export_volumes,
+  };
 
   STRNCPY(params.root_prim_path, root_prim_path);
   RNA_string_get(op->ptr, "collection", params.collection);
@@ -616,7 +618,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
       "convert_world_material",
       true,
       "Convert World Material",
-      "Convert the world material to a USD dome light"
+      "Convert the world material to a USD dome light. "
       "Currently works for simple materials, consisting of an environment texture "
       "connected to a background shader, with an optional vector multiply of the texture color");
 
@@ -737,7 +739,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   const bool validate_meshes = RNA_boolean_get(op->ptr, "validate_meshes");
 
-  const bool create_background_shader = RNA_boolean_get(op->ptr, "create_background_shader");
+  const bool create_world_material = RNA_boolean_get(op->ptr, "create_world_material");
 
   /* TODO(makowalski): Add support for sequences. */
   const bool is_sequence = false;
@@ -797,7 +799,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.tex_name_collision_mode = tex_name_collision_mode;
   params.import_all_materials = import_all_materials;
   params.attr_import_mode = attr_import_mode;
-  params.create_background_shader = create_background_shader;
+  params.create_world_material = create_world_material;
 
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
@@ -853,7 +855,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "create_background_shader", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "create_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
@@ -1062,11 +1064,10 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "(when disabled, data may be imported which causes crashes displaying or editing)");
 
   RNA_def_boolean(ot->srna,
-
-                  "create_background_shader",
+                  "create_world_material",
                   true,
-                  "Create Background Shader",
-                  "Convert first discovered USD dome lights to world background shader");
+                  "Create World Material",
+                  "Convert the first discovered USD dome light to a world background shader");
 
   RNA_def_boolean(ot->srna,
                   "import_defined_only",

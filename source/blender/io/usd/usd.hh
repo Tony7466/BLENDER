@@ -165,7 +165,7 @@ struct USDImportParams {
   eUSDTexNameCollisionMode tex_name_collision_mode;
   bool import_all_materials;
   eUSDAttrImportMode attr_import_mode;
-  bool create_background_shader;
+  bool create_world_material;
 
   /**
    * Communication structure between the wmJob management code and the worker code. Currently used

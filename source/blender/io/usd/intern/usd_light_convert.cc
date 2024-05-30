@@ -214,11 +214,10 @@ static bool node_search(bNode *fromnode, bNode * /* tonode */, void *userdata, c
 
   if (!res->background_found && fromnode->type == SH_NODE_BACKGROUND) {
     /* Get light color and intensity */
-    bNodeSocketValueRGBA *color_data =
-        (bNodeSocketValueRGBA *)((bNodeSocket *)BLI_findlink(&fromnode->inputs, 0))->default_value;
-    bNodeSocketValueFloat *strength_data = (bNodeSocketValueFloat *)((bNodeSocket *)BLI_findlink(
-                                                                         &fromnode->inputs, 1))
-                                               ->default_value;
+    bNodeSocketValueRGBA *color_data = bke::nodeFindSocket(fromnode, SOCK_IN, "Color")
+                                           ->default_value_typed<bNodeSocketValueRGBA>();
+    bNodeSocketValueFloat *strength_data = bke::nodeFindSocket(fromnode, SOCK_IN, "Strength")
+                                               ->default_value_typed<bNodeSocketValueFloat>();
 
     res->background_found = true;
     res->world_intensity = strength_data->value;
@@ -321,28 +320,29 @@ void world_material_to_dome_light(const USDExportParams &params,
     dome_light.CreateIntensityAttr().Set(res.world_intensity);
   }
 
-  if (res.mapping_found) {
-    /* Convert radians to degrees. */
-    mul_v3_fl(res.mapping_rot, 180.0f / M_PI);
+  /* We always set a default rotation on the light, whether or not res.mapping_found
+   * is true, since res.mapping_rot defaults to zeros. */
 
-    pxr::GfMatrix4d xf =
-        pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), 90.0)) *
-        pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0)) *
-        pxr::GfMatrix4d().SetRotate(
-            pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), -res.mapping_rot[2])) *
-        pxr::GfMatrix4d().SetRotate(
-            pxr::GfRotation(pxr::GfVec3d(0.0, 1.0, 0.0), -res.mapping_rot[1])) *
-        pxr::GfMatrix4d().SetRotate(
-            pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -res.mapping_rot[0]));
+  /* Convert radians to degrees. */
+  mul_v3_fl(res.mapping_rot, 180.0f / M_PI);
 
-    pxr::GfVec3d angles = xf.DecomposeRotation(
-        pxr::GfVec3d::ZAxis(), pxr::GfVec3d::YAxis(), pxr::GfVec3d::XAxis());
+  pxr::GfMatrix4d xf =
+      pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), 90.0)) *
+      pxr::GfMatrix4d().SetRotate(pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), 90.0)) *
+      pxr::GfMatrix4d().SetRotate(
+          pxr::GfRotation(pxr::GfVec3d(0.0, 0.0, 1.0), -res.mapping_rot[2])) *
+      pxr::GfMatrix4d().SetRotate(
+          pxr::GfRotation(pxr::GfVec3d(0.0, 1.0, 0.0), -res.mapping_rot[1])) *
+      pxr::GfMatrix4d().SetRotate(
+          pxr::GfRotation(pxr::GfVec3d(1.0, 0.0, 0.0), -res.mapping_rot[0]));
 
-    pxr::GfVec3f rot_vec(angles[2], angles[1], angles[0]);
+  pxr::GfVec3d angles = xf.DecomposeRotation(
+      pxr::GfVec3d::ZAxis(), pxr::GfVec3d::YAxis(), pxr::GfVec3d::XAxis());
 
-    pxr::UsdGeomXformCommonAPI xform_api(dome_light);
-    xform_api.SetRotate(rot_vec, pxr::UsdGeomXformCommonAPI::RotationOrderXYZ);
-  }
+  pxr::GfVec3f rot_vec(angles[2], angles[1], angles[0]);
+
+  pxr::UsdGeomXformCommonAPI xform_api(dome_light);
+  xform_api.SetRotate(rot_vec, pxr::UsdGeomXformCommonAPI::RotationOrderXYZ);
 }
 
 /* Import the dome light as a world material. */
@@ -366,6 +366,7 @@ void dome_light_to_world_material(const USDImportParams &params,
     scene->world->nodetree = bke::ntreeAddTree(NULL, "Shader Nodetree", "ShaderNodeTree");
     if (!scene->world->nodetree) {
       CLOG_WARN(&LOG, "Couldn't create world ntree");
+      return;
     }
   }
 
@@ -417,7 +418,7 @@ void dome_light_to_world_material(const USDImportParams &params,
   }
 
   /* Make sure the first input to the shader node is disconnected. */
-  bNodeSocket *shader_input = static_cast<bNodeSocket *>(BLI_findlink(&bgshader->inputs, 0));
+  bNodeSocket *shader_input = bke::nodeFindSocket(bgshader, SOCK_IN, "Color");
 
   if (shader_input && shader_input->link) {
     bke::nodeRemLink(ntree, shader_input->link);

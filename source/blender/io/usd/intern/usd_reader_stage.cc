@@ -182,7 +182,7 @@ USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim
     return new USDMeshReader(prim, params_, settings_);
   }
   if (params_.import_lights && prim.IsA<pxr::UsdLuxDomeLight>()) {
-    /* We don't handle dome lights. */
+    /* Dome lights are handled elsewhere. */
     return nullptr;
   }
 #if PXR_VERSION >= 2111
@@ -373,7 +373,7 @@ USDPrimReader *USDStageReader::collect_readers(const pxr::UsdPrim &prim,
   }
 
   if (prim.IsA<pxr::UsdLuxDomeLight>()) {
-    dome_lights_.push_back(pxr::UsdLuxDomeLight(prim));
+    dome_lights_.append(pxr::UsdLuxDomeLight(prim));
   }
 
   pxr::Usd_PrimFlagsConjunction filter_flags = pxr::UsdPrimIsActive && pxr::UsdPrimIsLoaded &&
