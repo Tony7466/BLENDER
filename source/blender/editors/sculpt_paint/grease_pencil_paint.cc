@@ -36,8 +36,6 @@
 
 #include <optional>
 
-#include <iostream>
-
 namespace blender::ed::sculpt_paint::greasepencil {
 
 static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
@@ -131,6 +129,9 @@ class PaintOperation : public GreasePencilStrokeOperation {
 
   /* Helper class to project screen space coordinates to 3d. */
   ed::greasepencil::DrawingPlacement placement_;
+
+  /* Angle factor smoothed over time. */
+  float smoothed_angle_factor_ = 1.0f;
 
   friend struct PaintOperationExecutor;
 
@@ -527,6 +528,24 @@ struct PaintOperationExecutor {
     const float prev_opacity = drawing_->opacities()[last_active_point];
     const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors()[last_active_point];
 
+    /* Approximate brush with non-circular shape by changing the radius based on the angle. */
+    if (settings_->draw_angle_factor > 0.0f) {
+      const float angle = settings_->draw_angle;
+      const float2 angle_vec = float2(math::cos(angle), math::sin(angle));
+      const float2 vec = coords - self.screen_space_coords_orig_.last();
+
+      /* `angle_factor` is the angle to the horizontal line in screen space. */
+      const float angle_factor = 1.0f - math::abs(math::dot(angle_vec, math::normalize(vec)));
+      /* Smooth the angle factor over time. */
+      self.smoothed_angle_factor_ = math::interpolate(
+          self.smoothed_angle_factor_, angle_factor, 0.1f);
+
+      /* Influence is controlled by `draw_angle_factor`. */
+      const float radius_factor = math::interpolate(
+          1.0f, self.smoothed_angle_factor_, settings_->draw_angle_factor);
+      radius *= radius_factor;
+    }
+
     /* Overwrite last point if it's very close. */
     const IndexRange points_range = curves.points_by_curve()[curves.curves_range().last()];
     const bool is_first_sample = (points_range.size() == 1);
@@ -540,23 +559,6 @@ struct PaintOperationExecutor {
       return;
     }
 
-    /* Simulate brush with non-circular shape by changing the radius based on the angle. */
-    if (settings_->draw_angle_factor > 0.0f) {
-      const float angle = settings_->draw_angle;
-      const float2 angle_vec = float2(math::cos(angle), math::sin(angle));
-      for (const int i : self.screen_space_coords_orig_.index_range()) {
-        const float2 vec = coords - self.screen_space_coords_orig_.last(i);
-        /* TODO: Use some average of the last few samples instead? */
-        if (math::length(vec) >= 20) {
-          float angle_factor = 1.0f - math::abs(math::dot(angle_vec, math::normalize(vec)));
-          // std::cout << "angle_factor: " << angle_factor << std::endl;
-          angle_factor = math::interpolate(angle_factor, 1.0f, settings_->draw_angle_factor);
-          radius = math::interpolate(radius * angle_factor, prev_radius, 0.3f);
-          break;
-        }
-      }
-    }
-    
     /* If the next sample is far away, we subdivide the segment to add more points. */
     int new_points_num = 1;
     const float distance_px = math::distance(coords, prev_coords);
