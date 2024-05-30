@@ -1147,6 +1147,11 @@ static void rna_WindowManager_active_keyconfig_set(PointerRNA *ptr,
   }
 }
 
+static void rna_WindowManager_extensions_update(bContext *C, PointerRNA * /*ptr*/)
+{
+  WM_window_status_area_tag_redraw(CTX_wm_window(C));
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Key Config Preferences
  * \{ */
@@ -2642,6 +2647,8 @@ static void rna_def_windowmanager(BlenderRNA *brna)
   prop = RNA_def_property(srna, "extensions_updates", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Extensions Updates", "Number of extensions with available update");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(prop, 0, "rna_WindowManager_extensions_update");
 
   RNA_api_wm(srna);
 }
