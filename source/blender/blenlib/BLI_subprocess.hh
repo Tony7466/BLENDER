@@ -8,6 +8,8 @@
 #  error Subprocess API is only supported on Windows and Linux
 #endif
 
+#include "BLI_span.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_sys_types.h"
 #include "BLI_utility_mixins.hh"
 #include <string>
@@ -19,6 +21,20 @@ typedef void *HANDLE;
 #endif
 
 namespace blender {
+
+class Subprocess : NonCopyable {
+ private:
+#ifdef _WIN32
+  HANDLE handle_ = nullptr;
+#else
+  FILE *handle_ = nullptr;
+#endif
+ public:
+  ~Subprocess();
+
+  bool init(Span<StringRefNull> args);
+  bool is_running();
+};
 
 class SharedMemory : NonCopyable {
  private:

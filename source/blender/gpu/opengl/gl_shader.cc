@@ -1608,11 +1608,7 @@ GLCompilerWorker::GLCompilerWorker()
   end_semaphore_ = std::make_unique<SharedSemaphore>(name + "_END");
   close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE");
 
-  /* TODO: Pass max_size. */
-  std::string cmd = '"' + std::string(BKE_appdir_program_path()) + '"' +
-                    " --compilation-subprocess " + name;
-
-  compiler_ = popen(cmd.c_str(), "w");
+  subprocess_.init({"--compilation-subprocess", name.c_str()});
 }
 
 GLCompilerWorker::~GLCompilerWorker()
@@ -1620,8 +1616,6 @@ GLCompilerWorker::~GLCompilerWorker()
   close_semaphore_->increment();
   /* Flag start so the subprocess can reach the close semaphore. */
   start_semaphore_->increment();
-  pclose(compiler_);
-  compiler_ = nullptr;
 }
 
 void GLCompilerWorker::compile(StringRefNull vert, StringRefNull frag)
@@ -1653,10 +1647,10 @@ bool GLCompilerWorker::is_ready()
 
 bool GLCompilerWorker::is_lost()
 {
-  /* We need some way to handle processes being killed or lost due to crashes or hangs.
-   * There's no good way to check for those, so we simply use a max timeout. */
+  /* Use a timeout for hanged processes. */
   float max_timeout_seconds = 30.0f;
-  return (BLI_time_now_seconds() - compilation_start) > max_timeout_seconds;
+  return !subprocess_.is_running() ||
+         (BLI_time_now_seconds() - compilation_start) > max_timeout_seconds;
 }
 
 bool GLCompilerWorker::load_program_binary(GLint program)
