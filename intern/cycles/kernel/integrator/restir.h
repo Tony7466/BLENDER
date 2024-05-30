@@ -199,86 +199,15 @@ float compute_luminance(KernelGlobals kg, const ccl_private BsdfEval &radiance)
   return dot(spectrum_to_rgb(radiance.sum), float4_to_float3(kernel_data.film.rgb_to_y));
 }
 
-/* TODO(weizhen): this is also pairwise, but with worse MIS weight. Keep this for debugging now,
- * probably just delete the option in the future. */
-/* TODO(weizhen): this is biased because we have no access of the jacobian when
- * `sample_copy_direction()`. */
-ccl_device_inline bool streaming_samples(KernelGlobals kg,
-                                         IntegratorState state,
-                                         const ccl_private SpatialResampling *resampling,
-                                         ccl_private SpatialReservoir *current,
-                                         const ccl_private RNGState *rng_state,
-                                         const int samples,
-                                         const bool visibility,
-                                         ccl_global float *ccl_restrict render_buffer)
-{
-  PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
-  const bool read_prev = state->read_previous_reservoir;
-
-  for (int i = 0; i < samples; i++) {
-    PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
-    const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
-
-    SpatialReservoir neighbor;
-    if (!restir_unpack_neighbor(
-            kg, resampling, current, &neighbor, i, rand, render_buffer, read_prev))
-    {
-      continue;
-    }
-
-    if (neighbor.is_empty()) {
-      continue;
-    }
-
-    /* Evaluate neighbor sample from the current shading point. */
-    light_sample_from_uv(kg, &current->sd, current->path_flag, &neighbor.reservoir.ls);
-    radiance_eval(
-        kg, state, &current->sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
-    PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
-    current->add_reservoir(neighbor, rand.z);
-  }
-
-  PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
-  if (!current->reservoir.finalize()) {
-    return false;
-  }
-
-  LightSample picked_ls = current->reservoir.ls;
-
-  /* Loop over neighborhood again to determine valid samples. Skip the current pixel, because if
-   * the reservoir is not empty it must be valid. */
-  int valid_neighbors = 1;
-  for (int i = 1; i < samples; i++) {
-    const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
-
-    SpatialReservoir neighbor;
-    if (!restir_unpack_neighbor(
-            kg, resampling, current, &neighbor, i, rand, render_buffer, read_prev))
-    {
-      continue;
-    }
-
-    shader_data_setup_from_restir(kg, state, &neighbor, render_buffer);
-
-    /* Evaluate picked sample from neighboring shading points. */
-    light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &picked_ls);
-    radiance_eval(kg, state, &neighbor.sd, &picked_ls, &neighbor.reservoir.radiance, visibility);
-    valid_neighbors += !bsdf_eval_is_zero(&neighbor.reservoir.radiance);
-  }
-
-  current->reservoir.total_weight /= valid_neighbors;
-
-  return true;
-}
-
-ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
-                                                  IntegratorState state,
-                                                  const ccl_private SpatialResampling *resampling,
-                                                  ccl_private SpatialReservoir *current,
-                                                  const ccl_private RNGState *rng_state,
-                                                  const int samples,
-                                                  const bool visibility,
-                                                  ccl_global float *ccl_restrict render_buffer)
+/* Add neighboring reservoirs to the current reservoir using pairewise MIS weight. */
+ccl_device_inline bool streaming_di_samples(KernelGlobals kg,
+                                            IntegratorState state,
+                                            const ccl_private SpatialResampling *resampling,
+                                            ccl_private SpatialReservoir *current,
+                                            const ccl_private RNGState *rng_state,
+                                            const int samples,
+                                            const bool visibility,
+                                            ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
   const bool read_prev = state->read_previous_reservoir;
@@ -475,7 +404,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   /* Uniformly sample neighboring reservoirs within a radius. There is probability to pick the same
    * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
    * samples are used. */
-  streaming_samples_pairwise(
+  streaming_di_samples(
       kg, state, &spatial_resampling, &current, &rng_state, samples, visibility, render_buffer);
 
   const bool write_prev = !(state->read_previous_reservoir);

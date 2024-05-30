@@ -643,7 +643,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=True)
     restir_pairwise: BoolProperty(
         name="Pairwise",
-        description="Use pairwise MIS when combining samples",
+        description="Use pairwise MIS when combining samples (TODO): probably remove this option",
         default=True)
     restir_heuristics: EnumProperty(
         name=" ",
