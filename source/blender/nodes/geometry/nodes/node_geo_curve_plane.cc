@@ -13,6 +13,12 @@
 
 namespace blender::nodes::node_geo_curve_plane_cc {
 
+#ifdef WITH_POTRACE
+static constexpr const float smooth_max = geometry::potrace::Params::max_smooth_threshold;
+#else
+static constexpr const float smooth_max = {};
+#endif
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Vector>("Min")
@@ -24,6 +30,9 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Int>("Resolution X").default_value(32).min(2);
   b.add_input<decl::Int>("Resolution Y").default_value(32).min(2);
+
+  b.add_input<decl::Float>("Smooth Threshold").default_value(1.0f).min(0.0f).max(smooth_max);
+  b.add_input<decl::Float>("Simplify").default_value(0.2f).min(0.0f);
 
   b.add_input<decl::Bool>("Pixel Value").supports_field().hide_value();
 
@@ -134,6 +143,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry::potrace::Params curves_params;
   curves_params.resolution = resolution;
+  curves_params.smooth_threshold = math::clamp<float>(
+      params.extract_input<float>("Smooth Threshold"), 0.0f, smooth_max);
+  curves_params.optimization_tolerance = math::max<float>(params.extract_input<float>("Simplify"),
+                                                          0.0f);
 
   potrace_state_t *potrace_image = geometry::potrace::image_for_predicate(
       curves_params, [&](const int64_t /* line_i */, const int64_t pixel_index) -> bool {

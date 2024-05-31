@@ -24,8 +24,8 @@ struct Params {
   /* Original resolution, not aligned. */
   int2 resolution;
 
-  static constexpr const float max_threshold = 4.0f / 3.0f;
-  float corners_threshold = 1.0f;
+  static constexpr const float max_smooth_threshold = 4.0f / 3.0f;
+  float smooth_threshold = 1.0f;
 
   float optimization_tolerance = 0.2f;
 };

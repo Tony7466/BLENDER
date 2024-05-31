@@ -65,8 +65,11 @@ potrace_state_t *image_from_line_segments(
   bitmap.h = params.resolution.y;
   bitmap.dy = segments_resolution.x;
   bitmap.map = segments.data();
+
   potrace_param_t *potrace_params = potrace_param_default();
   BLI_assert(potrace_params != nullptr);
+  potrace_params->alphamax = params.smooth_threshold;
+  potrace_params->opttolerance = params.optimization_tolerance;
 
   potrace_state_t *result_image = potrace_trace(potrace_params, &bitmap);
   potrace_param_free(potrace_params);
