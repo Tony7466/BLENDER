@@ -253,7 +253,7 @@ static void compo_initjob(void *cjv)
   }
 
   if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU) {
-    cj->re = RE_NewRender(COMPOSITOR_RENDER_NAME);
+    cj->re = RE_NewInteractiveCompositorRender(scene);
     RE_system_gpu_context_ensure(cj->re);
   }
 }

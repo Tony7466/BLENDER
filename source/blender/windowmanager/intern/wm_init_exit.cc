@@ -571,6 +571,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
 
   /* Render code might still access databases. */
   RE_FreeAllRender();
+  RE_FreeAllInteractiveCompositorRenders();
   RE_engines_exit();
 
   ED_preview_free_dbase(); /* Frees a Main dbase, before #BKE_blender_free! */
