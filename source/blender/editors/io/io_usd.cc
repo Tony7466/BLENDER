@@ -688,7 +688,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "usdz_downscale_custom_size",
               128,
-              128,
+              64,
               16384,
               "USDZ Custom Downscale Size",
               "Custom size for downscaling exported textures",

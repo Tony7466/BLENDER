@@ -205,8 +205,6 @@ static void process_usdz_textures(const ExportJobData *data, const char *path)
                          data->params.usdz_downscale_custom_size :
                          enum_value));
 
-  image_size = image_size < 128 ? 128 : image_size;
-
   char texture_path[FILE_MAX];
   BLI_strncpy_rlen(texture_path, path, FILE_MAX);
   BLI_path_append(texture_path, FILE_MAX, "textures");
