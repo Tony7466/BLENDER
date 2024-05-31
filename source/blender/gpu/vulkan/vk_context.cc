@@ -119,6 +119,8 @@ void VKContext::activate()
 void VKContext::deactivate()
 {
   if (use_render_graph) {
+    /* Draw manager draws in a different context than the rest of the UI. Although run from the
+     * same thread. Commands inside the rendergraph need to be submitted into the device queue. */
     if (has_active_framebuffer()) {
       VKFrameBuffer &framebuffer = *active_framebuffer_get();
       if (framebuffer.is_rendering()) {
@@ -135,13 +137,7 @@ void VKContext::begin_frame() {}
 
 void VKContext::end_frame()
 {
-  if (use_render_graph) {
-    if (has_active_framebuffer()) {
-      active_framebuffer_get()->rendering_end(*this);
-    }
-    render_graph.submit();
-  }
-  else {
+  if (!use_render_graph) {
     VKDevice &device = VKBackend::get().device_get();
     device.destroy_discarded_resources();
   }
