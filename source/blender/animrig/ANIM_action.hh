@@ -120,7 +120,7 @@ class Action : public ::bAction {
    * If the Action is empty, create a default layer with a single infinite
    * keyframe strip.
    */
-  void ensure_layer();
+  void layer_ensure();
 
   /* Animation Binding access. */
   blender::Span<const Binding *> bindings() const;
@@ -533,7 +533,7 @@ class KeyframeStrip : public ::KeyframeActionStrip {
                                      int array_index,
                                      float2 time_value,
                                      const KeyframeSettings &settings,
-                                     const eInsertKeyFlags insert_key_flags);
+                                     eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeActionStrip),
               "DNA struct and its C++ wrapper must have the same size");

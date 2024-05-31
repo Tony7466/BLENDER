@@ -52,11 +52,6 @@ CombinedKeyingResult::CombinedKeyingResult()
   result_counter.fill(0);
 }
 
-void CombinedKeyingResult::add(const SingleKeyingResult result)
-{
-  result_counter[int(result)]++;
-}
-
 void CombinedKeyingResult::add(const SingleKeyingResult result, const int count)
 {
   result_counter[int(result)] += count;
@@ -132,43 +127,43 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
 
   if (this->get_count(SingleKeyingResult::ID_NOT_EDITABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::ID_NOT_EDITABLE);
-    errors.append(fmt::format(
-        RPT_("Inserting keys on {:d} ID(s) has been skipped because they are not editable."),
-        error_count));
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
+                                   "they are not editable."),
+                              error_count));
   }
 
   if (this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE);
-    errors.append(fmt::format(
-        RPT_("Inserting keys on {:d} ID(s) has been skipped because they cannot be animated."),
-        error_count));
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
+                                   "they cannot be animated."),
+                              error_count));
   }
 
   if (this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH);
-    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because the RNA "
-                                   "path wasn't valid for them."),
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
+                                   "the RNA path wasn't valid for them."),
                               error_count));
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_LAYER) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_LAYER);
-    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because there "
-                                   "were no layers that could accept the keys."),
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
+                                   "there were no layers that could accept the keys."),
                               error_count));
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_STRIP) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_STRIP);
-    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because there "
-                                   "were no strips that could accept the keys."),
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
+                                   "there were no strips that could accept the keys."),
                               error_count));
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_BINDING) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_BINDING);
-    errors.append(fmt::format(RPT_("Inserting keys on {:d} ID(s) has been skipped because of "
-                                   "missing animation bindings."),
+    errors.append(fmt::format(RPT_("Inserting keys on {:d} data-block(s) has been skipped because "
+                                   "of missing animation bindings."),
                               error_count));
   }
 
@@ -1046,13 +1041,14 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
   if (binding == nullptr) {
     binding = &action.binding_add();
     const bool success = action.assign_id(binding, *id);
+    UNUSED_VARS_NDEBUG(success);
     BLI_assert_msg(
         success,
         "With a new Binding, the only reason this could fail is that the ID itself cannot be "
         "animated, which should have been caught and handled by higher-level functions.");
   }
 
-  action.ensure_layer();
+  action.layer_ensure();
   Layer *layer = action.get_layer_for_keyframing();
   /* TODO: since we haven't implemented actual layered animation yet, this
    * currently should never be null.  But when we do implement layered
@@ -1079,7 +1075,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
     BLI_assert(rna_path_id_to_prop.has_value());
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, use_visual_keyframing);
 
-    for (int property_index : rna_values.index_range()) {
+    for (const int property_index : rna_values.index_range()) {
       /* If we're only keying one array element, skip all elements other than
        * that one. */
       if (rna_path.index.has_value() && *rna_path.index != property_index) {

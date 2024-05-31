@@ -74,14 +74,9 @@ class CombinedKeyingResult {
   CombinedKeyingResult();
 
   /**
-   * Increment the count of the given `SingleKeyingResult` by one.
-   */
-  void add(SingleKeyingResult result);
-
-  /**
    * Increase the count of the given `SingleKeyingResult` by `count`.
    */
-  void add(SingleKeyingResult result, int count);
+  void add(SingleKeyingResult result, int count = 1);
 
   /* Add values of the given result to this result. */
   void merge(const CombinedKeyingResult &combined_result);

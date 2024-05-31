@@ -193,13 +193,15 @@ bool Action::layer_remove(Layer &layer_to_remove)
   return true;
 }
 
-void Action::ensure_layer()
+void Action::layer_ensure()
 {
-  if (this->layers().size() == 0) {
-    /* TODO: default layer name localization. */
-    Layer &layer = this->layer_add("Layer");
-    layer.strip_add(Strip::Type::Keyframe);
+  if (!this->layers().is_empty()) {
+    return;
   }
+
+  /* TODO: default layer name localization. */
+  Layer &layer = this->layer_add("Layer");
+  layer.strip_add(Strip::Type::Keyframe);
 }
 
 int64_t Action::find_layer_index(const Layer &layer) const
@@ -417,8 +419,13 @@ bool Action::is_binding_animated(const binding_handle_t binding_handle) const
 Layer *Action::get_layer_for_keyframing()
 {
   /* TODO: handle multiple layers. */
-  if (this->layers().size() == 0) {
+  if (this->layers().is_empty()) {
     return nullptr;
+  }
+  if (this->layers().size() > 1) {
+    std::fprintf(stderr,
+                 "Action '%s' has multiple layers, which isn't allowed or handled yet.",
+                 this->id.name);
   }
 
   return this->layer(0);
@@ -534,7 +541,7 @@ Strip *Layer::strip(const int64_t index)
 
 int Layer::strip_index_at_time(const float /* time */) const
 {
-  if (this->strips().size() == 0) {
+  if (this->strips().is_empty()) {
     return -1;
   }
 
