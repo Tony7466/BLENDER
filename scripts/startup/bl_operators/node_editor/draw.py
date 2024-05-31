@@ -12,23 +12,23 @@ from .node_functions import (
 )
 
 
-def draw_line(x1, y1, x2, y2, size, colour=(1.0, 1.0, 1.0, 0.7)):
+def draw_line(x1, y1, x2, y2, size, color=(1.0, 1.0, 1.0, 0.7)):
     shader = gpu.shader.from_builtin('POLYLINE_SMOOTH_COLOR')
     shader.uniform_float("viewportSize", gpu.state.viewport_get()[2:])
     shader.uniform_float("lineWidth", size * bpy.context.preferences.system.pixel_size)
 
     vertices = ((x1, y1), (x2, y2))
-    vertex_colors = ((colour[0] + (1.0 - colour[0]) / 4,
-                      colour[1] + (1.0 - colour[1]) / 4,
-                      colour[2] + (1.0 - colour[2]) / 4,
-                      colour[3] + (1.0 - colour[3]) / 4),
-                     colour)
+    vertex_colors = ((color[0] + (1.0 - color[0]) / 4,
+                      color[1] + (1.0 - color[1]) / 4,
+                      color[2] + (1.0 - color[2]) / 4,
+                      color[3] + (1.0 - color[3]) / 4),
+                     color)
 
     batch = batch_for_shader(shader, 'LINE_STRIP', {"pos": vertices, "color": vertex_colors})
     batch.draw(shader)
 
 
-def draw_circle_2d_filled(mx, my, radius, colour=(1.0, 1.0, 1.0, 0.7)):
+def draw_circle_2d_filled(mx, my, radius, color=(1.0, 1.0, 1.0, 0.7)):
     radius = radius * bpy.context.preferences.system.pixel_size
     sides = 12
     vertices = [(radius * cos(i * 2 * pi / sides) + mx,
@@ -36,12 +36,12 @@ def draw_circle_2d_filled(mx, my, radius, colour=(1.0, 1.0, 1.0, 0.7)):
                 for i in range(sides + 1)]
 
     shader = gpu.shader.from_builtin('UNIFORM_COLOR')
-    shader.uniform_float("color", colour)
+    shader.uniform_float("color", color)
     batch = batch_for_shader(shader, 'TRI_FAN', {"pos": vertices})
     batch.draw(shader)
 
 
-def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
+def draw_rounded_node_border(node, radius=8, color=(1.0, 1.0, 1.0, 0.7)):
     area_width = bpy.context.area.width
     sides = 16
     radius *= bpy.context.preferences.system.pixel_size
@@ -64,7 +64,7 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
         radius += 6
 
     shader = gpu.shader.from_builtin('UNIFORM_COLOR')
-    shader.uniform_float("color", colour)
+    shader.uniform_float("color", color)
 
     # Top left corner.
     mx, my = bpy.context.region.view2d.view_to_region(nlocx, nlocy, clip=False)
@@ -170,8 +170,10 @@ def draw_rounded_node_border(node, radius=8, colour=(1.0, 1.0, 1.0, 0.7)):
         batch.draw(shader)
 
 
-def draw_callback_node_outline(self, context, mode, lazy_connect_props):
-    if self.mouse_path:
+def draw_callback_node_outline(context, mouse_path, mode, lazy_connect_props):
+    if not mouse_path:
+        return
+    else:
         gpu.state.blend_set('ALPHA')
 
         nodes = context.space_data.edit_tree.nodes
@@ -189,23 +191,23 @@ def draw_callback_node_outline(self, context, mode, lazy_connect_props):
             col_inner = (0.0, 0.0, 0.0, 0.5)
             col_circle_inner = (0.05, 0.3, 0.05, 1.0)
 
-        m1x = self.mouse_path[0][0]
-        m1y = self.mouse_path[0][1]
-        m2x = self.mouse_path[-1][0]
-        m2y = self.mouse_path[-1][1]
+        m1x = mouse_path[0][0]
+        m1y = mouse_path[0][1]
+        m2x = mouse_path[-1][0]
+        m2y = mouse_path[-1][1]
 
-        node1 = nodes[lazy_connect_props.nodes_lazy_source]
-        node2 = nodes[lazy_connect_props.nodes_lazy_target]
+        node1 = nodes[lazy_connect_props.from_node_name]
+        node2 = nodes[lazy_connect_props.to_node_name]
 
         if node1 == node2:
             col_outer = (0.4, 0.4, 0.4, 0.4)
             col_inner = (0.0, 0.0, 0.0, 0.5)
             col_circle_inner = (0.2, 0.2, 0.2, 1.0)
 
-        draw_rounded_node_border(node1, radius=6, colour=col_outer)  # outline
-        draw_rounded_node_border(node1, radius=5, colour=col_inner)  # inner
-        draw_rounded_node_border(node2, radius=6, colour=col_outer)  # outline
-        draw_rounded_node_border(node2, radius=5, colour=col_inner)  # inner
+        draw_rounded_node_border(node1, radius=6, color=col_outer)  # outline
+        draw_rounded_node_border(node1, radius=5, color=col_inner)  # inner
+        draw_rounded_node_border(node2, radius=6, color=col_outer)  # outline
+        draw_rounded_node_border(node2, radius=5, color=col_inner)  # inner
 
         draw_line(m1x, m1y, m2x, m2y, 5, col_outer)  # line outline
         draw_line(m1x, m1y, m2x, m2y, 2, col_inner)  # line inner

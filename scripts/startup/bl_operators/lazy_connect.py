@@ -22,10 +22,10 @@ from dataclasses import dataclass
 
 @dataclass
 class LazyConnectProperties:
-    nodes_lazy_drawing: str = ""
-    nodes_lazy_source: str = ""
-    nodes_lazy_target: str = ""
-    nodes_lazy_source_socket: int = 0
+    node_below_drawing_name: str = ""
+    from_node_name: str = ""
+    to_node_name: str = ""
+    from_node_socket_name: int = 0
 
 lazy_connect_props = LazyConnectProperties()
 
@@ -38,7 +38,7 @@ class NODE_MT_lazy_connect_outputs(Menu, NodeEditorMenuBase):
         layout = self.layout
         nodes = context.space_data.edit_tree.nodes
 
-        n1 = nodes[lazy_connect_props.nodes_lazy_source]
+        n1 = nodes[lazy_connect_props.from_node_name]
         for index, output in enumerate(n1.outputs):
             # Only show sockets that are exposed.
             if output.enabled:
@@ -56,33 +56,32 @@ class NODE_MT_lazy_connect_inputs(Menu, NodeEditorMenuBase):
         layout = self.layout
         nodes = context.space_data.edit_tree.nodes
 
-        n2 = nodes[lazy_connect_props.nodes_lazy_target]
+        n2 = nodes[lazy_connect_props.to_node_name]
 
         for index, input in enumerate(n2.inputs):
             # Only show sockets that are exposed. This prevents, for example, the scale value socket
             # of the vector math node being added to the list when the mode is not 'SCALE'.
             if input.enabled:
                 op = layout.operator(NODE_OT_make_link.bl_idname, text=input.name, icon="FORWARD")
-                op.from_socket = lazy_connect_props.nodes_lazy_source_socket
+                op.from_socket = lazy_connect_props.from_node_socket_name
                 op.to_socket = index
 
 
 class NODE_OT_call_inputs_menu(Operator, NodeEditorBase):
     """Link from this output"""
-    bl_idname = 'node.call_inputs_menu'
-    bl_label = 'Make Link'
+    bl_idname = "node.call_inputs_menu"
+    bl_label = "Make Link"
     bl_options = {'REGISTER', 'UNDO'}
 
-    from_socket: IntProperty(
-    )
+    from_socket: IntProperty()
 
     def execute(self, context):
         nodes = context.space_data.edit_tree.nodes
 
-        lazy_connect_props.nodes_lazy_source_socket = self.from_socket
+        lazy_connect_props.from_node_socket_name = self.from_socket
 
-        n1 = nodes[lazy_connect_props.nodes_lazy_source]
-        n2 = nodes[lazy_connect_props.nodes_lazy_target]
+        n1 = nodes[lazy_connect_props.from_node_name]
+        n2 = nodes[lazy_connect_props.to_node_name]
         if len(n2.inputs) > 1:
             bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NODE_MT_lazy_connect_inputs.bl_idname)
         elif len(n2.inputs) == 1:
@@ -92,20 +91,18 @@ class NODE_OT_call_inputs_menu(Operator, NodeEditorBase):
 
 class NODE_OT_make_link(Operator, NodeEditorBase):
     """Make a link from one socket to another"""
-    bl_idname = 'node.make_link'
-    bl_label = 'Make Link'
+    bl_idname = "node.make_link"
+    bl_label = "Make Link"
     bl_options = {'REGISTER', 'UNDO'}
 
-    from_socket: IntProperty(
-    )
-    to_socket: IntProperty(
-    )
+    from_socket: IntProperty()
+    to_socket: IntProperty()
 
     def execute(self, context):
         nodes = context.space_data.edit_tree.nodes
 
-        n1 = nodes[lazy_connect_props.nodes_lazy_source]
-        n2 = nodes[lazy_connect_props.nodes_lazy_target]
+        n1 = nodes[lazy_connect_props.from_node_name]
+        n2 = nodes[lazy_connect_props.to_node_name]
 
         connect_sockets(n1.outputs[self.from_socket], n2.inputs[self.to_socket])
 
@@ -133,15 +130,15 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
         cont = True
 
         node1 = None
-        if not lazy_connect_props.nodes_lazy_drawing:
+        if not lazy_connect_props.node_below_drawing_name:
             node1 = node_under_cursor(nodes, context, event)
             if node1:
-                lazy_connect_props.nodes_lazy_drawing = node1.name
+                lazy_connect_props.node_below_drawing_name = node1.name
         else:
-            node1 = nodes[lazy_connect_props.nodes_lazy_drawing]
+            node1 = nodes[lazy_connect_props.node_below_drawing_name]
 
-        lazy_connect_props.nodes_lazy_source = node1.name
-        lazy_connect_props.nodes_lazy_target = node_under_cursor(nodes, context, event).name
+        lazy_connect_props.from_node_name = node1.name
+        lazy_connect_props.to_node_name = node_under_cursor(nodes, context, event).name
 
         if event.type == 'MOUSEMOVE':
             self.mouse_path.append((event.mouse_region_x, event.mouse_region_y))
@@ -152,7 +149,7 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
             node2 = None
             node2 = node_under_cursor(nodes, context, event)
             if node2:
-                lazy_connect_props.nodes_lazy_drawing = node2.name
+                lazy_connect_props.node_below_drawing_name = node2.name
 
             if node1 == node2:
                 cont = False
@@ -186,7 +183,7 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
 
             if link_success:
                 force_update(context)
-            lazy_connect_props.nodes_lazy_drawing = ""
+            lazy_connect_props.node_below_drawing_name = ""
             return {'FINISHED'}
 
         elif event.type == 'ESC':
@@ -200,7 +197,7 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
             nodes = context.space_data.edit_tree.nodes
             node = node_under_cursor(nodes, context, event)
             if node:
-                lazy_connect_props.nodes_lazy_drawing = node.name
+                lazy_connect_props.node_below_drawing_name = node.name
 
             # The arguments we pass the the callback.
             mode = "LINK"
@@ -211,7 +208,7 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
             # Add the region OpenGL drawing callback.
             # Draw in view space with 'POST_VIEW' and 'PRE_VIEW'.
             self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(
-                lambda self, context, mode: draw_callback_node_outline(self, context, mode, lazy_connect_props), args, 'WINDOW', 'POST_PIXEL')
+                lambda self, context, mode: draw_callback_node_outline(context, self.mouse_path, mode, lazy_connect_props), args, 'WINDOW', 'POST_PIXEL')
 
             self.mouse_path = []
 
