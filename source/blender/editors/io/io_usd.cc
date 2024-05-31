@@ -150,8 +150,8 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
     {USD_TEXTURE_SIZE_256, "256", 0, "256", "Resize to a maximum of 256 pixels"},
     {USD_TEXTURE_SIZE_512, "512", 0, "512", "Resize to a maximum of 512 pixels"},
     {USD_TEXTURE_SIZE_1024, "1024", 0, "1024", "Resize to a maximum of 1024 pixels"},
-    {USD_TEXTURE_SIZE_2048, "2048", 0, "2048", "Resize to a maximum of 256 pixels"},
-    {USD_TEXTURE_SIZE_4096, "4096", 0, "4096", "Resize to a maximum of 256 pixels"},
+    {USD_TEXTURE_SIZE_2048, "2048", 0, "2048", "Resize to a maximum of 2048 pixels"},
+    {USD_TEXTURE_SIZE_4096, "4096", 0, "4096", "Resize to a maximum of 4096 pixels"},
     {USD_TEXTURE_SIZE_CUSTOM, "CUSTOM", 0, "Custom", "Specify a custom size"},
     {0, nullptr, 0, nullptr, nullptr},
 };

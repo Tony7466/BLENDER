@@ -51,6 +51,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
+
 namespace blender::io::usd {
 
 struct ExportJobData {
@@ -204,9 +207,9 @@ static void process_usdz_textures(const ExportJobData *data, const char *path)
 
   image_size = image_size < 128 ? 128 : image_size;
 
-  char texture_path[4096];
-  BLI_strncpy_rlen(texture_path, path, 4096);
-  BLI_path_append(texture_path, 4096, "textures");
+  char texture_path[FILE_MAX];
+  BLI_strncpy_rlen(texture_path, path, FILE_MAX);
+  BLI_path_append(texture_path, FILE_MAX, "textures");
   BLI_path_slash_ensure(texture_path, sizeof(texture_path));
 
   struct direntry *entries;
@@ -229,8 +232,8 @@ static void process_usdz_textures(const ExportJobData *data, const char *path)
       const float scale = 1.0 / ((float)longest / (float)image_size);
 
       if (longest > image_size) {
-        const int width_adjusted = (float)width * scale;
-        const int height_adjusted = (float)height * scale;
+        const int width_adjusted = float(width) * scale;
+        const int height_adjusted = float(height) * scale;
         BKE_image_scale(im, width_adjusted, height_adjusted, nullptr);
 
         ImageSaveOptions opts;
@@ -238,13 +241,19 @@ static void process_usdz_textures(const ExportJobData *data, const char *path)
         if (BKE_image_save_options_init(&opts, data->bmain, data->scene, im, NULL, false, false)) {
           bool result = BKE_image_save(NULL, data->bmain, im, NULL, &opts);
           if (!result) {
-            std::cerr << "-- Unable to resave " << data->usdz_filepath
-                      << " (new size: " << width_adjusted << "x" << height_adjusted << ")"
-                      << std::endl;
+            CLOG_ERROR(&LOG,
+                       "-- Unable to resave %s (new size: %dx%d)",
+                       data->usdz_filepath,
+                       width_adjusted,
+                       height_adjusted);
           }
           else {
-            std::cout << "Downscaled " << entries[index].path << " to " << width_adjusted << "x"
-                      << height_adjusted << std::endl;
+            CLOG_INFO(&LOG,
+                      2,
+                      "Downscaled %s to %dx%d",
+                      entries[index].path,
+                      width_adjusted,
+                      height_adjusted);
           }
         }
 
