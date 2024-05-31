@@ -160,6 +160,8 @@ bool Subprocess::init(Span<StringRefNull> args)
   if (len == -1) {
     return false;
   }
+  /* readlink doesn't append a null terminator. */
+  path[len] = '\0';
 
   Vector<char *> char_args;
   for (StringRefNull arg : args) {
@@ -178,6 +180,7 @@ bool Subprocess::init(Span<StringRefNull> args)
   /* Child process initialization. */
   execv(path, char_args.data());
 
+  perror("Subprocess creation failed: ");
   BLI_assert_unreachable();
   exit(errno);
 
