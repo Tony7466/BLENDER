@@ -2903,24 +2903,6 @@ void ui_but_clipboard_free()
  *
  * \{ */
 
-static int ui_text_position_from_hidden(uiBut *but, int pos)
-{
-  const char *butstr = (but->editstr) ? but->editstr : but->drawstr.c_str();
-  const char *strpos = butstr;
-  const char *str_end = butstr + strlen(butstr);
-  for (int i = 0; i < pos; i++) {
-    strpos = BLI_str_find_next_char_utf8(strpos, str_end);
-  }
-
-  return (strpos - butstr);
-}
-
-static int ui_text_position_to_hidden(uiBut *but, int pos)
-{
-  const char *butstr = (but->editstr) ? but->editstr : but->drawstr.c_str();
-  return BLI_strnlen_utf8(butstr, pos);
-}
-
 void ui_but_text_password_hide(char password_str[UI_MAX_PASSWORD_STR],
                                uiBut *but,
                                const bool restore)
@@ -2934,25 +2916,13 @@ void ui_but_text_password_hide(char password_str[UI_MAX_PASSWORD_STR],
   if (restore) {
     /* restore original string */
     BLI_strncpy(butstr, password_str, UI_MAX_PASSWORD_STR);
-
-    /* remap cursor positions */
-    if (but->pos >= 0) {
-      but->pos = ui_text_position_from_hidden(but, but->pos);
-      but->selsta = ui_text_position_from_hidden(but, but->selsta);
-      but->selend = ui_text_position_from_hidden(but, but->selend);
-    }
+    ui::textedit_cursor_and_selection_remap_to_hidden(but);
   }
   else {
+    ui::textedit_cursor_and_selection_remap_to_hidden(but);
+
     /* convert text to hidden text using asterisks (e.g. pass -> ****) */
     const size_t len = BLI_strlen_utf8(butstr);
-
-    /* remap cursor positions */
-    if (but->pos >= 0) {
-      but->pos = ui_text_position_to_hidden(but, but->pos);
-      but->selsta = ui_text_position_to_hidden(but, but->selsta);
-      but->selend = ui_text_position_to_hidden(but, but->selend);
-    }
-
     /* save original string */
     BLI_strncpy(password_str, butstr, UI_MAX_PASSWORD_STR);
     memset(butstr, '*', len);
@@ -2965,6 +2935,14 @@ void ui_but_text_password_hide(char password_str[UI_MAX_PASSWORD_STR],
 /* -------------------------------------------------------------------- */
 /** \name Button Text Selection/Editing
  * \{ */
+
+ui::TextEdit *ui_but_get_text_edit(const uiBut *but)
+{
+  if (!but->active) {
+    return nullptr;
+  }
+  return &but->active->text_edit;
+}
 
 void ui_but_set_string_interactive(bContext *C, uiBut *but, const char *value)
 {
@@ -3112,12 +3090,11 @@ static void ui_but_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *d
   but->editstr = text_edit.edit_string;
   but->pos = len;
   if (bool(but->flag2 & UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT)) {
-    but->selsta = len;
+    text_edit.clear_selection();
   }
   else {
-    but->selsta = 0;
+    text_edit.select_all();
   }
-  but->selend = len;
 
   /* Initialize undo history tracking. */
   text_edit.undo_stack_text = ui_textedit_undo_stack_create();
@@ -3389,7 +3366,7 @@ static void ui_do_but_textedit(
         break;
       }
 
-      const bool had_selection = but->selsta != but->selend;
+      const bool had_selection = text_edit.has_selection();
 
       /* exit on LMB only on RELEASE for searchbox, to mimic other popups,
        * and allow multiple menu levels */
@@ -3413,7 +3390,7 @@ static void ui_do_but_textedit(
       if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK)) {
         if (is_press_in_button) {
           ui::textedit_set_cursor_pos(but, data->region, event->xy[0]);
-          but->selsta = but->selend = but->pos;
+          text_edit.clear_selection();
           text_edit.sel_pos_init = but->pos;
 
           button_activate_state(C, but, BUTTON_STATE_TEXT_SELECTING);
@@ -3441,8 +3418,7 @@ static void ui_do_but_textedit(
           BLI_str_cursor_step_bounds_utf8(
               text_edit.edit_string, str_len, but->pos, &selsta, &selend);
           but->pos = short(selend);
-          but->selsta = short(selsta);
-          but->selend = short(selend);
+          text_edit.select_from_begin_end(selsta, selend);
           /* Anchor selection to the left side unless the last word. */
           text_edit.sel_pos_init = ((selend == str_len) && (selsta != 0)) ? selend : selsta;
           retval = WM_UI_HANDLER_BREAK;
@@ -3603,8 +3579,7 @@ static void ui_do_but_textedit(
 
             /* Set the cursor & clear selection. */
             but->pos = undo_pos;
-            but->selsta = but->pos;
-            but->selend = but->pos;
+            text_edit.clear_selection();
             changed = true;
           }
           retval = WM_UI_HANDLER_BREAK;
@@ -8255,7 +8230,7 @@ static void button_activate_init(bContext *C,
   BLI_assert(ui_region_find_active_but(region) == nullptr);
 
   /* setup struct */
-  uiHandleButtonData *data = MEM_cnew<uiHandleButtonData>(__func__);
+  uiHandleButtonData *data = MEM_new<uiHandleButtonData>(__func__);
   data->wm = CTX_wm_manager(C);
   data->window = CTX_wm_window(C);
   data->area = CTX_wm_area(C);
@@ -8465,7 +8440,8 @@ static void button_activate_exit(
   }
 
   /* clean up button */
-  MEM_SAFE_FREE(but->active);
+  MEM_delete(but->active);
+  but->active = nullptr;
 
   but->flag &= ~(UI_HOVER | UI_SELECT);
   but->flag |= UI_BUT_LAST_ACTIVE;
@@ -8491,6 +8467,13 @@ void ui_but_active_free(const bContext *C, uiBut *but)
     data->cancel = true;
     button_activate_exit((bContext *)C, but, data, false, true);
   }
+}
+
+void ui_but_active_data_free(uiHandleButtonData **data)
+{
+
+  MEM_delete(*data);
+  *data = nullptr;
 }
 
 /* returns the active button with an optional checking function */
@@ -8822,7 +8805,7 @@ void ui_but_execute_begin(bContext * /*C*/, ARegion *region, uiBut *but, void **
    * some functions we call don't use data (as they should be doing) */
   uiHandleButtonData *data;
   *active_back = but->active;
-  data = MEM_cnew<uiHandleButtonData>(__func__);
+  data = MEM_new<uiHandleButtonData>(__func__);
   but->active = data;
   BLI_assert(region != nullptr);
   data->region = region;

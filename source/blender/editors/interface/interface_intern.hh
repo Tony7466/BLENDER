@@ -39,6 +39,9 @@ struct ImBuf;
 struct LayoutPanelHeader;
 struct Main;
 struct Scene;
+namespace blender::ui {
+struct TextEdit;
+}
 struct uiHandleButtonData;
 struct uiLayout;
 struct uiListType;
@@ -188,7 +191,7 @@ struct uiBut {
   eButType type = eButType(0);
   eButPointerType pointype = UI_BUT_POIN_NONE;
   short bit = 0, bitnr = 0, retval = 0, strwidth = 0, alignnr = 0;
-  short ofs = 0, pos = 0, selsta = 0, selend = 0;
+  short ofs = 0, pos = 0;
 
   std::string str;
 
@@ -766,6 +769,7 @@ int ui_but_string_get_maxncpy(uiBut *but);
  * Clear & exit the active button's string..
  */
 void ui_but_active_string_clear_and_exit(bContext *C, uiBut *but) ATTR_NONNULL();
+blender::ui::TextEdit *ui_but_get_text_edit(const uiBut *but);
 /**
  * Use handling code to set a string for the button. Handles the case where the string is set for a
  * search button while the search menu is open, so the results are updated accordingly.
@@ -1157,6 +1161,8 @@ void ui_but_activate_over(bContext *C, ARegion *region, uiBut *but);
 void ui_but_execute_begin(bContext *C, ARegion *region, uiBut *but, void **active_back);
 void ui_but_execute_end(bContext *C, ARegion *region, uiBut *but, void *active_back);
 void ui_but_active_free(const bContext *C, uiBut *but);
+/** Only free's \a data and unsets the pointer, nothing else. */
+void ui_but_active_data_free(uiHandleButtonData **data);
 /**
  * In some cases we may want to update the view (#View2D) in-between layout definition and drawing.
  * E.g. to make sure a button is visible while editing.

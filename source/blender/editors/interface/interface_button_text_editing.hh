@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_index_range.hh"
 #include "BLI_string_cursor_utf8.h"
 
 struct ARegion;
@@ -20,7 +21,11 @@ namespace blender::ui {
 /**
  * Data for editing the value of the button as text.
  */
-struct TextEdit {
+class TextEdit {
+  /* Range defined as [first-index, last-index). */
+  IndexRange selection_;
+
+ public:
   /** The currently displayed/edited string, use #textedit_string_set() to assign new strings. */
   char *edit_string;
   /* Maximum string size the button accepts, and as such the maximum size for #edit_string
@@ -36,6 +41,26 @@ struct TextEdit {
 
   /* Text field undo. */
   uiUndoStack_Text *undo_stack_text;
+
+ public:
+  bool has_selection() const;
+  /**
+   * Note that the selection is [first-index, last-index], i.e. the first and last element in the
+   * range *are* part of the selection. However most operations might want to act on the coursor
+   * position after the selection, so #IndexRange.one_after_last() should be used usually instead
+   * of #IndexRange.last().
+   */
+  IndexRange get_selection() const;
+  void select_all();
+  /**
+   * Set the selection. Ensures begin is smaller than or equal to end (swaps if necessary), for
+   * convencience.
+   * \param end: The last index that is part of the selection.
+   */
+  void select_from_begin_end(int begin, int end);
+  void clear_selection();
+  /** Return the first selected character index or 0 if there's no selection. */
+  int selection_start_or_zero() const;
 };
 
 /** Mode for #textedit_copypaste() */
@@ -79,5 +104,7 @@ bool textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int b
 #ifdef WITH_INPUT_IME
 bool textedit_insert_ascii(uiBut *but, TextEdit &text_edit, const char ascii);
 #endif
+
+void textedit_cursor_and_selection_remap_to_hidden(uiBut *but);
 
 }  // namespace blender::ui

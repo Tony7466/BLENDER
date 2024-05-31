@@ -34,6 +34,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
+#include "interface_button_text_editing.hh"
 #include "interface_intern.hh"
 
 #include "GPU_batch.hh"
@@ -1936,8 +1937,11 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     int ime_win_x, ime_win_y;
 #endif
 
+    const blender::ui::TextEdit *text_edit = ui_but_get_text_edit(but);
     /* text button selection */
-    if ((but->selend - but->selsta) != 0 && drawstr[0] != 0) {
+    if (text_edit->has_selection() && drawstr[0] != 0) {
+      const blender::IndexRange text_selection = text_edit->get_selection();
+
       /* We are drawing on top of widget bases. Flush cache. */
       GPU_blend(GPU_BLEND_ALPHA);
       UI_widgetbase_draw_cache_flush();
@@ -1949,8 +1953,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
           fstyle->uifont_id,
           drawstr + but->ofs,
           strlen(drawstr + but->ofs),
-          (but->selsta >= but->ofs) ? but->selsta - but->ofs : 0,
-          but->selend - std::max(but->ofs, but->selsta));
+          (text_selection.first() >= but->ofs) ? text_selection.first() - but->ofs : 0,
+          text_selection.one_after_last() - std::max<int64_t>(but->ofs, text_selection.first()));
       for (auto bounds : boxes) {
         immRecti(pos,
                  rect->xmin + bounds.min,

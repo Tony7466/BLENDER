@@ -45,7 +45,7 @@ int textedit_autocomplete(bContext *C, uiBut *but, TextEdit &text_edit, ARegion 
   }
 
   but->pos = strlen(str);
-  but->selsta = but->selend = but->pos;
+  text_edit.clear_selection();
 
   return changed;
 }
@@ -71,11 +71,11 @@ bool textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mode)
   /* cut & copy */
   else if (ELEM(mode, TEXTEDIT_COPY, TEXTEDIT_CUT)) {
     /* copy the contents to the copypaste buffer */
-    const int sellen = but->selend - but->selsta;
+    const int sellen = text_edit.get_selection().size();
     char *buf = static_cast<char *>(
         MEM_mallocN(sizeof(char) * (sellen + 1), "textedit_copypaste"));
 
-    memcpy(buf, text_edit.edit_string + but->selsta, sellen);
+    memcpy(buf, text_edit.edit_string + text_edit.selection_start_or_zero(), sellen);
     buf[sellen] = '\0';
 
     WM_clipboard_text_set(buf, false);
@@ -83,7 +83,7 @@ bool textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mode)
 
     /* for cut only, delete the selection afterwards */
     if (mode == TEXTEDIT_CUT) {
-      if ((but->selend - but->selsta) > 0) {
+      if (text_edit.has_selection()) {
         changed = textedit_delete_selection(but, text_edit);
       }
     }
@@ -156,11 +156,7 @@ void textedit_set_cursor_select(uiBut *but,
 {
   textedit_set_cursor_pos(but, region, x);
 
-  but->selsta = but->pos;
-  but->selend = text_edit.sel_pos_init;
-  if (but->selend < but->selsta) {
-    std::swap(but->selsta, but->selend);
-  }
+  text_edit.select_from_begin_end(but->pos, text_edit.sel_pos_init);
 
   ui_but_update(but);
 }
@@ -174,23 +170,21 @@ void textedit_move(uiBut *but,
   const char *str = text_edit.edit_string;
   const int len = strlen(str);
   const int pos_prev = but->pos;
-  const bool has_sel = (but->selend - but->selsta) > 0;
+  const IndexRange selection = text_edit.get_selection();
+  const bool has_sel = !selection.is_empty();
 
   ui_but_update(but);
 
   /* special case, quit selection and set cursor */
   if (has_sel && !select) {
     if (jump == STRCUR_JUMP_ALL) {
-      but->selsta = but->selend = but->pos = direction ? len : 0;
+      but->pos = direction ? len : 0;
     }
     else {
-      if (direction) {
-        but->selsta = but->pos = but->selend;
-      }
-      else {
-        but->pos = but->selend = but->selsta;
-      }
+      /* Arrow key left/right. */
+      but->pos = direction ? selection.one_after_last() : selection.first();
     }
+    text_edit.clear_selection();
     text_edit.sel_pos_init = but->pos;
   }
   else {
@@ -201,20 +195,16 @@ void textedit_move(uiBut *but,
     if (select) {
       if (has_sel == false) {
         /* Holding shift but with no previous selection. */
-        but->selsta = but->pos;
-        but->selend = pos_prev;
+        text_edit.select_from_begin_end(but->pos, pos_prev);
       }
-      else if (but->selsta == pos_prev) {
+      else if (selection.first() == pos_prev) {
         /* Previous selection, extending start position. */
-        but->selsta = but->pos;
+        text_edit.select_from_begin_end(but->pos, selection.one_after_last());
       }
       else {
         /* Previous selection, extending end position. */
-        but->selend = but->pos;
+        text_edit.select_from_begin_end(selection.first(), but->pos);
       }
-    }
-    if (but->selend < but->selsta) {
-      std::swap(but->selsta, but->selend);
     }
   }
 }
@@ -237,7 +227,7 @@ bool textedit_delete(uiBut *but,
     but->pos = 0;
   }
   else if (direction) { /* delete */
-    if ((but->selend - but->selsta) > 0) {
+    if (text_edit.has_selection()) {
       changed = textedit_delete_selection(but, text_edit);
     }
     else if (but->pos >= 0 && but->pos < len) {
@@ -251,7 +241,7 @@ bool textedit_delete(uiBut *but,
   }
   else { /* backspace */
     if (len != 0) {
-      if ((but->selend - but->selsta) > 0) {
+      if (text_edit.has_selection()) {
         changed = textedit_delete_selection(but, text_edit);
       }
       else if (but->pos > 0) {
@@ -289,19 +279,21 @@ bool textedit_delete_selection(uiBut *but, TextEdit &text_edit)
   char *str = text_edit.edit_string;
   const int len = strlen(str);
   bool changed = false;
-  if (but->selsta != but->selend && len) {
-    memmove(str + but->selsta, str + but->selend, (len - but->selend) + 1);
+  if (text_edit.has_selection() && len) {
+    const IndexRange selection = text_edit.get_selection();
+    memmove(str + selection.first(), str + selection.one_after_last(), selection.size() + 1);
     changed = true;
   }
 
-  but->pos = but->selend = but->selsta;
+  but->pos = text_edit.selection_start_or_zero();
+  text_edit.clear_selection();
   return changed;
 }
 
 bool textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int buf_len)
 {
   int len = strlen(text_edit.edit_string);
-  const int str_maxncpy_new = len - (but->selend - but->selsta) + 1;
+  const int str_maxncpy_new = len - text_edit.get_selection().size() + 1;
   bool changed = false;
 
   if (text_edit.is_str_dynamic) {
@@ -313,7 +305,7 @@ bool textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int b
     size_t step = buf_len;
 
     /* type over the current selection */
-    if ((but->selend - but->selsta) > 0) {
+    if (text_edit.has_selection()) {
       changed = textedit_delete_selection(but, text_edit);
       len = strlen(str);
     }
@@ -347,5 +339,81 @@ bool textedit_insert_ascii(uiBut *but, TextEdit &text_edit, const char ascii)
   return textedit_insert_buf(but, text_edit, buf, sizeof(buf) - 1);
 }
 #endif
+
+bool TextEdit::has_selection() const
+{
+  return !selection_.is_empty();
+}
+
+IndexRange TextEdit::get_selection() const
+{
+  return selection_;
+}
+
+void TextEdit::select_all()
+{
+  selection_ = IndexRange{0, int64_t(strlen(edit_string))};
+}
+
+void TextEdit::select_from_begin_end(int begin, int end)
+{
+  if (end < begin) {
+    std::swap(begin, end);
+  }
+  selection_ = IndexRange::from_begin_end(begin, end);
+}
+
+void TextEdit::clear_selection()
+{
+  selection_ = {};
+}
+
+int TextEdit::selection_start_or_zero() const
+{
+  return has_selection() ? selection_.first() : 0;
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Button Text Password
+ *
+ * Password may contain UTF-8 characters, so the cursor position and start/end need to be remapped.
+ *
+ * \{ */
+
+static int ui_text_position_from_hidden(const uiBut *but, int pos)
+{
+  const char *butstr = (but->editstr) ? but->editstr : but->drawstr.c_str();
+  const char *strpos = butstr;
+  const char *str_end = butstr + strlen(butstr);
+  for (int i = 0; i < pos; i++) {
+    strpos = BLI_str_find_next_char_utf8(strpos, str_end);
+  }
+
+  return (strpos - butstr);
+}
+
+static int text_position_to_hidden(const uiBut *but, int pos)
+{
+  const char *butstr = (but->editstr) ? but->editstr : but->drawstr.c_str();
+  return BLI_strnlen_utf8(butstr, pos);
+}
+
+void textedit_cursor_and_selection_remap_to_hidden(uiBut *but)
+{
+  ui::TextEdit *text_edit = ui_but_get_text_edit(but);
+  if (!text_edit) {
+    return;
+  }
+
+  const blender::IndexRange selection = text_edit->get_selection();
+
+  but->pos = ui_text_position_from_hidden(but, but->pos);
+  if (!selection.is_empty()) {
+    text_edit->select_from_begin_end(text_position_to_hidden(but, selection.first()),
+                                     text_position_to_hidden(but, selection.one_after_last()));
+  }
+}
+
+/** \} */
 
 }  // namespace blender::ui
