@@ -263,16 +263,102 @@ def get_ref_object_space_coord(o):
 # -----------------------------------------------------------------------------
 # Cycles/EEVEE utils
 
+class MaterialProperties:
+    shader: EnumProperty(
+        name="Shader",
+        items=(
+            ('PRINCIPLED', "Principled", "Principled Shader"),
+            ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
+            ('EMISSION', "Emit", "Emission Shader"),
+        ),
+        default='PRINCIPLED',
+        description="Node shader to use",
+    )
+
+    emit_strength: FloatProperty(
+        name="Emission Strength",
+        min=0.0,
+        default=1.0,
+        soft_max=10.0,
+        step=100,
+        description="Strength of emission",
+    )
+
+    use_transparency: BoolProperty(
+        name="Use Alpha",
+        default=True,
+        description="Use alpha channel for transparency",
+    )
+
+    blend_method: EnumProperty(
+        name="Blend Mode",
+        items=(
+            ('BLEND', "Blend", "Render polygon transparent, depending on alpha channel of the texture"),
+            ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
+            ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
+            ('OPAQUE', "Opaque", "Render surface without transparency"),
+        ),
+        default='BLEND',
+        description="Blend Mode for Transparent Faces",
+        translation_context=i18n_contexts.id_material,
+    )
+
+    shadow_method: EnumProperty(
+        name="Shadow Mode",
+        items=(
+            ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
+            ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
+            ('OPAQUE', "Opaque", "Material will cast shadows without transparency"),
+            ('NONE', "None", "Material will cast no shadow"),
+        ),
+        default='CLIP',
+        description="Shadow mapping method",
+        translation_context=i18n_contexts.id_material,
+    )
+
+    use_backface_culling: BoolProperty(
+        name="Backface Culling",
+        default=False,
+        description="Use backface culling to hide the back side of faces",
+    )
+
+    show_transparent_back: BoolProperty(
+        name="Show Backface",
+        default=True,
+        description="Render multiple transparent layers (may introduce transparency sorting problems)",
+    )
+
+    overwrite_material: BoolProperty(
+        name="Overwrite Material",
+        default=True,
+        description="Overwrite existing material with the same name",
+    )
+
+
+def apply_texture_options(self, texture, img_spec):
+        # Shared by both Cycles and Blender Internal.
+        image_user = texture.image_user
+        image_user.use_auto_refresh = self.use_auto_refresh
+        image_user.frame_start = img_spec.frame_start
+        image_user.frame_offset = img_spec.frame_offset
+        image_user.frame_duration = img_spec.frame_duration
+
+        # Image sequences need auto refresh to display reliably.
+        if img_spec.image.source == 'SEQUENCE':
+            image_user.use_auto_refresh = True
+
+
 def create_cycles_texnode(self, node_tree, img_spec):
     tex_image = node_tree.nodes.new('ShaderNodeTexImage')
     tex_image.image = img_spec.image
     tex_image.show_texture = True
     tex_image.interpolation = self.interpolation
     tex_image.extension = self.extension
-    self.apply_texture_options(tex_image, img_spec)
+    apply_texture_options(self, tex_image, img_spec)
     return tex_image
 
-def create_cycles_material(self, img_spec, name):
+
+def create_cycles_material(self, context, img_spec, name):
     material = None
     if self.overwrite_material:
         material = bpy.data.materials.get((name, None))
@@ -467,10 +553,55 @@ def get_shadeless_node(dest_node_tree):
     return group_node
 
 
+def draw_material_config(self, context):
+    # --- Material / Rendering Properties --- #
+    layout = self.layout
+
+    header, body = layout.panel("import_image_plane_material", default_closed=False)
+    header.label(text="Material")
+    if body:
+        body.prop(self, 'shader')
+        if self.shader == 'EMISSION':
+            body.prop(self, "emit_strength")
+
+        body.prop(self, 'blend_method')
+
+        body.prop(self, 'shadow_method')
+        if self.blend_method == 'BLEND':
+            body.prop(self, "show_transparent_back")
+
+        body.prop(self, "use_backface_culling")
+
+        engine = context.scene.render.engine
+        if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
+            body.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
+
+        body.prop(self, "overwrite_material")
+
+
+def draw_texture_config(self, context):
+    # --- Texture Properties --- #
+    layout = self.layout
+
+    header, body = layout.panel("import_image_plane_texture", default_closed=False)
+    header.label(text="Texture")
+    if body:
+        body.prop(self, 'interpolation')
+        body.prop(self, 'extension')
+
+        row = body.row(align=False, heading="Alpha")
+        row.prop(self, "use_transparency", text="")
+        sub = row.row(align=True)
+        sub.active = self.use_transparency
+        sub.prop(self, "alpha_mode", text="")
+
+        body.prop(self, "use_auto_refresh")
+
+
 # -----------------------------------------------------------------------------
 # Operator
 
-class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
+class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProperties, Operator):
     """Create mesh plane(s) from image files with the appropriate aspect ratio"""
 
     bl_idname = "image.import_as_mesh_planes"
@@ -634,78 +765,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         description="Number of pixels per inch or Blender Unit",
     )
 
-    # ------------------------------
-    # Properties - Material / Shader
-    shader: EnumProperty(
-        name="Shader",
-        items=(
-            ('PRINCIPLED', "Principled", "Principled Shader"),
-            ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
-            ('EMISSION', "Emit", "Emission Shader"),
-        ),
-        default='PRINCIPLED',
-        description="Node shader to use",
-    )
-
-    emit_strength: FloatProperty(
-        name="Emission Strength",
-        min=0.0,
-        default=1.0,
-        soft_max=10.0,
-        step=100,
-        description="Strength of emission",
-    )
-
-    use_transparency: BoolProperty(
-        name="Use Alpha",
-        default=True,
-        description="Use alpha channel for transparency",
-    )
-
-    blend_method: EnumProperty(
-        name="Blend Mode",
-        items=(
-            ('BLEND', "Blend", "Render polygon transparent, depending on alpha channel of the texture"),
-            ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
-            ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
-            ('OPAQUE', "Opaque", "Render surface without transparency"),
-        ),
-        default='BLEND',
-        description="Blend Mode for Transparent Faces",
-        translation_context=i18n_contexts.id_material,
-    )
-
-    shadow_method: EnumProperty(
-        name="Shadow Mode",
-        items=(
-            ('CLIP', "Clip", "Use the alpha threshold to clip the visibility (binary visibility)"),
-            ('HASHED', "Hashed", "Use noise to dither the binary visibility (works well with multi-samples)"),
-            ('OPAQUE', "Opaque", "Material will cast shadows without transparency"),
-            ('NONE', "None", "Material will cast no shadow"),
-        ),
-        default='CLIP',
-        description="Shadow mapping method",
-        translation_context=i18n_contexts.id_material,
-    )
-
-    use_backface_culling: BoolProperty(
-        name="Backface Culling",
-        default=False,
-        description="Use backface culling to hide the back side of faces",
-    )
-
-    show_transparent_back: BoolProperty(
-        name="Show Backface",
-        default=True,
-        description="Render multiple transparent layers (may introduce transparency sorting problems)",
-    )
-
-    overwrite_material: BoolProperty(
-        name="Overwrite Material",
-        default=True,
-        description="Overwrite existing material with the same name",
-    )
-
     # ------------------
     # Properties - Image
     interpolation: EnumProperty(
@@ -768,49 +827,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             body.prop(self, "force_reload")
             body.prop(self, "image_sequence")
 
-    def draw_material_config(self, context):
-        # --- Material / Rendering Properties --- #
-        layout = self.layout
-
-        header, body = layout.panel("import_image_plane_material", default_closed=False)
-        header.label(text="Material")
-        if body:
-            body.prop(self, 'shader')
-            if self.shader == 'EMISSION':
-                body.prop(self, "emit_strength")
-
-            body.prop(self, 'blend_method')
-
-            body.prop(self, 'shadow_method')
-            if self.blend_method == 'BLEND':
-                body.prop(self, "show_transparent_back")
-
-            body.prop(self, "use_backface_culling")
-
-            engine = context.scene.render.engine
-            if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
-                body.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
-
-            body.prop(self, "overwrite_material")
-
-    def draw_texture_config(self, context):
-        # --- Texture Properties --- #
-        layout = self.layout
-
-        header, body = layout.panel("import_image_plane_texture", default_closed=False)
-        header.label(text="Texture")
-        if body:
-            body.prop(self, 'interpolation')
-            body.prop(self, 'extension')
-
-            row = body.row(align=False, heading="Alpha")
-            row.prop(self, "use_transparency", text="")
-            sub = row.row(align=True)
-            sub.active = self.use_transparency
-            sub.prop(self, "alpha_mode", text="")
-
-            body.prop(self, "use_auto_refresh")
-
     def draw_spatial_config(self, _context):
         # --- Spatial Properties: Position, Size and Orientation --- #
         layout = self.layout
@@ -844,8 +860,8 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
         layout.use_property_split = True
 
         self.draw_import_config(context)
-        self.draw_material_config(context)
-        self.draw_texture_config(context)
+        draw_material_config(self, context)
+        draw_texture_config(self, context)
         self.draw_spatial_config(context)
 
     # -------------------------------------------------------------------------
@@ -931,7 +947,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
 
         # Configure material.
         # TODO: check `context.scene.render.engine` and support other engines.
-        material = create_cycles_material(self, img_spec, name)
+        material = create_cycles_material(self, context, img_spec, name)
 
         # Create and position plane object.
         plane = self.create_image_plane(context, name, img_spec)
@@ -952,18 +968,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
                 image.filepath = bpy.path.relpath(image.filepath)
             except ValueError:
                 pass
-
-    def apply_texture_options(self, texture, img_spec):
-        # Shared by both Cycles and Blender Internal.
-        image_user = texture.image_user
-        image_user.use_auto_refresh = self.use_auto_refresh
-        image_user.frame_start = img_spec.frame_start
-        image_user.frame_offset = img_spec.frame_offset
-        image_user.frame_duration = img_spec.frame_duration
-
-        # Image sequences need auto refresh to display reliably.
-        if img_spec.image.source == 'SEQUENCE':
-            image_user.use_auto_refresh = True
 
     def apply_material_options(self, material, slot):
         shader = self.shader
@@ -1097,21 +1101,40 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, Operator):
             constraint.lock_axis = 'LOCK_Y'
 
 
-class IMAGE_OT_convert_to_mesh_plane(Operator):
+class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, Operator):
     """Convert selected reference images to textured mesh plane"""
     bl_idname = "image.convert_to_mesh_plane"
     bl_label = "Convert Empty Image to Mesh Plane"
     bl_options = {'REGISTER', 'PRESET', 'UNDO'}
 
-    shader: EnumProperty(
-        name="Shader",
+    interpolation: EnumProperty(
+        name="Interpolation",
         items=(
-            ('PRINCIPLED', "Principled", "Principled Shader"),
-            ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
-            ('EMISSION', "Emit", "Emission Shader"),
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation (sample closest texel)"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear (OSL only)"),
         ),
-        default='PRINCIPLED',
-        description="Node shader to use",
+        default='Linear',
+        description="Texture interpolation",
+    )
+
+    extension: EnumProperty(
+        name="Extension",
+        items=(
+            ('CLIP', "Clip", "Clip to image size and set exterior pixels as transparent"),
+            ('EXTEND', "Extend", "Extend by repeating edge pixels of the image"),
+            ('REPEAT', "Repeat", "Cause the image to repeat horizontally and vertically"),
+        ),
+        default='CLIP',
+        description="How the image is extrapolated past its original bounds",
+    )
+
+    t = bpy.types.ImageUser.bl_rna.properties["use_auto_refresh"]
+    use_auto_refresh: BoolProperty(
+        name=t.name,
+        default=True,
+        description=t.description,
     )
 
     name_from: EnumProperty(
@@ -1123,7 +1146,7 @@ class IMAGE_OT_convert_to_mesh_plane(Operator):
         default='OBJECT',
         description="Name for new mesh object and material"
     )
-    
+
     delete_ref: BoolProperty(
         name="Delete Reference Object",
         default=True,
@@ -1196,7 +1219,7 @@ class IMAGE_OT_convert_to_mesh_plane(Operator):
 
             # Create Material
             img_spec = ImageSpec(img, (img.size[0], img.size[1]), img_user.frame_start, img_user.frame_offset, img_user.frame_duration)
-            material = create_cycles_material(context, img_spec, name)
+            material = create_cycles_material(self, context, img_spec, name)
             plane.data.materials.append(material)
 
             # Delete Empty
@@ -1219,10 +1242,16 @@ class IMAGE_OT_convert_to_mesh_plane(Operator):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+
+        # General
         col = layout.column(align=False)
-        col.prop(self, 'shader')
         col.prop(self, 'name_from')
         col.prop(self, 'delete_ref')
+        layout.separator()
+
+        # Material
+        draw_material_config(self, context)
+        draw_texture_config(self, context)
 
 
 classes = (
