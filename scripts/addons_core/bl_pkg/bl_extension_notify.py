@@ -207,7 +207,7 @@ def sync_status_generator(repos_notify, do_online_sync):
             bl_extension_utils.repo_sync,
             directory=repo_item.directory,
             remote_name=repo_item.name,
-            remote_url=bl_extension_ops.url_params_append_defaults(repo_item.remote_url),
+            remote_url=bl_extension_ops.url_append_defaults(repo_item.remote_url),
             online_user_agent=bl_extension_ops.online_user_agent_from_blender(),
             access_token=repo_item.access_token,
             # Never sleep while there is no input, as this blocks Blender.
@@ -470,12 +470,13 @@ def splash_draw_status_fn(self, context):
     if not bpy.app.online_access:
         if bpy.app.online_access_override:
             # Since there is nothing to do in this case, we show no operator.
-            self.layout.label(text="Running in Offline Mode", icon='INTERNET')
+            # The splash screen shows text here.
+            pass
     else:
         text, icon, update_count = notify.ui_text()
         row = self.layout.row(align=True)
         if update_count > 0:
-            row.operator("bl_pkg.extensions_show_for_update", text=text, icon=icon)
+            row.operator("extensions.userpref_show_for_update", text=text, icon=icon)
         else:
             row.label(text=text, icon=icon)
 
