@@ -335,6 +335,52 @@ class MaterialProperties:
     )
 
 
+class TextureProperties:
+    interpolation: EnumProperty(
+        name="Interpolation",
+        items=(
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation (sample closest texel)"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear (OSL only)"),
+        ),
+        default='Linear',
+        description="Texture interpolation",
+    )
+
+    extension: EnumProperty(
+        name="Extension",
+        items=(
+            ('CLIP', "Clip", "Clip to image size and set exterior pixels as transparent"),
+            ('EXTEND', "Extend", "Extend by repeating edge pixels of the image"),
+            ('REPEAT', "Repeat", "Cause the image to repeat horizontally and vertically"),
+        ),
+        default='CLIP',
+        description="How the image is extrapolated past its original bounds",
+    )
+
+    t = bpy.types.Image.bl_rna.properties["alpha_mode"]
+    alpha_mode: EnumProperty(
+        name=t.name,
+        items=tuple((e.identifier, e.name, e.description) for e in t.enum_items),
+        default=t.default,
+        description=t.description,
+    )
+
+    t = bpy.types.ImageUser.bl_rna.properties["use_auto_refresh"]
+    use_auto_refresh: BoolProperty(
+        name=t.name,
+        default=True,
+        description=t.description,
+    )
+
+    relative: BoolProperty(
+        name="Relative Paths",
+        default=True,
+        description="Use relative file paths",
+    )
+
+
 def apply_texture_options(self, texture, img_spec):
         # Shared by both Cycles and Blender Internal.
         image_user = texture.image_user
@@ -601,7 +647,7 @@ def draw_texture_config(self, context):
 # -----------------------------------------------------------------------------
 # Operator
 
-class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProperties, Operator):
+class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProperties, TextureProperties, Operator):
     """Create mesh plane(s) from image files with the appropriate aspect ratio"""
 
     bl_idname = "image.import_as_mesh_planes"
@@ -763,52 +809,6 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProp
         min=1.0,
         default=600.0,
         description="Number of pixels per inch or Blender Unit",
-    )
-
-    # ------------------
-    # Properties - Image
-    interpolation: EnumProperty(
-        name="Interpolation",
-        items=(
-            ('Linear', "Linear", "Linear interpolation"),
-            ('Closest', "Closest", "No interpolation (sample closest texel)"),
-            ('Cubic', "Cubic", "Cubic interpolation"),
-            ('Smart', "Smart", "Bicubic when magnifying, else bilinear (OSL only)"),
-        ),
-        default='Linear',
-        description="Texture interpolation",
-    )
-
-    extension: EnumProperty(
-        name="Extension",
-        items=(
-            ('CLIP', "Clip", "Clip to image size and set exterior pixels as transparent"),
-            ('EXTEND', "Extend", "Extend by repeating edge pixels of the image"),
-            ('REPEAT', "Repeat", "Cause the image to repeat horizontally and vertically"),
-        ),
-        default='CLIP',
-        description="How the image is extrapolated past its original bounds",
-    )
-
-    t = bpy.types.Image.bl_rna.properties["alpha_mode"]
-    alpha_mode: EnumProperty(
-        name=t.name,
-        items=tuple((e.identifier, e.name, e.description) for e in t.enum_items),
-        default=t.default,
-        description=t.description,
-    )
-
-    t = bpy.types.ImageUser.bl_rna.properties["use_auto_refresh"]
-    use_auto_refresh: BoolProperty(
-        name=t.name,
-        default=True,
-        description=t.description,
-    )
-
-    relative: BoolProperty(
-        name="Relative Paths",
-        default=True,
-        description="Use relative file paths",
     )
 
     # -------
@@ -1101,41 +1101,11 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProp
             constraint.lock_axis = 'LOCK_Y'
 
 
-class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, Operator):
+class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Operator):
     """Convert selected reference images to textured mesh plane"""
     bl_idname = "image.convert_to_mesh_plane"
     bl_label = "Convert Empty Image to Mesh Plane"
     bl_options = {'REGISTER', 'PRESET', 'UNDO'}
-
-    interpolation: EnumProperty(
-        name="Interpolation",
-        items=(
-            ('Linear', "Linear", "Linear interpolation"),
-            ('Closest', "Closest", "No interpolation (sample closest texel)"),
-            ('Cubic', "Cubic", "Cubic interpolation"),
-            ('Smart', "Smart", "Bicubic when magnifying, else bilinear (OSL only)"),
-        ),
-        default='Linear',
-        description="Texture interpolation",
-    )
-
-    extension: EnumProperty(
-        name="Extension",
-        items=(
-            ('CLIP', "Clip", "Clip to image size and set exterior pixels as transparent"),
-            ('EXTEND', "Extend", "Extend by repeating edge pixels of the image"),
-            ('REPEAT', "Repeat", "Cause the image to repeat horizontally and vertically"),
-        ),
-        default='CLIP',
-        description="How the image is extrapolated past its original bounds",
-    )
-
-    t = bpy.types.ImageUser.bl_rna.properties["use_auto_refresh"]
-    use_auto_refresh: BoolProperty(
-        name=t.name,
-        default=True,
-        description=t.description,
-    )
 
     name_from: EnumProperty(
         name="Name After",
