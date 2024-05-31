@@ -148,7 +148,6 @@ bool SharedSemaphore::try_decrement()
 #  include <linux/limits.h>
 #  include <stdlib.h>
 #  include <sys/mman.h>
-#  include <sys/prctl.h>
 #  include <sys/stat.h>
 #  include <unistd.h>
 #  include <wait.h>
@@ -177,11 +176,6 @@ bool Subprocess::init(Span<StringRefNull> args)
   }
   else if (pid_ > 0) {
     return true;
-  }
-
-  /* Prevent this child process from outliving its parent THREAD. */
-  if (prctl(PR_SET_PDEATHSIG, SIGHUP) == -1) {
-    perror("Subprocess setup failed: ");
   }
 
   /* Child process initialization. */
