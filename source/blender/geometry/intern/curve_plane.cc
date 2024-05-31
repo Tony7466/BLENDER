@@ -67,9 +67,20 @@ potrace_state_t *image_from_line_segments(
   bitmap.map = segments.data();
   potrace_param_t *params = potrace_param_default();
   BLI_assert(params != nullptr);
-  BLI_SCOPED_DEFER([&]() { potrace_param_free(params); });
 
-  return potrace_trace(params, &bitmap);
+  potrace_state_t *result_image = potrace_trace(params, &bitmap);
+  potrace_param_free(params);
+
+  if (result_image == nullptr) {
+    return nullptr;
+  }
+
+  if (result_image->status != POTRACE_STATUS_OK) {
+    BLI_assert(result_image->status == POTRACE_STATUS_INCOMPLETE);
+    return nullptr;
+  }
+
+  return result_image;
 }
 
 void free_image(potrace_state_t *image)
