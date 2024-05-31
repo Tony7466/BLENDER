@@ -44,7 +44,7 @@ int textedit_autocomplete(bContext *C, uiBut *but, TextEdit &text_edit, ARegion 
     changed = but->autocomplete_func(C, str, but->autofunc_arg);
   }
 
-  but->pos = strlen(str);
+  text_edit.set_cursor_position(strlen(str));
   text_edit.clear_selection();
 
   return changed;
@@ -84,7 +84,7 @@ bool textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mode)
     /* for cut only, delete the selection afterwards */
     if (mode == TEXTEDIT_CUT) {
       if (text_edit.has_selection()) {
-        changed = textedit_delete_selection(but, text_edit);
+        changed = textedit_delete_selection(text_edit);
       }
     }
   }
@@ -94,6 +94,8 @@ bool textedit_copypaste(uiBut *but, TextEdit &text_edit, const int mode)
 
 void textedit_set_cursor_pos(uiBut *but, const ARegion *region, const float x)
 {
+  TextEdit *text_edit = ui_but_get_text_edit(but);
+
   /* XXX pass on as arg. */
   uiFontStyle fstyle = UI_style_get()->widget;
   const float aspect = but->block->aspect;
@@ -137,13 +139,13 @@ void textedit_set_cursor_pos(uiBut *but, const ARegion *region, const float x)
       }
     }
     but->ofs = i;
-    but->pos = but->ofs;
+    text_edit->set_cursor_position(but->ofs);
   }
   /* mouse inside the widget, mouse coords mapped in widget space */
   else {
-    but->pos = but->ofs +
-               BLF_str_offset_from_cursor_position(
-                   fstyle.uifont_id, str + but->ofs, strlen(str + but->ofs), int(x - startx));
+    text_edit->set_cursor_position(
+        but->ofs + BLF_str_offset_from_cursor_position(
+                       fstyle.uifont_id, str + but->ofs, strlen(str + but->ofs), int(x - startx)));
   }
 
   ui_but_text_password_hide(password_str, but, true);
@@ -156,7 +158,7 @@ void textedit_set_cursor_select(uiBut *but,
 {
   textedit_set_cursor_pos(but, region, x);
 
-  text_edit.select_from_begin_end(but->pos, text_edit.sel_pos_init);
+  text_edit.select_from_begin_end(text_edit.cursor_position(), text_edit.sel_pos_init);
 
   ui_but_update(but);
 }
@@ -169,53 +171,53 @@ void textedit_move(uiBut *but,
 {
   const char *str = text_edit.edit_string;
   const int len = strlen(str);
-  const int pos_prev = but->pos;
+  const int pos_prev = text_edit.cursor_position();
   const IndexRange selection = text_edit.get_selection();
-  const bool has_sel = !selection.is_empty();
 
   ui_but_update(but);
 
   /* special case, quit selection and set cursor */
-  if (has_sel && !select) {
+  if (text_edit.has_selection() && !select) {
     if (jump == STRCUR_JUMP_ALL) {
-      but->pos = direction ? len : 0;
+      text_edit.set_cursor_position(direction ? len : 0);
     }
     else {
       /* Arrow key left/right. */
-      but->pos = direction ? selection.one_after_last() : selection.first();
+      text_edit.set_cursor_position(direction ? selection.one_after_last() : selection.first());
     }
     text_edit.clear_selection();
-    text_edit.sel_pos_init = but->pos;
+    text_edit.sel_pos_init = text_edit.cursor_position();
   }
   else {
-    int pos_i = but->pos;
+    int pos_i = text_edit.cursor_position();
     BLI_str_cursor_step_utf8(str, len, &pos_i, direction, jump, true);
-    but->pos = pos_i;
+    text_edit.set_cursor_position(pos_i);
 
     if (select) {
-      if (has_sel == false) {
+      const int cursor = text_edit.cursor_position();
+      if (!text_edit.has_selection()) {
         /* Holding shift but with no previous selection. */
-        text_edit.select_from_begin_end(but->pos, pos_prev);
+        text_edit.select_from_begin_end(cursor, pos_prev);
       }
       else if (selection.first() == pos_prev) {
         /* Previous selection, extending start position. */
-        text_edit.select_from_begin_end(but->pos, selection.one_after_last());
+        text_edit.select_from_begin_end(cursor, selection.one_after_last());
       }
       else {
         /* Previous selection, extending end position. */
-        text_edit.select_from_begin_end(selection.first(), but->pos);
+        text_edit.select_from_begin_end(selection.first(), cursor);
       }
     }
   }
 }
 
-bool textedit_delete(uiBut *but,
-                     TextEdit &text_edit,
+bool textedit_delete(TextEdit &text_edit,
                      eStrCursorJumpDirection direction,
                      eStrCursorJumpType jump)
 {
   char *str = text_edit.edit_string;
   const int len = strlen(str);
+  const int old_cursor_pos = text_edit.cursor_position();
 
   bool changed = false;
 
@@ -224,34 +226,35 @@ bool textedit_delete(uiBut *but,
       changed = true;
     }
     str[0] = '\0';
-    but->pos = 0;
+    text_edit.set_cursor_position(0);
   }
   else if (direction) { /* delete */
     if (text_edit.has_selection()) {
-      changed = textedit_delete_selection(but, text_edit);
+      changed = textedit_delete_selection(text_edit);
     }
-    else if (but->pos >= 0 && but->pos < len) {
-      int pos = but->pos;
+    else if (old_cursor_pos >= 0 && old_cursor_pos < len) {
+      int pos = old_cursor_pos;
       int step;
       BLI_str_cursor_step_utf8(str, len, &pos, direction, jump, true);
-      step = pos - but->pos;
-      memmove(&str[but->pos], &str[but->pos + step], (len + 1) - (but->pos + step));
+      step = pos - old_cursor_pos;
+      memmove(
+          &str[old_cursor_pos], &str[old_cursor_pos + step], (len + 1) - (old_cursor_pos + step));
       changed = true;
     }
   }
   else { /* backspace */
     if (len != 0) {
       if (text_edit.has_selection()) {
-        changed = textedit_delete_selection(but, text_edit);
+        changed = textedit_delete_selection(text_edit);
       }
-      else if (but->pos > 0) {
-        int pos = but->pos;
+      else if (text_edit.cursor_position() > 0) {
+        int pos = old_cursor_pos;
         int step;
 
         BLI_str_cursor_step_utf8(str, len, &pos, direction, jump, true);
-        step = but->pos - pos;
-        memmove(&str[but->pos - step], &str[but->pos], (len + 1) - but->pos);
-        but->pos -= step;
+        step = old_cursor_pos - pos;
+        memmove(&str[old_cursor_pos - step], &str[old_cursor_pos], (len + 1) - old_cursor_pos);
+        text_edit.set_cursor_position(old_cursor_pos - step);
         changed = true;
       }
     }
@@ -274,7 +277,7 @@ void textedit_string_set(uiBut *but, TextEdit &text_edit, const char *str)
   }
 }
 
-bool textedit_delete_selection(uiBut *but, TextEdit &text_edit)
+bool textedit_delete_selection(TextEdit &text_edit)
 {
   char *str = text_edit.edit_string;
   const int len = strlen(str);
@@ -285,7 +288,7 @@ bool textedit_delete_selection(uiBut *but, TextEdit &text_edit)
     changed = true;
   }
 
-  but->pos = text_edit.selection_start_or_zero();
+  text_edit.set_cursor_position(text_edit.selection_start_or_zero());
   text_edit.clear_selection();
   return changed;
 }
@@ -306,7 +309,7 @@ bool textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int b
 
     /* type over the current selection */
     if (text_edit.has_selection()) {
-      changed = textedit_delete_selection(but, text_edit);
+      changed = textedit_delete_selection(text_edit);
       len = strlen(str);
     }
 
@@ -321,9 +324,10 @@ bool textedit_insert_buf(uiBut *but, TextEdit &text_edit, const char *buf, int b
     }
 
     if (step && (len + step < text_edit.max_string_size)) {
-      memmove(&str[but->pos + step], &str[but->pos], (len + 1) - but->pos);
-      memcpy(&str[but->pos], buf, step * sizeof(char));
-      but->pos += step;
+      const int cursor_pos = text_edit.cursor_position();
+      memmove(&str[cursor_pos + step], &str[cursor_pos], (len + 1) - cursor_pos);
+      memcpy(&str[cursor_pos], buf, step * sizeof(char));
+      text_edit.set_cursor_position(text_edit.cursor_position() + step);
       changed = true;
     }
   }
@@ -339,6 +343,29 @@ bool textedit_insert_ascii(uiBut *but, TextEdit &text_edit, const char ascii)
   return textedit_insert_buf(but, text_edit, buf, sizeof(buf) - 1);
 }
 #endif
+
+/* -------------------------------------------------------------------- */
+/** \name Cursor API
+ * \{ */
+
+int TextEdit::cursor_position() const
+{
+  return cursor_position_;
+}
+
+void TextEdit::set_cursor_position(const int index)
+{
+  cursor_position_ = index;
+  /* This may not be necessary, additional check to ensure position is never out of range,
+   * since negative values aren't acceptable, see: #113154. */
+  CLAMP(cursor_position_, 0, int(strlen(edit_string)));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Selection API
+ * \{ */
 
 bool TextEdit::has_selection() const
 {
@@ -372,6 +399,8 @@ int TextEdit::selection_start_or_zero() const
 {
   return has_selection() ? selection_.first() : 0;
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Button Text Password
@@ -407,7 +436,7 @@ void textedit_cursor_and_selection_remap_to_hidden(uiBut *but)
 
   const blender::IndexRange selection = text_edit->get_selection();
 
-  but->pos = ui_text_position_from_hidden(but, but->pos);
+  text_edit->set_cursor_position(ui_text_position_from_hidden(but, text_edit->cursor_position()));
   if (!selection.is_empty()) {
     text_edit->select_from_begin_end(text_position_to_hidden(but, selection.first()),
                                      text_position_to_hidden(but, selection.one_after_last()));

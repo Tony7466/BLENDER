@@ -4115,8 +4115,6 @@ static uiBut *ui_def_but(uiBlock *block,
     but->func_argN = MEM_dupallocN(block->func_argN);
   }
 
-  but->pos = -1; /* cursor invisible */
-
   if (ELEM(but->type, UI_BTYPE_NUM, UI_BTYPE_NUM_SLIDER)) { /* add a space to name */
     if (!but->str.empty() && but->str.size() < UI_MAX_NAME_STR - 2) {
       if (but->str[but->str.size() - 1] != ' ') {

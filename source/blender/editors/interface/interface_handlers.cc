@@ -3088,7 +3088,7 @@ static void ui_but_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *d
 
   /* set cursor pos to the end of the text */
   but->editstr = text_edit.edit_string;
-  but->pos = len;
+  text_edit.set_cursor_position(len);
   if (bool(but->flag2 & UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT)) {
     text_edit.clear_selection();
   }
@@ -3098,7 +3098,7 @@ static void ui_but_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *d
 
   /* Initialize undo history tracking. */
   text_edit.undo_stack_text = ui_textedit_undo_stack_create();
-  ui_textedit_undo_push(text_edit.undo_stack_text, but->editstr, but->pos);
+  ui_textedit_undo_push(text_edit.undo_stack_text, but->editstr, text_edit.cursor_position());
 
   /* optional searchbox */
   if (but->type == UI_BTYPE_SEARCH_MENU) {
@@ -3189,7 +3189,6 @@ static void ui_but_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *dat
     }
 
     but->editstr = nullptr;
-    but->pos = -1;
   }
 
   WM_cursor_modal_restore(win);
@@ -3391,7 +3390,7 @@ static void ui_do_but_textedit(
         if (is_press_in_button) {
           ui::textedit_set_cursor_pos(but, data->region, event->xy[0]);
           text_edit.clear_selection();
-          text_edit.sel_pos_init = but->pos;
+          text_edit.sel_pos_init = text_edit.cursor_position();
 
           button_activate_state(C, but, BUTTON_STATE_TEXT_SELECTING);
           retval = WM_UI_HANDLER_BREAK;
@@ -3410,14 +3409,10 @@ static void ui_do_but_textedit(
       if (event->val == KM_DBL_CLICK && had_selection == false) {
         if (is_press_in_button) {
           const int str_len = strlen(text_edit.edit_string);
-          /* This may not be necessary, additional check to ensure `pos` is never out of range,
-           * since negative values aren't acceptable, see: #113154. */
-          CLAMP(but->pos, 0, str_len);
-
           int selsta, selend;
           BLI_str_cursor_step_bounds_utf8(
-              text_edit.edit_string, str_len, but->pos, &selsta, &selend);
-          but->pos = short(selend);
+              text_edit.edit_string, str_len, text_edit.cursor_position(), &selsta, &selend);
+          text_edit.set_cursor_position(selend);
           text_edit.select_from_begin_end(selsta, selend);
           /* Anchor selection to the left side unless the last word. */
           text_edit.sel_pos_init = ((selend == str_len) && (selsta != 0)) ? selend : selsta;
@@ -3517,7 +3512,7 @@ static void ui_do_but_textedit(
         const eStrCursorJumpDirection direction = (event->type == EVT_DELKEY) ? STRCUR_DIR_NEXT :
                                                                                 STRCUR_DIR_PREV;
         const eStrCursorJumpType jump = ui_textedit_jump_type_from_event(event);
-        changed = ui::textedit_delete(but, text_edit, direction, jump);
+        changed = ui::textedit_delete(text_edit, direction, jump);
         retval = WM_UI_HANDLER_BREAK;
         break;
       }
@@ -3578,7 +3573,7 @@ static void ui_do_but_textedit(
             ui::textedit_string_set(but, text_edit, undo_str);
 
             /* Set the cursor & clear selection. */
-            but->pos = undo_pos;
+            text_edit.set_cursor_position(undo_pos);
             text_edit.clear_selection();
             changed = true;
           }
@@ -3625,7 +3620,7 @@ static void ui_do_but_textedit(
   if (event->type == WM_IME_COMPOSITE_START) {
     changed = true;
     if (but->selend > but->selsta) {
-      ui::textedit_delete_selection(but, text_edit);
+      ui::textedit_delete_selection(text_edit);
     }
   }
   else if (event->type == WM_IME_COMPOSITE_EVENT) {
@@ -3650,7 +3645,8 @@ static void ui_do_but_textedit(
   if (changed) {
     /* The undo stack may be nullptr if an event exits editing. */
     if ((skip_undo_push == false) && (text_edit.undo_stack_text != nullptr)) {
-      ui_textedit_undo_push(text_edit.undo_stack_text, text_edit.edit_string, but->pos);
+      ui_textedit_undo_push(
+          text_edit.undo_stack_text, text_edit.edit_string, text_edit.cursor_position());
     }
 
     /* only do live update when but flag request it (UI_BUT_TEXTEDIT_UPDATE). */

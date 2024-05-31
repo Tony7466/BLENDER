@@ -1634,17 +1634,20 @@ static void ui_text_clip_middle_protect_right(const uiFontStyle *fstyle,
  */
 static void ui_text_clip_cursor(const uiFontStyle *fstyle, uiBut *but, const rcti *rect)
 {
+  blender::ui::TextEdit *text_edit = ui_but_get_text_edit(but);
+  const int cursor_pos = text_edit->cursor_position();
+
   const int border = int(UI_TEXT_CLIP_MARGIN + 0.5f);
   const int okwidth = max_ii(BLI_rcti_size_x(rect) - border, 0);
 
-  BLI_assert(but->editstr && but->pos >= 0);
+  BLI_assert(cursor_pos >= 0);
 
   /* need to set this first */
   UI_fontstyle_set(fstyle);
 
   /* define ofs dynamically */
-  if (but->ofs > but->pos) {
-    but->ofs = but->pos;
+  if (but->ofs > cursor_pos) {
+    but->ofs = cursor_pos;
   }
 
   if (BLF_width(fstyle->uifont_id, but->editstr, INT_MAX) <= okwidth) {
@@ -1661,7 +1664,7 @@ static void ui_text_clip_cursor(const uiFontStyle *fstyle, uiBut *but, const rct
       float width;
 
       /* string position of cursor */
-      width = BLF_width(fstyle->uifont_id, but->editstr + but->ofs, (but->pos - but->ofs));
+      width = BLF_width(fstyle->uifont_id, but->editstr + but->ofs, (cursor_pos - but->ofs));
 
       /* if cursor is at 20 pixels of right side button we clip left */
       if (width > okwidth - 20) {
@@ -1929,7 +1932,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
   }
 
   /* text button selection, cursor, composite underline */
-  if (but->editstr && but->pos != -1) {
+  const blender::ui::TextEdit *text_edit = ui_but_get_text_edit(but);
+  if (text_edit && but->editstr) {
     int but_pos_ofs;
 
 #ifdef WITH_INPUT_IME
@@ -1937,7 +1941,6 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     int ime_win_x, ime_win_y;
 #endif
 
-    const blender::ui::TextEdit *text_edit = ui_but_get_text_edit(but);
     /* text button selection */
     if (text_edit->has_selection() && drawstr[0] != 0) {
       const blender::IndexRange text_selection = text_edit->get_selection();
@@ -1976,7 +1979,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
 
     /* Text cursor position. */
-    but_pos_ofs = but->pos;
+    but_pos_ofs = text_edit->cursor_position();
 
 #ifdef WITH_INPUT_IME
     /* If is IME compositing, move the cursor. */
@@ -1986,7 +1989,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
 #endif
 
     /* Draw text cursor (caret). */
-    if (but->pos >= but->ofs) {
+    if (text_edit->cursor_position() >= but->ofs) {
 
       int t = BLF_str_offset_to_cursor(fstyle->uifont_id,
                                        drawstr + but->ofs,
@@ -2385,7 +2388,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   widget_draw_extra_icons(wcol, but, rect, alpha);
 
   /* clip but->drawstr to fit in available space */
-  if (but->editstr && but->pos >= 0) {
+  if (but->editstr && ui_but_get_text_edit(but)) {
     ui_text_clip_cursor(fstyle, but, rect);
   }
   else if (but->drawstr[0] == '\0') {

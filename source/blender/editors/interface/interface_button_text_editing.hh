@@ -22,8 +22,10 @@ namespace blender::ui {
  * Data for editing the value of the button as text.
  */
 class TextEdit {
-  /* Range defined as [first-index, last-index). */
+  /** Range defined as [first-index, last-index). */
   IndexRange selection_;
+  /** Index of the cursor position within #edit_string. */
+  int cursor_position_;
 
  public:
   /** The currently displayed/edited string, use #textedit_string_set() to assign new strings. */
@@ -43,6 +45,9 @@ class TextEdit {
   uiUndoStack_Text *undo_stack_text;
 
  public:
+  int cursor_position() const;
+  void set_cursor_position(int index);
+
   bool has_selection() const;
   /**
    * Note that the selection is [first-index, last-index], i.e. the first and last element in the
@@ -89,12 +94,11 @@ void textedit_move(uiBut *but,
                    bool select,
                    eStrCursorJumpType jump);
 
-bool textedit_delete(uiBut *but,
-                     TextEdit &text_edit,
+bool textedit_delete(TextEdit &text_edit,
                      eStrCursorJumpDirection direction,
                      eStrCursorJumpType jump);
 void textedit_string_set(uiBut *but, TextEdit &text_edit, const char *str);
-bool textedit_delete_selection(uiBut *but, TextEdit &text_edit);
+bool textedit_delete_selection(TextEdit &text_edit);
 /**
  * This is used for both utf8 and ascii
  *
