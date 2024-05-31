@@ -26,7 +26,7 @@ static size_t estimate_single_state_size(const uint kernel_features)
 #define KERNEL_STRUCT_BEGIN(name) \
   for (int array_index = 0;; array_index++) {
 
-#ifdef PACKED_STATE
+#ifdef __INTEGRATOR_GPU_PACKED_STATE__
 #  define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
     state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
 #  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature)
@@ -152,13 +152,13 @@ void PathTraceWorkGPU::alloc_integrator_soa()
            &array->device_pointer, \
            sizeof(array->device_pointer)); \
   }
-#ifdef PACKED_STATE
+#ifdef __INTEGRATOR_GPU_PACKED_STATE__
 #  define KERNEL_STRUCT_MEMBER_PACKED(parent_struct, type, name, feature) \
     if ((kernel_features & (feature))) { \
       string name_str = string_printf("%sintegrator_state_" #parent_struct "_" #name, \
                                       shadow ? "shadow_" : ""); \
-      VLOG_WORK << "Skipping " << name_str \
-                << " -- data is packed inside integrator_state_" #parent_struct "_packed"; \
+      VLOG_DEBUG << "Skipping " << name_str \
+                 << " -- data is packed inside integrator_state_" #parent_struct "_packed"; \
     }
 #  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
     KERNEL_STRUCT_BEGIN(parent_struct) \

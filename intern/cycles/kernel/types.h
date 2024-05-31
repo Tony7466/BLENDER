@@ -749,13 +749,13 @@ typedef struct Intersection {
 } Intersection;
 
 /* On certain GPUs (Apple Silicon), splitting every integrator state field into its own separate
- * array can be detrimental for cache utilisation. By enabling PACKED_STATE, we specify that
- * certain fields should be packed together. This improves cache hit ratios in cases where fields
- * are often accessed together (e.g. "ray" and "isect").
+ * array can be detrimental for cache utilisation. By enabling __INTEGRATOR_GPU_PACKED_STATE__, we
+ * specify that certain fields should be packed together. This improves cache hit ratios in cases
+ * where fields are often accessed together (e.g. "ray" and "isect").
  */
 #if (defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))) || \
     defined(__KERNEL_METAL_APPLE__)
-#  define PACKED_STATE
+#  define __INTEGRATOR_GPU_PACKED_STATE__
 
 /* Generate packed layouts for structs declared with KERNEL_STRUCT_BEGIN_PACKED. For example the
  * following template...

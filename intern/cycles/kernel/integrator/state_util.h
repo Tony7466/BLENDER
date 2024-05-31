@@ -15,7 +15,11 @@ CCL_NAMESPACE_BEGIN
 ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
                                                        ccl_private const Ray *ccl_restrict ray)
 {
-#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+#if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
+  static_assert(sizeof(ray->P) == sizeof(float4), "Bad assumption about float3 padding");
+  /* dP and dP are packed based on the assumption that float3 is padded to 16 bytes.
+   * This assumption hold trues on Metal, but not CUDA.
+   */
   ((ccl_private float4 &)ray->P).w = ray->dP;
   ((ccl_private float4 &)ray->D).w = ray->dD;
   INTEGRATOR_STATE_WRITE(state, ray, packed) = (ccl_private packed_ray &)*ray;
@@ -49,7 +53,7 @@ ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
 ccl_device_forceinline void integrator_state_read_ray(ConstIntegratorState state,
                                                       ccl_private Ray *ccl_restrict ray)
 {
-#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+#if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
   *((ccl_private packed_ray *)ray) = INTEGRATOR_STATE(state, ray, packed);
   ray->dP = ((ccl_private float4 &)ray->P).w;
   ray->dD = ((ccl_private float4 &)ray->D).w;
@@ -124,7 +128,7 @@ ccl_device_forceinline void integrator_state_read_shadow_ray_self(
 ccl_device_forceinline void integrator_state_write_isect(
     IntegratorState state, ccl_private const Intersection *ccl_restrict isect)
 {
-#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+#if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
   INTEGRATOR_STATE_WRITE(state, isect, packed) = (ccl_private packed_isect &)*isect;
 
   /* Ensure that we can correctly cast between Intersection and the generated packed_isect struct.
@@ -154,7 +158,7 @@ ccl_device_forceinline void integrator_state_write_isect(
 ccl_device_forceinline void integrator_state_read_isect(
     ConstIntegratorState state, ccl_private Intersection *ccl_restrict isect)
 {
-#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+#if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
   *((ccl_private packed_isect *)isect) = INTEGRATOR_STATE(state, isect, packed);
 #else
   isect->prim = INTEGRATOR_STATE(state, isect, prim);
@@ -301,7 +305,7 @@ ccl_device_inline void integrator_state_copy_only(KernelGlobals kg,
           kernel_integrator_state.parent_struct.name[state]; \
     }
 
-#  ifdef PACKED_STATE
+#  ifdef __INTEGRATOR_GPU_PACKED_STATE__
 #    define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
       KERNEL_STRUCT_BEGIN(parent_struct) \
       KERNEL_STRUCT_MEMBER(parent_struct, packed_##parent_struct, packed, feature)
@@ -369,7 +373,7 @@ ccl_device_inline void integrator_shadow_state_copy_only(KernelGlobals kg,
           kernel_integrator_state.parent_struct.name[state]; \
     }
 
-#  ifdef PACKED_STATE
+#  ifdef __INTEGRATOR_GPU_PACKED_STATE__
 #    define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
       KERNEL_STRUCT_BEGIN(parent_struct) \
       KERNEL_STRUCT_MEMBER(parent_struct, type, packed, feature)

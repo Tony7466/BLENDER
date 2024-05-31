@@ -103,7 +103,7 @@ typedef struct IntegratorQueueCounter {
   int num_queued[DEVICE_KERNEL_INTEGRATOR_NUM];
 } IntegratorQueueCounter;
 
-#if defined(PACKED_STATE) && defined(__KERNEL_GPU__)
+#if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
 
 /* Generate wrapper structs for all integrator state fields. This allows us to access state
  * uniformly, regardless of whether it stored in a packed struct or separate arrays. */
@@ -111,7 +111,6 @@ typedef struct IntegratorQueueCounter {
 #  define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
     struct Wrapped_##parent_struct##_##name { \
       type name; \
-      void operator=(type) {} \
     };
 #  define KERNEL_STRUCT_MEMBER_PACKED KERNEL_STRUCT_MEMBER
 #  define KERNEL_STRUCT_BEGIN_PACKED(parent_struct, feature) \
@@ -142,7 +141,7 @@ typedef struct IntegratorQueueCounter {
 typedef struct IntegratorStateGPU {
 #define KERNEL_STRUCT_BEGIN(name) struct {
 
-#ifdef PACKED_STATE
+#ifdef __INTEGRATOR_GPU_PACKED_STATE__
 
 #  ifdef __KERNEL_GPU__
 
@@ -252,7 +251,7 @@ typedef int ConstIntegratorShadowState;
 
 #  define INTEGRATOR_STATE_NULL -1
 
-#  ifdef PACKED_STATE
+#  ifdef __INTEGRATOR_GPU_PACKED_STATE__
 
 /* If we've opted in to packed layouts, we use the generated accessor functions (member##_fn) to
  * resolve different layouts (packed vs separate). */
