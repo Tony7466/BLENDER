@@ -66,6 +66,16 @@ class VIEW3D_PT_animation_layers(Panel):
                 unlink="anim.binding_unassign_object",
             )
 
+            # Binding selector as pointer property + template_search:
+            row = binding_sub.split(factor=0.4, align=True)
+            row.label(text="template_search")
+            row.template_search(
+                adt, "action_binding",
+                adt, "action_bindings",
+                new="",
+                unlink="anim.binding_unassign_object",
+            )
+
             binding_sub.separator()
 
             binding = adt.action_binding  # anim.bindings.get(adt.action_binding, None)
