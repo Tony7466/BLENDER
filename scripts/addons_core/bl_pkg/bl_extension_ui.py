@@ -279,11 +279,52 @@ class display_errors:
         row.label(text="Repository Access Errors:", icon='ERROR')
         rowsub = row.row(align=True)
         rowsub.alignment = 'RIGHT'
-        rowsub.operator("bl_pkg.pkg_display_errors_clear", text="", icon='X', emboss=False)
+        rowsub.operator("extensions.status_clear_errors", text="", icon='X', emboss=False)
 
         box_contents = box_header.box()
         for err in display_errors.errors_curr:
             box_contents.label(text=err)
+
+
+class notify_info:
+    """
+    This singleton class holds notification status.
+    """
+    # None: not yet started.
+    # False: updates running.
+    # True: updates complete.
+    _update_state = None
+
+    @staticmethod
+    def update_ensure(context, repos):
+        """
+        Ensure updates are triggered if the preferences display extensions
+        and an online sync has not yet run.
+
+        Return true if updates are in progress.
+        """
+        in_progress = False
+        match notify_info._update_state:
+            case True:
+                pass
+            case None:
+                from .bl_extension_notify import update_non_blocking
+                if repos_notify := [repo for repo in repos if repo.remote_url]:
+                    update_non_blocking(repos=repos_notify, do_online_sync=True)
+                    notify_info._update_state = False
+                    # Starting.
+                    in_progress = True
+                else:
+                    # Nothing to do, finished.
+                    notify_info._update_state = True
+            case False:
+                from .bl_extension_notify import update_in_progress
+                if update_in_progress():
+                    # Not yet finished.
+                    in_progress = True
+                else:
+                    notify_info._update_state = True
+        return in_progress
 
 
 def extensions_panel_draw_online_extensions_request_impl(
@@ -296,16 +337,21 @@ def extensions_panel_draw_online_extensions_request_impl(
     if layout_panel is not None:
         # Text wrapping isn't supported, manually wrap.
         for line in (
-                "Welcome! Access community-made add-ons and themes from the",
+                "Welcome! Access community-made add-ons and themes from the ",
                 "extensions.blender.org repository.",
                 "",
-                "This also requires internet access which must be enabled in \"System\" preferences.",
+                "This requires online access which must be enabled in \"System\" preferences.",
         ):
             layout_panel.label(text=line)
 
         row = layout.row()
-        row.operator("bl_pkg.extension_online_access", text="Dismiss", icon='X').enable = False
-        row.operator("bl_pkg.extension_online_access", text="Enable Repository", icon='CHECKMARK').enable = True
+        props = row.operator("wm.context_set_boolean", text="Dismiss", icon='X')
+        props.data_path = "preferences.extensions.use_online_access_handled"
+        props.value = True
+
+        # The only reason to prefer this over `screen.userpref_show`
+        # is it will be disabled when `--offline-mode` is forced with a useful error for why.
+        row.operator("extensions.show_online_prefs", text="Go to System")
 
 
 def extensions_panel_draw_impl(
@@ -351,6 +397,15 @@ def extensions_panel_draw_impl(
     layout_topmost = layout.column()
 
     repos_all = extension_repos_read()
+
+    if bpy.app.online_access:
+        if notify_info.update_ensure(context, repos_all):
+            # TODO: should be part of the status bar.
+            from .bl_extension_notify import update_ui_text
+            text, icon = update_ui_text()
+            if text:
+                layout_topmost.box().label(text=text, icon=icon)
+            del text, icon
 
     # To access enabled add-ons.
     show_addons = filter_by_type in {"", "add-on"}
@@ -488,9 +543,9 @@ def extensions_panel_draw_impl(
             row = colsub.row(align=True)
             # row.label
             if show:
-                props = row.operator("bl_pkg.pkg_show_clear", text="", icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                props = row.operator("extensions.package_show_clear", text="", icon='DISCLOSURE_TRI_DOWN', emboss=False)
             else:
-                props = row.operator("bl_pkg.pkg_show_set", text="", icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                props = row.operator("extensions.package_show_set", text="", icon='DISCLOSURE_TRI_RIGHT', emboss=False)
             props.pkg_id = pkg_id
             props.repo_index = repo_index
             del props
@@ -505,7 +560,7 @@ def extensions_panel_draw_impl(
                     ).module = addon_module_name
                 elif is_theme:
                     props = row.operator(
-                        "bl_pkg.extension_theme_disable" if is_enabled else "bl_pkg.extension_theme_enable",
+                        "extensions.package_theme_disable" if is_enabled else "extensions.package_theme_enable",
                         icon='CHECKBOX_HLT' if is_enabled else 'CHECKBOX_DEHLT',
                         text="",
                         emboss=False,
@@ -517,20 +572,20 @@ def extensions_panel_draw_impl(
                     # Use a place-holder checkbox icon to avoid odd text alignment when mixing with installed add-ons.
                     # Non add-ons have no concept of "enabled" right now, use installed.
                     row.operator(
-                        "bl_pkg.extension_disable",
+                        "extensions.package_disabled",
                         text="",
                         icon='CHECKBOX_HLT',
                         emboss=False,
                     )
             else:
                 # Not installed, always placeholder.
-                row.operator("bl_pkg.extensions_enable_not_installed", text="", icon='CHECKBOX_DEHLT', emboss=False)
+                row.operator("extensions.package_enable_not_installed", text="", icon='CHECKBOX_DEHLT', emboss=False)
 
             if show_development:
                 if mark:
-                    props = row.operator("bl_pkg.pkg_mark_clear", text="", icon='RADIOBUT_ON', emboss=False)
+                    props = row.operator("extensions.package_mark_clear", text="", icon='RADIOBUT_ON', emboss=False)
                 else:
-                    props = row.operator("bl_pkg.pkg_mark_set", text="", icon='RADIOBUT_OFF', emboss=False)
+                    props = row.operator("extensions.package_mark_set", text="", icon='RADIOBUT_OFF', emboss=False)
                 props.pkg_id = pkg_id
                 props.repo_index = repo_index
                 del props
@@ -547,7 +602,7 @@ def extensions_panel_draw_impl(
                 if is_installed:
                     # Include uninstall below.
                     if is_outdated:
-                        props = row_right.operator("bl_pkg.pkg_install", text="Update")
+                        props = row_right.operator("extensions.package_install", text="Update")
                         props.repo_index = repo_index
                         props.pkg_id = pkg_id
                         del props
@@ -556,7 +611,7 @@ def extensions_panel_draw_impl(
                         row_right.label(text="Installed   ")
                         row_right.active = False
                 else:
-                    props = row_right.operator("bl_pkg.pkg_install", text="Install")
+                    props = row_right.operator("extensions.package_install", text="Install")
                     props.repo_index = repo_index
                     props.pkg_id = pkg_id
                     del props
@@ -623,7 +678,7 @@ def extensions_panel_draw_impl(
                 if is_installed:
                     rowsub = col_b.row()
                     rowsub.alignment = 'RIGHT'
-                    props = rowsub.operator("bl_pkg.pkg_uninstall", text="Uninstall")
+                    props = rowsub.operator("extensions.package_uninstall", text="Uninstall")
                     props.repo_index = repo_index
                     props.pkg_id = pkg_id
                     del props, rowsub
@@ -687,7 +742,7 @@ def extensions_panel_draw_impl(
             layout_topmost.label(text="")
 
 
-class USERPREF_PT_extensions_bl_pkg_filter(Panel):
+class USERPREF_PT_extensions_filter(Panel):
     bl_label = "Extensions Filter"
 
     bl_space_type = 'TOPBAR'  # dummy.
@@ -714,7 +769,7 @@ class USERPREF_PT_extensions_bl_pkg_filter(Panel):
         sub.prop(wm, "extension_show_legacy_addons", text="Legacy Add-ons")
 
 
-class USERPREF_MT_extensions_bl_pkg_settings(Menu):
+class USERPREF_MT_extensions_settings(Menu):
     bl_label = "Extension Settings"
 
     def draw(self, context):
@@ -724,12 +779,12 @@ class USERPREF_MT_extensions_bl_pkg_settings(Menu):
 
         addon_prefs = prefs.addons[__package__].preferences
 
-        layout.operator("bl_pkg.repo_sync_all", text="Check for Updates", icon='FILE_REFRESH')
+        layout.operator("extensions.repo_sync_all", text="Check for Updates", icon='FILE_REFRESH')
 
         layout.separator()
 
-        layout.operator("bl_pkg.pkg_upgrade_all", text="Install Available Updates", icon='IMPORT')
-        layout.operator("bl_pkg.pkg_install_files", text="Install from Disk")
+        layout.operator("extensions.package_upgrade_all", text="Install Available Updates", icon='IMPORT')
+        layout.operator("extensions.package_install_files", text="Install from Disk")
         layout.operator("preferences.addon_install", text="Install Legacy Add-on")
 
         if prefs.experimental.use_extension_utils:
@@ -745,14 +800,14 @@ class USERPREF_MT_extensions_bl_pkg_settings(Menu):
             layout.operator("preferences.addon_refresh", text="Refresh (file-system)", icon='FILE_REFRESH')
             layout.separator()
 
-            layout.operator("bl_pkg.pkg_install_marked", text="Install Marked", icon='IMPORT')
-            layout.operator("bl_pkg.pkg_uninstall_marked", text="Uninstall Marked", icon='X')
-            layout.operator("bl_pkg.obsolete_marked")
+            layout.operator("extensions.package_install_marked", text="Install Marked", icon='IMPORT')
+            layout.operator("extensions.package_uninstall_marked", text="Uninstall Marked", icon='X')
+            layout.operator("extensions.package_obsolete_marked")
 
             layout.separator()
 
-            layout.operator("bl_pkg.repo_lock")
-            layout.operator("bl_pkg.repo_unlock")
+            layout.operator("extensions.repo_lock")
+            layout.operator("extensions.repo_unlock")
 
 
 def extensions_panel_draw(panel, context):
@@ -775,13 +830,13 @@ def extensions_panel_draw(panel, context):
     row_a.prop(wm, "extension_search", text="", icon='VIEWZOOM')
     row_b = row.row(align=True)
     row_b.prop(wm, "extension_type", text="")
-    row_b.popover("USERPREF_PT_extensions_bl_pkg_filter", text="", icon='FILTER')
+    row_b.popover("USERPREF_PT_extensions_filter", text="", icon='FILTER')
 
     row_b.separator()
     row_b.popover("USERPREF_PT_extensions_repos", text="Repositories")
 
     row_b.separator()
-    row_b.menu("USERPREF_MT_extensions_bl_pkg_settings", text="", icon='DOWNARROW_HLT')
+    row_b.menu("USERPREF_MT_extensions_settings", text="", icon='DOWNARROW_HLT')
     del row, row_a, row_b
 
     if show_development_reports:
@@ -806,7 +861,7 @@ def extensions_panel_draw(panel, context):
         if show_development_reports:
             rowsub = row.row(align=True)
             rowsub.alignment = 'RIGHT'
-            rowsub.operator("bl_pkg.pkg_status_clear", text="", icon='X', emboss=False)
+            rowsub.operator("extensions.status_clear", text="", icon='X', emboss=False)
         boxsub = box.box()
         for ty, msg in repo_status_text.log:
             if ty == 'STATUS':
@@ -833,7 +888,16 @@ def extensions_panel_draw(panel, context):
         if repo_status_text.running:
             return
 
-    if not prefs.extensions.use_online_access_handled:
+    # Check if the extensions "Welcome" panel should be displayed.
+    # Even though it can be dismissed it's quite "in-your-face" so only show when it's needed.
+    if (
+            # The user didn't dismiss.
+            (not prefs.extensions.use_online_access_handled) and
+            # Running offline.
+            (not bpy.app.online_access) and
+            # There is one or more repositories that require remote access.
+            any(repo for repo in prefs.extensions.repos if repo.enabled and repo.use_remote_url)
+    ):
         extensions_panel_draw_online_extensions_request_impl(panel, context)
 
     extensions_panel_draw_impl(
@@ -851,8 +915,8 @@ def extensions_panel_draw(panel, context):
 
 classes = (
     # Pop-overs.
-    USERPREF_PT_extensions_bl_pkg_filter,
-    USERPREF_MT_extensions_bl_pkg_settings,
+    USERPREF_PT_extensions_filter,
+    USERPREF_MT_extensions_settings,
 )
 
 
