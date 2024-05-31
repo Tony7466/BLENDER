@@ -3,14 +3,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# Keep this script in line with /scripts/modules/bl_ui_utils/bug_report_url.py
+# Keep the information collected in line with /scripts/modules/bl_ui_utils/bug_report_url.py
 
-import os
 import re
 import struct
 import platform
 import urllib.parse
 import subprocess
+from pathlib import Path
 
 query_params = {"type": "bug_report"}
 
@@ -26,26 +26,27 @@ query_params["os"] = "{:s} {:d} Bits".format(
 # TODO: Investigate how to work around this
 query_params["gpu"] = "Unsure"
 
-# TODO: Adjust this?
 os_type = platform.system()
-script_directory = os.path.dirname(__file__)
-if os_type == "Darwin": #macOS
-    blender_dir = os.path.join(script_directory, "../../../../MacOS/Blender")
+script_directory = Path(__file__).parent.resolve()
+if os_type == "Darwin":  # macOS
+    blender_dir = script_directory.joinpath("../../../../MacOS/Blender")
 elif os_type == "Windows":
-    blender_dir = os.path.join(script_directory, "../../../Blender.exe")
-else: # Linux
-    blender_dir = os.path.join(script_directory, "../../../blender")
+    blender_dir = script_directory.joinpath("../../../Blender.exe")
+else:  # Linux
+    blender_dir = script_directory.joinpath("../../../blender")
 
 command = [blender_dir, "--version"]
 
-output = subprocess.run(command, stdout = subprocess.PIPE)
+output = subprocess.run(command, stdout=subprocess.PIPE)
 text = output.stdout.decode("utf-8")
 # Gather version number and type (Alpha, Beta, etc)
 version_match = re.search(r"Blender (\d+\.\d+\.\d+\s[A-Za-z]+)", text)
 if not version_match:
-    # Gather just version number (Previous version_match doesn't work on final release builds that don't have text after the version number)
+    # Gather just version number (Previous version_match doesn't work on final
+    # release builds that don't have text after the version number)
     version_match = re.search(r"Blender (\d+\.\d+\.\d+)", text)
     # TODO: We could just do re.search(r"Blender (.*)", text)
+    # It handles both cases.
 branch_match = re.search(r"build branch: (.*)", text)
 commit_date_match = re.search(r"build commit date: (\d+-\d+-\d+)", text)
 commit_time_match = re.search(r"build commit time: (\d+:\d+)", text)
