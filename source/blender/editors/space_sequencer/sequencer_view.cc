@@ -74,7 +74,7 @@ void SEQ_get_timeline_region_padding(const bContext *C, float *r_pad_top, float 
   if (sseq->flag & SEQ_SHOW_OVERLAY && sseq->cache_overlay.flag & SEQ_CACHE_SHOW &&
       sseq->cache_overlay.flag & SEQ_CACHE_SHOW_FINAL_OUT)
   {
-    *r_pad_top += UI_TIME_SCRUB_MARGIN_Y / 6.0f;
+    *r_pad_top += UI_TIME_CACHE_MARGIN_Y;
   }
 
   *r_pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ? V2D_SCROLL_HANDLE_HEIGHT :
@@ -312,11 +312,11 @@ static void seq_view_collection_rect_preview(Scene *scene,
   BLI_rctf_scale(rect, 1.1f);
 }
 
-static void seq_view_collection_rect_timeline(bContext *C,
+static void seq_view_collection_rect_timeline(const bContext *C,
                                               blender::Span<Sequence *> strips,
                                               rctf *rect)
 {
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   int xmin = MAXFRAME * 2;
   int xmax = -MAXFRAME * 2;
   int ymin = MAXSEQ + 1;
@@ -336,17 +336,18 @@ static void seq_view_collection_rect_timeline(bContext *C,
   xmin -= xmargin;
 
   float orig_height = BLI_rctf_size_y(rect);
+  rctf new_viewport;
 
-  rect->xmin = xmin;
-  rect->xmax = xmax;
+  new_viewport.xmin = xmin;
+  new_viewport.xmax = xmax;
 
-  rect->ymin = ymin;
-  rect->ymax = ymax;
+  new_viewport.ymin = ymin;
+  new_viewport.ymax = ymax;
 
-  SEQ_add_timeline_region_padding(C, rect);
+  SEQ_add_timeline_region_padding(C, &new_viewport);
 
-  /* Only zoom out vertically, don't zoom in. */
-  if (orig_height > BLI_rctf_size_y(rect)) {
+  /* Y axis should only zoom out if needed, never zoom in. */
+  if (orig_height > BLI_rctf_size_y(&new_viewport)) {
     /* Get the current max/min channel we can display. */
     const Editing *ed = SEQ_editing_get(scene);
     rctf box;
@@ -355,20 +356,28 @@ static void seq_view_collection_rect_timeline(bContext *C,
     float timeline_ymin = box.ymin;
     float timeline_ymax = box.ymax;
 
-    float ymid = BLI_rctf_cent_y(rect);
-
-    rect->ymin = ymid - (orig_height / 2.0f);
-    rect->ymax = ymid + (orig_height / 2.0f);
-
-    if (rect->ymin < timeline_ymin) {
-      rect->ymin = timeline_ymin;
-      rect->ymax = rect->ymin + orig_height;
+    if (orig_height > timeline_ymax - timeline_ymin) {
+      /* Do nothing, we can't align the viewport any better if we
+       * are zoomed out futher than the current timeline bounds.
+       */
+      return;
     }
-    else if (rect->ymax > timeline_ymax) {
-      rect->ymax = timeline_ymax;
-      rect->ymin = rect->ymax - orig_height;
+
+    float ymid = BLI_rctf_cent_y(&new_viewport);
+
+    new_viewport.ymin = ymid - (orig_height / 2.0f);
+    new_viewport.ymax = ymid + (orig_height / 2.0f);
+
+    if (new_viewport.ymin < timeline_ymin) {
+      new_viewport.ymin = timeline_ymin;
+      new_viewport.ymax = new_viewport.ymin + orig_height;
+    }
+    else if (new_viewport.ymax > timeline_ymax) {
+      new_viewport.ymax = timeline_ymax;
+      new_viewport.ymin = new_viewport.ymax - orig_height;
     }
   }
+  *rect = new_viewport;
 }
 
 static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
