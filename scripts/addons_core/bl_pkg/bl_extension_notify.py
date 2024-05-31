@@ -10,9 +10,6 @@ __all__ = (
     "update_non_blocking",
     "update_in_progress",
     "update_ui_text",
-
-    "register",
-    "unregister",
 )
 
 
@@ -31,45 +28,20 @@ USE_GRACEFUL_EXIT = False
 # Special value to signal no packages can be updated because all repositories are blocked by being offline.
 STATE_DATA_ALL_OFFLINE = object()
 
+WM_EXTENSIONS_CHECKING = -1
+
 
 # -----------------------------------------------------------------------------
 # Internal Utilities
 
 def sync_status_count_outdated_extensions(repos_notify):
-    from . import repo_cache_store
-
-    repos_notify_directories = [repo_item.directory for repo_item in repos_notify]
+    from . import repo_stats_calc_outdated_for_repo_directory
 
     package_count = 0
 
-    for (
-            pkg_manifest_remote,
-            pkg_manifest_local,
-    ) in zip(
-        repo_cache_store.pkg_manifest_from_remote_ensure(
-            error_fn=print,
-            directory_subset=repos_notify_directories,
-        ),
-        repo_cache_store.pkg_manifest_from_local_ensure(
-            error_fn=print,
-            directory_subset=repos_notify_directories,
-            # Needed as these have been updated.
-            check_files=True,
-        ),
-    ):
-        if pkg_manifest_remote is None:
-            continue
-        if pkg_manifest_local is None:
-            continue
+    for repo_item in repos_notify:
+        package_count += repo_stats_calc_outdated_for_repo_directory(repo_item.directory)
 
-        for pkg_id, item_remote in pkg_manifest_remote.items():
-            item_local = pkg_manifest_local.get(pkg_id)
-            if item_local is None:
-                # Not installed.
-                continue
-
-            if item_remote["version"] != item_local["version"]:
-                package_count += 1
     return package_count
 
 
@@ -77,6 +49,26 @@ def sync_status_count_outdated_extensions(repos_notify):
 # Update Iterator
 #
 # This is a black-box which handled running the updates, yielding status text.
+
+def sync_calc_stale_repo_directories(repos_notify):
+    # Check for the unlikely event that the state of repositories has changed since checking for updated began.
+    # Do this by checking for directories since renaming or even disabling a repository need not prevent the
+    # listing from being updated. Only detect changes to the (directory + URL) which define the source/destination.
+    repo_state_from_prefs = set(
+        (repo.directory, repo.remote_url)
+        for repo in bpy.context.preferences.extensions.repos
+    )
+    repo_state_from_notify = set(
+        (repo.directory, repo.remote_url)
+        for repo in repos_notify
+    )
+
+    repo_directories_skip = set()
+    for directory, _remote_url in (repo_state_from_notify - repo_state_from_prefs):
+        repo_directories_skip.add(directory)
+
+    return repo_directories_skip
+
 
 def sync_apply_locked(repos_notify, repos_notify_files, unique_ext):
     """
@@ -97,7 +89,11 @@ def sync_apply_locked(repos_notify, repos_notify_files, unique_ext):
     # Blender and even then the user would need to be *lucky*.
     from . import cookie_from_session
 
+    repo_directories_stale = sync_calc_stale_repo_directories(repos_notify)
+
     any_lock_errors = False
+    any_stale_errors = False
+
     repo_directories = [repo_item.directory for repo_item in repos_notify]
     with bl_extension_utils.RepoLockContext(
             repo_directories=repo_directories,
@@ -107,9 +103,18 @@ def sync_apply_locked(repos_notify, repos_notify_files, unique_ext):
             repo_files = [os.path.join(directory, filepath_rel) for filepath_rel in repo_files]
 
             # If locking failed, remove the temporary files that were written to.
-            if (lock_result_for_repo := lock_result[directory]) is not None:
+            has_error = False
+            if directory in repo_directories_stale:
+                # Unlikely but possible repositories change or are removed after check starts.
+                sys.stderr.write("Warning \"{:s}\" has changed or been removed (skipping)\n".format(directory))
+                any_stale_errors = True
+                has_error = True
+            elif (lock_result_for_repo := lock_result[directory]) is not None:
                 sys.stderr.write("Warning \"{:s}\" locking \"{:s}\"\n".format(lock_result_for_repo, directory))
                 any_lock_errors = True
+                has_error = True
+
+            if has_error:
                 for filepath in repo_files:
                     # Don't check this exists as it always should, showing an error if it doesn't is fine.
                     try:
@@ -134,7 +139,7 @@ def sync_apply_locked(repos_notify, repos_notify_files, unique_ext):
                 except Exception as ex:
                     sys.stderr.write("Failed to rename file: {:s}\n".format(str(ex)))
 
-    return any_lock_errors
+    return any_lock_errors, any_stale_errors
 
 
 def sync_status_generator(repos_notify, do_online_sync):
@@ -174,9 +179,9 @@ def sync_status_generator(repos_notify, do_online_sync):
             bl_extension_utils.repo_sync,
             directory=repo_item.directory,
             remote_name=repo_item.name,
-            remote_url=bl_extension_ops.url_params_append_defaults(repo_item.remote_url),
+            remote_url=bl_extension_ops.url_append_defaults(repo_item.remote_url),
             online_user_agent=bl_extension_ops.online_user_agent_from_blender(),
-            access_token=repo_item.access_token if repo_item.use_access_token else "",
+            access_token=repo_item.access_token,
             # Never sleep while there is no input, as this blocks Blender.
             use_idle=False,
             # Needed so the user can exit blender without warnings about a broken pipe.
@@ -185,6 +190,10 @@ def sync_status_generator(repos_notify, do_online_sync):
             force_exit_ok=not USE_GRACEFUL_EXIT,
             dry_run=not do_online_sync,
             extension_override=unique_ext,
+            # Demote connection errors to status which means they won't be shown in the console.
+            # Do this as errors are expected when the computer is not connected to the internet.
+            # Either run with debugging, or manually click update button in preferences.
+            demote_connection_errors_to_status=not bpy.app.debug,
         ))
 
     yield None
@@ -265,10 +274,12 @@ def sync_status_generator(repos_notify, do_online_sync):
                 # ################### #
                 # Finalize The Update #
                 # ################### #
-                any_lock_errors = sync_apply_locked(repos_notify, repos_notify_files, unique_ext)
+                any_lock_errors, any_stale_errors = sync_apply_locked(repos_notify, repos_notify_files, unique_ext)
                 update_total = sync_status_count_outdated_extensions(repos_notify)
                 if any_lock_errors:
                     extra_warnings.append(" Failed to acquire lock!")
+                if any_stale_errors:
+                    extra_warnings.append(" Unexpected change in repository!")
 
             if any_offline:
                 extra_warnings.append(" Skipping online repositories!")
@@ -320,8 +331,9 @@ class NotifyHandle:
 
     def run_ensure(self):
         if self.is_running():
-            return
+            return False
         self.run()
+        return True
 
     def run_step(self):
         assert self._sync_generator is not None
@@ -335,9 +347,15 @@ class NotifyHandle:
     def is_running(self):
         return self._sync_generator is not None
 
+    def updates_count(self):
+        if self.sync_info is None:
+            return WM_EXTENSIONS_CHECKING
+        _status_data, update_count, _extra_warnings = self.sync_info
+        return update_count
+
     def ui_text(self):
         if self.sync_info is None:
-            return "Checking for Extension Updates", 'NONE', 0
+            return "Checking for Extension Updates", 'NONE', WM_EXTENSIONS_CHECKING
         status_data, update_count, extra_warnings = self.sync_info
         do_online_sync = self.do_online_sync
         text, icon = bl_extension_utils.CommandBatch.calc_status_text_icon_from_data(
@@ -392,8 +410,10 @@ def _ui_refresh_timer():
     if not _notify_queue:
         return None
 
+    wm = bpy.context.window_manager
     notify = _notify_queue[0]
-    notify.run_ensure()
+    if notify.run_ensure():
+        wm.extensions_updates = WM_EXTENSIONS_CHECKING
 
     default_wait = TIME_WAIT_STEP
 
@@ -418,30 +438,11 @@ def _ui_refresh_timer():
     # TODO: redraw the status bar.
     _ui_refresh_apply(notify=notify)
 
+    update_count = notify.updates_count()
+    if update_count != wm.extensions_updates:
+        wm.extensions_updates = update_count
+
     return default_wait
-
-
-def splash_draw_status_fn(self, context):
-    assert bool(_notify_queue), "Never empty"
-    notify = _notify_queue[0]
-
-    if notify.splash_region is None:
-        notify.splash_region = context.region_popup
-
-    if not bpy.app.online_access:
-        if bpy.app.online_access_override:
-            # Since there is nothing to do in this case, we show no operator.
-            self.layout.label(text="Running in Offline Mode", icon='INTERNET')
-    else:
-        text, icon, update_count = notify.ui_text()
-        row = self.layout.row(align=True)
-        if update_count > 0:
-            row.operator("bl_pkg.extensions_show_for_update", text=text, icon=icon)
-        else:
-            row.label(text=text, icon=icon)
-
-    self.layout.separator()
-    self.layout.separator()
 
 
 # -----------------------------------------------------------------------------
@@ -455,9 +456,10 @@ def update_non_blocking(*, repos, do_online_sync):
     """
     # TODO: it's possible this preferences requests updates just after check-for-updates on startup.
     # The checks should be de-duplicated. For now just ensure the checks don't interfere with each other.
+    assert bool(repos), "Unexpected empty repository list passed in"
     _notify_queue.append(NotifyHandle(repos, do_online_sync))
     if not bpy.app.timers.is_registered(_ui_refresh_timer):
-        bpy.app.timers.register(_ui_refresh_timer, first_interval=TIME_WAIT_INIT)
+        bpy.app.timers.register(_ui_refresh_timer, first_interval=TIME_WAIT_INIT, persistent=True)
 
 
 def update_in_progress():
@@ -474,11 +476,3 @@ def update_ui_text():
         text = ""
         icon = 'NONE'
     return text, icon
-
-
-def register():
-    bpy.types.WM_MT_splash.append(splash_draw_status_fn)
-
-
-def unregister():
-    bpy.types.WM_MT_splash.remove(splash_draw_status_fn)

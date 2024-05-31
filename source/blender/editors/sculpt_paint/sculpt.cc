@@ -690,6 +690,20 @@ static void sculpt_vertex_neighbors_get_bmesh(PBVHVertRef vertex, SculptVertexNe
   }
 }
 
+Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors)
+{
+  BMIter liter;
+  BMLoop *l;
+  BM_ITER_ELEM (l, &liter, &vert, BM_LOOPS_OF_VERT) {
+    for (BMVert *other_vert : {l->prev->v, l->next->v}) {
+      if (other_vert != &vert) {
+        neighbors.append(other_vert);
+      }
+    }
+  }
+  return neighbors;
+}
+
 static void sculpt_vertex_neighbors_get_faces(const SculptSession &ss,
                                               PBVHVertRef vertex,
                                               SculptVertexNeighborIter *iter)
@@ -4139,12 +4153,6 @@ void SCULPT_cache_free(blender::ed::sculpt_paint::StrokeCache *cache)
   MEM_SAFE_FREE(cache->surface_smooth_laplacian_disp);
   MEM_SAFE_FREE(cache->layer_displacement_factor);
   MEM_SAFE_FREE(cache->detail_directions);
-
-  for (int i = 0; i < PAINT_SYMM_AREAS; i++) {
-    if (cache->boundaries[i]) {
-      boundary::data_free(cache->boundaries[i]);
-    }
-  }
 
   if (cache->cloth_sim) {
     cloth::simulation_free(cache->cloth_sim);

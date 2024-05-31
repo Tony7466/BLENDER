@@ -492,7 +492,7 @@ struct StrokeCache {
   float3 true_initial_normal;
 
   /* Boundary brush */
-  SculptBoundary *boundaries[PAINT_SYMM_AREAS];
+  std::array<std::unique_ptr<SculptBoundary>, PAINT_SYMM_AREAS> boundaries;
 
   /* Surface Smooth Brush */
   /* Stores the displacement produced by the laplacian step of HC smooth. */
@@ -912,6 +912,12 @@ void SCULPT_vertex_neighbors_get(const SculptSession &ss,
 #define SCULPT_VERTEX_NEIGHBORS_ITER_END(neighbor_iterator) \
   } \
   ((void)0)
+
+namespace blender::ed::sculpt_paint {
+
+Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors);
+
+}
 
 PBVHVertRef SCULPT_active_vertex_get(const SculptSession &ss);
 const float *SCULPT_active_vertex_co_get(const SculptSession &ss);
@@ -1915,11 +1921,10 @@ namespace blender::ed::sculpt_paint::boundary {
  * Main function to get #SculptBoundary data both for brush deformation and viewport preview.
  * Can return NULL if there is no boundary from the given vertex using the given radius.
  */
-SculptBoundary *data_init(Object &object,
-                          const Brush *brush,
-                          PBVHVertRef initial_vertex,
-                          float radius);
-void data_free(SculptBoundary *boundary);
+std::unique_ptr<SculptBoundary> data_init(Object &object,
+                                          const Brush *brush,
+                                          PBVHVertRef initial_vertex,
+                                          float radius);
 /* Main Brush Function. */
 void do_boundary_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 
