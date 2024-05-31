@@ -3674,8 +3674,31 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       scene->eevee.fast_gi_thickness_far = default_scene->eevee.fast_gi_thickness_far;
     }
   }
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 48)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (!ob->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+        pchan->custom_shape_wire_width = 1.0;
+      }
+    }
+  }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 47)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 49)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = reinterpret_cast<View3D *>(sl);
+            v3d->flag2 |= V3D_SHOW_CAMERA_PASSEPARTOUT;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 50)) {
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type != NTREE_GEOMETRY) {
         continue;
@@ -3696,7 +3719,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         item.data_type = storage->data_type_legacy;
         item.identifier = storage->next_identifier++;
         item.name = BLI_strdup("Value");
-        /* TODO: missing declaration update */
       }
     }
   }
