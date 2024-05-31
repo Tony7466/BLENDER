@@ -60,6 +60,8 @@ namespace {
 constexpr const char *binding_default_name = "Binding";
 constexpr const char *binding_unbound_prefix = "XX";
 
+constexpr const char *layer_default_name = "Layer";
+
 }  // namespace
 
 static animrig::Layer &ActionLayer_alloc()
@@ -199,8 +201,7 @@ void Action::layer_ensure()
     return;
   }
 
-  /* TODO: default layer name localization. */
-  Layer &layer = this->layer_add("Layer");
+  Layer &layer = this->layer_add(DATA_(layer_default_name));
   layer.strip_add(Strip::Type::Keyframe);
 }
 
