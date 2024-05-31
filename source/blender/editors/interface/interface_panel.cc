@@ -2071,8 +2071,8 @@ static void ui_panel_drag_collapse(const bContext *C,
 
     for (LayoutPanelHeader &header : panel->runtime->layout_panels.headers) {
       rctf rect = block->rect;
-      rect.ymin = block->rect.ymax + header.start_y + layout_panel_y_offset();
-      rect.ymax = block->rect.ymax + header.end_y + layout_panel_y_offset();
+      rect.ymin = block->rect.ymax + header.start_y - layout_panel_y_offset();
+      rect.ymax = block->rect.ymax + header.end_y - layout_panel_y_offset();
 
       if (BLI_rctf_isect_segment(&rect, xy_a_block, xy_b_block)) {
         RNA_boolean_set(
