@@ -26,6 +26,8 @@ class Subprocess : NonCopyable {
  private:
 #ifdef _WIN32
   HANDLE handle_ = nullptr;
+#else
+  pid_t pid_ = 0;
 #endif
  public:
   ~Subprocess();

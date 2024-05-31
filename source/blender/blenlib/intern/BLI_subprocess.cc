@@ -150,6 +150,7 @@ bool SharedSemaphore::try_decrement()
 #  include <sys/mman.h>
 #  include <sys/stat.h>
 #  include <unistd.h>
+#  include <wait.h>
 
 namespace blender {
 
@@ -169,11 +170,11 @@ bool Subprocess::init(Span<StringRefNull> args)
   }
   char_args.append(nullptr);
 
-  pid_t pid = fork();
-  if (pid < 0) {
+  pid_ = fork();
+  if (pid_ < 0) {
     return false;
   }
-  else if (pid > 0) {
+  else if (pid_ > 0) {
     return true;
   }
 
@@ -191,6 +192,19 @@ Subprocess::~Subprocess() {}
 
 bool Subprocess::is_running()
 {
+  if (pid_ == 0) {
+    return false;
+  }
+
+  pid_t result = waitpid(pid_, nullptr, WNOHANG);
+  if (result == pid_) {
+    pid_ = 0;
+    return false;
+  }
+  else if (result == -1) {
+    perror("Subprocess check failed: ");
+  }
+
   return true;
 }
 
