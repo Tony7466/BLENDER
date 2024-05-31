@@ -370,20 +370,18 @@ static void draw_lasso_smooth_stroke_indicator(wmGesture *gt, const uint shdr_po
 
   /* Draw Inner Ring */
   immUniformColor4f(color[0], color[1], color[2], 0.8f);
-  imm_draw_circle_wire_2d(
-      shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y, radius, 40);
+  imm_draw_circle_wire_2d(shdr_pos, gt->mval.x, gt->mval.y, radius, 40);
 
   /* Draw Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
   float darkcolor[3];
   mul_v3_v3fl(darkcolor, color, 0.40f);
   immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
-  imm_draw_circle_wire_2d(
-      shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y, radius + 1, 40);
+  imm_draw_circle_wire_2d(shdr_pos, gt->mval.x, gt->mval.y, radius + 1, 40);
 
   /* Draw line from the last saved position to the current mouse position. */
   immUniformColor4f(color[0], color[1], color[2], 0.8f);
   immBegin(GPU_PRIM_LINES, 2);
-  immVertex2f(shdr_pos, gt->current_mouse_position.x, gt->current_mouse_position.y);
+  immVertex2f(shdr_pos, gt->mval.x, gt->mval.y);
   immVertex2f(shdr_pos, last_x, last_y);
   immEnd();
 

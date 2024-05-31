@@ -594,8 +594,8 @@ struct wmGesture {
   int modal_state;
   /** Optional, draw the active side of the straight-line gesture. */
   bool draw_active_side;
-  /** Latest mouse position relative to area. */
-  blender::float2 current_mouse_position;
+  /** Latest mouse position relative to area. Currently only used by lasso drawing code.*/
+  blender::int2 mval;
 
   /**
    * For modal operators which may be running idle, waiting for an event to activate the gesture.
