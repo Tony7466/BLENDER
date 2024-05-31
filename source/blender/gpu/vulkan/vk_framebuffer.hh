@@ -42,6 +42,8 @@ class VKFrameBuffer : public FrameBuffer {
   VkFormat stencil_attachment_format_ = VK_FORMAT_UNDEFINED;
   Vector<VkFormat> color_attachment_formats_;
 
+  Array<GPULoadStore, GPU_FB_MAX_ATTACHMENT> load_stores;
+
  public:
   /**
    * Create a conventional frame-buffer to attach texture to.

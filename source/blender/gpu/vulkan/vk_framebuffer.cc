@@ -15,11 +15,20 @@
 
 namespace blender::gpu {
 
+/**
+ * The default load store action when not using load stores.
+ */
+constexpr GPULoadStore default_load_store()
+{
+  return {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE, {0.0f, 0.0f, 0.0f, 0.0f}};
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Creation & Deletion
  * \{ */
 
-VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
+VKFrameBuffer::VKFrameBuffer(const char *name)
+    : FrameBuffer(name), load_stores(GPU_FB_MAX_ATTACHMENT, default_load_store())
 {
   size_set(1, 1);
   srgb_ = false;
@@ -48,6 +57,7 @@ void VKFrameBuffer::bind(bool enabled_srgb)
   context.activate_framebuffer(*this);
   enabled_srgb_ = enabled_srgb;
   Shader::set_framebuffer_srgb_target(enabled_srgb && srgb_);
+  load_stores.fill(default_load_store());
 }
 
 Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
@@ -233,9 +243,43 @@ void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
 /** \name Load/Store operations
  * \{ */
 
-void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPULoadStore /*ls*/)
+void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls)
 {
-  NOT_YET_IMPLEMENTED;
+  load_stores[type] = ls;
+}
+
+static VkAttachmentLoadOp to_vk_attachment_load_op(eGPULoadOp load_op)
+{
+  switch (load_op) {
+    case GPU_LOADACTION_DONT_CARE:
+      return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    case GPU_LOADACTION_CLEAR:
+      return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    case GPU_LOADACTION_LOAD:
+      return VK_ATTACHMENT_LOAD_OP_LOAD;
+  }
+  BLI_assert_unreachable();
+  return VK_ATTACHMENT_LOAD_OP_LOAD;
+}
+
+static VkAttachmentStoreOp to_vk_attachment_store_op(eGPUStoreOp store_op)
+{
+  switch (store_op) {
+    case GPU_STOREACTION_DONT_CARE:
+      return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    case GPU_STOREACTION_STORE:
+      return VK_ATTACHMENT_STORE_OP_STORE;
+  }
+  BLI_assert_unreachable();
+  return VK_ATTACHMENT_STORE_OP_STORE;
+}
+
+static void set_load_store(VkRenderingAttachmentInfo &r_rendering_attachment,
+                           const GPULoadStore &ls)
+{
+  copy_v4_v4(r_rendering_attachment.clearValue.color.float32, ls.clear_value);
+  r_rendering_attachment.loadOp = to_vk_attachment_load_op(ls.load_action);
+  r_rendering_attachment.storeOp = to_vk_attachment_store_op(ls.store_action);
 }
 
 /** \} */
@@ -711,12 +755,14 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   begin_rendering.node_data.vk_rendering_info.renderArea = vk_render_areas_get()[0];
 
   color_attachment_formats_.clear();
-  for (const GPUAttachment &attachment :
-       Span<GPUAttachment>(&attachments_[GPU_FB_COLOR_ATTACHMENT0], GPU_FB_MAX_COLOR_ATTACHMENT))
+  for (int color_attachment_index :
+       IndexRange(GPU_FB_COLOR_ATTACHMENT0, GPU_FB_MAX_COLOR_ATTACHMENT))
   {
+    const GPUAttachment &attachment = attachments_[color_attachment_index];
     if (attachment.tex == nullptr) {
       continue;
     }
+
     VKTexture &color_texture = *unwrap(unwrap(attachment.tex));
     VkRenderingAttachmentInfo &attachment_info =
         begin_rendering.node_data
@@ -731,10 +777,7 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                        srgb_ && enabled_srgb_};
     attachment_info.imageView = color_texture.image_view_get(image_view_info).vk_handle();
     attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    /* TODO add load store ops. */
-    attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    set_load_store(attachment_info, load_stores[color_attachment_index]);
 
     access_info.images.append(
         {color_texture.vk_image_handle(),
@@ -746,53 +789,52 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
         begin_rendering.node_data.color_attachments;
   }
 
-  bool is_depth_stencil = false;
-  for (const GPUAttachment &attachment :
-       Span<GPUAttachment>(&attachments_[GPU_FB_DEPTH_ATTACHMENT], 2))
-  {
-    bool is_stencil_attachment = is_depth_stencil;
-    is_depth_stencil = true;
+  for (int depth_attachment_index : IndexRange(GPU_FB_DEPTH_ATTACHMENT, 2)) {
+    const GPUAttachment &attachment = attachments_[depth_attachment_index];
 
     if (attachment.tex == nullptr) {
       continue;
     }
+    bool is_stencil_attachment = depth_attachment_index == GPU_FB_DEPTH_STENCIL_ATTACHMENT;
     VKTexture &depth_texture = *unwrap(unwrap(attachment.tex));
     bool is_depth_stencil_attachment = to_vk_image_aspect_flag_bits(
-        depth_texture.device_format_get());
+                                           depth_texture.device_format_get()) &
+                                       VK_IMAGE_ASPECT_STENCIL_BIT;
+    VkImageLayout vk_image_layout = is_depth_stencil_attachment ?
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                                        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
                                        IndexRange(max_ii(attachment.layer, 0), 1),
                                        IndexRange(attachment.mip, 1),
                                        {'r', 'g', 'b', 'a'},
-                                       is_depth_stencil,
+                                       is_stencil_attachment,
                                        false};
+    VkFormat vk_format = to_vk_format(depth_texture.device_format_get());
     VkImageView depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
+
+    // TODO: we should be able to use a single attachment info and only set the
+    // pDepthAttachment/pStencilAttachment to the same struct. But perhaps the stencil clear op
+    // might be different.
     {
       VkRenderingAttachmentInfo &attachment_info = begin_rendering.node_data.depth_attachment;
       attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
       attachment_info.imageView = depth_image_view;
-      attachment_info.imageLayout = is_stencil_attachment ?
-                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
-                                        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+      attachment_info.imageLayout = vk_image_layout;
 
-      /* TODO add load store ops. */
-      attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      depth_attachment_format_ = to_vk_format(depth_texture.device_format_get());
+      set_load_store(attachment_info, load_stores[depth_attachment_index]);
+      depth_attachment_format_ = vk_format;
       begin_rendering.node_data.vk_rendering_info.pDepthAttachment =
           &begin_rendering.node_data.depth_attachment;
     }
 
     if (is_stencil_attachment) {
-      // TODO: fill in stencil attachment.
       VkRenderingAttachmentInfo &attachment_info = begin_rendering.node_data.stencil_attachment;
       attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
       attachment_info.imageView = depth_image_view;
-      attachment_info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      attachment_info.imageLayout = vk_image_layout;
 
-      /* TODO add load store ops. */
-      attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      stencil_attachment_format_ = to_vk_format(depth_texture.device_format_get());
+      set_load_store(attachment_info, load_stores[depth_attachment_index]);
+      stencil_attachment_format_ = vk_format;
       begin_rendering.node_data.vk_rendering_info.pStencilAttachment =
           &begin_rendering.node_data.stencil_attachment;
     }

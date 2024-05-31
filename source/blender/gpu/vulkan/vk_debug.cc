@@ -273,16 +273,6 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                    const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
                    void *user_data)
 {
-  /*
-   * Some message IDs are turned of globally to reduce console flooding.
-   *
-   * - 0xec321b6c: `VUID-VkBufferCreateInfo-size-06409` is disabled as all allocations are reported
-   *   to be larger than the maximum allowed buffer size, although the buffer-size is 4GB. Detected
-   *   on Mesa 23.0.4. This has been confirmed by the Vulkan Tools WG and fixed up-stream.
-   */
-  if (ELEM(callback_data->messageIdNumber, 0xec321b6c)) {
-    return VK_FALSE;
-  }
 
   CLG_Severity severity = CLG_SEVERITY_INFO;
   if (message_severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -314,6 +304,10 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   if (do_labels) {
     VKDebuggingTools &debugging_tools = *reinterpret_cast<VKDebuggingTools *>(user_data);
     debugging_tools.print_labels(callback_data);
+  }
+
+  if (callback_data->messageIdNumber == 1187072739) {
+    return VK_FALSE;
   }
 
   return VK_FALSE;
