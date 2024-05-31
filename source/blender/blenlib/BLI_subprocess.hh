@@ -78,7 +78,7 @@ class SharedSemaphore : NonCopyable {
 
   void increment();
   void decrement();
-  bool try_decrement();
+  bool try_decrement(int wait_ms = 0);
 };
 
 }  // namespace blender
