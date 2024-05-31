@@ -1718,8 +1718,6 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
   if ((lapp_context->params->flag & FILE_LINK) != 0) {
     blendfile_link_finalize(lapp_context, reports);
   }
-
-  BKE_main_namemap_clear(lapp_context->params->bmain);
 }
 
 void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,
@@ -2146,7 +2144,9 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
   BKE_library_main_rebuild_hierarchy(bmain);
 
   /* Resync overrides if needed. */
-  if (!USER_EXPERIMENTAL_TEST(&U, no_override_auto_resync)) {
+  if (!USER_EXPERIMENTAL_TEST(&U, no_override_auto_resync) &&
+      lapp_context->params->context.scene != nullptr)
+  {
     BlendFileReadReport report{};
     report.reports = reports;
     BKE_lib_override_library_main_resync(bmain,

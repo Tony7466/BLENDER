@@ -378,8 +378,6 @@ void NODE_OT_output_file_add_socket(wmOperatorType *ot);
 void NODE_OT_output_file_remove_active_socket(wmOperatorType *ot);
 void NODE_OT_output_file_move_active_socket(wmOperatorType *ot);
 
-void NODE_OT_switch_view_update(wmOperatorType *ot);
-
 void NODE_OT_slide(wmOperatorType *ot);
 
 /**

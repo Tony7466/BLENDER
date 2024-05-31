@@ -2133,22 +2133,7 @@ static void rna_Node_internal_links_begin(CollectionPropertyIterator *iter, Poin
 static bool allow_identifier_lookup(const bNode &node)
 {
   switch (node.type) {
-    case GEO_NODE_SWITCH:
-    case GEO_NODE_ACCUMULATE_FIELD:
-    case GEO_NODE_CAPTURE_ATTRIBUTE:
-    case GEO_NODE_ATTRIBUTE_STATISTIC:
-    case GEO_NODE_BLUR_ATTRIBUTE:
-    case GEO_NODE_SAMPLE_CURVE:
-    case GEO_NODE_EVALUATE_AT_INDEX:
-    case GEO_NODE_EVALUATE_ON_DOMAIN:
-    case GEO_NODE_INPUT_NAMED_ATTRIBUTE:
-    case GEO_NODE_RAYCAST:
-    case GEO_NODE_SAMPLE_INDEX:
-    case GEO_NODE_SAMPLE_NEAREST_SURFACE:
     case FN_NODE_RANDOM_VALUE:
-    case GEO_NODE_SAMPLE_UV_SURFACE:
-    case GEO_NODE_STORE_NAMED_ATTRIBUTE:
-    case GEO_NODE_VIEWER:
     case SH_NODE_MIX:
     case FN_NODE_COMPARE:
     case SH_NODE_MAP_RANGE:
@@ -8439,7 +8424,7 @@ static void def_cmp_translate(StructRNA *srna)
   RNA_def_struct_sdna_from(srna, "NodeTranslateData", "storage");
 
   prop = RNA_def_property(srna, "interpolation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "interpolation");
+  RNA_def_property_enum_sdna(prop, nullptr, "interpolation");
   RNA_def_property_enum_items(prop, interpolation_items);
   RNA_def_property_ui_text(prop, "", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
