@@ -2649,6 +2649,8 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   NodeSlideData *slide_data = MEM_new<NodeSlideData>(__func__);
   op->customdata = slide_data;
 
+  slide_data->initial_mouse_pos = event->mval;
+
   Vector<bNode *> trigger_nodes;
   for (bNode *node : tree.all_nodes()) {
     slide_data->initial_node_positions.append(float2(node->locx, node->locy));
@@ -2657,12 +2659,22 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
 
-  slide_data->nodes_to_slide_left = find_nodes_to_the_left(trigger_nodes);
-  slide_data->nodes_to_slide_right = find_nodes_to_the_right(trigger_nodes);
-
-  float x, y;
-  UI_view2d_region_to_view(&v2d, event->mval[0], event->mval[1], &x, &y);
-  slide_data->initial_mouse_pos = event->mval;
+  if (trigger_nodes.is_empty()) {
+    float x, y;
+    UI_view2d_region_to_view(&v2d, event->mval[0], event->mval[1], &x, &y);
+    for (bNode *node : tree.all_nodes()) {
+      if (node->runtime->totr.xmin < x) {
+        slide_data->nodes_to_slide_left.append(node);
+      }
+      if (node->runtime->totr.xmax > x) {
+        slide_data->nodes_to_slide_right.append(node);
+      }
+    }
+  }
+  else {
+    slide_data->nodes_to_slide_left = find_nodes_to_the_left(trigger_nodes);
+    slide_data->nodes_to_slide_right = find_nodes_to_the_right(trigger_nodes);
+  }
 
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
