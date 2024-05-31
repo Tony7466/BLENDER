@@ -316,6 +316,7 @@ DefNode(GeometryNode, GEO_NODE_CONVEX_HULL, 0, "CONVEX_HULL", ConvexHull, "Conve
 DefNode(GeometryNode, GEO_NODE_CURVE_ENDPOINT_SELECTION, 0, "CURVE_ENDPOINT_SELECTION", CurveEndpointSelection, "Endpoint Selection", "Provide a selection for an arbitrary number of endpoints in each spline")
 DefNode(GeometryNode, GEO_NODE_CURVE_HANDLE_TYPE_SELECTION, def_geo_curve_handle_type_selection, "CURVE_HANDLE_TYPE_SELECTION", CurveHandleTypeSelection, "Handle Type Selection", "Provide a selection based on the handle types of Bézier control points")
 DefNode(GeometryNode, GEO_NODE_CURVE_LENGTH, 0, "CURVE_LENGTH", CurveLength, "Curve Length", "Retrieve the length of all splines added together")
+DefNode(GeometryNode, GEO_NODE_CURVE_PLANE, 0, "CURVE_PLANE", CurvePlane, "Curve Plane", "")
 DefNode(GeometryNode, GEO_NODE_CURVE_PRIMITIVE_ARC, 0, "CURVE_PRIMITIVE_ARC",CurveArc, "Arc", "Generate a poly spline arc")
 DefNode(GeometryNode, GEO_NODE_CURVE_PRIMITIVE_BEZIER_SEGMENT, 0, "CURVE_PRIMITIVE_BEZIER_SEGMENT", CurvePrimitiveBezierSegment, "Bézier Segment", "Generate a 2D Bézier spline from the given control points and handles")
 DefNode(GeometryNode, GEO_NODE_CURVE_PRIMITIVE_CIRCLE,0, "CURVE_PRIMITIVE_CIRCLE", CurvePrimitiveCircle, "Curve Circle", "Generate a poly spline circle")
@@ -491,7 +492,6 @@ DefNode(GeometryNode, GEO_NODE_VIEWER, 0, "VIEWER", Viewer, "Viewer", "Display t
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
 
-DefNode(GeometryNode, GEO_NODE_CURVE_PLANE, 0, "CURVE_PLANE", CurvePlane, "Curve Plane", "")
 
 /* undefine macros */
 #undef DefNode
