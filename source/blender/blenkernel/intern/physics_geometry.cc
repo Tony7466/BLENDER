@@ -836,6 +836,39 @@ MutableAttributeAccessor PhysicsGeometry::attributes_for_write()
   return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
 }
 
+void PhysicsGeometry::transfer_world_from(PhysicsGeometry &src_physics)
+{
+  PhysicsGeometryImpl &src_impl = src_physics.impl_for_write();
+  PhysicsGeometryImpl &dst_impl = this->impl_for_write();
+
+  if (world_ != nullptr) {
+    BLI_assert(dst_impl.world_impl != nullptr);
+    delete world_;
+    world_ = nullptr;
+    delete dst_impl.world_impl;
+    dst_impl.world_impl = nullptr;
+  }
+
+  if (src_physics.world_ != nullptr) {
+    BLI_assert(src_impl.world_impl != nullptr);
+
+    /* Steal world impl from the source. */
+    PhysicsWorldImpl *world_impl = src_impl.world_impl;
+    src_impl.world_impl = nullptr;
+    delete src_physics.world_;
+    src_physics.world_ = nullptr;
+
+    dst_impl.world_impl = world_impl;
+    world_ = new PhysicsWorld(world_impl);
+
+  }
+}
+
+void PhysicsGeometry::transfer_rigid_bodies_from(PhysicsGeometry &src_physics, IndexRange dst_bodies_range)
+{
+  
+}
+
 /** \} */
 
 #else

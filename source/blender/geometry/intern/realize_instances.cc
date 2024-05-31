@@ -178,7 +178,7 @@ struct RealizeCurveTask {
 };
 
 struct RealizePhysicsInfo {
-  const PhysicsGeometry *physics = nullptr;
+  PhysicsGeometry *physics = nullptr;
 };
 
 struct PhysicsElementStartIndices {
@@ -240,7 +240,7 @@ struct AllCurvesInfo {
 
 struct AllPhysicsInfo {
   /** Ordering of the original physics geometries that are joined. */
-  VectorSet<const PhysicsGeometry *> order;
+  VectorSet<PhysicsGeometry *> order;
   /** Preprocessed data about every original curve. This is ordered by #order. */
   Array<RealizePhysicsInfo> realize_info;
 };
@@ -724,7 +724,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         const PhysicsGeometry *physics = physics_component.get();
         if (physics != nullptr && (physics->world() != nullptr || physics->rigid_bodies_num() > 0))
         {
-          const int physics_index = gather_info.physics.order.index_of(physics);
+          const int physics_index = gather_info.physics.order.index_of(const_cast<PhysicsGeometry *>(physics));
           const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
           gather_info.r_tasks.physics_tasks.append(
               {gather_info.r_offsets.physics_offsets, &physics_info, base_transform});
@@ -1974,22 +1974,22 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 /** \name Physics
  * \{ */
 
-static void gather_physics_to_realize(const bke::GeometrySet &geometry_set,
-                                      VectorSet<const PhysicsGeometry *> &r_physics)
+static void gather_physics_to_realize(bke::GeometrySet &geometry_set,
+                                      VectorSet<PhysicsGeometry *> &r_physics)
 {
-  if (const PhysicsGeometry *physics = geometry_set.get_physics()) {
+  if (PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
     if (physics->world() != nullptr || physics->rigid_bodies_num() != 0) {
       r_physics.add(physics);
     }
   }
-  if (const Instances *instances = geometry_set.get_instances()) {
-    instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
+  if (Instances *instances = geometry_set.get_instances_for_write()) {
+    instances->foreach_referenced_geometry_for_write([&](bke::GeometrySet &instance_geometry_set) {
       gather_physics_to_realize(instance_geometry_set, r_physics);
     });
   }
 }
 
-static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
+static AllPhysicsInfo preprocess_physics(bke::GeometrySet &geometry_set,
                                          const RealizeInstancesOptions &options,
                                          const VariedDepthOptions &varied_depth_option)
 {

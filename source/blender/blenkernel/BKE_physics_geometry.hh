@@ -130,11 +130,12 @@ class PhysicsGeometry {
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
 
-  /* Special function to efficiently transfer data to another geometry.
+  /* Special functions to efficiently transfer data to another geometry.
    * Physics worlds have state data that needs to be rebuilt when bodies are added and removed, so
    * keeping bodies registered with the world and transfer everything at once is more efficient
    * than copying attribute arrays. */
-  void transfer_data_from(PhysicsGeometry &src_physics);
+  void transfer_world_from(PhysicsGeometry &src_physics);
+  void transfer_rigid_bodies_from(PhysicsGeometry &src_physics, IndexRange dst_bodies_range);
 };
 
 }  // namespace blender::bke
