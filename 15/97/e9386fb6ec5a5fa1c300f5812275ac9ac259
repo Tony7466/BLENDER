@@ -1,1 +1,2 @@
 Referenced by pull request #122534, Fix #122517: Ensure depsgraph is updated before disabling subdiv
+Referenced by issue #122517, Export demo file as Alembic crash Blender
