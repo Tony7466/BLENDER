@@ -54,13 +54,13 @@
 
 const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_INTERFACE, "INTERFACE", 0, "Interface", ""},
-    {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
     {USER_SECTION_VIEWPORT, "VIEWPORT", 0, "Viewport", ""},
     {USER_SECTION_LIGHT, "LIGHTS", 0, "Lights", ""},
     {USER_SECTION_EDITING, "EDITING", 0, "Editing", ""},
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
+    {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
 #if 0 /* def WITH_USERDEF_WORKSPACES */
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_WORKSPACE_CONFIG, "WORKSPACE_CONFIG", 0, "Configuration File", ""},
@@ -5411,6 +5411,12 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_statusbar_scene_duration", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "statusbar_flag", STATUSBAR_SHOW_SCENE_DURATION);
   RNA_def_property_ui_text(prop, "Show Scene Duration", "Show scene duration");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "show_extensions_updates", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "statusbar_flag", STATUSBAR_SHOW_EXTENSIONS_UPDATES);
+  RNA_def_property_ui_text(prop, "Extensions Updates", "Show Extensions Update Count");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_INFO, "rna_userdef_update");
 }
 

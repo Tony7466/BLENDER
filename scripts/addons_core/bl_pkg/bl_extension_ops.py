@@ -41,8 +41,9 @@ from . import (
 )  # noqa: E402
 
 from . import (
-    repo_status_text,
     cookie_from_session,
+    repo_status_text,
+    repo_stats_calc,
 )
 
 from .bl_extension_utils import (
@@ -65,6 +66,10 @@ rna_prop_enable_on_install_type_map = {
     "add-on": "Enable Add-on",
     "theme": "Set Current Theme",
 }
+
+
+def url_append_defaults(url):
+    return bl_extension_utils.url_append_query_for_blender(url, blender_version=bpy.app.version)
 
 
 def rna_prop_repo_enum_local_only_itemf(_self, context):
@@ -135,6 +140,16 @@ class CheckSIGINT_Context:
 # -----------------------------------------------------------------------------
 # Internal Utilities
 #
+
+def _preferences_repo_find_by_remote_url(context, remote_url):
+    remote_url = remote_url.rstrip("/")
+    prefs = context.preferences
+    extension_repos = prefs.extensions.repos
+    for repo in extension_repos:
+        if repo.use_remote_url and repo.remote_url.rstrip("/") == remote_url:
+            return repo
+    return None
+
 
 def extension_url_find_repo_index_and_pkg_id(url):
     from .bl_extension_utils import (
@@ -258,12 +273,27 @@ def repo_iter_valid_local_only(context):
         yield repo_item
 
 
+# A named-tuple copy of `context.preferences.extensions.repos` (`bpy.types.UserExtensionRepo`).
+# This is done for the following reasons.
+#
+# - Booleans `use_remote_url` & `use_access_token` have been "applied", so every time `remote_url`
+#   is accessed there is no need to check `use_remote_url` first (same for access tokens).
+#
+# - When checking for updates in the background, it's possible the repository is freed between
+#   starting a check for updates and when the check runs. Using a copy means there is no risk
+#   accessing freed memory & crashing, although these cases still need to be handled logically
+#   even if the crashes are avoided.
+#
+# - In practically all cases this data is read-only when used via package management.
+#   A named tuple makes that explicit.
+#
 class RepoItem(NamedTuple):
     name: str
     directory: str
     remote_url: str
     module: str
     use_cache: bool
+    access_token: str
 
 
 def repo_cache_store_refresh_from_prefs(include_disabled=False):
@@ -455,7 +485,7 @@ def _preferences_ensure_sync():
             for win in wm.windows:
                 win.cursor_set('WAIT')
         try:
-            bpy.ops.bl_pkg.repo_sync_all()
+            bpy.ops.extensions.repo_sync_all()
         except Exception as ex:
             print("Sync failed:", ex)
 
@@ -483,6 +513,7 @@ def extension_repos_read_index(index, *, include_disabled=False):
                 remote_url=remote_url,
                 module=repo_item.module,
                 use_cache=repo_item.use_cache,
+                access_token=repo_item.access_token if repo_item.use_access_token else "",
             )
         index_test += 1
     return None
@@ -519,6 +550,7 @@ def extension_repos_read(*, include_disabled=False, use_active_only=False):
             remote_url=remote_url,
             module=repo_item.module,
             use_cache=repo_item.use_cache,
+            access_token=repo_item.access_token if repo_item.use_access_token else "",
         ))
     return result
 
@@ -889,7 +921,7 @@ def _repo_dir_and_index_get(repo_index, directory, report_fn):
 # Public Repository Actions
 #
 
-class _BlPkgCmdMixIn:
+class _ExtCmdMixIn:
     """
     Utility to execute mix-in.
 
@@ -906,7 +938,7 @@ class _BlPkgCmdMixIn:
     @classmethod
     def __init_subclass__(cls) -> None:
         for attr in ("exec_command_iter", "exec_command_finish"):
-            if getattr(cls, attr) is getattr(_BlPkgCmdMixIn, attr):
+            if getattr(cls, attr) is getattr(_ExtCmdMixIn, attr):
                 raise Exception("Subclass did not define 'exec_command_iter'!")
 
     def exec_command_iter(self, is_modal):
@@ -943,10 +975,10 @@ class _BlPkgCmdMixIn:
         return result
 
 
-class BlPkgDummyProgress(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.dummy_progress"
+class EXTENSIONS_OT_dummy_progress(Operator, _ExtCmdMixIn):
+    bl_idname = "extensions.dummy_progress"
     bl_label = "Ext Demo"
-    __slots__ = _BlPkgCmdMixIn.cls_slots
+    __slots__ = _ExtCmdMixIn.cls_slots
 
     def exec_command_iter(self, is_modal):
         return bl_extension_utils.CommandBatch(
@@ -963,10 +995,10 @@ class BlPkgDummyProgress(Operator, _BlPkgCmdMixIn):
         _preferences_ui_redraw()
 
 
-class BlPkgRepoSync(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.repo_sync"
+class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
+    bl_idname = "extensions.repo_sync"
     bl_label = "Ext Repo Sync"
-    __slots__ = _BlPkgCmdMixIn.cls_slots
+    __slots__ = _ExtCmdMixIn.cls_slots
 
     repo_directory: rna_prop_directory
     repo_index: rna_prop_repo_index
@@ -1000,8 +1032,10 @@ class BlPkgRepoSync(Operator, _BlPkgCmdMixIn):
                 partial(
                     bl_extension_utils.repo_sync,
                     directory=directory,
-                    remote_url=repo_item.remote_url,
+                    remote_name=repo_item.name,
+                    remote_url=url_append_defaults(repo_item.remote_url),
                     online_user_agent=online_user_agent_from_blender(),
+                    access_token=repo_item.access_token,
                     use_idle=is_modal,
                 )
             )
@@ -1025,25 +1059,51 @@ class BlPkgRepoSync(Operator, _BlPkgCmdMixIn):
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
         del self.repo_lock
 
+        repo_stats_calc()
+
         _preferences_ui_redraw()
 
 
-class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.repo_sync_all"
-    bl_label = "Ext Repo Sync All"
-    __slots__ = _BlPkgCmdMixIn.cls_slots
+class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
+    """Refresh the list of extensions for all the remote repositories"""
+    bl_idname = "extensions.repo_sync_all"
+    bl_label = "Check for Updates"
+    __slots__ = _ExtCmdMixIn.cls_slots
 
     use_active_only: BoolProperty(
         name="Active Only",
         description="Only sync the active repository",
     )
 
+    @classmethod
+    def poll(cls, _context):
+        if not bpy.app.online_access:
+            if bpy.app.online_access_override:
+                cls.poll_message_set(
+                    "Online access required to check for updates. Launch Blender without --offline-mode"
+                )
+            else:
+                cls.poll_message_set(
+                    "Online access required to check for updates. Enable online access in System preferences"
+                )
+            return False
+
+        repos_all = extension_repos_read(use_active_only=False)
+        if not len(repos_all):
+            cls.poll_message_set("No repositories available")
+            return False
+
+        return True
+
     def exec_command_iter(self, is_modal):
         use_active_only = self.use_active_only
         repos_all = extension_repos_read(use_active_only=use_active_only)
 
         if not repos_all:
-            self.report({'INFO'}, "No repositories to sync")
+            if use_active_only:
+                self.report({'INFO'}, "The active repository has invalid settings")
+            else:
+                assert False, "unreachable"  # Poll prevents this.
             return None
 
         for repo_item in repos_all:
@@ -1061,8 +1121,10 @@ class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
                 cmd_batch.append(partial(
                     bl_extension_utils.repo_sync,
                     directory=repo_item.directory,
-                    remote_url=repo_item.remote_url,
+                    remote_name=repo_item.name,
+                    remote_url=url_append_defaults(repo_item.remote_url),
                     online_user_agent=online_user_agent_from_blender(),
+                    access_token=repo_item.access_token,
                     use_idle=is_modal,
                 ))
 
@@ -1094,13 +1156,17 @@ class BlPkgRepoSyncAll(Operator, _BlPkgCmdMixIn):
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
         del self.repo_lock
 
+        repo_stats_calc()
+
         _preferences_ui_redraw()
 
 
-class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.pkg_upgrade_all"
+class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
+    """Upgrade all the extensions to their latest version for all the remote repositories"""
+    bl_idname = "extensions.package_upgrade_all"
     bl_label = "Ext Package Upgrade All"
-    __slots__ = _BlPkgCmdMixIn.cls_slots + (
+    __slots__ = (
+        *_ExtCmdMixIn.cls_slots,
         "_repo_directories",
     )
 
@@ -1108,6 +1174,23 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
         name="Active Only",
         description="Only sync the active repository",
     )
+
+    @classmethod
+    def poll(cls, _context):
+        if not bpy.app.online_access:
+            if bpy.app.online_access_override:
+                cls.poll_message_set("Online access required to install updates. Launch Blender without --offline-mode")
+            else:
+                cls.poll_message_set(
+                    "Online access required to install updates. Enable online access in System preferences")
+            return False
+
+        repos_all = extension_repos_read(use_active_only=False)
+        if not len(repos_all):
+            cls.poll_message_set("No repositories available")
+            return False
+
+        return True
 
     def exec_command_iter(self, is_modal):
         from . import repo_cache_store
@@ -1120,7 +1203,10 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
         repo_directory_supset = [repo_entry.directory for repo_entry in repos_all] if use_active_only else None
 
         if not repos_all:
-            self.report({'INFO'}, "No repositories to upgrade")
+            if use_active_only:
+                self.report({'INFO'}, "The active repository has invalid settings")
+            else:
+                assert False, "unreachable"  # Poll prevents this.
             return None
 
         # NOTE: Unless we have a "clear-cache" operator - there isn't a great place to apply cache-clearing.
@@ -1174,9 +1260,10 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
             cmd_batch.append(partial(
                 bl_extension_utils.pkg_install,
                 directory=repo_item.directory,
-                remote_url=repo_item.remote_url,
+                remote_url=url_append_defaults(repo_item.remote_url),
                 pkg_id_sequence=pkg_id_sequence,
                 online_user_agent=online_user_agent_from_blender(),
+                access_token=repo_item.access_token,
                 use_cache=repo_item.use_cache,
                 use_idle=is_modal,
             ))
@@ -1221,6 +1308,8 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
                 error_fn=self.error_fn_from_exception,
             )
 
+        repo_stats_calc()
+
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
             self.report({'ERROR'}, str(ex))
@@ -1235,10 +1324,11 @@ class BlPkgPkgUpgradeAll(Operator, _BlPkgCmdMixIn):
         _preferences_ui_refresh_addons()
 
 
-class BlPkgPkgInstallMarked(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.pkg_install_marked"
+class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
+    bl_idname = "extensions.package_install_marked"
     bl_label = "Ext Package Install_marked"
-    __slots__ = _BlPkgCmdMixIn.cls_slots + (
+    __slots__ = (
+        *_ExtCmdMixIn.cls_slots,
         "_repo_directories",
         "_repo_map_packages_addon_only",
     )
@@ -1273,9 +1363,10 @@ class BlPkgPkgInstallMarked(Operator, _BlPkgCmdMixIn):
             cmd_batch.append(partial(
                 bl_extension_utils.pkg_install,
                 directory=repo_item.directory,
-                remote_url=repo_item.remote_url,
+                remote_url=url_append_defaults(repo_item.remote_url),
                 pkg_id_sequence=pkg_id_sequence,
                 online_user_agent=online_user_agent_from_blender(),
+                access_token=repo_item.access_token,
                 use_cache=repo_item.use_cache,
                 use_idle=is_modal,
             ))
@@ -1319,6 +1410,7 @@ class BlPkgPkgInstallMarked(Operator, _BlPkgCmdMixIn):
             )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -1345,10 +1437,11 @@ class BlPkgPkgInstallMarked(Operator, _BlPkgCmdMixIn):
         _preferences_ui_refresh_addons()
 
 
-class BlPkgPkgUninstallMarked(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.pkg_uninstall_marked"
-    bl_label = "Ext Package Uninstall_marked"
-    __slots__ = _BlPkgCmdMixIn.cls_slots + (
+class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
+    bl_idname = "extensions.package_uninstall_marked"
+    bl_label = "Ext Package Uninstall Marked"
+    __slots__ = (
+        *_ExtCmdMixIn.cls_slots,
         "_repo_directories",
     )
 
@@ -1433,6 +1526,7 @@ class BlPkgPkgUninstallMarked(Operator, _BlPkgCmdMixIn):
             )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         _preferences_theme_state_restore(self._theme_restore)
 
@@ -1440,17 +1534,19 @@ class BlPkgPkgUninstallMarked(Operator, _BlPkgCmdMixIn):
         _preferences_ui_refresh_addons()
 
 
-class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
+class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
     """Install an extension from a file into a locally managed repository"""
-    bl_idname = "bl_pkg.pkg_install_files"
+    bl_idname = "extensions.package_install_files"
     bl_label = "Install from Disk"
-    __slots__ = _BlPkgCmdMixIn.cls_slots + (
+    __slots__ = (
+        *_ExtCmdMixIn.cls_slots,
         "repo_directory",
         "pkg_id_sequence"
     )
     _drop_variables = None
+    _legacy_drop = None
 
-    filter_glob: StringProperty(default="*.zip", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.zip;*.py", options={'HIDDEN'})
 
     directory: StringProperty(
         name="Directory",
@@ -1475,12 +1571,26 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
     enable_on_install: rna_prop_enable_on_install
 
+    # Properties matching the legacy operator, not used by extension packages.
+    target: EnumProperty(
+        name="Legacy Target Path",
+        items=bpy.types.PREFERENCES_OT_addon_install._target_path_items,
+        description="Path to install legacy add-on packages to",
+    )
+
+    overwrite: BoolProperty(
+        name="Legacy Overwrite",
+        description="Remove existing add-ons with the same ID",
+        default=True,
+    )
+
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
 
     def exec_command_iter(self, is_modal):
         from .bl_extension_utils import (
             pkg_manifest_dict_from_file_or_error,
+            pkg_is_legacy_addon,
         )
 
         self._addon_restore = []
@@ -1528,7 +1638,14 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         # Extract meta-data from package files.
         # Note that errors are ignored here, let the underlying install operation do this.
         pkg_id_sequence = []
+        pkg_files = []
+        pkg_legacy_files = []
         for source_filepath in source_files:
+            if pkg_is_legacy_addon(source_filepath):
+                pkg_legacy_files.append(source_filepath)
+                continue
+            pkg_files.append(source_filepath)
+
             result = pkg_manifest_dict_from_file_or_error(source_filepath)
             if isinstance(result, str):
                 continue
@@ -1539,6 +1656,13 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
         directory = repo_item.directory
         assert directory != ""
+
+        # Install legacy add-ons
+        for source_filepath in pkg_legacy_files:
+            self.exec_legacy(source_filepath)
+
+        if not pkg_files:
+            return None
 
         # Collect package ID's.
         self.repo_directory = directory
@@ -1573,7 +1697,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
                 partial(
                     bl_extension_utils.pkg_install_files,
                     directory=directory,
-                    files=source_files,
+                    files=pkg_files,
                     use_idle=is_modal,
                 )
             ],
@@ -1601,6 +1725,7 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
 
@@ -1630,6 +1755,12 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
 
+    def exec_legacy(self, filepath):
+        backup_filepath = self.filepath
+        self.filepath = filepath
+        bpy.types.PREFERENCES_OT_addon_install.execute(self, bpy.context)
+        self.filepath = backup_filepath
+
     @classmethod
     def poll(cls, context):
         if next(repo_iter_valid_local_only(context), None) is None:
@@ -1650,18 +1781,34 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
     def draw(self, context):
         if self._drop_variables is not None:
             return self._draw_for_drop(context)
+        elif self._legacy_drop is not None:
+            return self._draw_for_legacy_drop(context)
 
         # Override draw because the repository names may be over-long and not fit well in the UI.
         # Show the text & repository names in two separate rows.
         layout = self.layout
-        col = layout.column()
-        col.label(text="Local Repository:")
-        col.prop(self, "repo", text="")
-
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         layout.prop(self, "enable_on_install")
 
+        header, body = layout.panel("extensions")
+        header.label(text="Extensions")
+        if body:
+            body.prop(self, "repo", text="Repository")
+
+        header, body = layout.panel("legacy", default_closed=True)
+        header.label(text="Legacy Add-ons")
+
+        row = header.row()
+        row.alignment = 'RIGHT'
+        row.emboss = 'NONE'
+        row.operator("wm.doc_view_manual", icon='URL', text="").doc_id = "preferences.addon_install"
+
+        if body:
+            body.prop(self, "target", text="Target Path")
+            body.prop(self, "overwrite", text="Overwrite")
+
     def _invoke_for_drop(self, context, event):
-        self._drop_variables = True
         # Drop logic.
         print("DROP FILE:", self.url)
 
@@ -1673,23 +1820,33 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
         # These are not supported for dropping. Since at the time of dropping it's not known that the
         # path is referenced from a "local" repository or a "remote" that uses a `file://` URL.
         filepath = self.url
+        print(filepath)
 
-        from .bl_extension_ops import repo_iter_valid_local_only
-        from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
+        from .bl_extension_utils import pkg_is_legacy_addon
 
-        if not list(repo_iter_valid_local_only(bpy.context)):
-            self.report({'ERROR'}, "No Local Repositories")
-            return {'CANCELLED'}
+        if not pkg_is_legacy_addon(filepath):
+            self._drop_variables = True
+            self._legacy_drop = None
 
-        if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
-            self.report({'ERROR'}, "Error in manifest {:s}".format(result))
-            return {'CANCELLED'}
+            from .bl_extension_ops import repo_iter_valid_local_only
+            from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
 
-        pkg_id = result["id"]
-        pkg_type = result["type"]
-        del result
+            if not list(repo_iter_valid_local_only(bpy.context)):
+                self.report({'ERROR'}, "No Local Repositories")
+                return {'CANCELLED'}
 
-        self._drop_variables = pkg_id, pkg_type
+            if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
+                self.report({'ERROR'}, "Error in manifest {:s}".format(result))
+                return {'CANCELLED'}
+
+            pkg_id = result["id"]
+            pkg_type = result["type"]
+            del result
+
+            self._drop_variables = pkg_id, pkg_type
+        else:
+            self._drop_variables = None
+            self._legacy_drop = True
 
         # Set to it's self to the property is considered "set".
         self.repo = self.repo
@@ -1712,11 +1869,22 @@ class BlPkgPkgInstallFiles(Operator, _BlPkgCmdMixIn):
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[pkg_type])
 
+    def _draw_for_legacy_drop(self, context):
 
-class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.pkg_install"
+        layout = self.layout
+        layout.operator_context = 'EXEC_DEFAULT'
+
+        layout.label(text="Legacy Add-on")
+        layout.prop(self, "target", text="Target")
+        layout.prop(self, "overwrite", text="Overwrite")
+        layout.prop(self, "enable_on_install")
+
+
+class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
+    """Download and install the extension"""
+    bl_idname = "extensions.package_install"
     bl_label = "Install Extension"
-    __slots__ = _BlPkgCmdMixIn.cls_slots
+    __slots__ = _ExtCmdMixIn.cls_slots
 
     _drop_variables = None
 
@@ -1729,6 +1897,19 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
 
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
+
+    @classmethod
+    def poll(cls, context):
+        if not bpy.app.online_access:
+            if bpy.app.online_access_override:
+                cls.poll_message_set(
+                    "Online access required to install or update. Launch Blender without --offline-mode")
+            else:
+                cls.poll_message_set(
+                    "Online access required to install or update. Enable online access in System preferences")
+            return False
+
+        return True
 
     def exec_command_iter(self, is_modal):
         self._addon_restore = []
@@ -1776,9 +1957,10 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
                 partial(
                     bl_extension_utils.pkg_install,
                     directory=directory,
-                    remote_url=repo_item.remote_url,
+                    remote_url=url_append_defaults(repo_item.remote_url),
                     pkg_id_sequence=(pkg_id,),
                     online_user_agent=online_user_agent_from_blender(),
+                    access_token=repo_item.access_token,
                     use_cache=repo_item.use_cache,
                     use_idle=is_modal,
                 )
@@ -1799,6 +1981,7 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
         )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -1835,8 +2018,19 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
         return self.execute(context)
 
     def _invoke_for_drop(self, context, event):
+        from .bl_extension_utils import url_parse_for_blender
+
         url = self.url
         print("DROP URL:", url)
+
+        # First check if this is part of a disabled repository.
+        url, url_params = url_parse_for_blender(url)
+        remote_url = url_params.get("repository")
+        repo_from_url = None if remote_url is None else _preferences_repo_find_by_remote_url(context, remote_url)
+
+        if repo_from_url and not repo_from_url.enabled:
+            self.report({'ERROR'}, "Extension: repository \"{:s}\" exists but is disabled".format(repo_from_url.name))
+            return {'CANCELLED'}
 
         _preferences_ensure_sync()
 
@@ -1884,10 +2078,10 @@ class BlPkgPkgInstall(Operator, _BlPkgCmdMixIn):
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote["type"]])
 
 
-class BlPkgPkgUninstall(Operator, _BlPkgCmdMixIn):
-    bl_idname = "bl_pkg.pkg_uninstall"
+class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
+    bl_idname = "extensions.package_uninstall"
     bl_label = "Ext Package Uninstall"
-    __slots__ = _BlPkgCmdMixIn.cls_slots
+    __slots__ = _ExtCmdMixIn.cls_slots
 
     repo_directory: rna_prop_directory
     repo_index: rna_prop_repo_index
@@ -1960,6 +2154,7 @@ class BlPkgPkgUninstall(Operator, _BlPkgCmdMixIn):
         )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         _preferences_theme_state_restore(self._theme_restore)
 
@@ -1967,9 +2162,9 @@ class BlPkgPkgUninstall(Operator, _BlPkgCmdMixIn):
         _preferences_ui_refresh_addons()
 
 
-class BlPkgPkgDisable_TODO(Operator):
+class EXTENSIONS_OT_package_disable(Operator):
     """Turn off this extension"""
-    bl_idname = "bl_pkg.extension_disable"
+    bl_idname = "extensions.package_disable"
     bl_label = "Disable extension"
 
     def execute(self, _context):
@@ -1977,9 +2172,9 @@ class BlPkgPkgDisable_TODO(Operator):
         return {'CANCELLED'}
 
 
-class BlPkgPkgThemeEnable(Operator):
+class EXTENSIONS_OT_package_theme_enable(Operator):
     """Turn off this theme"""
-    bl_idname = "bl_pkg.extension_theme_enable"
+    bl_idname = "extensions.package_theme_enable"
     bl_label = "Enable theme extension"
 
     pkg_id: rna_prop_pkg_id
@@ -1993,9 +2188,9 @@ class BlPkgPkgThemeEnable(Operator):
         return {'FINISHED'}
 
 
-class BlPkgPkgThemeDisable(Operator):
+class EXTENSIONS_OT_package_theme_disable(Operator):
     """Turn off this theme"""
-    bl_idname = "bl_pkg.extension_theme_disable"
+    bl_idname = "extensions.package_theme_disable"
     bl_label = "Disable theme extension"
 
     pkg_id: rna_prop_pkg_id
@@ -2018,8 +2213,8 @@ class BlPkgPkgThemeDisable(Operator):
 # NOTE: create/destroy might not be best names.
 
 
-class BlPkgDisplayErrorsClear(Operator):
-    bl_idname = "bl_pkg.pkg_display_errors_clear"
+class EXTENSIONS_OT_status_clear_errors(Operator):
+    bl_idname = "extensions.status_clear_errors"
     bl_label = "Clear Status"
 
     def execute(self, _context):
@@ -2029,8 +2224,8 @@ class BlPkgDisplayErrorsClear(Operator):
         return {'FINISHED'}
 
 
-class BlPkgStatusClear(Operator):
-    bl_idname = "bl_pkg.pkg_status_clear"
+class EXTENSIONS_OT_status_clear(Operator):
+    bl_idname = "extensions.status_clear"
     bl_label = "Clear Status"
 
     def execute(self, _context):
@@ -2040,8 +2235,8 @@ class BlPkgStatusClear(Operator):
         return {'FINISHED'}
 
 
-class BlPkgPkgMarkSet(Operator):
-    bl_idname = "bl_pkg.pkg_mark_set"
+class EXTENSIONS_OT_package_mark_set(Operator):
+    bl_idname = "extensions.package_mark_set"
     bl_label = "Mark Package"
 
     pkg_id: rna_prop_pkg_id
@@ -2054,8 +2249,8 @@ class BlPkgPkgMarkSet(Operator):
         return {'FINISHED'}
 
 
-class BlPkgPkgMarkClear(Operator):
-    bl_idname = "bl_pkg.pkg_mark_clear"
+class EXTENSIONS_OT_package_mark_clear(Operator):
+    bl_idname = "extensions.package_mark_clear"
     bl_label = "Mark Package"
 
     pkg_id: rna_prop_pkg_id
@@ -2068,8 +2263,8 @@ class BlPkgPkgMarkClear(Operator):
         return {'FINISHED'}
 
 
-class BlPkgPkgShowSet(Operator):
-    bl_idname = "bl_pkg.pkg_show_set"
+class EXTENSIONS_OT_package_show_set(Operator):
+    bl_idname = "extensions.package_show_set"
     bl_label = "Show Package Set"
 
     pkg_id: rna_prop_pkg_id
@@ -2082,8 +2277,8 @@ class BlPkgPkgShowSet(Operator):
         return {'FINISHED'}
 
 
-class BlPkgPkgShowClear(Operator):
-    bl_idname = "bl_pkg.pkg_show_clear"
+class EXTENSIONS_OT_package_show_clear(Operator):
+    bl_idname = "extensions.package_show_clear"
     bl_label = "Show Package Clear"
 
     pkg_id: rna_prop_pkg_id
@@ -2096,8 +2291,8 @@ class BlPkgPkgShowClear(Operator):
         return {'FINISHED'}
 
 
-class BlPkgPkgShowSettings(Operator):
-    bl_idname = "bl_pkg.pkg_show_settings"
+class EXTENSIONS_OT_package_show_settings(Operator):
+    bl_idname = "extensions.package_show_settings"
     bl_label = "Show Settings"
 
     pkg_id: rna_prop_pkg_id
@@ -2113,10 +2308,9 @@ class BlPkgPkgShowSettings(Operator):
 # Testing Operators
 #
 
-
-class BlPkgObsoleteMarked(Operator):
+class EXTENSIONS_OT_package_obselete_marked(Operator):
     """Zeroes package versions, useful for development - to test upgrading"""
-    bl_idname = "bl_pkg.obsolete_marked"
+    bl_idname = "extensions.package_obsolete_marked"
     bl_label = "Obsolete Marked"
 
     def execute(self, _context):
@@ -2170,14 +2364,17 @@ class BlPkgObsoleteMarked(Operator):
                     directory=directory,
                     error_fn=print,
                 )
+
+            repo_stats_calc()
+
             _preferences_ui_redraw()
 
         return {'FINISHED'}
 
 
-class BlPkgRepoLock(Operator):
+class EXTENSIONS_OT_repo_lock(Operator):
     """Lock repositories - to test locking"""
-    bl_idname = "bl_pkg.repo_lock"
+    bl_idname = "extensions.repo_lock"
     bl_label = "Lock Repository (Testing)"
 
     lock = None
@@ -2198,9 +2395,9 @@ class BlPkgRepoLock(Operator):
         return {'FINISHED'}
 
 
-class BlPkgRepoUnlock(Operator):
+class EXTENSIONS_OT_repo_unlock(Operator):
     """Unlock repositories - to test unlocking"""
-    bl_idname = "bl_pkg.repo_unlock"
+    bl_idname = "extensions.repo_unlock"
     bl_label = "Unlock Repository (Testing)"
 
     def execute(self, _context):
@@ -2223,9 +2420,9 @@ class BlPkgRepoUnlock(Operator):
 
 # NOTE: this is a modified version of `PREFERENCES_OT_addon_show`.
 # It would make most sense to extend this operator to support showing extensions to upgrade (eventually).
-class BlPkgShowUpgrade(Operator):
-    """Show add-on preferences"""
-    bl_idname = "bl_pkg.extensions_show_for_update"
+class EXTENSIONS_OT_userpref_show_for_update(Operator):
+    """Open extensions preferences"""
+    bl_idname = "extensions.userpref_show_for_update"
     bl_label = ""
     bl_options = {'INTERNAL'}
 
@@ -2247,9 +2444,9 @@ class BlPkgShowUpgrade(Operator):
 
 # NOTE: this is a wrapper for `SCREEN_OT_userpref_show`.
 # It exists *only* to add a poll function which sets a message when offline mode is forced.
-class BlPkgShowOnlinePreference(Operator):
+class EXTENSIONS_OT_userpref_show_online(Operator):
     """Show system preferences "Network" panel to allow online access"""
-    bl_idname = "bl_pkg.extensions_show_online_prefs"
+    bl_idname = "extensions.userpref_show_online"
     bl_label = ""
     bl_options = {'INTERNAL'}
 
@@ -2262,17 +2459,61 @@ class BlPkgShowOnlinePreference(Operator):
         return True
 
     def execute(self, context):
-        wm = context.window_manager
-        prefs = context.preferences
-
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
-
         return {'FINISHED'}
 
 
-class BlPkgEnableNotInstalled(Operator):
+# NOTE: this is a wrapper for `extensions.userpref_show_online`.
+# It exists *only* show a dialog.
+class EXTENSIONS_OT_userpref_show_online_popup(Operator):
+    """Show system preferences "Network" panel to allow online access"""
+    bl_idname = "extensions.userpref_show_online_popup"
+    bl_label = ""
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context):
+        bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        if bpy.app.online_access_override:
+            # No Cancel/Confirm buttons.
+            wm.invoke_popup(
+                self,
+                width=400,
+            )
+        else:
+            wm.invoke_props_dialog(
+                self,
+                width=400,
+                confirm_text="Go to Settings",
+                title="Install Extension",
+            )
+        return {'RUNNING_MODAL'}
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column()
+        if bpy.app.online_access_override:
+            lines = (
+                "Online access required to install or update.",
+                "",
+                "Launch Blender without --offline-mode"
+            )
+        else:
+            lines = (
+                "Please turn Online Access on the System settings.",
+                "",
+                "Internet access is required to install extensions from the internet."
+            )
+        for line in lines:
+            col.label(text=line)
+
+
+class EXTENSIONS_OT_package_enable_not_installed(Operator):
     """Turn on this extension"""
-    bl_idname = "bl_pkg.extensions_enable_not_installed"
+    bl_idname = "extensions.package_enable_not_installed"
     bl_label = "Enable Extension"
 
     @classmethod
@@ -2290,42 +2531,43 @@ class BlPkgEnableNotInstalled(Operator):
 # Register
 #
 classes = (
-    BlPkgRepoSync,
-    BlPkgRepoSyncAll,
+    EXTENSIONS_OT_repo_sync,
+    EXTENSIONS_OT_repo_sync_all,
 
-    BlPkgPkgInstallFiles,
-    BlPkgPkgInstall,
-    BlPkgPkgUninstall,
-    BlPkgPkgDisable_TODO,
+    EXTENSIONS_OT_package_install_files,
+    EXTENSIONS_OT_package_install,
+    EXTENSIONS_OT_package_uninstall,
+    EXTENSIONS_OT_package_disable,
 
-    BlPkgPkgThemeEnable,
-    BlPkgPkgThemeDisable,
+    EXTENSIONS_OT_package_theme_enable,
+    EXTENSIONS_OT_package_theme_disable,
 
-    BlPkgPkgUpgradeAll,
-    BlPkgPkgInstallMarked,
-    BlPkgPkgUninstallMarked,
+    EXTENSIONS_OT_package_upgrade_all,
+    EXTENSIONS_OT_package_install_marked,
+    EXTENSIONS_OT_package_uninstall_marked,
 
     # UI only operator (to select a package).
-    BlPkgDisplayErrorsClear,
-    BlPkgStatusClear,
-    BlPkgPkgShowSet,
-    BlPkgPkgShowClear,
-    BlPkgPkgMarkSet,
-    BlPkgPkgMarkClear,
-    BlPkgPkgShowSettings,
+    EXTENSIONS_OT_status_clear_errors,
+    EXTENSIONS_OT_status_clear,
+    EXTENSIONS_OT_package_show_set,
+    EXTENSIONS_OT_package_show_clear,
+    EXTENSIONS_OT_package_mark_set,
+    EXTENSIONS_OT_package_mark_clear,
+    EXTENSIONS_OT_package_show_settings,
 
-    BlPkgObsoleteMarked,
-    BlPkgRepoLock,
-    BlPkgRepoUnlock,
+    EXTENSIONS_OT_package_obselete_marked,
+    EXTENSIONS_OT_repo_lock,
+    EXTENSIONS_OT_repo_unlock,
 
-    BlPkgShowUpgrade,
-    BlPkgShowOnlinePreference,
+    EXTENSIONS_OT_userpref_show_for_update,
+    EXTENSIONS_OT_userpref_show_online,
+    EXTENSIONS_OT_userpref_show_online_popup,
 
     # Dummy, just shows a message.
-    BlPkgEnableNotInstalled,
+    EXTENSIONS_OT_package_enable_not_installed,
 
     # Dummy commands (for testing).
-    BlPkgDummyProgress,
+    EXTENSIONS_OT_dummy_progress,
 )
 
 
