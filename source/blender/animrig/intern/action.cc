@@ -195,7 +195,7 @@ bool Action::layer_remove(Layer &layer_to_remove)
   return true;
 }
 
-void Action::layer_ensure()
+void Action::layer_ensure_at_least_one()
 {
   if (!this->layers().is_empty()) {
     return;

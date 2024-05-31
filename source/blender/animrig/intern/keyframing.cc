@@ -1050,11 +1050,12 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
         "animated, which should have been caught and handled by higher-level functions.");
   }
 
-  action.layer_ensure();
+  action.layer_ensure_at_least_one();
+
   Layer *layer = action.get_layer_for_keyframing();
   /* TODO: since we haven't implemented actual layered animation yet, this
-   * currently should never be null.  But when we do implement layered
-   * animation, we'll presumably need to change this and handle null. */
+   * currently should never be null. But when we do implement layered animation,
+   * we'll presumably need to change this and handle the null case. */
   BLI_assert(layer != nullptr);
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;

@@ -120,7 +120,7 @@ class Action : public ::bAction {
    * If the Action is empty, create a default layer with a single infinite
    * keyframe strip.
    */
-  void layer_ensure();
+  void layer_ensure_at_least_one();
 
   /* Animation Binding access. */
   blender::Span<const Binding *> bindings() const;
@@ -226,10 +226,9 @@ class Action : public ::bAction {
   /**
    * Get the layer that should be used for user-level keyframe insertion.
    *
-   * \return The layer, or nullptr if no layer exists that meets the criteria
-   *
-   * TODO: figure out what "the criteria" mentioned above should be, and
-   * document it.
+   * \return The layer, or nullptr if no layer exists that can currently be used
+   * for keyframing (e.g. all layers are locked, once we've implemented
+   * locking).
    */
   Layer *get_layer_for_keyframing();
 
