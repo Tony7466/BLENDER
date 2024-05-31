@@ -2013,6 +2013,8 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
                                          PhysicsGeometry &dst_physics,
                                          MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
 {
+  UNUSED_VARS(options, all_physics_info, ordered_attributes, dst_attribute_writers);
+
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const PhysicsGeometry &physics = *physics_info.physics;
 
@@ -2078,15 +2080,6 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   PhysicsGeometry *dst_physics = new PhysicsGeometry(rigid_bodies_num);
   r_realized_geometry.replace_physics(dst_physics);
   // bke::MutableAttributeAccessor dst_attributes = dst_physics.attributes_for_write();
-
-  /* Copy physics world from the first component that has a world. */
-  for (const RealizePhysicsTask &task : tasks) {
-    if (const bke::PhysicsWorld *world = task.physics_info->physics->world()) {
-      world->add_user();
-      dst_physics->set_world(world);
-      break;
-    }
-  }
 
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;

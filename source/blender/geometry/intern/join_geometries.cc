@@ -8,6 +8,7 @@
 #include "GEO_realize_instances.hh"
 
 #include "BKE_instances.hh"
+#include "BKE_physics_geometry.hh"
 
 namespace blender::geometry {
 
@@ -132,6 +133,49 @@ static void join_instances(const Span<const GeometryComponent *> src_components,
   join_attributes(src_components, dst_component, {".reference_index"});
 }
 
+static void join_physics(const Span<const GeometryComponent *> src_components, GeometrySet &result)
+{
+  Array<int> offsets_data_bodies(src_components.size() + 1);
+  Array<int> offsets_data_constraints(src_components.size() + 1);
+  for (const int i : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::PhysicsComponent &>(*src_components[i]);
+    offsets_data_bodies[i] = src_component.get()->rigid_bodies_num();
+    offsets_data_constraints[i] = src_component.get()->constraints_num();
+  }
+  const OffsetIndices offsets_bodies = offset_indices::accumulate_counts_to_offsets(
+      offsets_data_bodies);
+  const OffsetIndices offsets_constraints = offset_indices::accumulate_counts_to_offsets(
+      offsets_data_constraints);
+
+  std::unique_ptr<bke::PhysicsGeometry> dst_physics = std::make_unique<bke::PhysicsGeometry>(
+      offsets_bodies.total_size());
+
+  //MutableSpan<int> all_handles = dst_instances->reference_handles_for_write();
+
+  for (const int i : src_components.index_range()) {
+    const auto &src_component = static_cast<const bke::PhysicsComponent &>(*src_components[i]);
+    const bke::PhysicsGeometry &src_physics = *src_component.get();
+
+  //  const Span<bke::InstanceReference> src_references = src_instances.references();
+  //  Array<int> handle_map(src_references.size());
+  //  for (const int src_handle : src_references.index_range()) {
+  //    handle_map[src_handle] = dst_instances->add_reference(src_references[src_handle]);
+  //  }
+
+    const IndexRange dst_range_bodies = offsets_bodies[i];
+    const IndexRange dst_range_constraints = offsets_constraints[i];
+
+  //  const Span<int> src_handles = src_instances.reference_handles();
+  //  array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
+
+    dst_physics->transfer_data_from(*src_physics);
+  }
+
+  result.replace_physics(dst_physics.release());
+  auto &dst_component = result.get_component_for_write<bke::PhysicsComponent>();
+  join_attributes(src_components, dst_component, {".reference_index"});
+}
+
 static void join_volumes(const Span<const GeometryComponent *> /*src_components*/,
                          GeometrySet & /*result*/)
 {
@@ -163,6 +207,9 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   switch (component_type) {
     case bke::GeometryComponent::Type::Instance:
       join_instances(components, result);
+      return;
+    case bke::GeometryComponent::Type::Physics:
+      join_physics(components, result);
       return;
     case bke::GeometryComponent::Type::Volume:
       join_volumes(components, result);

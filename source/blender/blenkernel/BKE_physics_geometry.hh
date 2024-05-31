@@ -30,7 +30,7 @@ class CollisionShape;
 struct PhysicsGeometryImpl;
 struct PhysicsWorldImpl;
 
-class PhysicsWorld : public ImplicitSharingMixin {
+class PhysicsWorld : NonCopyable, NonMovable {
  public:
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
@@ -38,16 +38,8 @@ class PhysicsWorld : public ImplicitSharingMixin {
   PhysicsWorldImpl *impl_ = nullptr;
 
  public:
-  PhysicsWorld();
-  PhysicsWorld(const PhysicsWorld &other);
-  ~PhysicsWorld();
-
-  void delete_self() override;
-
   PhysicsWorldImpl &impl();
   const PhysicsWorldImpl &impl() const;
-
-  PhysicsWorld *copy() const;
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -58,6 +50,12 @@ class PhysicsWorld : public ImplicitSharingMixin {
   void set_split_impulse(bool split_impulse);
 
   void step_simulation(float delta_time);
+
+ private:
+  PhysicsWorld(PhysicsWorldImpl *impl);
+  ~PhysicsWorld();
+
+  friend class PhysicsGeometry;
 };
 
 using PhysicsWorldPtr = ImplicitSharingPtr<PhysicsWorld>;
@@ -65,7 +63,7 @@ using PhysicsWorldPtr = ImplicitSharingPtr<PhysicsWorld>;
 class PhysicsGeometry {
  private:
   const PhysicsGeometryImpl *impl_ = nullptr;
-  const PhysicsWorld *world_ = nullptr;
+  PhysicsWorld *world_ = nullptr;
 
  public:
   static const struct BuiltinAttributes {
@@ -89,7 +87,7 @@ class PhysicsGeometry {
 
   PhysicsWorld *world_for_write();
   const PhysicsWorld *world() const;
-  void set_world(const PhysicsWorld *world);
+  void set_world_enabled(bool enable);
 
   int rigid_bodies_num() const;
   int constraints_num() const;
@@ -131,6 +129,12 @@ class PhysicsGeometry {
 
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
+
+  /* Special function to efficiently transfer data to another geometry.
+   * Physics worlds have state data that needs to be rebuilt when bodies are added and removed, so
+   * keeping bodies registered with the world and transfer everything at once is more efficient
+   * than copying attribute arrays. */
+  void transfer_data_from(PhysicsGeometry &src_physics);
 };
 
 }  // namespace blender::bke

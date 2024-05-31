@@ -179,23 +179,19 @@ PhysicsWorldImpl::~PhysicsWorldImpl()
   this->overlap_filter = 0;
 }
 
-PhysicsWorld::PhysicsWorld()
+PhysicsWorldImpl *PhysicsWorldImpl::copy() const
 {
-  impl_ = new PhysicsWorldImpl{};
+  PhysicsWorldImpl *result = new PhysicsWorldImpl();
+  // TODO copy settings
+  return result;
 }
 
-PhysicsWorld::PhysicsWorld(const PhysicsWorld &other)
+PhysicsWorld::PhysicsWorld(PhysicsWorldImpl *impl) : impl_(impl)
 {
-  impl_ = new PhysicsWorldImpl{};
-  impl_->world->setGravity(other.impl_->world->getGravity());
-  // TODO copy the rest
 }
 
-PhysicsWorld::~PhysicsWorld() {}
-
-void PhysicsWorld::delete_self()
+PhysicsWorld::~PhysicsWorld()
 {
-  delete this;
 }
 
 PhysicsWorldImpl &PhysicsWorld::impl()
@@ -208,21 +204,14 @@ const PhysicsWorldImpl &PhysicsWorld::impl() const
   return *impl_;
 }
 
-PhysicsWorld *PhysicsWorld::copy() const
-{
-  return new PhysicsWorld(*this);
-}
-
 void PhysicsWorld::set_overlap_filter(OverlapFilterFn fn)
 {
-  BLI_assert(this->is_mutable());
   impl_->overlap_filter = new OverlapFilterWrapper(std::move(fn));
   impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
 }
 
 void PhysicsWorld::clear_overlap_filter()
 {
-  BLI_assert(this->is_mutable());
   if (impl_->overlap_filter) {
     delete impl_->overlap_filter;
     impl_->overlap_filter = new DefaultOverlapFilter();
@@ -237,20 +226,17 @@ float3 PhysicsWorld::gravity() const
 
 void PhysicsWorld::set_gravity(const float3 &gravity)
 {
-  BLI_assert(this->is_mutable());
   impl_->world->setGravity(to_bullet(gravity));
 }
 
 void PhysicsWorld::set_solver_iterations(const int num_solver_iterations)
 {
-  BLI_assert(this->is_mutable());
   btContactSolverInfo &info = impl_->world->getSolverInfo();
   info.m_numIterations = num_solver_iterations;
 }
 
 void PhysicsWorld::set_split_impulse(const bool split_impulse)
 {
-  BLI_assert(this->is_mutable());
   btContactSolverInfo &info = impl_->world->getSolverInfo();
   /* Note: Bullet stores this as int, but it's used as a bool. */
   info.m_splitImpulse = int(split_impulse);
@@ -258,7 +244,6 @@ void PhysicsWorld::set_split_impulse(const bool split_impulse)
 
 void PhysicsWorld::step_simulation(float delta_time)
 {
-  BLI_assert(this->is_mutable());
   constexpr const float fixed_time_step = 1.0f / 60.0f;
   impl_->world->stepSimulation(delta_time, fixed_time_step);
 }
@@ -274,8 +259,6 @@ static void remove_all_bodies_from_world(PhysicsGeometry &physics)
   if (physics.world() == nullptr) {
     return;
   }
-  /* Avoid recursion: the world must already be mutable. */
-  BLI_assert(physics.world()->is_mutable());
   btDynamicsWorld *world = physics.world_for_write()->impl().world;
   for (btRigidBody *body : physics.impl_for_write().rigid_bodies) {
     if (body->isInWorld()) {
@@ -290,8 +273,6 @@ static void ensure_bodies_simulated(PhysicsGeometry &physics)
   if (physics.world() == nullptr) {
     return;
   }
-  /* Avoid recursion: the world must already be mutable. */
-  BLI_assert(physics.world()->is_mutable());
   /* TODO there are threadsafe versions of Bullet world that could allow this in parallel. */
   btDynamicsWorld *world = physics.world_for_write()->impl().world;
   for (btRigidBody *body : physics.impl_for_write().rigid_bodies) {
@@ -314,6 +295,9 @@ PhysicsGeometryImpl::PhysicsGeometryImpl() {}
 
 PhysicsGeometryImpl::~PhysicsGeometryImpl()
 {
+  if (this->world_impl) {
+    delete this->world_impl;
+  }
   for (const int i : this->rigid_bodies.index_range()) {
     delete this->rigid_bodies[i];
   }
@@ -331,6 +315,9 @@ void PhysicsGeometryImpl::delete_self()
 PhysicsGeometryImpl *PhysicsGeometryImpl::copy() const
 {
   PhysicsGeometryImpl *result = new PhysicsGeometryImpl{};
+  if (this->world_impl) {
+    result->world_impl = new PhysicsWorldImpl(*this->world_impl);
+  }
   // TODO copy all the rest: motion states, bodies, constraints, shapes, ...
   return result;
 }
@@ -362,24 +349,23 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
   if (impl_) {
     impl_->add_user();
   }
-
-  remove_all_bodies_from_world(*this);
-  this->world_ = other.world_;
-  if (this->world_) {
-    this->world_->add_user();
-  }
-  ensure_bodies_simulated(*this);
 }
 
 PhysicsGeometry::~PhysicsGeometry()
 {
   impl_->remove_user_and_delete_if_last();
+  if (world_) {
+    delete world_;
+  }
 }
 
 PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
 {
   if (!impl_->is_mutable()) {
-    return *impl_->copy();
+    impl_ = impl_->copy();
+    if (world_) {
+      world_->impl_ = impl_->world_impl;
+    }
   }
   return *const_cast<PhysicsGeometryImpl *>(impl_);
 }
@@ -391,13 +377,12 @@ const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 
 PhysicsWorld *PhysicsGeometry::world_for_write()
 {
-  if (world_ && !world_->is_mutable()) {
-    remove_all_bodies_from_world(*this);
-    world_ = world_->copy();
-    BLI_assert(world_->is_mutable());
-    ensure_bodies_simulated(*this);
+  if (world_ == nullptr) {
+    return nullptr;
   }
-  return const_cast<PhysicsWorld *>(world_);
+  /* Ensure mutable. */
+  impl_for_write();
+  return world_;
 }
 
 const PhysicsWorld *PhysicsGeometry::world() const
@@ -405,15 +390,24 @@ const PhysicsWorld *PhysicsGeometry::world() const
   return world_;
 }
 
-void PhysicsGeometry::set_world(const PhysicsWorld *world)
+void PhysicsGeometry::set_world_enabled(const bool enabled)
 {
-  remove_all_bodies_from_world(*this);
-  if (world_ != nullptr) {
-    world_->remove_user_and_delete_if_last();
+  if (enabled) {
+    if (world_ == nullptr) {
+      BLI_assert(impl_->world_impl == nullptr);
+      PhysicsWorldImpl *world_impl = new PhysicsWorldImpl();
+      impl_for_write().world_impl = world_impl;
+      world_ = new PhysicsWorld(world_impl);
+    }
   }
-  world_ = world;
-  if (world_) {
-    world_->add_user();
+  else {
+    if (world_ != nullptr) {
+      BLI_assert(impl_->world_impl != nullptr);
+      delete world_;
+      world_ = nullptr;
+      delete impl_for_write().world_impl;
+      impl_for_write().world_impl = nullptr;
+    }
   }
   ensure_bodies_simulated(*this);
 }

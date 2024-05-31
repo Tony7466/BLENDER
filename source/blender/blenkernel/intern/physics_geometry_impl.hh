@@ -27,6 +27,7 @@ class btCollisionShape;
 namespace blender::bke {
 
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
+  PhysicsWorldImpl *world_impl = nullptr;
   Array<btRigidBody *> rigid_bodies;
   Array<btMotionState *> motion_states;
 
@@ -48,6 +49,8 @@ struct PhysicsWorldImpl {
 
   PhysicsWorldImpl();
   ~PhysicsWorldImpl();
+
+  PhysicsWorldImpl *copy() const;
 };
 
 struct CollisionShapeImpl {
