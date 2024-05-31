@@ -277,7 +277,7 @@ void ViewOpsData::init_navigation(bContext *C,
     negate_v3_v3(this->dyn_ofs, pivot_new);
     this->use_dyn_ofs = true;
 
-    {
+    if (viewops_flag & VIEWOPS_FLAG_DEPTH_NAVIGATE) {
       /* The pivot has changed so the offset needs to be updated as well.
        * Calculate new #RegionView3D::ofs and #RegionView3D::dist. */
 
