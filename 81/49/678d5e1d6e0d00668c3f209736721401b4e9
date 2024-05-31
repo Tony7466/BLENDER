@@ -7,3 +7,4 @@ Referenced by pull request #113413, Geometry Nodes: use dynamic declaration for 
 Referenced by issue #116025, Geometry Nodes: Single value links not propagated correctly
 Referenced by commit f7383cfe9b009c5d2e44a9aeb7d729185777086d, Geometry Nodes: use dynamic declaration for switch node
 Referenced by pull request #117648, Fix #117647: Accumulate Field ID input is not connecting via gather link searcher
+Referenced by commit ee8e1959463a6c961cd43b9eb3606ef16537d7ca, Nodes: allow identifier lookup in nodes which use dynamic declarations now
