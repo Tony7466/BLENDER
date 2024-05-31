@@ -29,7 +29,7 @@ bool Subprocess::init(Span<StringRefNull> args)
 
   std::string args_str;
   for (StringRefNull arg : args) {
-    args_str += " " + arg;
+    args_str += arg + " ";
   }
 
   std::wstring w_args;
