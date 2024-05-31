@@ -740,7 +740,7 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
         {color_texture.vk_image_handle(),
          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
          VK_IMAGE_ASPECT_COLOR_BIT});
-    color_attachment_formats_.append(to_vk_format(color_texture.format_get()));
+    color_attachment_formats_.append(to_vk_format(color_texture.device_format_get()));
 
     begin_rendering.node_data.vk_rendering_info.pColorAttachments =
         begin_rendering.node_data.color_attachments;
@@ -757,6 +757,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
       continue;
     }
     VKTexture &depth_texture = *unwrap(unwrap(attachment.tex));
+    bool is_depth_stencil_attachment = to_vk_image_aspect_flag_bits(
+        depth_texture.device_format_get());
     VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
                                        IndexRange(max_ii(attachment.layer, 0), 1),
                                        IndexRange(attachment.mip, 1),
@@ -775,7 +777,7 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
       /* TODO add load store ops. */
       attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      depth_attachment_format_ = to_vk_format(depth_texture.format_get());
+      depth_attachment_format_ = to_vk_format(depth_texture.device_format_get());
       begin_rendering.node_data.vk_rendering_info.pDepthAttachment =
           &begin_rendering.node_data.depth_attachment;
     }
@@ -790,7 +792,7 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
       /* TODO add load store ops. */
       attachment_info.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      stencil_attachment_format_ = to_vk_format(depth_texture.format_get());
+      stencil_attachment_format_ = to_vk_format(depth_texture.device_format_get());
       begin_rendering.node_data.vk_rendering_info.pStencilAttachment =
           &begin_rendering.node_data.stencil_attachment;
     }
