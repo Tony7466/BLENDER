@@ -2847,8 +2847,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
      * Material::blend_flag. */
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool is_eevee = scene && (STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE) ||
-                              STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT));
+    bool is_eevee = scene && STR_ELEM(scene->r.engine,
+                                      RE_engine_id_BLENDER_EEVEE,
+                                      RE_engine_id_BLENDER_EEVEE_NEXT);
     LISTBASE_FOREACH (Material *, material, &bmain->materials) {
       bool transparent_shadows = true;
       if (is_eevee) {
@@ -3333,6 +3334,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->eevee.clamp_surface_indirect = 10.0f;
+      /* Make contribution of indirect lighting very small (but non-null) to avoid world lighting
+       * and volume lightprobe changing the appearance of volume objects. */
+      scene->eevee.clamp_volume_indirect = 1e-8f;
     }
   }
 
@@ -3659,6 +3663,62 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             v3d->flag2 |= V3D_SHOW_CAMERA_GUIDES;
           }
         }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 46)) {
+    const Scene *default_scene = DNA_struct_default_get(Scene);
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.fast_gi_thickness_near = default_scene->eevee.fast_gi_thickness_near;
+      scene->eevee.fast_gi_thickness_far = default_scene->eevee.fast_gi_thickness_far;
+    }
+  }
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 48)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (!ob->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+        pchan->custom_shape_wire_width = 1.0;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 49)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = reinterpret_cast<View3D *>(sl);
+            v3d->flag2 |= V3D_SHOW_CAMERA_PASSEPARTOUT;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 50)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != GEO_NODE_CAPTURE_ATTRIBUTE) {
+          continue;
+        }
+        NodeGeometryAttributeCapture *storage = static_cast<NodeGeometryAttributeCapture *>(
+            node->storage);
+        if (storage->next_identifier > 0) {
+          continue;
+        }
+        storage->capture_items_num = 1;
+        storage->capture_items = MEM_cnew_array<NodeGeometryAttributeCaptureItem>(
+            storage->capture_items_num, __func__);
+        NodeGeometryAttributeCaptureItem &item = storage->capture_items[0];
+        item.data_type = storage->data_type_legacy;
+        item.identifier = storage->next_identifier++;
+        item.name = BLI_strdup("Value");
       }
     }
   }
