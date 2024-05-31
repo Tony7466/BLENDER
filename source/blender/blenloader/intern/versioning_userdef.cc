@@ -160,7 +160,11 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.header_back);
   }
 
-  if (!USER_VERSION_ATLEAST(402, 42)) {
+  if (!USER_VERSION_ATLEAST(402, 47)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.time_gp_keyframe);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 48)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.before_current_frame);
     FROM_DEFAULT_V4_UCHAR(space_view3d.after_current_frame);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.before_current_frame);
