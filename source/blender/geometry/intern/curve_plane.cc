@@ -443,7 +443,9 @@ static void potrace_fill_bezier_or_poly_curve(
           [&](const IndexRange range) { return potrace_curve_segments_groups[range].size(); }));
 }
 
-Curves *plane_to_curve(const potrace_state_t *potrace_result,
+namespace potrace {
+
+Curves *image_to_curve(const potrace_state_t *potrace_result,
                        const bke::AttributeIDRef &parent_index_id)
 {
   Vector<const potrace_path_t *> curves_list;
@@ -566,14 +568,14 @@ Curves *plane_to_curve(const potrace_state_t *potrace_result,
   return curves_id;
 }
 
-float4x4 transformation_potrace_to_plane(const int2 resolution,
-                                         const float2 min_point,
-                                         const float2 max_point)
+float4x4 to_plane(const int2 resolution, const float2 min_point, const float2 max_point)
 {
   const float2 resolution_factor = float2(1.0f) / float2(resolution) * (max_point - min_point);
   return math::from_loc_rot_scale<float4x4>(
       float3(min_point, 0.0f), math::Quaternion::identity(), float3(resolution_factor, 1.0f));
 }
+
+}  // namespace potrace
 
 }  // namespace blender::geometry
 

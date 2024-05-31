@@ -25,10 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("Resolution X").default_value(32).min(2);
   b.add_input<decl::Int>("Resolution Y").default_value(32).min(2);
 
-  b.add_input<decl::Bool>("Bitmap")
-      .description("True or false is a pixel")
-      .supports_field()
-      .hide_value();
+  b.add_input<decl::Bool>("Pixel Value").supports_field().hide_value();
 
   b.add_output<decl::Geometry>("Curve");
   b.add_output<decl::Int>("Parent Curve").description("Index of curve around").field_on_all();
@@ -127,7 +124,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   FieldEvaluator evaluator(context, context.points_num());
 
-  Field<bool> input_field = params.extract_input<Field<bool>>("Bitmap");
+  Field<bool> input_field = params.extract_input<Field<bool>>("Pixel Value");
   Array<bool> byte_map(context.points_num());
   evaluator.add_with_destination(std::move(input_field), byte_map.as_mutable_span());
   evaluator.evaluate();
@@ -148,14 +145,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   BLI_SCOPED_DEFER([&]() { geometry::potrace::free_image(potrace_image); });
 
-  Curves *curve = geometry::plane_to_curve(potrace_image, parent_curve_id.get());
+  Curves *curve = geometry::potrace::image_to_curve(potrace_image, parent_curve_id.get());
   if (curve == nullptr) {
     params.set_default_remaining_outputs();
     return;
   }
 
-  curve->geometry.wrap().transform(
-      geometry::transformation_potrace_to_plane(resolution, min_point, max_point));
+  curve->geometry.wrap().transform(geometry::potrace::to_plane(resolution, min_point, max_point));
 
   params.set_output("Curve", GeometrySet::from_curves(curve));
 }

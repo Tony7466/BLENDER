@@ -18,9 +18,7 @@
 struct potrace_state_s;
 typedef struct potrace_state_s potrace_state_t;
 
-namespace blender::geometry {
-
-namespace potrace {
+namespace blender::geometry::potrace {
 
 using LineSegment = int32_t;
 inline constexpr const int segment_size = sizeof(LineSegment) * 8;
@@ -65,12 +63,10 @@ template<typename Func> inline potrace_state_t *image_for_predicate(int2 resolut
 
 void free_image(potrace_state_t *image);
 
-}  // namespace potrace
+Curves *image_to_curve(const potrace_state_t *image, const bke::AttributeIDRef &uv_map_id);
 
-Curves *plane_to_curve(const potrace_state_t *image, const bke::AttributeIDRef &uv_map_id);
+float4x4 to_plane(int2 resolution, float2 min_point, float2 max_point);
 
-float4x4 transformation_potrace_to_plane(int2 resolution, float2 min_point, float2 max_point);
-
-}  // namespace blender::geometry
+}  // namespace blender::geometry::potrace
 
 #endif
