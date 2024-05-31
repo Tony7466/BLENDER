@@ -1018,8 +1018,10 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
   if (strip == nullptr) {
     return SingleKeyingResult::NO_VALID_STRIP;
   }
+  BLI_assert(strip->contains_frame(key_data.position.x));
 
   /* TODO: morph key data based on Layer position in stack and Strip offset. */
+  BLI_assert(strip->frame_offset == 0.0);
   return strip->as<KeyframeStrip>().keyframe_insert(
       binding, rna_path, key_data.array_index, key_data.position, key_settings, insert_key_flags);
 }
