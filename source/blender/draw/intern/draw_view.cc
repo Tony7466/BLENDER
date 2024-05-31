@@ -14,7 +14,6 @@
 #include "draw_debug.hh"
 #include "draw_shader.hh"
 #include "draw_view.hh"
-#include <iostream>
 
 namespace blender::draw {
 
@@ -81,7 +80,7 @@ void View::frustum_boundbox_calc(int view_id)
   corners[1][1] = corners[5][1] = bottom;
   corners[2][1] = corners[6][1] = top;
 
-  float4x4 view_inv = data_[view_id].viewinv;
+  const float4x4 &view_inv = data_[view_id].viewinv;
   /* Transform into world space. */
   for (float4 &corner : corners) {
     corner = float4(math::transform_point(view_inv, float3(corner)), 1.0);
