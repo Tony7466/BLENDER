@@ -219,8 +219,7 @@ static void process_usdz_textures(const ExportJobData *data, const char *path)
     if (!BLI_is_dir(entries[index].path)) {
       Image *im = BKE_image_load(data->bmain, entries[index].path);
       if (!im) {
-        std::cerr << "-- Unable to open file for downscaling: " << entries[index].path
-                  << std::endl;
+        CLOG_WARN(&LOG, "-- Unable to open file for downscaling: %s", entries[index].path);
         continue;
       }
 
