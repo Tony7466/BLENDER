@@ -2591,149 +2591,51 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 
 struct NodeSlideData {
   int2 initial_mouse_pos;
-  Vector<rctf> initial_node_rects;
   Vector<float2> initial_node_positions;
-  Vector<float2> split_points;
-  std::optional<Vector<bNode *>> nodes_to_slide_left;
-  std::optional<Vector<bNode *>> nodes_to_slide_right;
-  bool add_key_down = false;
+  Vector<bNode *> nodes_to_slide_left;
+  Vector<bNode *> nodes_to_slide_right;
 };
 
-constexpr int slide_node_y_bin_side = 10;
-
-static int y_bin_by_coordinate(const float y)
+static Vector<bNode *> find_nodes_to_the_left(const Span<bNode *> trigger_nodes)
 {
-  return int(y) / slide_node_y_bin_side;
+  VectorSet<bNode *> found_nodes;
+  Stack<bNode *> nodes_to_check = trigger_nodes;
+  while (!nodes_to_check.is_empty()) {
+    bNode &node = *nodes_to_check.pop();
+    if (!found_nodes.add(&node)) {
+      continue;
+    }
+    for (bNodeSocket *socket : node.input_sockets()) {
+      if (!socket->is_visible()) {
+        continue;
+      }
+      for (bNodeSocket *from_socket : socket->directly_linked_sockets()) {
+        nodes_to_check.push(&from_socket->owner_node());
+      }
+    }
+  }
+  return found_nodes.as_span();
 }
 
-static Vector<bNode *> find_nodes_to_slide_left(bNodeTree &tree,
-                                                const Span<rctf> initial_node_rects,
-                                                const Span<float2> split_points)
+static Vector<bNode *> find_nodes_to_the_right(const Span<bNode *> trigger_nodes)
 {
-  Map<int, float> split_x_by_y_bin;
-  for (const float2 &point : split_points) {
-    float &x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(point.y), point.x);
-    x = std::max(x, point.x);
+  VectorSet<bNode *> found_nodes;
+  Stack<bNode *> nodes_to_check = trigger_nodes;
+  while (!nodes_to_check.is_empty()) {
+    bNode &node = *nodes_to_check.pop();
+    if (!found_nodes.add(&node)) {
+      continue;
+    }
+    for (bNodeSocket *socket : node.output_sockets()) {
+      if (!socket->is_visible()) {
+        continue;
+      }
+      for (bNodeSocket *from_socket : socket->directly_linked_sockets()) {
+        nodes_to_check.push(&from_socket->owner_node());
+      }
+    }
   }
-  VectorSet<bNode *> final_nodes;
-  int prev_final_nodes_size = 0;
-
-  while (true) {
-    Stack<bNode *> nodes_to_check;
-
-    /* Find nodes to the left of boundary. */
-    for (bNode *node : tree.all_nodes()) {
-      if (node->is_frame()) {
-        continue;
-      }
-      if (final_nodes.contains(node)) {
-        continue;
-      }
-      const rctf &node_rect = initial_node_rects[node->index()];
-      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
-        if (const float *split_x = split_x_by_y_bin.lookup_ptr(y_bin_by_coordinate(y))) {
-          if (node_rect.xmin < *split_x) {
-            nodes_to_check.push(node);
-            break;
-          }
-        }
-      }
-    }
-
-    /* Add dependencies recursively. */
-    while (!nodes_to_check.is_empty()) {
-      bNode *node = nodes_to_check.pop();
-      if (!final_nodes.add(node)) {
-        continue;
-      }
-      const rctf &node_rect = initial_node_rects[node->index()];
-      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
-        float &split_x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(y), node_rect.xmax);
-        split_x = std::max(split_x, node_rect.xmax);
-      }
-      for (bNodeSocket *input_socket : node->input_sockets()) {
-        if (!input_socket->is_available()) {
-          continue;
-        }
-        for (bNodeSocket *from_socket : input_socket->directly_linked_sockets()) {
-          nodes_to_check.push(&from_socket->owner_node());
-        }
-      }
-    }
-
-    if (final_nodes.size() == prev_final_nodes_size) {
-      /* No new nodes have been found. */
-      break;
-    }
-    prev_final_nodes_size = final_nodes.size();
-  }
-
-  return final_nodes.as_span();
-}
-
-static Vector<bNode *> find_nodes_to_slide_right(bNodeTree &tree,
-                                                 const Span<rctf> initial_node_rects,
-                                                 const Span<float2> split_points)
-{
-  Map<int, float> split_x_by_y_bin;
-  for (const float2 &point : split_points) {
-    float &x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(point.y), point.x);
-    x = std::min(x, point.x);
-  }
-  VectorSet<bNode *> final_nodes;
-  int prev_final_nodes_size = 0;
-
-  while (true) {
-    Stack<bNode *> nodes_to_check;
-
-    /* Find nodes to the right of boundary. */
-    for (bNode *node : tree.all_nodes()) {
-      if (node->is_frame()) {
-        continue;
-      }
-      if (final_nodes.contains(node)) {
-        continue;
-      }
-      const rctf &node_rect = initial_node_rects[node->index()];
-      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
-        if (const float *split_x = split_x_by_y_bin.lookup_ptr(y_bin_by_coordinate(y))) {
-          if (*split_x < node_rect.xmax) {
-            nodes_to_check.push(node);
-            break;
-          }
-        }
-      }
-    }
-
-    /* Add dependent nodes recursively. */
-    while (!nodes_to_check.is_empty()) {
-      bNode *node = nodes_to_check.pop();
-      if (!final_nodes.add(node)) {
-        continue;
-      }
-      const rctf &node_rect = initial_node_rects[node->index()];
-      for (float y = node_rect.ymin; y < node_rect.ymax; y += slide_node_y_bin_side / 2) {
-        float &split_x = split_x_by_y_bin.lookup_or_add(y_bin_by_coordinate(y), node_rect.xmin);
-        split_x = std::min(split_x, node_rect.xmin);
-      }
-      for (bNodeSocket *output_socket : node->output_sockets()) {
-        if (!output_socket->is_available()) {
-          continue;
-        }
-        for (bNodeSocket *from_socket : output_socket->directly_linked_sockets()) {
-          nodes_to_check.push(&from_socket->owner_node());
-        }
-      }
-    }
-
-    if (final_nodes.size() == prev_final_nodes_size) {
-      /* No new nodes have been found. */
-      break;
-    }
-    prev_final_nodes_size = final_nodes.size();
-  }
-
-  return final_nodes.as_span();
+  return found_nodes.as_span();
 }
 
 static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2747,18 +2649,20 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   NodeSlideData *slide_data = MEM_new<NodeSlideData>(__func__);
   op->customdata = slide_data;
 
+  Vector<bNode *> trigger_nodes;
   for (bNode *node : tree.all_nodes()) {
     slide_data->initial_node_positions.append(float2(node->locx, node->locy));
-    slide_data->initial_node_rects.append(node->runtime->totr);
+    if (node->flag & NODE_SELECT) {
+      trigger_nodes.append(node);
+    }
   }
+
+  slide_data->nodes_to_slide_left = find_nodes_to_the_left(trigger_nodes);
+  slide_data->nodes_to_slide_right = find_nodes_to_the_right(trigger_nodes);
 
   float x, y;
   UI_view2d_region_to_view(&v2d, event->mval[0], event->mval[1], &x, &y);
-  slide_data->split_points.append({x, y});
   slide_data->initial_mouse_pos = event->mval;
-
-  /* TODO: Handle key more generally. */
-  slide_data->add_key_down = true;
 
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
@@ -2785,19 +2689,9 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   switch (event->type) {
     case MOUSEMOVE: {
-      if (slide_data.add_key_down) {
-        slide_data.split_points.append(current_mouse);
-        slide_data.nodes_to_slide_left.reset();
-        slide_data.nodes_to_slide_right.reset();
-      }
-
       const float node_diff_x = (current_mouse.x - initial_mouse.x) * UI_INV_SCALE_FAC;
       if (node_diff_x < 0) {
-        if (!slide_data.nodes_to_slide_left.has_value()) {
-          slide_data.nodes_to_slide_left = find_nodes_to_slide_left(
-              tree, slide_data.initial_node_rects, slide_data.split_points);
-        }
-        for (bNode *node : *slide_data.nodes_to_slide_left) {
+        for (bNode *node : slide_data.nodes_to_slide_left) {
           if (node->type == NODE_FRAME) {
             continue;
           }
@@ -2805,11 +2699,7 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
         }
       }
       else {
-        if (!slide_data.nodes_to_slide_right.has_value()) {
-          slide_data.nodes_to_slide_right = find_nodes_to_slide_right(
-              tree, slide_data.initial_node_rects, slide_data.split_points);
-        }
-        for (bNode *node : *slide_data.nodes_to_slide_right) {
+        for (bNode *node : slide_data.nodes_to_slide_right) {
           if (node->type == NODE_FRAME) {
             continue;
           }
@@ -2819,22 +2709,7 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
       ED_region_tag_redraw(&region);
       break;
     }
-    case EVT_VKEY: {
-      switch (event->val) {
-        case KM_PRESS: {
-          slide_data.add_key_down = true;
-          slide_data.split_points.append(current_mouse);
-          slide_data.nodes_to_slide_left.reset();
-          slide_data.nodes_to_slide_right.reset();
-          break;
-        }
-        case KM_RELEASE: {
-          slide_data.add_key_down = false;
-          break;
-        }
-      }
-      break;
-    }
+
     case RIGHTMOUSE:
     case EVT_ESCKEY: {
       for (bNode *node : tree.all_nodes()) {
@@ -2863,7 +2738,7 @@ void NODE_OT_slide(wmOperatorType *ot)
   ot->modal = node_slide_modal;
   ot->poll = ED_operator_node_editable;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /** \} */
