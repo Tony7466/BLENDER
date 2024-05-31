@@ -612,18 +612,15 @@ void RE_FreeAllRender()
     RE_FreeRender(static_cast<Render *>(RenderGlobal.render_list.front()));
   }
 
-#ifdef WITH_FREESTYLE
-  /* finalize Freestyle */
-  FRS_exit();
-#endif
-}
-
-void RE_FreeAllInteractiveCompositorRenders()
-{
   for (Render *render : RenderGlobal.interactive_compositor_renders.values()) {
     RE_FreeRender(render);
   }
   RenderGlobal.interactive_compositor_renders.clear();
+
+#ifdef WITH_FREESTYLE
+  /* finalize Freestyle */
+  FRS_exit();
+#endif
 }
 
 void RE_FreeAllRenderResults()
