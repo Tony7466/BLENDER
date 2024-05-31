@@ -707,7 +707,7 @@ rctf ANIM_frame_range_view2d_add_xmargin(const View2D &view_2d, const rctf view_
 {
   /* Keyframe diamonds seem to be drawn at 10 pixels wide, multiplied by the UI scale. */
   const float keyframe_size = 10 * UI_SCALE_FAC;
-  const float margin_in_px = 2 * keyframe_size;
+  const float margin_in_px = 4 * keyframe_size;
 
   /* This cannot use UI_view2d_scale_get_x(view_2d) because that would use the
    * current scale of the view, and not the one we'd get once `view_rect` is
@@ -719,10 +719,10 @@ rctf ANIM_frame_range_view2d_add_xmargin(const View2D &view_2d, const rctf view_
   const float target_scale = BLI_rctf_size_x(&view_rect) / BLI_rcti_size_x(&view_2d.mask);
   const float margin_in_frames = margin_in_px * target_scale;
 
-  /* Limit the margin to a maximum of 30% of the available size. It's ridiculous
-   * to have [30% margin, 40% actual content, 30% margin], but at least the
-   * percentage available for the actual content is positive. */
-  const float margin_max = 0.3f * BLI_rctf_size_x(&view_rect);
+  /* Limit the margin to a maximum of 12.5% of the available size. This will
+   * make the margins smaller when the view gets smaller, but for large views
+   * still retain the fixed size calculated above */
+  const float margin_max = 0.125f * BLI_rctf_size_x(&view_rect);
   const float margin = std::min(margin_in_frames, margin_max);
 
   rctf rect_with_margin = view_rect;
