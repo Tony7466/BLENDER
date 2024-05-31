@@ -26,7 +26,7 @@ namespace blender::geometry {
 
 namespace potrace {
 
-int2 fixed_resolution(const int2 resolution)
+int2 aligned_resolution(const int2 resolution)
 {
   const int extra = resolution.x % segment_size;
   const int segments_num = resolution.x / segment_size + int(extra != 0);
@@ -34,18 +34,18 @@ int2 fixed_resolution(const int2 resolution)
 }
 
 potrace_state_t *image_from_line_segments(
-    const int2 resolution,
+    const Params params,
     const FunctionRef<
         void(int64_t line_i, int64_t segments_start, int64_t segments_num, char *r_segments)> func)
 {
   static_assert(alignof(potrace_word) == alignof(LineSegment));
   static_assert(sizeof(potrace_word) == sizeof(LineSegment));
 
-  const int2 segments_resolution = fixed_resolution(resolution) / int2(segment_size, 1);
+  const int2 segments_resolution = aligned_resolution(params.resolution) / int2(segment_size, 1);
   Array<potrace_word> segments(segments_resolution.x * segments_resolution.y);
 
   threading::parallel_for(
-      IndexRange(resolution.y),
+      IndexRange(params.resolution.y),
       4096,
       [&](const IndexRange range) {
         for (const int64_t line_i : range) {
@@ -58,18 +58,18 @@ potrace_state_t *image_from_line_segments(
         }
       },
       threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return range.size() * resolution.x; }));
+          [&](const IndexRange range) { return range.size() * params.resolution.x; }));
 
   potrace_bitmap_t bitmap;
-  bitmap.w = resolution.x;
-  bitmap.h = resolution.y;
+  bitmap.w = params.resolution.x;
+  bitmap.h = params.resolution.y;
   bitmap.dy = segments_resolution.x;
   bitmap.map = segments.data();
-  potrace_param_t *params = potrace_param_default();
-  BLI_assert(params != nullptr);
+  potrace_param_t *potrace_params = potrace_param_default();
+  BLI_assert(potrace_params != nullptr);
 
-  potrace_state_t *result_image = potrace_trace(params, &bitmap);
-  potrace_param_free(params);
+  potrace_state_t *result_image = potrace_trace(potrace_params, &bitmap);
+  potrace_param_free(potrace_params);
 
   if (result_image == nullptr) {
     return nullptr;

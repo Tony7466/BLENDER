@@ -20,21 +20,30 @@ typedef struct potrace_state_s potrace_state_t;
 
 namespace blender::geometry::potrace {
 
+struct Params {
+  /* Original resolution, not aligned. */
+  int2 resolution;
+
+  static constexpr const float max_threshold = 4.0f / 3.0f;
+  float corners_threshold = 1.0f;
+
+  float optimization_tolerance = 0.2f;
+};
+
 using LineSegment = int32_t;
 inline constexpr const int segment_size = sizeof(LineSegment) * 8;
 
-int2 fixed_resolution(int2 resolution);
+int2 aligned_resolution(int2 resolution);
 
 potrace_state_t *image_from_line_segments(
-    int2 resolution,
+    Params params,
     FunctionRef<void(
         int64_t line_i, int64_t segments_start, int64_t segments_num, char *r_segments)> func);
 
-template<typename Func>
-inline potrace_state_t *image_from_int32_segments(int2 resolution, Func func)
+template<typename Func> inline potrace_state_t *image_from_int32_segments(Params params, Func func)
 {
   return image_from_line_segments(
-      resolution,
+      params,
       [&](int64_t line_i,
           int64_t segments_start,
           int64_t segments_num,
@@ -47,9 +56,9 @@ inline potrace_state_t *image_from_int32_segments(int2 resolution, Func func)
       });
 }
 
-template<typename Func> inline potrace_state_t *image_for_predicate(int2 resolution, Func func)
+template<typename Func> inline potrace_state_t *image_for_predicate(Params params, Func func)
 {
-  return image_from_int32_segments(resolution,
+  return image_from_int32_segments(params,
                                    [&](int64_t line_i, int64_t segment_index) -> LineSegment {
                                      LineSegment segment = 0;
                                      segment_index *= segment_size;

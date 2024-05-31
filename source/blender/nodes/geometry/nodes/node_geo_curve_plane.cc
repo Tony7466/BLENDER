@@ -119,8 +119,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const int2 fixed_res = geometry::potrace::fixed_resolution(resolution);
-  const ImageBitMapFieldContext context(fixed_res, resolution, min_point, max_point);
+  const int2 aligned_res = geometry::potrace::aligned_resolution(resolution);
+  const ImageBitMapFieldContext context(aligned_res, resolution, min_point, max_point);
 
   FieldEvaluator evaluator(context, context.points_num());
 
@@ -132,8 +132,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   AnonymousAttributeIDPtr parent_curve_id = params.get_output_anonymous_attribute_id_if_needed(
       "Parent Curve");
 
+  geometry::potrace::Params curves_params;
+  curves_params.resolution = resolution;
+
   potrace_state_t *potrace_image = geometry::potrace::image_for_predicate(
-      resolution, [&](const int64_t /* line_i */, const int64_t pixel_index) -> bool {
+      curves_params, [&](const int64_t /* line_i */, const int64_t pixel_index) -> bool {
         return byte_map[pixel_index];
       });
 
