@@ -1709,7 +1709,7 @@ static bool vfont_to_curve(Object *ob,
             ((mem[i + 1] != ' ') || (custrinfo[i + 1].flag & CU_CHINFO_UNDERLINE)) &&
             ((custrinfo[i + 1].flag & CU_CHINFO_WRAP) == 0))
         {
-          uloverlap = xtrax + 0.1f;
+          uloverlap = xtrax;
         }
         /* Find the character, the characters has to be in the memory already
          * since character checking has been done earlier already. */
