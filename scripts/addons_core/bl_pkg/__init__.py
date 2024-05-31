@@ -10,7 +10,7 @@ bl_info = {
     "location": "Edit -> Preferences -> Extensions",
     "description": "Extension repository support for remote repositories",
     "warning": "",
-    # "doc_url": "{BLENDER_MANUAL_URL}/addons/bl_pkg/bl_pkg.html",
+    # "doc_url": "",
     "support": 'OFFICIAL',
     "category": "System",
 }
@@ -192,7 +192,16 @@ def repos_to_notify():
             continue
 
         # NOTE: offline checks are handled by the notification (not here).
-        repos_notify.append(repo_item)
+        repos_notify.append(
+            bl_extension_ops.RepoItem(
+                name=repo_item.name,
+                directory=repo_directory,
+                remote_url=remote_url,
+                module=repo_item.module,
+                use_cache=repo_item.use_cache,
+                access_token=repo_item.access_token if repo_item.use_access_token else "",
+            ),
+        )
 
         # Update all repos together or none, to avoid bothering users
         # multiple times in a day.
@@ -220,7 +229,7 @@ def extenion_repos_sync(*_):
     stdout = io.StringIO()
 
     with redirect_stdout(stdout):
-        bpy.ops.bl_pkg.repo_sync_all('INVOKE_DEFAULT', use_active_only=True)
+        bpy.ops.extensions.repo_sync_all('INVOKE_DEFAULT', use_active_only=True)
 
     if text := stdout.getvalue():
         repo_status_text.from_message("Sync \"{:s}\"".format(active_repo.name), text)
@@ -240,7 +249,7 @@ def extenion_repos_upgrade(*_):
     stdout = io.StringIO()
 
     with redirect_stdout(stdout):
-        bpy.ops.bl_pkg.pkg_upgrade_all('INVOKE_DEFAULT', use_active_only=True)
+        bpy.ops.extensions.package_upgrade_all('INVOKE_DEFAULT', use_active_only=True)
 
     if text := stdout.getvalue():
         repo_status_text.from_message("Upgrade \"{:s}\"".format(active_repo.name), text)
