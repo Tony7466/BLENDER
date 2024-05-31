@@ -135,14 +135,15 @@ void SharedSemaphore::decrement()
   WaitForSingleObject(handle_, INFINITE);
 }
 
-bool SharedSemaphore::try_decrement()
+bool SharedSemaphore::try_decrement(int wait_ms)
 {
-  return WaitForSingleObject(handle_, 0) == WAIT_OBJECT_0;
+  return WaitForSingleObject(handle_, wait_ms) == WAIT_OBJECT_0;
 }
 
 }  // namespace blender
 
 #else
+#  include "BLI_time.h"
 #  include "BLI_vector.hh"
 #  include <fcntl.h>
 #  include <linux/limits.h>
@@ -267,9 +268,31 @@ void SharedSemaphore::decrement()
   sem_wait(handle_);
 }
 
-bool SharedSemaphore::try_decrement()
+bool SharedSemaphore::try_decrement(int wait_ms)
 {
-  return sem_trywait(handle_) == 0;
+  if (wait_ms == 0) {
+    return sem_trywait(handle_) == 0;
+  }
+
+  timespec time;
+  if (clock_gettime(CLOCK_REALTIME, &time) == -1) {
+    perror("SharedSemaphore clock_gettime failed: ");
+    BLI_time_sleep_ms(wait_ms * 1000);
+    return try_decrement(0);
+  }
+
+  time.tv_sec += wait_ms / 1000;
+  time.tv_nsec += (wait_ms % 1000) * 10e6;
+
+  while (true) {
+    int result = sem_timedwait(handle_, &time);
+    if (result == -1 && errno == EINTR) {
+      /* Try again if interrupted by handler. */
+      continue;
+    }
+
+    return result == 0;
+  }
 }
 
 }  // namespace blender

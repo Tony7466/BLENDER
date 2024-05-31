@@ -17,6 +17,10 @@
 #include <iostream>
 #include <string>
 
+#ifndef _WIN32
+#  include <unistd.h>
+#endif
+
 namespace blender::gpu {
 
 class SubprocessShader {
@@ -101,6 +105,11 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   using namespace blender;
   using namespace blender::gpu;
 
+#ifndef _WIN32
+  /** NOTE: Technically, the parent process could have crashed before this. */
+  pid_t ppid = getppid();
+#endif
+
   CLG_init();
 
   std::string name = subprocess_name;
@@ -138,7 +147,18 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
      * See https://bugreports.qt.io/browse/QTBUG-81504 */
     GHOST_ProcessEvents(ghost_system, false);
 
+#ifdef _WIN32
     start_semaphore.decrement();
+#else
+    bool lost_parent = false;
+    while (!lost_parent && !start_semaphore.try_decrement(1000)) {
+      lost_parent = getppid() != ppid;
+    }
+    if (lost_parent) {
+      std::cerr << "Compilation Subprocess: Lost parent process\n";
+      break;
+    }
+#endif
 
     if (close_semaphore.try_decrement()) {
       break;
