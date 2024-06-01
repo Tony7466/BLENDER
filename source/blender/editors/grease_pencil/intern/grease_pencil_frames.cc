@@ -522,18 +522,22 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    const Span<FramesMapKeyT> keys = layer->sorted_keys();
-    Vector<FramesMapKeyT> frames_to_delete;
-
-    for (const int i : keys.index_range().drop_back(1)) {
-      const FramesMapKeyT current = keys[i];
-      const FramesMapKeyT next = keys[i + 1];
-
-      GreasePencilFrame frame = layer->frames().lookup(current);
-
-      if (selected && !frame.is_selected()) {
+    Vector<int> start_frame_numbers;
+    for (const FramesMapKeyT key : layer->sorted_keys()) {
+      const GreasePencilFrame *frame = layer->frames().lookup_ptr(key);
+      if (selected && !frame->is_selected()) {
         continue;
       }
+      if (frame->is_end()) {
+        continue;
+      }
+      start_frame_numbers.append(int(key));
+    }
+
+    Vector<int> frame_numbers_to_delete;
+    for (const int i : start_frame_numbers.index_range().drop_back(1)) {
+      const int current = start_frame_numbers[i];
+      const int next = start_frame_numbers[i + 1];
 
       Drawing *drawing = grease_pencil.get_drawing_at(*layer, current);
       Drawing *drawing_next = grease_pencil.get_drawing_at(*layer, next);
@@ -549,10 +553,10 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      frames_to_delete.append(next);
+      frame_numbers_to_delete.append(next);
     }
 
-    for (const FramesMapKeyT frame : frames_to_delete) {
+    for (const int frame : frame_numbers_to_delete) {
       layer->remove_frame(frame);
     }
 
