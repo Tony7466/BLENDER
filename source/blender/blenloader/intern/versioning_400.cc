@@ -344,6 +344,72 @@ static void versioning_eevee_shadow_settings(Object *object)
   SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
 }
 
+static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, float threshold)
+{
+  /* First check if we are in a simple compatible configuration. Bail out otherwise. */
+  bNodeSocket *alpha_source = nullptr;
+  bool inverted_source = false;
+
+  LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+    bNodeSocket *node_alpha_source = nullptr;
+    bool node_inverted_source = false;
+
+    switch (node->type) {
+      case SH_NODE_BSDF_TRANSPARENT: {
+#if 0 /* TODO */
+        /* If default value is not white, consider as complex setup. */
+        if (default_value != white) {
+          return false;
+        }
+        /* Check if directly connected to mix shader. Otherwise consider as complex setup. */
+        if (link->to_node->type != SH_NODE_MIX_SHADER) {
+          return false;
+        }
+        node_alpha_source = link->to_node->inputs["Fac"];
+        node_inverted_source = link->to_node->inputs[1]->link->from_node == node;
+#endif
+        break;
+      }
+      case SH_NODE_BSDF_PRINCIPLED: {
+        break;
+      }
+      case SH_NODE_EEVEE_SPECULAR: {
+        break;
+      }
+      default:
+        break;
+    }
+
+    if (node_alpha_source == nullptr) {
+      continue;
+    }
+
+    if (alpha_source != nullptr) {
+      /* Multiple source of alpha. This is a complex setup we cannot handle. */
+      return false;
+    }
+    /* Save alpha source and continue checking if there is any other. */
+    alpha_source = node_alpha_source;
+    inverted_source = node_inverted_source;
+  }
+
+  bool is_opaque = (threshold == 2.0f);
+  if (is_opaque) {
+    /* Disconnect input link. */
+    /* Set default value to 1. */
+  }
+  else {
+    if (alpha_source->link == nullptr) {
+      /* Insert math node. */
+      /* Set to compare mode. */
+    }
+    else {
+      /* Modify alpha value directly. */
+    }
+  }
+  return true;
+}
+
 static void versioning_replace_splitviewer(bNodeTree *ntree)
 {
   /* Split viewer was replaced with a regular split node, so add a viewer node,
@@ -3719,6 +3785,60 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         item.data_type = storage->data_type_legacy;
         item.identifier = storage->next_identifier++;
         item.name = BLI_strdup("Value");
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
+    /* Convert blend method to math nodes. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+
+    if (scene_uses_eevee_legacy) {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        if (!material->use_nodes || material->nodetree == nullptr) {
+          continue;
+        }
+
+        bool has_compatible_shadow_blend_mode = true;
+
+        if (material->blend_shadow == MA_BS_NONE) {
+          /* No need to match the surface since shadows are disabled. */
+        }
+        else if ((material->blend_shadow == MA_BS_SOLID &&
+                  material->blend_method != MA_BM_SOLID) ||
+                 (material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
+                 (material->blend_shadow == MA_BS_HASHED &&
+                  material->blend_method != MA_BM_HASHED))
+        {
+          BLO_reportf_wrap(fd->reports,
+                           RPT_WARNING,
+                           RPT_("Couldn't convert material %s because of incompatible Blend Mode "
+                                "and Shadow Mode\n"),
+                           material->id.name + 2);
+          continue;
+        }
+
+        if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
+          /* Compatible modes. Nothing to change. */
+          continue;
+        }
+
+        /* TODO(fclem): Check if theshold is driven or has animation. Bail out if needed? */
+
+        float threshold = (material->blend_method == MA_BM_CLIP) ? material->alpha_threshold :
+                                                                   2.0f;
+
+        bool use_alpha_clip = material->blend_shadow != MA_BM_SOLID &&
+                              material->blend_shadow != MA_BS_SOLID;
+
+        if (!versioning_eevee_material_blend_mode_settings(material->nodetree, threshold)) {
+          BLO_reportf_wrap(
+              fd->reports,
+              RPT_WARNING,
+              RPT_("Couldn't convert material %s because of non-trivial alpha blending\n"),
+              material->id.name + 2);
+        }
       }
     }
   }
