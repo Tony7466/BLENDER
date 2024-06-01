@@ -588,52 +588,6 @@ void register_node_type_reroute()
   blender::bke::nodeRegisterType(ntype);
 }
 
-/* NOTE: This uses the label of the reroute node's output socket to
- * propagate the label from connected reroute nodes. */
-static void update_reroute_node_auto_labels(bNodeTree *ntree)
-{
-  using namespace blender;
-  ntree->ensure_topology_cache();
-
-  /* Clear auto-label. */
-  LISTBASE_FOREACH (bNode *, reroute, &ntree->nodes) {
-    if (!reroute->is_reroute()) {
-      continue;
-    }
-    bNodeSocket *output = reroute->output_sockets().first();
-    node_sock_label_clear(output);
-  }
-
-  for (bNode *reroute : ntree->toposort_left_to_right()) {
-    if (!reroute->is_reroute()) {
-      continue;
-    }
-
-    bNodeSocket *output = reroute->output_sockets().first();
-    const bNodeSocket &input = *reroute->input_sockets().first();
-    const Span<const bNodeSocket *> linked_sockets = input.directly_linked_sockets();
-
-    if (linked_sockets.is_empty()) {
-      continue;
-    }
-
-    const bNodeSocket &from_sock = *linked_sockets.first();
-    const bNode &from_node = from_sock.owner_node();
-
-    if (!from_node.is_reroute()) {
-      continue;
-    }
-
-    if (from_node.label[0] != '\0') {
-      /* Use the connected reroute's label to also label this reroute. */
-      node_sock_label(output, from_node.label);
-      continue;
-    }
-
-    node_sock_label(output, from_sock.label);
-  }
-}
-
 static void propagate_reroute_type_from_start_socket(
     bNodeSocket *start_socket,
     const MultiValueMap<bNodeSocket *, bNodeLink *> &links_map,
@@ -667,7 +621,7 @@ static void propagate_reroute_type_from_start_socket(
   }
 }
 
-static void update_reroute_node_socket_types(bNodeTree *ntree)
+void ntree_update_reroute_nodes(bNodeTree *ntree)
 {
   /* Contains nodes that are linked to at least one reroute node. */
   Set<bNode *> nodes_linked_with_reroutes;
@@ -725,15 +679,71 @@ static void update_reroute_node_socket_types(bNodeTree *ntree)
   }
 }
 
-void ntree_update_reroute_nodes(bNodeTree *ntree)
+static void update_reroute_auto_labels(bNodeTree *ntree)
 {
-  update_reroute_node_socket_types(ntree);
-  update_reroute_node_auto_labels(ntree);
+  using namespace blender;
+  ntree->ensure_topology_cache();
+
+  /* Clear auto-label. */
+  LISTBASE_FOREACH (bNode *, reroute, &ntree->nodes) {
+    if (!reroute->is_reroute()) {
+      continue;
+    }
+    reroute->runtime->reroute_auto_label.reset();
+  }
+
+  for (bNode *reroute : ntree->toposort_left_to_right()) {
+    if (!reroute->is_reroute() || reroute->label[0] != '\0') {
+      continue;
+    }
+
+    const bNodeSocket &input = *reroute->input_sockets().first();
+    const Span<const bNodeSocket *> linked_sockets = input.directly_linked_sockets();
+
+    if (linked_sockets.is_empty()) {
+      continue;
+    }
+
+    const bNodeSocket &from_sock = *linked_sockets.first();
+    const bNode &from_node = from_sock.owner_node();
+
+    if (!from_node.is_reroute()) {
+      continue;
+    }
+
+    if (from_node.label[0] != '\0') {
+      /* Label this reroute based on the connected reroute to also. */
+      reroute->runtime->reroute_auto_label = StringRefNull(from_node.label);
+      continue;
+    }
+
+    if (from_node.runtime->reroute_auto_label.has_value()) {
+      reroute->runtime->reroute_auto_label = from_node.runtime->reroute_auto_label.value();
+    }
+  }
 }
 
-void blender::bke::ntree_update_auto_labels(bNodeTree &ntree)
+void blender::bke::ntree_reroute_auto_labels_tag_dirty(const bNodeTree *ntree)
 {
-  update_reroute_node_auto_labels(&ntree);
+  ntree->runtime->reroute_auto_labels_are_dirty = true;
+}
+
+void blender::bke::ntree_reroute_auto_labels_tag_clean(const bNodeTree *ntree)
+{
+  ntree->runtime->reroute_auto_labels_are_dirty = false;
+}
+
+bool blender::bke::ntree_reroute_auto_labels_need_update(const bNodeTree *ntree)
+{
+  return ntree->runtime->reroute_auto_labels_are_dirty;
+}
+
+void blender::bke::ntree_reroute_auto_labels_ensure(bNodeTree *ntree)
+{
+  if (ntree_reroute_auto_labels_need_update(ntree)) {
+    update_reroute_auto_labels(ntree);
+    ntree_reroute_auto_labels_tag_clean(ntree);
+  }
 }
 
 bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)

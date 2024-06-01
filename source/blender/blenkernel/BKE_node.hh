@@ -1679,11 +1679,22 @@ enum class eNodeSizePreset : int8_t {
 
 void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Reroute Node Automatic Label Overlay
+ * \{ */
+
+void ntree_reroute_auto_labels_tag_dirty(const bNodeTree *ntree);
+void ntree_reroute_auto_labels_tag_clean(const bNodeTree *ntree);
+bool ntree_reroute_auto_labels_need_update(const bNodeTree *ntree);
+void ntree_reroute_auto_labels_ensure(bNodeTree *ntree);
+
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Node Generic Functions
  * \{ */
-
-void ntree_update_auto_labels(bNodeTree &ntree);
 
 bool node_is_connected_to_output(const bNodeTree *ntree, const bNode *node);
 

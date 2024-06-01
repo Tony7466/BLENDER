@@ -497,6 +497,7 @@ class NodeTreeMainUpdater {
     this->update_generic_callback(ntree);
     this->remove_unused_previews_when_necessary(ntree);
     this->make_node_previews_dirty(ntree);
+    this->make_reroute_auto_labels_dirty_when_necessary(ntree);
 
     this->propagate_runtime_flags(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
@@ -779,6 +780,18 @@ class NodeTreeMainUpdater {
         this->make_node_previews_dirty(*nested_tree);
       }
     }
+  }
+
+  void make_reroute_auto_labels_dirty_when_necessary(bNodeTree &ntree)
+  {
+    const uint32_t allowed_flags = NTREE_CHANGED_INTERNAL_LINK | NTREE_CHANGED_NODE_OUTPUT |
+                                   NTREE_CHANGED_NODE_PROPERTY | NTREE_CHANGED_SOCKET_PROPERTY |
+                                   NTREE_CHANGED_REMOVED_SOCKET | NTREE_CHANGED_REMOVED_NODE |
+                                   NTREE_CHANGED_PARENT;
+    if ((ntree.runtime->changed_flag & ~allowed_flags) == 0) {
+      return;
+    }
+    ntree.runtime->reroute_auto_labels_are_dirty = true;
   }
 
   void propagate_runtime_flags(const bNodeTree &ntree)

@@ -4001,6 +4001,11 @@ static void node_update_nodetree(const bContext &C,
     }
 
     if (node.is_reroute()) {
+      if ((snode->overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+          (snode->overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS))
+      {
+        blender::bke::ntree_reroute_auto_labels_ensure(&ntree);
+      }
       reroute_node_prepare_for_draw(node);
     }
     else {
@@ -4154,7 +4159,8 @@ static void frame_node_draw(const bContext &C,
 static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, uiBlock &block)
 {
   const bool has_label = node.label[0] != '\0';
-  const bool use_auto_label = !has_label && (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+  const bool use_auto_label = node.runtime->reroute_auto_label.has_value() &&
+                              (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
                               (snode.overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS);
 
   if (!has_label && !use_auto_label) {
@@ -4166,9 +4172,9 @@ static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, u
     return;
   }
 
-  const bNodeSocket *output = static_cast<bNodeSocket *>(node.outputs.first);
   char showname[128]; /* 128 used below */
-  STRNCPY(showname, use_auto_label ? output->label : node.label);
+  STRNCPY(showname,
+          use_auto_label ? node.runtime->reroute_auto_label.value().c_str() : node.label);
 
   const short width = 512;
   const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
