@@ -3800,6 +3800,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           continue;
         }
 
+        if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
+          /* Compatible modes. Nothing to change. */
+          continue;
+        }
+
         bool has_compatible_shadow_blend_mode = true;
 
         if (material->blend_shadow == MA_BS_NONE) {
@@ -3816,11 +3821,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                            RPT_("Couldn't convert material %s because of incompatible Blend Mode "
                                 "and Shadow Mode\n"),
                            material->id.name + 2);
-          continue;
-        }
-
-        if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
-          /* Compatible modes. Nothing to change. */
           continue;
         }
 
