@@ -4172,7 +4172,7 @@ static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, u
     return;
   }
 
-  char showname[128]; /* 128 used below */
+  char showname[128];
   STRNCPY(showname,
           use_auto_label ? node.runtime->reroute_auto_label.value().c_str() : node.label);
 
