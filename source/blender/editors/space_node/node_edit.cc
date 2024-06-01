@@ -2593,6 +2593,9 @@ struct NodeSlideData {
   Vector<float2> initial_node_positions;
   Vector<bNode *> nodes_to_slide_left;
   Vector<bNode *> nodes_to_slide_right;
+
+  /* TODO: No need to store the two vectors above. */
+  Vector<bNode *> nodes_to_slide;
 };
 
 static Vector<bNode *> find_nodes_to_the_left(const Span<bNode *> trigger_nodes)
@@ -2701,21 +2704,20 @@ static int node_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
   switch (event->type) {
     case MOUSEMOVE: {
       const float node_diff_x = (current_mouse.x - initial_mouse.x) * UI_INV_SCALE_FAC;
-      if (node_diff_x < 0) {
-        for (bNode *node : slide_data.nodes_to_slide_left) {
-          if (node->type == NODE_FRAME) {
-            continue;
-          }
-          node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
+      if (slide_data.nodes_to_slide.is_empty()) {
+        const float move_threshold = 3.0f;
+        if (node_diff_x < -move_threshold) {
+          slide_data.nodes_to_slide = slide_data.nodes_to_slide_left;
+        }
+        if (node_diff_x > move_threshold) {
+          slide_data.nodes_to_slide = slide_data.nodes_to_slide_right;
         }
       }
-      else {
-        for (bNode *node : slide_data.nodes_to_slide_right) {
-          if (node->type == NODE_FRAME) {
-            continue;
-          }
-          node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
+      for (bNode *node : slide_data.nodes_to_slide) {
+        if (node->type == NODE_FRAME) {
+          continue;
         }
+        node->locx = slide_data.initial_node_positions[node->index()].x + node_diff_x;
       }
       ED_region_tag_redraw(&region);
       break;
