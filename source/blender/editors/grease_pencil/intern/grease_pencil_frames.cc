@@ -556,9 +556,7 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
       frame_numbers_to_delete.append(next);
     }
 
-    for (const int frame : frame_numbers_to_delete) {
-      layer->remove_frame(frame);
-    }
+    grease_pencil.remove_frames(*layer, frame_numbers_to_delete.as_span());
 
     changed = true;
   }
