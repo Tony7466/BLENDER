@@ -3810,15 +3810,15 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         if (material->blend_shadow == MA_BS_NONE) {
           /* No need to match the surface since shadows are disabled. */
         }
-        else if ((material->blend_shadow == MA_BS_SOLID &&
-                  material->blend_method != MA_BM_SOLID) ||
-                 (material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
-                 (material->blend_shadow == MA_BS_HASHED &&
-                  material->blend_method != MA_BM_HASHED))
+        else if (material->blend_shadow == MA_BS_SOLID) {
+          /* This is already versionned an transfered to `transparent_shadows`. */
+        }
+        else if ((material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
+                 (material->blend_shadow == MA_BS_HASHED))
         {
           BLO_reportf_wrap(fd->reports,
                            RPT_WARNING,
-                           RPT_("Couldn't convert material %s because of incompatible Blend Mode "
+                           RPT_("Couldn't convert material %s because of different Blend Mode "
                                 "and Shadow Mode\n"),
                            material->id.name + 2);
           continue;
