@@ -520,7 +520,7 @@ struct BlendePyContextStore {
   bool has_win;
 };
 
-static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py, const char *script_id)
+static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py)
 {
   c_py->wm = CTX_wm_manager(C);
   c_py->scene = CTX_data_scene(C);
@@ -530,11 +530,11 @@ static void arg_py_context_backup(bContext *C, BlendePyContextStore *c_py, const
     CTX_wm_window_set(C, static_cast<wmWindow *>(c_py->wm->windows.first));
   }
   else {
+    /* NOTE: this should never happen, although it may be possible when loading
+     * `.blend` files without windowing data. Whatever the case, it shouldn't crash,
+     * although typical scripts that accesses the context is not expected to work usefully. */
     c_py->win = nullptr;
-    fprintf(stderr,
-            "Python script \"%s\" "
-            "running with missing context data.\n",
-            script_id);
+    fprintf(stderr, "Python script running with missing context data.\n");
   }
 }
 
@@ -558,7 +558,7 @@ static void arg_py_context_restore(bContext *C, BlendePyContextStore *c_py)
 #    define BPY_CTX_SETUP(_cmd) \
       { \
         BlendePyContextStore py_c; \
-        arg_py_context_backup(C, &py_c, argv[1]); \
+        arg_py_context_backup(C, &py_c); \
         { \
           _cmd; \
         } \
@@ -593,6 +593,7 @@ static void print_version_full()
   printf("\tbuild commit date: %s\n", build_commit_date);
   printf("\tbuild commit time: %s\n", build_commit_time);
   printf("\tbuild hash: %s\n", build_hash);
+  printf("\tbuild branch: %s\n", build_branch);
   printf("\tbuild platform: %s\n", build_platform);
   printf("\tbuild type: %s\n", build_type);
   printf("\tbuild c flags: %s\n", build_cflags);
@@ -703,6 +704,11 @@ static void print_help(bArgs *ba, bool all)
   BLI_args_print_arg_doc(ba, "--python-exit-code");
   BLI_args_print_arg_doc(ba, "--python-use-system-env");
   BLI_args_print_arg_doc(ba, "--addons");
+
+  PRINT("\n");
+  PRINT("Network Options:\n");
+  BLI_args_print_arg_doc(ba, "--online-mode");
+  BLI_args_print_arg_doc(ba, "--offline-mode");
 
   PRINT("\n");
   PRINT("Logging Options:\n");
@@ -946,6 +952,27 @@ static int arg_handle_python_set(int /*argc*/, const char ** /*argv*/, void *dat
     G.f &= ~G_FLAG_SCRIPT_AUTOEXEC;
   }
   G.f |= G_FLAG_SCRIPT_OVERRIDE_PREF;
+  return 0;
+}
+
+static const char arg_handle_internet_allow_set_doc_online[] =
+    "\n\t"
+    "Allow internet access, overriding the preference.";
+static const char arg_handle_internet_allow_set_doc_offline[] =
+    "\n\t"
+    "Disallow internet access, overriding the preference.";
+
+static int arg_handle_internet_allow_set(int /*argc*/, const char ** /*argv*/, void *data)
+{
+  G.f &= ~G_FLAG_INTERNET_OVERRIDE_PREF_ANY;
+  if (bool(data)) {
+    G.f |= G_FLAG_INTERNET_ALLOW;
+    G.f |= G_FLAG_INTERNET_OVERRIDE_PREF_ONLINE;
+  }
+  else {
+    G.f &= ~G_FLAG_INTERNET_ALLOW;
+    G.f |= G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE;
+  }
   return 0;
 }
 
@@ -1650,7 +1677,7 @@ static bool arg_handle_extension_registration(const bool do_register, const bool
 {
   /* Logic runs in #main_args_handle_registration. */
   char *error_msg = nullptr;
-  bool result = WM_platform_assosiate_set(do_register, all_users, &error_msg);
+  bool result = WM_platform_associate_set(do_register, all_users, &error_msg);
   if (error_msg) {
     fprintf(stderr, "Error: %s\n", error_msg);
     MEM_freeN(error_msg);
@@ -2277,7 +2304,7 @@ static int arg_handle_python_expr_run(int argc, const char **argv, void *data)
 static const char arg_handle_python_console_run_doc[] =
     "\n\t"
     "Run Blender with an interactive console.";
-static int arg_handle_python_console_run(int /*argc*/, const char **argv, void *data)
+static int arg_handle_python_console_run(int /*argc*/, const char ** /*argv*/, void *data)
 {
 #  ifdef WITH_PYTHON
   bContext *C = static_cast<bContext *>(data);
@@ -2536,6 +2563,11 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
   BLI_args_add(ba, "-y", "--enable-autoexec", CB_EX(arg_handle_python_set, enable), (void *)true);
   BLI_args_add(
       ba, "-Y", "--disable-autoexec", CB_EX(arg_handle_python_set, disable), (void *)false);
+
+  BLI_args_add(
+      ba, nullptr, "--offline-mode", CB_EX(arg_handle_internet_allow_set, offline), (void *)false);
+  BLI_args_add(
+      ba, nullptr, "--online-mode", CB_EX(arg_handle_internet_allow_set, online), (void *)true);
 
   BLI_args_add(
       ba, nullptr, "--disable-crash-handler", CB(arg_handle_crash_handler_disable), nullptr);

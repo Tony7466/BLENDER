@@ -499,6 +499,7 @@ void gpu_shader_create_info_init()
     /* Overlay Armature Shape outline. */
     overlay_armature_shape_outline = overlay_armature_shape_outline_no_geom;
     overlay_armature_shape_outline_clipped = overlay_armature_shape_outline_clipped_no_geom;
+    overlay_armature_shape_wire = overlay_armature_shape_wire_no_geom;
 
     /* Overlay Motion Path Line. */
     overlay_motion_path_line = overlay_motion_path_line_no_geom;
@@ -545,10 +546,14 @@ void gpu_shader_create_info_init()
     /* NOTE: As atomic data types can alter shader gen if native atomics are unsupported, we need
      * to use differing create info's to handle the tile optimized check. This does prevent
      * the shadow techniques from being dynamically switchable. */
+#  if 0
+    /* Temp: Disable TILE_COPY path while efficient solution for parameter buffer overflow is
+     * identified. This path can be re-enabled in future. */
     const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
     if (is_tile_based_arch) {
       eevee_shadow_data = eevee_shadow_data_non_atomic;
     }
+#  endif
   }
 #endif
 

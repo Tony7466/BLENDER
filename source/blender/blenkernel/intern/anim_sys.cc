@@ -327,7 +327,7 @@ void BKE_keyingsets_blend_read_data(BlendDataReader *reader, ListBase *list)
 /* ***************************************** */
 /* Evaluation Data-Setting Backend */
 
-static bool is_fcurve_evaluatable(FCurve *fcu)
+static bool is_fcurve_evaluatable(const FCurve *fcu)
 {
   if (fcu->flag & (FCURVE_MUTED | FCURVE_DISABLED)) {
     return false;
@@ -1964,16 +1964,17 @@ static bool nla_combine_quaternion_get_inverted_strip_values(const float lower_v
 /* ---------------------- */
 
 /* Assert necs and necs->channel is nonNull. */
-static void nlaevalchan_assert_nonNull(NlaEvalChannelSnapshot *necs)
+static void nlaevalchan_assert_nonNull(const NlaEvalChannelSnapshot *necs)
 {
   UNUSED_VARS_NDEBUG(necs);
   BLI_assert(necs != nullptr && necs->channel != nullptr);
 }
 
 /* Assert that the channels given can be blended or combined together. */
-static void nlaevalchan_assert_blendOrcombine_compatible(NlaEvalChannelSnapshot *lower_necs,
-                                                         NlaEvalChannelSnapshot *upper_necs,
-                                                         NlaEvalChannelSnapshot *blended_necs)
+static void nlaevalchan_assert_blendOrcombine_compatible(
+    const NlaEvalChannelSnapshot *lower_necs,
+    const NlaEvalChannelSnapshot *upper_necs,
+    const NlaEvalChannelSnapshot *blended_necs)
 {
   UNUSED_VARS_NDEBUG(lower_necs, upper_necs, blended_necs);
   BLI_assert(!ELEM(nullptr, lower_necs, blended_necs));
@@ -2011,7 +2012,7 @@ static void nlaevalchan_assert_blendOrcombine_compatible_quaternion(
   BLI_assert(lower_necs->length == 4);
 }
 
-static void nlaevalchan_copy_values(NlaEvalChannelSnapshot *dst, NlaEvalChannelSnapshot *src)
+static void nlaevalchan_copy_values(NlaEvalChannelSnapshot *dst, const NlaEvalChannelSnapshot *src)
 {
   memcpy(dst->values, src->values, src->length * sizeof(float));
 }
@@ -2020,10 +2021,11 @@ static void nlaevalchan_copy_values(NlaEvalChannelSnapshot *dst, NlaEvalChannelS
  * Copies from lower necs to blended necs if upper necs is nullptr or has zero influence.
  * \return true if copied.
  */
-static bool nlaevalchan_blendOrcombine_try_copy_from_lower(NlaEvalChannelSnapshot *lower_necs,
-                                                           NlaEvalChannelSnapshot *upper_necs,
-                                                           const float upper_influence,
-                                                           NlaEvalChannelSnapshot *r_blended_necs)
+static bool nlaevalchan_blendOrcombine_try_copy_from_lower(
+    const NlaEvalChannelSnapshot *lower_necs,
+    const NlaEvalChannelSnapshot *upper_necs,
+    const float upper_influence,
+    NlaEvalChannelSnapshot *r_blended_necs)
 {
   const bool has_influence = !IS_EQF(upper_influence, 0.0f);
   if (upper_necs != nullptr && has_influence) {
@@ -2613,7 +2615,7 @@ static void nlasnapshot_from_action(PointerRNA *ptr,
   const float modified_evaltime = evaluate_time_fmodifiers(
       &storage, modifiers, nullptr, 0.0f, evaltime);
 
-  LISTBASE_FOREACH (FCurve *, fcu, &action->curves) {
+  LISTBASE_FOREACH (const FCurve *, fcu, &action->curves) {
     if (!is_fcurve_evaluatable(fcu)) {
       continue;
     }
@@ -3085,7 +3087,7 @@ static void nla_eval_domain_action(PointerRNA *ptr,
     return;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  LISTBASE_FOREACH (const FCurve *, fcu, &act->curves) {
     /* check if this curve should be skipped */
     if (!is_fcurve_evaluatable(fcu)) {
       continue;
@@ -3925,24 +3927,21 @@ void BKE_animsys_evaluate_animdata(ID *id,
    */
   /* TODO: need to double check that this all works correctly */
   if (recalc & ADT_RECALC_ANIM) {
-    if (adt->animation && adt->binding_handle) {
-      /* Animation data-blocks take precedence over the old Action + NLA system. */
-      blender::animrig::evaluate_and_apply_animation(id_ptr,
-                                                     adt->animation->wrap(),
-                                                     adt->binding_handle,
-                                                     *anim_eval_context,
-                                                     flush_to_original);
+    /* evaluate NLA data */
+    if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
+      /* evaluate NLA-stack
+       * - active action is evaluated as part of the NLA stack as the last item
+       */
+      animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
     }
-    else {
-      /* evaluate NLA data */
-      if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
-        /* evaluate NLA-stack
-         * - active action is evaluated as part of the NLA stack as the last item
-         */
-        animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+    /* evaluate Active Action only */
+    else if (adt->action) {
+      blender::animrig::Action &action = adt->action->wrap();
+      if (action.is_action_layered()) {
+        blender::animrig::evaluate_and_apply_animation(
+            id_ptr, action, adt->binding_handle, *anim_eval_context, flush_to_original);
       }
-      /* evaluate Active Action only */
-      else if (adt->action) {
+      else {
         animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
       }
     }
