@@ -29,6 +29,16 @@ vec4 add_outline(float d, float extra_half_width, float inset, vec4 cur, vec4 ou
     return mix(cur, outline_color, a);
 }
 
+//@TODO: premultiplied alpha?
+vec4 blend_color(vec4 cur, vec4 color)
+{
+  if (cur.a == 0)
+    cur = color;
+  else
+    cur = mix(cur, color, color.a);
+  return cur;
+}
+
 void main()
 {
   vec2 uv = uvInterp;
@@ -106,21 +116,24 @@ void main()
       if (co.y <= strip.strip_content_top) {
         float phase = mod(gl_FragCoord.x + gl_FragCoord.y, 12.0);
         if (phase >= 8.0) {
-          if (col.a != 0.0)
-            col.rgb *= 0.75;
-          else
-            col = vec4(0.0, 0.0, 0.0, 0.25);
+          col = blend_color(col, vec4(0.0, 0.0, 0.0, 0.25));
         }
       }
     }
 
     /* Highlight. */
     if ((strip.flags & GPU_SEQ_FLAG_HIGHLIGHT) != 0) {
-      float a = 48.0/255.0;
-        if (col.a != 0.0)
-          col = mix(col, vec4(1.0), a);
-        else
-          col = vec4(1.0, 1.0, 1.0, a);
+      col = blend_color(col, vec4(1.0, 1.0, 1.0, 48.0/255.0));
+    }
+
+    /* Handles. */
+    if ((strip.flags & GPU_SEQ_FLAG_HANDLES) != 0) {
+      if (co.x >= strip.left_handle && co.x < strip.left_handle + strip.handle_width) {
+        col = blend_color(col, color_unpack(strip.col_handle_left));
+      }
+      if (co.x > strip.right_handle - strip.handle_width && co.x <= strip.right_handle) {
+        col = blend_color(col, color_unpack(strip.col_handle_right));
+      }
     }
   }
 

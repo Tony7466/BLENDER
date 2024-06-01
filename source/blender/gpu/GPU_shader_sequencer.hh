@@ -24,17 +24,18 @@ enum eGPUSeqFlags : uint32_t {
   GPU_SEQ_FLAG_SELECTED = (1u << 7u),
   GPU_SEQ_FLAG_ACTIVE = (1u << 8u),
   GPU_SEQ_FLAG_HIGHLIGHT = (1u << 9u),
+  GPU_SEQ_FLAG_HANDLES = (1u << 10u),
 };
 
 struct SeqStripDrawData {
   float content_start, content_end, bottom, top;
-  float left_handle, right_handle, strip_content_top;
+  float left_handle, right_handle, strip_content_top, handle_width;
   uint flags;
   uint col_background;
   uint col_outline;
   uint col_color_band;
   uint col_transition_in, col_transition_out;
-  float _pad0, _pad1, _pad2;
+  uint col_handle_left, col_handle_right;
 };
 BLI_STATIC_ASSERT_ALIGN(SeqStripDrawData, 16)
 

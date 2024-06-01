@@ -1655,6 +1655,7 @@ static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
     data.strip_content_top = strip.strip_content_top;
     data.left_handle = strip.left_handle;
     data.right_handle = strip.right_handle;
+    data.handle_width = strip.handle_width;
     if (strip.is_single_image) {
       data.flags |= GPU_SEQ_FLAG_SINGLE_IMAGE;
     }
@@ -1749,6 +1750,7 @@ static void draw_strips_top(TimelineDrawContext *timeline_ctx,
     data.strip_content_top = strip.strip_content_top;
     data.left_handle = strip.left_handle;
     data.right_handle = strip.right_handle;
+    data.handle_width = strip.handle_width;
     if (strip.is_single_image) {
       data.flags |= GPU_SEQ_FLAG_SINGLE_IMAGE;
     }
@@ -1766,7 +1768,8 @@ static void draw_strips_top(TimelineDrawContext *timeline_ctx,
     }
 
     /* Locked state. */
-    if (SEQ_transform_is_locked(timeline_ctx->channels, strip.seq)) {
+    const bool locked = SEQ_transform_is_locked(timeline_ctx->channels, strip.seq);
+    if (locked) {
       data.flags |= GPU_SEQ_FLAG_LOCKED;
     }
 
@@ -1811,6 +1814,28 @@ static void draw_strips_top(TimelineDrawContext *timeline_ctx,
     }
     if (special_preview == strip.seq) {
       data.flags |= GPU_SEQ_FLAG_HIGHLIGHT;
+    }
+
+    /* Handles on left/right side. */
+    if (!locked && ED_sequencer_can_select_handle(strip.seq)) {
+      data.flags |= GPU_SEQ_FLAG_HANDLES;
+      const bool selected_l = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_LEFT);
+      const bool selected_r = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_RIGHT);
+
+      /* Left handle color. */
+      col[0] = col[1] = col[2] = 0; col[3] = 50;
+      if (selected && selected_l) {
+        UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+      }
+      data.col_handle_left = color_pack(col);
+
+      /* Right handle color. */
+      col[0] = col[1] = col[2] = 0;
+      col[3] = 50;
+      if (selected && selected_r) {
+        UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+      }
+      data.col_handle_right = color_pack(col);
     }
 
     if (strip_data_count == GPU_SEQ_STRIP_DRAW_DATA_LEN) {
@@ -1891,11 +1916,11 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     if (!rounded)
       draw_effect_inputs_highlight(timeline_ctx, &strip_ctx);
     draw_multicam_highlight(timeline_ctx, &strip_ctx); //@TODO
-    if (!rounded)
+    if (!rounded) {
       draw_seq_solo_highlight(timeline_ctx, &strip_ctx);
-    //@TODO - handles?
-    draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_HANDLE_LEFT);
-    draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_HANDLE_RIGHT);
+      draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_HANDLE_LEFT);
+      draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_HANDLE_RIGHT);
+    }
     draw_handle_transform_text(timeline_ctx, &strip_ctx, SEQ_HANDLE_LEFT);
     draw_handle_transform_text(timeline_ctx, &strip_ctx, SEQ_HANDLE_RIGHT);
     if (!rounded)
