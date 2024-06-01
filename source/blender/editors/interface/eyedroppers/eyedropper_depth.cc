@@ -443,7 +443,7 @@ static bool depthdropper_poll(bContext *C)
       return true;
     }
     /* Context menu button. */
-    if (but->type == UI_BTYPE_BUT) {
+    if (but->optype && STREQ(but->optype->idname, "UI_OT_eyedropper_depth")) {
       return true;
     }
 
