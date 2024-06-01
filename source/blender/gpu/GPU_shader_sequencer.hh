@@ -39,7 +39,7 @@ BLI_STATIC_ASSERT_ALIGN(SeqStripDrawData, 16)
 
 struct SeqContextDrawData {
   float pixelx, pixely;
+  float round_radius;
   uint col_back;
-  float _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(SeqContextDrawData, 16)

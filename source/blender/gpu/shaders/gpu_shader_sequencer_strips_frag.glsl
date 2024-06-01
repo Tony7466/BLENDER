@@ -42,7 +42,7 @@ void main()
   bcenter *= viewToPixels;
   vec2 pxy = co * viewToPixels;
 
-  float radius = 16.0; //@TODO: large radius for testing right now
+  float radius = context_data.round_radius;
   radius = min(radius,min(bsize.x,bsize.y));
     
   float d = sdfRoundedBox(pxy - bcenter, bsize, radius);

@@ -617,7 +617,7 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   }
 }
 
-static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
+static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx, float corner_radius)
 {
   using namespace seq;
   Sequence *seq_meta = strip_ctx->seq;
@@ -669,15 +669,15 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
 
   col[3] = 196; /* Alpha, used for all meta children. */
 
+  const float meta_x1 = strip_ctx->left_handle + corner_radius * 0.8f * timeline_ctx->pixelx;
+  const float meta_x2 = strip_ctx->right_handle - corner_radius * 0.8f * timeline_ctx->pixelx;
+
   /* Draw only immediate children (1 level depth). */
   LISTBASE_FOREACH (Sequence *, seq, meta_seqbase) {
-    const int startdisp = SEQ_time_left_handle_frame_get(scene, seq) + offset;
-    const int enddisp = SEQ_time_right_handle_frame_get(scene, seq) + offset;
-
-    if ((startdisp > strip_ctx->right_handle || enddisp < strip_ctx->left_handle) == 0) {
+    float x1_chan = SEQ_time_left_handle_frame_get(scene, seq) + offset;
+    float x2_chan = SEQ_time_right_handle_frame_get(scene, seq) + offset;
+    if (x1_chan <= meta_x2 && x2_chan >= meta_x1) {
       float y_chan = (seq->machine - chan_min) / float(chan_range) * draw_range;
-      float x1_chan = startdisp;
-      float x2_chan = enddisp;
       float y1_chan, y2_chan;
 
       if (seq->type == SEQ_TYPE_COLOR) {
@@ -704,12 +704,8 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
       }
 
       /* Clamp within parent sequence strip bounds. */
-      if (x1_chan < strip_ctx->left_handle) {
-        x1_chan = strip_ctx->left_handle;
-      }
-      if (x2_chan > strip_ctx->right_handle) {
-        x2_chan = strip_ctx->right_handle;
-      }
+      x1_chan = max_ff(x1_chan, meta_x1);
+      x2_chan = min_ff(x2_chan, meta_x2);
 
       y1_chan = strip_ctx->bottom + y_chan + (draw_height * SEQ_STRIP_OFSBOTTOM);
       y2_chan = strip_ctx->bottom + y_chan + (draw_height * SEQ_STRIP_OFSTOP);
@@ -1624,6 +1620,17 @@ static uint color_pack(const uchar rgba[4])
   return rgba[0] | (rgba[1] << 8u) | (rgba[2] << 16u) | (rgba[3] << 24u);
 }
 
+static float calc_strip_round_radius(float pixely)
+{
+  float height_pixels = 1.0f / pixely;
+  float radius = height_pixels * 0.1f;
+  if (radius < 2.0f) {
+    radius = 0.0f;
+  }
+  radius = min_ff(radius, 16.0f);
+  return radius;
+}
+
 static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
   const Vector<StripDrawContext>& strips)
 {
@@ -1632,6 +1639,7 @@ static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
   SeqContextDrawData draw_ctx = {};
   draw_ctx.pixelx = timeline_ctx->pixelx;
   draw_ctx.pixely = timeline_ctx->pixely;
+  draw_ctx.round_radius = calc_strip_round_radius(draw_ctx.pixely);
   SeqStripDrawData strip_data[GPU_SEQ_STRIP_DRAW_DATA_LEN];
   int strip_data_count = 0;
   for (const StripDrawContext &strip : strips) {
@@ -1719,6 +1727,7 @@ static void draw_strips_top(TimelineDrawContext *timeline_ctx,
   SeqContextDrawData draw_ctx = {};
   draw_ctx.pixelx = timeline_ctx->pixelx;
   draw_ctx.pixely = timeline_ctx->pixely;
+  draw_ctx.round_radius = calc_strip_round_radius(draw_ctx.pixely);
   uchar col[4];
   UI_GetThemeColor3ubv(TH_BACK, col);
   col[3] = 255;
@@ -1814,12 +1823,13 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   //@TODO: flag only for testing
   const bool rounded = (timeline_ctx->sseq->timeline_overlay.flag &
                         SEQ_TIMELINE_ROUNDED_CORNERS) != 0;
+  const float round_radius = calc_strip_round_radius(timeline_ctx->pixely);
 
   if (rounded) {
     draw_strips_bottom(timeline_ctx, strips);
     for (const StripDrawContext &strip_ctx : strips) {
       draw_strip_offsets(timeline_ctx, &strip_ctx);
-      drawmeta_contents(timeline_ctx, &strip_ctx);
+      drawmeta_contents(timeline_ctx, &strip_ctx, round_radius);
     }
   }
   else {
@@ -1828,7 +1838,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
       draw_strip_color_band(timeline_ctx, &strip_ctx);
       draw_strip_offsets(timeline_ctx, &strip_ctx);
       draw_seq_transition_strip(timeline_ctx, &strip_ctx);
-      drawmeta_contents(timeline_ctx, &strip_ctx);
+      drawmeta_contents(timeline_ctx, &strip_ctx, 0.0f);
     }
   }
   timeline_ctx->quads->draw();
