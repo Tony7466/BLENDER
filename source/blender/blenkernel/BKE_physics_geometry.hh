@@ -134,8 +134,7 @@ class PhysicsGeometry {
    * Physics worlds have state data that needs to be rebuilt when bodies are added and removed, so
    * keeping bodies registered with the world and transfer everything at once is more efficient
    * than copying attribute arrays. */
-  void transfer_world_from(PhysicsGeometry &src_physics);
-  void transfer_rigid_bodies_from(PhysicsGeometry &src_physics, IndexRange dst_bodies_range);
+  void steal_data_from(PhysicsGeometry &src_physics, bool use_world);
 };
 
 }  // namespace blender::bke
