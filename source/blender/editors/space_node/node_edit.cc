@@ -69,7 +69,7 @@
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
-#include "COM_profile.hh"
+#include "COM_profiler.hh"
 
 namespace blender::ed::space_node {
 
@@ -102,7 +102,7 @@ struct CompoJob {
   float *progress;
   bool cancelled;
 
-  blender::compositor::ProfilerData profiler_data;
+  realtime_compositor::Profiler profiler;
 };
 
 float node_socket_calculate_height(const bNodeSocket &socket)
@@ -253,7 +253,9 @@ static void compo_initjob(void *cjv)
   }
 
   cj->re = RE_NewSceneRender(scene);
-  RE_system_gpu_context_ensure(cj->re);
+  if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU) {
+    RE_system_gpu_context_ensure(cj->re);
+  }
 }
 
 /* Called before redraw notifiers, it moves finished previews over. */
@@ -296,7 +298,7 @@ static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
   BKE_callback_exec_id(cj->bmain, &scene->id, BKE_CB_EVT_COMPOSITE_PRE);
 
   if ((cj->scene->r.scemode & R_MULTIVIEW) == 0) {
-    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr, cj->profiler_data);
+    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr, &cj->profiler);
   }
   else {
     LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
@@ -304,7 +306,7 @@ static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
         continue;
       }
       ntreeCompositExecTree(
-          cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr, cj->profiler_data);
+          cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr, &cj->profiler);
     }
   }
 
@@ -321,7 +323,7 @@ static void compo_canceljob(void *cjv)
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_CANCEL);
   cj->cancelled = true;
 
-  scene->runtime->compositor.per_node_execution_time = cj->profiler_data.per_node_execution_time;
+  scene->runtime->compositor.per_node_execution_time = cj->profiler.get_nodes_evaluation_times();
 }
 
 static void compo_completejob(void *cjv)
@@ -331,7 +333,7 @@ static void compo_completejob(void *cjv)
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_POST);
 
-  scene->runtime->compositor.per_node_execution_time = cj->profiler_data.per_node_execution_time;
+  scene->runtime->compositor.per_node_execution_time = cj->profiler.get_nodes_evaluation_times();
 }
 
 /** \} */
@@ -1935,54 +1937,6 @@ void NODE_OT_delete(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = node_delete_exec;
   ot->poll = ED_operator_node_editable;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Node Switch View
- * \{ */
-
-static bool node_switch_view_poll(bContext *C)
-{
-  SpaceNode *snode = CTX_wm_space_node(C);
-
-  if (snode && snode->edittree) {
-    return true;
-  }
-
-  return false;
-}
-
-static int node_switch_view_exec(bContext *C, wmOperator * /*op*/)
-{
-  SpaceNode *snode = CTX_wm_space_node(C);
-
-  LISTBASE_FOREACH_MUTABLE (bNode *, node, &snode->edittree->nodes) {
-    if (node->flag & SELECT) {
-      /* Call the update function from the Switch View node. */
-      node->runtime->update = NODE_UPDATE_OPERATOR;
-    }
-  }
-
-  ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
-
-  return OPERATOR_FINISHED;
-}
-
-void NODE_OT_switch_view_update(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Update Views";
-  ot->description = "Update views of selected node";
-  ot->idname = "NODE_OT_switch_view_update";
-
-  /* api callbacks */
-  ot->exec = node_switch_view_exec;
-  ot->poll = node_switch_view_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
