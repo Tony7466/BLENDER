@@ -740,6 +740,17 @@ static int view_socket(const bContext &C,
 {
   ARegion &region = *CTX_wm_region(&C);
 
+  /* Try to reactivate existing viewer connection. */
+  for (bNodeLink *link : bsocket_to_view.directly_linked_links()) {
+    bNodeSocket &target_socket = *link->tosock;
+    bNode &target_node = *link->tonode;
+    if (is_viewer_socket(target_socket)) {
+      finalize_viewer_link(C, snode, target_node, *link);
+      position_viewer_node(btree, target_node, bnode_to_view, region);
+      return OPERATOR_FINISHED;
+    }
+  }
+
   bNode *viewer_node = nullptr;
   /* Try to find a viewer that is already active. */
   for (bNode *node : btree.all_nodes()) {
@@ -748,17 +759,6 @@ static int view_socket(const bContext &C,
         viewer_node = node;
         break;
       }
-    }
-  }
-
-  /* Try to reactivate existing viewer connection. */
-  for (bNodeLink *link : bsocket_to_view.directly_linked_links()) {
-    bNodeSocket &target_socket = *link->tosock;
-    bNode &target_node = *link->tonode;
-    if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
-      finalize_viewer_link(C, snode, target_node, *link);
-      position_viewer_node(btree, *viewer_node, bnode_to_view, region);
-      return OPERATOR_FINISHED;
     }
   }
 
