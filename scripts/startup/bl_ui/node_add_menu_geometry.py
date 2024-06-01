@@ -248,7 +248,7 @@ class NODE_MT_geometry_node_GEO_INPUT(Menu):
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_CONSTANT")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_GROUP")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_SCENE")
-        layout.menu("NODE_MT_category_IMPORT_MESH")
+        layout.menu("NODE_MT_category_IMPORT")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -448,8 +448,8 @@ class NODE_MT_category_PRIMITIVES_MESH(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeMeshUVSphere")
         node_add_menu.draw_assets_for_catalog(layout, "Mesh/Primitives")
 
-class NODE_MT_category_IMPORT_MESH(Menu):
-    bl_idname = "NODE_MT_category_IMPORT_MESH"
+class NODE_MT_category_IMPORT(Menu):
+    bl_idname = "NODE_MT_category_IMPORT"
     bl_label = "Import"
 
     def draw(self, _context):
@@ -823,7 +823,7 @@ classes = (
     NODE_MT_geometry_node_GEO_MESH_OPERATIONS,
     NODE_MT_category_GEO_UV,
     NODE_MT_category_PRIMITIVES_MESH,
-    NODE_MT_category_IMPORT_MESH,
+    NODE_MT_category_IMPORT,
     NODE_MT_geometry_node_mesh_topology,
     NODE_MT_category_GEO_POINT,
     NODE_MT_category_simulation,
