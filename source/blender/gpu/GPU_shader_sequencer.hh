@@ -23,6 +23,7 @@ enum eGPUSeqFlags : uint32_t {
   GPU_SEQ_FLAG_MISSING_CONTENT = (1u << 6u),
   GPU_SEQ_FLAG_SELECTED = (1u << 7u),
   GPU_SEQ_FLAG_ACTIVE = (1u << 8u),
+  GPU_SEQ_FLAG_HIGHLIGHT = (1u << 9u),
 };
 
 struct SeqStripDrawData {

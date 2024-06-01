@@ -92,12 +92,12 @@ void main()
     /* Missing media. */
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_TITLE) != 0) {
       if (co.y > strip.strip_content_top) {
-        col = vec4(112.0, 0.0, 0.0, 230.0) * (1.0 / 255.0);
+        col = vec4(112.0/255.0, 0.0, 0.0, 230.0/255.0);
       }
     }
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_CONTENT) != 0) {
       if (co.y <= strip.strip_content_top) {
-        col = vec4(64.0, 0.0, 0.0, 230.0) * (1.0 / 255.0);
+        col = vec4(64.0/255.0, 0.0, 0.0, 230.0/255.0);
       }
     }
 
@@ -112,6 +112,15 @@ void main()
             col = vec4(0.0, 0.0, 0.0, 0.25);
         }
       }
+    }
+
+    /* Highlight. */
+    if ((strip.flags & GPU_SEQ_FLAG_HIGHLIGHT) != 0) {
+      float a = 48.0/255.0;
+        if (col.a != 0.0)
+          col = mix(col, vec4(1.0), a);
+        else
+          col = vec4(1.0, 1.0, 1.0, a);
     }
   }
 
