@@ -519,6 +519,7 @@ if(UNIX AND NOT APPLE)
   option(WITH_SYSTEM_LZO "Use the system LZO library" OFF)
 endif()
 option(WITH_DRACO "Enable Draco mesh compression Python module (used for glTF)" ON)
+option(WITH_MESHOPTIMIZER "Enable meshoptimiser mesh compression Python module (used for glTF)" ON)
 
 # Camera/motion tracking
 option(WITH_LIBMV "Enable Libmv structure from motion library" ON)
@@ -1195,11 +1196,17 @@ endif()
 
 set_and_warn_dependency(WITH_PYTHON WITH_CYCLES        OFF)
 set_and_warn_dependency(WITH_PYTHON WITH_DRACO         OFF)
+set_and_warn_dependency(WITH_PYTHON WITH_MESHOPTIMIZER OFF)
 set_and_warn_dependency(WITH_PYTHON WITH_MOD_FLUID     OFF)
 
 if(WITH_DRACO AND NOT WITH_PYTHON_INSTALL)
   message(STATUS "WITH_DRACO requires WITH_PYTHON_INSTALL to be ON, disabling WITH_DRACO for now")
   set(WITH_DRACO OFF)
+endif()
+
+if(WITH_MESHOPTIMIZER AND NOT WITH_PYTHON_INSTALL)
+  message(STATUS "WITH_MESHOPTIMIZER requires WITH_PYTHON_INSTALL to be ON, disabling WITH_MESHOPTIMIZER for now")
+  set(WITH_MESHOPTIMIZER OFF)
 endif()
 
 # enable boost for cycles, audaspace or i18n

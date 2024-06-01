@@ -31,6 +31,7 @@ set(WITH_PYTHON_INSTALL      OFF CACHE BOOL "" FORCE)
 
 # Depends on Python install, do this to quiet warning.
 set(WITH_DRACO               OFF CACHE BOOL "" FORCE)
+set(WITH_MESHOPTIMIZER       OFF CACHE BOOL "" FORCE)
 
 if(WIN32)
   set(WITH_WINDOWS_BUNDLE_CRT  OFF CACHE BOOL "" FORCE)

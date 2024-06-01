@@ -971,6 +971,14 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
       DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
     )
   endif()
+
+  if(WITH_MESHOPTIMIZER)
+    install(
+      PROGRAMS $<TARGET_FILE:extern_meshoptimizer>
+      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+    )
+  endif()
+
 elseif(WIN32)
   if(WITH_WINDOWS_EXTERNAL_MANIFEST)
     install(
@@ -1510,6 +1518,13 @@ elseif(WIN32)
     )
   endif()
 
+  if(WITH_MESHOPTIMIZER)
+    install(
+      PROGRAMS $<TARGET_FILE:extern_meshoptimizer>
+      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+    )
+  endif()
+
   if(WITH_PYTHON_MODULE AND TARGETDIR_BPY)
     install(
       TARGETS blender
@@ -1629,6 +1644,13 @@ elseif(APPLE)
   if(WITH_DRACO)
     install(
       PROGRAMS $<TARGET_FILE:extern_draco>
+      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+    )
+  endif()
+
+  if(WITH_MESHOPTIMIZER)
+    install(
+      PROGRAMS $<TARGET_FILE:extern_meshoptimizer>
       DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
     )
   endif()
