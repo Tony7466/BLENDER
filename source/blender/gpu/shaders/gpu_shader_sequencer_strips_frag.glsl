@@ -22,6 +22,13 @@ vec3 color_shade(vec3 rgb, float shade)
   return rgb;
 }
 
+vec4 add_outline(float d, float extra_half_width, float inset, vec4 cur, vec4 outline_color)
+{
+    float f = abs(d + inset) - extra_half_width;
+    float a = clamp(1.0 - f, 0.0, 1.0);
+    return mix(cur, outline_color, a);
+}
+
 void main()
 {
   vec2 uv = uvInterp;
@@ -109,24 +116,23 @@ void main()
   }
 
   /* Outside of strip rounded rect? */
-  float aa_radius = 0.5;
-  if (d + aa_radius > 0.0) {
+  if (d > 0.0) {
     col = vec4(0.0);
   }
 
   /* Outline. */
   if (!bottom_part) {
-
     bool selected = (strip.flags & GPU_SEQ_FLAG_SELECTED) != 0;
-    float line_width = selected ? 1.0 : 0.0;
-
-    if (selected) {    
-      float inset = 1.0 - smoothstep(0.0, aa_radius, abs(d+aa_radius+line_width+aa_radius));
-      col = mix(col, color_unpack(context_data.col_back), inset);
+    vec4 col_outline = color_unpack(strip.col_outline);
+    if (selected) {
+      /* Inset 1px line with backround color. */
+      col = add_outline(d, 0.0, 1.0, col, color_unpack(context_data.col_back));
+      /* 2x wide outline. */
+      col = add_outline(d, 0.5, -0.5, col, col_outline);
     }
-    
-    float outline = 1.0 - smoothstep(line_width, line_width + aa_radius, abs(d+aa_radius));
-    col = mix(col, color_unpack(strip.col_outline), outline);
+    else {
+      col = add_outline(d, 0.0, 0.0, col, col_outline);
+    }
   }
 
   fragColor = col;
