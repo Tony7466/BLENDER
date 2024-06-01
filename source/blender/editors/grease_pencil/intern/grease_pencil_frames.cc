@@ -522,12 +522,12 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    const Span<FramesMapKey> &keys = layer->sorted_keys();
-    Vector<FramesMapKey> frames_to_delete;
+    const Span<FramesMapKeyT> keys = layer->sorted_keys();
+    Vector<FramesMapKeyT> frames_to_delete;
 
     for (const int i : keys.index_range().drop_back(1)) {
-      const FramesMapKey current = keys[i];
-      const FramesMapKey next = keys[i + 1];
+      const FramesMapKeyT current = keys[i];
+      const FramesMapKeyT next = keys[i + 1];
 
       GreasePencilFrame frame = layer->frames().lookup(current);
 
@@ -552,7 +552,7 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
       frames_to_delete.append(next);
     }
 
-    for (const FramesMapKey frame : frames_to_delete) {
+    for (const FramesMapKeyT frame : frames_to_delete) {
       layer->remove_frame(frame);
     }
 
