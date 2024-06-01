@@ -12,6 +12,7 @@
 #include "session/buffers.h"
 #include "util/array.h"
 #include "util/log.h"
+#include "util/path.h"
 #include "util/openimagedenoise.h"
 
 #include "kernel/device/cpu/compat.h"
@@ -111,6 +112,13 @@ class OIDNDenoiseContext {
     if (denoise_params_.use_pass_normal) {
       oidn_normal_pass_ = OIDNPass(buffer_params_, "normal", PASS_DENOISING_NORMAL);
     }
+
+    const char *custom_weight_path = getenv("CYCLES_OIDN_CUSTOM_WEIGHTS");
+    if (custom_weight_path) {
+      if (!path_read_binary(custom_weight_path, custom_weights)) {
+        fprintf(stderr, "Cycles: Failed to load custom OIDN weights!");
+      }
+    }
   }
 
   bool need_denoising() const
@@ -164,6 +172,9 @@ class OIDNDenoiseContext {
     oidn_filter.setProgressMonitorFunction(oidn_progress_monitor_function, denoiser_);
     oidn_filter.set("hdr", true);
     oidn_filter.set("srgb", false);
+    if (custom_weights.size()) {
+      oidn_filter.setData("weights", custom_weights.data(), custom_weights.size());
+    }
     set_quality(oidn_filter);
 
     if (denoise_params_.prefilter == DENOISER_PREFILTER_NONE ||
@@ -545,6 +556,8 @@ class OIDNDenoiseContext {
   int num_samples_ = 0;
   bool allow_inplace_modification_ = false;
   int pass_sample_count_ = PASS_UNUSED;
+
+  vector<uint8_t> custom_weights;
 
   /* Optional albedo and normal passes, reused by denoising of different pass types. */
   OIDNPass oidn_albedo_pass_;
