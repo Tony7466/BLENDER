@@ -8,6 +8,7 @@
 #include "BLI_generic_span.hh"
 #include "BLI_map.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_sys_types.h"
 
 #include "BKE_attribute.hh"
 
@@ -106,7 +107,7 @@ void copy_primvar_to_blender_attribute(const pxr::UsdGeomPrimvar &primvar,
           primvar, timecode, face_indices, attribute.span.typed<float>());
       break;
     case CD_PROP_INT8:
-      copy_primvar_to_blender_buffer<unsigned char>(
+      copy_primvar_to_blender_buffer<uchar>(
           primvar, timecode, face_indices, attribute.span.typed<int8_t>());
       break;
     case CD_PROP_INT32:
@@ -153,7 +154,7 @@ void copy_blender_attribute_to_primvar(const GVArray &attribute,
           attribute.typed<float>(), timecode, primvar, value_writer);
       break;
     case CD_PROP_INT8:
-      copy_blender_buffer_to_primvar<int8_t, unsigned char>(
+      copy_blender_buffer_to_primvar<int8_t, uchar>(
           attribute.typed<int8_t>(), timecode, primvar, value_writer);
       break;
     case CD_PROP_INT32:
