@@ -2640,6 +2640,22 @@ static Vector<bNode *> find_nodes_to_the_right(const Span<bNode *> trigger_nodes
   return found_nodes.as_span();
 }
 
+static Vector<bNode *> get_nodes_in_frame(bNode &frame)
+{
+  Vector<bNode *> nodes;
+  Stack<bNode *> frames_to_check = {&frame};
+  while (!frames_to_check.is_empty()) {
+    bNode &frame = *frames_to_check.pop();
+    for (bNode *node : frame.direct_children_in_frame()) {
+      if (node->is_frame()) {
+        frames_to_check.push(node);
+      }
+      nodes.append(node);
+    }
+  }
+  return nodes;
+}
+
 static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   SpaceNode &snode = *CTX_wm_space_node(C);
@@ -2664,14 +2680,42 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   if (trigger_nodes.is_empty()) {
     float x, y;
     UI_view2d_region_to_view(&v2d, event->mval[0], event->mval[1], &x, &y);
+
+    bNode *smallest_hovered_frame = nullptr;
+    float smallest_frame_width = FLT_MAX;
     for (bNode *node : tree.all_nodes()) {
+      if (!node->is_frame()) {
+        continue;
+      }
+      if (!BLI_rctf_isect_pt(&node->runtime->totr, x, y)) {
+        continue;
+      }
+      const float width = BLI_rctf_size_x(&node->runtime->totr);
+      if (smallest_hovered_frame != nullptr) {
+        if (width > smallest_frame_width) {
+          continue;
+        }
+      }
+      smallest_hovered_frame = node;
+      smallest_frame_width = width;
+    }
+
+    Vector<bNode *> trigger_candidates = smallest_hovered_frame ?
+                                             get_nodes_in_frame(*smallest_hovered_frame) :
+                                             Vector<bNode *>(tree.all_nodes());
+
+    Vector<bNode *> nodes_left;
+    Vector<bNode *> nodes_right;
+    for (bNode *node : trigger_candidates) {
       if (node->runtime->totr.xmin < x) {
-        slide_data->nodes_to_slide_left.append(node);
+        nodes_left.append(node);
       }
       if (node->runtime->totr.xmax > x) {
-        slide_data->nodes_to_slide_right.append(node);
+        nodes_right.append(node);
       }
     }
+    slide_data->nodes_to_slide_left = find_nodes_to_the_left(nodes_left);
+    slide_data->nodes_to_slide_right = find_nodes_to_the_right(nodes_right);
   }
   else {
     slide_data->nodes_to_slide_left = find_nodes_to_the_left(trigger_nodes);
