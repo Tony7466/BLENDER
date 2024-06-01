@@ -535,8 +535,8 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      Drawing *drawing = grease_pencil.get_editable_drawing_at(*layer, current);
-      Drawing *drawing_next = grease_pencil.get_editable_drawing_at(*layer, next);
+      Drawing *drawing = grease_pencil.get_drawing_at(*layer, current);
+      Drawing *drawing_next = grease_pencil.get_drawing_at(*layer, next);
 
       if (!drawing || !drawing_next) {
         continue;
