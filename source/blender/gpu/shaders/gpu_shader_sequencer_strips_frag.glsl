@@ -22,21 +22,18 @@ vec3 color_shade(vec3 rgb, float shade)
   return rgb;
 }
 
+vec4 blend_color(vec4 cur, vec4 color)
+{
+  float t = color.a;
+  return cur * (1.0 - t) + vec4(color.rgb * t, t);
+}
+
 vec4 add_outline(float d, float extra_half_width, float inset, vec4 cur, vec4 outline_color)
 {
     float f = abs(d + inset) - extra_half_width;
     float a = clamp(1.0 - f, 0.0, 1.0);
-    return mix(cur, outline_color, a);
-}
-
-//@TODO: premultiplied alpha?
-vec4 blend_color(vec4 cur, vec4 color)
-{
-  if (cur.a == 0)
-    cur = color;
-  else
-    cur = mix(cur, color, color.a);
-  return cur;
+    outline_color.a *= a;
+    return blend_color(cur, outline_color);
 }
 
 void main()
@@ -97,17 +94,19 @@ void main()
         col.rgb = color_unpack(transition_color).rgb;
       }
     }
+
+    col.rgb *= col.a; /* Premultiply alpha. */
   }
   else {
     /* Missing media. */
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_TITLE) != 0) {
       if (co.y > strip.strip_content_top) {
-        col = vec4(112.0/255.0, 0.0, 0.0, 230.0/255.0);
+        col = blend_color(col, vec4(112.0/255.0, 0.0, 0.0, 230.0/255.0));
       }
     }
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_CONTENT) != 0) {
       if (co.y <= strip.strip_content_top) {
-        col = vec4(64.0/255.0, 0.0, 0.0, 230.0/255.0);
+        col = blend_color(col, vec4(64.0/255.0, 0.0, 0.0, 230.0/255.0));
       }
     }
 

@@ -1634,6 +1634,8 @@ static float calc_strip_round_radius(float pixely)
 static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
   const Vector<StripDrawContext>& strips)
 {
+  GPU_blend(GPU_BLEND_ALPHA_PREMULT);
+
   const bool show_overlay = (timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) != 0;
   const Scene *scene = timeline_ctx->scene;
   SeqContextDrawData draw_ctx = {};
@@ -1718,11 +1720,13 @@ static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
     }
   }
   flush_strip_batch(&draw_ctx, strip_data, strip_data_count);
+  GPU_blend(GPU_BLEND_ALPHA);
 }
 
 static void draw_strips_top(TimelineDrawContext *timeline_ctx,
                                const Vector<StripDrawContext> &strips)
 {
+  GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   const bool show_overlay = (timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) != 0;
   const Scene *scene = timeline_ctx->scene;
   const Sequence *act_seq = SEQ_select_active_get(scene);
@@ -1844,6 +1848,7 @@ static void draw_strips_top(TimelineDrawContext *timeline_ctx,
     }
   }
   flush_strip_batch(&draw_ctx, strip_data, strip_data_count);
+  GPU_blend(GPU_BLEND_ALPHA);
 }
 
 static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
@@ -1915,7 +1920,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   for (const StripDrawContext &strip_ctx : strips) {
     if (!rounded)
       draw_effect_inputs_highlight(timeline_ctx, &strip_ctx);
-    draw_multicam_highlight(timeline_ctx, &strip_ctx); //@TODO
+    draw_multicam_highlight(timeline_ctx, &strip_ctx);
     if (!rounded) {
       draw_seq_solo_highlight(timeline_ctx, &strip_ctx);
       draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_HANDLE_LEFT);
