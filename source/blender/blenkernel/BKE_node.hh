@@ -1683,11 +1683,19 @@ void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);
 
 /* -------------------------------------------------------------------- */
 /** \name Reroute Node Automatic Label Overlay
+ *
+ * Run-time labels for reroute nodes that can be enabled as an overlay to automatically
+ * label reroute nodes, when they are connected to reroute nodes with user-definded labels.
+ * Updated lazily when drawing the node tree.
  * \{ */
 
 void ntree_reroute_auto_labels_tag_dirty(const bNodeTree *ntree);
 void ntree_reroute_auto_labels_tag_clean(const bNodeTree *ntree);
 bool ntree_reroute_auto_labels_need_update(const bNodeTree *ntree);
+
+/**
+ * Update the labels for the automatic reroute label overlay, when they are tagged as dirty.
+ */
 void ntree_reroute_auto_labels_ensure(bNodeTree *ntree);
 
 /** \} */
