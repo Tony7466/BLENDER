@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #ifdef WITH_POTRACE
 
 #  include <iostream>
@@ -26,44 +28,59 @@ namespace blender::geometry {
 
 namespace potrace {
 
-int2 aligned_resolution(const int2 resolution)
+static constexpr const int64_t word_size = sizeof(potrace_word) * 8;
+
+static int64_t words_in_line(const int64_t length)
 {
-  const int extra = resolution.x % segment_size;
-  const int segments_num = resolution.x / segment_size + int(extra != 0);
-  return int2(segments_num * segment_size, resolution.y);
+  const int64_t words_num = length / word_size + int64_t(length % word_size != 0);
+  return words_num;
 }
 
-potrace_state_t *image_from_line_segments(
-    const Params params,
-    const FunctionRef<
-        void(int64_t line_i, int64_t segments_start, int64_t segments_num, char *r_segments)> func)
+int2 aligned_resolution(const int2 resolution)
 {
-  static_assert(alignof(potrace_word) == alignof(LineSegment));
-  static_assert(sizeof(potrace_word) == sizeof(LineSegment));
+  return int2(words_in_line(resolution.x) * word_size, resolution.y);
+}
 
-  const int2 segments_resolution = aligned_resolution(params.resolution) / int2(segment_size, 1);
-  Array<potrace_word> segments(segments_resolution.x * segments_resolution.y);
+potrace_state_t *image_from_lines(const Params params,
+                                  const FunctionRef<void(int64_t line_i,
+                                                         int64_t line_offset,
+                                                         int64_t index_in_line,
+                                                         int64_t length,
+                                                         int8_t *r_segments)> func)
+{
+  const int64_t words_num = words_in_line(params.resolution.x);
+  Array<potrace_word> segments(words_num * params.resolution.y);
+
+  const int extra_bits_num = words_num * word_size - params.resolution.x;
+  const potrace_word end_mask = (potrace_word(1) << extra_bits_num) - 1;
 
   threading::parallel_for(
       IndexRange(params.resolution.y),
       4096,
       [&](const IndexRange range) {
+        Array<int8_t> buffer(sizeof(potrace_word) * words_num);
         for (const int64_t line_i : range) {
-          MutableSpan<potrace_word> line = segments.as_mutable_span().slice(
-              line_i * segments_resolution.x, segments_resolution.x);
-          func(line_i,
-               line_i * segments_resolution.x,
-               segments_resolution.x,
-               line.cast<char>().data());
+          MutableSpan<potrace_word> line = segments.as_mutable_span().slice(line_i * words_num,
+                                                                            words_num);
+          func(line_i, line_i * words_num * word_size, 0, words_num * word_size, buffer.data());
+          for (const int word_i : line.index_range()) {
+            potrace_word word = 0;
+            for (const int byte_i : IndexRange(sizeof(potrace_word))) {
+              word <<= 8;
+              word |= buffer[word_i * sizeof(potrace_word) + byte_i];
+            }
+            line[word_i] = word;
+          }
+          line.last() &= end_mask;
         }
       },
       threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return range.size() * params.resolution.x; }));
+          [&](const IndexRange range) { return range.size() * words_num; }));
 
   potrace_bitmap_t bitmap;
   bitmap.w = params.resolution.x;
   bitmap.h = params.resolution.y;
-  bitmap.dy = segments_resolution.x;
+  bitmap.dy = words_num;
   bitmap.map = segments.data();
 
   potrace_param_t *potrace_params = potrace_param_default();

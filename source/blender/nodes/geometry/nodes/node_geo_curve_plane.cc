@@ -149,8 +149,8 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                           0.0f);
 
   potrace_state_t *potrace_image = geometry::potrace::image_for_predicate(
-      curves_params, [&](const int64_t /* line_i */, const int64_t pixel_index) -> bool {
-        return byte_map[pixel_index];
+      curves_params, [&](int64_t /*line_i*/, int64_t pixel_offset, int64_t pixel_index) -> bool {
+        return byte_map[pixel_offset + pixel_index];
       });
 
   if (potrace_image == nullptr) {

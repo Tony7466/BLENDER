@@ -30,44 +30,50 @@ struct Params {
   float optimization_tolerance = 0.2f;
 };
 
-using LineSegment = int32_t;
-inline constexpr const int segment_size = sizeof(LineSegment) * 8;
-
 int2 aligned_resolution(int2 resolution);
 
-potrace_state_t *image_from_line_segments(
-    Params params,
-    FunctionRef<void(
-        int64_t line_i, int64_t segments_start, int64_t segments_num, char *r_segments)> func);
+potrace_state_t *image_from_lines(Params params,
+                                  FunctionRef<void(int64_t line_i,
+                                                   int64_t line_offset,
+                                                   int64_t index_in_line,
+                                                   int64_t length,
+                                                   int8_t *r_segments)> func);
 
-template<typename Func> inline potrace_state_t *image_from_int32_segments(Params params, Func func)
+template<typename Func> inline potrace_state_t *image_from_bytes(Params params, Func func)
 {
-  return image_from_line_segments(
-      params,
-      [&](int64_t line_i,
-          int64_t segments_start,
-          int64_t segments_num,
-          char *__restrict r_segments) {
-        for (int64_t segment_iter = 0; segment_iter < segments_num; segment_iter++) {
-          const LineSegment segment = func(line_i, segments_start + segment_iter);
-          std::memcpy(r_segments, &segment, sizeof(segment));
-          r_segments += sizeof(segment);
-        }
-      });
+  return image_from_lines(params,
+                          [&](int64_t line_i,
+                              int64_t line_offset,
+                              int64_t index_in_line,
+                              int64_t length,
+                              int8_t *r_segments) {
+                            BLI_assert(length % 8 == 0);
+                            BLI_assert(line_offset % 8 == 0);
+                            BLI_assert(index_in_line % 8 == 0);
+                            const int64_t bytes_num = length >> 3;
+                            const int64_t bytes_line_offset = line_offset >> 3;
+                            const int64_t bytes_index_in_line = index_in_line >> 3;
+                            for (int64_t byte_iter = 0; byte_iter < bytes_num; byte_iter++) {
+                              *r_segments = func(
+                                  line_i, bytes_line_offset, bytes_index_in_line + byte_iter);
+                              r_segments++;
+                            }
+                          });
 }
 
 template<typename Func> inline potrace_state_t *image_for_predicate(Params params, Func func)
 {
-  return image_from_int32_segments(params,
-                                   [&](int64_t line_i, int64_t segment_index) -> LineSegment {
-                                     LineSegment segment = 0;
-                                     segment_index *= segment_size;
-                                     for (int64_t iter = 0; iter < segment_size; iter++) {
-                                       segment <<= 1;
-                                       segment |= LineSegment(func(line_i, segment_index + iter));
-                                     }
-                                     return segment;
-                                   });
+  return image_from_bytes(
+      params, [&](int64_t line_i, int64_t line_offset, int64_t index_in_line) -> int8_t {
+        const int64_t pixels_line_offset = line_offset << 3;
+        const int64_t pixels_index_in_line = index_in_line << 3;
+        int8_t byte = {};
+        for (int64_t pixel_iter = 0; pixel_iter < 8; pixel_iter++) {
+          byte <<= 1;
+          byte |= int8_t(func(line_i, pixels_line_offset, pixels_index_in_line + pixel_iter));
+        }
+        return byte;
+      });
 }
 
 void free_image(potrace_state_t *image);
