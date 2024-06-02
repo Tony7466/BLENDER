@@ -11,6 +11,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
@@ -432,55 +433,85 @@ void PhysicsGeometryImpl::delete_self()
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "id", /*"simulated",*/ "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
 
-PhysicsGeometry::PhysicsGeometry() : PhysicsGeometry(0) {}
+static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
+                          MutableSpan<btMotionState *> motion_states,
+                          MutableSpan<int> proxies,
+                          const int proxy_start = 0)
+{
+  for (const int i : rigid_bodies.index_range()) {
+    const float mass = 1.0f;
+    const float3 local_inertia = float3(0.0f);
+    btMotionState *motion_state = motion_states[i] = new btDefaultMotionState();
+    btCollisionShape *collision_shape = nullptr;
+    rigid_bodies[i] = new btRigidBody(
+        mass, motion_state, collision_shape, to_bullet(local_inertia));
+  }
+
+  array_utils::fill_index_range(proxies, proxy_start);
+}
+
+PhysicsGeometry::PhysicsGeometry() {
+  impl_array_.append(new PhysicsGeometryImpl());
+}
 
 PhysicsGeometry::PhysicsGeometry(int bodies_num)
 {
+  PhysicsGeometryImpl *main_impl = new PhysicsGeometryImpl();
+  impl_array_.append(main_impl);
+
+  main_impl->rigid_bodies.reinitialize(bodies_num);
+  main_impl->motion_states.reinitialize(bodies_num);
   proxies_.bodies.reinitialize(bodies_num);
-  proxies_.bodies.fill(-1);
+  create_bodies(main_impl->rigid_bodies, main_impl->motion_states, proxies_.bodies);
 }
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
-  impl_ = other.impl_;
-  if (impl_) {
-    impl_->add_user();
+  /* Copy implicitly shared pointers.
+   * These are immutable, but can be consolidated later. */
+  impl_array_ = other.impl_array_;
+  for (const PhysicsGeometryImpl *impl : impl_array_) {
+    impl->add_user();
   }
 }
 
 PhysicsGeometry::~PhysicsGeometry()
 {
-  impl_->remove_user_and_delete_if_last();
+  for (const PhysicsGeometryImpl *impl : impl_array_) {
+    impl->remove_user_and_delete_if_last();
+  }
 }
 
 PhysicsGeometryImpl *PhysicsGeometry::try_impl_for_write()
 {
-  if (!impl_->is_mutable()) {
+  BLI_assert(!impl_array_.is_empty());
+  if (!impl_array_.first()->is_mutable()) {
     return nullptr;
   }
-  return const_cast<PhysicsGeometryImpl *>(impl_);
+  return const_cast<PhysicsGeometryImpl *>(impl_array_.first());
 }
 
 const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 {
-  return *impl_;
+  BLI_assert(!impl_array_.is_empty());
+  return *impl_array_.first();
 }
 
 bool PhysicsGeometry::has_world() const
 {
-  return impl_->world != nullptr;
+  return this->impl().world != nullptr;
 }
 
 void PhysicsGeometry::set_world_enabled(const bool enabled)
 {
   if (PhysicsGeometryImpl *impl = this->try_impl_for_write()) {
     if (enabled) {
-      if (impl_->world == nullptr) {
+      if (this->impl().world == nullptr) {
         create_world(*impl);
       }
     }
     else {
-      if (impl_->world != nullptr) {
+      if (this->impl().world != nullptr) {
         destroy_world(*impl);
       }
     }
@@ -510,8 +541,8 @@ void PhysicsGeometry::set_overlap_filter(OverlapFilterFn fn)
 
  float3 PhysicsGeometry::gravity() const
  {
-   if (impl_->world) {
-     return to_blender(impl_->world->getGravity());
+   if (this->impl().world) {
+     return to_blender(this->impl().world->getGravity());
    }
    return float3(0.0f);
  }
@@ -593,7 +624,7 @@ VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
 
 VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
 {
-  BLI_assert(impl_->is_mutable());
+  BLI_assert(this->impl().is_mutable());
   constexpr auto get_fn = [](const btRigidBody &body) -> CollisionShape * {
     return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
   };

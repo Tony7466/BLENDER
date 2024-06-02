@@ -34,7 +34,7 @@ class PhysicsGeometry {
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
 private:
-  const PhysicsGeometryImpl *impl_ = nullptr;
+  Vector<const PhysicsGeometryImpl *> impl_array_;
 
   /* Proxies for the actual body/constraint/shape instance in the world.
    * World data is generally not copyable, which makes it unsuitable
