@@ -528,11 +528,54 @@ void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
     impl->add_user();
   }
 
-  proxies_.bodies.as_mutable_span().slice(body_range).copy_from(other.proxies().bodies);
-  proxies_.constraints.as_mutable_span()
-      .slice(constraint_range)
-      .copy_from(other.proxies().constraints);
-  proxies_.shapes.as_mutable_span().slice(shape_range).copy_from(other.proxies().shapes);
+  for (const int i : body_range.index_range()) {
+    proxies_.bodies[body_range[i]] = other.proxies().bodies[i] + bodies_offset;
+  }
+  for (const int i : constraint_range.index_range()) {
+    proxies_.constraints[constraint_range[i]] = other.proxies().constraints[i] + constraints_offset;
+  }
+  for (const int i : shape_range.index_range()) {
+    proxies_.shapes[shape_range[i]] = other.proxies().shapes[i] + shapes_offset;
+  }
+}
+
+bool PhysicsGeometry::has_unmerged_data() const {
+  return impl_array_.size() > 1;
+}
+
+bool PhysicsGeometry::try_consolidate_data() {
+  BLI_assert(!impl_array_.is_empty());
+  if (impl_array_.size() == 1) {
+    return true;
+  }
+
+  /* All data must be mutable. */
+  Array<int> body_offsets(impl_array_.size() + 1);
+  Array<int> constraint_offsets(impl_array_.size() + 1);
+  Array<int> shape_offsets(impl_array_.size() + 1);
+  body_offsets[0] = constraint_offsets[0] = shape_offsets[0] = 0;
+  for (const int i : impl_array_.index_range()) {
+    const PhysicsGeometryImpl &impl = *impl_array_[i];
+    if (!impl.is_mutable()) {
+      return false;
+    }
+    body_offsets[i + 1] = body_offsets[i] + impl.rigid_bodies.size();
+    constraint_offsets[i + 1] = constraint_offsets[i] + 0;
+    shape_offsets[i + 1] = shape_offsets[i] + 0;
+  }
+
+  for (const int i : impl_array_.index_range()) {
+    BLI_assert(impl_array_[i]->is_mutable());
+    PhysicsGeometryImpl &impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i]);
+
+    const IndexRange body_range = IndexRange::from_begin_end(body_offsets[i], body_offsets[i + 1]);
+    const IndexRange constraint_range = IndexRange::from_begin_end(constraint_offsets[i],
+                                                                   constraint_offsets[i + 1]);
+    const IndexRange shape_range = IndexRange::from_begin_end(shape_offsets[i],
+                                                              shape_offsets[i + 1]);
+
+    if (impl.world
+  }
 }
 
 bool PhysicsGeometry::has_world() const

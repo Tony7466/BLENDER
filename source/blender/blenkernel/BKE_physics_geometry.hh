@@ -83,6 +83,9 @@ private:
                         int constraints_offset,
                         int shapes_offset);
 
+  bool has_unmerged_data() const;
+  bool try_consolidate_data();
+
   bool has_world() const;
   void set_world_enabled(bool enable);
 
