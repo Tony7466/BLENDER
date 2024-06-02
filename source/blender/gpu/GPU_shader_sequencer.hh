@@ -14,7 +14,7 @@
 #define GPU_SEQ_STRIP_DRAW_DATA_LEN 128
 
 enum eGPUSeqFlags : uint32_t {
-  GPU_SEQ_FLAG_BOTTOM_PART = (1u << 0u),
+  GPU_SEQ_FLAG_BACKGROUND_PART = (1u << 0u),
   GPU_SEQ_FLAG_SINGLE_IMAGE = (1u << 1u),
   GPU_SEQ_FLAG_COLOR_BAND = (1u << 2u),
   GPU_SEQ_FLAG_TRANSITION = (1u << 3u),

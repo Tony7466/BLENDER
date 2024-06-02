@@ -1693,9 +1693,9 @@ class SeqStripsBatch {
   int strips_count_ = 0;
 };
 
-static void draw_strips_bottom(TimelineDrawContext *timeline_ctx,
-                               SeqStripsBatch &strips_batch,
-                               const Vector<StripDrawContext> &strips)
+static void draw_strips_background(TimelineDrawContext *timeline_ctx,
+                                   SeqStripsBatch &strips_batch,
+                                   const Vector<StripDrawContext> &strips)
 {
   GPU_blend(GPU_BLEND_ALPHA_PREMULT);
 
@@ -1704,7 +1704,7 @@ static void draw_strips_bottom(TimelineDrawContext *timeline_ctx,
   for (const StripDrawContext &strip : strips) {
     SeqStripDrawData &data = strips_batch.add_strip(strip);
 
-    data.flags |= GPU_SEQ_FLAG_BOTTOM_PART;
+    data.flags |= GPU_SEQ_FLAG_BACKGROUND_PART;
 
     /* Background color. */
     uchar col[4];
@@ -1761,9 +1761,9 @@ static void draw_strips_bottom(TimelineDrawContext *timeline_ctx,
   GPU_blend(GPU_BLEND_ALPHA);
 }
 
-static void draw_strips_top(TimelineDrawContext *timeline_ctx,
-                            SeqStripsBatch &strips_batch,
-                            const Vector<StripDrawContext> &strips)
+static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
+                                   SeqStripsBatch &strips_batch,
+                                   const Vector<StripDrawContext> &strips)
 {
   GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   const Scene *scene = timeline_ctx->scene;
@@ -1881,7 +1881,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   const float round_radius = rounded ? calc_strip_round_radius(timeline_ctx->pixely) : 0.0f;
 
   if (rounded) {
-    draw_strips_bottom(timeline_ctx, strips_batch, strips);
+    draw_strips_background(timeline_ctx, strips_batch, strips);
     for (const StripDrawContext &strip_ctx : strips) {
       draw_strip_offsets(timeline_ctx,
                          &strip_ctx);  //@TODO: nicer offsets that take radius into account
@@ -1908,6 +1908,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
                              strip_ctx.seq,
                              strip_ctx.bottom,
                              strip_ctx.strip_content_top,
+                             strip_ctx.top,
                              timeline_ctx->pixelx,
                              timeline_ctx->pixely,
                              round_radius);
@@ -1918,21 +1919,24 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_fcurve_overlay(timeline_ctx, &strip_ctx);
     draw_seq_waveform_overlay(timeline_ctx, &strip_ctx);
-    if (!rounded)
+    if (!rounded) {
       draw_seq_missing(timeline_ctx, &strip_ctx);
+    }
   }
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
 
-  /* Locked state is drawn separately since it uses a different shader. */
-  if (!rounded)
+  if (!rounded) {
+    /* Locked state is drawn separately since it uses a different shader. */
     draw_seq_locked(timeline_ctx, strips);
+  }
 
   /* Draw the rest. */
   GPU_blend(GPU_BLEND_ALPHA);
   for (const StripDrawContext &strip_ctx : strips) {
-    if (!rounded)
+    if (!rounded) {
       draw_effect_inputs_highlight(timeline_ctx, &strip_ctx);
+    }
     draw_multicam_highlight(timeline_ctx, &strip_ctx);
     if (!rounded) {
       draw_seq_solo_highlight(timeline_ctx, &strip_ctx);
@@ -1941,13 +1945,15 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     }
     draw_handle_transform_text(timeline_ctx, &strip_ctx, SEQ_HANDLE_LEFT);
     draw_handle_transform_text(timeline_ctx, &strip_ctx, SEQ_HANDLE_RIGHT);
-    if (!rounded)
+    if (!rounded) {
       draw_seq_outline(timeline_ctx, &strip_ctx);
+    }
     draw_seq_text_overlay(timeline_ctx, &strip_ctx);
   }
 
-  if (rounded)
-    draw_strips_top(timeline_ctx, strips_batch, strips);
+  if (rounded) {
+    draw_strips_foreground(timeline_ctx, strips_batch, strips);
+  }
 
   /* Draw icons separately (different shader). */
   draw_strip_icons(timeline_ctx, strips);

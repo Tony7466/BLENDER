@@ -63,9 +63,9 @@ void main()
 
   vec4 col = vec4(0.0);
 
-  bool bottom_part = (strip.flags & GPU_SEQ_FLAG_BOTTOM_PART) != 0;
+  bool back_part = (strip.flags & GPU_SEQ_FLAG_BACKGROUND_PART) != 0;
 
-  if (bottom_part) {
+  if (back_part) {
 
     col = color_unpack(strip.col_background);
     /* Darker background for multi-image strip hold still regions. */
@@ -147,7 +147,7 @@ void main()
   }
 
   /* Outline. */
-  if (!bottom_part) {
+  if (!back_part) {
     bool selected = (strip.flags & GPU_SEQ_FLAG_SELECTED) != 0;
     vec4 col_outline = color_unpack(strip.col_outline);
     if (selected) {

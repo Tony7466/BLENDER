@@ -485,12 +485,13 @@ static void eval_round_corners_pixel(
 
 static void make_ibuf_round_corners(ImBuf *ibuf, float radius, float2 bmin, float2 bmax)
 {
-  /* Evaluate radius*radius squares at lower left and right corners; we never need
-   * to apply rounding to top corners. */
+  /* Evaluate radius*radius squares at corners. */
   for (int by = 0; by < radius; by++) {
     for (int bx = 0; bx < radius; bx++) {
       eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmin.x + bx, bmin.y + by));
       eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmax.x - bx, bmin.y + by));
+      eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmin.x + bx, bmax.y - by));
+      eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmax.x - bx, bmax.y - by));
     }
   }
 }
@@ -501,6 +502,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               Sequence *seq,
                               float y1,
                               float y2,
+                              float y_top,
                               float pixelx,
                               float pixely,
                               float round_radius)
@@ -640,10 +642,12 @@ void draw_seq_strip_thumbnail(View2D *v2d,
         ImBuf *copy = IMB_dupImBuf(ibuf);
         IMB_freeImBuf(ibuf);
         ibuf = copy;
+
+        float round_y_top = ibuf->y * (y_top - y1) / (y2 - y1);
         make_ibuf_round_corners(ibuf,
                                 radius,
                                 float2((seq_left_handle - xpos) / zoom_x, 0),
-                                float2((seq_right_handle - xpos) / zoom_x, ibuf->y));
+                                float2((seq_right_handle - xpos) / zoom_x, round_y_top));
       }
     }
 

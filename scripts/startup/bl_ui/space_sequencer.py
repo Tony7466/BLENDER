@@ -185,7 +185,7 @@ class SEQUENCER_HT_header(Header):
             row.prop(tool_settings, "use_snap_sequencer", text="")
             sub = row.row(align=True)
             sub.popover(panel="SEQUENCER_PT_snapping")
-            row.prop(st.timeline_overlay, "show_rounded_corners", text="Round") #@TODO testing
+            row.prop(st.timeline_overlay, "show_rounded_corners", text="Round")  # @TODO testing
             layout.separator_spacer()
 
         if st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}:
