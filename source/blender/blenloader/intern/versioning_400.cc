@@ -344,84 +344,99 @@ static void versioning_eevee_shadow_settings(Object *object)
   SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
 }
 
+/**
+ * Represents a source of transparency inside the closure part of a material node-tree.
+ * A source can be in 3 state, opaque, semi-transparent
+ * Sources can be combined together. We only keep track of one
+ */
 struct AlphaSource {
   /* Socket that is the source of the potential semi-transparency. */
   bNodeSocket *socket = nullptr;
+
+  enum State {
+    /* Alpha input is 0. */
+    OPAQUE,
+    /* Alpha input is 1. */
+    FULLY_TRANSPARENT,
+    /* Alpha is between 0 and 1, from a graph input or the result of one blending operation. */
+    SEMI_TRANSPARENT,
+    /* Alpha is unknown and the result of more than one blending operation. */
+    COMPLEX
+  } state;
   /* True if socket is transparency instead of alpha (e.g: `1-alpha`). */
   bool is_transparency = false;
-  /* Has full transparently or zero alpha. Considered simple alpha. */
-  bool is_fully_transparent = false;
-  /* True if the source is a mixture of semi-transparent inputs. */
-  bool is_complex = false;
 
-  static AlphaSource alpha_source(bNodeSocket *fac)
+  static AlphaSource alpha_source(bNodeSocket *fac, bool inverted = false)
   {
-    return {fac, false, false, false};
-  }
-  static AlphaSource transparent_source(bNodeSocket *fac)
-  {
-    return {fac, true, false, false};
-  }
-  static AlphaSource alpha_blend(bNodeSocket *fac, bool inverted)
-  {
-    return {fac, inverted, false, false};
+    return {fac, SEMI_TRANSPARENT, inverted};
   }
   static AlphaSource opaque()
   {
-    return {nullptr, false, false, false};
+    return {nullptr, OPAQUE, false};
   }
-  static AlphaSource fully_transparent()
+  static AlphaSource fully_transparent(bNodeSocket *socket = nullptr, bool inverted = false)
   {
-    return {nullptr, false, true, false};
+    return {socket, FULLY_TRANSPARENT, inverted};
   }
   static AlphaSource complex_alpha()
   {
-    return {nullptr, false, false, true};
+    return {nullptr, COMPLEX, false};
   }
 
   bool is_opaque() const
   {
-    return (socket == nullptr) && !is_fully_transparent;
+    return state == OPAQUE;
+  }
+  bool is_fully_transparent() const
+  {
+    return state == OPAQUE;
+  }
+  bool is_transparent() const
+  {
+    return state != OPAQUE;
   }
   bool is_semi_transparent() const
   {
-    return (socket != nullptr) || is_complex;
+    return state == SEMI_TRANSPARENT;
   }
-  bool has_transparency() const
+  bool is_complex() const
   {
-    return (socket != nullptr) || is_fully_transparent;
+    return state == COMPLEX;
   }
 
   /* Combine two source together with a blending parameter. */
   static AlphaSource mix(const AlphaSource &a, const AlphaSource &b, bNodeSocket *fac)
   {
+    if (a.is_complex() || b.is_complex()) {
+      return complex_alpha();
+    }
     if (a.is_semi_transparent() || b.is_semi_transparent()) {
       return complex_alpha();
     }
-    if (a.is_fully_transparent && b.is_fully_transparent) {
+    if (a.is_fully_transparent() && b.is_fully_transparent()) {
       return fully_transparent();
     }
     if (a.is_opaque() && b.is_opaque()) {
       return opaque();
     }
     /* Only one of them is fully transparent. */
-    return alpha_blend(fac, !a.has_transparency());
+    return alpha_source(fac, !a.is_transparent());
   }
 
   /* Combine two source together with an additive blending parameter. */
   static AlphaSource add(const AlphaSource &a, const AlphaSource &b)
   {
-    if (a.is_complex || b.is_complex) {
+    if (a.is_complex() || b.is_complex()) {
       return complex_alpha();
     }
-    if (a.is_semi_transparent() && b.has_transparency()) {
+    if (a.is_semi_transparent() && b.is_transparent()) {
       return complex_alpha();
     }
-    if (a.has_transparency() && b.is_semi_transparent()) {
+    if (a.is_transparent() && b.is_semi_transparent()) {
       return complex_alpha();
     }
     /* Either one of them is opaque or they are both opaque. */
-    return a.has_transparency() ? a : b;
+    return a.is_transparent() ? a : b;
   }
 };
 
@@ -446,7 +461,7 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
   switch (node->type) {
     case NODE_REROUTE: {
       return versioning_eevee_alpha_source_get(
-          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth++);
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth + 1);
     }
 
     case NODE_GROUP: {
@@ -457,22 +472,26 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
       bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Color");
       if (socket->link == nullptr) {
         float *socket_color_value = version_cycles_node_socket_rgba_value(socket);
-        if (socket_color_value[0] == socket_color_value[1] == socket_color_value[2] == 0.0f) {
+        if ((socket_color_value[0] == 0.0f) && (socket_color_value[1] == 0.0f) &&
+            (socket_color_value[2] == 0.0f))
+        {
           return AlphaSource::opaque();
         }
-        if (socket_color_value[0] == socket_color_value[1] == socket_color_value[2] == 1.0f) {
-          return AlphaSource::fully_transparent();
+        if ((socket_color_value[0] == 1.0f) && (socket_color_value[1] == 1.0f) &&
+            (socket_color_value[2] == 1.0f))
+        {
+          return AlphaSource::fully_transparent(socket, true);
         }
       }
-      return AlphaSource::transparent_source(socket);
+      return AlphaSource::alpha_source(socket, true);
     }
 
     case SH_NODE_MIX_SHADER: {
       bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Fac");
       AlphaSource src0 = versioning_eevee_alpha_source_get(
-          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth++);
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth + 1);
       AlphaSource src1 = versioning_eevee_alpha_source_get(
-          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 2)), depth++);
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 2)), depth + 1);
 
       if (socket->link == nullptr) {
         float socket_float_value = *version_cycles_node_socket_float_value(socket);
@@ -488,9 +507,9 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
 
     case SH_NODE_ADD_SHADER: {
       AlphaSource src0 = versioning_eevee_alpha_source_get(
-          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth++);
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth + 1);
       AlphaSource src1 = versioning_eevee_alpha_source_get(
-          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth++);
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth + 1);
       return AlphaSource::add(src0, src1);
     }
 
@@ -499,7 +518,7 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
       if (socket->link == nullptr) {
         float socket_value = *version_cycles_node_socket_float_value(socket);
         if (socket_value == 0.0f) {
-          return AlphaSource::fully_transparent();
+          return AlphaSource::fully_transparent(socket);
         }
         if (socket_value == 1.0f) {
           return AlphaSource::opaque();
@@ -513,13 +532,13 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
       if (socket->link == nullptr) {
         float socket_value = *version_cycles_node_socket_float_value(socket);
         if (socket_value == 0.0f) {
-          return AlphaSource::fully_transparent();
+          return AlphaSource::fully_transparent(socket, true);
         }
         if (socket_value == 1.0f) {
           return AlphaSource::opaque();
         }
       }
-      return AlphaSource::transparent_source(socket);
+      return AlphaSource::alpha_source(socket, true);
     }
 
     default:
@@ -532,6 +551,8 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
  * a step function, either statically or using a math node when there is some value plugged in.
  * If the closure mixture mix some alpha more than once, we cannot convert automatically and keep
  * the same behavior. So we bail out in this case.
+ *
+ * Only handles the closure tree from the output node.
  */
 static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, float threshold)
 {
@@ -543,7 +564,7 @@ static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, floa
 
   AlphaSource alpha = versioning_eevee_alpha_source_get(surface_socket);
 
-  if (alpha.is_complex) {
+  if (alpha.is_complex()) {
     return false;
   }
   if (alpha.socket == nullptr) {
@@ -552,11 +573,6 @@ static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, floa
 
   bool is_opaque = (threshold == 2.0f);
   if (is_opaque) {
-    if (alpha.is_fully_transparent) {
-      /* We could potentially fix this but not sure if that is a very usual occurrence. */
-      return false;
-    }
-
     if (alpha.socket->link != nullptr) {
       blender::bke::nodeRemLink(ntree, alpha.socket->link);
     }
@@ -608,13 +624,14 @@ static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, floa
         float sum = default_value[0] + default_value[1] + default_value[2];
         /* Don't do the division if possible to avoid float imprecision. */
         float avg = (sum >= 3.0f) ? 1.0f : (sum / 3.0f);
-        float value = float((alpha.is_transparency) ? (avg < threshold) : (avg > threshold));
+        float value = float((alpha.is_transparency) ? (avg > 1.0f - threshold) :
+                                                      (avg > threshold));
         float values[4] = {value, value, value, 1.0f};
         copy_v4_v4(default_value, values);
       }
       else {
         float *default_value = version_cycles_node_socket_float_value(alpha.socket);
-        *default_value = float((alpha.is_transparency) ? (*default_value < threshold) :
+        *default_value = float((alpha.is_transparency) ? (*default_value > 1.0f - threshold) :
                                                          (*default_value > threshold));
       }
     }
