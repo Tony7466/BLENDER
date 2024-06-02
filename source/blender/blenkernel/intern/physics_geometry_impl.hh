@@ -27,19 +27,6 @@ class btCollisionShape;
 namespace blender::bke {
 
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
-  PhysicsWorldImpl *world_impl = nullptr;
-  Array<btRigidBody *> rigid_bodies;
-  Array<btMotionState *> motion_states;
-
-  PhysicsGeometryImpl();
-  ~PhysicsGeometryImpl();
-
-  void delete_self() override;
-
-  PhysicsGeometryImpl *copy() const;
-};
-
-struct PhysicsWorldImpl {
   btDiscreteDynamicsWorld *world = nullptr;
   btCollisionConfiguration *config = nullptr;
   btCollisionDispatcher *dispatcher = nullptr;
@@ -47,10 +34,13 @@ struct PhysicsWorldImpl {
   btConstraintSolver *constraint_solver = nullptr;
   btOverlapFilterCallback *overlap_filter = nullptr;
 
-  PhysicsWorldImpl();
-  ~PhysicsWorldImpl();
+  Array<btRigidBody *> rigid_bodies;
+  Array<btMotionState *> motion_states;
 
-  PhysicsWorldImpl *copy() const;
+  PhysicsGeometryImpl();
+  ~PhysicsGeometryImpl();
+
+  void delete_self() override;
 };
 
 struct CollisionShapeImpl {

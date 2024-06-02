@@ -34,7 +34,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   bke::PhysicsGeometry *physics = new bke::PhysicsGeometry();
   physics->set_world_enabled(true);
-  physics->world_for_write()->set_gravity(gravity);
+  physics->set_gravity(gravity);
 
   params.set_output("Geometry", GeometrySet::from_physics(physics));
 }

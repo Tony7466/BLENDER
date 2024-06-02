@@ -26,11 +26,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
 
     bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write();
-    if (physics->world_for_write() == nullptr) {
-      return;
-    }
-
-    physics->world_for_write()->step_simulation(delta_time);
+    physics->step_simulation(delta_time);
   });
 
   params.set_output("Physics", std::move(geometry_set));
