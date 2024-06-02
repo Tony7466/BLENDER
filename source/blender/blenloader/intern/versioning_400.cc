@@ -405,7 +405,7 @@ struct AlphaSource {
       return opaque();
     }
     /* Only one of them is fully transparent. */
-    return alpha_blend(fac, a.has_transparency());
+    return alpha_blend(fac, !a.has_transparency());
   }
 
   /* Combine two source together with an additive blending parameter. */
@@ -470,9 +470,9 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
     case SH_NODE_MIX_SHADER: {
       bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Fac");
       AlphaSource src0 = versioning_eevee_alpha_source_get(
-          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth++);
-      AlphaSource src1 = versioning_eevee_alpha_source_get(
           static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth++);
+      AlphaSource src1 = versioning_eevee_alpha_source_get(
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 2)), depth++);
 
       if (socket->link == nullptr) {
         float socket_float_value = *version_cycles_node_socket_float_value(socket);
@@ -527,6 +527,12 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
   }
 }
 
+/**
+ * This function detect the alpha input of a material node-tree and then convert the input alpha to
+ * a step function, either statically or using a math node when there is some value plugged in.
+ * If the closure mixture mix some alpha more than once, we cannot convert automatically and keep
+ * the same behavior. So we bail out in this case.
+ */
 static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, float threshold)
 {
   bNode *output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
@@ -540,7 +546,7 @@ static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, floa
   if (alpha.is_complex) {
     return false;
   }
-  if (alpha.is_opaque()) {
+  if (alpha.socket == nullptr) {
     return true;
   }
 
@@ -576,25 +582,24 @@ static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, floa
       blender::bke::nodeRemLink(ntree, alpha.socket->link);
 
       bNode *math_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMath");
-      math_node->custom1 = alpha.is_transparency ? NODE_MATH_LESS_THAN : NODE_MATH_GREATER_THAN;
+      math_node->custom1 = NODE_MATH_GREATER_THAN;
       math_node->flag |= NODE_HIDDEN;
       math_node->parent = to_node->parent;
-      math_node->locx = to_node->locx - 100;
-      math_node->locy = to_node->locy + to_node->height;
-      blender::bke::nodeAddLink(ntree,
-                                from_node,
-                                from_socket,
-                                math_node,
-                                static_cast<bNodeSocket *>(math_node->inputs.first));
-      blender::bke::nodeAddLink(ntree,
-                                math_node,
-                                static_cast<bNodeSocket *>(math_node->outputs.first),
-                                to_node,
-                                to_socket);
+      math_node->locx = to_node->locx - math_node->width - 30;
+      math_node->locy = min_ff(to_node->locy, from_node->locy);
 
-      bNodeSocket *threshold_sock = static_cast<bNodeSocket *>(
-          BLI_findlink(&math_node->inputs, 1));
-      *version_cycles_node_socket_float_value(threshold_sock) = threshold;
+      bNodeSocket *input_1 = static_cast<bNodeSocket *>(BLI_findlink(&math_node->inputs, 0));
+      bNodeSocket *input_2 = static_cast<bNodeSocket *>(BLI_findlink(&math_node->inputs, 1));
+      bNodeSocket *output = static_cast<bNodeSocket *>(math_node->outputs.first);
+      bNodeSocket *alpha_sock = input_1;
+      bNodeSocket *threshold_sock = input_2;
+
+      blender::bke::nodeAddLink(ntree, from_node, from_socket, math_node, alpha_sock);
+      blender::bke::nodeAddLink(ntree, math_node, output, to_node, to_socket);
+
+      *version_cycles_node_socket_float_value(threshold_sock) = alpha.is_transparency ?
+                                                                    1.0f - threshold :
+                                                                    threshold;
     }
     else {
       /* Modify alpha value directly. */
