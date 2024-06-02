@@ -9,7 +9,6 @@ set(INC
   ../bmesh
   ../functions
   ../makesrna
-  ../simulation
   ../../../intern/eigen
 )
 

@@ -96,38 +96,6 @@ void Instances::foreach_referenced_geometry(
   }
 }
 
-void Instances::foreach_referenced_geometry_for_write(
-    FunctionRef<void(GeometrySet &geometry_set)> callback)
-{
-  for (InstanceReference &reference : references_) {
-    switch (reference.type()) {
-      case InstanceReference::Type::Object: {
-        const Object &object = reference.object();
-        GeometrySet object_geometry_set = object_get_evaluated_geometry_set(object);
-        callback(object_geometry_set);
-        break;
-      }
-      case InstanceReference::Type::Collection: {
-        Collection &collection = reference.collection();
-        FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (&collection, object) {
-          GeometrySet object_geometry_set = object_get_evaluated_geometry_set(*object);
-          callback(object_geometry_set);
-        }
-        FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
-        break;
-      }
-      case InstanceReference::Type::GeometrySet: {
-        GeometrySet &instance_geometry_set = reference.geometry_set();
-        callback(instance_geometry_set);
-        break;
-      }
-      case InstanceReference::Type::None: {
-        break;
-      }
-    }
-  }
-}
-
 void Instances::ensure_geometry_instances()
 {
   Vector<InstanceReference> new_references;

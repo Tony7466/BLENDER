@@ -183,8 +183,6 @@ class Instances {
 
   void foreach_referenced_geometry(
       FunctionRef<void(const GeometrySet &geometry_set)> callback) const;
-  void foreach_referenced_geometry_for_write(
-      FunctionRef<void(GeometrySet &geometry_set)> callback);
 
   bool owns_direct_data() const;
   void ensure_owns_direct_data();

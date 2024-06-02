@@ -16,7 +16,6 @@
 #include "BKE_instances.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_physics_geometry.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_type_conversions.hh"
 
@@ -29,7 +28,6 @@ using blender::bke::AttributeMetaData;
 using blender::bke::GSpanAttributeWriter;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
-using blender::bke::PhysicsGeometry;
 using blender::bke::SpanAttributeWriter;
 
 /**
@@ -177,23 +175,6 @@ struct RealizeCurveTask {
   uint32_t id = 0;
 };
 
-struct RealizePhysicsInfo {
-  PhysicsGeometry *physics = nullptr;
-};
-
-struct PhysicsElementStartIndices {
-  int rigid_body = 0;
-  int constraint = 0;
-};
-
-struct RealizePhysicsTask {
-  PhysicsElementStartIndices start_indices;
-  /** Preprocessed information about the point cloud. */
-  const RealizePhysicsInfo *physics_info;
-  /** Transformation applied to the position of control points and handles. */
-  float4x4 transform;
-};
-
 struct AllPointCloudsInfo {
   /** Ordering of all attributes that are propagated to the output point cloud generically. */
   OrderedAttributes attributes;
@@ -238,13 +219,6 @@ struct AllCurvesInfo {
   bool create_custom_normal_attribute = false;
 };
 
-struct AllPhysicsInfo {
-  /** Ordering of the original physics geometries that are joined. */
-  VectorSet<PhysicsGeometry *> order;
-  /** Preprocessed data about every original curve. This is ordered by #order. */
-  Array<RealizePhysicsInfo> realize_info;
-};
-
 struct AllInstancesInfo {
   /** Stores an array of void pointer to attributes for each component. */
   Vector<AttributeFallbacksArray> attribute_fallback;
@@ -259,7 +233,6 @@ struct GatherTasks {
   Vector<RealizePointCloudTask> pointcloud_tasks;
   Vector<RealizeMeshTask> mesh_tasks;
   Vector<RealizeCurveTask> curve_tasks;
-  Vector<RealizePhysicsTask> physics_tasks;
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
@@ -272,7 +245,6 @@ struct GatherOffsets {
   int pointcloud_offset = 0;
   MeshElementStartIndices mesh_offsets;
   CurvesElementStartIndices curves_offsets;
-  PhysicsElementStartIndices physics_offsets;
 };
 
 struct GatherTasksInfo {
@@ -280,7 +252,6 @@ struct GatherTasksInfo {
   const AllPointCloudsInfo &pointclouds;
   const AllMeshesInfo &meshes;
   const AllCurvesInfo &curves;
-  const AllPhysicsInfo &physics;
   const OrderedAttributes &instances_attriubutes;
   bool create_id_attribute_on_any_component = false;
 
@@ -716,19 +687,6 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                   base_instance_context.id});
           gather_info.r_offsets.curves_offsets.point += curves->geometry.point_num;
           gather_info.r_offsets.curves_offsets.curve += curves->geometry.curve_num;
-        }
-        break;
-      }
-      case bke::GeometryComponent::Type::Physics: {
-        const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
-        const PhysicsGeometry *physics = physics_component.get();
-        if (physics != nullptr && (physics->world() != nullptr || physics->rigid_bodies_num() > 0))
-        {
-          const int physics_index = gather_info.physics.order.index_of(const_cast<PhysicsGeometry *>(physics));
-          const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
-          gather_info.r_tasks.physics_tasks.append(
-              {gather_info.r_offsets.physics_offsets, &physics_info, base_transform});
-          gather_info.r_offsets.physics_offsets.rigid_body += physics->rigid_bodies_num();
         }
         break;
       }
@@ -1971,148 +1929,6 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Physics
- * \{ */
-
-static void gather_physics_to_realize(bke::GeometrySet &geometry_set,
-                                      VectorSet<PhysicsGeometry *> &r_physics)
-{
-  if (PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
-    if (physics->world() != nullptr || physics->rigid_bodies_num() != 0) {
-      r_physics.add(physics);
-    }
-  }
-  if (Instances *instances = geometry_set.get_instances_for_write()) {
-    instances->foreach_referenced_geometry_for_write([&](bke::GeometrySet &instance_geometry_set) {
-      gather_physics_to_realize(instance_geometry_set, r_physics);
-    });
-  }
-}
-
-static AllPhysicsInfo preprocess_physics(bke::GeometrySet &geometry_set,
-                                         const RealizeInstancesOptions &options,
-                                         const VariedDepthOptions &varied_depth_option)
-{
-  UNUSED_VARS(options, varied_depth_option);
-
-  AllPhysicsInfo info;
-
-  gather_physics_to_realize(geometry_set, info.order);
-  info.realize_info.reinitialize(info.order.size());
-  for (const int physics_index : info.realize_info.index_range()) {
-    RealizePhysicsInfo &physics_info = info.realize_info[physics_index];
-    physics_info.physics = info.order[physics_index];
-  }
-  return info;
-}
-
-static void execute_realize_physics_task(const RealizeInstancesOptions &options,
-                                         const AllPhysicsInfo &all_physics_info,
-                                         const RealizePhysicsTask &task,
-                                         const OrderedAttributes &ordered_attributes,
-                                         PhysicsGeometry &dst_physics,
-                                         MutableSpan<GSpanAttributeWriter> dst_attribute_writers)
-{
-  UNUSED_VARS(options, all_physics_info, ordered_attributes, dst_attribute_writers);
-
-  const RealizePhysicsInfo &physics_info = *task.physics_info;
-  const PhysicsGeometry &physics = *physics_info.physics;
-
-  const IndexRange dst_rigid_body_range{task.start_indices.rigid_body, physics.rigid_bodies_num()};
-
-  const VArray<int> src_ids = physics.body_ids();
-  const VArray<float> src_masses = physics.body_masses();
-  const VArray<float3> src_inertias = physics.body_inertias();
-  const VArray<float3> src_positions = physics.body_positions();
-  const VArray<math::Quaternion> src_rotations = physics.body_rotations();
-  const VArray<float3> src_velocities = physics.body_velocities();
-  const VArray<float3> src_angular_velocities = physics.body_angular_velocities();
-
-  bke::AttributeWriter<int> dst_ids = dst_physics.body_ids_for_write();
-  bke::AttributeWriter<float> dst_masses = dst_physics.body_masses_for_write();
-  bke::AttributeWriter<float3> dst_inertias = dst_physics.body_inertias_for_write();
-  bke::AttributeWriter<float3> dst_positions = dst_physics.body_positions_for_write();
-  bke::AttributeWriter<math::Quaternion> dst_rotations = dst_physics.body_rotations_for_write();
-  bke::AttributeWriter<float3> dst_velocities = dst_physics.body_velocities_for_write();
-  bke::AttributeWriter<float3> dst_angular_velocities =
-      dst_physics.body_angular_velocities_for_write();
-
-  threading::parallel_for(physics.rigid_bodies_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const int dst_i = dst_rigid_body_range[i];
-      dst_ids.varray.set(dst_i, src_ids[i]);
-      dst_masses.varray.set(dst_i, src_masses[i]);
-      dst_inertias.varray.set(dst_i, src_inertias[i]);
-      dst_positions.varray.set(dst_i, math::transform_point(task.transform, src_positions[i]));
-      dst_rotations.varray.set(dst_i, math::to_quaternion(task.transform) * src_rotations[i]);
-      dst_velocities.varray.set(dst_i,
-                                math::transform_direction(task.transform, src_velocities[i]));
-      dst_angular_velocities.varray.set(
-          dst_i, math::transform_direction(task.transform, src_angular_velocities[i]));
-    }
-  });
-
-  dst_ids.finish();
-  dst_masses.finish();
-  dst_inertias.finish();
-  dst_positions.finish();
-  dst_rotations.finish();
-  dst_velocities.finish();
-  dst_angular_velocities.finish();
-}
-
-static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
-                                          const AllPhysicsInfo &all_physics_info,
-                                          const Span<RealizePhysicsTask> tasks,
-                                          const OrderedAttributes &ordered_attributes,
-                                          bke::GeometrySet &r_realized_geometry)
-{
-  if (tasks.is_empty()) {
-    return;
-  }
-
-  const RealizePhysicsTask &last_task = tasks.last();
-  const PhysicsGeometry &last_physics = *last_task.physics_info->physics;
-  const int rigid_bodies_num = last_task.start_indices.rigid_body +
-                               last_physics.rigid_bodies_num();
-
-  /* Allocate new curves data-block. */
-  PhysicsGeometry *dst_physics = new PhysicsGeometry(rigid_bodies_num);
-  r_realized_geometry.replace_physics(dst_physics);
-  // bke::MutableAttributeAccessor dst_attributes = dst_physics.attributes_for_write();
-
-  /* Prepare generic output attributes. */
-  Vector<GSpanAttributeWriter> dst_attribute_writers;
-  // for (const int attribute_index : ordered_attributes.index_range()) {
-  //   const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
-  //   const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
-  //   const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
-  //   dst_attribute_writers.append(
-  //       dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
-  // }
-
-  /* Actually execute all tasks. */
-  threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
-    for (const int task_index : task_range) {
-      const RealizePhysicsTask &task = tasks[task_index];
-      execute_realize_physics_task(options,
-                                   all_physics_info,
-                                   task,
-                                   ordered_attributes,
-                                   *dst_physics,
-                                   dst_attribute_writers);
-    }
-  });
-
-  /* Tag modified attributes. */
-  for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
-    dst_attribute.finish();
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Realize Instances
  * \{ */
 
@@ -2191,7 +2007,6 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
       geometry_set, options, varied_depth_option);
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options, varied_depth_option);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options, varied_depth_option);
-  AllPhysicsInfo all_physics_info = preprocess_physics(geometry_set, options, varied_depth_option);
   OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(
       geometry_set, options, varied_depth_option);
 
@@ -2202,7 +2017,6 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   GatherTasksInfo gather_info = {all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
-                                 all_physics_info,
                                  all_instance_attributes,
                                  create_id_attribute,
                                  varied_depth_option.selection,
@@ -2250,8 +2064,6 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                 gather_info.r_tasks.curve_tasks,
                                 all_curves_info.attributes,
                                 new_geometry_set);
-    execute_realize_physics_tasks(
-        options, all_physics_info, gather_info.r_tasks.physics_tasks, {}, new_geometry_set);
   });
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);

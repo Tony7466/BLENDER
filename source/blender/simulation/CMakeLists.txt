@@ -6,7 +6,6 @@ set(INC
   .
   intern
   ../blenkernel
-  ../blenlib
   ../functions
   ../imbuf
   ../makesrna
@@ -37,6 +36,7 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
+
 
 if(WITH_OPENMP AND WITH_OPENMP_STATIC)
   list(APPEND LIB
