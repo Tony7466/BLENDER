@@ -433,7 +433,7 @@ static ImBuf *sequencer_thumbnail_closest_from_memory(const SeqRenderData *conte
   return closest_in_memory;
 }
 
-static void make_ibuf_semitransparent(ImBuf* ibuf)
+static void make_ibuf_semitransparent(ImBuf *ibuf)
 {
   const uchar alpha = 120;
   if (ibuf->byte_buffer.data) {
@@ -502,7 +502,8 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               float y1,
                               float y2,
                               float pixelx,
-                              float pixely, float round_radius)
+                              float pixely,
+                              float round_radius)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if ((sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
@@ -646,16 +647,8 @@ void draw_seq_strip_thumbnail(View2D *v2d,
       }
     }
 
-    ED_draw_imbuf_ctx_clipping(C,
-                               ibuf,
-                               xpos,
-                               y1,
-                               true, xpos,
-                               y1,
-                               thumb_x_end,
-                               thumb_y_end,
-                               zoom_x,
-                               zoom_y);
+    ED_draw_imbuf_ctx_clipping(
+        C, ibuf, xpos, y1, true, xpos, y1, thumb_x_end, thumb_y_end, zoom_x, zoom_y);
     IMB_freeImBuf(ibuf);
     cut_off = 0;
     timeline_frame = SEQ_render_thumbnail_next_frame_get(scene, seq, timeline_frame, thumb_width);

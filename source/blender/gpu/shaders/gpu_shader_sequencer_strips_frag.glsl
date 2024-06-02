@@ -7,7 +7,7 @@
 float sdf_rounded_box(vec2 pos, vec2 size, float radius)
 {
   vec2 q = abs(pos) - size + radius;
-  return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - radius;
+  return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
 }
 
 vec4 color_unpack(uint rgba)
@@ -17,7 +17,7 @@ vec4 color_unpack(uint rgba)
 
 vec3 color_shade(vec3 rgb, float shade)
 {
-  rgb += vec3(shade/255.0);
+  rgb += vec3(shade / 255.0);
   rgb = clamp(rgb, vec3(0.0), vec3(1.0));
   return rgb;
 }
@@ -30,10 +30,10 @@ vec4 blend_color(vec4 cur, vec4 color)
 
 vec4 add_outline(float d, float extra_half_width, float inset, vec4 cur, vec4 outline_color)
 {
-    float f = abs(d + inset) - extra_half_width;
-    float a = clamp(1.0 - f, 0.0, 1.0);
-    outline_color.a *= a;
-    return blend_color(cur, outline_color);
+  float f = abs(d + inset) - extra_half_width;
+  float a = clamp(1.0 - f, 0.0, 1.0);
+  outline_color.a *= a;
+  return blend_color(cur, outline_color);
 }
 
 void main()
@@ -41,7 +41,7 @@ void main()
   vec2 uv = uvInterp;
   vec2 co = coInterp;
 
-  vec2 viewToPixels = vec2(1.0/context_data.pixelx, 1.0/context_data.pixely);
+  vec2 viewToPixels = vec2(1.0 / context_data.pixelx, 1.0 / context_data.pixely);
 
   SeqStripDrawData strip = strip_data[strip_id];
   float bleft = strip.left_handle;
@@ -49,16 +49,16 @@ void main()
   float btop = strip.bottom;
   float bbottom = strip.top;
 
-  vec2 bsize = vec2(bright-bleft, bbottom-btop) * 0.5;
-  vec2 bcenter = vec2(bright+bleft, bbottom+btop) * 0.5;
-        
+  vec2 bsize = vec2(bright - bleft, bbottom - btop) * 0.5;
+  vec2 bcenter = vec2(bright + bleft, bbottom + btop) * 0.5;
+
   bsize *= viewToPixels;
   bcenter *= viewToPixels;
   vec2 pxy = co * viewToPixels;
 
   float radius = context_data.round_radius;
-  radius = min(radius,min(bsize.x,bsize.y));
-    
+  radius = min(radius, min(bsize.x, bsize.y));
+
   float d = sdf_rounded_box(pxy - bcenter, bsize, radius);
 
   vec4 col = vec4(0.0);
@@ -88,9 +88,14 @@ void main()
 
     /* Transition. */
     if ((strip.flags & GPU_SEQ_FLAG_TRANSITION) != 0) {
-      if (co.x >= strip.content_start && co.x <= strip.content_end && co.y < strip.strip_content_top) {
-        float diag_y = strip.strip_content_top - (strip.strip_content_top - strip.bottom) * (co.x - strip.content_start) / (strip.content_end - strip.content_start);
-        uint transition_color = co.y <= diag_y ? strip.col_transition_in : strip.col_transition_out;
+      if (co.x >= strip.content_start && co.x <= strip.content_end &&
+          co.y < strip.strip_content_top)
+      {
+        float diag_y = strip.strip_content_top - (strip.strip_content_top - strip.bottom) *
+                                                     (co.x - strip.content_start) /
+                                                     (strip.content_end - strip.content_start);
+        uint transition_color = co.y <= diag_y ? strip.col_transition_in :
+                                                 strip.col_transition_out;
         col.rgb = color_unpack(transition_color).rgb;
       }
     }
@@ -101,12 +106,12 @@ void main()
     /* Missing media. */
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_TITLE) != 0) {
       if (co.y > strip.strip_content_top) {
-        col = blend_color(col, vec4(112.0/255.0, 0.0, 0.0, 230.0/255.0));
+        col = blend_color(col, vec4(112.0 / 255.0, 0.0, 0.0, 230.0 / 255.0));
       }
     }
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_CONTENT) != 0) {
       if (co.y <= strip.strip_content_top) {
-        col = blend_color(col, vec4(64.0/255.0, 0.0, 0.0, 230.0/255.0));
+        col = blend_color(col, vec4(64.0 / 255.0, 0.0, 0.0, 230.0 / 255.0));
       }
     }
 
@@ -122,7 +127,7 @@ void main()
 
     /* Highlight. */
     if ((strip.flags & GPU_SEQ_FLAG_HIGHLIGHT) != 0) {
-      col = blend_color(col, vec4(1.0, 1.0, 1.0, 48.0/255.0));
+      col = blend_color(col, vec4(1.0, 1.0, 1.0, 48.0 / 255.0));
     }
 
     /* Handles. */

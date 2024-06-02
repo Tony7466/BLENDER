@@ -617,7 +617,9 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
   }
 }
 
-static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx, float corner_radius)
+static void drawmeta_contents(TimelineDrawContext *timeline_ctx,
+                              const StripDrawContext *strip_ctx,
+                              float corner_radius)
 {
   using namespace seq;
   Sequence *seq_meta = strip_ctx->seq;
@@ -1589,7 +1591,9 @@ static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
   }
 }
 
-static void flush_strip_batch(const SeqContextDrawData *ctx, const SeqStripDrawData *data, int count)
+static void flush_strip_batch(const SeqContextDrawData *ctx,
+                              const SeqStripDrawData *data,
+                              int count)
 {
   if (count == 0) {
     return;
@@ -1599,7 +1603,8 @@ static void flush_strip_batch(const SeqContextDrawData *ctx, const SeqStripDrawD
   GPU_shader_bind(shader);
 
   const int data_binding = GPU_shader_get_ubo_binding(shader, "strip_data");
-  GPUUniformBuf *data_ubo = GPU_uniformbuf_create_ex(sizeof(SeqStripDrawData) * count, data, __func__);
+  GPUUniformBuf *data_ubo = GPU_uniformbuf_create_ex(
+      sizeof(SeqStripDrawData) * count, data, __func__);
   GPU_uniformbuf_bind(data_ubo, data_binding);
   const int ctx_binding = GPU_shader_get_ubo_binding(shader, "context_data");
   GPUUniformBuf *ctx_ubo = GPU_uniformbuf_create_ex(sizeof(SeqContextDrawData), ctx, __func__);
@@ -1631,8 +1636,8 @@ static float calc_strip_round_radius(float pixely)
   return radius;
 }
 
-static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
-  const Vector<StripDrawContext>& strips)
+static void draw_strips_bottom(TimelineDrawContext *timeline_ctx,
+                               const Vector<StripDrawContext> &strips)
 {
   GPU_blend(GPU_BLEND_ALPHA_PREMULT);
 
@@ -1674,8 +1679,7 @@ static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
     data.col_background = color_pack(col);
 
     /* Color band state. */
-    if (show_overlay && (strip.seq->type == SEQ_TYPE_COLOR))
-    {
+    if (show_overlay && (strip.seq->type == SEQ_TYPE_COLOR)) {
       data.flags |= GPU_SEQ_FLAG_COLOR_BAND;
       SolidColorVars *colvars = (SolidColorVars *)strip.seq->effectdata;
       rgb_float_to_uchar(col, colvars->col);
@@ -1724,7 +1728,7 @@ static void draw_strips_bottom(TimelineDrawContext* timeline_ctx,
 }
 
 static void draw_strips_top(TimelineDrawContext *timeline_ctx,
-                               const Vector<StripDrawContext> &strips)
+                            const Vector<StripDrawContext> &strips)
 {
   GPU_blend(GPU_BLEND_ALPHA_PREMULT);
   const bool show_overlay = (timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) != 0;
@@ -1827,7 +1831,8 @@ static void draw_strips_top(TimelineDrawContext *timeline_ctx,
       const bool selected_r = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_RIGHT);
 
       /* Left handle color. */
-      col[0] = col[1] = col[2] = 0; col[3] = 50;
+      col[0] = col[1] = col[2] = 0;
+      col[3] = 50;
       if (selected && selected_l) {
         UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
       }
@@ -1871,7 +1876,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   if (rounded) {
     draw_strips_bottom(timeline_ctx, strips);
     for (const StripDrawContext &strip_ctx : strips) {
-      draw_strip_offsets(timeline_ctx, &strip_ctx); //@TODO: nicer offsets that take radius into account
+      draw_strip_offsets(timeline_ctx,
+                         &strip_ctx);  //@TODO: nicer offsets that take radius into account
       drawmeta_contents(timeline_ctx, &strip_ctx, round_radius);
     }
   }
