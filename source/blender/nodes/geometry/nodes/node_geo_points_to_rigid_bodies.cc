@@ -71,7 +71,7 @@ static void geometry_set_points_to_rigid_bodies(
   const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(6);
 
   const int num_bodies = selection.size();
-  auto *physics = new bke::PhysicsGeometry(num_bodies);
+  auto *physics = new bke::PhysicsGeometry(num_bodies, 0, 0);
   AttributeWriter<int> dst_ids = physics->body_ids_for_write();
   AttributeWriter<float> dst_masses = physics->body_masses_for_write();
   AttributeWriter<float3> dst_inertias = physics->body_inertias_for_write();

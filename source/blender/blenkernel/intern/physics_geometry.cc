@@ -454,7 +454,7 @@ PhysicsGeometry::PhysicsGeometry() {
   impl_array_.append(new PhysicsGeometryImpl());
 }
 
-PhysicsGeometry::PhysicsGeometry(int bodies_num)
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
 {
   PhysicsGeometryImpl *main_impl = new PhysicsGeometryImpl();
   impl_array_.append(main_impl);
@@ -463,6 +463,8 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num)
   main_impl->motion_states.reinitialize(bodies_num);
   proxies_.bodies.reinitialize(bodies_num);
   create_bodies(main_impl->rigid_bodies, main_impl->motion_states, proxies_.bodies);
+
+  UNUSED_VARS(constraints_num, shapes_num);
 }
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)

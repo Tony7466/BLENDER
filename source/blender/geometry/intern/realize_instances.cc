@@ -16,6 +16,7 @@
 #include "BKE_instances.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
+#include "BKE_physics_geometry.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_type_conversions.hh"
 
@@ -175,6 +176,25 @@ struct RealizeCurveTask {
   uint32_t id = 0;
 };
 
+struct RealizePhysicsInfo {
+  const bke::PhysicsGeometry *physics;
+};
+
+/** Start indices in the final output curves data-block. */
+struct PhysicsElementStartIndices {
+  int body = 0;
+  int constraint = 0;
+  int shape = 0;
+};
+
+struct RealizePhysicsTask {
+  PhysicsElementStartIndices start_indices;
+
+  const RealizePhysicsInfo *physics_info;
+  /** Transformation applied to the position of control points and handles. */
+  float4x4 transform;
+};
+
 struct AllPointCloudsInfo {
   /** Ordering of all attributes that are propagated to the output point cloud generically. */
   OrderedAttributes attributes;
@@ -219,6 +239,13 @@ struct AllCurvesInfo {
   bool create_custom_normal_attribute = false;
 };
 
+struct AllPhysicsInfo {
+  /** Ordering of the original geometries that are joined. */
+  VectorSet<const bke::PhysicsGeometry *> order;
+  /** Preprocessed data about every original geometry. This is ordered by #order. */
+  Array<RealizePhysicsInfo> realize_info;
+};
+
 struct AllInstancesInfo {
   /** Stores an array of void pointer to attributes for each component. */
   Vector<AttributeFallbacksArray> attribute_fallback;
@@ -233,6 +260,7 @@ struct GatherTasks {
   Vector<RealizePointCloudTask> pointcloud_tasks;
   Vector<RealizeMeshTask> mesh_tasks;
   Vector<RealizeCurveTask> curve_tasks;
+  Vector<RealizePhysicsTask> physics_tasks;
 
   /* Volumes only have very simple support currently. Only the first found volume is put into the
    * output. */
@@ -245,6 +273,7 @@ struct GatherOffsets {
   int pointcloud_offset = 0;
   MeshElementStartIndices mesh_offsets;
   CurvesElementStartIndices curves_offsets;
+  PhysicsElementStartIndices physics_offsets;
 };
 
 struct GatherTasksInfo {
@@ -252,6 +281,7 @@ struct GatherTasksInfo {
   const AllPointCloudsInfo &pointclouds;
   const AllMeshesInfo &meshes;
   const AllCurvesInfo &curves;
+  const AllPhysicsInfo &physics;
   const OrderedAttributes &instances_attriubutes;
   bool create_id_attribute_on_any_component = false;
 
@@ -687,6 +717,20 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                   base_instance_context.id});
           gather_info.r_offsets.curves_offsets.point += curves->geometry.point_num;
           gather_info.r_offsets.curves_offsets.curve += curves->geometry.curve_num;
+        }
+        break;
+      }
+      case bke::GeometryComponent::Type::Physics: {
+        const auto &physics_component = *static_cast<const bke::PhysicsComponent *>(component);
+        const bke::PhysicsGeometry *physics = physics_component.get();
+        if (physics != nullptr) {
+          const int physics_index = gather_info.physics.order.index_of(physics);
+          const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
+          gather_info.r_tasks.physics_tasks.append(
+              {gather_info.r_offsets.physics_offsets, &physics_info, base_transform});
+          gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
+          gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
+          gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
         }
         break;
       }
@@ -1929,6 +1973,130 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Physics
+ * \{ */
+
+static OrderedAttributes gather_generic_physics_attributes_to_propagate(
+    const bke::GeometrySet &in_geometry_set,
+    const RealizeInstancesOptions &options,
+    const VariedDepthOptions &varied_depth_option,
+    bool &r_create_id)
+{
+  Vector<bke::GeometryComponent::Type> src_component_types;
+  src_component_types.append(bke::GeometryComponent::Type::Curve);
+  if (options.realize_instance_attributes) {
+    src_component_types.append(bke::GeometryComponent::Type::Instance);
+  }
+
+  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  gather_attributes_for_propagation(in_geometry_set,
+                                    src_component_types,
+                                    bke::GeometryComponent::Type::Curve,
+                                    varied_depth_option.depths,
+                                    varied_depth_option.selection,
+                                    options.propagation_info,
+                                    attributes_to_propagate);
+  attributes_to_propagate.remove("position");
+  attributes_to_propagate.remove("radius");
+  attributes_to_propagate.remove("nurbs_weight");
+  attributes_to_propagate.remove("resolution");
+  attributes_to_propagate.remove("handle_right");
+  attributes_to_propagate.remove("handle_left");
+  attributes_to_propagate.remove("custom_normal");
+  r_create_id = attributes_to_propagate.pop_try("id").has_value();
+  OrderedAttributes ordered_attributes;
+  for (const auto item : attributes_to_propagate.items()) {
+    ordered_attributes.ids.add_new(item.key);
+    ordered_attributes.kinds.append(item.value);
+  }
+  return ordered_attributes;
+}
+
+static void gather_physics_to_realize(const bke::GeometrySet &geometry_set,
+                                     VectorSet<const bke::PhysicsGeometry *> &r_physics)
+{
+  if (const bke::PhysicsGeometry *physics = geometry_set.get_physics()) {
+    r_physics.add(physics);
+  }
+  if (const Instances *instances = geometry_set.get_instances()) {
+    instances->foreach_referenced_geometry([&](const bke::GeometrySet &instance_geometry_set) {
+      gather_physics_to_realize(instance_geometry_set, r_physics);
+    });
+  }
+}
+
+static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
+                                       const RealizeInstancesOptions &options,
+                                       const VariedDepthOptions &varied_depth_option)
+{
+  UNUSED_VARS(options, varied_depth_option);
+  AllPhysicsInfo info;
+
+  gather_physics_to_realize(geometry_set, info.order);
+  info.realize_info.reinitialize(info.order.size());
+  for (const int physics_index : info.realize_info.index_range()) {
+    RealizePhysicsInfo &physics_info = info.realize_info[physics_index];
+    const bke::PhysicsGeometry *physics = info.order[physics_index];
+    physics_info.physics = physics;
+  }
+  return info;
+}
+
+static void execute_realize_physics_task(const RealizeInstancesOptions &options,
+                                       const AllPhysicsInfo &all_physics_info,
+                                       const RealizePhysicsTask &task,
+                                       bke::PhysicsGeometry &dst_physics)
+{
+  const RealizePhysicsInfo &physics_info = *task.physics_info;
+  const bke::PhysicsGeometry &physics = *physics_info.physics;
+
+  const IndexRange dst_bodies_range{task.start_indices.body, physics.bodies_num()};
+  const IndexRange dst_constraints_range{task.start_indices.body, physics.constraints_num()};
+  const IndexRange dst_shapes_range{task.start_indices.body, physics.shapes_num()};
+
+  //copy_transformed_positions(
+  //    curves.positions(), task.transform, dst_curves.positions_for_write().slice(dst_point_range));
+
+  UNUSED_VARS(options, all_physics_info, dst_physics);
+}
+
+static void execute_realize_physics_tasks(const RealizeInstancesOptions &options,
+                                        const AllPhysicsInfo &all_physics_info,
+                                        const Span<RealizePhysicsTask> tasks,
+                                        bke::GeometrySet &r_realized_geometry)
+{
+  if (tasks.is_empty()) {
+    return;
+  }
+
+  const RealizePhysicsTask &last_task = tasks.last();
+  const bke::PhysicsGeometry &last_curves = *last_task.physics_info->physics;
+  const int bodies_num = last_task.start_indices.body + last_curves.bodies_num();
+  const int constraints_num = last_task.start_indices.constraint + last_curves.constraints_num();
+  const int shapes_num = last_task.start_indices.shape + last_curves.shapes_num();
+
+  /* Allocate new curves data-block. */
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
+      bodies_num, constraints_num, shapes_num);
+  r_realized_geometry.replace_physics(dst_physics);
+
+  ///* Copy settings from the first input geometry set with curves. */
+  //const RealizeCurveTask &first_task = tasks.first();
+  //const Curves &first_curves_id = *first_task.curve_info->curves;
+  //bke::curves_copy_parameters(first_curves_id, *dst_curves_id);
+
+  /* Actually execute all tasks. */
+  threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
+    for (const int task_index : task_range) {
+      const RealizePhysicsTask &task = tasks[task_index];
+      execute_realize_physics_task(options, all_physics_info, task, *dst_physics);
+    }
+  });
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Realize Instances
  * \{ */
 
@@ -2007,6 +2175,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
       geometry_set, options, varied_depth_option);
   AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options, varied_depth_option);
   AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options, varied_depth_option);
+  AllPhysicsInfo all_physics_info = preprocess_physics(geometry_set, options, varied_depth_option);
   OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(
       geometry_set, options, varied_depth_option);
 
@@ -2017,6 +2186,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   GatherTasksInfo gather_info = {all_pointclouds_info,
                                  all_meshes_info,
                                  all_curves_info,
+                                 all_physics_info,
                                  all_instance_attributes,
                                  create_id_attribute,
                                  varied_depth_option.selection,
@@ -2063,6 +2233,10 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                 all_curves_info,
                                 gather_info.r_tasks.curve_tasks,
                                 all_curves_info.attributes,
+                                new_geometry_set);
+    execute_realize_physics_tasks(options,
+                                all_physics_info,
+                                gather_info.r_tasks.physics_tasks,
                                 new_geometry_set);
   });
   if (gather_info.r_tasks.first_volume) {

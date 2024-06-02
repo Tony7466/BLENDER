@@ -65,7 +65,7 @@ private:
   } builtin_attributes;
 
   PhysicsGeometry();
-  explicit PhysicsGeometry(int rigid_bodies_num);
+  explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num, int shapes_num);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
