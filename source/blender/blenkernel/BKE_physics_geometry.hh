@@ -104,6 +104,7 @@ private:
   
   void step_simulation(float delta_time);
 
+  Proxies &proxies();
   const Proxies &proxies() const;
 
   VArray<const CollisionShape *> body_collision_shapes() const;

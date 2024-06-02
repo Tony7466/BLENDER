@@ -2053,10 +2053,10 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   const bke::PhysicsGeometry &physics = *physics_info.physics;
 
   dst_physics.realize_instance(physics,
+                               task.start_indices.impl,
                                task.start_indices.body,
                                task.start_indices.constraint,
-                               task.start_indices.shape,
-                               task.start_indices.impl);
+                               task.start_indices.shape);
 
   UNUSED_VARS(options, all_physics_info, dst_physics);
 }
@@ -2072,13 +2072,14 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
 
   const RealizePhysicsTask &last_task = tasks.last();
   const bke::PhysicsGeometry &last_curves = *last_task.physics_info->physics;
+  const int impl_num = last_task.start_indices.impl + last_curves.impl_array().size();
   const int bodies_num = last_task.start_indices.body + last_curves.bodies_num();
   const int constraints_num = last_task.start_indices.constraint + last_curves.constraints_num();
   const int shapes_num = last_task.start_indices.shape + last_curves.shapes_num();
 
   /* Allocate new curves data-block. */
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
-      bodies_num, constraints_num, shapes_num);
+      bodies_num, constraints_num, shapes_num, impl_num);
   r_realized_geometry.replace_physics(dst_physics);
 
   ///* Copy settings from the first input geometry set with curves. */

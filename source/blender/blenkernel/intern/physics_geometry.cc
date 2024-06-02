@@ -517,6 +517,22 @@ void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
                                        int constraints_offset,
                                        int shapes_offset)
 {
+  const IndexRange impl_range = IndexRange(impl_offset, other.impl_array().size());
+  const IndexRange body_range = IndexRange(bodies_offset, other.bodies_num());
+  const IndexRange constraint_range = IndexRange(constraints_offset, other.constraints_num());
+  const IndexRange shape_range = IndexRange(shapes_offset, other.shapes_num());
+
+  MutableSpan<const PhysicsGeometryImpl *> impls = this->impl_array().slice(impl_range);
+  impls.copy_from(other.impl_array());
+  for (const PhysicsGeometryImpl *impl : impls) {
+    impl->add_user();
+  }
+
+  proxies_.bodies.as_mutable_span().slice(body_range).copy_from(other.proxies().bodies);
+  proxies_.constraints.as_mutable_span()
+      .slice(constraint_range)
+      .copy_from(other.proxies().constraints);
+  proxies_.shapes.as_mutable_span().slice(shape_range).copy_from(other.proxies().shapes);
 }
 
 bool PhysicsGeometry::has_world() const
@@ -629,6 +645,11 @@ IndexRange PhysicsGeometry::constraints_range() const
 IndexRange PhysicsGeometry::shapes_range() const
 {
   return proxies_.shapes.index_range();
+}
+
+PhysicsGeometry::Proxies &PhysicsGeometry::proxies()
+{
+  return proxies_;
 }
 
 const PhysicsGeometry::Proxies &PhysicsGeometry::proxies() const
