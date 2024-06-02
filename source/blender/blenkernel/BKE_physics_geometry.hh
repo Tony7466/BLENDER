@@ -65,12 +65,23 @@ private:
   } builtin_attributes;
 
   PhysicsGeometry();
-  explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num, int shapes_num);
+  explicit PhysicsGeometry(int rigid_bodies_num,
+                           int constraints_num,
+                           int shapes_num,
+                           int impl_num = 1);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
   PhysicsGeometryImpl *try_impl_for_write();
   const PhysicsGeometryImpl &impl() const;
+  MutableSpan<const PhysicsGeometryImpl *> impl_array();
+  Span<const PhysicsGeometryImpl *> impl_array() const;
+
+  void realize_instance(const PhysicsGeometry &other,
+                        int impl_offset,
+                        int bodies_offset,
+                        int constraints_offset,
+                        int shapes_offset);
 
   bool has_world() const;
   void set_world_enabled(bool enable);

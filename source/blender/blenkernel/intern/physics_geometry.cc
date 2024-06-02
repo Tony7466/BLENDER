@@ -454,10 +454,12 @@ PhysicsGeometry::PhysicsGeometry() {
   impl_array_.append(new PhysicsGeometryImpl());
 }
 
-PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num, int impl_num)
 {
+  impl_array_.reinitialize(std::max(impl_num, 1));
+
   PhysicsGeometryImpl *main_impl = new PhysicsGeometryImpl();
-  impl_array_.append(main_impl);
+  impl_array_.first() = main_impl;
 
   main_impl->rigid_bodies.reinitialize(bodies_num);
   main_impl->motion_states.reinitialize(bodies_num);
@@ -497,6 +499,24 @@ const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 {
   BLI_assert(!impl_array_.is_empty());
   return *impl_array_.first();
+}
+
+MutableSpan<const PhysicsGeometryImpl *> PhysicsGeometry::impl_array()
+{
+  return impl_array_;
+}
+
+Span<const PhysicsGeometryImpl *> PhysicsGeometry::impl_array() const
+{
+  return impl_array_;
+}
+
+void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
+                                       int impl_offset,
+                                       int bodies_offset,
+                                       int constraints_offset,
+                                       int shapes_offset)
+{
 }
 
 bool PhysicsGeometry::has_world() const

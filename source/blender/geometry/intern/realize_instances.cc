@@ -182,6 +182,7 @@ struct RealizePhysicsInfo {
 
 /** Start indices in the final output curves data-block. */
 struct PhysicsElementStartIndices {
+  int impl = 0;
   int body = 0;
   int constraint = 0;
   int shape = 0;
@@ -728,6 +729,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           const RealizePhysicsInfo &physics_info = gather_info.physics.realize_info[physics_index];
           gather_info.r_tasks.physics_tasks.append(
               {gather_info.r_offsets.physics_offsets, &physics_info, base_transform});
+          gather_info.r_offsets.physics_offsets.impl += physics->impl_array().size();
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
           gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
@@ -2050,12 +2052,11 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const bke::PhysicsGeometry &physics = *physics_info.physics;
 
-  const IndexRange dst_bodies_range{task.start_indices.body, physics.bodies_num()};
-  const IndexRange dst_constraints_range{task.start_indices.body, physics.constraints_num()};
-  const IndexRange dst_shapes_range{task.start_indices.body, physics.shapes_num()};
-
-  //copy_transformed_positions(
-  //    curves.positions(), task.transform, dst_curves.positions_for_write().slice(dst_point_range));
+  dst_physics.realize_instance(physics,
+                               task.start_indices.body,
+                               task.start_indices.constraint,
+                               task.start_indices.shape,
+                               task.start_indices.impl);
 
   UNUSED_VARS(options, all_physics_info, dst_physics);
 }
