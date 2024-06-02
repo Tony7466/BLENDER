@@ -3557,36 +3557,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Mark old EEVEE world volumes for showing conversion operator. */
     LISTBASE_FOREACH (World *, world, &bmain->worlds) {
       if (world->nodetree) {
-        /* NOTE: duplicated from `ntreeShaderOutputNode` with small adjustments so it can be called
-         * during versioning. */
-        bNode *output_node = nullptr;
-
-        LISTBASE_FOREACH (bNode *, node, &world->nodetree->nodes) {
-          if (node->type != SH_NODE_OUTPUT_WORLD) {
-            continue;
-          }
-
-          if (node->custom1 == SHD_OUTPUT_ALL) {
-            if (output_node == nullptr) {
-              output_node = node;
-            }
-            else if (output_node->custom1 == SHD_OUTPUT_ALL) {
-              if ((node->flag & NODE_DO_OUTPUT) && !(output_node->flag & NODE_DO_OUTPUT)) {
-                output_node = node;
-              }
-            }
-          }
-          else if (node->custom1 == SHD_OUTPUT_EEVEE) {
-            if (output_node == nullptr) {
-              output_node = node;
-            }
-            else if ((node->flag & NODE_DO_OUTPUT) && !(output_node->flag & NODE_DO_OUTPUT)) {
-              output_node = node;
-            }
-          }
-        }
-        /* End duplication. */
-
+        bNode *output_node = version_eevee_output_node_get(world->nodetree, SH_NODE_OUTPUT_WORLD);
         if (output_node) {
           bNodeSocket *volume_input_socket = static_cast<bNodeSocket *>(
               BLI_findlink(&output_node->inputs, 1));
