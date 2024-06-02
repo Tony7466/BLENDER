@@ -392,7 +392,7 @@ struct ParallelSegmentsCollector {
   }
 };
 
-IndexMask IndexMask::complement(const IndexMask universe, IndexMaskMemory &memory) const
+IndexMask IndexMask::complement(const IndexMask &universe, IndexMaskMemory &memory) const
 {
   ExprBuilder builder;
   const Expr &expr = builder.subtract(&universe, {this});
