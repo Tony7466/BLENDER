@@ -4,7 +4,7 @@
 
 /* Signed distance to rounded box, centered at origin.
  * Reference: https://iquilezles.org/articles/distfunctions2d/ */
-float sdfRoundedBox(vec2 pos, vec2 size, float radius)
+float sdf_rounded_box(vec2 pos, vec2 size, float radius)
 {
   vec2 q = abs(pos) - size + radius;
   return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - radius;
@@ -59,7 +59,7 @@ void main()
   float radius = context_data.round_radius;
   radius = min(radius,min(bsize.x,bsize.y));
     
-  float d = sdfRoundedBox(pxy - bcenter, bsize, radius);
+  float d = sdf_rounded_box(pxy - bcenter, bsize, radius);
 
   vec4 col = vec4(0.0);
 

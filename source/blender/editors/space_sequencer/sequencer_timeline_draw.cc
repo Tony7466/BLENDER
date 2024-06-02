@@ -1866,7 +1866,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   //@TODO: flag only for testing
   const bool rounded = (timeline_ctx->sseq->timeline_overlay.flag &
                         SEQ_TIMELINE_ROUNDED_CORNERS) != 0;
-  const float round_radius = calc_strip_round_radius(timeline_ctx->pixely);
+  const float round_radius = rounded ? calc_strip_round_radius(timeline_ctx->pixely) : 0.0f;
 
   if (rounded) {
     draw_strips_bottom(timeline_ctx, strips);
@@ -1885,10 +1885,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     }
   }
   timeline_ctx->quads->draw();
-  GPU_blend(GPU_BLEND_NONE);
 
   /* Draw all thumbnails. */
-  //@TODO: thumbnails that do not step outside of corner
+  GPU_blend(GPU_BLEND_ALPHA);
   for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_strip_thumbnail(timeline_ctx->v2d,
                              timeline_ctx->C,
@@ -1897,7 +1896,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
                              strip_ctx.bottom,
                              strip_ctx.strip_content_top,
                              timeline_ctx->pixelx,
-                             timeline_ctx->pixely);
+                             timeline_ctx->pixely,
+                             round_radius);
   }
 
   /* Draw parts of strips above thumbnails. */
