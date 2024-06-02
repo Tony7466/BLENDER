@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <iostream>
-
 #ifdef WITH_POTRACE
 
 #  include <iostream>
@@ -46,7 +44,7 @@ potrace_state_t *image_from_lines(const Params params,
                                                          int64_t line_offset,
                                                          int64_t index_in_line,
                                                          int64_t length,
-                                                         int8_t *r_segments)> func)
+                                                         uint8_t *r_segments)> func)
 {
   const int64_t words_num = words_in_line(params.resolution.x);
   Array<potrace_word> segments(words_num * params.resolution.y);
@@ -58,7 +56,7 @@ potrace_state_t *image_from_lines(const Params params,
       IndexRange(params.resolution.y),
       4096,
       [&](const IndexRange range) {
-        Array<int8_t> buffer(sizeof(potrace_word) * words_num);
+        Array<uint8_t> buffer(sizeof(potrace_word) * words_num);
         for (const int64_t line_i : range) {
           MutableSpan<potrace_word> line = segments.as_mutable_span().slice(line_i * words_num,
                                                                             words_num);

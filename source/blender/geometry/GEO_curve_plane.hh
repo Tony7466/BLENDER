@@ -37,7 +37,7 @@ potrace_state_t *image_from_lines(Params params,
                                                    int64_t line_offset,
                                                    int64_t index_in_line,
                                                    int64_t length,
-                                                   int8_t *r_segments)> func);
+                                                   uint8_t *r_segments)> func);
 
 template<typename Func> inline potrace_state_t *image_from_bytes(Params params, Func func)
 {
@@ -46,7 +46,7 @@ template<typename Func> inline potrace_state_t *image_from_bytes(Params params, 
                               int64_t line_offset,
                               int64_t index_in_line,
                               int64_t length,
-                              int8_t *r_segments) {
+                              uint8_t *r_segments) {
                             BLI_assert(length % 8 == 0);
                             BLI_assert(line_offset % 8 == 0);
                             BLI_assert(index_in_line % 8 == 0);
@@ -64,13 +64,13 @@ template<typename Func> inline potrace_state_t *image_from_bytes(Params params, 
 template<typename Func> inline potrace_state_t *image_for_predicate(Params params, Func func)
 {
   return image_from_bytes(
-      params, [&](int64_t line_i, int64_t line_offset, int64_t index_in_line) -> int8_t {
+      params, [&](int64_t line_i, int64_t line_offset, int64_t index_in_line) -> uint8_t {
         const int64_t pixels_line_offset = line_offset << 3;
         const int64_t pixels_index_in_line = index_in_line << 3;
-        int8_t byte = {};
+        uint8_t byte = 0;
         for (int64_t pixel_iter = 0; pixel_iter < 8; pixel_iter++) {
           byte <<= 1;
-          byte |= int8_t(func(line_i, pixels_line_offset, pixels_index_in_line + pixel_iter));
+          byte |= uint8_t(func(line_i, pixels_line_offset, pixels_index_in_line + pixel_iter));
         }
         return byte;
       });
