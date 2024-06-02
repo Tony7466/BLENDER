@@ -3378,18 +3378,34 @@ typedef struct sAreaJoinData {
   void *draw_dock_callback;    /* call #screen_draw_dock_highlight, overlay on draw_dock_win. */
 } sAreaJoinData;
 
-static void area_join_draw_cb(const wmWindow * /* win */, void *userdata)
+static void area_join_draw_cb(const wmWindow *win, void *userdata)
 {
   const wmOperator *op = static_cast<wmOperator *>(userdata);
   sAreaJoinData *jd = static_cast<sAreaJoinData *>(op->customdata);
   if (!jd || !jd->sa1) {
     return;
   }
+
   if (jd->sa1 == jd->sa2) {
     screen_draw_split_preview(jd->sa1, jd->split_dir, jd->split_fac);
   }
   else {
     screen_draw_join_highlight(jd->sa1, jd->sa2, jd->join_dir);
+
+    if (jd->dock_target == DOCKING_NONE) {
+      const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
+      const bTheme *btheme = UI_GetTheme();
+      const uiWidgetColors *wcol = &btheme->tui.wcol_tooltip;
+      float col_fg[4], col_bg[4];
+      rgba_uchar_to_float(col_fg, wcol->text);
+      rgba_uchar_to_float(col_bg, wcol->inner);
+      UI_fontstyle_draw_simple_backdrop(fstyle,
+                                        win->eventstate->xy[0] + (UI_SCALE_FAC * 10),
+                                        win->eventstate->xy[1] - (UI_SCALE_FAC * 3),
+                                        TIP_("Expand into this space"),
+                                        col_fg,
+                                        col_bg);
+    }
   }
 }
 
@@ -3400,7 +3416,22 @@ static void area_join_dock_cb(const struct wmWindow *win, void *userdata)
   if (!jd || !jd->sa2 || jd->join_dir != SCREEN_DIR_NONE || jd->sa1 == jd->sa2) {
     return;
   }
+
   screen_draw_dock_preview(win, jd->sa2, jd->dock_target);
+  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
+  const bTheme *btheme = UI_GetTheme();
+  const uiWidgetColors *wcol = &btheme->tui.wcol_tooltip;
+  float col_fg[4], col_bg[4];
+  rgba_uchar_to_float(col_fg, wcol->text);
+  rgba_uchar_to_float(col_bg, wcol->inner);
+  const char *desc = (jd->dock_target == DOCKING_CENTER) ? TIP_("Replace this area") :
+                                                           TIP_("Split and move here");
+  UI_fontstyle_draw_simple_backdrop(fstyle,
+                                    win->eventstate->xy[0] + (UI_SCALE_FAC * 10),
+                                    win->eventstate->xy[1] - (UI_SCALE_FAC * 3),
+                                    desc,
+                                    col_fg,
+                                    col_bg);
 }
 
 static void area_join_dock_cb_window(sAreaJoinData *jd, wmOperator *op)
@@ -3649,21 +3680,26 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
 
   if (ELEM(jd->join_dir, SCREEN_DIR_N, SCREEN_DIR_S)) {
     /* Up or Down to immediate neighbor. */
-    int join_y = std::min(jd->sa2->winy * 0.3f, 6 * HEADERY * UI_SCALE_FAC);
-    if (jd->sa2->winy < min_y || (jd->join_dir == SCREEN_DIR_N && y < join_y) ||
-        (jd->join_dir == SCREEN_DIR_S && (jd->sa2->winy - y) < join_y))
-    {
-      return DOCKING_NONE;
+    if (event->xy[0] <= jd->sa1->totrct.xmax && event->xy[0] >= jd->sa1->totrct.xmin) {
+      const int join_y = std::min(jd->sa2->winy * 0.3f, 6 * HEADERY * UI_SCALE_FAC);
+      if (jd->sa2->winy < min_y || (jd->join_dir == SCREEN_DIR_N && y < join_y) ||
+          (jd->join_dir == SCREEN_DIR_S && (jd->sa2->winy - y) < join_y))
+      {
+        return DOCKING_NONE;
+      }
     }
   }
 
   if (ELEM(jd->join_dir, SCREEN_DIR_W, SCREEN_DIR_E)) {
     /* Left or Right to immediate neighbor. */
-    int join_x = std::min(jd->sa2->winx * 0.3f, 6 * AREAMINX * UI_SCALE_FAC);
-    if (jd->sa2->winx < min_x || (jd->join_dir == SCREEN_DIR_W && (jd->sa2->winx - x) < join_x) ||
-        (jd->join_dir == SCREEN_DIR_E && x < join_x))
-    {
-      return DOCKING_NONE;
+    if (event->xy[1] <= jd->sa1->totrct.ymax && event->xy[1] >= jd->sa1->totrct.ymin) {
+      const int join_x = std::min(jd->sa2->winx * 0.3f, 6 * AREAMINX * UI_SCALE_FAC);
+      if (jd->sa2->winx < min_x ||
+          (jd->join_dir == SCREEN_DIR_W && (jd->sa2->winx - x) < join_x) ||
+          (jd->join_dir == SCREEN_DIR_E && x < join_x))
+      {
+        return DOCKING_NONE;
+      }
     }
   }
 
