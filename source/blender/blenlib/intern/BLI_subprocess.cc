@@ -12,18 +12,34 @@
 #ifdef _WIN32
 
 #  define WIN32_LEAN_AND_MEAN
+#  include <comdef.h>
 #  include <windows.h>
 
 namespace blender {
+
+static void print_last_error(const char *msg)
+{
+  DWORD error_code = GetLastError();
+  std::cerr << "ERROR (" << error_code << "): " << msg << std::endl;
+}
+
+static bool check(bool result, const char *msg)
+{
+  if (!result) {
+    BLI_assert(false);
+    print_last_error(msg);
+  }
+  return result;
+}
+
+#  define CHECK(result) check((result), __FUNCTION__ " : " #result)
 
 bool Subprocess::init(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
 
   wchar_t path[MAX_PATH];
-  if (!GetModuleFileNameW(nullptr, path, MAX_PATH)) {
-    /* TODO: FormatMessage. */
-    std::cerr << "Subprocess: Failed to get Blender path.\n";
+  if (!CHECK(GetModuleFileNameW(nullptr, path, MAX_PATH))) {
     return false;
   }
 
@@ -39,24 +55,22 @@ bool Subprocess::init(Span<StringRefNull> args)
   STARTUPINFOW startup_info = {0};
   startup_info.cb = sizeof(startup_info);
   PROCESS_INFORMATION process_info = {0};
-  if (!CreateProcessW(path,
-                      w_args.data(),
-                      nullptr,
-                      nullptr,
-                      false,
-                      0,
-                      nullptr,
-                      nullptr,
-                      &startup_info,
-                      &process_info))
+  if (!CHECK(CreateProcessW(path,
+                            w_args.data(),
+                            nullptr,
+                            nullptr,
+                            false,
+                            0,
+                            nullptr,
+                            nullptr,
+                            &startup_info,
+                            &process_info)))
   {
-    /* TODO: FormatMessage. */
-    std::cerr << "Subprocess: Failed to create subprocess.\n";
     return false;
   }
 
   handle_ = process_info.hProcess;
-  CloseHandle(process_info.hThread);
+  CHECK(CloseHandle(process_info.hThread));
 
   return true;
 }
@@ -64,7 +78,7 @@ bool Subprocess::init(Span<StringRefNull> args)
 Subprocess::~Subprocess()
 {
   if (handle_) {
-    CloseHandle(handle_);
+    CHECK(CloseHandle(handle_));
   }
 }
 
@@ -75,7 +89,7 @@ bool Subprocess::is_running()
   }
 
   DWORD exit_code = 0;
-  if (GetExitCodeProcess(handle_, &exit_code)) {
+  if (CHECK(GetExitCodeProcess(handle_, &exit_code))) {
     return exit_code == STILL_ACTIVE;
   }
   /* Assume the process is still running. */
@@ -87,14 +101,17 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
 {
   if (already_exists) {
     handle_ = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, name.c_str());
+    CHECK(handle_ /*Open*/);
   }
   else {
     handle_ = CreateFileMappingA(
         INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, size, name.c_str());
+    CHECK(handle_ /*Close*/);
   }
 
   if (handle_) {
     data_ = MapViewOfFile(handle_, FILE_MAP_ALL_ACCESS, 0, 0, size);
+    CHECK(data_);
   }
   else {
     data_ = nullptr;
@@ -106,38 +123,41 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
 SharedMemory::~SharedMemory()
 {
   if (data_) {
-    UnmapViewOfFile(data_);
+    CHECK(UnmapViewOfFile(data_));
   }
   if (handle_) {
-    CloseHandle(handle_);
+    CHECK(CloseHandle(handle_));
   }
 }
 
 SharedSemaphore::SharedSemaphore(std::string name) : name_(name)
 {
   handle_ = CreateSemaphoreA(NULL, 0, 1, name.c_str());
+  CHECK(handle_);
 }
 
 SharedSemaphore::~SharedSemaphore()
 {
   if (handle_) {
-    CloseHandle(handle_);
+    CHECK(CloseHandle(handle_));
   }
 }
 
 void SharedSemaphore::increment()
 {
-  ReleaseSemaphore(handle_, 1, NULL);
+  CHECK(ReleaseSemaphore(handle_, 1, NULL));
 }
 
 void SharedSemaphore::decrement()
 {
-  WaitForSingleObject(handle_, INFINITE);
+  CHECK(WaitForSingleObject(handle_, INFINITE) != WAIT_FAILED);
 }
 
 bool SharedSemaphore::try_decrement(int wait_ms)
 {
-  return WaitForSingleObject(handle_, wait_ms) == WAIT_OBJECT_0;
+  DWORD result = WaitForSingleObject(handle_, wait_ms);
+  CHECK(result != WAIT_FAILED);
+  return result == WAIT_OBJECT_0;
 }
 
 }  // namespace blender
