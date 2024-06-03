@@ -20,7 +20,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_image.h"
@@ -573,8 +573,8 @@ static Array<float> sculpt_expand_normal_falloff_create(Object &ob,
       }
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
 
-      if (ni.size > 0.0f) {
-        dists[i] = avg / ni.size;
+      if (ni.neighbors.size() > 0.0f) {
+        dists[i] = avg / ni.neighbors.size();
       }
     }
   }
@@ -640,16 +640,16 @@ static Array<float> sculpt_expand_boundary_topology_falloff_create(Object &ob, c
     const PBVHVertRef symm_vertex = sculpt_expand_get_vertex_index_for_symmetry_pass(
         ob, symm_it, v);
 
-    SculptBoundary *boundary = boundary::data_init(ob, nullptr, symm_vertex, FLT_MAX);
+    std::unique_ptr<SculptBoundary> boundary = boundary::data_init(
+        ob, nullptr, symm_vertex, FLT_MAX);
     if (!boundary) {
       continue;
     }
 
-    for (int i = 0; i < boundary->verts_num; i++) {
+    for (int i = 0; i < boundary->verts.size(); i++) {
       queue.push(boundary->verts[i]);
       visited_verts[BKE_pbvh_vertex_to_index(*ss.pbvh, boundary->verts[i])].set();
     }
-    boundary::data_free(boundary);
   }
 
   /* If there are no boundaries, return a falloff with all values set to 0. */
@@ -1207,7 +1207,7 @@ static void write_mask_data(SculptSession &ss, const Span<float> mask)
       for (const int grid : grids.index_range()) {
         CCGElem *elem = grids[grid];
         for (const int i : IndexRange(key.grid_area)) {
-          *CCG_elem_offset_mask(&key, elem, i) = mask[index];
+          CCG_elem_offset_mask(key, elem, i) = mask[index];
           index++;
         }
       }
@@ -2084,7 +2084,7 @@ static bool any_nonzero_mask(const Object &object)
       }
       return std::any_of(subdiv_ccg.grids.begin(), subdiv_ccg.grids.end(), [&](CCGElem *elem) {
         for (const int i : IndexRange(key.grid_area)) {
-          if (*CCG_elem_offset_mask(&key, elem, i) > 0.0f) {
+          if (CCG_elem_offset_mask(key, elem, i) > 0.0f) {
             return true;
           }
         }
