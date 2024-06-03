@@ -49,9 +49,11 @@ bool Subprocess::create(Span<StringRefNull> args)
     args_str += arg + " ";
   }
 
-  std::wstring w_args;
-  w_args.resize(args_str.size(), L' ');
-  BLI_strncpy_wchar_from_utf8(w_args.data(), args_str.c_str(), w_args.size() + 1);
+  const int length_wc = MultiByteToWideChar(
+      CP_UTF8, 0, args_str.c_str(), args_str.length(), NULL, 0);
+  std::wstring w_args(length_wc, 0);
+  CHECK(MultiByteToWideChar(
+      CP_UTF8, 0, args_str.c_str(), args_str.length(), w_args.data(), length_wc));
 
   STARTUPINFOW startup_info = {0};
   startup_info.cb = sizeof(startup_info);
