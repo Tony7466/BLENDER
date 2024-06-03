@@ -872,16 +872,46 @@ int RenderScheduler::get_num_samples_to_path_trace() const
      *
      * When the time limit is enabled, do not render more samples than it is needed to reach the
      * time limit. */
-    double desired_path_tracing_time = guess_display_update_interval_in_seconds();
+    double desired_path_tracing_time = 0;
+    if (headless_) {
+      /* In the headless (command-line) render "over-scheduling" is not as bad, as it ensures the
+       * best possible render time. */
+    }
+    else if (background_) {
+      /* For the first few seconds prefer quicker updates, giving it a better chance for artists
+       * to cancel render early on when they notice something is wrong. After that increase the
+       * update times a lot, giving the best possible performance on a complicated scenes like
+       * the Spring splash screen (where occupancy is just very bad). */
+      if (state_.start_render_time == 0.0 || time_dt() - state_.start_render_time < 10) {
+        desired_path_tracing_time = 2.0;
+      }
+      else {
+        desired_path_tracing_time = 15.0;
+      }
+    }
+    else {
+      /* Viewport render: prefer faster updates over overall render time reduction. */
+      desired_path_tracing_time = guess_display_update_interval_in_seconds();
+    }
     if (time_limit_ != 0.0 && state_.start_render_time != 0.0) {
       const double remaining_render_time = max(
           0.0, time_limit_ - (time_dt() - state_.start_render_time));
-      desired_path_tracing_time = min(desired_path_tracing_time, remaining_render_time);
+      if (desired_path_tracing_time == 0) {
+        desired_path_tracing_time = remaining_render_time;
+      }
+      else {
+        desired_path_tracing_time = min(desired_path_tracing_time, remaining_render_time);
+      }
     }
-    const double predicted_render_time = num_samples_to_occupy * path_trace_time_.get_average();
-    if (predicted_render_time > desired_path_tracing_time) {
-      num_samples_to_occupy = lround(num_samples_to_occupy *
-                                     (desired_path_tracing_time / predicted_render_time));
+    if (desired_path_tracing_time != 0) {
+      /* Use the per-sample time from the previously rendered batch of samples so that the
+       * correction is applied much quicker. */
+      const double predicted_render_time = num_samples_to_occupy *
+                                           path_trace_time_.get_last_sample_time();
+      if (predicted_render_time > desired_path_tracing_time) {
+        num_samples_to_occupy = lround(num_samples_to_occupy *
+                                       (desired_path_tracing_time / predicted_render_time));
+      }
     }
 
     num_samples_to_render = max(num_samples_to_render,
