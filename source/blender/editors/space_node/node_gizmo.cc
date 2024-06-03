@@ -12,6 +12,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
 #include "BKE_context.hh"
 #include "BKE_image.h"
@@ -188,11 +190,12 @@ void NODE_GGT_backdrop_transform(wmGizmoGroupType *gzgt)
 /** \name Crop Gizmo
  * \{ */
 
-struct NodeCropWidgetGroup {
+struct NodeBBoxWidgetGroup {
   wmGizmo *border;
 
   struct {
     float2 dims;
+    float2 offset;
   } state;
 
   struct {
@@ -202,10 +205,10 @@ struct NodeCropWidgetGroup {
   } update_data;
 };
 
-static void gizmo_node_crop_update(NodeCropWidgetGroup *crop_group)
+static void gizmo_node_crop_update(NodeBBoxWidgetGroup *bbox_group)
 {
   RNA_property_update(
-      crop_group->update_data.context, &crop_group->update_data.ptr, crop_group->update_data.prop);
+      bbox_group->update_data.context, &bbox_group->update_data.ptr, bbox_group->update_data.prop);
 }
 
 static void two_xy_to_rect(const NodeTwoXYs *nxy, rctf *rect, const float2 &dims, bool is_relative)
@@ -250,7 +253,7 @@ static void gizmo_node_crop_prop_matrix_get(const wmGizmo *gz,
 {
   float(*matrix)[4] = (float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
-  NodeCropWidgetGroup *crop_group = (NodeCropWidgetGroup *)gz->parent_gzgroup->customdata;
+  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
   const float *dims = crop_group->state.dims;
   const bNode *node = (const bNode *)gz_prop->custom_func.user_data;
   const NodeTwoXYs *nxy = (const NodeTwoXYs *)node->storage;
@@ -261,6 +264,8 @@ static void gizmo_node_crop_prop_matrix_get(const wmGizmo *gz,
   matrix[1][1] = fabsf(BLI_rctf_size_y(&rct));
   matrix[3][0] = (BLI_rctf_cent_x(&rct) - 0.5f) * dims[0];
   matrix[3][1] = (BLI_rctf_cent_y(&rct) - 0.5f) * dims[1];
+
+//  print_m4("matrix crop get", matrix);
 }
 
 static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
@@ -269,7 +274,7 @@ static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
 {
   const float(*matrix)[4] = (const float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
-  NodeCropWidgetGroup *crop_group = (NodeCropWidgetGroup *)gz->parent_gzgroup->customdata;
+  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
   const float *dims = crop_group->state.dims;
   bNode *node = (bNode *)gz_prop->custom_func.user_data;
   NodeTwoXYs *nxy = (NodeTwoXYs *)node->storage;
@@ -320,12 +325,12 @@ static bool WIDGETGROUP_node_crop_poll(const bContext *C, wmGizmoGroupType * /*g
 
 static void WIDGETGROUP_node_crop_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
-  NodeCropWidgetGroup *crop_group = MEM_new<NodeCropWidgetGroup>(__func__);
+  NodeBBoxWidgetGroup *crop_group = MEM_new<NodeBBoxWidgetGroup>(__func__);
   crop_group->border = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
 
   RNA_enum_set(crop_group->border->ptr,
                "transform",
-               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE | ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
+               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE |  ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
 
   gzgroup->customdata = crop_group;
 }
@@ -343,7 +348,7 @@ static void WIDGETGROUP_node_crop_draw_prepare(const bContext *C, wmGizmoGroup *
 static void WIDGETGROUP_node_crop_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
   Main *bmain = CTX_data_main(C);
-  NodeCropWidgetGroup *crop_group = (NodeCropWidgetGroup *)gzgroup->customdata;
+  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gzgroup->customdata;
   wmGizmo *gz = crop_group->border;
 
   void *lock;
@@ -392,6 +397,183 @@ void NODE_GGT_backdrop_crop(wmGizmoGroupType *gzgt)
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
   gzgt->draw_prepare = WIDGETGROUP_node_crop_draw_prepare;
   gzgt->refresh = WIDGETGROUP_node_crop_refresh;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Box Mask
+ * \{ */
+
+static void gizmo_node_box_mask_prop_matrix_get(const wmGizmo *gz,
+                                            wmGizmoProperty *gz_prop,
+                                            void *value_p)
+{
+  float(*matrix)[4] = (float(*)[4])value_p;
+  BLI_assert(gz_prop->type->array_length == 16);
+  NodeBBoxWidgetGroup *mask_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
+  const float2 dims = mask_group->state.dims;
+  const bNode *node = (const bNode *)gz_prop->custom_func.user_data;
+  const NodeBoxMask *mask_node = (const NodeBoxMask *)node->storage;
+  float aspect = dims.x / dims.y;
+
+  // todo: implement offset
+  // todo: prevent matrix from becoming singular
+  // todo: fix behavior for rotation > 90°
+
+  float loc[3], rot[3][3], size[3];
+  mat4_to_loc_rot_size(loc, rot, size, matrix);
+
+  axis_angle_to_mat3_single(rot, 'Z', mask_node->rotation);
+
+  loc[0] = (mask_node->x - 0.5) * dims.x;
+  loc[1] = (mask_node->y - 0.5) * dims.y;
+  loc[2] = 0;
+
+  /* Prevent the matrix to become singular. */
+  size[0] = mask_node->width;
+  size[1] = mask_node->height * aspect;
+  size[2] = 1;
+
+  loc_rot_size_to_mat4(matrix, loc, rot, size);
+}
+
+static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
+                                            wmGizmoProperty *gz_prop,
+                                            const void *value_p)
+{
+  const float(*matrix)[4] = (const float(*)[4])value_p;
+  BLI_assert(gz_prop->type->array_length == 16);
+  NodeBBoxWidgetGroup *mask_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
+  const float2 dims = mask_group->state.dims;
+  bNode *node = (bNode *)gz_prop->custom_func.user_data;
+  NodeBoxMask *mask_node = (NodeBoxMask *)node->storage;
+
+  float aspect = dims.x/dims.y;
+  rctf rct;
+  rct.xmin = mask_node->x - mask_node->width/2;
+  rct.xmax = mask_node->x + mask_node->width/2;
+  rct.ymin = mask_node->y - mask_node->height/2;
+  rct.ymax = mask_node->y + mask_node->height/2;
+
+  float loc[3];
+  float rot[3][3];
+  float size[3];
+  mat4_to_loc_rot_size(loc, rot, size, matrix);
+
+  float eul[3];
+  mat4_to_eul(eul, matrix);
+  //  mat3_to_eul(eul, rot);
+  mask_node->rotation = eul[2];
+
+  BLI_rctf_resize(&rct, fabsf(size[0]), fabsf(size[1]) / aspect);
+  BLI_rctf_recenter(&rct, (loc[0] / dims[0]) + 0.5, (loc[1] / dims[1]) + 0.5);
+
+  mask_node->width = size[0];
+  mask_node->height = size[1] / aspect;
+  mask_node->x = rct.xmin + mask_node->width/2;
+  mask_node->y = rct.ymin + mask_node->height/2;
+
+  gizmo_node_crop_update(mask_group);
+}
+
+static bool WIDGETGROUP_node_box_mask_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+
+  if ((snode->flag & SNODE_BACKDRAW) == 0) {
+    return false;
+  }
+
+  if (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT) {
+    bNode *node = bke::nodeGetActive(snode->edittree);
+
+    if (node && ELEM(node->type, CMP_NODE_MASK_BOX)) {
+      /* ignore 'use_crop_size', we can't usefully edit the crop in this case. */
+      if ((node->custom1 & (1 << 0)) == 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+static void WIDGETGROUP_node_box_mask_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
+{
+  NodeBBoxWidgetGroup *crop_group = MEM_new<NodeBBoxWidgetGroup>(__func__);
+  crop_group->border = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
+
+  RNA_enum_set(crop_group->border->ptr,
+               "transform",
+               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE | ED_GIZMO_CAGE_XFORM_FLAG_ROTATE | ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
+
+  gzgroup->customdata = crop_group;
+}
+
+static void WIDGETGROUP_node_box_mask_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
+{
+  ARegion *region = CTX_wm_region(C);
+  wmGizmo *gz = (wmGizmo *)gzgroup->gizmos.first;
+
+  SpaceNode *snode = CTX_wm_space_node(C);
+
+  node_gizmo_calc_matrix_space(snode, region, gz->matrix_space);
+}
+
+
+static void WIDGETGROUP_node_box_mask_refresh(const bContext *C, wmGizmoGroup *gzgroup)
+{
+  Main *bmain = CTX_data_main(C);
+  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gzgroup->customdata;
+  wmGizmo *gz = crop_group->border;
+
+  void *lock;
+  Image *ima = BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Render Result");
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+
+  if (ibuf) {
+    crop_group->state.dims[0] = (ibuf->x > 0) ? ibuf->x : 64.0f;
+    crop_group->state.dims[1] = (ibuf->y > 0) ? ibuf->y : 64.0f;
+
+    RNA_float_set_array(gz->ptr, "dimensions", crop_group->state.dims);
+    WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
+
+    SpaceNode *snode = CTX_wm_space_node(C);
+    bNode *node = bke::nodeGetActive(snode->edittree);
+
+    crop_group->update_data.context = (bContext *)C;
+    crop_group->update_data.ptr = RNA_pointer_create(
+                                                     (ID *)snode->edittree, &RNA_CompositorNodeCrop, node);
+    crop_group->update_data.prop = RNA_struct_find_property(&crop_group->update_data.ptr,
+                                                            "x");
+
+    wmGizmoPropertyFnParams params{};
+    params.value_get_fn = gizmo_node_box_mask_prop_matrix_get;
+    params.value_set_fn = gizmo_node_box_mask_prop_matrix_set;
+    params.range_get_fn = nullptr;
+    params.user_data = node;
+    WM_gizmo_target_property_def_func(gz, "matrix", &params);
+  }
+  else {
+    WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, true);
+  }
+
+  BKE_image_release_ibuf(ima, ibuf, lock);
+}
+
+void NODE_GGT_backdrop_box_mask(wmGizmoGroupType *gzgt)
+{
+  gzgt->name = "Backdrop Box Mask Widget";
+  gzgt->idname = "NODE_GGT_backdrop_box_mask";
+
+  gzgt->flag |= WM_GIZMOGROUPTYPE_PERSISTENT;
+
+  gzgt->poll = WIDGETGROUP_node_box_mask_poll;
+  gzgt->setup = WIDGETGROUP_node_box_mask_setup;
+  gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
+  gzgt->draw_prepare = WIDGETGROUP_node_box_mask_draw_prepare;
+  gzgt->refresh = WIDGETGROUP_node_box_mask_refresh;
 }
 
 /** \} */
