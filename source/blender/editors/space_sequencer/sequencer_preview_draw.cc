@@ -201,54 +201,19 @@ static void sequencer_draw_gpencil_overlay(const bContext *C)
 }
 
 /**
- * Draw content and safety borders.
+ * Draw safety borders.
  */
 static void sequencer_draw_borders_overlay(const SpaceSeq *sseq,
                                            const View2D *v2d,
                                            const Scene *scene)
 {
-  float x1 = v2d->tot.xmin;
-  float y1 = v2d->tot.ymin;
-  float x2 = v2d->tot.xmax;
-  float y2 = v2d->tot.ymax;
-
-  GPU_line_width(1.0f);
-
-  /* Draw border. */
-  const uint shdr_pos = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
-
-  float viewport_size[4];
-  GPU_viewport_size_get_f(viewport_size);
-  immUniform2f("viewport_size", viewport_size[2] / UI_SCALE_FAC, viewport_size[3] / UI_SCALE_FAC);
-
-  immUniformThemeColor(TH_BACK);
-  immUniform1i("colors_len", 0); /* Simple dashes. */
-  immUniform1f("dash_width", 6.0f);
-  immUniform1f("udash_factor", 0.5f);
-
-  imm_draw_box_wire_2d(shdr_pos, x1 - 0.5f, y1 - 0.5f, x2 + 0.5f, y2 + 0.5f);
-
-  /* Draw safety border. */
   if (sseq->preview_overlay.flag & SEQ_PREVIEW_SHOW_SAFE_MARGINS) {
-    immUniformThemeColorBlend(TH_VIEW_OVERLAY, TH_BACK, 0.25f);
-    rctf rect;
-    rect.xmin = x1;
-    rect.xmax = x2;
-    rect.ymin = y1;
-    rect.ymax = y2;
-    UI_draw_safe_areas(shdr_pos, &rect, scene->safe_areas.title, scene->safe_areas.action);
-
+    UI_draw_safe_areas(&v2d->tot, scene->safe_areas.title, scene->safe_areas.action);
     if (sseq->preview_overlay.flag & SEQ_PREVIEW_SHOW_SAFE_CENTER) {
-
       UI_draw_safe_areas(
-          shdr_pos, &rect, scene->safe_areas.title_center, scene->safe_areas.action_center);
+          &v2d->tot, scene->safe_areas.title_center, scene->safe_areas.action_center);
     }
   }
-
-  immUnbindProgram();
 }
 
 #if 0

@@ -506,13 +506,9 @@ void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const flo
 /**
  * Draw title and text safe areas.
  *
- * \note This function is to be used with the 2D dashed shader enabled.
- *
- * \param pos: is a #PRIM_FLOAT, 2, #GPU_FETCH_FLOAT vertex attribute.
  * \param rect: The offsets for the view, not the zones.
  */
-void UI_draw_safe_areas(uint pos,
-                        const rctf *rect,
+void UI_draw_safe_areas(const rctf *rect,
                         const float title_aspect[2],
                         const float action_aspect[2]);
 

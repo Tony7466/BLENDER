@@ -216,14 +216,3 @@ void VIEW3D_OT_ruler_remove(wmOperatorType *ot);
 void VIEW3D_GT_navigate_rotate(wmGizmoType *gzt);
 
 void VIEW3D_GGT_placement(wmGizmoGroupType *gzgt);
-
-/* workaround for trivial but noticeable camera bug caused by imprecision
- * between view border calculation in 2D/3D space, workaround for bug #28037.
- * without this define we get the old behavior which is to try and align them
- * both which _mostly_ works fine, but when the camera moves beyond ~1000 in
- * any direction it starts to fail */
-#define VIEW3D_CAMERA_BORDER_HACK
-#ifdef VIEW3D_CAMERA_BORDER_HACK
-extern uchar view3d_camera_border_hack_col[3];
-extern bool view3d_camera_border_hack_test;
-#endif

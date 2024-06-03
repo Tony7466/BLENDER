@@ -382,29 +382,28 @@ void ui_draw_but_IMAGE(ARegion * /*region*/,
 #endif
 }
 
-void UI_draw_safe_areas(uint pos,
-                        const rctf *rect,
+void UI_draw_safe_areas(const rctf *rect,
                         const float title_aspect[2],
                         const float action_aspect[2])
 {
-  const float size_x_half = (rect->xmax - rect->xmin) * 0.5f;
-  const float size_y_half = (rect->ymax - rect->ymin) * 0.5f;
+  const float radius = (BLI_rctf_size_x(rect) + BLI_rctf_size_y(rect)) / 200.0f;
+  const float color[4] = {0.5f, 1.0f, 0.5f, 0.1f};
+  rctf border;
 
-  const float *safe_areas[] = {title_aspect, action_aspect};
-  const int safe_len = ARRAY_SIZE(safe_areas);
+  if (title_aspect[0] || title_aspect[1]) {
+    border = *rect;
+    BLI_rctf_resize(&border,
+                    BLI_rctf_size_x(rect) * (1.0f - title_aspect[0]),
+                    BLI_rctf_size_y(rect) * (1.0f - title_aspect[1]));
+    UI_draw_roundbox_4fv(&border, false, 0.0f, color);
+  }
 
-  for (int i = 0; i < safe_len; i++) {
-    if (safe_areas[i][0] || safe_areas[i][1]) {
-      const float margin_x = safe_areas[i][0] * size_x_half;
-      const float margin_y = safe_areas[i][1] * size_y_half;
-
-      const float minx = rect->xmin + margin_x;
-      const float miny = rect->ymin + margin_y;
-      const float maxx = rect->xmax - margin_x;
-      const float maxy = rect->ymax - margin_y;
-
-      imm_draw_box_wire_2d(pos, minx, miny, maxx, maxy);
-    }
+  if (action_aspect[0] || action_aspect[1]) {
+    border = *rect;
+    BLI_rctf_resize(&border,
+                    BLI_rctf_size_x(rect) * (1.0f - action_aspect[0]),
+                    BLI_rctf_size_y(rect) * (1.0f - action_aspect[1]));
+    UI_draw_roundbox_4fv(&border, false, 0.0f, color);
   }
 }
 

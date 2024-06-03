@@ -1165,8 +1165,10 @@ void OVERLAY_camera_cache_populate(OVERLAY_Data *vedata, Object *ob)
   float vec[4][3], asp[2], shift[2], scale[3], drawsize, center[2], corner[2];
 
   float *color_p;
-  DRW_object_wire_theme_get(ob, view_layer, &color_p);
-  copy_v4_v4(instdata.color, color_p);
+  if (rv3d->persp != RV3D_CAMOB) {
+    DRW_object_wire_theme_get(ob, view_layer, &color_p);
+    copy_v4_v4(instdata.color, color_p);
+  }
 
   normalize_m4_m4(instdata.mat, ob->object_to_world().ptr());
 

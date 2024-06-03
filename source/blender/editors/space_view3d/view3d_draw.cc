@@ -455,19 +455,21 @@ static void drawviewborder_grid3(uint shdr_pos, float x1, float x2, float y1, fl
   x4 = x1 + (1.0f - fac) * (x2 - x1);
   y4 = y1 + (1.0f - fac) * (y2 - y1);
 
+  float overlap = (x2 - x1 + y2 - y1) * 0.015f;
+
   immBegin(GPU_PRIM_LINES, 8);
 
-  immVertex2f(shdr_pos, x1, y3);
-  immVertex2f(shdr_pos, x2, y3);
+  immVertex2f(shdr_pos, x1 - overlap, y4);
+  immVertex2f(shdr_pos, x2 + overlap, y4);
 
-  immVertex2f(shdr_pos, x1, y4);
-  immVertex2f(shdr_pos, x2, y4);
+  immVertex2f(shdr_pos, x1 - overlap, y3);
+  immVertex2f(shdr_pos, x2 + overlap, y3);
 
-  immVertex2f(shdr_pos, x3, y1);
-  immVertex2f(shdr_pos, x3, y2);
+  immVertex2f(shdr_pos, x3, y1 - overlap);
+  immVertex2f(shdr_pos, x3, y2 + overlap);
 
-  immVertex2f(shdr_pos, x4, y1);
-  immVertex2f(shdr_pos, x4, y2);
+  immVertex2f(shdr_pos, x4, y1 - overlap);
+  immVertex2f(shdr_pos, x4, y2 + overlap);
 
   immEnd();
 }
@@ -526,7 +528,80 @@ static void drawviewborder_triangle(
   immEnd();
 }
 
-static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, View3D *v3d)
+static void drawviewborder_corners(uint shdr_pos, rctf *border, const bool active)
+{
+  float corner_len = ((border->xmax - border->xmin) + (border->ymax - border->ymin)) * 0.04f;
+  float width = (corner_len / 15) + U.pixelsize;
+  float padding = width * 3.0f;
+
+  if (active) {
+    float active[4];
+    UI_GetThemeColor4fv(TH_ACTIVE, active);
+    active[3] = 0.8;
+    immUniformColor4fv(active);
+  }
+  else {
+    float inactive[4];
+    UI_GetThemeColor4fv(TH_ACTIVE, inactive);
+    float gray = rgb_to_grayscale(inactive);
+    inactive[0] = gray;
+    inactive[1] = gray;
+    inactive[2] = gray;
+    inactive[3] = 0.3f;
+    immUniformColor4fv(inactive);
+  }
+
+  /* Top-Left. */
+  immRectf(shdr_pos,
+           border->xmin - padding,
+           border->ymax + width + padding,
+           border->xmin + corner_len - padding,
+           border->ymax + padding);
+  immRectf(shdr_pos,
+           border->xmin - width - padding,
+           border->ymax - corner_len + padding,
+           border->xmin - padding,
+           border->ymax + width + padding);
+
+  /* Top-Right. */
+  immRectf(shdr_pos,
+           border->xmax - corner_len + padding,
+           border->ymax + width + padding,
+           border->xmax + padding,
+           border->ymax + padding);
+  immRectf(shdr_pos,
+           border->xmax + padding,
+           border->ymax - corner_len + padding,
+           border->xmax + width + padding,
+           border->ymax + width + padding);
+
+  /* Bottom-Left. */
+  immRectf(shdr_pos,
+           border->xmin - padding,
+           border->ymin - padding,
+           border->xmin + corner_len - padding,
+           border->ymin - width - padding);
+  immRectf(shdr_pos,
+           border->xmin - width - padding,
+           border->ymin + corner_len - padding,
+           border->xmin - padding,
+           border->ymin - width - padding);
+
+  /* Bottom-Right. */
+  immRectf(shdr_pos,
+           border->xmax - corner_len + padding,
+           border->ymin - width - padding,
+           border->xmax + padding,
+           border->ymin - padding);
+  immRectf(shdr_pos,
+           border->xmax + padding,
+           border->ymin + corner_len - padding,
+           border->xmax + width + padding,
+           border->ymin - width - padding);
+}
+
+static void drawviewborder(
+    Scene *scene, Depsgraph *depsgraph, ARegion *region, View3D *v3d, bool active)
 {
   float x1, x2, y1, y2;
   float x1i, x2i, y1i, y2i;
@@ -556,8 +631,6 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
   /* NOTE: quite un-scientific but without this bit extra
    * 0.0001 on the lower left the 2D border sometimes
    * obscures the 3D camera border */
-  /* NOTE: with VIEW3D_CAMERA_BORDER_HACK defined this error isn't noticeable
-   * but keep it here in case we need to remove the workaround */
   x1i = int(x1 - 1.0001f);
   y1i = int(y1 - 1.0001f);
   x2i = int(x2 + (1.0f - 0.0001f));
@@ -598,43 +671,18 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
       if (y2i > 0.0f) {
         immRectf(shdr_pos, x1i, y1i, x2i, 0.0f);
       }
-
-      GPU_blend(GPU_BLEND_NONE);
-      immUniformThemeColor3(TH_BACK);
-      imm_draw_box_wire_2d(shdr_pos, x1i, y1i, x2i, y2i);
     }
-
-#ifdef VIEW3D_CAMERA_BORDER_HACK
-    if (view3d_camera_border_hack_test == true) {
-      immUniformColor3ubv(view3d_camera_border_hack_col);
-      imm_draw_box_wire_2d(shdr_pos, x1i + 1, y1i + 1, x2i - 1, y2i - 1);
-      view3d_camera_border_hack_test = false;
-    }
-#endif
-
-    immUnbindProgram();
   }
 
-  /* And now, the dashed lines! */
-  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
-
-  {
-    float viewport_size[4];
-    GPU_viewport_size_get_f(viewport_size);
-    immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
-
-    immUniform1i("colors_len", 0); /* "simple" mode */
-    immUniform1f("dash_width", 6.0f);
-    immUniform1f("udash_factor", 0.5f);
-
-    /* outer line not to confuse with object selection */
+  /* outer line not to confuse with object selection */
+  if (v3d->flag2 & V3D_SHOW_CAMERA_GUIDES) {
     if (v3d->flag2 & V3D_LOCK_CAMERA) {
-      immUniformThemeColor(TH_REDALERT);
-      imm_draw_box_wire_2d(shdr_pos, x1i - 1, y1i - 1, x2i + 1, y2i + 1);
+      immUniformColor4f(1.0f, 0.5f, 0.5f, 0.4f);
     }
-
-    immUniformThemeColor3(TH_VIEW_OVERLAY);
-    imm_draw_box_wire_2d(shdr_pos, x1i, y1i, x2i, y2i);
+    else {
+      immUniformColor4f(0.66f, 0.66f, 0.66f, 0.4f);
+    }
+    imm_draw_box_wire_2d(shdr_pos, x1i - 1, y1i - 1, x2i + 1, y2i + 1);
   }
 
   /* Render Border. */
@@ -650,10 +698,14 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
     imm_draw_box_wire_2d(shdr_pos, x3, y3, x4, y4);
   }
 
+  if (v3d->flag2 & V3D_SHOW_CAMERA_GUIDES) {
+    drawviewborder_corners(shdr_pos, &viewborder, active);
+  }
+
   /* safety border */
   if (ca && (v3d->flag2 & V3D_SHOW_CAMERA_GUIDES)) {
     GPU_blend(GPU_BLEND_ALPHA);
-    immUniformThemeColorAlpha(TH_VIEW_OVERLAY, 0.75f);
+    immUniformColor4f(1.0f, 1.0f, 1.0f, 0.15f);
 
     if (ca->dtx & CAM_DTX_CENTER) {
       float x3, y3;
@@ -662,13 +714,11 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
       y3 = y1 + 0.5f * (y2 - y1);
 
       immBegin(GPU_PRIM_LINES, 4);
-
-      immVertex2f(shdr_pos, x1, y3);
-      immVertex2f(shdr_pos, x2, y3);
-
-      immVertex2f(shdr_pos, x3, y1);
-      immVertex2f(shdr_pos, x3, y2);
-
+      float overlap = (x2 - x1 + y2 - y1) * 0.015f;
+      immVertex2f(shdr_pos, x1 - overlap, y3);
+      immVertex2f(shdr_pos, x2 + overlap, y3);
+      immVertex2f(shdr_pos, x3, y1 - overlap);
+      immVertex2f(shdr_pos, x3, y2 + overlap);
       immEnd();
     }
 
@@ -708,29 +758,6 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
       drawviewborder_triangle(shdr_pos, x1, x2, y1, y2, 1, 'B');
     }
 
-    if (ca->flag & CAM_SHOW_SAFE_MARGINS) {
-      rctf margins_rect{};
-      margins_rect.xmin = x1;
-      margins_rect.xmax = x2;
-      margins_rect.ymin = y1;
-      margins_rect.ymax = y2;
-
-      UI_draw_safe_areas(
-          shdr_pos, &margins_rect, scene->safe_areas.title, scene->safe_areas.action);
-
-      if (ca->flag & CAM_SHOW_SAFE_CENTER) {
-        rctf center_rect{};
-        center_rect.xmin = x1;
-        center_rect.xmax = x2;
-        center_rect.ymin = y1;
-        center_rect.ymax = y2;
-        UI_draw_safe_areas(shdr_pos,
-                           &center_rect,
-                           scene->safe_areas.title_center,
-                           scene->safe_areas.action_center);
-      }
-    }
-
     if (ca->flag & CAM_SHOWSENSOR) {
       /* determine sensor fit, and get sensor x/y, for auto fit we
        * assume and square sensor and only use sensor_x */
@@ -763,7 +790,7 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
       }
 
       /* draw */
-      immUniformThemeColorShadeAlpha(TH_VIEW_OVERLAY, 100, 255);
+      immUniformColor4f(1.0f, 1.0f, 1.0f, 0.1f);
 
       /* TODO: Was using:
        * `UI_draw_roundbox_4fv(false, rect.xmin, rect.ymin, rect.xmax, rect.ymax, 2.0f, color);`
@@ -771,12 +798,31 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
        * 2.0f round corner effect was nearly not visible anyway. */
       imm_draw_box_wire_2d(shdr_pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
     }
-
-    GPU_blend(GPU_BLEND_NONE);
   }
 
   immUnbindProgram();
-  /* end dashed lines */
+
+  if (ca && (v3d->flag2 & V3D_SHOW_CAMERA_GUIDES)) {
+    if (ca->flag & CAM_SHOW_SAFE_MARGINS) {
+      rctf margins_rect{};
+      margins_rect.xmin = x1;
+      margins_rect.xmax = x2;
+      margins_rect.ymin = y1;
+      margins_rect.ymax = y2;
+      UI_draw_safe_areas(&margins_rect, scene->safe_areas.title, scene->safe_areas.action);
+    }
+    if (ca->flag & CAM_SHOW_SAFE_CENTER) {
+      rctf center_rect{};
+      center_rect.xmin = x1;
+      center_rect.xmax = x2;
+      center_rect.ymin = y1;
+      center_rect.ymax = y2;
+      UI_draw_safe_areas(
+          &center_rect, scene->safe_areas.title_center, scene->safe_areas.action_center);
+    }
+  }
+
+  GPU_blend(GPU_BLEND_NONE);
 
   /* camera name - draw in highlighted text color */
   if (ca && ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) && (ca->flag & CAM_SHOWNAME)) {
@@ -1135,7 +1181,9 @@ static void view3d_draw_border(const bContext *C, ARegion *region)
   View3D *v3d = CTX_wm_view3d(C);
 
   if (rv3d->persp == RV3D_CAMOB && !(v3d->flag2 & V3D_HIDE_OVERLAYS)) {
-    drawviewborder(scene, depsgraph, region, v3d);
+    Object *ob = CTX_data_active_object(C);
+    const bool active = ob == v3d->camera;
+    drawviewborder(scene, depsgraph, region, v3d, active);
   }
   else if (v3d->flag2 & V3D_RENDER_BORDER) {
     drawrenderborder(region, v3d);

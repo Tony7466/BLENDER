@@ -46,6 +46,10 @@ struct CameraWidgetGroup {
 
 static bool WIDGETGROUP_camera_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
 {
+  if (CTX_wm_region_view3d(C)->persp == RV3D_CAMOB) {
+    return false;
+  }
+
   View3D *v3d = CTX_wm_view3d(C);
   if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
     return false;
