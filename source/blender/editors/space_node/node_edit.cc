@@ -252,10 +252,8 @@ static void compo_initjob(void *cjv)
     compo_tag_output_nodes(cj->localtree, cj->recalc_flags);
   }
 
-  if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU) {
-    cj->re = RE_NewInteractiveCompositorRender(scene);
-    RE_system_gpu_context_ensure(cj->re);
-  }
+  cj->re = RE_NewInteractiveCompositorRender(scene);
+  RE_system_gpu_context_ensure(cj->re);
 }
 
 /* Called before redraw notifiers, it moves finished previews over. */
