@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_geometry_set.hh"
+#include "BKE_physics_geometry.hh"
 #include "GEO_join_geometries.hh"
 
 #include "node_geometry_util.hh"
@@ -26,6 +28,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GeometrySet geometry_set_result = geometry::join_geometries(geometry_sets, propagation_info);
+
+  if (bke::PhysicsGeometry *physics = geometry_set_result.get_physics_for_write()) {
+    /* Make sure the result is mutable by removing local copies.*/
+    geometry_sets.clear();
+
+    physics->try_consolidate_data();
+    // TODO this isn't reliable, in case there are branches outside of the Join Geometries node.
+    // It's just a test at this point, need a better way to pass on exclusive data like this ...
+    BLI_assert(!physics->has_unmerged_data());
+  }
 
   params.set_output("Geometry", std::move(geometry_set_result));
 }

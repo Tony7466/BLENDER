@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_geometry_set.hh"
+#include "BKE_physics_geometry.hh"
 #include "BLI_array_utils.hh"
 
 #include "GEO_join_geometries.hh"

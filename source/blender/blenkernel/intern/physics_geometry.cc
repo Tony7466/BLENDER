@@ -600,31 +600,63 @@ bool PhysicsGeometry::try_consolidate_data()
     return true;
   }
 
-  /* All data must be mutable. */
   Array<int> body_offsets(impl_array_.size() + 1);
   Array<int> constraint_offsets(impl_array_.size() + 1);
   Array<int> shape_offsets(impl_array_.size() + 1);
   body_offsets[0] = constraint_offsets[0] = shape_offsets[0] = 0;
-  for (const int i : impl_array_.index_range()) {
-    const PhysicsGeometryImpl &impl = *impl_array_[i];
+  for (const int i_impl : impl_array_.index_range()) {
+    const PhysicsGeometryImpl &impl = *impl_array_[i_impl];
+    /* All data must be mutable for consolidating. */
     if (!impl.is_mutable()) {
       return false;
     }
-    body_offsets[i + 1] = body_offsets[i] + impl.rigid_bodies.size();
-    constraint_offsets[i + 1] = constraint_offsets[i] + 0;
-    shape_offsets[i + 1] = shape_offsets[i] + 0;
+    body_offsets[i_impl + 1] = body_offsets[i_impl] + impl.rigid_bodies.size();
+    constraint_offsets[i_impl + 1] = constraint_offsets[i_impl] + 0;
+    shape_offsets[i_impl + 1] = shape_offsets[i_impl] + 0;
   }
+  const int new_bodies_num = body_offsets.last();
+  // const int new_constraints_num = constraint_offsets.last();
+  // const int new_shapes_num = shape_offsets.last();
 
-  for (const int i : impl_array_.index_range()) {
-    BLI_assert(impl_array_[i]->is_mutable());
-    PhysicsGeometryImpl &impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i]);
+  /* Move data to the first world. */
+  PhysicsGeometryImpl &dst_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_.first());
 
-    const IndexRange body_range = IndexRange::from_begin_end(body_offsets[i], body_offsets[i + 1]);
-    const IndexRange constraint_range = IndexRange::from_begin_end(constraint_offsets[i],
-                                                                   constraint_offsets[i + 1]);
-    const IndexRange shape_range = IndexRange::from_begin_end(shape_offsets[i],
-                                                              shape_offsets[i + 1]);
+  Array<btRigidBody *> new_rigid_bodies(new_bodies_num);
+  for (const int i_impl : impl_array_.index_range()) {
+    PhysicsGeometryImpl &src_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i_impl]);
+
+    const IndexRange body_range = IndexRange::from_begin_end(body_offsets[i_impl],
+                                                             body_offsets[i_impl + 1]);
+    // const IndexRange constraint_range = IndexRange::from_begin_end(constraint_offsets[i_impl],
+    //                                                                constraint_offsets[i_impl +
+    //                                                                1]);
+    // const IndexRange shape_range = IndexRange::from_begin_end(shape_offsets[i_impl],
+    //                                                           shape_offsets[i_impl + 1]);
+    for (const int i_body : body_range.index_range()) {
+      btRigidBody *body = src_impl.rigid_bodies[i_body];
+      const bool is_in_world = body->isInWorld();
+
+      /* Move all to first impl world. */
+      if (is_in_world && i_impl > 0) {
+        BLI_assert(src_impl.world != nullptr);
+        src_impl.world->removeRigidBody(body);
+        if (dst_impl.world) {
+          dst_impl.world->addRigidBody(body);
+        }
+      }
+
+      src_impl.rigid_bodies[i_body] = nullptr;
+      new_rigid_bodies[body_range[i_body]] = body;
+    }
+    src_impl.rigid_bodies.reinitialize(0);
   }
+  dst_impl.rigid_bodies = new_rigid_bodies;
+
+  /* Only keep first world. */
+  for (const int i_impl : impl_array_.index_range().drop_front(1)) {
+    impl_array_[i_impl]->remove_user_and_delete_if_last();
+  }
+  impl_array_ = Vector<const PhysicsGeometryImpl *>({&dst_impl});
 
   return true;
 }
