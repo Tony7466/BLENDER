@@ -1,1 +1,2 @@
 Referenced by issue #122652, Extensions: clicking on the OFFLINE icon on the status bar should not turn internet on
+Referenced by commit a26031ed9b4b88b3d02abb6d9c7fa4b128c484da, Fix #122652: Clicking offline status icon enabled online access
