@@ -1638,9 +1638,9 @@ GLCompilerWorker::GLCompilerWorker()
 
   shared_mem_ = std::make_unique<SharedMemory>(
       name, compilation_subprocess_shared_memory_size, false);
-  start_semaphore_ = std::make_unique<SharedSemaphore>(name + "_START");
-  end_semaphore_ = std::make_unique<SharedSemaphore>(name + "_END");
-  close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE");
+  start_semaphore_ = std::make_unique<SharedSemaphore>(name + "_START", false);
+  end_semaphore_ = std::make_unique<SharedSemaphore>(name + "_END", false);
+  close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE", false);
 
   subprocess_.init({"--compilation-subprocess", name.c_str()});
 }
