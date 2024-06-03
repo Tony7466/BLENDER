@@ -71,7 +71,6 @@ class NODE_OT_call_inputs_menu(Operator, NodeEditorBase):
     """Link from this output"""
     bl_idname = "node.call_inputs_menu"
     bl_label = "Make Link"
-    bl_options = {'REGISTER', 'UNDO'}
 
     from_socket: IntProperty()
 
@@ -93,7 +92,6 @@ class NODE_OT_make_link(Operator, NodeEditorBase):
     """Make a link from one socket to another"""
     bl_idname = "node.make_link"
     bl_label = "Make Link"
-    bl_options = {'REGISTER', 'UNDO'}
 
     from_socket: IntProperty()
     to_socket: IntProperty()
@@ -119,10 +117,6 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
 
     with_menu: BoolProperty(
     )
-
-    @classmethod
-    def poll(cls, context):
-        return node_editor_poll(cls, context)
 
     def modal(self, context, event):
         context.area.tag_redraw()
@@ -155,31 +149,30 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
                 cont = False
 
             link_success = False
-            if cont:
-                if node1 and node2:
-                    original_sel = []
-                    original_unsel = []
-                    for node in nodes:
-                        if node.select:
-                            node.select = False
-                            original_sel.append(node)
-                        else:
-                            original_unsel.append(node)
-                    node1.select = True
-                    node2.select = True
-
-                    if self.with_menu:
-                        if len(node1.outputs) > 1 and node2.inputs:
-                            bpy.ops.wm.call_menu('INVOKE_DEFAULT', name=NODE_MT_lazy_connect_outputs.bl_idname)
-                        elif len(node1.outputs) == 1:
-                            bpy.ops.node.call_inputs_menu(from_socket=0)
-                    else:
-                        link_success = autolink(node1, node2)
-
-                    for node in original_sel:
-                        node.select = True
-                    for node in original_unsel:
+            if cont and node1 and node2:
+                original_sel = []
+                original_unsel = []
+                for node in nodes:
+                    if node.select:
                         node.select = False
+                        original_sel.append(node)
+                    else:
+                        original_unsel.append(node)
+                node1.select = True
+                node2.select = True
+
+                if self.with_menu:
+                    if len(node1.outputs) > 1 and node2.inputs:
+                        bpy.ops.wm.call_menu('INVOKE_DEFAULT', name=NODE_MT_lazy_connect_outputs.bl_idname)
+                    elif len(node1.outputs) == 1:
+                        bpy.ops.node.call_inputs_menu(from_socket=0)
+                else:
+                    link_success = autolink(node1, node2)
+
+                for node in original_sel:
+                    node.select = True
+                for node in original_unsel:
+                    node.select = False
 
             if link_success:
                 force_update(context)
@@ -193,30 +186,26 @@ class NODE_OT_lazy_connect(Operator, NodeEditorBase):
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
-        if context.area.type == 'NODE_EDITOR':
-            nodes = context.space_data.edit_tree.nodes
-            node = node_under_cursor(nodes, context, event)
-            if node:
-                lazy_connect_props.node_below_drawing_name = node.name
+        nodes = context.space_data.edit_tree.nodes
+        node = node_under_cursor(nodes, context, event)
+        if node:
+            lazy_connect_props.node_below_drawing_name = node.name
 
-            # The arguments we pass the the callback.
-            mode = "LINK"
-            if self.with_menu:
-                mode = "LINKMENU"
-            args = (self, context, mode)
+        # The arguments we pass the the callback.
+        mode = "LINK"
+        if self.with_menu:
+            mode = "LINKMENU"
+        args = (self, context, mode)
 
-            # Add the region OpenGL drawing callback.
-            # Draw in view space with 'POST_VIEW' and 'PRE_VIEW'.
-            self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(
-                lambda self, context, mode: draw_callback_node_outline(context, self.mouse_path, mode, lazy_connect_props), args, 'WINDOW', 'POST_PIXEL')
+        # Add the region OpenGL drawing callback.
+        # Draw in view space with 'POST_VIEW' and 'PRE_VIEW'.
+        self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(
+            lambda self, context, mode: draw_callback_node_outline(context, self.mouse_path, mode, lazy_connect_props), args, 'WINDOW', 'POST_PIXEL')
 
-            self.mouse_path = []
+        self.mouse_path = []
 
-            context.window_manager.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'WARNING'}, "Node editor could not be found. Cannot run the operator")
-            return {'CANCELLED'}
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
 
 
 classes = (

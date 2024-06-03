@@ -128,42 +128,44 @@ def node_under_cursor(nodes, context, event):
     # Will be sorted to find nearest point and thus nearest node.
     node_points_with_dist = []
     for node in nodes:
-        skipnode = False
         # No point trying to link to a frame node.
-        if node.type != 'FRAME':
-            dimx = node.dimensions.x / dpi_fac()
-            dimy = node.dimensions.y / dpi_fac()
-            locx, locy = abs_node_location(node)
+        if node.type == 'FRAME':
+            continue
 
-            if not skipnode:
-                # Top left.
-                node_points_with_dist.append([node, hypot(x - locx, y - locy)])
-                # Top right.
-                node_points_with_dist.append([node, hypot(x - (locx + dimx), y - locy)])
-                # Bottom left.
-                node_points_with_dist.append([node, hypot(x - locx, y - (locy - dimy))])
-                # Bottom right.
-                node_points_with_dist.append([node, hypot(x - (locx + dimx), y - (locy - dimy))])
+        dimx = node.dimensions.x / dpi_fac()
+        dimy = node.dimensions.y / dpi_fac()
+        locx, locy = abs_node_location(node)
 
-                # Mid top.
-                node_points_with_dist.append([node, hypot(x - (locx + (dimx / 2)), y - locy)])
-                # Mid bottom.
-                node_points_with_dist.append([node, hypot(x - (locx + (dimx / 2)), y - (locy - dimy))])
-                # Mid left.
-                node_points_with_dist.append([node, hypot(x - locx, y - (locy - (dimy / 2)))])
-                # Mid right.
-                node_points_with_dist.append([node, hypot(x - (locx + dimx), y - (locy - (dimy / 2)))])
+        # Top left.
+        node_points_with_dist.append([node, hypot(x - locx, y - locy)])
+        # Top right.
+        node_points_with_dist.append([node, hypot(x - (locx + dimx), y - locy)])
+        # Bottom left.
+        node_points_with_dist.append([node, hypot(x - locx, y - (locy - dimy))])
+        # Bottom right.
+        node_points_with_dist.append([node, hypot(x - (locx + dimx), y - (locy - dimy))])
+
+        # Mid top.
+        node_points_with_dist.append([node, hypot(x - (locx + (dimx / 2)), y - locy)])
+        # Mid bottom.
+        node_points_with_dist.append([node, hypot(x - (locx + (dimx / 2)), y - (locy - dimy))])
+        # Mid left.
+        node_points_with_dist.append([node, hypot(x - locx, y - (locy - (dimy / 2)))])
+        # Mid right.
+        node_points_with_dist.append([node, hypot(x - (locx + dimx), y - (locy - (dimy / 2)))])
 
     nearest_node = sorted(node_points_with_dist, key=lambda k: k[1])[0][0]
 
     for node in nodes:
-        if node.type != 'FRAME' and skipnode == False:
-            locx, locy = abs_node_location(node)
-            dimx = node.dimensions.x / dpi_fac()
-            dimy = node.dimensions.y / dpi_fac()
-            if (locx <= x <= locx + dimx) and \
-               (locy - dimy <= y <= locy):
-                nodes_under_mouse.append(node)
+        if node.type == 'FRAME':
+            continue
+
+        locx, locy = abs_node_location(node)
+        dimx = node.dimensions.x / dpi_fac()
+        dimy = node.dimensions.y / dpi_fac()
+        if (locx <= x <= locx + dimx) and \
+            (locy - dimy <= y <= locy):
+            nodes_under_mouse.append(node)
 
     if len(nodes_under_mouse) == 1:
         # Use the node under the mouse if there is one and only one.
