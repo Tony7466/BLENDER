@@ -41,8 +41,9 @@ from . import (
 )  # noqa: E402
 
 from . import (
-    repo_status_text,
     cookie_from_session,
+    repo_status_text,
+    repo_stats_calc,
 )
 
 from .bl_extension_utils import (
@@ -878,6 +879,8 @@ class CommandHandle:
             for window in self.wm.windows:
                 window.cursor_modal_restore()
 
+            if self.request_exit:
+                return {'CANCELLED'}
             return {'FINISHED'}
 
         return {'RUNNING_MODAL'}
@@ -943,7 +946,7 @@ class _ExtCmdMixIn:
     def exec_command_iter(self, is_modal):
         raise Exception("Subclass must define!")
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
         raise Exception("Subclass must define!")
 
     def error_fn_from_exception(self, ex):
@@ -964,13 +967,17 @@ class _ExtCmdMixIn:
 
         result = CommandHandle.op_exec_from_iter(self, context, cmd_batch, is_modal)
         if 'FINISHED' in result:
-            self.exec_command_finish()
+            self.exec_command_finish(False)
+        elif 'CANCELLED' in result:
+            self.exec_command_finish(True)
         return result
 
     def modal(self, context, event):
         result = self._runtime_handle.op_modal_impl(self, context, event)
         if 'FINISHED' in result:
-            self.exec_command_finish()
+            self.exec_command_finish(False)
+        elif 'CANCELLED' in result:
+            self.exec_command_finish(True)
         return result
 
 
@@ -990,7 +997,7 @@ class EXTENSIONS_OT_dummy_progress(Operator, _ExtCmdMixIn):
             ],
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
         _preferences_ui_redraw()
 
 
@@ -1044,7 +1051,7 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
             batch=cmd_batch,
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
         from . import repo_cache_store
 
         repo_cache_store_refresh_from_prefs()
@@ -1057,6 +1064,8 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
         del self.repo_lock
+
+        repo_stats_calc()
 
         _preferences_ui_redraw()
 
@@ -1137,7 +1146,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
             batch=cmd_batch,
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
         from . import repo_cache_store
 
         repo_cache_store_refresh_from_prefs()
@@ -1152,6 +1161,8 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
         del self.repo_lock
+
+        repo_stats_calc()
 
         _preferences_ui_redraw()
 
@@ -1289,7 +1300,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
             batch=cmd_batch,
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
 
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
@@ -1302,6 +1313,8 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                 directory=directory,
                 error_fn=self.error_fn_from_exception,
             )
+
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -1388,7 +1401,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
             batch=cmd_batch,
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
 
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
@@ -1403,6 +1416,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
             )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -1503,7 +1517,7 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
             batch=cmd_batch,
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
 
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
@@ -1518,6 +1532,7 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
             )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         _preferences_theme_state_restore(self._theme_restore)
 
@@ -1535,8 +1550,9 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         "pkg_id_sequence"
     )
     _drop_variables = None
+    _legacy_drop = None
 
-    filter_glob: StringProperty(default="*.zip", options={'HIDDEN'})
+    filter_glob: StringProperty(default="*.zip;*.py", options={'HIDDEN'})
 
     directory: StringProperty(
         name="Directory",
@@ -1561,12 +1577,26 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
     enable_on_install: rna_prop_enable_on_install
 
+    # Properties matching the legacy operator, not used by extension packages.
+    target: EnumProperty(
+        name="Legacy Target Path",
+        items=bpy.types.PREFERENCES_OT_addon_install._target_path_items,
+        description="Path to install legacy add-on packages to",
+    )
+
+    overwrite: BoolProperty(
+        name="Legacy Overwrite",
+        description="Remove existing add-ons with the same ID",
+        default=True,
+    )
+
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
 
     def exec_command_iter(self, is_modal):
         from .bl_extension_utils import (
             pkg_manifest_dict_from_file_or_error,
+            pkg_is_legacy_addon,
         )
 
         self._addon_restore = []
@@ -1614,7 +1644,14 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         # Extract meta-data from package files.
         # Note that errors are ignored here, let the underlying install operation do this.
         pkg_id_sequence = []
+        pkg_files = []
+        pkg_legacy_files = []
         for source_filepath in source_files:
+            if pkg_is_legacy_addon(source_filepath):
+                pkg_legacy_files.append(source_filepath)
+                continue
+            pkg_files.append(source_filepath)
+
             result = pkg_manifest_dict_from_file_or_error(source_filepath)
             if isinstance(result, str):
                 continue
@@ -1625,6 +1662,13 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
         directory = repo_item.directory
         assert directory != ""
+
+        # Install legacy add-ons
+        for source_filepath in pkg_legacy_files:
+            self.exec_legacy(source_filepath)
+
+        if not pkg_files:
+            return None
 
         # Collect package ID's.
         self.repo_directory = directory
@@ -1659,13 +1703,13 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
                 partial(
                     bl_extension_utils.pkg_install_files,
                     directory=directory,
-                    files=source_files,
+                    files=pkg_files,
                     use_idle=is_modal,
                 )
             ],
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
 
         # Refresh installed packages for repositories that were operated on.
         from . import repo_cache_store
@@ -1687,6 +1731,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
 
@@ -1716,6 +1761,12 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
 
+    def exec_legacy(self, filepath):
+        backup_filepath = self.filepath
+        self.filepath = filepath
+        bpy.types.PREFERENCES_OT_addon_install.execute(self, bpy.context)
+        self.filepath = backup_filepath
+
     @classmethod
     def poll(cls, context):
         if next(repo_iter_valid_local_only(context), None) is None:
@@ -1736,18 +1787,34 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
     def draw(self, context):
         if self._drop_variables is not None:
             return self._draw_for_drop(context)
+        elif self._legacy_drop is not None:
+            return self._draw_for_legacy_drop(context)
 
         # Override draw because the repository names may be over-long and not fit well in the UI.
         # Show the text & repository names in two separate rows.
         layout = self.layout
-        col = layout.column()
-        col.label(text="Local Repository:")
-        col.prop(self, "repo", text="")
-
+        layout.use_property_split = True
+        layout.use_property_decorate = False
         layout.prop(self, "enable_on_install")
 
+        header, body = layout.panel("extensions")
+        header.label(text="Extensions")
+        if body:
+            body.prop(self, "repo", text="Repository")
+
+        header, body = layout.panel("legacy", default_closed=True)
+        header.label(text="Legacy Add-ons")
+
+        row = header.row()
+        row.alignment = 'RIGHT'
+        row.emboss = 'NONE'
+        row.operator("wm.doc_view_manual", icon='URL', text="").doc_id = "preferences.addon_install"
+
+        if body:
+            body.prop(self, "target", text="Target Path")
+            body.prop(self, "overwrite", text="Overwrite")
+
     def _invoke_for_drop(self, context, event):
-        self._drop_variables = True
         # Drop logic.
         print("DROP FILE:", self.url)
 
@@ -1759,23 +1826,33 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         # These are not supported for dropping. Since at the time of dropping it's not known that the
         # path is referenced from a "local" repository or a "remote" that uses a `file://` URL.
         filepath = self.url
+        print(filepath)
 
-        from .bl_extension_ops import repo_iter_valid_local_only
-        from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
+        from .bl_extension_utils import pkg_is_legacy_addon
 
-        if not list(repo_iter_valid_local_only(bpy.context)):
-            self.report({'ERROR'}, "No Local Repositories")
-            return {'CANCELLED'}
+        if not pkg_is_legacy_addon(filepath):
+            self._drop_variables = True
+            self._legacy_drop = None
 
-        if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
-            self.report({'ERROR'}, "Error in manifest {:s}".format(result))
-            return {'CANCELLED'}
+            from .bl_extension_ops import repo_iter_valid_local_only
+            from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
 
-        pkg_id = result["id"]
-        pkg_type = result["type"]
-        del result
+            if not list(repo_iter_valid_local_only(bpy.context)):
+                self.report({'ERROR'}, "No Local Repositories")
+                return {'CANCELLED'}
 
-        self._drop_variables = pkg_id, pkg_type
+            if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
+                self.report({'ERROR'}, "Error in manifest {:s}".format(result))
+                return {'CANCELLED'}
+
+            pkg_id = result["id"]
+            pkg_type = result["type"]
+            del result
+
+            self._drop_variables = pkg_id, pkg_type
+        else:
+            self._drop_variables = None
+            self._legacy_drop = True
 
         # Set to it's self to the property is considered "set".
         self.repo = self.repo
@@ -1797,6 +1874,16 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         layout.prop(self, "repo", text="")
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[pkg_type])
+
+    def _draw_for_legacy_drop(self, context):
+
+        layout = self.layout
+        layout.operator_context = 'EXEC_DEFAULT'
+
+        layout.label(text="Legacy Add-on")
+        layout.prop(self, "target", text="Target")
+        layout.prop(self, "overwrite", text="Overwrite")
+        layout.prop(self, "enable_on_install")
 
 
 class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
@@ -1886,7 +1973,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             ],
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
 
         # Unlock repositories.
         lock_result_any_failed_with_report(self, self.repo_lock.release(), report_type='WARNING')
@@ -1900,6 +1987,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         # TODO: it would be nice to include this message in the banner.
         def handle_error(ex):
@@ -2045,7 +2133,7 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
             ],
         )
 
-    def exec_command_finish(self):
+    def exec_command_finish(self, canceled):
 
         # Refresh installed packages for repositories that were operated on.
         from . import repo_cache_store
@@ -2072,6 +2160,7 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
         )
 
         _extensions_repo_sync_wheels(repo_cache_store)
+        repo_stats_calc()
 
         _preferences_theme_state_restore(self._theme_restore)
 
@@ -2281,6 +2370,9 @@ class EXTENSIONS_OT_package_obselete_marked(Operator):
                     directory=directory,
                     error_fn=print,
                 )
+
+            repo_stats_calc()
+
             _preferences_ui_redraw()
 
         return {'FINISHED'}
@@ -2359,7 +2451,8 @@ class EXTENSIONS_OT_userpref_show_for_update(Operator):
 # NOTE: this is a wrapper for `SCREEN_OT_userpref_show`.
 # It exists *only* to add a poll function which sets a message when offline mode is forced.
 class EXTENSIONS_OT_userpref_show_online(Operator):
-    """Show system preferences "Network" panel to allow online access"""
+    """Allow internet access. Blender may access configured online extension repositories. """ \
+        """Installed third party add-ons may access the internet for their own functionality"""
     bl_idname = "extensions.userpref_show_online"
     bl_label = ""
     bl_options = {'INTERNAL'}
@@ -2373,14 +2466,15 @@ class EXTENSIONS_OT_userpref_show_online(Operator):
         return True
 
     def execute(self, context):
-        bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
+        context.preferences.system.use_online_access = True
         return {'FINISHED'}
 
 
-# NOTE: this is a wrapper for `extensions.show_online_prefs`.
+# NOTE: this is a wrapper for `extensions.userpref_show_online`.
 # It exists *only* show a dialog.
 class EXTENSIONS_OT_userpref_show_online_popup(Operator):
-    """Show system preferences "Network" panel to allow online access"""
+    """Allow internet access. Blender may access configured online extension repositories. """ \
+        """Installed third party add-ons may access the internet for their own functionality"""
     bl_idname = "extensions.userpref_show_online_popup"
     bl_label = ""
     bl_options = {'INTERNAL'}
@@ -2401,7 +2495,7 @@ class EXTENSIONS_OT_userpref_show_online_popup(Operator):
             wm.invoke_props_dialog(
                 self,
                 width=400,
-                confirm_text="Go to Settings",
+                confirm_text="Allow Online Access",
                 title="Install Extension",
             )
         return {'RUNNING_MODAL'}

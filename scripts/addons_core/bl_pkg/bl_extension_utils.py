@@ -633,6 +633,13 @@ def pkg_manifest_archive_url_abs_from_remote_url(remote_url: str, archive_url: s
     return archive_url
 
 
+def pkg_is_legacy_addon(filepath: str) -> bool:
+    from .cli.blender_ext import pkg_is_legacy_addon as pkg_is_legacy_addon_extern
+    result = pkg_is_legacy_addon_extern(filepath)
+    assert isinstance(result, bool)
+    return result
+
+
 def pkg_repo_cache_clear(local_dir: str) -> None:
     local_cache_dir = os.path.join(local_dir, ".blender_ext", "cache")
     if not os.path.isdir(local_cache_dir):
@@ -878,7 +885,6 @@ class CommandBatch:
     def calc_status_text_icon_from_data(
             status_data: CommandBatch_StatusFlag,
             update_count: int,
-            do_online_sync: bool,
     ) -> Tuple[str, str]:
         # Generate a nice UI string for a status-bar & splash screen (must be short).
         #
@@ -893,12 +899,11 @@ class CommandBatch:
         else:
             fail_text = ", some actions failed"
 
-        if status_data.flag == 1 << CommandBatchItem.STATUS_NOT_YET_STARTED or \
-           status_data.flag & 1 << CommandBatchItem.STATUS_RUNNING:
-            if do_online_sync:
-                return "Checking for Extension Updates Online{:s}".format(fail_text), 'SORTTIME'
-            else:
-                return "Checking for Extension Updates{:s}".format(fail_text), 'SORTTIME'
+        if (
+                status_data.flag == (1 << CommandBatchItem.STATUS_NOT_YET_STARTED) or
+                status_data.flag & (1 << CommandBatchItem.STATUS_RUNNING)
+        ):
+            return "Checking for Extension Updates{:s}".format(fail_text), 'SORTTIME'
 
         if status_data.flag == 1 << CommandBatchItem.STATUS_COMPLETE:
             if update_count > 0:

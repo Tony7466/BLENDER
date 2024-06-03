@@ -3674,7 +3674,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       scene->eevee.fast_gi_thickness_far = default_scene->eevee.fast_gi_thickness_far;
     }
   }
-
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 48)) {
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       if (!ob->pose) {
@@ -3700,6 +3699,31 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 50)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != GEO_NODE_CAPTURE_ATTRIBUTE) {
+          continue;
+        }
+        NodeGeometryAttributeCapture *storage = static_cast<NodeGeometryAttributeCapture *>(
+            node->storage);
+        if (storage->next_identifier > 0) {
+          continue;
+        }
+        storage->capture_items_num = 1;
+        storage->capture_items = MEM_cnew_array<NodeGeometryAttributeCaptureItem>(
+            storage->capture_items_num, __func__);
+        NodeGeometryAttributeCaptureItem &item = storage->capture_items[0];
+        item.data_type = storage->data_type_legacy;
+        item.identifier = storage->next_identifier++;
+        item.name = BLI_strdup("Value");
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       /* Copy the `draw_strength` value to the `alpha` value. */
       if (BrushGpencilSettings *settings = brush->gpencil_settings) {
