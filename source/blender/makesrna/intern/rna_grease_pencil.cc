@@ -543,14 +543,15 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
   return grease_pencil->layer_groups().size();
 }
 
-static GreasePencilFrame *rna_Layer_get_frame_at(GreasePencilLayer *layer_in, int frame_number)
+static GreasePencilFrame *rna_GreasePencilLayer_get_frame_at(GreasePencilLayer *layer_in,
+                                                             int frame_number)
 {
   using namespace blender::bke::greasepencil;
   Layer &layer = *static_cast<Layer *>(layer_in);
   return layer.frame_at(frame_number);
 }
 
-static void rna_Layer_clear(ID *id, GreasePencilLayer *layer_in)
+static void rna_GreasePencilLayer_clear(ID *id, GreasePencilLayer *layer_in)
 {
   using namespace blender::bke::greasepencil;
   GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
@@ -562,20 +563,20 @@ static void rna_Layer_clear(ID *id, GreasePencilLayer *layer_in)
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
 
-static void rna_Layer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+static void rna_GreasePencilLayer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   using namespace blender::bke::greasepencil;
   Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
-  blender::Span<FramesMapKey> sorted_keys = layer.sorted_keys();
+  blender::Span<FramesMapKeyT> sorted_keys = layer.sorted_keys();
 
   rna_iterator_array_begin(
-      iter, (void *)sorted_keys.data(), sizeof(FramesMapKey), sorted_keys.size(), false, nullptr);
+      iter, (void *)sorted_keys.data(), sizeof(FramesMapKeyT), sorted_keys.size(), false, nullptr);
 }
 
-static PointerRNA rna_Layer_frames_get(CollectionPropertyIterator *iter)
+static PointerRNA rna_GreasePencilLayer_frames_get(CollectionPropertyIterator *iter)
 {
   using namespace blender::bke::greasepencil;
-  const FramesMapKey frame_key = *static_cast<FramesMapKey *>(rna_iterator_array_get(iter));
+  const FramesMapKeyT frame_key = *static_cast<FramesMapKeyT *>(rna_iterator_array_get(iter));
   const Layer &layer = static_cast<GreasePencilLayer *>(iter->parent.data)->wrap();
   const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
   return rna_pointer_inherit_refine(&iter->parent,
@@ -583,14 +584,14 @@ static PointerRNA rna_Layer_frames_get(CollectionPropertyIterator *iter)
                                     static_cast<void *>(const_cast<GreasePencilFrame *>(frame)));
 }
 
-static int rna_Layer_frames_length(PointerRNA *ptr)
+static int rna_GreasePencilLayer_frames_length(PointerRNA *ptr)
 {
   using namespace blender::bke::greasepencil;
   Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
   return layer.frames().size();
 }
 
-static bool rna_Layer_frames_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+static bool rna_GreasePencilLayer_frames_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   using namespace blender::bke::greasepencil;
   GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
@@ -598,7 +599,7 @@ static bool rna_Layer_frames_lookup_int(PointerRNA *ptr, int index, PointerRNA *
   if (index < 0 || index >= layer.sorted_keys().size()) {
     return false;
   }
-  const FramesMapKey frame_key = layer.sorted_keys()[index];
+  const FramesMapKeyT frame_key = layer.sorted_keys()[index];
   const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
 
   r_ptr->owner_id = &grease_pencil.id;
@@ -621,7 +622,7 @@ static GreasePencilFrame *rna_Frames_frame_new(ID *id,
     return nullptr;
   }
 
-  grease_pencil.insert_blank_frame(layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  grease_pencil.insert_frame(layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 
   return layer.frame_at(frame_number);
@@ -704,7 +705,7 @@ static int rna_Frame_frame_number_get(PointerRNA *ptr)
    * and search for the matching GreasePencilFrame pointer in the frames collection. */
   for (const Layer *layer : grease_pencil.layers()) {
     layer->frames().foreach_item(
-        [&](const FramesMapKey frame_key, const GreasePencilFrame &frame) {
+        [&](const FramesMapKeyT frame_key, const GreasePencilFrame &frame) {
           if (&frame == &frame_to_find) {
             frame_number = int(frame_key);
             return;
@@ -1668,12 +1669,12 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "GreasePencilFrame");
   RNA_def_property_ui_text(prop, "Frames", "All frames in the Grease Pencil object");
   RNA_def_property_collection_funcs(prop,
-                                    "rna_Layer_frames_begin",
+                                    "rna_GreasePencilLayer_frames_begin",
                                     "rna_iterator_array_next",
                                     "rna_iterator_array_end",
-                                    "rna_Layer_frames_get",
-                                    "rna_Layer_frames_length",
-                                    "rna_Layer_frames_lookup_int",
+                                    "rna_GreasePencilLayer_frames_get",
+                                    "rna_GreasePencilLayer_frames_length",
+                                    "rna_GreasePencilLayer_frames_lookup_int",
                                     nullptr,
                                     nullptr);
   rna_def_grease_pencil_frames_api(brna, prop);
@@ -1869,7 +1870,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   /* API: Get frame at. */
   FunctionRNA *func;
   PropertyRNA *parm;
-  func = RNA_def_function(srna, "get_frame_at", "rna_Layer_get_frame_at");
+  func = RNA_def_function(srna, "get_frame_at", "rna_GreasePencilLayer_get_frame_at");
   RNA_def_function_ui_description(func, "Get the frame at given frame number");
   parm = RNA_def_int(
       func, "frame_number", 1, MINAFRAME, MAXFRAME, "Frame Number", "", MINAFRAME, MAXFRAME);
@@ -1878,7 +1879,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_function_return(func, parm);
 
   /* API: Clear. */
-  func = RNA_def_function(srna, "clear", "rna_Layer_clear");
+  func = RNA_def_function(srna, "clear", "rna_GreasePencilLayer_clear");
   RNA_def_function_ui_description(func, "Remove all the Grease Pencil frames from the layer");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID);
 }
