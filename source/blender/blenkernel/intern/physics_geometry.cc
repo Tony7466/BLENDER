@@ -18,6 +18,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_virtual_array.hh"
 
+#include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <LinearMath/btMotionState.h>
 #include <LinearMath/btTransform.h>
@@ -480,11 +481,12 @@ static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<int> proxies,
                           const int proxy_start = 0)
 {
+  static btBoxShape dummy_shape(btVector3(0.2f, 0.2f, 0.2f));
   for (const int i : rigid_bodies.index_range()) {
     const float mass = 1.0f;
     const float3 local_inertia = float3(0.0f);
     btMotionState *motion_state = motion_states[i] = new btDefaultMotionState();
-    btCollisionShape *collision_shape = nullptr;
+    btCollisionShape *collision_shape = &dummy_shape;
     rigid_bodies[i] = new btRigidBody(
         mass, motion_state, collision_shape, to_bullet(local_inertia));
   }
@@ -617,6 +619,7 @@ bool PhysicsGeometry::try_consolidate_data()
   PhysicsGeometryImpl &dst_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_.first());
 
   Array<btRigidBody *> new_rigid_bodies(new_bodies_num);
+  Array<btMotionState *> new_motion_states(new_bodies_num);
   for (const int i_impl : impl_array_.index_range()) {
     PhysicsGeometryImpl &src_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i_impl]);
 
@@ -629,6 +632,7 @@ bool PhysicsGeometry::try_consolidate_data()
     //                                                           shape_offsets[i_impl + 1]);
     for (const int i_body : body_range.index_range()) {
       btRigidBody *body = src_impl.rigid_bodies[i_body];
+      btMotionState *motion_state = src_impl.motion_states[i_body];
       const bool is_in_world = body->isInWorld();
 
       /* Move all to first impl world. */
@@ -641,11 +645,15 @@ bool PhysicsGeometry::try_consolidate_data()
       }
 
       src_impl.rigid_bodies[i_body] = nullptr;
+      src_impl.motion_states[i_body] = nullptr;
       new_rigid_bodies[body_range[i_body]] = body;
+      new_motion_states[body_range[i_body]] = motion_state;
     }
     src_impl.rigid_bodies.reinitialize(0);
+    src_impl.motion_states.reinitialize(0);
   }
   dst_impl.rigid_bodies = new_rigid_bodies;
+  dst_impl.motion_states = new_motion_states;
 
   /* Only keep first world. */
   for (const int i_impl : impl_array_.index_range().drop_front(1)) {
