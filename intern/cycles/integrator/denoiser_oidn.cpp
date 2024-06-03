@@ -597,7 +597,7 @@ bool OIDNDenoiser::denoise_buffer(const BufferParams &buffer_params,
                                   bool allow_inplace_modification)
 {
   DCHECK(openimagedenoise_supported())
-      << "OpenImageDenoiser is not supported on this platform or build.";
+      << "OpenImageDenoise is not supported on this platform or build.";
 
 #ifdef WITH_OPENIMAGEDENOISE
   thread_scoped_lock lock(mutex_);
@@ -653,12 +653,11 @@ Device *OIDNDenoiser::ensure_denoiser_device(Progress *progress)
 {
 #ifndef WITH_OPENIMAGEDENOISE
   (void)progress;
-  path_trace_device_->set_error("Failed to denoise, build has no OpenImageDenoise support");
+  set_error("Failed to denoise, build has no OpenImageDenoise support");
   return nullptr;
 #else
   if (!openimagedenoise_supported()) {
-    path_trace_device_->set_error(
-        "OpenImageDenoiser is not supported on this CPU: missing SSE 4.1 support");
+    set_error("OpenImageDenoise is not supported on this CPU: missing SSE 4.1 support");
     return nullptr;
   }
 
