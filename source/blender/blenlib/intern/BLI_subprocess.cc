@@ -222,7 +222,7 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
     }
   }
 
-  if (handle_) {
+  if (handle_ != -1) {
     data_ = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle_, 0);
   }
   else {
