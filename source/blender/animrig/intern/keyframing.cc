@@ -1014,14 +1014,14 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
                                            const KeyframeSettings &key_settings,
                                            const eInsertKeyFlags insert_key_flags)
 {
-  Strip *strip = layer.strip_at_time(key_data.position[0]);
-  if (strip == nullptr) {
-    return SingleKeyingResult::NO_VALID_STRIP;
-  }
-  BLI_assert(strip->contains_frame(key_data.position.x));
-
-  /* TODO: morph key data based on Layer position in stack and Strip offset. */
+  /* TODO: we currently assume there will always be precisely one strip, which
+   * is infinite and has no time offset. This will not hold true in the future
+   * when we add support for multiple strips. */
+  BLI_assert(layer.strips().size() == 1);
+  Strip *strip = layer.strip(0);
+  BLI_assert(strip->is_infinite());
   BLI_assert(strip->frame_offset == 0.0);
+
   return strip->as<KeyframeStrip>().keyframe_insert(
       binding, rna_path, key_data.array_index, key_data.position, key_settings, insert_key_flags);
 }
@@ -1050,12 +1050,14 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
         "animated, which should have been caught and handled by higher-level functions.");
   }
 
+  /* Ensure that at least one layer exists. If not, create the default layer
+   * with the default infinite keyframe strip. */
   action.layer_ensure_at_least_one();
 
-  Layer *layer = action.get_layer_for_keyframing();
   /* TODO: since we haven't implemented actual layered animation yet, this
    * currently should never be null. But when we do implement layered animation,
    * we'll presumably need to change this and handle the null case. */
+  Layer *layer = action.get_layer_for_keyframing();
   BLI_assert(layer != nullptr);
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;

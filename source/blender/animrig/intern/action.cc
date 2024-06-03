@@ -425,7 +425,7 @@ Layer *Action::get_layer_for_keyframing()
   }
   if (this->layers().size() > 1) {
     std::fprintf(stderr,
-                 "Action '%s' has multiple layers, which isn't allowed or handled yet.",
+                 "Action '%s' has multiple layers, which isn't handled by keyframing code yet.",
                  this->id.name);
   }
 
@@ -538,35 +538,6 @@ const Strip *Layer::strip(const int64_t index) const
 Strip *Layer::strip(const int64_t index)
 {
   return &this->strip_array[index]->wrap();
-}
-
-int Layer::strip_index_at_time(const float /* time */) const
-{
-  if (this->strips().is_empty()) {
-    return -1;
-  }
-
-  /* TODO: support more than a single infinite strip on a layer. */
-  return 0;
-}
-
-const Strip *Layer::strip_at_time(const float time) const
-{
-  const int index = this->strip_index_at_time(time);
-  if (index < 0) {
-    return nullptr;
-  }
-
-  return this->strip(index);
-}
-Strip *Layer::strip_at_time(const float time)
-{
-  const int index = this->strip_index_at_time(time);
-  if (index < 0) {
-    return nullptr;
-  }
-
-  return this->strip(index);
 }
 
 Strip &Layer::strip_add(const Strip::Type strip_type)
@@ -743,6 +714,12 @@ Strip::~Strip()
       return;
   }
   BLI_assert_unreachable();
+}
+
+bool Strip::is_infinite() const
+{
+  return this->frame_start == -std::numeric_limits<float>::infinity() &&
+         this->frame_end == std::numeric_limits<float>::infinity();
 }
 
 bool Strip::contains_frame(const float frame_time) const

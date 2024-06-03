@@ -316,6 +316,7 @@ class Strip : public ::ActionStrip {
   template<typename T> T &as();
   template<typename T> const T &as() const;
 
+  bool is_infinite() const;
   bool contains_frame(float frame_time) const;
   bool is_last_frame(float frame_time) const;
 
@@ -382,21 +383,6 @@ class Layer : public ::ActionLayer {
   blender::MutableSpan<Strip *> strips();
   const Strip *strip(int64_t index) const;
   Strip *strip(int64_t index);
-
-  /**
-   * Find the index of the strip at the given time.
-   *
-   * \return the index of the strip, or -1 if no strip was found at that time.
-   */
-  int strip_index_at_time(float time) const;
-
-  /**
-   * Find the strip at the given time.
-   *
-   * \return a pointer to the strip, or nullptr if none was found at that time.
-   */
-  const Strip *strip_at_time(float time) const;
-  Strip *strip_at_time(float time);
 
   Strip &strip_add(Strip::Type strip_type);
 
