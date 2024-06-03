@@ -38,8 +38,9 @@ bool Subprocess::init(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
 
-  wchar_t path[MAX_PATH];
-  if (!CHECK(GetModuleFileNameW(nullptr, path, MAX_PATH))) {
+  constexpr size_t max_path = 1024;
+  wchar_t path[max_path];
+  if (!CHECK(GetModuleFileNameW(nullptr, path, max_path))) {
     return false;
   }
 
