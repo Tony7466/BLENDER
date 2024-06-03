@@ -570,14 +570,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "generate_preview_surface",
                   true,
-                  "Export USD Preview Surface",
+                  "USD Preview Surface Network",
                   "Generate an approximate USD Preview Surface shader "
                   "representation of a Principled BSDF node network");
 
   RNA_def_boolean(ot->srna,
                   "generate_materialx_network",
                   false,
-                  "Export MaterialX Network",
+                  "MaterialX Network",
                   "Generate a MaterialX network representation of the materials");
 
   RNA_def_boolean(ot->srna,

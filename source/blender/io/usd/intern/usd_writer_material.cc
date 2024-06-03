@@ -21,6 +21,7 @@
 #include "BLI_map.hh"
 #include "BLI_memory_utils.hh"
 #include "BLI_path_util.h"
+#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 
@@ -43,9 +44,6 @@ static CLG_LogRef LOG = {"io.usd"};
 #  include <pxr/usd/usdMtlx/reader.h>
 #  include <pxr/usd/usdMtlx/utils.h>
 #endif
-
-#include <iostream>
-#include <unordered_map>
 
 /* `TfToken` objects are not cheap to construct, so we do it once. */
 namespace usdtokens {
@@ -1115,11 +1113,10 @@ static std::string materialx_export_image(
 
 /* Utility function to reflow connections and paths within the temporary document
  * to their final location in the USD document */
-static pxr::SdfPath reflow_materialx_paths(
-    pxr::SdfPath input_path,
-    pxr::SdfPath temp_path,
-    const pxr::SdfPath &target_path,
-    const std::unordered_map<std::string, std::string> &rename_pairs)
+static pxr::SdfPath reflow_materialx_paths(pxr::SdfPath input_path,
+                                           pxr::SdfPath temp_path,
+                                           const pxr::SdfPath &target_path,
+                                           const Map<std::string, std::string> &rename_pairs)
 {
 
   auto input_path_string = input_path.GetString();
@@ -1127,18 +1124,18 @@ static pxr::SdfPath reflow_materialx_paths(
    * otherwise we check if it starts with any items in the list plus a path separator (/ or .) .
    * By checking for the path separators, we remove false positives from other prefixed elements.
    */
-  auto it = rename_pairs.find(input_path_string);
-  if (it != rename_pairs.end()) {
-    input_path = pxr::SdfPath(it->second);
+  auto value_lookup_ptr = rename_pairs.lookup_ptr(input_path_string);
+  if (value_lookup_ptr) {
+    input_path = pxr::SdfPath(*value_lookup_ptr);
   }
   else {
-    for (const auto &pair : rename_pairs) {
-      if (input_path_string.length() > pair.first.length() &&
-          pxr::TfStringStartsWith(input_path_string, pair.first) &&
-          (input_path_string[pair.first.length()] == '/' ||
-           input_path_string[pair.first.length()] == '.'))
+    for (const auto &pair : rename_pairs.items()) {
+      if (input_path_string.length() > pair.key.length() &&
+          pxr::TfStringStartsWith(input_path_string, pair.key) &&
+          (input_path_string[pair.key.length()] == '/' ||
+           input_path_string[pair.key.length()] == '.'))
       {
-        input_path = input_path.ReplacePrefix(pxr::SdfPath(pair.first), pxr::SdfPath(pair.second));
+        input_path = input_path.ReplacePrefix(pxr::SdfPath(pair.key), pxr::SdfPath(pair.value));
         break;
       }
     }
@@ -1166,7 +1163,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
                                                       std::placeholders::_4);
   std::string material_name = usd_path.GetElementString();
   MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
-      usd_export_context.depsgraph, material, material_name.c_str(), export_image_fn);
+      usd_export_context.depsgraph, material, material_name, export_image_fn);
 
   /* We want to merge the MaterialX graph under the same Material as the USDPreviewSurface
    * This allows for the same material assignment to have two levels of complexity so other
@@ -1174,10 +1171,10 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
    * This does mean that we need to pre-process the resulting graph so that there are no
    * name conflicts.
    * So we first gather all the existing names in this namespace to avoid that.*/
-  std::set<std::string> used_names;
+  Set<std::string> used_names;
   auto material_prim = usd_material.GetPrim();
   for (const auto &child : material_prim.GetChildren()) {
-    used_names.insert(child.GetName().GetString());
+    used_names.add(child.GetName().GetString());
   }
 
   /* usdMtlx assumes a workflow where the mtlx file is referenced in,
@@ -1208,24 +1205,24 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
 
   /* Once we have the material, we need to prepare for renaming any conflicts.
    * However, we must make sure any new names don't conflict with names in the temp stage eitehr */
-  std::set<std::string> temp_used_names;
+  Set<std::string> temp_used_names;
   for (const auto &child : temp_material_prim.GetChildren()) {
-    temp_used_names.insert(child.GetName().GetString());
+    temp_used_names.add(child.GetName().GetString());
   }
 
   /* We loop through the top level children of the material, and make sure that the names are
    * unique across both the destination stage, and this temporary stage.
    * This is stored for later use so that we can reflow any connections */
-  std::unordered_map<std::string, std::string> rename_pairs;
+  Map<std::string, std::string> rename_pairs;
   for (const auto &temp_material_child : temp_material_prim.GetChildren()) {
     uint32_t conflict_counter = 0;
     auto name = temp_material_child.GetName().GetString();
     auto target_name = name;
-    while (used_names.find(target_name) != used_names.end()) {
+    while (used_names.contains(target_name)) {
       ++conflict_counter;
       target_name = name + "_mtlx" + std::to_string(conflict_counter);
 
-      while (temp_used_names.find(target_name) != temp_used_names.end()) {
+      while (temp_used_names.contains(target_name)) {
         ++conflict_counter;
         target_name = name + "_mtlx" + std::to_string(conflict_counter);
       }
@@ -1235,24 +1232,23 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
       continue;
     }
 
-    temp_used_names.insert(target_name);
+    temp_used_names.add(target_name);
     auto original_path = temp_material_child.GetPath().GetString();
     auto new_path =
         temp_material_child.GetPath().ReplaceName(pxr::TfToken(target_name)).GetString();
 
-    rename_pairs[original_path] = new_path;
+    rename_pairs.add_overwrite(original_path, new_path);
   }
 
   /* We now need to find the connections from the material to the surface shader
    * and modify it to match the final target location */
   for (auto &temp_material_output : temp_material.GetOutputs()) {
     pxr::SdfPathVector output_paths;
-    ;
+
     temp_material_output.GetAttr().GetConnections(&output_paths);
     if (output_paths.size() == 1) {
       output_paths[0] = reflow_materialx_paths(
           output_paths[0], temp_material_path, usd_path, rename_pairs);
-      ;
 
       auto target_material_output = usd_material.CreateOutput(temp_material_output.GetBaseName(),
                                                               temp_material_output.GetTypeName());
@@ -1302,8 +1298,6 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
 
         connection_paths[0] = reflow_materialx_paths(
             connection_paths[0], temp_material_path, usd_path, rename_pairs);
-        ;
-        ;
         shader_input.GetAttr().SetConnections(connection_paths);
       }
     }
@@ -1315,13 +1309,10 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
 
       if (connection_paths.size() != 1) {
         continue;
-        ;
       }
 
       connection_paths[0] = reflow_materialx_paths(
           connection_paths[0], temp_material_path, usd_path, rename_pairs);
-      ;
-      ;
       shader_output.GetAttr().SetConnections(connection_paths);
     } /* Iterate through outputs */
 

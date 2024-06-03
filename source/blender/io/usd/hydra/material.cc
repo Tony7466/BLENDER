@@ -7,6 +7,7 @@
 #include <Python.h>
 #include <unicodeobject.h>
 
+#include <pxr/base/tf/stringUtils.h>
 #include <pxr/imaging/hd/material.h>
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/imaging/hd/tokens.h>
@@ -85,8 +86,9 @@ void MaterialData::init()
   pxr::UsdShadeMaterial usd_material;
 #ifdef WITH_MATERIALX
   if (scene_delegate_->use_materialx) {
+    std::string material_name = pxr::TfMakeValidIdentifier(id->name);
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
-        scene_delegate_->depsgraph, (Material *)id, id->name, cache_or_get_image_file);
+        scene_delegate_->depsgraph, (Material *)id, material_name, cache_or_get_image_file);
     pxr::UsdMtlxRead(doc, stage);
 
     /* Logging stage: creating lambda stage_str() to not call stage->ExportToString()

@@ -51,7 +51,7 @@ class DefaultMaterialNodeParser : public NodeParser {
 
 MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
                                            Material *material,
-                                           const char *material_name,
+                                           const std::string &material_name,
                                            ExportImageFunction export_image_fn)
 {
   CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
@@ -62,9 +62,9 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-    // Add a nodegraph for the material
+    /* Add a nodegraph for the material */
     if (output_node && output_node->typeinfo->materialx_fn) {
-      MaterialX::NodeGraphPtr node_graph = doc->addNodeGraph("NG_" + std::string(material_name));
+      MaterialX::NodeGraphPtr node_graph = doc->addNodeGraph("NG_" + material_name);
       NodeParserData data = {node_graph.get(),
                              depsgraph,
                              material,
