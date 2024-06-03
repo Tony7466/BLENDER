@@ -85,8 +85,11 @@ def _fake_module(mod_name, mod_path, speedy=True):
     if _bpy.app.debug_python:
         print("fake_module", mod_path, mod_name)
 
-    if mod_name.startswith(_ext_base_pkg_idname_with_dot):
-        return _fake_module_from_extension(mod_name, mod_path)
+    # Try loading manifest first.
+    is_extension = mod_name.startswith(_ext_base_pkg_idname_with_dot)
+    extension_mod = _fake_module_from_extension(mod_name, mod_path, missing_ok=not is_extension)
+    if is_extension or extension_mod:
+        return extension_mod
 
     import ast
     ModuleType = type(ast)
@@ -656,7 +659,7 @@ def module_bl_info(mod, *, info_basis=None):
 # -----------------------------------------------------------------------------
 # Extension Utilities
 
-def _bl_info_from_extension(mod_name, mod_path):
+def _bl_info_from_extension(mod_name, mod_path, missing_ok=False):
     # Extract the `bl_info` from an extensions manifest.
     # This is returned as a module which has a `bl_info` variable.
     # When support for non-extension add-ons is dropped (Blender v5.0 perhaps)
@@ -671,7 +674,8 @@ def _bl_info_from_extension(mod_name, mod_path):
         with open(filepath_toml, "rb") as fh:
             data = tomllib.load(fh)
     except FileNotFoundError:
-        print("Warning: add-on missing manifest, this can cause poor performance!:", repr(filepath_toml))
+        if not missing_ok:
+            print("Warning: add-on missing manifest, this can cause poor performance!:", repr(filepath_toml))
         return None, filepath_toml
     except BaseException as ex:
         print("Error:", str(ex), "in", filepath_toml)
@@ -728,10 +732,10 @@ def _bl_info_from_extension(mod_name, mod_path):
     return bl_info, filepath_toml
 
 
-def _fake_module_from_extension(mod_name, mod_path):
+def _fake_module_from_extension(mod_name, mod_path, missing_ok=False):
     import os
 
-    bl_info, filepath_toml = _bl_info_from_extension(mod_name, mod_path)
+    bl_info, filepath_toml = _bl_info_from_extension(mod_name, mod_path, missing_ok)
     if bl_info is None:
         return None
 
