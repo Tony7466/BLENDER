@@ -58,8 +58,10 @@ class MeshMirrorUV(Operator):
                 mirror_lt[co] = i
 
         vmap = {}
-        for mirror_a, mirror_b in ((mirror_gt, mirror_lt),
-                                   (mirror_lt, mirror_gt)):
+        for mirror_a, mirror_b in (
+                (mirror_gt, mirror_lt),
+                (mirror_lt, mirror_gt),
+        ):
             for co, i in mirror_a.items():
                 nco = (-co[0], co[1], co[2])
                 j = mirror_b.get(nco)
@@ -143,7 +145,7 @@ class MeshMirrorUV(Operator):
 
         meshes = [
             ob.data for ob in context.view_layer.objects.selected
-            if ob.type == 'MESH' and ob.data.library is None
+            if ob.type == 'MESH' and ob.data.is_editable
         ]
 
         for mesh in meshes:

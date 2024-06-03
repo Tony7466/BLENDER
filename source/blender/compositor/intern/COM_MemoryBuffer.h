@@ -288,8 +288,18 @@ class MemoryBuffer {
 
   void read_elem_bicubic_bspline(float x, float y, float *out) const
   {
-    math::interpolate_cubic_bspline_fl(
-        buffer_, out, this->get_width(), this->get_height(), num_channels_, x, y);
+    if (is_a_single_elem_) {
+      memcpy(out, buffer_, get_elem_bytes_len());
+      return;
+    }
+
+    math::interpolate_cubic_bspline_fl(buffer_,
+                                       out,
+                                       this->get_width(),
+                                       this->get_height(),
+                                       num_channels_,
+                                       get_relative_x(x),
+                                       get_relative_y(y));
   }
 
   void read_elem_sampled(float x, float y, PixelSampler sampler, float *out) const
@@ -407,7 +417,10 @@ class MemoryBuffer {
    */
   MemoryBuffer *inflate() const;
 
-  inline void wrap_pixel(int &x, int &y, MemoryBufferExtend extend_x, MemoryBufferExtend extend_y)
+  inline void wrap_pixel(int &x,
+                         int &y,
+                         MemoryBufferExtend extend_x,
+                         MemoryBufferExtend extend_y) const
   {
     const int w = get_width();
     const int h = get_height();
@@ -503,10 +516,11 @@ class MemoryBuffer {
   }
 
   inline void read(float *result,
-                   int x,
-                   int y,
+                   float x,
+                   float y,
+                   PixelSampler sampler = PixelSampler::Nearest,
                    MemoryBufferExtend extend_x = MemoryBufferExtend::Clip,
-                   MemoryBufferExtend extend_y = MemoryBufferExtend::Clip)
+                   MemoryBufferExtend extend_y = MemoryBufferExtend::Clip) const
   {
     bool clip_x = (extend_x == MemoryBufferExtend::Clip && (x < rect_.xmin || x >= rect_.xmax));
     bool clip_y = (extend_y == MemoryBufferExtend::Clip && (y < rect_.ymin || y >= rect_.ymax));
@@ -515,12 +529,10 @@ class MemoryBuffer {
       memset(result, 0, num_channels_ * sizeof(float));
     }
     else {
-      int u = x;
-      int v = y;
+      float u = x;
+      float v = y;
       this->wrap_pixel(u, v, extend_x, extend_y);
-      const int offset = get_coords_offset(u, v);
-      float *buffer = &buffer_[offset];
-      memcpy(result, buffer, sizeof(float) * num_channels_);
+      this->read_elem_sampled(u, v, sampler, result);
     }
   }
   void write_pixel(int x, int y, const float color[4]);

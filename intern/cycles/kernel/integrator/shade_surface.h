@@ -59,6 +59,13 @@ ccl_device_forceinline float3 integrate_surface_ray_offset(KernelGlobals kg,
    *   or dot(sd->Ng, ray_D)  is small. Detect such cases and skip test?
    * - Instead of ray offset, can we tweak P to lie within the triangle?
    */
+
+#ifndef __METALRT__
+  /* MetalRT and Cycles triangle tests aren't numerically identical, meaning this method
+   * isn't robust for MetalRT. In this case, just applying the ray offset uniformly gives
+   * identical looking results.
+   */
+
   float3 verts[3];
   if (sd->type == PRIMITIVE_TRIANGLE) {
     triangle_vertices(kg, sd->prim, verts);
@@ -80,7 +87,9 @@ ccl_device_forceinline float3 integrate_surface_ray_offset(KernelGlobals kg,
   if (ray_triangle_intersect_self(local_ray_P, local_ray_D, verts)) {
     return ray_P;
   }
-  else {
+  else
+#endif
+  {
     return ray_offset(ray_P, sd->Ng);
   }
 }
@@ -206,8 +215,10 @@ integrate_direct_light_shadow_init_common(KernelGlobals kg,
   IntegratorShadowState shadow_state = integrator_shadow_path_init(
       kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW, false);
 
+#ifdef __VOLUME__
   /* Copy volume stack and enter/exit volume. */
   integrator_state_copy_volume_stack_to_shadow(kg, shadow_state, state);
+#endif
 
   /* Write shadow ray and associated state to global memory. */
   integrator_state_write_shadow_ray(shadow_state, ray);
@@ -644,8 +655,10 @@ ccl_device_forceinline void integrate_surface_ao(KernelGlobals kg,
   IntegratorShadowState shadow_state = integrator_shadow_path_init(
       kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW, true);
 
+#  ifdef __VOLUME__
   /* Copy volume stack and enter/exit volume. */
   integrator_state_copy_volume_stack_to_shadow(kg, shadow_state, state);
+#  endif
 
   /* Write shadow ray and associated state to global memory. */
   integrator_state_write_shadow_ray(shadow_state, &ray);

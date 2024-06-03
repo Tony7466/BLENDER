@@ -164,17 +164,7 @@ class OIDNDenoiseContext {
     oidn_filter.setProgressMonitorFunction(oidn_progress_monitor_function, denoiser_);
     oidn_filter.set("hdr", true);
     oidn_filter.set("srgb", false);
-
-#  if OIDN_VERSION_MAJOR >= 2
-    switch (denoise_params_.quality) {
-      case DENOISER_QUALITY_BALANCED:
-        oidn_filter.set("quality", OIDN_QUALITY_BALANCED);
-        break;
-      case DENOISER_QUALITY_HIGH:
-      default:
-        oidn_filter.set("quality", OIDN_QUALITY_HIGH);
-    }
-#  endif
+    set_quality(oidn_filter);
 
     if (denoise_params_.prefilter == DENOISER_PREFILTER_NONE ||
         denoise_params_.prefilter == DENOISER_PREFILTER_ACCURATE)
@@ -211,6 +201,7 @@ class OIDNDenoiseContext {
     oidn::FilterRef oidn_filter = oidn_device.newFilter("RT");
     set_pass(oidn_filter, oidn_pass);
     set_output_pass(oidn_filter, oidn_pass);
+    set_quality(oidn_filter);
     oidn_filter.commit();
     oidn_filter.execute();
 
@@ -413,6 +404,25 @@ class OIDNDenoiseContext {
     set_pass(oidn_filter, "output", oidn_pass);
   }
 
+  void set_quality(oidn::FilterRef &oidn_filter)
+  {
+#  if OIDN_VERSION_MAJOR >= 2
+    switch (denoise_params_.quality) {
+      case DENOISER_QUALITY_FAST:
+#    if OIDN_VERSION >= 20300
+        oidn_filter.set("quality", OIDN_QUALITY_FAST);
+        break;
+#    endif
+      case DENOISER_QUALITY_BALANCED:
+        oidn_filter.set("quality", OIDN_QUALITY_BALANCED);
+        break;
+      case DENOISER_QUALITY_HIGH:
+      default:
+        oidn_filter.set("quality", OIDN_QUALITY_HIGH);
+    }
+#  endif
+  }
+
   /* Scale output pass to match adaptive sampling per-pixel scale, as well as bring alpha channel
    * back. */
   void postprocess_output(const OIDNPass &oidn_input_pass, const OIDNPass &oidn_output_pass)
@@ -587,7 +597,7 @@ bool OIDNDenoiser::denoise_buffer(const BufferParams &buffer_params,
                                   bool allow_inplace_modification)
 {
   DCHECK(openimagedenoise_supported())
-      << "OpenImageDenoiser is not supported on this platform or build.";
+      << "OpenImageDenoise is not supported on this platform or build.";
 
 #ifdef WITH_OPENIMAGEDENOISE
   thread_scoped_lock lock(mutex_);
@@ -643,12 +653,11 @@ Device *OIDNDenoiser::ensure_denoiser_device(Progress *progress)
 {
 #ifndef WITH_OPENIMAGEDENOISE
   (void)progress;
-  path_trace_device_->set_error("Failed to denoise, build has no OpenImageDenoise support");
+  set_error("Failed to denoise, build has no OpenImageDenoise support");
   return nullptr;
 #else
   if (!openimagedenoise_supported()) {
-    path_trace_device_->set_error(
-        "OpenImageDenoiser is not supported on this CPU: missing SSE 4.1 support");
+    set_error("OpenImageDenoise is not supported on this CPU: missing SSE 4.1 support");
     return nullptr;
   }
 

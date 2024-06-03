@@ -19,10 +19,12 @@
 
 shared uint tiles_local[SHADOW_TILEDATA_PER_TILEMAP];
 shared uint levels_rendered;
+shared uint force_base_page;
+shared uint base_page_do_update_flag;
 
 int shadow_tile_offset_lds(ivec2 tile, int lod)
 {
-  return shadow_tile_offset(tile, 0, lod);
+  return shadow_tile_offset(uvec2(tile), 0, lod);
 }
 
 /* Deactivate threads that are not part of this LOD. Will only let pass threads which tile
@@ -41,18 +43,33 @@ void main()
 
   /* NOTE: Barriers are ok since this branch is taken by all threads. */
   if (tilemap.projection_type == SHADOW_PROJECTION_CUBEFACE) {
+    /* Check if any page is allocated in this tilemap. Force base page if that's the case to avoid
+     * artifact during shadow tracing. */
+    if (gl_LocalInvocationIndex == 0u) {
+      force_base_page = 0u;
+    }
+    barrier();
 
     /* Load all data to LDS. Allows us to do some modification on the flag bits and only flush to
      * main memory the usage bit. */
     for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
       if (thread_mask(tile_co, lod)) {
-        int tile_offset = shadow_tile_offset(tile_co, tilemap.tiles_index, lod);
+        int tile_offset = shadow_tile_offset(uvec2(tile_co), tilemap.tiles_index, lod);
         ShadowTileDataPacked tile_data = tiles_buf[tile_offset];
 
         if ((tile_data & SHADOW_IS_USED) == 0) {
+          if (lod == SHADOW_TILEMAP_LOD) {
+            /* Save the flag to recover it if needed. This is fine to write non-atomically because
+             * there is only one tile at the base level. */
+            base_page_do_update_flag = tile_data & SHADOW_DO_UPDATE;
+          }
           /* Do not consider this tile as going to be rendered if it is not used.
            * Simplify checks later. This is a local modification. */
           tile_data &= ~SHADOW_DO_UPDATE;
+        }
+        else {
+          /* Tag base level to be used. */
+          force_base_page = 1u;
         }
         /* Clear these flags as they could contain any values. */
         tile_data &= ~(SHADOW_TILE_AMENDED | SHADOW_TILE_MASKED);
@@ -94,6 +111,14 @@ void main()
           tiles_local[tile_offset] |= SHADOW_TILE_AMENDED;
           /* Visibility value to write back. */
           tiles_local[tile_offset] |= SHADOW_TILE_MASKED;
+        }
+        else if ((lod == SHADOW_TILEMAP_LOD) && (force_base_page != 0u)) {
+          /* Recover the update flag value. */
+          tiles_local[tile_offset] |= base_page_do_update_flag;
+          /* Tag as modified so that we can amend it inside the `tiles_buf`. */
+          tiles_local[tile_offset] |= SHADOW_TILE_AMENDED;
+          /* Visibility value to write back. */
+          tiles_local[tile_offset] &= ~SHADOW_TILE_MASKED;
         }
       }
     }
@@ -158,7 +183,7 @@ void main()
       if (thread_mask(tile_co, lod)) {
         int tile_lds = shadow_tile_offset_lds(tile_co, lod);
         if ((tiles_local[tile_lds] & SHADOW_TILE_AMENDED) != 0) {
-          int tile_offset = shadow_tile_offset(tile_co, tilemap.tiles_index, lod);
+          int tile_offset = shadow_tile_offset(uvec2(tile_co), tilemap.tiles_index, lod);
           /* Note that we only flush the visibility so that cached pages can be reused. */
           if ((tiles_local[tile_lds] & SHADOW_TILE_MASKED) != 0) {
             tiles_buf[tile_offset] &= ~SHADOW_IS_USED;

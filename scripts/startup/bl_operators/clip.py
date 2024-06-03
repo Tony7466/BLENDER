@@ -440,8 +440,7 @@ class CLIP_OT_constraint_to_fcurve(Operator):
                 con = x
 
         if not con:
-            self.report({'ERROR'},
-                        "Motion Tracking constraint to be converted not found")
+            self.report({'ERROR'}, "Motion Tracking constraint to be converted not found")
 
             return {'CANCELLED'}
 
@@ -452,8 +451,7 @@ class CLIP_OT_constraint_to_fcurve(Operator):
             clip = con.clip
 
         if not clip:
-            self.report({'ERROR'},
-                        "Movie clip to use tracking data from isn't set")
+            self.report({'ERROR'}, "Movie clip to use tracking data from isn't set")
 
             return {'CANCELLED'}
 
@@ -658,8 +656,8 @@ class CLIP_OT_setup_tracking_scene(Operator):
         master_collection = context.scene.collection
         collection = bpy.data.collections.get(collection_name)
 
-        if collection and collection.library:
-            # We need a local collection instead.
+        if collection and not collection.is_editable:
+            # We need an editable collection instead.
             collection = None
 
         if not collection:

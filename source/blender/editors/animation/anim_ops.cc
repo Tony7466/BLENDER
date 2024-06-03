@@ -16,6 +16,7 @@
 
 #include "DNA_scene_types.h"
 
+#include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_report.hh"
@@ -39,6 +40,8 @@
 #include "SEQ_iterator.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
+
+#include "ANIM_action.hh"
 
 #include "anim_intern.hh"
 
@@ -647,6 +650,102 @@ static void ANIM_OT_previewrange_clear(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Frame Scene/Preview Range Operator
+ * \{ */
+
+static int scene_range_frame_exec(bContext *C, wmOperator * /*op*/)
+{
+  ARegion *region = CTX_wm_region(C);
+  const Scene *scene = CTX_data_scene(C);
+  BLI_assert(region);
+  BLI_assert(scene);
+
+  View2D &v2d = region->v2d;
+  v2d.cur.xmin = PSFRA;
+  v2d.cur.xmax = PEFRA;
+
+  v2d.cur = ANIM_frame_range_view2d_add_xmargin(v2d, v2d.cur);
+
+  UI_view2d_sync(CTX_wm_screen(C), CTX_wm_area(C), &v2d, V2D_LOCK_COPY);
+  ED_area_tag_redraw(CTX_wm_area(C));
+
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_scene_range_frame(wmOperatorType *ot)
+{
+  ot->name = "Frame Scene/Preview Range";
+  ot->idname = "ANIM_OT_scene_range_frame";
+  ot->description =
+      "Reset the horizontal view to the current scene frame range, taking the preview range into "
+      "account if it is active";
+
+  ot->exec = scene_range_frame_exec;
+  ot->poll = ED_operator_animview_active;
+
+  ot->flag = OPTYPE_REGISTER;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Bindings
+ * \{ */
+
+static bool binding_unassign_object_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return false;
+  }
+
+  AnimData *adt = BKE_animdata_from_id(&object->id);
+  if (!adt) {
+    return false;
+  }
+
+  return adt->binding_handle != blender::animrig::Binding::unassigned;
+}
+
+static int binding_unassign_object_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return OPERATOR_CANCELLED;
+  }
+
+  AnimData *adt = BKE_animdata_from_id(&object->id);
+  if (!adt) {
+    return OPERATOR_CANCELLED;
+  }
+
+  animrig::unassign_binding(*adt);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_binding_unassign_object(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Unassign Binding";
+  ot->idname = "ANIM_OT_binding_unassign_object";
+  ot->description =
+      "Clear the assigned action binding, effectively making this data-block non-animated";
+
+  /* api callbacks */
+  ot->exec = binding_unassign_object_exec;
+  ot->poll = binding_unassign_object_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Registration
  * \{ */
 
@@ -660,6 +759,8 @@ void ED_operatortypes_anim()
 
   WM_operatortype_append(ANIM_OT_previewrange_set);
   WM_operatortype_append(ANIM_OT_previewrange_clear);
+
+  WM_operatortype_append(ANIM_OT_scene_range_frame);
 
   /* Entire UI --------------------------------------- */
   WM_operatortype_append(ANIM_OT_keyframe_insert);
@@ -688,6 +789,8 @@ void ED_operatortypes_anim()
   WM_operatortype_append(ANIM_OT_keying_set_path_remove);
 
   WM_operatortype_append(ANIM_OT_keying_set_active_set);
+
+  WM_operatortype_append(ANIM_OT_binding_unassign_object);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)

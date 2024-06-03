@@ -24,7 +24,7 @@ class LayerDataButtonsPanel:
     @classmethod
     def poll(cls, context):
         grease_pencil = context.grease_pencil
-        return grease_pencil and grease_pencil.layers.active
+        return grease_pencil and grease_pencil.layers.active_layer
 
 
 class GREASE_PENCIL_UL_masks(UIList):
@@ -44,15 +44,15 @@ class GreasePencil_LayerMaskPanel:
     def draw_header(self, context):
         ob = context.object
         grease_pencil = ob.data
-        layer = grease_pencil.layers.active
+        layer = grease_pencil.layers.active_layer
 
-        self.layout.prop(layer, "use_masks", text="")
+        self.layout.prop(layer, "use_masks", text="", toggle=0)
 
     def draw(self, context):
         layout = self.layout
         ob = context.object
         grease_pencil = ob.data
-        layer = grease_pencil.layers.active
+        layer = grease_pencil.layers.active_layer
 
         layout = self.layout
         layout.enabled = layer.use_masks
@@ -63,8 +63,10 @@ class GreasePencil_LayerMaskPanel:
         rows = 4
         row = layout.row()
         col = row.column()
-        col.template_list("GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
-                          "active_mask_index", rows=rows, sort_lock=True)
+        col.template_list(
+            "GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
+            "active_mask_index", rows=rows, sort_lock=True,
+        )
 
         col = row.column(align=True)
         col.menu("GREASE_PENCIL_MT_layer_mask_add", icon='ADD', text="")
@@ -84,7 +86,7 @@ class GreasePencil_LayerTransformPanel:
 
         ob = context.object
         grease_pencil = ob.data
-        layer = grease_pencil.layers.active
+        layer = grease_pencil.layers.active_layer
         layout.active = not layer.lock
 
         row = layout.row(align=True)
@@ -104,7 +106,7 @@ class GreasPencil_LayerRelationsPanel:
 
         ob = context.object
         grease_pencil = ob.data
-        layer = grease_pencil.layers.active
+        layer = grease_pencil.layers.active_layer
         layout.active = not layer.lock
 
         row = layout.row(align=True)
@@ -135,7 +137,7 @@ class GREASE_PENCIL_MT_layer_mask_add(Menu):
         layout = self.layout
 
         grease_pencil = context.grease_pencil
-        active_layer = grease_pencil.layers.active
+        active_layer = grease_pencil.layers.active_layer
         found = False
         for layer in grease_pencil.layers:
             if layer == active_layer or layer.name in active_layer.mask_layers:
@@ -172,6 +174,7 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         layout = self.layout
         ob = context.object
         grease_pencil = ob.data
+        layer = grease_pencil.layers.active_layer
         space = context.space_data
 
         if space.type == 'PROPERTIES':
@@ -192,6 +195,18 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         layout.separator()
         layout.prop(grease_pencil, "use_autolock_layers", text="Autolock Inactive Layers")
 
+        if layer:
+            layout.prop(layer, "use_locked_material")
+
+
+class GREASE_PENCIL_MT_group_context_menu(Menu):
+    bl_label = "Layer Group"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("grease_pencil.layer_group_remove", text="Delete Group").keep_children = False
+        layout.operator("grease_pencil.layer_group_remove", text="Ungroup").keep_children = True
+
 
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     bl_label = "Layers"
@@ -200,7 +215,7 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         layout = self.layout
 
         grease_pencil = context.grease_pencil
-        layer = grease_pencil.layers.active
+        layer = grease_pencil.layers.active_layer
 
         row = layout.row()
         row.template_grease_pencil_layer_tree()
@@ -328,10 +343,11 @@ class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
         col.prop(grease_pencil, "stroke_depth_order", text="Stroke Depth Order")
 
 
-class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
-    _context_path = "object.data"
-    _property_type = bpy.types.GreasePencilv3
-
+_has_gpv3 = hasattr(bpy.types, 'GreasePencilv3')
+if _has_gpv3:
+    class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
+        _context_path = "object.data"
+        _property_type = bpy.types.GreasePencilv3
 
 classes = (
     GREASE_PENCIL_UL_masks,
@@ -345,9 +361,13 @@ classes = (
     DATA_PT_grease_pencil_onion_skinning_custom_colors,
     DATA_PT_grease_pencil_onion_skinning_display,
     DATA_PT_grease_pencil_settings,
-    DATA_PT_grease_pencil_custom_props,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
+    GREASE_PENCIL_MT_group_context_menu,
 )
+
+if _has_gpv3:
+    classes += (DATA_PT_grease_pencil_custom_props,)
+
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
