@@ -543,6 +543,15 @@ void draw_dots(IndexRange indices,
                const VArray<ColorGeometry4f> &colors,
                const float4x4 &layer_to_world,
                const float radius_scale);
+/**
+ * Draw lines with start and end points.
+ */
+void draw_lines(IndexRange indices,
+                Span<float3> start_positions,
+                Span<float3> end_positions,
+                const VArray<ColorGeometry4f> &colors,
+                const float4x4 &layer_to_world,
+                float line_width);
 
 /**
  * Draw curves geometry.

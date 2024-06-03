@@ -18,7 +18,9 @@
 #include "BKE_screen.hh"
 
 #include "BLI_assert.h"
+#include "BLI_color.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -39,6 +41,7 @@
 #include "ED_image.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
+#include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
 #include "MEM_guardedalloc.h"
@@ -469,6 +472,9 @@ struct GreasePencilFillOpData {
   /* Mouse position where the extension mode was enabled. */
   float2 extension_mouse_pos;
 
+  /** Overlay draw callback for helper lines, etc. */
+  void *overlay_cb_handle;
+
   ~GreasePencilFillOpData()
   {
     // TODO Remove drawing handler.
@@ -508,6 +514,62 @@ struct GreasePencilFillOpData {
             precision};
   }
 };
+
+struct ExtensionLines {
+  Vector<float3> starts;
+  Vector<float3> ends;
+};
+
+static ExtensionLines grease_pencil_fill_get_extension_lines(const bContext &C,
+                                                             const GreasePencilFillOpData &op_data)
+{
+  // const ARegion &region = *CTX_wm_region(&C);
+  // const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
+  const Scene &scene = *CTX_data_scene(&C);
+  const Object &object = *CTX_data_active_object(&C);
+  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
+
+  ExtensionLines result;
+  for (const ed::greasepencil::DrawingInfo &info : drawings) {
+    const bke::CurvesGeometry &curves = info.drawing.strokes();
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+    const Span<float3> positions = curves.positions();
+    const VArray<bool> cyclic = curves.cyclic();
+    const float4x4 layer_to_world = grease_pencil.layer(info.layer_index)->to_world_space(object);
+
+    for (const int i : curves.curves_range()) {
+      const IndexRange points = points_by_curve[i];
+      /* No extension lines on cyclic curves. */
+      if (cyclic[i]) {
+        continue;
+      }
+      /* Can't compute directions for single-point curves. */
+      if (points.size() < 2) {
+        continue;
+      }
+
+      const float3 pos_head = math::transform_point(layer_to_world, positions[points[0]]);
+      const float3 pos_tail = math::transform_point(layer_to_world, positions[points.last()]);
+      const float3 pos_head_next = math::transform_point(layer_to_world, positions[points[1]]);
+      const float3 pos_tail_prev = math::transform_point(layer_to_world,
+                                                         positions[points.last(1)]);
+      const float3 dir_head = math::normalize(pos_head - pos_head_next);
+      const float3 dir_tail = math::normalize(pos_tail - pos_tail_prev);
+      /* Initial length before intersection tests. */
+      const float length = op_data.fill_extend_fac;
+
+      result.starts.append(pos_head);
+      result.ends.append(pos_head + dir_head * length);
+      result.starts.append(pos_tail);
+      result.ends.append(pos_tail + dir_tail * length);
+    }
+  }
+
+  return result;
+}
 
 static void grease_pencil_fill_status_indicators(bContext &C,
                                                  const GreasePencilFillOpData &op_data)
@@ -699,6 +761,81 @@ static bke::CurvesGeometry simplify_fixed(bke::CurvesGeometry &curves, const int
   return bke::curves_copy_point_selection(curves, points_to_keep, {});
 }
 
+/* Draw callback for fill tool overlay. */
+static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*/, void *arg)
+{
+  const ARegion &region = *CTX_wm_region(C);
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(C);
+  const Scene &scene = *CTX_data_scene(C);
+  const Object &object = *CTX_data_active_object(C);
+  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+  auto &op_data = *static_cast<GreasePencilFillOpData *>(arg);
+
+  const bool draw_stroke_curves = true;
+  const bool draw_extension_lines = true;
+
+  const ColorGeometry4f stroke_curves_color = ColorGeometry4f(1, 0, 0, 1);
+  const ColorGeometry4f extension_lines_color = ColorGeometry4f(0, 1, 1, 1);
+
+  if (draw_stroke_curves) {
+    const Vector<ed::greasepencil::DrawingInfo> drawings =
+        ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
+
+    for (const ed::greasepencil::DrawingInfo &info : drawings) {
+      const IndexMask curve_mask = info.drawing.strokes().curves_range();
+      const VArray<ColorGeometry4f> colors = VArray<ColorGeometry4f>::ForSingle(
+          stroke_curves_color, info.drawing.strokes().points_num());
+      const float4x4 layer_to_world =
+          grease_pencil.layer(info.layer_index)->to_world_space(object);
+      const bool use_xray = false;
+      const float radius_scale = 1.0f;
+
+      ed::greasepencil::image_render::draw_grease_pencil_strokes(rv3d,
+                                                                 int2(region.winx, region.winy),
+                                                                 object,
+                                                                 info.drawing,
+                                                                 curve_mask,
+                                                                 colors,
+                                                                 layer_to_world,
+                                                                 use_xray,
+                                                                 radius_scale);
+    }
+  }
+
+  if (draw_extension_lines) {
+    const ExtensionLines extension_lines = grease_pencil_fill_get_extension_lines(*C, op_data);
+    const IndexRange lines = extension_lines.starts.index_range();
+    const VArray<ColorGeometry4f> colors = VArray<ColorGeometry4f>::ForSingle(
+        extension_lines_color, lines.size());
+    /* Extension lines already include layer transform. */
+    const float4x4 transform = float4x4::identity();
+    const float line_width = 2.0f;
+
+    for (const int i : lines) {
+      ed::greasepencil::image_render::draw_lines(
+          lines, extension_lines.starts, extension_lines.ends, colors, transform, line_width);
+    }
+  }
+}
+
+static void grease_pencil_fill_update_overlay(const ARegion &region,
+                                              GreasePencilFillOpData &op_data)
+{
+  /* TODO based on mode, whether help lines are drawn, etc. */
+  const bool needs_overlay = true;
+
+  if (needs_overlay) {
+    op_data.overlay_cb_handle = ED_region_draw_cb_activate(
+        region.type, grease_pencil_fill_overlay_cb, &op_data, REGION_DRAW_POST_VIEW);
+  }
+  else {
+    if (op_data.overlay_cb_handle) {
+      ED_region_draw_cb_exit(region.type, op_data.overlay_cb_handle);
+      op_data.overlay_cb_handle = nullptr;
+    }
+  }
+}
+
 static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent &event)
 {
   using bke::greasepencil::Layer;
@@ -828,12 +965,19 @@ static bool grease_pencil_fill_init(bContext &C, wmOperator &op)
 
 static void grease_pencil_fill_exit(bContext &C, wmOperator &op)
 {
+  const ARegion &region = *CTX_wm_region(&C);
   Object &ob = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
 
   WM_cursor_modal_restore(CTX_wm_window(&C));
 
   if (op.customdata) {
+    auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
+
+    if (op_data.overlay_cb_handle) {
+      ED_region_draw_cb_exit(region.type, op_data.overlay_cb_handle);
+    }
+
     MEM_delete(static_cast<GreasePencilFillOpData *>(op.customdata));
     op.customdata = nullptr;
   }
@@ -849,6 +993,7 @@ static void grease_pencil_fill_exit(bContext &C, wmOperator &op)
 
 static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  const ARegion &region = *CTX_wm_region(C);
   ToolSettings &ts = *CTX_data_tool_settings(C);
   Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
   Object &ob = *CTX_data_active_object(C);
@@ -869,10 +1014,11 @@ static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent 
     grease_pencil_fill_exit(*C, *op);
     return OPERATOR_CANCELLED;
   }
-  const auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
+  auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
   grease_pencil_fill_status_indicators(*C, op_data);
+  grease_pencil_fill_update_overlay(region, op_data);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);

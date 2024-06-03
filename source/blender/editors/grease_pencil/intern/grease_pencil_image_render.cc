@@ -371,6 +371,34 @@ void draw_dots(const IndexRange indices,
   GPU_program_point_size(false);
 }
 
+void draw_lines(IndexRange indices,
+                Span<float3> start_positions,
+                Span<float3> end_positions,
+                const VArray<ColorGeometry4f> &colors,
+                const float4x4 &layer_to_world,
+                float line_width)
+{
+  GPUVertFormat *format = immVertexFormat();
+  const uint attr_pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  const uint attr_color = GPU_vertformat_attr_add(
+      format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_FLAT_COLOR);
+
+  GPU_line_width(line_width);
+  immBeginAtMost(GPU_PRIM_LINES, 2 * indices.size());
+
+  for (const int point_i : indices) {
+    immAttr4fv(attr_color, colors[point_i]);
+    immVertex3fv(attr_pos, math::transform_point(layer_to_world, start_positions[point_i]));
+
+    immAttr4fv(attr_color, colors[point_i]);
+    immVertex3fv(attr_pos, math::transform_point(layer_to_world, end_positions[point_i]));
+  }
+
+  immEnd();
+  immUnbindProgram();
+}
+
 void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 const int2 &win_size,
                                 const Object &object,
