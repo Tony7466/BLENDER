@@ -40,6 +40,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   p.global_scale = 1.0f;
   p.use_mesh_validate = true;
 
+  ReportList reports;
+
+  BKE_reports_init(&reports, RPT_STORE);
+
+  p.reports = &reports;
+
   Mesh *mesh = STL_import_mesh(&p);
 
   LISTBASE_FOREACH (Report *, report, &(p.reports)->list) {
@@ -57,11 +63,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.error_message_add(type, TIP_(report->message));
   }
 
+  BKE_reports_free(&reports);
+
   if (mesh != nullptr) {
     params.set_output("Mesh", GeometrySet::from_mesh(mesh));
   }
   else {
-    params.error_message_add(NodeWarningType::Error, TIP_("STL Import Failed"));
     params.set_default_remaining_outputs();
   }
 }
