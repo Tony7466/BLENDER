@@ -43,6 +43,9 @@ void VKContext::debug_group_end()
 
 bool VKContext::debug_capture_begin(const char *title)
 {
+  if (use_render_graph) {
+    flush_render_graph();
+  }
   return VKBackend::get().debug_capture_begin(title);
 }
 
@@ -62,6 +65,9 @@ bool VKBackend::debug_capture_begin(const char *title)
 
 void VKContext::debug_capture_end()
 {
+  if (use_render_graph) {
+    flush_render_graph();
+  }
   VKBackend::get().debug_capture_end();
 }
 

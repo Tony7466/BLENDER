@@ -53,6 +53,7 @@ class VKContext : public Context, NonCopyable {
   void end_frame() override;
 
   void flush() override;
+  void flush_render_graph();
   void finish() override;
 
   void memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb) override;
