@@ -5,8 +5,10 @@
 #include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
+#include "BKE_action.h"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
+#include "BKE_armature.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
@@ -18,8 +20,10 @@
 #include "DNA_object_types.h"
 
 #include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
 #include <limits>
@@ -35,6 +39,11 @@ class KeyframingTest : public testing::Test {
   /* For standard single-action testing. */
   Object *object;
   PointerRNA object_rna_pointer;
+
+  /* For pose bone single-action testing. */
+  Object *armature_object;
+  bArmature *armature;
+  PointerRNA armature_object_rna_pointer;
 
   /* For NLA testing. */
   Object *object_with_nla;
@@ -60,6 +69,18 @@ class KeyframingTest : public testing::Test {
 
     object = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmpty");
     object_rna_pointer = RNA_id_pointer_create(&object->id);
+
+    Bone *bone = static_cast<Bone *>(MEM_mallocN(sizeof(Bone), "BONE"));
+    memset(bone, 0, sizeof(Bone));
+    STRNCPY(bone->name, "Bone");
+
+    armature = BKE_armature_add(bmain, "ARArmature");
+    BLI_addtail(&armature->bonebase, bone);
+
+    armature_object = BKE_object_add_only_object(bmain, OB_ARMATURE, "OBArmature");
+    armature_object->data = armature;
+    BKE_pose_ensure(bmain, armature_object, armature, false);
+    armature_object_rna_pointer = RNA_id_pointer_create(&armature_object->id);
 
     object_with_nla = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmptyWithNLA");
     nla_action = static_cast<bAction *>(BKE_id_new(bmain, ID_AC, "ACNLAAction"));
@@ -90,7 +111,7 @@ class KeyframingTest : public testing::Test {
  * Tests for `insert_key_rna()`.
  */
 
-/* Keying a non-array property with no keying flags. */
+/* Keying a non-array property. */
 TEST_F(KeyframingTest, insert_key_rna__non_array_property)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
@@ -110,7 +131,7 @@ TEST_F(KeyframingTest, insert_key_rna__non_array_property)
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
 }
 
-/* Keying a single element of an array property with no keying flags. */
+/* Keying a single element of an array property. */
 TEST_F(KeyframingTest, insert_key_rna__single_element)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
@@ -130,7 +151,7 @@ TEST_F(KeyframingTest, insert_key_rna__single_element)
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
 }
 
-/* Keying all elements of an array property with no keying flags. */
+/* Keying all elements of an array property. */
 TEST_F(KeyframingTest, insert_key_rna__all_elements)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
@@ -150,6 +171,54 @@ TEST_F(KeyframingTest, insert_key_rna__all_elements)
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2));
+}
+
+/* Keying a pose bone from its own RNA pointer. */
+TEST_F(KeyframingTest, insert_key_rna__pose_bone_rna_pointer)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+  bPoseChannel *pchan = BKE_pose_channel_find_name(armature_object->pose, "Bone");
+  PointerRNA pose_bone_rna_pointer = RNA_pointer_create(
+      &armature_object->id, &RNA_PoseBone, pchan);
+
+  const CombinedKeyingResult result = insert_key_rna(&pose_bone_rna_pointer,
+                                                     {{"rotation_euler", std::nullopt, 0}},
+                                                     1.0,
+                                                     INSERTKEY_NOFLAGS,
+                                                     BEZT_KEYTYPE_KEYFRAME,
+                                                     bmain,
+                                                     anim_eval_context);
+
+  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, armature_object->adt);
+  EXPECT_NE(nullptr, armature_object->adt->action);
+  EXPECT_EQ(1, BLI_listbase_count(&armature_object->adt->action->curves));
+  EXPECT_NE(nullptr,
+            BKE_fcurve_find(
+                &armature_object->adt->action->curves, "pose.bones[\"Bone\"].rotation_euler", 0));
+}
+
+/* Keying a pose bone from its owning ID's RNA pointer. */
+TEST_F(KeyframingTest, insert_key_rna__pose_bone_owner_id_pointer)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_key_rna(
+      &armature_object_rna_pointer,
+      {{"pose.bones[\"Bone\"].rotation_euler", std::nullopt, 0}},
+      1.0,
+      INSERTKEY_NOFLAGS,
+      BEZT_KEYTYPE_KEYFRAME,
+      bmain,
+      anim_eval_context);
+
+  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, armature_object->adt);
+  EXPECT_NE(nullptr, armature_object->adt->action);
+  EXPECT_EQ(1, BLI_listbase_count(&armature_object->adt->action->curves));
+  EXPECT_NE(nullptr,
+            BKE_fcurve_find(
+                &armature_object->adt->action->curves, "pose.bones[\"Bone\"].rotation_euler", 0));
 }
 
 /* Keying multiple elements of multiple properties at once. */
