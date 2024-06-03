@@ -16,25 +16,19 @@ void main()
   rect.w += context_data.pixely;
 
   vec2 co;
-  vec2 uv;
   if (vid == 0) {
     co = rect.xw;
-    uv = vec2(0, 1);
   }
   else if (vid == 1) {
     co = rect.xy;
-    uv = vec2(0, 0);
   }
   else if (vid == 2) {
     co = rect.zw;
-    uv = vec2(1, 1);
   }
   else {
     co = rect.zy;
-    uv = vec2(1, 0);
   }
 
   coInterp = co;
   gl_Position = ModelViewProjectionMatrix * vec4(co, 0.0f, 1.0f);
-  uvInterp = uv;
 }

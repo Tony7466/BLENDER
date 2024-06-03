@@ -11,7 +11,7 @@
 #  include "GPU_shader_shared_utils.hh"
 #endif
 
-#define GPU_SEQ_STRIP_DRAW_DATA_LEN 128
+#define GPU_SEQ_STRIP_DRAW_DATA_LEN 256
 
 enum eGPUSeqFlags : uint32_t {
   GPU_SEQ_FLAG_BACKGROUND_PART = (1u << 0u),
@@ -27,6 +27,7 @@ enum eGPUSeqFlags : uint32_t {
   GPU_SEQ_FLAG_HANDLES = (1u << 10u),
 };
 
+/* Per-strip data for timeline rendering. */
 struct SeqStripDrawData {
   float content_start, content_end, bottom, top;
   float left_handle, right_handle, strip_content_top, handle_width;
@@ -38,10 +39,15 @@ struct SeqStripDrawData {
   uint col_handle_left, col_handle_right;
 };
 BLI_STATIC_ASSERT_ALIGN(SeqStripDrawData, 16)
+BLI_STATIC_ASSERT(sizeof(SeqStripDrawData) * GPU_SEQ_STRIP_DRAW_DATA_LEN <= 16384,
+                  "SeqStripDrawData UBO must not exceed minspec UBO size (16K)")
 
+/* Global data for timeline rendering. */
 struct SeqContextDrawData {
   float pixelx, pixely;
+  float inv_pixelx, inv_pixely;
   float round_radius;
   uint col_back;
+  float _pad0, _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SeqContextDrawData, 16)

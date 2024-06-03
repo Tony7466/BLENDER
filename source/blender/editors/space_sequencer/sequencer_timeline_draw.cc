@@ -1613,6 +1613,8 @@ class SeqStripsBatch {
   {
     context_.pixelx = pixelx;
     context_.pixely = pixely;
+    context_.inv_pixelx = 1.0f / pixelx;
+    context_.inv_pixely = 1.0f / pixely;
     context_.round_radius = calc_strip_round_radius(pixely);
 
     uchar col[4];
@@ -1687,7 +1689,7 @@ class SeqStripsBatch {
   GPUUniformBuf *ubo_context_ = nullptr;
   GPUUniformBuf *ubo_strips_ = nullptr;
   GPUShader *shader_ = nullptr;
-  blender::gpu::Batch *batch_ = nullptr;
+  gpu::Batch *batch_ = nullptr;
   int binding_context_ = 0;
   int binding_strips_ = 0;
   int strips_count_ = 0;
@@ -1963,7 +1965,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   /* Draw text labels with a drop shadow. */
   const int font_id = BLF_default();
   BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, FontShadowType::Blur3x3, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
+  BLF_shadow(font_id, FontShadowType::Blur3x3, float4{0.0f, 0.0f, 0.0f, 1.0f});
   BLF_shadow_offset(font_id, 1, -1);
   UI_view2d_text_cache_draw(timeline_ctx->region);
   BLF_disable(font_id, BLF_SHADOW);
@@ -1976,7 +1978,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx, SeqStripsBatch &s
     return;
   }
 
-  blender::Vector<StripDrawContext> unselected, selected;
+  Vector<StripDrawContext> unselected, selected;
   visible_strips_ordered_get(timeline_ctx, unselected, selected);
   draw_seq_strips(timeline_ctx, strips_batch, unselected);
   draw_seq_strips(timeline_ctx, strips_batch, selected);
@@ -2074,7 +2076,6 @@ static bool draw_cache_view_iter_fn(void *userdata,
                                     int timeline_frame,
                                     int cache_type)
 {
-  using blender::uchar4;
   CacheDrawData *drawdata = static_cast<CacheDrawData *>(userdata);
   const View2D *v2d = drawdata->v2d;
   float stripe_top, stripe_bot;
@@ -2148,7 +2149,6 @@ static void draw_cache_stripe(const Scene *scene,
 
 static void draw_cache_background(const bContext *C, CacheDrawData *draw_data)
 {
-  using blender::uchar4;
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
   const SpaceSeq *sseq = CTX_wm_space_seq(C);
@@ -2177,7 +2177,7 @@ static void draw_cache_background(const bContext *C, CacheDrawData *draw_data)
     return;
   }
 
-  blender::Vector<Sequence *> strips = sequencer_visible_strips_get(C);
+  Vector<Sequence *> strips = sequencer_visible_strips_get(C);
   strips.remove_if([&](Sequence *seq) { return seq->type == SEQ_TYPE_SOUND_RAM; });
 
   for (const Sequence *seq : strips) {

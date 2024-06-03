@@ -10,7 +10,6 @@
 #include "gpu_shader_create_info.hh"
 
 GPU_SHADER_INTERFACE_INFO(gpu_seq_strip_iface, "")
-    .no_perspective(Type::VEC2, "uvInterp")
     .no_perspective(Type::VEC2, "coInterp")
     .flat(Type::UINT, "strip_id");
 
