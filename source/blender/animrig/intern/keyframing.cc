@@ -1054,9 +1054,11 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
    * with the default infinite keyframe strip. */
   action.layer_ensure_at_least_one();
 
-  /* TODO: since we haven't implemented actual layered animation yet, this
-   * currently should never be null. But when we do implement layered animation,
-   * we'll presumably need to change this and handle the null case. */
+  /* TODO: we currently assume this will always successfully find a layer.
+   * However, that may not be true in the future when we implement features like
+   * layer locking: if layers already exist, but they are all locked, then the
+   * default layer won't be added by the line above, but there also won't be any
+   * layers we can insert keys into. */
   Layer *layer = action.get_layer_for_keyframing();
   BLI_assert(layer != nullptr);
 
