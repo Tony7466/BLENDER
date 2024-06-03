@@ -489,7 +489,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         name="Sampling Pattern",
         description="Random sampling pattern used by the integrator",
         items=enum_sampling_pattern,
-        default=6,
+        default=5,
     )
 
     scrambling_distance: FloatProperty(
