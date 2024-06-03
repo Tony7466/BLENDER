@@ -13,6 +13,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_implicit_sharing.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
 #include "BLI_virtual_array.hh"
@@ -246,14 +247,14 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
 
 template<typename ElemT,
          ElemT (*GetFunc)(const btRigidBody &),
-         void (*SetFunc)(btRigidBody &, ElemT) = nullptr>
+         void (*SetFunc)(btRigidBody &, ElemT)>
 class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
-  const PhysicsGeometry *physics;
+  const PhysicsGeometry *physics_;
 
  public:
   VArrayImpl_For_PhysicsBodies(const PhysicsGeometry *physics)
-      : VMutableArrayImpl<ElemT>(physics->bodies_num()), physics(physics)
+      : VMutableArrayImpl<ElemT>(physics->bodies_num()), physics_(physics)
   {
   }
 
@@ -265,18 +266,18 @@ class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
   ElemT get(const int64_t index) const override
   {
-    const int body = physics->proxies().bodies[index];
-    const Span<btRigidBody *> bodies = physics->impl().rigid_bodies;
+    const int body = physics_->proxies().bodies[index];
+    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
     return body >= 0 ? GetFunc(*bodies[body]) : ElemT();
   }
 
   void set(const int64_t index, ElemT value) override
   {
     /* VArray must only be created if the implementation is mutable. */
-    BLI_assert(physics->impl().is_mutable());
+    BLI_assert(physics_->impl().is_mutable());
     const Span<btRigidBody *> bodies =
-        const_cast<PhysicsGeometry *>(physics)->try_impl_for_write()->rigid_bodies;
-    const int body = physics->proxies().bodies[index];
+        const_cast<PhysicsGeometry *>(physics_)->try_impl_for_write()->rigid_bodies;
+    const int body = physics_->proxies().bodies[index];
     if (body >= 0) {
       SetFunc(*bodies[body], std::move(value));
     };
@@ -284,36 +285,36 @@ class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics->impl().rigid_bodies;
+    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
     mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      const int body = physics->proxies().bodies[i];
+      const int body = physics_->proxies().bodies[i];
       dst[i] = body >= 0 ? GetFunc(*bodies[body]) : ElemT();
     });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics->impl().rigid_bodies;
+    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
     mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      const int body = physics->proxies().bodies[i];
+      const int body = physics_->proxies().bodies[i];
       new (dst + i) ElemT(body >= 0 ? GetFunc(*bodies[body]) : ElemT());
     });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics->impl().rigid_bodies;
+    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      const int body = physics->proxies().bodies[i];
+      const int body = physics_->proxies().bodies[i];
       dst[pos] = body >= 0 ? GetFunc(*bodies[body]) : ElemT();
     });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics->impl().rigid_bodies;
+    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      const int body = physics->proxies().bodies[i];
+      const int body = physics_->proxies().bodies[i];
       if (body >= 0) {
         new (dst + pos) ElemT(GetFunc(*bodies[body]));
       }
@@ -324,11 +325,45 @@ class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
   }
 };
 
+/* Placeholder that ignores get/set. */
+template<typename ElemT>
+class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
+ public:
+  VArrayImpl_For_PhysicsBodiesStub(const PhysicsGeometry *physics)
+      : VMutableArrayImpl<ElemT>(physics->bodies_num())
+  {
+  }
+
+  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsBodiesStub;
+
+ private:
+  ElemT get(const int64_t /*index*/) const override
+  {
+    return ElemT();
+  }
+
+  void set(const int64_t /*index*/, ElemT /*value*/) override {}
+
+  void materialize(const IndexMask & /*mask*/, ElemT * /*dst*/) const override {}
+
+  void materialize_to_uninitialized(const IndexMask & /*mask*/, ElemT * /*dst*/) const override {}
+
+  void materialize_compressed(const IndexMask & /*mask*/, ElemT * /*dst*/) const override {}
+
+  void materialize_compressed_to_uninitialized(const IndexMask & /*mask*/,
+                                               ElemT * /*dst*/) const override
+  {
+  }
+};
+
 template<typename T, T (*GetFn)(const btRigidBody &body)>
 static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics)
 {
-  constexpr auto dummy_set_fn = [](btRigidBody & /*body*/, T /*value*/) {};
-  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, dummy_set_fn>>(physics);
+  /* Data has to be merged for valid range, otherwise check against first impl range. */
+  if (physics->has_unmerged_data()) {
+    return VArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(physics);
+  }
+  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics);
 }
 
 template<typename T,
@@ -336,6 +371,9 @@ template<typename T,
          void (*SetFn)(btRigidBody &body, T value)>
 static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics)
 {
+  if (physics->has_unmerged_data()) {
+    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(physics);
+  }
   return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(physics);
 }
 
