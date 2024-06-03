@@ -1608,7 +1608,7 @@ GLCompilerWorker::GLCompilerWorker()
   end_semaphore_ = std::make_unique<SharedSemaphore>(name + "_END", false);
   close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE", false);
 
-  subprocess_.init({"--compilation-subprocess", name.c_str()});
+  subprocess_.create({"--compilation-subprocess", name.c_str()});
 }
 
 GLCompilerWorker::~GLCompilerWorker()
