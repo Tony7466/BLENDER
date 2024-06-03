@@ -692,6 +692,11 @@ def _bl_info_from_extension(mod_name, mod_path):
     if type(value) is not str:
         print("Error: \"version\" is not a string in", filepath_toml)
         return None, filepath_toml
+    try:
+        value = tuple(int(x) for x in value.split("."))
+    except BaseException as ex:
+        print("Error:", str(ex), "in \"version\"", filepath_toml)
+        return None, filepath_toml
     bl_info["version"] = value
 
     if (value := data.get("blender_version_min", None)) is None:
