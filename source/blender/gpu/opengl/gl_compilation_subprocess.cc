@@ -4,22 +4,23 @@
 
 #include "gl_compilation_subprocess.hh"
 
-#include "BKE_appdir.hh"
-#include "BLI_fileops.hh"
-#include "BLI_hash.hh"
-#include "BLI_path_util.h"
-#include "BLI_subprocess.hh"
-#include "CLG_log.h"
-#include "GHOST_C-api.h"
-#include "GPU_context.hh"
-#include "GPU_init_exit.hh"
-#include <epoxy/gl.h>
-#include <iostream>
-#include <string>
+#ifdef BLI_SUBPROCESS_SUPPORT
 
-#ifndef _WIN32
-#  include <unistd.h>
-#endif
+#  include "BKE_appdir.hh"
+#  include "BLI_fileops.hh"
+#  include "BLI_hash.hh"
+#  include "BLI_path_util.h"
+#  include "CLG_log.h"
+#  include "GHOST_C-api.h"
+#  include "GPU_context.hh"
+#  include "GPU_init_exit.hh"
+#  include <epoxy/gl.h>
+#  include <iostream>
+#  include <string>
+
+#  ifndef _WIN32
+#    include <unistd.h>
+#  endif
 
 namespace blender::gpu {
 
@@ -127,10 +128,10 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   using namespace blender;
   using namespace blender::gpu;
 
-#ifndef _WIN32
+#  ifndef _WIN32
   /** NOTE: Technically, the parent process could have crashed before this. */
   pid_t ppid = getppid();
-#endif
+#  endif
 
   CLG_init();
 
@@ -169,9 +170,9 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
      * See https://bugreports.qt.io/browse/QTBUG-81504 */
     GHOST_ProcessEvents(ghost_system, false);
 
-#ifdef _WIN32
+#  ifdef _WIN32
     start_semaphore.decrement();
-#else
+#  else
     bool lost_parent = false;
     while (!lost_parent && !start_semaphore.try_decrement(1000)) {
       lost_parent = getppid() != ppid;
@@ -180,7 +181,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
       std::cerr << "Compilation Subprocess: Lost parent process\n";
       break;
     }
-#endif
+#  endif
 
     if (close_semaphore.try_decrement()) {
       break;
@@ -258,3 +259,5 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GHOST_DisposeGPUContext(ghost_system, ghost_context);
   GHOST_DisposeSystem(ghost_system);
 }
+
+#endif
