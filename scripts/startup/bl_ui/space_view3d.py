@@ -6550,7 +6550,10 @@ class VIEW3D_PT_view3d_properties(Panel):
         sub = sub.row(align=True)
         sub.enabled = view.use_local_camera
         sub.prop(view, "camera", text="")
-        col.prop(view.overlay, "show_camera_passepartout", text="Passepartout")
+
+        sub = col.row()
+        sub.active = view.region_3d.view_perspective == 'CAMERA'
+        sub.prop(view.overlay, "show_camera_passepartout", text="Passepartout")
 
         layout.separator()
 
