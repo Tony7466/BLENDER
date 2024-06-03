@@ -4,7 +4,9 @@
 
 #pragma once
 
-#ifdef WITH_OPENGL_BACKEND
+#include "BLI_subprocess.hh"
+
+#if defined(WITH_OPENGL_BACKEND) && defined(BLI_SUBPROCESS_SUPPORT)
 
 void GPU_compilation_subprocess_run(const char *subprocess_name);
 

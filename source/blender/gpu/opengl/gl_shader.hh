@@ -14,6 +14,7 @@
 
 #include "BLI_map.hh"
 #include "BLI_subprocess.hh"
+#include "BLI_utility_mixins.hh"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_private.hh"
@@ -212,6 +213,8 @@ class GLShader : public Shader {
   MEM_CXX_CLASS_ALLOC_FUNCS("GLShader");
 };
 
+#ifdef BLI_SUBPROCESS_SUPPORT
+
 class GLCompilerWorker {
   friend class GLShaderCompiler;
 
@@ -281,6 +284,12 @@ class GLShaderCompiler : public ShaderCompiler {
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };
+
+#else
+
+class GLShaderCompiler : public ShaderCompilerGeneric {};
+
+#endif
 
 class GLLogParser : public GPULogParser {
  public:

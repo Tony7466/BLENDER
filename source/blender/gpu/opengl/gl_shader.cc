@@ -1590,6 +1590,8 @@ GLuint GLShader::program_get()
 
 /** \} */
 
+#ifdef BLI_SUBPROCESS_SUPPORT
+
 /* -------------------------------------------------------------------- */
 /** \name Compiler workers
  * \{ */
@@ -1838,3 +1840,5 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 }
 
 /** \} */
+
+#endif

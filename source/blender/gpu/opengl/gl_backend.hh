@@ -38,6 +38,7 @@ class GLBackend : public GPUBackend {
 #ifdef WITH_RENDERDOC
   renderdoc::api::Renderdoc renderdoc_;
 #endif
+
   GLShaderCompiler compiler_;
 
  public:

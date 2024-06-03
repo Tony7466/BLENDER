@@ -6,7 +6,9 @@
 
 #include "GPU_compilation_subprocess.hh"
 
-#include "BLI_sys_types.h"
+#ifdef BLI_SUBPROCESS_SUPPORT
+
+#  include "BLI_sys_types.h"
 
 namespace blender::gpu {
 
@@ -25,3 +27,5 @@ struct ShaderBinaryHeader {
 };
 
 }  // namespace blender::gpu
+
+#endif

@@ -2,18 +2,21 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_subprocess.hh"
+
+#ifdef BLI_SUBPROCESS_SUPPORT
+
 /* Based on https://github.com/jarikomppa/ipc (Unlicense) */
 
-#include "BLI_subprocess.hh"
-#include "BLI_assert.h"
-#include "BLI_string_utf8.h"
-#include <iostream>
+#  include "BLI_assert.h"
+#  include "BLI_string_utf8.h"
+#  include <iostream>
 
-#ifdef _WIN32
+#  ifdef _WIN32
 
-#  define WIN32_LEAN_AND_MEAN
-#  include <comdef.h>
-#  include <windows.h>
+#    define WIN32_LEAN_AND_MEAN
+#    include <comdef.h>
+#    include <windows.h>
 
 namespace blender {
 
@@ -32,7 +35,7 @@ static bool check(bool result, const char *msg)
   return result;
 }
 
-#  define CHECK(result) check((result), __FUNCTION__ " : " #result)
+#    define CHECK(result) check((result), __FUNCTION__ " : " #result)
 
 bool Subprocess::create(Span<StringRefNull> args)
 {
@@ -166,17 +169,17 @@ bool SharedSemaphore::try_decrement(int wait_ms)
 
 }  // namespace blender
 
-#elif defined(__linux__)
+#  elif defined(__linux__)
 
-#  include "BLI_time.h"
-#  include "BLI_vector.hh"
-#  include <fcntl.h>
-#  include <linux/limits.h>
-#  include <stdlib.h>
-#  include <sys/mman.h>
-#  include <sys/stat.h>
-#  include <unistd.h>
-#  include <wait.h>
+#    include "BLI_time.h"
+#    include "BLI_vector.hh"
+#    include <fcntl.h>
+#    include <linux/limits.h>
+#    include <stdlib.h>
+#    include <sys/mman.h>
+#    include <sys/stat.h>
+#    include <unistd.h>
+#    include <wait.h>
 
 namespace blender {
 
@@ -197,7 +200,7 @@ static bool check(int result, const char *function, const char *msg)
   return true;
 }
 
-#  define CHECK(result) check((result), __FUNCTION__, #result)
+#    define CHECK(result) check((result), __FUNCTION__, #result)
 
 bool Subprocess::create(Span<StringRefNull> args)
 {
@@ -372,8 +375,6 @@ bool SharedSemaphore::try_decrement(int wait_ms)
 
 }  // namespace blender
 
-#else
-
-#  error Subprocess API is only supported on Windows and Linux.
+#  endif
 
 #endif

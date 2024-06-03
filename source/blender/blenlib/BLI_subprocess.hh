@@ -4,31 +4,34 @@
 
 #pragma once
 
-#if !defined(_WIN32) && !defined(__linux__)
-#  error Subprocess API is only supported on Windows and Linux.
+#if defined(_WIN32) || defined(__linux__)
+/* The Subprocess API is only supported on Windows and Linux. */
+#  define BLI_SUBPROCESS_SUPPORT
 #endif
 
-#include "BLI_span.hh"
-#include "BLI_string_ref.hh"
-#include "BLI_sys_types.h"
-#include "BLI_utility_mixins.hh"
-#include <string>
+#ifdef BLI_SUBPROCESS_SUPPORT
 
-#ifdef _WIN32
+#  include "BLI_span.hh"
+#  include "BLI_string_ref.hh"
+#  include "BLI_sys_types.h"
+#  include "BLI_utility_mixins.hh"
+#  include <string>
+
+#  ifdef _WIN32
 typedef void *HANDLE;
-#else
-#  include <semaphore.h>
-#endif
+#  else
+#    include <semaphore.h>
+#  endif
 
 namespace blender {
 
 class Subprocess : NonCopyable {
  private:
-#ifdef _WIN32
+#  ifdef _WIN32
   HANDLE handle_ = nullptr;
-#else
+#  else
   pid_t pid_ = 0;
-#endif
+#  endif
  public:
   ~Subprocess();
 
@@ -39,11 +42,11 @@ class Subprocess : NonCopyable {
 class SharedMemory : NonCopyable {
  private:
   std::string name_;
-#ifdef _WIN32
+#  ifdef _WIN32
   HANDLE handle_;
-#else
+#  else
   int handle_;
-#endif
+#  endif
   void *data_;
   size_t data_size_;
   bool is_owner_;
@@ -66,11 +69,11 @@ class SharedMemory : NonCopyable {
 class SharedSemaphore : NonCopyable {
  private:
   std::string name_;
-#if defined(_WIN32)
+#  if defined(_WIN32)
   HANDLE handle_;
-#else
+#  else
   sem_t *handle_;
-#endif
+#  endif
   bool is_owner_;
 
  public:
@@ -83,3 +86,5 @@ class SharedSemaphore : NonCopyable {
 };
 
 }  // namespace blender
+
+#endif
