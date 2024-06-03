@@ -799,13 +799,13 @@ static IndexMask get_visible_boundary_strokes(const Object &object,
       strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
 }
 
-static VArray<ColorGeometry4f> stroke_colors(const Object &object,
-                                             const bke::CurvesGeometry &curves,
-                                             const VArray<float> &opacities,
-                                             const VArray<int> materials,
-                                             const ColorGeometry4f &tint_color,
-                                             const float alpha_threshold,
-                                             const bool brush_fill_hide)
+static VArray<ColorGeometry4f> get_stroke_colors(const Object &object,
+                                                 const bke::CurvesGeometry &curves,
+                                                 const VArray<float> &opacities,
+                                                 const VArray<int> materials,
+                                                 const ColorGeometry4f &tint_color,
+                                                 const float alpha_threshold,
+                                                 const bool brush_fill_hide)
 {
   if (brush_fill_hide) {
     return VArray<ColorGeometry4f>::ForSingle(tint_color, curves.points_num());
@@ -989,6 +989,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool invert,
                                  const float2 &fill_point,
+                                 const ExtensionLines &extension_lines,
                                  const FillToolFitMethod fit_method,
                                  const int stroke_material_index,
                                  const bool keep_images)
@@ -1077,23 +1078,37 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
     const IndexMask curve_mask = get_visible_boundary_strokes(
         object, info, is_boundary_layer, curve_mask_memory);
 
-    const VArray<ColorGeometry4f> colors = stroke_colors(object,
-                                                         info.drawing.strokes(),
-                                                         opacities,
-                                                         materials,
-                                                         draw_boundary_color,
-                                                         alpha_threshold,
-                                                         brush_fill_hide);
+    const VArray<ColorGeometry4f> stroke_colors = get_stroke_colors(object,
+                                                                    info.drawing.strokes(),
+                                                                    opacities,
+                                                                    materials,
+                                                                    draw_boundary_color,
+                                                                    alpha_threshold,
+                                                                    brush_fill_hide);
 
     image_render::draw_grease_pencil_strokes(rv3d,
                                              image_size,
                                              object,
                                              info.drawing,
                                              curve_mask,
-                                             colors,
+                                             stroke_colors,
                                              layer_to_world,
                                              use_xray,
                                              radius_scale);
+
+    const IndexRange lines_range = extension_lines.starts.index_range();
+    const VArray<ColorGeometry4f> line_colors = VArray<ColorGeometry4f>::ForSingle(
+        draw_boundary_color, lines_range.size());
+    /* Extension lines already include layer transform. */
+    const float4x4 transform = float4x4::identity();
+    const float line_width = 2.0f;
+
+    image_render::draw_lines(lines_range,
+                             extension_lines.starts,
+                             extension_lines.ends,
+                             line_colors,
+                             transform,
+                             line_width);
   }
 
   image_render::clear_viewmat();

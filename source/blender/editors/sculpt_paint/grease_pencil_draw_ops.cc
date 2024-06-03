@@ -515,13 +515,8 @@ struct GreasePencilFillOpData {
   }
 };
 
-struct ExtensionLines {
-  Vector<float3> starts;
-  Vector<float3> ends;
-};
-
-static ExtensionLines grease_pencil_fill_get_extension_lines(const bContext &C,
-                                                             const GreasePencilFillOpData &op_data)
+static ed::greasepencil::ExtensionLines grease_pencil_fill_get_extension_lines(
+    const bContext &C, const GreasePencilFillOpData &op_data)
 {
   // const ARegion &region = *CTX_wm_region(&C);
   // const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
@@ -532,7 +527,7 @@ static ExtensionLines grease_pencil_fill_get_extension_lines(const bContext &C,
   const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
-  ExtensionLines result;
+  ed::greasepencil::ExtensionLines result;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -803,7 +798,8 @@ static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*
   }
 
   if (draw_extension_lines) {
-    const ExtensionLines extension_lines = grease_pencil_fill_get_extension_lines(*C, op_data);
+    const ed::greasepencil::ExtensionLines extension_lines =
+        grease_pencil_fill_get_extension_lines(*C, op_data);
     const IndexRange lines = extension_lines.starts.index_range();
     const VArray<ColorGeometry4f> colors = VArray<ColorGeometry4f>::ForSingle(
         extension_lines_color, lines.size());
@@ -811,10 +807,8 @@ static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*
     const float4x4 transform = float4x4::identity();
     const float line_width = 2.0f;
 
-    for (const int i : lines) {
-      ed::greasepencil::image_render::draw_lines(
-          lines, extension_lines.starts, extension_lines.ends, colors, transform, line_width);
-    }
+    ed::greasepencil::image_render::draw_lines(
+        lines, extension_lines.starts, extension_lines.ends, colors, transform, line_width);
   }
 }
 
@@ -878,6 +872,9 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   for (const FillToolTargetInfo &info : target_drawings) {
     const Layer &layer = *grease_pencil.layers()[info.target.layer_index];
 
+    ed::greasepencil::ExtensionLines extension_lines = grease_pencil_fill_get_extension_lines(
+        C, op_data);
+
     bke::CurvesGeometry fill_curves = fill_strokes(view_context,
                                                    brush,
                                                    scene,
@@ -886,6 +883,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
                                                    info.sources,
                                                    op_data.invert,
                                                    mouse_position,
+                                                   extension_lines,
                                                    fit_method,
                                                    op_data.material_index,
                                                    keep_images);

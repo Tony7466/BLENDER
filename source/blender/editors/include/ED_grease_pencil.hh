@@ -434,6 +434,11 @@ enum FillToolFitMethod {
   FitToView,
 };
 
+struct ExtensionLines {
+  Vector<float3> starts;
+  Vector<float3> ends;
+};
+
 /**
  * Fill tool for generating strokes in empty areas.
  *
@@ -458,6 +463,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  Span<DrawingInfo> src_drawings,
                                  bool invert,
                                  const float2 &fill_point,
+                                 const ExtensionLines &extension_lines,
                                  FillToolFitMethod fit_method,
                                  int stroke_material_index,
                                  bool keep_images);
