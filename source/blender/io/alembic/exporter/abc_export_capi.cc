@@ -99,6 +99,7 @@ static void export_startjob(void *customdata, wmJobWorkerStatus *worker_status)
   SubdivModifierDisabler subdiv_disabler(data->depsgraph);
   if (!data->params.apply_subdiv) {
     subdiv_disabler.disable_modifiers();
+    BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
   }
 
   /* For restoring the current frame after exporting animation is done. */
