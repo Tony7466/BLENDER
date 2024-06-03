@@ -353,13 +353,13 @@ static void versioning_eevee_shadow_settings(Object *object)
 struct AlphaSource {
   enum AlphaState {
     /* Alpha input is 0. */
-    OPAQUE,
+    ALPHA_OPAQUE = 0,
     /* Alpha input is 1. */
-    FULLY_TRANSPARENT,
+    ALPHA_FULLY_TRANSPARENT,
     /* Alpha is between 0 and 1, from a graph input or the result of one blending operation. */
-    SEMI_TRANSPARENT,
+    ALPHA_SEMI_TRANSPARENT,
     /* Alpha is unknown and the result of more than one blending operation. */
-    COMPLEX_MIX
+    ALPHA_COMPLEX_MIX
   };
 
   /* Socket that is the source of the potential semi-transparency. */
@@ -371,40 +371,40 @@ struct AlphaSource {
 
   static AlphaSource alpha_source(bNodeSocket *fac, bool inverted = false)
   {
-    return {fac, SEMI_TRANSPARENT, inverted};
+    return {fac, ALPHA_SEMI_TRANSPARENT, inverted};
   }
   static AlphaSource opaque()
   {
-    return {nullptr, OPAQUE, false};
+    return {nullptr, ALPHA_OPAQUE, false};
   }
   static AlphaSource fully_transparent(bNodeSocket *socket = nullptr, bool inverted = false)
   {
-    return {socket, FULLY_TRANSPARENT, inverted};
+    return {socket, ALPHA_FULLY_TRANSPARENT, inverted};
   }
   static AlphaSource complex_alpha()
   {
-    return {nullptr, COMPLEX_MIX, false};
+    return {nullptr, ALPHA_COMPLEX_MIX, false};
   }
 
   bool is_opaque() const
   {
-    return state == OPAQUE;
+    return state == ALPHA_OPAQUE;
   }
   bool is_fully_transparent() const
   {
-    return state == FULLY_TRANSPARENT;
+    return state == ALPHA_FULLY_TRANSPARENT;
   }
   bool is_transparent() const
   {
-    return state != OPAQUE;
+    return state != ALPHA_OPAQUE;
   }
   bool is_semi_transparent() const
   {
-    return state == SEMI_TRANSPARENT;
+    return state == ALPHA_SEMI_TRANSPARENT;
   }
   bool is_complex() const
   {
-    return state == COMPLEX_MIX;
+    return state == ALPHA_COMPLEX_MIX;
   }
 
   /* Combine two source together with a blending parameter. */
