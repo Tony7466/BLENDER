@@ -437,6 +437,18 @@ class Binding : public ::ActionBinding {
   /** Return whether this Binding has an `idtype` set. */
   bool has_idtype() const;
 
+  /* Flags access. */
+  enum class Flags : uint8_t {
+    Expanded = (1 << 0), /** Expanded/collapsed in animation editors. */
+    Selected = (1 << 1), /** Selected in animation editors. */
+    /* When adding/removing a flag, also update the ENUM_OPERATORS() invocation below. */
+  };
+  Flags flags() const;
+  bool is_expanded() const;
+  void set_expanded(bool expanded);
+  bool is_selected() const;
+  void set_selected(bool selected);
+
  protected:
   friend Action;
 
@@ -450,6 +462,7 @@ class Binding : public ::ActionBinding {
 };
 static_assert(sizeof(Binding) == sizeof(::ActionBinding),
               "DNA struct and its C++ wrapper must have the same size");
+ENUM_OPERATORS(Binding::Flags, Binding::Flags::Selected);
 
 /**
  * KeyframeStrips effectively contain a bag of F-Curves for each Binding.

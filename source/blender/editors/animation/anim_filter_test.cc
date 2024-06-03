@@ -25,7 +25,7 @@
 #include "testing/testing.h"
 
 namespace blender::animrig::tests {
-class AnimationFilterTest : public testing::Test {
+class ActionFilterTest : public testing::Test {
  public:
   Main *bmain;
   Action *action;
@@ -63,7 +63,7 @@ class AnimationFilterTest : public testing::Test {
   }
 };
 
-TEST_F(AnimationFilterTest, animation_datablock_fcurves)
+TEST_F(ActionFilterTest, animation_datablock_fcurves)
 {
   Binding &bind_cube = action->binding_add();
   Binding &bind_suzanne = action->binding_add();
@@ -115,13 +115,13 @@ TEST_F(AnimationFilterTest, animation_datablock_fcurves)
     EXPECT_EQ(2, BLI_listbase_count(&anim_data));
 
     const bAnimListElem *first_ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 0));
-    EXPECT_EQ(&cube->id, first_ale->id) << "id should be the animated ID";
-    EXPECT_EQ(cube->adt, first_ale->adt) << "adt should be the animated ID's animation data";
-    EXPECT_EQ(&action->id, first_ale->fcurve_owner_id)
-        << "fcurve_owner_id should be the Animation";
-    EXPECT_EQ(&action->id, first_ale->key_data) << "key_data should be the Animation";
     EXPECT_EQ(ANIMTYPE_ACTION_BINDING, first_ale->type);
     EXPECT_EQ(ALE_ACTION_BINDING, first_ale->datatype);
+    EXPECT_EQ(&cube->id, first_ale->id) << "id should be the animated ID (" << cube->id.name
+                                        << ") but is (" << first_ale->id->name << ")";
+    EXPECT_EQ(cube->adt, first_ale->adt) << "adt should be the animated ID's animation data";
+    EXPECT_EQ(&action->id, first_ale->fcurve_owner_id) << "fcurve_owner_id should be the Action";
+    EXPECT_EQ(&action->id, first_ale->key_data) << "key_data should be the Action";
     EXPECT_EQ(&bind_cube, first_ale->data);
     EXPECT_EQ(bind_cube.binding_flags, first_ale->flag);
 

@@ -1140,6 +1140,10 @@ typedef struct ActionBinding {
    */
   int32_t handle;
 
+  /** \see #blender::animrig::Binding::flags() */
+  int8_t binding_flags;
+  uint8_t _pad1[3];
+
 #ifdef __cplusplus
   blender::animrig::Binding &wrap();
   const blender::animrig::Binding &wrap() const;

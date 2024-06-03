@@ -145,6 +145,18 @@ struct bAnimListElem {
   int flag;
   /** for un-named data, the index of the data in its collection */
   int index;
+  /**
+   * For data that is owned by a specific binding, its handle.
+   *
+   * This is not declared as blender::animrig::binding_handle_t to avoid all the users of this
+   * header file to get the animrig module as extra dependency (which would spread to the undo
+   * system, lineart, etc). It's probably best to split off this struct definition from the rest of
+   * this header, as most code that uses this header doesn't need to know the definition of this
+   * struct.
+   *
+   * TODO: split off into separate header file.
+   */
+  int32_t binding_handle;
 
   /** (eAnim_Update_Flags)  tag the element for updating */
   char update;

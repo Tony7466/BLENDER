@@ -672,6 +672,16 @@ static bAnimListElem *make_new_animlistelem(void *data,
         ale->datatype = ALE_ACTION_LAYERED;
         break;
       }
+      case ANIMTYPE_ACTION_BINDING: {
+        animrig::Binding *binding = static_cast<animrig::Binding *>(data);
+        ale->flag = binding->binding_flags;
+
+        BLI_assert_msg(GS(fcurve_owner_id->name) == ID_AC, "fcurve_owner_id should be an Action");
+        /* ale->data = the binding itself, key_data = the Action. */
+        ale->key_data = fcurve_owner_id;
+        ale->datatype = ALE_ACTION_BINDING;
+        break;
+      }
       case ANIMTYPE_FILLACTD: {
         bAction *act = (bAction *)data;
 
@@ -1288,12 +1298,16 @@ static size_t animfilter_fcurves(ListBase *anim_data,
 static size_t animfilter_fcurves_span(ListBase * /*bAnimListElem*/ anim_data,
                                       bDopeSheet * /*ads*/,
                                       Span<FCurve *> fcurves,
+                                      const animrig::binding_handle_t binding_handle,
                                       const int filter_mode,
                                       ID *owner_id,
                                       ID *fcurve_owner_id)
 {
   size_t num_items = 0;
   BLI_assert(owner_id);
+
+  const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
+  const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
 
   for (FCurve *fcu : fcurves) {
     /* make_new_animlistelem will return nullptr when fcu == nullptr, and that's
@@ -1307,8 +1321,19 @@ static size_t animfilter_fcurves_span(ListBase * /*bAnimListElem*/ anim_data,
       /* Found an animation channel, which is good enough for the 'TMP_PEEK' mode. */
       return 1;
     }
+    if (selection_matters && bool(fcu->flag & FCURVE_SELECTED) != must_be_selected) {
+      continue;
+    }
 
     bAnimListElem *ale = make_new_animlistelem(fcu, ANIMTYPE_FCURVE, owner_id, fcurve_owner_id);
+
+    /* bAnimListElem::binding_handle is exposed as int32_t and not as binding_handle_t, so better
+     * ensure that these are still equivalent.
+     * TODO: move to another part of the code. */
+    static_assert(
+        std::is_same_v<decltype(ActionBinding::handle), decltype(bAnimListElem::binding_handle)>);
+    ale->binding_handle = binding_handle;
+
     BLI_addtail(anim_data, ale);
     num_items++;
   }
@@ -1411,12 +1436,52 @@ static size_t animfilter_act_group(bAnimContext *ac,
   return items;
 }
 
+/**
+ * Add a channel for each Binding, with their FCurves when the Binding is expanded.
+ */
+static size_t animfilter_action_bindings(ListBase *anim_data,
+                                         bDopeSheet *ads,
+                                         animrig::Action &action,
+                                         const eAnimFilter_Flags filter_mode,
+                                         ID *owner_id)
+{
+  /* Don't include anything from this animation if it is linked in from another
+   * file, and we're getting stuff for editing... */
+  if ((filter_mode & ANIMFILTER_FOREDIT) &&
+      (ID_IS_LINKED(&action) || ID_IS_OVERRIDE_LIBRARY(&action)))
+  {
+    return 0;
+  }
+
+  const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
+  const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
+
+  int num_items = 0;
+  for (animrig::Binding *binding : action.bindings()) {
+    /* Add a list element for the Binding itself. */
+    if (!selection_matters || binding->is_selected() == must_be_selected) {
+      bAnimListElem *ale = make_new_animlistelem(
+          binding, ANIMTYPE_ACTION_BINDING, owner_id, &action.id);
+      BLI_addtail(anim_data, ale);
+      num_items++;
+    }
+
+    if (binding->is_expanded()) {
+      Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding->handle);
+      num_items += animfilter_fcurves_span(
+          anim_data, ads, fcurves, binding->handle, filter_mode, owner_id, &action.id);
+    }
+  }
+
+  return num_items;
+}
+
 static size_t animfilter_action(bAnimContext *ac,
                                 ListBase *anim_data,
                                 bDopeSheet *ads,
                                 animrig::Action &action,
                                 const animrig::binding_handle_t binding_handle,
-                                const int filter_mode,
+                                const eAnimFilter_Flags filter_mode,
                                 ID *owner_id)
 {
   FCurve *lastchan = nullptr;
@@ -1458,8 +1523,12 @@ static size_t animfilter_action(bAnimContext *ac,
   }
 
   /* For now we don't show layers anywhere, just the contained F-Curves. */
-  Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding_handle);
-  return animfilter_fcurves_span(anim_data, ads, fcurves, filter_mode, owner_id, &action.id);
+  // Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding_handle);
+  // return animfilter_fcurves_span(
+  //     anim_data, ads, fcurves, binding_handle, filter_mode, owner_id, &action.id);
+
+  // TODO: determine what to do with the `binding_handle` parameter.
+  return animfilter_action_bindings(anim_data, ads, action, filter_mode, owner_id);
 }
 
 /* Include NLA-Data for NLA-Editor:
@@ -1654,12 +1723,22 @@ static size_t animfilter_block_data(
           items += animfilter_nla_controls(anim_data, ads, adt, filter_mode, id);
         },
         { /* Keyframes from legacy Action. */
-          items += animfilter_action(
-              ac, anim_data, ads, adt->action->wrap(), adt->binding_handle, filter_mode, id);
+          items += animfilter_action(ac,
+                                     anim_data,
+                                     ads,
+                                     adt->action->wrap(),
+                                     adt->binding_handle,
+                                     eAnimFilter_Flags(filter_mode),
+                                     id);
         },
         { /* Keyframes from layered Action. */
-          items += animfilter_action(
-              ac, anim_data, ads, adt->action->wrap(), adt->binding_handle, filter_mode, id);
+          items += animfilter_action(ac,
+                                     anim_data,
+                                     ads,
+                                     adt->action->wrap(),
+                                     adt->binding_handle,
+                                     eAnimFilter_Flags(filter_mode),
+                                     id);
         });
   }
 
@@ -1744,7 +1823,7 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
                                   nullptr,
                                   key->adt->action->wrap(),
                                   key->adt->binding_handle,
-                                  filter_mode,
+                                  eAnimFilter_Flags(filter_mode),
                                   (ID *)key);
       }
     }
@@ -3682,9 +3761,9 @@ static size_t animdata_filter_remove_duplis(ListBase *anim_data)
 
 size_t ANIM_animdata_filter(bAnimContext *ac,
                             ListBase *anim_data,
-                            eAnimFilter_Flags filter_mode,
+                            const eAnimFilter_Flags filter_mode,
                             void *data,
-                            eAnimCont_Types datatype)
+                            const eAnimCont_Types datatype)
 {
   if (!data || !anim_data) {
     return 0;
@@ -3700,6 +3779,7 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
       bDopeSheet *ads = (saction) ? &saction->ads : nullptr;
 
       /* specially check for AnimData filter, see #36687. */
+      /* TODO: see how this interacts with the new layered Actions. */
       if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
         /* all channels here are within the same AnimData block, hence this special case */
         if (LIKELY(obact->adt)) {
