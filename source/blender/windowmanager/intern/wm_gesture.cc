@@ -72,10 +72,10 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
     }
   }
   else if (ELEM(type, WM_GESTURE_LINES, WM_GESTURE_LASSO)) {
-    short *lasso;
+    float *lasso;
     gesture->points_alloc = 1024;
-    gesture->customdata = lasso = static_cast<short int *>(
-        MEM_mallocN(sizeof(short[2]) * gesture->points_alloc, "lasso points"));
+    gesture->customdata = lasso = static_cast<float *>(
+        MEM_mallocN(sizeof(float[2]) * gesture->points_alloc, "lasso points"));
     lasso[0] = xy[0] - gesture->winrct.xmin;
     lasso[1] = xy[1] - gesture->winrct.ymin;
     gesture->points = 1;
@@ -300,7 +300,7 @@ static void draw_filled_lasso_px_cb(int x, int x_end, int y, void *user_data)
 
 static void draw_filled_lasso(wmGesture *gt)
 {
-  const short *lasso = (short *)gt->customdata;
+  const float *lasso = (float *)gt->customdata;
   const int mcoords_len = gt->points;
   Array<int2> mcoords(mcoords_len);
   int i;
@@ -355,9 +355,9 @@ static void draw_filled_lasso(wmGesture *gt)
  * tool, and this common logic. */
 static void draw_lasso_smooth_stroke_indicator(wmGesture *gt, const uint shdr_pos)
 {
-  short(*lasso)[2] = static_cast<short int(*)[2]>(gt->customdata);
-  short last_x = lasso[gt->points - 1][0];
-  short last_y = lasso[gt->points - 1][1];
+  float(*lasso)[2] = static_cast<float(*)[2]>(gt->customdata);
+  float last_x = lasso[gt->points - 1][0];
+  float last_y = lasso[gt->points - 1][1];
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_line_smooth(true);
@@ -392,7 +392,7 @@ static void draw_lasso_smooth_stroke_indicator(wmGesture *gt, const uint shdr_po
 
 static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
 {
-  const short *lasso = (short *)gt->customdata;
+  const float *lasso = (float *)gt->customdata;
   int i;
 
   if (filled) {
@@ -424,7 +424,7 @@ static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)
   immBegin((gt->type == WM_GESTURE_LASSO) ? GPU_PRIM_LINE_LOOP : GPU_PRIM_LINE_STRIP, numverts);
 
   for (i = 0; i < gt->points; i++, lasso += 2) {
-    immVertex2f(shdr_pos, float(lasso[0]), float(lasso[1]));
+    immVertex2f(shdr_pos, lasso[0], lasso[1]);
   }
 
   immEnd();

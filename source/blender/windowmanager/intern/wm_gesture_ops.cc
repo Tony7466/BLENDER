@@ -536,7 +536,7 @@ static int gesture_lasso_apply(bContext *C, wmOperator *op)
   PointerRNA itemptr;
   float loc[2];
   int i;
-  const short *lasso = static_cast<const short int *>(gesture->customdata);
+  const float *lasso = static_cast<const float *>(gesture->customdata);
 
   /* Operator storage as path. */
 
@@ -583,11 +583,11 @@ int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
         if (gesture->points == gesture->points_alloc) {
           gesture->points_alloc *= 2;
           gesture->customdata = MEM_reallocN(gesture->customdata,
-                                             sizeof(short[2]) * gesture->points_alloc);
+                                             sizeof(float[2]) * gesture->points_alloc);
         }
 
         {
-          short(*lasso)[2] = static_cast<short int(*)[2]>(gesture->customdata);
+          float(*lasso)[2] = static_cast<float(*)[2]>(gesture->customdata);
           const float2 current_mouse_position = float2(gesture->mval);
           const float2 last_position(lasso[gesture->points - 1][0], lasso[gesture->points - 1][1]);
 
@@ -602,9 +602,10 @@ int WM_gesture_lasso_modal(bContext *C, wmOperator *op, const wmEvent *event)
             }
           }
           else if (gesture->use_smooth) {
-            if (dist_squared > square_f(radius * UI_SCALE_FAC)) {
+            const float radius_squared = square_f(radius);
+            if (dist_squared > square_f(radius)) {
               float2 result = blender::math::interpolate(
-                  last_position, current_mouse_position, factor);
+                  current_mouse_position, last_position, factor);
 
               lasso[gesture->points][0] = result.x;
               lasso[gesture->points][1] = result.y;
