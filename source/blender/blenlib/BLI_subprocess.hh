@@ -71,9 +71,10 @@ class SharedSemaphore : NonCopyable {
 #else
   sem_t *handle_;
 #endif
+  bool is_owner_;
 
  public:
-  SharedSemaphore(std::string name);
+  SharedSemaphore(std::string name, bool is_owner);
   ~SharedSemaphore();
 
   void increment();

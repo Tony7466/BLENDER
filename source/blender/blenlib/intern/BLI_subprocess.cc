@@ -130,7 +130,8 @@ SharedMemory::~SharedMemory()
   }
 }
 
-SharedSemaphore::SharedSemaphore(std::string name) : name_(name)
+SharedSemaphore::SharedSemaphore(std::string name, bool is_owner)
+    : name_(name), is_owner_(is_owner)
 {
   handle_ = CreateSemaphoreA(NULL, 0, 1, name.c_str());
   CHECK(handle_);
@@ -292,7 +293,8 @@ SharedMemory::~SharedMemory()
   }
 }
 
-SharedSemaphore::SharedSemaphore(std::string name) : name_(name)
+SharedSemaphore::SharedSemaphore(std::string name, bool is_owner)
+    : name_(name), is_owner_(is_owner)
 {
   handle_ = sem_open(name.c_str(), O_CREAT, 0700, 0);
   if (!handle_) {
@@ -304,7 +306,9 @@ SharedSemaphore::~SharedSemaphore()
 {
   if (handle_) {
     CHECK(sem_close(handle_));
-    CHECK(sem_unlink(name_.c_str()));
+    if (is_owner_) {
+      CHECK(sem_unlink(name_.c_str()));
+    }
   }
 }
 

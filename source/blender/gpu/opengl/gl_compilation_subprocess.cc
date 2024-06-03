@@ -119,9 +119,9 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
               << "\n";
     return;
   }
-  SharedSemaphore start_semaphore(name + "_START");
-  SharedSemaphore end_semaphore(name + "_END");
-  SharedSemaphore close_semaphore(name + "_CLOSE");
+  SharedSemaphore start_semaphore(name + "_START", true);
+  SharedSemaphore end_semaphore(name + "_END", true);
+  SharedSemaphore close_semaphore(name + "_CLOSE", true);
 
   GHOST_SystemHandle ghost_system = GHOST_CreateSystemBackground();
   BLI_assert(ghost_system);
