@@ -752,12 +752,15 @@ typedef struct Intersection {
   int type;
 } Intersection;
 
-/* On certain GPUs (Apple Silicon), splitting every integrator state field into its own separate
- * array can be detrimental for cache utilisation. By enabling __INTEGRATOR_GPU_PACKED_STATE__, we
- * specify that certain fields should be packed together. This improves cache hit ratios in cases
- * where fields are often accessed together (e.g. "ray" and "isect").
+/* On certain GPUs (Apple Silicon, Intel with recent SYCL), splitting every integrator state field
+ * into its own separate array can be detrimental for cache utilisation. By enabling
+ * __INTEGRATOR_GPU_PACKED_STATE__, we specify that certain fields should be packed together. This
+ * improves cache hit ratios in cases where fields are often accessed together (e.g. "ray" and
+ * "isect").
+ * This definition must be visible on host side.
  */
-#if defined(TARGET_CPU_ARM64) || defined(__KERNEL_METAL_APPLE__)
+#if !defined(__KERNEL_GPU__) || defined(__KERNEL_METAL_APPLE__) || \
+    (defined(__KERNEL_ONEAPI__) && __LIBSYCL_MAJOR_VERSION >= 7)
 #  define __INTEGRATOR_GPU_PACKED_STATE__
 
 /* Generate packed layouts for structs declared with KERNEL_STRUCT_BEGIN_PACKED. For example the

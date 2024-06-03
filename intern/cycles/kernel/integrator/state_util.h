@@ -16,12 +16,15 @@ ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
                                                        ccl_private const Ray *ccl_restrict ray)
 {
 #if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
+#  ifdef __KERNEL_METAL_APPLE__
   static_assert(sizeof(ray->P) == sizeof(float4), "Bad assumption about float3 padding");
   /* dP and dP are packed based on the assumption that float3 is padded to 16 bytes.
    * This assumption hold trues on Metal, but not CUDA.
    */
   ((ccl_private float4 &)ray->P).w = ray->dP;
   ((ccl_private float4 &)ray->D).w = ray->dD;
+#  endif
+
   INTEGRATOR_STATE_WRITE(state, ray, packed) = (ccl_private packed_ray &)*ray;
 
   /* Ensure that we can correctly cast between Ray and the generated packed_ray struct. */
@@ -35,10 +38,17 @@ ccl_device_forceinline void integrator_state_write_ray(IntegratorState state,
                 "Generated packed_ray struct is misaligned with Ray struct");
   static_assert(offsetof(packed_ray, time) == offsetof(Ray, time),
                 "Generated packed_ray struct is misaligned with Ray struct");
-  static_assert(offsetof(packed_ray, dP) == 12 + offsetof(Ray, P),
+#  ifdef __KERNEL_METAL_APPLE__
+  static_assert(offsetof(packed_ray, dP) == 12 + offsetof(Ray, dP),
                 "Generated packed_ray struct is misaligned with Ray struct");
-  static_assert(offsetof(packed_ray, dD) == 12 + offsetof(Ray, D),
+  static_assert(offsetof(packed_ray, dD) == 12 + offsetof(Ray, dD),
                 "Generated packed_ray struct is misaligned with Ray struct");
+#  else
+  static_assert(offsetof(packed_ray, dP) == offsetof(Ray, dP),
+                "Generated packed_ray struct is misaligned with Ray struct");
+  static_assert(offsetof(packed_ray, dD) == offsetof(Ray, dD),
+                "Generated packed_ray struct is misaligned with Ray struct");
+#  endif
 #else
   INTEGRATOR_STATE_WRITE(state, ray, P) = ray->P;
   INTEGRATOR_STATE_WRITE(state, ray, D) = ray->D;
@@ -54,9 +64,11 @@ ccl_device_forceinline void integrator_state_read_ray(ConstIntegratorState state
                                                       ccl_private Ray *ccl_restrict ray)
 {
 #if defined(__INTEGRATOR_GPU_PACKED_STATE__) && defined(__KERNEL_GPU__)
-  *((ccl_private packed_ray *)ray) = INTEGRATOR_STATE(state, ray, packed);
+#  ifdef __KERNEL_METAL_APPLE__
   ray->dP = ((ccl_private float4 &)ray->P).w;
   ray->dD = ((ccl_private float4 &)ray->D).w;
+#  endif
+  *((ccl_private packed_ray *)ray) = INTEGRATOR_STATE(state, ray, packed);
 #else
   ray->P = INTEGRATOR_STATE(state, ray, P);
   ray->D = INTEGRATOR_STATE(state, ray, D);
