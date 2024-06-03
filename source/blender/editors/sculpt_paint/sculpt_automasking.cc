@@ -590,7 +590,6 @@ float factor_get(const Cache *automasking,
 
 static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int vert)
 {
-  using namespace blender::ed::sculpt_paint;
   if (orig_data.unode->type == undo::Type::Position) {
     orig_data.co = orig_data.coords[vert];
     orig_data.no = orig_data.normals[vert];
