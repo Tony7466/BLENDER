@@ -346,14 +346,12 @@ static void versioning_eevee_shadow_settings(Object *object)
 
 /**
  * Represents a source of transparency inside the closure part of a material node-tree.
- * A source can be in 3 state, opaque, semi-transparent
- * Sources can be combined together. We only keep track of one
+ * Sources can be combined together down the tree to figure out where the source of the alpha is.
+ * If there is multiple alpha source, we consider the tree as having complex alpha and don't do the
+ * versioning.
  */
 struct AlphaSource {
-  /* Socket that is the source of the potential semi-transparency. */
-  bNodeSocket *socket = nullptr;
-
-  enum State {
+  enum AlphaState {
     /* Alpha input is 0. */
     OPAQUE,
     /* Alpha input is 1. */
@@ -361,8 +359,13 @@ struct AlphaSource {
     /* Alpha is between 0 and 1, from a graph input or the result of one blending operation. */
     SEMI_TRANSPARENT,
     /* Alpha is unknown and the result of more than one blending operation. */
-    COMPLEX
-  } state;
+    COMPLEX_MIX
+  };
+
+  /* Socket that is the source of the potential semi-transparency. */
+  bNodeSocket *socket = nullptr;
+  /* State of the source. */
+  AlphaState state;
   /* True if socket is transparency instead of alpha (e.g: `1-alpha`). */
   bool is_transparency = false;
 
@@ -380,7 +383,7 @@ struct AlphaSource {
   }
   static AlphaSource complex_alpha()
   {
-    return {nullptr, COMPLEX, false};
+    return {nullptr, COMPLEX_MIX, false};
   }
 
   bool is_opaque() const
@@ -389,7 +392,7 @@ struct AlphaSource {
   }
   bool is_fully_transparent() const
   {
-    return state == OPAQUE;
+    return state == FULLY_TRANSPARENT;
   }
   bool is_transparent() const
   {
@@ -401,7 +404,7 @@ struct AlphaSource {
   }
   bool is_complex() const
   {
-    return state == COMPLEX;
+    return state == COMPLEX_MIX;
   }
 
   /* Combine two source together with a blending parameter. */
