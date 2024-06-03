@@ -12,8 +12,8 @@
 #include "session/buffers.h"
 #include "util/array.h"
 #include "util/log.h"
-#include "util/path.h"
 #include "util/openimagedenoise.h"
+#include "util/path.h"
 
 #include "kernel/device/cpu/compat.h"
 #include "kernel/device/cpu/kernel.h"
