@@ -231,6 +231,37 @@ class DATA_PT_camera(CameraButtonsPanel, Panel):
             sub.prop(cam, "sensor_height", text="Height")
 
 
+class DATA_PT_camera_animation(CameraButtonsPanel, Panel):
+    bl_label = "Animation"
+    # bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+    }
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        camera = context.camera
+        adt = camera.animation_data
+        if not adt:
+            # TODO: show Action selector.
+            return
+
+        col = layout.column(align=True)
+        col.template_ID(adt, 'action')
+        if adt.action and adt.action.is_action_layered:
+            col.template_search(
+                adt, "action_binding",
+                adt, "action_bindings",
+                new="",
+                unlink="anim.binding_unassign_object",
+            )
+
+
 class DATA_PT_camera_dof(CameraButtonsPanel, Panel):
     bl_label = "Depth of Field"
     bl_options = {'DEFAULT_CLOSED'}
@@ -576,6 +607,7 @@ classes = (
     CAMERA_PT_presets,
     CAMERA_PT_safe_areas_presets,
     DATA_PT_context_camera,
+    DATA_PT_camera_animation,
     DATA_PT_lens,
     DATA_PT_camera_dof,
     DATA_PT_camera_dof_aperture,
