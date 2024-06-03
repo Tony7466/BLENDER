@@ -162,45 +162,6 @@ class NWMergeMixMenu(Menu, NWBaseMenu):
             props.merge_type = 'MIX'
 
 
-class NWConnectionListOutputs(Menu, NWBaseMenu):
-    bl_idname = "NODE_MT_nw_connection_list_out"
-    bl_label = "From:"
-
-    def draw(self, context):
-        layout = self.layout
-        nodes, links = get_nodes_links(context)
-
-        n1 = nodes[context.scene.NWLazySource]
-        for index, output in enumerate(n1.outputs):
-            # Only show sockets that are exposed.
-            if output.enabled:
-                layout.operator(
-                    operators.NWCallInputsMenu.bl_idname,
-                    text=output.name,
-                    icon="RADIOBUT_OFF").from_socket = index
-
-
-class NWConnectionListInputs(Menu, NWBaseMenu):
-    bl_idname = "NODE_MT_nw_connection_list_in"
-    bl_label = "To:"
-
-    def draw(self, context):
-        layout = self.layout
-        nodes, links = get_nodes_links(context)
-
-        n2 = nodes[context.scene.NWLazyTarget]
-
-        for index, input in enumerate(n2.inputs):
-            # Only show sockets that are exposed.
-            # This prevents, for example, the scale value socket
-            # of the vector math node being added to the list when
-            # the mode is not 'SCALE'.
-            if input.enabled:
-                op = layout.operator(operators.NWMakeLink.bl_idname, text=input.name, icon="FORWARD")
-                op.from_socket = context.scene.NWSourceSocket
-                op.to_socket = index
-
-
 class NWMergeMathMenu(Menu, NWBaseMenu):
     bl_idname = "NODE_MT_nw_merge_math_menu"
     bl_label = "Merge Selected Nodes using Math"
@@ -453,8 +414,6 @@ classes = (
     NWMergeGeometryMenu,
     NWMergeShadersMenu,
     NWMergeMixMenu,
-    NWConnectionListOutputs,
-    NWConnectionListInputs,
     NWMergeMathMenu,
     NWBatchChangeNodesMenu,
     NWBatchChangeBlendTypeMenu,

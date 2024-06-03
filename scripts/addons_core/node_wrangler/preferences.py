@@ -337,11 +337,6 @@ kmi_defs = (
     (operators.NWReloadImages.bl_idname, 'R', 'PRESS', False, False, True, None, "Reload images"),
     # Lazy Mix
     (operators.NWLazyMix.bl_idname, 'RIGHTMOUSE', 'PRESS', True, True, False, None, "Lazy Mix"),
-    # Lazy Connect
-    (operators.NWLazyConnect.bl_idname, 'RIGHTMOUSE', 'PRESS', False, False, True, (('with_menu', False),), "Lazy Connect"),
-    # Lazy Connect with Menu
-    (operators.NWLazyConnect.bl_idname, 'RIGHTMOUSE', 'PRESS', False,
-     True, True, (('with_menu', True),), "Lazy Connect with Socket Menu"),
     # Align Nodes
     (operators.NWAlignNodes.bl_idname, 'EQUAL', 'PRESS', False, True,
      False, None, "Align selected nodes neatly in a row/column"),

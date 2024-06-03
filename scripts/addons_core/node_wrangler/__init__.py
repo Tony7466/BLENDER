@@ -40,10 +40,6 @@ def register():
         name="Lazy Target!",
         default="x",
         description="An internal property used to store the last node in a Lazy Connect operation")
-    bpy.types.Scene.NWSourceSocket = IntProperty(
-        name="Source Socket!",
-        default=0,
-        description="An internal property used to store the source socket in a Lazy Connect operation")
 
     operators.register()
     interface.register()
@@ -59,4 +55,3 @@ def unregister():
     del bpy.types.Scene.NWBusyDrawing
     del bpy.types.Scene.NWLazySource
     del bpy.types.Scene.NWLazyTarget
-    del bpy.types.Scene.NWSourceSocket

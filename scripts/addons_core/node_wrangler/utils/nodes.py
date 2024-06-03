@@ -31,45 +31,6 @@ def node_mid_pt(node, axis):
     return d
 
 
-def autolink(node1, node2, links):
-    available_inputs = [inp for inp in node2.inputs if inp.enabled]
-    available_outputs = [outp for outp in node1.outputs if outp.enabled]
-    for outp in available_outputs:
-        for inp in available_inputs:
-            if not inp.is_linked and inp.name == outp.name:
-                connect_sockets(outp, inp)
-                return True
-
-    for outp in available_outputs:
-        for inp in available_inputs:
-            if not inp.is_linked and inp.type == outp.type:
-                connect_sockets(outp, inp)
-                return True
-
-    # force some connection even if the type doesn't match
-    if available_outputs:
-        for inp in available_inputs:
-            if not inp.is_linked:
-                connect_sockets(available_outputs[0], inp)
-                return True
-
-    # even if no sockets are open, force one of matching type
-    for outp in available_outputs:
-        for inp in available_inputs:
-            if inp.type == outp.type:
-                connect_sockets(outp, inp)
-                return True
-
-    # do something!
-    for outp in available_outputs:
-        for inp in available_inputs:
-            connect_sockets(outp, inp)
-            return True
-
-    print("Could not make a link from " + node1.name + " to " + node2.name)
-    return False
-
-
 def abs_node_location(node):
     abs_location = node.location
     if node.parent is None:

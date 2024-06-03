@@ -22,12 +22,10 @@ from glob import glob
 from copy import copy
 from itertools import chain
 
-from .interface import NWConnectionListInputs, NWConnectionListOutputs
-
 from .utils.constants import blend_types, geo_combine_operations, operations, navs, get_texture_node_types, rl_outputs
 from .utils.draw import draw_callback_nodeoutline
 from .utils.paths import match_files_to_socket_names, split_into_components
-from .utils.nodes import (node_mid_pt, autolink, node_at_pos, get_nodes_links,
+from .utils.nodes import (node_mid_pt, node_at_pos, get_nodes_links,
                           get_group_output_node, get_output_location, force_update, get_internal_socket, nw_check,
                           nw_check_not_empty, nw_check_selected, nw_check_active, nw_check_space_type,
                           nw_check_node_type, nw_check_visible_outputs, nw_check_viewer_node, NWBase,
@@ -101,116 +99,6 @@ class NWLazyMix(Operator, NWBase):
         if context.area.type == 'NODE_EDITOR':
             # the arguments we pass the the callback
             args = (self, context, 'MIX')
-            # Add the region OpenGL drawing callback
-            # draw in view space with 'POST_VIEW' and 'PRE_VIEW'
-            self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(
-                draw_callback_nodeoutline, args, 'WINDOW', 'POST_PIXEL')
-
-            self.mouse_path = []
-
-            context.window_manager.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'WARNING'}, "View3D not found, cannot run operator")
-            return {'CANCELLED'}
-
-
-class NWLazyConnect(Operator, NWBase):
-    """Connect two nodes without clicking a specific socket (automatically determined"""
-    bl_idname = "node.nw_lazy_connect"
-    bl_label = "Lazy Connect"
-    bl_options = {'REGISTER', 'UNDO'}
-    with_menu: BoolProperty()
-
-    @classmethod
-    def poll(cls, context):
-        return nw_check(cls, context) and nw_check_not_empty(cls, context)
-
-    def modal(self, context, event):
-        context.area.tag_redraw()
-        nodes, links = get_nodes_links(context)
-        cont = True
-
-        start_pos = [event.mouse_region_x, event.mouse_region_y]
-
-        node1 = None
-        if not context.scene.NWBusyDrawing:
-            node1 = node_at_pos(nodes, context, event)
-            if node1:
-                context.scene.NWBusyDrawing = node1.name
-        else:
-            if context.scene.NWBusyDrawing != 'STOP':
-                node1 = nodes[context.scene.NWBusyDrawing]
-
-        context.scene.NWLazySource = node1.name
-        context.scene.NWLazyTarget = node_at_pos(nodes, context, event).name
-
-        if event.type == 'MOUSEMOVE':
-            self.mouse_path.append((event.mouse_region_x, event.mouse_region_y))
-
-        elif event.type == 'RIGHTMOUSE' and event.value == 'RELEASE':
-            end_pos = [event.mouse_region_x, event.mouse_region_y]
-            bpy.types.SpaceNodeEditor.draw_handler_remove(self._handle, 'WINDOW')
-
-            node2 = None
-            node2 = node_at_pos(nodes, context, event)
-            if node2:
-                context.scene.NWBusyDrawing = node2.name
-
-            if node1 == node2:
-                cont = False
-
-            link_success = False
-            if cont:
-                if node1 and node2:
-                    original_sel = []
-                    original_unsel = []
-                    for node in nodes:
-                        if node.select:
-                            node.select = False
-                            original_sel.append(node)
-                        else:
-                            original_unsel.append(node)
-                    node1.select = True
-                    node2.select = True
-
-                    # link_success = autolink(node1, node2, links)
-                    if self.with_menu:
-                        if len(node1.outputs) > 1 and node2.inputs:
-                            bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NWConnectionListOutputs.bl_idname)
-                        elif len(node1.outputs) == 1:
-                            bpy.ops.node.nw_call_inputs_menu(from_socket=0)
-                    else:
-                        link_success = autolink(node1, node2, links)
-
-                    for node in original_sel:
-                        node.select = True
-                    for node in original_unsel:
-                        node.select = False
-
-            if link_success:
-                force_update(context)
-            context.scene.NWBusyDrawing = ""
-            return {'FINISHED'}
-
-        elif event.type == 'ESC':
-            bpy.types.SpaceNodeEditor.draw_handler_remove(self._handle, 'WINDOW')
-            return {'CANCELLED'}
-
-        return {'RUNNING_MODAL'}
-
-    def invoke(self, context, event):
-        if context.area.type == 'NODE_EDITOR':
-            nodes, links = get_nodes_links(context)
-            node = node_at_pos(nodes, context, event)
-            if node:
-                context.scene.NWBusyDrawing = node.name
-
-            # the arguments we pass the the callback
-            mode = "LINK"
-            if self.with_menu:
-                mode = "LINKMENU"
-            args = (self, context, mode)
             # Add the region OpenGL drawing callback
             # draw in view space with 'POST_VIEW' and 'PRE_VIEW'
             self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(
@@ -2051,48 +1939,6 @@ class NWLinkToOutputNode(Operator):
         return {'FINISHED'}
 
 
-class NWMakeLink(Operator, NWBase):
-    """Make a link from one socket to another"""
-    bl_idname = 'node.nw_make_link'
-    bl_label = 'Make Link'
-    bl_options = {'REGISTER', 'UNDO'}
-    from_socket: IntProperty()
-    to_socket: IntProperty()
-
-    def execute(self, context):
-        nodes, links = get_nodes_links(context)
-
-        n1 = nodes[context.scene.NWLazySource]
-        n2 = nodes[context.scene.NWLazyTarget]
-
-        connect_sockets(n1.outputs[self.from_socket], n2.inputs[self.to_socket])
-
-        force_update(context)
-
-        return {'FINISHED'}
-
-
-class NWCallInputsMenu(Operator, NWBase):
-    """Link from this output"""
-    bl_idname = 'node.nw_call_inputs_menu'
-    bl_label = 'Make Link'
-    bl_options = {'REGISTER', 'UNDO'}
-    from_socket: IntProperty()
-
-    def execute(self, context):
-        nodes, links = get_nodes_links(context)
-
-        context.scene.NWSourceSocket = self.from_socket
-
-        n1 = nodes[context.scene.NWLazySource]
-        n2 = nodes[context.scene.NWLazyTarget]
-        if len(n2.inputs) > 1:
-            bpy.ops.wm.call_menu("INVOKE_DEFAULT", name=NWConnectionListInputs.bl_idname)
-        elif len(n2.inputs) == 1:
-            connect_sockets(n1.outputs[self.from_socket], n2.inputs[0])
-        return {'FINISHED'}
-
-
 class NWAddSequence(Operator, NWBase, ImportHelper):
     """Add an Image Sequence"""
     bl_idname = 'node.nw_add_sequence'
@@ -2438,7 +2284,6 @@ class NWResetNodes(bpy.types.Operator):
 
 classes = (
     NWLazyMix,
-    NWLazyConnect,
     NWDeleteUnused,
     NWSwapLinks,
     NWResetBG,
@@ -2460,8 +2305,6 @@ classes = (
     NWSelectParentChildren,
     NWDetachOutputs,
     NWLinkToOutputNode,
-    NWMakeLink,
-    NWCallInputsMenu,
     NWAddSequence,
     NWAddMultipleImages,
     NWSaveViewer,
