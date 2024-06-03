@@ -328,6 +328,14 @@ ccl_device_inline void shadow_path_state_rng_load(ConstIntegratorShadowState sta
   rng_state->sample = INTEGRATOR_STATE(state, shadow_path, sample);
 }
 
+ccl_device_inline void path_state_rng_scramble(ccl_private RNGState *rng_state, const int seed)
+{
+  /* To get an uncorrelated sequence of samples (e.g. for subsurface random walk), just change
+   * the dimension offset since all implemented samplers can generate unlimited numbers of
+   * dimensions anyways. The only thing to ensure is that the offset is divisible by 4. */
+  rng_state->rng_offset = hash_hp_seeded_uint(rng_state->rng_offset, seed) & ~0x3;
+}
+
 ccl_device_inline float path_state_rng_1D(KernelGlobals kg,
                                           ccl_private const RNGState *rng_state,
                                           const int dimension)

@@ -222,8 +222,7 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
   const float phase_log = logf((diffusion_length + 1.0f) / (diffusion_length - 1.0f));
 
   /* Modify state for RNGs, decorrelated from other paths. */
-  // TODO
-  rng_state.rng_pixel = hash_hp_seeded_uint(rng_state.rng_pixel + rng_state.rng_offset, 0xdeadbeef);
+  path_state_rng_scramble(&rng_state, 0xdeadbeef);
 
   /* Random walk until we hit the surface again. */
   bool hit = false;
