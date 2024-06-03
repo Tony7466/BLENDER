@@ -79,7 +79,6 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
   DCHECK(params.use);
 
   Device *single_denoiser_device = nullptr;
-  ;
   if (is_single_device(denoiser_device)) {
     /* Simple case: denoising happens on a single device. */
     single_denoiser_device = denoiser_device;

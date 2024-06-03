@@ -38,8 +38,8 @@ class SessionParams {
   /* Device, which is choosen based on Blender Cycles preferences, as well as Scene settings and
    * command line arguments. */
   DeviceInfo device;
-  /* Device from Cycles preferences. */
-  DeviceInfo preferences_device;
+  /* Device from Cycles preferences for denoising. */
+  DeviceInfo denoise_device;
 
   bool headless;
   bool background;

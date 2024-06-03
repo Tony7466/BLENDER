@@ -50,11 +50,11 @@ Session::Session(const SessionParams &params_, const SceneParams &scene_params)
 
   scene = new Scene(scene_params, device);
 
-  if (params.device == params.preferences_device) {
+  if (params.device == params.denoise_device) {
     denoise_device = device;
   }
   else {
-    denoise_device = Device::create(params.preferences_device, stats, profiler);
+    denoise_device = Device::create(params.denoise_device, stats, profiler);
 
     if (denoise_device->have_error()) {
       progress.set_error(denoise_device->error_message());
