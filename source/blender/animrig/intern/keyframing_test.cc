@@ -5,7 +5,6 @@
 #include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
-#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_fcurve.hh"
