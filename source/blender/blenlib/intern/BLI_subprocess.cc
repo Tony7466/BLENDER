@@ -34,7 +34,7 @@ static bool check(bool result, const char *msg)
 
 #  define CHECK(result) check((result), __FUNCTION__ " : " #result)
 
-bool Subprocess::init(Span<StringRefNull> args)
+bool Subprocess::create(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
 
@@ -197,7 +197,7 @@ static bool check(int result, const char *function, const char *msg)
 
 #  define CHECK(result) check((result), __FUNCTION__, #result)
 
-bool Subprocess::init(Span<StringRefNull> args)
+bool Subprocess::create(Span<StringRefNull> args)
 {
   char path[PATH_MAX];
   size_t len = readlink("/proc/self/exe", path, PATH_MAX);

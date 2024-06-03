@@ -32,7 +32,7 @@ class Subprocess : NonCopyable {
  public:
   ~Subprocess();
 
-  bool init(Span<StringRefNull> args);
+  bool create(Span<StringRefNull> args);
   bool is_running();
 };
 
