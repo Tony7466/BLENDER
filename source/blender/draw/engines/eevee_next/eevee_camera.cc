@@ -137,9 +137,7 @@ void Camera::sync()
 
       if (inst_.rv3d->persp == RV3D_CAMOB && DRW_state_is_viewport_image_render()) {
         /* We are rendering camera view, no need for pan/zoom params from viewport.*/
-        const Object *ob_camera_eval = DEG_get_evaluated_object(inst_.depsgraph,
-                                                                inst_.v3d->camera);
-        BKE_camera_params_from_object(&params, ob_camera_eval);
+        BKE_camera_params_from_object(&params, camera_eval);
       }
       else {
         BKE_camera_params_from_view3d(&params, inst_.depsgraph, inst_.v3d, inst_.rv3d);
