@@ -524,7 +524,7 @@ void PathTrace::set_denoiser_params(const DenoiseParams &params)
   }
 
   if (need_to_recreate_denoiser) {
-    denoiser_ = Denoiser::create(denoise_device_, params);
+    denoiser_ = Denoiser::create(denoise_device_, cpu_device_.get(), params);
 
     /* Only take into account the "immediate" cancel to have interactive rendering responding to
      * navigation as quickly as possible, but allow to run denoiser after user hit Escape key while

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0 */
 
 #include "session/denoising.h"
+#include "device/cpu/device.h"
 
 #include "util/map.h"
 #include "util/system.h"
@@ -608,7 +609,11 @@ DenoiserPipeline::DenoiserPipeline(DeviceInfo &denoiser_device_info, const Denoi
   device = Device::create(denoiser_device_info, stats, profiler);
   device->load_kernels(KERNEL_FEATURE_DENOISING);
 
-  denoiser = Denoiser::create(device, params);
+  vector<DeviceInfo> cpu_devices;
+  device_cpu_info(cpu_devices);
+  cpu_device = device_cpu_create(cpu_devices[0], device->stats, device->profiler);
+
+  denoiser = Denoiser::create(device, cpu_device, params);
   denoiser->load_kernels(nullptr);
 }
 

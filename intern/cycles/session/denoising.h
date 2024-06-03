@@ -46,6 +46,7 @@ class DenoiserPipeline {
   Stats stats;
   Profiler profiler;
   Device *device;
+  Device *cpu_device;
   std::unique_ptr<Denoiser> denoiser;
 };
 
