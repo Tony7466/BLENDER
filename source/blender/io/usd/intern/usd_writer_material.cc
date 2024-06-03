@@ -1038,28 +1038,11 @@ static void copy_single_file(Image *ima,
   }
 }
 
-static void export_texture(const USDExporterContext &usd_export_context, bNode *node)
+static void export_texture(Image *ima,
+                           const pxr::UsdStageRefPtr stage,
+                           const bool allow_overwrite,
+                           ReportList *reports)
 {
-  export_texture(node,
-                 usd_export_context.stage,
-                 usd_export_context.export_params.overwrite_textures,
-                 usd_export_context.export_params.worker_status->reports);
-}
-
-void export_texture(bNode *node,
-                    const pxr::UsdStageRefPtr stage,
-                    const bool allow_overwrite,
-                    ReportList *reports)
-{
-  if (!ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
-    return;
-  }
-
-  Image *ima = reinterpret_cast<Image *>(node->id);
-  if (!ima) {
-    return;
-  }
-
   std::string export_path = stage->GetRootLayer()->GetRealPath();
   if (export_path.empty()) {
     return;
@@ -1090,6 +1073,39 @@ void export_texture(bNode *node,
   }
 }
 
+void export_texture(bNode *node,
+                    const pxr::UsdStageRefPtr stage,
+                    const bool allow_overwrite,
+                    ReportList *reports)
+{
+  if (!ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
+    return;
+  }
+
+  Image *ima = reinterpret_cast<Image *>(node->id);
+  if (!ima) {
+    return;
+  }
+
+  return export_texture(ima, stage, allow_overwrite, reports);
+}
+
+static void export_texture(const USDExporterContext &usd_export_context, bNode *node)
+{
+  export_texture(node,
+                 usd_export_context.stage,
+                 usd_export_context.export_params.overwrite_textures,
+                 usd_export_context.export_params.worker_status->reports);
+}
+
+static void export_texture(const USDExporterContext &usd_export_context, Image *ima)
+{
+  export_texture(ima,
+                 usd_export_context.stage,
+                 usd_export_context.export_params.overwrite_textures,
+                 usd_export_context.export_params.worker_status->reports);
+}
+
 const pxr::TfToken token_for_input(const char *input_name)
 {
   const InputSpecMap &input_map = preview_surface_input_map();
@@ -1107,8 +1123,11 @@ const pxr::TfToken token_for_input(const char *input_name)
 static std::string materialx_export_image(
     const USDExporterContext &usd_export_context, Main *, Scene *, Image *ima, ImageUser *)
 {
-  return get_tex_image_asset_filepath(
+  auto tex_path = get_tex_image_asset_filepath(
       ima, usd_export_context.stage, usd_export_context.export_params);
+
+  export_texture(usd_export_context, ima);
+  return tex_path;
 }
 
 /* Utility function to reflow connections and paths within the temporary document
