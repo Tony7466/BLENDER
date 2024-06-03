@@ -1242,6 +1242,33 @@ void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVerte
   }
 }
 
+void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert)
+{
+  using namespace blender::ed::sculpt_paint;
+  if (orig_data.unode->type == undo::Type::Position) {
+    BM_log_original_vert_data(
+        orig_data.bm_log, &const_cast<BMVert &>(vert), &orig_data.co, &orig_data.no);
+  }
+  else if (orig_data.unode->type == undo::Type::Mask) {
+    orig_data.mask = BM_log_original_mask(orig_data.bm_log, &const_cast<BMVert &>(vert));
+  }
+}
+
+void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const int i)
+{
+  using namespace blender::ed::sculpt_paint;
+  if (orig_data.unode->type == undo::Type::Position) {
+    orig_data.co = orig_data.coords[i];
+    orig_data.no = orig_data.normals[i];
+  }
+  else if (orig_data.unode->type == undo::Type::Color) {
+    orig_data.col = orig_data.colors[i];
+  }
+  else if (orig_data.unode->type == undo::Type::Mask) {
+    orig_data.mask = orig_data.vmasks[i];
+  }
+}
+
 namespace blender::ed::sculpt_paint {
 
 static void sculpt_rake_data_update(SculptRakeData *srd, const float co[3])

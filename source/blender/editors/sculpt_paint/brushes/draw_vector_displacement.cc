@@ -13,6 +13,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -113,8 +114,11 @@ static void calc_faces(const Sculpt &sd,
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
+
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = *BKE_pbvh_get_grid_key(*ss.pbvh);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -124,35 +128,44 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
+  /* TODO: Remove usage of proxies. */
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
+  int i = 0;
+  for (const int grid : bke::pbvh::node_grid_indices(node)) {
+    const int grid_verts_start = grid * key.grid_area;
+    CCGElem *elem = grids[grid];
+    for (const int j : IndexRange(key.grid_area)) {
+      if (!grid_hidden.is_empty() && grid_hidden[grid][j]) {
+        i++;
+        continue;
+      }
+      if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
+        i++;
+        continue;
+      }
+
+      auto_mask::node_update(automask_data, i);
+      float r_rgba[4];
+      SCULPT_brush_strength_color(ss,
+                                  brush,
+                                  CCG_elem_offset_co(key, elem, j),
+                                  math::sqrt(test.dist),
+                                  CCG_elem_offset_no(key, elem, j),
+                                  nullptr,
+                                  key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f,
+                                  BKE_pbvh_make_vref(grid_verts_start + j),
+                                  thread_id,
+                                  &automask_data,
+                                  r_rgba);
+      SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[i]);
+      i++;
     }
-
-    auto_mask::node_update(automask_data, vd);
-
-    float r_rgba[4];
-    SCULPT_brush_strength_color(ss,
-                                brush,
-                                vd.co,
-                                math::sqrt(test.dist),
-                                vd.no,
-                                vd.fno,
-                                vd.mask,
-                                vd.vertex,
-                                thread_id,
-                                &automask_data,
-                                r_rgba);
-    SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[vd.i]);
   }
-  BKE_pbvh_vertex_iter_end;
 }
 
 static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
@@ -162,28 +175,39 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
+  const int mask_offset = CustomData_get_offset_named(
+      &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+
+  /* TODO: Remove usage of proxies. */
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
+  int i = 0;
+  for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&node)) {
+    if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
+      i++;
+      continue;
+    }
+    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
+      i++;
       continue;
     }
 
-    auto_mask::node_update(automask_data, vd);
-
+    auto_mask::node_update(automask_data, *vert);
+    const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     float r_rgba[4];
     SCULPT_brush_strength_color(ss,
                                 brush,
-                                vd.co,
+                                vert->co,
                                 math::sqrt(test.dist),
-                                vd.no,
-                                vd.fno,
-                                vd.mask,
-                                vd.vertex,
+                                vert->no,
+                                nullptr,
+                                mask,
+                                BKE_pbvh_make_vref(intptr_t(vert)),
                                 thread_id,
                                 &automask_data,
                                 r_rgba);
-    SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[vd.i]);
+    SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[i]);
+    i++;
   }
-  BKE_pbvh_vertex_iter_end;
 }
 
 }  // namespace draw_vector_displacement_cc

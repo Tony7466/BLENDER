@@ -997,6 +997,9 @@ void SCULPT_orig_vert_data_init(SculptOrigVertData &data,
  * Update a #SculptOrigVertData for a particular vertex from the PBVH iterator.
  */
 void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVertexIter &iter);
+void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert);
+void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, int i);
+
 /**
  * Initialize a #SculptOrigVertData for accessing original vertex data;
  * handles #BMesh, #Mesh, and multi-resolution.
@@ -1317,7 +1320,13 @@ struct NodeData {
 NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &node);
 
 /* Call before factor_get and SCULPT_brush_strength_factor. */
-void node_update(NodeData &automask_data, PBVHVertexIter &vd);
+void node_update(NodeData &automask_data, const PBVHVertexIter &vd);
+void node_update(NodeData &automask_data, const BMVert &vert);
+/**
+ * Call before factor_get and SCULPT_brush_strength_factor. The index is in the range of the PBVH
+ * node's vertex indices.
+ */
+void node_update(NodeData &automask_data, int i);
 
 float factor_get(const Cache *automasking,
                  SculptSession &ss,

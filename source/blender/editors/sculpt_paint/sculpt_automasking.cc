@@ -635,10 +635,24 @@ NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &no
   return automask_data;
 }
 
-void node_update(auto_mask::NodeData &automask_data, PBVHVertexIter &vd)
+void node_update(auto_mask::NodeData &automask_data, const PBVHVertexIter &vd)
 {
   if (automask_data.orig_data) {
     SCULPT_orig_vert_data_update(*automask_data.orig_data, vd);
+  }
+}
+
+void node_update(auto_mask::NodeData &automask_data, const BMVert &vert)
+{
+  if (automask_data.orig_data) {
+    SCULPT_orig_vert_data_update(*automask_data.orig_data, vert);
+  }
+}
+
+void node_update(auto_mask::NodeData &automask_data, const int i)
+{
+  if (automask_data.orig_data) {
+    SCULPT_orig_vert_data_update(*automask_data.orig_data, i);
   }
 }
 
