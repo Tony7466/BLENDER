@@ -45,6 +45,8 @@
 
 #include "action_intern.hh"
 
+using namespace blender;
+
 /* -------------------------------------------------------------------- */
 /** \name Channel List
  * \{ */
@@ -372,6 +374,15 @@ static void draw_keyframes(bAnimContext *ac,
         ED_add_action_layered_channel(draw_list,
                                       adt,
                                       static_cast<bAction *>(ale->key_data),
+                                      ycenter,
+                                      scale_factor,
+                                      action_flag);
+        break;
+      case ALE_ACTION_BINDING:
+        ED_add_action_binding_channel(draw_list,
+                                      adt,
+                                      static_cast<bAction *>(ale->key_data)->wrap(),
+                                      *static_cast<animrig::Binding *>(ale->data),
                                       ycenter,
                                       scale_factor,
                                       action_flag);

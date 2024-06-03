@@ -1523,11 +1523,16 @@ static size_t animfilter_action(bAnimContext *ac,
   }
 
   /* For now we don't show layers anywhere, just the contained F-Curves. */
-  // Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding_handle);
-  // return animfilter_fcurves_span(
-  //     anim_data, ads, fcurves, binding_handle, filter_mode, owner_id, &action.id);
 
-  // TODO: determine what to do with the `binding_handle` parameter.
+  /* If 'Only Show Selected' is enabled, only show the FCurves of the given
+   * binding. Otherwise show all the bindings.
+   * TODO: add a separate filter option for this. */
+  if (filter_mode & ANIMFILTER_SEL) {
+    Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding_handle);
+    return animfilter_fcurves_span(
+        anim_data, ads, fcurves, binding_handle, filter_mode, owner_id, &action.id);
+  }
+
   return animfilter_action_bindings(anim_data, ads, action, filter_mode, owner_id);
 }
 
