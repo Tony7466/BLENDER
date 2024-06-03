@@ -1439,6 +1439,44 @@ static size_t animfilter_act_group(bAnimContext *ac,
 /**
  * Add a channel for each Binding, with their FCurves when the Binding is expanded.
  */
+static size_t animfilter_action_binding(ListBase *anim_data,
+                                        bDopeSheet *ads,
+                                        animrig::Action &action,
+                                        animrig::Binding &binding,
+                                        const eAnimFilter_Flags filter_mode,
+                                        ID *owner_id)
+{
+  /* Don't include anything from this animation if it is linked in from another
+   * file, and we're getting stuff for editing... */
+  if ((filter_mode & ANIMFILTER_FOREDIT) &&
+      (ID_IS_LINKED(&action) || ID_IS_OVERRIDE_LIBRARY(&action)))
+  {
+    return 0;
+  }
+
+  const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
+  const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
+
+  int num_items = 0;
+
+  /* Add a list element for the Binding itself. */
+  if (!selection_matters || binding.is_selected() == must_be_selected) {
+    bAnimListElem *ale = make_new_animlistelem(
+        &binding, ANIMTYPE_ACTION_BINDING, owner_id, &action.id);
+    BLI_addtail(anim_data, ale);
+    num_items++;
+  }
+
+  /* Add list elements for the F-Curves for this Binding. */
+  if (binding.is_expanded()) {
+    Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding.handle);
+    num_items += animfilter_fcurves_span(
+        anim_data, ads, fcurves, binding.handle, filter_mode, owner_id, &action.id);
+  }
+
+  return num_items;
+}
+
 static size_t animfilter_action_bindings(ListBase *anim_data,
                                          bDopeSheet *ads,
                                          animrig::Action &action,
@@ -1453,24 +1491,11 @@ static size_t animfilter_action_bindings(ListBase *anim_data,
     return 0;
   }
 
-  const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
-  const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
-
   int num_items = 0;
   for (animrig::Binding *binding : action.bindings()) {
-    /* Add a list element for the Binding itself. */
-    if (!selection_matters || binding->is_selected() == must_be_selected) {
-      bAnimListElem *ale = make_new_animlistelem(
-          binding, ANIMTYPE_ACTION_BINDING, owner_id, &action.id);
-      BLI_addtail(anim_data, ale);
-      num_items++;
-    }
-
-    if (binding->is_expanded()) {
-      Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding->handle);
-      num_items += animfilter_fcurves_span(
-          anim_data, ads, fcurves, binding->handle, filter_mode, owner_id, &action.id);
-    }
+    BLI_assert(binding);
+    num_items += animfilter_action_binding(
+        anim_data, ads, action, *binding, filter_mode, owner_id);
   }
 
   return num_items;
@@ -1524,16 +1549,13 @@ static size_t animfilter_action(bAnimContext *ac,
 
   /* For now we don't show layers anywhere, just the contained F-Curves. */
 
-  /* If 'Only Show Selected' is enabled, only show the FCurves of the given
-   * binding. Otherwise show all the bindings.
-   * TODO: add a separate filter option for this. */
-  if (filter_mode & ANIMFILTER_SEL) {
-    Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding_handle);
-    return animfilter_fcurves_span(
-        anim_data, ads, fcurves, binding_handle, filter_mode, owner_id, &action.id);
+  if (ads->filterflag & ADS_FILTER_ALL_BINDINGS) {
+    return animfilter_action_bindings(anim_data, ads, action, filter_mode, owner_id);
   }
 
-  return animfilter_action_bindings(anim_data, ads, action, filter_mode, owner_id);
+  animrig::Binding *binding = action.binding_for_handle(binding_handle);
+  BLI_assert(binding);
+  return animfilter_action_binding(anim_data, ads, action, *binding, filter_mode, owner_id);
 }
 
 /* Include NLA-Data for NLA-Editor:

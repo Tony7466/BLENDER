@@ -848,6 +848,12 @@ typedef enum eDopeSheet_FilterFlag {
   /** for 'DopeSheet' Editors - include 'summary' line */
   ADS_FILTER_SUMMARY = (1 << 4),
 
+  /**
+   * Show all Action bindings; if not set, only show the Binding of the
+   * data-block that's being animated by the Action.
+   */
+  ADS_FILTER_ALL_BINDINGS = (1 << 5),
+
   /* datatype-based filtering */
   ADS_FILTER_NOSHAPEKEYS = (1 << 6),
   ADS_FILTER_NOMESH = (1 << 7),
