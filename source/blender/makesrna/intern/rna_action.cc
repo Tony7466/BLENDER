@@ -1198,6 +1198,7 @@ static void rna_def_action_binding(BlenderRNA *brna)
       "Animation Binding",
       "Identifier for a set of channels in this Animation, that can be used by a data-block "
       "to specify what it gets animated by");
+  RNA_def_struct_ui_icon(srna, ICON_LINK_BLEND); /* TODO: create icon for bindings. */
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   // RNA_def_struct_name_property(srna, prop);
