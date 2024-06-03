@@ -1041,7 +1041,7 @@ static CombinedKeyingResult insert_key_layered_action(Action &action,
 
   Binding *binding = action.binding_for_handle(binding_handle);
   if (binding == nullptr) {
-    binding = &action.binding_add();
+    binding = &action.binding_add_for_id(*id);
     const bool success = action.assign_id(binding, *id);
     UNUSED_VARS_NDEBUG(success);
     BLI_assert_msg(
