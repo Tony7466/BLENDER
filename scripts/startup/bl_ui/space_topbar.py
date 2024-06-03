@@ -30,7 +30,7 @@ class TOPBAR_HT_upper_bar(Header):
 
         TOPBAR_MT_editor_menus.draw_collapsible(context, layout)
 
-        layout.separator()
+        layout.separator(type="LINE")
 
         if not screen.show_fullscreen:
             layout.template_ID_tabs(window, "workspace", new="workspace.add", menu="TOPBAR_MT_workspace_menu")
@@ -48,6 +48,8 @@ class TOPBAR_HT_upper_bar(Header):
         if not screen.show_statusbar:
             layout.template_reports_banner()
             layout.template_running_jobs()
+
+        layout.separator(type="LINE")
 
         # Active workspace view-layer is retrieved through window, not through workspace.
         layout.template_ID(window, "scene", new="scene.new", unlink="scene.delete")
