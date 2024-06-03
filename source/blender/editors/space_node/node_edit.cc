@@ -2713,8 +2713,8 @@ static int node_slide_invoke(bContext *C, wmOperator *op, const wmEvent *event)
         nodes_right.append(node);
       }
     }
-    slide_data->nodes_to_slide_left = find_nodes_to_the_left(nodes_left);
-    slide_data->nodes_to_slide_right = find_nodes_to_the_right(nodes_right);
+    slide_data->nodes_to_slide_left = std::move(nodes_left);
+    slide_data->nodes_to_slide_right = std::move(nodes_right);
   }
   else {
     slide_data->nodes_to_slide_left = find_nodes_to_the_left(trigger_nodes);
