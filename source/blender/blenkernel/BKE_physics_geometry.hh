@@ -33,7 +33,7 @@ class PhysicsGeometry {
  public:
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
-private:
+ private:
   Vector<const PhysicsGeometryImpl *> impl_array_;
 
   /* Proxies for the actual body/constraint/shape instance in the world.
@@ -55,7 +55,7 @@ private:
  public:
   static const struct BuiltinAttributes {
     std::string id;
-    //std::string simulated;
+    std::string simulated;
     std::string mass;
     std::string inertia;
     std::string position;
@@ -99,12 +99,12 @@ private:
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
-  
+
   float3 gravity() const;
   void set_gravity(const float3 &gravity);
   void set_solver_iterations(int num_solver_iterations);
   void set_split_impulse(bool split_impulse);
-  
+
   void step_simulation(float delta_time);
 
   Proxies &proxies();
@@ -116,8 +116,8 @@ private:
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
 
-  //VArray<bool> body_is_simulated() const;
-  //AttributeWriter<bool> body_is_simulated_for_write();
+  VArray<bool> body_is_simulated() const;
+  AttributeWriter<bool> body_is_simulated_for_write();
 
   VArray<float> body_masses() const;
   AttributeWriter<float> body_masses_for_write();

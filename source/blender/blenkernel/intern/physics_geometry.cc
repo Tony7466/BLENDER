@@ -393,30 +393,31 @@ static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *p
 //     }
 //   }
 // }
-//
-///* Make sure any body flagged for simulation is actually in the world. */
-// static void ensure_bodies_simulated(PhysicsGeometry &physics)
-//{
-//   if (physics.world() == nullptr) {
-//     return;
-//   }
-//   /* TODO there are threadsafe versions of Bullet world that could allow this in parallel. */
-//   btDynamicsWorld *world = physics.world_for_write()->impl().world;
-//   for (btRigidBody *body : physics.impl_for_write().rigid_bodies) {
-//     const bool should_be_simulated = (get_body_user_flags(*body) &
-//                                       RigidBodyUserFlag::IsSimulated) != RigidBodyUserFlag(0);
-//     if (should_be_simulated) {
-//       if (!body->isInWorld()) {
-//         world->addRigidBody(body);
-//       }
-//     }
-//     else {
-//       if (body->isInWorld()) {
-//         world->removeRigidBody(body);
-//       }
-//     }
-//   }
-// }
+
+/* Make sure any body flagged for simulation is actually in the world. */
+static void ensure_bodies_simulated(PhysicsGeometry &physics)
+{
+  PhysicsGeometryImpl *impl = physics.try_impl_for_write();
+  if (!impl) {
+    return;
+  }
+  /* TODO there are threadsafe versions of Bullet world that could allow this in parallel. */
+  btDynamicsWorld *world = impl->world;
+  for (btRigidBody *body : impl->rigid_bodies) {
+    const bool should_be_simulated = (get_body_user_flags(*body) &
+                                      RigidBodyUserFlag::IsSimulated) != RigidBodyUserFlag(0);
+    if (should_be_simulated) {
+      if (!body->isInWorld()) {
+        world->addRigidBody(body);
+      }
+    }
+    else {
+      if (body->isInWorld()) {
+        world->removeRigidBody(body);
+      }
+    }
+  }
+}
 
 static void create_world(PhysicsGeometryImpl &impl)
 {
@@ -472,13 +473,7 @@ void PhysicsGeometryImpl::delete_self()
 }
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
-    "id",
-    /*"simulated",*/ "mass",
-    "inertia",
-    "position",
-    "rotation",
-    "velocity",
-    "angular_velocity"};
+    "id", "simulated", "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states,
@@ -812,15 +807,15 @@ AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
   return attributes_for_write().lookup_for_write<int>(builtin_attributes.id);
 }
 
-// VArray<bool> PhysicsGeometry::body_is_simulated() const
-//{
-//   return attributes().lookup(builtin_attributes.simulated).varray.typed<bool>();
-// }
-//
-// AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
-//{
-//   return attributes_for_write().lookup_for_write<bool>(builtin_attributes.simulated);
-// }
+VArray<bool> PhysicsGeometry::body_is_simulated() const
+{
+  return attributes().lookup(builtin_attributes.simulated).varray.typed<bool>();
+}
+
+AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
+{
+  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.simulated);
+}
 
 VArray<float> PhysicsGeometry::body_masses() const
 {
@@ -991,20 +986,19 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  // constexpr auto simulated_get_fn = [](const btRigidBody *const &body) -> bool {
-  //   return (get_body_user_flags(*body) & RigidBodyUserFlag::IsSimulated) !=
-  //   RigidBodyUserFlag(0);
-  // };
-  // constexpr auto simulated_set_fn = [](btRigidBody *&body, bool value) {
-  //   set_body_user_flags(*body, RigidBodyUserFlag::IsSimulated, value);
-  // };
-  // static BuiltinRigidBodyAttributeProvider<bool, simulated_get_fn, simulated_set_fn>
-  //     body_simulated(
-  //         PhysicsGeometry::builtin_attributes.simulated,
-  //         AttrDomain::Point,
-  //         BuiltinAttributeProvider::NonDeletable,
-  //         physics_access,
-  //         [](void *owner) { ensure_bodies_simulated(*static_cast<PhysicsGeometry *>(owner)); });
+  constexpr auto simulated_get_fn = [](const btRigidBody &body) -> bool {
+    return (get_body_user_flags(body) & RigidBodyUserFlag::IsSimulated) != RigidBodyUserFlag(0);
+  };
+  constexpr auto simulated_set_fn = [](btRigidBody &body, bool value) {
+    set_body_user_flags(body, RigidBodyUserFlag::IsSimulated, value);
+  };
+  static BuiltinRigidBodyAttributeProvider<bool, simulated_get_fn, simulated_set_fn>
+      body_simulated(
+          PhysicsGeometry::builtin_attributes.simulated,
+          AttrDomain::Point,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          [](void *owner) { ensure_bodies_simulated(*static_cast<PhysicsGeometry *>(owner)); });
 
   constexpr auto mass_get_fn = [](const btRigidBody &body) -> float { return body.getMass(); };
   constexpr auto mass_set_fn = [](btRigidBody &body, float value) {
@@ -1085,6 +1079,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             nullptr);
 
   return ComponentAttributeProviders({&body_id,
+                                      &body_simulated,
                                       &body_mass,
                                       &body_inertia,
                                       &body_position,
