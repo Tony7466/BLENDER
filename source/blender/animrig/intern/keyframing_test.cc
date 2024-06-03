@@ -35,6 +35,7 @@ class KeyframingTest : public testing::Test {
 
   /* For standard single-action testing. */
   Object *object;
+  PointerRNA object_rna_pointer;
 
   /* For NLA testing. */
   Object *object_with_nla;
@@ -59,6 +60,7 @@ class KeyframingTest : public testing::Test {
     bmain = BKE_main_new();
 
     object = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmpty");
+    object_rna_pointer = RNA_id_pointer_create(&object->id);
 
     object_with_nla = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmptyWithNLA");
     nla_action = static_cast<bAction *>(BKE_id_new(bmain, ID_AC, "ACNLAAction"));
@@ -84,6 +86,212 @@ class KeyframingTest : public testing::Test {
     BKE_main_free(bmain);
   }
 };
+
+/* ------------------------------------------------------------
+ * Tests for `insert_key_rna()`.
+ */
+
+/* Keying a non-array property with no keying flags. */
+TEST_F(KeyframingTest, insert_key_rna__non_array_property)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_key_rna(&object_rna_pointer,
+                                                     {{"rotation_mode"}},
+                                                     1.0,
+                                                     INSERTKEY_NOFLAGS,
+                                                     BEZT_KEYTYPE_KEYFRAME,
+                                                     bmain,
+                                                     anim_eval_context);
+
+  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, object->adt);
+  EXPECT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
+}
+
+/* Keying a single element of an array property with no keying flags. */
+TEST_F(KeyframingTest, insert_key_rna__single_element)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_key_rna(&object_rna_pointer,
+                                                     {{"rotation_euler", std::nullopt, 0}},
+                                                     1.0,
+                                                     INSERTKEY_NOFLAGS,
+                                                     BEZT_KEYTYPE_KEYFRAME,
+                                                     bmain,
+                                                     anim_eval_context);
+
+  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, object->adt);
+  EXPECT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
+}
+
+/* Keying all elements of an array property with no keying flags. */
+TEST_F(KeyframingTest, insert_key_rna__all_elements)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_key_rna(&object_rna_pointer,
+                                                     {{"rotation_euler"}},
+                                                     1.0,
+                                                     INSERTKEY_NOFLAGS,
+                                                     BEZT_KEYTYPE_KEYFRAME,
+                                                     bmain,
+                                                     anim_eval_context);
+
+  EXPECT_EQ(3, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, object->adt);
+  EXPECT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2));
+}
+
+/* Keying multiple elements of multiple properties at once. */
+TEST_F(KeyframingTest, insert_key_rna__multiple_properties)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_key_rna(&object_rna_pointer,
+                                                     {
+                                                         {"rotation_mode"},
+                                                         {"location"},
+                                                         {"rotation_euler", std::nullopt, 0},
+                                                         {"rotation_euler", std::nullopt, 2},
+                                                     },
+                                                     1.0,
+                                                     INSERTKEY_NOFLAGS,
+                                                     BEZT_KEYTYPE_KEYFRAME,
+                                                     bmain,
+                                                     anim_eval_context);
+
+  EXPECT_EQ(6, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, object->adt);
+  EXPECT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(6, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "location", 0));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "location", 1));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "location", 2));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2));
+}
+
+/* Keying with the "Only Insert Available" flag. */
+TEST_F(KeyframingTest, insert_key_rna__only_available)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  /* First attempt should fail, because there are no fcurves yet. */
+  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       1.0,
+                                                       INSERTKEY_AVAILABLE,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+
+  EXPECT_EQ(0, result_1.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, object->adt);
+  EXPECT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(0, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
+
+  /* Insert a key on two of the elements without using the flag so that there
+   * will be two fcurves. */
+  insert_key_rna(&object_rna_pointer,
+                 {
+                     {"rotation_euler", std::nullopt, 0},
+                     {"rotation_euler", std::nullopt, 2},
+                 },
+                 1.0,
+                 INSERTKEY_NOFLAGS,
+                 BEZT_KEYTYPE_KEYFRAME,
+                 bmain,
+                 anim_eval_context);
+
+  /* Second attempt should succeed with two keys, because two of the elements
+   * now have fcurves. */
+  const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       1.0,
+                                                       INSERTKEY_AVAILABLE,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+
+  EXPECT_EQ(2, result_2.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
+  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2));
+}
+
+/* Keying with the "Only Insert Needed" flag. */
+TEST_F(KeyframingTest, insert_key_rna__only_needed)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  /* First attempt should succeed, because there are no fcurves yet. */
+  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       1.0,
+                                                       INSERTKEY_NEEDED,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+
+  EXPECT_EQ(3, result_1.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_NE(nullptr, object->adt);
+  EXPECT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
+  FCurve *fcurve_x = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0);
+  FCurve *fcurve_y = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1);
+  FCurve *fcurve_z = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2);
+  EXPECT_NE(nullptr, fcurve_x);
+  EXPECT_NE(nullptr, fcurve_y);
+  EXPECT_NE(nullptr, fcurve_z);
+
+  /* Second attempt should fail, because there is now an fcurve for the
+   * property, but its value matches the current property value. */
+  anim_eval_context.eval_time = 10.0;
+  const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       10.0,
+                                                       INSERTKEY_NEEDED,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+
+  EXPECT_EQ(0, result_2.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_y->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+
+  /* Third attempt should succeed on two elements, because we change the value
+   * of those elements to differ from the existing fcurves. */
+  object->rot[0] = 123.0;
+  object->rot[2] = 123.0;
+  const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       10.0,
+                                                       INSERTKEY_NEEDED,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+
+  EXPECT_EQ(2, result_3.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(2, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_y->totvert);
+  EXPECT_EQ(2, fcurve_z->totvert);
+}
 
 /* ------------------------------------------------------------
  * Tests for `insert_keyframe()`.
