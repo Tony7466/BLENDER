@@ -4,8 +4,8 @@
 
 #pragma once
 
-#ifdef __APPLE__
-#  error Subprocess API is only supported on Windows and Linux
+#if !defined(_WIN32) && !defined(__linux__)
+#  error Subprocess API is only supported on Windows and Linux.
 #endif
 
 #include "BLI_span.hh"

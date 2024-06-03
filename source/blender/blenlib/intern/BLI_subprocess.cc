@@ -26,8 +26,8 @@ static void print_last_error(const char *msg)
 static bool check(bool result, const char *msg)
 {
   if (!result) {
-    BLI_assert(false);
     print_last_error(msg);
+    BLI_assert(false);
   }
   return result;
 }
@@ -162,7 +162,8 @@ bool SharedSemaphore::try_decrement(int wait_ms)
 
 }  // namespace blender
 
-#else
+#elif defined(__linux__)
+
 #  include "BLI_time.h"
 #  include "BLI_vector.hh"
 #  include <fcntl.h>
@@ -175,11 +176,30 @@ bool SharedSemaphore::try_decrement(int wait_ms)
 
 namespace blender {
 
+static void print_last_error(const char *function, const char *msg)
+{
+  int error_code = errno;
+  std::string error_msg = "ERROR (" + std::to_string(error_code) + "): " + function + " : " + msg;
+  perror(error_msg.c_str());
+}
+
+static bool check(int result, const char *function, const char *msg)
+{
+  if (result == -1) {
+    print_last_error(function, msg);
+    BLI_assert(false);
+    return false;
+  }
+  return true;
+}
+
+#  define CHECK(result) check((result), __FUNCTION__, #result)
+
 bool Subprocess::init(Span<StringRefNull> args)
 {
   char path[PATH_MAX];
   size_t len = readlink("/proc/self/exe", path, PATH_MAX);
-  if (len == -1) {
+  if (!CHECK(len)) {
     return false;
   }
   /* readlink doesn't append a null terminator. */
@@ -192,6 +212,8 @@ bool Subprocess::init(Span<StringRefNull> args)
   char_args.append(nullptr);
 
   pid_ = fork();
+  CHECK(pid_);
+
   if (pid_ < 0) {
     return false;
   }
@@ -202,8 +224,7 @@ bool Subprocess::init(Span<StringRefNull> args)
   /* Child process initialization. */
   execv(path, char_args.data());
 
-  perror("Subprocess creation failed: ");
-  BLI_assert_unreachable();
+  CHECK(-1 /* execv failed */);
   exit(errno);
 
   return false;
@@ -213,17 +234,16 @@ Subprocess::~Subprocess() {}
 
 bool Subprocess::is_running()
 {
-  if (pid_ == 0) {
+  if (pid_ == -1) {
     return false;
   }
 
   pid_t result = waitpid(pid_, nullptr, WNOHANG);
+  CHECK(result);
+
   if (result == pid_) {
-    pid_ = 0;
+    pid_ = -1;
     return false;
-  }
-  else if (result == -1) {
-    perror("Subprocess check failed: ");
   }
 
   return true;
@@ -234,33 +254,40 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
 {
   if (already_exists) {
     handle_ = shm_open(name.c_str(), O_RDWR, 0755);
+    CHECK(handle_);
   }
   else {
     handle_ = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0755);
-    if (handle_) {
-      ftruncate(handle_, size);
+    if (CHECK(handle_)) {
+      if (!CHECK(ftruncate(handle_, size))) {
+        CHECK(close(handle_));
+        handle_ = -1;
+      }
     }
   }
 
   if (handle_ != -1) {
     data_ = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle_, 0);
+    if (data_ == MAP_FAILED) {
+      CHECK(-1 /*mmap failed*/);
+      data_ = nullptr;
+    }
+    /* File descriptor can close after mmap. */
+    CHECK(close(handle_));
   }
   else {
     data_ = nullptr;
   }
 
   data_size_ = data_ ? size : 0;
-
-  /* File descriptor can close after mmap. */
-  close(handle_);
 }
 
 SharedMemory::~SharedMemory()
 {
   if (data_) {
-    munmap(data_, data_size_);
+    CHECK(munmap(data_, data_size_));
     if (is_owner_) {
-      shm_unlink(name_.c_str());
+      CHECK(shm_unlink(name_.c_str()));
     }
   }
 }
@@ -268,35 +295,54 @@ SharedMemory::~SharedMemory()
 SharedSemaphore::SharedSemaphore(std::string name) : name_(name)
 {
   handle_ = sem_open(name.c_str(), O_CREAT, 0700, 0);
+  if (!handle_) {
+    CHECK(-1);
+  }
 }
 
 SharedSemaphore::~SharedSemaphore()
 {
   if (handle_) {
-    sem_close(handle_);
-    sem_unlink(name_.c_str());
+    CHECK(sem_close(handle_));
+    CHECK(sem_unlink(name_.c_str()));
   }
 }
 
 void SharedSemaphore::increment()
 {
-  sem_post(handle_);
+  CHECK(sem_post(handle_));
 }
 
 void SharedSemaphore::decrement()
 {
-  sem_wait(handle_);
+  while (true) {
+    int result = sem_wait(handle_);
+    if (result == 0) {
+      return;
+    }
+    else if (errno != EINTR) {
+      CHECK(result);
+      return;
+    }
+    /* Try again if interrupted by handler. */
+  }
 }
 
 bool SharedSemaphore::try_decrement(int wait_ms)
 {
   if (wait_ms == 0) {
-    return sem_trywait(handle_) == 0;
+    int result = sem_trywait(handle_);
+    if (result == 0) {
+      return true;
+    }
+    else if (errno == EINVAL) {
+      CHECK(result);
+    }
+    return false;
   }
 
   timespec time;
-  if (clock_gettime(CLOCK_REALTIME, &time) == -1) {
-    perror("SharedSemaphore clock_gettime failed: ");
+  if (!CHECK(clock_gettime(CLOCK_REALTIME, &time))) {
     BLI_time_sleep_ms(wait_ms * 1000);
     return try_decrement(0);
   }
@@ -306,15 +352,21 @@ bool SharedSemaphore::try_decrement(int wait_ms)
 
   while (true) {
     int result = sem_timedwait(handle_, &time);
-    if (result == -1 && errno == EINTR) {
-      /* Try again if interrupted by handler. */
-      continue;
+    if (result == 0) {
+      return true;
     }
-
-    return result == 0;
+    else if (errno == EINVAL) {
+      CHECK(result);
+      return true;
+    }
+    /* Try again if interrupted by handler. */
   }
 }
 
 }  // namespace blender
+
+#else
+
+#  error Subprocess API is only supported on Windows and Linux.
 
 #endif
