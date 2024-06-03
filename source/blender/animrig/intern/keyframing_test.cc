@@ -47,6 +47,7 @@ class KeyframingTest : public testing::Test {
 
   /* For NLA testing. */
   Object *object_with_nla;
+  PointerRNA object_with_nla_rna_pointer;
   bAction *nla_action;
 
   static void SetUpTestSuite()
@@ -83,17 +84,18 @@ class KeyframingTest : public testing::Test {
     armature_object_rna_pointer = RNA_id_pointer_create(&armature_object->id);
 
     object_with_nla = BKE_object_add_only_object(bmain, OB_EMPTY, "OBEmptyWithNLA");
+    object_with_nla_rna_pointer = RNA_id_pointer_create(&object_with_nla->id);
     nla_action = static_cast<bAction *>(BKE_id_new(bmain, ID_AC, "ACNLAAction"));
 
-    /* Set up an NLA system with a single NLA track with a single NLA strip, and
-     * make that strip active and in tweak mode. */
+    /* Set up an NLA system with a single NLA track with a single offset-in-time
+     * NLA strip, and make that strip active and in tweak mode. */
     AnimData *adt = BKE_animdata_ensure_id(&object_with_nla->id);
     NlaTrack *track = BKE_nlatrack_new_head(&adt->nla_tracks, false);
     NlaStrip *strip = BKE_nlastack_add_strip(adt, nla_action, false);
     track->flag |= NLATRACK_ACTIVE;
     strip->flag |= NLASTRIP_FLAG_ACTIVE;
-    strip->start = 0.0;
-    strip->end = 1000.0;
+    strip->start = -10.0;
+    strip->end = 990.0;
     strip->actstart = 0.0;
     strip->actend = 1000.0;
     strip->scale = 1.0;
@@ -361,6 +363,26 @@ TEST_F(KeyframingTest, insert_key_rna__only_needed)
   EXPECT_EQ(2, fcurve_z->totvert);
 }
 
+/* Inserting a key into an NLA strip that has a time offset should remap the
+ * key's time to the local time of the strip. */
+TEST_F(KeyframingTest, insert_key_rna__nla_time_remapping)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_key_rna(&object_with_nla_rna_pointer,
+                                                     {{"location", std::nullopt, 0}},
+                                                     1.0,
+                                                     INSERTKEY_NEEDED,
+                                                     BEZT_KEYTYPE_KEYFRAME,
+                                                     bmain,
+                                                     anim_eval_context);
+
+  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(1, BLI_listbase_count(&nla_action->curves));
+  FCurve *fcurve = BKE_fcurve_find(&nla_action->curves, "location", 0);
+  EXPECT_EQ(11.0, fcurve->bezt[0].vec[1][0]);
+}
+
 /* ------------------------------------------------------------
  * Tests for `insert_keyframe()`.
  */
@@ -549,6 +571,27 @@ TEST_F(KeyframingTest, insert_keyframe__only_needed)
   EXPECT_EQ(2, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_y->totvert);
   EXPECT_EQ(2, fcurve_z->totvert);
+}
+
+/* Inserting a key into an NLA strip that has a time offset should remap the
+ * key's time to the local time of the strip. */
+TEST_F(KeyframingTest, insert_keyframe__nla_time_remapping)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  const CombinedKeyingResult result = insert_keyframe(bmain,
+                                                      object_with_nla->id,
+                                                      nullptr,
+                                                      "location",
+                                                      0,
+                                                      &anim_eval_context,
+                                                      BEZT_KEYTYPE_KEYFRAME,
+                                                      INSERTKEY_NOFLAGS);
+
+  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(1, BLI_listbase_count(&nla_action->curves));
+  FCurve *fcurve = BKE_fcurve_find(&nla_action->curves, "location", 0);
+  EXPECT_EQ(11.0, fcurve->bezt[0].vec[1][0]);
 }
 
 /* ------------------------------------------------------------
