@@ -140,19 +140,19 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   prim += kernel_data.bake.tri_offset;
 
   /* Random number generator. */
-  uint rng_hash = __float_as_uint(primitive[0]);
+  uint rng_pixel = __float_as_uint(primitive[0]);
   if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
-    rng_hash = hash_uint(rng_hash) ^ kernel_data.integrator.seed;
+    rng_pixel = hash_uint(rng_pixel) ^ kernel_data.integrator.seed;
   }
   else {
-    rng_hash = path_rng_hash_init(kg, sample, x, y);
+    rng_pixel = path_rng_pixel_init(kg, sample, x, y);
   }
 
   const float2 rand_filter = (sample == 0) ? make_float2(0.5f, 0.5f) :
-                                             path_rng_2D(kg, rng_hash, sample, PRNG_FILTER);
+                                             path_rng_2D(kg, rng_pixel, sample, PRNG_FILTER);
 
   /* Initialize path state for path integration. */
-  path_state_init_integrator(kg, state, sample, rng_hash);
+  path_state_init_integrator(kg, state, sample, rng_pixel);
 
   /* Barycentric UV. */
   float u = primitive[2];

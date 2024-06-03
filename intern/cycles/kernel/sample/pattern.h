@@ -63,7 +63,7 @@ ccl_device_forceinline uint3 blue_noise_indexing(KernelGlobals kg, uint pixel_in
 }
 
 ccl_device_forceinline float path_rng_1D(KernelGlobals kg,
-                                         uint rng_hash,
+                                         uint rng_pixel,
                                          uint sample,
                                          int dimension)
 {
@@ -72,15 +72,15 @@ ccl_device_forceinline float path_rng_1D(KernelGlobals kg,
 #endif
 
   if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
-    return tabulated_sobol_sample_1D(kg, sample, rng_hash, dimension);
+    return tabulated_sobol_sample_1D(kg, sample, rng_pixel, dimension);
   }
 
-  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  uint3 index = blue_noise_indexing(kg, rng_pixel, sample);
   return sobol_burley_sample_1D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_forceinline float2 path_rng_2D(KernelGlobals kg,
-                                          uint rng_hash,
+                                          uint rng_pixel,
                                           int sample,
                                           int dimension)
 {
@@ -89,15 +89,15 @@ ccl_device_forceinline float2 path_rng_2D(KernelGlobals kg,
 #endif
 
   if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
-    return tabulated_sobol_sample_2D(kg, sample, rng_hash, dimension);
+    return tabulated_sobol_sample_2D(kg, sample, rng_pixel, dimension);
   }
 
-  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  uint3 index = blue_noise_indexing(kg, rng_pixel, sample);
   return sobol_burley_sample_2D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_forceinline float3 path_rng_3D(KernelGlobals kg,
-                                          uint rng_hash,
+                                          uint rng_pixel,
                                           int sample,
                                           int dimension)
 {
@@ -106,15 +106,15 @@ ccl_device_forceinline float3 path_rng_3D(KernelGlobals kg,
 #endif
 
   if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
-    return tabulated_sobol_sample_3D(kg, sample, rng_hash, dimension);
+    return tabulated_sobol_sample_3D(kg, sample, rng_pixel, dimension);
   }
 
-  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  uint3 index = blue_noise_indexing(kg, rng_pixel, sample);
   return sobol_burley_sample_3D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_forceinline float4 path_rng_4D(KernelGlobals kg,
-                                          uint rng_hash,
+                                          uint rng_pixel,
                                           int sample,
                                           int dimension)
 {
@@ -123,39 +123,42 @@ ccl_device_forceinline float4 path_rng_4D(KernelGlobals kg,
 #endif
 
   if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
-    return tabulated_sobol_sample_4D(kg, sample, rng_hash, dimension);
+    return tabulated_sobol_sample_4D(kg, sample, rng_pixel, dimension);
   }
 
-  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  uint3 index = blue_noise_indexing(kg, rng_pixel, sample);
   return sobol_burley_sample_4D(index.x, dimension, index.y, index.z);
 }
 
-ccl_device_inline uint path_rng_hash_init(KernelGlobals kg,
+ccl_device_inline uint path_rng_pixel_init(KernelGlobals kg,
                                           const int sample,
                                           const int x,
                                           const int y)
 {
-  uint rng_hash = kernel_data.integrator.seed;
   const uint pattern = kernel_data.integrator.sampling_pattern;
   if (pattern == SAMPLING_PATTERN_TABULATED_SOBOL || pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
-    rng_hash ^= hash_iqnt2d(x, y);
-  }
-  else {
-    /* Perform blue-noise dithered sampling by distributing the base sequence across pixels
-     * following a hierarchically shuffled 2D morton curve.
-     * Based on:
-     * https://psychopath.io/post/2022_07_24_owen_scrambling_based_dithered_blue_noise_sampling.
-     */
-    rng_hash = nested_uniform_scramble_base4(morton2d(x, y), rng_hash);
-  }
-
 #ifdef __DEBUG_CORRELATION__
-  srand48(rng_hash + sample);
+    return srand48(rng_pixel + sample);
 #else
-  (void)sample;
+    (void)sample;
 #endif
 
-  return rng_hash;
+    /* The white-noise samplers use a random per-pixel hash to generate independent sequences. */
+    return hash_iqnt2d(x, y) ^ kernel_data.integrator.seed;
+  }
+  else {
+    /* The blue-noise samplers use a single sequence for all pixels, but offset the index within
+     * the sequence for each pixel. We use a hierarchically shuffled 2D morton curve to determine
+     * each pixel's offset along the sequence.
+     *
+     * Based on:
+     * https://psychopath.io/post/2022_07_24_owen_scrambling_based_dithered_blue_noise_sampling.
+     *
+     * TODO(lukas): Use a precomputed Hilbert curve to avoid directionality bias in the noise
+     * distribution. We can just precompute a small-ish tile and repeat it in morton code order.
+     */
+    return nested_uniform_scramble_base4(morton2d(x, y), kernel_data.integrator.seed);
+  }
 }
 
 /**
