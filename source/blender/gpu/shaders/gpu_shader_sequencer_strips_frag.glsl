@@ -51,7 +51,9 @@ void main()
   vec2 pxy = co * view_to_pixel;
 
   float radius = context_data.round_radius;
-  radius = min(radius, min(bsize.x, bsize.y));
+  if (radius > bsize.x) {
+    radius = 0.0;
+  }
 
   float d = sdf_rounded_box(pxy - bcenter, bsize, radius);
 

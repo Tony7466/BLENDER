@@ -1599,12 +1599,16 @@ static uint color_pack(const uchar rgba[4])
 static float calc_strip_round_radius(float pixely)
 {
   float height_pixels = 1.0f / pixely;
-  float radius = height_pixels * 0.1f;
-  if (radius < 2.0f) {
-    radius = 0.0f;
+  if (height_pixels < 16.0f) {
+    return 0.0f;
   }
-  radius = min_ff(radius, 16.0f);
-  return radius;
+  if (height_pixels < 64.0f) {
+    return 4.0f;
+  }
+  if (height_pixels < 128.0f) {
+    return 6.0f;
+  }
+  return 8.0f;
 }
 
 class SeqStripsBatch {
