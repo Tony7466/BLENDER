@@ -252,10 +252,6 @@ def extensions_panel_draw_legacy_addons(
                 col_b.label(text="  " + iface_(value), icon='ERROR')
             del value
 
-            # Include for consistency.
-            col_a.label(text="Type")
-            col_b.label(text="add-on")
-
             col_a.label(text="File")
             col_b.label(text=mod.__file__, translate=False)
 
@@ -723,9 +719,6 @@ def extensions_panel_draw_impl(
                     col_a.label(text="Size")
                     col_b.label(text=size_as_fmt_string(item_remote["archive_size"]))
 
-                if not filter_by_type:
-                    col_a.label(text="Type")
-                    col_b.label(text=item_remote["type"])
 
                 if len(repos_all) > 1:
                     col_a.label(text="Repository")
