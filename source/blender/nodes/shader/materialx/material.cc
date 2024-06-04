@@ -62,10 +62,8 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-    /* Add a nodegraph for the material */
     if (output_node && output_node->typeinfo->materialx_fn) {
-      MaterialX::NodeGraphPtr node_graph = doc->addNodeGraph("NG_" + material_name);
-      NodeParserData data = {node_graph.get(),
+      NodeParserData data = {doc.get(),
                              depsgraph,
                              material,
                              NodeItem::Type::Material,
