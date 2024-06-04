@@ -15,7 +15,7 @@
 
 namespace blender {
 
-static bool validate_arguments(Span<StringRefNull> args)
+static bool check_arguments_are_valid(Span<StringRefNull> args)
 {
   for (StringRefNull arg : args) {
     for (const char c : arg) {
@@ -59,7 +59,7 @@ bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
 
-  if (!validate_arguments(args)) {
+  if (!check_arguments_are_valid(args)) {
     BLI_assert(false);
     return false;
   }
@@ -228,7 +228,7 @@ static bool check(int result, const char *function, const char *msg)
 
 bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
-  if (!validate_arguments(args)) {
+  if (!check_arguments_are_valid(args)) {
     BLI_assert(false);
     return false;
   }
