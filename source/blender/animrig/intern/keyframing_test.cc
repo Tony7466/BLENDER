@@ -688,7 +688,7 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__only_needed)
  */
 
 /* Keying a non-array property. */
-TEST_F(KeyframingTest, insert_key_rna__non_array_property)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -746,7 +746,7 @@ TEST_F(KeyframingTest, insert_key_rna__non_array_property)
 }
 
 /* Keying a single element of an array property. */
-TEST_F(KeyframingTest, insert_key_rna__single_element)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__single_element)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -766,7 +766,7 @@ TEST_F(KeyframingTest, insert_key_rna__single_element)
 }
 
 /* Keying all elements of an array property. */
-TEST_F(KeyframingTest, insert_key_rna__all_elements)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__all_elements)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -788,7 +788,7 @@ TEST_F(KeyframingTest, insert_key_rna__all_elements)
 }
 
 /* Keying a pose bone from its own RNA pointer. */
-TEST_F(KeyframingTest, insert_key_rna__pose_bone_rna_pointer)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__pose_bone_rna_pointer)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
   bPoseChannel *pchan = BKE_pose_channel_find_name(armature_object->pose, "Bone");
@@ -813,7 +813,7 @@ TEST_F(KeyframingTest, insert_key_rna__pose_bone_rna_pointer)
 }
 
 /* Keying a pose bone from its owning ID's RNA pointer. */
-TEST_F(KeyframingTest, insert_key_rna__pose_bone_owner_id_pointer)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__pose_bone_owner_id_pointer)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -836,7 +836,7 @@ TEST_F(KeyframingTest, insert_key_rna__pose_bone_owner_id_pointer)
 }
 
 /* Keying multiple elements of multiple properties at once. */
-TEST_F(KeyframingTest, insert_key_rna__multiple_properties)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__multiple_properties)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -866,7 +866,7 @@ TEST_F(KeyframingTest, insert_key_rna__multiple_properties)
 }
 
 /* Keying with the "Only Insert Available" flag. */
-TEST_F(KeyframingTest, insert_key_rna__only_available)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_available)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -919,7 +919,7 @@ TEST_F(KeyframingTest, insert_key_rna__only_available)
 }
 
 /* Keying with the "Only Replace" flag. */
-TEST_F(KeyframingTest, insert_key_rna__only_replace)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_replace)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -1006,7 +1006,7 @@ TEST_F(KeyframingTest, insert_key_rna__only_replace)
 }
 
 /* Keying with the "Only Insert Needed" flag. */
-TEST_F(KeyframingTest, insert_key_rna__only_needed)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_needed)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
@@ -1068,7 +1068,7 @@ TEST_F(KeyframingTest, insert_key_rna__only_needed)
 
 /* Inserting a key into an NLA strip that has a time offset should remap the
  * key's time to the local time of the strip. */
-TEST_F(KeyframingTest, insert_key_rna__nla_time_remapping)
+TEST_F(KeyframingTest, insert_key_rna__legacy_action__nla_time_remapping)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
