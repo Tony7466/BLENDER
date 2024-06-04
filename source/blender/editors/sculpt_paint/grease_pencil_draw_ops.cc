@@ -20,6 +20,7 @@
 #include "BLI_assert.h"
 #include "BLI_color.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_kdopbvh.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
@@ -66,6 +67,7 @@
 #include "wm_event_types.hh"
 
 #include <fmt/format.h>
+#include <iostream>
 
 namespace blender::ed::sculpt_paint {
 
@@ -519,14 +521,17 @@ struct GreasePencilFillOpData {
 static ed::greasepencil::ExtensionData grease_pencil_fill_get_extension_data(
     const bContext &C, const GreasePencilFillOpData &op_data)
 {
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   const Scene &scene = *CTX_data_scene(&C);
   const Object &object = *CTX_data_active_object(&C);
   const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
 
+  const float4x4 view_matrix = float4x4(rv3d.viewmat);
+
   const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
-  ed::greasepencil::ExtensionData result;
+  ed::greasepencil::ExtensionData extension_data;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -557,22 +562,135 @@ static ed::greasepencil::ExtensionData grease_pencil_fill_get_extension_data(
 
       switch (op_data.extension_mode) {
         case GP_FILL_EMODE_EXTEND:
-          result.lines.starts.append(pos_head);
-          result.lines.ends.append(pos_head + dir_head * length);
-          result.lines.starts.append(pos_tail);
-          result.lines.ends.append(pos_tail + dir_tail * length);
+          extension_data.lines.starts.append(pos_head);
+          extension_data.lines.ends.append(pos_head + dir_head * length);
+          extension_data.lines.starts.append(pos_tail);
+          extension_data.lines.ends.append(pos_tail + dir_tail * length);
           break;
         case GP_FILL_EMODE_RADIUS:
-          result.circles.centers.append(pos_head);
-          result.circles.radii.append(length);
-          result.circles.centers.append(pos_tail);
-          result.circles.radii.append(length);
+          extension_data.circles.centers.append(pos_head);
+          extension_data.circles.radii.append(length);
+          extension_data.circles.centers.append(pos_tail);
+          extension_data.circles.radii.append(length);
           break;
       }
     }
   }
 
-  return result;
+  /* Intersection test against strokes and other extension lines. */
+  if (op_data.extension_cut) {
+    int max_lines = 0;
+    for (const ed::greasepencil::DrawingInfo &info : drawings) {
+      /* Note: Cyclic curves have as many segments as points, non-cyclic curves have one less.
+       * Rather than counting cyclic curves add one per point as an upper bound. */
+      max_lines += info.drawing.strokes().points_num() + info.drawing.strokes().curves_num();
+    }
+    max_lines += extension_data.lines.starts.size();
+
+    /* Utility struct to map from BVH tree indices to strokes or extension lines. */
+    Vector<float2> view_starts, view_ends;
+    view_starts.reserve(max_lines);
+    view_ends.reserve(max_lines);
+
+    BVHTree *tree = BLI_bvhtree_new(max_lines, 0.0f, 4, 6);
+
+    // TODO
+    // for (const ed::greasepencil::DrawingInfo &info : drawings) {
+    //   const bke::CurvesGeometry &curves = info.drawing.strokes();
+    //   const OffsetIndices points_by_curve = curves.points_by_curve();
+    //   const VArray<bool> cyclic = curves.cyclic();
+    //   for (const int i_curve : curves.curves_range()) {
+    //     const bool is_cyclic = cyclic[i_curve];
+    //     const IndexRange points = points_by_curve[i_curve];
+
+    //     for (const int i_point : points.drop_back(1)) {
+    //       float bb[6];
+
+    //       BLI_bvhtree_insert(tree, i_point, bb, 2);
+    //     }
+    //     if (is_cyclic) {
+    //     }
+    //   }
+    // }
+
+    /* Insert extension lines for self-intersection. */
+    std::cout << "Build tree:" << std::endl;
+    for (const int i_line : extension_data.lines.starts.index_range()) {
+      const float2 start =
+          math::transform_point(view_matrix, extension_data.lines.starts[i_line]).xy();
+      const float2 end =
+          math::transform_point(view_matrix, extension_data.lines.ends[i_line]).xy();
+
+      const int bvh_index = view_starts.append_and_get_index_as(start);
+      view_ends.append_as(end);
+      std::cout << "from " << start << " to " << end << std::endl;
+
+      const float bb[6] = {start.x, start.y, 0.0f, end.x, end.y, 0.0f};
+      BLI_bvhtree_insert(tree, bvh_index, bb, 2);
+    }
+
+    BLI_bvhtree_balance(tree);
+
+    struct RaycastArgs {
+      Span<float2> starts;
+      Span<float2> ends;
+      int own_index;
+    };
+    BVHTree_RayCastCallback callback =
+        [](void *userdata, int index, const BVHTreeRay *ray, BVHTreeRayHit *hit) {
+          using Result = math::isect_result<float2>;
+
+          const RaycastArgs &args = *static_cast<const RaycastArgs *>(userdata);
+          std::cout << "Intersection " << args.own_index << " vs. " << index << ":" << std::endl;
+          if (index == args.own_index) {
+            hit->index = -1;
+            return;
+          }
+
+          const float2 ray_start = float2(ray->origin);
+          const float2 ray_end = ray_start + float2(ray->direction) * ray->radius;
+          const float2 &line_start = args.starts[index];
+          const float2 &line_end = args.ends[index];
+
+          Result result = math::isect_seg_seg(ray_start, ray_end, line_start, line_end);
+          std::cout << ">> ray " << ray_start << "->" << ray_end << ", " << line_start << "->"
+                    << line_end << result.kind << std::endl;
+          if (result.kind <= 0) {
+            hit->index = -1;
+            return;
+          }
+
+          hit->index = index;
+          /* We're only interested in lambda, ignore other hit return value apart from index. */
+          hit->dist = result.lambda;
+        };
+
+    std::cout << "Raycast:" << std::endl;
+    for (const int i_line : extension_data.lines.starts.index_range()) {
+      const float2 start =
+          math::transform_point(view_matrix, extension_data.lines.starts[i_line]).xy();
+      const float2 end =
+          math::transform_point(view_matrix, extension_data.lines.ends[i_line]).xy();
+      float length;
+      const float2 dir = math::normalize_and_get_length(end - start, length);
+      std::cout << "from " << start << " to " << end << std::endl;
+
+      // TODO take offset into account if other data is added.
+      const int bvh_index = i_line;
+
+      RaycastArgs args = {view_starts, view_ends, bvh_index};
+      BVHTreeRayHit hit;
+      BLI_bvhtree_ray_cast(
+          tree, float3(start, 0.0f), float3(dir, 0.0f), length, &hit, callback, &args);
+      if (hit.index >= 0) {
+        extension_data.lines.ends[i_line] *= hit.dist;
+      }
+    }
+
+    BLI_bvhtree_free(tree);
+  }
+
+  return extension_data;
 }
 
 static void grease_pencil_fill_status_indicators(bContext &C,
