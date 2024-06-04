@@ -314,6 +314,7 @@ class USERPREF_PT_interface_statusbar(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_statusbar_scene_duration", text="Scene Duration")
         col.prop(view, "show_statusbar_memory", text="System Memory")
         col.prop(view, "show_statusbar_vram", text="Video Memory")
+        col.prop(view, "show_extensions_updates", text="Extensions Updates")
         col.prop(view, "show_statusbar_version", text="Blender Version")
 
 
@@ -533,6 +534,17 @@ class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
         subrow.active = edit.node_use_insert_offset
 
         layout.prop(edit, "node_preview_resolution", text="Preview Resolution")
+
+
+class USERPREF_PT_edit_sequence_editor(EditingPanel, CenterAlignMixIn, Panel):
+    bl_label = "Video Sequencer"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        edit = prefs.edit
+
+        layout.prop(edit, "use_sequencer_simplified_tweaking")
 
 
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
@@ -2841,6 +2853,7 @@ classes = (
     USERPREF_PT_edit_gpencil,
     USERPREF_PT_edit_text_editor,
     USERPREF_PT_edit_node_editor,
+    USERPREF_PT_edit_sequence_editor,
     USERPREF_PT_edit_misc,
 
     USERPREF_PT_animation_timeline,

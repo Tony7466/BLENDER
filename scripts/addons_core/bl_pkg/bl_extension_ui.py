@@ -338,43 +338,71 @@ class notify_info:
 
 def extensions_panel_draw_online_extensions_request_impl(
         self,
-        context,
+        _context,
 ):
     layout = self.layout
     layout_header, layout_panel = layout.panel("advanced", default_closed=False)
     layout_header.label(text="Online Extensions")
-    if layout_panel is not None:
-        # Text wrapping isn't supported, manually wrap.
-        for line in (
-                "Welcome! Access community-made add-ons and themes from the ",
-                "extensions.blender.org repository.",
-                "",
-                "This requires Internet access. You can adjust this from \"System\" preferences.",
-        ):
-            layout_panel.label(text=line)
 
-        row = layout.row()
-        row = layout_panel.row(align=True)
-        row.alignment = 'LEFT'
-        row.label(text="To continue offline, \"Install from Disk\" instead.")
-        # TODO: the URL must be updated before release,
-        # this could be constructed using a function to account for Blender version & locale.
-        row.operator(
-            "wm.url_open",
-            text="",
-            icon='URL',
-            emboss=False,
-        ).url = "https://docs.blender.org/manual/en/dev/editors/preferences/extensions.html#install"
-        layout_panel.separator()
+    if layout_panel is None:
+        return
 
-        row = layout.row()
-        props = row.operator("wm.context_set_boolean", text="Dismiss", icon='X')
-        props.data_path = "preferences.extensions.use_online_access_handled"
-        props.value = True
+    box = layout_panel.box()
 
-        # The only reason to prefer this over `screen.userpref_show`
-        # is it will be disabled when `--offline-mode` is forced with a useful error for why.
-        row.operator("extensions.userpref_allow_online", text="Allow Online Access", icon='CHECKMARK')
+    # Text wrapping isn't supported, manually wrap.
+    for line in (
+            "Internet access is required to install and update online extensions. ",
+            "You can adjust this later from \"System\" preferences.",
+    ):
+        box.label(text=line)
+
+    row = box.row(align=True)
+    row.alignment = 'LEFT'
+    row.label(text="While offline, use \"Install from Disk\" instead.")
+    # TODO: the URL must be updated before release,
+    # this could be constructed using a function to account for Blender version & locale.
+    row.operator(
+        "wm.url_open",
+        text="",
+        icon='URL',
+        emboss=False,
+    ).url = "https://docs.blender.org/manual/en/dev/editors/preferences/extensions.html#install"
+
+    row = box.row()
+    props = row.operator("wm.context_set_boolean", text="Continue Offline", icon='X')
+    props.data_path = "preferences.extensions.use_online_access_handled"
+    props.value = True
+
+    # The only reason to prefer this over `screen.userpref_show`
+    # is it will be disabled when `--offline-mode` is forced with a useful error for why.
+    row.operator("extensions.userpref_allow_online", text="Allow Online Access", icon='CHECKMARK')
+
+
+def extensions_panel_draw_missing_impl(
+        *,
+        layout,
+        missing_modules,
+):
+    layout_header, layout_panel = layout.panel("missing_script_files", default_closed=True)
+    layout_header.label(text="Missing Add-ons", icon='ERROR')
+
+    if layout_panel is None:
+        return
+
+    box = layout_panel.box()
+    for addon_module_name in sorted(missing_modules):
+
+        boxsub = box.column().box()
+        colsub = boxsub.column()
+        row = colsub.row(align=True)
+
+        row_left = row.row()
+        row_left.alignment = 'LEFT'
+        row_left.label(text=addon_module_name, translate=False)
+
+        row_right = row.row()
+        row_right.alignment = 'RIGHT'
+        row_right.operator("preferences.addon_disable", text="", icon="X", emboss=False).module = addon_module_name
 
 
 def extensions_panel_draw_impl(
@@ -748,32 +776,10 @@ def extensions_panel_draw_impl(
         }
 
         if missing_modules:
-            layout_topmost.column().label(text="Missing script files")
-
-            module_names = {mod.__name__ for mod in addon_modules}
-            for addon_module_name in sorted(missing_modules):
-                is_enabled = addon_module_name in used_addon_module_name_map
-                # Addon UI Code
-                box = layout_topmost.column().box()
-                colsub = box.column()
-                row = colsub.row(align=True)
-
-                row.label(text="", icon='ERROR')
-
-                if is_enabled:
-                    row.operator(
-                        "preferences.addon_disable", icon='CHECKBOX_HLT', text="", emboss=False,
-                    ).module = addon_module_name
-
-                row.label(text=addon_module_name, translate=False)
-
-                row_right = row.row()
-                row_right.alignment = 'RIGHT'
-
-                row_right.label(text="Missing   ")
-                row_right.active = False
-
-            layout_topmost.label(text="")
+            extensions_panel_draw_missing_impl(
+                layout=layout_topmost,
+                missing_modules=missing_modules,
+                )
 
 
 class USERPREF_PT_extensions_filter(Panel):
