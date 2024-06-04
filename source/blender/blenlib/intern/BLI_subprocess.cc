@@ -201,6 +201,7 @@ static bool check(int result, const char *function, const char *msg)
 }
 
 #    define CHECK(result) check((result), __FUNCTION__, #result)
+#    define ERROR(msg) check(false, __FUNCTION__, msg)
 
 bool Subprocess::create(Span<StringRefNull> args)
 {
@@ -231,7 +232,7 @@ bool Subprocess::create(Span<StringRefNull> args)
   /* Child process initialization. */
   execv(path, char_args.data());
 
-  CHECK(-1 /* execv failed */);
+  ERROR("execv");
   exit(errno);
 
   return false;
@@ -276,7 +277,7 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
   if (handle_ != -1) {
     data_ = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle_, 0);
     if (data_ == MAP_FAILED) {
-      CHECK(-1 /*mmap failed*/);
+      ERROR("mmap");
       data_ = nullptr;
     }
     /* File descriptor can close after mmap. */
@@ -304,7 +305,7 @@ SharedSemaphore::SharedSemaphore(std::string name, bool is_owner)
 {
   handle_ = sem_open(name.c_str(), O_CREAT, 0700, 0);
   if (!handle_) {
-    CHECK(-1);
+    ERROR("sem_open");
   }
 }
 
