@@ -518,9 +518,6 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
 
     case SH_NODE_BSDF_PRINCIPLED: {
       bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Alpha");
-      if (!socket) {
-        return AlphaSource::opaque();
-      }
       if (socket->link == nullptr) {
         float socket_value = *version_cycles_node_socket_float_value(socket);
         if (socket_value == 0.0f) {
@@ -842,6 +839,55 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     /* Shift animation data to accommodate the new Roughness input. */
     version_node_socket_index_animdata(
         bmain, NTREE_SHADER, SH_NODE_SUBSURFACE_SCATTERING, 4, 1, 5);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
+    /* Convert blend method to math nodes. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+
+    if (scene_uses_eevee_legacy) {
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        if (!material->use_nodes || material->nodetree == nullptr) {
+          continue;
+        }
+
+        if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
+          /* Compatible modes. Nothing to change. */
+          continue;
+        }
+
+        if (material->blend_shadow == MA_BS_NONE) {
+          /* No need to match the surface since shadows are disabled. */
+        }
+        else if (material->blend_shadow == MA_BS_SOLID) {
+          /* This is already versionned an transfered to `transparent_shadows`. */
+        }
+        else if ((material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
+                 (material->blend_shadow == MA_BS_HASHED))
+        {
+          BLO_reportf_wrap(fd->reports,
+                           RPT_WARNING,
+                           RPT_("Couldn't convert material %s because of different Blend Mode "
+                                "and Shadow Mode\n"),
+                           material->id.name + 2);
+          continue;
+        }
+
+        /* TODO(fclem): Check if theshold is driven or has animation. Bail out if needed? */
+
+        float threshold = (material->blend_method == MA_BM_CLIP) ? material->alpha_threshold :
+                                                                   2.0f;
+
+        if (!versioning_eevee_material_blend_mode_settings(material->nodetree, threshold)) {
+          BLO_reportf_wrap(
+              fd->reports,
+              RPT_WARNING,
+              RPT_("Couldn't convert material %s because of non-trivial alpha blending\n"),
+              material->id.name + 2);
+        }
+      }
+    }
   }
 
   /**
@@ -3991,55 +4037,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         item.data_type = storage->data_type_legacy;
         item.identifier = storage->next_identifier++;
         item.name = BLI_strdup("Value");
-      }
-    }
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
-    /* Convert blend method to math nodes. */
-    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
-
-    if (scene_uses_eevee_legacy) {
-      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-        if (!material->use_nodes || material->nodetree == nullptr) {
-          continue;
-        }
-
-        if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
-          /* Compatible modes. Nothing to change. */
-          continue;
-        }
-
-        if (material->blend_shadow == MA_BS_NONE) {
-          /* No need to match the surface since shadows are disabled. */
-        }
-        else if (material->blend_shadow == MA_BS_SOLID) {
-          /* This is already versionned an transfered to `transparent_shadows`. */
-        }
-        else if ((material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
-                 (material->blend_shadow == MA_BS_HASHED))
-        {
-          BLO_reportf_wrap(fd->reports,
-                           RPT_WARNING,
-                           RPT_("Couldn't convert material %s because of different Blend Mode "
-                                "and Shadow Mode\n"),
-                           material->id.name + 2);
-          continue;
-        }
-
-        /* TODO(fclem): Check if theshold is driven or has animation. Bail out if needed? */
-
-        float threshold = (material->blend_method == MA_BM_CLIP) ? material->alpha_threshold :
-                                                                   2.0f;
-
-        if (!versioning_eevee_material_blend_mode_settings(material->nodetree, threshold)) {
-          BLO_reportf_wrap(
-              fd->reports,
-              RPT_WARNING,
-              RPT_("Couldn't convert material %s because of non-trivial alpha blending\n"),
-              material->id.name + 2);
-        }
       }
     }
   }
