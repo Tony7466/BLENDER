@@ -386,6 +386,73 @@ def extensions_panel_draw_online_extensions_request_impl(
     row.operator("extensions.userpref_allow_online", text="Allow Online Access", icon='CHECKMARK')
 
 
+addons_block_list = {
+    'coat_applink',
+    'depsgraph_debug',
+    'io_scene_x3d',
+    'io_mesh_stl',
+}
+
+addons_legacy_list_lookup = {
+    'rigify': {
+        'name': 'Rigify',
+        'extension_id': 'rigify',
+    },
+    'space_view3d_math_vis': {
+        'name': 'Math Vis (Console)',
+        'extension_id': 'math_vis_console',
+    },
+    'measureit': {
+        'name': 'MeasureIt',
+        'extension_id': 'measureit',
+    },
+    'space_view3d_3d_navigation': {
+        'name': '3D Navigation',
+        'extension_id': 'navigation',
+    },
+}
+
+
+def extensions_panel_draw_legacy_addons_impl(
+        *,
+        layout,
+        missing_modules,
+):
+    # TODO get the repo_index for blender_org or at least make sure it is the correct one.
+    repo_index = 0
+    layout_header, layout_panel = layout.panel("builtin_addons", default_closed=True)
+    layout_header.label(text="Built-in Add-ons")
+
+    if layout_panel is None:
+        return
+
+    box = layout_panel.box()
+    box.label(text="Add-ons previously shipped with Blender are now available from extensions.blender.org.")
+
+    for addon_module_name in sorted(missing_modules):
+        addons_metadata = addons_legacy_list_lookup.get(addon_module_name)
+
+        boxsub = box.column().box()
+        colsub = boxsub.column()
+        row = colsub.row()
+
+        row_left = row.row()
+        row_left.alignment = 'LEFT'
+
+        row_left.label(text=addons_metadata["name"], translate=False)
+
+        row_right = row.row()
+        row_right.alignment = 'RIGHT'
+
+        props = row_right.operator("extensions.package_install_legacy", text="Install")
+        props.repo_index = repo_index
+        props.pkg_id = addons_metadata["extension_id"]
+        props.addon_module_name = addon_module_name
+        del props
+
+        row_right.operator("preferences.addon_disable", text="", icon="X", emboss=False).module = addon_module_name
+
+
 def extensions_panel_draw_missing_impl(
         *,
         layout,
@@ -786,11 +853,26 @@ def extensions_panel_draw_impl(
     # Append missing scripts
     # First collect scripts that are used but have no script file.
     if show_addons:
+        addons_legacy_list = addons_legacy_list_lookup.keys()
+
         module_names = {mod.__name__ for mod in addon_modules}
         missing_modules = {
             addon_module_name for addon_module_name in used_addon_module_name_map
-            if addon_module_name not in module_names
+            if addon_module_name not in module_names and \
+                addon_module_name not in addons_block_list and
+                addon_module_name not in addons_legacy_list
         }
+
+        legacy_modules = {
+            addon_module_name for addon_module_name in used_addon_module_name_map
+            if addon_module_name in addons_legacy_list
+        }
+
+        if legacy_modules:
+            extensions_panel_draw_legacy_addons_impl(
+                layout=layout_topmost,
+                missing_modules=legacy_modules,
+                )
 
         if missing_modules:
             extensions_panel_draw_missing_impl(
