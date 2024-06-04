@@ -5772,8 +5772,7 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
   {
     return OPERATOR_CANCELLED;
   }
-  /* Fix for ##86114: disable for dispalcement smear brush and dyntopo for now */
-  if (brush.sculpt_tool & SCULPT_TOOL_DISPLACEMENT_SMEAR) {
+  if (brush.sculpt_tool == SCULPT_TOOL_DISPLACEMENT_SMEAR) {
     if (!ss.pbvh || BKE_pbvh_type(*ss.pbvh) == PBVH_BMESH) {
       BKE_report(op->reports, RPT_ERROR, "Not supported in dynamic topology mode");
       return OPERATOR_CANCELLED;
