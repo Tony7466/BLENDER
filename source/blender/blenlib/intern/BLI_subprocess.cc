@@ -288,12 +288,13 @@ bool BlenderSubprocess::is_running()
 SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
     : name_(name), is_owner_(!already_exists)
 {
+  constexpr mode_t user_mode = S_IRUSR | S_IWUSR;
   if (already_exists) {
-    handle_ = shm_open(name.c_str(), O_RDWR, 0755);
+    handle_ = shm_open(name.c_str(), O_RDWR, user_mode);
     CHECK(handle_);
   }
   else {
-    handle_ = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0755);
+    handle_ = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, user_mode);
     if (CHECK(handle_)) {
       if (!CHECK(ftruncate(handle_, size))) {
         CHECK(close(handle_));
@@ -331,7 +332,8 @@ SharedMemory::~SharedMemory()
 SharedSemaphore::SharedSemaphore(std::string name, bool is_owner)
     : name_(name), is_owner_(is_owner)
 {
-  handle_ = sem_open(name.c_str(), O_CREAT, 0700, 0);
+  constexpr mode_t user_mode = S_IRUSR | S_IWUSR;
+  handle_ = sem_open(name.c_str(), O_CREAT, user_mode, 0);
   if (!handle_) {
     ERROR("sem_open");
   }
