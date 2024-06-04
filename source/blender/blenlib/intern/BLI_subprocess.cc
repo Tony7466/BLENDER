@@ -394,9 +394,11 @@ bool SharedSemaphore::try_decrement(int wait_ms)
     if (result == 0) {
       return true;
     }
-    else if (errno == EINVAL) {
-      CHECK(result);
-      return true;
+    else if (errno != EINTR) {
+      if (errno != ETIMEDOUT) {
+        CHECK(result);
+      }
+      return false;
     }
     /* Try again if interrupted by handler. */
   }
