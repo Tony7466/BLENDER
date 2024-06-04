@@ -102,7 +102,7 @@ class DeviceInfo {
   DeviceInfo()
   {
     type = DEVICE_CPU;
-    id = "CPU";
+    id = "NONE";
     num = 0;
     cpu_threads = 0;
     display_device = false;
