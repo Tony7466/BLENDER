@@ -118,19 +118,57 @@ TEST_F(KeyframingTest, insert_key_rna__non_array_property)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
-  const CombinedKeyingResult result = insert_key_rna(&object_rna_pointer,
-                                                     {{"rotation_mode"}},
-                                                     1.0,
-                                                     INSERTKEY_NOFLAGS,
-                                                     BEZT_KEYTYPE_KEYFRAME,
-                                                     bmain,
-                                                     anim_eval_context);
-
-  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  /* First time should create the AnimData, Action, and FCurve with a single
+   * key. */
+  object->rotmode = ROT_MODE_XYZ;
+  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_mode"}},
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(1, result_1.get_count(SingleKeyingResult::SUCCESS));
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
-  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
+  FCurve *fcurve = BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0);
+  ASSERT_NE(nullptr, fcurve);
+  ASSERT_NE(nullptr, fcurve->bezt);
+  EXPECT_EQ(1, fcurve->totvert);
+  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_XYZ), fcurve->bezt[0].vec[1][1]);
+
+  /* Second time inserting with a different value on the same frame should
+   * simply replace the key. */
+  object->rotmode = ROT_MODE_QUAT;
+  const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_mode"}},
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(1, fcurve->totvert);
+  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_QUAT), fcurve->bezt[0].vec[1][1]);
+
+  /* Third time inserting on a different time should add a second key. */
+  object->rotmode = ROT_MODE_ZYX;
+  const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_mode"}},
+                                                       10.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(1, result_3.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, fcurve->totvert);
+  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_QUAT), fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(10.0, fcurve->bezt[1].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_ZYX), fcurve->bezt[1].vec[1][1]);
 }
 
 /* Keying a single element of an array property. */
@@ -399,20 +437,61 @@ TEST_F(KeyframingTest, insert_keyframe__non_array_property)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
-  const CombinedKeyingResult result = insert_keyframe(bmain,
-                                                      object->id,
-                                                      nullptr,
-                                                      "rotation_mode",
-                                                      -1,
-                                                      &anim_eval_context,
-                                                      BEZT_KEYTYPE_KEYFRAME,
-                                                      INSERTKEY_NOFLAGS);
-
-  EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
+  /* First time should create the AnimData, Action, and FCurve with a single
+   * key. */
+  object->rotmode = ROT_MODE_XYZ;
+  const CombinedKeyingResult result_1 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_mode",
+                                                        -1,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_NOFLAGS);
+  EXPECT_EQ(1, result_1.get_count(SingleKeyingResult::SUCCESS));
   ASSERT_NE(nullptr, object->adt);
   ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
-  EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
+  FCurve *fcurve = BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0);
+  ASSERT_NE(nullptr, fcurve);
+  ASSERT_NE(nullptr, fcurve->bezt);
+  EXPECT_EQ(1, fcurve->totvert);
+  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_XYZ), fcurve->bezt[0].vec[1][1]);
+
+  /* Second time inserting with a different value on the same frame should
+   * simply replace the key. */
+  object->rotmode = ROT_MODE_QUAT;
+  const CombinedKeyingResult result_2 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_mode",
+                                                        -1,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_NOFLAGS);
+  EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(1, fcurve->totvert);
+  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_QUAT), fcurve->bezt[0].vec[1][1]);
+
+  /* Third time inserting on a different time should add a second key. */
+  object->rotmode = ROT_MODE_ZYX;
+  anim_eval_context.eval_time = 10.0;
+  const CombinedKeyingResult result_3 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_mode",
+                                                        -1,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_NOFLAGS);
+  EXPECT_EQ(1, result_3.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, fcurve->totvert);
+  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_QUAT), fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(10.0, fcurve->bezt[1].vec[1][0]);
+  EXPECT_EQ(float(ROT_MODE_ZYX), fcurve->bezt[1].vec[1][1]);
 }
 
 /* Keying a single element of an array property with no keying flags. */
@@ -599,6 +678,7 @@ TEST_F(KeyframingTest, insert_keyframe__nla_time_remapping)
   EXPECT_EQ(1, BLI_listbase_count(&nla_action->curves));
   FCurve *fcurve = BKE_fcurve_find(&nla_action->curves, "location", 0);
   EXPECT_EQ(11.0, fcurve->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve->bezt[0].vec[1][1]);
 }
 
 /* ------------------------------------------------------------
