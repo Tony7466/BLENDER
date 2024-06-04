@@ -38,6 +38,7 @@ from bpy.props import (
     BoolProperty,
     EnumProperty,
     IntProperty,
+    PointerProperty,
     StringProperty,
 )
 
@@ -516,11 +517,17 @@ def cli_extension(argv):
     return bl_extension_cli.cli_extension_handler(argv)
 
 
+class BlExtDummyGroup(bpy.types.PropertyGroup):
+    """Dummy"""
+    pass
+
+
 # -----------------------------------------------------------------------------
 # Registration
 
 classes = (
     BlExtPreferences,
+    BlExtDummyGroup,
 )
 
 cli_commands = []
@@ -551,6 +558,11 @@ def register():
     bl_extension_ops.register()
     bl_extension_ui.register()
 
+    WindowManager.extension_tags = PointerProperty(
+        name="Extension Tags",
+        type=BlExtDummyGroup,
+    )
+
     WindowManager.extension_search = StringProperty(
         name="Filter",
         description="Filter by extension name, author & category",
@@ -579,7 +591,7 @@ def register():
     )
     WindowManager.extension_show_legacy_addons = BoolProperty(
         name="Show Legacy Add-ons",
-        description="Only show extensions, hiding legacy add-ons",
+        description="Show add-ons which are not packaged as extensions",
         default=True,
     )
 
@@ -618,6 +630,7 @@ def unregister():
     bl_extension_ops.unregister()
     bl_extension_ui.unregister()
 
+    del WindowManager.extension_tags
     del WindowManager.extension_search
     del WindowManager.extension_type
     del WindowManager.extension_enabled_only
