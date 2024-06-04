@@ -26,7 +26,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
@@ -967,7 +967,7 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
   bke::pbvh::update_mask(*ss.pbvh);
   undo::push_end(ob);
 
-  SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_MASK);
+  flush_update_done(C, ob, UpdateType::Mask);
   DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
 
   return OPERATOR_FINISHED;
@@ -1176,7 +1176,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   bke::pbvh::update_mask(*ss.pbvh);
   undo::push_end(ob);
 
-  SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_MASK);
+  flush_update_done(C, ob, UpdateType::Mask);
   SCULPT_tag_update_overlays(C);
 
   return OPERATOR_FINISHED;
