@@ -56,6 +56,7 @@ if(WITH_CYCLES_DEVICE_HIP)
   # HIP RT
   if(WITH_CYCLES_DEVICE_HIP AND WITH_CYCLES_DEVICE_HIPRT)
     find_package(HIPRT)
+    # <--
     set_and_warn_library_found("HIP RT" HIPRT_FOUND WITH_CYCLES_DEVICE_HIPRT)
   endif()
 endif()
