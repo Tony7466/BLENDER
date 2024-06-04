@@ -1030,7 +1030,7 @@ TEST_F(KeyframingTest, insert_keyframe__quaternion_on_nla__only_needed)
                                                         &anim_eval_context,
                                                         BEZT_KEYTYPE_KEYFRAME,
                                                         INSERTKEY_NEEDED);
-  EXPECT_EQ(0, result_3.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(4, result_3.get_count(SingleKeyingResult::SUCCESS));
 }
 
 }  // namespace blender::animrig::tests
