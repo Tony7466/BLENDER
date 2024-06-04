@@ -53,7 +53,7 @@ bool Subprocess::create(Span<StringRefNull> args)
   }
 
   const int length_wc = MultiByteToWideChar(
-      CP_UTF8, 0, args_str.c_str(), args_str.length(), NULL, 0);
+      CP_UTF8, 0, args_str.c_str(), args_str.length(), nullptr, 0);
   std::wstring w_args(length_wc, 0);
   CHECK(MultiByteToWideChar(
       CP_UTF8, 0, args_str.c_str(), args_str.length(), w_args.data(), length_wc));
