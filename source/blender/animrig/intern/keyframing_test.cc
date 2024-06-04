@@ -344,6 +344,93 @@ TEST_F(KeyframingTest, insert_key_rna__only_available)
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2));
 }
 
+/* Keying with the "Only Replace" flag. */
+TEST_F(KeyframingTest, insert_key_rna__only_replace)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  /* First attempt should fail, because there are no fcurves yet. */
+  object->rot[0] = 0.0;
+  object->rot[1] = 0.0;
+  object->rot[2] = 0.0;
+  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       1.0,
+                                                       INSERTKEY_REPLACE,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(0, result_1.get_count(SingleKeyingResult::SUCCESS));
+
+  /* Insert a key for two of the elements so that there will be two fcurves with
+   * one key each. */
+  const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
+                                                       {
+                                                           {"rotation_euler", std::nullopt, 0},
+                                                           {"rotation_euler", std::nullopt, 2},
+                                                       },
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(2, result_2.get_count(SingleKeyingResult::SUCCESS));
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  FCurve *fcurve_x = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0);
+  FCurve *fcurve_z = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2);
+  ASSERT_NE(nullptr, fcurve_x);
+  ASSERT_NE(nullptr, fcurve_z);
+  ASSERT_NE(nullptr, fcurve_x->bezt);
+  ASSERT_NE(nullptr, fcurve_z->bezt);
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+  EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+
+  /* Second attempt should also fail, because we insert on a different frame
+   * than the two keys we just created. */
+  object->rot[0] = 2.0;
+  object->rot[1] = 2.0;
+  object->rot[2] = 2.0;
+  const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       5.0,
+                                                       INSERTKEY_REPLACE,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(0, result_3.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+  EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+
+  /* The third attempt, keying on the original frame, should succeed and replace
+   * the existing key on each fcurve. */
+  const CombinedKeyingResult result_4 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_euler"}},
+                                                       1.0,
+                                                       INSERTKEY_REPLACE,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(2, result_4.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+  EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
+  EXPECT_EQ(2.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
+  EXPECT_EQ(2.0, fcurve_z->bezt[0].vec[1][1]);
+}
+
 /* Keying with the "Only Insert Needed" flag. */
 TEST_F(KeyframingTest, insert_key_rna__only_needed)
 {
@@ -593,6 +680,105 @@ TEST_F(KeyframingTest, insert_keyframe__only_available)
   EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2));
+}
+
+/* Keying with the "Only Replace" flag. */
+TEST_F(KeyframingTest, insert_keyframe__only_replace)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  /* First attempt should fail, because there are no fcurves yet. */
+  object->rot[0] = 0.0;
+  object->rot[1] = 0.0;
+  object->rot[2] = 0.0;
+  const CombinedKeyingResult result_1 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_euler",
+                                                        -1,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_REPLACE);
+  EXPECT_EQ(0, result_1.get_count(SingleKeyingResult::SUCCESS));
+
+  /* Insert a key for two of the elements so that there will be two fcurves with
+   * one key each. */
+  const CombinedKeyingResult result_2 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_euler",
+                                                        0,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_NOFLAGS);
+  const CombinedKeyingResult result_3 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_euler",
+                                                        2,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_NOFLAGS);
+  EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(1, result_3.get_count(SingleKeyingResult::SUCCESS));
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  FCurve *fcurve_x = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0);
+  FCurve *fcurve_z = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2);
+  ASSERT_NE(nullptr, fcurve_x);
+  ASSERT_NE(nullptr, fcurve_z);
+  ASSERT_NE(nullptr, fcurve_x->bezt);
+  ASSERT_NE(nullptr, fcurve_z->bezt);
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+  EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+
+  /* Second attempt should also fail, because we insert on a different frame
+   * than the two keys we just created. */
+  object->rot[0] = 2.0;
+  object->rot[1] = 2.0;
+  object->rot[2] = 2.0;
+  anim_eval_context.eval_time = 5.0;
+  const CombinedKeyingResult result_4 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_euler",
+                                                        -1,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_REPLACE);
+  EXPECT_EQ(0, result_4.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+  EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
+  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+
+  /* The third attempt, keying on the original frame, should succeed and replace
+   * the existing key on each fcurve. */
+  anim_eval_context.eval_time = 1.0;
+  const CombinedKeyingResult result_5 = insert_keyframe(bmain,
+                                                        object->id,
+                                                        nullptr,
+                                                        "rotation_euler",
+                                                        -1,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_REPLACE);
+  EXPECT_EQ(2, result_5.get_count(SingleKeyingResult::SUCCESS));
+  EXPECT_EQ(2, BLI_listbase_count(&object->adt->action->curves));
+  EXPECT_EQ(1, fcurve_x->totvert);
+  EXPECT_EQ(1, fcurve_z->totvert);
+  EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
+  EXPECT_EQ(2.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
+  EXPECT_EQ(2.0, fcurve_z->bezt[0].vec[1][1]);
 }
 
 /* Keying with the "Only Insert Needed" flag. */
