@@ -864,15 +864,14 @@ int RenderScheduler::get_num_samples_to_path_trace() const
       num_samples_to_occupy = lround(state_.occupancy_num_samples * 0.7f / state_.occupancy);
     }
 
-    /* The desired time within which the next render update is expected to happen.
+    /* Time limit for path tracing, which constraints the scheduler from "over-scheduling" work
+     * in scenes which takes very long time path trace and have low occupancy. This allows to
+     * have more instant feedback of render results, and also more instant cancel when artist
+     * notices something is wrong.
      *
-     * Normally limit it to the same interval as used to calculate the number of samples without
-     * taking occupancy into account. This avoids situations when occupancy is low, but the GPU is
-     * already taking a lot of time to path trace.
-     *
-     * When the time limit is enabled, do not render more samples than it is needed to reach the
-     * time limit. */
-    double desired_path_tracing_time = 0;
+     * Additionally, when the time limit is enabled, do not render more samples than it is needed
+     * to reach the time limit. */
+    double path_tracing_time_limit = 0;
     if (headless_) {
       /* In the headless (command-line) render "over-scheduling" is not as bad, as it ensures the
        * best possible render time. */
@@ -883,34 +882,36 @@ int RenderScheduler::get_num_samples_to_path_trace() const
        * update times a lot, giving the best possible performance on a complicated scenes like
        * the Spring splash screen (where occupancy is just very bad). */
       if (state_.start_render_time == 0.0 || time_dt() - state_.start_render_time < 10) {
-        desired_path_tracing_time = 2.0;
+        path_tracing_time_limit = 2.0;
       }
       else {
-        desired_path_tracing_time = 15.0;
+        path_tracing_time_limit = 15.0;
       }
     }
     else {
       /* Viewport render: prefer faster updates over overall render time reduction. */
-      desired_path_tracing_time = guess_display_update_interval_in_seconds();
+      /* TODO: Look into enabling this entire code-path for the viewport as well, allowing
+       * compensation even in viewport (currently parent scope checks for non-viewport render). */
+      path_tracing_time_limit = guess_display_update_interval_in_seconds();
     }
     if (time_limit_ != 0.0 && state_.start_render_time != 0.0) {
       const double remaining_render_time = max(
           0.0, time_limit_ - (time_dt() - state_.start_render_time));
-      if (desired_path_tracing_time == 0) {
-        desired_path_tracing_time = remaining_render_time;
+      if (path_tracing_time_limit == 0) {
+        path_tracing_time_limit = remaining_render_time;
       }
       else {
-        desired_path_tracing_time = min(desired_path_tracing_time, remaining_render_time);
+        path_tracing_time_limit = min(path_tracing_time_limit, remaining_render_time);
       }
     }
-    if (desired_path_tracing_time != 0) {
+    if (path_tracing_time_limit != 0) {
       /* Use the per-sample time from the previously rendered batch of samples so that the
        * correction is applied much quicker. */
       const double predicted_render_time = num_samples_to_occupy *
                                            path_trace_time_.get_last_sample_time();
-      if (predicted_render_time > desired_path_tracing_time) {
+      if (predicted_render_time > path_tracing_time_limit) {
         num_samples_to_occupy = lround(num_samples_to_occupy *
-                                       (desired_path_tracing_time / predicted_render_time));
+                                       (path_tracing_time_limit / predicted_render_time));
       }
     }
 
