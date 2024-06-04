@@ -1907,10 +1907,10 @@ void nodesocket_batch_end()
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void draw_node_socket_batch(NodeSocketShaderParameters *socket_params)
+static void draw_node_socket_batch(const NodeSocketShaderParameters &socket_params)
 {
   if (g_batch_nodesocket.enabled) {
-    g_batch_nodesocket.params.append(*socket_params);
+    g_batch_nodesocket.params.append(socket_params);
 
     if (g_batch_nodesocket.params.size() >= MAX_SOCKET_INSTANCE) {
       nodesocket_cache_flush();
@@ -1921,7 +1921,7 @@ static void draw_node_socket_batch(NodeSocketShaderParameters *socket_params)
     gpu::Batch *batch = nodesocket_batch_init();
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
     GPU_batch_uniform_4fv_array(
-        batch, "parameters", MAX_SOCKET_PARAMETERS, (float(*)[4])socket_params);
+        batch, "parameters", MAX_SOCKET_PARAMETERS, (const float(*)[4])(&socket_params));
     GPU_batch_draw(batch);
   }
 }
@@ -1954,7 +1954,7 @@ void node_draw_nodesocket(const rctf *rect,
   socket_params.shape = float(shape) + 0.1f;
 
   GPU_blend(GPU_BLEND_ALPHA);
-  draw_node_socket_batch(&socket_params);
+  draw_node_socket_batch(socket_params);
   GPU_blend(GPU_BLEND_NONE);
 }
 
