@@ -43,10 +43,9 @@ if(HIPRT_INCLUDE_DIR)
 
   find_file(HIPRT_BITCODE
     NAMES
-      hiprt${_hiprt_version}_amd_lib_win.bc
+      hiprt${_hiprt_version}_5.7_amd_lib_win.bc
     HINTS
       ${HIPRT_ROOT_DIR}/bin
-      ${HIPRT_ROOT_DIR}/hiprt/win
       ${HIPRT_ROOT_DIR}/dist/bin/Release
     NO_DEFAULT_PATH
   )
