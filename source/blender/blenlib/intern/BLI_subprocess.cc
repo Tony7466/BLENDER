@@ -391,7 +391,7 @@ bool SharedSemaphore::try_decrement(int wait_ms)
   timespec time;
   if (clock_gettime(CLOCK_REALTIME, &time) == -1) {
     ERROR("clock_gettime");
-    BLI_time_sleep_ms(wait_ms * 1000);
+    BLI_time_sleep_ms(wait_ms);
     return try_decrement(0);
   }
 
