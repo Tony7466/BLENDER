@@ -387,6 +387,68 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_properties)
   EXPECT_NE(nullptr, channel_bag->fcurve_find("rotation_euler", 2));
 }
 
+/* Keying more than one ID on the same action. */
+TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
+{
+  /* Turn on Baklava experimental flag. */
+  U.flag |= USER_DEVELOPER_UI;
+  U.experimental.use_animation_baklava = 1;
+
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  /* First object should crate the action and get a binding and channel bag. */
+  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
+                                                       {{"rotation_mode"}},
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(1, result_1.get_count(SingleKeyingResult::SUCCESS));
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
+  Action &action = object->adt->action->wrap();
+
+  /* The action has a binding and it's assigned to the first object. */
+  ASSERT_EQ(1, action.bindings().size());
+  Binding *binding_1 = action.binding_for_handle(object->adt->binding_handle);
+  EXPECT_NE(nullptr, binding_1);
+
+  /* Get the keyframe strip. */
+  ASSERT_TRUE(action.is_action_layered());
+  ASSERT_EQ(1, action.layers().size());
+  ASSERT_EQ(1, action.layer(0)->strips().size());
+  KeyframeStrip *strip = &action.layer(0)->strip(0)->as<KeyframeStrip>();
+
+  /* We have a single channel bag, and it's for the first object's binding. */
+  ASSERT_EQ(1, strip->channelbags().size());
+  ChannelBag *channel_bag_1 = strip->channelbag_for_binding(*binding_1);
+  ASSERT_NE(nullptr, channel_bag_1);
+
+  /* Assign the action to the second object. */
+  armature_object->adt = BKE_animdata_ensure_id(&armature_object->id);
+  armature_object->adt->action = object->adt->action;
+
+  /* Keying the second object should go into the same action, creating a new
+   * binding and channel bag. */
+  const CombinedKeyingResult result_2 = insert_key_rna(&armature_object_rna_pointer,
+                                                       {{"rotation_mode"}},
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
+
+  ASSERT_EQ(2, action.bindings().size());
+  Binding *binding_2 = action.binding_for_handle(armature_object->adt->binding_handle);
+  EXPECT_NE(nullptr, binding_2);
+
+  ASSERT_EQ(2, strip->channelbags().size());
+  ChannelBag *channel_bag_2 = strip->channelbag_for_binding(*binding_2);
+  ASSERT_NE(nullptr, channel_bag_2);
+}
+
 /* Keying with the "Only Insert Available" flag. */
 TEST_F(KeyframingTest, insert_key_rna__layered_action__only_available)
 {
