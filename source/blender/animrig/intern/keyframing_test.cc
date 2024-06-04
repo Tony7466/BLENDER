@@ -127,8 +127,8 @@ TEST_F(KeyframingTest, insert_key_rna__non_array_property)
                                                      anim_eval_context);
 
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
 }
@@ -147,8 +147,8 @@ TEST_F(KeyframingTest, insert_key_rna__single_element)
                                                      anim_eval_context);
 
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
 }
@@ -167,8 +167,8 @@ TEST_F(KeyframingTest, insert_key_rna__all_elements)
                                                      anim_eval_context);
 
   EXPECT_EQ(3, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1));
@@ -192,8 +192,8 @@ TEST_F(KeyframingTest, insert_key_rna__pose_bone_rna_pointer)
                                                      anim_eval_context);
 
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, armature_object->adt);
-  EXPECT_NE(nullptr, armature_object->adt->action);
+  ASSERT_NE(nullptr, armature_object->adt);
+  ASSERT_NE(nullptr, armature_object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&armature_object->adt->action->curves));
   EXPECT_NE(nullptr,
             BKE_fcurve_find(
@@ -215,8 +215,8 @@ TEST_F(KeyframingTest, insert_key_rna__pose_bone_owner_id_pointer)
       anim_eval_context);
 
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, armature_object->adt);
-  EXPECT_NE(nullptr, armature_object->adt->action);
+  ASSERT_NE(nullptr, armature_object->adt);
+  ASSERT_NE(nullptr, armature_object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&armature_object->adt->action->curves));
   EXPECT_NE(nullptr,
             BKE_fcurve_find(
@@ -242,8 +242,8 @@ TEST_F(KeyframingTest, insert_key_rna__multiple_properties)
                                                      anim_eval_context);
 
   EXPECT_EQ(6, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(6, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "location", 0));
@@ -272,8 +272,8 @@ TEST_F(KeyframingTest, insert_key_rna__only_available)
   /* It's unclear why AnimData and an Action should be created if keying fails
    * here. It may even be undesireable.  These checks are just here to ensure no
    * *unintentional* changes in behavior. */
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(0, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_EQ(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
 
@@ -321,15 +321,15 @@ TEST_F(KeyframingTest, insert_key_rna__only_needed)
                                                        anim_eval_context);
 
   EXPECT_EQ(3, result_1.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
   FCurve *fcurve_x = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0);
   FCurve *fcurve_y = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1);
   FCurve *fcurve_z = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2);
-  EXPECT_NE(nullptr, fcurve_x);
-  EXPECT_NE(nullptr, fcurve_y);
-  EXPECT_NE(nullptr, fcurve_z);
+  ASSERT_NE(nullptr, fcurve_x);
+  ASSERT_NE(nullptr, fcurve_y);
+  ASSERT_NE(nullptr, fcurve_z);
 
   /* Second attempt should fail, because there is now an fcurve for the
    * property, but its value matches the current property value. */
@@ -384,6 +384,9 @@ TEST_F(KeyframingTest, insert_key_rna__nla_time_remapping)
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(1, BLI_listbase_count(&nla_action->curves));
   FCurve *fcurve = BKE_fcurve_find(&nla_action->curves, "location", 0);
+  ASSERT_NE(nullptr, fcurve);
+  ASSERT_NE(nullptr, fcurve->bezt);
+  EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(11.0, fcurve->bezt[0].vec[1][0]);
 }
 
@@ -406,8 +409,8 @@ TEST_F(KeyframingTest, insert_keyframe__non_array_property)
                                                       INSERTKEY_NOFLAGS);
 
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_mode", 0));
 }
@@ -427,8 +430,8 @@ TEST_F(KeyframingTest, insert_keyframe__single_element)
                                                       INSERTKEY_NOFLAGS);
 
   EXPECT_EQ(1, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(1, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
 }
@@ -448,8 +451,8 @@ TEST_F(KeyframingTest, insert_keyframe__all_elements)
                                                       INSERTKEY_NOFLAGS);
 
   EXPECT_EQ(3, result.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
   EXPECT_NE(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1));
@@ -472,8 +475,8 @@ TEST_F(KeyframingTest, insert_keyframe__only_available)
                                                         INSERTKEY_AVAILABLE);
 
   EXPECT_EQ(0, result_1.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(0, BLI_listbase_count(&object->adt->action->curves));
   EXPECT_EQ(nullptr, BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0));
 
@@ -529,15 +532,15 @@ TEST_F(KeyframingTest, insert_keyframe__only_needed)
                                                         INSERTKEY_NEEDED);
 
   EXPECT_EQ(3, result_1.get_count(SingleKeyingResult::SUCCESS));
-  EXPECT_NE(nullptr, object->adt);
-  EXPECT_NE(nullptr, object->adt->action);
+  ASSERT_NE(nullptr, object->adt);
+  ASSERT_NE(nullptr, object->adt->action);
   EXPECT_EQ(3, BLI_listbase_count(&object->adt->action->curves));
   FCurve *fcurve_x = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 0);
   FCurve *fcurve_y = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 1);
   FCurve *fcurve_z = BKE_fcurve_find(&object->adt->action->curves, "rotation_euler", 2);
-  EXPECT_NE(nullptr, fcurve_x);
-  EXPECT_NE(nullptr, fcurve_y);
-  EXPECT_NE(nullptr, fcurve_z);
+  ASSERT_NE(nullptr, fcurve_x);
+  ASSERT_NE(nullptr, fcurve_y);
+  ASSERT_NE(nullptr, fcurve_z);
 
   /* Second attempt should fail, because there is now an fcurve for the
    * property, but its value matches the current property value. */
