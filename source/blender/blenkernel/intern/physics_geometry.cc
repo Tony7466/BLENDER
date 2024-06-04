@@ -398,7 +398,7 @@ static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *p
 /* Make sure any body flagged for simulation is actually in the world. */
 static void ensure_bodies_simulated(PhysicsGeometry &physics)
 {
-  PhysicsGeometryImpl *impl = physics.try_impl_for_write();
+  PhysicsGeometryImpl *impl = physics.impl_for_write();
   if (!impl) {
     return;
   }
@@ -468,18 +468,11 @@ PhysicsGeometryImpl::~PhysicsGeometryImpl()
   }
 }
 
-void PhysicsGeometryImpl::delete_self()
-{
-  delete this;
-}
-
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "id", "simulated", "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
-                          MutableSpan<btMotionState *> motion_states,
-                          MutableSpan<int> proxies,
-                          const int proxy_start = 0)
+                          MutableSpan<btMotionState *> motion_states)
 {
   static btBoxShape dummy_shape(btVector3(0.2f, 0.2f, 0.2f));
   for (const int i : rigid_bodies.index_range()) {
@@ -490,70 +483,51 @@ static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
     rigid_bodies[i] = new btRigidBody(
         mass, motion_state, collision_shape, to_bullet(local_inertia));
   }
-
-  array_utils::fill_index_range(proxies, proxy_start);
 }
 
 PhysicsGeometry::PhysicsGeometry()
 {
-  impl_array_.append(new PhysicsGeometryImpl());
+  impl_ = new PhysicsGeometryImpl();
 }
 
-PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num, int impl_num)
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
 {
-  impl_array_.reinitialize(std::max(impl_num, 1));
-
-  PhysicsGeometryImpl *main_impl = new PhysicsGeometryImpl();
-  impl_array_.first() = main_impl;
-
-  main_impl->rigid_bodies.reinitialize(bodies_num);
-  main_impl->motion_states.reinitialize(bodies_num);
-  proxies_.bodies.reinitialize(bodies_num);
-  create_bodies(main_impl->rigid_bodies, main_impl->motion_states, proxies_.bodies);
+  impl_ = new PhysicsGeometryImpl();
+  impl_->rigid_bodies.reinitialize(bodies_num);
+  impl_->motion_states.reinitialize(bodies_num);
+  create_bodies(impl_->rigid_bodies, impl_->motion_states);
 
   UNUSED_VARS(constraints_num, shapes_num);
 }
 
-PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
-{
-  /* Copy implicitly shared pointers.
-   * These are immutable, but can be consolidated later. */
-  impl_array_ = other.impl_array_;
-  for (const PhysicsGeometryImpl *impl : impl_array_) {
-    impl->add_user();
-  }
-}
-
 PhysicsGeometry::~PhysicsGeometry()
 {
-  for (const PhysicsGeometryImpl *impl : impl_array_) {
-    impl->remove_user_and_delete_if_last();
+  if (impl_) {
+    std::scoped_lock lock(impl_mutex_);
+    delete impl_;
   }
 }
 
-PhysicsGeometryImpl *PhysicsGeometry::try_impl_for_write()
+PhysicsGeometryImpl *PhysicsGeometry::try_steal_impl() const
 {
-  BLI_assert(!impl_array_.is_empty());
-  if (!impl_array_.first()->is_mutable()) {
+  if (!impl_) {
     return nullptr;
   }
-  return const_cast<PhysicsGeometryImpl *>(impl_array_.first());
+
+  std::scoped_lock lock(impl_mutex_);
+  PhysicsGeometryImpl *impl = impl_;
+  impl_ = nullptr;
+  return impl;
 }
 
-const PhysicsGeometryImpl &PhysicsGeometry::impl() const
+const PhysicsGeometryImpl *PhysicsGeometry::impl() const
 {
-  BLI_assert(!impl_array_.is_empty());
-  return *impl_array_.first();
+  return impl_;
 }
 
-MutableSpan<const PhysicsGeometryImpl *> PhysicsGeometry::impl_array()
+PhysicsGeometryImpl *PhysicsGeometry::impl_for_write()
 {
-  return impl_array_;
-}
-
-Span<const PhysicsGeometryImpl *> PhysicsGeometry::impl_array() const
-{
-  return impl_array_;
+  return impl_;
 }
 
 void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
@@ -571,17 +545,6 @@ void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
   impls.copy_from(other.impl_array());
   for (const PhysicsGeometryImpl *impl : impls) {
     impl->add_user();
-  }
-
-  for (const int i : body_range.index_range()) {
-    proxies_.bodies[body_range[i]] = other.proxies().bodies[i] + bodies_offset;
-  }
-  for (const int i : constraint_range.index_range()) {
-    proxies_.constraints[constraint_range[i]] = other.proxies().constraints[i] +
-                                                constraints_offset;
-  }
-  for (const int i : shape_range.index_range()) {
-    proxies_.shapes[shape_range[i]] = other.proxies().shapes[i] + shapes_offset;
   }
 }
 

@@ -49,8 +49,7 @@ namespace blender::bke {
 enum class GeometryOwnershipType {
   /* The geometry is owned. This implies that it can be changed. */
   Owned = 0,
-  /* The geometry can be changed, but someone else isGEO_COMPONENT_TYPE_ENUM_SIZE responsible for
-     freeing it. */
+  /* The geometry can be changed, but someone else is responsible for freeing it. */
   Editable = 1,
   /* The geometry cannot be changed and someone else is responsible for freeing it. */
   ReadOnly = 2,

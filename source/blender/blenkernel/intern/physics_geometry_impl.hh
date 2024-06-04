@@ -14,6 +14,8 @@
 #include "BLI_implicit_sharing.h"
 #include "BLI_map.hh"
 
+#include <shared_mutex>
+
 class btDiscreteDynamicsWorld;
 class btCollisionConfiguration;
 class btCollisionDispatcher;
@@ -27,6 +29,10 @@ class btCollisionShape;
 namespace blender::bke {
 
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
+  struct AccessToken {};
+
+  mutable std::shared_mutex mutex;
+
   btDiscreteDynamicsWorld *world = nullptr;
   btCollisionConfiguration *config = nullptr;
   btCollisionDispatcher *dispatcher = nullptr;

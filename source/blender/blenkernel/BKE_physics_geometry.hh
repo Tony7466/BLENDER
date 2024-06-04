@@ -18,6 +18,7 @@
 #include "BKE_attribute.hh"
 
 #include <functional>
+#include <mutex>
 
 namespace blender::bke {
 class AttributeAccessor;
@@ -34,23 +35,25 @@ class PhysicsGeometry {
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
  private:
-  Vector<const PhysicsGeometryImpl *> impl_array_;
-
-  /* Proxies for the actual body/constraint/shape instance in the world.
-   * World data is generally not copyable, which makes it unsuitable
-   * for use a geometry component data directly.
-   * Proxies can be copied and moved, while referring to the same
-   * shared and immutable world data.
-   * When the world is actually modified (e.g. doing a simulation step)
-   * it should be mutable (single user) and the proxies can be sync'ed
-   * with the world data to ensure every proxy has an instance in the world.
+  /* Implementation of the physics world and rigid bodies.
+   * This may be null, in which case the attribute cache is used.
+   * Other components may "steal" the implementation in order to write.
+   * This is different from implicitly shared data, which makes a copy
+   * when write access is required. Physics state generally should not
+   * be copied, as recreating the world and body states is inefficient.
    */
-  struct Proxies {
-    Array<int> bodies;
-    Array<int> constraints;
-    Array<int> shapes;
+  const PhysicsGeometryImpl *impl_ = nullptr;
+
+  /* A physics component may not have an active implementation,
+   * in case another component has acquired write access.
+   * In this case the cache acts as a read-only copy of the attributes. */
+  struct AttributeCache {
+    Array<float3> body_positions;
+    Array<math::Quaternion> body_rotations;
+    Array<float3> body_velocities;
+    Array<float3> body_angular_velocities;
   };
-  Proxies proxies_;
+  AttributeCache attribute_cache;
 
  public:
   static const struct BuiltinAttributes {
@@ -65,17 +68,13 @@ class PhysicsGeometry {
   } builtin_attributes;
 
   PhysicsGeometry();
-  explicit PhysicsGeometry(int rigid_bodies_num,
-                           int constraints_num,
-                           int shapes_num,
-                           int impl_num = 1);
-  PhysicsGeometry(const PhysicsGeometry &other);
+  explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num, int shapes_num);
+  PhysicsGeometry(const PhysicsGeometry &other) = delete;
   ~PhysicsGeometry();
 
-  PhysicsGeometryImpl *try_impl_for_write();
-  const PhysicsGeometryImpl &impl() const;
-  MutableSpan<const PhysicsGeometryImpl *> impl_array();
-  Span<const PhysicsGeometryImpl *> impl_array() const;
+  PhysicsGeometryImpl *try_steal_impl() const;
+  const PhysicsGeometryImpl *impl() const;
+  PhysicsGeometryImpl *impl_for_write();
 
   void realize_instance(const PhysicsGeometry &other,
                         int impl_offset,
@@ -107,8 +106,8 @@ class PhysicsGeometry {
 
   void step_simulation(float delta_time);
 
-  Proxies &proxies();
-  const Proxies &proxies() const;
+  // Proxies &proxies();
+  // const Proxies &proxies() const;
 
   VArray<const CollisionShape *> body_collision_shapes() const;
   VMutableArray<CollisionShape *> body_collision_shapes_for_write();
