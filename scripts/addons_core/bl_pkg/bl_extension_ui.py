@@ -689,12 +689,11 @@ def extensions_panel_draw_impl(
 
                 del split, col_a, col_b
 
-                subbox = box.box()
-                subbox.active = is_enabled
-                split = subbox.split(factor=0.125)
+                boxsub = box.box()
+                boxsub.active = is_enabled
+                split = boxsub.split(factor=0.125)
                 col_a = split.column()
                 col_b = split.column()
-
                 col_a.alignment="RIGHT"
 
                 if is_addon:
