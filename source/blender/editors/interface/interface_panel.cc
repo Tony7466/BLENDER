@@ -1997,11 +1997,11 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 
 LayoutPanelHeader *ui_layout_panel_header_under_mouse(const Panel &panel, const int my)
 {
-  const float aspect = (panel.runtime->block->aspect) ? panel.runtime->block->aspect : 1.0f;
+  const float aspect = panel.runtime->block->aspect;
   for (LayoutPanelHeader &header : panel.runtime->layout_panels.headers) {
-    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + layout_panel_y_offset()),
-                 header.start_y / aspect,
-                 header.end_y / aspect))
+    if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + layout_panel_y_offset()) * aspect,
+                 header.start_y,
+                 header.end_y))
     {
       return &header;
     }
