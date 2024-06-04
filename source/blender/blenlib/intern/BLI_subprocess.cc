@@ -44,16 +44,17 @@ static void print_last_error(const char *function, const char *msg)
   std::cerr << "ERROR (" << error_code << "): " << function << " : " << msg << std::endl;
 }
 
-static bool check(bool result, const char *function, const char *msg)
+static void check(bool result, const char *function, const char *msg)
 {
   if (!result) {
     print_last_error(function, msg);
     BLI_assert(false);
   }
-  return result;
 }
 
 #    define CHECK(result) check((result), __func__, #result)
+#    undef ERROR /* Defined in wingdi.h */
+#    define ERROR(msg) check(false, __func__, msg)
 
 bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
@@ -65,7 +66,8 @@ bool BlenderSubprocess::create(Span<StringRefNull> args)
   }
 
   wchar_t path[FILE_MAX];
-  if (!CHECK(GetModuleFileNameW(nullptr, path, FILE_MAX))) {
+  if (!GetModuleFileNameW(nullptr, path, FILE_MAX)) {
+    ERROR("GetModuleFileNameW");
     return false;
   }
 
@@ -83,18 +85,19 @@ bool BlenderSubprocess::create(Span<StringRefNull> args)
   STARTUPINFOW startup_info = {0};
   startup_info.cb = sizeof(startup_info);
   PROCESS_INFORMATION process_info = {0};
-  if (!CHECK(CreateProcessW(path,
-                            /** Use data() since lpCommandLine must be mutable. */
-                            w_args.data(),
-                            nullptr,
-                            nullptr,
-                            false,
-                            0,
-                            nullptr,
-                            nullptr,
-                            &startup_info,
-                            &process_info)))
+  if (!CreateProcessW(path,
+                      /** Use data() since lpCommandLine must be mutable. */
+                      w_args.data(),
+                      nullptr,
+                      nullptr,
+                      false,
+                      0,
+                      nullptr,
+                      nullptr,
+                      &startup_info,
+                      &process_info))
   {
+    ERROR("CreateProcessW");
     return false;
   }
 
@@ -118,9 +121,11 @@ bool BlenderSubprocess::is_running()
   }
 
   DWORD exit_code = 0;
-  if (CHECK(GetExitCodeProcess(handle_, &exit_code))) {
+  if (GetExitCodeProcess(handle_, &exit_code)) {
     return exit_code == STILL_ACTIVE;
   }
+
+  ERROR("GetExitCodeProcess");
   /* Assume the process is still running. */
   return true;
 }
@@ -213,18 +218,16 @@ static void print_last_error(const char *function, const char *msg)
   perror(error_msg.c_str());
 }
 
-static bool check(int result, const char *function, const char *msg)
+static void check(int result, const char *function, const char *msg)
 {
   if (result == -1) {
     print_last_error(function, msg);
     BLI_assert(false);
-    return false;
   }
-  return true;
 }
 
 #    define CHECK(result) check((result), __func__, #result)
-#    define ERROR(msg) check(false, __func__, msg)
+#    define ERROR(msg) check(-1, __func__, msg)
 
 bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
@@ -235,7 +238,8 @@ bool BlenderSubprocess::create(Span<StringRefNull> args)
 
   char path[FILE_MAX];
   size_t len = readlink("/proc/self/exe", path, FILE_MAX);
-  if (!CHECK(len)) {
+  if (len == -1) {
+    ERROR("readlink");
     return false;
   }
   /* readlink doesn't append a null terminator. */
@@ -248,9 +252,9 @@ bool BlenderSubprocess::create(Span<StringRefNull> args)
   char_args.append(nullptr);
 
   pid_ = fork();
-  CHECK(pid_);
 
-  if (pid_ < 0) {
+  if (pid_ == -1) {
+    ERROR("fork");
     return false;
   }
   else if (pid_ > 0) {
@@ -295,8 +299,10 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
   }
   else {
     handle_ = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, user_mode);
-    if (CHECK(handle_)) {
-      if (!CHECK(ftruncate(handle_, size))) {
+    CHECK(handle_);
+    if (handle_ != -1) {
+      if (ftruncate(handle_, size) == -1) {
+        ERROR("ftruncate");
         CHECK(close(handle_));
         handle_ = -1;
       }
@@ -383,7 +389,8 @@ bool SharedSemaphore::try_decrement(int wait_ms)
   }
 
   timespec time;
-  if (!CHECK(clock_gettime(CLOCK_REALTIME, &time))) {
+  if (clock_gettime(CLOCK_REALTIME, &time) == -1) {
+    ERROR("clock_gettime");
     BLI_time_sleep_ms(wait_ms * 1000);
     return try_decrement(0);
   }
