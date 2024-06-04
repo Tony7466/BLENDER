@@ -461,7 +461,8 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera
   light.type = LIGHT_SUN;
 
   /* Used for selecting the clipmap level. */
-  float3 location = camera.position() * float3x3(object_mat.view<3, 3>());
+  float3 location = transform_direction_transposed(light.object_to_world, camera.position());
+  /* Offset for smooth level transitions. */
   light.object_to_world.x.w = location.x;
   light.object_to_world.y.w = location.y;
   light.object_to_world.z.w = location.z;
@@ -567,6 +568,8 @@ void ShadowModule::init()
   }
 
   ::Scene &scene = *inst_.scene;
+
+  global_lod_bias_ = (1.0f - scene.eevee.shadow_resolution_scale) * SHADOW_TILEMAP_LOD;
 
   bool update_lights = false;
   bool enable_shadow = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
@@ -1040,6 +1043,7 @@ void ShadowModule::end_sync()
         PassSimple::Sub &sub = pass.sub("Amend");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_AMEND));
         sub.bind_image("tilemaps_img", tilemap_pool.tilemap_tx);
+        sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
         sub.bind_resources(inst_.lights);
         sub.dispatch(int3(1));
         sub.barrier(GPU_BARRIER_TEXTURE_FETCH);

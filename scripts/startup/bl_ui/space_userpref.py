@@ -314,6 +314,7 @@ class USERPREF_PT_interface_statusbar(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_statusbar_scene_duration", text="Scene Duration")
         col.prop(view, "show_statusbar_memory", text="System Memory")
         col.prop(view, "show_statusbar_vram", text="Video Memory")
+        col.prop(view, "show_extensions_updates", text="Extensions Updates")
         col.prop(view, "show_statusbar_version", text="Blender Version")
 
 
@@ -535,6 +536,17 @@ class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
         layout.prop(edit, "node_preview_resolution", text="Preview Resolution")
 
 
+class USERPREF_PT_edit_sequence_editor(EditingPanel, CenterAlignMixIn, Panel):
+    bl_label = "Video Sequencer"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        edit = prefs.edit
+
+        layout.prop(edit, "use_sequencer_simplified_tweaking")
+
+
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
     bl_label = "Miscellaneous"
     bl_options = {'DEFAULT_CLOSED'}
@@ -708,6 +720,28 @@ class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
             layout.prop(bpy.context.preferences.system, "register_all_users", text="For All Users")
 
 
+class USERPREF_PT_system_network(SystemPanel, CenterAlignMixIn, Panel):
+    bl_label = "Network"
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        system = prefs.system
+
+        row = layout.row()
+        row.prop(system, "use_online_access", text="Allow Online Access")
+
+        # Show when the preference has been overridden and doesn't match the current preference.
+        runtime_online_access = bpy.app.online_access
+        if system.use_online_access != runtime_online_access:
+            row = layout.split(factor=0.4)
+            row.label(text="")
+            row.label(
+                text="{:s} on startup, overriding the preference.".format(
+                    "Enabled" if runtime_online_access else "Disabled"
+                ),
+            )
+
+
 class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "Memory & Limits"
 
@@ -744,28 +778,6 @@ class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
             layout.separator()
             col = layout.column()
             col.prop(system, "max_shader_compilation_subprocesses")
-
-
-class USERPREF_PT_system_network(SystemPanel, CenterAlignMixIn, Panel):
-    bl_label = "Network"
-
-    def draw_centered(self, context, layout):
-        prefs = context.preferences
-        system = prefs.system
-
-        row = layout.row()
-        row.prop(system, "use_online_access", text="Allow Online Access")
-
-        # Show when the preference has been overridden and doesn't match the current preference.
-        runtime_online_access = bpy.app.online_access
-        if system.use_online_access != runtime_online_access:
-            row = layout.split(factor=0.4)
-            row.label(text="")
-            row.label(
-                text="{:s} on startup, overriding the preference.".format(
-                    "Enabled" if runtime_online_access else "Disabled"
-                ),
-            )
 
 
 class USERPREF_PT_system_video_sequencer(SystemPanel, CenterAlignMixIn, Panel):
@@ -2163,7 +2175,7 @@ class USERPREF_PT_extensions_repos(Panel):
             split = row.split(factor=0.936)
             if active_repo.remote_url == "":
                 split.alert = True
-            split.prop(active_repo, "remote_url", text="", icon='URL', placeholder="Repository URL")
+            split.prop(active_repo, "remote_url", text="", icon='INTERNET', placeholder="Repository URL")
             split = row.split()
 
             if active_repo.use_access_token:
@@ -2263,7 +2275,8 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         addon_preferences_class = type(addon_preferences)
         box_prefs = layout.box()
-        box_prefs.label(text="Preferences:")
+        box_prefs.label(text="Preferences")
+        box_prefs.separator(type='LINE')
         addon_preferences_class.layout = box_prefs
         try:
             draw(context)
@@ -2848,6 +2861,7 @@ classes = (
     USERPREF_PT_edit_gpencil,
     USERPREF_PT_edit_text_editor,
     USERPREF_PT_edit_node_editor,
+    USERPREF_PT_edit_sequence_editor,
     USERPREF_PT_edit_misc,
 
     USERPREF_PT_animation_timeline,
@@ -2856,9 +2870,9 @@ classes = (
 
     USERPREF_PT_system_cycles_devices,
     USERPREF_PT_system_os_settings,
+    USERPREF_PT_system_network,
     USERPREF_PT_system_memory,
     USERPREF_PT_system_video_sequencer,
-    USERPREF_PT_system_network,
     USERPREF_PT_system_sound,
 
     USERPREF_MT_interface_theme_presets,
