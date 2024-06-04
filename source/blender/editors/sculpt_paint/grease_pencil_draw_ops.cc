@@ -666,7 +666,8 @@ static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*
           VArray<float>::ForSpan(extensions.circles.radii),
           circle_colors,
           float2(region.winx, region.winy),
-          line_width);
+          line_width,
+          false);
     }
   }
 }
@@ -867,7 +868,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   constexpr const ed::greasepencil::FillToolFitMethod fit_method =
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = false;
+  constexpr const bool keep_images = true;
 
   ARegion &region = *CTX_wm_region(&C);
   /* Perform bounds check. */

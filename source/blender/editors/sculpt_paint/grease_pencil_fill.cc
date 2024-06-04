@@ -40,6 +40,7 @@
 
 #include "GPU_state.hh"
 
+#include <iostream>
 #include <list>
 #include <optional>
 
@@ -1044,11 +1045,6 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
     return {};
   }
 
-  GPU_blend(GPU_BLEND_ALPHA);
-  GPU_depth_mask(true);
-  image_render::compute_view_matrices(view_context, scene, image_size, zoom, offset);
-  ed::greasepencil::image_render::set_projection_matrix(rv3d);
-
   const float alpha_threshold = 0.2f;
   const bool brush_fill_hide = false;
   const bool use_xray = false;
@@ -1057,6 +1053,12 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
   const float4x4 world_to_view = float4x4(rv3d.viewmat);
   const float4x4 layer_to_view = world_to_view * layer_to_world;
   const ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, &layer);
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  GPU_depth_mask(true);
+  image_render::compute_view_matrices(view_context, scene, image_size, zoom, offset);
+  ed::greasepencil::image_render::set_projection_matrix(rv3d);
+  std::cout << __func__ << std::endl;
 
   /* Draw blue point where click with mouse. */
   const float mouse_dot_size = 4.0f;
@@ -1118,12 +1120,14 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
       const VArray<ColorGeometry4f> circle_colors = VArray<ColorGeometry4f>::ForSingle(
           draw_boundary_color, circles_range.size());
 
-      image_render::draw_dots(world_to_view,
-                              circles_range,
-                              extensions.circles.centers,
-                              VArray<float>::ForSpan(extensions.circles.radii),
-                              circle_colors,
-                              1.0f);
+      image_render::draw_circles(world_to_view,
+                                 circles_range,
+                                 extensions.circles.centers,
+                                 VArray<float>::ForSpan(extensions.circles.radii),
+                                 circle_colors,
+                                 float2(image_size),
+                                 1.0f,
+                                 true);
     }
   }
 

@@ -283,19 +283,19 @@ static GPUUniformBuf *create_shader_ubo(const RegionView3D &rv3d,
 
 constexpr const float min_stroke_thickness = 0.05f;
 
-void draw_grease_pencil_stroke(const float4x4 &transform,
-                               const RegionView3D &rv3d,
-                               const int2 &win_size,
-                               const Object &object,
-                               const IndexRange indices,
-                               Span<float3> positions,
-                               const VArray<float> &radii,
-                               const VArray<ColorGeometry4f> &colors,
-                               const bool cyclic,
-                               const eGPDstroke_Caps cap_start,
-                               const eGPDstroke_Caps cap_end,
-                               const bool fill_stroke,
-                               const float radius_scale)
+static void draw_grease_pencil_stroke(const float4x4 &transform,
+                                      const RegionView3D &rv3d,
+                                      const int2 &win_size,
+                                      const Object &object,
+                                      const IndexRange indices,
+                                      Span<float3> positions,
+                                      const VArray<float> &radii,
+                                      const VArray<ColorGeometry4f> &colors,
+                                      const bool cyclic,
+                                      const eGPDstroke_Caps cap_start,
+                                      const eGPDstroke_Caps cap_end,
+                                      const bool fill_stroke,
+                                      const float radius_scale)
 {
   if (indices.is_empty()) {
     return;
@@ -354,12 +354,12 @@ void draw_grease_pencil_stroke(const float4x4 &transform,
   GPU_uniformbuf_free(ubo);
 }
 
-void draw_dots(const float4x4 &transform,
-               const IndexRange indices,
-               Span<float3> positions,
-               const VArray<float> &radii,
-               const VArray<ColorGeometry4f> &colors,
-               const float radius_scale)
+static void draw_dots(const float4x4 &transform,
+                      const IndexRange indices,
+                      Span<float3> positions,
+                      const VArray<float> &radii,
+                      const VArray<ColorGeometry4f> &colors,
+                      const float radius_scale)
 {
   if (indices.is_empty()) {
     return;
@@ -398,7 +398,8 @@ void draw_circles(const float4x4 &transform,
                   const VArray<float> &radii,
                   const VArray<ColorGeometry4f> &colors,
                   const float2 &viewport_size,
-                  const float line_width)
+                  const float line_width,
+                  const bool fill)
 {
   if (indices.is_empty()) {
     return;
@@ -421,41 +422,58 @@ void draw_circles(const float4x4 &transform,
   const uint attr_color = GPU_vertformat_attr_add(
       format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
-  immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_FLAT_COLOR);
-
-  immUniform2fv("viewportSize", viewport_size);
-  immUniform1f("lineWidth", line_width * U.pixelsize);
-
   const float scale = math::average(math::to_scale(transform));
 
-  for (const int point_i : indices) {
-    const float radius = radii[point_i];
-    const ColorGeometry4f color = colors[point_i];
-    const float3 center = math::transform_point(transform, centers[point_i]);
-    // immBegin(GPU_PRIM_LINE_STRIP, segments_num + 1);
-    // for (const int i : IndexRange(segments_num)) {
-    //   immAttr4fv(attr_color, color);
-    //   immVertex3fv(attr_pos, center + radius * world_coords[i]);
-    // }
-    // immAttr4fv(attr_color, color);
-    // immVertex3fv(attr_pos, center + radius * world_coords[0]);
+  if (fill) {
+    immBindBuiltinProgram(GPU_SHADER_3D_FLAT_COLOR);
 
-    {
-      immBegin(GPU_PRIM_LINE_STRIP, 4);
-      immAttr4fv(attr_color, color);
-      immVertex3fv(attr_pos, center + scale * float3(1, 0, 0));
-      immAttr4fv(attr_color, color);
-      immVertex3fv(attr_pos, center + scale * float3(0, 2, 0));
-      immAttr4fv(attr_color, color);
-      immVertex3fv(attr_pos, center + scale * float3(0, 0, 3));
-      immAttr4fv(attr_color, color);
-      immVertex3fv(attr_pos, center + scale * float3(1, 0, 0));
+    for (const int point_i : indices) {
+      const float radius = radii[point_i];
+      const ColorGeometry4f color = colors[point_i];
+      const float3 center = math::transform_point(transform, centers[point_i]);
+
+      immBegin(GPU_PRIM_TRI_STRIP, segments_num);
+
+      for (const int i : IndexRange(segments_num / 2)) {
+        immAttr4fv(attr_color, color);
+        immVertex3fv(attr_pos, center + float3(radius * scale * coords[i], 0.0f));
+        if (segments_num - 1 - i > i) {
+          immAttr4fv(attr_color, color);
+          immVertex3fv(attr_pos,
+                       center + float3(radius * scale * coords[segments_num - 1 - i], 0.0f));
+        }
+      }
+
+      immEnd();
     }
 
-    immEnd();
+    immUnbindProgram();
   }
+  else {
+    immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_FLAT_COLOR);
 
-  immUnbindProgram();
+    immUniform2fv("viewportSize", viewport_size);
+    immUniform1f("lineWidth", line_width * U.pixelsize);
+
+    for (const int point_i : indices) {
+      const float radius = radii[point_i];
+      const ColorGeometry4f color = colors[point_i];
+      const float3 center = math::transform_point(transform, centers[point_i]);
+
+      immBegin(GPU_PRIM_LINE_STRIP, segments_num + 1);
+
+      for (const int i : IndexRange(segments_num)) {
+        immAttr4fv(attr_color, color);
+        immVertex3fv(attr_pos, center + float3(radius * scale * coords[i], 0.0f));
+      }
+      immAttr4fv(attr_color, color);
+      immVertex3fv(attr_pos, center + float3(radius * scale * coords[0], 0.0f));
+
+      immEnd();
+    }
+
+    immUnbindProgram();
+  }
 }
 
 void draw_lines(const float4x4 &transform,

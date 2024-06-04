@@ -535,31 +535,6 @@ void draw_polyline(const float4x4 &transform,
                    const VArray<ColorGeometry4f> &colors,
                    bool cyclic,
                    float line_width);
-/**
- * Draw a curve using the Grease Pencil stroke shader.
- */
-void draw_grease_pencil_stroke(const float4x4 &transform,
-                               const RegionView3D &rv3d,
-                               const int2 &win_size,
-                               const Object &object,
-                               IndexRange indices,
-                               Span<float3> positions,
-                               const VArray<float> &radii,
-                               const VArray<ColorGeometry4f> &colors,
-                               bool cyclic,
-                               eGPDstroke_Caps cap_start,
-                               eGPDstroke_Caps cap_end,
-                               bool fill_stroke,
-                               float radius_scale = 1.0f);
-/**
- * Draw points as quads or circles.
- */
-void draw_dots(const float4x4 &transform,
-               IndexRange indices,
-               Span<float3> positions,
-               const VArray<float> &radii,
-               const VArray<ColorGeometry4f> &colors,
-               const float radius_scale);
 
 /**
  * Draw points as circles.
@@ -570,7 +545,8 @@ void draw_circles(const float4x4 &transform,
                   const VArray<float> &radii,
                   const VArray<ColorGeometry4f> &colors,
                   const float2 &viewport_size,
-                  const float line_width);
+                  const float line_width,
+                  const bool fill);
 
 /**
  * Draw lines with start and end points.
