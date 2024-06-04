@@ -137,7 +137,9 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
       text =
           "A driver with support for OpenGL 4.3 or higher is required.\n\n"
           "If you are on a Qualcomm 8cx Gen3 device or newer, you need to download the"
-          "\"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" from the MS Store.";
+          " \"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" from the MS Store.\n\n"
+          "Older devices are incompatible, and require an emulated x64 copy of Blender"
+          " older than v4.0 (ie, a 3.x LTS release).";
     }
     else
 #endif
