@@ -25,7 +25,7 @@
 #include "DNA_customdata_types.h"
 
 /* For embedding CCGKey in iterator. */
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_pbvh.hh"
 
 #include "bmesh.hh"
@@ -440,7 +440,7 @@ void pbvh_vertex_iter_init(PBVH &pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
       vi.width = vi.gridsize; \
       vi.height = vi.gridsize; \
       vi.index = vi.vertex.i = vi.grid_indices[vi.g] * vi.key.grid_area - 1; \
-      vi.grid = CCG_elem_offset(&vi.key, vi.grids[vi.grid_indices[vi.g]], -1); \
+      vi.grid = CCG_elem_offset(vi.key, vi.grids[vi.grid_indices[vi.g]], -1); \
       if (mode == PBVH_ITER_UNIQUE) { \
         if (vi.grid_hidden) { \
           vi.gh.emplace((*vi.grid_hidden)[vi.grid_indices[vi.g]]); \
@@ -458,10 +458,10 @@ void pbvh_vertex_iter_init(PBVH &pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
     for (vi.gy = 0; vi.gy < vi.height; vi.gy++) { \
       for (vi.gx = 0; vi.gx < vi.width; vi.gx++, vi.i++) { \
         if (vi.grid) { \
-          vi.grid = CCG_elem_next(&vi.key, vi.grid); \
-          vi.co = CCG_elem_co(&vi.key, vi.grid); \
-          vi.fno = CCG_elem_no(&vi.key, vi.grid); \
-          vi.mask = vi.key.has_mask ? *CCG_elem_mask(&vi.key, vi.grid) : 0.0f; \
+          vi.grid = CCG_elem_next(vi.key, vi.grid); \
+          vi.co = CCG_elem_co(vi.key, vi.grid); \
+          vi.fno = CCG_elem_no(vi.key, vi.grid); \
+          vi.mask = vi.key.has_mask ? CCG_elem_mask(vi.key, vi.grid) : 0.0f; \
           vi.index++; \
           vi.vertex.i++; \
           vi.visible = true; \
@@ -557,11 +557,10 @@ void BKE_pbvh_update_active_vcol(PBVH &pbvh, Mesh *mesh);
 void BKE_pbvh_vertex_color_set(PBVH &pbvh,
                                blender::GroupedSpan<int> vert_to_face_map,
                                PBVHVertRef vertex,
-                               const float color[4]);
-void BKE_pbvh_vertex_color_get(const PBVH &pbvh,
-                               blender::GroupedSpan<int> vert_to_face_map,
-                               PBVHVertRef vertex,
-                               float r_color[4]);
+                               const blender::float4 &color);
+blender::float4 BKE_pbvh_vertex_color_get(const PBVH &pbvh,
+                                          blender::GroupedSpan<int> vert_to_face_map,
+                                          PBVHVertRef vertex);
 
 void BKE_pbvh_ensure_node_loops(PBVH &pbvh);
 int BKE_pbvh_debug_draw_gen_get(PBVHNode &node);

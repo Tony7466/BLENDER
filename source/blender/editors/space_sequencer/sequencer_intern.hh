@@ -12,6 +12,7 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 #include "DNA_sequence_types.h"
+#include "ED_sequencer.hh"
 #include "RNA_access.hh"
 
 #include "sequencer_scopes.hh"
@@ -232,6 +233,7 @@ void SEQUENCER_OT_scene_frame_range_update(wmOperatorType *ot);
 
 void SEQUENCER_OT_select_all(wmOperatorType *ot);
 void SEQUENCER_OT_select(wmOperatorType *ot);
+void SEQUENCER_OT_select_handle(wmOperatorType *ot);
 void SEQUENCER_OT_select_side_of_frame(wmOperatorType *ot);
 void SEQUENCER_OT_select_more(wmOperatorType *ot);
 void SEQUENCER_OT_select_less(wmOperatorType *ot);
@@ -242,7 +244,10 @@ void SEQUENCER_OT_select_side(wmOperatorType *ot);
 void SEQUENCER_OT_select_box(wmOperatorType *ot);
 void SEQUENCER_OT_select_inverse(wmOperatorType *ot);
 void SEQUENCER_OT_select_grouped(wmOperatorType *ot);
-Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, const int mval[2], int *r_hand);
+Sequence *find_nearest_seq(const Scene *scene,
+                           const View2D *v2d,
+                           const int mval[2],
+                           eSeqHandle *r_hand);
 
 /* `sequencer_add.cc` */
 
@@ -325,6 +330,7 @@ SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], 
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
 bool retiming_keys_are_visible(const SpaceSeq *sseq);
+rctf seq_retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq);
 
 /* `sequencer_timeline_draw.cc` */
 blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
