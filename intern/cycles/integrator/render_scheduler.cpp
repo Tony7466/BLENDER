@@ -865,9 +865,8 @@ int RenderScheduler::get_num_samples_to_path_trace() const
     }
 
     /* Time limit for path tracing, which constraints the scheduler from "over-scheduling" work
-     * in scenes which takes very long time path trace and have low occupancy. This allows to
-     * have more instant feedback of render results, and also more instant cancel when artist
-     * notices something is wrong.
+     * in scenes which have very long path trace times and low occupancy. This allows faster
+     * feedback of render results, and faster canceling when artists notice something is wrong.
      *
      * Additionally, when the time limit is enabled, do not render more samples than it is needed
      * to reach the time limit. */
