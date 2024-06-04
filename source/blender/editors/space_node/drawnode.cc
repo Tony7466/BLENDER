@@ -1917,7 +1917,7 @@ static void draw_node_socket_batch(const NodeSocketShaderParameters &socket_para
     }
   }
   else {
-    /* draw single */
+    /* Draw single instead of batch. */
     gpu::Batch *batch = nodesocket_batch_init();
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
     GPU_batch_uniform_4fv_array(
