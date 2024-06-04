@@ -219,7 +219,7 @@ class GLCompilerWorker {
   friend class GLShaderCompiler;
 
  private:
-  Subprocess subprocess_;
+  BlenderSubprocess subprocess_;
   std::unique_ptr<SharedMemory> shared_mem_;
   std::unique_ptr<SharedSemaphore> start_semaphore_;
   std::unique_ptr<SharedSemaphore> end_semaphore_;

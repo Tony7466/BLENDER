@@ -55,7 +55,7 @@ static bool check(bool result, const char *msg)
 
 #    define CHECK(result) check((result), __FUNCTION__ " : " #result)
 
-bool Subprocess::create(Span<StringRefNull> args)
+bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
 
@@ -104,14 +104,14 @@ bool Subprocess::create(Span<StringRefNull> args)
   return true;
 }
 
-Subprocess::~Subprocess()
+BlenderSubprocess::~BlenderSubprocess()
 {
   if (handle_) {
     CHECK(CloseHandle(handle_));
   }
 }
 
-bool Subprocess::is_running()
+bool BlenderSubprocess::is_running()
 {
   if (!handle_) {
     return false;
@@ -226,7 +226,7 @@ static bool check(int result, const char *function, const char *msg)
 #    define CHECK(result) check((result), __FUNCTION__, #result)
 #    define ERROR(msg) check(false, __FUNCTION__, msg)
 
-bool Subprocess::create(Span<StringRefNull> args)
+bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
   if (!validate_arguments(args)) {
     BLI_assert(false);
@@ -266,9 +266,9 @@ bool Subprocess::create(Span<StringRefNull> args)
   return false;
 }
 
-Subprocess::~Subprocess() {}
+BlenderSubprocess::~BlenderSubprocess() {}
 
-bool Subprocess::is_running()
+bool BlenderSubprocess::is_running()
 {
   if (pid_ == -1) {
     return false;

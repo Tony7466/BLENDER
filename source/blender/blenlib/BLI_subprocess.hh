@@ -26,7 +26,7 @@ typedef void *HANDLE;
 
 namespace blender {
 
-class Subprocess : NonCopyable {
+class BlenderSubprocess : NonCopyable {
  private:
 #  ifdef _WIN32
   HANDLE handle_ = nullptr;
@@ -34,7 +34,7 @@ class Subprocess : NonCopyable {
   pid_t pid_ = 0;
 #  endif
  public:
-  ~Subprocess();
+  ~BlenderSubprocess();
 
   bool create(Span<StringRefNull> args);
   bool is_running();
