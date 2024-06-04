@@ -1492,12 +1492,22 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
 /** \name ToolTip Public API
  * \{ */
 
+static float get_tooltip_aspect(bContext *C, ARegion *butregion, uiBut *but)
+{
+  if (CTX_wm_space_node(C)) {
+    if (butregion->type->regionid == RGN_TYPE_WINDOW) {
+      return 1.0f;
+    }
+  }
+  return min_ff(1.0f, but->block->aspect);
+}
+
 ARegion *UI_tooltip_create_from_button_or_extra_icon(
     bContext *C, ARegion *butregion, uiBut *but, uiButExtraOpIcon *extra_icon, bool is_label)
 {
   wmWindow *win = CTX_wm_window(C);
   /* Aspect values that shrink text are likely unreadable. */
-  const float aspect = min_ff(1.0f, but->block->aspect);
+  const float aspect = get_tooltip_aspect(C, butregion, but);
   float init_position[2];
 
   if (but->drawflag & UI_BUT_NO_TOOLTIP) {
