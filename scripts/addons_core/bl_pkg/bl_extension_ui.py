@@ -351,14 +351,14 @@ def extensions_panel_draw_online_extensions_request_impl(
 
     # Text wrapping isn't supported, manually wrap.
     for line in (
-            "To install and update online extensions, Internet access is required. ",
+            "Internet access is required to install and update online extensions. ",
             "You can adjust this later from \"System\" preferences.",
     ):
         box.label(text=line)
 
     row = box.row(align=True)
     row.alignment = 'LEFT'
-    row.label(text="To continue offline, \"Install from Disk\" instead.")
+    row.label(text="To continue offline, use \"Install from Disk\" instead.")
     # TODO: the URL must be updated before release,
     # this could be constructed using a function to account for Blender version & locale.
     row.operator(
