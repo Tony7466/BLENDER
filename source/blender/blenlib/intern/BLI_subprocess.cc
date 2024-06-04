@@ -9,6 +9,7 @@
 /* Based on https://github.com/jarikomppa/ipc (Unlicense) */
 
 #  include "BLI_assert.h"
+#  include "BLI_path_util.h"
 #  include "BLI_string_utf8.h"
 #  include <iostream>
 
@@ -41,9 +42,8 @@ bool Subprocess::create(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
 
-  constexpr size_t max_path = 1024;
-  wchar_t path[max_path];
-  if (!CHECK(GetModuleFileNameW(nullptr, path, max_path))) {
+  wchar_t path[FILE_MAX];
+  if (!CHECK(GetModuleFileNameW(nullptr, path, FILE_MAX))) {
     return false;
   }
 
@@ -204,8 +204,8 @@ static bool check(int result, const char *function, const char *msg)
 
 bool Subprocess::create(Span<StringRefNull> args)
 {
-  char path[PATH_MAX];
-  size_t len = readlink("/proc/self/exe", path, PATH_MAX);
+  char path[FILE_MAX];
+  size_t len = readlink("/proc/self/exe", path, FILE_MAX);
   if (!CHECK(len)) {
     return false;
   }
