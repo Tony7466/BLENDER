@@ -85,17 +85,17 @@ void ED_view3d_text_colors_get(const Scene *scene,
   r_shadow_color[3] = 0.8f;
 
   /* White text, black shadow. Unless view background
-   * is very dark; in that case black text, white shadow. */
-  float bg_color[4];
+   * is very light; in that case black text, white shadow. */
+  float bg_color[3];
   ED_view3d_background_color_get(scene, v3d, bg_color);
   float lightness = rgb_to_grayscale(bg_color);
-  if (lightness > 0.04f) {
-    copy_v3_fl(r_text_color, 1.0f);
-    copy_v3_fl(r_shadow_color, 0.0f);
+  if (lightness > 0.6f) {
+    copy_v3_fl(r_text_color, 0.0f);
+    copy_v3_v3(r_shadow_color, bg_color);
   }
   else {
-    copy_v3_fl(r_text_color, 0.2f);
-    copy_v3_fl(r_shadow_color, 1.0f);
+    copy_v3_fl(r_text_color, 0.9f);
+    copy_v3_fl(r_shadow_color, 0.0f);
   }
 }
 
@@ -575,7 +575,7 @@ bool ED_view3d_camera_view_pan(ARegion *region, const float event_ofs[2])
 
 bool ED_view3d_camera_lock_check(const View3D *v3d, const RegionView3D *rv3d)
 {
-  return ((v3d->camera) && !ID_IS_LINKED(v3d->camera) && (v3d->flag2 & V3D_LOCK_CAMERA) &&
+  return ((v3d->camera) && ID_IS_EDITABLE(v3d->camera) && (v3d->flag2 & V3D_LOCK_CAMERA) &&
           (rv3d->persp == RV3D_CAMOB));
 }
 

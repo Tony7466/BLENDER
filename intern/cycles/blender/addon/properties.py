@@ -315,6 +315,10 @@ def update_render_engine(self, context):
     scene.update_render_engine()
 
 
+def update_pause(self, context):
+    context.area.tag_redraw()
+
+
 class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     device: EnumProperty(
@@ -339,6 +343,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         name="Pause Preview",
         description="Pause all viewport preview renders",
         default=False,
+        update=update_pause,
     )
 
     use_denoising: BoolProperty(
@@ -1081,11 +1086,6 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
 
 class CyclesLightSettings(bpy.types.PropertyGroup):
 
-    cast_shadow: BoolProperty(
-        name="Cast Shadow",
-        description="Light casts shadows",
-        default=True,
-    )
     max_bounces: IntProperty(
         name="Max Bounces",
         description="Maximum number of bounces the light will contribute to the render",
@@ -1688,7 +1688,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
-                    driver_version = "XX.X.101.5186"
+                    driver_version = "XX.X.101.5518"
                     col.label(text=rpt_("Requires Intel GPU with Xe-HPG architecture"), icon='BLANK1', translate=False)
                     col.label(text=rpt_("and Windows driver version %s or newer") % driver_version,
                               icon='BLANK1', translate=False)

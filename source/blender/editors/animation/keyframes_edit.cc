@@ -340,6 +340,7 @@ static short summary_keyframes_loop(KeyframeEditData *ked,
     switch (ale->datatype) {
       case ALE_MASKLAY:
       case ALE_GPFRAME:
+      case ALE_GREASE_PENCIL_CEL:
         break;
 
       case ALE_FCURVE:
@@ -1634,7 +1635,7 @@ KeyframeEditFunc ANIM_editkeyframes_select(short selectmode)
 
 static short selmap_build_bezier_more(KeyframeEditData *ked, BezTriple *bezt)
 {
-  FCurve *fcu = ked->fcu;
+  const FCurve *fcu = ked->fcu;
   char *map = static_cast<char *>(ked->data);
   int i = ked->curIndex;
 
@@ -1669,7 +1670,7 @@ static short selmap_build_bezier_more(KeyframeEditData *ked, BezTriple *bezt)
 
 static short selmap_build_bezier_less(KeyframeEditData *ked, BezTriple *bezt)
 {
-  FCurve *fcu = ked->fcu;
+  const FCurve *fcu = ked->fcu;
   char *map = static_cast<char *>(ked->data);
   int i = ked->curIndex;
 

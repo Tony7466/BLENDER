@@ -911,9 +911,17 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
   }
 
+  if (app_template && STREQ(app_template, "2D_Animation")) {
+    /* Disable the unified paint setting for the brush radius. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->unified_paint_settings.flag &= ~UNIFIED_PAINT_SIZE;
+    }
+  }
+
   {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->shadow_maximum_resolution = 0.001f;
+      light->transmission_fac = 1.0f;
       SET_FLAG_FROM_TEST(light->mode, false, LA_SHAD_RES_ABSOLUTE);
     }
   }
