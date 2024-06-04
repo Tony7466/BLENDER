@@ -1846,7 +1846,7 @@ static struct {
   bool enabled;
 } g_batch_nodesocket;
 
-gpu::Batch *nodesocket_batch_init(void)
+static gpu::Batch *nodesocket_batch_init(void)
 {
   if (g_batch_nodesocket.batch == NULL) {
     GPUVertFormat format = {0};
