@@ -21,7 +21,7 @@ set(INC
 )
 
 set(INC_SYS
-
+  ${USD_INCLUDE_DIRS}
 )
 
 set(SRC
