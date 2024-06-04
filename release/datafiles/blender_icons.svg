@@ -17732,6 +17732,19 @@
          inkscape:connector-curvature="0" />
     </g>
     <g
+        id="g14"
+        style="display:inline;enable-background:new"
+        inkscape:label="D-9"><path
+          d="m 208.08827,82.239344 -4.85823,4.858234 a 1.3551554,1.3551554 0 0 1 -1.91754,0 l -5.8204,-5.813619 v -6.775777 h 6.77578 l 5.82039,5.820393 a 1.3551554,1.3551554 0 0 1 0,1.910769 z"
+          id="path1-7"
+          style="display:inline;fill:none;stroke:#ffffff;stroke-width:1.01636;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;enable-background:new"
+          inkscape:label="tag_outline" /><path
+          style="color:#000000;fill:#ffffff;stroke-width:2.72314;stroke-linecap:round;stroke-linejoin:round;-inkscape-stroke:none"
+          d="m 199.24748,76.880862 a 1.3838472,1.3838472 0 0 0 -1.38818,1.382845 1.3838472,1.3838472 0 0 0 1.38818,1.382847 h 0.0163 a 1.3838472,1.3838472 0 0 0 1.38284,-1.382847 1.3838472,1.3838472 0 0 0 -1.38284,-1.382845 z"
+          id="line1"
+          inkscape:label="tag_center" />
+    </g>
+    <g
        id="g34189"
        style="display:inline;enable-background:new"
        inkscape:label="D-6">
