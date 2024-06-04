@@ -1840,17 +1840,17 @@ struct NodeSocketShaderParameters {
 #define MAX_SOCKET_INSTANCE 32
 
 static struct {
-  blender::gpu::Batch *batch;
+  gpu::Batch *batch;
   NodeSocketShaderParameters params[MAX_SOCKET_INSTANCE];
   int count;
   bool enabled;
 } g_batch_nodesocket;
 
-blender::gpu::Batch *nodesocket_batch_init(void)
+gpu::Batch *nodesocket_batch_init(void)
 {
   if (g_batch_nodesocket.batch == NULL) {
     GPUVertFormat format = {0};
-    blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STATIC);
+    gpu::VertBuf *vbo = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STATIC);
 
     GPU_vertbuf_data_alloc(vbo, 6);
 
@@ -1873,7 +1873,7 @@ static void nodesocket_cache_flush()
     return;
   }
 
-  blender::gpu::Batch *batch = nodesocket_batch_init();
+  gpu::Batch *batch = nodesocket_batch_init();
   if (g_batch_nodesocket.count == 1) {
     /* draw single */
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
@@ -1920,7 +1920,7 @@ static void draw_node_socket_batch(NodeSocketShaderParameters *socket_params)
   }
   else {
     /* draw single */
-    blender::gpu::Batch *batch = nodesocket_batch_init();
+    gpu::Batch *batch = nodesocket_batch_init();
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
     GPU_batch_uniform_4fv_array(
         batch, "parameters", MAX_SOCKET_PARAMETERS, (float(*)[4])socket_params);
