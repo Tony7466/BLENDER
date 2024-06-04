@@ -3054,13 +3054,9 @@ static size_t animdata_filter_dopesheet_ob(
     if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) &&
         !(ads->filterflag & ADS_FILTER_NOGPENCIL))
     {
-      if ((ob->type == OB_GREASE_PENCIL) && U.experimental.use_grease_pencil_version3) {
+      if ((ob->type == OB_GREASE_PENCIL)) {
         tmp_items += animdata_filter_grease_pencil_data(
             &tmp_data, ads, static_cast<GreasePencil *>(ob->data), filter_mode);
-      }
-      else {
-        tmp_items += animdata_filter_ds_gpencil(
-            ac, &tmp_data, ads, static_cast<bGPdata *>(ob->data), filter_mode);
       }
     }
   }
@@ -3748,12 +3744,7 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
     /* Modes for Specialty Data Types (i.e. not keyframes) */
     case ANIMCONT_GPENCIL: {
       if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-        if (U.experimental.use_grease_pencil_version3) {
-          items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
-        }
-        else {
-          items = animdata_filter_gpencil_legacy(ac, anim_data, data, filter_mode);
-        }
+        items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
       }
       break;
     }

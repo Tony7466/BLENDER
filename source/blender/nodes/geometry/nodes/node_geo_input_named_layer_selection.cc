@@ -31,9 +31,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void search_link_ops(GatherLinkSearchOpParams &params)
 {
-  if (U.experimental.use_grease_pencil_version3) {
-    nodes::search_link_ops_for_basic_node(params);
-  }
+  nodes::search_link_ops_for_basic_node(params);
 }
 
 static void node_register()
