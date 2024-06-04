@@ -245,12 +245,17 @@ class DATA_PT_camera_animation(CameraButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
 
+        col = layout.column(align=True)
+        col.label(text="space_data.action:")
+        col.template_ID(context.space_data, 'action')
+
         camera = context.camera
         adt = camera.animation_data
         if not adt:
             # TODO: show Action selector.
             return
 
+        col.label(text="camera.adt.action:")
         col = layout.column(align=True)
         col.template_ID(adt, 'action')
         if adt.action and adt.action.is_action_layered:

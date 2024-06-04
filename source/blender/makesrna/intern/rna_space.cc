@@ -587,6 +587,8 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "UI_interface.hh"
 #  include "UI_view2d.hh"
 
+#  include "ANIM_action.hh"
+
 static StructRNA *rna_Space_refine(PointerRNA *ptr)
 {
   SpaceLink *space = (SpaceLink *)ptr->data;
@@ -2143,6 +2145,111 @@ static void rna_SpaceProperties_search_filter_update(Main * /*bmain*/,
   ARegion *main_region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
   BLI_assert(main_region != nullptr);
   ED_region_search_filter_update(area, main_region);
+}
+
+static PointerRNA rna_SpacePropertiesEditor_action_get(PointerRNA *ptr)
+{
+  using namespace blender;
+
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  ID *id = space->pinid ? space->pinid : ED_buttons_context_id_path(space);
+
+  animrig::Action *action;
+  if (id) {
+    action = animrig::get_animation(*id);
+  }
+  else {
+    action = ED_buttons_action_get(space);
+  }
+
+  if (!action) {
+    return PointerRNA_NULL;
+  }
+  return rna_pointer_inherit_refine(ptr, &RNA_Action, action);
+}
+
+static void rna_SpacePropertiesEditor_action_set(PointerRNA *ptr,
+                                                 PointerRNA value,
+                                                 ReportList * /*reports*/)
+{
+  using namespace blender;
+
+  /* TODO: unify this function with rna_SpaceDopesheetEditor_action_set(). */
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  bAction *dna_action = (bAction *)value.data;
+
+  if (dna_action == nullptr) {
+    /* Clearing the Action is always possible. */
+    ED_buttons_action_set(space, nullptr);
+    return;
+  }
+
+  animrig::Action &action = dna_action->wrap();
+  if (action.is_action_layered()) {
+    /* Layered Actions can always be assigned, regardless of what the legacy idroot is set to. */
+    ED_buttons_action_set(space, &action);
+    return;
+  }
+
+  /* Legacy Actions need some extra attention, to see if their idroot maches. */
+  if (action.idroot == 0) {
+    ED_buttons_action_set(space, &action);
+    return;
+  }
+
+  /* TODO: expand to non-pinned IDs as well. */
+  ID *animated_id = space->pinid ? space->pinid : ED_buttons_context_id_path(space);
+  if (!animated_id) {
+    /* No ID is weird, but that's for the update function to deal with. */
+    ED_buttons_action_set(space, &action);
+    return;
+  }
+
+  if (action.idroot != GS(animated_id->name)) {
+    printf(
+        "ERROR: cannot assign Action '%s' to '%s', as action is not suitable for that data-block "
+        "type.\n",
+        action.id.name + 2,
+        animated_id->name + 2);
+    return;
+  }
+
+  ED_buttons_action_set(space, &action);
+}
+
+static void rna_SpacePropertiesEditor_action_update(bContext *C, PointerRNA *ptr)
+{
+  using namespace blender;
+
+  /* TODO: unify this function with rna_SpaceDopesheetEditor_action_update()? */
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Main *bmain = CTX_data_main(C);
+
+  BKE_view_layer_synced_ensure(scene, view_layer);
+
+  /* TODO: expand to non-pinned IDs as well. */
+  ID *animated_id = space->pinid ? space->pinid : ED_buttons_context_id_path(space);
+  if (!animated_id) {
+    return;
+  }
+
+  /* TODO: implement for legacy actions as well. */
+
+  /* Exit editmode first - we cannot change actions while in tweak-mode. */
+  // BKE_nla_tweakmode_exit(adt);
+
+  animrig::Action *action = ED_buttons_action_get(space);
+  if (action) {
+    animrig::assign_animation(*action, *animated_id);
+  }
+  else {
+    animrig::unassign_animation(*animated_id);
+  }
+
+  DEG_id_tag_update(animated_id, ID_RECALC_ANIMATION | ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
 }
 
 /* Space Console */
@@ -5603,6 +5710,21 @@ static void rna_def_space_properties(BlenderRNA *brna)
                            "Outliner Sync",
                            "Change to the corresponding tab when outliner data icons are clicked");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+
+  /* Action selector support. */
+  prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Action");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(prop,
+                                 /* Defined in runtime struct, so needs a getter. */
+                                 "rna_SpacePropertiesEditor_action_get",
+                                 "rna_SpacePropertiesEditor_action_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_ui_text(prop, "Action", "Action assigned to this data-block");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(
+      prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, "rna_SpacePropertiesEditor_action_update");
 }
 
 static void rna_def_space_image_overlay(BlenderRNA *brna)
