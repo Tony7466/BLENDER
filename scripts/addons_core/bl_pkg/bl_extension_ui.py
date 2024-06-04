@@ -719,13 +719,12 @@ def extensions_panel_draw_impl(
                     col_a.label(text="Size")
                     col_b.label(text=size_as_fmt_string(item_remote["archive_size"]))
 
+                col_a.label(text="License")
+                col_b.label(text=license_info_to_text(item_remote["license"]))
 
                 if len(repos_all) > 1:
                     col_a.label(text="Repository")
                     col_b.label(text=repos_all[repo_index].name)
-
-                col_a.label(text="License")
-                col_b.label(text=license_info_to_text(item_remote["license"]))
 
                 if is_installed:
                     col_a.label(text="Path")
