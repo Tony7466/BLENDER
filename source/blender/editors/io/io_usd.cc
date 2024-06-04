@@ -41,6 +41,8 @@
 #  include "io_utils.hh"
 #  include "usd.hh"
 
+#  include <pxr/pxr.h>
+
 #  include <string>
 #  include <utility>
 
@@ -259,6 +261,12 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const int usdz_downscale_custom_size = RNA_int_get(op->ptr, "usdz_downscale_custom_size");
 
+#  if PXR_VERSION >= 2403
+  const bool allow_unicode = RNA_boolean_get(op->ptr, "allow_unicode");
+#  else
+  const bool allow_unicode = false;
+#  endif
+
   bool use_original_paths = RNA_boolean_get(op->ptr, "use_original_paths");
 
   char root_prim_path[FILE_MAX];
@@ -301,6 +309,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_volumes,
       usdz_downscale_size,
       usdz_downscale_custom_size,
+      allow_unicode,
       use_original_paths,
   };
 
@@ -342,6 +351,9 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   row = uiLayoutRow(col, true);
   uiItemR(row, ptr, "author_blender_name", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiLayoutSetActive(row, RNA_boolean_get(op->ptr, "export_custom_properties"));
+#  if PXR_VERSION >= 2403
+  uiItemR(col, ptr, "allow_unicode", UI_ITEM_NONE, nullptr, ICON_NONE);
+#  endif
 
   uiItemR(col, ptr, "convert_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -649,6 +661,16 @@ void WM_OT_usd_export(wmOperatorType *ot)
       "Convert the world material to a USD dome light. "
       "Currently works for simple materials, consisting of an environment texture "
       "connected to a background shader, with an optional vector multiply of the texture color");
+
+#  if PXR_VERSION >= 2403
+  RNA_def_boolean(
+      ot->srna,
+      "allow_unicode",
+      false,
+      "Allow Unicode",
+      "Preserve UTF-8 encoded characters when writing USD prim and property names "
+      "(requires software utilizing USD 24.03 or greater when opening the resulting files)");
+#  endif
 
   RNA_def_boolean(ot->srna, "export_meshes", true, "Meshes", "Export all meshes");
 
