@@ -660,6 +660,37 @@ def pkg_manifest_from_archive_and_validate(
         return pkg_manifest_from_zipfile_and_validate(zip_fh, archive_subdir, strict=strict)
 
 
+def pkg_is_legacy_addon(filepath: str) -> bool:
+    # Python file is legacy.
+    if os.path.splitext(filepath)[1].lower() == ".py":
+        return True
+
+    try:
+        zip_fh_context = zipfile.ZipFile(filepath, mode="r")
+    except Exception:
+        return False
+
+    with contextlib.closing(zip_fh_context) as zip_fh:
+        # If manifest not legacy.
+        if pkg_zipfile_detect_subdir_or_none(zip_fh) is not None:
+            return False
+
+        # If any Python file contains bl_info it's legacy.
+        for filename in zip_fh_context.NameToInfo.keys():
+            if filename.startswith("."):
+                continue
+            if not filename.lower().endswith(".py"):
+                continue
+            try:
+                file_content = zip_fh.read(filename)
+            except Exception:
+                file_content = None
+            if file_content and file_content.find(b"bl_info"):
+                return True
+
+    return False
+
+
 def remote_url_has_filename_suffix(url: str) -> bool:
     # When the URL ends with `.json` it's assumed to be a URL that is inside a directory.
     # In these cases the file is stripped before constricting relative paths.
@@ -2017,6 +2048,16 @@ def generic_arg_access_token(subparse: argparse.ArgumentParser) -> None:
     )
 
 
+def generic_arg_verbose(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=False,
+        help="Include verbose output.",
+    )
+
+
 def generic_arg_timeout(subparse: argparse.ArgumentParser) -> None:
     subparse.add_argument(
         "--timeout",
@@ -2639,6 +2680,7 @@ class subcmd_author:
             pkg_source_dir: str,
             pkg_output_dir: str,
             pkg_output_filepath: str,
+            verbose: bool,
     ) -> bool:
         if not os.path.isdir(pkg_source_dir):
             message_error(msg_fn, "Missing local \"{:s}\"".format(pkg_source_dir))
@@ -2775,6 +2817,9 @@ class subcmd_author:
                     except Exception as ex:
                         message_status(msg_fn, "Error adding to archive \"{:s}\"".format(str(ex)))
                         return False
+
+                    if verbose:
+                        message_status(msg_fn, "add: {:s}".format(filepath_rel))
 
                 request_exit |= message_status(msg_fn, "complete")
                 if request_exit:
@@ -2982,6 +3027,7 @@ def unregister():
                     pkg_source_dir=pkg_src_dir,
                     pkg_output_dir=repo_dir,
                     pkg_output_filepath="",
+                    verbose=False,
                 ):
                     # Error running command.
                     return False
@@ -3217,6 +3263,7 @@ def argparse_create_author_build(
     generic_arg_package_source_dir(subparse)
     generic_arg_package_output_dir(subparse)
     generic_arg_package_output_filepath(subparse)
+    generic_arg_verbose(subparse)
 
     if args_internal:
         generic_arg_output_type(subparse)
@@ -3227,6 +3274,7 @@ def argparse_create_author_build(
             pkg_source_dir=args.source_dir,
             pkg_output_dir=args.output_dir,
             pkg_output_filepath=args.output_filepath,
+            verbose=args.verbose,
         ),
     )
 
