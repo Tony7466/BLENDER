@@ -880,7 +880,10 @@ void USDMeshWriter::init_blend_shapes(const HierarchyContext &context)
     return;
   }
 
-  create_blend_shapes(this->usd_export_context_.stage, context.object, mesh_prim);
+  create_blend_shapes(this->usd_export_context_.stage,
+                      context.object,
+                      mesh_prim,
+                      usd_export_context_.export_params.allow_unicode);
 }
 
 void USDMeshWriter::do_write(HierarchyContext &context)
