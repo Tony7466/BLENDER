@@ -518,6 +518,9 @@ static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int de
 
     case SH_NODE_BSDF_PRINCIPLED: {
       bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Alpha");
+      if (!socket) {
+        return AlphaSource::opaque();
+      }
       if (socket->link == nullptr) {
         float socket_value = *version_cycles_node_socket_float_value(socket);
         if (socket_value == 0.0f) {
