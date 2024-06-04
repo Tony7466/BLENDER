@@ -56,12 +56,17 @@ void GLIndexBuf::bind_as_ssbo(uint binding)
   }
   BLI_assert(ibo_id_ != 0);
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, ibo_id_);
+
+#ifndef NDEBUG
+  BLI_assert(binding < 16);
+  GLContext::get()->bound_ssbo_slots |= 1 << binding;
+#endif
 }
 
 void GLIndexBuf::read(uint32_t *data) const
 {
   BLI_assert(is_active());
-  void *buffer = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_ONLY);
+  const void *buffer = glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_ONLY);
   memcpy(data, buffer, size_get());
   glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
 }

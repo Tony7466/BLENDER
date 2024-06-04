@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_math_matrix_types.hh"
+
 #include "BKE_volume_grid_fwd.hh"
 
 struct GPUMaterial;
@@ -241,12 +243,12 @@ struct DRWVolumeGrid {
   GPUTexture *texture;
 
   /* Transform between 0..1 texture space and object space. */
-  float texture_to_object[4][4];
-  float object_to_texture[4][4];
+  blender::float4x4 texture_to_object;
+  blender::float4x4 object_to_texture;
 
   /* Transform from bounds to texture space. */
-  float object_to_bounds[4][4];
-  float bounds_to_texture[4][4];
+  blender::float4x4 object_to_bounds;
+  blender::float4x4 bounds_to_texture;
 };
 
 namespace blender::draw {
@@ -284,4 +286,6 @@ blender::gpu::Batch *DRW_cache_grease_pencil_edit_points_get(const Scene *scene,
 blender::gpu::Batch *DRW_cache_grease_pencil_edit_lines_get(const Scene *scene, Object *ob);
 gpu::VertBuf *DRW_cache_grease_pencil_position_buffer_get(const Scene *scene, Object *ob);
 gpu::VertBuf *DRW_cache_grease_pencil_color_buffer_get(const Scene *scene, Object *ob);
+blender::gpu::Batch *DRW_cache_grease_pencil_weight_points_get(const Scene *scene, Object *ob);
+blender::gpu::Batch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object *ob);
 }  // namespace blender::draw

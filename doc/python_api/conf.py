@@ -5,6 +5,17 @@
 import time
 
 
+def has_module(module_name):
+    found = False
+    try:
+        __import__(module_name)
+        found = True
+    except ModuleNotFoundError as ex:
+        if ex.name != module_name:
+            raise ex
+    return found
+
+
 # These are substituted when this file is copied to the build directory.
 BLENDER_VERSION_STRING = "${BLENDER_VERSION_STRING}"
 BLENDER_VERSION_DOTS = "${BLENDER_VERSION_DOTS}"
@@ -18,8 +29,11 @@ BLENDER_VERSION_DATE = time.strftime(
 if BLENDER_REVISION != "Unknown":
     # SHA1 GIT hash.
     BLENDER_VERSION_HASH = BLENDER_REVISION
-    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://projects.blender.org/blender/blender/commit/%s>%s</a>" % (
-        BLENDER_VERSION_HASH, BLENDER_VERSION_HASH)
+    BLENDER_VERSION_HASH_HTML_LINK = (
+        "<a href=https://projects.blender.org/blender/blender/commit/{:s}>{:s}</a>".format(
+            BLENDER_VERSION_HASH, BLENDER_VERSION_HASH,
+        )
+    )
 else:
     # Fallback: Should not be used.
     BLENDER_VERSION_HASH = "Hash Unknown"
@@ -27,7 +41,17 @@ else:
 
 extensions = ["sphinx.ext.intersphinx"]
 intersphinx_mapping = {"blender_manual": ("https://docs.blender.org/manual/en/dev/", None)}
-project = "Blender %s Python API" % BLENDER_VERSION_STRING
+
+
+# Provides copy button next to code-blocks (nice to have but not essential).
+if has_module("sphinx_copybutton"):
+    extensions.append("sphinx_copybutton")
+
+    # Exclude line numbers, prompts, and console text.
+    copybutton_exclude = ".linenos, .gp, .go"
+
+
+project = "Blender {:s} Python API".format(BLENDER_VERSION_STRING)
 root_doc = "index"
 copyright = "Blender Authors"
 version = BLENDER_VERSION_DOTS
@@ -48,14 +72,8 @@ html_title = "Blender Python API"
 # The fallback to a built-in theme when `furo` is not found.
 html_theme = "default"
 
-try:
-    import furo
+if has_module("furo"):
     html_theme = "furo"
-    del furo
-except ModuleNotFoundError:
-    pass
-
-if html_theme == "furo":
     html_theme_options = {
         "light_css_variables": {
             "color-brand-primary": "#265787",
@@ -83,7 +101,9 @@ html_show_search_summary = True
 html_split_index = True
 html_static_path = ["static"]
 templates_path = ["templates"]
-html_context = {"commit": "%s - %s" % (BLENDER_VERSION_HASH_HTML_LINK, BLENDER_VERSION_DATE)}
+html_context = {
+    "commit": "{:s} - {:s}".format(BLENDER_VERSION_HASH_HTML_LINK, BLENDER_VERSION_DATE),
+}
 html_extra_path = ["static"]
 html_favicon = "static/favicon.ico"
 html_logo = "static/blender_logo.svg"

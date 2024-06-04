@@ -25,9 +25,8 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_DerivedMesh.hh"
 #include "BKE_attribute.hh"
-#include "BKE_cdderivedmesh.h"
+#include "BKE_mesh_legacy_derived_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_shrinkwrap.hh"
 
@@ -1032,7 +1031,9 @@ static void mesh_corner_tris_target_project(void *userdata,
     update_hit(nearest, index, co, hit_co, hit_no);
   }
   /* Boundary edges */
-  else if (tree->boundary && tree->boundary->tri_has_boundary[index]) {
+  else if (tree->boundary && tree->boundary->has_boundary() &&
+           tree->boundary->tri_has_boundary[index])
+  {
     const BitSpan is_boundary = tree->boundary->edge_is_boundary;
     const int3 edges = bke::mesh::corner_tri_get_real_edges(
         data->edges, data->corner_verts, tree->corner_edges, tri);

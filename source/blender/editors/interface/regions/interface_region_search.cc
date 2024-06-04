@@ -176,7 +176,7 @@ int UI_searchbox_size_x()
   return 12 * UI_UNIT_X;
 }
 
-int UI_search_items_find_index(uiSearchItems *items, const char *name)
+int UI_search_items_find_index(const uiSearchItems *items, const char *name)
 {
   if (items->name_prefix_offsets != nullptr) {
     for (int i = 0; i < items->totitem; i++) {
@@ -599,7 +599,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
       /* draw items */
       for (int a = 0; a < data->items.totitem; a++) {
         const int but_flag = ((a == data->active) ? UI_HOVER : 0) | data->items.but_flags[a];
-        char *name = data->items.names[a];
+        const char *name = data->items.names[a];
         int icon = data->items.icons[a];
         char *name_sep_test = nullptr;
 

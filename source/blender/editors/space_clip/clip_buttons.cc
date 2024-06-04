@@ -461,7 +461,7 @@ void uiTemplateMarker(uiLayout *layout,
                0,
                0,
                "");
-
+      MEM_freeN(cb);
       return;
     }
 
@@ -797,6 +797,7 @@ void uiTemplateMovieclipInformation(uiLayout *layout,
   else {
     ofs += BLI_strncpy_rlen(str + ofs, RPT_(", failed to load"), sizeof(str) - ofs);
   }
+  UNUSED_VARS(ofs);
 
   uiItemL(col, str, ICON_NONE);
 

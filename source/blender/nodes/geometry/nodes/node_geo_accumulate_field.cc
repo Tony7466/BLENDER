@@ -43,7 +43,7 @@ static void node_declare(NodeDeclarationBuilder &b)
         BLI_assert_unreachable();
         break;
     }
-    value_declaration->supports_field().description(N_("The values to be accumulated"));
+    value_declaration->supports_field().description("The values to be accumulated");
   }
 
   b.add_input<decl::Int>("Group ID", "Group Index")
@@ -54,15 +54,14 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
     b.add_output(data_type, "Leading")
         .field_source_reference_all()
-        .description(N_("The running total of values in the corresponding group, starting at the "
-                        "first value"));
+        .description(
+            "The running total of values in the corresponding group, starting at the first value");
     b.add_output(data_type, "Trailing")
         .field_source_reference_all()
-        .description(
-            N_("The running total of values in the corresponding group, starting at zero"));
+        .description("The running total of values in the corresponding group, starting at zero");
     b.add_output(data_type, "Total")
         .field_source_reference_all()
-        .description(N_("The total of all of the values in the corresponding group"));
+        .description("The total of all of the values in the corresponding group");
   }
 }
 
@@ -92,6 +91,7 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
       return CD_PROP_INT32;
     case SOCK_VECTOR:
     case SOCK_RGBA:
+    case SOCK_ROTATION:
       return CD_PROP_FLOAT3;
     default:
       return {};
@@ -145,6 +145,15 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+template<typename T> struct AccumulationInfo {
+  static inline const T initial_value = []() { return T(); }();
+
+  static T accumulate(const T &a, const T &b)
+  {
+    return a + b;
+  }
+};
+
 class AccumulateFieldInput final : public bke::GeometryFieldInput {
  private:
   GField input_;
@@ -191,17 +200,17 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
         const VArray<T> values = g_values.typed<T>();
 
         if (group_indices.is_single()) {
-          T accumulation = T();
+          T accumulation = AccumulationInfo<T>::initial_value;
           if (accumulation_mode_ == AccumulationMode::Leading) {
             for (const int i : values.index_range()) {
-              accumulation = values[i] + accumulation;
+              accumulation = AccumulationInfo<T>::accumulate(accumulation, values[i]);
               outputs[i] = accumulation;
             }
           }
           else {
             for (const int i : values.index_range()) {
               outputs[i] = accumulation;
-              accumulation = values[i] + accumulation;
+              accumulation = AccumulationInfo<T>::accumulate(accumulation, values[i]);
             }
           }
         }
@@ -209,16 +218,18 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
           Map<int, T> accumulations;
           if (accumulation_mode_ == AccumulationMode::Leading) {
             for (const int i : values.index_range()) {
-              T &accumulation_value = accumulations.lookup_or_add_default(group_indices[i]);
-              accumulation_value += values[i];
+              T &accumulation_value = accumulations.lookup_or_add(
+                  group_indices[i], AccumulationInfo<T>::initial_value);
+              accumulation_value = AccumulationInfo<T>::accumulate(accumulation_value, values[i]);
               outputs[i] = accumulation_value;
             }
           }
           else {
             for (const int i : values.index_range()) {
-              T &accumulation_value = accumulations.lookup_or_add_default(group_indices[i]);
+              T &accumulation_value = accumulations.lookup_or_add(
+                  group_indices[i], AccumulationInfo<T>::initial_value);
               outputs[i] = accumulation_value;
-              accumulation_value += values[i];
+              accumulation_value = AccumulationInfo<T>::accumulate(accumulation_value, values[i]);
             }
           }
         }
@@ -294,17 +305,18 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
       if constexpr (is_same_any_v<T, int, float, float3>) {
         const VArray<T> values = g_values.typed<T>();
         if (group_indices.is_single()) {
-          T accumulation = {};
+          T accumulation = AccumulationInfo<T>::initial_value;
           for (const int i : values.index_range()) {
-            accumulation = values[i] + accumulation;
+            accumulation = AccumulationInfo<T>::accumulate(accumulation, values[i]);
           }
           g_outputs = VArray<T>::ForSingle(accumulation, domain_size);
         }
         else {
           Map<int, T> accumulations;
           for (const int i : values.index_range()) {
-            T &value = accumulations.lookup_or_add_default(group_indices[i]);
-            value = value + values[i];
+            T &value = accumulations.lookup_or_add(group_indices[i],
+                                                   AccumulationInfo<T>::initial_value);
+            value = AccumulationInfo<T>::accumulate(value, values[i]);
           }
           Array<T> outputs(domain_size);
           for (const int i : values.index_range()) {
@@ -395,7 +407,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_ACCUMULATE_FIELD, "Accumulate Field", NODE_CLASS_CONVERTER);
   ntype.geometry_node_execute = node_geo_exec;
@@ -403,9 +415,9 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeAccumulateField", node_free_standard_storage, node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
