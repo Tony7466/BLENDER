@@ -29,6 +29,6 @@ void main()
     co = rect.zy;
   }
 
-  coInterp = co;
+  co_interp = co;
   gl_Position = ModelViewProjectionMatrix * vec4(co, 0.0f, 1.0f);
 }

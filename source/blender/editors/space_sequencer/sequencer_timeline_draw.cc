@@ -30,7 +30,7 @@
 #include "GPU_batch.hh"
 #include "GPU_batch_presets.hh"
 #include "GPU_immediate.hh"
-#include "GPU_shader_sequencer.hh"
+#include "GPU_shader_shared.hh"
 #include "GPU_uniform_buffer.hh"
 #include "GPU_viewport.hh"
 
@@ -1297,6 +1297,16 @@ static float calc_strip_round_radius(float pixely)
 }
 
 class SeqStripsBatch {
+  SeqContextDrawData context_;
+  Array<SeqStripDrawData> strips_;
+  GPUUniformBuf *ubo_context_ = nullptr;
+  GPUUniformBuf *ubo_strips_ = nullptr;
+  GPUShader *shader_ = nullptr;
+  gpu::Batch *batch_ = nullptr;
+  int binding_context_ = 0;
+  int binding_strips_ = 0;
+  int strips_count_ = 0;
+
  public:
   SeqStripsBatch(float pixelx, float pixely) : strips_(GPU_SEQ_STRIP_DRAW_DATA_LEN)
   {
@@ -1371,17 +1381,6 @@ class SeqStripsBatch {
     GPU_batch_draw_instance_range(batch_, 0, strips_count_);
     strips_count_ = 0;
   }
-
- private:
-  SeqContextDrawData context_;
-  Array<SeqStripDrawData> strips_;
-  GPUUniformBuf *ubo_context_ = nullptr;
-  GPUUniformBuf *ubo_strips_ = nullptr;
-  GPUShader *shader_ = nullptr;
-  gpu::Batch *batch_ = nullptr;
-  int binding_context_ = 0;
-  int binding_strips_ = 0;
-  int strips_count_ = 0;
 };
 
 static void draw_strips_background(TimelineDrawContext *timeline_ctx,

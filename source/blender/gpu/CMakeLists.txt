@@ -104,7 +104,6 @@ set(SRC
   GPU_select.hh
   GPU_shader.hh
   GPU_shader_builtin.hh
-  GPU_shader_sequencer.hh
   GPU_shader_shared.hh
   GPU_state.hh
   GPU_storage_buffer.hh
@@ -441,7 +440,6 @@ set(MSL_SRC
 )
 
 set(GLSL_SRC
-  GPU_shader_sequencer.hh
   GPU_shader_shared.hh
   shaders/opengl/glsl_shader_defines.glsl
 

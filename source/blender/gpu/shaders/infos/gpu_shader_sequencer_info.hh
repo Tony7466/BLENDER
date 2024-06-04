@@ -10,7 +10,7 @@
 #include "gpu_shader_create_info.hh"
 
 GPU_SHADER_INTERFACE_INFO(gpu_seq_strip_iface, "")
-    .no_perspective(Type::VEC2, "coInterp")
+    .no_perspective(Type::VEC2, "co_interp")
     .flat(Type::UINT, "strip_id");
 
 GPU_SHADER_CREATE_INFO(gpu_shader_sequencer_strips)
@@ -19,7 +19,7 @@ GPU_SHADER_CREATE_INFO(gpu_shader_sequencer_strips)
     .push_constant(Type::MAT4, "ModelViewProjectionMatrix")
     .uniform_buf(0, "SeqStripDrawData", "strip_data[GPU_SEQ_STRIP_DRAW_DATA_LEN]")
     .uniform_buf(1, "SeqContextDrawData", "context_data")
-    .typedef_source("GPU_shader_sequencer.hh")
+    .typedef_source("GPU_shader_shared.hh")
     .vertex_source("gpu_shader_sequencer_strips_vert.glsl")
     .fragment_source("gpu_shader_sequencer_strips_frag.glsl")
     .do_static_compilation(true);

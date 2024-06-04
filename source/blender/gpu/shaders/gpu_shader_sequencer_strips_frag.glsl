@@ -37,25 +37,25 @@ vec4 add_outline(float d, float extra_half_width, float inset, vec4 cur, vec4 ou
 
 void main()
 {
-  vec2 co = coInterp;
+  vec2 co = co_interp;
 
   SeqStripDrawData strip = strip_data[strip_id];
-  vec2 bsize = vec2(strip.right_handle - strip.left_handle, strip.top - strip.bottom) * 0.5;
-  vec2 bcenter = vec2(strip.right_handle + strip.left_handle, strip.top + strip.bottom) * 0.5;
+  vec2 size = vec2(strip.right_handle - strip.left_handle, strip.top - strip.bottom) * 0.5;
+  vec2 center = vec2(strip.right_handle + strip.left_handle, strip.top + strip.bottom) * 0.5;
 
   /* Transform strip rectangle into pixel coordinates, so that
    * rounded corners have proper aspect ratio and can be expressed in pixels. */
   vec2 view_to_pixel = vec2(context_data.inv_pixelx, context_data.inv_pixely);
-  bsize *= view_to_pixel;
-  bcenter *= view_to_pixel;
-  vec2 pxy = co * view_to_pixel;
+  size *= view_to_pixel;
+  center *= view_to_pixel;
+  vec2 pos = co * view_to_pixel;
 
   float radius = context_data.round_radius;
-  if (radius > bsize.x) {
+  if (radius > size.x) {
     radius = 0.0;
   }
 
-  float d = sdf_rounded_box(pxy - bcenter, bsize, radius);
+  float sdf = sdf_rounded_box(pos - center, size, radius);
 
   vec4 col = vec4(0.0);
 
@@ -138,7 +138,7 @@ void main()
   }
 
   /* Outside of strip rounded rect? */
-  if (d > 0.0) {
+  if (sdf > 0.0) {
     col = vec4(0.0);
   }
 
@@ -148,12 +148,12 @@ void main()
     vec4 col_outline = unpackUnorm4x8(strip.col_outline);
     if (selected) {
       /* Inset 1px line with backround color. */
-      col = add_outline(d, 0.0, 1.0, col, unpackUnorm4x8(context_data.col_back));
+      col = add_outline(sdf, 0.0, 1.0, col, unpackUnorm4x8(context_data.col_back));
       /* 2x wide outline. */
-      col = add_outline(d, 0.5, -0.5, col, col_outline);
+      col = add_outline(sdf, 0.5, -0.5, col, col_outline);
     }
     else {
-      col = add_outline(d, 0.0, 0.0, col, col_outline);
+      col = add_outline(sdf, 0.0, 0.0, col, col_outline);
     }
   }
 
