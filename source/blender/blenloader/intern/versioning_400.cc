@@ -4053,6 +4053,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       /* Only for grease pencil brushes. */
       if (brush->gpencil_settings) {
+        /* Approximate the threashold in pixels using the legacy radius conversion factor and the
+         * previous simplify threashold in world space. */
         brush->gpencil_settings->simplify_px =
             brush->gpencil_settings->simplify_f /
             blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
