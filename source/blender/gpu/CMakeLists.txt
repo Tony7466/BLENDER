@@ -522,6 +522,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_math_matrix_lib.glsl
   shaders/common/gpu_shader_math_rotation_lib.glsl
   shaders/common/gpu_shader_math_vector_lib.glsl
+  shaders/common/gpu_shader_shared_exponent_lib.glsl
   shaders/common/gpu_shader_smaa_lib.glsl
   shaders/common/gpu_shader_test_lib.glsl
   shaders/common/gpu_shader_utildefines_lib.glsl
@@ -716,13 +717,13 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_depth_of_field_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_irradiance_cache_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_volume_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_sphere_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lookdev_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lut_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_reflection_probe_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_subsurface_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_tracing_info.hh
@@ -754,16 +755,6 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/workbench/shaders/infos/workbench_shadow_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_transparent_resolve_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_volume_info.hh
-
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_bloom_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_common_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_dof_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_effects_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_lightprobe_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_material_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_motion_blur_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_shadow_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_volume_info.hh
 
   ../draw/engines/image/shaders/infos/engine_image_info.hh
   ../draw/intern/shaders/draw_debug_info.hh

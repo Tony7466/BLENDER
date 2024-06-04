@@ -1867,6 +1867,8 @@ typedef struct SceneEEVEE {
   int fast_gi_step_count;
   int fast_gi_ray_count;
   float fast_gi_distance;
+  float fast_gi_thickness_near;
+  float fast_gi_thickness_far;
   char fast_gi_method;
   char _pad0[3];
 
@@ -1906,11 +1908,6 @@ typedef struct SceneEEVEE {
   int ray_tracing_method;
 
   struct RaytraceEEVEE ray_tracing_options;
-
-  struct LightCache *light_cache DNA_DEPRECATED;
-  struct LightCache *light_cache_data;
-  /* Need a 128 byte string for some translations of some messages. */
-  char light_cache_info[128];
 
   float overscan;
   float light_threshold;

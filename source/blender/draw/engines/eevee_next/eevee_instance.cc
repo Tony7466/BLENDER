@@ -376,14 +376,14 @@ void Instance::render_sync()
   DRW_curves_update();
 }
 
-bool Instance::needs_reflection_probe_passes() const
+bool Instance::needs_lightprobe_sphere_passes() const
 {
   return sphere_probes.update_probes_this_sample_;
 }
 
-bool Instance::do_reflection_probe_sync() const
+bool Instance::do_lightprobe_sphere_sync() const
 {
-  return (materials.queued_shaders_count == 0) && needs_reflection_probe_passes();
+  return (materials.queued_shaders_count == 0) && needs_lightprobe_sphere_passes();
 }
 
 bool Instance::needs_planar_probe_passes() const
@@ -718,11 +718,6 @@ void Instance::light_bake_irradiance(
         volume_probes.bake.raylists_build();
         volume_probes.bake.propagate_light();
         volume_probes.bake.irradiance_capture();
-      }
-
-      if (sampling.finished()) {
-        /* TODO(fclem): Dilation, filter etc... */
-        // irradiance_cache.bake.irradiance_finalize();
       }
 
       LightProbeGridCacheFrame *cache_frame;
