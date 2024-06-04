@@ -705,4 +705,59 @@ TEST_F(KeyframingTest, insert_keyframe__quaternion_on_nla__only_needed)
   EXPECT_EQ(0, result_3.get_count(SingleKeyingResult::SUCCESS));
 }
 
+/* With the "Only Replace" flag enabled, keys for all four elements should be
+ * inserted if *any* of them replace an existing key, and otherwise none of them
+ * should. */
+TEST_F(KeyframingTest, insert_keyframe__quaternion_on_nla__only_replace)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+  object_with_nla->rotmode = ROT_MODE_QUAT;
+
+  /* First time should insert nothing, since there are no fcurves yet. */
+  const CombinedKeyingResult result_1 = insert_keyframe(bmain,
+                                                        object_with_nla->id,
+                                                        nullptr,
+                                                        "rotation_quaternion",
+                                                        0,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_REPLACE);
+  EXPECT_EQ(0, result_1.get_count(SingleKeyingResult::SUCCESS));
+
+  /* Directly create an fcurve and key for a single quaternion channel. */
+  PointerRNA id_rna_ptr = RNA_id_pointer_create(&object_with_nla->id);
+  FCurve *fcu = action_fcurve_ensure(
+      bmain, nla_action, nullptr, &id_rna_ptr, "rotation_quaternion", 0);
+  const KeyframeSettings keyframe_settings = {BEZT_KEYTYPE_KEYFRAME, HD_AUTO_ANIM, BEZT_IPO_BEZ};
+  insert_vert_fcurve(fcu, {11.0, 1.0}, keyframe_settings, INSERTKEY_NOFLAGS);
+
+  /* Second time should also insert nothing, since we attempt to insert on a
+   * frame other than the one with the key. */
+  anim_eval_context.eval_time = 5.0;
+  const CombinedKeyingResult result_2 = insert_keyframe(bmain,
+                                                        object_with_nla->id,
+                                                        nullptr,
+                                                        "rotation_quaternion",
+                                                        0,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_REPLACE);
+  EXPECT_EQ(0, result_2.get_count(SingleKeyingResult::SUCCESS));
+
+  /* Third time should succeed and key all elements, since we're inserting on a
+   * frame where one of the elements already has a key.
+   * NOTE: because of NLA time remapping, this 1.0 is the same as the 11.0 we
+   * used above when inserting directly into the fcurve.*/
+  anim_eval_context.eval_time = 1.0;
+  const CombinedKeyingResult result_3 = insert_keyframe(bmain,
+                                                        object_with_nla->id,
+                                                        nullptr,
+                                                        "rotation_quaternion",
+                                                        0,
+                                                        &anim_eval_context,
+                                                        BEZT_KEYTYPE_KEYFRAME,
+                                                        INSERTKEY_REPLACE);
+  EXPECT_EQ(4, result_3.get_count(SingleKeyingResult::SUCCESS));
+}
+
 }  // namespace blender::animrig::tests
