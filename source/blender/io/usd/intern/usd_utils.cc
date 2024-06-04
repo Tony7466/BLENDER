@@ -7,7 +7,9 @@
 #include "BLI_string_utf8.h"
 
 #include <pxr/base/tf/stringUtils.h>
-#include <pxr/base/tf/unicodeUtils.h>
+#if PXR_VERSION >= 2403
+#  include <pxr/base/tf/unicodeUtils.h>
+#endif
 
 namespace blender::io::usd {
 
