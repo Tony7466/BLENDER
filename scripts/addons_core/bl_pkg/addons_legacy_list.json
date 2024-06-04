@@ -1,0 +1,18 @@
+{
+    "rigify": {
+        "name": "Rigify",
+        "extension_id": "rigify"
+    },
+    "space_view3d_math_vis": {
+        "name": "Math Vis (Console)",
+        "extension_id": "math_vis_console"
+    },
+    "measureit": {
+        "name": "MeasureIt",
+        "extension_id": "measureit"
+    },
+    "space_view3d_3d_navigation": {
+        "name": "3D Navigation",
+        "extension_id": "navigation"
+    }
+}

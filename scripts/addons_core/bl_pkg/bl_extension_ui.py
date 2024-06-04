@@ -393,24 +393,22 @@ addons_block_list = {
     'io_mesh_stl',
 }
 
-addons_legacy_list_lookup = {
-    'rigify': {
-        'name': 'Rigify',
-        'extension_id': 'rigify',
-    },
-    'space_view3d_math_vis': {
-        'name': 'Math Vis (Console)',
-        'extension_id': 'math_vis_console',
-    },
-    'measureit': {
-        'name': 'MeasureIt',
-        'extension_id': 'measureit',
-    },
-    'space_view3d_3d_navigation': {
-        'name': '3D Navigation',
-        'extension_id': 'navigation',
-    },
-}
+
+def addons_legacy_list_get():
+    import json
+    import os
+    import pathlib
+
+    filepath_relative = 'addons_legacy_list.json'
+    filepath_absolute = os.path.join(
+        pathlib.Path(__file__).parent.resolve(),
+        filepath_relative,
+        )
+
+    with open(filepath_absolute) as data_file:
+        return json.load(data_file)
+
+addons_legacy_list_lookup = addons_legacy_list_get()
 
 
 def extensions_panel_draw_legacy_addons_impl(
