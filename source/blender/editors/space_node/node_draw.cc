@@ -132,9 +132,6 @@ struct TreeDrawContext {
   blender::Map<bNodeInstanceKey, blender::timeit::Nanoseconds>
       *compositor_per_node_execution_time = nullptr;
 
-  /**
-   * Used for the automatic label overlay of reroute nodes.
-   */
   blender::Map<const bNode *, blender::StringRefNull> reroute_auto_labels;
 };
 
@@ -4163,7 +4160,7 @@ static void frame_node_draw(const bContext &C,
 }
 
 /**
- * Returns the next linked reroute node backwards of the given reroute, if there is one.
+ * Returns the reroute node linked to the input of the given reroute, if there is one.
  */
 static const bNode *reroute_node_get_linked_reroute(const bNode *reroute)
 {
@@ -4180,11 +4177,12 @@ static const bNode *reroute_node_get_linked_reroute(const bNode *reroute)
 
 /**
  * The auto label overlay displays a label on reroute nodes based on the user-defined label of a
- * linked reroute upstream. This traverses the node tree backwards from the given reroute until it
- * finds one it can infer the label from.
+ * linked reroute upstream.
+ * This traverses the node tree backwards from the given reroute until it finds one it can infer
+ * the label from. The given reroute and all other reroutes along the way are stored in the
+ * TreeDrawContext together with their auto label to avoid duplicate work.
  */
 static StringRefNull reroute_node_get_auto_label_recursive(TreeDrawContext &tree_draw_ctx,
-                                                           const bNodeTree &ntree,
                                                            const bNode *reroute)
 {
   BLI_assert(reroute->is_reroute());
@@ -4200,19 +4198,17 @@ static StringRefNull reroute_node_get_auto_label_recursive(TreeDrawContext &tree
   const bNode *linked_reroute = reroute_node_get_linked_reroute(reroute);
 
   if (linked_reroute == nullptr) {
-    /* When the reroute is not linked to another reroute it acts as a label source. */
+    /* When the reroute is not linked to another reroute, it acts as a label source. */
     return StringRefNull(reroute->label);
   }
 
-  StringRefNull auto_label = reroute_node_get_auto_label_recursive(
-      tree_draw_ctx, ntree, linked_reroute);
+  StringRefNull auto_label = reroute_node_get_auto_label_recursive(tree_draw_ctx, linked_reroute);
   reroute_auto_labels.add(reroute, auto_label);
   return auto_label;
 }
 
 static void reroute_node_draw_label(TreeDrawContext &tree_draw_ctx,
                                     const SpaceNode &snode,
-                                    const bNodeTree &ntree,
                                     const bNode &node,
                                     uiBlock &block)
 {
@@ -4230,13 +4226,9 @@ static void reroute_node_draw_label(TreeDrawContext &tree_draw_ctx,
   }
 
   char showname[128];
-  if (use_auto_label) {
-    StringRefNull auto_label = reroute_node_get_auto_label_recursive(tree_draw_ctx, ntree, &node);
-    STRNCPY(showname, auto_label.c_str());
-  }
-  else {
-    STRNCPY(showname, node.label);
-  }
+  STRNCPY(showname,
+          has_label ? node.label :
+                      reroute_node_get_auto_label_recursive(tree_draw_ctx, &node).c_str());
 
   const short width = 512;
   const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
@@ -4269,7 +4261,7 @@ static void reroute_node_draw(const bContext &C,
     return;
   }
 
-  reroute_node_draw_label(tree_draw_ctx, snode, ntree, node, block);
+  reroute_node_draw_label(tree_draw_ctx, snode, node, block);
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
