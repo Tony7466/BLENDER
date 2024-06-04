@@ -358,7 +358,7 @@ def extensions_panel_draw_online_extensions_request_impl(
 
     row = box.row(align=True)
     row.alignment = 'LEFT'
-    row.label(text="To continue offline, use \"Install from Disk\" instead.")
+    row.label(text="While offline, use \"Install from Disk\" instead.")
     # TODO: the URL must be updated before release,
     # this could be constructed using a function to account for Blender version & locale.
     row.operator(
@@ -369,7 +369,7 @@ def extensions_panel_draw_online_extensions_request_impl(
     ).url = "https://docs.blender.org/manual/en/dev/editors/preferences/extensions.html#install"
 
     row = box.row()
-    props = row.operator("wm.context_set_boolean", text="Dismiss", icon='X')
+    props = row.operator("wm.context_set_boolean", text="Continue Offline", icon='X')
     props.data_path = "preferences.extensions.use_online_access_handled"
     props.value = True
 
