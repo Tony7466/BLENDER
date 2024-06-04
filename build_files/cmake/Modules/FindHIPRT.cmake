@@ -34,19 +34,23 @@ find_path(HIPRT_INCLUDE_DIR
 )
 
 if(HIPRT_INCLUDE_DIR)
-  
   file(STRINGS "${HIPRT_INCLUDE_DIR}/hiprt/hiprt.h" _hiprt_version
     REGEX "^#define HIPRT_VERSION_STR[ \t]\".*\"$")
   string(REGEX MATCHALL "[0-9]+[.0-9]+" _hiprt_version ${_hiprt_version})
 
-  message(STATUS "Current ${_hiprt_version}")
+  file(STRINGS "${HIPRT_INCLUDE_DIR}/hiprt/hiprt.h" _hip_version
+    REGEX "^#define HIP_VERSION_STR[ \t]\".*\"$")
+  string(REGEX MATCHALL "[0-9]+[.0-9]+" _hip_version ${_hip_version})
+
+  message(STATUS "Current ${_hiprt_version}_${_hip_version}")
 
   find_file(HIPRT_BITCODE
     NAMES
-      hiprt${_hiprt_version}_5.7_amd_lib_win.bc
+      hiprt${_hiprt_version}_${_hip_version}_amd_lib_win.bc
     HINTS
       ${HIPRT_ROOT_DIR}/bin
       ${HIPRT_ROOT_DIR}/dist/bin/Release
+      ${HIPRT_ROOT_DIR}/hiprt/win
     NO_DEFAULT_PATH
   )
 
