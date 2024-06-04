@@ -38,22 +38,22 @@ static bool check_arguments_are_valid(Span<StringRefNull> args)
 
 namespace blender {
 
-static void print_last_error(const char *msg)
+static void print_last_error(const char *function, const char *msg)
 {
   DWORD error_code = GetLastError();
-  std::cerr << "ERROR (" << error_code << "): " << msg << std::endl;
+  std::cerr << "ERROR (" << error_code << "): " << function << " : " << msg << std::endl;
 }
 
-static bool check(bool result, const char *msg)
+static bool check(bool result, const char *function, const char *msg)
 {
   if (!result) {
-    print_last_error(msg);
+    print_last_error(function, msg);
     BLI_assert(false);
   }
   return result;
 }
 
-#    define CHECK(result) check((result), __FUNCTION__ " : " #result)
+#    define CHECK(result) check((result), __func__, #result)
 
 bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
@@ -223,8 +223,8 @@ static bool check(int result, const char *function, const char *msg)
   return true;
 }
 
-#    define CHECK(result) check((result), __FUNCTION__, #result)
-#    define ERROR(msg) check(false, __FUNCTION__, msg)
+#    define CHECK(result) check((result), __func__, #result)
+#    define ERROR(msg) check(false, __func__, msg)
 
 bool BlenderSubprocess::create(Span<StringRefNull> args)
 {
