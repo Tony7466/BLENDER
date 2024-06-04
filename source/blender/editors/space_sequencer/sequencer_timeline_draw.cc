@@ -71,7 +71,6 @@
 
 using namespace blender;
 
-#define SEQ_HANDLE_SIZE 8.0f
 #define MUTE_ALPHA 120
 
 constexpr float MISSING_ICON_SIZE = 16.0f;
@@ -763,7 +762,9 @@ static void draw_handle_transform_text(const TimelineDrawContext *timeline_ctx,
 
 float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const float pixelx)
 {
-  const float maxhandle = (pixelx * SEQ_HANDLE_SIZE) * U.pixelsize;
+  const bool use_thin_handle = (U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) != 0;
+  const float handle_size = use_thin_handle ? 5.0f : 8.0f;
+  const float maxhandle = (pixelx * handle_size) * U.pixelsize;
 
   /* Ensure that handle is not wider, than quarter of strip. */
   return min_ff(maxhandle,
@@ -772,21 +773,28 @@ float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const 
                  4.0f));
 }
 
-/* Draw a handle, on left or right side of strip. */
-static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
+static void draw_seq_handle(const TimelineDrawContext *timeline_ctx,
                             const StripDrawContext *strip_ctx,
                             eSeqHandle handle)
 {
   const Sequence *seq = strip_ctx->seq;
+  const bool show_handles = (U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0;
   const bool strip_selected = (seq->flag & SELECT) != 0;
   const bool handle_selected = ED_sequencer_handle_is_selected(seq, handle);
 
+  if ((!strip_selected || !handle_selected) && !show_handles) {
+    return;
+  }
   if (SEQ_transform_is_locked(timeline_ctx->channels, seq)) {
     return;
   }
-  if (!ED_sequencer_can_select_handle(seq)) {
+  if ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) > 0) {
     return;
   }
+  if (!ED_sequencer_can_select_handle(timeline_ctx->scene, seq, timeline_ctx->v2d)) {
+    return;
+  }
+
   uchar col[4];
   if (strip_selected && handle_selected && seq == SEQ_select_active_get(timeline_ctx->scene)) {
     UI_GetThemeColor4ubv(TH_SEQ_ACTIVE, col);
@@ -1775,6 +1783,7 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
   const Scene *scene = timeline_ctx->scene;
   const Sequence *act_seq = SEQ_select_active_get(scene);
   const Sequence *special_preview = ED_sequencer_special_preview_get();
+  const bool show_handles = (U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0;
 
   uchar col[4];
   for (const StripDrawContext &strip : strips) {
@@ -1842,16 +1851,21 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
     }
 
     /* Handles on left/right side. */
-    if (!locked && ED_sequencer_can_select_handle(strip.seq)) {
+    if (!locked && ED_sequencer_can_select_handle(scene, strip.seq, timeline_ctx->v2d)) {
       data.flags |= GPU_SEQ_FLAG_HANDLES;
       const bool selected_l = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_LEFT);
       const bool selected_r = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_RIGHT);
+      const bool show_l = show_handles || (selected && selected_l);
+      const bool show_r = show_handles || (selected && selected_r);
 
       /* Left handle color. */
       col[0] = col[1] = col[2] = 0;
       col[3] = 50;
       if (selected && selected_l) {
         UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+      }
+      if (!show_l) {
+        col[3] = 0;
       }
       data.col_handle_left = color_pack(col);
 
@@ -1860,6 +1874,9 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
       col[3] = 50;
       if (selected && selected_r) {
         UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+      }
+      if (!show_r) {
+        col[3] = 0;
       }
       data.col_handle_right = color_pack(col);
     }
