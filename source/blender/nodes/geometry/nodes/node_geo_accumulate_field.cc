@@ -396,20 +396,21 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  RNA_def_node_enum(
-      srna,
-      "data_type",
-      "Data Type",
-      "Type of data stored in attribute",
-      rna_enum_attribute_type_items,
-      NOD_storage_enum_accessors(data_type),
-      CD_PROP_FLOAT,
-      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
-        *r_free = true;
-        return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
-          return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32, CD_PROP_FLOAT4X4);
-        });
-      });
+  static EnumPropertyItem items[] = {
+      {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Add floating point values"},
+      {CD_PROP_INT32, "INT", 0, "Integer", "Add integer values"},
+      {CD_PROP_FLOAT3, "FLOAT_VECTOR", 0, "Vector", "Add 3D vector values"},
+      {CD_PROP_FLOAT4X4, "TRANSFORM", 0, "Transform", "Multiply transformation matrices"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "data_type",
+                    "Data Type",
+                    "Type of data that is accumulated",
+                    items,
+                    NOD_storage_enum_accessors(data_type),
+                    CD_PROP_FLOAT);
 
   RNA_def_node_enum(srna,
                     "domain",
