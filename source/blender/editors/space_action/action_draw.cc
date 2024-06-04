@@ -28,6 +28,8 @@
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_pointcache.h"
 
+#include "ANIM_action.hh"
+
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
 
 #include "GPU_immediate.hh"
