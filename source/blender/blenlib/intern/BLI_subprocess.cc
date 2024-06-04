@@ -13,6 +13,23 @@
 #  include "BLI_string_utf8.h"
 #  include <iostream>
 
+namespace blender {
+
+static bool validate_arguments(Span<StringRefNull> args)
+{
+  for (StringRefNull arg : args) {
+    for (const char c : arg) {
+      if (!std::isalnum(c) && !ELEM(c, '_', '-')) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+}  // namespace blender
+
 #  ifdef _WIN32
 
 #    define WIN32_LEAN_AND_MEAN
@@ -41,6 +58,11 @@ static bool check(bool result, const char *msg)
 bool Subprocess::create(Span<StringRefNull> args)
 {
   BLI_assert(handle_ == nullptr);
+
+  if (!validate_arguments(args)) {
+    BLI_assert(false);
+    return false;
+  }
 
   wchar_t path[FILE_MAX];
   if (!CHECK(GetModuleFileNameW(nullptr, path, FILE_MAX))) {
@@ -205,6 +227,11 @@ static bool check(int result, const char *function, const char *msg)
 
 bool Subprocess::create(Span<StringRefNull> args)
 {
+  if (!validate_arguments(args)) {
+    BLI_assert(false);
+    return false;
+  }
+
   char path[FILE_MAX];
   size_t len = readlink("/proc/self/exe", path, FILE_MAX);
   if (!CHECK(len)) {
