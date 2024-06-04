@@ -134,9 +134,7 @@ void VKCommandBuilder::build_node_group(VKRenderGraph &render_graph,
 
     // std::cout << "node_handle: " << node_handle << ", node_type: " << node.type << "\n";
     if (G.debug & G_DEBUG_GPU) {
-      if (node_type_is_rendering(node.type)) {
-        activate_debug_group(render_graph, command_buffer, node_handle);
-      }
+      activate_debug_group(render_graph, command_buffer, node_handle);
     }
     node.build_commands(command_buffer, state_.active_pipelines);
   }
