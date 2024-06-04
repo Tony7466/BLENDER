@@ -759,8 +759,8 @@ typedef struct Intersection {
  * "isect").
  * This definition must be visible on host side.
  */
-#if !defined(__KERNEL_GPU__) || defined(__KERNEL_METAL_APPLE__) || \
-    (defined(__KERNEL_ONEAPI__) && __LIBSYCL_MAJOR_VERSION >= 7)
+#if !defined(__APPLE__) || \
+    defined(__APPLE__) && (defined(TARGET_CPU_ARM64) || defined(__KERNEL_METAL_APPLE__))
 #  define __INTEGRATOR_GPU_PACKED_STATE__
 
 /* Generate packed layouts for structs declared with KERNEL_STRUCT_BEGIN_PACKED. For example the
