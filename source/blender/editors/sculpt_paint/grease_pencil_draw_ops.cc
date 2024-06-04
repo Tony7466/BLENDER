@@ -479,8 +479,8 @@ struct GreasePencilFillOpData {
 
   /* Mouse position where fill was initialized */
   float2 fill_mouse_pos;
-  /* Extension lines mode is enabled (middle mouse button). */
-  bool is_extension_mode = false;
+  /* Extension lines drag mode is enabled (middle mouse button). */
+  bool is_extension_drag_active = false;
   /* Mouse position where the extension mode was enabled. */
   float2 extension_mouse_pos;
 
@@ -516,7 +516,7 @@ struct GreasePencilFillOpData {
   }
 };
 
-static ed::greasepencil::ExtensionLines grease_pencil_fill_get_extension_lines(
+static ed::greasepencil::ExtensionData grease_pencil_fill_get_extension_data(
     const bContext &C, const GreasePencilFillOpData &op_data)
 {
   const Scene &scene = *CTX_data_scene(&C);
@@ -526,7 +526,7 @@ static ed::greasepencil::ExtensionLines grease_pencil_fill_get_extension_lines(
   const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
-  ed::greasepencil::ExtensionLines result;
+  ed::greasepencil::ExtensionData result;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -555,10 +555,20 @@ static ed::greasepencil::ExtensionLines grease_pencil_fill_get_extension_lines(
       /* Initial length before intersection tests. */
       const float length = op_data.extension_length;
 
-      result.starts.append(pos_head);
-      result.ends.append(pos_head + dir_head * length);
-      result.starts.append(pos_tail);
-      result.ends.append(pos_tail + dir_tail * length);
+      switch (op_data.extension_mode) {
+        case GP_FILL_EMODE_EXTEND:
+          result.lines.starts.append(pos_head);
+          result.lines.ends.append(pos_head + dir_head * length);
+          result.lines.starts.append(pos_tail);
+          result.lines.ends.append(pos_tail + dir_tail * length);
+          break;
+        case GP_FILL_EMODE_RADIUS:
+          result.circles.centers.append(pos_head);
+          result.circles.radii.append(length);
+          result.circles.centers.append(pos_tail);
+          result.circles.radii.append(length);
+          break;
+      }
     }
   }
 
@@ -590,8 +600,16 @@ static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*
   const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
   auto &op_data = *static_cast<GreasePencilFillOpData *>(arg);
 
+  const float4x4 world_to_view = float4x4(rv3d.viewmat);
+  /* Note; the initial view matrix is already set, clear to draw in view space. */
+  ed::greasepencil::image_render::clear_view_matrix();
+
   const ColorGeometry4f stroke_curves_color = ColorGeometry4f(1, 0, 0, 1);
   const ColorGeometry4f extension_lines_color = ColorGeometry4f(0, 1, 1, 1);
+  const ColorGeometry4f extension_circles_color = ColorGeometry4f(1, 0.5, 0, 1);
+
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
   if (op_data.show_boundaries) {
     const Vector<ed::greasepencil::DrawingInfo> drawings =
@@ -610,26 +628,46 @@ static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*
                                                                  int2(region.winx, region.winy),
                                                                  object,
                                                                  info.drawing,
+                                                                 layer_to_world,
                                                                  curve_mask,
                                                                  colors,
-                                                                 layer_to_world,
                                                                  use_xray,
                                                                  radius_scale);
     }
   }
 
   if (op_data.show_extension) {
-    const ed::greasepencil::ExtensionLines extension_lines =
-        grease_pencil_fill_get_extension_lines(*C, op_data);
-    const IndexRange lines = extension_lines.starts.index_range();
-    const VArray<ColorGeometry4f> colors = VArray<ColorGeometry4f>::ForSingle(
-        extension_lines_color, lines.size());
-    /* Extension lines already include layer transform. */
-    const float4x4 transform = float4x4::identity();
+    const ed::greasepencil::ExtensionData extensions = grease_pencil_fill_get_extension_data(
+        *C, op_data);
+
     const float line_width = 2.0f;
 
-    ed::greasepencil::image_render::draw_lines(
-        lines, extension_lines.starts, extension_lines.ends, colors, transform, line_width);
+    const IndexRange lines_range = extensions.lines.starts.index_range();
+    if (!lines_range.is_empty()) {
+      const VArray<ColorGeometry4f> line_colors = VArray<ColorGeometry4f>::ForSingle(
+          extension_lines_color, lines_range.size());
+
+      ed::greasepencil::image_render::draw_lines(world_to_view,
+                                                 lines_range,
+                                                 extensions.lines.starts,
+                                                 extensions.lines.ends,
+                                                 line_colors,
+                                                 line_width);
+    }
+    const IndexRange circles_range = extensions.circles.centers.index_range();
+    if (!circles_range.is_empty()) {
+      const VArray<ColorGeometry4f> circle_colors = VArray<ColorGeometry4f>::ForSingle(
+          extension_circles_color, circles_range.size());
+
+      ed::greasepencil::image_render::draw_circles(
+          world_to_view,
+          circles_range,
+          extensions.circles.centers,
+          VArray<float>::ForSpan(extensions.circles.radii),
+          circle_colors,
+          float2(region.winx, region.winy),
+          line_width);
+    }
   }
 }
 
@@ -862,7 +900,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   for (const FillToolTargetInfo &info : target_drawings) {
     const Layer &layer = *grease_pencil.layers()[info.target.layer_index];
 
-    ed::greasepencil::ExtensionLines extension_lines = grease_pencil_fill_get_extension_lines(
+    const ed::greasepencil::ExtensionData extensions = grease_pencil_fill_get_extension_data(
         C, op_data);
 
     bke::CurvesGeometry fill_curves = fill_strokes(view_context,
@@ -873,7 +911,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
                                                    info.sources,
                                                    op_data.invert,
                                                    mouse_position,
-                                                   extension_lines,
+                                                   extensions,
                                                    fit_method,
                                                    op_data.material_index,
                                                    keep_images);
@@ -1041,7 +1079,7 @@ static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const
 
     case int(FillToolModalKey::Confirm): {
       /* Ignore in extension mode. */
-      if (op_data.is_extension_mode) {
+      if (op_data.is_extension_drag_active) {
         break;
       }
 
@@ -1075,7 +1113,7 @@ static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const
     case int(FillToolModalKey::ExtensionDrag): {
       if (event->val == KM_PRESS) {
         /* Consider initial offset as zero position. */
-        op_data.is_extension_mode = true;
+        op_data.is_extension_drag_active = true;
         /* TODO This is the GPv2 logic and it's weird. Should be reconsidered, for now use the
          * same method. */
         const float2 base_pos = float2(event->mval);
@@ -1087,7 +1125,7 @@ static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const
       }
       if (event->val == KM_RELEASE) {
         WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
-        op_data.is_extension_mode = false;
+        op_data.is_extension_drag_active = false;
       }
       /* Update cursor line. */
       WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
@@ -1129,7 +1167,7 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       estate = grease_pencil_fill_event_modal_map(C, op, event);
       break;
     case MOUSEMOVE: {
-      if (!op_data.is_extension_mode) {
+      if (!op_data.is_extension_drag_active) {
         break;
       }
 

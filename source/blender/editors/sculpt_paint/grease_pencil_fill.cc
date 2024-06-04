@@ -989,7 +989,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool invert,
                                  const float2 &fill_point,
-                                 const ExtensionLines &extension_lines,
+                                 const ExtensionData &extensions,
                                  const FillToolFitMethod fit_method,
                                  const int stroke_material_index,
                                  const bool keep_images)
@@ -1046,20 +1046,22 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
 
   GPU_blend(GPU_BLEND_ALPHA);
   GPU_depth_mask(true);
-  image_render::set_viewmat(view_context, scene, image_size, zoom, offset);
+  image_render::compute_view_matrices(view_context, scene, image_size, zoom, offset);
+  ed::greasepencil::image_render::set_projection_matrix(rv3d);
 
   const float alpha_threshold = 0.2f;
   const bool brush_fill_hide = false;
   const bool use_xray = false;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
-  ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, &layer);
-  const float3 fill_point_world = math::transform_point(layer_to_world,
-                                                        placement.project(fill_point_image));
+  const float4x4 world_to_view = float4x4(rv3d.viewmat);
+  const float4x4 layer_to_view = world_to_view * layer_to_world;
+  const ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, &layer);
 
   /* Draw blue point where click with mouse. */
   const float mouse_dot_size = 4.0f;
-  image_render::draw_dot(fill_point_world, mouse_dot_size, draw_seed_color);
+  const float3 fill_point_layer = placement.project(fill_point_image);
+  image_render::draw_dot(layer_to_view, fill_point_layer, mouse_dot_size, draw_seed_color);
 
   for (const DrawingInfo &info : src_drawings) {
     const Layer &layer = *grease_pencil.layers()[info.layer_index];
@@ -1090,30 +1092,45 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                              image_size,
                                              object,
                                              info.drawing,
+                                             layer_to_world,
                                              curve_mask,
                                              stroke_colors,
-                                             layer_to_world,
                                              use_xray,
                                              radius_scale);
 
-    const IndexRange lines_range = extension_lines.starts.index_range();
-    const VArray<ColorGeometry4f> line_colors = VArray<ColorGeometry4f>::ForSingle(
-        draw_boundary_color, lines_range.size());
-    /* Extension lines already include layer transform. */
-    const float4x4 transform = float4x4::identity();
-    const float line_width = 2.0f;
+    /* Note: extension data is already in world space, only apply world-to-view transform here. */
 
-    image_render::draw_lines(lines_range,
-                             extension_lines.starts,
-                             extension_lines.ends,
-                             line_colors,
-                             transform,
-                             line_width);
+    const IndexRange lines_range = extensions.lines.starts.index_range();
+    if (!lines_range.is_empty()) {
+      const VArray<ColorGeometry4f> line_colors = VArray<ColorGeometry4f>::ForSingle(
+          draw_boundary_color, lines_range.size());
+      const float line_width = 1.0f;
+
+      image_render::draw_lines(world_to_view,
+                               lines_range,
+                               extensions.lines.starts,
+                               extensions.lines.ends,
+                               line_colors,
+                               line_width);
+    }
+    const IndexRange circles_range = extensions.circles.centers.index_range();
+    if (!circles_range.is_empty()) {
+      const VArray<ColorGeometry4f> circle_colors = VArray<ColorGeometry4f>::ForSingle(
+          draw_boundary_color, circles_range.size());
+
+      image_render::draw_dots(world_to_view,
+                              circles_range,
+                              extensions.circles.centers,
+                              VArray<float>::ForSpan(extensions.circles.radii),
+                              circle_colors,
+                              1.0f);
+    }
   }
 
-  image_render::clear_viewmat();
+  ed::greasepencil::image_render::clear_projection_matrix();
   GPU_depth_mask(false);
   GPU_blend(GPU_BLEND_NONE);
+
   Image *ima = image_render::image_render_end(*view_context.bmain, offscreen_buffer);
   if (!ima) {
     return {};
