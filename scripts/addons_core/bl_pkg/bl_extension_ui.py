@@ -387,12 +387,12 @@ def extensions_panel_draw_online_extensions_request_impl(
 
 
 addons_block_list = {
-    'coat_applink',
-    'depsgraph_debug',
-    'io_scene_x3d',
-    'io_mesh_stl',
+    'coat_applink', # external dependencies
+    'depsgraph_debug', # external depedencies
+    'io_import_images_as_planes', # integrated with Blender
+    'io_mesh_stl', # was on by default
+    'io_scene_x3d', # was on by default
 }
-
 
 def addons_legacy_list_get():
     import json
