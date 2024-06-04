@@ -104,8 +104,6 @@ struct USDExportParams {
   enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
   bool convert_world_material = true;
   bool use_original_paths = false;
-  float light_intensity_scale = 1.0f;
-  bool convert_light_to_nits = true;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
@@ -150,7 +148,6 @@ struct USDImportParams {
   bool import_all_materials;
   eUSDAttrImportMode attr_import_mode;
   bool create_background_shader;
-  bool convert_light_from_nits;
 
   /**
    * Communication structure between the wmJob management code and the worker code. Currently used

@@ -17,10 +17,6 @@ struct USDImportParams;
 
 struct ImportSettings;
 
-float nits_to_energy_scale_factor(const Light *light,
-                                 float meters_per_unit,
-                                 float radius_scale = 1.0f);
-
 void world_material_to_dome_light(const USDExportParams &params,
                                  const Scene *scene,
                                  pxr::UsdStageRefPtr stage);
