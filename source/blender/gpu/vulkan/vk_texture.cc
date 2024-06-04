@@ -806,6 +806,7 @@ const VKImageView &VKTexture::image_view_get()
   image_view_info_.layer_range = layer_range();
   image_view_info_.mip_range = mip_map_range();
   image_view_info_.use_srgb = true;
+  image_view_info_.use_stencil = use_stencil_;
 
   if (is_texture_view()) {
     return source_texture_->image_view_get(image_view_info_);
