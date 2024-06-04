@@ -4,7 +4,7 @@
 
 #include "gl_compilation_subprocess.hh"
 
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
 
 #  include "BKE_appdir.hh"
 #  include "BLI_fileops.hh"

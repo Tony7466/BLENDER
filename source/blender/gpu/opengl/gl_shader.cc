@@ -1590,7 +1590,7 @@ GLuint GLShader::program_get()
 
 /** \} */
 
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
 
 /* -------------------------------------------------------------------- */
 /** \name Compiler workers

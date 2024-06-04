@@ -213,7 +213,7 @@ class GLShader : public Shader {
   MEM_CXX_CLASS_ALLOC_FUNCS("GLShader");
 };
 
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
 
 class GLCompilerWorker {
   friend class GLShaderCompiler;
