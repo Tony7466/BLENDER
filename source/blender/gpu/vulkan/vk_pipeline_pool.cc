@@ -249,6 +249,9 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   else {
     vk_pipeline_rasterization_state_create_info_.depthBiasEnable = VK_FALSE;
   }
+  vk_pipeline_rasterization_state_create_info_.frontFace = graphics_info.state.invert_facing ?
+                                                               VK_FRONT_FACE_COUNTER_CLOCKWISE :
+                                                               VK_FRONT_FACE_CLOCKWISE;
 
   /* Viewport state */
   vk_pipeline_viewport_state_create_info_.pViewports =
@@ -430,6 +433,73 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   if (graphics_info.fragment_out.stencil_attachment_format != VK_FORMAT_UNDEFINED) {
     vk_graphics_pipeline_create_info_.pDepthStencilState =
         &vk_pipeline_depth_stencil_state_create_info_;
+
+    switch (graphics_info.state.stencil_test) {
+      case GPU_STENCIL_NEQUAL:
+        vk_pipeline_depth_stencil_state_create_info_.stencilTestEnable = VK_TRUE;
+        vk_pipeline_depth_stencil_state_create_info_.front.compareOp = VK_COMPARE_OP_NOT_EQUAL;
+        break;
+      case GPU_STENCIL_EQUAL:
+        vk_pipeline_depth_stencil_state_create_info_.stencilTestEnable = VK_TRUE;
+        vk_pipeline_depth_stencil_state_create_info_.front.compareOp = VK_COMPARE_OP_EQUAL;
+        break;
+      case GPU_STENCIL_ALWAYS:
+        vk_pipeline_depth_stencil_state_create_info_.stencilTestEnable = VK_TRUE;
+        vk_pipeline_depth_stencil_state_create_info_.front.compareOp = VK_COMPARE_OP_ALWAYS;
+        break;
+      case GPU_STENCIL_NONE:
+        vk_pipeline_depth_stencil_state_create_info_.stencilTestEnable = VK_FALSE;
+        vk_pipeline_depth_stencil_state_create_info_.front.compareOp = VK_COMPARE_OP_ALWAYS;
+        break;
+    }
+
+    vk_pipeline_depth_stencil_state_create_info_.front.compareMask =
+        graphics_info.mutable_state.stencil_compare_mask;
+    vk_pipeline_depth_stencil_state_create_info_.front.reference =
+        graphics_info.mutable_state.stencil_reference;
+    vk_pipeline_depth_stencil_state_create_info_.front.writeMask =
+        graphics_info.mutable_state.stencil_write_mask;
+
+    switch (graphics_info.state.stencil_op) {
+      case GPU_STENCIL_OP_REPLACE:
+        vk_pipeline_depth_stencil_state_create_info_.front.failOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.front.passOp = VK_STENCIL_OP_REPLACE;
+        vk_pipeline_depth_stencil_state_create_info_.front.depthFailOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.back =
+            vk_pipeline_depth_stencil_state_create_info_.front;
+        break;
+
+      case GPU_STENCIL_OP_COUNT_DEPTH_PASS:
+        vk_pipeline_depth_stencil_state_create_info_.front.failOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.front.passOp =
+            VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        vk_pipeline_depth_stencil_state_create_info_.front.depthFailOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.back =
+            vk_pipeline_depth_stencil_state_create_info_.front;
+        vk_pipeline_depth_stencil_state_create_info_.back.passOp =
+            VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        break;
+
+      case GPU_STENCIL_OP_COUNT_DEPTH_FAIL:
+        vk_pipeline_depth_stencil_state_create_info_.front.failOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.front.passOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.front.depthFailOp =
+            VK_STENCIL_OP_INCREMENT_AND_WRAP;
+        vk_pipeline_depth_stencil_state_create_info_.back =
+            vk_pipeline_depth_stencil_state_create_info_.front;
+        vk_pipeline_depth_stencil_state_create_info_.back.depthFailOp =
+            VK_STENCIL_OP_DECREMENT_AND_WRAP;
+        break;
+
+      case GPU_STENCIL_OP_NONE:
+      default:
+        vk_pipeline_depth_stencil_state_create_info_.front.failOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.front.passOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.front.depthFailOp = VK_STENCIL_OP_KEEP;
+        vk_pipeline_depth_stencil_state_create_info_.back =
+            vk_pipeline_depth_stencil_state_create_info_.front;
+        break;
+    }
   }
 
   /* VK_KHR_dynamic_rendering */
@@ -484,6 +554,7 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_rasterization_state_create_info_.depthBiasSlopeFactor = 0.0f;
   vk_pipeline_rasterization_state_create_info_.depthBiasConstantFactor = 0.0f;
   vk_pipeline_rasterization_state_create_info_.depthBiasClamp = 0.0f;
+  vk_pipeline_rasterization_state_create_info_.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   vk_pipeline_viewport_state_create_info_.pScissors = nullptr;
   vk_pipeline_viewport_state_create_info_.scissorCount = 0;
   vk_pipeline_viewport_state_create_info_.pViewports = nullptr;
@@ -498,6 +569,8 @@ VkPipeline VKPipelinePool::get_or_create_graphics_pipeline(VKGraphicsInfo &graph
   vk_pipeline_depth_stencil_state_create_info_.depthWriteEnable = VK_FALSE;
   vk_pipeline_depth_stencil_state_create_info_.depthCompareOp = VK_COMPARE_OP_NEVER;
   vk_pipeline_depth_stencil_state_create_info_.stencilTestEnable = VK_FALSE;
+  vk_pipeline_depth_stencil_state_create_info_.front = {};
+  vk_pipeline_depth_stencil_state_create_info_.back = {};
   vk_graphics_pipeline_create_info_.pDepthStencilState = nullptr;
 
   return pipeline;
