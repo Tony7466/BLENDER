@@ -268,6 +268,10 @@ TEST_F(KeyframingTest, insert_key_rna__only_available)
                                                        anim_eval_context);
 
   EXPECT_EQ(0, result_1.get_count(SingleKeyingResult::SUCCESS));
+
+  /* It's unclear why AnimData and an Action should be created if keying fails
+   * here. It may even be undesireable.  These checks are just here to ensure no
+   * *unintentional* changes in behavior. */
   EXPECT_NE(nullptr, object->adt);
   EXPECT_NE(nullptr, object->adt->action);
   EXPECT_EQ(0, BLI_listbase_count(&object->adt->action->curves));
