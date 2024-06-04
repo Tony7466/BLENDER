@@ -1,2 +1,3 @@
 Referenced by issue #122609, Regression: Child objects also Dimmed at Outliner If only Parent Hidden in Viewport
 Referenced by pull request #122653, Fix #122609: Child object dimmed in outliner when parent is hidden
+Referenced by commit 028484f531688fbfba2a705fc704a6b9deeb0c81, Fix #122609: Child object dimmed in outliner when parent is hidden
