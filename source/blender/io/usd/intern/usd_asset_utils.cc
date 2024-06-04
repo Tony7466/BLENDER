@@ -12,7 +12,6 @@
 #include <pxr/usd/ar/writableAsset.h>
 
 #include "BKE_appdir.hh"
-#include "BKE_appdir.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
@@ -339,20 +338,6 @@ bool is_udim_path(const std::string &path)
 {
   return path.find(UDIM_PATTERN) != std::string::npos ||
          path.find(UDIM_PATTERN2) != std::string::npos;
-}
-
-const char *temp_textures_dir()
-{
-  static bool inited = false;
-
-  static char temp_dir[FILE_MAXDIR] = {'\0'};
-
-  if (!inited) {
-    BLI_path_join(temp_dir, sizeof(temp_dir), BKE_tempdir_session(), "usd_textures_tmp", SEP_STR);
-    inited = true;
-  }
-
-  return temp_dir;
 }
 
 std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage)
