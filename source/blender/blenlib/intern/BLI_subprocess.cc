@@ -84,6 +84,7 @@ bool Subprocess::create(Span<StringRefNull> args)
   startup_info.cb = sizeof(startup_info);
   PROCESS_INFORMATION process_info = {0};
   if (!CHECK(CreateProcessW(path,
+                            /** Use data() since lpCommandLine must be mutable. */
                             w_args.data(),
                             nullptr,
                             nullptr,
