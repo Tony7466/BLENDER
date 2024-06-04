@@ -215,6 +215,7 @@ static void extract_normals_bm(const MeshRenderData &mr, MutableSpan<GPUType> no
 
 void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &vbo)
 {
+  const int size = mr.corners_num + mr.loose_indices_num;
   if (use_hq) {
     static GPUVertFormat format = {0};
     if (format.attr_len == 0) {
@@ -223,7 +224,7 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
     }
     GPU_vertbuf_init_with_format(&vbo, &format);
     GPU_vertbuf_data_alloc(&vbo, mr.corners_num);
-    MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(&vbo)), mr.corners_num);
+    MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(&vbo)), size);
 
     if (mr.extract_type == MR_EXTRACT_MESH) {
       extract_normals_mesh(mr, vbo_data);
@@ -232,6 +233,8 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
     else {
       extract_normals_bm(mr, vbo_data);
     }
+
+    vbo_data.take_back(mr.loose_indices_num).fill(short4(0));
   }
   else {
     static GPUVertFormat format = {0};
@@ -240,9 +243,8 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
       GPU_vertformat_alias_add(&format, "lnor");
     }
     GPU_vertbuf_init_with_format(&vbo, &format);
-    GPU_vertbuf_data_alloc(&vbo, mr.corners_num);
-    MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(&vbo)),
-                         mr.corners_num);
+    GPU_vertbuf_data_alloc(&vbo, size);
+    MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(&vbo)), size);
 
     if (mr.extract_type == MR_EXTRACT_MESH) {
       extract_normals_mesh(mr, vbo_data);
@@ -251,6 +253,8 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
     else {
       extract_normals_bm(mr, vbo_data);
     }
+
+    vbo_data.take_back(mr.loose_indices_num).fill(GPUPackedNormal{});
   }
 }
 
