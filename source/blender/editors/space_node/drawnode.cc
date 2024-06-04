@@ -1841,8 +1841,7 @@ struct NodeSocketShaderParameters {
 
 static struct {
   gpu::Batch *batch;
-  NodeSocketShaderParameters params[MAX_SOCKET_INSTANCE];
-  int count;
+  Vector<NodeSocketShaderParameters, MAX_SOCKET_INSTANCE> params;
   bool enabled;
 } g_batch_nodesocket;
 
@@ -1869,16 +1868,16 @@ static gpu::Batch *nodesocket_batch_init(void)
 
 static void nodesocket_cache_flush()
 {
-  if (g_batch_nodesocket.count == 0) {
+  if (g_batch_nodesocket.params.is_empty()) {
     return;
   }
 
   gpu::Batch *batch = nodesocket_batch_init();
-  if (g_batch_nodesocket.count == 1) {
+  if (g_batch_nodesocket.params.size() == 1) {
     /* draw single */
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
     GPU_batch_uniform_4fv_array(
-        batch, "parameters", 4, (const float(*)[4])g_batch_nodesocket.params);
+        batch, "parameters", 4, (const float(*)[4])g_batch_nodesocket.params.data());
     GPU_batch_draw(batch);
   }
   else {
@@ -1886,10 +1885,10 @@ static void nodesocket_cache_flush()
     GPU_batch_uniform_4fv_array(batch,
                                 "parameters",
                                 MAX_SOCKET_PARAMETERS * MAX_SOCKET_INSTANCE,
-                                (float(*)[4])g_batch_nodesocket.params);
-    GPU_batch_draw_instance_range(batch, 0, g_batch_nodesocket.count);
+                                (float(*)[4])g_batch_nodesocket.params.data());
+    GPU_batch_draw_instance_range(batch, 0, g_batch_nodesocket.params.size());
   }
-  g_batch_nodesocket.count = 0;
+  g_batch_nodesocket.params.clear();
 }
 
 void nodesocket_batch_start()
@@ -1911,10 +1910,9 @@ void nodesocket_batch_end()
 static void draw_node_socket_batch(NodeSocketShaderParameters *socket_params)
 {
   if (g_batch_nodesocket.enabled) {
-    g_batch_nodesocket.params[g_batch_nodesocket.count] = *socket_params;
-    g_batch_nodesocket.count++;
+    g_batch_nodesocket.params.append(*socket_params);
 
-    if (g_batch_nodesocket.count >= MAX_SOCKET_INSTANCE) {
+    if (g_batch_nodesocket.params.size() >= MAX_SOCKET_INSTANCE) {
       nodesocket_cache_flush();
     }
   }
