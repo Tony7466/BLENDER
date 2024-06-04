@@ -868,7 +868,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   constexpr const ed::greasepencil::FillToolFitMethod fit_method =
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = true;
+  constexpr const bool keep_images = false;
 
   ARegion &region = *CTX_wm_region(&C);
   /* Perform bounds check. */
@@ -1072,7 +1072,7 @@ enum class FillToolModalKey : int8_t {
 static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const wmEvent *event)
 {
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
-  const float extension_delta = (op_data.precision ? 0.01f : 0.1f);
+  const float extension_delta = (op_data.precision ? 0.002f : 0.02f);
 
   switch (event->val) {
     case int(FillToolModalKey::Cancel):
