@@ -5,11 +5,12 @@
 #pragma once
 
 #if defined(_WIN32) || defined(__linux__)
+#  define BLI_SUBPROCESS_SUPPORT 1
+#else
 /* The Subprocess API is only supported on Windows and Linux. */
-#  define BLI_SUBPROCESS_SUPPORT
+#  define BLI_SUBPROCESS_SUPPORT 0
 #endif
-
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
 
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"

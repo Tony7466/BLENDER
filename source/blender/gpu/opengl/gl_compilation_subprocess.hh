@@ -6,7 +6,7 @@
 
 #include "GPU_compilation_subprocess.hh"
 
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
 
 #  include "BLI_sys_types.h"
 

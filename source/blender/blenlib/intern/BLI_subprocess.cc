@@ -4,7 +4,7 @@
 
 #include "BLI_subprocess.hh"
 
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
 
 /* Based on https://github.com/jarikomppa/ipc (Unlicense) */
 

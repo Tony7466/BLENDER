@@ -597,7 +597,7 @@ void GLBackend::capabilities_init()
 
   detect_workarounds();
 
-#ifdef BLI_SUBPROCESS_SUPPORT
+#if BLI_SUBPROCESS_SUPPORT
   GCaps.max_parallel_compilations = std::min(int(U.max_shader_compilation_subprocesses),
                                              BLI_system_thread_count());
 #else
