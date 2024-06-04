@@ -131,6 +131,11 @@ struct TreeDrawContext {
 
   blender::Map<bNodeInstanceKey, blender::timeit::Nanoseconds>
       *compositor_per_node_execution_time = nullptr;
+
+  /**
+   * Used for the automatic label overlay of reroute nodes.
+   */
+  blender::Map<const bNode *, blender::StringRefNull> reroute_auto_labels;
 };
 
 float ED_node_grid_size()
@@ -4007,11 +4012,6 @@ static void node_update_nodetree(const bContext &C,
     }
 
     if (node.is_reroute()) {
-      if ((snode->overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
-          (snode->overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS))
-      {
-        blender::bke::ntree_reroute_auto_labels_ensure(&ntree);
-      }
       reroute_node_prepare_for_draw(node);
     }
     else {
@@ -4162,11 +4162,62 @@ static void frame_node_draw(const bContext &C,
   UI_block_draw(&C, &block);
 }
 
-static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, uiBlock &block)
+/**
+ * Returns the next linked reroute node backwards of the given reroute, if there is one.
+ */
+static const bNode *reroute_node_get_linked_reroute(const bNode *reroute)
+{
+  BLI_assert(reroute->is_reroute());
+
+  const bNodeSocket *input_socket = reroute->input_sockets().first();
+  if (input_socket->directly_linked_links().is_empty()) {
+    return nullptr;
+  }
+  const bNodeLink *input_link = input_socket->directly_linked_links().first();
+  const bNode *from_node = input_link->fromnode;
+  return from_node->is_reroute() ? from_node : nullptr;
+}
+
+/**
+ * The auto label overlay displays a label on reroute nodes based on the user-defined label of a
+ * linked reroute upstream. This traverses the node tree backwards from the given reroute until it
+ * finds one it can infer the label from.
+ */
+static StringRefNull reroute_node_get_auto_label_recursive(TreeDrawContext &tree_draw_ctx,
+                                                           const bNodeTree &ntree,
+                                                           const bNode *reroute)
+{
+  BLI_assert(reroute->is_reroute());
+  if (reroute->label[0] != '\0') {
+    return StringRefNull(reroute->label);
+  }
+
+  Map<const bNode *, StringRefNull> &reroute_auto_labels = tree_draw_ctx.reroute_auto_labels;
+  if (reroute_auto_labels.contains(reroute)) {
+    return reroute_auto_labels.lookup(reroute);
+  }
+
+  const bNode *linked_reroute = reroute_node_get_linked_reroute(reroute);
+
+  if (linked_reroute == nullptr) {
+    /* When the reroute is not linked to another reroute it acts as a label source. */
+    return StringRefNull(reroute->label);
+  }
+
+  StringRefNull auto_label = reroute_node_get_auto_label_recursive(
+      tree_draw_ctx, ntree, linked_reroute);
+  reroute_auto_labels.add(reroute, auto_label);
+  return auto_label;
+}
+
+static void reroute_node_draw_label(TreeDrawContext &tree_draw_ctx,
+                                    const SpaceNode &snode,
+                                    const bNodeTree &ntree,
+                                    const bNode &node,
+                                    uiBlock &block)
 {
   const bool has_label = node.label[0] != '\0';
-  const bool use_auto_label = node.runtime->reroute_auto_label.has_value() &&
-                              (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+  const bool use_auto_label = !has_label && (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
                               (snode.overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS);
 
   if (!has_label && !use_auto_label) {
@@ -4179,8 +4230,13 @@ static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, u
   }
 
   char showname[128];
-  STRNCPY(showname,
-          use_auto_label ? node.runtime->reroute_auto_label.value().c_str() : node.label);
+  if (use_auto_label) {
+    StringRefNull auto_label = reroute_node_get_auto_label_recursive(tree_draw_ctx, ntree, &node);
+    STRNCPY(showname, auto_label.c_str());
+  }
+  else {
+    STRNCPY(showname, node.label);
+  }
 
   const short width = 512;
   const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
@@ -4197,6 +4253,7 @@ static void reroute_node_draw_label(const SpaceNode &snode, const bNode &node, u
 }
 
 static void reroute_node_draw(const bContext &C,
+                              TreeDrawContext &tree_draw_ctx,
                               ARegion &region,
                               const SpaceNode &snode,
                               bNodeTree &ntree,
@@ -4212,7 +4269,7 @@ static void reroute_node_draw(const bContext &C,
     return;
   }
 
-  reroute_node_draw_label(snode, node, block);
+  reroute_node_draw_label(tree_draw_ctx, snode, ntree, node, block);
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
@@ -4235,7 +4292,7 @@ static void node_draw(const bContext &C,
     frame_node_draw(C, tree_draw_ctx, region, snode, ntree, node, block);
   }
   else if (node.is_reroute()) {
-    reroute_node_draw(C, region, snode, ntree, node, block);
+    reroute_node_draw(C, tree_draw_ctx, region, snode, ntree, node, block);
   }
   else {
     const View2D &v2d = region.v2d;

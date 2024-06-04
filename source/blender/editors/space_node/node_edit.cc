@@ -1429,7 +1429,6 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
       }
 
       BLI_addtail(&ntree->links, newlink);
-      BKE_ntree_update_tag_link_added(ntree, newlink);
     }
 
     /* Make sure we don't copy new links again. */

@@ -111,11 +111,6 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   uint32_t previews_refresh_state = 0;
 
   /**
-   * Used to lazily update the auto label overlay for reroute nodes.
-   */
-  bool reroute_auto_labels_are_dirty = true;
-
-  /**
    * Storage of nodes based on their identifier. Also used as a contiguous array of nodes to
    * allow simpler and more cache friendly iteration. Supports lookup by integer or by node.
    * Unlike other caches, this is maintained eagerly while changing the tree.
@@ -319,9 +314,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   /** If this node is reroute and this reroute is not logically linked with any source except other
    * reroute, this will be true. */
   bool is_dangling_reroute = false;
-
-  /** Used for the automatic label overlay of reroute nodes. */
-  std::optional<StringRefNull> reroute_auto_label;
 
   /** Only valid if #topology_cache_is_dirty is false. */
   Vector<bNodeSocket *> inputs;
