@@ -123,7 +123,7 @@ class VIEW3D_HT_tool_header(Header):
                             layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_advanced")
 
                         if brush.gpencil_tool not in {'FILL', 'TINT'}:
-                            layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stroke")
+                            layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_stroke")
 
                     # layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
         elif tool_mode == 'SCULPT_GPENCIL':
@@ -6584,6 +6584,10 @@ class VIEW3D_PT_view3d_properties(Panel):
         sub.enabled = view.use_local_camera
         sub.prop(view, "camera", text="")
 
+        sub = col.row()
+        sub.active = view.region_3d.view_perspective == 'CAMERA'
+        sub.prop(view.overlay, "show_camera_passepartout", text="Passepartout")
+
         layout.separator()
 
         col = layout.column(align=True)
@@ -7260,8 +7264,6 @@ class VIEW3D_PT_overlay_guides(Panel):
         sub = split.column()
         sub.prop(overlay, "show_cursor", text="3D Cursor")
         sub.prop(overlay, "show_annotation", text="Annotations")
-        if view.region_3d.view_perspective == 'CAMERA':
-            sub.prop(overlay, "show_camera_passepartout", text="Passepartout")
 
         if shading.type == 'MATERIAL':
             row = col.row()
