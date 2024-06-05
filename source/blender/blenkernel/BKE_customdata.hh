@@ -11,6 +11,7 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_implicit_sharing.h"
+#include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -799,7 +800,11 @@ void CustomData_blend_write(BlendWriter *writer,
                             eCustomDataMask cddata_mask,
                             ID *id);
 
-void CustomData_blend_read(BlendDataReader *reader, CustomData *data, int count);
+void CustomData_blend_read(
+    BlendDataReader *reader,
+    CustomData *data,
+    int count,
+    blender::Map<void *, const blender::ImplicitSharingInfo *> &sharing_info_by_data);
 
 size_t CustomData_get_elem_size(const CustomDataLayer *layer);
 

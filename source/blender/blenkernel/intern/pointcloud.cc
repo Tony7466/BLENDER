@@ -138,7 +138,8 @@ static void pointcloud_blend_read_data(BlendDataReader *reader, ID *id)
   PointCloud *pointcloud = (PointCloud *)id;
 
   /* Geometry */
-  CustomData_blend_read(reader, &pointcloud->pdata, pointcloud->totpoint);
+  blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data;
+  CustomData_blend_read(reader, &pointcloud->pdata, pointcloud->totpoint, sharing_info_by_data);
 
   /* Materials */
   BLO_read_pointer_array(reader, (void **)&pointcloud->mat);

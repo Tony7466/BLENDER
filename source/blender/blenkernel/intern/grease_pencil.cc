@@ -70,7 +70,10 @@ using blender::uint3;
 using blender::VectorSet;
 
 /* Forward declarations. */
-static void read_drawing_array(GreasePencil &grease_pencil, BlendDataReader *reader);
+static void read_drawing_array(
+    GreasePencil &grease_pencil,
+    BlendDataReader *reader,
+    blender::Map<void *, const blender::ImplicitSharingInfo *> &sharing_info_by_data);
 static void write_drawing_array(GreasePencil &grease_pencil, BlendWriter *writer);
 static void free_drawing_array(GreasePencil &grease_pencil);
 
@@ -206,11 +209,14 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
 
   /* Read drawings. */
-  read_drawing_array(*grease_pencil, reader);
+  blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data;
+  read_drawing_array(*grease_pencil, reader, sharing_info_by_data);
   /* Read layer tree. */
   read_layer_tree(*grease_pencil, reader);
 
-  CustomData_blend_read(reader, &grease_pencil->layers_data, grease_pencil->layers().size());
+  /* Read drawings. */
+  CustomData_blend_read(
+      reader, &grease_pencil->layers_data, grease_pencil->layers().size(), sharing_info_by_data);
 
   /* Read materials. */
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil->material_array));
@@ -3214,7 +3220,10 @@ void GreasePencil::print_layer_tree()
 /** \name Drawing array read/write functions
  * \{ */
 
-static void read_drawing_array(GreasePencil &grease_pencil, BlendDataReader *reader)
+static void read_drawing_array(
+    GreasePencil &grease_pencil,
+    BlendDataReader *reader,
+    blender::Map<void *, const blender::ImplicitSharingInfo *> &sharing_info_by_data)
 {
   BLO_read_pointer_array(reader, reinterpret_cast<void **>(&grease_pencil.drawing_array));
   for (int i = 0; i < grease_pencil.drawing_array_num; i++) {
@@ -3223,7 +3232,7 @@ static void read_drawing_array(GreasePencil &grease_pencil, BlendDataReader *rea
     switch (GreasePencilDrawingType(drawing_base->type)) {
       case GP_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        drawing->wrap().strokes_for_write().blend_read(*reader);
+        drawing->wrap().strokes_for_write().blend_read(*reader, sharing_info_by_data);
         /* Initialize runtime data. */
         drawing->runtime = MEM_new<blender::bke::greasepencil::DrawingRuntime>(__func__);
         break;

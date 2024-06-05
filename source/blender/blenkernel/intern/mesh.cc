@@ -333,6 +333,8 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
     mesh->totcol = 0;
   }
 
+  blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data;
+
   /* Deprecated pointers to custom data layers are read here for backward compatibility
    * with files where these were owning pointers rather than a view into custom data. */
   BLO_read_struct_array(reader, MVert, mesh->verts_num, &mesh->mvert);
@@ -347,11 +349,11 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 
   BLO_read_struct_list(reader, bDeformGroup, &mesh->vertex_group_names);
 
-  CustomData_blend_read(reader, &mesh->vert_data, mesh->verts_num);
-  CustomData_blend_read(reader, &mesh->edge_data, mesh->edges_num);
-  CustomData_blend_read(reader, &mesh->fdata_legacy, mesh->totface_legacy);
-  CustomData_blend_read(reader, &mesh->corner_data, mesh->corners_num);
-  CustomData_blend_read(reader, &mesh->face_data, mesh->faces_num);
+  CustomData_blend_read(reader, &mesh->vert_data, mesh->verts_num, sharing_info_by_data);
+  CustomData_blend_read(reader, &mesh->edge_data, mesh->edges_num, sharing_info_by_data);
+  CustomData_blend_read(reader, &mesh->fdata_legacy, mesh->totface_legacy, sharing_info_by_data);
+  CustomData_blend_read(reader, &mesh->corner_data, mesh->corners_num, sharing_info_by_data);
+  CustomData_blend_read(reader, &mesh->face_data, mesh->faces_num, sharing_info_by_data);
   if (mesh->deform_verts().is_empty()) {
     /* Vertex group data was also an owning pointer in old Blender versions.
      * Don't read them again if they were read as part of #CustomData. */

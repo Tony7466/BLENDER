@@ -127,7 +127,8 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
   Curves *curves = (Curves *)id;
 
   /* Geometry */
-  curves->geometry.wrap().blend_read(*reader);
+  blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data;
+  curves->geometry.wrap().blend_read(*reader, sharing_info_by_data);
 
   BLO_read_string(reader, &curves->surface_uv_map);
 

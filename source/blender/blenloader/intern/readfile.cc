@@ -597,6 +597,7 @@ void blo_readfile_invalidate(FileData *fd, Main *bmain, const char *message)
 
 struct BlendDataReader {
   FileData *fd;
+  // blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data;
 };
 
 struct BlendLibReader {

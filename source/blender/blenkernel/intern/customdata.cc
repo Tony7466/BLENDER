@@ -5457,7 +5457,10 @@ static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &laye
   }
 }
 
-void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int count)
+void CustomData_blend_read(BlendDataReader *reader,
+                           CustomData *data,
+                           const int count,
+                           blender::Map<void *, const ImplicitSharingInfo *> &sharing_info_by_data)
 {
   BLO_read_struct_array(reader, CustomDataLayer, data->totlayer, &data->layers);
 
@@ -5469,8 +5472,6 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
   }
 
   BLO_read_struct(reader, CustomDataExternal, &data->external);
-
-  blender::Map<void *, const ImplicitSharingInfo *> sharing_info_by_data;
 
   int i = 0;
   while (i < data->totlayer) {
