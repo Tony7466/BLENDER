@@ -1927,7 +1927,7 @@ static void icon_draw_size(float x,
     else {
       UI_GetThemeColor4fv(TH_TEXT, color);
     }
-
+    color[3] = alpha;
     std::string file_name = icon_to_svg_file_name(static_cast<BIFIconID_Static>(icon_id));
     BLF_draw_svg_icon(uint(icon_id),
                       file_name,
