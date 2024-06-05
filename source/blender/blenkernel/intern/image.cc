@@ -4902,27 +4902,29 @@ bool BKE_image_has_ibuf(Image *ima, ImageUser *iuser)
   return ibuf != nullptr;
 }
 
-ImBuf *BKE_image_preview(struct Image *ima, short max, short *width_r, short *height_r)
+ImBuf *BKE_image_preview(Image *ima, const short max_size, short *r_width, short *r_height)
 {
   void *lock;
   ImBuf *image_ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
   ImBuf *preview = nullptr;
 
-  if (image_ibuf) {
-    preview = IMB_dupImBuf(image_ibuf);
-    float scale = float(max) / float(std::max(image_ibuf->x, image_ibuf->y));
-    if (width_r) {
-      *width_r = image_ibuf->x;
-    }
-    if (height_r) {
-      *height_r = image_ibuf->y;
-    }
-    BKE_image_release_ibuf(ima, image_ibuf, lock);
-
-    /* Resize. */
-    IMB_scaleImBuf(preview, scale * image_ibuf->x, scale * image_ibuf->y);
-    IMB_rect_from_float(preview);
+  if (image_ibuf == nullptr) {
+    return nullptr;
   }
+
+  preview = IMB_dupImBuf(image_ibuf);
+  float scale = float(max_size) / float(std::max(image_ibuf->x, image_ibuf->y));
+  if (r_width) {
+    *r_width = image_ibuf->x;
+  }
+  if (r_height) {
+    *r_height = image_ibuf->y;
+  }
+  BKE_image_release_ibuf(ima, image_ibuf, lock);
+
+  /* Resize. */
+  IMB_scaleImBuf(preview, scale * image_ibuf->x, scale * image_ibuf->y);
+  IMB_rect_from_float(preview);
 
   return preview;
 }
