@@ -387,12 +387,13 @@ def extensions_panel_draw_online_extensions_request_impl(
 
 
 addons_block_list = {
-    'coat_applink', # external dependencies
-    'depsgraph_debug', # external depedencies
-    'io_import_images_as_planes', # integrated with Blender
-    'io_mesh_stl', # was on by default
-    'io_scene_x3d', # was on by default
+    'coat_applink',  # external dependencies
+    'depsgraph_debug',  # external depedencies
+    'io_import_images_as_planes',  # integrated with Blender
+    'io_mesh_stl',  # was on by default
+    'io_scene_x3d',  # was on by default
 }
+
 
 def addons_legacy_list_get():
     import json
@@ -403,10 +404,11 @@ def addons_legacy_list_get():
     filepath_absolute = os.path.join(
         pathlib.Path(__file__).parent.resolve(),
         filepath_relative,
-        )
+    )
 
     with open(filepath_absolute) as data_file:
         return json.load(data_file)
+
 
 addons_legacy_list_lookup = addons_legacy_list_get()
 
@@ -856,9 +858,9 @@ def extensions_panel_draw_impl(
         module_names = {mod.__name__ for mod in addon_modules}
         missing_modules = {
             addon_module_name for addon_module_name in used_addon_module_name_map
-            if addon_module_name not in module_names and \
-                addon_module_name not in addons_block_list and
-                addon_module_name not in addons_legacy_list
+            if addon_module_name not in module_names and
+            addon_module_name not in addons_block_list and
+            addon_module_name not in addons_legacy_list
         }
 
         legacy_modules = {
@@ -870,7 +872,7 @@ def extensions_panel_draw_impl(
             extensions_panel_draw_legacy_addons_impl(
                 layout=layout_topmost,
                 missing_modules=legacy_modules,
-                )
+            )
 
         if missing_modules:
             extensions_panel_draw_missing_impl(

@@ -1882,6 +1882,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         layout.prop(self, "overwrite", text="Overwrite")
         layout.prop(self, "enable_on_install")
 
+
 class package_install_common(Operator, _ExtCmdMixIn):
     __slots__ = _ExtCmdMixIn.cls_slots
 
@@ -2084,13 +2085,12 @@ class EXTENSIONS_OT_package_install(package_install_common):
     __slots__ = _ExtCmdMixIn.cls_slots
 
 
-
 class EXTENSIONS_OT_package_install_legacy(package_install_common):
     """Download and install legacy extension"""
     bl_idname = "extensions.package_install_legacy"
     bl_label = "Install Legacy Extension"
 
-    addon_module_name : StringProperty(name="Addon Module Name")
+    addon_module_name: StringProperty(name="Addon Module Name")
 
     def exec_command_finish(self, canceled):
         super().exec_command_finish(canceled=canceled)
