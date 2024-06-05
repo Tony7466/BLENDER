@@ -555,8 +555,10 @@ void Film::update_passes(Scene *scene, bool add_sample_count_pass)
 
   if (bake_manager->get_baking()) {
     add_auto_pass(scene, PASS_BAKE_PRIMITIVE, "BakePrimitive");
-    add_auto_pass(scene, PASS_BAKE_SEED, "BakeSeed"); // TODO
     add_auto_pass(scene, PASS_BAKE_DIFFERENTIAL, "BakeDifferential");
+    if (bake_manager->get_use_seed()) {
+      add_auto_pass(scene, PASS_BAKE_SEED, "BakeSeed");
+    }
   }
 
   if (add_sample_count_pass) {
