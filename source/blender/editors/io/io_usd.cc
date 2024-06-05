@@ -399,16 +399,18 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
       uiLayout *col = uiLayoutColumn(panel.body, false);
       uiItemR(col, ptr, "generate_preview_surface", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(col, ptr, "generate_materialx_network", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, ptr, "convert_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+      const bool preview = RNA_boolean_get(ptr, "generate_preview_surface");
+      const bool materialx = RNA_boolean_get(ptr, "generate_materialx_network");
+      const bool export_tex = RNA_boolean_get(ptr, "export_textures");
 
       uiLayout *row = uiLayoutRow(col, true);
       uiItemR(row, ptr, "export_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
-      const bool preview = RNA_boolean_get(ptr, "generate_preview_surface");
-      const bool materialx = RNA_boolean_get(ptr, "generate_materialx_network");
       uiLayoutSetActive(row, export_materials && (preview || materialx));
 
       row = uiLayoutRow(col, true);
       uiItemR(row, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
-      const bool export_tex = RNA_boolean_get(ptr, "export_textures");
       uiLayoutSetActive(row, export_tex && (preview || materialx));
 
       uiLayout *col2 = uiLayoutColumn(col, true);
@@ -419,11 +421,6 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
         uiItemR(col2, ptr, "usdz_downscale_custom_size", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
     }
-  }
-
-  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_export_lights", true, IFACE_("Lights"))) {
-    uiLayout *col = uiLayoutColumn(panel, false);
-    uiItemR(col, ptr, "convert_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_export_rigging", true, IFACE_("Rigging"))) {
@@ -928,6 +925,7 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
     uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     uiItemR(col, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
@@ -970,20 +968,13 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
 
     uiItemR(col, ptr, "import_all_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "import_usd_preview", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "create_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiLayoutSetEnabled(col, RNA_boolean_get(ptr, "import_materials"));
 
     uiLayout *row = uiLayoutRow(col, true);
     uiItemR(row, ptr, "set_material_blend", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiLayoutSetEnabled(row, RNA_boolean_get(ptr, "import_usd_preview"));
     uiItemR(col, ptr, "mtl_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
-  }
-
-  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_lights", true, IFACE_("Lights"))) {
-    uiLayout *col = uiLayoutColumn(panel, false);
-    uiItemR(col, ptr, "create_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-    col = uiLayoutColumn(panel, false);
-    uiItemR(col, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_texture", true, IFACE_("Textures"))) {
