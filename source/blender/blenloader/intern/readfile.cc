@@ -5061,27 +5061,27 @@ void blo_read_shared_impl(
       }
     }
   }
-  else {
-    const blender::ImplicitSharingInfoAndData *shared_data =
-        reader->fd->shared_data_by_stored_address->lookup_ptr(old_address);
 
-    if (shared_data) {
-      /* The data was loaded before. No need to load it again. Just assign the address and increase
-       * the user count to indicate that it is shared. */
-      *data_ptr = shared_data->data;
-      *r_sharing_info = shared_data->sharing_info;
-      if (shared_data->sharing_info) {
-        shared_data->sharing_info->add_user();
-      }
+  const blender::ImplicitSharingInfoAndData *shared_data =
+      reader->fd->shared_data_by_stored_address->lookup_ptr(old_address);
+
+  if (shared_data) {
+    /* The data was loaded before. No need to load it again. Just assign the address and increase
+     * the user count to indicate that it is shared. */
+    /* TODO: doesn't work with sharing CD_MLOOP right now. */
+    *data_ptr = shared_data->data;
+    *r_sharing_info = shared_data->sharing_info;
+    if (shared_data->sharing_info) {
+      shared_data->sharing_info->add_user();
     }
-    else {
-      /* This is the first time this data is loaded. The callback also creates the corresponding
-       * sharing info which may be reused later. */
-      const blender::ImplicitSharingInfo *sharing_info = read_fn();
-      const void *new_address = *data_ptr;
-      reader->fd->shared_data_by_stored_address->add(old_address, {sharing_info, new_address});
-      *r_sharing_info = sharing_info;
-    }
+  }
+  else {
+    /* This is the first time this data is loaded. The callback also creates the corresponding
+     * sharing info which may be reused later. */
+    const blender::ImplicitSharingInfo *sharing_info = read_fn();
+    const void *new_address = *data_ptr;
+    reader->fd->shared_data_by_stored_address->add(old_address, {sharing_info, new_address});
+    *r_sharing_info = sharing_info;
   }
 }
 
