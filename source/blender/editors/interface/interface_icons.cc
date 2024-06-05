@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <map>
 
 #include "MEM_guardedalloc.h"
 
@@ -20,6 +21,8 @@
 #include "GPU_shader_shared.hh"
 #include "GPU_state.hh"
 #include "GPU_texture.hh"
+
+#include "BLF_api.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_fileops_types.h"
@@ -892,184 +895,6 @@ static void icon_verify_datatoc(IconImage *iimg)
   }
 }
 
-static ImBuf *create_mono_icon_with_border(ImBuf *buf,
-                                           int resolution_divider,
-                                           float border_intensity)
-{
-  ImBuf *result = IMB_dupImBuf(buf);
-  const float border_sharpness = 16.0 / (resolution_divider * resolution_divider);
-
-  float blurred_alpha_buffer[(ICON_GRID_W + 2 * ICON_MONO_BORDER_OUTSET) *
-                             (ICON_GRID_H + 2 * ICON_MONO_BORDER_OUTSET)];
-  const int icon_width = (ICON_GRID_W + 2 * ICON_MONO_BORDER_OUTSET) / resolution_divider;
-  const int icon_height = (ICON_GRID_W + 2 * ICON_MONO_BORDER_OUTSET) / resolution_divider;
-
-  const uint *buf_rect = reinterpret_cast<const uint *>(buf->byte_buffer.data);
-  uint *result_rect = reinterpret_cast<uint *>(result->byte_buffer.data);
-
-  for (int y = 0; y < ICON_GRID_ROWS; y++) {
-    for (int x = 0; x < ICON_GRID_COLS; x++) {
-      const IconType icontype = icontypes[y * ICON_GRID_COLS + x];
-      if (icontype.type != ICON_TYPE_MONO_TEXTURE) {
-        continue;
-      }
-
-      int sx = x * (ICON_GRID_W + ICON_GRID_MARGIN) + ICON_GRID_MARGIN - ICON_MONO_BORDER_OUTSET;
-      int sy = y * (ICON_GRID_H + ICON_GRID_MARGIN) + ICON_GRID_MARGIN - ICON_MONO_BORDER_OUTSET;
-      sx = sx / resolution_divider;
-      sy = sy / resolution_divider;
-
-      /* blur the alpha channel and store it in blurred_alpha_buffer */
-      const int blur_size = 2 / resolution_divider;
-      for (int bx = 0; bx < icon_width; bx++) {
-        const int asx = std::max(bx - blur_size, 0);
-        const int aex = std::min(bx + blur_size + 1, icon_width);
-        for (int by = 0; by < icon_height; by++) {
-          const int asy = std::max(by - blur_size, 0);
-          const int aey = std::min(by + blur_size + 1, icon_height);
-
-          /* blur alpha channel */
-          const int write_offset = by * (ICON_GRID_W + 2 * ICON_MONO_BORDER_OUTSET) + bx;
-          float alpha_accum = 0.0;
-          uint alpha_samples = 0;
-          for (int ax = asx; ax < aex; ax++) {
-            for (int ay = asy; ay < aey; ay++) {
-              const int offset_read = (sy + ay) * buf->x + (sx + ax);
-              const uint color_read = buf_rect[offset_read];
-              const float alpha_read = ((color_read & 0xff000000) >> 24) / 255.0;
-              alpha_accum += alpha_read;
-              alpha_samples += 1;
-            }
-          }
-          blurred_alpha_buffer[write_offset] = alpha_accum / alpha_samples;
-        }
-      }
-
-      /* apply blurred alpha */
-      for (int bx = 0; bx < icon_width; bx++) {
-        for (int by = 0; by < icon_height; by++) {
-          const int blurred_alpha_offset = by * (ICON_GRID_W + 2 * ICON_MONO_BORDER_OUTSET) + bx;
-          const int offset_write = (sy + by) * buf->x + (sx + bx);
-          const float blurred_alpha = blurred_alpha_buffer[blurred_alpha_offset];
-          const float border_srgb[4] = {
-              0, 0, 0, std::min(1.0f, blurred_alpha * border_sharpness) * border_intensity};
-
-          const uint color_read = buf_rect[offset_write];
-          const uchar *orig_color = (uchar *)&color_read;
-
-          float border_rgba[4];
-          float orig_rgba[4];
-          float dest_rgba[4];
-          float dest_srgb[4];
-
-          srgb_to_linearrgb_v4(border_rgba, border_srgb);
-          srgb_to_linearrgb_uchar4(orig_rgba, orig_color);
-          blend_color_interpolate_float(dest_rgba, orig_rgba, border_rgba, 1.0 - orig_rgba[3]);
-          linearrgb_to_srgb_v4(dest_srgb, dest_rgba);
-
-          const uint alpha_mask = uint(dest_srgb[3] * 255) << 24;
-          const uint cpack = rgb_to_cpack(dest_srgb[0], dest_srgb[1], dest_srgb[2]) | alpha_mask;
-
-          result_rect[offset_write] = cpack;
-        }
-      }
-    }
-  }
-  return result;
-}
-
-static void free_icons_textures()
-{
-  if (icongltex.num_textures > 0) {
-    for (int i = 0; i < 2; i++) {
-      if (icongltex.tex[i]) {
-        GPU_texture_free(icongltex.tex[i]);
-        icongltex.tex[i] = nullptr;
-      }
-    }
-    icongltex.num_textures = 0;
-  }
-}
-
-void UI_icons_reload_internal_textures()
-{
-  bTheme *btheme = UI_GetTheme();
-  ImBuf *b16buf = nullptr, *b32buf = nullptr, *b16buf_border = nullptr, *b32buf_border = nullptr;
-  const float icon_border_intensity = btheme->tui.icon_border_intensity;
-  const bool need_icons_with_border = icon_border_intensity > 0.0f;
-
-  if (b16buf == nullptr) {
-    b16buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons16_png,
-                                   datatoc_blender_icons16_png_size,
-                                   IB_rect,
-                                   nullptr,
-                                   "<blender icons>");
-  }
-  if (b16buf) {
-    if (need_icons_with_border) {
-      b16buf_border = create_mono_icon_with_border(b16buf, 2, icon_border_intensity);
-      IMB_premultiply_alpha(b16buf_border);
-    }
-    IMB_premultiply_alpha(b16buf);
-  }
-
-  if (b32buf == nullptr) {
-    b32buf = IMB_ibImageFromMemory((const uchar *)datatoc_blender_icons32_png,
-                                   datatoc_blender_icons32_png_size,
-                                   IB_rect,
-                                   nullptr,
-                                   "<blender icons>");
-  }
-  if (b32buf) {
-    if (need_icons_with_border) {
-      b32buf_border = create_mono_icon_with_border(b32buf, 1, icon_border_intensity);
-      IMB_premultiply_alpha(b32buf_border);
-    }
-    IMB_premultiply_alpha(b32buf);
-  }
-
-  if (b16buf && b32buf) {
-    /* Free existing texture if any. */
-    free_icons_textures();
-
-    /* Allocate OpenGL texture. */
-    icongltex.num_textures = need_icons_with_border ? 2 : 1;
-
-    /* Note the filter and LOD bias were tweaked to better preserve icon
-     * sharpness at different UI scales. */
-    if (icongltex.tex[0] == nullptr) {
-      icongltex.w = b32buf->x;
-      icongltex.h = b32buf->y;
-      icongltex.invw = 1.0f / b32buf->x;
-      icongltex.invh = 1.0f / b32buf->y;
-
-      icongltex.tex[0] = GPU_texture_create_2d(
-          "icons", b32buf->x, b32buf->y, 2, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
-      GPU_texture_update_mipmap(icongltex.tex[0], 0, GPU_DATA_UBYTE, b32buf->byte_buffer.data);
-      GPU_texture_update_mipmap(icongltex.tex[0], 1, GPU_DATA_UBYTE, b16buf->byte_buffer.data);
-    }
-
-    if (need_icons_with_border && icongltex.tex[1] == nullptr) {
-      icongltex.tex[1] = GPU_texture_create_2d("icons_border",
-                                               b32buf_border->x,
-                                               b32buf_border->y,
-                                               2,
-                                               GPU_RGBA8,
-                                               GPU_TEXTURE_USAGE_SHADER_READ,
-                                               nullptr);
-      GPU_texture_update_mipmap(
-          icongltex.tex[1], 0, GPU_DATA_UBYTE, b32buf_border->byte_buffer.data);
-      GPU_texture_update_mipmap(
-          icongltex.tex[1], 1, GPU_DATA_UBYTE, b16buf_border->byte_buffer.data);
-    }
-  }
-
-  IMB_freeImBuf(b16buf);
-  IMB_freeImBuf(b32buf);
-  IMB_freeImBuf(b16buf_border);
-  IMB_freeImBuf(b32buf_border);
-}
-
 static void init_internal_icons()
 {
 #  if 0 /* temp disabled */
@@ -1248,8 +1073,6 @@ static void free_iconfile_list(ListBase *list)
 
 #else
 
-void UI_icons_reload_internal_textures() {}
-
 #endif /* WITH_HEADLESS */
 
 int UI_iconfile_get_index(const char *filename)
@@ -1273,7 +1096,6 @@ ListBase *UI_iconfile_list()
 void UI_icons_free()
 {
 #ifndef WITH_HEADLESS
-  free_icons_textures();
   free_iconfile_list(&iconfilelist);
 #endif
   BKE_icons_free();
@@ -1399,7 +1221,6 @@ void UI_icons_init()
 {
 #ifndef WITH_HEADLESS
   init_iconfile_list(&iconfilelist);
-  UI_icons_reload_internal_textures();
   init_internal_icons();
   init_brush_icons();
   init_event_icons();
@@ -1975,6 +1796,25 @@ static int get_draw_size(enum eIconSizes size)
   }
 }
 
+#define DEF_ICON(name) {ICON_##name, STRINGIFY(name)},
+#define DEF_ICON_BLANK(name)
+#define DEF_ICON_VECTOR(name)
+
+static std::unordered_map<int, std::string> icon_names{
+#include "UI_icons.hh"
+};
+
+#undef DEF_ICON
+#undef DEF_ICON_BLANK
+#undef DEF_ICON_VECTOR
+
+static std::string icon_to_svg_file_name(BIFIconID_Static icon)
+{
+  std::string result = icon_names[icon];
+  std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+  return result + std::string(".svg");
+}
+
 static void icon_draw_size(float x,
                            float y,
                            int icon_id,
@@ -2088,29 +1928,14 @@ static void icon_draw_size(float x,
       UI_GetThemeColor4fv(TH_TEXT, color);
     }
 
-    mul_v4_fl(color, alpha);
-
-    float border_outset = 0.0;
-    uint border_texel = 0;
-#ifndef WITH_HEADLESS
-    if (with_border) {
-      const float scale = float(ICON_GRID_W) / float(ICON_DEFAULT_WIDTH);
-      border_texel = ICON_MONO_BORDER_OUTSET;
-      border_outset = ICON_MONO_BORDER_OUTSET / (scale * aspect);
-    }
-#endif
-    icon_draw_texture(x - border_outset,
-                      y - border_outset,
-                      float(w) + 2 * border_outset,
-                      float(h) + 2 * border_outset,
-                      di->data.texture.x - border_texel,
-                      di->data.texture.y - border_texel,
-                      di->data.texture.w + 2 * border_texel,
-                      di->data.texture.h + 2 * border_texel,
-                      color[3],
+    std::string file_name = icon_to_svg_file_name(static_cast<BIFIconID_Static>(icon_id));
+    BLF_draw_svg_icon(uint(icon_id),
+                      file_name,
+                      x,
+                      y,
+                      float(draw_size) / aspect,
                       color,
-                      with_border,
-                      text_overlay);
+                      with_border ? btheme->tui.icon_border_intensity : 0.0f);
   }
 
   else if (di->type == ICON_TYPE_BUFFER) {

@@ -24,7 +24,10 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BKE_appdir.hh"
+
 #include "BLI_listbase.h"
+#include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_threads.h"
 
@@ -41,6 +44,8 @@
 #include "BLI_string_utf8.h"
 
 #include "BLI_strict_flags.h" /* Keep last. */
+
+#include "nanosvgrast.h"
 
 /**
  * Convert glyph coverage amounts to lightness values. Uses a LUT that perceptually improves
@@ -326,6 +331,83 @@ static GlyphBLF *blf_glyph_cache_add_glyph(
   }
 
   GlyphCacheKey key = {charcode, subpixel};
+  gc->glyphs.add(key, std::move(g));
+  return gc->glyphs.lookup(key).get();
+}
+
+static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode, std::string file_name)
+{
+  const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
+  char filepath[1024];
+  BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.c_str());
+
+  NSVGimage *image = nsvgParseFromFile(filepath, "px", 96.0f);
+
+  if (image == nullptr) {
+    return nullptr;
+  }
+
+  if (image->width == 0 || image->height == 0) {
+    nsvgDelete(image);
+    return nullptr;
+  }
+
+  int w = int(image->width);
+  int h = int(image->height);
+
+  NSVGrasterizer *rast = nsvgCreateRasterizer();
+  if (rast == nullptr) {
+    nsvgDelete(image);
+    return nullptr;
+  }
+
+  const float scale = (gc->size / 1600.0f);
+  const float full = 1600.0f * scale;
+  const int dest_h = int(float(h) * scale);
+  const int dest_w = int(float(w) * scale);
+  const int render_size = dest_w * dest_h * 4;
+  uchar *render_bmp = static_cast<uchar *>(MEM_mallocN(size_t(render_size), "svg bitmap"));
+
+  nsvgRasterize(rast, image, 0, 0, scale, render_bmp, dest_w, dest_h, dest_w * 4);
+  nsvgDeleteRasterizer(rast);
+  nsvgDelete(image);
+
+  const int offset_x = int(floor((full - float(dest_w)) / 2.0f));
+  const int offset_y = int(ceil((full + float(dest_h)) / 2.0f));
+
+  std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
+  g->c = charcode;
+  g->idx = 0;
+  g->advance_x = dest_w * 64;
+  g->subpixel = 0;
+  g->box_xmin = 0;
+  g->box_xmax = dest_w * 64;
+  g->box_ymin = 0;
+  g->box_ymax = dest_h * 64;
+  g->lsb_delta = 0;
+  g->rsb_delta = 0;
+  g->pos[0] = offset_x;
+  g->pos[1] = offset_y;
+  g->dims[0] = dest_w;
+  g->dims[1] = dest_h;
+  g->pitch = dest_w;
+  g->num_channels = 1;
+
+  const int buffer_size = g->dims[0] * g->dims[1] * g->num_channels;
+  g->bitmap = static_cast<uchar *>(MEM_mallocN(size_t(buffer_size), "glyph bitmap"));
+
+  /* Convert from RGBA to A. */
+  for (size_t y = 0; y < size_t(g->dims[1]); y++) {
+    for (size_t x = 0; x < size_t(g->dims[0]); x++) {
+      size_t offs_in = (y * size_t(dest_w) * 4) + (x * 4);
+      size_t offs_out = (y * size_t(g->dims[0]) + x);
+      g->bitmap[offs_out] = render_bmp[offs_in + 3];
+    }
+  }
+
+  MEM_freeN(render_bmp);
+
+  GlyphCacheKey key = {charcode, 0};
   gc->glyphs.add(key, std::move(g));
   return gc->glyphs.lookup(key).get();
 }
@@ -1281,6 +1363,15 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   }
 
   return g;
+}
+
+GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, const uint icon_id, std::string file_name)
+{
+  GlyphBLF *g = blf_glyph_cache_find_glyph(gc, 0x100000 + icon_id, 0);
+  if (g) {
+    return g;
+  }
+  return blf_glyph_cache_add_svg(gc, 0x100000 + icon_id, file_name);
 }
 
 #ifdef BLF_SUBPIXEL_AA

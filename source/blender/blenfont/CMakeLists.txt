@@ -33,6 +33,7 @@ set(LIB
   PRIVATE bf::dna
   bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::extern::nanosvg
 
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )
