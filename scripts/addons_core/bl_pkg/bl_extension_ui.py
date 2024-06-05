@@ -779,7 +779,7 @@ def extensions_panel_draw_impl(
             extensions_panel_draw_missing_impl(
                 layout=layout_topmost,
                 missing_modules=missing_modules,
-                )
+            )
 
 
 class USERPREF_PT_extensions_filter(Panel):

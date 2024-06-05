@@ -684,7 +684,7 @@ static bool geometry_color_attributes_duplicate_poll(bContext *C)
 
   const Object *ob = object::context_object(C);
   const ID *data = static_cast<ID *>(ob->data);
-  const AttributeOwner owner = AttributeOwner::from_id(const_cast<ID*>(data));
+  const AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(data));
 
   if (BKE_attributes_color_find(owner, BKE_attributes_active_color_name(owner))) {
     return true;
