@@ -724,7 +724,7 @@ bool ABC_import(bContext *C, const AlembicImportParams *params, bool as_backgrou
   job->view_layer = CTX_data_view_layer(C);
   job->wm = CTX_wm_manager(C);
   job->import_ok = false;
-  job->paths = std::move(params->paths);
+  job->paths = params->paths;
 
   job->settings.scale = params->global_scale;
   job->settings.is_sequence = params->is_sequence;

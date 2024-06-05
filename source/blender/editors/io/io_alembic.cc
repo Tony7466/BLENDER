@@ -635,7 +635,7 @@ static int wm_alembic_import_exec(bContext *C, wmOperator *op)
     blender::ed::object::mode_set(C, OB_MODE_OBJECT);
   }
 
-  AlembicImportParams params = {0};
+  AlembicImportParams params{};
   params.paths = std::move(paths);
   params.global_scale = scale;
   params.sequence_min_frame = sequence_min_frame;
