@@ -69,21 +69,10 @@ class PhysicsGeometry {
 
   PhysicsGeometry();
   explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num, int shapes_num);
-  PhysicsGeometry(const PhysicsGeometry &other) = delete;
+  PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
-  PhysicsGeometryImpl *try_steal_impl() const;
-  const PhysicsGeometryImpl *impl() const;
-  PhysicsGeometryImpl *impl_for_write();
-
-  void realize_instance(const PhysicsGeometry &other,
-                        int impl_offset,
-                        int bodies_offset,
-                        int constraints_offset,
-                        int shapes_offset);
-
-  bool has_unmerged_data() const;
-  bool try_consolidate_data();
+  void move_physics_data_from(const PhysicsGeometry &other);
 
   bool has_world() const;
   void set_world_enabled(bool enable);

@@ -490,6 +490,14 @@ PhysicsGeometry::PhysicsGeometry()
   impl_ = new PhysicsGeometryImpl();
 }
 
+PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
+{
+  impl_ = other.impl_;
+  if (impl_) {
+    impl_->add_user();
+  }
+}
+
 PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
 {
   impl_ = new PhysicsGeometryImpl();
