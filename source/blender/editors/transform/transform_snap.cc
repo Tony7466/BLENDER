@@ -167,6 +167,10 @@ bool transformModeUseSnap(const TransInfo *t)
   }
   ToolSettings *ts = t->settings;
   if (t->mode == TFM_TRANSLATION) {
+    /* VSE preview snapping should also not depend on 3D viewport. */
+    if (t->spacetype, SPACE_SEQ) {
+      return true;
+    }
     return (ts->snap_transform_mode_flag & SCE_SNAP_TRANSFORM_MODE_TRANSLATE) != 0;
   }
   if (t->mode == TFM_ROTATION) {

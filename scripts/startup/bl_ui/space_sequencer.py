@@ -2864,11 +2864,10 @@ class SEQUENCER_PT_preview_snapping(Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        col = layout.column(heading="Bounds", align=True)
-        col.prop(sequencer_tool_settings, "snap_bounds_to_borders")
-
-        col = layout.column(heading="Pivot", align=True)
-        col.prop(sequencer_tool_settings, "snap_pivot_to_centers")
+        col = layout.column(heading="Snap to", align=True)
+        col.prop(sequencer_tool_settings, "snap_to_borders")
+        col.prop(sequencer_tool_settings, "snap_to_centers")
+        col.prop(sequencer_tool_settings, "snap_to_other_strips")
 
 class SEQUENCER_PT_sequencer_snapping(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
@@ -2991,8 +2990,8 @@ classes = (
     SEQUENCER_PT_annotation_onion,
 
     SEQUENCER_PT_snapping,
-    SEQUENCER_PT_sequencer_snapping,
     SEQUENCER_PT_preview_snapping,
+    SEQUENCER_PT_sequencer_snapping,
 )
 
 if __name__ == "__main__":  # only for live edit.
