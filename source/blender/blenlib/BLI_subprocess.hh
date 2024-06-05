@@ -53,7 +53,7 @@ class SharedMemory : NonCopyable {
   bool is_owner_;
 
  public:
-  SharedMemory(std::string name, size_t size, bool already_exists);
+  SharedMemory(std::string name, size_t size, bool is_owner);
   ~SharedMemory();
 
   void *get_data()

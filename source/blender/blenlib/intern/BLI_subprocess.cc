@@ -130,17 +130,17 @@ bool BlenderSubprocess::is_running()
   return true;
 }
 
-SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
-    : name_(name), is_owner_(!already_exists)
+SharedMemory::SharedMemory(std::string name, size_t size, bool is_owner)
+    : name_(name), is_owner_(is_owner)
 {
-  if (already_exists) {
-    handle_ = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, name.c_str());
-    CHECK(handle_ /*Open*/);
-  }
-  else {
+  if (is_owner) {
     handle_ = CreateFileMappingA(
         INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, size, name.c_str());
-    CHECK(handle_ /*Close*/);
+    CHECK(handle_ /*Create*/);
+  }
+  else {
+    handle_ = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, name.c_str());
+    CHECK(handle_ /*Open*/);
   }
 
   if (handle_) {
@@ -289,15 +289,11 @@ bool BlenderSubprocess::is_running()
   return true;
 }
 
-SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
-    : name_(name), is_owner_(!already_exists)
+SharedMemory::SharedMemory(std::string name, size_t size, bool is_owner)
+    : name_(name), is_owner_(is_owner)
 {
   constexpr mode_t user_mode = S_IRUSR | S_IWUSR;
-  if (already_exists) {
-    handle_ = shm_open(name.c_str(), O_RDWR, user_mode);
-    CHECK(handle_);
-  }
-  else {
+  if (is_owner) {
     handle_ = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, user_mode);
     CHECK(handle_);
     if (handle_ != -1) {
@@ -307,6 +303,10 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool already_exists)
         handle_ = -1;
       }
     }
+  }
+  else {
+    handle_ = shm_open(name.c_str(), O_RDWR, user_mode);
+    CHECK(handle_);
   }
 
   if (handle_ != -1) {
