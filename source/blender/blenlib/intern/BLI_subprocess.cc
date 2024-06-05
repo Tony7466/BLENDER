@@ -135,7 +135,7 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool is_owner)
 {
   if (is_owner) {
     handle_ = CreateFileMappingA(
-        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, size, name.c_str());
+        INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, size, name.c_str());
     CHECK(handle_ /*Create*/);
   }
   else {
@@ -167,7 +167,7 @@ SharedMemory::~SharedMemory()
 SharedSemaphore::SharedSemaphore(std::string name, bool is_owner)
     : name_(name), is_owner_(is_owner)
 {
-  handle_ = CreateSemaphoreA(NULL, 0, 1, name.c_str());
+  handle_ = CreateSemaphoreA(nullptr, 0, 1, name.c_str());
   CHECK(handle_);
 }
 
@@ -180,7 +180,7 @@ SharedSemaphore::~SharedSemaphore()
 
 void SharedSemaphore::increment()
 {
-  CHECK(ReleaseSemaphore(handle_, 1, NULL));
+  CHECK(ReleaseSemaphore(handle_, 1, nullptr));
 }
 
 void SharedSemaphore::decrement()
@@ -310,7 +310,7 @@ SharedMemory::SharedMemory(std::string name, size_t size, bool is_owner)
   }
 
   if (handle_ != -1) {
-    data_ = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle_, 0);
+    data_ = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle_, 0);
     if (data_ == MAP_FAILED) {
       ERROR("mmap");
       data_ = nullptr;
