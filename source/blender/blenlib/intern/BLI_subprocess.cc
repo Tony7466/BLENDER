@@ -368,7 +368,7 @@ void SharedSemaphore::decrement()
       return;
     }
     else if (errno != EINTR) {
-      CHECK(result);
+      ERROR("sem_wait");
       return;
     }
     /* Try again if interrupted by handler. */
@@ -383,7 +383,7 @@ bool SharedSemaphore::try_decrement(int wait_ms)
       return true;
     }
     else if (errno == EINVAL) {
-      CHECK(result);
+      ERROR("sem_trywait");
     }
     return false;
   }
@@ -405,7 +405,7 @@ bool SharedSemaphore::try_decrement(int wait_ms)
     }
     else if (errno != EINTR) {
       if (errno != ETIMEDOUT) {
-        CHECK(result);
+        ERROR("sem_timedwait");
       }
       return false;
     }
