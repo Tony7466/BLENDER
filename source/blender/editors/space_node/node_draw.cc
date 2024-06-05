@@ -4165,11 +4165,11 @@ static void frame_node_draw(const bContext &C,
 /**
  * Returns the reroute node linked to the input of the given reroute, if there is one.
  */
-static const bNode *reroute_node_get_linked_reroute(const bNode *reroute)
+static const bNode *reroute_node_get_linked_reroute(const bNode &reroute)
 {
-  BLI_assert(reroute->is_reroute());
+  BLI_assert(reroute.is_reroute());
 
-  const bNodeSocket *input_socket = reroute->input_sockets().first();
+  const bNodeSocket *input_socket = reroute.input_sockets().first();
   if (input_socket->directly_linked_links().is_empty()) {
     return nullptr;
   }
@@ -4181,33 +4181,44 @@ static const bNode *reroute_node_get_linked_reroute(const bNode *reroute)
 /**
  * The auto label overlay displays a label on reroute nodes based on the user-defined label of a
  * linked reroute upstream.
- * This traverses the node tree backwards from the given reroute until it finds one it can infer
- * the label from. The given reroute and all other reroutes along the way are stored in the
- * TreeDrawContext together with their auto label to avoid duplicate work.
  */
-static StringRefNull reroute_node_get_auto_label_recursive(TreeDrawContext &tree_draw_ctx,
-                                                           const bNode *reroute)
+static StringRefNull reroute_node_get_auto_label(TreeDrawContext &tree_draw_ctx,
+                                                 const bNode &src_reroute)
 {
-  BLI_assert(reroute->is_reroute());
-  if (reroute->label[0] != '\0') {
-    return StringRefNull(reroute->label);
+  BLI_assert(src_reroute.is_reroute());
+
+  if (src_reroute.label[0] != '\0') {
+    return StringRefNull(src_reroute.label);
   }
 
   Map<const bNode *, StringRefNull> &reroute_auto_labels = tree_draw_ctx.reroute_auto_labels;
-  if (reroute_auto_labels.contains(reroute)) {
-    return reroute_auto_labels.lookup(reroute);
+
+  StringRefNull label;
+  Vector<const bNode *> reroute_path;
+
+  /* Traverse reroute path backwards until label, non-reroute node or link-cycle is found. */
+  for (const bNode *reroute = &src_reroute; reroute;
+       reroute = reroute_node_get_linked_reroute(*reroute))
+  {
+    reroute_path.append(reroute);
+    if (const StringRefNull *label_ptr = reroute_auto_labels.lookup_ptr(reroute)) {
+      label = *label_ptr;
+      break;
+    }
+    if (reroute->label[0] != '\0') {
+      label = reroute->label;
+      break;
+    }
+    /* This makes sure that the loop eventually ends even if there are link-cycles. */
+    reroute_auto_labels.add(reroute, "");
   }
 
-  const bNode *linked_reroute = reroute_node_get_linked_reroute(reroute);
-
-  if (linked_reroute == nullptr) {
-    /* When the reroute is not linked to another reroute, it acts as a label source. */
-    return StringRefNull(reroute->label);
+  /* Remember the label for each node on the path to avoid recomputing it. */
+  for (const bNode *reroute : reroute_path) {
+    reroute_auto_labels.add_overwrite(reroute, label);
   }
 
-  StringRefNull auto_label = reroute_node_get_auto_label_recursive(tree_draw_ctx, linked_reroute);
-  reroute_auto_labels.add(reroute, auto_label);
-  return auto_label;
+  return label;
 }
 
 static void reroute_node_draw_label(TreeDrawContext &tree_draw_ctx,
@@ -4230,8 +4241,7 @@ static void reroute_node_draw_label(TreeDrawContext &tree_draw_ctx,
 
   char showname[128];
   STRNCPY(showname,
-          has_label ? node.label :
-                      reroute_node_get_auto_label_recursive(tree_draw_ctx, &node).c_str());
+          has_label ? node.label : reroute_node_get_auto_label(tree_draw_ctx, node).c_str());
 
   const short width = 512;
   const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
