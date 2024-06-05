@@ -54,6 +54,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
                     const bool stereoVisual = false,
                     bool is_debug = false,
                     bool dialog = false,
+                    bool use_inline_decoration = false,
                     GHOST_WindowCocoa *parentWindow = 0);
 
   /**
@@ -312,6 +313,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
   bool m_immediateDraw;
   bool m_debug_context;  // for debug messages during context setup
   bool m_is_dialog;
+  bool m_use_inline_decoration;
 };
 
 #ifdef WITH_INPUT_IME

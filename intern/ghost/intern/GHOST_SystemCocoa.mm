@@ -717,6 +717,7 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                                GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
                                                const bool is_dialog,
+                                               const bool use_inline_decoration,
                                                const GHOST_IWindow *parentWindow)
 {
   GHOST_IWindow *window = nullptr;
@@ -747,6 +748,7 @@ GHOST_IWindow *GHOST_SystemCocoa::createWindow(const char *title,
                                    gpuSettings.flags & GHOST_gpuStereoVisual,
                                    gpuSettings.flags & GHOST_gpuDebugContext,
                                    is_dialog,
+                                   use_inline_decoration,
                                    (GHOST_WindowCocoa *)parentWindow);
 
     if (window->getValid()) {

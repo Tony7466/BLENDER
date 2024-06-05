@@ -176,6 +176,7 @@ extern GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                              uint32_t height,
                                              GHOST_TWindowState state,
                                              bool is_dialog,
+                                             bool use_inline_decoration,
                                              GHOST_GPUSettings gpuSettings);
 
 /**

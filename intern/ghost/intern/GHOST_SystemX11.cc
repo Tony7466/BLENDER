@@ -363,6 +363,7 @@ GHOST_IWindow *GHOST_SystemX11::createWindow(const char *title,
                                              GHOST_GPUSettings gpuSettings,
                                              const bool exclusive,
                                              const bool is_dialog,
+                                             const bool /*use_inline_declaration*/,
                                              const GHOST_IWindow *parentWindow)
 {
   GHOST_WindowX11 *window = nullptr;

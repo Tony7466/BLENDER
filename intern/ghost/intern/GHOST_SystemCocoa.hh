@@ -92,6 +92,7 @@ class GHOST_SystemCocoa : public GHOST_System {
                               GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
                               const bool is_dialog = false,
+                              const bool use_inline_decoration = false,
                               const GHOST_IWindow *parentWindow = nullptr);
 
   /**
