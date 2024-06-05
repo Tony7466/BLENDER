@@ -6442,7 +6442,7 @@ std::string UI_but_context_menu_title_from_button(uiBut &but)
     if (view_item_but.view_item == nullptr) {
       return "";
     }
-    blender::ui::AbstractView &tree_view = view_item_but.view_item->get_view();
+    const blender::ui::AbstractView &tree_view = view_item_but.view_item->get_view();
     return IFACE_(tree_view.get_context_menu_title().c_str());
   }
   return UI_but_string_get_label(but);
