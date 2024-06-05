@@ -1,1 +1,2 @@
 Referenced by pull request #122742, Cycles: Fix assert failure for CPU render with no CPU device selected
+Referenced by issue #122730, GPv3: Crash using line tool with surface project on
