@@ -1294,32 +1294,45 @@ static bool update_leaf_node_bounds(PBVH &pbvh)
           update_node_bounds_bmesh(*node);
           break;
       }
-      node->flag &= ~PBVH_UpdateBB;
     }
   });
   return !nodes.is_empty();
 }
 
-static Bounds<float3> merge_child_bounds(MutableSpan<PBVHNode> nodes, const int node_index)
+struct BoundsMergeInfo {
+  Bounds<float3> bounds;
+  bool update;
+};
+
+static BoundsMergeInfo merge_child_bounds(MutableSpan<PBVHNode> nodes, const int node_index)
 {
   PBVHNode &node = nodes[node_index];
   if (node.flag & PBVH_Leaf) {
-    return node.bounds;
+    const bool update = node.flag & PBVH_UpdateBB;
+    node.flag &= ~PBVH_UpdateBB;
+    return {node.bounds, update};
   }
-  node.bounds = bounds::merge(merge_child_bounds(nodes, node.children_offset + 0),
-                              merge_child_bounds(nodes, node.children_offset + 1));
-  return node.bounds;
+
+  const BoundsMergeInfo info_0 = merge_child_bounds(nodes, node.children_offset + 0);
+  const BoundsMergeInfo info_1 = merge_child_bounds(nodes, node.children_offset + 1);
+  const bool update = info_0.update || info_1.update;
+  if (update) {
+    node.bounds = bounds::merge(info_0.bounds, info_1.bounds);
+  }
+  node.flag &= ~PBVH_UpdateBB;
+  return {node.bounds, update};
 }
 
-static void update_parent_node_bounds(PBVH &pbvh)
+static void flush_bounds_to_parents(PBVH &pbvh)
 {
-  pbvh.nodes.first().bounds = merge_child_bounds(pbvh.nodes, 0);
+  pbvh.nodes.first().bounds = merge_child_bounds(pbvh.nodes, 0).bounds;
 }
 
 void update_bounds(PBVH &pbvh)
 {
-  update_leaf_node_bounds(pbvh);
-  update_parent_node_bounds(pbvh);
+  if (update_leaf_node_bounds(pbvh)) {
+    flush_bounds_to_parents(pbvh);
+  }
 }
 
 void reset_bounds_orig(PBVH &pbvh)
