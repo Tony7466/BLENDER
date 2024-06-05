@@ -95,6 +95,7 @@ const NodeEnum *Pass::get_type_enum()
     pass_type_enum.insert("shadow_catcher_matte", PASS_SHADOW_CATCHER_MATTE);
 
     pass_type_enum.insert("bake_primitive", PASS_BAKE_PRIMITIVE);
+    pass_type_enum.insert("bake_seed", PASS_BAKE_SEED);
     pass_type_enum.insert("bake_differential", PASS_BAKE_DIFFERENTIAL);
 
 #ifdef WITH_CYCLES_DEBUG
@@ -329,6 +330,11 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
 
     case PASS_BAKE_PRIMITIVE:
       pass_info.num_components = 3;
+      pass_info.use_exposure = false;
+      pass_info.use_filter = false;
+      break;
+    case PASS_BAKE_SEED:
+      pass_info.num_components = 1;
       pass_info.use_exposure = false;
       pass_info.use_filter = false;
       break;

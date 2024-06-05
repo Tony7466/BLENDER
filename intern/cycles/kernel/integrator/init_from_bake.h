@@ -140,7 +140,14 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   prim += kernel_data.bake.tri_offset;
 
   /* Random number generator. */
-  const uint rng_pixel = path_rng_pixel_init(kg, sample, x, y);
+  uint rng_pixel = 0;
+  if (kernel_data.film.pass_bake_seed != 0) {
+    const uint seed = __float_as_uint(buffer[kernel_data.film.pass_bake_seed]);
+    rng_pixel = hash_uint(seed) ^ kernel_data.integrator.seed;
+  }
+  else {
+    rng_pixel = path_rng_pixel_init(kg, sample, x, y);
+  }
 
   const float2 rand_filter = (sample == 0) ? make_float2(0.5f, 0.5f) :
                                              path_rng_2D(kg, rng_pixel, sample, PRNG_FILTER);

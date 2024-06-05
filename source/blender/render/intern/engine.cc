@@ -200,6 +200,7 @@ static RenderResult *render_result_from_bake(
   render_layer_add_pass(rr, rl, channels_num, RE_PASSNAME_COMBINED, "", "RGBA", true);
 
   RenderPass *primitive_pass = render_layer_add_pass(rr, rl, 3, "BakePrimitive", "", "RGB", true);
+  RenderPass *seed_pass = render_layer_add_pass(rr, rl, 1, "BakeSeed", "", "X", true);
   RenderPass *differential_pass = render_layer_add_pass(
       rr, rl, 4, "BakeDifferential", "", "RGBA", true);
 
@@ -207,6 +208,7 @@ static RenderResult *render_result_from_bake(
   for (int ty = 0; ty < h; ty++) {
     size_t offset = ty * w;
     float *primitive = primitive_pass->ibuf->float_buffer.data + 3 * offset;
+    float *seed = seed_pass->ibuf->float_buffer.data + offset;
     float *differential = differential_pass->ibuf->float_buffer.data + 4 * offset;
 
     size_t bake_offset = (y + ty) * image->width + x;
@@ -223,6 +225,8 @@ static RenderResult *render_result_from_bake(
         primitive[1] = bake_pixel->uv[1];
         primitive[2] = int_as_float(bake_pixel->primitive_id);
 
+        *seed = int_as_float(bake_pixel->seed);
+
         differential[0] = bake_pixel->du_dx;
         differential[1] = bake_pixel->du_dy;
         differential[2] = bake_pixel->dv_dx;
@@ -230,6 +234,7 @@ static RenderResult *render_result_from_bake(
       }
 
       primitive += 3;
+      seed += 1;
       differential += 4;
       bake_pixel++;
     }
