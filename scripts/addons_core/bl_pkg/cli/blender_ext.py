@@ -1303,28 +1303,33 @@ def pkg_manifest_validate_field_tagline(value: str, strict: bool) -> Optional[st
 
 
 def pkg_manifest_validate_field_permissions(
-        value: List[Any],
+        # `Dict[str, str]` is expected but at this point it's only guaranteed to be a dict.
+        value: Dict[Any, Any],
         strict: bool,
 ) -> Optional[str]:
     _ = strict
     # Always strict for now as it doesn't seem as there are repositories using invalid values.
     strict = True
     if strict:
-        values_valid = {
+        keys_valid = {
             "files",
             "network",
             "clipboard",
             "camera",
             "microphone",
         }
-        for i, item in enumerate(value):
-            if not isinstance(item, str):
-                return "at index {:d} must be a string not a {:s}".format(i, str(type(value)))
-            if item not in values_valid:
-                return "at index {:d} must be a value in {!r}".format(i, tuple(values_valid))
+        for item_key, item_value in value.items():
+            if not isinstance(item_key, str):
+                return "key \"{:s}\" must be a string not a {:s}".format(str(item_key), str(type(item_key)))
+            if not isinstance(item_value, str):
+                return "value of \"{:s}\" must be a string not a {:s}".format(item_key, str(type(item_value)))
+            if item_key not in keys_valid:
+                return "value of \"{:s}\" must be a value in {!r}".format(item_key, tuple(keys_valid))
     else:
-        if (error := pkg_manifest_validate_field_any_list_of_non_empty_strings(value, strict)) is not None:
-            return error
+        # TODO: basic validation.
+        # if (error := pkg_manifest_validate_field_any_dict_of_non_empty_strings(value, strict)) is not None:
+        #     return error
+        pass
 
     return None
 
@@ -1446,7 +1451,7 @@ pkg_manifest_known_keys_and_types: Tuple[
     ("blender_version_max", str, pkg_manifest_validate_field_any_version_primitive_or_empty),
     ("website", str, pkg_manifest_validate_field_any_non_empty_string_stripped_no_control_chars),
     ("copyright", list, pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings),
-    ("permissions", list, pkg_manifest_validate_field_permissions),
+    ("permissions", dict, pkg_manifest_validate_field_permissions),
     ("tags", list, pkg_manifest_validate_field_any_non_empty_list_of_non_empty_strings),
     ("wheels", list, pkg_manifest_validate_field_wheels),
 )
@@ -2045,6 +2050,16 @@ def generic_arg_access_token(subparse: argparse.ArgumentParser) -> None:
         ),
         default="",
         required=False,
+    )
+
+
+def generic_arg_verbose(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=False,
+        help="Include verbose output.",
     )
 
 
@@ -2670,6 +2685,7 @@ class subcmd_author:
             pkg_source_dir: str,
             pkg_output_dir: str,
             pkg_output_filepath: str,
+            verbose: bool,
     ) -> bool:
         if not os.path.isdir(pkg_source_dir):
             message_error(msg_fn, "Missing local \"{:s}\"".format(pkg_source_dir))
@@ -2701,13 +2717,19 @@ class subcmd_author:
                 message_error(msg_fn, "Error parsing TOML \"{:s}\" {:s}".format(pkg_manifest_filepath, error_msg))
             return False
 
+        # Always include wheels & manifest.
+        build_paths_extra = (
+            # Inclusion of the manifest is implicit.
+            # No need to require the manifest to include itself.
+            PKG_MANIFEST_FILENAME_TOML,
+            *(manifest.wheels or ()),
+        )
+
         if (manifest_build_data := manifest_data.get("build")) is not None:
-            manifest_build_test = PkgManifest_Build.from_dict_all_errors(manifest_build_data, extra_paths=[
-                # Inclusion of the manifest is implicit.
-                # No need to require the manifest to include itself.
-                PKG_MANIFEST_FILENAME_TOML,
-                *(manifest.wheels or ()),
-            ])
+            manifest_build_test = PkgManifest_Build.from_dict_all_errors(
+                manifest_build_data,
+                extra_paths=build_paths_extra,
+            )
             if isinstance(manifest_build_test, list):
                 for error_msg in manifest_build_test:
                     message_error(msg_fn, "Error parsing TOML \"{:s}\" {:s}".format(pkg_manifest_filepath, error_msg))
@@ -2730,23 +2752,73 @@ class subcmd_author:
         if manifest_build.paths_exclude_pattern is not None:
             build_paths_exclude_pattern = PathPatternMatch(manifest_build.paths_exclude_pattern)
 
-        build_paths: Optional[List[str]] = None
+        build_paths: List[Tuple[str, str]] = []
+
+        # Manifest & wheels.
+        if build_paths_extra:
+            build_paths.extend(build_paths_expand_iter(pkg_source_dir, build_paths_extra))
+
         if manifest_build.paths is not None:
-            build_paths = manifest_build.paths
+            build_paths.extend(build_paths_expand_iter(pkg_source_dir, manifest_build.paths))
+        else:
+            # Mixing literal and pattern matched lists of files is a hassle.
+            # De-duplicate canonical root-relative path names.
+            def filepath_canonical_from_relative(filepath_rel: str):
+                filepath_rel = os.path.normpath(filepath_rel)
+                if os.sep == "\\":
+                    filepath_rel = filepath_rel.replace("\\", "/")
+                return filepath_rel
 
-        def scandir_filter_with_paths_exclude_pattern(filepath: str, is_dir: bool) -> bool:
-            assert build_paths_exclude_pattern is not None
-            if os.sep == "\\":
-                filepath = filepath.replace("\\", "/")
-            if is_dir:
-                assert not filepath.endswith("/")
-                filepath = filepath + "/"
-            assert not filepath.startswith(("/", "./", "../"))
-            return not build_paths_exclude_pattern.test_path(filepath)
+            # Use lowercase to prevent duplicates on MS-Windows.
+            build_paths_extra_canonical: Set[int] = set(
+                filepath_canonical_from_relative(f).lower()
+                for f in build_paths_extra
+            )
 
-        def scandir_filter_fallback(filepath: str, is_dir: bool) -> bool:
-            _ = is_dir
-            return not os.path.basename(filepath).startswith(".")
+            # Scanning the file-system may fail, surround by try/except.
+            try:
+                if build_paths_exclude_pattern:
+                    def scandir_filter_with_paths_exclude_pattern(filepath: str, is_dir: bool) -> bool:
+                        # Returning true includes the file.
+                        assert build_paths_exclude_pattern is not None
+                        if os.sep == "\\":
+                            filepath = filepath.replace("\\", "/")
+                        filepath_canonical = filepath
+                        if is_dir:
+                            assert not filepath.endswith("/")
+                            filepath = filepath + "/"
+                        assert not filepath.startswith(("/", "./", "../"))
+                        result = not build_paths_exclude_pattern.test_path(filepath)
+                        if result and (not is_dir):
+                            # Finally check the path isn't one of the known paths.
+                            if filepath_canonical.lower() in build_paths_extra_canonical:
+                                result = False
+                        return result
+
+                    build_paths.extend(
+                        scandir_recursive(
+                            pkg_source_dir,
+                            filter_fn=scandir_filter_with_paths_exclude_pattern,
+                        ),
+                    )
+                else:
+                    # In this case there isn't really a good option, just ignore all dot-files.
+                    def scandir_filter_fallback(filepath: str, is_dir: bool) -> bool:
+                        # Returning true includes the file.
+                        result = not os.path.basename(filepath).startswith(".")
+                        if result and (not is_dir):
+                            # Finally check the path isn't one of the known paths.
+                            if filepath_canonical.lower() in build_paths_extra_canonical:
+                                result = False
+                        return result
+
+                    build_paths.extend(scandir_recursive(pkg_source_dir, filter_fn=scandir_filter_fallback))
+
+                del build_paths_extra_canonical
+
+            except Exception as ex:
+                message_status(msg_fn, "Error building path list \"{:s}\"".format(str(ex)))
+                return False
 
         pkg_filename = manifest.id + PKG_EXT
 
@@ -2775,26 +2847,13 @@ class subcmd_author:
 
         with CleanupPathsContext(files=(outfile_temp,), directories=()):
             try:
-                zip_fh_context = zipfile.ZipFile(outfile_temp, 'w', zipfile.ZIP_LZMA)
+                zip_fh_context = zipfile.ZipFile(outfile_temp, 'w', zipfile.ZIP_DEFLATED, compresslevel=9)
             except Exception as ex:
                 message_status(msg_fn, "Error creating archive \"{:s}\"".format(str(ex)))
                 return False
 
             with contextlib.closing(zip_fh_context) as zip_fh:
-
-                if build_paths is not None:
-                    filepath_iterator = build_paths_expand_iter(pkg_source_dir, build_paths)
-                else:
-                    filepath_iterator = scandir_recursive(
-                        pkg_source_dir,
-                        filter_fn=(
-                            scandir_filter_with_paths_exclude_pattern if build_paths_exclude_pattern else
-                            # In this case there isn't really a good option, just ignore all dot-files.
-                            scandir_filter_fallback
-                        ),
-                    )
-
-                for filepath_abs, filepath_rel in filepath_iterator:
+                for filepath_abs, filepath_rel in build_paths:
                     if filepath_rel in filenames_root_exclude:
                         continue
 
@@ -2806,6 +2865,9 @@ class subcmd_author:
                     except Exception as ex:
                         message_status(msg_fn, "Error adding to archive \"{:s}\"".format(str(ex)))
                         return False
+
+                    if verbose:
+                        message_status(msg_fn, "add: {:s}".format(filepath_rel))
 
                 request_exit |= message_status(msg_fn, "complete")
                 if request_exit:
@@ -3013,6 +3075,7 @@ def unregister():
                     pkg_source_dir=pkg_src_dir,
                     pkg_output_dir=repo_dir,
                     pkg_output_filepath="",
+                    verbose=False,
                 ):
                     # Error running command.
                     return False
@@ -3248,6 +3311,7 @@ def argparse_create_author_build(
     generic_arg_package_source_dir(subparse)
     generic_arg_package_output_dir(subparse)
     generic_arg_package_output_filepath(subparse)
+    generic_arg_verbose(subparse)
 
     if args_internal:
         generic_arg_output_type(subparse)
@@ -3258,6 +3322,7 @@ def argparse_create_author_build(
             pkg_source_dir=args.source_dir,
             pkg_output_dir=args.output_dir,
             pkg_output_filepath=args.output_filepath,
+            verbose=args.verbose,
         ),
     )
 
