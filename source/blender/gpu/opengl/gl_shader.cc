@@ -1605,7 +1605,7 @@ GLCompilerWorker::GLCompilerWorker()
                      std::to_string(pipe_id);
 
   shared_mem_ = std::make_unique<SharedMemory>(
-      name, compilation_subprocess_shared_memory_size, false);
+      name, compilation_subprocess_shared_memory_size, true);
   start_semaphore_ = std::make_unique<SharedSemaphore>(name + "_START", false);
   end_semaphore_ = std::make_unique<SharedSemaphore>(name + "_END", false);
   close_semaphore_ = std::make_unique<SharedSemaphore>(name + "_CLOSE", false);

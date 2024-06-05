@@ -114,7 +114,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   CLG_init();
 
   std::string name = subprocess_name;
-  SharedMemory shared_mem(name, compilation_subprocess_shared_memory_size, true);
+  SharedMemory shared_mem(name, compilation_subprocess_shared_memory_size, false);
   if (!shared_mem.get_data()) {
     std::cerr << "Compilation Subprocess: Failed to open shared memory " << subprocess_name
               << "\n";
