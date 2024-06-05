@@ -80,16 +80,7 @@ class VIEW3D_PT_pose_library_legacy(PoseLibraryPanel, Panel):
         layout.operator("screen.region_toggle", text="Toggle Asset Shelf").region_type = 'ASSET_SHELF'
 
 
-def pose_library_list_item_context_menu(self: UIList, context: Context) -> None:
-    def is_pose_asset_view() -> bool:
-        # Important: Must check context first, or the menu is added for every kind of list.
-        list = getattr(context, "ui_list", None)
-        if not list or list.bl_idname != "UI_UL_asset_view" or list.list_id != "pose_assets":
-            return False
-        if not context.active_file:
-            return False
-        return True
-
+def pose_library_asset_browser_context_menu(self: UIList, context: Context) -> None:
     def is_pose_library_asset_browser() -> bool:
         asset_library_ref = getattr(context, "asset_library_reference", None)
         if not asset_library_ref:
@@ -99,7 +90,7 @@ def pose_library_list_item_context_menu(self: UIList, context: Context) -> None:
             return False
         return bool(asset.id_type == 'ACTION')
 
-    if not is_pose_asset_view() and not is_pose_library_asset_browser():
+    if not is_pose_library_asset_browser():
         return
 
     layout = self.layout
@@ -120,15 +111,10 @@ def pose_library_list_item_context_menu(self: UIList, context: Context) -> None:
     props = layout.operator("poselib.pose_asset_select_bones", text="Deselect Pose Bones")
     props.select = False
 
-    if not is_pose_asset_view():
-        layout.separator()
-        layout.operator("asset.assign_action")
+    layout.separator()
+    layout.operator("asset.assign_action")
 
     layout.separator()
-    if is_pose_asset_view():
-        layout.operator("asset.open_containing_blend_file")
-
-        props.select = False
 
 
 class DOPESHEET_PT_asset_panel(PoseLibraryPanel, Panel):
@@ -234,8 +220,7 @@ def register() -> None:
     # written to files.
     WindowManager.pose_assets = bpy.props.CollectionProperty(type=AssetHandle)
 
-    bpy.types.UI_MT_list_item_context_menu.prepend(pose_library_list_item_context_menu)
-    bpy.types.ASSETBROWSER_MT_context_menu.prepend(pose_library_list_item_context_menu)
+    bpy.types.ASSETBROWSER_MT_context_menu.prepend(pose_library_asset_browser_context_menu)
     bpy.types.ASSETBROWSER_MT_editor_menus.append(pose_library_list_item_asset_menu)
 
     register_message_bus()
@@ -251,6 +236,5 @@ def unregister() -> None:
     del WorkSpace.active_pose_asset_index
     del WindowManager.pose_assets
 
-    bpy.types.UI_MT_list_item_context_menu.remove(pose_library_list_item_context_menu)
-    bpy.types.ASSETBROWSER_MT_context_menu.remove(pose_library_list_item_context_menu)
+    bpy.types.ASSETBROWSER_MT_context_menu.remove(pose_library_asset_browser_context_menu)
     bpy.types.ASSETBROWSER_MT_editor_menus.remove(pose_library_list_item_asset_menu)
