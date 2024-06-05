@@ -6560,14 +6560,15 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object &ob)
   }
 
   Mesh *mesh = static_cast<Mesh *>(ob.data);
-  const CustomDataLayer *layer = BKE_id_attribute_new(&mesh->id, name, type, domain, op->reports);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  const CustomDataLayer *layer = BKE_attribute_new(owner, name, type, domain, op->reports);
   if (!layer) {
     return nullptr;
   }
 
-  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
+  BKE_attributes_active_color_set(owner, layer->name);
   if (!mesh->default_color_attribute) {
-    BKE_id_attributes_default_color_set(&mesh->id, layer->name);
+    BKE_attributes_default_color_set(owner, layer->name);
   }
 
   ed::sculpt_paint::object_active_color_fill(ob, color, false);

@@ -618,8 +618,9 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
       &mesh->corner_data, CD_PROP_BYTE_COLOR, CD_SET_DEFAULT, mesh->corners_num, "Color");
   MLoopCol *transp = (MLoopCol *)CustomData_add_layer_named(
       &mesh->corner_data, CD_PROP_BYTE_COLOR, CD_SET_DEFAULT, mesh->corners_num, "Alpha");
-  BKE_id_attributes_active_color_set(
-      &mesh->id, CustomData_get_layer_name(&mesh->corner_data, CD_PROP_BYTE_COLOR, 0));
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  BKE_attributes_active_color_set(
+      owner, CustomData_get_layer_name(&mesh->corner_data, CD_PROP_BYTE_COLOR, 0));
 
   mesh->mat = (Material **)MEM_mallocN(sizeof(Material *) * mesh->totcol, "MaterialList");
   for (const auto item : group->materials.items()) {

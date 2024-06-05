@@ -3619,11 +3619,12 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (actlayer) {
+          AttributeOwner owner = AttributeOwner::from_id(&me->id);
           if (step) {
-            BKE_id_attributes_default_color_set(&me->id, actlayer->name);
+            BKE_attributes_default_color_set(owner, actlayer->name);
           }
           else {
-            BKE_id_attributes_active_color_set(&me->id, actlayer->name);
+            BKE_attributes_active_color_set(owner, actlayer->name);
           }
         }
       }
@@ -3784,11 +3785,12 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (actlayer) {
+          AttributeOwner owner = AttributeOwner::from_id(&me->id);
           if (step) {
-            BKE_id_attributes_default_color_set(&me->id, actlayer->name);
+            BKE_attributes_default_color_set(owner, actlayer->name);
           }
           else {
-            BKE_id_attributes_active_color_set(&me->id, actlayer->name);
+            BKE_attributes_active_color_set(owner, actlayer->name);
           }
         }
       }
@@ -4279,8 +4281,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       curves_id->flag &= ~CV_SCULPT_SELECTION_ENABLED;
     }
     LISTBASE_FOREACH (Curves *, curves_id, &bmain->hair_curves) {
-      BKE_id_attribute_rename(&curves_id->id, ".selection_point_float", ".selection", nullptr);
-      BKE_id_attribute_rename(&curves_id->id, ".selection_curve_float", ".selection", nullptr);
+      AttributeOwner owner = AttributeOwner::from_id(&curves_id->id);
+      BKE_attribute_rename(owner, ".selection_point_float", ".selection", nullptr);
+      BKE_attribute_rename(owner, ".selection_curve_float", ".selection", nullptr);
     }
 
     /* Toggle the Invert Vertex Group flag on Armature modifiers in some cases. */

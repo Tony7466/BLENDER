@@ -400,10 +400,11 @@ void MeshFromGeometry::create_colors(Mesh *mesh)
         mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size())
     {
       /* This block is suitable, use colors from it. */
-      CustomDataLayer *color_layer = BKE_id_attribute_new(
-          &mesh->id, "Color", CD_PROP_COLOR, bke::AttrDomain::Point, nullptr);
-      BKE_id_attributes_active_color_set(&mesh->id, color_layer->name);
-      BKE_id_attributes_default_color_set(&mesh->id, color_layer->name);
+      AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+      CustomDataLayer *color_layer = BKE_attribute_new(
+          owner, "Color", CD_PROP_COLOR, bke::AttrDomain::Point, nullptr);
+      BKE_attributes_active_color_set(owner, color_layer->name);
+      BKE_attributes_default_color_set(owner, color_layer->name);
       float4 *colors = (float4 *)color_layer->data;
       int offset = mesh_geometry_.vertex_index_min_ - block.start_vertex_index;
       for (int i = 0, n = mesh_geometry_.get_vertex_count(); i != n; ++i) {

@@ -2130,8 +2130,9 @@ static void fill_mesh_color(Mesh &mesh,
   if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
     BMesh *bm = em->bm;
     const std::string name = attribute_name;
-    const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());
-    const AttrDomain domain = BKE_id_attribute_domain(&mesh.id, layer);
+    AttributeOwner owner = AttributeOwner::from_id(&mesh.id);
+    const CustomDataLayer *layer = BKE_attributes_color_find(owner, name.c_str());
+    const AttrDomain domain = BKE_attribute_domain(owner, layer);
     if (layer->type == CD_PROP_COLOR) {
       fill_bm_face_or_corner_attribute<ColorPaint4f>(
           *bm, color, domain, layer->offset, use_vert_sel);

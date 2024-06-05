@@ -699,8 +699,9 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
   } /* End primvar attribute loop. */
 
   if (!active_color_name.IsEmpty()) {
-    BKE_id_attributes_default_color_set(&mesh->id, active_color_name.GetText());
-    BKE_id_attributes_active_color_set(&mesh->id, active_color_name.GetText());
+    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+    BKE_attributes_default_color_set(owner, active_color_name.GetText());
+    BKE_attributes_active_color_set(owner, active_color_name.GetText());
   }
 
   if (!active_uv_set_name.IsEmpty()) {

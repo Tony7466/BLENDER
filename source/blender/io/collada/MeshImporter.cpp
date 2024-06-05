@@ -492,10 +492,11 @@ void MeshImporter::allocate_poly_data(COLLADAFW::Mesh *collada_mesh, Mesh *mesh)
         CustomData_add_layer_named(
             &mesh->corner_data, CD_PROP_BYTE_COLOR, CD_SET_DEFAULT, mesh->corners_num, colname);
       }
-      BKE_id_attributes_active_color_set(
-          &mesh->id, CustomData_get_layer_name(&mesh->corner_data, CD_PROP_BYTE_COLOR, 0));
-      BKE_id_attributes_default_color_set(
-          &mesh->id, CustomData_get_layer_name(&mesh->corner_data, CD_PROP_BYTE_COLOR, 0));
+      AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+      BKE_attributes_active_color_set(
+          owner, CustomData_get_layer_name(&mesh->corner_data, CD_PROP_BYTE_COLOR, 0));
+      BKE_attributes_default_color_set(
+          owner, CustomData_get_layer_name(&mesh->corner_data, CD_PROP_BYTE_COLOR, 0));
     }
   }
 }

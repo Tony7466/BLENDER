@@ -1532,7 +1532,8 @@ static bool fill_texpaint_slots_cb(bNode *node, void *userdata)
       slot->attribute_name = storage->name;
       if (storage->type == SHD_ATTRIBUTE_GEOMETRY) {
         const Mesh *mesh = (const Mesh *)fill_data->ob->data;
-        const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh->id, storage->name);
+        AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(&mesh->id));
+        const CustomDataLayer *layer = BKE_attributes_color_find(owner, storage->name);
         slot->valid = layer != nullptr;
       }
 

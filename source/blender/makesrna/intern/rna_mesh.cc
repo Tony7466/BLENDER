@@ -120,7 +120,8 @@ static void rna_MeshVertexLayer_name_set(PointerRNA *ptr, const char *value)
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
 
   if (CD_TYPE_AS_MASK(layer->type) & CD_MASK_PROP_ALL) {
-    BKE_id_attribute_rename(ptr->owner_id, layer->name, value, nullptr);
+    AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+    BKE_attribute_rename(owner, layer->name, value, nullptr);
   }
   else {
     rna_cd_layer_name_set(rna_mesh_vdata(ptr), layer, value);
@@ -132,7 +133,8 @@ static void rna_MeshEdgeLayer_name_set(PointerRNA *ptr, const char *value)
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
 
   if (CD_TYPE_AS_MASK(layer->type) & CD_MASK_PROP_ALL) {
-    BKE_id_attribute_rename(ptr->owner_id, layer->name, value, nullptr);
+    AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+    BKE_attribute_rename(owner, layer->name, value, nullptr);
   }
   else {
     rna_cd_layer_name_set(rna_mesh_edata(ptr), layer, value);
@@ -144,7 +146,8 @@ static void rna_MeshLoopLayer_name_set(PointerRNA *ptr, const char *value)
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
 
   if (CD_TYPE_AS_MASK(layer->type) & CD_MASK_PROP_ALL) {
-    BKE_id_attribute_rename(ptr->owner_id, layer->name, value, nullptr);
+    AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+    BKE_attribute_rename(owner, layer->name, value, nullptr);
   }
   else {
     rna_cd_layer_name_set(rna_mesh_ldata(ptr), layer, value);
@@ -1105,8 +1108,9 @@ DEFINE_CUSTOMDATA_LAYER_COLLECTION(vertex_color, ldata, CD_PROP_BYTE_COLOR)
 static PointerRNA rna_Mesh_vertex_color_active_get(PointerRNA *ptr)
 {
   Mesh *mesh = (Mesh *)ptr->data;
-  CustomDataLayer *layer = BKE_id_attribute_search_for_write(
-      &mesh->id, mesh->active_color_attribute, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_CORNER);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  CustomDataLayer *layer = BKE_attribute_search_for_write(
+      owner, mesh->active_color_attribute, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_CORNER);
   return rna_pointer_inherit_refine(ptr, &RNA_MeshLoopColorLayer, layer);
 }
 
@@ -1114,21 +1118,22 @@ static void rna_Mesh_vertex_color_active_set(PointerRNA *ptr,
                                              const PointerRNA value,
                                              ReportList * /*reports*/)
 {
-  Mesh *mesh = (Mesh *)ptr->data;
   CustomDataLayer *layer = (CustomDataLayer *)value.data;
 
   if (!layer) {
     return;
   }
 
-  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  BKE_attributes_active_color_set(owner, layer->name);
 }
 
 static int rna_Mesh_vertex_color_active_index_get(PointerRNA *ptr)
 {
   Mesh *mesh = (Mesh *)ptr->data;
-  const CustomDataLayer *layer = BKE_id_attribute_search(
-      &mesh->id, mesh->active_color_attribute, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_CORNER);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  const CustomDataLayer *layer = BKE_attribute_search(
+      owner, mesh->active_color_attribute, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_CORNER);
   if (!layer) {
     return 0;
   }
@@ -1138,7 +1143,6 @@ static int rna_Mesh_vertex_color_active_index_get(PointerRNA *ptr)
 
 static void rna_Mesh_vertex_color_active_index_set(PointerRNA *ptr, int value)
 {
-  Mesh *mesh = (Mesh *)ptr->data;
   CustomData *ldata = rna_mesh_ldata(ptr);
 
   if (value < 0 || value >= CustomData_number_of_layers(ldata, CD_PROP_BYTE_COLOR)) {
@@ -1148,8 +1152,8 @@ static void rna_Mesh_vertex_color_active_index_set(PointerRNA *ptr, int value)
 
   CustomDataLayer *layer = ldata->layers + CustomData_get_layer_index(ldata, CD_PROP_BYTE_COLOR) +
                            value;
-
-  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  BKE_attributes_active_color_set(owner, layer->name);
 }
 
 static void rna_MeshLoopColorLayer_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -1189,9 +1193,9 @@ static void rna_mesh_color_active_render_set(PointerRNA *ptr, bool value)
   if (value == false) {
     return;
   }
-  Mesh *mesh = (Mesh *)ptr->owner_id;
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-  BKE_id_attributes_default_color_set(&mesh->id, layer->name);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  BKE_attributes_default_color_set(owner, layer->name);
 }
 
 static void rna_mesh_color_active_set(PointerRNA *ptr, bool value)
@@ -1199,10 +1203,9 @@ static void rna_mesh_color_active_set(PointerRNA *ptr, bool value)
   if (value == false) {
     return;
   }
-  Mesh *mesh = (Mesh *)ptr->owner_id;
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-
-  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
+  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  BKE_attributes_active_color_set(owner, layer->name);
 }
 
 /* Skin vertices */
@@ -1890,7 +1893,8 @@ static PointerRNA rna_Mesh_vertex_color_new(Mesh *mesh,
 
 static void rna_Mesh_vertex_color_remove(Mesh *mesh, ReportList *reports, CustomDataLayer *layer)
 {
-  BKE_id_attribute_remove(&mesh->id, layer->name, reports);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  BKE_attribute_remove(owner, layer->name, reports);
 }
 
 static PointerRNA rna_Mesh_uv_layers_new(Mesh *mesh,
@@ -1914,11 +1918,12 @@ static PointerRNA rna_Mesh_uv_layers_new(Mesh *mesh,
 static void rna_Mesh_uv_layers_remove(Mesh *mesh, ReportList *reports, CustomDataLayer *layer)
 {
   using namespace blender;
-  if (!BKE_id_attribute_find(&mesh->id, layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner)) {
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  if (!BKE_attribute_find(owner, layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner)) {
     BKE_reportf(reports, RPT_ERROR, "UV map '%s' not found", layer->name);
     return;
   }
-  BKE_id_attribute_remove(&mesh->id, layer->name, reports);
+  BKE_attribute_remove(owner, layer->name, reports);
 }
 
 static bool rna_Mesh_is_editmode_get(PointerRNA *ptr)
