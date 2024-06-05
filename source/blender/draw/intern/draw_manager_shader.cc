@@ -69,6 +69,8 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
 {
   using namespace blender;
 
+  double start_time = BLI_time_now_seconds();
+
   GPU_render_begin();
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
   void *system_gpu_context = comp->system_gpu_context;
@@ -118,6 +120,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       }
     }
     else if (!next_batch.is_empty()) {
+      printf("COMPILE BATCH (%d)\n", next_batch.size());
       BatchHandle batch_handle = GPU_material_batch_compile(next_batch);
       batches.add(batch_handle, next_batch);
       next_batch.clear();
@@ -182,6 +185,8 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     GPU_context_main_unlock();
   }
   GPU_render_end();
+
+  printf("Material Shaders: %fs\n", BLI_time_now_seconds() - start_time);
 }
 
 static void drw_deferred_shader_compilation_free(void *custom_data)

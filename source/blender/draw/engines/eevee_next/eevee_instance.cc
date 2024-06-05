@@ -65,6 +65,10 @@ void Instance::init(const int2 &output_res,
 
   info = "";
 
+  if (start_time == 0) {
+    start_time = BLI_time_now_seconds();
+  }
+
   shaders_are_ready_ = shaders.is_ready(is_image_render());
   if (!shaders_are_ready_) {
     return;
@@ -561,6 +565,10 @@ void Instance::draw_viewport()
     std::stringstream ss;
     ss << "Optimizing Shaders (" << materials.queued_optimize_shaders_count << " remaining)";
     info = ss.str();
+  }
+  else if (start_time > 0) {
+    printf("Total Startup Time: %f\n", BLI_time_now_seconds() - start_time);
+    start_time = -1;
   }
 }
 

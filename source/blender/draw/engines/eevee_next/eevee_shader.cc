@@ -72,6 +72,7 @@ ShaderModule::ShaderModule()
   }
 
   if (GPU_use_parallel_compilation()) {
+    start_time = BLI_time_now_seconds();
     compilation_handle_ = GPU_shader_batch_create_from_infos(infos);
   }
 }
@@ -101,6 +102,8 @@ bool ShaderModule::is_ready(bool block)
     for (int i : IndexRange(MAX_SHADER_TYPE)) {
       shaders_[i] = shaders[i];
     }
+
+    printf("Static Shaders: %fs\n", BLI_time_now_seconds() - start_time);
   }
 
   return compilation_handle_ == 0;
