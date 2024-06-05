@@ -1179,17 +1179,29 @@ static bool snap_grid_uv(TransInfo *t, float r_val[2])
 /** \name Calc Snap
  * \{ */
 
-static void snap_target_view3d_fn(TransInfo *t, float * /*vec*/)
+static void snap_target_view3d_fn(TransInfo *t, float *vec)
 {
   BLI_assert(t->spacetype == SPACE_VIEW3D);
-  float loc[3];
-  float no[3];
+  float3 loc, no(0.0f);
   bool found = false;
   eSnapMode snap_elem = SCE_SNAP_TO_NONE;
   float dist_px = SNAP_MIN_DISTANCE; /* Use a user defined value here. */
 
-  if (t->tsnap.mode & (SCE_SNAP_TO_GEOM | SCE_SNAP_TO_GRID)) {
-    zero_v3(no); /* objects won't set this */
+  if ((t->mode == TFM_TRANSLATION) && (t->tsnap.mode & SCE_SNAP_TO_GRID) &&
+      (t->modifiers & MOD_PRECISION))
+  {
+    /* Special case of Snap to Grid in which precision mode is enabled. */
+    float grid_size = t->snap[1];
+    add_v3_v3v3(loc, t->center_global, vec);
+
+    loc[0] = roundf(loc[0] / grid_size) * grid_size;
+    loc[1] = roundf(loc[1] / grid_size) * grid_size;
+    loc[2] = roundf(loc[2] / grid_size) * grid_size;
+
+    snap_elem = SCE_SNAP_TO_GRID;
+    found = true;
+  }
+  else if (t->tsnap.mode & (SCE_SNAP_TO_GEOM | SCE_SNAP_TO_GRID)) {
     snap_elem = snapObjectsTransform(t, t->mval, &dist_px, loc, no);
     found = (snap_elem != SCE_SNAP_TO_NONE);
   }
