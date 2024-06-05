@@ -33,6 +33,10 @@ show_color = (
 
 if show_color:
     color_codes = {
+        # Not colors, useful all the same.
+        'bold': '\033[0;1m',
+        'faint': '\033[0;2m',
+
         'black': '\033[0;30m',
         'bright_gray': '\033[0;37m',
         'blue': '\033[0;34m',
@@ -87,10 +91,10 @@ class subcmd_utils:
     ) -> bool:
         import bpy
         try:
-            bpy.ops.bl_pkg.repo_sync_all()
+            bpy.ops.extensions.repo_sync_all()
             if show_done:
                 sys.stdout.write("Done...\n\n")
-        except BaseException:
+        except Exception:
             print("Error synchronizing")
             import traceback
             traceback.print_exc()
@@ -216,10 +220,11 @@ class subcmd_query:
                 item = item_local
 
             print(
-                "  {:s}{:s}: {:s}".format(
-                    pkg_id,
+                "  {:s}{:s}: \"{:s}\", {:s}".format(
+                    colorize(pkg_id, "bold"),
                     status_info,
-                    colorize("\"{:s}\", {:s}".format(item["name"], item.get("tagline", "<no tagline>")), "dark_gray"),
+                    item["name"],
+                    colorize(item.get("tagline", "<no tagline>"), "faint"),
                 ))
 
         if sync:
@@ -277,7 +282,7 @@ class subcmd_pkg:
 
         import bpy
         try:
-            bpy.ops.bl_pkg.pkg_upgrade_all()
+            bpy.ops.extensions.package_upgrade_all()
         except RuntimeError:
             return False  # The error will have been printed.
         return True
@@ -303,13 +308,13 @@ class subcmd_pkg:
 
         import bpy
         for repo_index, pkg_id in repos_and_packages:
-            bpy.ops.bl_pkg.pkg_mark_set(
+            bpy.ops.extensions.package_mark_set(
                 repo_index=repo_index,
                 pkg_id=pkg_id,
             )
 
         try:
-            bpy.ops.bl_pkg.pkg_install_marked(enable_on_install=enable_on_install)
+            bpy.ops.extensions.package_install_marked(enable_on_install=enable_on_install)
         except RuntimeError:
             return False  # The error will have been printed.
 
@@ -334,10 +339,10 @@ class subcmd_pkg:
 
         import bpy
         for repo_index, pkg_id in repos_and_packages:
-            bpy.ops.bl_pkg.pkg_mark_set(repo_index=repo_index, pkg_id=pkg_id)
+            bpy.ops.extensions.package_mark_set(repo_index=repo_index, pkg_id=pkg_id)
 
         try:
-            bpy.ops.bl_pkg.pkg_uninstall_marked()
+            bpy.ops.extensions.package_uninstall_marked()
         except RuntimeError:
             return False  # The error will have been printed.
 
@@ -360,14 +365,14 @@ class subcmd_pkg:
         filepath = os.path.abspath(filepath)
 
         try:
-            bpy.ops.bl_pkg.pkg_install_files(
+            bpy.ops.extensions.package_install_files(
                 filepath=filepath,
                 repo=repo_id,
                 enable_on_install=enable_on_install,
             )
         except RuntimeError:
             return False  # The error will have been printed.
-        except BaseException as ex:
+        except Exception as ex:
             sys.stderr.write(str(ex))
             sys.stderr.write("\n")
 

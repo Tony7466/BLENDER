@@ -637,6 +637,12 @@ typedef struct bUserExtensionRepo {
   char module[48];
 
   /**
+   * Secret access token for remote repositories (allocated).
+   * Only use when #USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN is set.
+   */
+  char *access_token;
+
+  /**
    * The "local" directory where extensions are stored.
    * When unset, use `{BLENDER_USER_EXTENSIONS}/{bUserExtensionRepo::module}`.
    */
@@ -654,6 +660,7 @@ typedef enum eUserExtensionRepo_Flag {
   USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
   USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL = 1 << 3,
   USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP = 1 << 4,
+  USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN = 1 << 5,
 } eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
@@ -972,10 +979,11 @@ typedef struct UserDef {
   /** #eGPUBackendType */
   short gpu_backend;
 
+  /** Max number of parallel shader compilation subprocesses. */
+  short max_shader_compilation_subprocesses;
+
   /** Number of samples for FPS display calculations. */
   short playback_fps_samples;
-
-  char _pad7[2];
 
   /** Private, defaults to 20 for 72 DPI setting. */
   short widget_unit;
@@ -1064,7 +1072,7 @@ typedef struct UserDef {
   /** Pie menu distance from center before a direction is set. */
   short pie_menu_threshold;
 
-  short _pad6[2];
+  int sequencer_editor_flag; /* eUserpref_SeqEditorFlags */
 
   char factor_display_type;
 
@@ -1147,7 +1155,7 @@ typedef enum eUserPref_Flag {
   USER_FLAG_UNUSED_6 = (1 << 6), /* cleared */
   USER_FLAG_UNUSED_7 = (1 << 7), /* cleared */
   USER_MAT_ON_OB = (1 << 8),
-  USER_FLAG_UNUSED_9 = (1 << 9), /* cleared */
+  USER_INTERNET_ALLOW = (1 << 9),
   USER_DEVELOPER_UI = (1 << 10),
   USER_TOOLTIPS = (1 << 11),
   USER_TWOBUTTONMOUSE = (1 << 12),
@@ -1311,6 +1319,7 @@ typedef enum eUserpref_StatusBar_Flag {
   STATUSBAR_SHOW_STATS = (1 << 2),
   STATUSBAR_SHOW_VERSION = (1 << 3),
   STATUSBAR_SHOW_SCENE_DURATION = (1 << 4),
+  STATUSBAR_SHOW_EXTENSIONS_UPDATES = (1 << 5),
 } eUserpref_StatusBar_Flag;
 
 /**
@@ -1558,6 +1567,10 @@ typedef enum eUserpref_SeqProxySetup {
   USER_SEQ_PROXY_SETUP_MANUAL = 0,
   USER_SEQ_PROXY_SETUP_AUTOMATIC = 1,
 } eUserpref_SeqProxySetup;
+
+typedef enum eUserpref_SeqEditorFlags {
+  USER_SEQ_ED_SIMPLE_TWEAKING = (1 << 0),
+} eUserpref_SeqEditorFlags;
 
 /* Locale Ids. Auto will try to get local from OS. Our default is English though. */
 /** #UserDef.language */

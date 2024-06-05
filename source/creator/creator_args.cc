@@ -706,6 +706,11 @@ static void print_help(bArgs *ba, bool all)
   BLI_args_print_arg_doc(ba, "--addons");
 
   PRINT("\n");
+  PRINT("Network Options:\n");
+  BLI_args_print_arg_doc(ba, "--online-mode");
+  BLI_args_print_arg_doc(ba, "--offline-mode");
+
+  PRINT("\n");
   PRINT("Logging Options:\n");
   BLI_args_print_arg_doc(ba, "--log");
   BLI_args_print_arg_doc(ba, "--log-level");
@@ -947,6 +952,27 @@ static int arg_handle_python_set(int /*argc*/, const char ** /*argv*/, void *dat
     G.f &= ~G_FLAG_SCRIPT_AUTOEXEC;
   }
   G.f |= G_FLAG_SCRIPT_OVERRIDE_PREF;
+  return 0;
+}
+
+static const char arg_handle_internet_allow_set_doc_online[] =
+    "\n\t"
+    "Allow internet access, overriding the preference.";
+static const char arg_handle_internet_allow_set_doc_offline[] =
+    "\n\t"
+    "Disallow internet access, overriding the preference.";
+
+static int arg_handle_internet_allow_set(int /*argc*/, const char ** /*argv*/, void *data)
+{
+  G.f &= ~G_FLAG_INTERNET_OVERRIDE_PREF_ANY;
+  if (bool(data)) {
+    G.f |= G_FLAG_INTERNET_ALLOW;
+    G.f |= G_FLAG_INTERNET_OVERRIDE_PREF_ONLINE;
+  }
+  else {
+    G.f &= ~G_FLAG_INTERNET_ALLOW;
+    G.f |= G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE;
+  }
   return 0;
 }
 
@@ -1650,17 +1676,26 @@ static int arg_handle_start_with_console(int /*argc*/, const char ** /*argv*/, v
 static bool arg_handle_extension_registration(const bool do_register, const bool all_users)
 {
   /* Logic runs in #main_args_handle_registration. */
+#  ifdef WIN32
+  /* This process has been launched with the permissions needed
+   * to register or unregister, so just do it now and then exit. */
+  if (do_register) {
+    BLI_windows_register_blend_extension(all_users);
+  }
+  else {
+    BLI_windows_unregister_blend_extension(all_users);
+  }
+  TerminateProcess(GetCurrentProcess(), 0);
+  return true;
+#  else
   char *error_msg = nullptr;
-  bool result = WM_platform_assosiate_set(do_register, all_users, &error_msg);
+  bool result = WM_platform_associate_set(do_register, all_users, &error_msg);
   if (error_msg) {
     fprintf(stderr, "Error: %s\n", error_msg);
     MEM_freeN(error_msg);
   }
-
-#  ifdef WIN32
-  TerminateProcess(GetCurrentProcess(), 0);
-#  endif
   return result;
+#  endif
 }
 
 static const char arg_handle_register_extension_doc[] =
@@ -2537,6 +2572,11 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
   BLI_args_add(ba, "-y", "--enable-autoexec", CB_EX(arg_handle_python_set, enable), (void *)true);
   BLI_args_add(
       ba, "-Y", "--disable-autoexec", CB_EX(arg_handle_python_set, disable), (void *)false);
+
+  BLI_args_add(
+      ba, nullptr, "--offline-mode", CB_EX(arg_handle_internet_allow_set, offline), (void *)false);
+  BLI_args_add(
+      ba, nullptr, "--online-mode", CB_EX(arg_handle_internet_allow_set, online), (void *)true);
 
   BLI_args_add(
       ba, nullptr, "--disable-crash-handler", CB(arg_handle_crash_handler_disable), nullptr);

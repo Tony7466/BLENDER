@@ -613,35 +613,6 @@ static void node_composit_buts_combsep_color(uiLayout *layout, bContext * /*C*/,
   }
 }
 
-static void node_composit_backdrop_viewer(
-    SpaceNode *snode, ImBuf *backdrop, bNode *node, int x, int y)
-{
-  //  node_composit_backdrop_canvas(snode, backdrop, node, x, y);
-  if (node->custom1 == 0) {
-    const float backdropWidth = backdrop->x;
-    const float backdropHeight = backdrop->y;
-    const float cx = x + snode->zoom * backdropWidth * node->custom3;
-    const float cy = y + snode->zoom * backdropHeight * node->custom4;
-    const float cross_size = 12 * U.pixelsize;
-
-    GPUVertFormat *format = immVertexFormat();
-    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-    immUniformColor3f(1.0f, 1.0f, 1.0f);
-
-    immBegin(GPU_PRIM_LINES, 4);
-    immVertex2f(pos, cx - cross_size, cy - cross_size);
-    immVertex2f(pos, cx + cross_size, cy + cross_size);
-    immVertex2f(pos, cx + cross_size, cy - cross_size);
-    immVertex2f(pos, cx - cross_size, cy + cross_size);
-    immEnd();
-
-    immUnbindProgram();
-  }
-}
-
 static void node_composit_backdrop_boxmask(
     SpaceNode *snode, ImBuf *backdrop, bNode *node, int x, int y)
 {
@@ -864,9 +835,6 @@ static void node_composit_set_butfunc(blender::bke::bNodeType *ntype)
     case CMP_NODE_CRYPTOMATTE_LEGACY:
       ntype->draw_buttons = node_composit_buts_cryptomatte_legacy;
       ntype->draw_buttons_ex = node_composit_buts_cryptomatte_legacy_ex;
-      break;
-    case CMP_NODE_VIEWER:
-      ntype->draw_backdrop = node_composit_backdrop_viewer;
       break;
   }
 }
@@ -1305,6 +1273,23 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
   return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
+static void draw_node_socket_without_value(uiLayout *layout, bNodeSocket *sock, const char *text)
+{
+  if (sock->runtime->declaration) {
+    if (sock->runtime->declaration->socket_name_rna) {
+      uiLayoutSetEmboss(layout, UI_EMBOSS_NONE);
+      uiItemR(layout,
+              const_cast<PointerRNA *>(&sock->runtime->declaration->socket_name_rna->owner),
+              sock->runtime->declaration->socket_name_rna->property_name.c_str(),
+              UI_ITEM_NONE,
+              "",
+              ICON_NONE);
+      return;
+    }
+  }
+  uiItemL(layout, text, ICON_NONE);
+}
+
 static void std_node_socket_draw(
     bContext *C, uiLayout *layout, PointerRNA *ptr, PointerRNA *node_ptr, const char *text)
 {
@@ -1322,7 +1307,7 @@ static void std_node_socket_draw(
   if ((sock->in_out == SOCK_OUT) || (sock->flag & SOCK_HIDE_VALUE) ||
       ((sock->flag & SOCK_IS_LINKED) && !all_links_muted(*sock)))
   {
-    node_socket_button_label(C, layout, ptr, node_ptr, text);
+    draw_node_socket_without_value(layout, sock, text);
     return;
   }
 
@@ -1474,7 +1459,7 @@ static void std_node_socket_draw(
       break;
     }
     default:
-      node_socket_button_label(C, layout, ptr, node_ptr, text);
+      draw_node_socket_without_value(layout, sock, text);
       break;
   }
 }
@@ -1547,7 +1532,7 @@ static void std_node_socket_interface_draw(ID *id,
 
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(id);
   if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {
-    if (ELEM(type, SOCK_INT, SOCK_VECTOR)) {
+    if (ELEM(type, SOCK_INT, SOCK_VECTOR, SOCK_MATRIX)) {
       uiItemR(col, &ptr, "default_input", DEFAULT_FLAGS, nullptr, ICON_NONE);
     }
   }
@@ -1727,8 +1712,10 @@ static float2 socket_link_connection_location(const bNode &node,
 {
   const float2 socket_location = socket.runtime->location;
   if (socket.is_multi_input() && socket.is_input() && !(node.flag & NODE_HIDDEN)) {
+    /* For internal link case, handle number of links as at least 1. */
+    const int clamped_total_inputs = math::max<int>(1, socket.runtime->total_inputs);
     return node_link_calculate_multi_input_position(
-        socket_location, link.multi_input_sort_id, socket.runtime->total_inputs);
+        socket_location, link.multi_input_sort_id, clamped_total_inputs);
   }
   return socket_location;
 }
@@ -2323,7 +2310,7 @@ void node_draw_link(const bContext &C,
 
   if (link.flag & NODE_LINK_VALID) {
     /* special indicated link, on drop-node */
-    if (link.flag & NODE_LINKFLAG_HILITE) {
+    if (link.flag & NODE_LINK_INSERT_TARGET && !(link.flag & NODE_LINK_INSERT_TARGET_INVALID)) {
       th_col1 = th_col2 = TH_ACTIVE;
     }
     else if (link.flag & NODE_LINK_MUTED) {
@@ -2334,15 +2321,6 @@ void node_draw_link(const bContext &C,
     /* Invalid link. */
     th_col1 = th_col2 = th_col3 = TH_REDALERT;
     // th_col3 = -1; /* no shadow */
-  }
-
-  /* Links from field to non-field sockets are not allowed. */
-  if (snode.edittree->type == NTREE_GEOMETRY) {
-    if ((link.fromsock && link.fromsock->display_shape == SOCK_DISPLAY_SHAPE_DIAMOND) &&
-        (link.tosock && link.tosock->display_shape == SOCK_DISPLAY_SHAPE_CIRCLE))
-    {
-      th_col1 = th_col2 = th_col3 = TH_REDALERT;
-    }
   }
 
   node_draw_link_bezier(C, v2d, snode, link, th_col1, th_col2, th_col3, selected);

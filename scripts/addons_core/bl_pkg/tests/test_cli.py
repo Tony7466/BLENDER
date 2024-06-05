@@ -37,8 +37,7 @@ REMOTE_REPO_HAS_JSON_IMPLIED = True
 
 PKG_EXT = ".zip"
 
-# PKG_REPO_LIST_FILENAME = "bl_ext_repo.json"
-PKG_MANIFEST_FILENAME = "bl_ext_pkg_manifest.json"
+# PKG_REPO_LIST_FILENAME = "index.json"
 
 PKG_MANIFEST_FILENAME_TOML = "blender_manifest.toml"
 
@@ -79,6 +78,29 @@ STATUS_NON_ERROR = {'STATUS', 'PROGRESS'}
 # -----------------------------------------------------------------------------
 # Generic Utilities
 #
+
+def remote_url_params_strip(url: str) -> str:
+    import urllib
+    # Parse the URL to get its scheme, domain, and query parameters.
+    parsed_url = urllib.parse.urlparse(url)
+
+    # Combine the scheme, netloc, path without any other parameters, stripping the URL.
+    new_url = urllib.parse.urlunparse((
+        parsed_url.scheme,
+        parsed_url.netloc,
+        parsed_url.path,
+        None,  # `parsed_url.params,`
+        None,  # `parsed_url.query,`
+        None,  # `parsed_url.fragment,`
+    ))
+
+    return new_url
+
+
+def path_to_url(path: str) -> str:
+    from urllib.parse import urljoin
+    from urllib.request import pathname2url
+    return urljoin('file:', pathname2url(path))
 
 
 def rmdir_contents(directory: str) -> None:
@@ -288,11 +310,12 @@ class TestCLI_WithRepo(unittest.TestCase):
 
         if USE_HTTP:
             if REMOTE_REPO_HAS_JSON_IMPLIED:
-                cls.dirpath_url = "http://localhost:{:d}/bl_ext_repo.json".format(HTTP_PORT)
+                cls.dirpath_url = "http://localhost:{:d}/index.json".format(HTTP_PORT)
             else:
                 cls.dirpath_url = "http://localhost:{:d}".format(HTTP_PORT)
         else:
-            cls.dirpath_url = cls.dirpath
+            # Even local paths must URL syntax: `file://`.
+            cls.dirpath_url = path_to_url(cls.dirpath)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -336,6 +359,7 @@ class TestCLI_WithRepo(unittest.TestCase):
         )
 
     def test_client_install_and_uninstall(self) -> None:
+        stripped_url = remote_url_params_strip(self.dirpath_url)
         with tempfile.TemporaryDirectory(dir=TEMP_DIR_LOCAL) as temp_dir_local:
             # TODO: only run once.
             self.test_server_generate()
@@ -347,9 +371,9 @@ class TestCLI_WithRepo(unittest.TestCase):
             ], exclude_types={"PROGRESS"})
             self.assertEqual(
                 output_json, [
-                    ('STATUS', 'Sync repo: ' + self.dirpath_url),
-                    ('STATUS', 'Sync downloading remote data'),
-                    ('STATUS', 'Sync complete: ' + self.dirpath_url),
+                    ('STATUS', "Checking repository \"{:s}\" for updates...".format(stripped_url)),
+                    ('STATUS', "Refreshing extensions list for \"{:s}\"...".format(stripped_url)),
+                    ('STATUS', "Extensions list for \"{:s}\" updated".format(stripped_url)),
                 ]
             )
 

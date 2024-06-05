@@ -40,18 +40,14 @@ def paths():
     import os
 
     paths = []
-    for p in _bpy.utils.script_paths():
-        # Bundled add-ons.
-        addon_dir = os.path.join(p, "addons_core")
+    for i, p in enumerate(_bpy.utils.script_paths()):
+        # Bundled add-ons are always first.
+        # Since this isn't officially part of the API, print an error so this never silently fails.
+        addon_dir = os.path.join(p, "addons_core" if i == 0 else "addons")
         if os.path.isdir(addon_dir):
             paths.append(addon_dir)
-            # The system path if for core add-ons only,
-            # if the `addons` directory exists it's likely from an old "make install" target.
-            continue
-        # User defined add-ons, custom scripts directory.
-        addon_dir = os.path.join(p, "addons")
-        if os.path.isdir(addon_dir):
-            paths.append(addon_dir)
+        elif i == 0:
+            print("Internal error:", addon_dir, "was not found!")
     return paths
 
 
@@ -82,7 +78,7 @@ def _paths_with_extension_repos():
     return addon_paths
 
 
-def _fake_module(mod_name, mod_path, speedy=True, force_support=None):
+def _fake_module(mod_name, mod_path, speedy=True):
     global error_encoding
     import os
 
@@ -90,7 +86,7 @@ def _fake_module(mod_name, mod_path, speedy=True, force_support=None):
         print("fake_module", mod_path, mod_name)
 
     if mod_name.startswith(_ext_base_pkg_idname_with_dot):
-        return _fake_module_from_extension(mod_name, mod_path, force_support=force_support)
+        return _fake_module_from_extension(mod_name, mod_path)
 
     import ast
     ModuleType = type(ast)
@@ -162,9 +158,6 @@ def _fake_module(mod_name, mod_path, speedy=True, force_support=None):
             traceback.print_exc()
             return None
 
-        if force_support is not None:
-            mod.bl_info["support"] = force_support
-
         return mod
     else:
         print("Warning: add-on missing 'bl_info', this can cause poor performance!:", repr(mod_path))
@@ -181,14 +174,6 @@ def modules_refresh(*, module_cache=addons_fake_modules):
     modules_stale = set(module_cache.keys())
 
     for path, pkg_id in _paths_with_extension_repos():
-
-        # Force all user contributed add-ons to be 'TESTING'.
-
-        # TODO: remove this option entirely.
-        force_support = None
-        # Was part of support `addons_contrib`.
-        # `force_support = 'TESTING' if ((not pkg_id) and path.endswith("addons_contrib")) else None`
-
         for mod_name, mod_path in _bpy.path.module_names(path, package=pkg_id):
             modules_stale.discard(mod_name)
             mod = module_cache.get(mod_name)
@@ -214,7 +199,6 @@ def modules_refresh(*, module_cache=addons_fake_modules):
                 mod = _fake_module(
                     mod_name,
                     mod_path,
-                    force_support=force_support,
                 )
                 if mod:
                     module_cache[mod_name] = mod
@@ -672,7 +656,12 @@ def module_bl_info(mod, *, info_basis=None):
 # -----------------------------------------------------------------------------
 # Extension Utilities
 
-def _bl_info_from_extension(mod_name, mod_path, force_support=None):
+def _version_int_left_digits(x):
+    # Parse as integer until the first non-digit.
+    return int(x[:next((i for i, c in enumerate(x) if not c.isdigit()), len(x))] or "0")
+
+
+def _bl_info_from_extension(mod_name, mod_path):
     # Extract the `bl_info` from an extensions manifest.
     # This is returned as a module which has a `bl_info` variable.
     # When support for non-extension add-ons is dropped (Blender v5.0 perhaps)
@@ -695,7 +684,7 @@ def _bl_info_from_extension(mod_name, mod_path, force_support=None):
 
     # This isn't a full validation which happens on package install/update.
     if (value := data.get("name", None)) is None:
-        print("Error: missing \"name\" from in", filepath_toml)
+        print("Error: missing \"name\" in", filepath_toml)
         return None, filepath_toml
     if type(value) is not str:
         print("Error: \"name\" is not a string in", filepath_toml)
@@ -703,15 +692,23 @@ def _bl_info_from_extension(mod_name, mod_path, force_support=None):
     bl_info["name"] = value
 
     if (value := data.get("version", None)) is None:
-        print("Error: missing \"version\" from in", filepath_toml)
+        print("Error: missing \"version\" in", filepath_toml)
         return None, filepath_toml
     if type(value) is not str:
         print("Error: \"version\" is not a string in", filepath_toml)
         return None, filepath_toml
+    try:
+        value = tuple(
+            (int if i < 2 else _version_int_left_digits)(x)
+            for i, x in enumerate(value.split(".", 2))
+        )
+    except BaseException as ex:
+        print("Error: \"version\" is not a semantic version (X.Y.Z) in ", filepath_toml)
+        return None, filepath_toml
     bl_info["version"] = value
 
     if (value := data.get("blender_version_min", None)) is None:
-        print("Error: missing \"blender_version_min\" from in", filepath_toml)
+        print("Error: missing \"blender_version_min\" in", filepath_toml)
         return None, filepath_toml
     if type(value) is not str:
         print("Error: \"blender_version_min\" is not a string in", filepath_toml)
@@ -723,8 +720,16 @@ def _bl_info_from_extension(mod_name, mod_path, force_support=None):
         return None, filepath_toml
     bl_info["blender"] = value
 
+    # Only print warnings since description is not a mandatory field.
+    if (value := data.get("tagline", None)) is None:
+        print("Warning: missing \"tagline\" in", filepath_toml)
+    elif type(value) is not str:
+        print("Warning: \"tagline\" is not a string", filepath_toml)
+    else:
+        bl_info["description"] = value
+
     if (value := data.get("maintainer", None)) is None:
-        print("Error: missing \"author\" from in", filepath_toml)
+        print("Error: missing \"author\" in", filepath_toml)
         return None, filepath_toml
     if type(value) is not str:
         print("Error: \"maintainer\" is not a string", filepath_toml)
@@ -733,15 +738,13 @@ def _bl_info_from_extension(mod_name, mod_path, force_support=None):
 
     bl_info["category"] = "Development"  # Dummy, will be removed.
 
-    if force_support is not None:
-        bl_info["support"] = force_support
     return bl_info, filepath_toml
 
 
-def _fake_module_from_extension(mod_name, mod_path, force_support=None):
+def _fake_module_from_extension(mod_name, mod_path):
     import os
 
-    bl_info, filepath_toml = _bl_info_from_extension(mod_name, mod_path, force_support=force_support)
+    bl_info, filepath_toml = _bl_info_from_extension(mod_name, mod_path)
     if bl_info is None:
         return None
 
