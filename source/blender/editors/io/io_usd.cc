@@ -387,6 +387,17 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
     uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_export_rigging", true, IFACE_("Rigging"))) {
+    uiLayout *col = uiLayoutColumn(panel, false);
+
+    uiItemR(col, ptr, "export_shapekeys", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "export_armatures", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+    uiLayout *row = uiLayoutRow(col, true);
+    uiItemR(row, ptr, "only_deform_bones", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiLayoutSetActive(row, RNA_boolean_get(ptr, "export_armatures"));
+  }
+
   {
     PanelLayout panel = uiLayoutPanel(C, layout, "USD_export_materials", true);
     uiLayoutSetPropSep(panel.header, false);
@@ -421,17 +432,6 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
         uiItemR(col2, ptr, "usdz_downscale_custom_size", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
     }
-  }
-
-  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_export_rigging", true, IFACE_("Rigging"))) {
-    uiLayout *col = uiLayoutColumn(panel, false);
-
-    uiItemR(col, ptr, "export_shapekeys", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "export_armatures", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-    uiLayout *row = uiLayoutRow(col, true);
-    uiItemR(row, ptr, "only_deform_bones", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiLayoutSetActive(row, RNA_boolean_get(ptr, "export_armatures"));
   }
 
   if (uiLayout *panel = uiLayoutPanel(
@@ -939,10 +939,8 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
     uiItemR(col, ptr, "import_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "import_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "import_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "import_points", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_shapes", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     col = uiLayoutColumnWithHeading(panel, true, IFACE_("USD Purpose"));
     uiItemR(col, ptr, "import_render", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -960,6 +958,12 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
 
     col = uiLayoutColumn(panel, false);
     uiItemR(col, ptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_rigging", true, IFACE_("Rigging"))) {
+    uiLayout *col = uiLayoutColumn(panel, false);
+    uiItemR(col, ptr, "import_blendshapes", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "import_skeletons", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   if (uiLayout *panel = uiLayoutPanel(C, layout, "USD_import_material", true, IFACE_("Materials")))
@@ -1048,9 +1052,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "import_materials", true, "Materials", "");
   RNA_def_boolean(ot->srna, "import_meshes", true, "Meshes", "");
   RNA_def_boolean(ot->srna, "import_volumes", true, "Volumes", "");
-  RNA_def_boolean(ot->srna, "import_shapes", true, "Shapes", "");
-  RNA_def_boolean(ot->srna, "import_skeletons", true, "Skeletons", "");
-  RNA_def_boolean(ot->srna, "import_blendshapes", true, "Blend Shapes", "");
+  RNA_def_boolean(ot->srna, "import_shapes", true, "USD Shapes", "");
+  RNA_def_boolean(ot->srna, "import_skeletons", true, "Armatures", "");
+  RNA_def_boolean(ot->srna, "import_blendshapes", true, "Shape Keys", "");
   RNA_def_boolean(ot->srna, "import_points", true, "Point Clouds", "");
 
   RNA_def_boolean(ot->srna,
