@@ -267,6 +267,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool allow_unicode = false;
 #  endif
 
+  const bool convert_to_cm = RNA_boolean_get(op->ptr, "convert_to_cm");
+
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
@@ -308,6 +310,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       usdz_downscale_size,
       usdz_downscale_custom_size,
       allow_unicode,
+      convert_to_cm,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -376,6 +379,7 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
     uiItemR(col, ptr, "export_global_forward_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "export_global_up_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
+  uiItemR(col, ptr, "convert_to_cm", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -713,6 +717,12 @@ void WM_OT_usd_export(wmOperatorType *ot)
               "Custom size for downscaling exported textures",
               128,
               8192);
+
+  RNA_def_boolean(ot->srna,
+                  "convert_to_cm",
+                  false,
+                  "Convert to Centimeters",
+                  "Set the USD units to centimeters and scale the scene to convert from meters");
 }
 
 /* ====== USD Import ====== */

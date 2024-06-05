@@ -42,7 +42,9 @@ pxr::UsdGeomXformable USDTransformWriter::create_xformable() const
 
 bool USDTransformWriter::should_apply_root_xform(const HierarchyContext &context) const
 {
-  if (!usd_export_context_.export_params.convert_orientation) {
+  if ((!usd_export_context_.export_params.convert_orientation ||
+       usd_export_context_.export_params.convert_to_cm))
+  {
     return false;
   }
 
@@ -90,6 +92,12 @@ void USDTransformWriter::do_write(HierarchyContext &context)
       transpose_m3(mrot);
       copy_m4_m3(mat, mrot);
       mul_m4_m4m4(matrix_world, mat, context.matrix_world);
+    }
+
+    if (usd_export_context_.export_params.convert_to_cm) {
+      float scale_mat[4][4];
+      scale_m4_fl(scale_mat, 100.0f);
+      mul_m4_m4m4(matrix_world, scale_mat, matrix_world);
     }
 
     mul_m4_m4m4(parent_relative_matrix, context.parent_matrix_inv_world, matrix_world);

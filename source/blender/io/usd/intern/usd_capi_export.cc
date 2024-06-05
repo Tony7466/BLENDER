@@ -16,6 +16,7 @@
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdGeom/metrics.h>
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
@@ -151,6 +152,10 @@ static void ensure_root_prim(pxr::UsdStageRefPtr stage, const USDExportParams &p
     return;
   }
 
+  if (!(params.convert_orientation || params.convert_to_cm)) {
+    return;
+  }
+
   pxr::UsdGeomXform root_xf = pxr::UsdGeomXform::Define(stage,
                                                         pxr::SdfPath(params.root_prim_path));
 
@@ -162,6 +167,10 @@ static void ensure_root_prim(pxr::UsdStageRefPtr stage, const USDExportParams &p
 
   if (!xf_api) {
     return;
+  }
+
+  if (params.convert_to_cm) {
+    xf_api.SetScale(pxr::GfVec3f(100.0f));
   }
 
   if (params.convert_orientation) {
@@ -382,6 +391,10 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   }
 
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, upAxis);
+
+  double meters_per_unit = params.convert_to_cm ? pxr::UsdGeomLinearUnits::centimeters :
+                                                  pxr::UsdGeomLinearUnits::meters;
+  pxr::UsdGeomSetStageMetersPerUnit(usd_stage, meters_per_unit);
 
   ensure_root_prim(usd_stage, params);
 

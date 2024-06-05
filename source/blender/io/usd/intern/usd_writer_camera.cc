@@ -57,6 +57,8 @@ static void camera_sensor_size_for_render(const Camera *camera,
 
 void USDCameraWriter::do_write(HierarchyContext &context)
 {
+  const float unit_scale = usd_export_context_.export_params.convert_to_cm ? 100.0f : 1.0f;
+
   pxr::UsdTimeCode timecode = get_export_time_code();
   pxr::UsdGeomCamera usd_camera = pxr::UsdGeomCamera::Define(usd_export_context_.stage,
                                                              usd_export_context_.usd_path);
@@ -74,27 +76,29 @@ void USDCameraWriter::do_write(HierarchyContext &context)
    * tenth_unit_to_millimeters = 1000 * unit_to_tenth_unit
    *                           = 100 * stage_meters_per_unit
    */
-  const float tenth_unit_to_mm = 100.0f * scene->unit.scale_length;
+  const float tenth_unit_to_mm = unit_scale * 0.01f;
 
   float sensor_size, aperture_x, aperture_y;
   camera_sensor_size_for_render(camera, &scene->r, &sensor_size, &aperture_x, &aperture_y);
 
-  usd_camera.CreateFocalLengthAttr().Set(camera->lens / tenth_unit_to_mm, timecode);
-  usd_camera.CreateHorizontalApertureAttr().Set(aperture_x / tenth_unit_to_mm, timecode);
-  usd_camera.CreateVerticalApertureAttr().Set(aperture_y / tenth_unit_to_mm, timecode);
+  usd_camera.CreateFocalLengthAttr().Set(camera->lens * tenth_unit_to_mm, timecode);
+  usd_camera.CreateHorizontalApertureAttr().Set(aperture_x * tenth_unit_to_mm, timecode);
+  usd_camera.CreateVerticalApertureAttr().Set(aperture_y * tenth_unit_to_mm, timecode);
   usd_camera.CreateHorizontalApertureOffsetAttr().Set(
       sensor_size * camera->shiftx / tenth_unit_to_mm, timecode);
   usd_camera.CreateVerticalApertureOffsetAttr().Set(
       sensor_size * camera->shifty / tenth_unit_to_mm, timecode);
 
   usd_camera.CreateClippingRangeAttr().Set(
-      pxr::VtValue(pxr::GfVec2f(camera->clip_start, camera->clip_end)), timecode);
+      pxr::VtValue(pxr::GfVec2f(camera->clip_start * unit_scale, camera->clip_end * unit_scale)),
+      timecode);
 
   /* Write DoF-related attributes. */
   if (camera->dof.flag & CAM_DOF_ENABLED) {
     usd_camera.CreateFStopAttr().Set(camera->dof.aperture_fstop, timecode);
 
-    float focus_distance = BKE_camera_object_dof_distance(context.object);
+    float focus_distance = scene->unit.scale_length *
+                           BKE_camera_object_dof_distance(context.object) * unit_scale;
     usd_camera.CreateFocusDistanceAttr().Set(focus_distance, timecode);
   }
 
