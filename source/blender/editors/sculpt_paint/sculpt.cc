@@ -5469,7 +5469,7 @@ void flush_update_done(const bContext *C, Object &ob, UpdateType update_type)
   }
 
   if (update_type == UpdateType::Position) {
-    bke::pbvh::reset_bounds_orig(*ss.pbvh);
+    bke::pbvh::store_bounds_orig(*ss.pbvh);
 
     /* Coordinates were modified, so fake neighbors are not longer valid. */
     SCULPT_fake_neighbors_free(ob);

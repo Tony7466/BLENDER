@@ -1335,7 +1335,7 @@ void update_bounds(PBVH &pbvh)
   }
 }
 
-void reset_bounds_orig(PBVH &pbvh)
+void store_bounds_orig(PBVH &pbvh)
 {
   MutableSpan<PBVHNode> nodes = pbvh.nodes;
   threading::parallel_for(nodes.index_range(), 256, [&](const IndexRange range) {
@@ -2823,7 +2823,7 @@ void BKE_pbvh_vert_coords_apply(PBVH &pbvh, const Span<float3> vert_positions)
     }
 
     update_bounds(pbvh);
-    reset_bounds_orig(pbvh);
+    store_bounds_orig(pbvh);
   }
 }
 

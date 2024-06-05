@@ -366,7 +366,7 @@ void update_bounds(PBVH &pbvh);
  * are stored to optimize the BVH traversal for original coordinates enabled by various "use
  * original" arguments in the PBVH API.
  */
-void reset_bounds_orig(PBVH &pbvh);
+void store_bounds_orig(PBVH &pbvh);
 
 void update_mask(PBVH &pbvh);
 void update_visibility(PBVH &pbvh);
