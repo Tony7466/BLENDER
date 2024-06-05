@@ -12,6 +12,7 @@
 
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_time.h"
@@ -66,6 +67,8 @@ struct DRWShaderCompiler {
 static void drw_deferred_shader_compilation_exec(void *custom_data,
                                                  wmJobWorkerStatus *worker_status)
 {
+  using namespace blender;
+
   GPU_render_begin();
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
   void *system_gpu_context = comp->system_gpu_context;
@@ -80,8 +83,13 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     GPU_context_main_lock();
   }
 
+  const bool use_parallel_compilation = GPU_use_parallel_compilation();
+
   WM_system_gpu_context_activate(system_gpu_context);
   GPU_context_active_set(blender_gpu_context);
+
+  Vector<GPUMaterial *> next_batch;
+  Map<BatchHandle, Vector<GPUMaterial *>> batches;
 
   while (true) {
     if (worker_status->stop != 0) {
@@ -96,14 +104,38 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     if (mat) {
       /* Avoid another thread freeing the material mid compilation. */
       GPU_material_acquire(mat);
+      MEM_freeN(link);
     }
     BLI_spin_unlock(&comp->list_lock);
 
     if (mat) {
-      /* Do the compilation. */
-      GPU_material_compile(mat);
-      GPU_material_release(mat);
-      MEM_freeN(link);
+      if (use_parallel_compilation) {
+        next_batch.append(mat);
+      }
+      else {
+        GPU_material_compile(mat);
+        GPU_material_release(mat);
+      }
+    }
+    else if (!next_batch.is_empty()) {
+      BatchHandle batch_handle = GPU_material_batch_compile(next_batch);
+      batches.add(batch_handle, next_batch);
+      next_batch.clear();
+    }
+    else if (!batches.is_empty()) {
+      Vector<BatchHandle> ready_handles;
+      for (BatchHandle handle : batches.keys()) {
+        if (GPU_material_batch_is_ready(handle)) {
+          ready_handles.append(handle);
+        }
+      }
+      for (BatchHandle handle : ready_handles) {
+        Vector<GPUMaterial *> batch = batches.pop(handle);
+        GPU_material_batch_finalize(handle, batch);
+        for (GPUMaterial *mat : batch) {
+          GPU_material_release(mat);
+        }
+      }
     }
     else {
       /* Check for Material Optimization job once there are no more
@@ -111,7 +143,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       BLI_spin_lock(&comp->list_lock);
       /* Pop tail because it will be less likely to lock the main thread
        * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-      link = (LinkData *)BLI_poptail(&comp->optimize_queue);
+      LinkData *link = (LinkData *)BLI_poptail(&comp->optimize_queue);
       GPUMaterial *optimize_mat = link ? (GPUMaterial *)link->data : nullptr;
       if (optimize_mat) {
         /* Avoid another thread freeing the material during optimization. */
@@ -133,6 +165,14 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
 
     if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
       GPU_flush();
+    }
+  }
+
+  for (BatchHandle handle : batches.keys()) {
+    Vector<GPUMaterial *> &batch = batches.lookup(handle);
+    GPU_material_batch_finalize(handle, batch);
+    for (GPUMaterial *mat : batch) {
+      GPU_material_release(mat);
     }
   }
 

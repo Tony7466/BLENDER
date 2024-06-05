@@ -31,6 +31,9 @@ void GPU_pass_acquire(GPUPass *pass);
 void GPU_pass_release(GPUPass *pass);
 bool GPU_pass_should_optimize(GPUPass *pass);
 
+GPUShaderCreateInfo *GPU_pass_get_info(GPUPass *pass, const char *shname);
+bool GPU_pass_set_shader(GPUPass *pass, GPUShader *shader);
+
 /* Module */
 
 void gpu_codegen_init();
