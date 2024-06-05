@@ -132,6 +132,9 @@ struct TreeDrawContext {
   blender::Map<bNodeInstanceKey, blender::timeit::Nanoseconds>
       *compositor_per_node_execution_time = nullptr;
 
+  /**
+   * Label for reroute nodes that is derived from upstream reroute nodes.
+   */
   blender::Map<const bNode *, blender::StringRefNull> reroute_auto_labels;
 };
 
@@ -2065,7 +2068,7 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
 /** Some elements of the node UI are hidden, when they get too small. */
 #define NODE_TREE_SCALE_SMALL 0.2f
 
-/* The node tree scales both with the view and with the UI. */
+/** The node tree scales both with the view and with the UI. */
 static float node_tree_view_scale(const SpaceNode &snode)
 {
   return (1.0f / snode.runtime->aspect) * UI_SCALE_FAC;
