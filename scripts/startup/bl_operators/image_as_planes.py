@@ -267,9 +267,9 @@ class MaterialProperties_MixIn:
     shader: EnumProperty(
         name="Shader",
         items=(
-            ('PRINCIPLED', "Principled", "Principled Shader"),
+            ('PRINCIPLED', "Principled", "Principled shader"),
             ('SHADELESS', "Shadeless", "Only visible to camera and reflections"),
-            ('EMISSION', "Emit", "Emission Shader"),
+            ('EMISSION', "Emission", "Emission shader"),
         ),
         default='PRINCIPLED',
         description="Node shader to use",
@@ -1103,7 +1103,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProp
 class IMAGE_OT_convert_to_mesh_plane(MaterialProperties_MixIn, TextureProperties_MixIn, Operator):
     """Convert selected reference images to textured mesh plane"""
     bl_idname = "image.convert_to_mesh_plane"
-    bl_label = "Convert Empty Image to Mesh Plane"
+    bl_label = "Convert Image Empty to Mesh Plane"
     bl_options = {'REGISTER', 'PRESET', 'UNDO'}
 
     name_from: EnumProperty(
