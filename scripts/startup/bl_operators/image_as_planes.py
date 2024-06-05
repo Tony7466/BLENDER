@@ -237,33 +237,33 @@ def center_in_camera(camera, ob, axis=(1, 1)):
     ob.location = location + offset
 
 
-def get_ref_object_space_coord(o):
-    size = o.empty_display_size
-    x,y = o.empty_image_offset
-    img = o.data
+def get_ref_object_space_coord(ob):
+    size = ob.empty_display_size
+    x,y = ob.empty_image_offset
+    img = ob.data
 
     res_x, res_y = img.size
     scaling = 1 / max(res_x, res_y)
 
     corners = [
-        Vector((0,0)),
-        Vector((res_x, 0)),
-        Vector((0, res_y)),
-        Vector((res_x, res_y)),
-        ]
+        (0, 0),
+        (res_x, 0),
+        (0, res_y),
+        (res_x, res_y),
+    ]
 
     obj_space_corners = []
     for co in corners:
-        nco_x = ((co.x + (x * res_x)) * size) * scaling
-        nco_y = ((co.y + (y * res_y)) * size) * scaling
-        obj_space_corners.append(Vector((nco_x, nco_y, 0)))
+        nco_x = ((co[0] + (x * res_x)) * size) * scaling
+        nco_y = ((co[1] + (y * res_y)) * size) * scaling
+        obj_space_corners.append((nco_x, nco_y, 0))
     return obj_space_corners
 
 
 # -----------------------------------------------------------------------------
 # Cycles/EEVEE utils
 
-class MaterialProperties:
+class MaterialProperties_MixIn:
     shader: EnumProperty(
         name="Shader",
         items=(
@@ -334,8 +334,33 @@ class MaterialProperties:
         description="Overwrite existing material with the same name",
     )
 
+    def draw_material_config(self, context):
+        # --- Material / Rendering Properties --- #
+        layout = self.layout
 
-class TextureProperties:
+        header, body = layout.panel("import_image_plane_material", default_closed=False)
+        header.label(text="Material")
+        if body:
+            body.prop(self, 'shader')
+            if self.shader == 'EMISSION':
+                body.prop(self, "emit_strength")
+
+            body.prop(self, 'blend_method')
+
+            body.prop(self, 'shadow_method')
+            if self.blend_method == 'BLEND':
+                body.prop(self, "show_transparent_back")
+
+            body.prop(self, "use_backface_culling")
+
+            engine = context.scene.render.engine
+            if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
+                body.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
+
+            body.prop(self, "overwrite_material")
+
+
+class TextureProperties_MixIn:
     interpolation: EnumProperty(
         name="Interpolation",
         items=(
@@ -379,6 +404,24 @@ class TextureProperties:
         default=True,
         description="Use relative file paths",
     )
+
+    def draw_texture_config(self, context):
+        # --- Texture Properties --- #
+        layout = self.layout
+
+        header, body = layout.panel("import_image_plane_texture", default_closed=False)
+        header.label(text="Texture")
+        if body:
+            body.prop(self, 'interpolation')
+            body.prop(self, 'extension')
+
+            row = body.row(align=False, heading="Alpha")
+            row.prop(self, "use_transparency", text="")
+            sub = row.row(align=True)
+            sub.active = self.use_transparency
+            sub.prop(self, "alpha_mode", text="")
+
+            body.prop(self, "use_auto_refresh")
 
 
 def apply_texture_options(self, texture, img_spec):
@@ -599,55 +642,11 @@ def get_shadeless_node(dest_node_tree):
     return group_node
 
 
-def draw_material_config(self, context):
-    # --- Material / Rendering Properties --- #
-    layout = self.layout
-
-    header, body = layout.panel("import_image_plane_material", default_closed=False)
-    header.label(text="Material")
-    if body:
-        body.prop(self, 'shader')
-        if self.shader == 'EMISSION':
-            body.prop(self, "emit_strength")
-
-        body.prop(self, 'blend_method')
-
-        body.prop(self, 'shadow_method')
-        if self.blend_method == 'BLEND':
-            body.prop(self, "show_transparent_back")
-
-        body.prop(self, "use_backface_culling")
-
-        engine = context.scene.render.engine
-        if engine not in ('CYCLES', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'):
-            body.label(text=tip_("{:s} is not supported").format(engine), icon='ERROR')
-
-        body.prop(self, "overwrite_material")
-
-
-def draw_texture_config(self, context):
-    # --- Texture Properties --- #
-    layout = self.layout
-
-    header, body = layout.panel("import_image_plane_texture", default_closed=False)
-    header.label(text="Texture")
-    if body:
-        body.prop(self, 'interpolation')
-        body.prop(self, 'extension')
-
-        row = body.row(align=False, heading="Alpha")
-        row.prop(self, "use_transparency", text="")
-        sub = row.row(align=True)
-        sub.active = self.use_transparency
-        sub.prop(self, "alpha_mode", text="")
-
-        body.prop(self, "use_auto_refresh")
-
-
 # -----------------------------------------------------------------------------
 # Operator
 
-class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProperties, TextureProperties, Operator):
+class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProperties_MixIn,
+                                     TextureProperties_MixIn, Operator):
     """Create mesh plane(s) from image files with the appropriate aspect ratio"""
 
     bl_idname = "image.import_as_mesh_planes"
@@ -860,8 +859,8 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProp
         layout.use_property_split = True
 
         self.draw_import_config(context)
-        draw_material_config(self, context)
-        draw_texture_config(self, context)
+        MaterialProperties_MixIn.draw_material_config(self, context)
+        TextureProperties_MixIn.draw_texture_config(self, context)
         self.draw_spatial_config(context)
 
     # -------------------------------------------------------------------------
@@ -1101,7 +1100,7 @@ class IMAGE_OT_import_as_mesh_planes(AddObjectHelper, ImportHelper, MaterialProp
             constraint.lock_axis = 'LOCK_Y'
 
 
-class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Operator):
+class IMAGE_OT_convert_to_mesh_plane(MaterialProperties_MixIn, TextureProperties_MixIn, Operator):
     """Convert selected reference images to textured mesh plane"""
     bl_idname = "image.convert_to_mesh_plane"
     bl_label = "Convert Empty Image to Mesh Plane"
@@ -1111,7 +1110,7 @@ class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Oper
         name="Name After",
         items=[
             ('OBJECT',"Source Object","Name after object source with a suffix"),
-            ('IMAGE', "Source Image", "name from laoded image"),
+            ('IMAGE',"Source Image","name from laoded image"),
         ],
         default='OBJECT',
         description="Name for new mesh object and material"
@@ -1123,9 +1122,13 @@ class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Oper
         description="Delete empty image object once mesh plane is created"
     )
 
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object in context.selected_objects
+
     @staticmethod
-    def _is_ref(o):
-        return o and o.type == 'EMPTY' and o.empty_display_type == 'IMAGE' and o.data
+    def _is_ref(ob):
+        return ob and ob.type == 'EMPTY' and ob.empty_display_type == 'IMAGE' and ob.data
 
     def invoke(self, context, _event):
         engine = context.scene.render.engine
@@ -1143,49 +1146,41 @@ class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Oper
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        pool = [o for o in context.selected_objects]
-        if context.object and context.object not in pool:
-            pool.append(context.object)
+        selected_objects = [ob for ob in context.selected_objects]
         converted = 0
 
-        for o in pool:
-            if not self._is_ref(o):
+        for ob in selected_objects:
+            if not self._is_ref(ob):
                 continue
 
-            img = o.data
-            img_user = o.image_user
-            col = o.users_collection[0]
-            o_name = o.name
+            img = ob.data
+            img_user = ob.image_user
+            ob_name = ob.name
 
             # Give Name
             if self.name_from == 'IMAGE':
                 name = bpy.path.display_name(img.name, title_case=False)
             if self.name_from == 'OBJECT':
-                name = o_name
-            new_name = name
-
-            i=0
-            while new_name in [ob.name for ob in col.all_objects]:
-                i+=1
-                new_name = f'{name}.{i:03d}'
-            name = new_name
+                name = ob.name
 
             # Create Mesh Plane
-            obj_space_corners = get_ref_object_space_coord(o)
+            obj_space_corners = get_ref_object_space_coord(ob)
 
             fac = [(0, 1, 3, 2)]
             mesh = bpy.data.meshes.new(name)
             mesh.from_pydata(obj_space_corners, [], fac)
             plane = bpy.data.objects.new(name, mesh)
-            mesh.uv_layers.new(name='UVMap')
+            mesh.uv_layers.new(name="UVMap")
 
-            # Link in the Same Collection
-            col.objects.link(plane)
+            # Link in the Same Collections
+            colls = ob.users_collection
+            for coll in colls:
+                coll.objects.link(plane)
 
             # Assign Parent
-            plane.parent = o.parent
-            plane.matrix_local = o.matrix_local
-            plane.matrix_parent_inverse = o.matrix_parent_inverse
+            plane.parent = ob.parent
+            plane.matrix_local = ob.matrix_local
+            plane.matrix_parent_inverse = ob.matrix_parent_inverse
 
             # Create Material
             img_spec = ImageSpec(img, (img.size[0], img.size[1]), img_user.frame_start, img_user.frame_offset, img_user.frame_duration)
@@ -1194,19 +1189,19 @@ class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Oper
 
             # Delete Empty
             if self.delete_ref:
-                bpy.data.objects.remove(o)
-                mesh.name = o_name
-                plane.name = o_name
-            
+                bpy.data.objects.remove(ob)
+                mesh.name = ob_name
+                plane.name = ob_name
+
             plane.select_set(True)
             converted += 1
 
         if not converted:
-            self.report({'ERROR'}, 'No images converted')
-            return {"CANCELLED"}
+            self.report({'ERROR'}, "No images converted")
+            return {'CANCELLED'}
 
-        self.report({'INFO'}, f'{converted} image(s) converted to mesh plane(s)')
-        return {"FINISHED"}
+        self.report({'INFO'}, "{} image(s) converted to mesh plane(s)".format(converted))
+        return {'FINISHED'}
 
 
     def draw(self, context):
@@ -1215,13 +1210,13 @@ class IMAGE_OT_convert_to_mesh_plane(MaterialProperties, TextureProperties, Oper
 
         # General
         col = layout.column(align=False)
-        col.prop(self, 'name_from')
-        col.prop(self, 'delete_ref')
+        col.prop(self, "name_from")
+        col.prop(self, "delete_ref")
         layout.separator()
 
         # Material
-        draw_material_config(self, context)
-        draw_texture_config(self, context)
+        MaterialProperties_MixIn.draw_material_config(self, context)
+        TextureProperties_MixIn.draw_texture_config(self, context)
 
 
 classes = (
