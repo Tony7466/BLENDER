@@ -1131,7 +1131,7 @@ static std::string materialx_export_image(
 }
 
 /* Utility function to reflow connections and paths within the temporary document
- * to their final location in the USD document */
+ * to their final location in the USD document. */
 static pxr::SdfPath reflow_materialx_paths(pxr::SdfPath input_path,
                                            pxr::SdfPath temp_path,
                                            const pxr::SdfPath &target_path,
@@ -1141,8 +1141,7 @@ static pxr::SdfPath reflow_materialx_paths(pxr::SdfPath input_path,
   auto input_path_string = input_path.GetString();
   /* First we see if the path is in the rename_pairs,
    * otherwise we check if it starts with any items in the list plus a path separator (/ or .) .
-   * By checking for the path separators, we remove false positives from other prefixed elements.
-   */
+   * Checking for the path separators, removes false positives from other prefixed elements. */
   auto value_lookup_ptr = rename_pairs.lookup_ptr(input_path_string);
   if (value_lookup_ptr) {
     input_path = pxr::SdfPath(*value_lookup_ptr);
@@ -1171,7 +1170,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
 {
 
   /* We want to re-use the same MaterialX document generation code as used by the renderer.
-   * While the graph is traversed, we also want it to export the textures out */
+   * While the graph is traversed, we also want it to export the textures out. */
   ExportImageFunction export_image_fn = (usd_export_context.export_image_fn) ?
                                             usd_export_context.export_image_fn :
                                             std::bind(materialx_export_image,
@@ -1189,7 +1188,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
    * applications and renderers can easily pick which one they want.
    * This does mean that we need to pre-process the resulting graph so that there are no
    * name conflicts.
-   * So we first gather all the existing names in this namespace to avoid that.*/
+   * So we first gather all the existing names in this namespace to avoid that. */
   Set<std::string> used_names;
   auto material_prim = usd_material.GetPrim();
   for (const auto &child : material_prim.GetChildren()) {
@@ -1203,8 +1202,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
    * that are only needed when referencing in the file that make editing the graph harder.
    * Therefore, we opt to copy just what we need over.
    *
-   * To do this, we first open a temporary stage to process the structure inside
-   */
+   * To do this, we first open a temporary stage to process the structure inside */
 
   auto temp_stage = pxr::UsdStage::CreateInMemory();
   pxr::UsdMtlxRead(doc, temp_stage, pxr::SdfPath("/root"));
@@ -1223,7 +1221,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
   }
 
   /* Once we have the material, we need to prepare for renaming any conflicts.
-   * However, we must make sure any new names don't conflict with names in the temp stage eitehr */
+   * However, we must make sure any new names don't conflict with names in the temp stage either */
   Set<std::string> temp_used_names;
   for (const auto &child : temp_material_prim.GetChildren()) {
     temp_used_names.add(child.GetName().GetString());
