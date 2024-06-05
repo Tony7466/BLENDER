@@ -211,15 +211,6 @@ _register, _unregister = bpy.utils.register_classes_factory(classes)
 def register() -> None:
     _register()
 
-    WorkSpace.active_pose_asset_index = bpy.props.IntProperty(
-        name="Active Pose Asset",
-        # TODO explain which list the index belongs to, or how it can be used to get the pose.
-        description="Per workspace index of the active pose asset",
-    )
-    # Register for window-manager. This is a global property that shouldn't be
-    # written to files.
-    WindowManager.pose_assets = bpy.props.CollectionProperty(type=AssetHandle)
-
     bpy.types.ASSETBROWSER_MT_context_menu.prepend(pose_library_asset_browser_context_menu)
     bpy.types.ASSETBROWSER_MT_editor_menus.append(pose_library_list_item_asset_menu)
 
@@ -232,9 +223,6 @@ def unregister() -> None:
     _unregister()
 
     unregister_message_bus()
-
-    del WorkSpace.active_pose_asset_index
-    del WindowManager.pose_assets
 
     bpy.types.ASSETBROWSER_MT_context_menu.remove(pose_library_asset_browser_context_menu)
     bpy.types.ASSETBROWSER_MT_editor_menus.remove(pose_library_list_item_asset_menu)
