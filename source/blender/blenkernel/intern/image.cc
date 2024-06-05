@@ -4906,13 +4906,11 @@ ImBuf *BKE_image_preview(Image *ima, const short max_size, short *r_width, short
 {
   void *lock;
   ImBuf *image_ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
-  ImBuf *preview = nullptr;
-
   if (image_ibuf == nullptr) {
     return nullptr;
   }
 
-  preview = IMB_dupImBuf(image_ibuf);
+  ImBuf *preview = IMB_dupImBuf(image_ibuf);
   float scale = float(max_size) / float(std::max(image_ibuf->x, image_ibuf->y));
   if (r_width) {
     *r_width = image_ibuf->x;
