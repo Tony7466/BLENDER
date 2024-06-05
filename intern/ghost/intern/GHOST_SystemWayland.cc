@@ -1763,6 +1763,35 @@ static void gwl_registry_entry_update_all(GWL_Display *display, const int interf
 /** \name Private Utility Functions
  * \{ */
 
+static const char *strchr_or_end(const char *str, const char ch)
+{
+  const char *p = str;
+  while (!ELEM(*p, ch, '\0')) {
+    p++;
+  }
+  return p;
+}
+
+static bool string_elem_split_by_delim(const char *haystack, const char delim, const char *needle)
+{
+  /* Local copy of #BLI_string_elem_split_by_delim (would be a bad level call). */
+
+  /* May be zero, returns true when an empty span exists. */
+  const size_t needle_len = strlen(needle);
+  const char *p = haystack, *p_next;
+  while (true) {
+    p_next = strchr_or_end(p, delim);
+    if ((size_t(p_next - p) == needle_len) && (memcmp(p, needle, needle_len) == 0)) {
+      return true;
+    }
+    if (*p_next == '\0') {
+      break;
+    }
+    p = p_next + 1;
+  }
+  return false;
+}
+
 static uint64_t sub_abs_u64(const uint64_t a, const uint64_t b)
 {
   return a > b ? a - b : b - a;
@@ -1794,16 +1823,36 @@ static const char *ghost_wl_locale_from_env_with_default()
   return locale;
 }
 
+static void ghost_wl_display_report_error_from_code(wl_display *display, const int ecode)
+{
+  GHOST_ASSERT(ecode, "Error not set!");
+  if (ELEM(ecode, EPIPE, ECONNRESET)) {
+    fprintf(stderr, "The Wayland connection broke. Did the Wayland compositor die?\n");
+    return;
+  }
+
+  if (ecode == EPROTO) {
+    const wl_interface *interface = nullptr;
+    const int ecode_proto = wl_display_get_protocol_error(display, &interface, nullptr);
+    fprintf(stderr,
+            "The Wayland connection experienced a protocol error %d in interface: %s\n",
+            ecode_proto,
+            interface ? interface->name : "<nil>");
+    const char *env_debug = "WAYLAND_DEBUG";
+    if (getenv(env_debug) == nullptr) {
+      fprintf(stderr, "Run with the environment variable \"%s=1\" for details.\n", env_debug);
+    }
+    return;
+  }
+
+  fprintf(stderr, "The Wayland connection experienced a fatal error: %s\n", strerror(ecode));
+}
+
 static void ghost_wl_display_report_error(wl_display *display)
 {
   int ecode = wl_display_get_error(display);
   GHOST_ASSERT(ecode, "Error not set!");
-  if (ELEM(ecode, EPIPE, ECONNRESET)) {
-    fprintf(stderr, "The Wayland connection broke. Did the Wayland compositor die?\n");
-  }
-  else {
-    fprintf(stderr, "The Wayland connection experienced a fatal error: %s\n", strerror(ecode));
-  }
+  ghost_wl_display_report_error_from_code(display, ecode);
 
   /* NOTE(@ideasman42): The application is running,
    * however an error closes all windows and most importantly:
@@ -1817,6 +1866,16 @@ static void ghost_wl_display_report_error(wl_display *display)
    * Exit since leaving the process open will simply flood the output and do nothing.
    * Although as the process is in a valid state, auto-save for e.g. is possible, see: #100855. */
   ::exit(-1);
+}
+
+bool ghost_wl_display_report_error_if_set(wl_display *display)
+{
+  const int ecode = wl_display_get_error(display);
+  if (ecode == 0) {
+    return false;
+  }
+  ghost_wl_display_report_error_from_code(display, ecode);
+  return true;
 }
 
 #ifdef __GNUC__
@@ -6514,6 +6573,10 @@ static void gwl_registry_wl_seat_remove(GWL_Display *display, void *user_data, c
     wl_data_device_release(seat->wl.data_device);
   }
 
+  if (seat->wp.tablet_seat) {
+    zwp_tablet_seat_v2_destroy(seat->wp.tablet_seat);
+  }
+
   if (seat->cursor.custom_data) {
     munmap(seat->cursor.custom_data, seat->cursor.custom_data_size);
   }
@@ -7128,11 +7191,10 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
 
 #ifdef WITH_GHOST_WAYLAND_LIBDECOR
   bool libdecor_required = false;
-  {
-    /* This seems to be the most reliable way to check if GNOME is running.
-     * Ideally it would be possible to check if the compositor supports SSD. */
-    const char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
-    if (xdg_current_desktop && STREQ(xdg_current_desktop, "GNOME")) {
+  if (const char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP")) {
+    /* See the free-desktop specifications for details on `XDG_CURRENT_DESKTOP`.
+     * https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html */
+    if (string_elem_split_by_delim(xdg_current_desktop, ':', "GNOME")) {
       libdecor_required = true;
     }
   }

@@ -27,8 +27,14 @@ def setup():
         # Ambient Occlusion Pass
         eevee.gtao_distance = 1
 
+        # Lights
+        eevee.light_threshold = 0.001
+
         # Hair
         scene.render.hair_type = 'STRIP'
+
+        # Shadow
+        eevee.shadow_step_count = 16
 
         # Volumetric
         eevee.volumetric_tile_size = '2'
@@ -54,10 +60,19 @@ def setup():
 
         # Only include the plane in probes
         for ob in scene.objects:
+            if ob.type == 'LIGHT':
+                # Set maximum resolution
+                ob.data.shadow_maximum_resolution = 0.0
+
             if ob.name != 'Plane' and ob.type != 'LIGHT':
                 ob.hide_probe_volume = True
                 ob.hide_probe_sphere = True
                 ob.hide_probe_plane = True
+
+            # Counteract the versioning from legacy EEVEE. Should be changed per file at some point.
+            for mat_slot in ob.material_slots:
+                if mat_slot.material:
+                    mat_slot.material.thickness_mode = 'SPHERE'
 
         # Does not work in edit mode
         if bpy.context.mode == 'OBJECT':
@@ -72,14 +87,14 @@ def setup():
             bpy.ops.object.lightprobe_add(type='VOLUME', location=(0.0, 0.0, 2.0))
             grid = bpy.context.selected_objects[0]
             grid.scale = (8.0, 4.5, 4.5)
-            grid.data.grid_resolution_x = 32
-            grid.data.grid_resolution_y = 16
-            grid.data.grid_resolution_z = 8
-            grid.data.grid_bake_samples = 128
-            grid.data.grid_capture_world = True
-            grid.data.surfel_density = 10.0
+            grid.data.resolution_x = 32
+            grid.data.resolution_y = 16
+            grid.data.resolution_z = 8
+            grid.data.bake_samples = 128
+            grid.data.capture_world = True
+            grid.data.surfel_density = 100
             # Make lighting smoother for most of the case.
-            grid.data.grid_dilation_threshold = 1.0
+            grid.data.dilation_threshold = 1.0
             bpy.ops.object.lightprobe_cache_bake(subset='ACTIVE')
 
 

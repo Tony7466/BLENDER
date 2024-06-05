@@ -398,7 +398,7 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
   keymap = WM_keymap_ensure(wm->defaultconf, "Sculpt Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  /* Note: Grease Pencil handlers used to be added using `ED_KEYMAP_GPENCIL` in
+  /* NOTE: Grease Pencil handlers used to be added using `ED_KEYMAP_GPENCIL` in
    * `ed_default_handlers` because it needed to be added to multiple editors (as other editors use
    * annotations.). But for OB_GREASE_PENCIL, we only need it to register the keymaps for the
    * 3D View. */
@@ -416,6 +416,14 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
 
   keymap = WM_keymap_ensure(
       wm->defaultconf, "Grease Pencil Weight Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Brush Stroke", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Fill Tool", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* Edit-font key-map swallows almost all (because of text input). */
@@ -891,27 +899,6 @@ static void view3d_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
     RNA_struct_property_unset(drop->ptr, "filepath");
     return;
   }
-}
-
-static void view3d_lightcache_update(bContext *C)
-{
-  PointerRNA op_ptr;
-
-  Scene *scene = CTX_data_scene(C);
-
-  if (!BKE_scene_uses_blender_eevee(scene)) {
-    /* Only do auto bake if eevee is the active engine */
-    return;
-  }
-
-  wmOperatorType *ot = WM_operatortype_find("SCENE_OT_light_cache_bake", true);
-  WM_operator_properties_create_ptr(&op_ptr, ot);
-  RNA_int_set(&op_ptr, "delay", 200);
-  RNA_enum_set_identifier(C, &op_ptr, "subset", "DIRTY");
-
-  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &op_ptr, nullptr);
-
-  WM_operator_properties_free(&op_ptr);
 }
 
 /* region dropbox definition */
@@ -1993,14 +1980,7 @@ static void space_view3d_listener(const wmSpaceTypeListenerParams *params)
 
 static void space_view3d_refresh(const bContext *C, ScrArea *area)
 {
-  Scene *scene = CTX_data_scene(C);
-  LightCache *lcache = scene->eevee.light_cache_data;
-
-  if (lcache && (lcache->flag & LIGHTCACHE_UPDATE_AUTO) != 0) {
-    lcache->flag &= ~LIGHTCACHE_UPDATE_AUTO;
-    view3d_lightcache_update((bContext *)C);
-  }
-
+  UNUSED_VARS(C);
   View3D *v3d = (View3D *)area->spacedata.first;
   MEM_SAFE_FREE(v3d->runtime.local_stats);
 }
@@ -2065,10 +2045,10 @@ static void view3d_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 {
   View3D *v3d = reinterpret_cast<View3D *>(space_link);
 
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->camera, IDWALK_CB_NOP);
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->ob_center, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->camera, IDWALK_CB_DIRECT_WEAK_LINK);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->ob_center, IDWALK_CB_DIRECT_WEAK_LINK);
   if (v3d->localvd) {
-    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->localvd->camera, IDWALK_CB_NOP);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->localvd->camera, IDWALK_CB_DIRECT_WEAK_LINK);
   }
   BKE_viewer_path_foreach_id(data, &v3d->viewer_path);
 }
@@ -2209,6 +2189,7 @@ void ED_spacetype_view3d()
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_ASSET_SHELF | ED_KEYMAP_FRAMES;
   art->duplicate = asset::shelf::region_duplicate;
   art->free = asset::shelf::region_free;
+  art->on_poll_success = asset::shelf::region_on_poll_success;
   art->listener = asset::shelf::region_listen;
   art->poll = asset::shelf::regions_poll;
   art->snap_size = asset::shelf::region_snap;

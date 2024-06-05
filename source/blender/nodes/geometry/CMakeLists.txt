@@ -9,8 +9,8 @@ set(INC
   ../intern
   ../../editors/include
   ../../blenkernel
-  ../../blentranslation
   ../../blenloader
+  ../../blentranslation
   ../../bmesh
   ../../functions
   ../../geometry
@@ -96,6 +96,7 @@ set(SRC
   nodes/node_geo_input_index.cc
   nodes/node_geo_input_instance_rotation.cc
   nodes/node_geo_input_instance_scale.cc
+  nodes/node_geo_input_instance_transform.cc
   nodes/node_geo_input_material.cc
   nodes/node_geo_input_material_index.cc
   nodes/node_geo_input_mesh_edge_angle.cc
@@ -164,6 +165,7 @@ set(SRC
   nodes/node_geo_repeat.cc
   nodes/node_geo_rotate_instances.cc
   nodes/node_geo_sample_grid.cc
+  nodes/node_geo_sample_grid_index.cc
   nodes/node_geo_sample_index.cc
   nodes/node_geo_sample_nearest.cc
   nodes/node_geo_sample_nearest_surface.cc
@@ -179,6 +181,7 @@ set(SRC
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
   nodes/node_geo_set_id.cc
+  nodes/node_geo_set_instance_transform.cc
   nodes/node_geo_set_material.cc
   nodes/node_geo_set_material_index.cc
   nodes/node_geo_set_point_radius.cc
@@ -196,6 +199,7 @@ set(SRC
   nodes/node_geo_subdivision_surface.cc
   nodes/node_geo_switch.cc
   nodes/node_geo_tool_3d_cursor.cc
+  nodes/node_geo_tool_active_element.cc
   nodes/node_geo_tool_face_set.cc
   nodes/node_geo_tool_selection.cc
   nodes/node_geo_tool_set_face_set.cc
@@ -212,6 +216,7 @@ set(SRC
 
   include/NOD_geo_bake.hh
   include/NOD_geo_index_switch.hh
+  include/NOD_geo_menu_switch.hh
   include/NOD_geo_repeat.hh
   include/NOD_geo_simulation.hh
 

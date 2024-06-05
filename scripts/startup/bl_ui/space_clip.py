@@ -21,14 +21,16 @@ class CLIP_UL_tracking_objects(UIList):
         # assert(isinstance(item, bpy.types.MovieTrackingObject)
         tobj = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(tobj, "name", text="", emboss=False,
-                        icon='CAMERA_DATA' if tobj.is_camera
-                        else 'OBJECT_DATA')
+            layout.prop(
+                tobj, "name", text="", emboss=False,
+                icon='CAMERA_DATA' if tobj.is_camera else 'OBJECT_DATA',
+            )
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
-            layout.label(text="",
-                         icon='CAMERA_DATA' if tobj.is_camera
-                         else 'OBJECT_DATA')
+            layout.label(
+                text="",
+                icon='CAMERA_DATA' if tobj.is_camera else 'OBJECT_DATA',
+            )
 
 
 class CLIP_PT_display(Panel):
@@ -169,7 +171,7 @@ class CLIP_HT_header(Header):
                 r = active_object.reconstruction
 
                 if r.is_valid and sc.view == 'CLIP':
-                    layout.label(text=rpt_("Solve error: {.2f} px").format(r.average_error), translate=False)
+                    layout.label(text=rpt_("Solve error: {:.2f} px").format(r.average_error), translate=False)
 
                 row = layout.row()
                 row.prop(sc, "pivot_point", text="", icon_only=True)
@@ -302,6 +304,8 @@ class CLIP_MT_tracking_editor_menus(Menu):
                 layout.menu("CLIP_MT_reconstruction")
             else:
                 layout.menu("CLIP_MT_clip")
+        elif sc.view == 'GRAPH':
+            layout.menu("CLIP_MT_select_graph")
 
 
 class CLIP_MT_masking_editor_menus(Menu):
@@ -573,9 +577,13 @@ class CLIP_PT_tools_solve(CLIP_PT_tracking_panel, Panel):
         col = layout.column(align=True)
         col.scale_y = 2.0
 
-        col.operator("clip.solve_camera",
-                     text="Solve Camera Motion" if tracking_object.is_camera
-                     else "Solve Object Motion")
+        col.operator(
+            "clip.solve_camera",
+            text=(
+                "Solve Camera Motion" if tracking_object.is_camera else
+                "Solve Object Motion"
+            ),
+        )
 
 
 class CLIP_PT_tools_cleanup(CLIP_PT_tracking_panel, Panel):
@@ -1586,21 +1594,35 @@ class CLIP_MT_select(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator("clip.select_all", text="All").action = 'SELECT'
+        layout.operator("clip.select_all", text="None").action = 'DESELECT'
+        layout.operator("clip.select_all", text="Inverse").action = 'INVERT'
+
+        layout.separator()
+
         layout.operator("clip.select_box")
         layout.operator("clip.select_circle")
         layout.operator_menu_enum("clip.select_lasso", "mode")
 
         layout.separator()
 
-        layout.operator("clip.select_all").action = 'TOGGLE'
-        layout.operator("clip.select_all", text="Inverse").action = 'INVERT'
-
         layout.menu("CLIP_MT_select_grouped")
 
         layout.separator()
 
-        layout.operator("clip.stabilize_2d_select")
-        layout.operator("clip.stabilize_2d_rotation_select")
+        layout.operator("clip.stabilize_2d_select", text="Stabilization Tracks")
+        layout.operator("clip.stabilize_2d_rotation_select", text="Stabilization Rotation Tracks")
+
+
+class CLIP_MT_select_graph(Menu):
+    bl_label = "Select"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("clip.graph_select_all_markers", text="All").action = "SELECT"
+        layout.operator("clip.graph_select_all_markers", text="None").action = "DESELECT"
+        layout.operator("clip.graph_select_all_markers", text="Invert").action = "INVERT"
 
 
 class CLIP_MT_tracking_context_menu(Menu):
@@ -1989,6 +2011,7 @@ classes = (
     CLIP_MT_track_visibility,
     CLIP_MT_track_cleanup,
     CLIP_MT_select,
+    CLIP_MT_select_graph,
     CLIP_MT_select_grouped,
     CLIP_MT_tracking_context_menu,
     CLIP_MT_plane_track_image_context_menu,

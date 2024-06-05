@@ -78,7 +78,7 @@ const UserDef U_default = {
     .virtual_pixel = 0,
 
     .scrollback = 256,
-    .node_margin = 80,
+    .node_margin = 40,
     .node_preview_res = 120,
     .transopts = USER_TR_TOOLTIPS,
     .menuthreshold1 = 5,
@@ -236,6 +236,8 @@ const UserDef U_default = {
 
     .statusbar_flag = STATUSBAR_SHOW_VERSION,
     .file_preview_type = USER_FILE_PREVIEW_AUTO,
+
+    .sequencer_editor_flag = USER_SEQ_ED_SIMPLE_TWEAKING,
 
     .runtime =
         {

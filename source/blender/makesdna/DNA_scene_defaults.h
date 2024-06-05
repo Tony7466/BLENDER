@@ -213,6 +213,13 @@
     .gtao_focus = 0.05f, \
     .gtao_resolution = 2, \
  \
+    .fast_gi_step_count = 8, \
+    .fast_gi_ray_count = 2, \
+    .fast_gi_distance = 0.0f, \
+    .fast_gi_thickness_near = 0.25f, \
+    .fast_gi_thickness_far = DEG2RAD(45), \
+    .fast_gi_method = FAST_GI_FULL, \
+ \
     .bokeh_overblur = 5.0f, \
     .bokeh_max_size = 100.0f, \
     .bokeh_threshold = 1.0f, \
@@ -236,12 +243,12 @@
     .shadow_cascade_size = 1024, \
     .shadow_ray_count = 1, \
     .shadow_step_count = 6, \
+    .shadow_resolution_scale = 1.0f, \
  \
     .ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN, \
  \
     .ray_tracing_options = _DNA_DEFAULT_RaytraceEEVEE, \
  \
-    .light_cache_data = NULL, \
     .light_threshold = 0.01f, \
  \
     .overscan = 3.0f, \

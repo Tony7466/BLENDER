@@ -90,7 +90,7 @@ static void ui_region_redraw_immediately(bContext *C, ARegion *region)
   WM_draw_region_viewport_bind(region);
   ED_region_do_draw(C, region);
   WM_draw_region_viewport_unbind(region);
-  region->do_draw = false;
+  region->do_draw = 0;
 }
 
 /** \} */
@@ -1045,7 +1045,7 @@ static void ui_context_fcurve_modifiers_via_fcurve(bContext *C,
   }
   r_lb->clear();
   for (const PointerRNA &ptr : fcurve_links) {
-    FCurve *fcu = static_cast<FCurve *>(ptr.data);
+    const FCurve *fcu = static_cast<const FCurve *>(ptr.data);
     LISTBASE_FOREACH (FModifier *, mod, &fcu->modifiers) {
       if (STREQ(mod->name, source->name) && mod->type == source->type) {
         r_lb->append(RNA_pointer_create(ptr.owner_id, &RNA_FModifier, mod));
@@ -1222,7 +1222,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
     if (RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {
       bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
       bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
-      if (nodeFindNodeTry(ntree, sock, &node, nullptr)) {
+      if (blender::bke::nodeFindNodeTry(ntree, sock, &node, nullptr)) {
         path = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_Node);
         if (path) {
           /* we're good! */
@@ -1279,7 +1279,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
           Object *ob = (Object *)link.owner_id;
           ID *id_data = static_cast<ID *>(ob->data);
           if ((id_data == nullptr) || (id_data->tag & LIB_TAG_DOIT) == 0 ||
-              ID_IS_LINKED(id_data) || (GS(id_data->name) != id_code))
+              !ID_IS_EDITABLE(id_data) || (GS(id_data->name) != id_code))
           {
             continue;
           }
@@ -1571,31 +1571,11 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 /** \name Copy Driver To Selected Operator
  * \{ */
 
-/* Namespaced for unit testing. Conceptually these functions should be static
+/* Name-spaced for unit testing. Conceptually these functions should be static
  * and not be used outside this source file.  But they need to be externally
  * accessible to add unit tests for them. */
 namespace blender::interface::internal {
 
-/**
- * Get the driver(s) of the given property.
- *
- * Note: intended to be used in conjunction with `paste_property_drivers()` below.
- *
- * \param ptr The RNA pointer of the property.
- * \param prop The property RNA of the property.
- * \param get_all Whether to get all drivers of an array property, or just the
- * one specified by `index`.  Ignored if the property is not an array property.
- * \param index Which element of an array property to get.  Ignored if `get_all`
- * is true or if the property is not an array propery.
- * \param r_is_array_prop Output parameter, that stores whether the passed
- * property is an array property or not.
- *
- * \returns A vector of pointers to the drivers of the property.  It will be
- * zero-sized if no drivers were fetched (e.g. if the property had no drivers).
- * Otherwise the vector will be the size of the underlying property (e.g. 4 for
- * an array property with 4 elements, 1 for a non-array property).  For array
- * properties, elements without drivers will be nullptrs.
- */
 blender::Vector<FCurve *> get_property_drivers(
     PointerRNA *ptr, PropertyRNA *prop, const bool get_all, const int index, bool *r_is_array_prop)
 {
@@ -1614,7 +1594,7 @@ blender::Vector<FCurve *> get_property_drivers(
   blender::Vector<FCurve *> drivers = {};
   const bool is_array_prop = RNA_property_array_check(prop);
   if (!is_array_prop) {
-    /* Note: by convention Blender assigns 0 as the index for drivers of
+    /* NOTE: by convention Blender assigns 0 as the index for drivers of
      * non-array properties, which is why we search for it here.  Values > 0 are
      * not recognized by Blender's driver system in that case.  Values < 0 are
      * recognized for driver evaluation, but `BKE_fcurve_find()` unconditionally
@@ -1636,7 +1616,7 @@ blender::Vector<FCurve *> get_property_drivers(
    * nullptr, return an empty vector for clarity. That way the caller gets
    * either a useful result or an empty one. */
   bool fetched_at_least_one = false;
-  for (FCurve *driver : drivers) {
+  for (const FCurve *driver : drivers) {
     fetched_at_least_one |= driver != nullptr;
   }
   if (!fetched_at_least_one) {
@@ -1650,28 +1630,6 @@ blender::Vector<FCurve *> get_property_drivers(
   return drivers;
 }
 
-/**
- * Paste the drivers from `src_drivers` to the destination property.
- *
- * This function can be used for pasting drivers for all elements of an array
- * property, just some elements of an array property, or a single driver for a
- * non-array property.
- *
- * Note: intended to be used in conjunction with `get_property_drivers()` above.
- * The destination property should have the same type and (if an array property)
- * length as the source property passed to `get_property_drivers()`.
- *
- * \param src_drivers The span of drivers to paste.  If `is_array_prop` is
- * false, this must be a single element.  If `is_array_prop` is true then this
- * should have the same length as the the destination array property.  Nullptr
- * elements are skipped when pasting.
- * \param is_array_prop Whether `src_drivers` are drivers for the elements
- * of an array property.
- * \param dst_ptr The RNA pointer for the destination property.
- * \param dist_prop The destination property RNA.
- *
- * \returns The number of successfully pasted drivers.
- */
 int paste_property_drivers(blender::Span<FCurve *> src_drivers,
                            const bool is_array_prop,
                            PointerRNA *dst_ptr,
@@ -2453,7 +2411,7 @@ static void UI_OT_button_execute(wmOperatorType *ot)
 
 static int button_string_clear_exec(bContext *C, wmOperator * /*op*/)
 {
-  uiBut *but = UI_context_active_but_get_respect_menu(C);
+  uiBut *but = UI_context_active_but_get_respect_popup(C);
 
   if (but) {
     ui_but_active_string_clear_and_exit(C, but);
