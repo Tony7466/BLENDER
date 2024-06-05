@@ -11,6 +11,8 @@
 
 #include "IO_stl.hh"
 
+#include "node_geometry_util.hh"
+
 namespace blender::nodes::node_geo_import_stl {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -81,6 +83,7 @@ static void node_register()
 
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.gather_link_search_ops = search_link_ops_for_import_node;
 
   blender::bke::nodeRegisterType(&ntype);
 }

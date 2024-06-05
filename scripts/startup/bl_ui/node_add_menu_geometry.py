@@ -243,12 +243,13 @@ class NODE_MT_geometry_node_GEO_INPUT(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_INPUT"
     bl_label = "Input"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_CONSTANT")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_GROUP")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_SCENE")
-        layout.menu("NODE_MT_category_IMPORT")
+        if context.preferences.experimental.use_new_file_import_nodes:
+            layout.menu("NODE_MT_category_IMPORT")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
