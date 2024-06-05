@@ -597,7 +597,6 @@ void blo_readfile_invalidate(FileData *fd, Main *bmain, const char *message)
 
 struct BlendDataReader {
   FileData *fd;
-  blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data_in_data_block;
 };
 
 struct BlendLibReader {
@@ -1084,6 +1083,9 @@ static FileData *filedata_new(BlendFileReadReport *reports)
 
   fd->reports = reports;
 
+  fd->shared_data_by_stored_address =
+      new blender::Map<void *, blender::ImplicitSharingInfoAndData>();
+
   return fd;
 }
 
@@ -1376,6 +1378,8 @@ void blo_filedata_free(FileData *fd)
     BLI_ghash_free(fd->bhead_idname_hash, nullptr, nullptr);
   }
 #endif
+
+  delete fd->shared_data_by_stored_address;
 
   MEM_freeN(fd);
 }
@@ -2429,9 +2433,6 @@ static const char *idtype_alloc_name_get(short id_code)
 static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *id_old)
 {
   BlendDataReader reader = {fd};
-  /* Just clearing this here explicitly so that it's not forgotten if the `reader` is passed in as
-   * parameter in the future. */
-  reader.sharing_info_by_data_in_data_block.clear();
 
   /* Read part of datablock that is common between real and embedded datablocks. */
   direct_link_id_common(&reader, main->curlib, id, id_old, tag);
@@ -5061,20 +5062,26 @@ void blo_read_shared_impl(
     }
   }
   else {
-    void *new_address = newdataadr_no_us(reader->fd, old_address);
-    const blender::ImplicitSharingInfo *sharing_info =
-        reader->sharing_info_by_data_in_data_block.lookup_default(new_address, nullptr);
-    if (sharing_info) {
-      *data_ptr = new_address;
-      sharing_info->add_user();
-      *r_sharing_info = sharing_info;
+    const blender::ImplicitSharingInfoAndData *shared_data =
+        reader->fd->shared_data_by_stored_address->lookup_ptr(old_address);
+
+    if (shared_data) {
+      /* The data was loaded before. No need to load it again. Just assign the address and increase
+       * the user count to indicate that it is shared. */
+      *data_ptr = const_cast<void *>(shared_data->data);
+      *r_sharing_info = shared_data->sharing_info;
+      if (shared_data->sharing_info) {
+        shared_data->sharing_info->add_user();
+      }
     }
     else {
-      sharing_info = read_fn();
-      BLI_assert(*data_ptr == new_address);
-      reader->sharing_info_by_data_in_data_block.add(new_address, sharing_info);
+      /* This is the first time this data is loaded. The callback also creates the corresponding
+       * sharing info which may be reused later. */
+      const blender::ImplicitSharingInfo *sharing_info = read_fn();
+      const void *new_address = *data_ptr;
+      reader->fd->shared_data_by_stored_address->add(old_address, {sharing_info, new_address});
+      *r_sharing_info = sharing_info;
     }
-    *r_sharing_info = sharing_info;
   }
 }
 
