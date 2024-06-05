@@ -199,15 +199,15 @@ static RenderResult *render_result_from_bake(
   /* Add render passes. */
   render_layer_add_pass(rr, rl, channels_num, RE_PASSNAME_COMBINED, "", "RGBA", true);
 
-  RenderPass *primitive_pass = render_layer_add_pass(rr, rl, 4, "BakePrimitive", "", "RGBA", true);
+  RenderPass *primitive_pass = render_layer_add_pass(rr, rl, 3, "BakePrimitive", "", "RGB", true);
   RenderPass *differential_pass = render_layer_add_pass(
       rr, rl, 4, "BakeDifferential", "", "RGBA", true);
 
   /* Fill render passes from bake pixel array, to be read by the render engine. */
   for (int ty = 0; ty < h; ty++) {
-    size_t offset = ty * w * 4;
-    float *primitive = primitive_pass->ibuf->float_buffer.data + offset;
-    float *differential = differential_pass->ibuf->float_buffer.data + offset;
+    size_t offset = ty * w;
+    float *primitive = primitive_pass->ibuf->float_buffer.data + 3 * offset;
+    float *differential = differential_pass->ibuf->float_buffer.data + 4 * offset;
 
     size_t bake_offset = (y + ty) * image->width + x;
     const BakePixel *bake_pixel = pixels + bake_offset;
@@ -216,12 +216,12 @@ static RenderResult *render_result_from_bake(
       if (bake_pixel->object_id != engine->bake.object_id) {
         primitive[0] = int_as_float(-1);
         primitive[1] = int_as_float(-1);
+        primitive[2] = int_as_float(-1);
       }
       else {
-        primitive[0] = int_as_float(bake_pixel->seed);
-        primitive[1] = int_as_float(bake_pixel->primitive_id);
-        primitive[2] = bake_pixel->uv[0];
-        primitive[3] = bake_pixel->uv[1];
+        primitive[0] = bake_pixel->uv[0];
+        primitive[1] = bake_pixel->uv[1];
+        primitive[2] = int_as_float(bake_pixel->primitive_id);
 
         differential[0] = bake_pixel->du_dx;
         differential[1] = bake_pixel->du_dy;
@@ -229,7 +229,7 @@ static RenderResult *render_result_from_bake(
         differential[3] = bake_pixel->dv_dy;
       }
 
-      primitive += 4;
+      primitive += 3;
       differential += 4;
       bake_pixel++;
     }

@@ -328,6 +328,10 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
       break;
 
     case PASS_BAKE_PRIMITIVE:
+      pass_info.num_components = 3;
+      pass_info.use_exposure = false;
+      pass_info.use_filter = false;
+      break;
     case PASS_BAKE_DIFFERENTIAL:
       pass_info.num_components = 4;
       pass_info.use_exposure = false;
