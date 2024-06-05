@@ -1,7 +1,7 @@
 Referenced by issue #86632, Long time render Hair Particles
 Referenced by issue #86500, Cycles: tapering hair transparency fails in '3D Curves' mode [regression] (probably caused by embree)
 Referenced by issue #86171, Cycles freeze on render and texture baking (with packed textures)
-Referenced by issue #82483, Viewport Rendering and Texture Baking freezes Blender
+Referenced by issue #82483, Blender freezes when repeating baking textures
 Referenced by issue #79819, Crash with OSL shader when checking results from getmessage trace "geom:name"
 Referenced by issue #78149, Animation render seemingly not freeing up memory (2.90.0 Regression)
 Referenced by issue #78152, Embree shades hair differently from CUDA and OptiX
