@@ -460,7 +460,7 @@ def create_cycles_material(self, context, img_spec, name):
     material.shadow_method = self.shadow_method
 
     material.use_backface_culling = self.use_backface_culling
-    material.show_transparent_back = self.show_transparent_back
+    material.use_transparency_overlap = self.show_transparent_back
 
     node_tree = material.node_tree
     out_node = clean_node_tree(node_tree)
