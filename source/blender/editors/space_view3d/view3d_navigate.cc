@@ -317,7 +317,10 @@ void ViewOpsData::init_navigation(bContext *C,
       }
     }
 
-    /* XXX: The initial state captured by #ViewOpsData::state_backup is being modified here.
+    /* Reinitialize `this->init.dist` and `this->init.ofs` as these values ​​may have changed
+     * when #ED_view3d_persp_ensure was called or when the operator uses `Auto Depth`.
+     *
+     * XXX: The initial state captured by #ViewOpsData::state_backup is being modified here.
      * This causes the state when canceling a navigation operation to not be fully restored. */
     this->init.dist = rv3d->dist;
     copy_v3_v3(this->init.ofs, rv3d->ofs);
