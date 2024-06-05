@@ -68,7 +68,7 @@ void GLShader::init(const shader::ShaderCreateInfo &info, bool is_batch_compilat
   async_compilation_ = is_batch_compilation;
 
   /* Extract the constants names from info and store them locally. */
-  for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
+  for (const SpecializationConstant &constant : info.specialization_constants_) {
     specialization_constant_names_.append(constant.name.c_str());
   }
 }
@@ -617,8 +617,7 @@ std::string GLShader::constants_declare() const
   for (int constant_index : IndexRange(constants.types.size())) {
     const StringRefNull name = specialization_constant_names_[constant_index];
     gpu::shader::Type constant_type = constants.types[constant_index];
-    const shader::ShaderCreateInfo::SpecializationConstant::Value &value =
-        constants.values[constant_index];
+    const SpecializationConstant::Value &value = constants.values[constant_index];
 
     switch (constant_type) {
       case Type::INT:
@@ -1885,6 +1884,102 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
   }
   handle = 0;
   return result;
+}
+
+void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> specializations)
+{
+  BLI_assert(GPU_use_parallel_compilation());
+
+  double start_time = BLI_time_now_seconds();
+
+  struct SpecializationWork {
+    GLShader *shader = nullptr;
+    GLuint program;
+    GLSourcesBaked sources;
+
+    GLCompilerWorker *worker = nullptr;
+    bool do_async_compilation = false;
+    bool is_ready = false;
+  };
+
+  Vector<SpecializationWork> items;
+  items.reserve(specializations.size());
+
+  for (auto &specialization : specializations) {
+    GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
+    for (auto &constant : specialization.constants) {
+      int location = sh->interface->constant_get(constant.name.c_str())->location;
+      sh->constants.values[location].u = constant.value.u;
+    }
+    sh->constants.is_dirty = true;
+    if (sh->program_cache_.contains(sh->constants.values)) {
+      /* Already compiled. */
+      continue;
+    }
+    items.append({});
+    SpecializationWork &item = items.last();
+    item.shader = sh;
+    sh->async_compilation_ = true;
+    item.program = sh->program_get();
+    sh->async_compilation_ = false;
+
+    item.sources = sh->get_sources();
+
+    size_t required_size = offsetof(ShaderSourceHeader, source_start) + item.sources.size();
+    item.do_async_compilation = required_size < compilation_subprocess_shared_memory_size;
+  }
+
+  bool is_ready = false;
+  while (!is_ready) {
+    /* Loop until ready, we can't defer the compilation of required specialization constants. */
+    is_ready = true;
+
+    for (SpecializationWork &item : items) {
+      if (item.is_ready) {
+        continue;
+      }
+      std::scoped_lock lock(mutex_);
+
+      if (!item.do_async_compilation) {
+        /* Compilation will happen locally on shader bind. */
+        glDeleteProgram(item.program);
+        item.program = 0;
+        item.shader->program_active_->program_id = 0;
+        item.shader->constants.is_dirty = true;
+        item.is_ready = true;
+        continue;
+      }
+
+      if (item.worker == nullptr) {
+        /* Try to acquire an available worker. */
+        item.worker = get_compiler_worker(item.sources);
+      }
+      else if (item.worker->is_ready()) {
+        /* Retrieve the binary compiled by the worker. */
+        if (item.worker->load_program_binary(item.program)) {
+          item.worker->release();
+          item.worker = nullptr;
+          item.is_ready = true;
+        }
+        else {
+          /* Compilation failed, local compilation will be tried later on shader bind. */
+          item.do_async_compilation = false;
+        }
+      }
+      else if (worker_is_lost(item.worker)) {
+        /* We lost the worker, local compilation will be tried later on shader bind. */
+        item.do_async_compilation = false;
+      }
+
+      if (!item.is_ready) {
+        is_ready = false;
+      }
+    }
+  }
+
+  if (!items.is_empty()) {
+    printf("Specialization Shaders: %fs\n", BLI_time_now_seconds() - start_time);
+  }
 }
 
 /** \} */
