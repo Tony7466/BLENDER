@@ -148,7 +148,7 @@ struct FileData {
    * corresponding value is the shared data at run-time. This is only used when loading from a
    * file, not for undo.
    */
-  blender::Map<void *, blender::ImplicitSharingInfoAndData> *shared_data_by_stored_address;
+  blender::Map<const void *, blender::ImplicitSharingInfoAndData> *shared_data_by_stored_address;
 };
 
 #define SIZEOFBLENDERHEADER 12

@@ -1084,7 +1084,7 @@ static FileData *filedata_new(BlendFileReadReport *reports)
   fd->reports = reports;
 
   fd->shared_data_by_stored_address =
-      new blender::Map<void *, blender::ImplicitSharingInfoAndData>();
+      new blender::Map<const void *, blender::ImplicitSharingInfoAndData>();
 
   return fd;
 }
@@ -5039,11 +5039,11 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
 
 void blo_read_shared_impl(
     BlendDataReader *reader,
-    void **data_ptr,
+    const void **data_ptr,
     const blender::ImplicitSharingInfo **r_sharing_info,
     const blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
 {
-  void *old_address = *data_ptr;
+  const void *old_address = *data_ptr;
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
@@ -5068,7 +5068,7 @@ void blo_read_shared_impl(
     if (shared_data) {
       /* The data was loaded before. No need to load it again. Just assign the address and increase
        * the user count to indicate that it is shared. */
-      *data_ptr = const_cast<void *>(shared_data->data);
+      *data_ptr = shared_data->data;
       *r_sharing_info = shared_data->sharing_info;
       if (shared_data->sharing_info) {
         shared_data->sharing_info->add_user();
