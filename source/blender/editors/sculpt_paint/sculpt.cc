@@ -6516,7 +6516,7 @@ void flush_positions_to_shape_keys(Object &object,
 
   /* Modifying of basis key should update mesh. */
   if (active_key == mesh.key->refkey) {
-    /* XXX: There are too many positions arrays getting passed around. We should have a better
+    /* TODO: There are too many positions arrays getting passed around. We should have a better
      * naming system or not have to constantly update both the base shape key and original
      * positions. OTOH, maybe it's just a consequence of the bad design of shape keys. */
     apply_translations(positions, verts, positions_mesh);
