@@ -417,8 +417,7 @@ class CurvesGeometry : public ::CurvesGeometry {
   /* --------------------------------------------------------------------
    * File Read/Write.
    */
-  void blend_read(BlendDataReader &reader,
-                  blender::Map<void *, const ImplicitSharingInfo *> &sharing_info_by_data);
+  void blend_read(BlendDataReader &reader);
   /**
    * Helper struct for `CurvesGeometry::blend_write_*` functions.
    */

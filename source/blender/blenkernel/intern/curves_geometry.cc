@@ -1547,30 +1547,18 @@ GVArray CurvesGeometry::adapt_domain(const GVArray &varray,
 /** \name File reading/writing.
  * \{ */
 
-void CurvesGeometry::blend_read(
-    BlendDataReader &reader,
-    blender::Map<void *, const ImplicitSharingInfo *> &sharing_info_by_data)
+void CurvesGeometry::blend_read(BlendDataReader &reader)
 {
   this->runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
 
-  CustomData_blend_read(&reader, &this->point_data, this->point_num, sharing_info_by_data);
-  CustomData_blend_read(&reader, &this->curve_data, this->curve_num, sharing_info_by_data);
+  CustomData_blend_read(&reader, &this->point_data, this->point_num);
+  CustomData_blend_read(&reader, &this->curve_data, this->curve_num);
 
   if (this->curve_offsets) {
     this->runtime->curve_offsets_sharing_info = BLO_read_shared(
         &reader, &this->curve_offsets, [&]() {
           BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
-
-          const ImplicitSharingInfo *sharing_info = sharing_info_by_data.lookup_default(
-              this->curve_offsets, nullptr);
-          if (sharing_info != nullptr) {
-            sharing_info->add_user();
-          }
-          else {
-            sharing_info = implicit_sharing::info_for_mem_free(this->curve_offsets);
-            sharing_info_by_data.add(this->curve_offsets, sharing_info);
-          }
-          return sharing_info;
+          return implicit_sharing::info_for_mem_free(this->curve_offsets);
         });
   }
 

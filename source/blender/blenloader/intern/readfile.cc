@@ -597,7 +597,7 @@ void blo_readfile_invalidate(FileData *fd, Main *bmain, const char *message)
 
 struct BlendDataReader {
   FileData *fd;
-  // blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data;
+  blender::Map<void *, const blender::ImplicitSharingInfo *> sharing_info_by_data_in_data_block;
 };
 
 struct BlendLibReader {
@@ -2429,6 +2429,9 @@ static const char *idtype_alloc_name_get(short id_code)
 static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *id_old)
 {
   BlendDataReader reader = {fd};
+  /* Just clearing this here explicitly so that it's not forgotten if the `reader` is passed in as
+   * parameter in the future. */
+  reader.sharing_info_by_data_in_data_block.clear();
 
   /* Read part of datablock that is common between real and embedded datablocks. */
   direct_link_id_common(&reader, main->curlib, id, id_old, tag);
@@ -5035,10 +5038,11 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
 
 void blo_read_shared_impl(
     BlendDataReader *reader,
-    void *data,
+    void **data_ptr,
     const blender::ImplicitSharingInfo **r_sharing_info,
     const blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
 {
+  void *old_address = *data_ptr;
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
@@ -5046,7 +5050,7 @@ void blo_read_shared_impl(
       if (memfile.shared_storage) {
         /* Check if the data was saved with sharing-info. */
         if (const blender::ImplicitSharingInfo *sharing_info =
-                memfile.shared_storage->map.lookup_default(data, nullptr))
+                memfile.shared_storage->map.lookup_default(old_address, nullptr))
         {
           /* Add a new owner of the data that is passed to the caller. */
           sharing_info->add_user();
@@ -5056,7 +5060,22 @@ void blo_read_shared_impl(
       }
     }
   }
-  *r_sharing_info = read_fn();
+  else {
+    void *new_address = newdataadr_no_us(reader->fd, old_address);
+    const blender::ImplicitSharingInfo *sharing_info =
+        reader->sharing_info_by_data_in_data_block.lookup_default(new_address, nullptr);
+    if (sharing_info) {
+      *data_ptr = new_address;
+      sharing_info->add_user();
+      *r_sharing_info = sharing_info;
+    }
+    else {
+      sharing_info = read_fn();
+      BLI_assert(*data_ptr == new_address);
+      reader->sharing_info_by_data_in_data_block.add(new_address, sharing_info);
+    }
+    *r_sharing_info = sharing_info;
+  }
 }
 
 bool BLO_read_data_is_undo(BlendDataReader *reader)
