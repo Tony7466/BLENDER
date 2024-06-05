@@ -67,24 +67,28 @@ AttributeOwnerType AttributeOwner::type() const
 
 Mesh *AttributeOwner::get_mesh() const
 {
+  BLI_assert(ptr_ != nullptr);
   BLI_assert(type_ == AttributeOwnerType::Mesh);
   return reinterpret_cast<Mesh *>(ptr_);
 }
 
 PointCloud *AttributeOwner::get_pointcloud() const
 {
+  BLI_assert(ptr_ != nullptr);
   BLI_assert(type_ == AttributeOwnerType::PointCloud);
   return reinterpret_cast<PointCloud *>(ptr_);
 }
 
 Curves *AttributeOwner::get_curves() const
 {
+  BLI_assert(ptr_ != nullptr);
   BLI_assert(type_ == AttributeOwnerType::Curves);
   return reinterpret_cast<Curves *>(ptr_);
 }
 
 GreasePencil *AttributeOwner::get_grease_pencil() const
 {
+  BLI_assert(ptr_ != nullptr);
   BLI_assert(type_ == AttributeOwnerType::GreasePencil);
   return reinterpret_cast<GreasePencil *>(ptr_);
 }

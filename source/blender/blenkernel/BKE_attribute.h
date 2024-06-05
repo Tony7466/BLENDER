@@ -48,7 +48,7 @@ enum class AttributeOwnerType {
 
 class AttributeOwner {
   AttributeOwnerType type_;
-  void *ptr_;
+  void *ptr_ = nullptr;
 
  public:
   AttributeOwner(){};
