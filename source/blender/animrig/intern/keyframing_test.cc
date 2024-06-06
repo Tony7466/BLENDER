@@ -425,9 +425,8 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
   ChannelBag *channel_bag_1 = strip->channelbag_for_binding(*binding_1);
   ASSERT_NE(nullptr, channel_bag_1);
 
-  /* Assign the action to the second object. */
-  armature_object->adt = BKE_animdata_ensure_id(&armature_object->id);
-  armature_object->adt->action = object->adt->action;
+  /* Assign the action to the second object, with no binding. */
+  action.assign_id(nullptr, armature_object->id);
 
   /* Keying the second object should go into the same action, creating a new
    * binding and channel bag. */
