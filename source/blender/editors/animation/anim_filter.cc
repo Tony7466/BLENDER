@@ -1456,11 +1456,14 @@ static size_t animfilter_action_binding(ListBase *anim_data,
 
   const bool selection_matters = filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL);
   const bool must_be_selected = filter_mode & ANIMFILTER_SEL;
+  const bool selection_ok_for_binding = !selection_matters ||
+                                        binding.is_selected() == must_be_selected;
 
   int num_items = 0;
 
   /* Add a list element for the Binding itself. */
-  if (!selection_matters || binding.is_selected() == must_be_selected) {
+  const bool show_fcurves_only = (filter_mode & ANIMFILTER_FCURVESONLY);
+  if (selection_ok_for_binding && !show_fcurves_only) {
     bAnimListElem *ale = make_new_animlistelem(
         &binding, ANIMTYPE_ACTION_BINDING, owner_id, &action.id);
     BLI_addtail(anim_data, ale);
@@ -1468,7 +1471,7 @@ static size_t animfilter_action_binding(ListBase *anim_data,
   }
 
   /* Add list elements for the F-Curves for this Binding. */
-  if (binding.is_expanded()) {
+  if (show_fcurves_only || binding.is_expanded()) {
     Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding.handle);
     num_items += animfilter_fcurves_span(
         anim_data, ads, fcurves, binding.handle, filter_mode, owner_id, &action.id);
