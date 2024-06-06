@@ -950,10 +950,18 @@ struct PhysicsAccessInfo {
 
 template<typename T> static void dummy_set_fn(btRigidBody *& /*body*/, T /*value*/) {}
 
+template<typename T> using RigidBodyGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
+template<typename T>
+using RigidBodyGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl);
+
 /**
  * Provider for builtin rigid body attributes.
  */
-template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = dummy_set_fn>
+template<typename T,
+         RigidBodyGetFn<T> GetFn,
+         RigidBodySetFn<T> SetFn = dummy_set_fn,
+         RigidBodyGetCacheFn<T> GetCacheFn = nullptr,
+         RigidBodyGetMutableCacheFn<T> GetMutableCacheFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
   const PhysicsAccessInfo physics_access_;
@@ -983,7 +991,10 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
-    GVArray varray = VArray_For_PhysicsBodies<T, GetFn>(physics);
+    GVArray varray = (GetCacheFn == nullptr) ?
+                         VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl())) :
+                         VArray_For_PhysicsBodies<T, GetFn>(physics, T());
+
     return {std::move(varray), domain_, nullptr};
   }
 
@@ -994,12 +1005,17 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
+    // GVMutableArray varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics);
+    GVMutableArray varray = (GetCacheFn == nullptr) ?
+                                VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(
+                                    physics, GetCacheFn(physics->impl())) :
+                                VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
+
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
       tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
     }
 
-    GVMutableArray varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics);
     return {std::move(varray), domain_, std::move(tag_modified_fn)};
   }
 
