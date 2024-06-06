@@ -128,7 +128,7 @@ enum eUIEmbossType {
   /** Pull-down menu style */
   UI_EMBOSS_PULLDOWN = 2,
   /** Pie Menu */
-  UI_EMBOSS_RADIAL = 3,
+  UI_EMBOSS_PIE_MENU = 3,
   /**
    * The same as #UI_EMBOSS_NONE, unless the button has
    * a coloring status like an animation state or red alert.
@@ -171,7 +171,7 @@ enum {
 
   UI_BLOCK_POPUP_HOLD = 1 << 18,
   UI_BLOCK_LIST_ITEM = 1 << 19,
-  UI_BLOCK_RADIAL = 1 << 20,
+  UI_BLOCK_PIE_MENU = 1 << 20,
   UI_BLOCK_POPOVER = 1 << 21,
   UI_BLOCK_POPOVER_ONCE = 1 << 22,
   /** Always show key-maps, even for non-menus. */
@@ -285,7 +285,7 @@ enum {
 
 #define UI_PANEL_WIDTH 340
 #define UI_COMPACT_PANEL_WIDTH 160
-#define UI_SIDEBAR_PANEL_WIDTH 220
+#define UI_SIDEBAR_PANEL_WIDTH 280
 #define UI_NAVIGATION_REGION_WIDTH UI_COMPACT_PANEL_WIDTH
 #define UI_NARROW_NAVIGATION_REGION_WIDTH 100
 
@@ -1387,6 +1387,7 @@ std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C, uiBut &but
 std::string UI_but_string_get_rna_property_identifier(const uiBut &but);
 std::string UI_but_string_get_rna_struct_identifier(const uiBut &but);
 std::string UI_but_string_get_label(uiBut &but);
+std::string UI_but_context_menu_title_from_button(uiBut &but);
 /**
  * Query the result of #uiBut::tip_label_func().
  * Meant to allow overriding the label to be displayed in the tool-tip.
@@ -2350,6 +2351,7 @@ uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align);
 uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, bool align);
 uiLayout *uiLayoutOverlap(uiLayout *layout);
 uiBlock *uiLayoutAbsoluteBlock(uiLayout *layout);
+/** Pie menu layout: Buttons are arranged around a center. */
 uiLayout *uiLayoutRadial(uiLayout *layout);
 
 /* templates */
