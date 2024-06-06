@@ -1037,7 +1037,7 @@ BatchHandle GPU_material_batch_compile(blender::Span<GPUMaterial *> mats)
     const char *name = __func__;
 #endif
     mat->do_batch_compilation = false;
-    if (GPUShaderCreateInfo *info = GPU_pass_get_info(mat->pass, name)) {
+    if (GPUShaderCreateInfo *info = GPU_pass_begin_compilation(mat->pass, name)) {
       infos.append(info);
       mat->do_batch_compilation = true;
     }
@@ -1058,7 +1058,7 @@ void GPU_material_batch_finalize(BatchHandle &handle, blender::Span<GPUMaterial 
   for (GPUMaterial *mat : mats) {
     bool success = true;
     if (mat->do_batch_compilation) {
-      success = GPU_pass_set_shader(mat->pass, shaders[i++]);
+      success = GPU_pass_finalize_compilation(mat->pass, shaders[i++]);
     }
     gpu_material_finalize(mat, success);
   }

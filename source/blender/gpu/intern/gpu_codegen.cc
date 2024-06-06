@@ -884,7 +884,7 @@ static bool gpu_pass_shader_validate(GPUPass *pass, GPUShader *shader)
   return (active_samplers_len * 3 <= GPU_max_textures());
 }
 
-GPUShaderCreateInfo *GPU_pass_get_info(GPUPass *pass, const char *shname)
+GPUShaderCreateInfo *GPU_pass_begin_compilation(GPUPass *pass, const char *shname)
 {
   if (!pass->compilation_requested) {
     pass->compilation_requested = true;
@@ -896,7 +896,7 @@ GPUShaderCreateInfo *GPU_pass_get_info(GPUPass *pass, const char *shname)
   return nullptr;
 }
 
-bool GPU_pass_set_shader(GPUPass *pass, GPUShader *shader)
+bool GPU_pass_finalize_compilation(GPUPass *pass, GPUShader *shader)
 {
   bool success = true;
   if (!pass->compiled) {
@@ -919,9 +919,9 @@ bool GPU_pass_set_shader(GPUPass *pass, GPUShader *shader)
 bool GPU_pass_compile(GPUPass *pass, const char *shname)
 {
   bool success = true;
-  if (GPUShaderCreateInfo *info = GPU_pass_get_info(pass, shname)) {
+  if (GPUShaderCreateInfo *info = GPU_pass_begin_compilation(pass, shname)) {
     GPUShader *shader = GPU_shader_create_from_info(info);
-    success = GPU_pass_set_shader(pass, shader);
+    success = GPU_pass_finalize_compilation(pass, shader);
   }
   return success;
 }
