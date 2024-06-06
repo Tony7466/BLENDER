@@ -47,6 +47,10 @@ class GLSources : public Vector<GLSource> {
   std::string to_string() const;
 };
 
+/**
+ * The full sources for each shader stage, baked into a single string from their respective
+ * GLSources. (Can be retrieved from GLShader::get_sources())
+ */
 struct GLSourcesBaked : NonCopyable {
   std::string comp;
   std::string vert;
