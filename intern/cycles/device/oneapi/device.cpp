@@ -82,7 +82,7 @@ Device *device_oneapi_create(const DeviceInfo &info,
                              bool headless)
 {
 #ifdef WITH_ONEAPI
-  return new OneapiDevice(info, stats, profiler);
+  return new OneapiDevice(info, stats, profiler, headless);
 #else
   (void)info;
   (void)stats;
