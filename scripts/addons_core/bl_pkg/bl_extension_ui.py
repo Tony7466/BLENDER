@@ -386,15 +386,6 @@ def extensions_panel_draw_online_extensions_request_impl(
     row.operator("extensions.userpref_allow_online", text="Allow Online Access", icon='CHECKMARK')
 
 
-addons_block_list = {
-    'coat_applink',  # external dependencies
-    'depsgraph_debug',  # external depedencies
-    'io_import_images_as_planes',  # integrated with Blender
-    'io_mesh_stl',  # was on by default
-    'io_scene_x3d',  # was on by default
-}
-
-
 def addons_legacy_list_get():
     import json
     import os
@@ -859,7 +850,6 @@ def extensions_panel_draw_impl(
         missing_modules = {
             addon_module_name for addon_module_name in used_addon_module_name_map
             if addon_module_name not in module_names and
-            addon_module_name not in addons_block_list and
             addon_module_name not in addons_legacy_list
         }
 
