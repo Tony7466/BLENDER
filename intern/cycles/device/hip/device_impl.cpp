@@ -53,8 +53,8 @@ void HIPDevice::set_error(const string &error)
   }
 }
 
-HIPDevice::HIPDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
-    : GPUDevice(info, stats, profiler)
+HIPDevice::HIPDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless)
+    : GPUDevice(info, stats, profiler, headless)
 {
   /* Verify that base class types can be used with specific backend types */
   static_assert(sizeof(texMemObject) == sizeof(hipTextureObject_t));
