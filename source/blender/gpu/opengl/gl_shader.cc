@@ -1489,10 +1489,10 @@ std::string GLSources::to_string() const
 size_t GLSourcesBaked::size()
 {
   size_t result = 0;
-  result += comp.size() > 0 ? comp.size() + sizeof('\0') : 0;
-  result += vert.size() > 0 ? vert.size() + sizeof('\0') : 0;
-  result += geom.size() > 0 ? geom.size() + sizeof('\0') : 0;
-  result += frag.size() > 0 ? frag.size() + sizeof('\0') : 0;
+  result += comp.empty() ? 0 : comp.size() + sizeof('\0');
+  result += vert.empty() ? 0 : vert.size() + sizeof('\0');
+  result += geom.empty() ? 0 : geom.size() + sizeof('\0');
+  result += frag.empty() ? 0 : frag.size() + sizeof('\0');
   return result;
 }
 
