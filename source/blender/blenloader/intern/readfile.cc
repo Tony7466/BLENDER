@@ -600,8 +600,7 @@ struct BlendDataReader {
 
   /**
    * The key is the old pointer to shared data that's written to a file, typically an array. The
-   * corresponding value is the shared data at run-time. This is only used when loading from a
-   * file, not for undo.
+   * corresponding value is the shared data at run-time.
    */
   blender::Map<const void *, blender::ImplicitSharingInfoAndData> shared_data_by_stored_address;
 };
