@@ -40,7 +40,6 @@
 
 #include "GPU_state.hh"
 
-#include <iostream>
 #include <list>
 #include <optional>
 
@@ -1058,7 +1057,6 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
   GPU_depth_mask(true);
   image_render::compute_view_matrices(view_context, scene, image_size, zoom, offset);
   ed::greasepencil::image_render::set_projection_matrix(rv3d);
-  std::cout << __func__ << std::endl;
 
   /* Draw blue point where click with mouse. */
   const float mouse_dot_size = 4.0f;
