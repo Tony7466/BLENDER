@@ -980,7 +980,7 @@ static void object_get_datamask(const Depsgraph &depsgraph,
       r_mask.fmask |= CD_MASK_MTFACE;
     }
 
-    /* Check if we need mcols due to vertex paint or weight-paint. */
+    /* Check if we need loop-color due to vertex paint or weight-paint. */
     if (ob.mode & OB_MODE_VERTEX_PAINT) {
       r_mask.lmask |= CD_MASK_PROP_BYTE_COLOR;
     }
@@ -1050,9 +1050,8 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
    * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
   BLI_assert(ob->id.tag & LIB_TAG_COPIED_ON_EVAL);
 
-  /* if there's no derived mesh or the last data mask used doesn't include
-   * the data we need, rebuild the derived mesh
-   */
+  /* If there's no evaluated mesh or the last data mask used doesn't include
+   * the data we need, rebuild the evaluated mesh. */
   bool need_mapping;
 
   CustomData_MeshMasks cddata_masks = *dataMask;
@@ -1111,9 +1110,8 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
 {
   CustomData_MeshMasks cddata_masks = *dataMask;
 
-  /* if there's no derived mesh or the last data mask used doesn't include
-   * the data we need, rebuild the derived mesh
-   */
+  /* If there's no evaluated mesh or the last data mask used doesn't include
+   * the data we need, rebuild the evaluated mesh. */
   object_get_datamask(*depsgraph, *obedit, cddata_masks, nullptr);
 
   if (!BKE_object_get_editmesh_eval_cage(obedit) ||
