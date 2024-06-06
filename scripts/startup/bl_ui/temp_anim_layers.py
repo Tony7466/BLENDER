@@ -52,12 +52,34 @@ class VIEW3D_PT_animation_layers(Panel):
         if anim:
             binding_sub = col.column(align=True)
 
-            # Binding selector.
+            # Binding selector as enum property:
             row = binding_sub.row(align=True)
-            row.prop(adt, "action_binding", text="Binding")
+            row.prop(adt, "action_binding_enum", text="Binding")
             row.operator("anim.binding_unassign_object", text="", icon='X')
 
-            binding = anim.bindings.get(adt.action_binding, None)
+            # Binding selector as pointer property + template_search:
+            row = binding_sub.split(factor=0.4, align=True)
+            row.label(text="template_search")
+            row.template_search(
+                adt, "action_binding",
+                anim, "bindings",
+                new="",
+                unlink="anim.binding_unassign_object",
+            )
+
+            # Binding selector as pointer property + template_search:
+            row = binding_sub.split(factor=0.4, align=True)
+            row.label(text="template_search")
+            row.template_search(
+                adt, "action_binding",
+                adt, "action_bindings",
+                new="",
+                unlink="anim.binding_unassign_object",
+            )
+
+            binding_sub.separator()
+
+            binding = adt.action_binding  # anim.bindings.get(adt.action_binding, None)
             if binding:
                 binding_sub.prop(binding, "name_display", text="Name")
 

@@ -23,6 +23,10 @@ struct bNodeSocket;
 struct bNodeTree;
 struct wmOperatorType;
 
+namespace blender::animrig {
+class Action;
+}
+
 struct SpaceProperties_Runtime {
   /** For filtering properties displayed in the space. */
   char search_string[UI_MAX_NAME_STR];
@@ -31,6 +35,15 @@ struct SpaceProperties_Runtime {
    * that match the search filter. Only valid when #search_string is set.
    */
   BLI_bitmap *tab_search_results;
+
+  /**
+   * Action selector support.
+   *
+   * Since the `id.animation_data.action` property does not exist when
+   * `id.animation_data == None`, there has to be *something* else that has an
+   * .action property for that initial ID selector to do its thing.
+   */
+  blender::animrig::Action *action;
 };
 
 /* context data */
