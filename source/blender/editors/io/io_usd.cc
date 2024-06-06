@@ -41,6 +41,8 @@
 #  include "io_utils.hh"
 #  include "usd.hh"
 
+#  include <pxr/pxr.h>
+
 #  include <string>
 #  include <utility>
 
@@ -230,6 +232,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
   const bool generate_preview_surface = RNA_boolean_get(op->ptr, "generate_preview_surface");
+  const bool generate_materialx_network = RNA_boolean_get(op->ptr, "generate_materialx_network");
   const bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
   const bool overwrite_textures = RNA_boolean_get(op->ptr, "overwrite_textures");
   const bool relative_paths = RNA_boolean_get(op->ptr, "relative_paths");
@@ -259,6 +262,12 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const int usdz_downscale_custom_size = RNA_int_get(op->ptr, "usdz_downscale_custom_size");
 
+#  if PXR_VERSION >= 2403
+  const bool allow_unicode = RNA_boolean_get(op->ptr, "allow_unicode");
+#  else
+  const bool allow_unicode = false;
+#  endif
+
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
@@ -279,6 +288,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       use_instancing,
       eEvaluationMode(evaluation_mode),
       generate_preview_surface,
+      generate_materialx_network,
       export_textures,
       overwrite_textures,
       relative_paths,
@@ -299,6 +309,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_volumes,
       usdz_downscale_size,
       usdz_downscale_custom_size,
+      allow_unicode,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -337,6 +348,9 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   row = uiLayoutRow(col, true);
   uiItemR(row, ptr, "author_blender_name", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiLayoutSetActive(row, RNA_boolean_get(op->ptr, "export_custom_properties"));
+#  if PXR_VERSION >= 2403
+  uiItemR(col, ptr, "allow_unicode", UI_ITEM_NONE, nullptr, ICON_NONE);
+#  endif
 
   uiItemR(col, ptr, "convert_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -371,13 +385,15 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   box = uiLayoutBox(layout);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Materials"));
   uiItemR(col, ptr, "generate_preview_surface", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "generate_materialx_network", UI_ITEM_NONE, nullptr, ICON_NONE);
   const bool export_mtl = RNA_boolean_get(ptr, "export_materials");
   uiLayoutSetActive(col, export_mtl);
 
   row = uiLayoutRow(col, true);
   uiItemR(row, ptr, "export_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
   const bool preview = RNA_boolean_get(ptr, "generate_preview_surface");
-  uiLayoutSetActive(row, export_mtl && preview);
+  const bool materialx = RNA_boolean_get(ptr, "generate_materialx_network");
+  uiLayoutSetActive(row, export_mtl && (preview || materialx));
 
   uiLayout *col2 = uiLayoutColumn(col, true);
   uiLayoutSetPropSep(col2, true);
@@ -566,9 +582,15 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "generate_preview_surface",
                   true,
-                  "To USD Preview Surface",
+                  "USD Preview Surface Network",
                   "Generate an approximate USD Preview Surface shader "
                   "representation of a Principled BSDF node network");
+
+  RNA_def_boolean(ot->srna,
+                  "generate_materialx_network",
+                  false,
+                  "MaterialX Network",
+                  "Generate a MaterialX network representation of the materials");
 
   RNA_def_boolean(ot->srna,
                   "convert_orientation",
@@ -644,6 +666,16 @@ void WM_OT_usd_export(wmOperatorType *ot)
       "Convert the world material to a USD dome light. "
       "Currently works for simple materials, consisting of an environment texture "
       "connected to a background shader, with an optional vector multiply of the texture color");
+
+#  if PXR_VERSION >= 2403
+  RNA_def_boolean(
+      ot->srna,
+      "allow_unicode",
+      false,
+      "Allow Unicode",
+      "Preserve UTF-8 encoded characters when writing USD prim and property names "
+      "(requires software utilizing USD 24.03 or greater when opening the resulting files)");
+#  endif
 
   RNA_def_boolean(ot->srna, "export_meshes", true, "Meshes", "Export all meshes");
 
