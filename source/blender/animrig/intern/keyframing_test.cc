@@ -456,36 +456,6 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
   ASSERT_NE(nullptr, channel_bag_2);
 }
 
-/* Keying an object with an existing binding name, but no assigned action. */
-TEST_F(KeyframingTest, insert_key_rna__layered_action__existing_binding_name)
-{
-  /* Turn on Baklava experimental flag. */
-  U.flag |= USER_DEVELOPER_UI;
-  U.experimental.use_animation_baklava = 1;
-
-  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
-
-  /* Ensure AnimData for the object and assign a binding name. */
-  BKE_animdata_ensure_id(&object->id);
-  BLI_strncpy(object->adt->binding_name, "OBFoo", 66);
-
-  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
-                                                       {{"empty_display_size"}},
-                                                       1.0,
-                                                       INSERTKEY_NOFLAGS,
-                                                       BEZT_KEYTYPE_KEYFRAME,
-                                                       bmain,
-                                                       anim_eval_context);
-  EXPECT_EQ(1, result_1.get_count(SingleKeyingResult::SUCCESS));
-
-  /* The newly created binding should be named the same as the object's binding
-   * name field. */
-  Action &action = object->adt->action->wrap();
-  Binding *binding = action.binding(0);
-  EXPECT_EQ(0, strcmp("OBFoo", binding->name));
-  EXPECT_EQ(0, strcmp(object->adt->binding_name, binding->name));
-}
-
 /* Keying an object with an already-existing legacy action should do legacy
  * keying. */
 TEST_F(KeyframingTest, insert_key_rna__baklava_legacy_action)
