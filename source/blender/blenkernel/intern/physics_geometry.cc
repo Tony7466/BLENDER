@@ -306,10 +306,10 @@ class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
 template<typename ElemT>
 class VArrayImpl_For_PhysicsBodiesCache final : public VMutableArrayImpl<ElemT> {
  private:
-  Span<ElemT> cache_;
+  MutableSpan<ElemT> cache_;
 
  public:
-  VArrayImpl_For_PhysicsBodiesCache(const Span<ElemT> cache)
+  VArrayImpl_For_PhysicsBodiesCache(const MutableSpan<ElemT> cache)
       : VMutableArrayImpl<ElemT>(cache.size()), cache_(cache)
   {
   }
@@ -385,13 +385,13 @@ class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = value_; });
+        [&](const int64_t /*i*/, const int64_t pos) { dst[pos] = value_; });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(value_); });
+        [&](const int64_t /*i*/, const int64_t pos) { new (dst + pos) ElemT(value_); });
   }
 };
 
@@ -427,7 +427,7 @@ static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const 
 
 template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
 static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
-                                                        const Span<T> cache)
+                                                        const MutableSpan<T> cache)
 {
   if (physics->impl().has_data) {
     return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
@@ -1006,9 +1006,14 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
     }
 
     // GVMutableArray varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics);
+    PhysicsGeometryImpl *impl = physics->try_impl_for_write();
+    if (!impl) {
+      return {};
+    }
+
     GVMutableArray varray = (GetCacheFn == nullptr) ?
                                 VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(
-                                    physics, GetCacheFn(physics->impl())) :
+                                    physics, GetMutableCacheFn(*impl)) :
                                 VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
 
     std::function<void()> tag_modified_fn;
