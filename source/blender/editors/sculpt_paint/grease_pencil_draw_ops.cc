@@ -25,7 +25,6 @@
 #include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_rect.h"
-#include "BLI_string.h"
 
 #include "DNA_brush_enums.h"
 #include "DNA_brush_types.h"
@@ -37,7 +36,6 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "GEO_join_geometries.hh"
-#include "GEO_simplify_curves.hh"
 #include "GEO_smooth_curves.hh"
 
 #include "ED_grease_pencil.hh"
@@ -57,12 +55,9 @@
 #include "BLT_translation.hh"
 
 #include "WM_api.hh"
-#include "WM_message.hh"
 #include "WM_toolsystem.hh"
-
 #include "WM_types.hh"
-#include "curves_sculpt_intern.hh"
-#include "fmt/core.h"
+
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 #include "wm_event_types.hh"
