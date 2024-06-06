@@ -1681,8 +1681,9 @@ void GLCompilerWorker::compile(const GLSourcesBaked &sources)
   }
   else {
     BLI_assert(sources.comp.empty() && !sources.vert.empty() && !sources.frag.empty());
-    shared_src->type = sources.geom.empty() ? ShaderSourceHeader::Type::GRAPHICS :
-                                              ShaderSourceHeader::Type::GRAPHICS_GEOM;
+    shared_src->type = sources.geom.empty() ?
+                           ShaderSourceHeader::Type::GRAPHICS :
+                           ShaderSourceHeader::Type::GRAPHICS_WITH_GEOMETRY_STAGE;
   }
 
   start_semaphore_->increment();

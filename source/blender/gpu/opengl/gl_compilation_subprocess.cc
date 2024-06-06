@@ -211,7 +211,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     }
     else {
       vert_src = get_src();
-      if (source->type == ShaderSourceHeader::Type::GRAPHICS_GEOM) {
+      if (source->type == ShaderSourceHeader::Type::GRAPHICS_WITH_GEOMETRY_STAGE) {
         geom_src = get_src();
       }
       frag_src = get_src();
