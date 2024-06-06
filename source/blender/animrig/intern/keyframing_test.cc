@@ -486,6 +486,48 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__existing_binding_name)
   EXPECT_EQ(0, strcmp(object->adt->binding_name, binding->name));
 }
 
+/* Keying an object with an already-existing legacy action should do legacy
+ * keying. */
+TEST_F(KeyframingTest, insert_key_rna__baklava_legacy_action)
+{
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+
+  /* Insert a key with the experimental flag off to create a legacy action. */
+  const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
+                                                       {{"empty_display_size"}},
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(1, result_1.get_count(SingleKeyingResult::SUCCESS));
+
+  bAction *action = object->adt->action;
+  EXPECT_TRUE(action->wrap().is_action_legacy());
+  EXPECT_FALSE(action->wrap().is_action_layered());
+  EXPECT_EQ(1, BLI_listbase_count(&action->curves));
+
+  /* Turn on Baklava experimental flag. */
+  U.flag |= USER_DEVELOPER_UI;
+  U.experimental.use_animation_baklava = 1;
+
+  /* Insert more keys, which should also get inserted as part of the same legacy
+   * action, not a layered action. */
+  const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
+                                                       {{"location"}},
+                                                       1.0,
+                                                       INSERTKEY_NOFLAGS,
+                                                       BEZT_KEYTYPE_KEYFRAME,
+                                                       bmain,
+                                                       anim_eval_context);
+  EXPECT_EQ(3, result_2.get_count(SingleKeyingResult::SUCCESS));
+
+  EXPECT_EQ(action, object->adt->action);
+  EXPECT_TRUE(action->wrap().is_action_legacy());
+  EXPECT_FALSE(action->wrap().is_action_layered());
+  EXPECT_EQ(4, BLI_listbase_count(&action->curves));
+}
+
 /* Keying with the "Only Insert Available" flag. */
 TEST_F(KeyframingTest, insert_key_rna__layered_action__only_available)
 {
