@@ -146,4 +146,11 @@ void apply_translations_to_shape_keys(Object &object,
                                       Span<float3> translations,
                                       MutableSpan<float3> positions_mesh);
 
+/**
+ * Currently the PBVH owns its own copy of deformed positions that needs to be updated to stay in
+ * sync with brush deformations.
+ * \todo This should be removed one the PBVH no longer stores this copy of deformed positions.
+ */
+void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, Span<float3> positions_orig);
+
 }  // namespace blender::ed::sculpt_paint

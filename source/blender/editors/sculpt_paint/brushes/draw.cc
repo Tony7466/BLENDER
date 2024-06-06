@@ -85,6 +85,7 @@ static void calc_faces(const Sculpt &sd,
 
   apply_translations(translations, verts, positions_orig);
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)

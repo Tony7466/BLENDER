@@ -6720,4 +6720,16 @@ void apply_translations_to_shape_keys(Object &object,
   }
 }
 
+void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, const Span<float3> translations)
+{
+  if (!BKE_pbvh_is_deformed(pbvh)) {
+    return;
+  }
+  MutableSpan<float3> pbvh_positions = BKE_pbvh_get_vert_positions(pbvh);
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
+    pbvh_positions[vert] += translations[i];
+  }
+}
+
 }  // namespace blender::ed::sculpt_paint
