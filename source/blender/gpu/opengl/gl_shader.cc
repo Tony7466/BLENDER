@@ -1663,7 +1663,8 @@ void GLCompilerWorker::compile(const GLSourcesBaked &sources)
 
   auto add_src = [&](const std::string &src) {
     if (!src.empty()) {
-      next_src += BLI_strncpy_rlen(next_src, src.c_str(), src.size() + 1) + sizeof('\0');
+      strcpy(next_src, src.c_str());
+      next_src += src.size() + sizeof('\0');
     }
   };
 
