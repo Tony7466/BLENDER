@@ -155,9 +155,6 @@ def extension_url_find_repo_index_and_pkg_id(url):
     from .bl_extension_utils import (
         pkg_manifest_archive_url_abs_from_remote_url,
     )
-    from .bl_extension_ops import (
-        extension_repos_read,
-    )
     # return repo_index, pkg_id
     from . import repo_cache_store
 
@@ -466,13 +463,13 @@ def _preferences_ensure_sync():
     # This is a general issue:
     from . import repo_cache_store
     sync_required = False
-    for repo_index, (
+    for (
             pkg_manifest_remote,
             pkg_manifest_local,
-    ) in enumerate(zip(
+    ) in zip(
         repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
         repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print),
-    )):
+    ):
         if pkg_manifest_remote is None:
             sync_required = True
             break
@@ -1904,6 +1901,14 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
 
+    # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+    # Only used when moving from  previously built-in add-ons to extensions.
+    do_legacy_replace: BoolProperty(
+        name="Do Legacy Replace",
+        default=False,
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
     @classmethod
     def poll(cls, context):
         if not bpy.app.online_access:
@@ -2016,6 +2021,10 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
 
+        # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+        if self.do_legacy_replace and (not canceled):
+            self._do_legacy_replace(self.pkg_id, pkg_manifest_local)
+
     def invoke(self, context, event):
         # Only for drop logic!
         if self.properties.is_property_set("url"):
@@ -2082,6 +2091,30 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         layout.separator()
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote["type"]])
+
+    @staticmethod
+    def _do_legacy_replace(pkg_id, pkg_manifest_local):
+        # Disables and add-on that was replaced by an extension,
+        # use for upgrading 4.1 preferences or older.
+
+        # Ensure the local meta-data exists, else there may have been a problem installing,
+        # note that this does *not* check if the add-on could be enabled which is intentional.
+        # It's only important the add-on installs to justify disabling the old add-on.
+        # Note that there is no need to report if this was not found as failing to install will
+        # already have reported.
+        if not pkg_manifest_local.get(pkg_id):
+            return
+
+        from .bl_extension_ui import extensions_map_from_legacy_addons_reverse_lookup
+        addon_module_name = extensions_map_from_legacy_addons_reverse_lookup(pkg_id)
+        if not addon_module_name:
+            # This shouldn't happen unless someone goes out of there way
+            # to enable `do_legacy_replace` for a non-legacy extension.
+            # Use a print here as it's such a corner case and harmless.
+            print("Internal error, legacy lookup failed:", addon_module_name)
+            return
+
+        bpy.ops.preferences.addon_disable(module=addon_module_name)
 
 
 class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
@@ -2397,7 +2430,7 @@ class EXTENSIONS_OT_repo_lock(Operator):
             return {'CANCELLED'}
 
         self.report({'INFO'}, "Locked {:d} repos(s)".format(len(lock_result)))
-        BlPkgRepoLock.lock = lock_handle
+        EXTENSIONS_OT_repo_lock.lock = lock_handle
         return {'FINISHED'}
 
 
@@ -2407,14 +2440,14 @@ class EXTENSIONS_OT_repo_unlock(Operator):
     bl_label = "Unlock Repository (Testing)"
 
     def execute(self, _context):
-        lock_handle = BlPkgRepoLock.lock
+        lock_handle = EXTENSIONS_OT_repo_lock.lock
         if lock_handle is None:
             self.report({'ERROR'}, "Lock not held!")
             return {'CANCELLED'}
 
         lock_result = lock_handle.release()
 
-        BlPkgRepoLock.lock = None
+        EXTENSIONS_OT_repo_lock.lock = None
 
         if lock_result_any_failed_with_report(self, lock_result):
             # This isn't canceled, but there were issues unlocking.
@@ -2451,9 +2484,28 @@ class EXTENSIONS_OT_userpref_show_for_update(Operator):
 # NOTE: this is a wrapper for `SCREEN_OT_userpref_show`.
 # It exists *only* to add a poll function which sets a message when offline mode is forced.
 class EXTENSIONS_OT_userpref_show_online(Operator):
+    """Show system preferences "Network" panel to allow online access"""
+    bl_idname = "extensions.userpref_show_online"
+    bl_label = ""
+    bl_options = {'INTERNAL'}
+
+    @classmethod
+    def poll(cls, context):
+        if bpy.app.online_access_override:
+            if not bpy.app.online_access:
+                cls.poll_message_set("Blender was launched in offline-mode which cannot be changed at runtime")
+                return False
+        return True
+
+    def execute(self, context):
+        bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
+        return {'FINISHED'}
+
+
+class EXTENSIONS_OT_userpref_allow_online(Operator):
     """Allow internet access. Blender may access configured online extension repositories. """ \
         """Installed third party add-ons may access the internet for their own functionality"""
-    bl_idname = "extensions.userpref_show_online"
+    bl_idname = "extensions.userpref_allow_online"
     bl_label = ""
     bl_options = {'INTERNAL'}
 
@@ -2470,12 +2522,12 @@ class EXTENSIONS_OT_userpref_show_online(Operator):
         return {'FINISHED'}
 
 
-# NOTE: this is a wrapper for `extensions.userpref_show_online`.
+# NOTE: this is a wrapper for `extensions.userpref_allow_online`.
 # It exists *only* show a dialog.
-class EXTENSIONS_OT_userpref_show_online_popup(Operator):
+class EXTENSIONS_OT_userpref_allow_online_popup(Operator):
     """Allow internet access. Blender may access configured online extension repositories. """ \
         """Installed third party add-ons may access the internet for their own functionality"""
-    bl_idname = "extensions.userpref_show_online_popup"
+    bl_idname = "extensions.userpref_allow_online_popup"
     bl_label = ""
     bl_options = {'INTERNAL'}
 
@@ -2569,7 +2621,8 @@ classes = (
 
     EXTENSIONS_OT_userpref_show_for_update,
     EXTENSIONS_OT_userpref_show_online,
-    EXTENSIONS_OT_userpref_show_online_popup,
+    EXTENSIONS_OT_userpref_allow_online,
+    EXTENSIONS_OT_userpref_allow_online_popup,
 
     # Dummy, just shows a message.
     EXTENSIONS_OT_package_enable_not_installed,

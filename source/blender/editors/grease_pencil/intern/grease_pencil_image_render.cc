@@ -382,7 +382,7 @@ static void draw_dots(const float4x4 &transform,
     const float thickness = radii[point_i] * radius_scale * radius_to_pixel_factor;
 
     immAttr4fv(attr_color, colors[point_i]);
-    /* Note: extra factor 0.5 for point size to match rendering. */
+    /* NOTE: extra factor 0.5 for point size to match rendering. */
     immAttr1f(attr_size, std::max(thickness, min_stroke_thickness) * 0.5f);
     immVertex3fv(attr_pos, math::transform_point(transform, positions[point_i]));
   }
@@ -573,7 +573,7 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
         break;
       case GP_MATERIAL_MODE_DOT:
       case GP_MATERIAL_MODE_SQUARE:
-        /* Note: Squares don't have their own shader, render as dots too. */
+        /* NOTE: Squares don't have their own shader, render as dots too. */
         draw_dots(transform, points_by_curve[stroke_i], positions, radii, colors, radius_scale);
         break;
     }

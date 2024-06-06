@@ -103,6 +103,13 @@ def module_parent_dirname(module_filepath):
     return ""
 
 
+def domain_extract_from_url(url):
+    from urllib.parse import urlparse
+    domain = urlparse(url).netloc
+
+    return domain
+
+
 # -----------------------------------------------------------------------------
 # Extensions UI (Legacy)
 
@@ -114,7 +121,6 @@ def extensions_panel_draw_legacy_addons(
         search_lower,
         extension_tags,
         enabled_only,
-        installed_only,
         used_addon_module_name_map,
         addon_modules,
 ):
@@ -167,7 +173,7 @@ def extensions_panel_draw_legacy_addons(
 
         row.operator(
             "preferences.addon_expand",
-            icon='DISCLOSURE_TRI_DOWN' if bl_info["show_expanded"] else 'DISCLOSURE_TRI_RIGHT',
+            icon='DOWNARROW_HLT' if bl_info["show_expanded"] else 'RIGHTARROW',
             emboss=False,
         ).module = module_name
 
@@ -181,9 +187,9 @@ def extensions_panel_draw_legacy_addons(
         sub.active = is_enabled
 
         if module_parent_dirname(mod.__file__) == "addons_core":
-            sub.label(text="Core: " + bl_info["name"])
+            sub.label(text="Core: " + bl_info["name"], translate=False)
         else:
-            sub.label(text="Legacy: " + bl_info["name"])
+            sub.label(text="Legacy: " + bl_info["name"], translate=False)
 
         if bl_info["warning"]:
             sub.label(icon='ERROR')
@@ -195,37 +201,17 @@ def extensions_panel_draw_legacy_addons(
         row_right.active = False
 
         if bl_info["show_expanded"]:
-            split = box.split(factor=0.15)
-            col_a = split.column()
-            col_b = split.column()
-            if value := bl_info["description"]:
-                col_a.label(text="Description:")
-                col_b.label(text=iface_(value))
-
-            col_a.label(text="File:")
-            col_b.label(text=mod.__file__, translate=False)
-
-            if value := bl_info["author"]:
-                col_a.label(text="Author:")
-                col_b.label(text=value.split("<", 1)[0].rstrip(), translate=False)
-            if value := bl_info["version"]:
-                col_a.label(text="Version:")
-                col_b.label(text=".".join(str(x) for x in value), translate=False)
-            if value := bl_info["warning"]:
-                col_a.label(text="Warning:")
-                col_b.label(text="  " + iface_(value), icon='ERROR')
-            del value
-
-            # Include for consistency.
-            col_a.label(text="Type:")
-            col_b.label(text="add-on")
-
             user_addon = USERPREF_PT_addons.is_user_addon(mod, user_addon_paths)
 
+            split = box.split(factor=0.8)
+            col_a = split.column()
+            col_b = split.column()
+
+            if bl_info["description"]:
+                col_a.label(text="{:s}.".format(bl_info["description"]))
+
             if bl_info["doc_url"] or bl_info.get("tracker_url"):
-                split = box.row().split(factor=0.15)
-                split.label(text="Internet:")
-                sub = split.row()
+                sub = box.row()
                 if bl_info["doc_url"]:
                     sub.operator(
                         "wm.url_open", text="Documentation", icon='HELP',
@@ -247,6 +233,27 @@ def extensions_panel_draw_legacy_addons(
                     props.type = 'BUG_ADDON'
                     props.id = addon_info
 
+            sub = box.box()
+            sub.active = is_enabled
+            split = sub.split(factor=0.125)
+            col_a = split.column()
+            col_b = split.column()
+
+            col_a.alignment = 'RIGHT'
+            if value := bl_info["author"]:
+                col_a.label(text="Maintainer")
+                col_b.label(text=value.split("<", 1)[0].rstrip(), translate=False)
+            if value := bl_info["version"]:
+                col_a.label(text="Version")
+                col_b.label(text=".".join(str(x) for x in value), translate=False)
+            if value := bl_info["warning"]:
+                col_a.label(text="Warning")
+                col_b.label(text="  " + iface_(value), icon='ERROR')
+            del value
+
+            col_a.label(text="File")
+            col_b.label(text=mod.__file__, translate=False)
+
             if user_addon:
                 rowsub = col_b.row()
                 rowsub.alignment = 'RIGHT'
@@ -256,7 +263,8 @@ def extensions_panel_draw_legacy_addons(
 
             if is_enabled:
                 if (addon_preferences := used_addon_module_name_map[module_name].preferences) is not None:
-                    USERPREF_PT_addons.draw_addon_preferences(layout, context, addon_preferences)
+                    USERPREF_PT_addons.draw_addon_preferences(box, context, addon_preferences)
+            del sub
 
 
 # -----------------------------------------------------------------------------
@@ -338,43 +346,168 @@ class notify_info:
 
 def extensions_panel_draw_online_extensions_request_impl(
         self,
-        context,
+        _context,
 ):
     layout = self.layout
     layout_header, layout_panel = layout.panel("advanced", default_closed=False)
     layout_header.label(text="Online Extensions")
-    if layout_panel is not None:
-        # Text wrapping isn't supported, manually wrap.
-        for line in (
-                "Welcome! Access community-made add-ons and themes from the ",
-                "extensions.blender.org repository.",
-                "",
-                "This requires Internet access. You can adjust this from \"System\" preferences.",
+
+    if layout_panel is None:
+        return
+
+    box = layout_panel.box()
+
+    # Text wrapping isn't supported, manually wrap.
+    for line in (
+            "Internet access is required to install and update online extensions. ",
+            "You can adjust this later from \"System\" preferences.",
+    ):
+        box.label(text=line)
+
+    row = box.row(align=True)
+    row.alignment = 'LEFT'
+    row.label(text="While offline, use \"Install from Disk\" instead.")
+    # TODO: the URL must be updated before release,
+    # this could be constructed using a function to account for Blender version & locale.
+    row.operator(
+        "wm.url_open",
+        text="",
+        icon='URL',
+        emboss=False,
+    ).url = "https://docs.blender.org/manual/en/dev/editors/preferences/extensions.html#install"
+
+    row = box.row()
+    props = row.operator("wm.context_set_boolean", text="Continue Offline", icon='X')
+    props.data_path = "preferences.extensions.use_online_access_handled"
+    props.value = True
+
+    # The only reason to prefer this over `screen.userpref_show`
+    # is it will be disabled when `--offline-mode` is forced with a useful error for why.
+    row.operator("extensions.userpref_allow_online", text="Allow Online Access", icon='CHECKMARK')
+
+
+# NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+def extensions_map_from_legacy_addons_ensure():
+    import os
+    global extensions_map_from_legacy_addons
+    global extensions_map_from_legacy_addons_url
+    if extensions_map_from_legacy_addons is not None:
+        return
+
+    filepath = os.path.join(os.path.dirname(__file__), "extensions_map_from_legacy_addons.py")
+    with open(filepath, "rb") as fh:
+        data = eval(compile(fh.read(), filepath, "eval"), {})
+    extensions_map_from_legacy_addons = data["extensions"]
+    extensions_map_from_legacy_addons_url = data["remote_url"]
+
+
+def extensions_map_from_legacy_addons_reverse_lookup(pkg_id):
+    # Return the old name from the package ID.
+    extensions_map_from_legacy_addons_ensure()
+    for key_addon_module_name, (value_pkg_id, _) in extensions_map_from_legacy_addons.items():
+        if pkg_id == value_pkg_id:
+            return key_addon_module_name
+    return ""
+
+
+extensions_map_from_legacy_addons = None
+extensions_map_from_legacy_addons_url = None
+
+
+# NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+def extensions_panel_draw_missing_with_extension_impl(
+        *,
+        context,
+        layout,
+        missing_modules,
+):
+    layout_header, layout_panel = layout.panel("builtin_addons", default_closed=True)
+    layout_header.label(text="Missing Built-in Add-ons", icon='ERROR')
+
+    if layout_panel is None:
+        return
+
+    prefs = context.preferences
+    extensions_map_from_legacy_addons_ensure()
+
+    repo_index = -1
+    repo = None
+    for repo_test_index, repo_test in enumerate(prefs.extensions.repos):
+        if (
+                repo_test.use_remote_url and
+                (repo_test.remote_url.rstrip("/") == extensions_map_from_legacy_addons_url)
         ):
-            layout_panel.label(text=line)
+            repo_index = repo_test_index
+            repo = repo_test
+            break
 
-        row = layout.row()
-        row = layout_panel.row(align=True)
-        row.alignment = 'LEFT'
-        row.label(text="To continue offline, \"Install from Disk\" instead.")
-        # TODO: the URL must be updated before release,
-        # this could be constructed using a function to account for Blender version & locale.
-        row.operator(
-            "wm.url_open",
-            text="",
-            icon='URL',
-            emboss=False,
-        ).url = "https://docs.blender.org/manual/en/dev/editors/preferences/extensions.html#install"
-        layout_panel.separator()
+    box = layout_panel.box()
+    box.label(text="Add-ons previously shipped with Blender are now available from extensions.blender.org.")
+    can_install = True
 
-        row = layout.row()
-        props = row.operator("wm.context_set_boolean", text="Dismiss", icon='X')
-        props.data_path = "preferences.extensions.use_online_access_handled"
-        props.value = True
+    if repo is None:
+        # Most likely the user manually removed this.
+        box.label(text="Blender's extension repository not found!", icon='ERROR')
+    elif not repo.enabled:
+        box.label(text="Blender's extension repository must be enabled to install extensions!", icon='ERROR')
+        repo_index = -1
+    del repo
 
-        # The only reason to prefer this over `screen.userpref_show`
-        # is it will be disabled when `--offline-mode` is forced with a useful error for why.
-        row.operator("extensions.userpref_show_online", text="Allow Online Access", icon='CHECKMARK')
+    for addon_module_name in sorted(missing_modules):
+        addon_pkg_id, addon_name = extensions_map_from_legacy_addons[addon_module_name]
+
+        boxsub = box.column().box()
+        colsub = boxsub.column()
+        row = colsub.row()
+
+        row_left = row.row()
+        row_left.alignment = 'LEFT'
+
+        row_left.label(text=addon_name, translate=False)
+
+        row_right = row.row()
+        row_right.alignment = 'RIGHT'
+
+        if repo_index != -1:
+            # NOTE: it's possible this extension is already installed.
+            # the user could have installed it manually, then opened this popup.
+            # This is enough of a corner case that it's not especially worth detecting
+            # and communicating this particular state of affairs to the user.
+            # Worst case, they install and it will re-install an already installed extension.
+            props = row_right.operator("extensions.package_install", text="Install")
+            props.repo_index = repo_index
+            props.pkg_id = addon_pkg_id
+            props.do_legacy_replace = True
+            del props
+
+        row_right.operator("preferences.addon_disable", text="", icon="X", emboss=False).module = addon_module_name
+
+
+def extensions_panel_draw_missing_impl(
+        *,
+        layout,
+        missing_modules,
+):
+    layout_header, layout_panel = layout.panel("missing_script_files", default_closed=True)
+    layout_header.label(text="Missing Add-ons", icon='ERROR')
+
+    if layout_panel is None:
+        return
+
+    box = layout_panel.box()
+    for addon_module_name in sorted(missing_modules):
+
+        boxsub = box.column().box()
+        colsub = boxsub.column()
+        row = colsub.row(align=True)
+
+        row_left = row.row()
+        row_left.alignment = 'LEFT'
+        row_left.label(text=addon_module_name, translate=False)
+
+        row_right = row.row()
+        row_right.alignment = 'RIGHT'
+        row_right.operator("preferences.addon_disable", text="", icon="X", emboss=False).module = addon_module_name
 
 
 def extensions_panel_draw_impl(
@@ -410,7 +543,6 @@ def extensions_panel_draw_impl(
 
     layout = self.layout
 
-    wm = context.window_manager
     prefs = context.preferences
 
     if updates_only:
@@ -576,9 +708,9 @@ def extensions_panel_draw_impl(
             row = colsub.row(align=True)
             # row.label
             if show:
-                props = row.operator("extensions.package_show_clear", text="", icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                props = row.operator("extensions.package_show_clear", text="", icon='DOWNARROW_HLT', emboss=False)
             else:
-                props = row.operator("extensions.package_show_set", text="", icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                props = row.operator("extensions.package_show_set", text="", icon='RIGHTARROW', emboss=False)
             props.pkg_id = pkg_id
             props.repo_index = repo_index
             del props
@@ -625,7 +757,7 @@ def extensions_panel_draw_impl(
 
             sub = row.row()
             sub.active = is_enabled
-            sub.label(text=item_remote["name"])
+            sub.label(text=item_remote["name"], translate=False)
             del sub
 
             row_right = row.row()
@@ -654,56 +786,22 @@ def extensions_panel_draw_impl(
                 row_right.active = False
 
             if show:
-                split = box.split(factor=0.15)
+                split = box.split(factor=0.8)
                 col_a = split.column()
                 col_b = split.column()
 
-                col_a.label(text="Description:")
-                # The full description may be multiple lines (not yet supported by Blender's UI).
-                col_b.label(text=item_remote["tagline"])
-
-                if is_addon:
-                    col_a.label(text="Permissions:")
-                    if (value := item_remote.get("permissions")):
-                        col_b.label(text="({:s})".format(", ".join(value)))
-                    else:
-                        col_b.label(text="None")
-
-                if is_installed:
-                    col_a.label(text="Path:")
-                    col_b.label(text=os.path.join(repos_all[repo_index].directory, pkg_id), translate=False)
-
-                # Remove the maintainers email while it's not private, showing prominently
-                # could cause maintainers to get direct emails instead of issue tracking systems.
-                col_a.label(text="Maintainer:")
-                col_b.label(text=item_remote["maintainer"].split("<", 1)[0].rstrip(), translate=False)
-
-                col_a.label(text="License:")
-                col_b.label(text=license_info_to_text(item_remote["license"]))
-
-                col_a.label(text="Version:")
-                if is_outdated:
-                    col_b.label(text="{:s} ({:s} available)".format(item_local_version, item_version))
-                else:
-                    col_b.label(text=item_version)
-
-                if has_remote:
-                    col_a.label(text="Size:")
-                    col_b.label(text=size_as_fmt_string(item_remote["archive_size"]))
-
-                if not filter_by_type:
-                    col_a.label(text="Type:")
-                    col_b.label(text=item_remote["type"])
-
-                if len(repos_all) > 1:
-                    col_a.label(text="Repository:")
-                    col_b.label(text=repos_all[repo_index].name)
+                # The full tagline may be multiple lines (not yet supported by Blender's UI).
+                col_a.label(text="{:s}.".format(item_remote["tagline"]), translate=False)
 
                 if value := item_remote.get("website"):
-                    col_a.label(text="Internet:")
                     # Use half size button, for legacy add-ons there are two, here there is one
                     # however one large button looks silly, so use a half size still.
-                    col_b.split(factor=0.5).operator("wm.url_open", text="Website", icon='HELP').url = value
+                    col_a.split(factor=0.5).operator(
+                        "wm.url_open",
+                        text=domain_extract_from_url(value),
+                        translate=False,
+                        icon='URL',
+                    ).url = value
                 del value
 
                 # Note that we could allow removing extensions from non-remote extension repos
@@ -716,10 +814,55 @@ def extensions_panel_draw_impl(
                     props.pkg_id = pkg_id
                     del props, rowsub
 
+                del split, col_a, col_b
+
+                boxsub = box.box()
+                boxsub.active = is_enabled
+                split = boxsub.split(factor=0.125)
+                col_a = split.column()
+                col_b = split.column()
+                col_a.alignment = "RIGHT"
+
+                if is_addon:
+                    col_a.label(text="Permissions")
+                    if (value := item_remote.get("permissions")):
+                        col_b.label(text="{:s}".format(", ".join(value).title()))
+                    else:
+                        col_b.label(text="No permissions specified")
+
+                # Remove the maintainers email while it's not private, showing prominently
+                # could cause maintainers to get direct emails instead of issue tracking systems.
+                col_a.label(text="Maintainer")
+                col_b.label(text=item_remote["maintainer"].split("<", 1)[0].rstrip(), translate=False)
+
+                col_a.label(text="Version")
+                if is_outdated:
+                    col_b.label(
+                        text=iface_("{:s} ({:s} available)").format(item_local_version, item_version),
+                        translate=False,
+                    )
+                else:
+                    col_b.label(text=item_version, translate=False)
+
+                if has_remote:
+                    col_a.label(text="Size")
+                    col_b.label(text=size_as_fmt_string(item_remote["archive_size"]), translate=False)
+
+                col_a.label(text="License")
+                col_b.label(text=license_info_to_text(item_remote["license"]), translate=False)
+
+                if len(repos_all) > 1:
+                    col_a.label(text="Repository")
+                    col_b.label(text=repos_all[repo_index].name, translate=False)
+
+                if is_installed:
+                    col_a.label(text="Path")
+                    col_b.label(text=os.path.join(repos_all[repo_index].directory, pkg_id), translate=False)
+
                 # Show addon user preferences.
                 if is_enabled and is_addon:
                     if (addon_preferences := used_addon_module_name_map[addon_module_name].preferences) is not None:
-                        USERPREF_PT_addons.draw_addon_preferences(layout, context, addon_preferences)
+                        USERPREF_PT_addons.draw_addon_preferences(box, context, addon_preferences)
 
     if show_addons and show_legacy_addons:
         extensions_panel_draw_legacy_addons(
@@ -728,7 +871,6 @@ def extensions_panel_draw_impl(
             search_lower=search_lower,
             extension_tags=extension_tags,
             enabled_only=enabled_only,
-            installed_only=installed_only,
             used_addon_module_name_map=used_addon_module_name_map,
             addon_modules=addon_modules,
         )
@@ -747,33 +889,35 @@ def extensions_panel_draw_impl(
             if addon_module_name not in module_names
         }
 
+        # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
         if missing_modules:
-            layout_topmost.column().label(text="Missing script files")
+            # Split the missing modules into two groups, ones which can be upgraded and ones that can't.
+            extensions_map_from_legacy_addons_ensure()
 
-            module_names = {mod.__name__ for mod in addon_modules}
-            for addon_module_name in sorted(missing_modules):
-                is_enabled = addon_module_name in used_addon_module_name_map
-                # Addon UI Code
-                box = layout_topmost.column().box()
-                colsub = box.column()
-                row = colsub.row(align=True)
+            missing_modules_with_extension = set()
+            missing_modules_without_extension = set()
 
-                row.label(text="", icon='ERROR')
+            for addon_module_name in missing_modules:
+                if addon_module_name in extensions_map_from_legacy_addons:
+                    missing_modules_with_extension.add(addon_module_name)
+                else:
+                    missing_modules_without_extension.add(addon_module_name)
+            if missing_modules_with_extension:
+                extensions_panel_draw_missing_with_extension_impl(
+                    context=context,
+                    layout=layout_topmost,
+                    missing_modules=missing_modules_with_extension,
+                )
 
-                if is_enabled:
-                    row.operator(
-                        "preferences.addon_disable", icon='CHECKBOX_HLT', text="", emboss=False,
-                    ).module = addon_module_name
+            # Pretend none of these shenanigans ever occurred (to simplify removal).
+            missing_modules = missing_modules_without_extension
+        # End code-path for 4.1x migration.
 
-                row.label(text=addon_module_name, translate=False)
-
-                row_right = row.row()
-                row_right.alignment = 'RIGHT'
-
-                row_right.label(text="Missing   ")
-                row_right.active = False
-
-            layout_topmost.label(text="")
+        if missing_modules:
+            extensions_panel_draw_missing_impl(
+                layout=layout_topmost,
+                missing_modules=missing_modules,
+            )
 
 
 class USERPREF_PT_extensions_filter(Panel):
@@ -876,7 +1020,7 @@ def extensions_panel_draw(panel, context):
     row_b = row.row(align=True)
     row_b.prop(wm, "extension_type", text="")
     row_b.popover("USERPREF_PT_extensions_filter", text="", icon='FILTER')
-    row_b.popover("USERPREF_PT_extensions_tags", text="", icon='COLOR')
+    row_b.popover("USERPREF_PT_extensions_tags", text="", icon='TAG')
 
     row_b.separator()
     row_b.popover("USERPREF_PT_extensions_repos", text="Repositories")
