@@ -1,1 +1,1 @@
-Referenced by pull request #122780, Fix: wrong user counts when data is shared within a data-block
+Referenced by pull request #122780, Fix: invalid data sharing after loading certain .blend files
