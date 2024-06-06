@@ -597,6 +597,13 @@ void blo_readfile_invalidate(FileData *fd, Main *bmain, const char *message)
 
 struct BlendDataReader {
   FileData *fd;
+
+  /**
+   * The key is the old pointer to shared data that's written to a file, typically an array. The
+   * corresponding value is the shared data at run-time. This is only used when loading from a
+   * file, not for undo.
+   */
+  blender::Map<const void *, blender::ImplicitSharingInfoAndData> shared_data_by_stored_address;
 };
 
 struct BlendLibReader {
@@ -1083,9 +1090,6 @@ static FileData *filedata_new(BlendFileReadReport *reports)
 
   fd->reports = reports;
 
-  fd->shared_data_by_stored_address =
-      new blender::Map<const void *, blender::ImplicitSharingInfoAndData>();
-
   return fd;
 }
 
@@ -1378,8 +1382,6 @@ void blo_filedata_free(FileData *fd)
     BLI_ghash_free(fd->bhead_idname_hash, nullptr, nullptr);
   }
 #endif
-
-  delete fd->shared_data_by_stored_address;
 
   MEM_freeN(fd);
 }
@@ -2433,6 +2435,9 @@ static const char *idtype_alloc_name_get(short id_code)
 static bool direct_link_id(FileData *fd, Main *main, const int tag, ID *id, ID *id_old)
 {
   BlendDataReader reader = {fd};
+  /* Sharing is only allowed within individual data-blocks currently. The clearing is done
+   * explicitly here, in case the `reader` is used by multiple IDs in the future. */
+  reader.shared_data_by_stored_address.clear();
 
   /* Read part of datablock that is common between real and embedded datablocks. */
   direct_link_id_common(&reader, main->curlib, id, id_old, tag);
@@ -5063,7 +5068,7 @@ void blo_read_shared_impl(
   }
 
   const blender::ImplicitSharingInfoAndData *shared_data =
-      reader->fd->shared_data_by_stored_address->lookup_ptr(old_address);
+      reader->shared_data_by_stored_address.lookup_ptr(old_address);
 
   if (shared_data) {
     /* The data was loaded before. No need to load it again. Just assign the address and increase
@@ -5080,7 +5085,7 @@ void blo_read_shared_impl(
      * sharing info which may be reused later. */
     const blender::ImplicitSharingInfo *sharing_info = read_fn();
     const void *new_address = *data_ptr;
-    reader->fd->shared_data_by_stored_address->add(old_address, {sharing_info, new_address});
+    reader->shared_data_by_stored_address.add(old_address, {sharing_info, new_address});
     *r_sharing_info = sharing_info;
   }
 }
