@@ -1842,8 +1842,6 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
 {
   BLI_assert(GPU_use_parallel_compilation());
 
-  double start_time = BLI_time_now_seconds();
-
   struct SpecializationWork {
     GLShader *shader = nullptr;
     GLuint program;
@@ -1927,10 +1925,6 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
         is_ready = false;
       }
     }
-  }
-
-  if (!items.is_empty()) {
-    printf("Specialization Shaders: %fs\n", BLI_time_now_seconds() - start_time);
   }
 }
 
