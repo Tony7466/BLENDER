@@ -1382,7 +1382,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
     update_only_visible = true;
   }
 
-  const Mesh *mesh = BKE_object_get_original_mesh(scd->ob);
+  Mesh *mesh = static_cast<Mesh *>(scd->ob->data);
   bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
 
   bke::pbvh::draw_cb(
