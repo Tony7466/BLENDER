@@ -24,9 +24,6 @@ from . import bl_extension_utils
 # only keep this as a reference and in case we can speed up forcing them to exit.
 USE_GRACEFUL_EXIT = False
 
-# Special value to signal no packages can be updated because all repositories are blocked by being offline.
-STATE_DATA_ALL_OFFLINE = object()
-
 # `wmWindowManager.extensions_updates` from C++
 WM_EXTENSIONS_UPDATE_UNSET = -2
 WM_EXTENSIONS_UPDATE_CHECKING = -1
@@ -352,7 +349,7 @@ class NotifyHandle:
 
     def ui_text(self):
         if self.sync_info is None:
-            return "Checking for Extension Updates", 'NONE', WM_EXTENSIONS_UPDATE_CHECKING
+            return "Checking for Extension Updates", 'SORTTIME', WM_EXTENSIONS_UPDATE_CHECKING
         status_data, update_count, extra_warnings = self.sync_info
         text, icon = bl_extension_utils.CommandBatch.calc_status_text_icon_from_data(
             status_data, update_count,
@@ -382,12 +379,13 @@ def _ui_refresh_apply(*, notify):
 
 
 def _ui_refresh_timer():
+    wm = bpy.context.window_manager
+
     if not _notify_queue:
         if wm.extensions_updates == WM_EXTENSIONS_UPDATE_CHECKING:
             wm.extensions_updates = WM_EXTENSIONS_UPDATE_UNSET
         return None
 
-    wm = bpy.context.window_manager
     notify = _notify_queue[0]
     notify.run_ensure()
 
