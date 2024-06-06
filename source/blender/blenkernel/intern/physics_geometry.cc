@@ -247,16 +247,16 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
 /** \} */
 
 template<typename T> using RigidBodyGetFn = T (*)(const btRigidBody &body);
-template<typename T> using RigidBodySetFn = void (*)(const btRigidBody &body, T value);
+template<typename T> using RigidBodySetFn = void (*)(btRigidBody &body, T value);
 
 /* Placeholder that ignores get/set. */
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
 class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
-  PhysicsGeometryImpl *impl_;
+  const PhysicsGeometryImpl *impl_;
 
  public:
-  VArrayImpl_For_PhysicsBodies(PhysicsGeometryImpl &impl)
+  VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
       : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl)
   {
   }
@@ -351,6 +351,50 @@ class VArrayImpl_For_PhysicsBodiesCache final : public VMutableArrayImpl<ElemT> 
   }
 };
 
+template<typename ElemT>
+class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
+ private:
+  ElemT value_;
+
+ public:
+  VArrayImpl_For_PhysicsBodiesStub(const ElemT value, const size_t size)
+      : VMutableArrayImpl<ElemT>(size), value_(value)
+  {
+  }
+
+  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsBodiesStub;
+
+ private:
+  ElemT get(const int64_t /*index*/) const override
+  {
+    return value_;
+  }
+
+  void set(const int64_t /*index*/, ElemT /*value*/) override {}
+
+  void materialize(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = value_; });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) ElemT(value_); });
+  }
+
+  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = value_; });
+  }
+
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(value_); });
+  }
+};
+
 // template<typename T, T (*GetFn)(const btRigidBody &body)>
 // static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics)
 //{
@@ -361,23 +405,47 @@ class VArrayImpl_For_PhysicsBodiesCache final : public VMutableArrayImpl<ElemT> 
 //   return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics);
 // }
 
-template<typename T> static VArray<T> VArray_For_PhysicsBodies(const Span<T> cache)
+template<typename T, RigidBodyGetFn<T> GetFn>
+static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const Span<T> cache)
 {
-  /* Use cached data for read access. This remains valid even when the physics implementation data
-   * is moved. */
+  if (physics->impl().has_data) {
+    return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(
+        physics->impl());
+  }
   return VArray<T>::ForSpan(cache);
 }
 
-template<typename T,
-         T (*GetFn)(const btRigidBody &body),
-         void (*SetFn)(btRigidBody &body, T value)>
+template<typename T, RigidBodyGetFn<T> GetFn>
+static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const T value)
+{
+  if (physics->impl().has_data) {
+    return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(
+        physics->impl());
+  }
+  return VArray<T>::ForSingle(value, physics->impl().attribute_cache.body_positions.size());
+}
+
+template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
 static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
                                                         const Span<T> cache)
 {
-  if (physics->impl().is_expired) {
-    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(cache);
+  if (physics->impl().has_data) {
+    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
+        physics->impl());
   }
-  return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(physics);
+  return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesCache<T>>(cache);
+}
+
+template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
+static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
+                                                        const T value)
+{
+  if (physics->impl().has_data) {
+    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
+        physics->impl());
+  }
+  return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(
+      value, physics->impl().attribute_cache.body_positions.size());
 }
 
 /* -------------------------------------------------------------------- */
@@ -769,7 +837,7 @@ VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
   auto get_fn = [](const btRigidBody &body) -> const CollisionShape * {
     return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
   };
-  return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this);
+  return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this, nullptr);
 }
 
 VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
@@ -781,7 +849,7 @@ VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write
   constexpr auto set_fn = [](btRigidBody &body, CollisionShape *value) {
     body.setCollisionShape(&value->impl().as_bullet_shape());
   };
-  return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this);
+  return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this, nullptr);
 }
 
 VArray<int> PhysicsGeometry::body_ids() const
@@ -885,9 +953,7 @@ template<typename T> static void dummy_set_fn(btRigidBody *& /*body*/, T /*value
 /**
  * Provider for builtin rigid body attributes.
  */
-template<typename T,
-         T (*GetFn)(const btRigidBody &),
-         void (*SetFn)(btRigidBody &, T) = dummy_set_fn>
+template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = dummy_set_fn>
 class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
   const PhysicsAccessInfo physics_access_;
