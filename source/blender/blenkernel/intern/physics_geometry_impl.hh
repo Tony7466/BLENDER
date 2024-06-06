@@ -30,9 +30,9 @@ class btTypedConstraint;
 namespace blender::bke {
 
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
-  /* The physics data can be moved to a new instance.
-   * This flag provides lock-free access to the physics data. */
-  std::atomic<bool> is_expired = false;
+  // /* The physics data can be moved to a new instance.
+  //  * This flag provides lock-free access to the physics data. */
+  // std::atomic<bool> is_expired = false;
 
   btDiscreteDynamicsWorld *world = nullptr;
   btCollisionConfiguration *config = nullptr;
