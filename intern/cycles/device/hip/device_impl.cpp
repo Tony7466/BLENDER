@@ -907,6 +907,12 @@ bool HIPDevice::should_use_graphics_interop()
    * possible, but from the empiric measurements it can be considerably slower than using naive
    * pixels copy. */
 
+  if (headless) {
+    /* Avoid any call which might involve interaction with a graphics backend when we know that
+     * we don't have active graphics context. This avoids potential crash in the driver. */
+    return false;
+  }
+
   /* Disable graphics interop for now, because of driver bug in 21.40. See #92972 */
 #  if 0
   HIPContextScope scope(this);
