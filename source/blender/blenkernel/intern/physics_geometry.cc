@@ -246,105 +246,108 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
 
 /** \} */
 
-template<typename ElemT, void (*SetFunc)(btRigidBody &, ElemT)>
+template<typename T> using RigidBodyGetFn = T (*)(const btRigidBody &body);
+template<typename T> using RigidBodySetFn = void (*)(const btRigidBody &body, T value);
+
+/* Placeholder that ignores get/set. */
+template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
 class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
-  const PhysicsGeometryImpl *impl_;
+  PhysicsGeometryImpl *impl_;
 
  public:
-  VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl *impl, const Span<ElemT> cache)
-      : VMutableArrayImpl<ElemT>(cache.size()), impl_(impl)
+  VArrayImpl_For_PhysicsBodies(PhysicsGeometryImpl &impl)
+      : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl)
   {
   }
 
-  template<typename OtherElemT, void (*OtherSetFunc)(btRigidBody &, OtherElemT)>
+  template<typename OtherElemT,
+           RigidBodyGetFn<OtherElemT> OtherGetFn,
+           RigidBodySetFn<OtherElemT> OtherSetFn>
   friend class VArrayImpl_For_PhysicsBodies;
 
  private:
   ElemT get(const int64_t index) const override
   {
-    return cache[index];
+    return GetFn(*impl_->rigid_bodies[index]);
   }
 
   void set(const int64_t index, ElemT value) override
   {
-    const Span<btRigidBody *> bodies = impl_->rigid_bodies;
-    const int body = physics_->proxies().bodies[index];
-    if (body >= 0) {
-      SetFunc(*bodies[body], std::move(value));
-    };
+    SetFn(*impl_->rigid_bodies[index], value);
   }
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      const int body = physics_->proxies().bodies[i];
-      dst[i] = body >= 0 ? GetFunc(*bodies[body]) : ElemT();
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(*impl_->rigid_bodies[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      const int body = physics_->proxies().bodies[i];
-      new (dst + i) ElemT(body >= 0 ? GetFunc(*bodies[body]) : ElemT());
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      const int body = physics_->proxies().bodies[i];
-      dst[pos] = body >= 0 ? GetFunc(*bodies[body]) : ElemT();
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(*impl_->rigid_bodies[i]); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      const int body = physics_->proxies().bodies[i];
-      if (body >= 0) {
-        new (dst + pos) ElemT(GetFunc(*bodies[body]));
-      }
-      else {
-        new (dst + pos) ElemT();
-      }
+      new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
     });
   }
 };
 
-/* Placeholder that ignores get/set. */
 template<typename ElemT>
-class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
+class VArrayImpl_For_PhysicsBodiesCache final : public VMutableArrayImpl<ElemT> {
+ private:
+  Span<ElemT> cache_;
+
  public:
-  VArrayImpl_For_PhysicsBodiesStub(const PhysicsGeometry *physics)
-      : VMutableArrayImpl<ElemT>(physics->bodies_num())
+  VArrayImpl_For_PhysicsBodiesCache(const Span<ElemT> cache)
+      : VMutableArrayImpl<ElemT>(cache.size()), cache_(cache)
   {
   }
 
-  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsBodiesStub;
+  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsBodiesCache;
 
  private:
-  ElemT get(const int64_t /*index*/) const override
+  ElemT get(const int64_t index) const override
   {
-    return ElemT();
+    return cache_[index];
   }
 
-  void set(const int64_t /*index*/, ElemT /*value*/) override {}
-
-  void materialize(const IndexMask & /*mask*/, ElemT * /*dst*/) const override {}
-
-  void materialize_to_uninitialized(const IndexMask & /*mask*/, ElemT * /*dst*/) const override {}
-
-  void materialize_compressed(const IndexMask & /*mask*/, ElemT * /*dst*/) const override {}
-
-  void materialize_compressed_to_uninitialized(const IndexMask & /*mask*/,
-                                               ElemT * /*dst*/) const override
+  void set(const int64_t index, ElemT value) override
   {
+    cache_[index] = value;
+  }
+
+  void materialize(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = cache_[i]; });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(cache_[i]); });
+  }
+
+  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = cache_[i]; });
+  }
+
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(cache_[i]); });
   }
 };
 
