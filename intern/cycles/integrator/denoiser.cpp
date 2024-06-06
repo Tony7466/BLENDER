@@ -90,22 +90,23 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
     single_denoiser_device = find_best_device(denoiser_device, params.type);
   }
 
-  bool is_cpu_denoiser_device = single_denoiser_device->info.type == DEVICE_CPU;
-  if (is_cpu_denoiser_device == false) {
+  if (single_denoiser_device) {
+    if (single_denoiser_device->info.type == DEVICE_CPU) {
 #ifdef WITH_OPTIX
-    if (params.type == DENOISER_OPTIX) {
-      return make_unique<OptiXDenoiser>(single_denoiser_device, params);
-    }
+      if (params.type == DENOISER_OPTIX) {
+        return make_unique<OptiXDenoiser>(single_denoiser_device, params);
+      }
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
-    /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-    if (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
-        OIDNDenoiserGPU::is_device_supported(single_denoiser_device->info))
-    {
-      return make_unique<OIDNDenoiserGPU>(single_denoiser_device, params);
-    }
+      /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
+      if (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
+          OIDNDenoiserGPU::is_device_supported(single_denoiser_device->info))
+      {
+        return make_unique<OIDNDenoiserGPU>(single_denoiser_device, params);
+      }
 #endif
+    }
   }
 
   /* Always fallback to OIDN on CPU. */
@@ -115,7 +116,10 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
 
   /* Used preference CPU when possible, and fallback on CPU fallback device otherwise. */
   return make_unique<OIDNDenoiser>(
-      is_cpu_denoiser_device ? single_denoiser_device : cpu_fallback_device, oidn_params);
+      (single_denoiser_device && single_denoiser_device->info.type == DEVICE_CPU) ?
+          single_denoiser_device :
+          cpu_fallback_device,
+      oidn_params);
 }
 
 DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &path_trace_device_info)
