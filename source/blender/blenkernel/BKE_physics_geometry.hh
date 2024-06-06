@@ -36,24 +36,11 @@ class PhysicsGeometry {
 
  private:
   /* Implementation of the physics world and rigid bodies.
-   * This may be null, in which case the attribute cache is used.
-   * Other components may "steal" the implementation in order to write.
-   * This is different from implicitly shared data, which makes a copy
-   * when write access is required. Physics state generally should not
-   * be copied, as recreating the world and body states is inefficient.
-   */
+   * This is an implicit shared pointer, multiple users can read the physics data. Requesting write
+   * access will move the data to a new component. This is somewhat different from other components
+   * which do a full copy of the data, but necessary for efficiently handling physics state. Moving
+   * the physics state will create a read-only cache, so older state still be accessed. */
   const PhysicsGeometryImpl *impl_ = nullptr;
-
-  /* A physics component may not have an active implementation,
-   * in case another component has acquired write access.
-   * In this case the cache acts as a read-only copy of the attributes. */
-  struct AttributeCache {
-    Array<float3> body_positions;
-    Array<math::Quaternion> body_rotations;
-    Array<float3> body_velocities;
-    Array<float3> body_angular_velocities;
-  };
-  AttributeCache attribute_cache;
 
  public:
   static const struct BuiltinAttributes {
@@ -72,7 +59,8 @@ class PhysicsGeometry {
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
-  void move_physics_data_from(const PhysicsGeometry &other);
+  const PhysicsGeometryImpl &impl() const;
+  PhysicsGeometryImpl *try_impl_for_write();
 
   bool has_world() const;
   void set_world_enabled(bool enable);
@@ -94,9 +82,6 @@ class PhysicsGeometry {
   void set_split_impulse(bool split_impulse);
 
   void step_simulation(float delta_time);
-
-  // Proxies &proxies();
-  // const Proxies &proxies() const;
 
   VArray<const CollisionShape *> body_collision_shapes() const;
   VMutableArray<CollisionShape *> body_collision_shapes_for_write();
@@ -131,5 +116,11 @@ class PhysicsGeometry {
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
 };
+
+void move_physics_data(const PhysicsGeometry &from,
+                       PhysicsGeometry &to,
+                       int rigid_bodies_offset,
+                       int constraints_offset,
+                       int shapes_offset);
 
 }  // namespace blender::bke

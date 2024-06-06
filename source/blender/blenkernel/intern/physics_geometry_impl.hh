@@ -25,13 +25,14 @@ class btOverlapFilterCallback;
 class btRigidBody;
 class btMotionState;
 class btCollisionShape;
+class btTypedConstraint;
 
 namespace blender::bke {
 
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
-  struct AccessToken {};
-
-  mutable std::shared_mutex mutex;
+  /* The physics data can be moved to a new instance.
+   * This flag provides lock-free access to the physics data. */
+  std::atomic<bool> is_expired = false;
 
   btDiscreteDynamicsWorld *world = nullptr;
   btCollisionConfiguration *config = nullptr;
@@ -42,12 +43,26 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   Array<btRigidBody *> rigid_bodies;
   Array<btMotionState *> motion_states;
+  Array<btTypedConstraint *> constraints;
+  Array<btCollisionShape *> shapes;
+
+  /* Physics data can be moved while other components still have write access. The physics data is
+   * cached for read access, so that data can be moved without requiring locks. */
+  struct AttributeCache {
+    Array<float3> body_positions;
+    Array<math::Quaternion> body_rotations;
+    Array<float3> body_velocities;
+    Array<float3> body_angular_velocities;
+  };
+  AttributeCache attribute_cache;
 
   PhysicsGeometryImpl();
   ~PhysicsGeometryImpl();
 
   void delete_self() override;
 };
+
+void move_physics_data(const PhysicsGeometryImpl &from, PhysicsGeometryImpl &to);
 
 struct CollisionShapeImpl {
   btCollisionShape &as_bullet_shape()

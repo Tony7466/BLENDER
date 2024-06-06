@@ -247,37 +247,30 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
 /** \} */
 
 template<typename ElemT,
-         ElemT (*GetFunc)(const btRigidBody &),
          void (*SetFunc)(btRigidBody &, ElemT)>
 class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
-  const PhysicsGeometry *physics_;
+  const PhysicsGeometryImpl *impl_;
 
  public:
-  VArrayImpl_For_PhysicsBodies(const PhysicsGeometry *physics)
-      : VMutableArrayImpl<ElemT>(physics->bodies_num()), physics_(physics)
+  VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl *impl, const Span<ElemT> cache)
+      : VMutableArrayImpl<ElemT>(cache.size()), impl_(impl)
   {
   }
 
   template<typename OtherElemT,
-           OtherElemT (*OtherGetFunc)(const btRigidBody &),
            void (*OtherSetFunc)(btRigidBody &, OtherElemT)>
   friend class VArrayImpl_For_PhysicsBodies;
 
  private:
   ElemT get(const int64_t index) const override
   {
-    const int body = physics_->proxies().bodies[index];
-    const Span<btRigidBody *> bodies = physics_->impl().rigid_bodies;
-    return body >= 0 ? GetFunc(*bodies[body]) : ElemT();
+    return cache[index];
   }
 
   void set(const int64_t index, ElemT value) override
   {
-    /* VArray must only be created if the implementation is mutable. */
-    BLI_assert(physics_->impl().is_mutable());
-    const Span<btRigidBody *> bodies =
-        const_cast<PhysicsGeometry *>(physics_)->try_impl_for_write()->rigid_bodies;
+    const Span<btRigidBody *> bodies = impl_->rigid_bodies;
     const int body = physics_->proxies().bodies[index];
     if (body >= 0) {
       SetFunc(*bodies[body], std::move(value));
@@ -357,23 +350,31 @@ class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
   }
 };
 
-template<typename T, T (*GetFn)(const btRigidBody &body)>
-static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics)
+//template<typename T, T (*GetFn)(const btRigidBody &body)>
+//static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics)
+//{
+//  /* Data has to be merged for valid range, otherwise check against first impl range. */
+//  if (physics->impl().is_expired) {
+//    return VArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(physics);
+//  }
+//  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics);
+//}
+
+template<typename T>
+static VArray<T> VArray_For_PhysicsBodies(const Span<T> cache)
 {
-  /* Data has to be merged for valid range, otherwise check against first impl range. */
-  if (physics->has_unmerged_data()) {
-    return VArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(physics);
-  }
-  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics);
+  /* Use cached data for read access. This remains valid even when the physics implementation data
+   * is moved. */
+  return VArray<T>::ForSpan(cache);
 }
 
 template<typename T,
          T (*GetFn)(const btRigidBody &body),
          void (*SetFn)(btRigidBody &body, T value)>
-static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics)
+static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics, const Span<T> cache)
 {
-  if (physics->has_unmerged_data()) {
-    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(physics);
+  if (physics->impl().is_expired) {
+    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(cache);
   }
   return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(physics);
 }
@@ -398,7 +399,7 @@ static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *p
 /* Make sure any body flagged for simulation is actually in the world. */
 static void ensure_bodies_simulated(PhysicsGeometry &physics)
 {
-  PhysicsGeometryImpl *impl = physics.impl_for_write();
+  PhysicsGeometryImpl *impl = physics.try_impl_for_write();
   if (!impl) {
     return;
   }
@@ -468,6 +469,11 @@ PhysicsGeometryImpl::~PhysicsGeometryImpl()
   }
 }
 
+void PhysicsGeometryImpl::delete_self()
+{
+  delete this;
+}
+
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "id", "simulated", "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
 
@@ -500,10 +506,11 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 
 PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
 {
-  impl_ = new PhysicsGeometryImpl();
-  impl_->rigid_bodies.reinitialize(bodies_num);
-  impl_->motion_states.reinitialize(bodies_num);
-  create_bodies(impl_->rigid_bodies, impl_->motion_states);
+  PhysicsGeometryImpl *impl = new PhysicsGeometryImpl();
+  impl->rigid_bodies.reinitialize(bodies_num);
+  impl->motion_states.reinitialize(bodies_num);
+  create_bodies(impl->rigid_bodies, impl->motion_states);
+  impl_ = impl;
 
   UNUSED_VARS(constraints_num, shapes_num);
 }
@@ -511,129 +518,137 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes
 PhysicsGeometry::~PhysicsGeometry()
 {
   if (impl_) {
-    std::scoped_lock lock(impl_mutex_);
-    delete impl_;
+    impl_->remove_user_and_delete_if_last();
   }
 }
 
-PhysicsGeometryImpl *PhysicsGeometry::try_steal_impl() const
+//PhysicsGeometryImpl *PhysicsGeometry::try_steal_impl() const
+//{
+//  if (!impl_) {
+//    return nullptr;
+//  }
+//
+//  std::scoped_lock lock(impl_mutex_);
+//  PhysicsGeometryImpl *impl = impl_;
+//  impl_ = nullptr;
+//  return impl;
+//}
+
+const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 {
-  if (!impl_) {
-    return nullptr;
-  }
-
-  std::scoped_lock lock(impl_mutex_);
-  PhysicsGeometryImpl *impl = impl_;
-  impl_ = nullptr;
-  return impl;
+  return *impl_;
 }
 
-const PhysicsGeometryImpl *PhysicsGeometry::impl() const
+PhysicsGeometryImpl *PhysicsGeometry::try_impl_for_write()
 {
-  return impl_;
-}
+  if (!impl_->is_mutable()) {
+    PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
+    move_physics_data(*impl_, *new_impl);
 
-PhysicsGeometryImpl *PhysicsGeometry::impl_for_write()
-{
-  return impl_;
-}
-
-void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
-                                       int impl_offset,
-                                       int bodies_offset,
-                                       int constraints_offset,
-                                       int shapes_offset)
-{
-  const IndexRange impl_range = IndexRange(impl_offset, other.impl_array().size());
-  const IndexRange body_range = IndexRange(bodies_offset, other.bodies_num());
-  const IndexRange constraint_range = IndexRange(constraints_offset, other.constraints_num());
-  const IndexRange shape_range = IndexRange(shapes_offset, other.shapes_num());
-
-  MutableSpan<const PhysicsGeometryImpl *> impls = this->impl_array().slice(impl_range);
-  impls.copy_from(other.impl_array());
-  for (const PhysicsGeometryImpl *impl : impls) {
-    impl->add_user();
-  }
-}
-
-bool PhysicsGeometry::has_unmerged_data() const
-{
-  return impl_array_.size() > 1;
-}
-
-bool PhysicsGeometry::try_consolidate_data()
-{
-  BLI_assert(!impl_array_.is_empty());
-  if (impl_array_.size() == 1) {
-    return true;
+    impl_->remove_user_and_delete_if_last();
+    impl_ = new_impl;
+    impl_->add_user();
   }
 
-  Array<int> body_offsets(impl_array_.size() + 1);
-  Array<int> constraint_offsets(impl_array_.size() + 1);
-  Array<int> shape_offsets(impl_array_.size() + 1);
-  body_offsets[0] = constraint_offsets[0] = shape_offsets[0] = 0;
-  for (const int i_impl : impl_array_.index_range()) {
-    const PhysicsGeometryImpl &impl = *impl_array_[i_impl];
-    /* All data must be mutable for consolidating. */
-    if (!impl.is_mutable()) {
-      return false;
-    }
-    body_offsets[i_impl + 1] = body_offsets[i_impl] + impl.rigid_bodies.size();
-    constraint_offsets[i_impl + 1] = constraint_offsets[i_impl] + 0;
-    shape_offsets[i_impl + 1] = shape_offsets[i_impl] + 0;
-  }
-  const int new_bodies_num = body_offsets.last();
-  // const int new_constraints_num = constraint_offsets.last();
-  // const int new_shapes_num = shape_offsets.last();
-
-  /* Move data to the first world. */
-  PhysicsGeometryImpl &dst_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_.first());
-
-  Array<btRigidBody *> new_rigid_bodies(new_bodies_num);
-  Array<btMotionState *> new_motion_states(new_bodies_num);
-  for (const int i_impl : impl_array_.index_range()) {
-    PhysicsGeometryImpl &src_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i_impl]);
-
-    const IndexRange body_range = IndexRange::from_begin_end(body_offsets[i_impl],
-                                                             body_offsets[i_impl + 1]);
-    // const IndexRange constraint_range = IndexRange::from_begin_end(constraint_offsets[i_impl],
-    //                                                                constraint_offsets[i_impl +
-    //                                                                1]);
-    // const IndexRange shape_range = IndexRange::from_begin_end(shape_offsets[i_impl],
-    //                                                           shape_offsets[i_impl + 1]);
-    for (const int i_body : body_range.index_range()) {
-      btRigidBody *body = src_impl.rigid_bodies[i_body];
-      btMotionState *motion_state = src_impl.motion_states[i_body];
-      const bool is_in_world = body->isInWorld();
-
-      /* Move all to first impl world. */
-      if (is_in_world && i_impl > 0) {
-        BLI_assert(src_impl.world != nullptr);
-        src_impl.world->removeRigidBody(body);
-        if (dst_impl.world) {
-          dst_impl.world->addRigidBody(body);
-        }
-      }
-
-      src_impl.rigid_bodies[i_body] = nullptr;
-      src_impl.motion_states[i_body] = nullptr;
-      new_rigid_bodies[body_range[i_body]] = body;
-      new_motion_states[body_range[i_body]] = motion_state;
-    }
-    src_impl.rigid_bodies.reinitialize(0);
-    src_impl.motion_states.reinitialize(0);
-  }
-  dst_impl.rigid_bodies = new_rigid_bodies;
-  dst_impl.motion_states = new_motion_states;
-
-  /* Only keep first world. */
-  for (const int i_impl : impl_array_.index_range().drop_front(1)) {
-    impl_array_[i_impl]->remove_user_and_delete_if_last();
-  }
-  impl_array_ = Vector<const PhysicsGeometryImpl *>({&dst_impl});
-
-  return true;
+  return const_cast<PhysicsGeometryImpl *>(impl_);
 }
+
+//void PhysicsGeometry::realize_instance(const PhysicsGeometry &other,
+//                                       int impl_offset,
+//                                       int bodies_offset,
+//                                       int constraints_offset,
+//                                       int shapes_offset)
+//{
+//  const IndexRange impl_range = IndexRange(impl_offset, other.impl_array().size());
+//  const IndexRange body_range = IndexRange(bodies_offset, other.bodies_num());
+//  const IndexRange constraint_range = IndexRange(constraints_offset, other.constraints_num());
+//  const IndexRange shape_range = IndexRange(shapes_offset, other.shapes_num());
+//
+//  MutableSpan<const PhysicsGeometryImpl *> impls = this->impl_array().slice(impl_range);
+//  impls.copy_from(other.impl_array());
+//  for (const PhysicsGeometryImpl *impl : impls) {
+//    impl->add_user();
+//  }
+//}
+
+//bool PhysicsGeometry::has_unmerged_data() const
+//{
+//  return impl_array_.size() > 1;
+//}
+//
+//bool PhysicsGeometry::try_consolidate_data()
+//{
+//  BLI_assert(!impl_array_.is_empty());
+//  if (impl_array_.size() == 1) {
+//    return true;
+//  }
+//
+//  Array<int> body_offsets(impl_array_.size() + 1);
+//  Array<int> constraint_offsets(impl_array_.size() + 1);
+//  Array<int> shape_offsets(impl_array_.size() + 1);
+//  body_offsets[0] = constraint_offsets[0] = shape_offsets[0] = 0;
+//  for (const int i_impl : impl_array_.index_range()) {
+//    const PhysicsGeometryImpl &impl = *impl_array_[i_impl];
+//    /* All data must be mutable for consolidating. */
+//    if (!impl.is_mutable()) {
+//      return false;
+//    }
+//    body_offsets[i_impl + 1] = body_offsets[i_impl] + impl.rigid_bodies.size();
+//    constraint_offsets[i_impl + 1] = constraint_offsets[i_impl] + 0;
+//    shape_offsets[i_impl + 1] = shape_offsets[i_impl] + 0;
+//  }
+//  const int new_bodies_num = body_offsets.last();
+//  // const int new_constraints_num = constraint_offsets.last();
+//  // const int new_shapes_num = shape_offsets.last();
+//
+//  /* Move data to the first world. */
+//  PhysicsGeometryImpl &dst_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_.first());
+//
+//  Array<btRigidBody *> new_rigid_bodies(new_bodies_num);
+//  Array<btMotionState *> new_motion_states(new_bodies_num);
+//  for (const int i_impl : impl_array_.index_range()) {
+//    PhysicsGeometryImpl &src_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i_impl]);
+//
+//    const IndexRange body_range = IndexRange::from_begin_end(body_offsets[i_impl],
+//                                                             body_offsets[i_impl + 1]);
+//    // const IndexRange constraint_range = IndexRange::from_begin_end(constraint_offsets[i_impl],
+//    //                                                                constraint_offsets[i_impl +
+//    //                                                                1]);
+//    // const IndexRange shape_range = IndexRange::from_begin_end(shape_offsets[i_impl],
+//    //                                                           shape_offsets[i_impl + 1]);
+//    for (const int i_body : body_range.index_range()) {
+//      btRigidBody *body = src_impl.rigid_bodies[i_body];
+//      btMotionState *motion_state = src_impl.motion_states[i_body];
+//      const bool is_in_world = body->isInWorld();
+//
+//      /* Move all to first impl world. */
+//      if (is_in_world && i_impl > 0) {
+//        BLI_assert(src_impl.world != nullptr);
+//        src_impl.world->removeRigidBody(body);
+//        if (dst_impl.world) {
+//          dst_impl.world->addRigidBody(body);
+//        }
+//      }
+//
+//      src_impl.rigid_bodies[i_body] = nullptr;
+//      src_impl.motion_states[i_body] = nullptr;
+//      new_rigid_bodies[body_range[i_body]] = body;
+//      new_motion_states[body_range[i_body]] = motion_state;
+//    }
+//    src_impl.rigid_bodies.reinitialize(0);
+//    src_impl.motion_states.reinitialize(0);
+//  }
+//  dst_impl.rigid_bodies = new_rigid_bodies;
+//  dst_impl.motion_states = new_motion_states;
+//
+//  /* Only keep first world. */
+//  for (const int i_impl : impl_array_.index_range().drop_front(1)) {
+//    impl_array_[i_impl]->remove_user_and_delete_if_last();
+//  }
+//  impl_array_ = Vector<const PhysicsGeometryImpl *>({&dst_impl});
+//
+//  return true;
+//}
 
 bool PhysicsGeometry::has_world() const
 {
@@ -718,42 +733,32 @@ void PhysicsGeometry::step_simulation(float delta_time)
 
 int PhysicsGeometry::bodies_num() const
 {
-  return proxies_.bodies.size();
+  return impl().rigid_bodies.size();
 }
 
 int PhysicsGeometry::constraints_num() const
 {
-  return proxies_.constraints.size();
+  return impl().constraints.size();
 }
 
 int PhysicsGeometry::shapes_num() const
 {
-  return proxies_.shapes.size();
+  return impl().shapes.size();
 }
 
 IndexRange PhysicsGeometry::bodies_range() const
 {
-  return proxies_.bodies.index_range();
+  return impl().rigid_bodies.index_range();
 }
 
 IndexRange PhysicsGeometry::constraints_range() const
 {
-  return proxies_.constraints.index_range();
+  return impl().constraints.index_range();
 }
 
 IndexRange PhysicsGeometry::shapes_range() const
 {
-  return proxies_.shapes.index_range();
-}
-
-PhysicsGeometry::Proxies &PhysicsGeometry::proxies()
-{
-  return proxies_;
-}
-
-const PhysicsGeometry::Proxies &PhysicsGeometry::proxies() const
-{
-  return proxies_;
+  return impl().shapes.index_range();
 }
 
 VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
