@@ -415,6 +415,8 @@ struct uiHandleButtonData {
    */
   bool disable_force;
 
+  bool handle_transparent;
+
   /* auto open */
   bool used_mouse;
   wmTimer *autoopentimer;
@@ -3695,7 +3697,7 @@ static eStrCursorJumpType ui_textedit_jump_type_from_event(const wmEvent *event)
   return STRCUR_JUMP_NONE;
 }
 
-static void ui_do_but_textedit(
+static int ui_do_but_textedit(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
   uiTextEdit &text_edit = data->text_edit;
@@ -3732,6 +3734,10 @@ static void ui_do_but_textedit(
       break;
     case RIGHTMOUSE:
     case EVT_ESCKEY:
+      /* Don't consume cancel events (would usually end text editing), let menu code handle it. */
+      if (data->handle_transparent) {
+        break;
+      }
       if (event->val == KM_PRESS) {
         /* Support search context menu. */
         if (event->type == RIGHTMOUSE) {
@@ -3791,7 +3797,7 @@ static void ui_do_but_textedit(
           button_activate_state(C, but, BUTTON_STATE_TEXT_SELECTING);
           retval = WM_UI_HANDLER_BREAK;
         }
-        else if (inbox == false) {
+        else if (inbox == false && !data->handle_transparent) {
           /* if searchbox, click outside will cancel */
           if (data->searchbox) {
             data->cancel = data->escapecancel = true;
@@ -3821,7 +3827,7 @@ static void ui_do_but_textedit(
           changed = true;
         }
       }
-      else if (inbox) {
+      else if (inbox && !data->handle_transparent) {
         /* if we allow activation on key press,
          * it gives problems launching operators #35713. */
         if (event->val == KM_RELEASE) {
@@ -4071,9 +4077,11 @@ static void ui_do_but_textedit(
       ED_region_tag_refresh_ui(data->region);
     }
   }
+
+  return retval;
 }
 
-static void ui_do_but_textedit_select(
+static int ui_do_but_textedit_select(
     bContext *C, uiBlock *block, uiBut *but, uiHandleButtonData *data, const wmEvent *event)
 {
   int retval = WM_UI_HANDLER_CONTINUE;
@@ -4100,6 +4108,8 @@ static void ui_do_but_textedit_select(
     ui_but_update(but);
     ED_region_tag_redraw(data->region);
   }
+
+  return retval;
 }
 
 /** \} */
@@ -4778,12 +4788,14 @@ static int ui_do_but_TEX(
     }
   }
   else if (data->state == BUTTON_STATE_TEXT_EDITING) {
-    ui_do_but_textedit(C, block, but, data, event);
-    return WM_UI_HANDLER_BREAK;
+    const int retval = ui_do_but_textedit(C, block, but, data, event);
+    /* Swallow all events unless transparent handling is used. */
+    return data->handle_transparent ? retval : WM_UI_HANDLER_BREAK;
   }
   else if (data->state == BUTTON_STATE_TEXT_SELECTING) {
-    ui_do_but_textedit_select(C, block, but, data, event);
-    return WM_UI_HANDLER_BREAK;
+    const int retval = ui_do_but_textedit_select(C, block, but, data, event);
+    /* Swallow all events unless transparent handling is used. */
+    return data->handle_transparent ? retval : WM_UI_HANDLER_BREAK;
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -8835,6 +8847,12 @@ static void button_activate_exit(
     }
   }
 
+  if (block->handle) {
+    if (block->handle->active_filter_but_data == but->active) {
+      block->handle->active_filter_but_data = nullptr;
+    }
+  }
+
   /* clean up button */
   MEM_SAFE_FREE(but->active);
 
@@ -11730,9 +11748,8 @@ static int ui_handler_region_menu(bContext *C, const wmEvent *event, void * /*us
 }
 
 /* two types of popups, one with operator + enum, other with regular callbacks */
-static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
+static int ui_popup_handler_ex(bContext *C, const wmEvent *event, uiPopupBlockHandle *menu)
 {
-  uiPopupBlockHandle *menu = static_cast<uiPopupBlockHandle *>(userdata);
   /* we block all events, this is modal interaction,
    * except for drop events which is described below */
   int retval = WM_UI_HANDLER_BREAK;
@@ -11754,7 +11771,44 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
     retval = WM_UI_HANDLER_CONTINUE;
   }
 
-  ui_handle_menus_recursive(C, event, menu, 0, false, false, true);
+  bool is_handled = false;
+  if (uiBut *always_active_but = ui_region_find_always_active_but(menu->region)) {
+    uiBut *regular_active = ui_region_find_active_but(menu->region);
+    uiHandleButtonData *regular_active_data = regular_active ? regular_active->active : nullptr;
+
+    if (regular_active) {
+      regular_active->active = nullptr;
+    }
+    if (!menu->active_filter_but_data) {
+      ui_but_activate_event(C, menu->region, always_active_but);
+      menu->active_filter_but_data = always_active_but->active;
+      menu->active_filter_but_data->handle_transparent = true;
+    }
+    always_active_but->active = menu->active_filter_but_data;
+
+#if 0
+    if (ui_handle_menus_recursive(C, event, menu, 0, false, false, true) != WM_UI_HANDLER_CONTINUE)
+    {
+      is_handled = true;
+    }
+#endif
+    if (ui_handle_button_event(C, event, always_active_but) != WM_UI_HANDLER_CONTINUE) {
+      is_handled = true;
+    }
+    // menu->menuretval = 0;
+
+    if (regular_active) {
+      regular_active->active = regular_active_data;
+    }
+    /* Popup might have been closed, so repeat lookup. */
+    if (uiBut *always_active_but = ui_region_find_always_active_but(menu->region)) {
+      always_active_but->active = nullptr;
+    }
+  }
+
+  if (!is_handled) {
+    ui_handle_menus_recursive(C, event, menu, 0, false, false, true);
+  }
 
   /* free if done, does not free handle itself */
   if (menu->menuretval) {
@@ -11819,6 +11873,12 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
   return retval;
 }
 
+static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
+{
+  uiPopupBlockHandle *menu = static_cast<uiPopupBlockHandle *>(userdata);
+  return ui_popup_handler_ex(C, event, menu);
+}
+
 static void ui_popup_handler_remove(bContext *C, void *userdata)
 {
   uiPopupBlockHandle *menu = static_cast<uiPopupBlockHandle *>(userdata);
@@ -11829,6 +11889,24 @@ static void ui_popup_handler_remove(bContext *C, void *userdata)
    * just explicitly flag menu with UI_RETURN_OK to avoid canceling it. */
   if ((menu->menuretval & UI_RETURN_OK) == 0 && menu->cancel_func) {
     menu->cancel_func(C, menu->popup_arg);
+  }
+
+  if (uiBut *always_active_but = ui_region_find_always_active_but(menu->region)) {
+    if (menu->active_filter_but_data) {
+      uiBut *prev_act = ui_region_find_active_but(menu->region);
+      uiHandleButtonData *prev_data = prev_act ? prev_act->active : nullptr;
+
+      if (prev_act) {
+        prev_act->active = nullptr;
+      }
+
+      always_active_but->active = menu->active_filter_but_data;
+      ui_but_active_free(C, always_active_but);
+
+      if (prev_act) {
+        prev_act->active = prev_data;
+      }
+    }
   }
 
   /* free menu block if window is closed for some reason */

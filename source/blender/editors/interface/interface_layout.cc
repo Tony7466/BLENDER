@@ -2480,8 +2480,13 @@ void uiItemFullR(uiLayout *layout,
     UI_but_flag_enable(but, UI_BUT_LIST_ITEM);
   }
 
-  if (but && placeholder) {
-    UI_but_placeholder_set(but, placeholder);
+  if (but) {
+    if (placeholder) {
+      UI_but_placeholder_set(but, placeholder);
+    }
+    if (flag & UI_ITEM_R_FILTER_TEXT_ALWAYS_ACTIVE) {
+      UI_but_flag2_enable(but, UI_BUT2_FILTER_TEXT_ALWAYS_ACTIVE);
+    }
   }
 
 #ifdef UI_PROP_DECORATE
