@@ -886,7 +886,15 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                                                                         prop);
 
     /* Handle the `force_all` condition mentioned above, ensuring the
-     * "all-or-nothing" behavior if needed. */
+     * "all-or-nothing" behavior if needed.
+     *
+     * TODO: this currently doesn't account for the "Only Insert Available"
+     * flag, which also needs to be accounted for to actually ensure
+     * all-or-nothing behavior. This is because the function this part of the
+     * code originally came from (see #122053) also didn't account for it.
+     * Presumably that was an oversight, and should be addressed. But for now
+     * we're faithfully reproducing the original behavior.
+     */
     eInsertKeyFlags insert_key_flags_adjusted = insert_key_flags;
     if (force_all && rna_values.size() > 0 &&
         (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0)
@@ -898,11 +906,16 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
         if (!fcu) {
           continue;
         }
-        else if (!(insert_key_flags & INSERTKEY_REPLACE)) {
+
+        /* We found an fcurve, and "Only Replace" is not on, so a key insertion
+         * would succeed according to the two flags we're accounting for. */
+        if (!(insert_key_flags & INSERTKEY_REPLACE)) {
           at_least_one_would_succeed = true;
           break;
         }
 
+        /* "Only Replace" *is* on, so a key insertion would succeed only if we
+         * actually replace an existing keyframe. */
         bool replace;
         BKE_fcurve_bezt_binarysearch_index(fcu->bezt, nla_frame, fcu->totvert, &replace);
         if (replace) {
@@ -915,7 +928,6 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
        * would prevent the other elements from getting keyed as well. */
       if (at_least_one_would_succeed) {
         insert_key_flags_adjusted &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
-        break;
       }
     }
 
