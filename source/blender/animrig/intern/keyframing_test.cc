@@ -152,15 +152,19 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__non_array_property)
   ASSERT_NE(nullptr, object->adt->action);
   Action &action = object->adt->action->wrap();
 
-  /* The action has a binding and it's assigned to the object. */
+  /* The action has a binding, it's named properly, and it's correctly assigned
+   * to the object. */
   ASSERT_EQ(1, action.bindings().size());
   Binding *binding = action.binding(0);
+  EXPECT_EQ(0, strcmp(object->id.name, binding->name));
+  EXPECT_EQ(0, strcmp(object->adt->binding_name, binding->name));
   EXPECT_EQ(object->adt->binding_handle, binding->handle);
 
   /* We have the default layer and strip. */
   ASSERT_TRUE(action.is_action_layered());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
+  EXPECT_TRUE(strlen(action.layer(0)->name) > 0);
   Strip *strip = action.layer(0)->strip(0);
   ASSERT_TRUE(strip->is_infinite());
   ASSERT_EQ(Strip::Type::Keyframe, strip->type());
@@ -412,7 +416,9 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
   /* The action has a binding and it's assigned to the first object. */
   ASSERT_EQ(1, action.bindings().size());
   Binding *binding_1 = action.binding_for_handle(object->adt->binding_handle);
-  EXPECT_NE(nullptr, binding_1);
+  ASSERT_NE(nullptr, binding_1);
+  EXPECT_EQ(0, strcmp(object->id.name, binding_1->name));
+  EXPECT_EQ(0, strcmp(object->adt->binding_name, binding_1->name));
 
   /* Get the keyframe strip. */
   ASSERT_TRUE(action.is_action_layered());
@@ -441,7 +447,9 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
 
   ASSERT_EQ(2, action.bindings().size());
   Binding *binding_2 = action.binding_for_handle(armature_object->adt->binding_handle);
-  EXPECT_NE(nullptr, binding_2);
+  ASSERT_NE(nullptr, binding_2);
+  EXPECT_EQ(0, strcmp(armature_object->id.name, binding_2->name));
+  EXPECT_EQ(0, strcmp(armature_object->adt->binding_name, binding_2->name));
 
   ASSERT_EQ(2, strip->channelbags().size());
   ChannelBag *channel_bag_2 = strip->channelbag_for_binding(*binding_2);
