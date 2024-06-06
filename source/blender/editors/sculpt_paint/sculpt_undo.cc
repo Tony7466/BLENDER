@@ -950,10 +950,6 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
   Vector<bool> modified_faces_face_set;
   Vector<bool> modified_grids;
   for (std::unique_ptr<Node> &unode : step_data.nodes) {
-    if (!STREQ(unode->idname, object.id.name)) {
-      continue;
-    }
-
     /* Check if undo data matches current data well enough to continue. */
     if (unode->mesh_verts_num) {
       if (ss->totvert != unode->mesh_verts_num) {
@@ -1023,9 +1019,6 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
 
   if (use_multires_undo) {
     for (std::unique_ptr<Node> &unode : step_data.nodes) {
-      if (!STREQ(unode->idname, object.id.name)) {
-        continue;
-      }
       modified_grids.resize(unode->mesh_grids_num, false);
       modified_grids.as_mutable_span().fill_indices(unode->grids.as_span(), true);
     }
@@ -1161,7 +1154,7 @@ static size_t alloc_and_store_hidden(const SculptSession *ss, Node *unode)
 
 /* Allocate node and initialize its default fields specific for the given undo type.
  * Will also add the node to the list in the undo step. */
-static Node *alloc_node_type(const Object &object, const Type type)
+static Node *alloc_node_type(const Type type)
 {
   StepData *step_data = get_step_data();
   std::unique_ptr<Node> unode = std::make_unique<Node>();
@@ -1169,7 +1162,6 @@ static Node *alloc_node_type(const Object &object, const Type type)
   step_data->undo_size += sizeof(Node);
 
   Node *node_ptr = step_data->nodes.last().get();
-  STRNCPY(node_ptr->idname, object.id.name);
   node_ptr->type = type;
 
   return node_ptr;
@@ -1178,7 +1170,7 @@ static Node *alloc_node_type(const Object &object, const Type type)
 /* Will return first existing undo node of the given type.
  * If such node does not exist will allocate node of this type, register it in the undo step and
  * return it. */
-static Node *find_or_alloc_node_type(const Object &object, const Type type)
+static Node *find_or_alloc_node_type(const Type type)
 {
   StepData *step_data = get_step_data();
 
@@ -1188,7 +1180,7 @@ static Node *find_or_alloc_node_type(const Object &object, const Type type)
     }
   }
 
-  return alloc_node_type(object, type);
+  return alloc_node_type(type);
 }
 
 static Node *alloc_node(const Object &object, const PBVHNode *node, const Type type)
@@ -1196,7 +1188,7 @@ static Node *alloc_node(const Object &object, const PBVHNode *node, const Type t
   StepData *step_data = get_step_data();
   const SculptSession *ss = object.sculpt;
 
-  Node *unode = alloc_node_type(object, type);
+  Node *unode = alloc_node_type(type);
   unode->node = node;
 
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -1455,7 +1447,7 @@ static NodeGeometry *geometry_get(Node *unode)
 
 static Node *geometry_push(const Object &object, const Type type)
 {
-  Node *unode = find_or_alloc_node_type(object, type);
+  Node *unode = find_or_alloc_node_type(type);
   unode->applied = false;
   unode->geometry_clear_pbvh = true;
 
@@ -1484,7 +1476,6 @@ static Node *bmesh_push(const Object &object, const PBVHNode *node, Type type)
     step_data->nodes.append(std::make_unique<Node>());
     unode = step_data->nodes.last().get();
 
-    STRNCPY(unode->idname, object.id.name);
     unode->type = type;
     unode->applied = true;
 
