@@ -526,9 +526,9 @@ class _defs_view3d_add:
     def draw_settings_interactive_add(layout, tool_settings, tool, extra):
         show_extra = False
         if not extra:
-            row = layout.row(align=False)
+            row = layout.row()
             row.prop(tool_settings, "plane_depth", text="Depth")
-            row = layout.row(align=False)
+            row = layout.row()
             row.prop(tool_settings, "plane_orientation", text="Orientation")
             row = layout.row()
             row.prop(tool_settings, "snap_elements_tool")
@@ -1904,9 +1904,9 @@ class _defs_weight_paint:
                 )
 
             props = tool.operator_properties("paint.weight_gradient")
-            row = layout.row(align=False)
+            row = layout.row()
             row.prop(props, "type", expand=True)
-            row = layout.row(align=False)
+            row = layout.row()
             row.popover("VIEW3D_PT_tools_weight_gradient")
 
         return dict(
