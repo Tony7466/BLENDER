@@ -38,11 +38,13 @@ class SubprocessShader {
                    const char *geom_src,
                    const char *frag_src)
   {
-    GLint status = 1;
+    GLint status;
     program_ = glCreateProgram();
 
     auto compile_stage = [&](const char *src, GLenum stage) -> GLuint {
       if (src == nullptr) {
+        /* We only want status errors if compilation fails. */
+        status = GL_TRUE;
         return 0;
       }
 
