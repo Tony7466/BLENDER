@@ -5073,7 +5073,6 @@ void blo_read_shared_impl(
   if (shared_data) {
     /* The data was loaded before. No need to load it again. Just assign the address and increase
      * the user count to indicate that it is shared. */
-    /* TODO: doesn't work with sharing CD_MLOOP right now. */
     *data_ptr = shared_data->data;
     *r_sharing_info = shared_data->sharing_info;
     if (shared_data->sharing_info) {
