@@ -4086,7 +4086,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
     /* add storage for compositor translate nodes when not existing */
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 47)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 56)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type == NTREE_COMPOSIT) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
