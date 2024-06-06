@@ -31,26 +31,24 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  STLImportParams p;
+  STLImportParams import_params;
 
-  STRNCPY(p.filepath, path.c_str());
+  STRNCPY(import_params.filepath, path.c_str());
 
-  p.forward_axis = IO_AXIS_NEGATIVE_Z;
-  p.up_axis = IO_AXIS_Y;
-  p.use_facet_normal = false;
-  p.use_scene_unit = false;
-  p.global_scale = 1.0f;
-  p.use_mesh_validate = true;
+  import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
+  import_params.up_axis = IO_AXIS_Y;
+  import_params.use_facet_normal = false;
+  import_params.use_scene_unit = false;
+  import_params.global_scale = 1.0f;
+  import_params.use_mesh_validate = true;
 
   ReportList reports;
-
   BKE_reports_init(&reports, RPT_STORE);
+  import_params.reports = &reports;
 
-  p.reports = &reports;
+  Mesh *mesh = STL_import_mesh(&import_params);
 
-  Mesh *mesh = STL_import_mesh(&p);
-
-  LISTBASE_FOREACH (Report *, report, &(p.reports)->list) {
+  LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
     NodeWarningType type;
 
     switch (report->type) {
