@@ -1339,7 +1339,7 @@ static void acf_action_binding_name(bAnimListElem *ale, char *name)
     return;
   }
 
-  BLI_strncpy(name, binding->name, ANIM_CHAN_NAME_SIZE);
+  BLI_strncpy(name, binding->name_without_prefix().c_str(), ANIM_CHAN_NAME_SIZE);
 }
 static bool acf_action_binding_name_prop(bAnimListElem *ale,
                                          PointerRNA *r_ptr,
