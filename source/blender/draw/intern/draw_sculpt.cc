@@ -96,7 +96,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
     update_only_visible = true;
   }
 
-  const Mesh *mesh = static_cast<const Mesh *>(ob->data);
+  const Mesh *mesh = BKE_object_get_original_mesh(ob);
   bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
 
   Vector<SculptBatch> result_batches;
