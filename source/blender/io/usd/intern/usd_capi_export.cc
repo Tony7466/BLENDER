@@ -152,7 +152,7 @@ static void ensure_root_prim(pxr::UsdStageRefPtr stage, const USDExportParams &p
     return;
   }
 
-  if (!(params.convert_orientation || params.convert_to_cm)) {
+  if (!(params.convert_orientation || params.convert_scene_units)) {
     return;
   }
 
@@ -169,8 +169,8 @@ static void ensure_root_prim(pxr::UsdStageRefPtr stage, const USDExportParams &p
     return;
   }
 
-  if (params.convert_to_cm) {
-    xf_api.SetScale(pxr::GfVec3f(100.0f));
+  if (params.convert_scene_units) {
+    xf_api.SetScale(pxr::GfVec3f(get_scene_scale_from_export_params(&params)));
   }
 
   if (params.convert_orientation) {
@@ -392,8 +392,7 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
 
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, upAxis);
 
-  double meters_per_unit = params.convert_to_cm ? pxr::UsdGeomLinearUnits::centimeters :
-                                                  pxr::UsdGeomLinearUnits::meters;
+  const double meters_per_unit = 1.0f / get_scene_scale_from_export_params(&params);
   pxr::UsdGeomSetStageMetersPerUnit(usd_stage, meters_per_unit);
 
   ensure_root_prim(usd_stage, params);

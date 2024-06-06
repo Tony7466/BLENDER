@@ -156,6 +156,18 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_usd_convert_scene_units_items[] = {
+    {USD_SCENE_UNITS_METERS, "METERS", 0, "Meters", "Scene Scale of 1.0"},
+    {USD_SCENE_UNITS_KILOMETERS, "KILOMETERS", 0, "Kilometers", "Scene Scale of 0.001"},
+    {USD_SCENE_UNITS_CENTIMETERS, "CENTIMETERS", 0, "Centimeters", "Scene scale of 100.0"},
+    {USD_SCENE_UNITS_MILLIMETERS, "MILLIMETERS", 0, "Millimeters", "Scene scale of 1000.0"},
+    {USD_SCENE_UNITS_INCHES, "INCHES", 0, "Inches", "Scene scale of 0.0254"},
+    {USD_SCENE_UNITS_FEET, "FEET", 0, "Feet", "Scene scale of 0.3048"},
+    {USD_SCENE_UNITS_YARDS, "YARDS", 0, "Yards", "Scene scale of 0.9144"},
+    {USD_SCENE_UNITS_CUSTOM, "CUSTOM", 0, "Custom", "Specify a custom scene scale value"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 struct eUSDOperatorOptions {
@@ -267,7 +279,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool allow_unicode = false;
 #  endif
 
-  const bool convert_to_cm = RNA_boolean_get(op->ptr, "convert_to_cm");
+  const eUSDSceneUnits convert_scene_units = eUSDSceneUnits(
+      RNA_enum_get(op->ptr, "convert_scene_units"));
+  const float meters_per_unit = RNA_float_get(op->ptr, "meters_per_unit");
 
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
@@ -310,7 +324,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       usdz_downscale_size,
       usdz_downscale_custom_size,
       allow_unicode,
-      convert_to_cm,
+      convert_scene_units,
+      meters_per_unit,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -379,8 +394,11 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
     uiItemR(col, ptr, "export_global_forward_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "export_global_up_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  uiItemR(col, ptr, "convert_to_cm", UI_ITEM_NONE, nullptr, ICON_NONE);
 
+  uiItemR(col, ptr, "convert_scene_units", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (eUSDSceneUnits(RNA_enum_get(ptr, "convert_scene_units")) == USD_SCENE_UNITS_CUSTOM) {
+    uiItemR(col, ptr, "meters_per_unit", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
@@ -718,11 +736,22 @@ void WM_OT_usd_export(wmOperatorType *ot)
               128,
               8192);
 
-  RNA_def_boolean(ot->srna,
-                  "convert_to_cm",
-                  false,
-                  "Convert to Centimeters",
-                  "Set the USD units to centimeters and scale the scene to convert from meters");
+  RNA_def_enum(ot->srna,
+               "convert_scene_units",
+               rna_enum_usd_convert_scene_units_items,
+               eUSDSceneUnits::USD_SCENE_UNITS_METERS,
+               "Convert Scene Units",
+               "Set the USD units to the chosen measurement, or a custom value");
+
+  RNA_def_float(ot->srna,
+                "meters_per_unit",
+                1.0f,
+                0.0001f,
+                1000.0f,
+                "Meters Per Unit",
+                "Custom value for meters per unit in the USD Stage",
+                0.0001f,
+                1000.0f);
 }
 
 /* ====== USD Import ====== */
@@ -1162,5 +1191,42 @@ void usd_file_handler_add()
   bke::file_handler_add(std::move(fh));
 }
 }  // namespace blender::ed::io
+
+namespace blender::io::usd {
+
+float get_scene_scale_from_export_params(const struct USDExportParams *params)
+{
+  double result;
+  switch (params->convert_scene_units) {
+    case USD_SCENE_UNITS_CENTIMETERS:
+      result = 100.0;
+      break;
+    case USD_SCENE_UNITS_MILLIMETERS:
+      result = 1000.0;
+      break;
+    case USD_SCENE_UNITS_KILOMETERS:
+      result = 0.001;
+      break;
+    case USD_SCENE_UNITS_INCHES:
+      result = 1.0 / 0.0254;
+      break;
+    case USD_SCENE_UNITS_FEET:
+      result = 1.0 / 0.3048;
+      break;
+    case USD_SCENE_UNITS_YARDS:
+      result = 1.0 / 0.9144;
+      break;
+    case USD_SCENE_UNITS_CUSTOM:
+      result = 1.0 / double(params->meters_per_unit);
+      break;
+    default:
+      result = 1.0;
+      break;
+  }
+
+  return result;
+}
+
+}  // end namespace blender::io::usd
 
 #endif /* WITH_USD */

@@ -95,6 +95,17 @@ typedef enum eUSDZTextureDownscaleSize {
   USD_TEXTURE_SIZE_4096 = 4096
 } eUSDZTextureDownscaleSize;
 
+typedef enum eUSDSceneUnits {
+  USD_SCENE_UNITS_CUSTOM = -1,
+  USD_SCENE_UNITS_METERS = 0,
+  USD_SCENE_UNITS_KILOMETERS = 1,
+  USD_SCENE_UNITS_CENTIMETERS = 2,
+  USD_SCENE_UNITS_MILLIMETERS = 3,
+  USD_SCENE_UNITS_INCHES = 4,
+  USD_SCENE_UNITS_FEET = 5,
+  USD_SCENE_UNITS_YARDS = 6,
+} eUSDSceneUnits;
+
 struct USDExportParams {
   bool export_animation = false;
   bool export_hair = true;
@@ -132,7 +143,8 @@ struct USDExportParams {
   eUSDZTextureDownscaleSize usdz_downscale_size = eUSDZTextureDownscaleSize::USD_TEXTURE_SIZE_KEEP;
   int usdz_downscale_custom_size = 128;
   bool allow_unicode = false;
-  bool convert_to_cm = true;
+  eUSDSceneUnits convert_scene_units = eUSDSceneUnits::USD_SCENE_UNITS_METERS;
+  float meters_per_unit = 1.0f;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
@@ -271,5 +283,7 @@ void USD_register_hook(std::unique_ptr<USDHook> hook);
  */
 void USD_unregister_hook(USDHook *hook);
 USDHook *USD_find_hook_name(const char idname[]);
+
+float get_scene_scale_from_export_params(const USDExportParams *params);
 
 };  // namespace blender::io::usd
