@@ -45,7 +45,9 @@ class PhysicsGeometry {
  public:
   static const struct BuiltinAttributes {
     std::string id;
-    std::string simulated;
+    std::string is_simulated;
+    std::string is_static;
+    std::string is_kinematic;
     std::string mass;
     std::string inertia;
     std::string position;
@@ -112,6 +114,7 @@ class PhysicsGeometry {
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
+  void tag_physics_changed();
 
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();

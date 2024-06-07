@@ -511,6 +511,10 @@ class NODE_MT_category_simulation(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsWorld")
         node_add_menu.add_node_type(layout, "GeometryNodeInputRigidBodyInfo")
         node_add_menu.add_node_type(layout, "GeometryNodeInputRigidBodyMotion")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetBodySimulated")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetBodyStatic")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetBodyKinematic")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputBodyPhysicsMode")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

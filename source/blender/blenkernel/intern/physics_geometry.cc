@@ -554,7 +554,16 @@ void PhysicsGeometryImpl::delete_self()
 }
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
-    "id", "simulated", "mass", "inertia", "position", "rotation", "velocity", "angular_velocity"};
+    "id",
+    "simulated",
+    "static",
+    "kinematic",
+    "mass",
+    "inertia",
+    "position",
+    "rotation",
+    "velocity",
+    "angular_velocity"};
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states)
@@ -852,12 +861,12 @@ AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
 
 VArray<bool> PhysicsGeometry::body_is_simulated() const
 {
-  return attributes().lookup(builtin_attributes.simulated).varray.typed<bool>();
+  return attributes().lookup(builtin_attributes.is_simulated).varray.typed<bool>();
 }
 
 AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
 {
-  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.simulated);
+  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
 }
 
 VArray<float> PhysicsGeometry::body_masses() const
@@ -923,6 +932,8 @@ AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
 void PhysicsGeometry::tag_collision_shapes_changed() {}
 
 void PhysicsGeometry::tag_body_transforms_changed() {}
+
+void PhysicsGeometry::tag_physics_changed() {}
 
 /**
  * Utility to group together multiple functions that are used to access custom data on geometry
@@ -1060,11 +1071,41 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   static BuiltinRigidBodyAttributeProvider<bool, simulated_get_fn, simulated_set_fn>
       body_simulated(
-          PhysicsGeometry::builtin_attributes.simulated,
+          PhysicsGeometry::builtin_attributes.is_simulated,
           AttrDomain::Point,
           BuiltinAttributeProvider::NonDeletable,
           physics_access,
           [](void *owner) { ensure_bodies_simulated(*static_cast<PhysicsGeometry *>(owner)); });
+
+  constexpr auto static_get_fn = [](const btRigidBody &body) -> bool {
+    return body.isStaticObject();
+  };
+  constexpr auto static_set_fn = [](btRigidBody &body, bool value) {
+    int bt_collision_flags = body.getCollisionFlags();
+    SET_FLAG_FROM_TEST(bt_collision_flags, value, btCollisionObject::CF_STATIC_OBJECT);
+    body.setCollisionFlags(bt_collision_flags);
+  };
+  static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
+      PhysicsGeometry::builtin_attributes.is_static,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
+  constexpr auto kinematic_get_fn = [](const btRigidBody &body) -> bool {
+    return body.isKinematicObject();
+  };
+  constexpr auto kinematic_set_fn = [](btRigidBody &body, bool value) {
+    int bt_collision_flags = body.getCollisionFlags();
+    SET_FLAG_FROM_TEST(bt_collision_flags, value, btCollisionObject::CF_KINEMATIC_OBJECT);
+    body.setCollisionFlags(bt_collision_flags);
+  };
+  static BuiltinRigidBodyAttributeProvider<bool, kinematic_get_fn, kinematic_set_fn>
+      body_kinematic(PhysicsGeometry::builtin_attributes.is_kinematic,
+                     AttrDomain::Point,
+                     BuiltinAttributeProvider::NonDeletable,
+                     physics_access,
+                     nullptr);
 
   constexpr auto mass_get_fn = [](const btRigidBody &body) -> float { return body.getMass(); };
   constexpr auto mass_set_fn = [](btRigidBody &body, float value) {
@@ -1146,6 +1187,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
 
   return ComponentAttributeProviders({&body_id,
                                       &body_simulated,
+                                      &body_static,
+                                      &body_kinematic,
                                       &body_mass,
                                       &body_inertia,
                                       &body_position,
