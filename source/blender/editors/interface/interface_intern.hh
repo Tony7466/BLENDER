@@ -1130,6 +1130,8 @@ const char *ui_textedit_undo(uiUndoStack_Text *undo_stack, int direction, int *r
 
 /* interface_handlers.cc */
 
+void ui_but_handle_data_free(uiHandleButtonData *handle_data);
+
 void ui_handle_afterfunc_add_operator(wmOperatorType *ot, wmOperatorCallContext opcontext);
 /**
  * Assumes event type is MOUSEPAN.

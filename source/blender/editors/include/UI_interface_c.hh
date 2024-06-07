@@ -13,6 +13,7 @@
 #include <string>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_sys_types.h" /* size_t */
@@ -620,8 +621,7 @@ struct uiBlockInteraction_Params {
    * Array of unique event ID's (values from #uiBut.retval).
    * There may be more than one for multi-button editing (see #UI_BUT_DRAG_MULTI).
    */
-  int *unique_retval_ids;
-  uint unique_retval_ids_len;
+  blender::Set<int> unique_retval_ids;
 };
 
 /** Returns 'user_data', freed by #uiBlockInteractionEndFn. */

@@ -125,9 +125,8 @@ static void *editmesh_partial_update_begin_fn(bContext * /*C*/,
                                               void *arg1)
 {
   const int retval_test = B_TRANSFORM_PANEL_MEDIAN;
-  if (BLI_array_findindex(
-          params->unique_retval_ids, params->unique_retval_ids_len, &retval_test) == -1)
-  {
+
+  if (!params->unique_retval_ids.contains(retval_test)) {
     return nullptr;
   }
 

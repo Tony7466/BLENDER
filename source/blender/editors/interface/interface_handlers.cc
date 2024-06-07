@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 
 #include "MEM_guardedalloc.h"
 
@@ -163,9 +164,9 @@ static void ui_block_interaction_begin_ensure(bContext *C,
                                               uiBlock *block,
                                               uiHandleButtonData *data,
                                               const bool is_click);
-static uiBlockInteraction_Handle *ui_block_interaction_begin(bContext *C,
-                                                             uiBlock *block,
-                                                             const bool is_click);
+static std::shared_ptr<uiBlockInteraction_Handle> ui_block_interaction_begin(bContext *C,
+                                                                             uiBlock *block,
+                                                                             const bool is_click);
 static void ui_block_interaction_end(bContext *C,
                                      uiBlockInteraction_CallbackData *callbacks,
                                      uiBlockInteraction_Handle *interaction);
@@ -231,14 +232,6 @@ enum uiMenuScrollType {
 struct uiBlockInteraction_Handle {
   uiBlockInteraction_Params params;
   void *user_data;
-  /**
-   * This is shared between #uiHandleButtonData and #uiAfterFunc,
-   * the last user runs the end callback and frees the data.
-   *
-   * This is needed as the order of freeing changes depending on
-   * accepting/canceling the operation.
-   */
-  int user_count;
 };
 
 #ifdef USE_ALLSELECT
@@ -461,7 +454,7 @@ struct uiHandleButtonData {
   uiSelectContextStore select_others;
 #endif
 
-  uiBlockInteraction_Handle *custom_interaction_handle;
+  std::shared_ptr<uiBlockInteraction_Handle> custom_interaction_handle;
 
   /* post activate */
   uiButtonActivateType posttype;
@@ -500,7 +493,7 @@ struct uiAfterFunc {
   uiFreeArgFunc search_arg_free_fn;
 
   uiBlockInteraction_CallbackData custom_interaction_callbacks;
-  uiBlockInteraction_Handle *custom_interaction_handle;
+  std::shared_ptr<uiBlockInteraction_Handle> custom_interaction_handle;
 
   std::optional<bContextStore> context;
 
@@ -540,6 +533,17 @@ static CurveMapping but_copypaste_curve = {0};
 static bool but_copypaste_curve_alive = false;
 static CurveProfile but_copypaste_profile = {0};
 static bool but_copypaste_profile_alive = false;
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Handling Data Functions
+ * \{ */
+
+void ui_but_handle_data_free(uiHandleButtonData *handle_data)
+{
+  MEM_delete(handle_data);
+}
 
 /** \} */
 
@@ -890,9 +894,6 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
                0x0,
                sizeof(after_prev->custom_interaction_callbacks));
       }
-      else {
-        after->custom_interaction_handle->user_count++;
-      }
     }
   }
 
@@ -1077,13 +1078,12 @@ static void ui_apply_but_funcs_after(bContext *C)
     }
 
     if (after.custom_interaction_handle != nullptr) {
-      after.custom_interaction_handle->user_count--;
-      BLI_assert(after.custom_interaction_handle->user_count >= 0);
-      if (after.custom_interaction_handle->user_count == 0) {
+      /* Fire callbacks if this is the last user of the handle. */
+      if (after.custom_interaction_handle.use_count() == 1) {
         ui_block_interaction_update(
-            C, &after.custom_interaction_callbacks, after.custom_interaction_handle);
+            C, &after.custom_interaction_callbacks, after.custom_interaction_handle.get());
         ui_block_interaction_end(
-            C, &after.custom_interaction_callbacks, after.custom_interaction_handle);
+            C, &after.custom_interaction_callbacks, after.custom_interaction_handle.get());
       }
       after.custom_interaction_handle = nullptr;
     }
@@ -2445,7 +2445,7 @@ static void ui_apply_but(
 
   if (data->custom_interaction_handle != nullptr) {
     ui_block_interaction_update(
-        C, &block->custom_interaction_callbacks, data->custom_interaction_handle);
+        C, &block->custom_interaction_callbacks, data->custom_interaction_handle.get());
   }
 }
 
@@ -8626,7 +8626,7 @@ static void button_activate_init(bContext *C,
   BLI_assert(ui_region_find_active_but(region) == nullptr);
 
   /* setup struct */
-  uiHandleButtonData *data = MEM_cnew<uiHandleButtonData>(__func__);
+  uiHandleButtonData *data = MEM_new<uiHandleButtonData>(__func__);
   data->wm = CTX_wm_manager(C);
   data->window = CTX_wm_window(C);
   data->area = CTX_wm_area(C);
@@ -8824,19 +8824,19 @@ static void button_activate_exit(
     if (data->custom_interaction_handle != nullptr) {
       /* Should only set when the button is modal. */
       BLI_assert(but->active != nullptr);
-      data->custom_interaction_handle->user_count--;
 
-      BLI_assert(data->custom_interaction_handle->user_count >= 0);
-      if (data->custom_interaction_handle->user_count == 0) {
+      /* Fire end callback if this is the last user of the handle. */
+      if (data->custom_interaction_handle.use_count() == 1) {
         ui_block_interaction_end(
-            C, &but->block->custom_interaction_callbacks, data->custom_interaction_handle);
+            C, &but->block->custom_interaction_callbacks, data->custom_interaction_handle.get());
       }
       data->custom_interaction_handle = nullptr;
     }
   }
 
   /* clean up button */
-  MEM_SAFE_FREE(but->active);
+  ui_but_handle_data_free(but->active);
+  but->active = nullptr;
 
   but->flag &= ~(UI_HOVER | UI_SELECT);
   but->flag |= UI_BUT_LAST_ACTIVE;
@@ -9193,7 +9193,7 @@ void ui_but_execute_begin(bContext * /*C*/, ARegion *region, uiBut *but, void **
    * some functions we call don't use data (as they should be doing) */
   uiHandleButtonData *data;
   *active_back = but->active;
-  data = MEM_cnew<uiHandleButtonData>(__func__);
+  data = MEM_new<uiHandleButtonData>(__func__);
   but->active = data;
   BLI_assert(region != nullptr);
   data->region = region;
@@ -12038,40 +12038,21 @@ void UI_block_interaction_set(uiBlock *block, uiBlockInteraction_CallbackData *c
   block->custom_interaction_callbacks = *callbacks;
 }
 
-static uiBlockInteraction_Handle *ui_block_interaction_begin(bContext *C,
-                                                             uiBlock *block,
-                                                             const bool is_click)
+static std::shared_ptr<uiBlockInteraction_Handle> ui_block_interaction_begin(bContext *C,
+                                                                             uiBlock *block,
+                                                                             const bool is_click)
 {
   BLI_assert(block->custom_interaction_callbacks.begin_fn != nullptr);
-  uiBlockInteraction_Handle *interaction = MEM_cnew<uiBlockInteraction_Handle>(__func__);
+  std::shared_ptr<uiBlockInteraction_Handle> interaction =
+      std::make_shared<uiBlockInteraction_Handle>();
 
-  int unique_retval_ids_len = 0;
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->active || (but->flag & UI_BUT_DRAG_MULTI)) {
-      unique_retval_ids_len++;
+      interaction->params.unique_retval_ids.add(but->retval);
     }
-  }
-
-  int *unique_retval_ids = static_cast<int *>(
-      MEM_mallocN(sizeof(*unique_retval_ids) * unique_retval_ids_len, __func__));
-  unique_retval_ids_len = 0;
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    if (but->active || (but->flag & UI_BUT_DRAG_MULTI)) {
-      unique_retval_ids[unique_retval_ids_len++] = but->retval;
-    }
-  }
-
-  if (unique_retval_ids_len > 1) {
-    qsort(unique_retval_ids, unique_retval_ids_len, sizeof(int), BLI_sortutil_cmp_int);
-    unique_retval_ids_len = BLI_array_deduplicate_ordered(unique_retval_ids,
-                                                          unique_retval_ids_len);
-    unique_retval_ids = static_cast<int *>(
-        MEM_reallocN(unique_retval_ids, sizeof(*unique_retval_ids) * unique_retval_ids_len));
   }
 
   interaction->params.is_click = is_click;
-  interaction->params.unique_retval_ids = unique_retval_ids;
-  interaction->params.unique_retval_ids_len = unique_retval_ids_len;
 
   interaction->user_data = block->custom_interaction_callbacks.begin_fn(
       C, &interaction->params, block->custom_interaction_callbacks.arg1);
@@ -12084,8 +12065,6 @@ static void ui_block_interaction_end(bContext *C,
 {
   BLI_assert(callbacks->end_fn != nullptr);
   callbacks->end_fn(C, &interaction->params, callbacks->arg1, interaction->user_data);
-  MEM_freeN(interaction->params.unique_retval_ids);
-  MEM_freeN(interaction);
 }
 
 static void ui_block_interaction_update(bContext *C,
@@ -12119,9 +12098,7 @@ static void ui_block_interaction_begin_ensure(bContext *C,
     return;
   }
 
-  uiBlockInteraction_Handle *interaction = ui_block_interaction_begin(C, block, is_click);
-  interaction->user_count = 1;
-  data->custom_interaction_handle = interaction;
+  data->custom_interaction_handle = ui_block_interaction_begin(C, block, is_click);
 }
 
 /** \} */
