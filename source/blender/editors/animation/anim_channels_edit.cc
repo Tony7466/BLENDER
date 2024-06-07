@@ -196,6 +196,7 @@ static bool get_channel_bounds(bAnimContext *ac,
     case ALE_ACT:
     case ALE_GROUP:
     case ALE_ACTION_LAYERED:
+    case ALE_ACTION_BINDING:
     case ALE_GREASE_PENCIL_DATA:
     case ALE_GREASE_PENCIL_GROUP:
       return false;
