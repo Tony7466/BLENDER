@@ -299,7 +299,7 @@ class GLShaderCompiler : public ShaderCompiler {
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 
-  virtual void precompile_specializations(Vector<ShaderSpecialization> specializations) override;
+  virtual void precompile_specializations(Span<ShaderSpecialization> specializations) override;
 };
 
 #else

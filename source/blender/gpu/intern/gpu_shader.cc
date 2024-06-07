@@ -515,7 +515,7 @@ void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value)
   GPU_shader_constant_bool_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
 }
 
-void GPU_shaders_precompile_specializations(Vector<ShaderSpecialization> specializations)
+void GPU_shaders_precompile_specializations(Span<ShaderSpecialization> specializations)
 {
   Context::get()->compiler->precompile_specializations(specializations);
 }

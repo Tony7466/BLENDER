@@ -181,7 +181,7 @@ class ShaderCompiler {
   virtual bool batch_is_ready(BatchHandle handle) = 0;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) = 0;
 
-  virtual void precompile_specializations(Vector<ShaderSpecialization> /*specializations*/){};
+  virtual void precompile_specializations(Span<ShaderSpecialization> /*specializations*/){};
 };
 
 /* Generic (fully synchronous) implementation for backends that don't implement their own

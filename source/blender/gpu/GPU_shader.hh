@@ -225,7 +225,7 @@ struct ShaderSpecialization {
   blender::Vector<blender::gpu::shader::SpecializationConstant> constants;
 };
 
-void GPU_shaders_precompile_specializations(blender::Vector<ShaderSpecialization> specializations);
+void GPU_shaders_precompile_specializations(blender::Span<ShaderSpecialization> specializations);
 
 /** \} */
 

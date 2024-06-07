@@ -1887,7 +1887,7 @@ Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
   return result;
 }
 
-void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> specializations)
+void GLShaderCompiler::precompile_specializations(Span<ShaderSpecialization> specializations)
 {
   BLI_assert(GPU_use_parallel_compilation());
 
