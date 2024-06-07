@@ -973,20 +973,8 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
   }
 
-  /* TODO: adjust bump number before committing. */
-  if (!USER_VERSION_ATLEAST(402, 100)) {
-    userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
-
-    /* TODO: remove this block before merging, keep to avoid adding multiple system blocks. */
-    bool has_system = false;
-    LISTBASE_FOREACH (const bUserExtensionRepo *, repo_iter, &userdef->extension_repos) {
-      if (repo_iter->source == USER_EXTENSION_REPO_SOURCE_SYSTEM) {
-        has_system = true;
-      }
-    }
-    if (!has_system) {
-      BKE_preferences_extension_repo_add_default_system(userdef);
-    }
+  if (!USER_VERSION_ATLEAST(402, 56)) {
+    BKE_preferences_extension_repo_add_default_system(userdef);
   }
 
   /**
