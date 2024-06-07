@@ -94,6 +94,9 @@ class PhysicsGeometry {
   VArray<bool> body_is_simulated() const;
   AttributeWriter<bool> body_is_simulated_for_write();
 
+  VArray<bool> body_is_static() const;
+
+  /* Set to zero to make static bodies. */
   VArray<float> body_masses() const;
   AttributeWriter<float> body_masses_for_write();
 

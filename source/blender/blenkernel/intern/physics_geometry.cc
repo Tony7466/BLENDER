@@ -869,6 +869,11 @@ AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
   return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
 }
 
+VArray<bool> PhysicsGeometry::body_is_static() const
+{
+  return attributes().lookup(builtin_attributes.is_static).varray.typed<bool>();
+}
+
 VArray<float> PhysicsGeometry::body_masses() const
 {
   return attributes().lookup(builtin_attributes.mass).varray.typed<float>();
@@ -1081,9 +1086,12 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     return body.isStaticObject();
   };
   constexpr auto static_set_fn = [](btRigidBody &body, bool value) {
-    int bt_collision_flags = body.getCollisionFlags();
-    SET_FLAG_FROM_TEST(bt_collision_flags, value, btCollisionObject::CF_STATIC_OBJECT);
-    body.setCollisionFlags(bt_collision_flags);
+    if (value) {
+      body.setMassProps(0.0f, to_bullet(float3(0.0f)));
+    }
+    else if (body.isStaticObject()) {
+      body.setMassProps(1.0f, to_bullet(float3(1.0f)));
+    }
   };
   static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
       PhysicsGeometry::builtin_attributes.is_static,
