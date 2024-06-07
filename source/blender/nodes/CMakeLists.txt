@@ -78,6 +78,7 @@ set(SRC
   intern/derived_node_tree.cc
   intern/geometry_nodes_execute.cc
   intern/geometry_nodes_gizmos.cc
+  intern/geometry_nodes_gizmos2.cc
   intern/geometry_nodes_lazy_function.cc
   intern/geometry_nodes_log.cc
   intern/math_functions.cc
@@ -100,6 +101,7 @@ set(SRC
   NOD_geometry_exec.hh
   NOD_geometry_nodes_execute.hh
   NOD_geometry_nodes_gizmos.hh
+  NOD_geometry_nodes_gizmos2.hh
   NOD_geometry_nodes_lazy_function.hh
   NOD_geometry_nodes_log.hh
   NOD_math_functions.hh
