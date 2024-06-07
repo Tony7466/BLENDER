@@ -480,6 +480,10 @@ static void ensure_bodies_simulated(PhysicsGeometry &physics)
   PhysicsGeometryImpl &impl = physics.impl_for_write();
   /* TODO there are threadsafe versions of Bullet world that could allow this in parallel. */
   btDynamicsWorld *world = impl.world;
+  if (world == nullptr) {
+    return;
+  }
+
   for (btRigidBody *body : impl.rigid_bodies) {
     const bool should_be_simulated = (get_body_user_flags(*body) &
                                       RigidBodyUserFlag::IsSimulated) != RigidBodyUserFlag(0);
@@ -688,11 +692,13 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
     btRigidBody *body = from_mutable.rigid_bodies[i_body];
     btMotionState *motion_state = from_mutable.motion_states[i_body];
 
-    const bool is_in_world = body->isInWorld();
-    if (is_in_world && to_world != from_world) {
+    const bool add_to_world = (get_body_user_flags(*body) & RigidBodyUserFlag::IsSimulated) !=
+                              RigidBodyUserFlag(0);
+    if (add_to_world && to_world != from_world) {
       /* Move all to new world. */
-      BLI_assert(from_world != nullptr);
-      from_world->removeRigidBody(body);
+      if (from_world != nullptr) {
+        from_world->removeRigidBody(body);
+      }
 
       if (to_world != nullptr) {
         to_world->addRigidBody(body);

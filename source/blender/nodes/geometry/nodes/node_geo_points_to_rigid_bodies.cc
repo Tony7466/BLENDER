@@ -8,6 +8,7 @@
 
 #include "BKE_physics_geometry.hh"
 
+#include "FN_field.hh"
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_points_to_rigid_bodies_cc {
@@ -26,6 +27,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Velocity").field_on_all().hide_value();
   b.add_input<decl::Vector>("Angular Velocity").field_on_all().hide_value();
   b.add_output<decl::Geometry>("Rigid Bodies").propagate_all();
+  b.add_input<decl::Bool>("Simulate").default_value(true).field_on_all();
 }
 
 static void geometry_set_points_to_rigid_bodies(
@@ -38,6 +40,7 @@ static void geometry_set_points_to_rigid_bodies(
     Field<math::Quaternion> &rotation_field,
     Field<float3> &velocity_field,
     Field<float3> &angular_velocity_field,
+    Field<bool> &is_simulated_field,
     const AnonymousAttributePropagationInfo & /*propagation_info*/)
 {
   const PointCloud *points = geometry_set.get_pointcloud();
@@ -56,10 +59,9 @@ static void geometry_set_points_to_rigid_bodies(
   field_evaluator.add(rotation_field);
   field_evaluator.add(velocity_field);
   field_evaluator.add(angular_velocity_field);
+  field_evaluator.add(is_simulated_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
-
-  
 
   const VArray<int> src_ids = field_evaluator.get_evaluated<int>(0);
   const VArray<float> src_masses = field_evaluator.get_evaluated<float>(1);
@@ -69,6 +71,7 @@ static void geometry_set_points_to_rigid_bodies(
       4);
   const VArray<float3> src_velocities = field_evaluator.get_evaluated<float3>(5);
   const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(6);
+  const VArray<bool> src_is_simulated = field_evaluator.get_evaluated<bool>(7);
 
   const int num_bodies = selection.size();
   auto *physics = new bke::PhysicsGeometry(num_bodies, 0, 0);
@@ -79,6 +82,7 @@ static void geometry_set_points_to_rigid_bodies(
   AttributeWriter<math::Quaternion> dst_rotations = physics->body_rotations_for_write();
   AttributeWriter<float3> dst_velocities = physics->body_velocities_for_write();
   AttributeWriter<float3> dst_angular_velocities = physics->body_angular_velocities_for_write();
+  AttributeWriter<bool> dst_is_simulated = physics->body_is_simulated_for_write();
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
     dst_ids.varray.set(pos, src_ids[index]);
@@ -88,6 +92,7 @@ static void geometry_set_points_to_rigid_bodies(
     dst_rotations.varray.set(pos, src_rotations[index]);
     dst_velocities.varray.set(pos, src_velocities[index]);
     dst_angular_velocities.varray.set(pos, src_angular_velocities[index]);
+    dst_is_simulated.varray.set(pos, src_is_simulated[index]);
   });
 
   dst_ids.finish();
@@ -97,6 +102,7 @@ static void geometry_set_points_to_rigid_bodies(
   dst_rotations.finish();
   dst_velocities.finish();
   dst_angular_velocities.finish();
+  dst_is_simulated.finish();
 
   geometry_set.replace_physics(physics);
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Physics});
@@ -114,6 +120,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       "Rotation");
   Field<float3> velocity_field = params.extract_input<Field<float3>>("Velocity");
   Field<float3> angular_velocity_field = params.extract_input<Field<float3>>("Angular Velocity");
+  Field<bool> is_simulated_field = params.extract_input<Field<bool>>("Simulate");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     geometry_set_points_to_rigid_bodies(geometry_set,
@@ -125,6 +132,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                         rotation_field,
                                         velocity_field,
                                         angular_velocity_field,
+                                        is_simulated_field,
                                         params.get_output_propagation_info("Rigid Bodies"));
   });
 
