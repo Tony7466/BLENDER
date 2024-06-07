@@ -335,11 +335,13 @@ static GlyphBLF *blf_glyph_cache_add_glyph(
   return gc->glyphs.lookup(key).get();
 }
 
-static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode, std::string file_name)
+static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc,
+                                         uint charcode,
+                                         blender::StringRef file_name)
 {
   const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
   char filepath[1024];
-  BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.c_str());
+  BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.data());
 
   NSVGimage *image = nsvgParseFromFile(filepath, "px", 96.0f);
 
@@ -1365,7 +1367,9 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   return g;
 }
 
-GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, const uint icon_id, std::string file_name)
+GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc,
+                                const uint icon_id,
+                                blender::StringRef file_name)
 {
   GlyphBLF *g = blf_glyph_cache_find_glyph(gc, 0x100000 + icon_id, 0);
   if (g) {

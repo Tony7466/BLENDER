@@ -95,7 +95,7 @@ void blf_font_draw__wrap(FontBLF *font, const char *str, size_t str_len, ResultB
 
 void blf_draw_svg_icon(FontBLF *font,
                        uint icon_id,
-                       std::string file_name,
+                       blender::StringRef file_name,
                        float x,
                        float y,
                        float size,
@@ -175,7 +175,7 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, uint charcode, uint
 GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int32_t pen_x);
 #endif
 
-GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, uint icon_id, std::string file_name);
+GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, uint icon_id, blender::StringRef file_name);
 
 /**
  * Convert a character's outlines into curves.

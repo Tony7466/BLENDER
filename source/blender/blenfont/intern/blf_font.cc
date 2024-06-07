@@ -526,7 +526,7 @@ int blf_font_draw_mono(
 
 void blf_draw_svg_icon(FontBLF *font,
                        uint icon_id,
-                       std::string file_name,
+                       blender::StringRef file_name,
                        float x,
                        float y,
                        float size,

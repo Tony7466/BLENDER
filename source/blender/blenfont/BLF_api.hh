@@ -140,7 +140,7 @@ int BLF_draw_mono(int fontid, const char *str, size_t str_len, int cwidth, int t
     ATTR_NONNULL(2);
 
 void BLF_draw_svg_icon(uint icon_id,
-                       std::string file_name,
+                       blender::StringRef file_name,
                        float x,
                        float y,
                        float size,
