@@ -260,6 +260,19 @@ static void interpolate_vert_attribute(const Mesh &mesh,
   });
 }
 
+template<typename T>
+inline void gather_to_groups(const OffsetIndices<int> dst_offsets,
+                             const Span<int> indices,
+                             const Span<T> src,
+                             MutableSpan<T> dst)
+{
+  threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      dst.slice(dst_offsets[i]).fill(src[indices[i]]);
+    }
+  });
+}
+
 static void interpolate_face_attribute(const Mesh &mesh,
                                        const GroupedSpan<float3> tri_bary_coords,
                                        const GVArray &src,
@@ -272,11 +285,7 @@ static void interpolate_face_attribute(const Mesh &mesh,
     using T = decltype(dummy);
     const VArraySpan<T> src_typed(src.typed<T>());
     MutableSpan<T> dst_typed = dst.typed<T>();
-    threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
-      for (const int64_t tri_i : range) {
-        dst_typed.slice(tri_bary_coords.offsets[tri_i]).fill(src_typed[face_index[tri_i]]);
-      }
-    });
+    gather_to_groups(tri_bary_coords.offsets, mesh.corner_tri_faces(), src_typed, dst_typed);
   });
 }
 
