@@ -41,7 +41,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
@@ -1300,20 +1300,22 @@ float paint_grid_paint_mask(const GridPaintMask *gpm, uint level, uint x, uint y
 }
 
 /* Threshold to move before updating the brush rotation, reduces jitter. */
-static float paint_rake_rotation_spacing(const UnifiedPaintSettings * /*ups*/, const Brush *brush)
+static float paint_rake_rotation_spacing(const UnifiedPaintSettings & /*ups*/, const Brush &brush)
 {
-  return brush->sculpt_tool == SCULPT_TOOL_CLAY_STRIPS ? 1.0f : 20.0f;
+  return brush.sculpt_tool == SCULPT_TOOL_CLAY_STRIPS ? 1.0f : 20.0f;
 }
 
-void paint_update_brush_rake_rotation(UnifiedPaintSettings *ups, Brush *brush, float rotation)
+void paint_update_brush_rake_rotation(UnifiedPaintSettings &ups,
+                                      const Brush &brush,
+                                      float rotation)
 {
-  ups->brush_rotation = rotation;
+  ups.brush_rotation = rotation;
 
-  if (brush->mask_mtex.brush_angle_mode & MTEX_ANGLE_RAKE) {
-    ups->brush_rotation_sec = rotation;
+  if (brush.mask_mtex.brush_angle_mode & MTEX_ANGLE_RAKE) {
+    ups.brush_rotation_sec = rotation;
   }
   else {
-    ups->brush_rotation_sec = 0.0f;
+    ups.brush_rotation_sec = 0.0f;
   }
 }
 
@@ -1328,14 +1330,14 @@ static const bool paint_rake_rotation_active(const Brush &brush, PaintMode paint
          BKE_brush_has_cube_tip(&brush, paint_mode);
 }
 
-bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
-                                   Brush *brush,
+bool paint_calculate_rake_rotation(UnifiedPaintSettings &ups,
+                                   const Brush &brush,
                                    const float mouse_pos[2],
-                                   PaintMode paint_mode,
+                                   const PaintMode paint_mode,
                                    bool stroke_has_started)
 {
   bool ok = false;
-  if (paint_rake_rotation_active(*brush, paint_mode)) {
+  if (paint_rake_rotation_active(brush, paint_mode)) {
     float r = paint_rake_rotation_spacing(ups, brush);
     float rotation;
 
@@ -1345,15 +1347,15 @@ bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
     }
 
     float dpos[2];
-    sub_v2_v2v2(dpos, mouse_pos, ups->last_rake);
+    sub_v2_v2v2(dpos, mouse_pos, ups.last_rake);
 
     /* Limit how often we update the angle to prevent jitter. */
     if (len_squared_v2(dpos) >= r * r) {
       rotation = atan2f(dpos[1], dpos[0]) + float(0.5f * M_PI);
 
-      copy_v2_v2(ups->last_rake, mouse_pos);
+      copy_v2_v2(ups.last_rake, mouse_pos);
 
-      ups->last_rake_angle = rotation;
+      ups.last_rake_angle = rotation;
 
       paint_update_brush_rake_rotation(ups, brush, rotation);
       ok = true;
@@ -1361,12 +1363,12 @@ bool paint_calculate_rake_rotation(UnifiedPaintSettings *ups,
     /* Make sure we reset here to the last rotation to avoid accumulating
      * values in case a random rotation is also added. */
     else {
-      paint_update_brush_rake_rotation(ups, brush, ups->last_rake_angle);
+      paint_update_brush_rake_rotation(ups, brush, ups.last_rake_angle);
       ok = false;
     }
   }
   else {
-    ups->brush_rotation = ups->brush_rotation_sec = 0.0f;
+    ups.brush_rotation = ups.brush_rotation_sec = 0.0f;
     ok = true;
   }
   return ok;
@@ -1506,14 +1508,6 @@ SculptSession::~SculptSession()
 
   if (this->tex_pool) {
     BKE_image_pool_free(this->tex_pool);
-  }
-
-  if (this->boundary_preview) {
-    MEM_SAFE_FREE(this->boundary_preview->verts);
-    MEM_SAFE_FREE(this->boundary_preview->edges);
-    MEM_SAFE_FREE(this->boundary_preview->distance);
-    MEM_SAFE_FREE(this->boundary_preview->edit_info);
-    MEM_SAFE_FREE(this->boundary_preview);
   }
 
   BKE_sculptsession_free_vwpaint_data(this);
@@ -2789,7 +2783,11 @@ bool BKE_sculpt_attribute_destroy(Object *ob, SculptAttribute *attr)
       CustomData_free_layer(cdata, attr->proptype, totelem, layer_i);
     }
 
-    sculpt_attribute_update_refs(ob, BKE_pbvh_type(*ss->pbvh));
+    if (ss->pbvh) {
+      /* If the PBVH doesn't exist, we cannot update references
+       * This can occur when all the attributes are being deleted. */
+      sculpt_attribute_update_refs(ob, BKE_pbvh_type(*ss->pbvh));
+    }
   }
 
   attr->data = nullptr;

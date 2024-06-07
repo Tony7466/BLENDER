@@ -220,7 +220,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
     .additional_info("eevee_global_ubo",
-                     "eevee_reflection_probe_data",
+                     "eevee_lightprobe_sphere_data",
                      "eevee_volume_probe_data",
                      "eevee_sampling_data",
                      /* Optionally added depending on the material. */
@@ -232,17 +232,14 @@ GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_atomic_iface, "shadow_iface")
     .flat(Type::INT, "shadow_view_id");
 
 GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_clipping_iface, "shadow_clip")
+    .smooth(Type::VEC3, "position")
     .smooth(Type::VEC3, "vector");
-
-GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_flat_iface, "shadow_flat")
-    .flat(Type::FLOAT, "filter_radius");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", STRINGIFY(SHADOW_VIEW_MAX))
     .define("MAT_SHADOW")
     .builtins(BuiltinBits::VIEWPORT_INDEX)
     .vertex_out(eevee_surf_shadow_clipping_iface)
-    .vertex_out(eevee_surf_shadow_flat_iface)
     .storage_buf(SHADOW_RENDER_VIEW_BUF_SLOT,
                  Qualifier::READ,
                  "ShadowRenderView",
