@@ -22,6 +22,7 @@ from bpy.types import (
 
 from bl_ui.space_userpref import (
     USERPREF_PT_addons,
+    USERPREF_MT_extensions_active_repo,
 )
 
 from . import repo_status_text
@@ -454,6 +455,9 @@ def extensions_panel_draw_missing_with_extension_impl(
     del repo
 
     for addon_module_name in sorted(missing_modules):
+        # The `addon_pkg_id` may be an empty string, this signifies that it's not mapped to an extension.
+        # The only reason to include it at all to avoid confusion because this *was* a previously built-in
+        # add-on and this panel is titled "Built-in Add-ons".
         addon_pkg_id, addon_name = extensions_map_from_legacy_addons[addon_module_name]
 
         boxsub = box.column().box()
@@ -468,7 +472,7 @@ def extensions_panel_draw_missing_with_extension_impl(
         row_right = row.row()
         row_right.alignment = 'RIGHT'
 
-        if repo_index != -1:
+        if repo_index != -1 and addon_pkg_id:
             # NOTE: it's possible this extension is already installed.
             # the user could have installed it manually, then opened this popup.
             # This is enough of a corner case that it's not especially worth detecting
@@ -527,6 +531,9 @@ def extensions_panel_draw_impl(
     """
     import addon_utils
     import os
+    from bpy.app.translations import (
+        pgettext_iface as iface_,
+    )
     from .bl_extension_ops import (
         blender_extension_mark,
         blender_extension_show,
@@ -825,10 +832,14 @@ def extensions_panel_draw_impl(
 
                 if is_addon:
                     col_a.label(text="Permissions")
+                    # WARNING: while this is documented to be a dict, old packages may contain a list of strings.
+                    # As it happens dictionary keys & list values both iterate over string,
+                    # however we will want to show the dictionary values eventually.
                     if (value := item_remote.get("permissions")):
-                        col_b.label(text="{:s}".format(", ".join(value).title()))
+                        col_b.label(text=", ".join([iface_(x.title()) for x in value]), translate=False)
                     else:
                         col_b.label(text="No permissions specified")
+                    del value
 
                 # Remove the maintainers email while it's not private, showing prominently
                 # could cause maintainers to get direct emails instead of issue tracking systems.
@@ -1185,6 +1196,20 @@ def tags_panel_draw(panel, context):
         col.prop(wm.extension_tags, "[\"{:s}\"]".format(escape_identifier(t)))
 
 
+def extensions_repo_active_draw(self, context):
+    # Draw icon buttons on the right hand side of the UI-list.
+    from . import repo_active_or_none
+    layout = self.layout
+
+    # Allow the poll functions to only check against the active repository.
+    if (repo := repo_active_or_none()) is not None:
+        layout.context_pointer_set("extension_repo", repo)
+
+    layout.operator("extensions.repo_sync_all", text="", icon='FILE_REFRESH').use_active_only = True
+
+    layout.operator("extensions.package_upgrade_all", text="", icon='IMPORT').use_active_only = True
+
+
 classes = (
     # Pop-overs.
     USERPREF_PT_extensions_filter,
@@ -1196,6 +1221,7 @@ classes = (
 def register():
     USERPREF_PT_addons.append(extensions_panel_draw)
     USERPREF_PT_extensions_tags.append(tags_panel_draw)
+    USERPREF_MT_extensions_active_repo.append(extensions_repo_active_draw)
 
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -1204,6 +1230,7 @@ def register():
 def unregister():
     USERPREF_PT_addons.remove(extensions_panel_draw)
     USERPREF_PT_extensions_tags.remove(tags_panel_draw)
+    USERPREF_MT_extensions_active_repo.remove(extensions_repo_active_draw)
 
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)

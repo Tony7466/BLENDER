@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Blender Foundation
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 # This is a data file that is evaluated directly (not imported).
 # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
 {
@@ -91,5 +95,12 @@
         "system_demo_mode": ("demo_mode", "Demo Mode"),
         "system_property_chart": ("property_chart", "Property Chart"),
         "vdm_brush_baker": ("vdm_brush_baker", "VDM Brush Baker"),
+
+        # These were built-in but not mapped to an extension ("install" won't be shown in the UI).
+        "coat_applink": ("", "3D-Coat Applink"),  # External dependencies.
+        "depsgraph_debug": ("", "Dependency Graph Debug"),  # External dependencies.
+        "io_import_images_as_planes": ("", "Import Images as Planes"),  # Integrated with Blender.
+        "io_mesh_stl": ("", "STL Format"),  # Was on by default.
+        "io_scene_x3d": ("", "Web3D X3D/VRML2 format"),  # Was on by default.
     },
 }
