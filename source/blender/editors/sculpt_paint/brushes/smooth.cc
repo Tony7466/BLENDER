@@ -259,7 +259,7 @@ static void calc_grids(
         continue;
       }
       float3 &co = CCG_elem_offset_co(key, elem, j);
-      if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
+      if (!sculpt_brush_test_sq_fn(test, co)) {
         i++;
         continue;
       }
