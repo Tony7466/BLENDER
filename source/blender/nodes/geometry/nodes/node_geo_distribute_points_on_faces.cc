@@ -320,6 +320,9 @@ BLI_NOINLINE static void propagate_existing_attributes(
   for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType output_data_type = entry.value.data_type;
+    if (output_data_type == CD_PROP_STRING) {
+      continue;
+    }
 
     GAttributeReader src = src_attributes.lookup(attribute_id);
     if (!src) {
@@ -374,13 +377,13 @@ static void compute_rotation_output(const Span<float3> normals,
   });
 }
 
-static void normalize_all(MutableSpan<float3> vectors)
+static void normalize(MutableSpan<float3> data)
 {
-  threading::parallel_for(vectors.index_range(), 4096, [&](const IndexRange range) {
-    MutableSpan<float3> local_vectors = vectors.slice(range);
-    std::transform(local_vectors.begin(),
-                   local_vectors.end(),
-                   local_vectors.begin(),
+  threading::parallel_for(data.index_range(), 4096, [&](const IndexRange range) {
+    MutableSpan<float3> local_data = data.slice(range);
+    std::transform(local_data.begin(),
+                   local_data.end(),
+                   local_data.begin(),
                    [](const float3 &vector) { return math::normalize(vector); });
   });
 }
@@ -394,7 +397,7 @@ static void compute_normal_outputs(const Mesh &mesh,
       const Span<float3> vert_normals = mesh.vert_normals();
       interpolate_vert_attribute(
           mesh, tri_bary_coords, VArray<float3>::ForSpan(vert_normals), r_normals);
-      normalize_all(r_normals);
+      normalize(r_normals);
       break;
     }
     case bke::MeshNormalDomain::Face: {
@@ -407,7 +410,7 @@ static void compute_normal_outputs(const Mesh &mesh,
       const Span<float3> corner_normals = mesh.corner_normals();
       interpolate_corner_attribute(
           mesh, tri_bary_coords, VArray<float3>::ForSpan(corner_normals), r_normals);
-      normalize_all(r_normals);
+      normalize(r_normals);
       break;
     }
   }
@@ -513,17 +516,14 @@ static void distribute_points_random_old(const Mesh &mesh,
   sample_mesh_surface(mesh, 1.0f, densities, seed, positions, bary_coords, tri_indices);
 }
 
-static void distribute_points_random(const Mesh &mesh,
-                                     const VArray<float> &densities,
-                                     const int seed,
-                                     Array<int> &r_offsets,
-                                     Array<float3> &r_bary_coords)
+static void tris_points_count_for_density(const Mesh &mesh,
+                                          const VArray<float> &densities,
+                                          const int seed,
+                                          MutableSpan<int> r_count)
 {
   const Span<float3> positions = mesh.vert_positions();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int3> corner_tris = mesh.corner_tris();
-
-  r_offsets.reinitialize(corner_tris.size() + 1);
 
   devirtualize_varray(densities, [&](const auto densities) {
     threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
@@ -549,24 +549,26 @@ static void distribute_points_random(const Mesh &mesh,
         RandomNumberGenerator corner_tri_rng(corner_tri_seed);
 
         const int point_amount = corner_tri_rng.round_probabilistic(area * tri_mean_density);
-        r_offsets[tri_i] = point_amount;
+        r_count[tri_i] = point_amount;
       }
     });
   });
+}
 
-  const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
-  r_bary_coords.reinitialize(offsets.total_size());
-
-  threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
-    for (const int64_t tri_i : range) {
-      const int corner_tri_seed = noise::hash(tri_i, seed);
-      RandomNumberGenerator corner_tri_rng(corner_tri_seed);
+static void random_barycentric_points(const int seed,
+                                      const OffsetIndices<int> groups,
+                                      MutableSpan<float3> r_bary_coords)
+{
+  threading::parallel_for(groups.index_range(), 2048, [&](const IndexRange range) {
+    for (const int64_t group_i : range) {
+      RandomNumberGenerator corner_tri_rng(noise::hash(group_i, seed));
+      /* Extra step to keep legacy result. */
       corner_tri_rng.skip(1);
 
-      const IndexRange points = offsets[tri_i];
-      for (const int index : points) {
-        r_bary_coords[index] = corner_tri_rng.get_barycentric_coordinates();
-      }
+      MutableSpan<float3> bary_coords = r_bary_coords.slice(groups[group_i]);
+      std::generate(bary_coords.begin(), bary_coords.end(), [&]() {
+        return corner_tri_rng.get_barycentric_coordinates();
+      });
     }
   });
 }
@@ -589,7 +591,7 @@ static void reduce_offsets_by_mask_selections(const OffsetIndices<int> offsets,
   offset_indices::accumulate_counts_to_offsets(r_offsets);
 }
 
-static VArray<float> ensure_size(const int size, VArray<float> varray)
+static VArray<float> ensure_varray_size(const int size, VArray<float> varray)
 {
   if (varray.size() == size) {
     return varray;
@@ -606,13 +608,7 @@ static VArray<float> ensure_size(const int size, VArray<float> varray)
     }
   }
 
-  if (varray.size() > size) {
-    /* Huh? Where? */
-    // return varray.slice(0, size);
-  }
-
-  Array<float> full_span(size);
-  full_span.as_mutable_span().fill(0.0f);
+  Array<float> full_span(size, 0.0f);
   array_utils::copy(varray, full_span.as_mutable_span().take_front(varray.size()));
   return VArray<float>::ForContainer(std::move(full_span));
 }
@@ -630,8 +626,8 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   const Mesh &mesh = *geometry_set.get_mesh();
 
-  const bke::MeshFieldContext field_context(mesh, AttrDomain::Corner);
-  fn::FieldEvaluator evaluator(field_context, mesh.corners_num);
+  const bke::MeshFieldContext face_corner_context(mesh, AttrDomain::Corner);
+  fn::FieldEvaluator evaluator(face_corner_context, mesh.corners_num);
 
   Array<int> offsets;
   Array<float3> bary_coords;
@@ -639,28 +635,36 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   switch (method) {
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM: {
       evaluator.add(params.extract_input<Field<float>>("Density"));
-      /* TODO: For some reason there is just single value for mask... */
       evaluator.set_selection(selection_field);
       evaluator.evaluate();
-      const VArray<float> densities = ensure_size(mesh.corners_num,
-                                                  evaluator.get_evaluated<float>(0));
-      distribute_points_random(mesh, densities, seed, offsets, bary_coords);
+      const VArray<float> densities = ensure_varray_size(mesh.corners_num,
+                                                         evaluator.get_evaluated<float>(0));
+      offsets.reinitialize(mesh.corner_tris().size() + 1);
+      tris_points_count_for_density(mesh, densities, seed, offsets);
+      const OffsetIndices<int> points_groups = offset_indices::accumulate_counts_to_offsets(
+          offsets.as_mutable_span());
+      bary_coords.reinitialize(points_groups.total_size());
+      random_barycentric_points(seed, points_groups, bary_coords);
+
       break;
     }
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON: {
       const float density_max = params.get_input<float>("Density Max");
-      distribute_points_random(mesh,
-                               VArray<float>::ForSingle(density_max, mesh.corners_num),
-                               seed,
-                               offsets,
-                               bary_coords);
+      offsets.reinitialize(mesh.corner_tris().size() + 1);
+      tris_points_count_for_density(
+          mesh, VArray<float>::ForSingle(density_max, mesh.corners_num), seed, offsets);
+      const OffsetIndices<int> points_groups = offset_indices::accumulate_counts_to_offsets(
+          offsets.as_mutable_span());
+      bary_coords.reinitialize(points_groups.total_size());
+      random_barycentric_points(seed, offsets.as_span(), bary_coords);
+
       const GroupedSpan<float3> tre_bary_coords(offsets.as_span(), bary_coords);
 
       evaluator.add(params.extract_input<Field<float>>("Density Factor"));
       evaluator.set_selection(selection_field);
       evaluator.evaluate();
-      const VArray<float> density_factors = ensure_size(mesh.corners_num,
-                                                        evaluator.get_evaluated<float>(0));
+      const VArray<float> density_factors = ensure_varray_size(mesh.corners_num,
+                                                               evaluator.get_evaluated<float>(0));
 
       /* Delete all too-near points. */
       const float minimum_distance = params.get_input<float>("Distance Min");
@@ -669,13 +673,15 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
         break;
       }
 
+      /* Temporal positions. Result point positions will be interpolated just like any other
+       * attribute. */
       Array<float3> positions(bary_coords.size());
       interpolate_vert_attribute(mesh,
                                  tre_bary_coords,
                                  VArray<float3>::ForSpan(mesh.vert_positions()),
                                  positions.as_mutable_span());
 
-      Array<bool> elimination_mask(positions.size(), true);
+      Array<bool> elimination_mask(bary_coords.size(), true);
       update_elimination_mask_for_close_points(positions, minimum_distance, elimination_mask);
       update_elimination_mask_based_on_density_factors(
           mesh, density_factors, tre_bary_coords, elimination_mask.as_mutable_span());
@@ -683,14 +689,14 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
       IndexMaskMemory memory;
       const IndexMask mask = IndexMask::from_bools(elimination_mask.as_span(), memory);
 
-      Array<int> result_offsets(offsets.size());
-      Array<float3> result_bary_coords(mask.size());
+      Array<int> reduced_offsets(offsets.size());
+      Array<float3> reduced_bary_coords(mask.size());
 
-      reduce_offsets_by_mask_selections(offsets.as_span(), mask, result_offsets);
-      array_utils::gather(bary_coords.as_span(), mask, result_bary_coords.as_mutable_span());
+      reduce_offsets_by_mask_selections(offsets.as_span(), mask, reduced_offsets);
+      array_utils::gather(bary_coords.as_span(), mask, reduced_bary_coords.as_mutable_span());
 
-      offsets = std::move(result_offsets);
-      bary_coords = std::move(result_bary_coords);
+      offsets = std::move(reduced_offsets);
+      bary_coords = std::move(reduced_bary_coords);
       break;
     }
   }
