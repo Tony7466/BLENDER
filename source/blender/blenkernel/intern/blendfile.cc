@@ -1661,24 +1661,24 @@ namespace blender::bke::blendfile {
 
 PartialWriteContext::PartialWriteContext(StringRefNull blendfile_path)
 {
-  memset(this, 0, sizeof(Main));
-  BKE_main_init(*this);
+  memset(&this->bmain, 0, sizeof(this->bmain));
+  BKE_main_init(this->bmain);
   if (!blendfile_path.is_empty()) {
-    BLI_strncpy(this->filepath, blendfile_path.c_str(), sizeof(this->filepath));
+    BLI_strncpy(this->bmain.filepath, blendfile_path.c_str(), sizeof(this->bmain.filepath));
   }
   /* Only for IDs matching existing data in current G_MAIN. */
-  matching_uid_map_ = BKE_main_idmap_create(this, false, nullptr, MAIN_IDMAP_TYPE_UID);
+  matching_uid_map_ = BKE_main_idmap_create(&this->bmain, false, nullptr, MAIN_IDMAP_TYPE_UID);
   /* For all IDs existing in the context. */
-  this->id_map = BKE_main_idmap_create(
-      this, false, nullptr, MAIN_IDMAP_TYPE_UID | MAIN_IDMAP_TYPE_NAME);
+  this->bmain.id_map = BKE_main_idmap_create(
+      &this->bmain, false, nullptr, MAIN_IDMAP_TYPE_UID | MAIN_IDMAP_TYPE_NAME);
 };
 
 PartialWriteContext::~PartialWriteContext()
 {
   BKE_main_idmap_destroy(matching_uid_map_);
 
-  BLI_assert(this->next == nullptr);
-  BKE_main_destroy(*this);
+  BLI_assert(this->bmain.next == nullptr);
+  BKE_main_destroy(this->bmain);
 };
 
 void PartialWriteContext::preempt_session_uid_(ID *ctx_id, unsigned int session_uid)
@@ -1704,19 +1704,19 @@ void PartialWriteContext::preempt_session_uid_(ID *ctx_id, unsigned int session_
    * that given `ctx_id` can use the desired UID. */
   /* NOTE: In theory, there should never be any session uid collision currently, since these are
    * generated session-wide, regardless of the type/source of the IDs. */
-  matching_ctx_id = BKE_main_idmap_lookup_uid(this->id_map, session_uid);
+  matching_ctx_id = BKE_main_idmap_lookup_uid(this->bmain.id_map, session_uid);
   BLI_assert(matching_ctx_id != ctx_id);
   if (matching_ctx_id) {
     CLOG_INFO(&LOG_PARTIALWRITE,
               3,
               "Non-matching IDs sharing the same session UID in the partial write context.");
-    BKE_main_idmap_remove_id(this->id_map, matching_ctx_id);
+    BKE_main_idmap_remove_id(this->bmain.id_map, matching_ctx_id);
     /* FIXME: Allow #BKE_lib_libblock_session_uid_renew to work with temp IDs? */
     matching_ctx_id->tag &= ~LIB_TAG_TEMP_MAIN;
     BKE_lib_libblock_session_uid_renew(matching_ctx_id);
     matching_ctx_id->tag |= LIB_TAG_TEMP_MAIN;
-    BKE_main_idmap_insert_id(this->id_map, matching_ctx_id);
-    BLI_assert(BKE_main_idmap_lookup_uid(this->id_map, session_uid) == nullptr);
+    BKE_main_idmap_insert_id(this->bmain.id_map, matching_ctx_id);
+    BLI_assert(BKE_main_idmap_lookup_uid(this->bmain.id_map, session_uid) == nullptr);
   }
   ctx_id->session_uid = session_uid;
 }
@@ -1753,8 +1753,8 @@ ID *PartialWriteContext::id_add_copy_(const ID *id, const bool regenerate_sessio
     preempt_session_uid_(ctx_root_id, id->session_uid);
     BKE_main_idmap_insert_id(matching_uid_map_, ctx_root_id);
   }
-  BKE_main_idmap_insert_id(this->id_map, ctx_root_id);
-  BKE_libblock_management_main_add(this, ctx_root_id);
+  BKE_main_idmap_insert_id(this->bmain.id_map, ctx_root_id);
+  BKE_libblock_management_main_add(&this->bmain, ctx_root_id);
   /* TODO: remap external file paths as needed. */
   return ctx_root_id;
 }
@@ -1763,18 +1763,14 @@ void PartialWriteContext::make_local_(ID *ctx_id, const int make_local_flags)
 {
   /* Making an ID local typically resets its session UID, here we want to keep the same value. */
   const unsigned int ctx_id_session_uid = ctx_id->session_uid;
-  BKE_main_idmap_remove_id(this->id_map, ctx_id);
+  BKE_main_idmap_remove_id(this->bmain.id_map, ctx_id);
   BKE_main_idmap_insert_id(matching_uid_map_, ctx_id);
 
-  BKE_lib_id_make_local(this, ctx_id, make_local_flags);
+  BKE_lib_id_make_local(&this->bmain, ctx_id, make_local_flags);
 
   preempt_session_uid_(ctx_id, ctx_id_session_uid);
-  BKE_main_idmap_insert_id(this->id_map, ctx_id);
+  BKE_main_idmap_insert_id(this->bmain.id_map, ctx_id);
   BKE_main_idmap_insert_id(matching_uid_map_, ctx_id);
-  /* NOTE: Cannot use #BKE_lib_id_make_local here, as it would call #BKE_lib_id_expand_local,
-   * which could */
-  //      BKE_lib_id_clear_library_data(this, ctx_id, make_local_flags);
-  //      BKE_lib_override_library_make_local(this, ctx_id);
 }
 
 Library *PartialWriteContext::ensure_library_(ID *ctx_id)
@@ -1796,7 +1792,8 @@ Library *PartialWriteContext::ensure_library_(blender::StringRefNull library_abs
   Library *ctx_lib = this->libraries_map_.lookup_default(library_absolute_path, nullptr);
   if (!ctx_lib) {
     const char *library_name = BLI_path_basename(library_absolute_path.c_str());
-    ctx_lib = static_cast<Library *>(BKE_id_new_in_lib(this, nullptr, ID_LI, library_name));
+    ctx_lib = static_cast<Library *>(
+        BKE_id_new_in_lib(&this->bmain, nullptr, ID_LI, library_name));
     ctx_lib->id.tag |= LIB_TAG_TEMP_MAIN;
     id_us_min(&ctx_lib->id);
     this->libraries_map_.add(library_absolute_path, ctx_lib);
@@ -1943,7 +1940,7 @@ ID *PartialWriteContext::id_add(
   };
   while (std::optional<ID *> ctx_id = ids_to_process.pop()) {
     BKE_library_foreach_ID_link(
-        this, *ctx_id, dependencies_cb, &options, IDWALK_DO_INTERNAL_RUNTIME_POINTERS);
+        &this->bmain, *ctx_id, dependencies_cb, &options, IDWALK_DO_INTERNAL_RUNTIME_POINTERS);
   }
 
   /* Post process all newly added IDs in the context:
@@ -1973,12 +1970,13 @@ ID *PartialWriteContext::id_create(const short id_type,
   if (library) {
     ctx_library = ensure_library_(library->runtime.filepath_abs);
   }
-  ID *ctx_id = static_cast<ID *>(BKE_id_new_in_lib(this, ctx_library, id_type, id_name.c_str()));
+  ID *ctx_id = static_cast<ID *>(
+      BKE_id_new_in_lib(&this->bmain, ctx_library, id_type, id_name.c_str()));
   ctx_id->tag |= LIB_TAG_TEMP_MAIN;
   id_us_min(ctx_id);
   ensure_id_user_(ctx_id, set_fake_user);
   /* See function doc about why handling of #matching_uid_map_ can be skipped here. */
-  BKE_main_idmap_insert_id(this->id_map, ctx_id);
+  BKE_main_idmap_insert_id(this->bmain.id_map, ctx_id);
   return ctx_id;
 }
 
@@ -1986,7 +1984,7 @@ void PartialWriteContext::id_delete(const ID *id)
 {
   if (ID *ctx_id = BKE_main_idmap_lookup_uid(matching_uid_map_, id->session_uid)) {
     BKE_main_idmap_remove_id(matching_uid_map_, ctx_id);
-    BKE_id_delete(this, ctx_id);
+    BKE_id_delete(&this->bmain, ctx_id);
   }
 }
 
@@ -1999,31 +1997,31 @@ void PartialWriteContext::remove_unused(const bool clear_extra_user)
 
   if (clear_extra_user) {
     ID *id_iter;
-    FOREACH_MAIN_ID_BEGIN (this, id_iter) {
+    FOREACH_MAIN_ID_BEGIN (&this->bmain, id_iter) {
       id_us_clear_real(id_iter);
     }
     FOREACH_MAIN_ID_END;
   }
-  BKE_lib_query_unused_ids_tag(this, LIB_TAG_DOIT, parameters);
+  BKE_lib_query_unused_ids_tag(&this->bmain, LIB_TAG_DOIT, parameters);
 
   CLOG_INFO(&LOG_PARTIALWRITE,
             3,
             "Removing %d unused IDs from current partial write context",
             parameters.num_total[INDEX_ID_NULL]);
   ID *id_iter;
-  FOREACH_MAIN_ID_BEGIN (this, id_iter) {
+  FOREACH_MAIN_ID_BEGIN (&this->bmain, id_iter) {
     if ((id_iter->tag & LIB_TAG_DOIT) != 0) {
       BKE_main_idmap_remove_id(matching_uid_map_, id_iter);
     }
   }
   FOREACH_MAIN_ID_END;
-  BKE_id_multi_tagged_delete(this);
+  BKE_id_multi_tagged_delete(&this->bmain);
 }
 
 void PartialWriteContext::clear(void)
 {
   BKE_main_idmap_clear(*matching_uid_map_);
-  BKE_main_clear(*this);
+  BKE_main_clear(this->bmain);
 }
 
 bool PartialWriteContext::is_valid(void)
@@ -2035,7 +2033,7 @@ bool PartialWriteContext::is_valid(void)
   ID *id_iter;
 
   /* Fill `ids_in_context`, check uniqueness of session_uid's. */
-  FOREACH_MAIN_ID_BEGIN (this, id_iter) {
+  FOREACH_MAIN_ID_BEGIN (&this->bmain, id_iter) {
     ids_in_context.add(id_iter);
     if (session_uids_in_context.contains(id_iter->session_uid)) {
       CLOG_ERROR(&LOG_PARTIALWRITE, "ID %s does not have a unique session_uid", id_iter->name);
@@ -2079,9 +2077,9 @@ bool PartialWriteContext::is_valid(void)
     }
     return IDWALK_RET_NOP;
   };
-  FOREACH_MAIN_ID_BEGIN (this, id_iter) {
+  FOREACH_MAIN_ID_BEGIN (&this->bmain, id_iter) {
     BKE_library_foreach_ID_link(
-        this, id_iter, id_validate_dependencies_cb, nullptr, IDWALK_READONLY);
+        &this->bmain, id_iter, id_validate_dependencies_cb, nullptr, IDWALK_READONLY);
   }
   FOREACH_MAIN_ID_END;
 
@@ -2097,7 +2095,8 @@ bool PartialWriteContext::write(const char *write_filepath,
 
   BlendFileWriteParams blend_file_write_params{};
   blend_file_write_params.remap_mode = eBLO_WritePathRemap(remap_mode);
-  return BLO_write_file(this, write_filepath, write_flags, &blend_file_write_params, &reports);
+  return BLO_write_file(
+      &this->bmain, write_filepath, write_flags, &blend_file_write_params, &reports);
 }
 
 bool PartialWriteContext::write(const char *write_filepath, ReportList &reports)

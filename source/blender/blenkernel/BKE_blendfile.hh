@@ -166,7 +166,12 @@ namespace blender::bke::blendfile {
  * paths remapping topic. Also affect proper handling of libraries (in case saved filepath is the
  * same as one of the current libraries).
  */
-class PartialWriteContext : public Main {
+class PartialWriteContext {
+ public:
+  /** The temp Main itself, storing all IDs copied into this partial write context. */
+  Main bmain;
+
+ private:
   /**
    * This mapping only contains entries for IDs in the context which have a known matching ID in
    * current G_MAIN.
