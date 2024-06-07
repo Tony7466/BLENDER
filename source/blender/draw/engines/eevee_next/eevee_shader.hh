@@ -158,7 +158,6 @@ enum eShaderType {
 class ShaderModule {
  private:
   std::array<GPUShader *, MAX_SHADER_TYPE> shaders_;
-  BatchHandle compilation_handle_ = 0;
 
   /** Shared shader module across all engine instances. */
   static ShaderModule *g_shader_module;
@@ -166,8 +165,6 @@ class ShaderModule {
  public:
   ShaderModule();
   ~ShaderModule();
-
-  bool is_ready(bool block = false);
 
   GPUShader *static_shader_get(eShaderType shader_type);
   GPUMaterial *material_default_shader_get(eMaterialPipeline pipeline_type,
