@@ -1473,15 +1473,21 @@ static size_t animfilter_action_binding(ListBase *anim_data,
 
   /* Add a list element for the Binding itself. */
   const bool show_fcurves_only = (filter_mode & ANIMFILTER_FCURVESONLY);
-  if (selection_ok_for_binding && !show_fcurves_only) {
+  const bool include_summary_channels = (filter_mode & ANIMFILTER_LIST_CHANNELS);
+  if (selection_ok_for_binding && !show_fcurves_only && include_summary_channels) {
     bAnimListElem *ale = make_new_animlistelem(
         &binding, ANIMTYPE_ACTION_BINDING, owner_id, &action.id);
     BLI_addtail(anim_data, ale);
     num_items++;
   }
 
-  /* Add list elements for the F-Curves for this Binding. */
-  if (show_fcurves_only || binding.is_expanded()) {
+  /* If the 'list visible' flag is used, the expansion state of the Binding
+   * matters. Otherwise the sub-channels can always be listed. */
+  const bool visible_only = (filter_mode & ANIMFILTER_LIST_VISIBLE);
+  const bool expansion_is_ok = !visible_only || binding.is_expanded();
+
+  if (show_fcurves_only || expansion_is_ok) {
+    /* Add list elements for the F-Curves for this Binding. */
     Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding.handle);
     num_items += animfilter_fcurves_span(
         anim_data, ads, fcurves, binding.handle, filter_mode, owner_id, &action.id);
