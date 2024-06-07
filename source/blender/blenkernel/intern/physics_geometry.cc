@@ -256,12 +256,19 @@ template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetF
 class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
-  std::shared_lock<std::shared_mutex> lock_;
+  // XXX causes mystery crashes, investigate ...
+  // std::shared_lock<std::shared_mutex> lock_;
 
  public:
   VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
-      : VArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl), lock_(impl_->data_mutex)
+      : VArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
+    // lock_.lock();
+  }
+
+  ~VArrayImpl_For_PhysicsBodies()
+  {
+    // lock_.unlock();
   }
 
   template<typename OtherElemT,
@@ -306,12 +313,20 @@ template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetF
 class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
-  std::unique_lock<std::shared_mutex> lock_;
+  // XXX causes mystery crashes, investigate ...
+  // std::unique_lock<std::shared_mutex> lock_;
 
  public:
   VMutableArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
-      : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl), lock_(impl_->data_mutex)
+      : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()),
+        impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
+    // lock_.lock();
+  }
+
+  ~VMutableArrayImpl_For_PhysicsBodies()
+  {
+    // lock_.unlock();
   }
 
   template<typename OtherElemT,
@@ -580,6 +595,7 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes
 
 PhysicsGeometry::~PhysicsGeometry()
 {
+  BLI_assert(impl_->strong_users() > 0);
   if (impl_) {
     impl_->remove_user_and_delete_if_last();
   }
@@ -687,6 +703,9 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
     to.rigid_bodies[body_range[i_body]] = body;
     to.motion_states[body_range[i_body]] = motion_state;
   }
+
+  /* Clear source pointers. */
+  from_mutable.world = nullptr;
   from_mutable.rigid_bodies.reinitialize(0);
   from_mutable.motion_states.reinitialize(0);
 }
@@ -963,10 +982,10 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
 
     GVArray varray;
     if constexpr (GetCacheFn == nullptr) {
-      VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl()));
+      VArray_For_PhysicsBodies<T, GetFn>(physics, T());
     }
     else {
-      VArray_For_PhysicsBodies<T, GetFn>(physics, T());
+      VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl()));
     }
 
     return {std::move(varray), domain_, nullptr};
@@ -986,11 +1005,11 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
     }
 
     GVMutableArray varray;
-    if constexpr (GetCacheFn == nullptr) {
-      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, GetMutableCacheFn(*impl));
+    if constexpr (GetMutableCacheFn == nullptr) {
+      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
     }
     else {
-      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
+      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, GetMutableCacheFn(*impl));
     }
 
     std::function<void()> tag_modified_fn;
