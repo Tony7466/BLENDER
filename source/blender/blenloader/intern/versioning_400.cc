@@ -4083,6 +4083,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         brush->flag |= BRUSH_LOCK_SIZE;
         brush->unprojected_radius = brush->size *
                                     blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+
+        /* We approximate the simplify pixel threshold by taking the previous threshold (world
+         * space) and dividing by the legacy radius conversion factor. This should generally give
+         * reasonable "pixel" threshold values. */
+        settings->simplify_px = settings->simplify_f /
+                                blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
       }
     }
   }
