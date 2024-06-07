@@ -93,6 +93,7 @@ TEST_F(ActionFilterTest, animation_datablock_fcurves)
   SpaceAction saction = {0};
   saction.action = action;
   saction.action_binding_handle = bind_cube.handle;
+  saction.ads.filterflag = ADS_FILTER_ALL_BINDINGS;
 
   bAnimContext ac = {0};
   ac.datatype = ANIMCONT_ACTION;
@@ -108,12 +109,15 @@ TEST_F(ActionFilterTest, animation_datablock_fcurves)
     /* This should produce 2 bindings and no FCurves. */
     ListBase anim_data = {nullptr, nullptr};
     eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
-                                ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
+                                ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS |
+                                ANIMFILTER_LIST_CHANNELS);
     const int num_entries = ANIM_animdata_filter(
         &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
     EXPECT_EQ(2, num_entries);
     EXPECT_EQ(2, BLI_listbase_count(&anim_data));
 
+    ASSERT_GE(num_entries, 1)
+        << "Missing 1st ANIMTYPE_ACTION_BINDING entry, stopping to prevent crash";
     const bAnimListElem *first_ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 0));
     EXPECT_EQ(ANIMTYPE_ACTION_BINDING, first_ale->type);
     EXPECT_EQ(ALE_ACTION_BINDING, first_ale->datatype);
@@ -125,6 +129,8 @@ TEST_F(ActionFilterTest, animation_datablock_fcurves)
     EXPECT_EQ(&bind_cube, first_ale->data);
     EXPECT_EQ(bind_cube.binding_flags, first_ale->flag);
 
+    ASSERT_GE(num_entries, 2)
+        << "Missing 2nd ANIMTYPE_ACTION_BINDING entry, stopping to prevent crash";
     const bAnimListElem *second_ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 1));
     EXPECT_EQ(ANIMTYPE_ACTION_BINDING, second_ale->type);
     EXPECT_EQ(&bind_suzanne, second_ale->data);
@@ -140,29 +146,34 @@ TEST_F(ActionFilterTest, animation_datablock_fcurves)
     /* This should produce 2 bindings and 2 FCurves. */
     ListBase anim_data = {nullptr, nullptr};
     eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
-                                ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
+                                ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS |
+                                ANIMFILTER_LIST_CHANNELS);
     const int num_entries = ANIM_animdata_filter(
         &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
     EXPECT_EQ(4, num_entries);
     EXPECT_EQ(4, BLI_listbase_count(&anim_data));
 
     /* First should be Cube binding. */
+    ASSERT_GE(num_entries, 1) << "Missing 1st ale, stopping to prevent crash";
     const bAnimListElem *ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 0));
     EXPECT_EQ(ANIMTYPE_ACTION_BINDING, ale->type);
     EXPECT_EQ(&bind_cube, ale->data);
 
     /* After that the Cube's FCurves. */
+    ASSERT_GE(num_entries, 2) << "Missing 2nd ale, stopping to prevent crash";
     ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 1));
     EXPECT_EQ(ANIMTYPE_FCURVE, ale->type);
     EXPECT_EQ(fcu_cube_loc_x, ale->data);
     EXPECT_EQ(bind_cube.handle, ale->binding_handle);
 
+    ASSERT_GE(num_entries, 3) << "Missing 3rd ale, stopping to prevent crash";
     ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 2));
     EXPECT_EQ(ANIMTYPE_FCURVE, ale->type);
     EXPECT_EQ(fcu_cube_loc_y, ale->data);
     EXPECT_EQ(bind_cube.handle, ale->binding_handle);
 
     /* And finally the Suzanne binding. */
+    ASSERT_GE(num_entries, 4) << "Missing 4th ale, stopping to prevent crash";
     ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, 3));
     EXPECT_EQ(ANIMTYPE_ACTION_BINDING, ale->type);
     EXPECT_EQ(&bind_suzanne, ale->data);
@@ -182,7 +193,8 @@ TEST_F(ActionFilterTest, animation_datablock_fcurves)
     /* This should produce 1 binding and 1 FCurve. */
     ListBase anim_data = {nullptr, nullptr};
     eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
-                                ANIMFILTER_SEL | ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS);
+                                ANIMFILTER_SEL | ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS |
+                                ANIMFILTER_LIST_CHANNELS);
     const int num_entries = ANIM_animdata_filter(
         &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
     EXPECT_EQ(2, num_entries);
