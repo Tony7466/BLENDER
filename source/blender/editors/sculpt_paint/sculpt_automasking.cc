@@ -590,20 +590,11 @@ float factor_get(const Cache *automasking,
 
 static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int vert)
 {
-  using namespace blender::ed::sculpt_paint;
-  if (orig_data.unode->type == undo::Type::Position) {
-    orig_data.co = orig_data.coords[vert];
-    orig_data.no = orig_data.normals[vert];
-  }
-  else if (orig_data.unode->type == undo::Type::Color) {
-    orig_data.col = orig_data.colors[vert];
-  }
-  else if (orig_data.unode->type == undo::Type::Mask) {
-    orig_data.mask = orig_data.vmasks[vert];
-  }
+  orig_data.co = orig_data.coords[vert];
+  orig_data.no = orig_data.normals[vert];
 }
 
-void calc_vert_factors(Object &object,
+void calc_vert_factors(const Object &object,
                        const Cache &cache,
                        const PBVHNode &node,
                        const Span<int> verts,
@@ -621,7 +612,7 @@ void calc_vert_factors(Object &object,
   }
 }
 
-NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &node)
+NodeData node_begin(const Object &object, const Cache *automasking, const PBVHNode &node)
 {
   if (!automasking) {
     return {};
@@ -636,10 +627,24 @@ NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &no
   return automask_data;
 }
 
-void node_update(auto_mask::NodeData &automask_data, PBVHVertexIter &vd)
+void node_update(auto_mask::NodeData &automask_data, const PBVHVertexIter &vd)
 {
   if (automask_data.orig_data) {
     SCULPT_orig_vert_data_update(*automask_data.orig_data, vd);
+  }
+}
+
+void node_update(auto_mask::NodeData &automask_data, const BMVert &vert)
+{
+  if (automask_data.orig_data) {
+    SCULPT_orig_vert_data_update(*automask_data.orig_data, vert);
+  }
+}
+
+void node_update(auto_mask::NodeData &automask_data, const int i)
+{
+  if (automask_data.orig_data) {
+    SCULPT_orig_vert_data_update(*automask_data.orig_data, i);
   }
 }
 

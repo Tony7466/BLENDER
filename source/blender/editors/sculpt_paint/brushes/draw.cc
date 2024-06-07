@@ -13,6 +13,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -37,20 +38,17 @@ struct LocalData {
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float3 &offset,
+                       const Span<float3> positions_eval,
+                       const Span<float3> vert_normals,
                        const PBVHNode &node,
                        Object &object,
                        LocalData &tls,
-                       const MutableSpan<float3> positions_sculpt,
-                       const MutableSpan<float3> positions_mesh)
+                       const MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const PBVH &pbvh = *ss.pbvh;
-
-  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
@@ -85,8 +83,9 @@ static void calc_faces(const Sculpt &sd,
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
-  apply_translations(translations, verts, positions_sculpt);
-  flush_positions_to_shape_keys(object, verts, positions_sculpt, positions_mesh);
+  apply_translations(translations, verts, positions_orig);
+  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
@@ -100,26 +99,42 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = *BKE_pbvh_get_grid_key(*ss.pbvh);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+
+  /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
+  int i = 0;
+  for (const int grid : bke::pbvh::node_grid_indices(node)) {
+    const int grid_verts_start = grid * key.grid_area;
+    CCGElem *elem = grids[grid];
+    for (const int j : IndexRange(key.grid_area)) {
+      if (!grid_hidden.is_empty() && grid_hidden[grid][j]) {
+        i++;
+        continue;
+      }
+      if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
+        i++;
+        continue;
+      }
+      auto_mask::node_update(automask_data, i);
+      const float fade = SCULPT_brush_strength_factor(
+          ss,
+          brush,
+          CCG_elem_offset_co(key, elem, j),
+          math::sqrt(test.dist),
+          CCG_elem_offset_no(key, elem, j),
+          nullptr,
+          key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f,
+          BKE_pbvh_make_vref(grid_verts_start + j),
+          thread_id,
+          &automask_data);
+      proxy[i] = offset * fade;
+      i++;
     }
-    auto_mask::node_update(automask_data, vd);
-    const float fade = SCULPT_brush_strength_factor(ss,
-                                                    brush,
-                                                    vd.co,
-                                                    math::sqrt(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    vd.mask,
-                                                    vd.vertex,
-                                                    thread_id,
-                                                    &automask_data);
-    proxy[vd.i] = offset * fade;
   }
-  BKE_pbvh_vertex_iter_end;
 }
 
 static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
@@ -133,29 +148,36 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
+  const int mask_offset = CustomData_get_offset_named(
+      &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+
+  /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
+  int i = 0;
+  for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&node)) {
+    if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
+      i++;
       continue;
     }
-
-    auto_mask::node_update(automask_data, vd);
-
-    /* Offset vertex. */
+    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
+      i++;
+      continue;
+    }
+    auto_mask::node_update(automask_data, *vert);
+    const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
-                                                    vd.co,
+                                                    vert->co,
                                                     math::sqrt(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    vd.mask,
-                                                    vd.vertex,
+                                                    vert->no,
+                                                    nullptr,
+                                                    mask,
+                                                    BKE_pbvh_make_vref(intptr_t(vert)),
                                                     thread_id,
                                                     &automask_data);
-    proxy[vd.i] = offset * fade;
+    proxy[i] = offset * fade;
+    i++;
   }
-  BKE_pbvh_vertex_iter_end;
 }
 
 }  // namespace draw_cc
@@ -176,12 +198,22 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
-      MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
+      const PBVH &pbvh = *ss.pbvh;
+      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
+      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces(sd, brush, offset, *nodes[i], object, tls, positions_sculpt, positions_mesh);
+          calc_faces(sd,
+                     brush,
+                     offset,
+                     positions_eval,
+                     vert_normals,
+                     *nodes[i],
+                     object,
+                     tls,
+                     positions_orig);
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });

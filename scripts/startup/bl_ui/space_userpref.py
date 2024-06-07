@@ -314,6 +314,7 @@ class USERPREF_PT_interface_statusbar(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_statusbar_scene_duration", text="Scene Duration")
         col.prop(view, "show_statusbar_memory", text="System Memory")
         col.prop(view, "show_statusbar_vram", text="Video Memory")
+        col.prop(view, "show_extensions_updates", text="Extensions Updates")
         col.prop(view, "show_statusbar_version", text="Blender Version")
 
 
@@ -535,6 +536,17 @@ class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
         layout.prop(edit, "node_preview_resolution", text="Preview Resolution")
 
 
+class USERPREF_PT_edit_sequence_editor(EditingPanel, CenterAlignMixIn, Panel):
+    bl_label = "Video Sequencer"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        edit = prefs.edit
+
+        layout.prop(edit, "use_sequencer_simplified_tweaking")
+
+
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
     bl_label = "Miscellaneous"
     bl_options = {'DEFAULT_CLOSED'}
@@ -708,10 +720,34 @@ class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
             layout.prop(bpy.context.preferences.system, "register_all_users", text="For All Users")
 
 
+class USERPREF_PT_system_network(SystemPanel, CenterAlignMixIn, Panel):
+    bl_label = "Network"
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        system = prefs.system
+
+        row = layout.row()
+        row.prop(system, "use_online_access", text="Allow Online Access")
+
+        # Show when the preference has been overridden and doesn't match the current preference.
+        runtime_online_access = bpy.app.online_access
+        if system.use_online_access != runtime_online_access:
+            row = layout.split(factor=0.4)
+            row.label(text="")
+            row.label(
+                text="{:s} on startup, overriding the preference.".format(
+                    "Enabled" if runtime_online_access else "Disabled"
+                ),
+            )
+
+
 class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "Memory & Limits"
 
     def draw_centered(self, context, layout):
+        import sys
+
         prefs = context.preferences
         system = prefs.system
         edit = prefs.edit
@@ -737,6 +773,11 @@ class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.prop(system, "vbo_time_out", text="VBO Time Out")
         col.prop(system, "vbo_collection_rate", text="Garbage Collection Rate")
+
+        if sys.platform != "darwin":
+            layout.separator()
+            col = layout.column()
+            col.prop(system, "max_shader_compilation_subprocesses")
 
 
 class USERPREF_PT_system_video_sequencer(SystemPanel, CenterAlignMixIn, Panel):
@@ -1287,9 +1328,10 @@ class PreferenceThemeSpacePanel:
                     flow.prop(themedata, prop.identifier)
 
     def draw_header(self, _context):
-        if hasattr(self, "icon") and self.icon != 'NONE':
+        icon = getattr(self, "icon", 'NONE')
+        if icon != 'NONE':
             layout = self.layout
-            layout.label(icon=self.icon)
+            layout.label(icon=icon)
 
     def draw(self, context):
         layout = self.layout
@@ -1600,7 +1642,7 @@ class USERPREF_PT_file_paths_asset_libraries(FilePathsPanel, Panel):
         row.template_list(
             "USERPREF_UL_asset_libraries", "user_asset_libraries",
             paths, "asset_libraries",
-            paths, "active_asset_library"
+            paths, "active_asset_library",
         )
 
         col = row.column(align=True)
@@ -2080,6 +2122,15 @@ class USERPREF_PT_keymap(KeymapPanel, Panel):
 # -----------------------------------------------------------------------------
 # Extension Panels
 
+
+class USERPREF_MT_extensions_active_repo(Menu):
+    bl_label = "Active Repository"
+
+    def draw(self, _context):
+        # Add-ons may extend.
+        pass
+
+
 class USERPREF_PT_extensions_repos(Panel):
     bl_label = "Repositories"
     bl_options = {'HIDE_HEADER'}
@@ -2103,7 +2154,7 @@ class USERPREF_PT_extensions_repos(Panel):
         row.template_list(
             "USERPREF_UL_extension_repos", "user_extension_repos",
             extensions, "repos",
-            extensions, "active_repo"
+            extensions, "active_repo",
         )
 
         col = row.column(align=True)
@@ -2112,8 +2163,8 @@ class USERPREF_PT_extensions_repos(Panel):
         props.index = active_repo_index
 
         col.separator()
-        col.operator("preferences.extension_repo_sync", text="", icon='FILE_REFRESH')
-        col.operator("preferences.extension_repo_upgrade", text="", icon='IMPORT')
+
+        col.menu_contents("USERPREF_MT_extensions_active_repo")
 
         try:
             active_repo = None if active_repo_index < 0 else extensions.repos[active_repo_index]
@@ -2133,27 +2184,49 @@ class USERPREF_PT_extensions_repos(Panel):
             split = row.split(factor=0.936)
             if active_repo.remote_url == "":
                 split.alert = True
-            split.prop(active_repo, "remote_url", text="", icon='URL', placeholder="Repository URL")
+            split.prop(active_repo, "remote_url", text="", icon='INTERNET', placeholder="Repository URL")
             split = row.split()
+
+            if active_repo.use_access_token:
+                access_token_icon = 'LOCKED' if active_repo.access_token else 'UNLOCKED'
+                row = layout.row()
+                split = row.split(factor=0.936)
+                split.prop(active_repo, "access_token", icon=access_token_icon)
+                split = row.split()
 
             layout.prop(active_repo, "use_sync_on_startup")
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
         layout_header.label(text="Advanced")
-        if layout_panel:
-            layout_panel.prop(active_repo, "use_custom_directory")
 
-            row = layout_panel.row()
-            if active_repo.use_custom_directory:
+        if layout_panel:
+            layout_panel.use_property_split = True
+            use_custom_directory = active_repo.use_custom_directory
+
+            col = layout_panel.column(align=False, heading="Custom Directory")
+            row = col.row(align=True)
+            sub = row.row(align=True)
+            sub.prop(active_repo, "use_custom_directory", text="")
+            sub = sub.row(align=True)
+            sub.active = use_custom_directory
+            if use_custom_directory:
                 if active_repo.custom_directory == "":
-                    row.alert = True
-                row.prop(active_repo, "custom_directory", text="")
+                    sub.alert = True
+                sub.prop(active_repo, "custom_directory", text="")
             else:
                 # Show the read-only directory property.
                 # Apart from being consistent with the custom directory UI,
                 # prefer a read-only property over a label because this is not necessarily
                 # valid UTF-8 which will raise a Python exception when passed in as text.
-                row.prop(active_repo, "directory", text="")
+                sub.prop(active_repo, "directory", text="")
+
+            row = layout_panel.row()
+            row.active = not use_custom_directory
+            row.prop(active_repo, "source")
+
+            if active_repo.use_remote_url:
+                row = layout_panel.row(align=True, heading="Authentication")
+                row.prop(active_repo, "use_access_token")
 
             layout_panel.prop(active_repo, "use_cache")
             layout_panel.separator()
@@ -2216,7 +2289,8 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         addon_preferences_class = type(addon_preferences)
         box_prefs = layout.box()
-        box_prefs.label(text="Preferences:")
+        box_prefs.label(text="Preferences")
+        box_prefs.separator(type='LINE')
         addon_preferences_class.layout = box_prefs
         try:
             draw(context)
@@ -2801,6 +2875,7 @@ classes = (
     USERPREF_PT_edit_gpencil,
     USERPREF_PT_edit_text_editor,
     USERPREF_PT_edit_node_editor,
+    USERPREF_PT_edit_sequence_editor,
     USERPREF_PT_edit_misc,
 
     USERPREF_PT_animation_timeline,
@@ -2809,6 +2884,7 @@ classes = (
 
     USERPREF_PT_system_cycles_devices,
     USERPREF_PT_system_os_settings,
+    USERPREF_PT_system_network,
     USERPREF_PT_system_memory,
     USERPREF_PT_system_video_sequencer,
     USERPREF_PT_system_sound,
@@ -2855,6 +2931,7 @@ classes = (
 
     USERPREF_PT_addons,
 
+    USERPREF_MT_extensions_active_repo,
     USERPREF_PT_extensions_repos,
 
     USERPREF_PT_studiolight_lights,

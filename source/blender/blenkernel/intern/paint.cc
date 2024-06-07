@@ -41,7 +41,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
@@ -1267,13 +1267,14 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
 }
 
 bool paint_is_grid_face_hidden(const blender::BoundedBitSpan grid_hidden,
-                               int gridsize,
-                               int x,
-                               int y)
+                               const int gridsize,
+                               const int x,
+                               const int y)
 {
-  /* Skip face if any of its corners are hidden. */
-  return grid_hidden[y * gridsize + x] || grid_hidden[y * gridsize + x + 1] ||
-         grid_hidden[(y + 1) * gridsize + x + 1] || grid_hidden[(y + 1) * gridsize + x];
+  return grid_hidden[CCG_grid_xy_to_index(gridsize, x, y)] ||
+         grid_hidden[CCG_grid_xy_to_index(gridsize, x + 1, y)] ||
+         grid_hidden[CCG_grid_xy_to_index(gridsize, x + 1, y + 1)] ||
+         grid_hidden[CCG_grid_xy_to_index(gridsize, x, y + 1)];
 }
 
 bool paint_is_bmesh_face_hidden(const BMFace *f)
@@ -1508,14 +1509,6 @@ SculptSession::~SculptSession()
 
   if (this->tex_pool) {
     BKE_image_pool_free(this->tex_pool);
-  }
-
-  if (this->boundary_preview) {
-    MEM_SAFE_FREE(this->boundary_preview->verts);
-    MEM_SAFE_FREE(this->boundary_preview->edges);
-    MEM_SAFE_FREE(this->boundary_preview->distance);
-    MEM_SAFE_FREE(this->boundary_preview->edit_info);
-    MEM_SAFE_FREE(this->boundary_preview);
   }
 
   BKE_sculptsession_free_vwpaint_data(this);
@@ -1899,7 +1892,8 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
     return;
   }
 
-  const std::string unique_name = BKE_id_attribute_calc_unique_name(orig_me->id, "Color");
+  AttributeOwner owner = AttributeOwner::from_id(&orig_me->id);
+  const std::string unique_name = BKE_attribute_calc_unique_name(owner, "Color");
   if (!orig_me->attributes_for_write().add(
           unique_name, AttrDomain::Point, CD_PROP_COLOR, AttributeInitDefaultValue()))
   {
