@@ -178,6 +178,14 @@ static void ui_mouse_motion_keynav_init(uiKeyNavLock *keynav, const wmEvent *eve
 static bool ui_mouse_motion_keynav_test(uiKeyNavLock *keynav, const wmEvent *event);
 #endif
 
+static void with_priority_button_active(bContext *C,
+                                        ARegion *region,
+                                        uiBut *priority_but,
+                                        blender::FunctionRef<void()> fn);
+static void with_priority_button_active(bContext *C,
+                                        ARegion *region,
+                                        blender::FunctionRef<void(uiBut *priority_but)> fn);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -8883,6 +8891,15 @@ void ui_but_active_free(const bContext *C, uiBut *but)
   }
 }
 
+void ui_but_priority_active_free(const bContext *C, uiBut *but)
+{
+  if (!but->priority_active) {
+    return;
+  }
+  with_priority_button_active(
+      (bContext *)C, but->priority_active->region, but, [&]() { ui_but_active_free(C, but); });
+}
+
 /* returns the active button with an optional checking function */
 static uiBut *ui_context_button_active(const ARegion *region, bool (*but_check_cb)(const uiBut *))
 {
@@ -9277,12 +9294,9 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
  */
 static void with_priority_button_active(bContext *C,
                                         ARegion *region,
-                                        blender::FunctionRef<void(uiBut *priority_but)> fn)
+                                        uiBut *priority_but,
+                                        blender::FunctionRef<void()> fn)
 {
-  uiBut *priority_but = ui_region_find_always_active_but(region);
-  if (!priority_but) {
-    return;
-  }
   BLI_assert(priority_but->active == nullptr);
 
   uiBut *regular_active_but = ui_region_find_active_but(region);
@@ -9299,7 +9313,7 @@ static void with_priority_button_active(bContext *C,
   }
   priority_but->active = priority_but->priority_active;
 
-  fn(priority_but);
+  fn();
 
   /* Popup might have been closed, so lookup button again. */
   if (uiBut *priority_but = ui_region_find_always_active_but(region)) {
@@ -9308,6 +9322,17 @@ static void with_priority_button_active(bContext *C,
   if (regular_active_but) {
     regular_active_but->active = regular_active_data;
   }
+}
+
+static void with_priority_button_active(bContext *C,
+                                        ARegion *region,
+                                        blender::FunctionRef<void(uiBut *priority_but)> fn)
+{
+  uiBut *priority_but = ui_region_find_always_active_but(region);
+  if (!priority_but) {
+    return;
+  }
+  with_priority_button_active(C, region, priority_but, [&]() { fn(priority_but); });
 }
 
 /** \} */

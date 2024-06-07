@@ -3411,7 +3411,12 @@ static void ui_but_free(const bContext *C, uiBut *but)
   ui_but_free_type_specific(but);
 
   if (but->priority_active && but->priority_active != but->active) {
-    MEM_freeN(but->priority_active);
+    if (C) {
+      ui_but_priority_active_free(C, but);
+    }
+    else {
+      MEM_freeN(but->priority_active);
+    }
   }
   if (but->active) {
     /* XXX solve later, buttons should be free-able without context ideally,
