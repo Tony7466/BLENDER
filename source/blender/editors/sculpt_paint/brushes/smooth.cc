@@ -62,13 +62,13 @@ struct LocalData {
 // };
 
 /* For boundary vertices, only include other boundary vertices. */
-static void calc_vert_neighbors(const OffsetIndices<int> faces,
-                                const Span<int> corner_verts,
-                                const GroupedSpan<int> vert_to_face,
-                                const BitSpan boundary_verts,
-                                const Span<bool> hide_poly,
-                                const Span<int> verts,
-                                MutableSpan<Vector<int>> neighbors)
+BLI_NOINLINE static void calc_vert_neighbors(const OffsetIndices<int> faces,
+                                             const Span<int> corner_verts,
+                                             const GroupedSpan<int> vert_to_face,
+                                             const BitSpan boundary_verts,
+                                             const Span<bool> hide_poly,
+                                             const Span<int> verts,
+                                             MutableSpan<Vector<int>> neighbors)
 {
   for (Vector<int> &vector : neighbors) {
     vector.clear();
@@ -103,15 +103,15 @@ static float3 average_positions(const Span<float3> positions, const Span<int> in
   return result;
 }
 
-static void calc_smooth_positions_faces(const OffsetIndices<int> faces,
-                                        const Span<int> corner_verts,
-                                        const GroupedSpan<int> vert_to_face_map,
-                                        const BitSpan boundary_verts,
-                                        const Span<bool> hide_poly,
-                                        const Span<int> verts,
-                                        const Span<float3> positions,
-                                        LocalData &tls,
-                                        const MutableSpan<float3> new_positions)
+BLI_NOINLINE static void calc_smooth_positions_faces(const OffsetIndices<int> faces,
+                                                     const Span<int> corner_verts,
+                                                     const GroupedSpan<int> vert_to_face_map,
+                                                     const BitSpan boundary_verts,
+                                                     const Span<bool> hide_poly,
+                                                     const Span<int> verts,
+                                                     const Span<float3> positions,
+                                                     LocalData &tls,
+                                                     const MutableSpan<float3> new_positions)
 {
   tls.vert_neighbors.reinitialize(verts.size());
   calc_vert_neighbors(
@@ -123,10 +123,10 @@ static void calc_smooth_positions_faces(const OffsetIndices<int> faces,
   }
 }
 
-static void translations_from_new_positions(const Span<float3> new_positions,
-                                            const Span<int> verts,
-                                            const Span<float3> old_positions,
-                                            const MutableSpan<float3> translations)
+BLI_NOINLINE static void translations_from_new_positions(const Span<float3> new_positions,
+                                                         const Span<int> verts,
+                                                         const Span<float3> old_positions,
+                                                         const MutableSpan<float3> translations)
 {
   BLI_assert(new_positions.size() == verts.size());
   for (const int i : verts.index_range()) {
@@ -134,29 +134,30 @@ static void translations_from_new_positions(const Span<float3> new_positions,
   }
 }
 
-static void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
+BLI_NOINLINE static void scale_translations(const MutableSpan<float3> translations,
+                                            const Span<float> factors)
 {
   for (const int i : translations.index_range()) {
     translations[i] *= factors[i];
   }
 }
 
-static void apply_positions_faces(const Sculpt &sd,
-                                  const Brush &brush,
-                                  const Span<float3> positions_eval,
-                                  const Span<float3> vert_normals,
-                                  const PBVHNode &node,
-                                  const float strength,
-                                  Object &object,
-                                  LocalData &tls,
-                                  const Span<float3> new_positions,
-                                  MutableSpan<float3> positions_orig)
+BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
+                                               const Brush &brush,
+                                               const Span<float3> positions_eval,
+                                               const Span<float3> vert_normals,
+                                               const PBVHNode &node,
+                                               const float strength,
+                                               Object &object,
+                                               LocalData &tls,
+                                               const Span<float3> new_positions,
+                                               MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const Span<int> verts = bke::pbvh::node_verts(node);
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
@@ -200,11 +201,11 @@ static void apply_positions_faces(const Sculpt &sd,
   apply_translations_to_pbvh(*ss.pbvh, verts, positions_orig);
 }
 
-static void do_smooth_brush_mesh(const Sculpt &sd,
-                                 const Brush &brush,
-                                 Object &object,
-                                 Span<PBVHNode *> nodes,
-                                 const float brush_strength)
+BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
+                                              const Brush &brush,
+                                              Object &object,
+                                              Span<PBVHNode *> nodes,
+                                              const float brush_strength)
 {
   const SculptSession &ss = *object.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
