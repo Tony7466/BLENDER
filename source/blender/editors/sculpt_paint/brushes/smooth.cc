@@ -232,8 +232,6 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
   }
 }
 
-// TODO: Write to proxies here or something?
-
 static void calc_grids(
     const Sculpt &sd, Object &object, const Brush &brush, const float strength, PBVHNode &node)
 {
