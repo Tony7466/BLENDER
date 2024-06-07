@@ -155,9 +155,6 @@ def extension_url_find_repo_index_and_pkg_id(url):
     from .bl_extension_utils import (
         pkg_manifest_archive_url_abs_from_remote_url,
     )
-    from .bl_extension_ops import (
-        extension_repos_read,
-    )
     # return repo_index, pkg_id
     from . import repo_cache_store
 
@@ -466,13 +463,13 @@ def _preferences_ensure_sync():
     # This is a general issue:
     from . import repo_cache_store
     sync_required = False
-    for repo_index, (
+    for (
             pkg_manifest_remote,
             pkg_manifest_local,
-    ) in enumerate(zip(
+    ) in zip(
         repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
         repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print),
-    )):
+    ):
         if pkg_manifest_remote is None:
             sync_required = True
             break
@@ -919,6 +916,39 @@ def _repo_dir_and_index_get(repo_index, directory, report_fn):
     return directory
 
 
+def _extensions_maybe_online_action_poll_impl(cls, repo, action_text):
+
+    if repo is not None:
+        if not repo.enabled:
+            cls.poll_message_set("Active repository is disabled")
+            return False
+
+    if repo is None:
+        # This may not be correct but it's a reasonable assumption.
+        online_access_required = True
+    else:
+        # Check the specifics to allow refreshing a single repository from the popover.
+        online_access_required = repo.use_remote_url and (not repo.remote_url.startswith("file://"))
+
+    if online_access_required:
+        if not bpy.app.online_access:
+            cls.poll_message_set(
+                "Online access required to {:s}. {:s}".format(
+                    action_text,
+                    "Launch Blender without --offline-mode" if bpy.app.online_access_override else
+                    "Enable online access in System preferences"
+                )
+            )
+            return False
+
+    repos_all = extension_repos_read(use_active_only=False)
+    if not len(repos_all):
+        cls.poll_message_set("No repositories available")
+        return False
+
+    return True
+
+
 # -----------------------------------------------------------------------------
 # Public Repository Actions
 #
@@ -1082,24 +1112,15 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
     )
 
     @classmethod
-    def poll(cls, _context):
-        if not bpy.app.online_access:
-            if bpy.app.online_access_override:
-                cls.poll_message_set(
-                    "Online access required to check for updates. Launch Blender without --offline-mode"
-                )
-            else:
-                cls.poll_message_set(
-                    "Online access required to check for updates. Enable online access in System preferences"
-                )
-            return False
+    def poll(cls, context):
+        repo = getattr(context, "extension_repo", None)
+        return _extensions_maybe_online_action_poll_impl(cls, repo, "check for updates")
 
-        repos_all = extension_repos_read(use_active_only=False)
-        if not len(repos_all):
-            cls.poll_message_set("No repositories available")
-            return False
-
-        return True
+    @classmethod
+    def description(cls, context, props):
+        if props.use_active_only:
+            return "Refresh the list of extensions for the active repository"
+        return ""  # Default.
 
     def exec_command_iter(self, is_modal):
         use_active_only = self.use_active_only
@@ -1170,7 +1191,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
 class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
     """Upgrade all the extensions to their latest version for all the remote repositories"""
     bl_idname = "extensions.package_upgrade_all"
-    bl_label = "Ext Package Upgrade All"
+    bl_label = "Install Available Updates"
     __slots__ = (
         *_ExtCmdMixIn.cls_slots,
         "_repo_directories",
@@ -1182,21 +1203,23 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
     )
 
     @classmethod
-    def poll(cls, _context):
-        if not bpy.app.online_access:
-            if bpy.app.online_access_override:
-                cls.poll_message_set("Online access required to install updates. Launch Blender without --offline-mode")
-            else:
-                cls.poll_message_set(
-                    "Online access required to install updates. Enable online access in System preferences")
-            return False
+    def poll(cls, context):
+        repo = getattr(context, "extension_repo", None)
+        if repo is not None:
+            # NOTE: we could simply not show this operator for local repositories as it's
+            # arguably self evident that a local-only repository has nothing to upgrade from.
+            # For now tell the user why they can't use this action.
+            if not repo.use_remote_url:
+                cls.poll_message_set("Upgrade is not supported for local repositories")
+                return False
 
-        repos_all = extension_repos_read(use_active_only=False)
-        if not len(repos_all):
-            cls.poll_message_set("No repositories available")
-            return False
+        return _extensions_maybe_online_action_poll_impl(cls, repo, "install updates")
 
-        return True
+    @classmethod
+    def description(cls, context, props):
+        if props.use_active_only:
+            return "Upgrade all the extensions to their latest version for the active repository"
+        return ""  # Default.
 
     def exec_command_iter(self, is_modal):
         from . import repo_cache_store
@@ -1904,6 +1927,14 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
 
+    # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+    # Only used when moving from  previously built-in add-ons to extensions.
+    do_legacy_replace: BoolProperty(
+        name="Do Legacy Replace",
+        default=False,
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
     @classmethod
     def poll(cls, context):
         if not bpy.app.online_access:
@@ -2016,6 +2047,10 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
 
+        # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+        if self.do_legacy_replace and (not canceled):
+            self._do_legacy_replace(self.pkg_id, pkg_manifest_local)
+
     def invoke(self, context, event):
         # Only for drop logic!
         if self.properties.is_property_set("url"):
@@ -2082,6 +2117,30 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         layout.separator()
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote["type"]])
+
+    @staticmethod
+    def _do_legacy_replace(pkg_id, pkg_manifest_local):
+        # Disables and add-on that was replaced by an extension,
+        # use for upgrading 4.1 preferences or older.
+
+        # Ensure the local meta-data exists, else there may have been a problem installing,
+        # note that this does *not* check if the add-on could be enabled which is intentional.
+        # It's only important the add-on installs to justify disabling the old add-on.
+        # Note that there is no need to report if this was not found as failing to install will
+        # already have reported.
+        if not pkg_manifest_local.get(pkg_id):
+            return
+
+        from .bl_extension_ui import extensions_map_from_legacy_addons_reverse_lookup
+        addon_module_name = extensions_map_from_legacy_addons_reverse_lookup(pkg_id)
+        if not addon_module_name:
+            # This shouldn't happen unless someone goes out of there way
+            # to enable `do_legacy_replace` for a non-legacy extension.
+            # Use a print here as it's such a corner case and harmless.
+            print("Internal error, legacy lookup failed:", addon_module_name)
+            return
+
+        bpy.ops.preferences.addon_disable(module=addon_module_name)
 
 
 class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
@@ -2397,7 +2456,7 @@ class EXTENSIONS_OT_repo_lock(Operator):
             return {'CANCELLED'}
 
         self.report({'INFO'}, "Locked {:d} repos(s)".format(len(lock_result)))
-        BlPkgRepoLock.lock = lock_handle
+        EXTENSIONS_OT_repo_lock.lock = lock_handle
         return {'FINISHED'}
 
 
@@ -2407,14 +2466,14 @@ class EXTENSIONS_OT_repo_unlock(Operator):
     bl_label = "Unlock Repository (Testing)"
 
     def execute(self, _context):
-        lock_handle = BlPkgRepoLock.lock
+        lock_handle = EXTENSIONS_OT_repo_lock.lock
         if lock_handle is None:
             self.report({'ERROR'}, "Lock not held!")
             return {'CANCELLED'}
 
         lock_result = lock_handle.release()
 
-        BlPkgRepoLock.lock = None
+        EXTENSIONS_OT_repo_lock.lock = None
 
         if lock_result_any_failed_with_report(self, lock_result):
             # This isn't canceled, but there were issues unlocking.

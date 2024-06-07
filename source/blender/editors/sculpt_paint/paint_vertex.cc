@@ -287,9 +287,9 @@ Vector<PBVHNode *> pbvh_gather_generic(Object &ob, const VPaint &wp, const Brush
       return node_in_sphere(node, ss.cache->location, ss.cache->radius_squared, true);
     });
 
-    ss.cache->sculpt_normal_symm =
-        use_normal ? SCULPT_pbvh_calc_area_normal(brush, ob, nodes).value_or(float3(0)) :
-                     float3(0);
+    ss.cache->sculpt_normal_symm = use_normal ?
+                                       calc_area_normal(brush, ob, nodes).value_or(float3(0)) :
+                                       float3(0);
   }
   else {
     const DistRayAABB_Precalc ray_dist_precalc = dist_squared_ray_to_aabb_v3_precalc(
@@ -545,7 +545,7 @@ void update_cache_variants(bContext *C, VPaint &vp, Object &ob, PointerRNA *ptr)
   cache->radius_squared = cache->radius * cache->radius;
 
   if (ss.pbvh) {
-    bke::pbvh::update_bounds(*ss.pbvh, PBVH_UpdateRedraw | PBVH_UpdateBB);
+    bke::pbvh::update_bounds(*ss.pbvh);
   }
 }
 
