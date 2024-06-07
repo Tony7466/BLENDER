@@ -102,6 +102,16 @@ BLI_NOINLINE static void scale_translations(const MutableSpan<float3> translatio
   }
 }
 
+BLI_NOINLINE static void scale_factors(const MutableSpan<float> factors, const float strength)
+{
+  if (strength == 1.0f) {
+    return;
+  }
+  for (float &factor : factors) {
+    factor *= strength;
+  }
+}
+
 BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
                                                const Brush &brush,
                                                const Span<float3> positions_eval,
@@ -137,11 +147,7 @@ BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
-  if (strength != 1.0f) {
-    for (float &factor : factors) {
-      factor *= strength;
-    }
-  }
+  scale_factors(factors, strength);
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
