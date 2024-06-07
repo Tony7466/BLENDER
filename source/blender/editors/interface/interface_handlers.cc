@@ -8634,6 +8634,9 @@ static void button_activate_init(bContext *C,
                                  uiBut *but,
                                  uiButtonActivateType type)
 {
+  if (but->priority_active) {
+    return;
+  }
   /* Only ever one active button! */
   BLI_assert(ui_region_find_active_but(region) == nullptr);
 
