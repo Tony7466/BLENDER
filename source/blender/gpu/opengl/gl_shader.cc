@@ -1875,8 +1875,8 @@ void GLShaderCompiler::precompile_specializations(Vector<ShaderSpecialization> s
 
     item.sources = sh->get_sources();
 
-    size_t required_size = offsetof(ShaderSourceHeader, source_start) + item.sources.size();
-    item.do_async_compilation = required_size < compilation_subprocess_shared_memory_size;
+    size_t required_size = item.sources.size();
+    item.do_async_compilation = required_size <= sizeof(ShaderSourceHeader::sources);
   }
 
   bool is_ready = false;
