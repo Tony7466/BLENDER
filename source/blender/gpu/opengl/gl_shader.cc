@@ -1659,7 +1659,7 @@ void GLCompilerWorker::compile(const GLSourcesBaked &sources)
   BLI_assert(state_ == AVAILABLE);
 
   ShaderSourceHeader *shared_src = reinterpret_cast<ShaderSourceHeader *>(shared_mem_->get_data());
-  char *next_src = &shared_src->source_start;
+  char *next_src = shared_src->sources;
 
   auto add_src = [&](const std::string &src) {
     if (!src.empty()) {
@@ -1727,7 +1727,7 @@ bool GLCompilerWorker::load_program_binary(GLint program)
   state_ = COMPILATION_FINISHED;
 
   if (binary->size > 0) {
-    glProgramBinary(program, binary->format, &binary->data_start, binary->size);
+    glProgramBinary(program, binary->format, binary->data, binary->size);
     return true;
   }
 
@@ -1804,8 +1804,8 @@ BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
     item.shader = static_cast<GLShader *>(compile(*info, true));
     item.sources = item.shader->get_sources();
 
-    size_t required_size = offsetof(ShaderSourceHeader, source_start) + item.sources.size();
-    item.do_async_compilation = required_size < compilation_subprocess_shared_memory_size;
+    size_t required_size = item.sources.size();
+    item.do_async_compilation = required_size <= sizeof(ShaderSourceHeader::sources);
     if (item.do_async_compilation) {
       item.worker = get_compiler_worker(item.sources);
     }

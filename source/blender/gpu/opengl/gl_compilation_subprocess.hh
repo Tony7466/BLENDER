@@ -19,10 +19,13 @@ struct ShaderSourceHeader {
   enum Type { COMPUTE, GRAPHICS, GRAPHICS_WITH_GEOMETRY_STAGE };
   /* The type of program being compiled. */
   Type type;
-  /* When casting a shared memory pool into a ShaderSourceHeader*, this is the first char of the
-   * first stage source. The stages follows the execution order (eg. vert > geom > frag). */
-  char source_start;
+  /* The source code for all the shader stages (Separated by a null terminator).
+   * The stages follows the execution order (eg. vert > geom > frag). */
+  char sources[compilation_subprocess_shared_memory_size - sizeof(type)];
 };
+
+static_assert(sizeof(ShaderSourceHeader) == compilation_subprocess_shared_memory_size,
+              "Size must match the shared memory size");
 
 struct ShaderBinaryHeader {
   /* Size of the shader binary data. */
@@ -30,10 +33,12 @@ struct ShaderBinaryHeader {
   /* Magic number that identifies the format of this shader binary (Driver-defined).
    * This (and size) is set to 0 when the shader has failed to compile. */
   uint32_t format;
-  /* When casting a shared memory pool into a ShaderBinaryHeader*, this is the first byte of the
-   * shader binary data. */
-  uint8_t data_start;
+  /* The serialized shader binary data. */
+  uint8_t data[compilation_subprocess_shared_memory_size - sizeof(size) - sizeof(format)];
 };
+
+static_assert(sizeof(ShaderBinaryHeader) == compilation_subprocess_shared_memory_size,
+              "Size must match the shared memory size");
 
 }  // namespace blender::gpu
 

@@ -102,8 +102,8 @@ class SubprocessShader {
 
     if (success_) {
       glGetProgramiv(program_, GL_PROGRAM_BINARY_LENGTH, &bin->size);
-      if (bin->size + sizeof(ShaderBinaryHeader) < compilation_subprocess_shared_memory_size) {
-        glGetProgramBinary(program_, bin->size, nullptr, &bin->format, &bin->data_start);
+      if (bin->size <= sizeof(ShaderBinaryHeader::data)) {
+        glGetProgramBinary(program_, bin->size, nullptr, &bin->format, bin->data);
       }
     }
 
@@ -116,7 +116,7 @@ static bool validate_binary(void *binary)
 {
   ShaderBinaryHeader *bin = reinterpret_cast<ShaderBinaryHeader *>(binary);
   GLuint program = glCreateProgram();
-  glProgramBinary(program, bin->format, &bin->data_start, bin->size);
+  glProgramBinary(program, bin->format, bin->data, bin->size);
   GLint status;
   glGetProgramiv(program, GL_LINK_STATUS, &status);
   glDeleteProgram(program);
@@ -190,7 +190,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
     }
 
     ShaderSourceHeader *source = reinterpret_cast<ShaderSourceHeader *>(shared_mem.get_data());
-    const char *next_src = &source->source_start;
+    const char *next_src = source->sources;
     const char *comp_src = nullptr;
     const char *vert_src = nullptr;
     const char *geom_src = nullptr;
@@ -253,7 +253,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
 
     fstream file(cache_path, std::ios::binary | std::ios::out);
     file.write(reinterpret_cast<char *>(shared_mem.get_data()),
-               binary->size + offsetof(ShaderBinaryHeader, data_start));
+               binary->size + offsetof(ShaderBinaryHeader, data));
   }
 
   GPU_exit();
