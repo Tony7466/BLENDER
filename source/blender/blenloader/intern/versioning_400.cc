@@ -3901,6 +3901,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 36)) {
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      /* Only for grease pencil brushes. */
+      if (brush->gpencil_settings) {
+        /* Use the `Scene` radius unit by default (confusingly named `BRUSH_LOCK_SIZE`).
+         * Convert the radius to be the same visual size as in GPv2. */
+        brush->flag |= BRUSH_LOCK_SIZE;
+        brush->unprojected_radius = brush->size *
+                                    blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+      }
+    }
+  }
+
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 37)) {
     const World *default_world = DNA_struct_default_get(World);
     LISTBASE_FOREACH (World *, world, &bmain->worlds) {
@@ -4077,12 +4090,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (BrushGpencilSettings *settings = brush->gpencil_settings) {
         /* Copy the `draw_strength` value to the `alpha` value. */
         brush->alpha = settings->draw_strength;
-
-        /* Use the `Scene` radius unit by default (confusingly named `BRUSH_LOCK_SIZE`).
-         * Convert the radius to be the same visual size as in GPv2. */
-        brush->flag |= BRUSH_LOCK_SIZE;
-        brush->unprojected_radius = brush->size *
-                                    blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
 
         /* We approximate the simplify pixel threshold by taking the previous threshold (world
          * space) and dividing by the legacy radius conversion factor. This should generally give
