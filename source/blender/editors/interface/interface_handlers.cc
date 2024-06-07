@@ -9271,6 +9271,43 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
   return true;
 }
 
+/**
+ * Temporarily deactivates the regular active button, activates the priority button
+ * (#ui_region_find_always_active_but()), calls \a fn and reactivates the regular active button.
+ */
+static void with_priority_button_active(bContext *C,
+                                        ARegion *region,
+                                        blender::FunctionRef<void(uiBut *priority_but)> fn)
+{
+  if (uiBut *priority_but = ui_region_find_always_active_but(region)) {
+    uiBut *regular_active_but = ui_region_find_active_but(region);
+    uiHandleButtonData *regular_active_data = regular_active_but ? regular_active_but->active :
+                                                                   nullptr;
+
+    BLI_assert(priority_but->active == nullptr);
+
+    if (regular_active_but) {
+      regular_active_but->active = nullptr;
+    }
+    if (!priority_but->priority_active) {
+      ui_but_activate_event(C, region, priority_but);
+      priority_but->priority_active = priority_but->active;
+      priority_but->priority_active->handle_transparent = true;
+    }
+    priority_but->active = priority_but->priority_active;
+
+    fn(priority_but);
+
+    /* Popup might have been closed, so lookup button again. */
+    if (uiBut *always_active_but = ui_region_find_active_but(region)) {
+      always_active_but->active = nullptr;
+    }
+    if (regular_active_but) {
+      regular_active_but->active = regular_active_data;
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -11774,39 +11811,11 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
   }
 
   bool is_handled = false;
-  if (uiBut *always_active_but = ui_region_find_always_active_but(menu->region)) {
-    uiBut *regular_active = ui_region_find_active_but(menu->region);
-    uiHandleButtonData *regular_active_data = regular_active ? regular_active->active : nullptr;
-
-    if (regular_active) {
-      regular_active->active = nullptr;
-    }
-    if (!always_active_but->priority_active) {
-      ui_but_activate_event(C, menu->region, always_active_but);
-      always_active_but->priority_active = always_active_but->active;
-      always_active_but->priority_active->handle_transparent = true;
-    }
-    always_active_but->active = always_active_but->priority_active;
-
-#if 0
-    if (ui_handle_menus_recursive(C, event, menu, 0, false, false, true) != WM_UI_HANDLER_CONTINUE)
-    {
+  with_priority_button_active(C, menu->region, [&](uiBut *priority_but) {
+    if (ui_handle_button_event(C, event, priority_but) != WM_UI_HANDLER_CONTINUE) {
       is_handled = true;
     }
-#endif
-    if (ui_handle_button_event(C, event, always_active_but) != WM_UI_HANDLER_CONTINUE) {
-      is_handled = true;
-    }
-    // menu->menuretval = 0;
-
-    /* Popup might have been closed, so lookup button again. */
-    if (uiBut *always_active_but = ui_region_find_active_but(menu->region)) {
-      always_active_but->active = nullptr;
-    }
-    if (regular_active) {
-      regular_active->active = regular_active_data;
-    }
-  }
+  });
 
   if (!is_handled) {
     ui_handle_menus_recursive(C, event, menu, 0, false, false, true);
