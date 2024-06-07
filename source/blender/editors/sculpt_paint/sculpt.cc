@@ -3768,7 +3768,17 @@ static void do_brush_action(const Sculpt &sd,
     }
     case SCULPT_TOOL_SMOOTH:
       if (brush.smooth_deform_type == BRUSH_SMOOTH_DEFORM_LAPLACIAN) {
-        smooth::do_smooth_brush(sd, ob, nodes);
+        /* NOTE: The enhance brush needs to initialize its state on the first brush step. The
+         * stroke strength can become 0 during the stroke, but it can not change sign (the sign is
+         * determined in the beginning of the stroke. So here it is important to not switch to
+         * enhance brush in the middle of the stroke. */
+        if (ss.cache->bstrength < 0.0f) {
+          /* Invert mode, intensify details. */
+          smooth::enhance_details_brush(sd, ob, nodes);
+        }
+        else {
+          do_smooth_brush(sd, ob, nodes, ss.cache->bstrength);
+        }
       }
       else if (brush.smooth_deform_type == BRUSH_SMOOTH_DEFORM_SURFACE) {
         smooth::do_surface_smooth_brush(sd, ob, nodes);
@@ -3877,11 +3887,10 @@ static void do_brush_action(const Sculpt &sd,
       brush.autosmooth_factor > 0)
   {
     if (brush.flag & BRUSH_INVERSE_SMOOTH_PRESSURE) {
-      smooth::do_smooth_brush(
-          sd, ob, nodes, brush.autosmooth_factor * (1.0f - ss.cache->pressure));
+      do_smooth_brush(sd, ob, nodes, brush.autosmooth_factor * (1.0f - ss.cache->pressure));
     }
     else {
-      smooth::do_smooth_brush(sd, ob, nodes, brush.autosmooth_factor);
+      do_smooth_brush(sd, ob, nodes, brush.autosmooth_factor);
     }
   }
 

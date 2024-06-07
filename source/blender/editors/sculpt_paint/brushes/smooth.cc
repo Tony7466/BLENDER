@@ -14,6 +14,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
+#include "BKE_subdiv_ccg.hh"
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -23,8 +24,8 @@
 #include "BLI_task.hh"
 #include "BLI_virtual_array.hh"
 
+#include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
-#include "mesh_brush_common.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -108,8 +109,8 @@ static void calc_smooth_positions_faces(const OffsetIndices<int> faces,
                                         const BitSpan boundary_verts,
                                         const Span<bool> hide_poly,
                                         const Span<int> verts,
-                                        LocalData &tls,
                                         const Span<float3> positions,
+                                        LocalData &tls,
                                         const MutableSpan<float3> new_positions)
 {
   tls.vert_neighbors.reinitialize(verts.size());
@@ -142,8 +143,7 @@ static void apply_positions_faces(const Sculpt &sd,
                                   Object &object,
                                   LocalData &tls,
                                   const Span<float3> new_positions,
-                                  MutableSpan<float3> positions_orig,
-                                  MutableSpan<float3> mesh_positions)
+                                  MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -188,18 +188,15 @@ static void apply_positions_faces(const Sculpt &sd,
   }
 
   apply_translations(translations, verts, positions_orig);
-  flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
-
-  // TODO: clip_and_lock_translations
-  // TODO: apply_crazyspace_to_translations
-  // TODO: apply_translations
-  // TODO: flush_positions_to_shape_keys
+  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+  apply_translations_to_pbvh(*ss.pbvh, verts, positions_orig);
 }
 
 static void do_smooth_brush_mesh(const Sculpt &sd,
                                  const Brush &brush,
                                  Object &object,
-                                 Span<PBVHNode *> nodes)
+                                 Span<PBVHNode *> nodes,
+                                 const float brush_strength)
 {
   const SculptSession &ss = *object.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -220,13 +217,13 @@ static void do_smooth_brush_mesh(const Sculpt &sd,
   const OffsetIndices<int> node_vert_offsets = offset_indices::accumulate_counts_to_offsets(
       node_vert_offset_data);
 
+  Array<float> factors(node_vert_offsets.total_size());
   Array<float3> new_positions(node_vert_offsets.total_size());
 
-  MutableSpan<float3> positions_orig = mesh_brush_positions_for_write(*object.sculpt, mesh);
-  MutableSpan<float3> mesh_positions = mesh.vert_positions_for_write();
+  MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
-  for (const float strength : iteration_strengths(ss.cache->bstrength)) {
+  for (const float strength : iteration_strengths(brush_strength)) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
       for (const int i : range) {
@@ -236,14 +233,12 @@ static void do_smooth_brush_mesh(const Sculpt &sd,
                                     ss.vertex_info.boundary,
                                     hide_poly,
                                     bke::pbvh::node_unique_verts(*nodes[i]),
-                                    tls,
                                     positions_eval,
+                                    tls,
                                     new_positions.as_mutable_span().slice(node_vert_offsets[i]));
       }
     });
 
-    MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
-    MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
       for (const int i : range) {
@@ -256,12 +251,13 @@ static void do_smooth_brush_mesh(const Sculpt &sd,
                               object,
                               tls,
                               new_positions.as_mutable_span().slice(node_vert_offsets[i]),
-                              positions_orig,
-                              mesh_positions);
+                              positions_orig);
       }
     });
   }
 }
+
+// TODO: Write to proxies here or something?
 
 static void calc_grids(
     const Sculpt &sd, Object &object, const Brush &brush, const float strength, PBVHNode &node)
@@ -272,31 +268,47 @@ static void calc_grids(
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-    const float fade = strength * SCULPT_brush_strength_factor(ss,
-                                                               brush,
-                                                               vd.co,
-                                                               sqrtf(test.dist),
-                                                               vd.no,
-                                                               vd.fno,
-                                                               vd.mask,
-                                                               vd.vertex,
-                                                               thread_id,
-                                                               &automask_data);
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = *BKE_pbvh_get_grid_key(*ss.pbvh);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
-    float3 avg = smooth::neighbor_coords_average_interior(ss, vd.vertex);
-    float3 final = float3(vd.co) + (avg - float3(vd.co)) * fade;
-    SCULPT_clip(sd, ss, vd.co, final);
+  int i = 0;
+  for (const int grid : bke::pbvh::node_grid_indices(node)) {
+    const int grid_verts_start = grid * key.grid_area;
+    CCGElem *elem = grids[grid];
+    for (const int j : IndexRange(key.grid_area)) {
+      if (!grid_hidden.is_empty() && grid_hidden[grid][j]) {
+        i++;
+        continue;
+      }
+      float3 &co = CCG_elem_offset_co(key, elem, j);
+      if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
+        i++;
+        continue;
+      }
+      const float fade = strength * SCULPT_brush_strength_factor(
+                                        ss,
+                                        brush,
+                                        co,
+                                        sqrtf(test.dist),
+                                        CCG_elem_offset_no(key, elem, j),
+                                        nullptr,
+                                        key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f,
+                                        BKE_pbvh_make_vref(grid_verts_start + j),
+                                        thread_id,
+                                        &automask_data);
+
+      float3 avg = smooth::neighbor_coords_average_interior(
+          ss, BKE_pbvh_make_vref(grid_verts_start + j));
+      float3 final = float3(co) + (avg - float3(co)) * fade;
+      SCULPT_clip(sd, ss, co, final);
+      i++;
+    }
   }
-  BKE_pbvh_vertex_iter_end;
 }
 
 static void calc_bmesh(
@@ -308,36 +320,48 @@ static void calc_bmesh(
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
+  const int mask_offset = CustomData_get_offset_named(
+      &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+
+  int i = 0;
+  for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&node)) {
+    if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
+      i++;
       continue;
     }
+    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
+      i++;
+      continue;
+    }
+    auto_mask::node_update(automask_data, *vert);
+    const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     const float fade = strength * SCULPT_brush_strength_factor(ss,
                                                                brush,
-                                                               vd.co,
+                                                               vert->co,
                                                                sqrtf(test.dist),
-                                                               vd.no,
-                                                               vd.fno,
-                                                               vd.mask,
-                                                               vd.vertex,
+                                                               vert->no,
+                                                               nullptr,
+                                                               mask,
+                                                               BKE_pbvh_make_vref(intptr_t(vert)),
                                                                thread_id,
                                                                &automask_data);
 
-    float3 avg = smooth::neighbor_coords_average_interior(ss, vd.vertex);
-    float3 final = float3(vd.co) + (avg - float3(vd.co)) * fade;
-    SCULPT_clip(sd, ss, vd.co, final);
+    float3 avg = smooth::neighbor_coords_average_interior(ss, BKE_pbvh_make_vref(intptr_t(vert)));
+    float3 final = float3(vert->co) + (avg - float3(vert->co)) * fade;
+    SCULPT_clip(sd, ss, vert->co, final);
+    i++;
   }
-  BKE_pbvh_vertex_iter_end;
 }
 
 }  // namespace smooth_cc
 
-void do_smooth_brush(const Sculpt &sd, Object &object, const Span<PBVHNode *> nodes)
+void do_smooth_brush(const Sculpt &sd,
+                     Object &object,
+                     const Span<PBVHNode *> nodes,
+                     const float brush_strength)
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
@@ -346,10 +370,10 @@ void do_smooth_brush(const Sculpt &sd, Object &object, const Span<PBVHNode *> no
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES:
-      do_smooth_brush_mesh(sd, brush, object, nodes);
+      do_smooth_brush_mesh(sd, brush, object, nodes, brush_strength);
       break;
     case PBVH_GRIDS:
-      for (const float strength : iteration_strengths(ss.cache->bstrength)) {
+      for (const float strength : iteration_strengths(brush_strength)) {
         threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
           for (const int i : range) {
             calc_grids(sd, object, brush, strength, *nodes[i]);
@@ -360,7 +384,7 @@ void do_smooth_brush(const Sculpt &sd, Object &object, const Span<PBVHNode *> no
     case PBVH_BMESH:
       BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
       BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
-      for (const float strength : iteration_strengths(ss.cache->bstrength)) {
+      for (const float strength : iteration_strengths(brush_strength)) {
         threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
           for (const int i : range) {
             calc_bmesh(sd, object, brush, strength, *nodes[i]);

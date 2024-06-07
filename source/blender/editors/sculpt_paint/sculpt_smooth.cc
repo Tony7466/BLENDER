@@ -232,7 +232,7 @@ static void do_enhance_details_brush_task(Object &ob,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
+void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 {
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
@@ -331,24 +331,6 @@ void do_smooth_mask_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes, 
         smooth_mask_node(ob, brush, mask_write, strength, nodes[i]);
       }
     });
-  }
-}
-
-void do_smooth_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  SculptSession &ss = *ob.sculpt;
-
-  /* NOTE: The enhance brush needs to initialize its state on the first brush step. The stroke
-   * strength can become 0 during the stroke, but it can not change sign (the sign is determined
-   * in the beginning of the stroke. So here it is important to not switch to enhance brush in the
-   * middle of the stroke. */
-  if (ss.cache->bstrength < 0.0f) {
-    /* Invert mode, intensify details. */
-    enhance_details_brush(sd, ob, nodes);
-  }
-  else {
-    /* Implementation moved to new file. */
-    BLI_assert_unreachable();
   }
 }
 
