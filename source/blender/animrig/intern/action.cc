@@ -243,6 +243,10 @@ Binding *Action::binding_for_handle(const binding_handle_t handle)
 
 const Binding *Action::binding_for_handle(const binding_handle_t handle) const
 {
+  if (handle == Binding::unassigned) {
+    return nullptr;
+  }
+
   /* TODO: implement hash-map lookup. */
   for (const Binding *binding : bindings()) {
     if (binding->handle == handle) {
