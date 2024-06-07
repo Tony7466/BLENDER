@@ -288,8 +288,27 @@ class GLShaderCompiler : public ShaderCompiler {
     bool is_ready = false;
   };
 
-  BatchHandle next_batch_handle = 1;
   Map<BatchHandle, Batch> batches;
+
+  struct SpecializationWork {
+    GLShader *shader = nullptr;
+    GLuint program;
+    GLSourcesBaked sources;
+
+    GLCompilerWorker *worker = nullptr;
+    bool do_async_compilation = false;
+    bool is_ready = false;
+  };
+
+  struct SpecializationBatch {
+    Vector<SpecializationWork> items;
+  };
+
+  Map<SpecializationBatchHandle, SpecializationBatch> specialization_batches;
+
+  /* Shared accross regular and specialization batches,
+   * to prevent the use of a wrong handle type. */
+  int64_t next_batch_handle = 1;
 
   GLCompilerWorker *get_compiler_worker(const GLSourcesBaked &sources);
   bool worker_is_lost(GLCompilerWorker *&worker);
@@ -301,7 +320,10 @@ class GLShaderCompiler : public ShaderCompiler {
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 
-  virtual void precompile_specializations(Span<ShaderSpecialization> specializations) override;
+  virtual SpecializationBatchHandle precompile_specializations(
+      Span<ShaderSpecialization> specializations) override;
+
+  virtual bool specialization_batch_is_ready(SpecializationBatchHandle &handle) override;
 };
 
 #else

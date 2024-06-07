@@ -220,12 +220,27 @@ void GPU_shader_constant_uint(GPUShader *sh, const char *name, unsigned int valu
 void GPU_shader_constant_float(GPUShader *sh, const char *name, float value);
 void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value);
 
+using SpecializationBatchHandle = int64_t;
+
 struct ShaderSpecialization {
   GPUShader *shader;
   blender::Vector<blender::gpu::shader::SpecializationConstant> constants;
 };
 
-void GPU_shaders_precompile_specializations(blender::Span<ShaderSpecialization> specializations);
+/**
+ * Request the compilation of multiple specialization constant variations at once,
+ * allowing the backend to use multithreaded compilation.
+ * Returns a handle that can be used to poll if all variations have been compiled.
+ * NOTE: This function is asynchronous on OpenGL, and a no-op on Vulkan and Metal.
+ */
+SpecializationBatchHandle GPU_shader_batch_specializations(
+    blender::Span<ShaderSpecialization> specializations);
+
+/**
+ * Returns true if all the specializations from the batch have finished their compilation.
+ * WARNING: Invalidates the handle if it returns true.
+ */
+bool GPU_shader_batch_specializations_is_ready(SpecializationBatchHandle &handle);
 
 /** \} */
 
