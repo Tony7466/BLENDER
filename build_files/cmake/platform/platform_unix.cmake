@@ -37,22 +37,23 @@ else()
     unset(LIBDIR_GLIBC228_ABI)
   endif()
 
-  if(DEFINED LIBDIR)
-    if(NOT (EXISTS ${LIBDIR}))
-      if(WITH_STRICT_BUILD_OPTIONS)
-        message(SEND_ERROR
-          "Unable to find LIBDIR: ${LIBDIR}. "
-          "WITH_LIBS_PRECOMPILED needs to be able to find the LIBDIR for the precompiled libraries."
-        )
-      else()
-        message(STATUS
-          "Unable to find LIBDIR: ${LIBDIR}. system libraries may be used "
-          "(disable WITH_LIBS_PRECOMPILED to suppress this message)."
-        )
-      endif()
-      unset(LIBDIR)
-      set(WITH_LIBS_PRECOMPILED OFF)
+  if(NOT DEFINED LIBDIR)
+    set(LIBDIR "")  # Suppress undefined warnings, allow printing even if empty.
+  endif()
+  if((LIBDIR STREQUAL "") OR (NOT (EXISTS "${LIBDIR}")))
+    if(WITH_STRICT_BUILD_OPTIONS)
+      message(SEND_ERROR
+        "Unable to find LIBDIR: \"${LIBDIR}\". "
+        "WITH_LIBS_PRECOMPILED needs to be able to find the LIBDIR for the precompiled libraries."
+      )
+    else()
+      message(STATUS
+        "Unable to find LIBDIR: \"${LIBDIR}\". system libraries may be used "
+        "(disable WITH_LIBS_PRECOMPILED to suppress this message)."
+      )
     endif()
+    unset(LIBDIR)
+    set(WITH_LIBS_PRECOMPILED OFF)
   endif()
 endif()
 
@@ -340,7 +341,13 @@ if(WITH_OPENCOLLADA)
     if(WITH_STATIC_LIBS)
       # PCRE is bundled with OpenCollada without headers, so can't use
       # find_package reliably to detect it.
-      set(PCRE_LIBRARIES ${LIBDIR}/opencollada/lib/libpcre.a)
+      # NOTE: newer fork no longer depends on PCRE: see !122270.
+      if(EXISTS ${LIBDIR}/opencollada/lib/libpcre.a)
+        set(PCRE_LIBRARIES ${LIBDIR}/opencollada/lib/libpcre.a)
+      else()
+        # Quiet warnings.
+        set(PCRE_LIBRARIES)
+      endif()
     else()
       find_package_wrapper(PCRE)
     endif()
@@ -413,6 +420,7 @@ if(DEFINED LIBDIR)
     ${SYCL_ROOT_DIR}/lib/libsycl.so
     ${SYCL_ROOT_DIR}/lib/libsycl.so.*
     ${SYCL_ROOT_DIR}/lib/libpi_*.so
+    ${SYCL_ROOT_DIR}/lib/libur_*.so
   )
   list(FILTER _sycl_runtime_libraries EXCLUDE REGEX ".*\.py")
   list(REMOVE_ITEM _sycl_runtime_libraries "${SYCL_ROOT_DIR}/lib/libpi_opencl.so")
@@ -648,7 +656,7 @@ if(CMAKE_DL_LIBS)
   list(APPEND PLATFORM_LINKLIBS ${CMAKE_DL_LIBS})
 endif()
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   if(NOT WITH_PYTHON_MODULE)
     # binreloc is linux only
     set(BINRELOC_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/extern/binreloc/include)
@@ -1042,7 +1050,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   endif()
 
 # Intel C++ Compiler
-elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
   # think these next two are broken
   find_program(XIAR xiar)
   if(XIAR)
@@ -1135,8 +1143,12 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
-  set(PLATFORM_ENV_BUILD "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\"")
-  set(PLATFORM_ENV_INSTALL "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH")
+  set(PLATFORM_ENV_BUILD
+    "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\""
+  )
+  set(PLATFORM_ENV_INSTALL
+    "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH"
+  )
   unset(_library_paths)
 else()
   # Quiet unused variable warnings, unfortunately this can't be empty.

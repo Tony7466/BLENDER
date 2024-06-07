@@ -257,7 +257,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype,
                      GEO_NODE_DISTRIBUTE_POINTS_IN_GRID,
                      "Distribute Points in Grid",
@@ -268,7 +268,8 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  ntype.gather_link_search_ops = search_link_ops_for_volume_grid_node;
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

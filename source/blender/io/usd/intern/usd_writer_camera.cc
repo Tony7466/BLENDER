@@ -21,7 +21,7 @@ USDCameraWriter::USDCameraWriter(const USDExporterContext &ctx) : USDAbstractWri
 
 bool USDCameraWriter::is_supported(const HierarchyContext *context) const
 {
-  Camera *camera = static_cast<Camera *>(context->object->data);
+  const Camera *camera = static_cast<const Camera *>(context->object->data);
   return camera->type == CAM_PERSP;
 }
 
@@ -61,7 +61,7 @@ void USDCameraWriter::do_write(HierarchyContext &context)
   pxr::UsdGeomCamera usd_camera = pxr::UsdGeomCamera::Define(usd_export_context_.stage,
                                                              usd_export_context_.usd_path);
 
-  Camera *camera = static_cast<Camera *>(context.object->data);
+  const Camera *camera = static_cast<const Camera *>(context.object->data);
   Scene *scene = DEG_get_evaluated_scene(usd_export_context_.depsgraph);
 
   usd_camera.CreateProjectionAttr().Set(pxr::UsdGeomTokens->perspective);
@@ -97,6 +97,9 @@ void USDCameraWriter::do_write(HierarchyContext &context)
     float focus_distance = BKE_camera_object_dof_distance(context.object);
     usd_camera.CreateFocusDistanceAttr().Set(focus_distance, timecode);
   }
+
+  auto prim = usd_camera.GetPrim();
+  write_id_properties(prim, camera->id, timecode);
 }
 
 }  // namespace blender::io::usd

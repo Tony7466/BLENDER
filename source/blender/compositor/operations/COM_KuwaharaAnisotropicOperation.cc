@@ -73,6 +73,10 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     float anisotropy = eigenvalue_sum > 0.0f ? eigenvalue_difference / eigenvalue_sum : 0.0f;
 
     float radius = max(0.0f, *inputs[1]->get_elem(it.x, it.y));
+    if (radius == 0) {
+      copy_v4_v4(it.out, inputs[0]->get_elem(it.x, it.y));
+      continue;
+    }
 
     /* Compute the width and height of an ellipse that is more width-elongated for high anisotropy
      * and more circular for low anisotropy, controlled using the eccentricity factor. Since the
@@ -279,7 +283,7 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
  * zero to counter its exponential nature for more intuitive user control. */
 float KuwaharaAnisotropicOperation::get_sharpness()
 {
-  return data.sharpness * data.sharpness * 16.0f;
+  return sharpness_ * sharpness_ * 16.0f;
 }
 
 /* The eccentricity controls how much the image anisotropy affects the eccentricity of the
@@ -297,7 +301,17 @@ float KuwaharaAnisotropicOperation::get_sharpness()
  * that of infinity. */
 float KuwaharaAnisotropicOperation::get_eccentricity()
 {
-  return 1.0f / math::max(0.01f, data.eccentricity);
+  return 1.0f / math::max(0.01f, eccentricity_);
+}
+
+void KuwaharaAnisotropicOperation::set_sharpness(float sharpness)
+{
+  sharpness_ = sharpness;
+}
+
+void KuwaharaAnisotropicOperation::set_eccentricity(float eccentricity)
+{
+  eccentricity_ = eccentricity;
 }
 
 }  // namespace blender::compositor

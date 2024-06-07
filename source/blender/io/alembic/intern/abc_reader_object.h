@@ -7,10 +7,14 @@
  * \ingroup balembic
  */
 
-#include <Alembic/Abc/All.h>
-#include <Alembic/AbcGeom/All.h>
+#include <Alembic/Abc/IObject.h>
+#include <Alembic/Abc/ISampleSelector.h>
+#include <Alembic/AbcCoreAbstract/Foundation.h>
+#include <Alembic/AbcCoreAbstract/ObjectHeader.h>
+#include <Alembic/AbcGeom/IXform.h>
 
-#include "DNA_ID.h"
+#include <string>
+#include <vector>
 
 struct CacheFile;
 struct Main;
@@ -35,9 +39,9 @@ struct ImportSettings {
   bool is_sequence;
   bool set_frame_range;
 
-  /* Length and frame offset of file sequences. */
-  int sequence_len;
-  int sequence_offset;
+  /* Min and max frame detected from  file sequences. */
+  int sequence_min_frame;
+  int sequence_max_frame;
 
   /* From MeshSeqCacheModifierData.read_flag */
   int read_flag;
@@ -58,8 +62,8 @@ struct ImportSettings {
         scale(1.0f),
         is_sequence(false),
         set_frame_range(false),
-        sequence_len(1),
-        sequence_offset(0),
+        sequence_min_frame(0),
+        sequence_max_frame(1),
         read_flag(0),
         velocity_name(""),
         velocity_scale(1.0f),

@@ -1754,8 +1754,8 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr,
      nullptr},
     /* 18: CD_TANGENT */
-    {sizeof(float[4][4]),
-     alignof(float[4][4]),
+    {sizeof(float[4]),
+     alignof(float[4]),
      "",
      0,
      N_("Tangent"),
@@ -4799,7 +4799,7 @@ void CustomData_external_read(CustomData *data, ID *id, eCustomDataMask mask, co
       /* pass */
     }
     else if ((layer->flag & CD_FLAG_EXTERNAL) && typeInfo->read) {
-      CDataFileLayer *blay = cdf_layer_find(cdf, layer->type, layer->name);
+      const CDataFileLayer *blay = cdf_layer_find(cdf, layer->type, layer->name);
 
       if (blay) {
         if (cdf_read_layer(cdf, blay)) {
@@ -5297,7 +5297,9 @@ static void write_mdisps(BlendWriter *writer,
       }
 
       if (md->hidden) {
-        BLO_write_raw(writer, BLI_BITMAP_SIZE(md->totdisp), md->hidden);
+        BLO_write_int8_array(writer,
+                             BLI_BITMAP_SIZE(md->totdisp) * sizeof(BLI_bitmap),
+                             reinterpret_cast<const int8_t *>(md->hidden));
       }
     }
   }
@@ -5392,25 +5394,24 @@ static void blend_read_mdisps(BlendDataReader *reader,
 {
   if (mdisps) {
     for (int i = 0; i < count; i++) {
-      BLO_read_data_address(reader, &mdisps[i].disps);
-      BLO_read_data_address(reader, &mdisps[i].hidden);
+      MDisps &md = mdisps[i];
 
-      if (mdisps[i].totdisp && !mdisps[i].level) {
+      BLO_read_float3_array(reader, md.totdisp, reinterpret_cast<float **>(&md.disps));
+      BLO_read_int8_array(reader,
+                          BLI_BITMAP_SIZE(md.totdisp) * sizeof(BLI_bitmap),
+                          reinterpret_cast<int8_t **>(&md.hidden));
+
+      if (md.totdisp && !md.level) {
         /* this calculation is only correct for loop mdisps;
          * if loading pre-BMesh face mdisps this will be
          * overwritten with the correct value in
          * #bm_corners_to_loops() */
-        float gridsize = sqrtf(mdisps[i].totdisp);
-        mdisps[i].level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
+        float gridsize = sqrtf(md.totdisp);
+        md.level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
       }
 
-      if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* #DNA_struct_switch_endian doesn't do endian swap for `(*disps)[]` */
-        /* this does swap for data written at #write_mdisps() - `readfile.cc`. */
-        BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
-      }
-      if (!external && !mdisps[i].disps) {
-        mdisps[i].totdisp = 0;
+      if (!external && !md.disps) {
+        md.totdisp = 0;
       }
     }
   }
@@ -5424,7 +5425,8 @@ static void blend_read_paint_mask(BlendDataReader *reader,
     for (int i = 0; i < count; i++) {
       GridPaintMask *gpm = &grid_paint_mask[i];
       if (gpm->data) {
-        BLO_read_data_address(reader, &gpm->data);
+        const int gridsize = BKE_ccg_gridsize(gpm->level);
+        BLO_read_float_array(reader, gridsize * gridsize, &gpm->data);
       }
     }
   }
@@ -5432,7 +5434,8 @@ static void blend_read_paint_mask(BlendDataReader *reader,
 
 static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &layer, const int count)
 {
-  BLO_read_data_address(reader, &layer.data);
+  const size_t elem_size = CustomData_sizeof(eCustomDataType(layer.type));
+  BLO_read_struct_array(reader, char, elem_size *count, &layer.data);
   if (CustomData_layer_ensure_data_exists(&layer, count)) {
     /* Under normal operations, this shouldn't happen, but...
      * For a CD_PROP_BOOL example, see #84935.
@@ -5456,7 +5459,7 @@ static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &laye
 
 void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int count)
 {
-  BLO_read_data_address(reader, &data->layers);
+  BLO_read_struct_array(reader, CustomDataLayer, data->totlayer, &data->layers);
 
   /* Annoying workaround for bug #31079 loading legacy files with
    * no polygons _but_ have stale custom-data. */
@@ -5465,7 +5468,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     return;
   }
 
-  BLO_read_data_address(reader, &data->external);
+  BLO_read_struct(reader, CustomDataExternal, &data->external);
 
   int i = 0;
   while (i < data->totlayer) {
@@ -5477,12 +5480,15 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     layer->sharing_info = nullptr;
 
     if (CustomData_verify_versions(data, i)) {
-      layer->sharing_info = BLO_read_shared(reader, &layer->data, [&]() {
-        blend_read_layer_data(reader, *layer, count);
-        return layer->data ? make_implicit_sharing_info_for_layer(
-                                 eCustomDataType(layer->type), layer->data, count) :
-                             nullptr;
-      });
+      layer->sharing_info = BLO_read_shared(
+          reader, &layer->data, [&]() -> const ImplicitSharingInfo * {
+            blend_read_layer_data(reader, *layer, count);
+            if (layer->data == nullptr) {
+              return nullptr;
+            }
+            return make_implicit_sharing_info_for_layer(
+                eCustomDataType(layer->type), layer->data, count);
+          });
       i++;
     }
   }

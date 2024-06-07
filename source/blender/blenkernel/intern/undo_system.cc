@@ -33,6 +33,9 @@
 
 #include "MEM_guardedalloc.h"
 
+/* Header to pull symbols from the file which otherwise might get stripped away. */
+#include "BKE_blender_undo.hh"
+
 #define undo_stack _wm_undo_stack_disallow /* pass in as a variable always. */
 
 /** Odd requirement of Blender that we always keep a memfile undo in the stack. */
@@ -62,6 +65,15 @@ const UndoType *BKE_UNDOSYS_TYPE_SCULPT = nullptr;
 const UndoType *BKE_UNDOSYS_TYPE_TEXT = nullptr;
 
 static ListBase g_undo_types = {nullptr, nullptr};
+
+/* An unused function with public linkage just to ensure symbols from the blender_undo.cc are not
+ * stripped. */
+void bke_undo_system_linker_workaround();
+void bke_undo_system_linker_workaround()
+{
+  BLI_assert_unreachable();
+  BKE_memfile_undo_free(nullptr);
+}
 
 static const UndoType *BKE_undosys_type_from_context(bContext *C)
 {
@@ -806,8 +818,9 @@ bool BKE_undosys_step_load_data_ex(UndoStack *ustack,
     }
   }
 
-  BLI_assert(
-      !"This should never be reached, either undo stack is corrupted, or code above is buggy");
+  BLI_assert_msg(
+      false,
+      "This should never be reached, either undo stack is corrupted, or code above is buggy");
   return false;
 }
 
