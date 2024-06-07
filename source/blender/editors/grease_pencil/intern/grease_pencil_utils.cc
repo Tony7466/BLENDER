@@ -1149,8 +1149,7 @@ static float brush_radius_at_location(const RegionView3D *rv3d,
                                       const float4x4 to_world)
 {
   if ((brush->flag & BRUSH_LOCK_SIZE) == 0) {
-    return pixel_radius_to_world_space_radius(
-        rv3d, region, location, to_world, brush->size);
+    return pixel_radius_to_world_space_radius(rv3d, region, location, to_world, brush->size);
   }
   return brush->unprojected_radius;
 }
