@@ -36,7 +36,7 @@ static Vector<float> iteration_strengths(const float strength)
   const int max_iterations = 4;
   const float fract = 1.0f / max_iterations;
 
-  BLI_assert(strength <= 0.0f && strength <= 1.0f);
+  BLI_assert(strength >= 0.0f && strength <= 1.0f);
 
   const int count = int(strength * max_iterations);
   const float last = max_iterations * (strength - count * fract);
