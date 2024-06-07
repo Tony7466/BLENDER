@@ -6741,4 +6741,36 @@ void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, const Span<float3> 
   }
 }
 
+void calc_vert_neighbors(const OffsetIndices<int> faces,
+                         const Span<int> corner_verts,
+                         const GroupedSpan<int> vert_to_face,
+                         const BitSpan boundary_verts,
+                         const Span<bool> hide_poly,
+                         const Span<int> verts,
+                         const MutableSpan<Vector<int>> neighbors)
+{
+  BLI_assert(neighbors.size() == verts.size());
+  BLI_assert(corner_verts.size() == faces.total_size());
+  for (Vector<int> &vector : neighbors) {
+    vector.clear();
+  }
+
+  for (const int i : verts.index_range()) {
+    const int vert = verts[i];
+    const bool is_boundary = boundary_verts[vert];
+    for (const int face : vert_to_face[vert]) {
+      if (!hide_poly.is_empty() && hide_poly[face]) {
+        continue;
+      }
+      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
+      if (!is_boundary || boundary_verts[verts[0]]) {
+        neighbors[i].append_non_duplicates(verts[0]);
+      }
+      if (!is_boundary || boundary_verts[verts[1]]) {
+        neighbors[i].append_non_duplicates(verts[1]);
+      }
+    }
+  }
+}
+
 }  // namespace blender::ed::sculpt_paint

@@ -49,50 +49,9 @@ static Vector<float> iteration_strengths(const float strength)
 struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
-  /**
-   * \note A vector allocated per element is typically not a good strategy for performance because
-   * of each vector's 24 byte overhead, non-contiguous memory, and the possibility of further heap
-   * allocations. However, it's done here for now for two reasons:
-   *  1. In typical quad meshes there are just 4 neighbors, which fit in the inline buffer.
-   *  2. We want to avoid using edges, and the remaining topology map we have access to is the
-   *     vertex to face map. That requires deduplication when building the neighbors, which
-   *     requires some intermediate data structure like a vector anyway.
-   */
   Vector<Vector<int>> vert_neighbors;
   Vector<float3> translations;
 };
-
-/* For boundary vertices, only include other boundary vertices. */
-BLI_NOINLINE static void calc_vert_neighbors(const OffsetIndices<int> faces,
-                                             const Span<int> corner_verts,
-                                             const GroupedSpan<int> vert_to_face,
-                                             const BitSpan boundary_verts,
-                                             const Span<bool> hide_poly,
-                                             const Span<int> verts,
-                                             MutableSpan<Vector<int>> neighbors)
-{
-  for (Vector<int> &vector : neighbors) {
-    vector.clear();
-  }
-
-  for (const int i : verts.index_range()) {
-    const int vert = verts[i];
-    const bool is_boundary = boundary_verts[vert];
-    for (const int face : vert_to_face[vert]) {
-      if (!hide_poly.is_empty() && hide_poly[face]) {
-        /* Skip connectivity from hidden faces. */
-        continue;
-      }
-      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
-      if (!is_boundary || boundary_verts[verts[0]]) {
-        neighbors[i].append_non_duplicates(verts[0]);
-      }
-      if (!is_boundary || boundary_verts[verts[1]]) {
-        neighbors[i].append_non_duplicates(verts[1]);
-      }
-    }
-  }
-}
 
 static float3 average_positions(const Span<float3> positions, const Span<int> indices)
 {
