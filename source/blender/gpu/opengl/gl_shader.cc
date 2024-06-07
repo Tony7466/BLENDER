@@ -1906,9 +1906,10 @@ void GLShaderCompiler::precompile_specializations(Span<ShaderSpecialization> spe
 
   for (auto &specialization : specializations) {
     GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
-    for (auto &constant : specialization.constants) {
-      int location = sh->interface->constant_get(constant.name.c_str())->location;
-      sh->constants.values[location].u = constant.value.u;
+    for (const SpecializationConstant &constant : specialization.constants) {
+      const ShaderInput *input = sh->interface->constant_get(constant.name.c_str());
+      BLI_assert_msg(input != nullptr, "The specialization constant doesn't exists");
+      sh->constants.values[input->location].u = constant.value.u;
     }
     sh->constants.is_dirty = true;
     if (sh->program_cache_.contains(sh->constants.values)) {
