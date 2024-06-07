@@ -3412,6 +3412,8 @@ static void ui_but_free(const bContext *C, uiBut *but)
 
   if (but->priority_active && but->priority_active != but->active) {
     if (C) {
+      /* XXX without this we're stuck in modal state with text edit cursor after closing popup.
+       * Should exit active buttons as part of popup closing. */
       ui_but_priority_active_free(C, but);
     }
     else {
