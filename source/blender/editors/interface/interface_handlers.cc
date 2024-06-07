@@ -11531,6 +11531,12 @@ static int ui_handle_menus_recursive(bContext *C,
     }
   }
 
+  if (retval == WM_UI_HANDLER_CONTINUE) {
+    with_priority_button_active(C, menu->region, [&](uiBut *priority_but) {
+      retval = ui_handle_button_event(C, event, priority_but);
+    });
+  }
+
   /* now handle events for our own menu */
   if (retval == WM_UI_HANDLER_CONTINUE || event->type == TIMER) {
     const bool do_but_search = (but && (but->type == UI_BTYPE_SEARCH_MENU));
@@ -11637,6 +11643,12 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
         UI_but_tooltip_timer_remove(C, but);
       }
     }
+  }
+
+  if (retval == WM_UI_HANDLER_CONTINUE) {
+    with_priority_button_active(C, region, [&](uiBut *priority_active) {
+      retval = ui_handle_button_event(C, event, priority_active);
+    });
   }
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
@@ -11810,16 +11822,7 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
     retval = WM_UI_HANDLER_CONTINUE;
   }
 
-  bool is_handled = false;
-  with_priority_button_active(C, menu->region, [&](uiBut *priority_but) {
-    if (ui_handle_button_event(C, event, priority_but) != WM_UI_HANDLER_CONTINUE) {
-      is_handled = true;
-    }
-  });
-
-  if (!is_handled) {
-    ui_handle_menus_recursive(C, event, menu, 0, false, false, true);
-  }
+  ui_handle_menus_recursive(C, event, menu, 0, false, false, true);
 
   /* free if done, does not free handle itself */
   if (menu->menuretval) {
