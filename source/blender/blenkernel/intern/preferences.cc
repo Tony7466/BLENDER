@@ -219,7 +219,7 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add_default_user(UserDef *use
 bUserExtensionRepo *BKE_preferences_extension_repo_add_default_system(UserDef *userdef)
 {
   bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(userdef, "System", "system", "");
-  repo->source_type = USER_EXTENSION_REPO_SOURCE_TYPE_SYSTEM;
+  repo->source = USER_EXTENSION_REPO_SOURCE_SYSTEM;
   return repo;
 }
 
@@ -279,12 +279,12 @@ size_t BKE_preferences_extension_repo_dirpath_get(const bUserExtensionRepo *repo
 
   std::optional<std::string> path = std::nullopt;
 
-  switch (repo->source_type) {
-    case USER_EXTENSION_REPO_SOURCE_TYPE_SYSTEM: {
+  switch (repo->source) {
+    case USER_EXTENSION_REPO_SOURCE_SYSTEM: {
       path = BKE_appdir_folder_id(BLENDER_SYSTEM_EXTENSIONS, nullptr);
       break;
     }
-    default: { /* #USER_EXTENSION_REPO_SOURCE_TYPE_USER. */
+    default: { /* #USER_EXTENSION_REPO_SOURCE_USER. */
       path = BKE_appdir_folder_id_user_notest(BLENDER_USER_EXTENSIONS, nullptr);
       break;
     }

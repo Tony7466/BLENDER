@@ -1659,7 +1659,7 @@ if(DEFINED TARGETDIR_TEXT)
 )
 endif()
 
-# Create a system extensions directory (users or admins may populate this).
+# Create a system extensions directory (users or administrators may populate this).
 # This only contains a README.
 install(
   DIRECTORY ${CMAKE_SOURCE_DIR}/release/extensions

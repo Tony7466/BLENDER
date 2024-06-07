@@ -2212,8 +2212,8 @@ class USERPREF_PT_extensions_repos(Panel):
                 sub.prop(active_repo, "directory", text="")
 
             row = layout_panel.row()
-            row.active = not active_repo.use_custom_directory
-            row.prop(active_repo, "source_type")
+            row.active = not use_custom_directory
+            row.prop(active_repo, "source")
 
             if active_repo.use_remote_url:
                 row = layout_panel.row(align=True, heading="Authentication")

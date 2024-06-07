@@ -980,7 +980,7 @@ void blo_do_versions_userdef(UserDef *userdef)
     /* TODO: remove this block before merging, keep to avoid adding multiple system blocks. */
     bool has_system = false;
     LISTBASE_FOREACH (const bUserExtensionRepo *, repo_iter, &userdef->extension_repos) {
-      if (repo_iter->source_type == USER_EXTENSION_REPO_SOURCE_TYPE_SYSTEM) {
+      if (repo_iter->source == USER_EXTENSION_REPO_SOURCE_SYSTEM) {
         has_system = true;
       }
     }

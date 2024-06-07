@@ -444,7 +444,7 @@ static void rna_userdef_extension_repo_source_type_set(PointerRNA *ptr, int valu
   Main *bmain = G.main;
   bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE);
-  repo->source_type = value;
+  repo->source = value;
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 }
 
@@ -6760,8 +6760,16 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem source_type_items[] = {
-      {USER_EXTENSION_REPO_SOURCE_TYPE_USER, "USER", 0, "User", ""},
-      {USER_EXTENSION_REPO_SOURCE_TYPE_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_EXTENSION_REPO_SOURCE_USER,
+       "USER",
+       0,
+       "User",
+       "Repository managed by the user, stored in user directories"},
+      {USER_EXTENSION_REPO_SOURCE_SYSTEM,
+       "SYSTEM",
+       0,
+       "System",
+       "Read-only repository provided by the system"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -6816,14 +6824,14 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
                                 "rna_userdef_extension_repo_access_token_length",
                                 "rna_userdef_extension_repo_access_token_set");
 
-  prop = RNA_def_property(srna, "source_type", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "source", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, source_type_items);
   RNA_def_property_enum_funcs(
       prop, nullptr, "rna_userdef_extension_repo_source_type_set", nullptr);
   RNA_def_property_ui_text(
       prop,
-      "Path Source",
-      "Select the location of extensions when the custom directory is not set");
+      "Source",
+      "Select if the repository is in a user managed or system provided directory");
 
   /* NOTE(@ideasman42): this is intended to be used by a package manger component
    * which is not yet integrated. */

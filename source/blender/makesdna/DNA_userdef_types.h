@@ -650,7 +650,9 @@ typedef struct bUserExtensionRepo {
   char remote_url[1024];     /* FILE_MAX */
 
   uint8_t flag;
-  uint8_t source_type;
+  /** The source location when the custom directory isn't used (#eUserExtensionRepo_Source).*/
+  uint8_t source;
+
   char _pad0[6];
 } bUserExtensionRepo;
 
@@ -668,10 +670,10 @@ typedef enum eUserExtensionRepo_Flag {
  * The source to use (User or System), only valid when the
  * #USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY flag isn't set.
  */
-typedef enum eUserExtensionRepo_SourceType {
-  USER_EXTENSION_REPO_SOURCE_TYPE_USER = 0,
-  USER_EXTENSION_REPO_SOURCE_TYPE_SYSTEM = 1,
-} eUserExtensionRepo_SourceType;
+typedef enum eUserExtensionRepo_Source {
+  USER_EXTENSION_REPO_SOURCE_USER = 0,
+  USER_EXTENSION_REPO_SOURCE_SYSTEM = 1,
+} eUserExtensionRepo_Source;
 
 typedef struct SolidLight {
   int flag;
