@@ -263,7 +263,7 @@ struct uiSelectContextStore {
 };
 
 static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore *selctx_data);
-static void ui_selectcontext_free(struct uiSelectContextStore *selctx_data);
+static void ui_selectcontext_free(uiSelectContextStore *selctx_data);
 static void ui_selectcontext_apply(bContext *C,
                                    uiBut *but,
                                    uiSelectContextStore *selctx_data,
@@ -376,8 +376,6 @@ struct uiTextEdit {
 };
 
 struct uiHandleButtonData {
-  ~uiHandleButtonData();
-
   wmWindowManager *wm;
   wmWindow *window;
   ScrArea *area;
@@ -462,6 +460,8 @@ struct uiHandleButtonData {
   /* post activate */
   uiButtonActivateType posttype;
   uiBut *postbut;
+
+  ~uiHandleButtonData();
 };
 
 struct uiAfterFunc {
