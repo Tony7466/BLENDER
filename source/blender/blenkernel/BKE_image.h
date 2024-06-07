@@ -274,6 +274,11 @@ void BKE_image_user_file_path_ex(const struct Main *bmain,
                                  const bool resolve_multiview);
 void BKE_image_editors_update_frame(const struct Main *bmain, int cfra);
 
+/* Updates the animated images in the compositor node tree of the given scene for a new frame. This
+ * updates the frame number for the images and tags the image nodes for an update in order to
+ * update their outputs for calses like EXR sequences. */
+void BKE_update_compositor_images_for_frame(struct Main *bmain, struct Scene *scene);
+
 /**
  * Dependency graph update for image user users.
  */
@@ -498,7 +503,6 @@ bool BKE_image_is_dirty_writable(struct Image *image, bool *r_is_writable);
 /**
  * Guess offset for the first frame in the sequence.
  */
-int BKE_image_sequence_guess_offset(struct Image *image);
 bool BKE_image_has_anim(struct Image *image);
 bool BKE_image_has_packedfile(const struct Image *image);
 bool BKE_image_has_filepath(const struct Image *ima);

@@ -5155,6 +5155,46 @@ void BKE_image_editors_update_frame(const Main *bmain, int cfra)
   image_walk_id_all_users(&wm->id, false, &cfra, image_editors_update_frame);
 }
 
+void BKE_update_compositor_images_for_frame(Main *bmain, Scene *scene)
+{
+  bNodeTree *node_tree = scene->nodetree;
+  if (!node_tree) {
+    return;
+  }
+
+  bool needs_update = false;
+  for (bNode *node : node_tree->all_nodes()) {
+    if (node->type != CMP_NODE_IMAGE) {
+      continue;
+    }
+
+    if (!node->id) {
+      continue;
+    }
+
+    Image *image = reinterpret_cast<Image *>(node->id);
+    if (!BKE_image_is_animated(image)) {
+      continue;
+    }
+
+    /* Update the frame number for the image user, but only if auto refresh is enabled or the image
+     * requires a refresh. */
+    ImageUser *image_user = static_cast<ImageUser *>(node->storage);
+    if ((image_user->flag & IMA_ANIM_ALWAYS) || (image_user->flag & IMA_NEED_FRAME_RECALC)) {
+      BKE_image_user_frame_calc(image, image_user, scene->r.cfra);
+    }
+
+    /* Tag the image node for an update to update its outputs in cmp_node_image_create_outputs. */
+    node->runtime->update |= NODE_UPDATE_ID;
+    BKE_ntree_update_tag_node_property(node_tree, node);
+    needs_update = true;
+  }
+
+  if (needs_update) {
+    BKE_ntree_update_main_tree(bmain, node_tree, nullptr);
+  }
+}
+
 static void image_user_id_has_animation(Image *ima,
                                         ID * /*iuser_id*/,
                                         ImageUser * /*iuser*/,
@@ -5374,11 +5414,6 @@ float *BKE_image_get_float_pixels_for_frame(Image *image, int frame, int tile)
   }
 
   return pixels;
-}
-
-int BKE_image_sequence_guess_offset(Image *image)
-{
-  return BLI_path_sequence_decode(image->filepath, nullptr, 0, nullptr, 0, nullptr);
 }
 
 bool BKE_image_has_anim(Image *ima)

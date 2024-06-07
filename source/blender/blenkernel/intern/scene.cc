@@ -2557,6 +2557,7 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
      * call this at the start so modifiers with textures don't lag 1 frame.
      */
     BKE_image_editors_update_frame(bmain, scene->r.cfra);
+    BKE_update_compositor_images_for_frame(bmain, scene);
     DEG_graph_relations_update(depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed.
