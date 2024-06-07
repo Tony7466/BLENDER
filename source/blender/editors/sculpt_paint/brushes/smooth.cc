@@ -134,6 +134,13 @@ static void translations_from_new_positions(const Span<float3> new_positions,
   }
 }
 
+static void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
+{
+  for (const int i : translations.index_range()) {
+    translations[i] *= factors[i];
+  }
+}
+
 static void apply_positions_faces(const Sculpt &sd,
                                   const Brush &brush,
                                   const Span<float3> positions_eval,
@@ -180,6 +187,7 @@ static void apply_positions_faces(const Sculpt &sd,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_new_positions(new_positions, verts, positions_eval, translations);
+  scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
