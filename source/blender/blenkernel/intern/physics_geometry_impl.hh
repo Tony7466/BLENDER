@@ -62,7 +62,11 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void delete_self() override;
 };
 
-void move_physics_data(const PhysicsGeometryImpl &from, PhysicsGeometryImpl &to);
+void move_physics_impl_data(PhysicsGeometryImpl &from,
+                            PhysicsGeometryImpl &to,
+                            int rigid_bodies_offset,
+                            int constraints_offset,
+                            int shapes_offset);
 
 struct CollisionShapeImpl {
   btCollisionShape &as_bullet_shape()

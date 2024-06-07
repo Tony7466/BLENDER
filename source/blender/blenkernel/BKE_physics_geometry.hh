@@ -60,7 +60,7 @@ class PhysicsGeometry {
   ~PhysicsGeometry();
 
   const PhysicsGeometryImpl &impl() const;
-  PhysicsGeometryImpl *try_impl_for_write();
+  PhysicsGeometryImpl *try_impl_for_write() const;
 
   bool has_world() const;
   void set_world_enabled(bool enable);
