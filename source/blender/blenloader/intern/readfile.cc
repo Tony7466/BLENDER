@@ -5041,13 +5041,12 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p)
   *ptr_p = final_array;
 }
 
-void blo_read_shared_impl(
+blender::ImplicitSharingInfoAndData blo_read_shared_impl(
     BlendDataReader *reader,
-    const void **data_ptr,
-    const blender::ImplicitSharingInfo **r_sharing_info,
+    const void **ptr_p,
     const blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
 {
-  const void *old_address = *data_ptr;
+  const void *old_address = *ptr_p;
   if (BLO_read_data_is_undo(reader)) {
     if (reader->fd->flags & FD_FLAGS_IS_MEMFILE) {
       UndoReader *undo_reader = reinterpret_cast<UndoReader *>(reader->fd->file);
@@ -5059,33 +5058,30 @@ void blo_read_shared_impl(
         {
           /* Add a new owner of the data that is passed to the caller. */
           sharing_info->add_user();
-          *r_sharing_info = sharing_info;
-          return;
+          return {sharing_info, old_address};
         }
       }
     }
   }
 
-  const blender::ImplicitSharingInfoAndData *shared_data =
-      reader->shared_data_by_stored_address.lookup_ptr(old_address);
-
-  if (shared_data) {
-    /* The data was loaded before. No need to load it again. Just assign the address and increase
-     * the user count to indicate that it is shared. */
-    *data_ptr = shared_data->data;
-    *r_sharing_info = shared_data->sharing_info;
+  if (const blender::ImplicitSharingInfoAndData *shared_data =
+          reader->shared_data_by_stored_address.lookup_ptr(old_address))
+  {
+    /* The data was loaded before. No need to load it again. Just increase the user count to
+     * indicate that it is shared. */
     if (shared_data->sharing_info) {
       shared_data->sharing_info->add_user();
     }
+    return *shared_data;
   }
-  else {
-    /* This is the first time this data is loaded. The callback also creates the corresponding
-     * sharing info which may be reused later. */
-    const blender::ImplicitSharingInfo *sharing_info = read_fn();
-    const void *new_address = *data_ptr;
-    reader->shared_data_by_stored_address.add(old_address, {sharing_info, new_address});
-    *r_sharing_info = sharing_info;
-  }
+
+  /* This is the first time this data is loaded. The callback also creates the corresponding
+   * sharing info which may be reused later. */
+  const blender::ImplicitSharingInfo *sharing_info = read_fn();
+  const void *new_address = *ptr_p;
+  const blender::ImplicitSharingInfoAndData shared_data{sharing_info, new_address};
+  reader->shared_data_by_stored_address.add(old_address, shared_data);
+  return shared_data;
 }
 
 bool BLO_read_data_is_undo(BlendDataReader *reader)
