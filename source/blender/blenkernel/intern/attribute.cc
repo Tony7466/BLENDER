@@ -65,6 +65,11 @@ AttributeOwnerType AttributeOwner::type() const
   return type_;
 }
 
+bool AttributeOwner::is_valid() const
+{
+  return ptr_ != nullptr && type_ != AttributeOwnerType::None;
+}
+
 Mesh *AttributeOwner::get_mesh() const
 {
   BLI_assert(ptr_ != nullptr);

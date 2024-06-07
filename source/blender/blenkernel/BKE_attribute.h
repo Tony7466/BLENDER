@@ -40,6 +40,7 @@ typedef enum AttrDomainMask {
 ENUM_OPERATORS(AttrDomainMask, ATTR_DOMAIN_MASK_ALL);
 
 enum class AttributeOwnerType {
+  None = 0,
   Mesh,
   PointCloud,
   Curves,
@@ -47,7 +48,7 @@ enum class AttributeOwnerType {
 };
 
 class AttributeOwner {
-  AttributeOwnerType type_;
+  AttributeOwnerType type_ = AttributeOwnerType::None;
   void *ptr_ = nullptr;
 
  public:
@@ -57,6 +58,7 @@ class AttributeOwner {
   static AttributeOwner from_id(ID *id);
 
   AttributeOwnerType type() const;
+  bool is_valid() const;
 
   Mesh *get_mesh() const;
   PointCloud *get_pointcloud() const;
