@@ -18,7 +18,6 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 #include "UI_interface.hh"
 
 #include "DNA_scene_types.h"
@@ -766,6 +765,10 @@ static int grease_pencil_layer_group_color_tag_exec(bContext *C, wmOperator *op)
   const int color = RNA_enum_get(op->ptr, "color_tag");
   LayerGroup *active_group = grease_pencil.get_active_group();
   active_group->color_icon = enum_layergroup_color_items[color + 1].icon;
+
+  if (active_group->color_icon == ICON_X) {
+    active_group->color_icon = ICON_FILE_FOLDER;
+  }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);

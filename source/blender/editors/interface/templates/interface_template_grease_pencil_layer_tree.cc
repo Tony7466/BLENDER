@@ -383,8 +383,7 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
   void build_layer_group_name(uiLayout &row)
   {
     uiItemS_ex(&row, 0.8f);
-    const int icon = group_.color_icon == ICON_X ? ICON_FILE_FOLDER : group_.color_icon;
-    uiBut *but = uiItemL_ex(&row, group_.name().c_str(), icon, false, false);
+    uiBut *but = uiItemL_ex(&row, group_.name().c_str(), group_.color_icon, false, false);
     if (!group_.is_editable()) {
       UI_but_disable(but, "Layer Group is locked or not visible");
     }
