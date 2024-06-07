@@ -139,7 +139,7 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__non_array_property)
    * - Infinite KeyframeStrip
    * - FCurve with a single key
    */
-  object->empty_drawsize = 1.0;
+  object->empty_drawsize = 42.0;
   const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
                                                        {{"empty_display_size"}},
                                                        1.0,
@@ -181,11 +181,11 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__non_array_property)
   ASSERT_NE(nullptr, fcurve->bezt);
   EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve->bezt[0].vec[1][1]);
 
   /* Second time inserting with a different value on the same frame should
    * simply replace the key. */
-  object->empty_drawsize = 2.0;
+  object->empty_drawsize = 86.0;
   const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
                                                        {{"empty_display_size"}},
                                                        1.0,
@@ -196,10 +196,10 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__non_array_property)
   EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve->bezt[0].vec[1][1]);
 
   /* Third time inserting on a different time should add a second key. */
-  object->empty_drawsize = 3.0;
+  object->empty_drawsize = 7.0;
   const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
                                                        {{"empty_display_size"}},
                                                        10.0,
@@ -210,9 +210,9 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__non_array_property)
   EXPECT_EQ(1, result_3.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(2, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve->bezt[0].vec[1][1]);
   EXPECT_EQ(10.0, fcurve->bezt[1].vec[1][0]);
-  EXPECT_EQ(3.0, fcurve->bezt[1].vec[1][1]);
+  EXPECT_EQ(7.0, fcurve->bezt[1].vec[1][1]);
 }
 
 /* Keying a single element of an array property. */
@@ -576,9 +576,9 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__only_replace)
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
   /* First attempt should fail, because there are no fcurves yet. */
-  object->rot[0] = 0.0;
-  object->rot[1] = 0.0;
-  object->rot[2] = 0.0;
+  object->rot[0] = 42.0;
+  object->rot[1] = 42.0;
+  object->rot[2] = 42.0;
   const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
                                                        {{"rotation_euler"}},
                                                        1.0,
@@ -617,15 +617,15 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_z->bezt[0].vec[1][1]);
 
   /* Second attempt should also fail, because we insert on a different frame
    * than the two keys we just created. */
-  object->rot[0] = 2.0;
-  object->rot[1] = 2.0;
-  object->rot[2] = 2.0;
+  object->rot[0] = 86.0;
+  object->rot[1] = 86.0;
+  object->rot[2] = 86.0;
   const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
                                                        {{"rotation_euler"}},
                                                        5.0,
@@ -638,9 +638,9 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_z->bezt[0].vec[1][1]);
 
   /* The third attempt, keying on the original frame, should succeed and replace
    * the existing key on each fcurve. */
@@ -656,9 +656,9 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve_z->bezt[0].vec[1][1]);
 }
 
 /* Keying with the "Only Insert Needed" flag. */
@@ -743,7 +743,7 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
 
   /* First time should create the AnimData, Action, and FCurve with a single
    * key. */
-  object->empty_drawsize = 1.0;
+  object->empty_drawsize = 42.0;
   const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
                                                        {{"empty_display_size"}},
                                                        1.0,
@@ -760,11 +760,11 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
   ASSERT_NE(nullptr, fcurve->bezt);
   EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve->bezt[0].vec[1][1]);
 
   /* Second time inserting with a different value on the same frame should
    * simply replace the key. */
-  object->empty_drawsize = 2.0;
+  object->empty_drawsize = 86.0;
   const CombinedKeyingResult result_2 = insert_key_rna(&object_rna_pointer,
                                                        {{"empty_display_size"}},
                                                        1.0,
@@ -775,10 +775,10 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
   EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve->bezt[0].vec[1][1]);
 
   /* Third time inserting on a different time should add a second key. */
-  object->empty_drawsize = 3.0;
+  object->empty_drawsize = 7.0;
   const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
                                                        {{"empty_display_size"}},
                                                        10.0,
@@ -789,9 +789,9 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
   EXPECT_EQ(1, result_3.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(2, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve->bezt[0].vec[1][1]);
   EXPECT_EQ(10.0, fcurve->bezt[1].vec[1][0]);
-  EXPECT_EQ(3.0, fcurve->bezt[1].vec[1][1]);
+  EXPECT_EQ(7.0, fcurve->bezt[1].vec[1][1]);
 }
 
 /* Keying a single element of an array property. */
@@ -973,9 +973,9 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_replace)
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
   /* First attempt should fail, because there are no fcurves yet. */
-  object->rot[0] = 0.0;
-  object->rot[1] = 0.0;
-  object->rot[2] = 0.0;
+  object->rot[0] = 42.0;
+  object->rot[1] = 42.0;
+  object->rot[2] = 42.0;
   const CombinedKeyingResult result_1 = insert_key_rna(&object_rna_pointer,
                                                        {{"rotation_euler"}},
                                                        1.0,
@@ -1010,15 +1010,15 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_z->bezt[0].vec[1][1]);
 
   /* Second attempt should also fail, because we insert on a different frame
    * than the two keys we just created. */
-  object->rot[0] = 2.0;
-  object->rot[1] = 2.0;
-  object->rot[2] = 2.0;
+  object->rot[0] = 86.0;
+  object->rot[1] = 86.0;
+  object->rot[2] = 86.0;
   const CombinedKeyingResult result_3 = insert_key_rna(&object_rna_pointer,
                                                        {{"rotation_euler"}},
                                                        5.0,
@@ -1031,9 +1031,9 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_z->bezt[0].vec[1][1]);
 
   /* The third attempt, keying on the original frame, should succeed and replace
    * the existing key on each fcurve. */
@@ -1049,9 +1049,9 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve_z->bezt[0].vec[1][1]);
 }
 
 /* Keying with the "Only Insert Needed" flag. */
@@ -1149,7 +1149,7 @@ TEST_F(KeyframingTest, insert_keyframe__non_array_property)
 
   /* First time should create the AnimData, Action, and FCurve with a single
    * key. */
-  object->empty_drawsize = 1.0;
+  object->empty_drawsize = 42.0;
   const CombinedKeyingResult result_1 = insert_keyframe(bmain,
                                                         object->id,
                                                         nullptr,
@@ -1167,11 +1167,11 @@ TEST_F(KeyframingTest, insert_keyframe__non_array_property)
   ASSERT_NE(nullptr, fcurve->bezt);
   EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve->bezt[0].vec[1][1]);
 
   /* Second time inserting with a different value on the same frame should
    * simply replace the key. */
-  object->empty_drawsize = 2.0;
+  object->empty_drawsize = 86.0;
   const CombinedKeyingResult result_2 = insert_keyframe(bmain,
                                                         object->id,
                                                         nullptr,
@@ -1183,10 +1183,10 @@ TEST_F(KeyframingTest, insert_keyframe__non_array_property)
   EXPECT_EQ(1, result_2.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(1, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve->bezt[0].vec[1][1]);
 
   /* Third time inserting on a different time should add a second key. */
-  object->empty_drawsize = 3.0;
+  object->empty_drawsize = 7.0;
   anim_eval_context.eval_time = 10.0;
   const CombinedKeyingResult result_3 = insert_keyframe(bmain,
                                                         object->id,
@@ -1199,9 +1199,9 @@ TEST_F(KeyframingTest, insert_keyframe__non_array_property)
   EXPECT_EQ(1, result_3.get_count(SingleKeyingResult::SUCCESS));
   EXPECT_EQ(2, fcurve->totvert);
   EXPECT_EQ(1.0, fcurve->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve->bezt[0].vec[1][1]);
   EXPECT_EQ(10.0, fcurve->bezt[1].vec[1][0]);
-  EXPECT_EQ(3.0, fcurve->bezt[1].vec[1][1]);
+  EXPECT_EQ(7.0, fcurve->bezt[1].vec[1][1]);
 }
 
 /* Keying a single element of an array property with no keying flags. */
@@ -1311,9 +1311,9 @@ TEST_F(KeyframingTest, insert_keyframe__only_replace)
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
   /* First attempt should fail, because there are no fcurves yet. */
-  object->rot[0] = 0.0;
-  object->rot[1] = 0.0;
-  object->rot[2] = 0.0;
+  object->rot[0] = 42.0;
+  object->rot[1] = 42.0;
+  object->rot[2] = 42.0;
   const CombinedKeyingResult result_1 = insert_keyframe(bmain,
                                                         object->id,
                                                         nullptr,
@@ -1356,15 +1356,15 @@ TEST_F(KeyframingTest, insert_keyframe__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_z->bezt[0].vec[1][1]);
 
   /* Second attempt should also fail, because we insert on a different frame
    * than the two keys we just created. */
-  object->rot[0] = 2.0;
-  object->rot[1] = 2.0;
-  object->rot[2] = 2.0;
+  object->rot[0] = 86.0;
+  object->rot[1] = 86.0;
+  object->rot[2] = 86.0;
   anim_eval_context.eval_time = 5.0;
   const CombinedKeyingResult result_4 = insert_keyframe(bmain,
                                                         object->id,
@@ -1379,9 +1379,9 @@ TEST_F(KeyframingTest, insert_keyframe__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(0.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(42.0, fcurve_z->bezt[0].vec[1][1]);
 
   /* The third attempt, keying on the original frame, should succeed and replace
    * the existing key on each fcurve. */
@@ -1399,9 +1399,9 @@ TEST_F(KeyframingTest, insert_keyframe__only_replace)
   EXPECT_EQ(1, fcurve_x->totvert);
   EXPECT_EQ(1, fcurve_z->totvert);
   EXPECT_EQ(1.0, fcurve_x->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve_x->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve_x->bezt[0].vec[1][1]);
   EXPECT_EQ(1.0, fcurve_z->bezt[0].vec[1][0]);
-  EXPECT_EQ(2.0, fcurve_z->bezt[0].vec[1][1]);
+  EXPECT_EQ(86.0, fcurve_z->bezt[0].vec[1][1]);
 }
 
 /* Keying with the "Only Insert Needed" flag. */
