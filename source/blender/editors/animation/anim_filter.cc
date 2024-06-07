@@ -1576,7 +1576,10 @@ static size_t animfilter_action(bAnimContext *ac,
   }
 
   animrig::Binding *binding = action.binding_for_handle(binding_handle);
-  BLI_assert(binding);
+  if (!binding) {
+    /* Can happen when an Action is assigned, but not a Binding. */
+    return 0;
+  }
   return animfilter_action_binding(anim_data, ads, action, *binding, filter_mode, owner_id);
 }
 
