@@ -49,17 +49,18 @@ static Vector<float> iteration_strengths(const float strength)
 struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
-  // Vector<int> neighbor_offsets;
-  // Vector<int> neighbor_indices;
+  /**
+   * \note A vector allocated per element is typically not a good strategy for performance because
+   * of each vector's 24 byte overhead, non-contiguous memory, and the possibility of further heap
+   * allocations. However, it's done here for now for two reasons:
+   *  1. In typical quad meshes there are just 4 neighbors, which fit in the inline buffer.
+   *  2. We want to avoid using edges, and the remaining topology map we have access to is the
+   *     vertex to face map. That requires deduplication when building the neighbors, which
+   *     requires some intermediate data structure like a vector anyway.
+   */
   Vector<Vector<int>> vert_neighbors;
   Vector<float3> translations;
 };
-
-// struct MeshTopologyData {
-//   OffsetIndices<int> faces;
-//   Span<int> corner_verts;
-//   GroupedSpan<int> vert_to_face;
-// };
 
 /* For boundary vertices, only include other boundary vertices. */
 BLI_NOINLINE static void calc_vert_neighbors(const OffsetIndices<int> faces,
