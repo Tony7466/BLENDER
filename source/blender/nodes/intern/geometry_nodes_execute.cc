@@ -441,6 +441,14 @@ static bool old_id_property_type_matches_socket_convert_to_new_string(
   return true;
 }
 
+/**
+ * Check if the given `old_property` property type is compatible with the given `socket` type. E.g.
+ * a `SOCK_FLOAT` socket can use data from `IDP_FLOAT`, `IDP_INT` and `IDP_DOUBLE` idproperties.
+ *
+ * If `new_property` is given, it is expected to be of the 'perfect match' type with the given
+ * `socket` (see #id_property_create_from_socket), and its value will be set from the value of
+ * `old_property`, if possible.
+ */
 static bool old_id_property_type_matches_socket_convert_to_new(
     const bNodeTreeInterfaceSocket &socket,
     const IDProperty &old_property,
@@ -465,6 +473,7 @@ static bool old_id_property_type_matches_socket_convert_to_new(
             break;
           case IDP_FLOAT:
             IDP_Float(new_property) = IDP_Float(&old_property);
+            break;
         }
       }
       return true;
