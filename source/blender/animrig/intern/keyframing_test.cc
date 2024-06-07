@@ -156,8 +156,8 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__non_array_property)
    * to the object. */
   ASSERT_EQ(1, action.bindings().size());
   Binding *binding = action.binding(0);
-  EXPECT_EQ(0, strcmp(object->id.name, binding->name));
-  EXPECT_EQ(0, strcmp(object->adt->binding_name, binding->name));
+  EXPECT_STREQ(object->id.name, binding->name);
+  EXPECT_STREQ(object->adt->binding_name, binding->name);
   EXPECT_EQ(object->adt->binding_handle, binding->handle);
 
   /* We have the default layer and strip. */
@@ -417,8 +417,8 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
   ASSERT_EQ(1, action.bindings().size());
   Binding *binding_1 = action.binding_for_handle(object->adt->binding_handle);
   ASSERT_NE(nullptr, binding_1);
-  EXPECT_EQ(0, strcmp(object->id.name, binding_1->name));
-  EXPECT_EQ(0, strcmp(object->adt->binding_name, binding_1->name));
+  EXPECT_STREQ(object->id.name, binding_1->name);
+  EXPECT_STREQ(object->adt->binding_name, binding_1->name);
 
   /* Get the keyframe strip. */
   ASSERT_TRUE(action.is_action_layered());
@@ -448,8 +448,8 @@ TEST_F(KeyframingTest, insert_key_rna__layered_action__multiple_ids)
   ASSERT_EQ(2, action.bindings().size());
   Binding *binding_2 = action.binding_for_handle(armature_object->adt->binding_handle);
   ASSERT_NE(nullptr, binding_2);
-  EXPECT_EQ(0, strcmp(armature_object->id.name, binding_2->name));
-  EXPECT_EQ(0, strcmp(armature_object->adt->binding_name, binding_2->name));
+  EXPECT_STREQ(armature_object->id.name, binding_2->name);
+  EXPECT_STREQ(armature_object->adt->binding_name, binding_2->name);
 
   ASSERT_EQ(2, strip->channelbags().size());
   ChannelBag *channel_bag_2 = strip->channelbag_for_binding(*binding_2);
