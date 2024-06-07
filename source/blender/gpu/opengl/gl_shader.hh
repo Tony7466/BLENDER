@@ -105,6 +105,8 @@ class GLShader : public Shader {
    */
   GLProgram *program_active_ = nullptr;
 
+  /* When true, the shader generates its GLSources but it's not compiled.
+   * (Used for batch compilation) */
   bool async_compilation_ = false;
 
   /**

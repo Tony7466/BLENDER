@@ -1919,6 +1919,8 @@ void GLShaderCompiler::precompile_specializations(Span<ShaderSpecialization> spe
     items.append({});
     SpecializationWork &item = items.last();
     item.shader = sh;
+
+    /* Set async_compilation to true, so only the sources are generated. */
     sh->async_compilation_ = true;
     item.program = sh->program_get();
     sh->async_compilation_ = false;
