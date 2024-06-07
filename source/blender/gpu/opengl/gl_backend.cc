@@ -10,6 +10,9 @@
 #if defined(WIN32)
 #  include "BLI_winstuff.h"
 #endif
+#include "BLI_subprocess.hh"
+#include "BLI_threads.h"
+#include "DNA_userdef_types.h"
 
 #include "gpu_capabilities_private.hh"
 #include "gpu_platform_private.hh"
@@ -465,10 +468,10 @@ static void detect_workarounds()
     GLContext::multi_bind_image_support = false;
   }
 
-  /* #107642, #120273 Windows UHD600 series GPU but perhaps also others incorrectly report that
-   * they support image binding. But when used they can result into `GL_INVALID_OPERATION` with
+  /* #107642, #120273 Windows Intel iGPU (multiple generations) incorrectly report that
+   * they support image binding. But when used it results into `GL_INVALID_OPERATION` with
    * `internal format of texture N is not supported`. */
-  if (GPU_type_matches(GPU_DEVICE_INTEL_UHD, GPU_OS_WIN, GPU_DRIVER_OFFICIAL)) {
+  if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_WIN, GPU_DRIVER_OFFICIAL)) {
     GLContext::multi_bind_image_support = false;
   }
 
@@ -593,6 +596,13 @@ void GLBackend::capabilities_init()
   GLContext::framebuffer_fetch_support = false;
 
   detect_workarounds();
+
+#if BLI_SUBPROCESS_SUPPORT
+  GCaps.max_parallel_compilations = std::min(int(U.max_shader_compilation_subprocesses),
+                                             BLI_system_thread_count());
+#else
+  GCaps.max_parallel_compilations = 0;
+#endif
 
   /* Disable this feature entirely when not debugging. */
   if ((G.debug & G_DEBUG_GPU) == 0) {
