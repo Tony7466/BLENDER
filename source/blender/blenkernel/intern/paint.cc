@@ -41,7 +41,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
@@ -1510,14 +1510,6 @@ SculptSession::~SculptSession()
     BKE_image_pool_free(this->tex_pool);
   }
 
-  if (this->boundary_preview) {
-    MEM_SAFE_FREE(this->boundary_preview->verts);
-    MEM_SAFE_FREE(this->boundary_preview->edges);
-    MEM_SAFE_FREE(this->boundary_preview->distance);
-    MEM_SAFE_FREE(this->boundary_preview->edit_info);
-    MEM_SAFE_FREE(this->boundary_preview);
-  }
-
   BKE_sculptsession_free_vwpaint_data(this);
 
   MEM_SAFE_FREE(this->last_paint_canvas_key);
@@ -1899,7 +1891,8 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
     return;
   }
 
-  const std::string unique_name = BKE_id_attribute_calc_unique_name(orig_me->id, "Color");
+  AttributeOwner owner = AttributeOwner::from_id(&orig_me->id);
+  const std::string unique_name = BKE_attribute_calc_unique_name(owner, "Color");
   if (!orig_me->attributes_for_write().add(
           unique_name, AttrDomain::Point, CD_PROP_COLOR, AttributeInitDefaultValue()))
   {

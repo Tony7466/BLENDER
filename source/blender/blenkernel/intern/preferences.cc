@@ -25,6 +25,8 @@
 
 #include "BLT_translation.hh"
 
+#include "BLO_read_write.hh"
+
 #include "DNA_asset_types.h"
 #include "DNA_defaults.h"
 #include "DNA_userdef_types.h"
@@ -195,15 +197,15 @@ void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo 
   BLI_freelinkN(&userdef->extension_repos, repo);
 }
 
-bUserExtensionRepo *BKE_preferences_extension_repo_add_default(UserDef *userdef)
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default_remote(UserDef *userdef)
 {
   bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(
       userdef, "extensions.blender.org", "blender_org", "");
-  STRNCPY(repo->remote_url, "https://extensions.blender.org/api/v1/extensions");
+  /* The trailing slash on this URL is important, without it a redirect is used. */
+  STRNCPY(repo->remote_url, "https://extensions.blender.org/api/v1/extensions/");
   /* Disable `blender.org` by default, the initial "Online Preferences" section gives
    * the option to enable this. */
-  repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL | USER_EXTENSION_REPO_FLAG_DISABLED |
-                USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP;
+  repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL | USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP;
   return repo;
 }
 
@@ -212,6 +214,21 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add_default_user(UserDef *use
   bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(
       userdef, "User Default", "user_default", "");
   return repo;
+}
+
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default_system(UserDef *userdef)
+{
+  bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(userdef, "System", "system", "");
+  repo->source = USER_EXTENSION_REPO_SOURCE_SYSTEM;
+  return repo;
+}
+
+void BKE_preferences_extension_repo_add_defaults_all(UserDef *userdef)
+{
+  BLI_assert(BLI_listbase_is_empty(&userdef->extension_repos));
+  BKE_preferences_extension_repo_add_default_remote(userdef);
+  BKE_preferences_extension_repo_add_default_user(userdef);
+  BKE_preferences_extension_repo_add_default_system(userdef);
 }
 
 void BKE_preferences_extension_repo_name_set(UserDef *userdef,
@@ -260,8 +277,19 @@ size_t BKE_preferences_extension_repo_dirpath_get(const bUserExtensionRepo *repo
     return BLI_strncpy_rlen(dirpath, repo->custom_dirpath, dirpath_maxncpy);
   }
 
-  std::optional<std::string> path = BKE_appdir_folder_id_user_notest(BLENDER_USER_EXTENSIONS,
-                                                                     nullptr);
+  std::optional<std::string> path = std::nullopt;
+
+  switch (repo->source) {
+    case USER_EXTENSION_REPO_SOURCE_SYSTEM: {
+      path = BKE_appdir_folder_id(BLENDER_SYSTEM_EXTENSIONS, nullptr);
+      break;
+    }
+    default: { /* #USER_EXTENSION_REPO_SOURCE_USER. */
+      path = BKE_appdir_folder_id_user_notest(BLENDER_USER_EXTENSIONS, nullptr);
+      break;
+    }
+  }
+
   /* Highly unlikely to fail as the directory doesn't have to exist. */
   if (!path) {
     dirpath[0] = '\0';
@@ -404,6 +432,21 @@ int BKE_preferences_extension_repo_get_index(const UserDef *userdef,
 {
   return BLI_findindex(&userdef->extension_repos, repo);
 }
+
+void BKE_preferences_extension_repo_read_data(BlendDataReader *reader, bUserExtensionRepo *repo)
+{
+  if (repo->access_token) {
+    BLO_read_string(reader, &repo->access_token);
+  }
+}
+
+void BKE_preferences_extension_repo_write_data(BlendWriter *writer, const bUserExtensionRepo *repo)
+{
+  if (repo->access_token) {
+    BLO_write_string(writer, repo->access_token);
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

@@ -170,7 +170,7 @@ class LayerViewItemDragController : public AbstractViewItemDragController {
 
   void on_drag_start() override
   {
-    grease_pencil_.active_node = &dragged_node_;
+    grease_pencil_.set_active_node(&dragged_node_);
   }
 };
 
@@ -468,6 +468,7 @@ void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C)
       *block,
       "Grease Pencil Layer Tree View",
       std::make_unique<blender::ui::greasepencil::LayerTreeView>(grease_pencil));
+  tree_view->set_context_menu_title("Grease Pencil Layer");
   tree_view->set_min_rows(3);
 
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
