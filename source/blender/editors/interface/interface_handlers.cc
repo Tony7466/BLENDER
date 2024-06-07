@@ -178,6 +178,7 @@ static void ui_block_interaction_update(bContext *C,
 static void ui_mouse_motion_keynav_init(uiKeyNavLock *keynav, const wmEvent *event);
 static bool ui_mouse_motion_keynav_test(uiKeyNavLock *keynav, const wmEvent *event);
 #endif
+static void ui_multibut_free(uiHandleButtonData *data, uiBlock *block);
 
 /** \} */
 
@@ -262,7 +263,7 @@ struct uiSelectContextStore {
 };
 
 static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore *selctx_data);
-static void ui_selectcontext_end(uiBut *but, uiSelectContextStore *selctx_data);
+static void ui_selectcontext_free(struct uiSelectContextStore *selctx_data);
 static void ui_selectcontext_apply(bContext *C,
                                    uiBut *but,
                                    uiSelectContextStore *selctx_data,
@@ -375,6 +376,8 @@ struct uiTextEdit {
 };
 
 struct uiHandleButtonData {
+  ~uiHandleButtonData();
+
   wmWindowManager *wm;
   wmWindow *window;
   ScrArea *area;
@@ -539,6 +542,25 @@ static bool but_copypaste_profile_alive = false;
 /* -------------------------------------------------------------------- */
 /** \name Handling Data Functions
  * \{ */
+
+uiHandleButtonData::~uiHandleButtonData()
+{
+  ui_multibut_free(this, nullptr);
+#ifdef USE_ALLSELECT
+  ui_selectcontext_free(&select_others);
+#endif
+
+  if (text_edit.undo_stack_text) {
+    ui_textedit_undo_stack_destroy(text_edit.undo_stack_text);
+  }
+  /* clean up */
+  if (text_edit.edit_string) {
+    MEM_freeN(text_edit.edit_string);
+  }
+  if (text_edit.original_string) {
+    MEM_freeN(text_edit.original_string);
+  }
+}
 
 void ui_but_handle_data_free(uiHandleButtonData *handle_data)
 {
@@ -1907,15 +1929,13 @@ static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore
   return success;
 }
 
-static void ui_selectcontext_end(uiBut *but, uiSelectContextStore *selctx_data)
+static void ui_selectcontext_free(uiSelectContextStore *selctx_data)
 {
   if (selctx_data->do_free) {
     if (selctx_data->elems) {
       MEM_freeN(selctx_data->elems);
     }
   }
-
-  but->flag &= ~UI_BUT_IS_SELECT_CONTEXT;
 }
 
 static void ui_selectcontext_apply(bContext *C,
@@ -8800,18 +8820,6 @@ static void button_activate_exit(
 
   ui_blocks_set_tooltips(data->region, false);
 
-  /* clean up */
-  if (data->text_edit.edit_string) {
-    MEM_freeN(data->text_edit.edit_string);
-  }
-  if (data->text_edit.original_string) {
-    MEM_freeN(data->text_edit.original_string);
-  }
-
-#ifdef USE_ALLSELECT
-  ui_selectcontext_end(but, &data->select_others);
-#endif
-
   if (data->changed_cursor) {
     WM_cursor_modal_restore(data->window);
   }
@@ -8838,6 +8846,9 @@ static void button_activate_exit(
   ui_but_handle_data_free(but->active);
   but->active = nullptr;
 
+#ifdef USE_ALLSELECT
+  but->flag &= ~UI_BUT_IS_SELECT_CONTEXT;
+#endif
   but->flag &= ~(UI_HOVER | UI_SELECT);
   but->flag |= UI_BUT_LAST_ACTIVE;
   if (!onfree) {
