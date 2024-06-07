@@ -9279,32 +9279,34 @@ static void with_priority_button_active(bContext *C,
                                         ARegion *region,
                                         blender::FunctionRef<void(uiBut *priority_but)> fn)
 {
+  uiBut *priority_but = ui_region_find_always_active_but(region);
+  if (!priority_but) {
+    return;
+  }
+  BLI_assert(priority_but->active == nullptr);
+
+  uiBut *regular_active_but = ui_region_find_active_but(region);
+  uiHandleButtonData *regular_active_data = regular_active_but ? regular_active_but->active :
+                                                                 nullptr;
+
+  if (regular_active_but) {
+    regular_active_but->active = nullptr;
+  }
+  if (!priority_but->priority_active) {
+    ui_but_activate_event(C, region, priority_but);
+    priority_but->priority_active = priority_but->active;
+    priority_but->priority_active->handle_transparent = true;
+  }
+  priority_but->active = priority_but->priority_active;
+
+  fn(priority_but);
+
+  /* Popup might have been closed, so lookup button again. */
   if (uiBut *priority_but = ui_region_find_always_active_but(region)) {
-    uiBut *regular_active_but = ui_region_find_active_but(region);
-    uiHandleButtonData *regular_active_data = regular_active_but ? regular_active_but->active :
-                                                                   nullptr;
-
-    BLI_assert(priority_but->active == nullptr);
-
-    if (regular_active_but) {
-      regular_active_but->active = nullptr;
-    }
-    if (!priority_but->priority_active) {
-      ui_but_activate_event(C, region, priority_but);
-      priority_but->priority_active = priority_but->active;
-      priority_but->priority_active->handle_transparent = true;
-    }
-    priority_but->active = priority_but->priority_active;
-
-    fn(priority_but);
-
-    /* Popup might have been closed, so lookup button again. */
-    if (uiBut *always_active_but = ui_region_find_active_but(region)) {
-      always_active_but->active = nullptr;
-    }
-    if (regular_active_but) {
-      regular_active_but->active = regular_active_data;
-    }
+    priority_but->active = nullptr;
+  }
+  if (regular_active_but) {
+    regular_active_but->active = regular_active_data;
   }
 }
 
