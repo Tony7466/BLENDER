@@ -29,10 +29,24 @@ class btTypedConstraint;
 
 namespace blender::bke {
 
+/**
+ * Physics data can be in one of three states:
+ * - Mutable: Only one user and has physics data.
+ * - Read-Only: Has physics data, but more than one user.
+ * - Cached: No physics data (user count irrelevant, always read-only).
+ *
+ * State can change between Mutable and Read-Only when adding or removing users.
+ * Once physics data has been moved the component becomes Cached, at which point going back to
+ * mutable or read-only state is impossible (data cannot be added back).
+ */
+
 struct PhysicsGeometryImpl : public ImplicitSharingMixin {
-  /* The physics data can be moved to a new instance.
-   * This flag provides lock-free access to the physics data. */
-  std::atomic<bool> has_data = false;
+  /* If true then the data is read-only and the attribute cache is used instead of direct access to
+   * physics data. No Bullet instances are held by this component when cached. */
+  std::atomic<bool> is_cached = false;
+
+  /* Protects shared read/write access to physics data. */
+  mutable std::shared_mutex data_mutex;
 
   btDiscreteDynamicsWorld *world = nullptr;
   btCollisionConfiguration *config = nullptr;
@@ -62,8 +76,9 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void delete_self() override;
 };
 
-void move_physics_impl_data(PhysicsGeometryImpl &from,
+void move_physics_impl_data(const PhysicsGeometryImpl &from,
                             PhysicsGeometryImpl &to,
+                            bool use_world,
                             int rigid_bodies_offset,
                             int constraints_offset,
                             int shapes_offset);

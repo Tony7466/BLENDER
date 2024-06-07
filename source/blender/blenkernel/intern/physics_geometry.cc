@@ -23,6 +23,8 @@
 #include <LinearMath/btMotionState.h>
 #include <LinearMath/btTransform.h>
 #include <functional>
+#include <mutex>
+#include <shared_mutex>
 
 #include "attribute_access_intern.hh"
 #include "physics_geometry_impl.hh"
@@ -251,13 +253,14 @@ template<typename T> using RigidBodySetFn = void (*)(btRigidBody &body, T value)
 
 /* Placeholder that ignores get/set. */
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
-class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
+class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
+  std::shared_lock<std::shared_mutex> lock_;
 
  public:
   VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
-      : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl)
+      : VArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl), lock_(impl_->data_mutex)
   {
   }
 
@@ -265,6 +268,56 @@ class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
            RigidBodyGetFn<OtherElemT> OtherGetFn,
            RigidBodySetFn<OtherElemT> OtherSetFn>
   friend class VArrayImpl_For_PhysicsBodies;
+
+ private:
+  ElemT get(const int64_t index) const override
+  {
+    return GetFn(*impl_->rigid_bodies[index]);
+  }
+
+  void materialize(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(*impl_->rigid_bodies[i]); });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i])); });
+  }
+
+  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(*impl_->rigid_bodies[i]); });
+  }
+
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
+      new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
+    });
+  }
+};
+
+/* Placeholder that ignores get/set. */
+template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
+class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
+ private:
+  const PhysicsGeometryImpl *impl_;
+  std::unique_lock<std::shared_mutex> lock_;
+
+ public:
+  VMutableArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
+      : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl), lock_(impl_->data_mutex)
+  {
+  }
+
+  template<typename OtherElemT,
+           RigidBodyGetFn<OtherElemT> OtherGetFn,
+           RigidBodySetFn<OtherElemT> OtherSetFn>
+  friend class VMutableArrayImpl_For_PhysicsBodies;
 
  private:
   ElemT get(const int64_t index) const override
@@ -300,54 +353,6 @@ class VArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
       new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
     });
-  }
-};
-
-template<typename ElemT>
-class VArrayImpl_For_PhysicsBodiesCache final : public VMutableArrayImpl<ElemT> {
- private:
-  MutableSpan<ElemT> cache_;
-
- public:
-  VArrayImpl_For_PhysicsBodiesCache(const MutableSpan<ElemT> cache)
-      : VMutableArrayImpl<ElemT>(cache.size()), cache_(cache)
-  {
-  }
-
-  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsBodiesCache;
-
- private:
-  ElemT get(const int64_t index) const override
-  {
-    return cache_[index];
-  }
-
-  void set(const int64_t index, ElemT value) override
-  {
-    cache_[index] = value;
-  }
-
-  void materialize(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = cache_[i]; });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { new (dst + i) ElemT(cache_[i]); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = cache_[i]; });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { new (dst + pos) ElemT(cache_[i]); });
   }
 };
 
@@ -395,57 +400,46 @@ class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
   }
 };
 
-// template<typename T, T (*GetFn)(const btRigidBody &body)>
-// static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics)
-//{
-//   /* Data has to be merged for valid range, otherwise check against first impl range. */
-//   if (physics->impl().is_expired) {
-//     return VArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(physics);
-//   }
-//   return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics);
-// }
-
 template<typename T, RigidBodyGetFn<T> GetFn>
 static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const Span<T> cache)
 {
-  if (physics->impl().has_data) {
-    return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(
-        physics->impl());
+  if (physics->impl().is_cached) {
+    return VArray<T>::ForSpan(cache);
   }
-  return VArray<T>::ForSpan(cache);
+  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics->impl());
 }
 
 template<typename T, RigidBodyGetFn<T> GetFn>
 static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const T value)
 {
-  if (physics->impl().has_data) {
-    return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(
-        physics->impl());
+  if (physics->impl().is_cached) {
+    const int bodies_num = physics->impl().attribute_cache.body_positions.size();
+    return VArray<T>::ForSingle(value, bodies_num);
   }
-  return VArray<T>::ForSingle(value, physics->impl().attribute_cache.body_positions.size());
+  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics->impl());
 }
 
 template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
 static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
                                                         const MutableSpan<T> cache)
 {
-  if (physics->impl().has_data) {
-    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
-        physics->impl());
+  if (physics->impl().is_cached) {
+    return VMutableArray<T>::ForSpan(cache);
   }
-  return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesCache<T>>(cache);
+  return VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
+      physics->impl());
 }
 
 template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
 static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
                                                         const T value)
 {
-  if (physics->impl().has_data) {
-    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
-        physics->impl());
+  if (physics->impl().is_cached) {
+    const int bodies_num = physics->impl().attribute_cache.body_positions.size();
+    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(value, bodies_num);
   }
-  return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(
-      value, physics->impl().attribute_cache.body_positions.size());
+  return VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
+      physics->impl());
 }
 
 /* -------------------------------------------------------------------- */
@@ -611,12 +605,12 @@ const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 PhysicsGeometryImpl *PhysicsGeometry::try_impl_for_write() const
 {
   if (!impl_->is_mutable()) {
-    //PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
-    //move_physics_impl_data(*impl_, *new_impl);
+    // PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
+    // move_physics_impl_data(*impl_, *new_impl);
 
-    //impl_->remove_user_and_delete_if_last();
-    //impl_ = new_impl;
-    //impl_->add_user();
+    // impl_->remove_user_and_delete_if_last();
+    // impl_ = new_impl;
+    // impl_->add_user();
     return nullptr;
   }
 
@@ -625,112 +619,77 @@ PhysicsGeometryImpl *PhysicsGeometry::try_impl_for_write() const
 
 void move_physics_data(const PhysicsGeometry &from,
                        PhysicsGeometry &to,
+                       const bool use_world,
                        int bodies_offset,
                        int constraints_offset,
                        int shapes_offset)
 {
-  PhysicsGeometryImpl *from_impl = from.try_impl_for_write();
   PhysicsGeometryImpl *to_impl = to.try_impl_for_write();
-  if (from_impl && to_impl) {
-    move_physics_impl_data(*from_impl, *to_impl, bodies_offset, constraints_offset, shapes_offset);
-  }
-  for (const PhysicsGeometryImpl *impl : impls) {
-    impl->add_user();
-  }
+  BLI_assert(to_impl != nullptr);
+  const PhysicsGeometryImpl &from_impl = from.impl();
+  move_physics_impl_data(
+      from_impl, *to_impl, use_world, bodies_offset, constraints_offset, shapes_offset);
 }
 
-void move_physics_impl_data(PhysicsGeometryImpl &from,
+void move_physics_impl_data(const PhysicsGeometryImpl &from,
                             PhysicsGeometryImpl &to,
-                            int bodies_offset,
-                            int constraints_offset,
-                            int shapes_offset)
+                            const bool use_world,
+                            const int bodies_offset,
+                            const int constraints_offset,
+                            const int shapes_offset)
 {
+  BLI_assert(to.is_mutable());
+
+  /* Early check before locking. */
+  if (from.is_cached) {
+    return;
+  }
+
   const IndexRange body_range = IndexRange(bodies_offset, from.rigid_bodies.size());
   const IndexRange constraint_range = IndexRange(constraints_offset, from.constraints.size());
   const IndexRange shape_range = IndexRange(shapes_offset, from.shapes.size());
+  /* Make sure target has enough space. */
+  BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
+  BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
+  BLI_assert(shape_range.intersect(to.shapes.index_range()) == shape_range);
 
+  std::unique_lock lock(from.data_mutex);
+  if (from.is_cached) {
+    /* This may have changed before locking the mutex. */
+    return;
+  }
+  PhysicsGeometryImpl &from_mutable = const_cast<PhysicsGeometryImpl &>(from);
+
+  btDynamicsWorld *from_world = from_mutable.world;
+  if (use_world) {
+    if (to.world) {
+      destroy_world(to);
+    }
+    to.world = from_mutable.world;
+  }
+  btDynamicsWorld *to_world = to.world;
+
+  for (const int i_body : body_range.index_range()) {
+    btRigidBody *body = from_mutable.rigid_bodies[i_body];
+    btMotionState *motion_state = from_mutable.motion_states[i_body];
+
+    const bool is_in_world = body->isInWorld();
+    if (is_in_world && to_world != from_world) {
+      /* Move all to new world. */
+      BLI_assert(from_world != nullptr);
+      from_world->removeRigidBody(body);
+
+      if (to_world != nullptr) {
+        to_world->addRigidBody(body);
+      }
+    }
+
+    to.rigid_bodies[body_range[i_body]] = body;
+    to.motion_states[body_range[i_body]] = motion_state;
+  }
+  from_mutable.rigid_bodies.reinitialize(0);
+  from_mutable.motion_states.reinitialize(0);
 }
-
-// bool PhysicsGeometry::has_unmerged_data() const
-//{
-//   return impl_array_.size() > 1;
-// }
-//
-// bool PhysicsGeometry::try_consolidate_data()
-//{
-//   BLI_assert(!impl_array_.is_empty());
-//   if (impl_array_.size() == 1) {
-//     return true;
-//   }
-//
-//   Array<int> body_offsets(impl_array_.size() + 1);
-//   Array<int> constraint_offsets(impl_array_.size() + 1);
-//   Array<int> shape_offsets(impl_array_.size() + 1);
-//   body_offsets[0] = constraint_offsets[0] = shape_offsets[0] = 0;
-//   for (const int i_impl : impl_array_.index_range()) {
-//     const PhysicsGeometryImpl &impl = *impl_array_[i_impl];
-//     /* All data must be mutable for consolidating. */
-//     if (!impl.is_mutable()) {
-//       return false;
-//     }
-//     body_offsets[i_impl + 1] = body_offsets[i_impl] + impl.rigid_bodies.size();
-//     constraint_offsets[i_impl + 1] = constraint_offsets[i_impl] + 0;
-//     shape_offsets[i_impl + 1] = shape_offsets[i_impl] + 0;
-//   }
-//   const int new_bodies_num = body_offsets.last();
-//   // const int new_constraints_num = constraint_offsets.last();
-//   // const int new_shapes_num = shape_offsets.last();
-//
-//   /* Move data to the first world. */
-//   PhysicsGeometryImpl &dst_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_.first());
-//
-//   Array<btRigidBody *> new_rigid_bodies(new_bodies_num);
-//   Array<btMotionState *> new_motion_states(new_bodies_num);
-//   for (const int i_impl : impl_array_.index_range()) {
-//     PhysicsGeometryImpl &src_impl = const_cast<PhysicsGeometryImpl &>(*impl_array_[i_impl]);
-//
-//     const IndexRange body_range = IndexRange::from_begin_end(body_offsets[i_impl],
-//                                                              body_offsets[i_impl + 1]);
-//     // const IndexRange constraint_range =
-//     IndexRange::from_begin_end(constraint_offsets[i_impl],
-//     //                                                                constraint_offsets[i_impl
-//     +
-//     //                                                                1]);
-//     // const IndexRange shape_range = IndexRange::from_begin_end(shape_offsets[i_impl],
-//     //                                                           shape_offsets[i_impl + 1]);
-//     for (const int i_body : body_range.index_range()) {
-//       btRigidBody *body = src_impl.rigid_bodies[i_body];
-//       btMotionState *motion_state = src_impl.motion_states[i_body];
-//       const bool is_in_world = body->isInWorld();
-//
-//       /* Move all to first impl world. */
-//       if (is_in_world && i_impl > 0) {
-//         BLI_assert(src_impl.world != nullptr);
-//         src_impl.world->removeRigidBody(body);
-//         if (dst_impl.world) {
-//           dst_impl.world->addRigidBody(body);
-//         }
-//       }
-//
-//       src_impl.rigid_bodies[i_body] = nullptr;
-//       src_impl.motion_states[i_body] = nullptr;
-//       new_rigid_bodies[body_range[i_body]] = body;
-//       new_motion_states[body_range[i_body]] = motion_state;
-//     }
-//     src_impl.rigid_bodies.reinitialize(0);
-//     src_impl.motion_states.reinitialize(0);
-//   }
-//   dst_impl.rigid_bodies = new_rigid_bodies;
-//   dst_impl.motion_states = new_motion_states;
-//
-//   /* Only keep first world. */
-//   for (const int i_impl : impl_array_.index_range().drop_front(1)) {
-//     impl_array_[i_impl]->remove_user_and_delete_if_last();
-//   }
-//   impl_array_ = Vector<const PhysicsGeometryImpl *>({&dst_impl});
-//
-//   return true;
-// }
 
 bool PhysicsGeometry::has_world() const
 {
@@ -1002,9 +961,13 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
-    GVArray varray = (GetCacheFn == nullptr) ?
-                         VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl())) :
-                         VArray_For_PhysicsBodies<T, GetFn>(physics, T());
+    GVArray varray;
+    if constexpr (GetCacheFn == nullptr) {
+      VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl()));
+    }
+    else {
+      VArray_For_PhysicsBodies<T, GetFn>(physics, T());
+    }
 
     return {std::move(varray), domain_, nullptr};
   }
@@ -1022,10 +985,13 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
-    GVMutableArray varray = (GetCacheFn == nullptr) ?
-                                VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(
-                                    physics, GetMutableCacheFn(*impl)) :
-                                VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
+    GVMutableArray varray;
+    if constexpr (GetCacheFn == nullptr) {
+      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, GetMutableCacheFn(*impl));
+    }
+    else {
+      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
+    }
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {

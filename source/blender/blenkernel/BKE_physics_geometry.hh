@@ -119,6 +119,7 @@ class PhysicsGeometry {
 
 void move_physics_data(const PhysicsGeometry &from,
                        PhysicsGeometry &to,
+                       bool use_world,
                        int rigid_bodies_offset,
                        int constraints_offset,
                        int shapes_offset);
