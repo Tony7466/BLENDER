@@ -538,6 +538,7 @@ void Instance::draw_viewport()
     DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
     GPU_framebuffer_clear_color_depth(dfbl->default_fb, float4(0.0f), 1.0f);
     info += "Compiling EEVEE Engine Shaders\n";
+    DRW_viewport_request_redraw();
     return;
   }
 
