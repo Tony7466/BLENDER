@@ -454,6 +454,9 @@ static void draw_keyframes(bAnimContext *ac,
                                   scale_factor,
                                   action_flag);
         break;
+      case ALE_NONE:
+      case ALE_NLASTRIP:
+        break;
     }
   }
 
