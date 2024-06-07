@@ -982,10 +982,10 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
 
     GVArray varray;
     if constexpr (GetCacheFn == nullptr) {
-      VArray_For_PhysicsBodies<T, GetFn>(physics, T());
+      varray = VArray_For_PhysicsBodies<T, GetFn>(physics, T());
     }
     else {
-      VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl()));
+      varray = VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl()));
     }
 
     return {std::move(varray), domain_, nullptr};
