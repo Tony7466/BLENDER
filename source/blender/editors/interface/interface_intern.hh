@@ -285,6 +285,16 @@ struct uiBut {
    * #UI_SELECT state mostly).
    */
   uiHandleButtonData *active = nullptr;
+  /**
+   * Only one active button is supported, but there are cases where that's not enough. A common
+   * case is to keep some filter button active to receive text input, while other buttons remain
+   * active for interaction.
+   *
+   * Buttons that have #priority_active set will be temporarily activated for event handling, and
+   * only if they don't consume the event (for example text input events) the event will be
+   * forwarded to normal active button.
+   */
+  uiHandleButtonData *priority_active = nullptr;
 
   /** Custom button data (borrowed, not owned). */
   void *custom_data = nullptr;
@@ -912,8 +922,6 @@ struct uiPopupBlockHandle {
   /* #endif */
 
   char menu_idname[64];
-
-  uiHandleButtonData *active_filter_but_data;
 };
 
 /* -------------------------------------------------------------------- */

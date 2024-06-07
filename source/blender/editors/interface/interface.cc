@@ -830,7 +830,7 @@ static uiButExtraOpIcon *ui_but_extra_icon_find_old(const uiButExtraOpIcon *new_
 static void ui_but_extra_icons_update_from_old_but(const uiBut *new_but, const uiBut *old_but)
 {
   /* Specifically for keeping some state info for the active button. */
-  BLI_assert(old_but->active || (old_but->flag2 & UI_BUT2_FILTER_TEXT_ALWAYS_ACTIVE));
+  BLI_assert(old_but->active || old_but->priority_active);
 
   LISTBASE_FOREACH (uiButExtraOpIcon *, new_extra_icon, &new_but->extra_op_icons) {
     uiButExtraOpIcon *old_extra_icon = ui_but_extra_icon_find_old(new_extra_icon, old_but);
@@ -853,7 +853,7 @@ static void ui_but_extra_icons_update_from_old_but(const uiBut *new_but, const u
  */
 static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
 {
-  BLI_assert(oldbut->active || (oldbut->flag2 & UI_BUT2_FILTER_TEXT_ALWAYS_ACTIVE));
+  BLI_assert(oldbut->active || oldbut->priority_active);
 
   /* flags from the buttons we want to refresh, may want to add more here... */
   const int flag_copy = UI_BUT_REDALERT | UI_HAS_ICON | UI_SELECT_DRAW;
@@ -987,7 +987,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
     return false;
   }
 
-  if (oldbut->active || (oldbut->flag2 & UI_BUT2_FILTER_TEXT_ALWAYS_ACTIVE)) {
+  if (oldbut->active || oldbut->priority_active) {
     /* Move button over from oldblock to new block. */
     BLI_remlink(&oldblock->buttons, oldbut);
     BLI_insertlinkafter(&block->buttons, but, oldbut);
@@ -3410,6 +3410,9 @@ static void ui_but_free(const bContext *C, uiBut *but)
 
   ui_but_free_type_specific(but);
 
+  if (but->priority_active && but->priority_active != but->active) {
+    MEM_freeN(but->priority_active);
+  }
   if (but->active) {
     /* XXX solve later, buttons should be free-able without context ideally,
      * however they may have open tooltips or popup windows, which need to

@@ -8847,12 +8847,8 @@ static void button_activate_exit(
     }
   }
 
-  if (block->handle) {
-    if (block->handle->active_filter_but_data == but->active) {
-      block->handle->active_filter_but_data = nullptr;
-    }
-  }
-
+  BLI_assert(!but->priority_active || but->priority_active == but->active);
+  but->priority_active = nullptr;
   /* clean up button */
   MEM_SAFE_FREE(but->active);
 
@@ -11748,8 +11744,9 @@ static int ui_handler_region_menu(bContext *C, const wmEvent *event, void * /*us
 }
 
 /* two types of popups, one with operator + enum, other with regular callbacks */
-static int ui_popup_handler_ex(bContext *C, const wmEvent *event, uiPopupBlockHandle *menu)
+static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
 {
+  uiPopupBlockHandle *menu = static_cast<uiPopupBlockHandle *>(userdata);
   /* we block all events, this is modal interaction,
    * except for drop events which is described below */
   int retval = WM_UI_HANDLER_BREAK;
@@ -11779,12 +11776,12 @@ static int ui_popup_handler_ex(bContext *C, const wmEvent *event, uiPopupBlockHa
     if (regular_active) {
       regular_active->active = nullptr;
     }
-    if (!menu->active_filter_but_data) {
+    if (!always_active_but->priority_active) {
       ui_but_activate_event(C, menu->region, always_active_but);
-      menu->active_filter_but_data = always_active_but->active;
-      menu->active_filter_but_data->handle_transparent = true;
+      always_active_but->priority_active = always_active_but->active;
+      always_active_but->priority_active->handle_transparent = true;
     }
-    always_active_but->active = menu->active_filter_but_data;
+    always_active_but->active = always_active_but->priority_active;
 
 #if 0
     if (ui_handle_menus_recursive(C, event, menu, 0, false, false, true) != WM_UI_HANDLER_CONTINUE)
@@ -11797,12 +11794,12 @@ static int ui_popup_handler_ex(bContext *C, const wmEvent *event, uiPopupBlockHa
     }
     // menu->menuretval = 0;
 
+    /* Popup might have been closed, so lookup button again. */
+    if (uiBut *always_active_but = ui_region_find_active_but(menu->region)) {
+      always_active_but->active = nullptr;
+    }
     if (regular_active) {
       regular_active->active = regular_active_data;
-    }
-    /* Popup might have been closed, so repeat lookup. */
-    if (uiBut *always_active_but = ui_region_find_always_active_but(menu->region)) {
-      always_active_but->active = nullptr;
     }
   }
 
@@ -11873,12 +11870,6 @@ static int ui_popup_handler_ex(bContext *C, const wmEvent *event, uiPopupBlockHa
   return retval;
 }
 
-static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
-{
-  uiPopupBlockHandle *menu = static_cast<uiPopupBlockHandle *>(userdata);
-  return ui_popup_handler_ex(C, event, menu);
-}
-
 static void ui_popup_handler_remove(bContext *C, void *userdata)
 {
   uiPopupBlockHandle *menu = static_cast<uiPopupBlockHandle *>(userdata);
@@ -11889,24 +11880,6 @@ static void ui_popup_handler_remove(bContext *C, void *userdata)
    * just explicitly flag menu with UI_RETURN_OK to avoid canceling it. */
   if ((menu->menuretval & UI_RETURN_OK) == 0 && menu->cancel_func) {
     menu->cancel_func(C, menu->popup_arg);
-  }
-
-  if (uiBut *always_active_but = ui_region_find_always_active_but(menu->region)) {
-    if (menu->active_filter_but_data) {
-      uiBut *prev_act = ui_region_find_active_but(menu->region);
-      uiHandleButtonData *prev_data = prev_act ? prev_act->active : nullptr;
-
-      if (prev_act) {
-        prev_act->active = nullptr;
-      }
-
-      always_active_but->active = menu->active_filter_but_data;
-      ui_but_active_free(C, always_active_but);
-
-      if (prev_act) {
-        prev_act->active = prev_data;
-      }
-    }
   }
 
   /* free menu block if window is closed for some reason */
