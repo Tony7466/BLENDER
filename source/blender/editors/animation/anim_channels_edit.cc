@@ -196,6 +196,7 @@ static bool get_channel_bounds(bAnimContext *ac,
     case ALE_ACT:
     case ALE_GROUP:
     case ALE_ACTION_LAYERED:
+    case ALE_ACTION_BINDING:
     case ALE_GREASE_PENCIL_DATA:
     case ALE_GREASE_PENCIL_GROUP:
       return false;
@@ -309,6 +310,7 @@ void ANIM_set_active_channel(bAnimContext *ac,
       case ANIMTYPE_SUMMARY:
       case ANIMTYPE_SCENE:
       case ANIMTYPE_OBJECT:
+      case ANIMTYPE_ACTION_BINDING:
       case ANIMTYPE_NLACONTROLS:
       case ANIMTYPE_FILLDRIVERS:
       case ANIMTYPE_DSNTREE:
@@ -449,6 +451,7 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
     case ANIMTYPE_SUMMARY:
     case ANIMTYPE_SCENE:
     case ANIMTYPE_OBJECT:
+    case ANIMTYPE_ACTION_BINDING:
     case ANIMTYPE_NLACONTROLS:
     case ANIMTYPE_FILLDRIVERS:
     case ANIMTYPE_SHAPEKEY:
@@ -548,6 +551,9 @@ static eAnimChannels_SetFlag anim_channels_selection_flag_for_toggle(const ListB
         if (ale->flag & NLATRACK_SELECTED) {
           return ACHANNEL_SETFLAG_CLEAR;
         }
+        break;
+      case ANIMTYPE_ACTION_BINDING:
+        // TODO: write selection handling code for bindings.
         break;
 
       case ANIMTYPE_FILLACTD:        /* Action Expander */
@@ -679,6 +685,9 @@ static void anim_channels_select_set(bAnimContext *ac,
         nlt->flag &= ~NLATRACK_ACTIVE;
         break;
       }
+      case ANIMTYPE_ACTION_BINDING:
+        // TODO: write selection handling code for bindings.
+        break;
       case ANIMTYPE_FILLACTD:        /* Action Expander */
       case ANIMTYPE_FILLACT_LAYERED: /* Animation Expander */
       case ANIMTYPE_DSMAT:           /* Datablock AnimData Expanders */
@@ -2332,6 +2341,7 @@ static int animchannels_delete_exec(bContext *C, wmOperator * /*op*/)
       case ANIMTYPE_GROUP:
       case ANIMTYPE_NLACONTROLS:
       case ANIMTYPE_FILLACT_LAYERED:
+      case ANIMTYPE_ACTION_BINDING:  // TODO: Should it be possible to delete bindings like this?
       case ANIMTYPE_FILLACTD:
       case ANIMTYPE_FILLDRIVERS:
       case ANIMTYPE_DSMAT:
@@ -3160,6 +3170,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
         case ANIMTYPE_NLACONTROLS:
         case ANIMTYPE_NLACURVE:
         case ANIMTYPE_FILLACT_LAYERED:
+        case ANIMTYPE_ACTION_BINDING:
         case ANIMTYPE_FILLACTD:
         case ANIMTYPE_FILLDRIVERS:
         case ANIMTYPE_DSMAT:
