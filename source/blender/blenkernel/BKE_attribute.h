@@ -137,13 +137,12 @@ int BKE_attribute_to_index(const AttributeOwner &owner,
                            AttrDomainMask domain_mask,
                            eCustomDataMask layer_mask);
 
-const char *BKE_attributes_active_color_name(const AttributeOwner &owner);
-const char *BKE_attributes_default_color_name(const AttributeOwner &owner);
-void BKE_attributes_active_color_set(AttributeOwner &owner, const char *name);
-void BKE_attributes_default_color_set(AttributeOwner &owner, const char *name);
+const char *BKE_id_attributes_active_color_name(const struct ID *id);
+const char *BKE_id_attributes_default_color_name(const struct ID *id);
+void BKE_id_attributes_active_color_set(struct ID *id, const char *name);
+void BKE_id_attributes_default_color_set(struct ID *id, const char *name);
 
-const struct CustomDataLayer *BKE_attributes_color_find(const AttributeOwner &owner,
-                                                        const char *name);
+const struct CustomDataLayer *BKE_id_attributes_color_find(const struct ID *id, const char *name);
 bool BKE_color_attribute_supported(const struct Mesh &mesh, const blender::StringRef name);
 
 std::string BKE_attribute_calc_unique_name(const AttributeOwner &owner,

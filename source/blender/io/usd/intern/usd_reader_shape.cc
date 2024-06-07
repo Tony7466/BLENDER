@@ -234,9 +234,8 @@ void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampl
   }
 
   if (!active_color_name.IsEmpty()) {
-    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-    BKE_attributes_default_color_set(owner, active_color_name.GetText());
-    BKE_attributes_active_color_set(owner, active_color_name.GetText());
+    BKE_id_attributes_default_color_set(&mesh->id, active_color_name.GetText());
+    BKE_id_attributes_active_color_set(&mesh->id, active_color_name.GetText());
   }
 }
 

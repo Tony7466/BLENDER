@@ -1779,7 +1779,7 @@ static void set_active_layer(bContext *C, SculptAttrRef *attr)
   }
 
   if (layer) {
-    BKE_attributes_active_color_set(owner, layer->name);
+    BKE_id_attributes_active_color_set(&mesh->id, layer->name);
 
     if (ob->sculpt && ob->sculpt->pbvh) {
       BKE_pbvh_update_active_vcol(*ob->sculpt->pbvh, mesh);

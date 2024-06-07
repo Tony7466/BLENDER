@@ -283,8 +283,7 @@ static void attr_create_generic(Scene *scene,
   const blender::bke::AttributeAccessor b_attributes = b_mesh.attributes();
   AttributeSet &attributes = (subdivision) ? mesh->subd_attributes : mesh->attributes;
   static const ustring u_velocity("velocity");
-  AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(&b_mesh.id));
-  const ustring default_color_name{BKE_attributes_default_color_name(owner)};
+  const ustring default_color_name{BKE_id_attributes_default_color_name(&b_mesh.id)};
 
   b_attributes.for_all([&](const blender::bke::AttributeIDRef &id,
                            const blender::bke::AttributeMetaData meta_data) {

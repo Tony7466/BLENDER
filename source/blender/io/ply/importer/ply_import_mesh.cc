@@ -85,9 +85,8 @@ Mesh *convert_ply_to_mesh(PlyData &data, const PLYImportParams &params)
       }
     }
     colors.finish();
-    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-    BKE_attributes_active_color_set(owner, "Col");
-    BKE_attributes_default_color_set(owner, "Col");
+    BKE_id_attributes_active_color_set(&mesh->id, "Col");
+    BKE_id_attributes_default_color_set(&mesh->id, "Col");
   }
 
   /* Uvmap */

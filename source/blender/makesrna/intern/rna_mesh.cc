@@ -1118,14 +1118,14 @@ static void rna_Mesh_vertex_color_active_set(PointerRNA *ptr,
                                              const PointerRNA value,
                                              ReportList * /*reports*/)
 {
+  Mesh *mesh = (Mesh *)ptr->data;
   CustomDataLayer *layer = (CustomDataLayer *)value.data;
 
   if (!layer) {
     return;
   }
 
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  BKE_attributes_active_color_set(owner, layer->name);
+  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
 }
 
 static int rna_Mesh_vertex_color_active_index_get(PointerRNA *ptr)
@@ -1143,6 +1143,7 @@ static int rna_Mesh_vertex_color_active_index_get(PointerRNA *ptr)
 
 static void rna_Mesh_vertex_color_active_index_set(PointerRNA *ptr, int value)
 {
+  Mesh *mesh = (Mesh *)ptr->data;
   CustomData *ldata = rna_mesh_ldata(ptr);
 
   if (value < 0 || value >= CustomData_number_of_layers(ldata, CD_PROP_BYTE_COLOR)) {
@@ -1152,8 +1153,8 @@ static void rna_Mesh_vertex_color_active_index_set(PointerRNA *ptr, int value)
 
   CustomDataLayer *layer = ldata->layers + CustomData_get_layer_index(ldata, CD_PROP_BYTE_COLOR) +
                            value;
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  BKE_attributes_active_color_set(owner, layer->name);
+
+  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
 }
 
 static void rna_MeshLoopColorLayer_data_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -1193,9 +1194,9 @@ static void rna_mesh_color_active_render_set(PointerRNA *ptr, bool value)
   if (value == false) {
     return;
   }
+  Mesh *mesh = (Mesh *)ptr->owner_id;
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  BKE_attributes_default_color_set(owner, layer->name);
+  BKE_id_attributes_default_color_set(&mesh->id, layer->name);
 }
 
 static void rna_mesh_color_active_set(PointerRNA *ptr, bool value)
@@ -1203,9 +1204,10 @@ static void rna_mesh_color_active_set(PointerRNA *ptr, bool value)
   if (value == false) {
     return;
   }
+  Mesh *mesh = (Mesh *)ptr->owner_id;
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  BKE_attributes_active_color_set(owner, layer->name);
+
+  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
 }
 
 /* Skin vertices */

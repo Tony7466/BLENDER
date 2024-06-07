@@ -578,12 +578,10 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
   }
 
   if (src.active_color_attribute) {
-    AttributeOwner dst_owner = AttributeOwner::from_id(&dst.id);
-    BKE_attributes_active_color_set(dst_owner, src.active_color_attribute);
+    BKE_id_attributes_active_color_set(&dst.id, src.active_color_attribute);
   }
   if (src.default_color_attribute) {
-    AttributeOwner dst_owner = AttributeOwner::from_id(&dst.id);
-    BKE_attributes_default_color_set(dst_owner, src.default_color_attribute);
+    BKE_id_attributes_default_color_set(&dst.id, src.default_color_attribute);
   }
 
   free_bvhtree_from_mesh(&bvhtree);

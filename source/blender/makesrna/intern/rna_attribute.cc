@@ -604,7 +604,10 @@ static PointerRNA rna_AttributeGroup_active_color_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = BKE_attribute_search_for_write(
-      owner, BKE_attributes_active_color_name(owner), CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+      owner,
+      BKE_id_attributes_active_color_name(ptr->owner_id),
+      CD_MASK_COLOR_ALL,
+      ATTR_DOMAIN_MASK_COLOR);
 
   PointerRNA attribute_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Attribute, layer);
   return attribute_ptr;
@@ -614,16 +617,19 @@ static void rna_AttributeGroup_active_color_set(PointerRNA *ptr,
                                                 PointerRNA attribute_ptr,
                                                 ReportList * /*reports*/)
 {
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  ID *id = ptr->owner_id;
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
-  BKE_attributes_active_color_set(owner, layer->name);
+  BKE_id_attributes_active_color_set(id, layer->name);
 }
 
 static int rna_AttributeGroup_active_color_index_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   const CustomDataLayer *layer = BKE_attribute_search(
-      owner, BKE_attributes_active_color_name(owner), CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+      owner,
+      BKE_id_attributes_active_color_name(ptr->owner_id),
+      CD_MASK_COLOR_ALL,
+      ATTR_DOMAIN_MASK_COLOR);
 
   return BKE_attribute_to_index(owner, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
@@ -639,7 +645,7 @@ static void rna_AttributeGroup_active_color_index_set(PointerRNA *ptr, int value
     return;
   }
 
-  BKE_attributes_active_color_set(owner, layer->name);
+  BKE_id_attributes_active_color_set(ptr->owner_id, layer->name);
 }
 
 static void rna_AttributeGroup_active_color_index_range(
@@ -669,8 +675,8 @@ static void rna_AttributeGroup_update_active_color(Main * /*bmain*/,
 static int rna_AttributeGroup_render_color_index_get(PointerRNA *ptr)
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  const CustomDataLayer *layer = BKE_attributes_color_find(
-      owner, BKE_attributes_default_color_name(owner));
+  const CustomDataLayer *layer = BKE_id_attributes_color_find(
+      ptr->owner_id, BKE_id_attributes_default_color_name(ptr->owner_id));
 
   return BKE_attribute_to_index(owner, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
@@ -686,7 +692,7 @@ static void rna_AttributeGroup_render_color_index_set(PointerRNA *ptr, int value
     return;
   }
 
-  BKE_attributes_default_color_set(owner, layer->name);
+  BKE_id_attributes_default_color_set(ptr->owner_id, layer->name);
 }
 
 static void rna_AttributeGroup_render_color_index_range(
@@ -702,8 +708,8 @@ static void rna_AttributeGroup_render_color_index_range(
 
 static void rna_AttributeGroup_default_color_name_get(PointerRNA *ptr, char *value)
 {
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  const char *name = BKE_attributes_default_color_name(owner);
+  const ID *id = ptr->owner_id;
+  const char *name = BKE_id_attributes_default_color_name(id);
   if (!name) {
     value[0] = '\0';
     return;
@@ -713,8 +719,8 @@ static void rna_AttributeGroup_default_color_name_get(PointerRNA *ptr, char *val
 
 static int rna_AttributeGroup_default_color_name_length(PointerRNA *ptr)
 {
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  const char *name = BKE_attributes_default_color_name(owner);
+  const ID *id = ptr->owner_id;
+  const char *name = BKE_id_attributes_default_color_name(id);
   return name ? strlen(name) : 0;
 }
 
@@ -732,8 +738,8 @@ static void rna_AttributeGroup_default_color_name_set(PointerRNA *ptr, const cha
 
 static void rna_AttributeGroup_active_color_name_get(PointerRNA *ptr, char *value)
 {
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  const char *name = BKE_attributes_active_color_name(owner);
+  const ID *id = ptr->owner_id;
+  const char *name = BKE_id_attributes_active_color_name(id);
   if (!name) {
     value[0] = '\0';
     return;
@@ -743,8 +749,8 @@ static void rna_AttributeGroup_active_color_name_get(PointerRNA *ptr, char *valu
 
 static int rna_AttributeGroup_active_color_name_length(PointerRNA *ptr)
 {
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
-  const char *name = BKE_attributes_active_color_name(owner);
+  const ID *id = ptr->owner_id;
+  const char *name = BKE_id_attributes_active_color_name(id);
   return name ? strlen(name) : 0;
 }
 

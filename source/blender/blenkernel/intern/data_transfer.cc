@@ -263,7 +263,7 @@ static void data_transfer_mesh_attributes_transfer_active_color_string(
   const AttributeOwner owner_src = AttributeOwner::from_id(const_cast<ID *>(&mesh_src->id));
   AttributeOwner owner_dst = AttributeOwner::from_id(&mesh_dst->id);
 
-  const char *active_color_src = BKE_attributes_active_color_name(owner_src);
+  const char *active_color_src = BKE_id_attributes_active_color_name(&mesh_src->id);
 
   if ((data_type == CD_PROP_COLOR) &&
       !BKE_attribute_search(
@@ -314,7 +314,7 @@ static void data_transfer_mesh_attributes_transfer_default_color_string(
   const AttributeOwner owner_src = AttributeOwner::from_id(const_cast<ID *>(&mesh_src->id));
   AttributeOwner owner_dst = AttributeOwner::from_id(&mesh_dst->id);
 
-  const char *default_color_src = BKE_attributes_default_color_name(owner_src);
+  const char *default_color_src = BKE_id_attributes_default_color_name(&mesh_src->id);
 
   if ((data_type == CD_PROP_COLOR) &&
       !BKE_attribute_search(

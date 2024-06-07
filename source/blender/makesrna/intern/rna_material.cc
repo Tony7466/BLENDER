@@ -17,7 +17,6 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_attribute.h"
 #include "BKE_customdata.hh"
 
 #include "RNA_define.hh"
@@ -177,10 +176,10 @@ static void rna_Material_active_paint_texture_index_update(bContext *C, PointerR
       Object *ob = CTX_data_active_object(C);
       if (ob != nullptr && ob->type == OB_MESH) {
         Mesh *mesh = static_cast<Mesh *>(ob->data);
-        AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-        const CustomDataLayer *layer = BKE_attributes_color_find(owner, slot->attribute_name);
+        const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh->id,
+                                                                    slot->attribute_name);
         if (layer != nullptr) {
-          BKE_attributes_active_color_set(owner, layer->name);
+          BKE_id_attributes_active_color_set(&mesh->id, layer->name);
         }
         DEG_id_tag_update(&ob->id, 0);
         WM_main_add_notifier(NC_GEOM | ND_DATA, &ob->id);

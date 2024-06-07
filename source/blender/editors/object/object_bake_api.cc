@@ -496,8 +496,7 @@ static bool bake_object_check(const Scene *scene,
   }
 
   if (target == R_BAKE_TARGET_VERTEX_COLORS) {
-    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-    if (!BKE_attributes_color_find(owner, mesh->active_color_attribute)) {
+    if (!BKE_id_attributes_color_find(&mesh->id, mesh->active_color_attribute)) {
       BKE_reportf(reports,
                   RPT_ERROR,
                   "Mesh does not have an active color attribute \"%s\"",
@@ -1000,8 +999,7 @@ static bool bake_targets_init_vertex_colors(Main *bmain,
   }
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-  if (!BKE_attributes_color_find(owner, mesh->active_color_attribute)) {
+  if (!BKE_id_attributes_color_find(&mesh->id, mesh->active_color_attribute)) {
     BKE_report(reports, RPT_ERROR, "No active color attribute to bake to");
     return false;
   }
@@ -1184,10 +1182,10 @@ static void convert_float_color_to_byte_color(const MPropCol *float_colors,
 static bool bake_targets_output_vertex_colors(BakeTargets *targets, Object *ob)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-  const CustomDataLayer *active_color_layer = BKE_attributes_color_find(
-      owner, mesh->active_color_attribute);
+  const CustomDataLayer *active_color_layer = BKE_id_attributes_color_find(
+      &mesh->id, mesh->active_color_attribute);
   BLI_assert(active_color_layer != nullptr);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
   const bke::AttrDomain domain = BKE_attribute_domain(owner, active_color_layer);
 
   const int channels_num = targets->channels_num;

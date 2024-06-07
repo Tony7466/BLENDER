@@ -6566,9 +6566,9 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object &ob)
     return nullptr;
   }
 
-  BKE_attributes_active_color_set(owner, layer->name);
+  BKE_id_attributes_active_color_set(&mesh->id, layer->name);
   if (!mesh->default_color_attribute) {
-    BKE_attributes_default_color_set(owner, layer->name);
+    BKE_id_attributes_default_color_set(&mesh->id, layer->name);
   }
 
   ed::sculpt_paint::object_active_color_fill(ob, color, false);

@@ -3619,12 +3619,11 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (actlayer) {
-          AttributeOwner owner = AttributeOwner::from_id(&me->id);
           if (step) {
-            BKE_attributes_default_color_set(owner, actlayer->name);
+            BKE_id_attributes_default_color_set(&me->id, actlayer->name);
           }
           else {
-            BKE_attributes_active_color_set(owner, actlayer->name);
+            BKE_id_attributes_active_color_set(&me->id, actlayer->name);
           }
         }
       }
@@ -3785,12 +3784,11 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (actlayer) {
-          AttributeOwner owner = AttributeOwner::from_id(&me->id);
           if (step) {
-            BKE_attributes_default_color_set(owner, actlayer->name);
+            BKE_id_attributes_default_color_set(&me->id, actlayer->name);
           }
           else {
-            BKE_attributes_active_color_set(owner, actlayer->name);
+            BKE_id_attributes_active_color_set(&me->id, actlayer->name);
           }
         }
       }

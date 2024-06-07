@@ -393,7 +393,8 @@ int ED_mesh_color_add(
 
   if (do_init) {
     const char *active_name = mesh->active_color_attribute;
-    if (const CustomDataLayer *active_layer = BKE_attributes_color_find(owner, active_name)) {
+    if (const CustomDataLayer *active_layer = BKE_id_attributes_color_find(&mesh->id, active_name))
+    {
       if (const BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
         BMesh &bm = *em->bm;
         const int src_i = CustomData_get_named_layer(&bm.ldata, CD_PROP_BYTE_COLOR, active_name);
@@ -408,7 +409,7 @@ int ED_mesh_color_add(
   }
 
   if (active_set) {
-    BKE_attributes_active_color_set(owner, layer->name);
+    BKE_id_attributes_active_color_set(&mesh->id, layer->name);
   }
 
   DEG_id_tag_update(&mesh->id, 0);
@@ -437,8 +438,8 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
     return false;
   }
 
-  BKE_attributes_active_color_set(owner, unique_name.c_str());
-  BKE_attributes_default_color_set(owner, unique_name.c_str());
+  BKE_id_attributes_active_color_set(&mesh->id, unique_name.c_str());
+  BKE_id_attributes_default_color_set(&mesh->id, unique_name.c_str());
   BKE_mesh_tessface_clear(mesh);
   DEG_id_tag_update(&mesh->id, 0);
 

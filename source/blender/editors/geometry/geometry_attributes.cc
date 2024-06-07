@@ -384,10 +384,10 @@ static int geometry_color_attribute_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_attributes_active_color_set(owner, layer->name);
+  BKE_id_attributes_active_color_set(id, layer->name);
 
-  if (!BKE_attributes_color_find(owner, BKE_attributes_default_color_name(owner))) {
-    BKE_attributes_default_color_set(owner, layer->name);
+  if (!BKE_id_attributes_color_find(id, BKE_id_attributes_default_color_name(id))) {
+    BKE_id_attributes_default_color_set(id, layer->name);
   }
 
   sculpt_paint::object_active_color_fill(*ob, color, false);
@@ -560,13 +560,12 @@ static int geometry_color_attribute_set_render_exec(bContext *C, wmOperator *op)
 {
   Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
-  AttributeOwner owner = AttributeOwner::from_id(id);
 
   char name[MAX_NAME];
   RNA_string_get(op->ptr, "name", name);
 
-  if (BKE_attributes_color_find(owner, name)) {
-    BKE_attributes_default_color_set(owner, name);
+  if (BKE_id_attributes_color_find(id, name)) {
+    BKE_id_attributes_default_color_set(id, name);
 
     DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_GEOM | ND_DATA, id);
@@ -602,12 +601,11 @@ static int geometry_color_attribute_remove_exec(bContext *C, wmOperator *op)
 {
   Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
-  AttributeOwner owner = AttributeOwner::from_id(id);
-  const std::string active_name = StringRef(BKE_attributes_active_color_name(owner));
+  const std::string active_name = StringRef(BKE_id_attributes_active_color_name(id));
   if (active_name.empty()) {
     return OPERATOR_CANCELLED;
   }
-
+  AttributeOwner owner = AttributeOwner::from_id(id);
   if (!BKE_attribute_remove(owner, active_name.c_str(), op->reports)) {
     return OPERATOR_CANCELLED;
   }
@@ -626,8 +624,8 @@ static bool geometry_color_attributes_remove_poll(bContext *C)
 
   const Object *ob = object::context_object(C);
   const ID *data = static_cast<ID *>(ob->data);
-  const AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(data));
-  if (BKE_attributes_color_find(owner, BKE_attributes_active_color_name(owner))) {
+
+  if (BKE_id_attributes_color_find(data, BKE_id_attributes_active_color_name(data))) {
     return true;
   }
 
@@ -653,18 +651,18 @@ static int geometry_color_attribute_duplicate_exec(bContext *C, wmOperator *op)
 {
   Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
-  AttributeOwner owner = AttributeOwner::from_id(id);
-  const char *active_name = BKE_attributes_active_color_name(owner);
+  const char *active_name = BKE_id_attributes_active_color_name(id);
   if (active_name == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
+  AttributeOwner owner = AttributeOwner::from_id(id);
   CustomDataLayer *new_layer = BKE_attribute_duplicate(owner, active_name, op->reports);
   if (new_layer == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  BKE_attributes_active_color_set(owner, new_layer->name);
+  BKE_id_attributes_active_color_set(id, new_layer->name);
 
   DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
@@ -684,9 +682,8 @@ static bool geometry_color_attributes_duplicate_poll(bContext *C)
 
   const Object *ob = object::context_object(C);
   const ID *data = static_cast<ID *>(ob->data);
-  const AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(data));
 
-  if (BKE_attributes_color_find(owner, BKE_attributes_active_color_name(owner))) {
+  if (BKE_id_attributes_color_find(data, BKE_id_attributes_active_color_name(data))) {
     return true;
   }
 

@@ -311,11 +311,15 @@ bool BKE_attribute_rename(AttributeOwner &owner,
                                    BKE_uv_map_pin_name_get(result_name.c_str(), buffer_dst),
                                    reports);
   }
-  if (StringRef(old_name) == BKE_attributes_active_color_name(owner)) {
-    BKE_attributes_active_color_set(owner, result_name.c_str());
-  }
-  if (StringRef(old_name) == BKE_attributes_default_color_name(owner)) {
-    BKE_attributes_default_color_set(owner, result_name.c_str());
+
+  if (owner.type() == AttributeOwnerType::Mesh) {
+    Mesh *mesh = owner.get_mesh();
+    if (StringRef(old_name) == BKE_id_attributes_active_color_name(&mesh->id)) {
+      BKE_id_attributes_active_color_set(&mesh->id, result_name.c_str());
+    }
+    if (StringRef(old_name) == BKE_id_attributes_default_color_name(&mesh->id)) {
+      BKE_id_attributes_default_color_set(&mesh->id, result_name.c_str());
+    }
   }
 
   STRNCPY_UTF8(layer->name, result_name.c_str());
@@ -527,12 +531,13 @@ bool BKE_attribute_remove(AttributeOwner &owner, const char *name, ReportList *r
           }
 
           if (is_active_color_attribute) {
-            BKE_attributes_active_color_set(
-                owner, color_name_from_index(owner, color_clamp_index(owner, active_color_index)));
+            BKE_id_attributes_active_color_set(
+                &mesh->id,
+                color_name_from_index(owner, color_clamp_index(owner, active_color_index)));
           }
           if (is_default_color_attribute) {
-            BKE_attributes_default_color_set(
-                owner,
+            BKE_id_attributes_default_color_set(
+                &mesh->id,
                 color_name_from_index(owner, color_clamp_index(owner, default_color_index)));
           }
 
@@ -576,12 +581,12 @@ bool BKE_attribute_remove(AttributeOwner &owner, const char *name, ReportList *r
     }
 
     if (is_active_color_attribute) {
-      BKE_attributes_active_color_set(
-          owner, color_name_from_index(owner, color_clamp_index(owner, active_color_index)));
+      BKE_id_attributes_active_color_set(
+          &mesh->id, color_name_from_index(owner, color_clamp_index(owner, active_color_index)));
     }
     if (is_default_color_attribute) {
-      BKE_attributes_default_color_set(
-          owner, color_name_from_index(owner, color_clamp_index(owner, default_color_index)));
+      BKE_id_attributes_default_color_set(
+          &mesh->id, color_name_from_index(owner, color_clamp_index(owner, default_color_index)));
     }
 
     if (metadata->data_type == CD_PROP_FLOAT2 && metadata->domain == AttrDomain::Corner) {
@@ -915,48 +920,58 @@ int BKE_attribute_to_index(const AttributeOwner &owner,
   return -1;
 }
 
-const char *BKE_attributes_active_color_name(const AttributeOwner &owner)
+const char *BKE_id_attributes_active_color_name(const ID *id)
 {
-  if (owner.type() == AttributeOwnerType::Mesh) {
-    return owner.get_mesh()->active_color_attribute;
+  if (GS(id->name) == ID_ME) {
+    return reinterpret_cast<const Mesh *>(id)->active_color_attribute;
   }
   return nullptr;
 }
 
-const char *BKE_attributes_default_color_name(const AttributeOwner &owner)
+const char *BKE_id_attributes_default_color_name(const ID *id)
 {
-  if (owner.type() == AttributeOwnerType::Mesh) {
-    return owner.get_mesh()->default_color_attribute;
+  if (GS(id->name) == ID_ME) {
+    return reinterpret_cast<const Mesh *>(id)->default_color_attribute;
   }
   return nullptr;
 }
 
-void BKE_attributes_active_color_set(AttributeOwner &owner, const char *name)
+void BKE_id_attributes_active_color_set(ID *id, const char *name)
 {
-  if (owner.type() == AttributeOwnerType::Mesh) {
-    Mesh *mesh = owner.get_mesh();
-    MEM_SAFE_FREE(mesh->active_color_attribute);
-    if (name) {
-      mesh->active_color_attribute = BLI_strdup(name);
+  switch (GS(id->name)) {
+    case ID_ME: {
+      Mesh *mesh = reinterpret_cast<Mesh *>(id);
+      MEM_SAFE_FREE(mesh->active_color_attribute);
+      if (name) {
+        mesh->active_color_attribute = BLI_strdup(name);
+      }
+      break;
     }
+    default:
+      break;
   }
 }
 
-void BKE_attributes_default_color_set(AttributeOwner &owner, const char *name)
+void BKE_id_attributes_default_color_set(ID *id, const char *name)
 {
-  if (owner.type() == AttributeOwnerType::Mesh) {
-    Mesh *mesh = owner.get_mesh();
-    MEM_SAFE_FREE(mesh->default_color_attribute);
-    if (name) {
-      mesh->default_color_attribute = BLI_strdup(name);
+  switch (GS(id->name)) {
+    case ID_ME: {
+      Mesh *mesh = reinterpret_cast<Mesh *>(id);
+      MEM_SAFE_FREE(mesh->default_color_attribute);
+      if (name) {
+        mesh->default_color_attribute = BLI_strdup(name);
+      }
+      break;
     }
+    default:
+      break;
   }
 }
 
-const CustomDataLayer *BKE_attributes_color_find(const AttributeOwner &owner, const char *name)
+const CustomDataLayer *BKE_id_attributes_color_find(const ID *id, const char *name)
 {
-  return BKE_attribute_search(
-      const_cast<AttributeOwner &>(owner), name, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+  AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(id));
+  return BKE_attribute_search(owner, name, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
 }
 
 bool BKE_color_attribute_supported(const Mesh &mesh, const blender::StringRef name)
