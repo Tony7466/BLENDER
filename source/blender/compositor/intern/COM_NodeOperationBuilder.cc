@@ -252,8 +252,8 @@ void NodeOperationBuilder::register_viewer(ViewerOperation *viewer)
   }
 
   /* A viewer is already registered, so we active this viewer but only if it is in the active node
-   * tree, since it takes precedent over viewer nodes in other trees. So deactivate existing viewer
-   * and set this viewer as active. */
+   * tree, since it takes precedence over viewer nodes in other trees. So deactivate existing
+   * viewer and set this viewer as active. */
   if (current_node_->is_in_active_group()) {
     active_viewer_->set_active(false);
 
