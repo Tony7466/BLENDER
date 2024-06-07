@@ -137,6 +137,8 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
 
   shaders.is_ready(true);
 
+  update_eval_members();
+
   sampling.init(scene);
   camera.init();
   /* Film isn't used but init to avoid side effects in other module. */
