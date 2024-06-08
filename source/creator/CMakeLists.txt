@@ -443,15 +443,6 @@ endif()
 if(WITH_PYTHON)
   # install(CODE "message(\"copying blender scripts...\")")
 
-  # exclude addons_contrib if release branch
-  if("${BLENDER_VERSION_CYCLE}" STREQUAL "release" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "rc" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "beta")
-    set(ADDON_EXCLUDE_CONDITIONAL "addons_contrib/*")
-  else()
-    set(ADDON_EXCLUDE_CONDITIONAL "_addons_contrib/*")  # Dummy, won't do anything.
-  endif()
-
   # do not install freestyle dir if disabled
   if(NOT WITH_FREESTYLE)
     set(FREESTYLE_EXCLUDE_CONDITIONAL "freestyle/*")
@@ -469,7 +460,9 @@ if(WITH_PYTHON)
     PATTERN ".arcconfig" EXCLUDE
     PATTERN "__pycache__" EXCLUDE
     PATTERN "site" EXCLUDE
-    PATTERN "${ADDON_EXCLUDE_CONDITIONAL}" EXCLUDE
+    # Legacy sub-module which is no longer used.
+    PATTERN "addons/*" EXCLUDE
+    PATTERN "addons_contrib/*" EXCLUDE
     PATTERN "${FREESTYLE_EXCLUDE_CONDITIONAL}" EXCLUDE
   )
 
@@ -486,7 +479,6 @@ if(WITH_PYTHON)
       )
     endif()
   endif()
-  unset(ADDON_EXCLUDE_CONDITIONAL)
   unset(FREESTYLE_EXCLUDE_CONDITIONAL)
 endif()
 
@@ -1118,7 +1110,9 @@ elseif(WIN32)
   )
 
   if(WITH_WINDOWS_RELEASE_PDB)
-    if(WITH_WINDOWS_RELEASE_STRIPPED_PDB)
+    # Skip install of stripped pdb if compiling with clang since there doesn't seem
+    # to be a pdbstripped version for clang-cl
+    if(WITH_WINDOWS_RELEASE_STRIPPED_PDB AND NOT MSVC_CLANG)
       # Icky hack for older CMAKE from https://stackoverflow.com/a/21198501
       # `$<CONFIG>` will work in newer CMAKE but the version currently (3.12)
       # on the build-bot does not support this endeavor.
@@ -1665,6 +1659,13 @@ if(DEFINED TARGETDIR_TEXT)
 )
 endif()
 
+# Create a system extensions directory (users or administrators may populate this).
+# This only contains a `readme.txt` explaining it's purpose.
+install(
+  DIRECTORY ${CMAKE_SOURCE_DIR}/release/extensions
+  DESTINATION ${TARGETDIR_VER}
+)
+
 # Install more files specified elsewhere.
 delayed_do_install(${TARGETDIR_VER})
 
@@ -1851,7 +1852,8 @@ if(WIN32)
     PDB_NAME "blender_private"
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>"
   )
-  if(WITH_WINDOWS_RELEASE_PDB AND WITH_WINDOWS_RELEASE_STRIPPED_PDB)
+  # If compiling with clang-cl we skip PDBSTRIPPED. There's doesn't seem to be a switch for it currently
+  if(WITH_WINDOWS_RELEASE_PDB AND WITH_WINDOWS_RELEASE_STRIPPED_PDB AND NOT MSVC_CLANG)
     # This is slightly messy, but single target generators like ninja will not have the
     # `CMAKE_CFG_INTDIR` variable and multi-target generators like `msbuild` will not have
     # `CMAKE_BUILD_TYPE`. This can be simplified by `target_link_options` and the `$<CONFIG>`

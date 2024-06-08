@@ -160,10 +160,10 @@ struct PropertyRNAOrID {
    */
   bool is_idprop;
   /**
-   * Whether this property is defined as a RNA one, but uses an IDProperty to store its value (aka
-   * python-defined runtine RNA properties).
+   * Whether this property is defined as a RNA one, but uses an #IDProperty to store its value
+   * (aka Python-defined runtime RNA properties).
    *
-   * \note: In that case, the IDProperty itself may very well not exist (yet), when it has never
+   * \note In that case, the IDProperty itself may very well not exist (yet), when it has never
    * been set.
    *
    * \note Mutually exclusive with #is_idprop.
@@ -411,6 +411,8 @@ struct BoolPropertyRNA {
   PropBooleanArrayGetFuncEx getarray_ex;
   PropBooleanArraySetFuncEx setarray_ex;
 
+  PropBooleanGetFuncEx get_default;
+  PropBooleanArrayGetFuncEx get_default_array;
   bool defaultvalue;
   const bool *defaultarray;
 };
@@ -435,6 +437,8 @@ struct IntPropertyRNA {
   int hardmin, hardmax;
   int step;
 
+  PropIntGetFuncEx get_default;
+  PropIntArrayGetFuncEx get_default_array;
   int defaultvalue;
   const int *defaultarray;
 };
@@ -459,6 +463,9 @@ struct FloatPropertyRNA {
   float hardmin, hardmax;
   float step;
   int precision;
+
+  PropFloatGetFuncEx get_default;
+  PropFloatArrayGetFuncEx get_default_array;
 
   float defaultvalue;
   const float *defaultarray;

@@ -53,19 +53,27 @@ ShaderModule::ShaderModule()
     shader = nullptr;
   }
 
-#ifndef NDEBUG
-  /* Ensure all shader are described. */
+  Vector<const GPUShaderCreateInfo *> infos;
+  infos.reserve(MAX_SHADER_TYPE);
+
   for (auto i : IndexRange(MAX_SHADER_TYPE)) {
     const char *name = static_shader_create_info_name_get(eShaderType(i));
+    const GPUShaderCreateInfo *create_info = GPU_shader_create_info_get(name);
+    infos.append(create_info);
+
+#ifndef NDEBUG
     if (name == nullptr) {
       std::cerr << "EEVEE: Missing case for eShaderType(" << i
                 << ") in static_shader_create_info_name_get().";
       BLI_assert(0);
     }
-    const GPUShaderCreateInfo *create_info = GPU_shader_create_info_get(name);
     BLI_assert_msg(create_info != nullptr, "EEVEE: Missing create info for static shader.");
-  }
 #endif
+  }
+
+  if (GPU_use_parallel_compilation()) {
+    compilation_handle_ = GPU_shader_batch_create_from_infos(infos);
+  }
 }
 
 ShaderModule::~ShaderModule()
@@ -81,6 +89,22 @@ ShaderModule::~ShaderModule()
 /** \name Static shaders
  *
  * \{ */
+
+bool ShaderModule::is_ready(bool block)
+{
+  if (compilation_handle_ == 0) {
+    return true;
+  }
+
+  if (block || GPU_shader_batch_is_ready(compilation_handle_)) {
+    Vector<GPUShader *> shaders = GPU_shader_batch_finalize(compilation_handle_);
+    for (int i : IndexRange(MAX_SHADER_TYPE)) {
+      shaders_[i] = shaders[i];
+    }
+  }
+
+  return compilation_handle_ == 0;
+}
 
 const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_type)
 {
@@ -105,12 +129,10 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_deferred_capture_eval";
     case DEFERRED_PLANAR_EVAL:
       return "eevee_deferred_planar_eval";
+    case DEFERRED_THICKNESS_AMEND:
+      return "eevee_deferred_thickness_amend";
     case DEFERRED_TILE_CLASSIFY:
       return "eevee_deferred_tile_classify";
-    case DEFERRED_TILE_COMPACT:
-      return "eevee_deferred_tile_compact";
-    case DEFERRED_TILE_STENCIL:
-      return "eevee_deferred_tile_stencil";
     case HIZ_DEBUG:
       return "eevee_hiz_debug";
     case HIZ_UPDATE:
@@ -141,12 +163,12 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_debug_irradiance_grid";
     case DEBUG_GBUFFER:
       return "eevee_debug_gbuffer";
-    case DISPLAY_PROBE_GRID:
-      return "eevee_display_probe_grid";
-    case DISPLAY_PROBE_REFLECTION:
-      return "eevee_display_probe_reflection";
+    case DISPLAY_PROBE_VOLUME:
+      return "eevee_display_lightprobe_volume";
+    case DISPLAY_PROBE_SPHERE:
+      return "eevee_display_lightprobe_sphere";
     case DISPLAY_PROBE_PLANAR:
-      return "eevee_display_probe_planar";
+      return "eevee_display_lightprobe_planar";
     case DOF_BOKEH_LUT:
       return "eevee_depth_of_field_bokeh_lut";
     case DOF_DOWNSAMPLE:
@@ -191,6 +213,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case LIGHT_SHADOW_SETUP:
+      return "eevee_light_shadow_setup";
     case RAY_DENOISE_SPATIAL:
       return "eevee_ray_denoise_spatial";
     case RAY_DENOISE_TEMPORAL:
@@ -210,23 +234,25 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
     case RAY_TILE_COMPACT:
       return "eevee_ray_tile_compact";
     case LIGHTPROBE_IRRADIANCE_BOUNDS:
-      return "eevee_lightprobe_irradiance_bounds";
+      return "eevee_lightprobe_volume_bounds";
     case LIGHTPROBE_IRRADIANCE_OFFSET:
-      return "eevee_lightprobe_irradiance_offset";
+      return "eevee_lightprobe_volume_offset";
     case LIGHTPROBE_IRRADIANCE_RAY:
-      return "eevee_lightprobe_irradiance_ray";
+      return "eevee_lightprobe_volume_ray";
     case LIGHTPROBE_IRRADIANCE_LOAD:
-      return "eevee_lightprobe_irradiance_load";
+      return "eevee_lightprobe_volume_load";
     case LIGHTPROBE_IRRADIANCE_WORLD:
-      return "eevee_lightprobe_irradiance_world";
+      return "eevee_lightprobe_volume_world";
     case SPHERE_PROBE_CONVOLVE:
-      return "eevee_reflection_probe_convolve";
+      return "eevee_lightprobe_sphere_convolve";
     case SPHERE_PROBE_REMAP:
-      return "eevee_reflection_probe_remap";
+      return "eevee_lightprobe_sphere_remap";
     case SPHERE_PROBE_IRRADIANCE:
-      return "eevee_reflection_probe_irradiance";
+      return "eevee_lightprobe_sphere_irradiance";
     case SPHERE_PROBE_SELECT:
-      return "eevee_reflection_probe_select";
+      return "eevee_lightprobe_sphere_select";
+    case SPHERE_PROBE_SUNLIGHT:
+      return "eevee_lightprobe_sphere_sunlight";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
@@ -298,15 +324,16 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
 
 GPUShader *ShaderModule::static_shader_get(eShaderType shader_type)
 {
+  BLI_assert(is_ready());
   if (shaders_[shader_type] == nullptr) {
     const char *shader_name = static_shader_create_info_name_get(shader_type);
-
-    shaders_[shader_type] = GPU_shader_create_from_info_name(shader_name);
-
-    if (shaders_[shader_type] == nullptr) {
+    if (GPU_use_parallel_compilation()) {
       fprintf(stderr, "EEVEE: error: Could not compile static shader \"%s\"\n", shader_name);
+      BLI_assert(0);
     }
-    BLI_assert(shaders_[shader_type] != nullptr);
+    else {
+      shaders_[shader_type] = GPU_shader_create_from_info_name(shader_name);
+    }
   }
   return shaders_[shader_type];
 }
@@ -327,9 +354,14 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   eMaterialPipeline pipeline_type;
   eMaterialGeometry geometry_type;
   eMaterialDisplacement displacement_type;
+  eMaterialThickness thickness_type;
   bool transparent_shadows;
-  material_type_from_shader_uuid(
-      shader_uuid, pipeline_type, geometry_type, displacement_type, transparent_shadows);
+  material_type_from_shader_uuid(shader_uuid,
+                                 pipeline_type,
+                                 geometry_type,
+                                 displacement_type,
+                                 thickness_type,
+                                 transparent_shadows);
 
   GPUCodegenOutput &codegen = *codegen_;
   ShaderCreateInfo &info = *reinterpret_cast<ShaderCreateInfo *>(codegen.create_info);
@@ -635,6 +667,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     frag_gen << (!codegen.surface.empty() ? codegen.surface : "return Closure(0);\n");
     frag_gen << "}\n\n";
 
+    /* TODO(fclem): Find a way to pass material parameters inside the material UBO. */
+    info.define("thickness_mode", thickness_type == MAT_THICKNESS_SLAB ? "-1.0" : "1.0");
+
     frag_gen << "float nodetree_thickness()\n";
     frag_gen << "{\n";
     if (codegen.thickness.empty()) {
@@ -764,6 +799,65 @@ static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *co
   reinterpret_cast<ShaderModule *>(thunk)->material_create_info_ammend(mat, codegen);
 }
 
+static GPUPass *pass_replacement_cb(void *thunk, GPUMaterial *mat)
+{
+  using namespace blender::gpu::shader;
+
+  const ::Material *blender_mat = GPU_material_get_material(mat);
+
+  uint64_t shader_uuid = GPU_material_uuid_get(mat);
+
+  eMaterialPipeline pipeline_type;
+  eMaterialGeometry geometry_type;
+  eMaterialDisplacement displacement_type;
+  eMaterialThickness thickness_type;
+  bool transparent_shadows;
+  material_type_from_shader_uuid(shader_uuid,
+                                 pipeline_type,
+                                 geometry_type,
+                                 displacement_type,
+                                 thickness_type,
+                                 transparent_shadows);
+
+  bool is_shadow_pass = pipeline_type == eMaterialPipeline::MAT_PIPE_SHADOW;
+  bool is_prepass = ELEM(pipeline_type,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED_VELOCITY,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_OVERLAP,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD_VELOCITY,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_PLANAR);
+
+  bool has_vertex_displacement = GPU_material_has_displacement_output(mat) &&
+                                 displacement_type != eMaterialDisplacement::MAT_DISPLACEMENT_BUMP;
+  bool has_transparency = GPU_material_flag_get(mat, GPU_MATFLAG_TRANSPARENT);
+  bool has_shadow_transparency = has_transparency && transparent_shadows;
+  bool has_raytraced_transmission = blender_mat && (blender_mat->blend_flag & MA_BL_SS_REFRACTION);
+
+  bool can_use_default = (is_shadow_pass &&
+                          (!has_vertex_displacement && !has_shadow_transparency)) ||
+                         (is_prepass && (!has_vertex_displacement && !has_transparency &&
+                                         !has_raytraced_transmission));
+  if (can_use_default) {
+    GPUMaterial *mat = reinterpret_cast<ShaderModule *>(thunk)->material_default_shader_get(
+        pipeline_type, geometry_type);
+    return GPU_material_get_pass(mat);
+  }
+
+  return nullptr;
+}
+
+GPUMaterial *ShaderModule::material_default_shader_get(eMaterialPipeline pipeline_type,
+                                                       eMaterialGeometry geometry_type)
+{
+  bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
+  ::Material *blender_mat = (is_volume) ? BKE_material_default_volume() :
+                                          BKE_material_default_surface();
+
+  return material_shader_get(
+      blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
+}
+
 GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
@@ -773,18 +867,25 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
   bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
   eMaterialDisplacement displacement_type = to_displacement_type(blender_mat->displacement_method);
+  eMaterialThickness thickness_type = to_thickness_type(blender_mat->thickness_mode);
 
   uint64_t shader_uuid = shader_uuid_from_material_type(
-      pipeline_type, geometry_type, displacement_type, blender_mat->blend_flag);
+      pipeline_type, geometry_type, displacement_type, thickness_type, blender_mat->blend_flag);
 
-  return DRW_shader_from_material(blender_mat,
-                                  nodetree,
-                                  GPU_MAT_EEVEE,
-                                  shader_uuid,
-                                  is_volume,
-                                  deferred_compilation,
-                                  codegen_callback,
-                                  this);
+  bool is_default_material = ELEM(
+      blender_mat, BKE_material_default_surface(), BKE_material_default_volume());
+
+  GPUMaterial *mat = DRW_shader_from_material(blender_mat,
+                                              nodetree,
+                                              GPU_MAT_EEVEE,
+                                              shader_uuid,
+                                              is_volume,
+                                              deferred_compilation,
+                                              codegen_callback,
+                                              this,
+                                              is_default_material ? nullptr : pass_replacement_cb);
+
+  return mat;
 }
 
 GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,

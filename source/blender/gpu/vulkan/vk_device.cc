@@ -48,6 +48,7 @@ void VKDevice::deinit()
   }
   samplers_.free();
   destroy_discarded_resources();
+  pipelines.free_data();
   vkDestroyPipelineCache(vk_device_, vk_pipeline_cache_, vk_allocation_callbacks);
   descriptor_set_layouts_.deinit();
   vmaDestroyAllocator(mem_allocator_);
@@ -84,6 +85,7 @@ void VKDevice::init(void *ghost_context)
   init_physical_device_features();
   VKBackend::platform_init(*this);
   VKBackend::capabilities_init(*this);
+  init_functions();
   init_debug_callbacks();
   init_memory_allocator();
   init_pipeline_cache();
@@ -94,6 +96,18 @@ void VKDevice::init(void *ghost_context)
   debug::object_label(device_get(), "LogicalDevice");
   debug::object_label(queue_get(), "GenericQueue");
   init_glsl_patch();
+}
+
+void VKDevice::init_functions()
+{
+#define LOAD_FUNCTION(name) (PFN_##name) vkGetInstanceProcAddr(vk_instance_, STRINGIFY(name))
+  /* VK_KHR_dynamic_rendering */
+  functions.vkCmdBeginRendering = LOAD_FUNCTION(vkCmdBeginRenderingKHR);
+  functions.vkCmdEndRendering = LOAD_FUNCTION(vkCmdEndRenderingKHR);
+  /* VK_EXT_debug_utils */
+  functions.vkCmdBeginDebugUtilsLabel = LOAD_FUNCTION(vkCmdBeginDebugUtilsLabelEXT);
+  functions.vkCmdEndDebugUtilsLabel = LOAD_FUNCTION(vkCmdEndDebugUtilsLabelEXT);
+#undef LOAD_FUNCTION
 }
 
 void VKDevice::init_debug_callbacks()

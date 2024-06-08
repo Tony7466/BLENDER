@@ -406,6 +406,8 @@ static IDProperty *IDP_CopyString(const IDProperty *prop, const int flag)
   return newp;
 }
 
+/* FIXME: This function is broken for bytes (in case there are null chars in it), needs a
+ * dedicated function which takes directly the size of the byte buffer. */
 void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, const size_t st_maxncpy)
 {
   BLI_assert(prop->type == IDP_STRING);
@@ -421,6 +423,7 @@ void IDP_AssignStringMaxSize(IDProperty *prop, const char *st, const size_t st_m
   }
 }
 
+/* FIXME: Should never be called for `byte` subtype, needs an assert. */
 void IDP_AssignString(IDProperty *prop, const char *st)
 {
   IDP_AssignStringMaxSize(prop, st, 0);
@@ -997,6 +1000,9 @@ IDProperty *IDP_New(const char type, const IDPropertyTemplate *val, const char *
       prop->data.val = bool(val->i);
       break;
     case IDP_ARRAY: {
+      /* FIXME: This seems to be the only place in code allowing `IDP_GROUP` as subtype of an
+       * `IDP_ARRAY`. This is most likely a mistake. `IDP_GROUP` array should be of type
+       * `IDP_IDPARRAY`, as done e.g. in #idp_from_PySequence_Buffer in bpy API. */
       if (ELEM(val->array.type, IDP_FLOAT, IDP_INT, IDP_DOUBLE, IDP_GROUP, IDP_BOOLEAN)) {
         prop = static_cast<IDProperty *>(MEM_callocN(sizeof(IDProperty), "IDProperty array"));
         prop->subtype = val->array.type;
@@ -1400,38 +1406,43 @@ static void IDP_DirectLinkProperty(IDProperty *prop, BlendDataReader *reader);
 
 static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
 {
-  BLO_read_data_address(reader, &prop->ui_data);
-  if (!prop->ui_data) {
-    /* Can happen when opening more recent files with unknown types of IDProperties. */
-    return;
-  }
-  BLO_read_data_address(reader, &prop->ui_data->description);
+  /* NOTE: null UI data can happen when opening more recent files with unknown types of
+   * IDProperties. */
 
   switch (IDP_ui_data_type(prop)) {
     case IDP_UI_DATA_TYPE_STRING: {
-      IDPropertyUIDataString *ui_data_string = (IDPropertyUIDataString *)prop->ui_data;
-      BLO_read_data_address(reader, &ui_data_string->default_value);
+      BLO_read_struct(reader, IDPropertyUIDataString, &prop->ui_data);
+      if (prop->ui_data) {
+        IDPropertyUIDataString *ui_data_string = (IDPropertyUIDataString *)prop->ui_data;
+        BLO_read_string(reader, &ui_data_string->default_value);
+      }
       break;
     }
     case IDP_UI_DATA_TYPE_ID: {
+      BLO_read_struct(reader, IDPropertyUIDataID, &prop->ui_data);
       break;
     }
     case IDP_UI_DATA_TYPE_INT: {
+      BLO_read_struct(reader, IDPropertyUIDataInt, &prop->ui_data);
       IDPropertyUIDataInt *ui_data_int = (IDPropertyUIDataInt *)prop->ui_data;
       if (prop->type == IDP_ARRAY) {
         BLO_read_int32_array(
             reader, ui_data_int->default_array_len, (int **)&ui_data_int->default_array);
       }
-      BLO_read_data_address(reader, &ui_data_int->enum_items);
+      BLO_read_struct_array(reader,
+                            IDPropertyUIDataEnumItem,
+                            size_t(ui_data_int->enum_items_num),
+                            &ui_data_int->enum_items);
       for (const int64_t i : blender::IndexRange(ui_data_int->enum_items_num)) {
         IDPropertyUIDataEnumItem &item = ui_data_int->enum_items[i];
-        BLO_read_data_address(reader, &item.identifier);
-        BLO_read_data_address(reader, &item.name);
-        BLO_read_data_address(reader, &item.description);
+        BLO_read_string(reader, &item.identifier);
+        BLO_read_string(reader, &item.name);
+        BLO_read_string(reader, &item.description);
       }
       break;
     }
     case IDP_UI_DATA_TYPE_BOOLEAN: {
+      BLO_read_struct(reader, IDPropertyUIDataBool, &prop->ui_data);
       IDPropertyUIDataBool *ui_data_bool = (IDPropertyUIDataBool *)prop->ui_data;
       if (prop->type == IDP_ARRAY) {
         BLO_read_int8_array(
@@ -1440,6 +1451,7 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
       break;
     }
     case IDP_UI_DATA_TYPE_FLOAT: {
+      BLO_read_struct(reader, IDPropertyUIDataFloat, &prop->ui_data);
       IDPropertyUIDataFloat *ui_data_float = (IDPropertyUIDataFloat *)prop->ui_data;
       if (prop->type == IDP_ARRAY) {
         BLO_read_double_array(
@@ -1448,9 +1460,14 @@ static void read_ui_data(IDProperty *prop, BlendDataReader *reader)
       break;
     }
     case IDP_UI_DATA_TYPE_UNSUPPORTED: {
+      BLO_read_data_address(reader, &prop->ui_data);
       BLI_assert_unreachable();
       break;
     }
+  }
+
+  if (prop->ui_data) {
+    BLO_read_string(reader, &prop->ui_data->description);
   }
 }
 
@@ -1458,7 +1475,7 @@ static void IDP_DirectLinkIDPArray(IDProperty *prop, BlendDataReader *reader)
 {
   /* since we didn't save the extra buffer, set totallen to len */
   prop->totallen = prop->len;
-  BLO_read_data_address(reader, &prop->data.pointer);
+  BLO_read_struct_array(reader, IDProperty, size_t(prop->len), &prop->data.pointer);
 
   IDProperty *array = (IDProperty *)prop->data.pointer;
 
@@ -1503,14 +1520,14 @@ static void IDP_DirectLinkString(IDProperty *prop, BlendDataReader *reader)
 {
   /* Since we didn't save the extra string buffer, set totallen to len. */
   prop->totallen = prop->len;
-  BLO_read_data_address(reader, &prop->data.pointer);
+  BLO_read_char_array(reader, prop->len, reinterpret_cast<char **>(&prop->data.pointer));
 }
 
 static void IDP_DirectLinkGroup(IDProperty *prop, BlendDataReader *reader)
 {
   ListBase *lb = &prop->data.group;
 
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, IDProperty, lb);
 
   /* Link child id properties now. */
   LISTBASE_FOREACH (IDProperty *, loop, &prop->data.group) {

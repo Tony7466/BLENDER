@@ -308,7 +308,7 @@ static void nla_draw_strip_curves(NlaStrip *strip, float yminc, float ymaxc, uin
 
   /* influence -------------------------- */
   if (strip->flag & NLASTRIP_FLAG_USR_INFLUENCE) {
-    FCurve *fcu = BKE_fcurve_find(&strip->fcurves, "influence", 0);
+    const FCurve *fcu = BKE_fcurve_find(&strip->fcurves, "influence", 0);
 
     /* plot the curve (over the strip's main region) */
     if (fcu) {
@@ -419,8 +419,15 @@ static void nla_draw_strip(SpaceNla *snla,
                            float yminc,
                            float ymaxc)
 {
-  const bool solo = !((adt && (adt->flag & ADT_NLA_SOLO_TRACK)) &&
-                      (nlt->flag & NLATRACK_SOLO) == 0);
+  /* If there is no 'adt', this strip came from nowhere. */
+  BLI_assert(adt);
+  if (!adt) {
+    return;
+  }
+
+  const bool adt_has_solo_track = (adt->flag & ADT_NLA_SOLO_TRACK);
+  const bool is_track_solo = (nlt->flag & NLATRACK_SOLO);
+  const bool is_other_track_soloed = adt_has_solo_track && !is_track_solo;
 
   const bool muted = ((nlt->flag & NLATRACK_MUTED) || (strip->flag & NLASTRIP_FLAG_MUTED));
   float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -435,7 +442,7 @@ static void nla_draw_strip(SpaceNla *snla,
   /* draw extrapolation info first (as backdrop)
    * - but this should only be drawn if track has some contribution
    */
-  if ((strip->extendmode != NLASTRIP_EXTEND_NOTHING) && solo) {
+  if ((strip->extendmode != NLASTRIP_EXTEND_NOTHING) && !is_other_track_soloed) {
     /* enable transparency... */
     GPU_blend(GPU_BLEND_ALPHA);
 
@@ -473,9 +480,8 @@ static void nla_draw_strip(SpaceNla *snla,
   }
 
   /* draw 'inside' of strip itself */
-  if (solo && is_nlastrip_enabled(adt, nlt, strip) &&
-      !(strip->flag & NLASTRIP_FLAG_INVALID_LOCATION))
-  {
+  const bool is_invalid_location = (strip->flag & NLASTRIP_FLAG_INVALID_LOCATION);
+  if (!is_other_track_soloed && is_nlastrip_enabled(adt, nlt, strip) && !is_invalid_location) {
     immUnbindProgram();
 
     /* strip is in normal track */
@@ -518,7 +524,7 @@ static void nla_draw_strip(SpaceNla *snla,
   /* draw strip outline
    * - color used here is to indicate active vs non-active
    */
-  if (strip->flag & NLASTRIP_FLAG_INVALID_LOCATION) {
+  if (is_invalid_location) {
     color[0] = 1.0f;
     color[1] = color[2] = 0.15f;
   }
@@ -898,6 +904,51 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
           GPU_blend(GPU_BLEND_NONE);
           break;
         }
+        case ANIMTYPE_NONE:
+        case ANIMTYPE_ANIMDATA:
+        case ANIMTYPE_SPECIALDATA__UNUSED:
+        case ANIMTYPE_SUMMARY:
+        case ANIMTYPE_SCENE:
+        case ANIMTYPE_OBJECT:
+        case ANIMTYPE_GROUP:
+        case ANIMTYPE_FCURVE:
+        case ANIMTYPE_NLACONTROLS:
+        case ANIMTYPE_NLACURVE:
+        case ANIMTYPE_FILLACT_LAYERED:
+        case ANIMTYPE_FILLACTD:
+        case ANIMTYPE_FILLDRIVERS:
+        case ANIMTYPE_DSMAT:
+        case ANIMTYPE_DSLAM:
+        case ANIMTYPE_DSCAM:
+        case ANIMTYPE_DSCACHEFILE:
+        case ANIMTYPE_DSCUR:
+        case ANIMTYPE_DSSKEY:
+        case ANIMTYPE_DSWOR:
+        case ANIMTYPE_DSNTREE:
+        case ANIMTYPE_DSPART:
+        case ANIMTYPE_DSMBALL:
+        case ANIMTYPE_DSARM:
+        case ANIMTYPE_DSMESH:
+        case ANIMTYPE_DSTEX:
+        case ANIMTYPE_DSLAT:
+        case ANIMTYPE_DSLINESTYLE:
+        case ANIMTYPE_DSSPK:
+        case ANIMTYPE_DSGPENCIL:
+        case ANIMTYPE_DSMCLIP:
+        case ANIMTYPE_DSHAIR:
+        case ANIMTYPE_DSPOINTCLOUD:
+        case ANIMTYPE_DSVOLUME:
+        case ANIMTYPE_SHAPEKEY:
+        case ANIMTYPE_GPDATABLOCK:
+        case ANIMTYPE_GPLAYER:
+        case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+        case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+        case ANIMTYPE_GREASE_PENCIL_LAYER:
+        case ANIMTYPE_MASKDATABLOCK:
+        case ANIMTYPE_MASKLAYER:
+        case ANIMTYPE_PALETTE:
+        case ANIMTYPE_NUM_TYPES:
+          break;
       }
     }
   }
