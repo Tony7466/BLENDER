@@ -22,7 +22,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_context.hh"
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
@@ -573,8 +573,8 @@ static void partialvis_masked_update_grids(Depsgraph &depsgraph,
           CCGElem *grid = grids[grid_index];
           for (const int y : IndexRange(key.grid_size)) {
             for (const int x : IndexRange(key.grid_size)) {
-              CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
-              if (*CCG_elem_mask(&key, elem) > 0.5f) {
+              CCGElem *elem = CCG_grid_elem(key, grid, x, y);
+              if (CCG_elem_mask(key, elem) > 0.5f) {
                 hide[y * key.grid_size + x].set(value);
               }
             }
@@ -957,12 +957,6 @@ static void grow_shrink_visibility_mesh(Object &object,
   hide_vert.finish();
 }
 
-/* TODO: This is probably better off as a member function of a CCGKey?*/
-static int elem_xy_to_index(int x, int y, int grid_size)
-{
-  return y * grid_size + x;
-}
-
 struct DualBitBuffer {
   BitGroupVector<> front;
   BitGroupVector<> back;
@@ -1011,7 +1005,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
         for (const int grid_index : grids) {
           for (const int y : IndexRange(key.grid_size)) {
             for (const int x : IndexRange(key.grid_size)) {
-              const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
+              const int grid_elem_idx = CCG_grid_xy_to_index(key.grid_size, x, y);
               if (read_buffer[grid_index][grid_elem_idx] != desired_state) {
                 continue;
               }
@@ -1025,8 +1019,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
               BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
 
               for (const SubdivCCGCoord neighbor : neighbors.coords) {
-                const int neighbor_grid_elem_idx = elem_xy_to_index(
-                    neighbor.x, neighbor.y, key.grid_size);
+                const int neighbor_grid_elem_idx = CCG_grid_xy_to_index(
+                    key.grid_size, neighbor.x, neighbor.y);
 
                 write_buffer[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
               }
@@ -1242,9 +1236,9 @@ static void partialvis_gesture_update_grids(Depsgraph &depsgraph,
         CCGElem *grid = grids[grid_index];
         for (const int y : IndexRange(key.grid_size)) {
           for (const int x : IndexRange(key.grid_size)) {
-            CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
-            if (gesture::is_affected(
-                    gesture_data, CCG_elem_co(&key, elem), CCG_elem_no(&key, elem))) {
+            CCGElem *elem = CCG_grid_elem(key, grid, x, y);
+            if (gesture::is_affected(gesture_data, CCG_elem_co(key, elem), CCG_elem_no(key, elem)))
+            {
               hide[y * key.grid_size + x].set(value);
             }
           }
