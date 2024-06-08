@@ -627,7 +627,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
       const float density_max = params.get_input<float>("Density Max");
       offsets.reinitialize(mesh.corner_tris().size() + 1);
       tris_points_count_for_densities(
-          mesh, VArray<float>::ForSingle(mesh.corners_num, density_max), seed, offsets);
+          mesh, VArray<float>::ForSingle(density_max, mesh.corners_num), seed, offsets);
       OffsetIndices<int> points_groups = offset_indices::accumulate_counts_to_offsets(
           offsets.as_mutable_span());
       bary_coords.reinitialize(points_groups.total_size());
