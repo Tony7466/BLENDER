@@ -2046,7 +2046,7 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   const int constraints_num = last_task.start_indices.constraint + last_physics.constraints_num();
 
   /* Allocate new curves data-block. */
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(bodies_num, constraints_num, 0);
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(bodies_num, constraints_num);
   r_realized_geometry.replace_physics(dst_physics);
 
   ///* Copy settings from the first input geometry set with curves. */

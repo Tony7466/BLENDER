@@ -147,15 +147,6 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
   return body.setUserIndex2(int(current));
 }
 
-static int get_body_collision_handle(const btRigidBody &body) {
-  return body.getUserIndex3();
-}
-
-static void set_body_collision_handle(btRigidBody &body, int handle)
-{
-  body.setUserIndex3(handle);
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Physics World
  * \{ */
@@ -569,7 +560,6 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "kinematic",
     "mass",
     "inertia",
-    "shape_handle",
     "position",
     "rotation",
     "velocity",
@@ -578,12 +568,11 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states)
 {
-  static btBoxShape dummy_shape(btVector3(0.2f, 0.2f, 0.2f));
   for (const int i : rigid_bodies.index_range()) {
     const float mass = 1.0f;
     const float3 local_inertia = float3(0.0f);
     btMotionState *motion_state = motion_states[i] = new btDefaultMotionState();
-    btCollisionShape *collision_shape = &dummy_shape;
+    btCollisionShape *collision_shape = nullptr;
     rigid_bodies[i] = new btRigidBody(
         mass, motion_state, collision_shape, to_bullet(local_inertia));
   }
@@ -600,9 +589,10 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
   if (impl_) {
     impl_->add_user();
   }
+  shapes_ = other.shapes_;
 }
 
-PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes_num)
+PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
 {
   PhysicsGeometryImpl *impl = new PhysicsGeometryImpl();
   impl->rigid_bodies.reinitialize(bodies_num);
@@ -610,7 +600,7 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num, int shapes
   create_bodies(impl->rigid_bodies, impl->motion_states);
   impl_ = impl;
 
-  UNUSED_VARS(constraints_num, shapes_num);
+  UNUSED_VARS(constraints_num);
 }
 
 PhysicsGeometry::~PhysicsGeometry()
@@ -817,7 +807,7 @@ int PhysicsGeometry::constraints_num() const
 
 int PhysicsGeometry::shapes_num() const
 {
-  return impl().shapes.size();
+  return shapes_.size();
 }
 
 IndexRange PhysicsGeometry::bodies_range() const
@@ -832,10 +822,7 @@ IndexRange PhysicsGeometry::constraints_range() const
 
 IndexRange PhysicsGeometry::shapes_range() const
 {
-  return impl().shapes.index_range();
-}
-
-static void validate_body_shapes() {
+  return shapes_.index_range();
 }
 
 Span<CollisionShape::Ptr> PhysicsGeometry::shapes() const
@@ -860,6 +847,32 @@ int PhysicsGeometry::add_shape(const CollisionShapePtr &shape)
   }
 
   return shapes_.append_and_get_index(shape);
+}
+
+void PhysicsGeometry::set_body_shapes(const IndexMask &selection, Span<int> shape_handles) {
+  BLI_assert(selection.bounds().intersect(impl_->rigid_bodies.index_range()) ==
+             selection.bounds());
+  selection.foreach_index([&](const int index) {
+    const int handle = shape_handles[index];
+    if (!shapes_.index_range().contains(handle)) {
+      return;
+    }
+    const CollisionShapePtr &shape_ptr = shapes_[handle];
+    const btCollisionShape *bt_shape = &shape_ptr->impl().as_bullet_shape();
+
+    btRigidBody *body = impl_->rigid_bodies[index];
+    if (body->getCollisionShape() == bt_shape) {
+      /* Shape is correct, nothing to do. */
+      return;
+    }
+
+    // XXX is const cast safe here? not sure why Bullet wants a mutable shape.
+    body->setCollisionShape(const_cast<btCollisionShape *>(bt_shape));
+    if (impl_->broadphase && body->isInWorld()) {
+      impl_->broadphase->getOverlappingPairCache()->cleanProxyFromPairs(body->getBroadphaseProxy(),
+                                                                        impl_->dispatcher);
+    }
+  });
 }
 
 //VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
@@ -902,13 +915,6 @@ AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
   return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
 }
 
-VArray<int> PhysicsGeometry::body_shapes_handles() const {
-  return attributes().lookup(builtin_attributes.shape_handle).varray.typed<int>();
-}
-
-AttributeWriter<int> PhysicsGeometry::body_shapes_handles_for_write() {
-}
-
 VArray<bool> PhysicsGeometry::body_is_static() const
 {
   return attributes().lookup(builtin_attributes.is_static).varray.typed<bool>();
@@ -932,16 +938,6 @@ VArray<float3> PhysicsGeometry::body_inertias() const
 AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
 {
   return attributes_for_write().lookup_for_write<float3>(builtin_attributes.inertia);
-}
-
-VArray<int> PhysicsGeometry::body_shapes_handles() const
-{
-  return attributes().lookup(builtin_attributes.shape_handle).varray.typed<int>();
-}
-
-AttributeWriter<int> PhysicsGeometry::body_shapes_handles_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.shape_handle);
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
@@ -1002,8 +998,6 @@ struct PhysicsAccessInfo {
   ConstPhysicsGetter get_const_physics;
 };
 
-template<typename T> static void dummy_set_fn(btRigidBody *& /*body*/, T /*value*/) {}
-
 template<typename T> using RigidBodyGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
 template<typename T>
 using RigidBodyGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl);
@@ -1013,7 +1007,7 @@ using RigidBodyGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl)
  */
 template<typename T,
          RigidBodyGetFn<T> GetFn,
-         RigidBodySetFn<T> SetFn = dummy_set_fn,
+         RigidBodySetFn<T> SetFn = nullptr,
          RigidBodyGetCacheFn<T> GetCacheFn = nullptr,
          RigidBodyGetMutableCacheFn<T> GetMutableCacheFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
@@ -1058,6 +1052,9 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
 
   GAttributeWriter try_get_for_write(void *owner) const final
   {
+    if constexpr (SetFn == nullptr) {
+      return {};
+    }
     PhysicsGeometry *physics = physics_access_.get_physics(owner);
     if (physics == nullptr) {
       return {};
@@ -1084,9 +1081,6 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
 
   bool try_delete(void * /*owner*/) const final
   {
-    if (deletable_ != Deletable) {
-      return false;
-    }
     return false;
   }
 
@@ -1189,15 +1183,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  static BuiltinRigidBodyAttributeProvider<int,
-                                           get_body_collision_handle,
-                                           set_body_collision_handle>
-      body_shape_handle(PhysicsGeometry::builtin_attributes.shape_handle,
-                        AttrDomain::Point,
-                        BuiltinAttributeProvider::NonDeletable,
-                        physics_access,
-                        nullptr);
-
   constexpr auto position_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getWorldTransform().getOrigin());
   };
@@ -1258,7 +1243,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_kinematic,
                                       &body_mass,
                                       &body_inertia,
-                                      &body_shape_handle,
                                       &body_position,
                                       &body_rotation,
                                       &body_velocity,

@@ -62,7 +62,7 @@ static bke::CollisionShape *make_collision_shape(GeoNodeExecParams params)
     case ShapeType::Invalid:
       return nullptr;
     case ShapeType::Empty:
-      return nullptr;
+      return new bke::EmptyCollisionShape();
     case ShapeType::Box: {
       const float3 half_extent = params.extract_input<float3>("SizeVector");
       return new bke::BoxCollisionShape(half_extent);
@@ -72,6 +72,7 @@ static bke::CollisionShape *make_collision_shape(GeoNodeExecParams params)
     case ShapeType::ConvexTriangleMesh:
     case ShapeType::ConvexHull:
     case ShapeType::ConvexPointCloud:
+      return nullptr;
     case ShapeType::Sphere: {
       const float radius = params.extract_input<float>("Size");
       return new bke::SphereCollisionShape(radius);
@@ -97,8 +98,8 @@ static bke::CollisionShape *make_collision_shape(GeoNodeExecParams params)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   bke::CollisionShape *shape = make_collision_shape(params);
-  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0, 1);
-  physics->shapes_for_write()[0] = bke::CollisionShape::Ptr(shape);
+  bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0);
+  physics->add_shape(bke::CollisionShape::Ptr(shape));
 
   params.set_output("Shape", GeometrySet::from_physics(physics));
 }

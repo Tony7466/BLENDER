@@ -47,6 +47,11 @@ void PhysicsComponent::clear()
   }
 }
 
+bool PhysicsComponent::has_physics() const
+{
+  return physics_ != nullptr;
+}
+
 bool PhysicsComponent::has_world() const
 {
   return physics_ != nullptr && physics_->has_world();

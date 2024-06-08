@@ -797,7 +797,9 @@ class PhysicsComponent : public GeometryComponent {
   GeometryComponentPtr copy() const override;
 
   void clear() override;
+  bool has_physics() const;
   bool has_world() const;
+
   /**
    * Clear the component and replace it with the new simulation state.
    */

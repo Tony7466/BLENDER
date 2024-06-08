@@ -54,7 +54,6 @@ class PhysicsGeometry {
     std::string is_kinematic;
     std::string mass;
     std::string inertia;
-    std::string shape_handle;
     std::string position;
     std::string rotation;
     std::string velocity;
@@ -62,7 +61,7 @@ class PhysicsGeometry {
   } builtin_attributes;
 
   PhysicsGeometry();
-  explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num, int shapes_num);
+  explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
@@ -93,15 +92,13 @@ class PhysicsGeometry {
   Span<CollisionShapePtr> shapes() const;
   std::optional<int> find_shape_handle(const CollisionShape &shape);
   int add_shape(const CollisionShapePtr &shape);
+  void set_body_shapes(const IndexMask &selection, Span<int> shape_handles);
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
 
   VArray<bool> body_is_simulated() const;
   AttributeWriter<bool> body_is_simulated_for_write();
-
-  VArray<int> body_shapes_handles() const;
-  AttributeWriter<int> body_shapes_handles_for_write();
 
   VArray<bool> body_is_static() const;
 

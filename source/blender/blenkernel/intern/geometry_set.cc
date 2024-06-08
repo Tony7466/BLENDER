@@ -404,7 +404,7 @@ bool GeometrySet::has_grease_pencil() const
 bool GeometrySet::has_physics() const
 {
   const PhysicsComponent *component = this->get_component<PhysicsComponent>();
-  return component != nullptr && component->has_world();
+  return component != nullptr && component->has_physics();
 }
 
 bool GeometrySet::is_empty() const

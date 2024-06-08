@@ -70,7 +70,7 @@ class CollisionShape : public ImplicitSharingMixin {
   CollisionShapeImpl *impl_;
 
  public:
-  CollisionShape();
+  CollisionShape() = delete;
   ~CollisionShape();
 
   void delete_self() override;
@@ -103,10 +103,14 @@ class CollisionShape : public ImplicitSharingMixin {
   friend class PhysicsGeometry;
 };
 
+class EmptyCollisionShape : public CollisionShape {
+ public:
+  EmptyCollisionShape();
+};
+
 class BoxCollisionShape : public CollisionShape {
  public:
   BoxCollisionShape(const float3 &half_extent);
-  ~BoxCollisionShape();
 
   float3 half_extent() const;
 };
@@ -114,7 +118,6 @@ class BoxCollisionShape : public CollisionShape {
 class SphereCollisionShape : public CollisionShape {
  public:
   SphereCollisionShape(float radius);
-  ~SphereCollisionShape();
 
   float radius() const;
 };

@@ -49,7 +49,12 @@ inline btQuaternion to_bullet(const math::Quaternion &q)
   return btQuaternion(q.x, q.y, q.z, q.w);
 }
 
-CollisionShape::CollisionShape() : impl_(nullptr) {}
+void CollisionShapeImpl::destroy()
+{
+  delete &this->as_bullet_shape();
+}
+
+//CollisionShape::CollisionShape() : impl_(nullptr) {}
 
 CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl)
 {
@@ -59,7 +64,7 @@ CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl)
 
 CollisionShape::~CollisionShape()
 {
-  delete impl_;
+  impl_->destroy();
 }
 
 void CollisionShape::delete_self()
@@ -133,15 +138,21 @@ CollisionShape::ShapeType CollisionShape::type() const
       return ShapeType::Compound;
     case INVALID_SHAPE_PROXYTYPE:
       return ShapeType::Invalid;
+
+    default:
+      return ShapeType::Invalid;
   }
+}
+
+EmptyCollisionShape::EmptyCollisionShape()
+    : CollisionShape(CollisionShapeImpl::wrap(new btEmptyShape()))
+{
 }
 
 BoxCollisionShape::BoxCollisionShape(const float3 &half_extent)
     : CollisionShape(CollisionShapeImpl::wrap(new btBoxShape(to_bullet(half_extent))))
 {
 }
-
-BoxCollisionShape::~BoxCollisionShape() {}
 
 float3 BoxCollisionShape::half_extent() const
 {
@@ -153,8 +164,6 @@ SphereCollisionShape::SphereCollisionShape(const float radius)
     : CollisionShape(CollisionShapeImpl::wrap(new btSphereShape(radius)))
 {
 }
-
-SphereCollisionShape::~SphereCollisionShape() {}
 
 float SphereCollisionShape::radius() const
 {

@@ -89,7 +89,22 @@ static void geometry_set_points_to_rigid_bodies(
                                              Span<CollisionShapePtr>{};
 
   const int num_bodies = selection.size();
-  auto *physics = new bke::PhysicsGeometry(num_bodies, 0, 0);
+  auto *physics = new bke::PhysicsGeometry(num_bodies, 0);
+
+  Array<int> shape_handles(shapes.size(), -1);
+  Array<int> body_shape_handles(num_bodies, -1);
+  selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
+    const int shape_index = src_shape_index[index];
+    if (!shape_handles.index_range().contains(shape_index)) {
+      return;
+    }
+    if (shape_handles[shape_index] < 0) {
+      shape_handles[shape_index] = physics->add_shape(shapes[shape_index]);
+    }
+    body_shape_handles[pos] = shape_handles[shape_index];
+  });
+  physics->set_body_shapes(IndexRange(num_bodies), body_shape_handles);
+
   AttributeWriter<int> dst_ids = physics->body_ids_for_write();
   AttributeWriter<float> dst_masses = physics->body_masses_for_write();
   AttributeWriter<float3> dst_inertias = physics->body_inertias_for_write();
@@ -98,7 +113,6 @@ static void geometry_set_points_to_rigid_bodies(
   AttributeWriter<float3> dst_velocities = physics->body_velocities_for_write();
   AttributeWriter<float3> dst_angular_velocities = physics->body_angular_velocities_for_write();
   AttributeWriter<bool> dst_is_simulated = physics->body_is_simulated_for_write();
-  AttributeWriter<int> dst_shape_handles = physics->body_shapes_handles_for_write();
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
     dst_ids.varray.set(pos, src_ids[index]);
@@ -109,12 +123,6 @@ static void geometry_set_points_to_rigid_bodies(
     dst_velocities.varray.set(pos, src_velocities[index]);
     dst_angular_velocities.varray.set(pos, src_angular_velocities[index]);
     dst_is_simulated.varray.set(pos, src_is_simulated[index]);
-
-    const int shape_index = src_shape_index[index];
-    if (shapes.index_range().contains(shape_index)) {
-      const int shape_handle = physics->add_shape(shapes[shape_index]);
-      dst_shape_handles.varray.set(pos, shape_handle);
-    }
   });
 
   dst_ids.finish();
@@ -125,7 +133,6 @@ static void geometry_set_points_to_rigid_bodies(
   dst_velocities.finish();
   dst_angular_velocities.finish();
   dst_is_simulated.finish();
-  dst_shape_handles.finish();
 
   geometry_set.replace_physics(physics);
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Physics});
@@ -145,7 +152,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float3> angular_velocity_field = params.extract_input<Field<float3>>("Angular Velocity");
   Field<bool> is_simulated_field = params.extract_input<Field<bool>>("Simulate");
   GeometrySet shapes_geometry = params.extract_input<GeometrySet>("Shapes");
-  Field<int> shape_index_field = params.extract_input<Field<bool>>("Shape Index");
+  Field<int> shape_index_field = params.extract_input<Field<int>>("Shape Index");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     geometry_set_points_to_rigid_bodies(geometry_set,

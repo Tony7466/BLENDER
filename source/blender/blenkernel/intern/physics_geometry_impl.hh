@@ -58,7 +58,6 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   Array<btRigidBody *> rigid_bodies;
   Array<btMotionState *> motion_states;
   Array<btTypedConstraint *> constraints;
-  Array<btCollisionShape *> shapes;
 
   /* Physics data can be moved while other components still have write access. The physics data is
    * cached for read access, so that data can be moved without requiring locks. */
@@ -83,6 +82,10 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
                             int constraints_offset);
 
 struct CollisionShapeImpl {
+  ~CollisionShapeImpl() = delete;
+
+  void destroy();
+
   btCollisionShape &as_bullet_shape()
   {
     return *reinterpret_cast<btCollisionShape *>(this);
