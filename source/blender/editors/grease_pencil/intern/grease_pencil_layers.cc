@@ -766,7 +766,6 @@ static int grease_pencil_layer_group_color_tag_exec(bContext *C, wmOperator *op)
   LayerGroup *active_group = grease_pencil.get_active_group();
   active_group->color_tag = color_tag;
 
-
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 
