@@ -1,1 +1,2 @@
 Referenced by issue #122423, Regression: UI: Collapse of area of editor cause crash
+Referenced by pull request #122922, Fix #122423 - Clear Handlers for Non-Temporary Regions on Exit
