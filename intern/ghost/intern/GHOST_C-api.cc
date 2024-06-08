@@ -166,7 +166,6 @@ GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                       uint32_t height,
                                       GHOST_TWindowState state,
                                       bool is_dialog,
-                                      bool use_inline_decoration,
                                       GHOST_GPUSettings gpuSettings)
 {
   GHOST_ISystem *system = (GHOST_ISystem *)systemhandle;
@@ -180,7 +179,6 @@ GHOST_WindowHandle GHOST_CreateWindow(GHOST_SystemHandle systemhandle,
                                                   gpuSettings,
                                                   false,
                                                   is_dialog,
-                                                  use_inline_decoration,
                                                   (GHOST_IWindow *)parent_windowhandle);
 }
 

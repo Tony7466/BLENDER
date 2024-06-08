@@ -735,18 +735,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
   wmWindow *prev_windrawable = wm->windrawable;
   wm_window_clear_drawable(wm);
 
-  bool use_inline_decoration = false;
-  // HACK: If the window contains a topbar area, apply the decoration
-  // This is of course temporary, and comes from the fact that other methods, such as window flags
-  // or window creation function arguments proved themselves inefective due to windows being
-  // created in too many different ways, and checking/restoring function having different behaviors
-  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
-    if (area->spacetype == SPACE_TOPBAR) {
-      use_inline_decoration = true;
-      break;
-    }
-  }
-
   GHOST_WindowHandle ghostwin = GHOST_CreateWindow(
       g_system,
       static_cast<GHOST_WindowHandle>((win->parent) ? win->parent->ghostwin : nullptr),
@@ -757,7 +745,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
       win->sizey,
       (GHOST_TWindowState)win->windowstate,
       is_dialog,
-      use_inline_decoration,
       gpuSettings);
 
   if (ghostwin) {
@@ -815,22 +802,6 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
 
 static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, bool is_dialog)
 {
-  // Temporary hack that consist of refreshing the areas (and thus adding the topbar)
-  // before creating the window by moving the code below here from the bottom of this function
-  // Ideally, we should certainly not have to do this, and be able to set window decorations anytime
-  // and update them in checking functions, but, for this, the window decoration should be decoupled
-  // from the window creation, which is currently not the case.
-
-  /* Add drop boxes. */
-  {
-    ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
-    WM_event_add_dropbox_handler(&win->handlers, lb);
-  }
-  wm_window_title(wm, win);
-
-  /* Add top-bar. */
-  ED_screen_global_areas_refresh(win);
-
   if (win->ghostwin == nullptr) {
     if ((win->sizex == 0) || (wm_init_state.override_flag & WIN_OVERRIDE_GEOM)) {
       win->posx = wm_init_state.start_x;
@@ -879,6 +850,16 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Screen Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&win->modalhandlers, keymap);
+
+  /* Add drop boxes. */
+  {
+    ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
+    WM_event_add_dropbox_handler(&win->handlers, lb);
+  }
+  wm_window_title(wm, win);
+
+  /* Add top-bar. */
+  ED_screen_global_areas_refresh(win);
 }
 
 void wm_window_ghostwindows_ensure(wmWindowManager *wm)

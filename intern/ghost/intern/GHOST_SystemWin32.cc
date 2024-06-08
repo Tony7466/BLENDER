@@ -245,7 +245,6 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
                                                GHOST_GPUSettings gpuSettings,
                                                const bool /*exclusive*/,
                                                const bool is_dialog,
-                                               const bool /*use_inline_decoration*/,
                                                const GHOST_IWindow *parentWindow)
 {
   GHOST_WindowWin32 *window = new GHOST_WindowWin32(

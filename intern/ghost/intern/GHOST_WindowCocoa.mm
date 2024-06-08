@@ -310,7 +310,6 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
                                      const bool stereoVisual,
                                      bool is_debug,
                                      bool is_dialog,
-                                     bool use_inline_decoration,
                                      GHOST_WindowCocoa *parentWindow)
     : GHOST_Window(width, height, state, stereoVisual, false),
       m_openGLView(nil),
@@ -320,8 +319,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
       m_customCursor(0),
       m_immediateDraw(false),
       m_debug_context(is_debug),
-      m_is_dialog(is_dialog),
-      m_use_inline_decoration(use_inline_decoration)
+      m_is_dialog(is_dialog)
 {
   m_fullScreen = false;
 
@@ -337,12 +335,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   rect.size.height = height;
 
   NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
-                                NSWindowStyleMaskResizable;
-
-  if (use_inline_decoration) {
-    styleMask |= NSWindowStyleMaskFullSizeContentView;
-  }
-
+                                NSWindowStyleMaskResizable | NSWindowStyleMaskFullSizeContentView;
   if (!is_dialog) {
     styleMask |= NSWindowStyleMaskMiniaturizable;
   }
@@ -359,10 +352,8 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   minSize.height = 240;
   [m_window setContentMinSize:minSize];
 
-  if (use_inline_decoration) {
-    [m_window setTitlebarAppearsTransparent:YES];
-    [m_window setTitleVisibility:NSWindowTitleHidden];
-  }
+  [m_window setTitlebarAppearsTransparent: YES];
+  [m_window setTitleVisibility:NSWindowTitleHidden];
 
   /* Create NSView inside the window. */
   id<MTLDevice> metalDevice = MTLCreateSystemDefaultDevice();
@@ -416,13 +407,11 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
   }
 
   // Inline-Titlebar / topbar draggable view
-  if (use_inline_decoration) {
-    CGFloat draggableRectHeight = 20;
-    NSRect draggableRect = NSMakeRect(0, height - draggableRectHeight, width, draggableRectHeight);
-    DraggableAreaView *draggableView = [[DraggableAreaView alloc] initWithFrame:draggableRect];
-    [draggableView setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
-    [view addSubview:draggableView];
-  }
+  CGFloat draggableRectHeight = 20;
+  NSRect draggableRect = NSMakeRect(0, height - draggableRectHeight, width, draggableRectHeight);
+  DraggableAreaView *draggableView = [[DraggableAreaView alloc] initWithFrame:draggableRect];
+  [draggableView setAutoresizingMask: NSViewWidthSizable | NSViewMinYMargin];
+  [view addSubview:draggableView];
 
   [m_window setContentView:view];
   [m_window setInitialFirstResponder:view];

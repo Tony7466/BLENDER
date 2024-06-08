@@ -8204,7 +8204,6 @@ GHOST_IWindow *GHOST_SystemWayland::createWindow(const char *title,
                                                  const GHOST_GPUSettings gpuSettings,
                                                  const bool exclusive,
                                                  const bool is_dialog,
-                                                 const bool /* use_inline_decoration */,
                                                  const GHOST_IWindow *parentWindow)
 {
   /* Globally store pointer to window manager. */
