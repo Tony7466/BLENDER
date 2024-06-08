@@ -152,29 +152,41 @@ BLI_NOINLINE static void update_elimination_mask_based_on_density_factors(
     const GroupedSpan<float3> tre_bary_coords,
     const MutableSpan<bool> elimination_mask)
 {
+  BLI_assert(tre_bary_coords.data.size() == elimination_mask.size());
   const Span<int3> corner_tris = mesh.corner_tris();
-  devirtualize_varray(density_factors, [&](const auto density_factors) {
-    threading::parallel_for(tre_bary_coords.index_range(), 2048, [&](const IndexRange range) {
-      for (const int tri_i : range) {
-        const int3 &tri = corner_tris[tri_i];
-        const float a = std::max(0.0f, density_factors[tri[0]]);
-        const float b = std::max(0.0f, density_factors[tri[1]]);
-        const float c = std::max(0.0f, density_factors[tri[2]]);
 
-        for (const int i : tre_bary_coords.offsets[tri_i]) {
-          if (!elimination_mask[i]) {
-            continue;
-          }
-
-          const float3 bary_coord = tre_bary_coords.data[i];
-          const float probability = bke::attribute_math::mix3<float>(bary_coord, a, b, c);
-          const float hash = noise::hash_float_to_float(bary_coord);
-          if (hash > probability) {
-            elimination_mask[i] = false;
-          }
-        }
+  if (density_factors.is_single()) {
+    const float density_factor = std::max(0.0f, density_factors.get_internal_single());
+    threading::parallel_for(tre_bary_coords.data.index_range(), 2048, [&](const IndexRange range) {
+      for (const int i : range) {
+        const float hash = noise::hash_float_to_float(tre_bary_coords.data[i]);
+        elimination_mask[i] &= hash <= density_factor;
       }
     });
+    return;
+  }
+
+  VArraySpan<float> density_factors_span(density_factors);
+  threading::parallel_for(tre_bary_coords.index_range(), 2048, [&](const IndexRange range) {
+    for (const int tri_i : range) {
+      const int3 &tri = corner_tris[tri_i];
+      const float a = std::max(0.0f, density_factors_span[tri[0]]);
+      const float b = std::max(0.0f, density_factors_span[tri[1]]);
+      const float c = std::max(0.0f, density_factors_span[tri[2]]);
+
+      for (const int i : tre_bary_coords.offsets[tri_i]) {
+        if (!elimination_mask[i]) {
+          continue;
+        }
+
+        const float3 bary_coord = tre_bary_coords.data[i];
+        const float probability = bke::attribute_math::mix3<float>(bary_coord, a, b, c);
+        const float hash = noise::hash_float_to_float(bary_coord);
+        if (hash > probability) {
+          elimination_mask[i] = false;
+        }
+      }
+    }
   });
 }
 
@@ -465,16 +477,17 @@ static Array<float> calc_full_density_factors_with_selection(const Mesh &mesh,
   return densities;
 }
 
-static void tris_points_count_for_density(const Mesh &mesh,
-                                          const VArray<float> &densities,
-                                          const int seed,
-                                          MutableSpan<int> r_count)
+static void tris_points_count_for_densities(const Mesh &mesh,
+                                            const VArray<float> &densities,
+                                            const int seed,
+                                            MutableSpan<int> r_count)
 {
   const Span<float3> positions = mesh.vert_positions();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int3> corner_tris = mesh.corner_tris();
 
-  devirtualize_varray(densities, [&](const auto densities) {
+  if (densities.is_single()) {
+    const float density = std::max(0.0f, densities.get_internal_single());
     threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
       for (const int64_t tri_i : range) {
         const int3 tri = corner_tris[tri_i];
@@ -485,22 +498,43 @@ static void tris_points_count_for_density(const Mesh &mesh,
         const float3 &v1_pos = positions[corner_verts[v1_loop]];
         const float3 &v2_pos = positions[corner_verts[v2_loop]];
 
-        const float v0_density_factor = std::max(0.0f, densities[v0_loop]);
-        const float v1_density_factor = std::max(0.0f, densities[v1_loop]);
-        const float v2_density_factor = std::max(0.0f, densities[v2_loop]);
-        const float tri_mean_density = (v0_density_factor + v1_density_factor +
-                                        v2_density_factor) /
-                                       3.0f;
-
         const float area = area_tri_v3(v0_pos, v1_pos, v2_pos);
 
         const int corner_tri_seed = noise::hash(tri_i, seed);
         RandomNumberGenerator corner_tri_rng(corner_tri_seed);
 
-        const int point_amount = corner_tri_rng.round_probabilistic(area * tri_mean_density);
+        const int point_amount = corner_tri_rng.round_probabilistic(area * density);
         r_count[tri_i] = point_amount;
       }
     });
+    return;
+  }
+
+  VArraySpan<float> densities_span(densities);
+  threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+    for (const int64_t tri_i : range) {
+      const int3 tri = corner_tris[tri_i];
+      const int v0_loop = tri[0];
+      const int v1_loop = tri[1];
+      const int v2_loop = tri[2];
+      const float3 &v0_pos = positions[corner_verts[v0_loop]];
+      const float3 &v1_pos = positions[corner_verts[v1_loop]];
+      const float3 &v2_pos = positions[corner_verts[v2_loop]];
+
+      const float v0_density_factor = std::max(0.0f, densities_span[v0_loop]);
+      const float v1_density_factor = std::max(0.0f, densities_span[v1_loop]);
+      const float v2_density_factor = std::max(0.0f, densities_span[v2_loop]);
+      const float tri_mean_density = (v0_density_factor + v1_density_factor + v2_density_factor) /
+                                     3.0f;
+
+      const float area = area_tri_v3(v0_pos, v1_pos, v2_pos);
+
+      const int corner_tri_seed = noise::hash(tri_i, seed);
+      RandomNumberGenerator corner_tri_rng(corner_tri_seed);
+
+      const int point_amount = corner_tri_rng.round_probabilistic(area * tri_mean_density);
+      r_count[tri_i] = point_amount;
+    }
   });
 }
 
@@ -545,33 +579,22 @@ static void reduce_offsets_by_mask_selections(const OffsetIndices<int> offsets,
   offset_indices::accumulate_counts_to_offsets(r_offsets);
 }
 
-static VArray<float> ensure_varray_size(const int size, VArray<float> varray)
+static Field<float> switch_with_default(Field<float> values, Field<bool> selection)
 {
-  if (varray.size() == size) {
-    return varray;
-  }
+  const static auto switch_fn = mf::build::SI2_SO<float, bool, float>(
+      "Switch Selection",
+      [](const float value, const bool selection) { return selection ? value : 0.0f; },
+      mf::build::exec_presets::AllSpanOrSingle());
 
-  if (const std::optional<float> value = varray.get_if_single()) {
-    return VArray<float>::ForSingle(*value, size);
-  }
-
-  if (varray.is_span()) {
-    const Span<float> span = varray.get_internal_span();
-    if (span.size() >= size) {
-      return VArray<float>::ForSpan(span.take_front(size));
-    }
-  }
-
-  Array<float> full_span(size, 0.0f);
-  array_utils::copy(varray, full_span.as_mutable_span().take_front(varray.size()));
-  return VArray<float>::ForContainer(std::move(full_span));
+  return Field<float>(
+      FieldOperation::Create(switch_fn, {std::move(values), std::move(selection)}));
 }
 
 static void point_distribution_calculate(GeometrySet &geometry_set,
-                                         const Field<bool> selection_field,
                                          const GeometryNodeDistributePointsOnFacesMode method,
                                          const int seed,
                                          const AttributeOutputs &attribute_outputs,
+                                         Field<bool> selection_field,
                                          GeoNodeExecParams &params)
 {
   if (!geometry_set.has_mesh()) {
@@ -588,13 +611,12 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   switch (method) {
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM: {
-      evaluator.add(params.extract_input<Field<float>>("Density"));
-      evaluator.set_selection(selection_field);
+      evaluator.add(switch_with_default(params.extract_input<Field<float>>("Density"),
+                                        std::move(selection_field)));
       evaluator.evaluate();
-      const VArray<float> densities = ensure_varray_size(mesh.corners_num,
-                                                         evaluator.get_evaluated<float>(0));
+      const VArray<float> densities = evaluator.get_evaluated<float>(0);
       offsets.reinitialize(mesh.corner_tris().size() + 1);
-      tris_points_count_for_density(mesh, densities, seed, offsets);
+      tris_points_count_for_densities(mesh, densities, seed, offsets);
       const OffsetIndices<int> points_groups = offset_indices::accumulate_counts_to_offsets(
           offsets.as_mutable_span());
       bary_coords.reinitialize(points_groups.total_size());
@@ -604,20 +626,19 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON: {
       const float density_max = params.get_input<float>("Density Max");
       offsets.reinitialize(mesh.corner_tris().size() + 1);
-      tris_points_count_for_density(
-          mesh, VArray<float>::ForSingle(density_max, mesh.corners_num), seed, offsets);
+      tris_points_count_for_densities(
+          mesh, VArray<float>::ForSingle(mesh.corners_num, density_max), seed, offsets);
       OffsetIndices<int> points_groups = offset_indices::accumulate_counts_to_offsets(
           offsets.as_mutable_span());
       bary_coords.reinitialize(points_groups.total_size());
       random_barycentric_points(seed, offsets.as_span(), bary_coords);
 
-      const GroupedSpan<float3> tre_bary_coords(offsets.as_span(), bary_coords);
+      const GroupedSpan<float3> tris_bary_coords(offsets.as_span(), bary_coords);
 
-      evaluator.add(params.extract_input<Field<float>>("Density Factor"));
-      evaluator.set_selection(selection_field);
+      evaluator.add(switch_with_default(params.extract_input<Field<float>>("Density Factor"),
+                                        std::move(selection_field)));
       evaluator.evaluate();
-      const VArray<float> density_factors = ensure_varray_size(mesh.corners_num,
-                                                               evaluator.get_evaluated<float>(0));
+      const VArray<float> density_factors = evaluator.get_evaluated<float>(0);
 
       /* Delete all too-near points. */
       const float minimum_distance = params.get_input<float>("Distance Min");
@@ -626,18 +647,18 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
         break;
       }
 
+      Array<bool> elimination_mask(bary_coords.size(), true);
+
       /* Temporal positions. Result point positions will be interpolated just like any other
        * attribute. */
       Array<float3> positions(bary_coords.size());
       interpolate_vert_attribute(mesh,
-                                 tre_bary_coords,
+                                 tris_bary_coords,
                                  VArray<float3>::ForSpan(mesh.vert_positions()),
                                  positions.as_mutable_span());
-
-      Array<bool> elimination_mask(bary_coords.size(), true);
       update_elimination_mask_for_close_points(positions, minimum_distance, elimination_mask);
       update_elimination_mask_based_on_density_factors(
-          mesh, density_factors, tre_bary_coords, elimination_mask.as_mutable_span());
+          mesh, density_factors, tris_bary_coords, elimination_mask.as_mutable_span());
 
       IndexMaskMemory memory;
       const IndexMask mask = IndexMask::from_bools(elimination_mask.as_span(), memory);
@@ -702,7 +723,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     point_distribution_calculate(
-        geometry_set, selection_field, method, seed, attribute_outputs, params);
+        geometry_set, method, seed, attribute_outputs, selection_field, params);
     /* Keep instances because the original geometry set may contain instances that are processed as
      * well. */
     geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
