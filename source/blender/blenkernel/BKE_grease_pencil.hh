@@ -612,7 +612,6 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   LayerGroup &operator=(const LayerGroup &other);
 
  public:
-  int color_icon;
   /* Define the common functions for #TreeNode. */
   TREENODE_COMMON_METHODS;
   /**

@@ -260,7 +260,7 @@ static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
   }();
 
   LayerGroup &new_group = grease_pencil.add_layer_group(parent_group, new_layer_group_name);
-  new_group.color_icon = ICON_FILE_FOLDER;
+  new_group.color_tag = -1;
 
   if (grease_pencil.has_active_layer()) {
     grease_pencil.move_node_after(new_group.as_node(),
@@ -743,7 +743,7 @@ static void GREASE_PENCIL_OT_layer_mask_reorder(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "direction", enum_direction, 0, "Direction", "");
 }
 
-  const EnumPropertyItem enum_layergroup_color_items[] = {
+const EnumPropertyItem enum_layergroup_color_items[] = {
     {LAYERGROUP_COLOR_NONE, "NONE", ICON_X, "Set Default icon", ""},
     {LAYERGROUP_COLOR_01, "COLOR1", ICON_LAYERGROUP_COLOR_01, "Color tag 1", ""},
     {LAYERGROUP_COLOR_02, "COLOR2", ICON_LAYERGROUP_COLOR_02, "Color tag 2", ""},
@@ -762,13 +762,10 @@ static int grease_pencil_layer_group_color_tag_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  const int color = RNA_enum_get(op->ptr, "color_tag");
+  const int color_tag = RNA_enum_get(op->ptr, "color_tag");
   LayerGroup *active_group = grease_pencil.get_active_group();
-  active_group->color_icon = enum_layergroup_color_items[color + 1].icon;
+  active_group->color_tag = color_tag;
 
-  if (active_group->color_icon == ICON_X) {
-    active_group->color_icon = ICON_FILE_FOLDER;
-  }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);

@@ -344,6 +344,11 @@ typedef struct GreasePencilLayerTreeGroup {
    */
   ListBase children;
   /**
+   * Icon color tag.
+   */
+  int8_t color_tag;
+  char _pad[7];
+  /**
    * Runtime struct pointer.
    */
   GreasePencilLayerGroupRuntimeHandle *runtime;
