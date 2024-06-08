@@ -596,6 +596,12 @@ extern char *GHOST_GetTitle(GHOST_WindowHandle windowhandle);
 extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepath);
 
 /**
+ * Enables or disables custom client-side window decorations
+ * \param useDecoration: Whether to use custom client-side window decorations
+ */
+extern void GHOST_SetUseDecoration(GHOST_WindowHandle windowhandle, bool useDecoration);
+
+/**
  * Returns the window rectangle dimensions.
  * These are screen coordinates.
  * \param windowhandle: The handle to the window.

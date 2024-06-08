@@ -284,6 +284,7 @@ void WM_window_rect_calc(const wmWindow *win, rcti *r_rect);
  * \note Depends on #UI_SCALE_FAC. Should that be outdated, call #WM_window_set_dpi first.
  */
 void WM_window_screen_rect_calc(const wmWindow *win, rcti *r_rect);
+bool WM_window_has_global_areas(const wmWindow *win);
 bool WM_window_is_fullscreen(const wmWindow *win);
 bool WM_window_is_maximized(const wmWindow *win);
 
@@ -367,6 +368,8 @@ wmWindow *WM_window_open(bContext *C,
 void WM_window_set_dpi(const wmWindow *win);
 
 bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);
+
+void WM_window_set_use_decoration(const wmWindow *win, bool use_decoration);
 
 /* `wm_files.cc`. */
 

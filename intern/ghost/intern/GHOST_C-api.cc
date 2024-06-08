@@ -608,6 +608,12 @@ GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepa
   return window->setPath(filepath);
 }
 
+void GHOST_SetUseDecoration(GHOST_WindowHandle windowhandle, const bool useDecoration)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+  window->setUseDecoration(useDecoration);
+}
+
 GHOST_RectangleHandle GHOST_GetWindowBounds(GHOST_WindowHandle windowhandle)
 {
   const GHOST_IWindow *window = (const GHOST_IWindow *)windowhandle;

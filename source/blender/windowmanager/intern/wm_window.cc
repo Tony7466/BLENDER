@@ -580,6 +580,11 @@ void WM_window_set_dpi(const wmWindow *win)
   U.widget_unit = int(roundf(18.0f * U.scale_factor)) + (2 * pixelsize);
 }
 
+void WM_window_set_use_decoration(const wmWindow *win, const bool use_decoration)
+{
+  GHOST_SetUseDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin), use_decoration);
+}
+
 /**
  * When windows are activated, simulate modifier press/release to match the current state of
  * held modifier keys, see #40317.
@@ -839,6 +844,10 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
     wm_window_ensure_eventstate(win);
 
     WM_window_set_dpi(win);
+
+    /* If the window has global areas (topbar/statusbar), enable decorations */
+    const bool use_decoration = WM_window_has_global_areas(win);
+    WM_window_set_use_decoration(win, use_decoration);
   }
 
   /* Add key-map handlers (1 handler for all keys in map!). */
@@ -2713,6 +2722,18 @@ bool WM_window_is_fullscreen(const wmWindow *win)
 bool WM_window_is_maximized(const wmWindow *win)
 {
   return win->windowstate == GHOST_kWindowStateMaximized;
+}
+
+bool WM_window_has_global_areas(const wmWindow *win)
+{
+  /**
+   * Return whether the window should contain global areas (topbar/statusbar)
+   */
+  bScreen *screen = BKE_workspace_active_screen_get(win->workspace_hook);
+  if ((win->parent != nullptr) || screen->temp) {
+    return false;
+  }
+  return true;
 }
 
 /** \} */

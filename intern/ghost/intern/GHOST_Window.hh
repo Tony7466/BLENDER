@@ -89,6 +89,8 @@ class GHOST_Window : public GHOST_IWindow {
     return GHOST_kFailure;
   }
 
+  virtual void setUseDecoration(bool useDecoration) override;
+
   /**
    * Returns the current cursor shape.
    * \return The current cursor shape.
@@ -409,6 +411,9 @@ class GHOST_Window : public GHOST_IWindow {
 
   /** Stores whether this is a full screen window. */
   bool m_fullScreen;
+
+  /** Stores whether the windows has custom client-side decorations */
+  bool m_useDecoration;
 
   /** Whether to attempt to initialize a context with a stereo frame-buffer. */
   bool m_wantStereoVisual;
