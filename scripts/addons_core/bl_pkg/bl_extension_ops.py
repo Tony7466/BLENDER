@@ -82,10 +82,10 @@ def rna_prop_repo_enum_local_only_itemf(_self, context):
                 repo_item.name if repo_item.enabled else (repo_item.name + " (disabled)"),
                 "",
             )
-            for repo_item in repo_iter_valid_local_only(context)
+            for repo_item in repo_iter_valid_local_only(context, exclude_system=True)
         ]
     # Prevent the strings from being freed.
-    rna_prop_repo_enum_local_only_itemf._result = result
+    rna_prop_repo_enum_local_only_itemf.result = result
     return result
 
 
@@ -255,12 +255,15 @@ def extension_theme_enable(repo_directory, pkg_idname):
     extension_theme_enable_filepath(os.path.join(theme_dir, theme_files[0]))
 
 
-def repo_iter_valid_local_only(context):
+def repo_iter_valid_local_only(context, *, exclude_system):
     from . import repo_paths_or_none
     extension_repos = context.preferences.extensions.repos
     for repo_item in extension_repos:
         if not repo_item.enabled:
             continue
+        if exclude_system:
+            if (not repo_item.use_custom_directory) and (repo_item.source == 'SYSTEM'):
+                continue
         # Ignore repositories that have invalid settings.
         directory, remote_url = repo_paths_or_none(repo_item)
         if directory is None:
@@ -268,6 +271,24 @@ def repo_iter_valid_local_only(context):
         if remote_url:
             continue
         yield repo_item
+
+
+def wm_wait_cursor(value):
+    for wm in bpy.data.window_managers:
+        for window in wm.windows:
+            if value:
+                window.cursor_modal_set('WAIT')
+            else:
+                window.cursor_modal_restore()
+
+
+def operator_finished_result(operator_result):
+    # Inspect results for modal operator, return None when the result isn't known.
+    if 'CANCELLED' in operator_result:
+        return True
+    if 'FINISHED' in operator_result:
+        return False
+    return None
 
 
 # A named-tuple copy of `context.preferences.extensions.repos` (`bpy.types.UserExtensionRepo`).
@@ -287,6 +308,7 @@ def repo_iter_valid_local_only(context):
 class RepoItem(NamedTuple):
     name: str
     directory: str
+    source: str
     remote_url: str
     module: str
     use_cache: bool
@@ -507,6 +529,7 @@ def extension_repos_read_index(index, *, include_disabled=False):
             return RepoItem(
                 name=repo_item.name,
                 directory=directory,
+                source="" if repo_item.use_custom_directory else repo_item.source,
                 remote_url=remote_url,
                 module=repo_item.module,
                 use_cache=repo_item.use_cache,
@@ -544,6 +567,7 @@ def extension_repos_read(*, include_disabled=False, use_active_only=False):
         result.append(RepoItem(
             name=repo_item.name,
             directory=directory,
+            source="" if repo_item.use_custom_directory else repo_item.source,
             remote_url=remote_url,
             module=repo_item.module,
             use_cache=repo_item.use_cache,
@@ -822,12 +846,10 @@ class CommandHandle:
 
         handle = CommandHandle()
         handle.cmd_batch = cmd_batch
-        handle.modal_timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        handle.modal_timer = context.window_manager.event_timer_add(0.1, window=context.window)
         handle.wm = context.window_manager
 
         handle.wm.modal_handler_add(op)
-        for window in handle.wm.windows:
-            window.cursor_modal_set('WAIT')
 
         op._runtime_handle = handle
         return {'RUNNING_MODAL'}
@@ -873,9 +895,6 @@ class CommandHandle:
             context.workspace.status_text_set(None)
             repo_status_text.running = False
 
-            for window in self.wm.windows:
-                window.cursor_modal_restore()
-
             if self.request_exit:
                 return {'CANCELLED'}
             return {'FINISHED'}
@@ -883,6 +902,7 @@ class CommandHandle:
         return {'RUNNING_MODAL'}
 
     def op_modal_impl(self, op, context, event):
+        pass_through = True
         refresh = False
         if event.type == 'TIMER':
             refresh = True
@@ -891,10 +911,22 @@ class CommandHandle:
                 print("Request exit!")
                 self.request_exit = True
                 refresh = True
+                # This escape event was handled.
+                pass_through = False
 
         if refresh:
             return self.op_modal_step(op, context)
+
+        if pass_through:
+            return {'RUNNING_MODAL', 'PASS_THROUGH'}
         return {'RUNNING_MODAL'}
+
+    def op_modal_cancel(self, op, context):
+        import time
+        self.request_exit = True
+        while operator_finished_result(self.op_modal_step(op, context)) is None:
+            # Avoid high CPU use on exit.
+            time.sleep(0.1)
 
 
 def _report(ty, msg):
@@ -914,6 +946,39 @@ def _repo_dir_and_index_get(repo_index, directory, report_fn):
     if not directory:
         report_fn({'ERROR'}, "Repository not set")
     return directory
+
+
+def _extensions_maybe_online_action_poll_impl(cls, repo, action_text):
+
+    if repo is not None:
+        if not repo.enabled:
+            cls.poll_message_set("Active repository is disabled")
+            return False
+
+    if repo is None:
+        # This may not be correct but it's a reasonable assumption.
+        online_access_required = True
+    else:
+        # Check the specifics to allow refreshing a single repository from the popover.
+        online_access_required = repo.use_remote_url and (not repo.remote_url.startswith("file://"))
+
+    if online_access_required:
+        if not bpy.app.online_access:
+            cls.poll_message_set(
+                "Online access required to {:s}. {:s}".format(
+                    action_text,
+                    "Launch Blender without --offline-mode" if bpy.app.online_access_override else
+                    "Enable online access in System preferences"
+                )
+            )
+            return False
+
+    repos_all = extension_repos_read(use_active_only=False)
+    if not repos_all:
+        cls.poll_message_set("No repositories available")
+        return False
+
+    return True
 
 
 # -----------------------------------------------------------------------------
@@ -963,19 +1028,23 @@ class _ExtCmdMixIn:
         repo_status_text.title = cmd_batch.title
 
         result = CommandHandle.op_exec_from_iter(self, context, cmd_batch, is_modal)
-        if 'FINISHED' in result:
-            self.exec_command_finish(False)
-        elif 'CANCELLED' in result:
-            self.exec_command_finish(True)
+        if (canceled := operator_finished_result(result)) is not None:
+            self.exec_command_finish(canceled)
         return result
 
     def modal(self, context, event):
         result = self._runtime_handle.op_modal_impl(self, context, event)
-        if 'FINISHED' in result:
-            self.exec_command_finish(False)
-        elif 'CANCELLED' in result:
-            self.exec_command_finish(True)
+        if (canceled := operator_finished_result(result)) is not None:
+            wm_wait_cursor(True)
+            self.exec_command_finish(canceled)
+            wm_wait_cursor(False)
+
         return result
+
+    def cancel(self, context):
+        canceled = True
+        self._runtime_handle.op_modal_cancel(self, context)
+        self.exec_command_finish(canceled)
 
 
 class EXTENSIONS_OT_dummy_progress(Operator, _ExtCmdMixIn):
@@ -1079,24 +1148,15 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
     )
 
     @classmethod
-    def poll(cls, _context):
-        if not bpy.app.online_access:
-            if bpy.app.online_access_override:
-                cls.poll_message_set(
-                    "Online access required to check for updates. Launch Blender without --offline-mode"
-                )
-            else:
-                cls.poll_message_set(
-                    "Online access required to check for updates. Enable online access in System preferences"
-                )
-            return False
+    def poll(cls, context):
+        repo = getattr(context, "extension_repo", None)
+        return _extensions_maybe_online_action_poll_impl(cls, repo, "check for updates")
 
-        repos_all = extension_repos_read(use_active_only=False)
-        if not len(repos_all):
-            cls.poll_message_set("No repositories available")
-            return False
-
-        return True
+    @classmethod
+    def description(cls, _context, props):
+        if props.use_active_only:
+            return "Refresh the list of extensions for the active repository"
+        return ""  # Default.
 
     def exec_command_iter(self, is_modal):
         use_active_only = self.use_active_only
@@ -1167,7 +1227,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
 class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
     """Upgrade all the extensions to their latest version for all the remote repositories"""
     bl_idname = "extensions.package_upgrade_all"
-    bl_label = "Ext Package Upgrade All"
+    bl_label = "Install Available Updates"
     __slots__ = (
         *_ExtCmdMixIn.cls_slots,
         "_repo_directories",
@@ -1179,21 +1239,23 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
     )
 
     @classmethod
-    def poll(cls, _context):
-        if not bpy.app.online_access:
-            if bpy.app.online_access_override:
-                cls.poll_message_set("Online access required to install updates. Launch Blender without --offline-mode")
-            else:
-                cls.poll_message_set(
-                    "Online access required to install updates. Enable online access in System preferences")
-            return False
+    def poll(cls, context):
+        repo = getattr(context, "extension_repo", None)
+        if repo is not None:
+            # NOTE: we could simply not show this operator for local repositories as it's
+            # arguably self evident that a local-only repository has nothing to upgrade from.
+            # For now tell the user why they can't use this action.
+            if not repo.use_remote_url:
+                cls.poll_message_set("Upgrade is not supported for local repositories")
+                return False
 
-        repos_all = extension_repos_read(use_active_only=False)
-        if not len(repos_all):
-            cls.poll_message_set("No repositories available")
-            return False
+        return _extensions_maybe_online_action_poll_impl(cls, repo, "install updates")
 
-        return True
+    @classmethod
+    def description(cls, _context, props):
+        if props.use_active_only:
+            return "Upgrade all the extensions to their latest version for the active repository"
+        return ""  # Default.
 
     def exec_command_iter(self, is_modal):
         from . import repo_cache_store
@@ -1766,7 +1828,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
     @classmethod
     def poll(cls, context):
-        if next(repo_iter_valid_local_only(context), None) is None:
+        if next(repo_iter_valid_local_only(context, exclude_system=True), None) is None:
             cls.poll_message_set("There must be at least one \"Local\" repository set to install extensions into")
             return False
         return True
@@ -1783,9 +1845,11 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
     def draw(self, context):
         if self._drop_variables is not None:
-            return self._draw_for_drop(context)
+            self._draw_for_drop(context)
+            return
         elif self._legacy_drop is not None:
-            return self._draw_for_legacy_drop(context)
+            self._draw_for_legacy_drop(context)
+            return
 
         # Override draw because the repository names may be over-long and not fit well in the UI.
         # Show the text & repository names in two separate rows.
@@ -1811,7 +1875,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
             body.prop(self, "target", text="Target Path")
             body.prop(self, "overwrite", text="Overwrite")
 
-    def _invoke_for_drop(self, context, event):
+    def _invoke_for_drop(self, context, _event):
         # Drop logic.
         print("DROP FILE:", self.url)
 
@@ -1831,11 +1895,10 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
             self._drop_variables = True
             self._legacy_drop = None
 
-            from .bl_extension_ops import repo_iter_valid_local_only
             from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
 
-            if not list(repo_iter_valid_local_only(bpy.context)):
-                self.report({'ERROR'}, "No Local Repositories")
+            if not list(repo_iter_valid_local_only(context, exclude_system=True)):
+                self.report({'ERROR'}, "No local user repositories")
                 return {'CANCELLED'}
 
             if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
@@ -1860,7 +1923,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
         return {'RUNNING_MODAL'}
 
-    def _draw_for_drop(self, context):
+    def _draw_for_drop(self, _context):
 
         layout = self.layout
         layout.operator_context = 'EXEC_DEFAULT'
@@ -1872,7 +1935,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[pkg_type])
 
-    def _draw_for_legacy_drop(self, context):
+    def _draw_for_legacy_drop(self, _context):
 
         layout = self.layout
         layout.operator_context = 'EXEC_DEFAULT'
@@ -1901,8 +1964,16 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
     # Only used for code-path for dropping an extension.
     url: rna_prop_url
 
+    # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+    # Only used when moving from  previously built-in add-ons to extensions.
+    do_legacy_replace: BoolProperty(
+        name="Do Legacy Replace",
+        default=False,
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         if not bpy.app.online_access:
             if bpy.app.online_access_override:
                 cls.poll_message_set(
@@ -2013,6 +2084,10 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         _preferences_ui_redraw()
         _preferences_ui_refresh_addons()
 
+        # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
+        if self.do_legacy_replace and (not canceled):
+            self._do_legacy_replace(self.pkg_id, pkg_manifest_local)
+
     def invoke(self, context, event):
         # Only for drop logic!
         if self.properties.is_property_set("url"):
@@ -2020,7 +2095,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
         return self.execute(context)
 
-    def _invoke_for_drop(self, context, event):
+    def _invoke_for_drop(self, context, _event):
         from .bl_extension_utils import url_parse_for_blender
 
         url = self.url
@@ -2058,15 +2133,15 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
     def draw(self, context):
         if self._drop_variables is not None:
-            return self._draw_for_drop(context)
+            self._draw_for_drop(context)
 
-    def _draw_for_drop(self, context):
+    def _draw_for_drop(self, _context):
         from .bl_extension_ui import (
             size_as_fmt_string,
         )
         layout = self.layout
 
-        repo_index, repo_name, pkg_id, item_remote = self._drop_variables
+        _repo_index, repo_name, pkg_id, item_remote = self._drop_variables
 
         layout.label(text="Do you want to install the following {:s}?".format(item_remote["type"]))
 
@@ -2080,8 +2155,33 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote["type"]])
 
+    @staticmethod
+    def _do_legacy_replace(pkg_id, pkg_manifest_local):
+        # Disables and add-on that was replaced by an extension,
+        # use for upgrading 4.1 preferences or older.
+
+        # Ensure the local meta-data exists, else there may have been a problem installing,
+        # note that this does *not* check if the add-on could be enabled which is intentional.
+        # It's only important the add-on installs to justify disabling the old add-on.
+        # Note that there is no need to report if this was not found as failing to install will
+        # already have reported.
+        if not pkg_manifest_local.get(pkg_id):
+            return
+
+        from .bl_extension_ui import extensions_map_from_legacy_addons_reverse_lookup
+        addon_module_name = extensions_map_from_legacy_addons_reverse_lookup(pkg_id)
+        if not addon_module_name:
+            # This shouldn't happen unless someone goes out of there way
+            # to enable `do_legacy_replace` for a non-legacy extension.
+            # Use a print here as it's such a corner case and harmless.
+            print("Internal error, legacy lookup failed:", addon_module_name)
+            return
+
+        bpy.ops.preferences.addon_disable(module=addon_module_name)
+
 
 class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
+    """Disable and uninstall the extension"""
     bl_idname = "extensions.package_uninstall"
     bl_label = "Ext Package Uninstall"
     __slots__ = _ExtCmdMixIn.cls_slots
@@ -2165,6 +2265,27 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
         _preferences_ui_refresh_addons()
 
 
+# Only exists for an error message.
+class EXTENSIONS_OT_package_uninstall_system(Operator):
+    # Copy `EXTENSIONS_OT_package_uninstall` doc-string.
+    bl_label = "Uninstall"
+
+    bl_idname = "extensions.package_uninstall_system"
+    bl_options = {'INTERNAL'}
+
+    @classmethod
+    def poll(cls, _contest):
+        cls.poll_message_set("System extensions are read-only and cannot be uninstalled")
+        return False
+
+    @classmethod
+    def description(cls, _context, _props):
+        return EXTENSIONS_OT_package_uninstall.__doc__
+
+    def execute(self, _context):
+        return {'CANCELLED'}
+
+
 class EXTENSIONS_OT_package_disable(Operator):
     """Turn off this extension"""
     bl_idname = "extensions.package_disable"
@@ -2183,8 +2304,7 @@ class EXTENSIONS_OT_package_theme_enable(Operator):
     pkg_id: rna_prop_pkg_id
     repo_index: rna_prop_repo_index
 
-    def execute(self, context):
-        self.repo_index
+    def execute(self, _context):
         repo_item = extension_repos_read_index(self.repo_index)
         extension_theme_enable(repo_item.directory, self.pkg_id)
         print(repo_item.directory, self.pkg_id)
@@ -2200,7 +2320,6 @@ class EXTENSIONS_OT_package_theme_disable(Operator):
     repo_index: rna_prop_repo_index
 
     def execute(self, context):
-        import os
         repo_item = extension_repos_read_index(self.repo_index)
         dirpath = os.path.join(repo_item.directory, self.pkg_id)
         if os.path.samefile(dirpath, os.path.dirname(context.preferences.themes[0].filepath)):
@@ -2394,7 +2513,7 @@ class EXTENSIONS_OT_repo_lock(Operator):
             return {'CANCELLED'}
 
         self.report({'INFO'}, "Locked {:d} repos(s)".format(len(lock_result)))
-        BlPkgRepoLock.lock = lock_handle
+        EXTENSIONS_OT_repo_lock.lock = lock_handle
         return {'FINISHED'}
 
 
@@ -2404,14 +2523,14 @@ class EXTENSIONS_OT_repo_unlock(Operator):
     bl_label = "Unlock Repository (Testing)"
 
     def execute(self, _context):
-        lock_handle = BlPkgRepoLock.lock
+        lock_handle = EXTENSIONS_OT_repo_lock.lock
         if lock_handle is None:
             self.report({'ERROR'}, "Lock not held!")
             return {'CANCELLED'}
 
         lock_result = lock_handle.release()
 
-        BlPkgRepoLock.lock = None
+        EXTENSIONS_OT_repo_lock.lock = None
 
         if lock_result_any_failed_with_report(self, lock_result):
             # This isn't canceled, but there were issues unlocking.
@@ -2454,7 +2573,7 @@ class EXTENSIONS_OT_userpref_show_online(Operator):
     bl_options = {'INTERNAL'}
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         if bpy.app.online_access_override:
             if not bpy.app.online_access:
                 cls.poll_message_set("Blender was launched in offline-mode which cannot be changed at runtime")
@@ -2561,6 +2680,7 @@ classes = (
     EXTENSIONS_OT_package_install_files,
     EXTENSIONS_OT_package_install,
     EXTENSIONS_OT_package_uninstall,
+    EXTENSIONS_OT_package_uninstall_system,
     EXTENSIONS_OT_package_disable,
 
     EXTENSIONS_OT_package_theme_enable,
