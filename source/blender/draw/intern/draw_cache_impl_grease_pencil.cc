@@ -210,6 +210,13 @@ static void copy_transformed_positions(const Span<float3> src_positions,
   }
 }
 
+static bool grease_pencil_batch_cache_is_edit_discarded(GreasePencilBatchCache *cache)
+{
+  return cache->edit_points_pos == nullptr && cache->edit_line_indices == nullptr &&
+         cache->edit_points_indices == nullptr && cache->edit_points == nullptr &&
+         cache->edit_lines == nullptr;
+}
+
 static void grease_pencil_weight_batch_ensure(Object &object,
                                               const GreasePencil &grease_pencil,
                                               const Scene &scene)
@@ -227,9 +234,7 @@ static void grease_pencil_weight_batch_ensure(Object &object,
   }
 
   /* Should be discarded together. */
-  BLI_assert(cache->edit_points_pos == nullptr && cache->edit_line_indices == nullptr &&
-             cache->edit_points_indices == nullptr);
-  BLI_assert(cache->edit_points == nullptr && cache->edit_lines == nullptr);
+  BLI_assert(grease_pencil_batch_cache_is_edit_discarded(cache));
 
   /* Get active vertex group. */
   const bDeformGroup *active_defgroup = static_cast<bDeformGroup *>(BLI_findlink(
@@ -406,9 +411,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   }
 
   /* Should be discarded together. */
-  BLI_assert(cache->edit_points_pos == nullptr && cache->edit_line_indices == nullptr &&
-             cache->edit_points_indices == nullptr);
-  BLI_assert(cache->edit_points == nullptr && cache->edit_lines == nullptr);
+  BLI_assert(grease_pencil_batch_cache_is_edit_discarded(cache));
 
   /* Get the visible drawings. */
   const Vector<ed::greasepencil::DrawingInfo> drawings =
