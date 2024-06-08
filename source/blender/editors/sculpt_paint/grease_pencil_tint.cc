@@ -9,6 +9,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_paint.hh"
 
 #include "BLI_bounds.hh"
 #include "BLI_length_parameterize.hh"
@@ -105,7 +106,7 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*sta
     const int drawing_index = (&drawing_info - drawings_.data());
 
     bke::CurvesGeometry &strokes = drawing_info.drawing.strokes_for_write();
-    const Layer &layer = *grease_pencil.layers()[drawing_info.layer_index];
+    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
 
     screen_positions_per_drawing_[drawing_index].reinitialize(strokes.points_num());
 
@@ -154,10 +155,10 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
   strength = math::clamp(strength, 0.0f, 1.0f);
   fill_strength = math::clamp(fill_strength, 0.0f, 1.0f);
 
-  const bool tint_strokes = ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_STROKE) ||
-                             (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH));
-  const bool tint_fills = ((brush->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) ||
-                           (brush->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH));
+  const bool tint_strokes = ELEM(
+      brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
+  const bool tint_fills = ELEM(
+      brush->gpencil_settings->vertex_mode, GPPAINT_MODE_FILL, GPPAINT_MODE_BOTH);
 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 

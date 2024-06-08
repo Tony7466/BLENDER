@@ -249,7 +249,7 @@ static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
-static ID **collection_owner_pointer_get(ID *id)
+static ID **collection_owner_pointer_get(ID *id, const bool debug_relationship_assert)
 {
   if ((id->flag & LIB_EMBEDDED_DATA) == 0) {
     return nullptr;
@@ -257,9 +257,11 @@ static ID **collection_owner_pointer_get(ID *id)
 
   Collection *master_collection = (Collection *)id;
   BLI_assert((master_collection->flag & COLLECTION_IS_MASTER) != 0);
-  BLI_assert(master_collection->owner_id != nullptr);
-  BLI_assert(GS(master_collection->owner_id->name) == ID_SCE);
-  BLI_assert(((Scene *)master_collection->owner_id)->master_collection == master_collection);
+  if (debug_relationship_assert) {
+    BLI_assert(master_collection->owner_id != nullptr);
+    BLI_assert(GS(master_collection->owner_id->name) == ID_SCE);
+    BLI_assert(((Scene *)master_collection->owner_id)->master_collection == master_collection);
+  }
 
   return &master_collection->owner_id;
 }
@@ -339,16 +341,16 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
   collection->owner_id = owner_id;
 
-  BLO_read_list(reader, &collection->gobject);
-  BLO_read_list(reader, &collection->children);
+  BLO_read_struct_list(reader, CollectionObject, &collection->gobject);
+  BLO_read_struct_list(reader, CollectionChild, &collection->children);
 
-  BLO_read_list(reader, &collection->exporters);
+  BLO_read_struct_list(reader, CollectionExport, &collection->exporters);
   LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
-    BLO_read_data_address(reader, &data->export_properties);
+    BLO_read_struct(reader, IDProperty, &data->export_properties);
     IDP_BlendDataRead(reader, &data->export_properties);
   }
 
-  BLO_read_data_address(reader, &collection->preview);
+  BLO_read_struct(reader, PreviewImage, &collection->preview);
   BKE_previewimg_blend_read(reader, collection->preview);
 }
 
@@ -481,7 +483,7 @@ void BKE_collection_add_from_collection(Main *bmain,
   bool is_instantiated = false;
 
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
-    if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
+    if (ID_IS_EDITABLE(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
         collection_find_child(collection, collection_src))
     {
       collection_child_add(bmain, collection, collection_dst, nullptr, 0, true);
@@ -514,7 +516,7 @@ void BKE_collection_free_data(Collection *collection)
   collection_free_data(&collection->id);
 }
 
-void BKE_collection_exporter_free_data(struct CollectionExport *data)
+void BKE_collection_exporter_free_data(CollectionExport *data)
 {
   if (data->export_properties) {
     IDP_FreeProperty(data->export_properties);
@@ -1055,6 +1057,20 @@ bool BKE_collection_has_object_recursive_instanced(Collection *collection, Objec
   return BLI_findptr(&objects, ob, offsetof(Base, object));
 }
 
+bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection_eval,
+                                                           Object *object_eval)
+{
+  BLI_assert(collection_eval->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  const ID *ob_orig = DEG_get_original_id(&object_eval->id);
+  const ListBase objects = BKE_collection_object_cache_instanced_get(collection_eval);
+  LISTBASE_FOREACH (Base *, base, &objects) {
+    if (DEG_get_original_id(&base->object->id) == ob_orig) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static Collection *collection_next_find(Main *bmain, Scene *scene, Collection *collection)
 {
   if (scene && collection == scene->master_collection) {
@@ -1273,7 +1289,7 @@ static void collection_gobject_assert_internal_consistency(Collection *collectio
 Collection *BKE_collection_parent_editable_find_recursive(const ViewLayer *view_layer,
                                                           Collection *collection)
 {
-  if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
+  if (ID_IS_EDITABLE(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
       (view_layer == nullptr || BKE_view_layer_has_collection(view_layer, collection)))
   {
     return collection;
@@ -1453,7 +1469,7 @@ void BKE_collection_object_add_from(Main *bmain, Scene *scene, Object *ob_src, O
   bool is_instantiated = false;
 
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
-    if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
+    if (ID_IS_EDITABLE(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
         BKE_collection_has_object(collection, ob_src))
     {
       collection_object_add(bmain, collection, ob_dst, nullptr, 0, true);
@@ -1540,7 +1556,7 @@ static bool scene_collections_object_remove(
   }
 
   FOREACH_SCENE_COLLECTION_BEGIN (scene, collection) {
-    if (ID_IS_LINKED(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
+    if (!ID_IS_EDITABLE(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
       continue;
     }
     if (collection == collection_skip) {

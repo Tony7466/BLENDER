@@ -56,10 +56,10 @@ static void drw_hair_ensure_vbo()
   uint dummy_id = GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   g_dummy_vbo = GPU_vertbuf_create_with_format_ex(
-      &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+      format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
   const float vert[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  GPU_vertbuf_data_alloc(g_dummy_vbo, 1);
+  GPU_vertbuf_data_alloc(*g_dummy_vbo, 1);
   GPU_vertbuf_attr_fill(g_dummy_vbo, dummy_id, vert);
   /* Create VBO immediately to bind to texture buffer. */
   GPU_vertbuf_use(g_dummy_vbo);
@@ -72,12 +72,7 @@ static void drw_hair_ensure_vbo()
 
 void DRW_hair_init()
 {
-  if (GPU_transform_feedback_support() || GPU_compute_shader_support()) {
-    g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_NO_DRAW);
-  }
-  else {
-    g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_WRITE_COLOR);
-  }
+  g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_NO_DRAW);
 
   drw_hair_ensure_vbo();
 }

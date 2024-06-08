@@ -18,9 +18,12 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef WITH_METAL
 
-Device *device_metal_create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
+Device *device_metal_create(const DeviceInfo &info,
+                            Stats &stats,
+                            Profiler &profiler,
+                            bool headless)
 {
-  return new MetalDevice(info, stats, profiler);
+  return new MetalDevice(info, stats, profiler, headless);
 }
 
 bool device_metal_init()
@@ -57,7 +60,11 @@ void device_metal_info(vector<DeviceInfo> &devices)
     info.denoisers = DENOISER_NONE;
     info.id = id;
 #  if defined(WITH_OPENIMAGEDENOISE)
+#    if OIDN_VERSION >= 20300
+    if (oidnIsMetalDeviceSupported(device)) {
+#    else
     if (OIDNDenoiserGPU::is_device_supported(info)) {
+#    endif
       info.denoisers |= DENOISER_OPENIMAGEDENOISE;
     }
 #  endif
@@ -77,12 +84,8 @@ void device_metal_info(vector<DeviceInfo> &devices)
       if (@available(macos 14.0, *)) {
         info.use_hardware_raytracing = device.supportsRaytracing;
 
-        info.use_metalrt_by_default = false;
-        if (vendor == METAL_GPU_APPLE) {
-          /* Use hardware raytracing for faster rendering on architectures that support it. */
-          info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >=
-                                         APPLE_M3);
-        }
+        /* Use hardware raytracing for faster rendering on architectures that support it. */
+        info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >= APPLE_M3);
       }
     }
 #  endif

@@ -91,7 +91,7 @@ enum uiWidgetTypeEnum {
    * widget. To be used when multiple menu items should be displayed close to each other
    * horizontally. */
   UI_WTYPE_MENU_ITEM_UNPADDED,
-  UI_WTYPE_MENU_ITEM_RADIAL,
+  UI_WTYPE_MENU_ITEM_PIE,
   UI_WTYPE_MENU_BACK,
 
   /* specials */
@@ -400,14 +400,14 @@ static struct {
   uint vflag_id;
 } g_ui_batch_cache = {nullptr};
 
-static GPUVertFormat *vflag_format()
+static const GPUVertFormat &vflag_format()
 {
   if (g_ui_batch_cache.format.attr_len == 0) {
     GPUVertFormat *format = &g_ui_batch_cache.format;
     g_ui_batch_cache.vflag_id = GPU_vertformat_attr_add(
         format, "vflag", GPU_COMP_U32, 1, GPU_FETCH_INT);
   }
-  return &g_ui_batch_cache.format;
+  return g_ui_batch_cache.format;
 }
 
 #define INNER 0
@@ -444,7 +444,7 @@ blender::gpu::Batch *ui_batch_roundbox_widget_get()
   if (g_ui_batch_cache.roundbox_widget == nullptr) {
     blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
 
-    GPU_vertbuf_data_alloc(vbo, 12);
+    GPU_vertbuf_data_alloc(*vbo, 12);
 
     GPUIndexBufBuilder ibuf;
     GPU_indexbuf_init(&ibuf, GPU_PRIM_TRIS, 6, 12);
@@ -472,7 +472,7 @@ blender::gpu::Batch *ui_batch_roundbox_shadow_get()
     GPUVertBufRaw vflag_step;
     blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
     const int vcount = (WIDGET_SIZE_MAX + 1) * 2 + 2 + WIDGET_SIZE_MAX;
-    GPU_vertbuf_data_alloc(vbo, vcount);
+    GPU_vertbuf_data_alloc(*vbo, vcount);
     GPU_vertbuf_attr_get_raw_data(vbo, g_ui_batch_cache.vflag_id, &vflag_step);
 
     for (int c = 0; c < 4; c++) {
@@ -1367,8 +1367,16 @@ static void widget_draw_icon(
       if (has_theme) {
         alpha *= 0.8f;
       }
-      UI_icon_draw_ex(
-          xs, ys, icon, aspect, alpha, 0.0f, color, has_theme, &but->icon_overlay_text);
+      UI_icon_draw_ex(xs,
+                      ys,
+                      icon,
+                      aspect,
+                      alpha,
+                      0.0f,
+                      color,
+                      has_theme,
+                      &but->icon_overlay_text,
+                      but->drawflag & UI_BUT_ICON_INVERT);
     }
     else {
       const bTheme *btheme = UI_GetTheme();
@@ -1929,51 +1937,38 @@ static void widget_draw_text(const uiFontStyle *fstyle,
 #endif
 
     /* text button selection */
-    if ((but->selend - but->selsta) > 0) {
-      int selsta_draw, selwidth_draw;
-
-      if (drawstr[0] != 0) {
-        /* We are drawing on top of widget bases. Flush cache. */
-        GPU_blend(GPU_BLEND_ALPHA);
-        UI_widgetbase_draw_cache_flush();
-
-        if (but->selsta >= but->ofs) {
-          selsta_draw = BLF_width(fstyle->uifont_id, drawstr + but->ofs, but->selsta - but->ofs);
-        }
-        else {
-          selsta_draw = 0;
-        }
-
-        selwidth_draw = BLF_width(fstyle->uifont_id, drawstr + but->ofs, but->selend - but->ofs);
-
-        uint pos = GPU_vertformat_attr_add(
-            immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
-        immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-        rcti selection_shape;
-        selection_shape.xmin = rect->xmin + selsta_draw;
-        selection_shape.xmax = min_ii(rect->xmin + selwidth_draw, rect->xmax - 2);
-        selection_shape.ymin = rect->ymin + U.pixelsize;
-        selection_shape.ymax = rect->ymax - U.pixelsize;
-        immUniformColor4ubv(wcol->item);
+    if ((but->selend - but->selsta) != 0 && drawstr[0] != 0) {
+      /* We are drawing on top of widget bases. Flush cache. */
+      GPU_blend(GPU_BLEND_ALPHA);
+      UI_widgetbase_draw_cache_flush();
+      uint pos = GPU_vertformat_attr_add(
+          immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+      immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+      immUniformColor4ubv(wcol->item);
+      const auto boxes = BLF_str_selection_boxes(
+          fstyle->uifont_id,
+          drawstr + but->ofs,
+          strlen(drawstr + but->ofs),
+          (but->selsta >= but->ofs) ? but->selsta - but->ofs : 0,
+          but->selend - std::max(but->ofs, but->selsta));
+      for (auto bounds : boxes) {
         immRecti(pos,
-                 selection_shape.xmin,
-                 selection_shape.ymin,
-                 selection_shape.xmax,
-                 selection_shape.ymax);
-
-        immUnbindProgram();
-        GPU_blend(GPU_BLEND_NONE);
+                 rect->xmin + bounds.min,
+                 rect->ymin + U.pixelsize,
+                 std::min(rect->xmin + bounds.max, rect->xmax - 2),
+                 rect->ymax - U.pixelsize);
+      }
+      immUnbindProgram();
+      GPU_blend(GPU_BLEND_NONE);
 
 #ifdef WITH_INPUT_IME
-        /* IME candidate window uses selection position. */
-        if (!ime_reposition_window) {
-          ime_reposition_window = true;
-          ime_win_x = selection_shape.xmin;
-          ime_win_y = selection_shape.ymin;
-        }
-#endif
+      /* IME candidate window uses selection position. */
+      if (!ime_reposition_window && boxes.size() > 0) {
+        ime_reposition_window = true;
+        ime_win_x = rect->xmin + boxes[0].min;
+        ime_win_y = rect->ymin + U.pixelsize;
       }
+#endif
     }
 
     /* Text cursor position. */
@@ -1988,54 +1983,12 @@ static void widget_draw_text(const uiFontStyle *fstyle,
 
     /* Draw text cursor (caret). */
     if (but->pos >= but->ofs) {
-      int t = 0;
 
-      if (drawstr[0] != 0) {
-        const int pos = but_pos_ofs - but->ofs;
-        rcti bounds;
-
-        /* Find right edge of previous character if available. */
-        int prev_right_edge = 0;
-        bool has_prev = false;
-        if (pos > 0) {
-          if (BLF_str_offset_to_glyph_bounds(
-                  fstyle->uifont_id, drawstr + but->ofs, pos - 1, &bounds))
-          {
-            if (bounds.xmax > bounds.xmin) {
-              prev_right_edge = bounds.xmax;
-            }
-            else {
-              /* Some characters, like space, have empty bounds. */
-              prev_right_edge = BLF_width(fstyle->uifont_id, drawstr + but->ofs, pos);
-            }
-            has_prev = true;
-          }
-        }
-
-        /* Find left edge of next character if available. */
-        int next_left_edge = 0;
-        bool has_next = false;
-        if (pos < strlen(drawstr + but->ofs)) {
-          if (BLF_str_offset_to_glyph_bounds(fstyle->uifont_id, drawstr + but->ofs, pos, &bounds))
-          {
-            next_left_edge = bounds.xmin;
-            has_next = true;
-          }
-        }
-
-        if (has_next && !has_prev) {
-          /* Left of the first character. */
-          t = next_left_edge - U.pixelsize;
-        }
-        else if (has_prev && !has_next) {
-          /* Right of the last character. */
-          t = prev_right_edge + U.pixelsize;
-        }
-        else if (has_prev && has_next) {
-          /* Middle of the string, so in between. */
-          t = (prev_right_edge + next_left_edge) / 2;
-        }
-      }
+      int t = BLF_str_offset_to_cursor(fstyle->uifont_id,
+                                       drawstr + but->ofs,
+                                       UI_MAX_DRAW_STR,
+                                       but_pos_ofs - but->ofs,
+                                       U.pixelsize + U.pixelsize);
 
       /* We are drawing on top of widget bases. Flush cache. */
       GPU_blend(GPU_BLEND_ALPHA);
@@ -2048,19 +2001,12 @@ static void widget_draw_text(const uiFontStyle *fstyle,
 
       immUniformThemeColor(TH_WIDGET_TEXT_CURSOR);
 
-      /* Shape of the cursor for drawing. */
-      rcti but_cursor_shape;
-      but_cursor_shape.xmin = (rect->xmin + t) - U.pixelsize;
-      but_cursor_shape.ymin = rect->ymin + U.pixelsize;
-      but_cursor_shape.xmax = (rect->xmin + t) + U.pixelsize;
-      but_cursor_shape.ymax = rect->ymax - U.pixelsize;
-
       /* draw cursor */
       immRecti(pos,
-               but_cursor_shape.xmin,
-               but_cursor_shape.ymin,
-               but_cursor_shape.xmax,
-               but_cursor_shape.ymax);
+               rect->xmin + t,
+               rect->ymin + U.pixelsize,
+               rect->xmin + t + int(2.0f * U.pixelsize),
+               rect->ymax - U.pixelsize);
 
       immUnbindProgram();
 
@@ -2068,8 +2014,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       /* IME candidate window uses cursor position. */
       if (!ime_reposition_window) {
         ime_reposition_window = true;
-        ime_win_x = but_cursor_shape.xmax + 5;
-        ime_win_y = but_cursor_shape.ymin + 3;
+        ime_win_x = rect->xmin + t + 5;
+        ime_win_y = rect->ymin + 3;
       }
 #endif
     }
@@ -2369,7 +2315,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
       /* pass (even if its a menu toolbar) */
     }
     else if (ui_block_is_pie_menu(but->block)) {
-      if (but->emboss == UI_EMBOSS_RADIAL) {
+      if (but->emboss == UI_EMBOSS_PIE_MENU) {
         rect->xmin += 0.3f * U.widget_unit;
       }
     }
@@ -4088,8 +4034,8 @@ static void widget_icon_has_anim(uiBut *but,
                                  int roundboxalign,
                                  const float zoom)
 {
-  if (state->but_flag &
-          (UI_BUT_ANIMATED | UI_BUT_ANIMATED_KEY | UI_BUT_DRIVEN | UI_BUT_REDALERT) &&
+  if (state->but_flag & (UI_BUT_ANIMATED | UI_BUT_ANIMATED_KEY | UI_BUT_DRIVEN |
+                         UI_BUT_OVERRIDDEN | UI_BUT_REDALERT) &&
       but->emboss != UI_EMBOSS_NONE)
   {
     uiWidgetBase wtb;
@@ -4223,12 +4169,12 @@ static void widget_menu_itembut_unpadded(uiWidgetColors *wcol,
   widgetbase_draw(&wtb, wcol);
 }
 
-static void widget_menu_radial_itembut(uiBut *but,
-                                       uiWidgetColors *wcol,
-                                       rcti *rect,
-                                       const uiWidgetStateInfo * /*state*/,
-                                       int /*roundboxalign*/,
-                                       const float zoom)
+static void widget_menu_pie_itembut(uiBut *but,
+                                    uiWidgetColors *wcol,
+                                    rcti *rect,
+                                    const uiWidgetStateInfo * /*state*/,
+                                    int /*roundboxalign*/,
+                                    const float zoom)
 {
   const float fac = but->block->pie_data.alphafac;
 
@@ -4766,9 +4712,9 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       wt.custom = widget_nodesocket;
       break;
 
-    case UI_WTYPE_MENU_ITEM_RADIAL:
+    case UI_WTYPE_MENU_ITEM_PIE:
       wt.wcol_theme = &btheme->tui.wcol_pie_menu;
-      wt.custom = widget_menu_radial_itembut;
+      wt.custom = widget_menu_pie_itembut;
       wt.state = widget_state_pie_menu_item;
       break;
   }
@@ -4883,6 +4829,7 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
      * #UI_EMBOSS_NONE_OR_STATUS will blend state colors if they apply. */
     switch (but->type) {
       case UI_BTYPE_LABEL:
+      case UI_BTYPE_TEXT:
         wt = widget_type(UI_WTYPE_ICON_LABEL);
         if (!(but->flag & UI_HAS_ICON)) {
           but->drawflag |= UI_BUT_NO_TEXT_PADDING;
@@ -4896,8 +4843,8 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
         break;
     }
   }
-  else if (but->emboss == UI_EMBOSS_RADIAL) {
-    wt = widget_type(UI_WTYPE_MENU_ITEM_RADIAL);
+  else if (but->emboss == UI_EMBOSS_PIE_MENU) {
+    wt = widget_type(UI_WTYPE_MENU_ITEM_PIE);
   }
   else {
     BLI_assert(but->emboss == UI_EMBOSS);
@@ -5387,7 +5334,7 @@ void ui_draw_pie_center(uiBlock *block)
   const float cx = block->pie_data.pie_center_spawned[0];
   const float cy = block->pie_data.pie_center_spawned[1];
 
-  float *pie_dir = block->pie_data.pie_dir;
+  const float *pie_dir = block->pie_data.pie_dir;
 
   const float pie_radius_internal = UI_SCALE_FAC * U.pie_menu_threshold;
   const float pie_radius_external = UI_SCALE_FAC * (U.pie_menu_threshold + 7.0f);

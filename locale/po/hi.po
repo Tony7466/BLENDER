@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'5bc71c870435')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-05 01:39+0000\n"
+"POT-Creation-Date: 2024-06-03 07:20+0000\n"
 "PO-Revision-Date: 2015-03-03 16:21+0530\n"
 "Last-Translator: Roshan Lal Gumasta <roshan@anisecrets.com>\n"
 "Language-Team: Hindi <www.anisecrets.com>\n"
@@ -175,8 +175,12 @@ msgid "Expanded"
 msgstr "विस्तृत"
 
 
-msgid "Message"
-msgstr "संदेश"
+msgid "Influence"
+msgstr "प्रभाव"
+
+
+msgid "Add"
+msgstr "जोड़ें"
 
 
 msgid "Off"
@@ -235,8 +239,8 @@ msgid "Action"
 msgstr "कार्य"
 
 
-msgid "Add"
-msgstr "जोड़ें"
+msgid "None"
+msgstr "कोई नहीं"
 
 
 msgid "Nothing"
@@ -405,10 +409,6 @@ msgstr "-Z"
 
 msgid "Object"
 msgstr "वस्तु"
-
-
-msgid "None"
-msgstr "कोई नहीं"
 
 
 msgid "Emit"
@@ -659,10 +659,6 @@ msgid "Vertex Color"
 msgstr "शिरोबिन्दु रंग"
 
 
-msgid "Dissolve"
-msgstr "भंग"
-
-
 msgid "Direction"
 msgstr "दिशा"
 
@@ -870,10 +866,6 @@ msgstr "निवेश"
 
 msgid "Error"
 msgstr "त्रुटि"
-
-
-msgid "Influence"
-msgstr "प्रभाव"
 
 
 msgid "Copy Location"
@@ -1718,24 +1710,12 @@ msgid "Red Green Blue"
 msgstr "लाल हरा नीला"
 
 
-msgid "R"
-msgstr "आर"
-
-
 msgid "Red"
 msgstr "लाल"
 
 
-msgid "G"
-msgstr "जी"
-
-
 msgid "Green"
 msgstr "हरा"
-
-
-msgid "B"
-msgstr "बी"
 
 
 msgid "Blue"
@@ -1744,10 +1724,6 @@ msgstr "नीला"
 
 msgid "Show Line"
 msgstr "रेखा दिखाएँ"
-
-
-msgid "Animation"
-msgstr "अनुप्राणन"
 
 
 msgid "Brush"
@@ -1790,12 +1766,20 @@ msgid "World"
 msgstr "जगत"
 
 
+msgid "Editable"
+msgstr "संपादन योग्य"
+
+
 msgid "Tag"
 msgstr "टैग"
 
 
 msgid "Users"
 msgstr "प्रयोक्ता"
+
+
+msgid "Layers"
+msgstr "परतें"
 
 
 msgid "Stick"
@@ -1896,10 +1880,6 @@ msgstr "बिन्दु्"
 
 msgid "Use Vertex"
 msgstr "शिरोबिन्दु का उपयोग करें"
-
-
-msgid "Relax"
-msgstr "शिथिल करो"
 
 
 msgid "Sequence"
@@ -2040,10 +2020,6 @@ msgstr "अधिकतम"
 
 msgid "Rounds"
 msgstr "दौर"
-
-
-msgid "Layers"
-msgstr "परतें"
 
 
 msgid "Alpha Mode"
@@ -2230,20 +2206,28 @@ msgid "Never"
 msgstr "कभी नहीं"
 
 
+msgid "Converter"
+msgstr "परिवर्तक"
+
+
+msgid "Distort"
+msgstr "विकृत"
+
+
+msgid "Filter"
+msgstr "निस्पादक"
+
+
+msgid "Matte"
+msgstr "मैट"
+
+
 msgid "Links"
 msgstr "कड़ियाँ"
 
 
 msgid "Nodes"
 msgstr "ग्रन्थि्"
-
-
-msgid "High"
-msgstr "उच्च"
-
-
-msgid "Low"
-msgstr "कम"
 
 
 msgid "Use boundaries for viewer nodes and composite backdrop"
@@ -2531,10 +2515,6 @@ msgid "Filter Size"
 msgstr "निस्पादक आकार"
 
 
-msgid "Filter"
-msgstr "निस्पादक"
-
-
 msgid "Area"
 msgstr "क्षेत्र"
 
@@ -2605,6 +2585,10 @@ msgstr "प्रकाश व्यवस्था"
 
 msgid "Mist"
 msgstr "धुंध"
+
+
+msgid "Animation"
+msgstr "अनुप्राणन"
 
 
 msgid "Max Step"
@@ -2792,6 +2776,10 @@ msgid "Show/Hide"
 msgstr "छुपाएँ / दिखाएँ"
 
 
+msgid "Zoom"
+msgstr "निकट करें"
+
+
 msgid "Channel"
 msgstr "सरणि"
 
@@ -2825,14 +2813,6 @@ msgid "Keying"
 msgstr "कुंजीयन"
 
 
-msgid "Converter"
-msgstr "परिवर्तक"
-
-
-msgid "Distort"
-msgstr "विकृत"
-
-
 msgid "Node"
 msgstr "ग्रन्थि"
 
@@ -2849,10 +2829,6 @@ msgid "Apply"
 msgstr "लागू करें"
 
 
-msgid "Cache"
-msgstr "द्रुतिका"
-
-
 msgid "Texture Specials"
 msgstr "विशिष्ट बनावट"
 
@@ -2863,6 +2839,10 @@ msgstr "आदर्श"
 
 msgid "Python"
 msgstr "पाइथन"
+
+
+msgid "Cache"
+msgstr "द्रुतिका"
 
 
 msgid "File"
@@ -3146,6 +3126,14 @@ msgid "Not"
 msgstr "नहीं"
 
 
+msgid "High"
+msgstr "उच्च"
+
+
+msgid "Low"
+msgstr "कम"
+
+
 msgid "Lift"
 msgstr "उत्थापन"
 
@@ -3188,10 +3176,6 @@ msgstr "Y1"
 
 msgid "Spin"
 msgstr "चक्रण"
-
-
-msgid "Zoom"
-msgstr "निकट करें"
 
 
 msgid "Soften"
@@ -3568,6 +3552,11 @@ msgstr "रंग की प्रतिलिपि बनाएँ"
 
 
 msgctxt "Operator"
+msgid "Export"
+msgstr "निर्यात करें"
+
+
+msgctxt "Operator"
 msgid "Delete"
 msgstr "मिटाएँ"
 
@@ -3588,6 +3577,11 @@ msgstr "प्रतिबंधी"
 
 msgid "Report"
 msgstr "विवरण"
+
+
+msgctxt "Operator"
+msgid "Add Circle"
+msgstr "चक्र जोड़ें"
 
 
 msgctxt "Operator"
@@ -3661,12 +3655,8 @@ msgid "Item"
 msgstr "वस्तु"
 
 
-msgid "Only Selected"
-msgstr "केवल चयनित"
-
-
-msgid "Ascii"
-msgstr "ऐस्की"
+msgid "Null"
+msgstr "निरर्थक"
 
 
 msgid "X Up"
@@ -3689,10 +3679,6 @@ msgid "-Z Up"
 msgstr "-Z ऊर्ध्व"
 
 
-msgid "Null"
-msgstr "निरर्थक"
-
-
 msgid "Lamp"
 msgstr "प्रकाश श्रोत"
 
@@ -3703,6 +3689,10 @@ msgstr "अन्य"
 
 msgid "Match"
 msgstr "मिलान"
+
+
+msgid "URL"
+msgstr "यूआरएल"
 
 
 msgctxt "Operator"
@@ -3751,8 +3741,27 @@ msgid "Convert Grease Pencil"
 msgstr "तैलीय पेंसिल में परिवर्तित"
 
 
+msgid "Only Selected"
+msgstr "केवल चयनित"
+
+
 msgid "Limit"
 msgstr "सीमा"
+
+
+msgctxt "Operator"
+msgid "All"
+msgstr "सभी"
+
+
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "घूर्णन"
+
+
+msgctxt "Operator"
+msgid "Scale"
+msgstr "प्रमाण"
 
 
 msgctxt "Operator"
@@ -3785,6 +3794,10 @@ msgid "Select Mode"
 msgstr "दृश्य रूप का चयन करें"
 
 
+msgid "Relative Paths"
+msgstr "सापेक्ष पथ"
+
+
 msgid "Create a new image"
 msgstr "एक नई छवि बनाएँ"
 
@@ -3801,10 +3814,6 @@ msgid "Y End"
 msgstr "Y समाप्त"
 
 
-msgid "Relative Paths"
-msgstr "सापेक्ष पथ"
-
-
 msgid "Select the camera"
 msgstr "प्रतिबिंबक का चयन करें"
 
@@ -3812,11 +3821,6 @@ msgstr "प्रतिबिंबक का चयन करें"
 msgctxt "Operator"
 msgid "Add Vertex"
 msgstr "शिरोबिन्दु जोडें"
-
-
-msgctxt "Operator"
-msgid "Add Circle"
-msgstr "चक्र जोड़ें"
 
 
 msgctxt "Operator"
@@ -4044,6 +4048,7 @@ msgid "Add an empty image type to scene with data"
 msgstr "डेटा के साथ दृश्य के लिए एक रिक्त छवि प्रकार जोड़ें"
 
 
+msgctxt "Operator"
 msgid "Monkey"
 msgstr "बंदर"
 
@@ -4084,6 +4089,10 @@ msgid "Child"
 msgstr "कारक"
 
 
+msgid "Auto Smooth"
+msgstr "स्वत: चिकना"
+
+
 msgid "Mark"
 msgstr "चिन्ह"
 
@@ -4112,10 +4121,6 @@ msgstr "युगल हटाएँ"
 msgctxt "Operator"
 msgid "Copy Pose"
 msgstr "मुद्रा की प्रतिलिपि बनाएँ"
-
-
-msgid "URL"
-msgstr "यूआरएल"
 
 
 msgctxt "Operator"
@@ -4339,11 +4344,6 @@ msgstr "दबाव/खिंचाव"
 
 
 msgctxt "Operator"
-msgid "Rotate"
-msgstr "घूर्णन"
-
-
-msgctxt "Operator"
 msgid "Shear"
 msgstr "कतरनी"
 
@@ -4500,19 +4500,6 @@ msgstr "आच्छादन"
 
 
 msgctxt "Operator"
-msgid "Demo"
-msgstr "प्रदर्शित करें"
-
-
-msgid "Prev"
-msgstr "पिछ"
-
-
-msgid "Pause"
-msgstr "विराम दें"
-
-
-msgctxt "Operator"
 msgid "View Documentation"
 msgstr "देखें प्रलेखन"
 
@@ -4662,11 +4649,6 @@ msgstr "पूर्वनिश्चित द्रव"
 
 
 msgctxt "Operator"
-msgid "Scale"
-msgstr "प्रमाण"
-
-
-msgctxt "Operator"
 msgid "Draw"
 msgstr "चित्रण"
 
@@ -4749,10 +4731,6 @@ msgstr "उप"
 
 msgid "Keys"
 msgstr "चाबियाँ"
-
-
-msgid "Editable"
-msgstr "संपादन योग्य"
 
 
 msgid "Tip"
@@ -5268,6 +5246,30 @@ msgid "Animation"
 msgstr "अनुप्राणन"
 
 
+msgid "File:"
+msgstr "संचिका:"
+
+
+msgid "Description:"
+msgstr "वर्णन:"
+
+
+msgid "Author:"
+msgstr "लेखक:"
+
+
+msgid "Version:"
+msgstr "संस्करण:"
+
+
+msgid "Warning:"
+msgstr "चेतावनी:"
+
+
+msgid "Size:"
+msgstr "आकार:"
+
+
 msgid "OSL shader compilation succeeded"
 msgstr "OSL shader संकलन सफल रहा"
 
@@ -5295,30 +5297,6 @@ msgstr ".Oso संचिका में बाह्य .oslसंचिका
 msgctxt "Operator"
 msgid "Assign"
 msgstr "निर्दिष्ट"
-
-
-msgid "Position:"
-msgstr "स्थिति:"
-
-
-msgctxt "Operator"
-msgid "Volume"
-msgstr "आयतन"
-
-
-msgctxt "Operator"
-msgid "Area"
-msgstr "क्षेत्र"
-
-
-msgctxt "Operator"
-msgid "Solid"
-msgstr "ठोस"
-
-
-msgctxt "Operator"
-msgid "Export"
-msgstr "निर्यात करें"
 
 
 msgid "Save to PO File"
@@ -5520,11 +5498,6 @@ msgid "Clear"
 msgstr "स्पष्ट"
 
 
-msgctxt "Operator"
-msgid "All"
-msgstr "सभी"
-
-
 msgid "Date"
 msgstr "दिनांक"
 
@@ -5535,14 +5508,6 @@ msgstr "खुरदरापन समाप्त"
 
 msgid "Use Timing"
 msgstr "समय का उपयोग करें"
-
-
-msgid "Spacing: %g"
-msgstr "रिक्ति: %g"
-
-
-msgid "%d fluid particles for this frame"
-msgstr "इस गठन के लिए %d तरल पदार्थ कणों"
 
 
 msgid "Structural"
@@ -5641,13 +5606,8 @@ msgstr "स्नैप"
 
 
 msgctxt "Operator"
-msgid "Extend"
-msgstr "विस्तृत करें"
-
-
-msgctxt "Operator"
-msgid "Back"
-msgstr "पार्श्व"
+msgid "More"
+msgstr "और अधिक"
 
 
 msgctxt "Operator"
@@ -5656,8 +5616,13 @@ msgstr "कम"
 
 
 msgctxt "Operator"
-msgid "More"
-msgstr "और अधिक"
+msgid "Extend"
+msgstr "विस्तृत करें"
+
+
+msgctxt "Operator"
+msgid "Back"
+msgstr "पार्श्व"
 
 
 msgctxt "Image"
@@ -5825,32 +5790,16 @@ msgid "Python API Reference"
 msgstr "पाइथन एपीआई संदर्भ"
 
 
+msgid "B"
+msgstr "बी"
+
+
 msgid "Preferences:"
 msgstr "वरीयताएँ:"
 
 
-msgid "Description:"
-msgstr "वर्णन:"
-
-
 msgid "Location:"
 msgstr "स्थिति:"
-
-
-msgid "File:"
-msgstr "संचिका:"
-
-
-msgid "Author:"
-msgstr "लेखक:"
-
-
-msgid "Version:"
-msgstr "संस्करण:"
-
-
-msgid "Warning:"
-msgstr "चेतावनी:"
 
 
 msgctxt "Operator"
@@ -5901,11 +5850,6 @@ msgstr "टोरस्र्स"
 msgctxt "Operator"
 msgid "Grid"
 msgstr "जालक"
-
-
-msgctxt "Operator"
-msgid "Monkey"
-msgstr "बंदर"
 
 
 msgctxt "Operator"
@@ -6024,10 +5968,6 @@ msgid "Apply"
 msgstr "लागू करें"
 
 
-msgid "<Missing ID block>"
-msgstr "< अनुपलब्ध ID ब्लॉक >"
-
-
 msgid "No AnimData to set action on"
 msgstr "कार्य पर स्थापित करने के लिए कोई अनुप्राणन सामग्री नहीं"
 
@@ -6065,20 +6005,8 @@ msgid "Surface"
 msgstr "सतह"
 
 
-msgid "Generator"
-msgstr "जेनरेटर"
-
-
-msgid "Built-In Function"
-msgstr "अंतर्निहित फ़ंक्शन"
-
-
 msgid "Key %d"
 msgstr "कुंजी %d"
-
-
-msgid "Auto Smooth"
-msgstr "स्वत: चिकना"
 
 
 msgid "GPencil"
@@ -6335,62 +6263,7 @@ msgid "Modified"
 msgstr "संशोधित"
 
 
-msgctxt "Object"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Mesh"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Curve"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Metaball"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Material"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Texture"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Lattice"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Camera"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "World"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Screen"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Speaker"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "Sound"
+msgctxt "Action"
 msgid "New"
 msgstr "नई"
 
@@ -6400,22 +6273,22 @@ msgid "New"
 msgstr "नई"
 
 
-msgctxt "Action"
-msgid "New"
-msgstr "नई"
-
-
-msgctxt "NodeTree"
-msgid "New"
-msgstr "नई"
-
-
 msgctxt "Brush"
 msgid "New"
 msgstr "नई"
 
 
-msgctxt "ParticleSettings"
+msgctxt "Camera"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Curve"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "FreestyleLineStyle"
 msgid "New"
 msgstr "नई"
 
@@ -6425,7 +6298,62 @@ msgid "New"
 msgstr "नई"
 
 
-msgctxt "FreestyleLineStyle"
+msgctxt "Lattice"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Material"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Mesh"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Metaball"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "NodeTree"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Object"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "ParticleSettings"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Screen"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Sound"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Speaker"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "Texture"
+msgid "New"
+msgstr "नई"
+
+
+msgctxt "World"
 msgid "New"
 msgstr "नई"
 
@@ -6467,6 +6395,14 @@ msgstr "जालक"
 msgctxt "Mesh"
 msgid "Sphere"
 msgstr "गोला"
+
+
+msgid "Cancel"
+msgstr "रद्द करें"
+
+
+msgid "Outer"
+msgstr "बाहरी"
 
 
 msgid "No additional selected meshes with equal vertex count to join"
@@ -6653,6 +6589,10 @@ msgid "File Path:"
 msgstr "संचिका पथ:"
 
 
+msgid "Position:"
+msgstr "स्थिति:"
+
+
 msgid "X:"
 msgstr "X अक्ष:"
 
@@ -6683,10 +6623,6 @@ msgstr "पढ़ा नहीं कर सकता: '%s': %s"
 
 msgid "File path"
 msgstr "संचिका पथ"
-
-
-msgid "Cancel"
-msgstr "रद्द करें"
 
 
 msgid "File name"
@@ -6767,10 +6703,6 @@ msgstr "झुकाव:"
 
 msgid "4L"
 msgstr "४ एल"
-
-
-msgid "Size:"
-msgstr "आकार:"
 
 
 msgid "fps: %i"
@@ -6856,14 +6788,6 @@ msgid "Key"
 msgstr "कुंजी"
 
 
-msgid "Outer"
-msgstr "बाहरी"
-
-
-msgid "Matte"
-msgstr "मैट"
-
-
 msgid "Fac"
 msgstr "एफ़एसी"
 
@@ -6939,10 +6863,6 @@ msgstr "बंद"
 msgctxt "Operator"
 msgid "Toggle System Console"
 msgstr "बंद/बुझ प्रणाली कंसोल"
-
-
-msgid "Add Mesh"
-msgstr "जाल जोड़ें"
 
 
 msgid "Import-Export"

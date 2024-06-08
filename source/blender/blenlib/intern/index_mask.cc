@@ -392,11 +392,10 @@ struct ParallelSegmentsCollector {
   }
 };
 
-IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
+IndexMask IndexMask::complement(const IndexMask &universe, IndexMaskMemory &memory) const
 {
   ExprBuilder builder;
-  const IndexMask universe_mask{universe};
-  const Expr &expr = builder.subtract(&universe_mask, {this});
+  const Expr &expr = builder.subtract(&universe, {this});
   return evaluate_expression(expr, memory);
 }
 
@@ -468,6 +467,14 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
 {
   return IndexMask::from_predicate(
       universe, GrainSize(1024), memory, [bools](const int64_t index) { return bools[index]; });
+}
+
+IndexMask IndexMask::from_bools_inverse(const IndexMask &universe,
+                                        Span<bool> bools,
+                                        IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(
+      universe, GrainSize(1024), memory, [bools](const int64_t index) { return !bools[index]; });
 }
 
 IndexMask IndexMask::from_bools(const IndexMask &universe,

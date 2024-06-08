@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
 #include "COM_ConstantOperation.h"
 #include "COM_MultiThreadedOperation.h"
 
@@ -22,6 +23,7 @@ class TranslateOperation : public MultiThreadedOperation {
   float delta_y_;
   bool is_delta_set_;
   bool is_relative_;
+  PixelSampler sampler_;
 
   std::mutex mutex_;
 
@@ -35,10 +37,12 @@ class TranslateOperation : public MultiThreadedOperation {
 
   float get_delta_x()
   {
+    BLI_assert(is_delta_set_);
     return delta_x_;
   }
   float get_delta_y()
   {
+    BLI_assert(is_delta_set_);
     return delta_y_;
   }
 
@@ -49,6 +53,15 @@ class TranslateOperation : public MultiThreadedOperation {
   bool get_is_relative()
   {
     return is_relative_;
+  }
+
+  PixelSampler get_sampler()
+  {
+    return sampler_;
+  }
+  void set_sampler(PixelSampler sampler)
+  {
+    sampler_ = sampler;
   }
 
   inline void ensure_delta()
@@ -77,6 +90,9 @@ class TranslateOperation : public MultiThreadedOperation {
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
 
+  void update_memory_buffer_started(MemoryBuffer *output,
+                                    const rcti &area,
+                                    Span<MemoryBuffer *> inputs) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;

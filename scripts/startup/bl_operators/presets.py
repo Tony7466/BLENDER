@@ -30,6 +30,25 @@ WindowManager.preset_name = StringProperty(
 )
 
 
+def _call_preset_cb(fn, context, filepath):
+    # Allow "None" so the caller doesn't have to assign a variable and check it.
+    if fn is None:
+        return
+
+    # Support a `filepath` argument, optional for backwards compatibility.
+    fn_arg_count = getattr(getattr(fn, "__code__", None), "co_argcount", None)
+    if fn_arg_count == 2:
+        args = (context, filepath)
+    else:
+        print("Deprecated since Blender 4.2, a filepath argument should be included in:", fn)
+        args = (context, )
+
+    try:
+        fn(*args)
+    except BaseException as ex:
+        print("Internal error running", fn, str(ex))
+
+
 class AddPresetBase:
     """Base preset class, only for subclassing
     subclasses must define
@@ -118,7 +137,7 @@ class AddPresetBase:
             if hasattr(self, "add"):
                 self.add(context, filepath)
             else:
-                print("Writing Preset: %r" % filepath)
+                print("Writing Preset: {!r}".format(filepath))
 
                 if is_xml:
                     import rna_xml
@@ -131,12 +150,16 @@ class AddPresetBase:
                                 if sub_value_attr == "rna_type":
                                     continue
                                 sub_value = getattr(value, sub_value_attr)
-                                rna_recursive_attr_expand(sub_value, "%s.%s" % (rna_path_step, sub_value_attr), level)
+                                rna_recursive_attr_expand(
+                                    sub_value,
+                                    "{:s}.{:s}".format(rna_path_step, sub_value_attr),
+                                    level,
+                                )
                         elif type(value).__name__ == "bpy_prop_collection_idprop":  # could use nicer method
-                            file_preset.write("%s.clear()\n" % rna_path_step)
+                            file_preset.write("{:s}.clear()\n".format(rna_path_step))
                             for sub_value in value:
-                                file_preset.write("item_sub_%d = %s.add()\n" % (level, rna_path_step))
-                                rna_recursive_attr_expand(sub_value, "item_sub_%d" % level, level + 1)
+                                file_preset.write("item_sub_{:d} = {:s}.add()\n".format(level, rna_path_step))
+                                rna_recursive_attr_expand(sub_value, "item_sub_{:d}".format(level), level + 1)
                         else:
                             # convert thin wrapped sequences
                             # to simple lists to repr()
@@ -145,7 +168,7 @@ class AddPresetBase:
                             except BaseException:
                                 pass
 
-                            file_preset.write("%s = %r\n" % (rna_path_step, value))
+                            file_preset.write("{:s} = {!r}\n".format(rna_path_step, value))
 
                     file_preset = open(filepath, "w", encoding="utf-8")
                     file_preset.write("import bpy\n")
@@ -153,7 +176,7 @@ class AddPresetBase:
                     if hasattr(self, "preset_defines"):
                         for rna_path in self.preset_defines:
                             exec(rna_path)
-                            file_preset.write("%s\n" % rna_path)
+                            file_preset.write("{:s}\n".format(rna_path))
                         file_preset.write("\n")
 
                     for rna_path in self.preset_values:
@@ -188,7 +211,7 @@ class AddPresetBase:
                 else:
                     os.remove(filepath)
             except BaseException as ex:
-                self.report({'ERROR'}, rpt_("Unable to remove preset: %r") % ex)
+                self.report({'ERROR'}, rpt_("Unable to remove preset: {!r}").format(ex))
                 import traceback
                 traceback.print_exc()
                 return {'CANCELLED'}
@@ -238,11 +261,10 @@ class ExecutePreset(Operator):
         ext = splitext(filepath)[1].lower()
 
         if ext not in {".py", ".xml"}:
-            self.report({'ERROR'}, rpt_("Unknown file type: %r") % ext)
+            self.report({'ERROR'}, rpt_("Unknown file type: {!r}").format(ext))
             return {'CANCELLED'}
 
-        if hasattr(preset_class, "reset_cb"):
-            preset_class.reset_cb(context)
+        _call_preset_cb(getattr(preset_class, "reset_cb", None), context, filepath)
 
         if ext == ".py":
             try:
@@ -254,8 +276,7 @@ class ExecutePreset(Operator):
             import rna_xml
             rna_xml.xml_file_run(context, filepath, preset_class.preset_xml_map)
 
-        if hasattr(preset_class, "post_cb"):
-            preset_class.post_cb(context)
+        _call_preset_cb(getattr(preset_class, "post_cb", None), context, filepath)
 
         return {'FINISHED'}
 
@@ -422,7 +443,7 @@ class AddPresetTextEditor(AddPresetBase, Operator):
 
     preset_values = [
         "filepaths.text_editor",
-        "filepaths.text_editor_args"
+        "filepaths.text_editor_args",
     ]
 
     preset_subdir = "text_editor"
@@ -518,14 +539,13 @@ class AddPresetEEVEERaytracing(AddPresetBase, Operator):
 
     preset_defines = [
         "eevee = bpy.context.scene.eevee",
-        "options = eevee.ray_tracing_options"
+        "options = eevee.ray_tracing_options",
     ]
 
     preset_values = [
         "eevee.ray_tracing_method",
         "options.resolution_scale",
-        "options.sample_clamp",
-        "options.screen_trace_max_roughness",
+        "options.trace_max_roughness",
         "options.screen_trace_quality",
         "options.screen_trace_thickness",
         "options.use_denoise",
@@ -580,6 +600,7 @@ class RemovePresetInterfaceTheme(AddPresetBase, Operator):
         from bpy.utils import is_path_builtin
         preset_menu_class = getattr(bpy.types, cls.preset_menu)
         name = preset_menu_class.bl_label
+        name = bpy.path.clean_name(name)
         filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".xml")
         if not bool(filepath) or is_path_builtin(filepath):
             cls.poll_message_set("Built-in themes cannot be removed")
@@ -613,6 +634,7 @@ class SavePresetInterfaceTheme(AddPresetBase, Operator):
 
         preset_menu_class = getattr(bpy.types, cls.preset_menu)
         name = preset_menu_class.bl_label
+        name = bpy.path.clean_name(name)
         filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".xml")
         if (not filepath) or is_path_builtin(filepath):
             cls.poll_message_set("Built-in themes cannot be overwritten")
@@ -624,6 +646,7 @@ class SavePresetInterfaceTheme(AddPresetBase, Operator):
         import rna_xml
         preset_menu_class = getattr(bpy.types, self.preset_menu)
         name = preset_menu_class.bl_label
+        name = bpy.path.clean_name(name)
         filepath = bpy.utils.preset_find(name, self.preset_subdir, ext=".xml")
         if not bool(filepath) or is_path_builtin(filepath):
             self.report({'ERROR'}, "Built-in themes cannot be overwritten")
@@ -632,10 +655,12 @@ class SavePresetInterfaceTheme(AddPresetBase, Operator):
         try:
             rna_xml.xml_file_write(context, filepath, preset_menu_class.preset_xml_map)
         except BaseException as ex:
-            self.report({'ERROR'}, "Unable to overwrite preset: %s" % str(ex))
+            self.report({'ERROR'}, "Unable to overwrite preset: {:s}".format(str(ex)))
             import traceback
             traceback.print_exc()
             return {'CANCELLED'}
+
+        context.preferences.themes[0].filepath = filepath
 
         return {'FINISHED'}
 
@@ -726,7 +751,7 @@ class AddPresetOperator(AddPresetBase, Operator):
         for prop_id, prop in operator_rna.properties.items():
             if not prop.is_skip_preset:
                 if prop_id not in properties_blacklist:
-                    ret.append("op.%s" % prop_id)
+                    ret.append("op.{:s}".format(prop_id))
 
         return ret
 
@@ -734,7 +759,7 @@ class AddPresetOperator(AddPresetBase, Operator):
     def operator_path(operator):
         import os
         prefix, suffix = operator.split("_OT_", 1)
-        return os.path.join("operator", "%s.%s" % (prefix.lower(), suffix))
+        return os.path.join("operator", "{:s}.{:s}".format(prefix.lower(), suffix))
 
 
 class WM_MT_operator_presets(Menu):
@@ -843,7 +868,7 @@ class WM_OT_operator_presets_cleanup(Operator):
                 "filepath",
                 "directory",
                 "files",
-                "filename"
+                "filename",
             ]
 
         self._cleanup_operators_presets(operators, properties_exclude)

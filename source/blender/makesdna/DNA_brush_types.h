@@ -133,7 +133,8 @@ typedef struct BrushGpencilSettings {
 
   /** Factor for external line thickness conversion to outline. */
   float outline_fac;
-  char _pad1[4];
+  /** Screen space simplify threshold. Points within this margin are treated as a straight line. */
+  float simplify_px;
 
   /* optional link of material to replace default in context */
   /** Material. */
@@ -273,8 +274,6 @@ typedef struct Brush {
 
   /** Active sculpt tool. */
   char sculpt_tool;
-  /** Active sculpt tool. */
-  char uv_sculpt_tool;
   /** Active vertex paint. */
   char vertexpaint_tool;
   /** Active weight paint. */
@@ -293,7 +292,7 @@ typedef struct Brush {
   char gpencil_weight_tool;
   /** Active curves sculpt tool (#eBrushCurvesSculptTool). */
   char curves_sculpt_tool;
-  char _pad1[5];
+  char _pad1[6];
 
   float autosmooth_factor;
 

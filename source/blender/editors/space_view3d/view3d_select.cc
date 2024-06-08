@@ -63,7 +63,7 @@
 #include "BKE_paint.hh"
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "WM_api.hh"
 #include "WM_toolsystem.hh"
@@ -1195,14 +1195,14 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
   for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
 
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }
@@ -3238,7 +3238,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         ClosestGreasePencilDrawing new_closest = init;
         for (const int i : range) {
           ed::greasepencil::MutableDrawingInfo info = drawings[i];
-          const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+          const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
           /* Get deformation by modifiers. */
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
@@ -3246,7 +3246,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
 
           IndexMaskMemory memory;
           const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-              *vc.obedit, info.drawing, selection_domain, memory);
+              *vc.obedit, info, selection_domain, memory);
           if (elements.is_empty()) {
             continue;
           }
@@ -3280,7 +3280,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         ed::greasepencil::MutableDrawingInfo info = drawings[i];
         IndexMaskMemory memory;
         const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-            *vc.obedit, info.drawing, selection_domain, memory);
+            *vc.obedit, info, selection_domain, memory);
         if (elements.is_empty()) {
           continue;
         }
@@ -4254,13 +4254,13 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
   for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }
@@ -5116,13 +5116,13 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
   const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*vc->scene, grease_pencil);
   for (const ed::greasepencil::MutableDrawingInfo info : drawings) {
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
     bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             ob_eval, *vc->obedit, info.layer_index, info.frame_number);
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_elements(
-        *vc->obedit, info.drawing, selection_domain, memory);
+        *vc->obedit, info, selection_domain, memory);
     if (elements.is_empty()) {
       continue;
     }

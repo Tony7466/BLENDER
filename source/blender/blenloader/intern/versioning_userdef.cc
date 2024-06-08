@@ -67,7 +67,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
   if (!USER_VERSION_ATLEAST(300, 41)) {
-    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+    MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }
 
   /* Again reset the theme, but only if stored with an early 3.1 alpha version. Some changes were
@@ -76,7 +76,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    * don't want to reset theme changes stored in the eventual 3.0 release once opened in a 3.1
    * build. */
   if (userdef->versionfile > 300 && !USER_VERSION_ATLEAST(301, 1)) {
-    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+    MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }
 
   if (!USER_VERSION_ATLEAST(301, 2)) {
@@ -145,9 +145,23 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_console.console_cursor);
   }
 
-  if (!USER_VERSION_ATLEAST(402, 14)) {
+  if (!USER_VERSION_ATLEAST(402, 16)) {
     BLI_uniquename(
         &userdef->themes, btheme, "Theme", '.', offsetof(bTheme, name), sizeof(btheme->name));
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 17)) {
+    FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated);
+    FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated_select);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 21)) {
+    FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.back);
+    FROM_DEFAULT_V4_UCHAR(space_image.asset_shelf.header_back);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 47)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.time_gp_keyframe);
   }
 
   /**
@@ -501,7 +515,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(278, 6)) {
     /* Clear preference flags for re-use. */
     userdef->flag &= ~(USER_FLAG_NUMINPUT_ADVANCED | (1 << 2) | USER_FLAG_UNUSED_3 |
-                       USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_FLAG_UNUSED_9 |
+                       USER_FLAG_UNUSED_6 | USER_FLAG_UNUSED_7 | USER_INTERNET_ALLOW |
                        USER_DEVELOPER_UI);
     userdef->uiflag &= ~(USER_HEADER_BOTTOM);
     userdef->transopts &= ~(USER_TR_UNUSED_3 | USER_TR_UNUSED_4 | USER_TR_UNUSED_6 |
@@ -515,7 +529,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     /* Reset theme, old themes will not be compatible with minor version updates from now on. */
     LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
-      memcpy(btheme, &U_theme_default, sizeof(*btheme));
+      MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
     }
 
     /* Annotations - new layer color
@@ -933,11 +947,34 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(402, 6)) {
-    if (BLI_listbase_is_empty(&userdef->extension_repos)) {
-      BKE_preferences_extension_repo_add_default(userdef);
-      BKE_preferences_extension_repo_add_default_user(userdef);
+  if (!USER_VERSION_ATLEAST(402, 36)) {
+    /* Reset repositories. */
+    while (!BLI_listbase_is_empty(&userdef->extension_repos)) {
+      BKE_preferences_extension_repo_remove(
+          userdef, static_cast<bUserExtensionRepo *>(userdef->extension_repos.first));
     }
+
+    BKE_preferences_extension_repo_add_default_remote(userdef);
+    BKE_preferences_extension_repo_add_default_user(userdef);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 42)) {
+    /* 80 was the old default. */
+    if (userdef->node_margin == 80) {
+      userdef->node_margin = 40;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 50)) {
+    userdef->statusbar_flag |= STATUSBAR_SHOW_EXTENSIONS_UPDATES;
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 51)) {
+    userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 56)) {
+    BKE_preferences_extension_repo_add_default_system(userdef);
   }
 
   /**

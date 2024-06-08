@@ -35,6 +35,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -58,7 +59,7 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_readfile.hh"
 
@@ -170,6 +171,7 @@ static void blo_update_defaults_screen(bScreen *screen,
                                     SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG |
                                     SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_ALL_WAVEFORMS;
       seq->preview_overlay.flag |= SEQ_PREVIEW_SHOW_OUTLINE_SELECTED;
+      seq->cache_overlay.flag = SEQ_CACHE_SHOW | SEQ_CACHE_SHOW_FINAL_OUT;
     }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */
@@ -331,13 +333,13 @@ void BLO_update_defaults_workspace(WorkSpace *workspace, const char *app_templat
 
 static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 {
-  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
 
   scene->r.cfra = 1.0f;
 
   /* Don't enable compositing nodes. */
   if (scene->nodetree) {
-    ntreeFreeEmbeddedTree(scene->nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(scene->nodetree);
     MEM_freeN(scene->nodetree);
     scene->nodetree = nullptr;
     scene->use_nodes = false;
@@ -350,6 +352,11 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   /* Disable Z pass by default. */
   LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
     view_layer->passflag &= ~SCE_PASS_Z;
+  }
+
+  /* Display missing media by default. */
+  if (scene->ed) {
+    scene->ed->show_missing_media_flag |= SEQ_EDIT_SHOW_MISSING_MEDIA;
   }
 
   /* New EEVEE defaults. */
@@ -549,9 +556,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       }
 
       /* Ensure new Paint modes. */
-      BKE_paint_ensure_from_paintmode(scene, PaintMode::VertexGPencil);
-      BKE_paint_ensure_from_paintmode(scene, PaintMode::SculptGPencil);
-      BKE_paint_ensure_from_paintmode(scene, PaintMode::WeightGPencil);
+      BKE_paint_ensure_from_paintmode(bmain, scene, PaintMode::VertexGPencil);
+      BKE_paint_ensure_from_paintmode(bmain, scene, PaintMode::SculptGPencil);
+      BKE_paint_ensure_from_paintmode(bmain, scene, PaintMode::WeightGPencil);
 
       /* Enable cursor. */
       if (ts->gp_paint) {
@@ -682,11 +689,12 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     if (ma->nodetree) {
       for (bNode *node : ma->nodetree->all_nodes()) {
         if (node->type == SH_NODE_BSDF_PRINCIPLED) {
-          bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+          bNodeSocket *roughness_socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Roughness");
           *version_cycles_node_socket_float_value(roughness_socket) = 0.5f;
-          bNodeSocket *emission = nodeFindSocket(node, SOCK_IN, "Emission Color");
+          bNodeSocket *emission = blender::bke::nodeFindSocket(node, SOCK_IN, "Emission Color");
           copy_v4_fl(version_cycles_node_socket_rgba_value(emission), 1.0f);
-          bNodeSocket *emission_strength = nodeFindSocket(node, SOCK_IN, "Emission Strength");
+          bNodeSocket *emission_strength = blender::bke::nodeFindSocket(
+              node, SOCK_IN, "Emission Strength");
           *version_cycles_node_socket_float_value(emission_strength) = 0.0f;
 
           node->custom1 = SHD_GLOSSY_MULTI_GGX;
@@ -716,12 +724,15 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
     brush->blur_kernel_radius = 2;
 
-    /* Use full strength for all non-sculpt brushes,
-     * when painting we want to use full color/weight always.
-     *
-     * Note that sculpt is an exception,
-     * its values are overwritten by #BKE_brush_sculpt_reset below. */
-    brush->alpha = 1.0;
+    /* Grease Pencil brushes have specific alpha values set. */
+    if (!brush->gpencil_settings) {
+      /* Use full strength for all non-sculpt brushes,
+       * when painting we want to use full color/weight always.
+       *
+       * Note that sculpt is an exception,
+       * its values are overwritten by #BKE_brush_sculpt_reset below. */
+      brush->alpha = 1.0;
+    }
 
     /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
@@ -900,6 +911,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       if (!brush->automasking_cavity_curve) {
         brush->automasking_cavity_curve = BKE_sculpt_default_cavity_curve();
       }
+    }
+  }
+
+  {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->shadow_maximum_resolution = 0.001f;
+      light->transmission_fac = 1.0f;
+      SET_FLAG_FROM_TEST(light->mode, false, LA_SHAD_RES_ABSOLUTE);
     }
   }
 }
