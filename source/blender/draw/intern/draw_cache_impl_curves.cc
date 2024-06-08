@@ -50,8 +50,8 @@ namespace blender::draw {
 
 #define EDIT_CURVES_NURBS_CONTROL_POINT (1u)
 #define EDIT_CURVES_BEZIER_HANDLE (1u << 1)
-#define EDIT_CURVES_LEFT_HANDLE_TYPES_SHIFT (6u)
-#define EDIT_CURVES_RIGHT_HANDLE_TYPES_SHIFT (4u)
+#define EDIT_CURVES_ACTIVE_HANDLE (1u << 2)
+#define EDIT_CURVES_HANDLE_TYPES_SHIFT (4u)
 
 /* ---------------------------------------------------------------------- */
 struct CurvesUboStorage {
@@ -283,15 +283,10 @@ static void create_points_position_time_vbo(const bke::CurvesGeometry &curves,
       curves.points_by_curve(), curves.positions(), posTime_data, hairLength_data);
 }
 
-static uint32_t bezier_data_value(int8_t left_handle_type, int8_t right_handle_type)
+static uint32_t bezier_data_value(int8_t handle_type, bool is_active)
 {
-  return (left_handle_type << EDIT_CURVES_LEFT_HANDLE_TYPES_SHIFT) |
-         (right_handle_type << EDIT_CURVES_RIGHT_HANDLE_TYPES_SHIFT) | EDIT_CURVES_BEZIER_HANDLE;
-}
-
-static uint32_t bezier_data_value(int8_t handle_type)
-{
-  return bezier_data_value(handle_type, handle_type);
+  return (handle_type << EDIT_CURVES_HANDLE_TYPES_SHIFT) | EDIT_CURVES_BEZIER_HANDLE |
+         (is_active ? EDIT_CURVES_ACTIVE_HANDLE : 0);
 }
 
 static void create_edit_points_position_and_data(
@@ -353,15 +348,23 @@ static void create_edit_points_position_and_data(
       handle_other_curves(0),
       handle_other_curves(0),
       [&](const IndexMask &selection) {
+        const VArray<bool> selection_attr = *curves.attributes().lookup_or_default<bool>(
+            ".selection", bke::AttrDomain::Point, true);
+        const VArray<bool> selection_left = *curves.attributes().lookup_or_default<bool>(
+            ".selection_handle_left", bke::AttrDomain::Point, true);
+        const VArray<bool> selection_right = *curves.attributes().lookup_or_default<bool>(
+            ".selection_handle_right", bke::AttrDomain::Point, true);
+
         selection.foreach_index(GrainSize(256), [&](const int src_i, const int64_t dst_i) {
           for (const int point : points_by_curve[src_i]) {
             const int point_in_curve = point - points_by_curve[src_i].start();
             const int dst_index = bezier_dst_offsets[dst_i].start() + point_in_curve;
 
-            data_dst[point] = bezier_data_value(left_handle_types[point],
-                                                right_handle_types[point]);
-            handle_data_left[dst_index] = bezier_data_value(left_handle_types[point]);
-            handle_data_right[dst_index] = bezier_data_value(right_handle_types[point]);
+            data_dst[point] = EDIT_CURVES_BEZIER_HANDLE;
+            bool is_active = selection_attr[point] || selection_left[point] ||
+                             selection_right[point];
+            handle_data_left[dst_index] = bezier_data_value(left_handle_types[point], is_active);
+            handle_data_right[dst_index] = bezier_data_value(right_handle_types[point], is_active);
           }
         });
       },
@@ -452,21 +455,21 @@ static void calc_edit_handles_vbo(const bke::CurvesGeometry &curves,
   const int bezier_point_count = bezier_offsets.total_size();
   /* Left and right handle will be appended for each Bezier point. */
   const int vert_len = curves.points_num() + 2 * bezier_point_count;
-  /* For each point has 2 lines from 2 point and one restart entry. */
-  const int index_len_for_bezier_handles = 6 * bezier_point_count;
+  /* For each point has 2 lines from 2 points. */
+  const int index_len_for_bezier_handles = 4 * bezier_point_count;
   const VArray<bool> cyclic = curves.cyclic();
-  /* All NURBS control points plus restart for every curve.
+  /* All NURBS control points except last generates line from two points.
    * Add space for possible cyclic curves.
    * If one point curves or two point cyclic curves are present, not all builder's buffer space
    * will be used. */
-  const int index_len_for_nurbs = nurbs_offsets.total_size() + nurbs_curves.size() +
-                                  array_utils::count_booleans(cyclic, nurbs_curves);
+  const int index_len_for_nurbs = (nurbs_offsets.total_size() - nurbs_curves.size()) * 2 +
+                                  array_utils::count_booleans(cyclic, nurbs_curves) * 2;
   const int index_len = index_len_for_bezier_handles + index_len_for_nurbs;
   /* Use two index buffer builders for the same underlying memory. */
   GPUIndexBufBuilder elb, right_elb;
-  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
+  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINES, index_len, vert_len);
   memcpy(&right_elb, &elb, sizeof(elb));
-  right_elb.index_len = 3 * bezier_point_count;
+  right_elb.index_len = 2 * bezier_point_count;
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
 
@@ -476,12 +479,8 @@ static void calc_edit_handles_vbo(const bke::CurvesGeometry &curves,
                             bezier_offsets[dst_i].first();
     for (const int point : bezier_points) {
       const int point_left_i = index_shift + point;
-      GPU_indexbuf_add_generic_vert(&elb, point_left_i);
-      GPU_indexbuf_add_generic_vert(&elb, point);
-      GPU_indexbuf_add_primitive_restart(&elb);
-      GPU_indexbuf_add_generic_vert(&right_elb, point_left_i + bezier_point_count);
-      GPU_indexbuf_add_generic_vert(&right_elb, point);
-      GPU_indexbuf_add_primitive_restart(&right_elb);
+      GPU_indexbuf_add_line_verts(&elb, point_left_i, point);
+      GPU_indexbuf_add_line_verts(&right_elb, point_left_i + bezier_point_count, point);
     }
   });
   nurbs_curves.foreach_index([&](const int64_t src_i) {
@@ -489,13 +488,12 @@ static void calc_edit_handles_vbo(const bke::CurvesGeometry &curves,
     if (curve_points.size() <= 1) {
       return;
     }
-    for (const int point : curve_points) {
-      GPU_indexbuf_add_generic_vert(&right_elb, point);
+    for (const int point : curve_points.drop_back(1)) {
+      GPU_indexbuf_add_line_verts(&right_elb, point, point + 1);
     }
     if (cyclic[src_i] && curve_points.size() > 2) {
-      GPU_indexbuf_add_generic_vert(&right_elb, curve_points.first());
+      GPU_indexbuf_add_line_verts(&right_elb, curve_points.first(), curve_points.last());
     }
-    GPU_indexbuf_add_primitive_restart(&right_elb);
   });
   GPU_indexbuf_join(&elb, &right_elb);
   GPU_indexbuf_build_in_place(&elb, cache.edit_handles_ibo);
@@ -1110,7 +1108,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_vbo_request(cache.sculpt_cage, &cache.edit_points_data);
     DRW_vbo_request(cache.sculpt_cage, &cache.edit_points_selection);
   }
-  if (DRW_batch_requested(cache.edit_handles, GPU_PRIM_LINE_STRIP)) {
+  if (DRW_batch_requested(cache.edit_handles, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache.edit_handles, &cache.edit_handles_ibo);
     DRW_vbo_request(cache.edit_handles, &cache.edit_points_pos);
     DRW_vbo_request(cache.edit_handles, &cache.edit_points_data);
