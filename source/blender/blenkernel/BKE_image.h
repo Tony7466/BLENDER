@@ -177,7 +177,7 @@ void BKE_image_release_ibuf(struct Image *ima, struct ImBuf *ibuf, void *lock);
 
 /**
  * Return image buffer of preview for given image
- * width_r & *height_r are optional and return the _original size_ of the image.
+ * r_width & r_height are optional and return the _original size_ of the image.
  */
 struct ImBuf *BKE_image_preview(struct Image *ima,
                                 short max_size,
