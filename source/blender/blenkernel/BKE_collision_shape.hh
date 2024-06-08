@@ -24,13 +24,46 @@ class SphereCollisionShape;
 
 struct CollisionShapeImpl;
 
-class CollisionShape : public NonCopyable {
+class CollisionShape : public ImplicitSharingMixin {
  public:
+  using Ptr = ImplicitSharingPtr<CollisionShape>;
+
+  /* Not all shape types may be supported. */
   enum class ShapeType {
-    Unknown,
+    Invalid,
     Empty,
+
+    /* Polyhedral convex shapes. */
     Box,
+    Triangle,
+    Tetrahedral,
+    ConvexTriangleMesh,
+    ConvexHull,
+    ConvexPointCloud,
+    //CustomPolyhedral,
+
+    /* Implicit convex shapes. */
     Sphere,
+    MultiSphere,
+    Capsule,
+    Cone,
+    Convex,
+    Cylinder,
+    UniformScaling,
+    MinkowskiSum,
+    MinkowskiDifference,
+    Box2D,
+    Convex2D,
+    //CustomConvex,
+
+    /* Concave shapes. */
+    TriangleMesh,
+    ScaledTriangleMesh,
+    StaticPlane,
+    //CustomConcave,
+
+    /* Others */
+    Compound,
   };
 
  protected:
@@ -39,6 +72,8 @@ class CollisionShape : public NonCopyable {
  public:
   CollisionShape();
   ~CollisionShape();
+
+  void delete_self() override;
 
   CollisionShapeImpl &impl();
   const CollisionShapeImpl &impl() const;
@@ -71,6 +106,7 @@ class CollisionShape : public NonCopyable {
 class BoxCollisionShape : public CollisionShape {
  public:
   BoxCollisionShape(const float3 &half_extent);
+  ~BoxCollisionShape();
 
   float3 half_extent() const;
 };
@@ -78,6 +114,7 @@ class BoxCollisionShape : public CollisionShape {
 class SphereCollisionShape : public CollisionShape {
  public:
   SphereCollisionShape(float radius);
+  ~SphereCollisionShape();
 
   float radius() const;
 };

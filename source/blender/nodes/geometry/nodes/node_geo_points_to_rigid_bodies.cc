@@ -16,18 +16,23 @@ namespace blender::nodes::node_geo_points_to_rigid_bodies_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Points").supported_type(GeometryComponent::Type::PointCloud);
-  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
-  b.add_input<decl::Int>("ID").default_value(-1).field_on_all().hide_value();
-  b.add_input<decl::Float>("Mass").default_value(1.0f).field_on_all();
-  b.add_input<decl::Vector>("Inertia").field_on_all().hide_value();
+  b.add_input<decl::Bool>("Selection").default_value(true).field_on({0}).hide_value();
+  b.add_input<decl::Int>("ID").default_value(-1).field_on({0}).hide_value();
+  b.add_input<decl::Float>("Mass").default_value(1.0f).field_on({0});
+  b.add_input<decl::Vector>("Inertia").field_on({0}).hide_value();
+  b.add_input<decl::Geometry>("Shapes").description(
+      "Collision shapes to choose from for each body");
+  b.add_input<decl::Int>("Shape Index")
+      .description("Index of the collision shape used for each point")
+      .field_on({0});
   b.add_input<decl::Vector>("Position")
-      .field_on_all()
+      .field_on({0})
       .implicit_field(implicit_field_inputs::position);
-  b.add_input<decl::Rotation>("Rotation").field_on_all().hide_value();
-  b.add_input<decl::Vector>("Velocity").field_on_all().hide_value();
-  b.add_input<decl::Vector>("Angular Velocity").field_on_all().hide_value();
+  b.add_input<decl::Rotation>("Rotation").field_on({0}).hide_value();
+  b.add_input<decl::Vector>("Velocity").field_on({0}).hide_value();
+  b.add_input<decl::Vector>("Angular Velocity").field_on({0}).hide_value();
+  b.add_input<decl::Bool>("Simulate").default_value(true).field_on({0});
   b.add_output<decl::Geometry>("Rigid Bodies").propagate_all();
-  b.add_input<decl::Bool>("Simulate").default_value(true).field_on_all();
 }
 
 static void geometry_set_points_to_rigid_bodies(
@@ -41,8 +46,12 @@ static void geometry_set_points_to_rigid_bodies(
     Field<float3> &velocity_field,
     Field<float3> &angular_velocity_field,
     Field<bool> &is_simulated_field,
+    const GeometrySet shapes_geometry,
+    Field<int> shape_index_field,
     const AnonymousAttributePropagationInfo & /*propagation_info*/)
 {
+  using CollisionShapePtr = ImplicitSharingPtr<bke::CollisionShape>;
+
   const PointCloud *points = geometry_set.get_pointcloud();
   if (points == nullptr || points->totpoint == 0) {
     geometry_set.remove_geometry_during_modify();
@@ -60,6 +69,7 @@ static void geometry_set_points_to_rigid_bodies(
   field_evaluator.add(velocity_field);
   field_evaluator.add(angular_velocity_field);
   field_evaluator.add(is_simulated_field);
+  field_evaluator.add(shape_index_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
 
@@ -72,6 +82,11 @@ static void geometry_set_points_to_rigid_bodies(
   const VArray<float3> src_velocities = field_evaluator.get_evaluated<float3>(5);
   const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(6);
   const VArray<bool> src_is_simulated = field_evaluator.get_evaluated<bool>(7);
+  const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(8);
+
+  const Span<CollisionShapePtr> shapes = shapes_geometry.has_physics() ?
+                                             shapes_geometry.get_physics()->shapes() :
+                                             Span<CollisionShapePtr>{};
 
   const int num_bodies = selection.size();
   auto *physics = new bke::PhysicsGeometry(num_bodies, 0, 0);
@@ -83,6 +98,7 @@ static void geometry_set_points_to_rigid_bodies(
   AttributeWriter<float3> dst_velocities = physics->body_velocities_for_write();
   AttributeWriter<float3> dst_angular_velocities = physics->body_angular_velocities_for_write();
   AttributeWriter<bool> dst_is_simulated = physics->body_is_simulated_for_write();
+  AttributeWriter<int> dst_shape_handles = physics->body_shapes_handles_for_write();
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
     dst_ids.varray.set(pos, src_ids[index]);
@@ -93,6 +109,12 @@ static void geometry_set_points_to_rigid_bodies(
     dst_velocities.varray.set(pos, src_velocities[index]);
     dst_angular_velocities.varray.set(pos, src_angular_velocities[index]);
     dst_is_simulated.varray.set(pos, src_is_simulated[index]);
+
+    const int shape_index = src_shape_index[index];
+    if (shapes.index_range().contains(shape_index)) {
+      const int shape_handle = physics->add_shape(shapes[shape_index]);
+      dst_shape_handles.varray.set(pos, shape_handle);
+    }
   });
 
   dst_ids.finish();
@@ -103,6 +125,7 @@ static void geometry_set_points_to_rigid_bodies(
   dst_velocities.finish();
   dst_angular_velocities.finish();
   dst_is_simulated.finish();
+  dst_shape_handles.finish();
 
   geometry_set.replace_physics(physics);
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Physics});
@@ -121,6 +144,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float3> velocity_field = params.extract_input<Field<float3>>("Velocity");
   Field<float3> angular_velocity_field = params.extract_input<Field<float3>>("Angular Velocity");
   Field<bool> is_simulated_field = params.extract_input<Field<bool>>("Simulate");
+  GeometrySet shapes_geometry = params.extract_input<GeometrySet>("Shapes");
+  Field<int> shape_index_field = params.extract_input<Field<bool>>("Shape Index");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     geometry_set_points_to_rigid_bodies(geometry_set,
@@ -133,6 +158,8 @@ static void node_geo_exec(GeoNodeExecParams params)
                                         velocity_field,
                                         angular_velocity_field,
                                         is_simulated_field,
+                                        shapes_geometry,
+                                        shape_index_field,
                                         params.get_output_propagation_info("Rigid Bodies"));
   });
 

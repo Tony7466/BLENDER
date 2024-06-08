@@ -147,6 +147,15 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
   return body.setUserIndex2(int(current));
 }
 
+static int get_body_collision_handle(const btRigidBody &body) {
+  return body.getUserIndex3();
+}
+
+static void set_body_collision_handle(btRigidBody &body, int handle)
+{
+  body.setUserIndex3(handle);
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Physics World
  * \{ */
@@ -560,6 +569,7 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "kinematic",
     "mass",
     "inertia",
+    "shape_handle",
     "position",
     "rotation",
     "velocity",
@@ -638,7 +648,7 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
     new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
     new_impl->motion_states.reinitialize(impl_->motion_states.size());
-    move_physics_impl_data(*impl_, *new_impl, true, 0, 0, 0);
+    move_physics_impl_data(*impl_, *new_impl, true, 0, 0);
 
     impl_ = new_impl;
   }
@@ -650,21 +660,19 @@ void move_physics_data(const PhysicsGeometry &from,
                        PhysicsGeometry &to,
                        const bool use_world,
                        int bodies_offset,
-                       int constraints_offset,
-                       int shapes_offset)
+                       int constraints_offset)
 {
   PhysicsGeometryImpl &to_impl = to.impl_for_write();
   const PhysicsGeometryImpl &from_impl = from.impl();
   move_physics_impl_data(
-      from_impl, to_impl, use_world, bodies_offset, constraints_offset, shapes_offset);
+      from_impl, to_impl, use_world, bodies_offset, constraints_offset);
 }
 
 void move_physics_impl_data(const PhysicsGeometryImpl &from,
                             PhysicsGeometryImpl &to,
                             const bool use_world,
                             const int bodies_offset,
-                            const int constraints_offset,
-                            const int shapes_offset)
+                            const int constraints_offset)
 {
   BLI_assert(to.is_mutable());
 
@@ -675,11 +683,9 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
 
   const IndexRange body_range = IndexRange(bodies_offset, from.rigid_bodies.size());
   const IndexRange constraint_range = IndexRange(constraints_offset, from.constraints.size());
-  const IndexRange shape_range = IndexRange(shapes_offset, from.shapes.size());
   /* Make sure target has enough space. */
   BLI_assert(body_range.intersect(to.rigid_bodies.index_range()) == body_range);
   BLI_assert(constraint_range.intersect(to.constraints.index_range()) == constraint_range);
-  BLI_assert(shape_range.intersect(to.shapes.index_range()) == shape_range);
 
   std::unique_lock lock(from.data_mutex);
   if (from.is_cached) {
@@ -829,25 +835,52 @@ IndexRange PhysicsGeometry::shapes_range() const
   return impl().shapes.index_range();
 }
 
-VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
-{
-  auto get_fn = [](const btRigidBody &body) -> const CollisionShape * {
-    return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
-  };
-  return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this, nullptr);
+static void validate_body_shapes() {
 }
 
-VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
+Span<CollisionShape::Ptr> PhysicsGeometry::shapes() const
 {
-  BLI_assert(this->impl().is_mutable());
-  constexpr auto get_fn = [](const btRigidBody &body) -> CollisionShape * {
-    return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
-  };
-  constexpr auto set_fn = [](btRigidBody &body, CollisionShape *value) {
-    body.setCollisionShape(&value->impl().as_bullet_shape());
-  };
-  return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this, nullptr);
+  return shapes_.as_span();
 }
+
+std::optional<int> PhysicsGeometry::find_shape_handle(const CollisionShape &shape) {
+  for (const int i : shapes_.index_range()) {
+    const CollisionShapePtr &ptr = shapes_[i];
+    if (ptr.get() == &shape) {
+      return i;
+    }
+  }
+  return std::nullopt;
+}
+
+int PhysicsGeometry::add_shape(const CollisionShapePtr &shape)
+{
+  if (const std::optional<int> handle = find_shape_handle(*shape)) {
+    return *handle;
+  }
+
+  return shapes_.append_and_get_index(shape);
+}
+
+//VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
+//{
+//  auto get_fn = [](const btRigidBody &body) -> const CollisionShape * {
+//    return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
+//  };
+//  return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this, nullptr);
+// }
+//
+//VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
+//{
+//  BLI_assert(this->impl().is_mutable());
+//  constexpr auto get_fn = [](const btRigidBody &body) -> CollisionShape * {
+//    return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
+//  };
+//  constexpr auto set_fn = [](btRigidBody &body, CollisionShape *value) {
+//    body.setCollisionShape(&value->impl().as_bullet_shape());
+//  };
+//  return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this, nullptr);
+//}
 
 VArray<int> PhysicsGeometry::body_ids() const
 {
@@ -867,6 +900,13 @@ VArray<bool> PhysicsGeometry::body_is_simulated() const
 AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
 {
   return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
+}
+
+VArray<int> PhysicsGeometry::body_shapes_handles() const {
+  return attributes().lookup(builtin_attributes.shape_handle).varray.typed<int>();
+}
+
+AttributeWriter<int> PhysicsGeometry::body_shapes_handles_for_write() {
 }
 
 VArray<bool> PhysicsGeometry::body_is_static() const
@@ -892,6 +932,16 @@ VArray<float3> PhysicsGeometry::body_inertias() const
 AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
 {
   return attributes_for_write().lookup_for_write<float3>(builtin_attributes.inertia);
+}
+
+VArray<int> PhysicsGeometry::body_shapes_handles() const
+{
+  return attributes().lookup(builtin_attributes.shape_handle).varray.typed<int>();
+}
+
+AttributeWriter<int> PhysicsGeometry::body_shapes_handles_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.shape_handle);
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
@@ -1139,6 +1189,15 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
+  static BuiltinRigidBodyAttributeProvider<int,
+                                           get_body_collision_handle,
+                                           set_body_collision_handle>
+      body_shape_handle(PhysicsGeometry::builtin_attributes.shape_handle,
+                        AttrDomain::Point,
+                        BuiltinAttributeProvider::NonDeletable,
+                        physics_access,
+                        nullptr);
+
   constexpr auto position_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getWorldTransform().getOrigin());
   };
@@ -1199,6 +1258,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_kinematic,
                                       &body_mass,
                                       &body_inertia,
+                                      &body_shape_handle,
                                       &body_position,
                                       &body_rotation,
                                       &body_velocity,

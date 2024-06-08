@@ -30,6 +30,8 @@ namespace blender::bke {
 class CollisionShape;
 struct PhysicsGeometryImpl;
 
+using CollisionShapePtr = ImplicitSharingPtr<CollisionShape>;
+
 class PhysicsGeometry {
  public:
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
@@ -42,6 +44,8 @@ class PhysicsGeometry {
    * the physics state will create a read-only cache, so older state still be accessed. */
   const PhysicsGeometryImpl *impl_ = nullptr;
 
+  Vector<CollisionShapePtr> shapes_;
+
  public:
   static const struct BuiltinAttributes {
     std::string id;
@@ -50,6 +54,7 @@ class PhysicsGeometry {
     std::string is_kinematic;
     std::string mass;
     std::string inertia;
+    std::string shape_handle;
     std::string position;
     std::string rotation;
     std::string velocity;
@@ -85,14 +90,18 @@ class PhysicsGeometry {
 
   void step_simulation(float delta_time);
 
-  VArray<const CollisionShape *> body_collision_shapes() const;
-  VMutableArray<CollisionShape *> body_collision_shapes_for_write();
+  Span<CollisionShapePtr> shapes() const;
+  std::optional<int> find_shape_handle(const CollisionShape &shape);
+  int add_shape(const CollisionShapePtr &shape);
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
 
   VArray<bool> body_is_simulated() const;
   AttributeWriter<bool> body_is_simulated_for_write();
+
+  VArray<int> body_shapes_handles() const;
+  AttributeWriter<int> body_shapes_handles_for_write();
 
   VArray<bool> body_is_static() const;
 
@@ -127,7 +136,6 @@ void move_physics_data(const PhysicsGeometry &from,
                        PhysicsGeometry &to,
                        bool use_world,
                        int rigid_bodies_offset,
-                       int constraints_offset,
-                       int shapes_offset);
+                       int constraints_offset);
 
 }  // namespace blender::bke

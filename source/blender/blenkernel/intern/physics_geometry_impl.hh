@@ -80,8 +80,7 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
                             PhysicsGeometryImpl &to,
                             bool use_world,
                             int rigid_bodies_offset,
-                            int constraints_offset,
-                            int shapes_offset);
+                            int constraints_offset);
 
 struct CollisionShapeImpl {
   btCollisionShape &as_bullet_shape()

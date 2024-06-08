@@ -185,7 +185,6 @@ struct PhysicsElementStartIndices {
   bool has_world = false;
   int body = 0;
   int constraint = 0;
-  int shape = 0;
 };
 
 struct RealizePhysicsTask {
@@ -736,7 +735,6 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           gather_info.r_offsets.physics_offsets.has_world |= use_world;
           gather_info.r_offsets.physics_offsets.body += physics->bodies_num();
           gather_info.r_offsets.physics_offsets.constraint += physics->constraints_num();
-          gather_info.r_offsets.physics_offsets.shape += physics->shapes_num();
         }
         break;
       }
@@ -2020,12 +2018,15 @@ static void execute_realize_physics_task(const RealizeInstancesOptions &options,
   const RealizePhysicsInfo &physics_info = *task.physics_info;
   const bke::PhysicsGeometry &physics = *physics_info.physics;
 
+  for (const int i : physics.shapes().index_range()) {
+    dst_physics.add_shape(physics.shapes()[i]);
+  }
+
   bke::move_physics_data(physics,
                          dst_physics,
                          task.use_world,
                          task.start_indices.body,
-                         task.start_indices.constraint,
-                         task.start_indices.shape);
+                         task.start_indices.constraint);
 
   UNUSED_VARS(options, all_physics_info, dst_physics);
 }
@@ -2040,14 +2041,12 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   }
 
   const RealizePhysicsTask &last_task = tasks.last();
-  const bke::PhysicsGeometry &last_curves = *last_task.physics_info->physics;
-  const int bodies_num = last_task.start_indices.body + last_curves.bodies_num();
-  const int constraints_num = last_task.start_indices.constraint + last_curves.constraints_num();
-  const int shapes_num = last_task.start_indices.shape + last_curves.shapes_num();
+  const bke::PhysicsGeometry &last_physics = *last_task.physics_info->physics;
+  const int bodies_num = last_task.start_indices.body + last_physics.bodies_num();
+  const int constraints_num = last_task.start_indices.constraint + last_physics.constraints_num();
 
   /* Allocate new curves data-block. */
-  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
-      bodies_num, constraints_num, shapes_num);
+  bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(bodies_num, constraints_num, 0);
   r_realized_geometry.replace_physics(dst_physics);
 
   ///* Copy settings from the first input geometry set with curves. */

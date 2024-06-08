@@ -62,6 +62,11 @@ CollisionShape::~CollisionShape()
   delete impl_;
 }
 
+void CollisionShape::delete_self()
+{
+  delete this;
+}
+
 CollisionShapeImpl &CollisionShape::impl()
 {
   return *impl_;
@@ -76,14 +81,58 @@ CollisionShape::ShapeType CollisionShape::type() const
 {
   const auto bt_shape_type = BroadphaseNativeTypes(impl_->as_bullet_shape().getShapeType());
   switch (bt_shape_type) {
+    case EMPTY_SHAPE_PROXYTYPE:
+      return ShapeType::Empty;
     case BOX_SHAPE_PROXYTYPE:
       return ShapeType::Box;
+    case TRIANGLE_SHAPE_PROXYTYPE:
+      return ShapeType::Triangle;
+    case TETRAHEDRAL_SHAPE_PROXYTYPE:
+      return ShapeType::Tetrahedral;
+    case CONVEX_TRIANGLEMESH_SHAPE_PROXYTYPE:
+      return ShapeType::TriangleMesh;
+    case CONVEX_HULL_SHAPE_PROXYTYPE:
+      return ShapeType::ConvexHull;
+    case CONVEX_POINT_CLOUD_SHAPE_PROXYTYPE:
+      return ShapeType::ConvexPointCloud;
+    // case CUSTOM_POLYHEDRAL_SHAPE_TYPE:
+    //   return ShapeType::CustomPolyhedral;
     case SPHERE_SHAPE_PROXYTYPE:
       return ShapeType::Sphere;
-    case EMPTY_SHAPE_PROXYTYPE:
+    case MULTI_SPHERE_SHAPE_PROXYTYPE:
+      return ShapeType::MultiSphere;
+    case CAPSULE_SHAPE_PROXYTYPE:
+      return ShapeType::Capsule;
+    case CONE_SHAPE_PROXYTYPE:
+      return ShapeType::Cone;
+    case CONVEX_SHAPE_PROXYTYPE:
+      return ShapeType::Convex;
+    case CYLINDER_SHAPE_PROXYTYPE:
+      return ShapeType::Cylinder;
+    case UNIFORM_SCALING_SHAPE_PROXYTYPE:
+      return ShapeType::UniformScaling;
+    case MINKOWSKI_SUM_SHAPE_PROXYTYPE:
+      return ShapeType::MinkowskiSum;
+    case MINKOWSKI_DIFFERENCE_SHAPE_PROXYTYPE:
+      return ShapeType::MinkowskiDifference;
+    case BOX_2D_SHAPE_PROXYTYPE:
+      return ShapeType::Box2D;
+    case CONVEX_2D_SHAPE_PROXYTYPE:
+      return ShapeType::Convex2D;
+    // case CUSTOM_CONVEX_SHAPE_TYPE:
+    //   return ShapeType::CustomConvex;
+    case TRIANGLE_MESH_SHAPE_PROXYTYPE:
+      return ShapeType::TriangleMesh;
+    case SCALED_TRIANGLE_MESH_SHAPE_PROXYTYPE:
+      return ShapeType::ScaledTriangleMesh;
+    case STATIC_PLANE_PROXYTYPE:
+      return ShapeType::StaticPlane;
+    // case CUSTOM_CONCAVE_SHAPE_TYPE:
+    //   return ShapeType::CustomConcave;
+    case COMPOUND_SHAPE_PROXYTYPE:
+      return ShapeType::Compound;
     case INVALID_SHAPE_PROXYTYPE:
-    default:
-      return ShapeType::Unknown;
+      return ShapeType::Invalid;
   }
 }
 
@@ -91,6 +140,8 @@ BoxCollisionShape::BoxCollisionShape(const float3 &half_extent)
     : CollisionShape(CollisionShapeImpl::wrap(new btBoxShape(to_bullet(half_extent))))
 {
 }
+
+BoxCollisionShape::~BoxCollisionShape() {}
 
 float3 BoxCollisionShape::half_extent() const
 {
@@ -102,6 +153,8 @@ SphereCollisionShape::SphereCollisionShape(const float radius)
     : CollisionShape(CollisionShapeImpl::wrap(new btSphereShape(radius)))
 {
 }
+
+SphereCollisionShape::~SphereCollisionShape() {}
 
 float SphereCollisionShape::radius() const
 {
