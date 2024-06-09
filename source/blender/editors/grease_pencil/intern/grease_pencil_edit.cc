@@ -3008,8 +3008,6 @@ static int grease_pencil_set_curve_type_exec(bContext *C, wmOperator *op)
       return;
     }
 
-    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-
     geometry::ConvertCurvesOptions options;
     options.convert_bezier_handles_to_poly_points = use_handles;
     options.convert_bezier_handles_to_catmull_rom_points = use_handles;
