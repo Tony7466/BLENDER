@@ -18,8 +18,8 @@ from bpy.app.translations import pgettext_data as data_
 from bpy_extras import object_utils
 
 
-def add_torus(major_rad, minor_rad, major_seg, minor_seg):
-    from math import cos, sin, pi
+def add_torus(major_rad, minor_rad, major_seg, minor_seg, twists, ring, cross):
+    from math import cos, sin, pi, copysign
     from mathutils import Vector, Matrix
 
     pi_2 = pi * 2.0
@@ -28,17 +28,23 @@ def add_torus(major_rad, minor_rad, major_seg, minor_seg):
     faces = []
     i1 = 0
     tot_verts = major_seg * minor_seg
+
+    def sgn(val):
+        return copysign(1, val)
+
+    def supertoroid(u, v, R, r, m, n):
+        x = (R + r * sgn(cos(v)) * (abs(cos(v)) ** n)) * sgn(cos(u)) * (abs(cos(u)) ** m)
+        y = (R + r * sgn(cos(v)) * (abs(cos(v)) ** n)) * sgn(sin(u)) * (abs(sin(u)) ** m)
+        z = r * sgn(sin(v)) * (abs(sin(v)) ** n)
+        return x, y, z
+
     for major_index in range(major_seg):
-        matrix = Matrix.Rotation((major_index / major_seg) * pi_2, 3, 'Z')
-
+        u = (major_index / major_seg) * pi_2
         for minor_index in range(minor_seg):
-            angle = pi_2 * minor_index / minor_seg
+            v = (minor_index / minor_seg) * pi_2 + twists * u
 
-            vec = matrix @ Vector((
-                major_rad + (cos(angle) * minor_rad),
-                0.0,
-                sin(angle) * minor_rad,
-            ))
+            x, y, z = supertoroid(u, v, major_rad, minor_rad, ring, cross)
+            vec = Vector((x, y, z))
 
             verts.extend(vec[:])
 
@@ -181,6 +187,24 @@ class AddTorus(Operator, object_utils.AddObjectHelper):
         subtype='DISTANCE',
         unit='LENGTH',
     )
+    twists: IntProperty(
+        name="Twists",
+        description="Number of twists of the torus",
+        min=0, soft_max=12, max=256,
+        default=0,
+    )
+    ring_manipulator: FloatProperty(
+        name="Ring Manipulator",
+        description="Manipulates the shape of the Ring",
+        min=0.01, max=100.0,
+        default=1.0,
+    )
+    cross_manipulator: FloatProperty(
+        name="Cross Manipulator",
+        description="Manipulates the shape of the cross-section",
+        min=0.01, max=100.0,
+        default=1.0,
+    )
     generate_uvs: BoolProperty(
         name="Generate UVs",
         description="Generate a default UV map",
@@ -209,7 +233,11 @@ class AddTorus(Operator, object_utils.AddObjectHelper):
             layout.prop(self, "abso_minor_rad")
 
         layout.separator()
+        layout.prop(self, "twists")
+        layout.prop(self, "ring_manipulator")
+        layout.prop(self, "cross_manipulator")
 
+        layout.separator()
         layout.prop(self, "generate_uvs")
         layout.prop(self, "align")
         layout.prop(self, "location")
@@ -231,6 +259,9 @@ class AddTorus(Operator, object_utils.AddObjectHelper):
             self.minor_radius,
             self.major_segments,
             self.minor_segments,
+            self.twists,
+            self.ring_manipulator,
+            self.cross_manipulator,
         )
 
         mesh = bpy.data.meshes.new(data_("Torus"))
