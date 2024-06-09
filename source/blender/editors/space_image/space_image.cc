@@ -688,43 +688,33 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
         &render_region, center_x, render_size_x + center_x, center_y, render_size_y + center_y);
     UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
 
-    ED_region_image_render_size_draw("Render Size",
-                                     OverlayTextPosition::UPPER_LEFT,
-                                     x,
-                                     y,
-                                     &render_region,
-                                     zoomx,
-                                     zoomy,
-                                     sima->overlay.passepartout_alpha);
+    ED_region_image_render_size_draw(
+        x, y, &render_region, zoomx, zoomy, sima->overlay.passepartout_alpha);
   }
 
   if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS &&
-      sima->overlay.flag & SI_OVERLAY_DRAW_COM_DOMAIN_SIZE)
+      sima->overlay.flag & SI_OVERLAY_DRAW_TEXT_INFO)
   {
 
-    float zoomx, zoomy;
-    ED_space_image_get_zoom(sima, region, &zoomx, &zoomy);
-    int width, height;
-    ED_space_image_get_size(sima, &width, &height);
-    int center_x = width / 2;
-    int center_y = height / 2;
+    const char render_size_name[MAX_NAME] = "Render Size";
+    int render_size_x, render_size_y;
+    BKE_render_resolution(&scene->r, true, &render_size_x, &render_size_y);
 
-    int offset_x = 0, offset_y = 0;
-    if (sima->image) {
-      offset_x = sima->image->runtime.backdrop_offset[0];
-      offset_y = sima->image->runtime.backdrop_offset[1];
-    }
+    /* Use same positioning convention as in 3D View. */
+    const rcti *rect = ED_region_visible_rect(region);
+    int xoffset = rect->xmin + (0.5f * U.widget_unit);
+    int yoffset = rect->ymax - (0.1f * U.widget_unit);
 
-    rcti domain_region;
-    BLI_rcti_init(&domain_region,
-                  center_x + offset_x,
-                  width + center_x + offset_x,
-                  center_y + offset_y,
-                  height + center_y + offset_y);
-    int x, y;
-    UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
-    ED_region_image_render_size_draw(
-        "Domain Size", OverlayTextPosition::UPPER_RIGHT, x, y, &domain_region, zoomx, zoomy, 0.0f);
+    ED_region_image_render_size_text_draw(
+        render_size_name, xoffset, yoffset, 1, render_size_x, render_size_y);
+
+    const char viewer_size_name[MAX_NAME] = "Image Size";
+
+    int viewer_size_x, viewer_size_y;
+    ED_space_image_get_size(sima, &viewer_size_x, &viewer_size_y);
+
+    ED_region_image_render_size_text_draw(
+        viewer_size_name, xoffset, yoffset, 2, viewer_size_x, viewer_size_y);
   }
 
   /* sample line */

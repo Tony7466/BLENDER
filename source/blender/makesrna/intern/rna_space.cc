@@ -5629,12 +5629,12 @@ static void rna_def_space_image_overlay(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_render_size", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", SI_OVERLAY_DRAW_RENDER_SIZE);
-  RNA_def_property_ui_text(prop, "Show Render Size", "Display render size");
+  RNA_def_property_ui_text(prop, "Render Region", "Display the region of the final render");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
-  prop = RNA_def_property(srna, "show_domain_size", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", SI_OVERLAY_DRAW_COM_DOMAIN_SIZE);
-  RNA_def_property_ui_text(prop, "Show Domain Size", "Display compositor domain size");
+  prop = RNA_def_property(srna, "show_text_info", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", SI_OVERLAY_DRAW_TEXT_INFO);
+  RNA_def_property_ui_text(prop, "Text Info", "Display overlay text");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
   prop = RNA_def_property(srna, "passepartout_alpha", PROP_FLOAT, PROP_FACTOR);

@@ -873,16 +873,24 @@ static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
   return 0;
 }
 
-void ED_region_image_render_size_draw(const char *title,
-                                      OverlayTextPosition text_position,
-                                      int x,
-                                      int y,
-                                      const rcti *frame,
-                                      float zoomx,
-                                      float zoomy,
-                                      float passepartout_alpha)
+void ED_region_image_render_size_text_draw(const char *title,
+                                           const int xoffset,
+                                           const int yoffset,
+                                           const int line_pos,
+                                           const int render_size_x,
+                                           const int render_size_y)
 {
-  /* find window pixel coordinates of origin */
+  char text[32];
+  SNPRINTF(text, "%s: %d x %d", title, render_size_x, render_size_y);
+
+  int overlay_lineheight = (UI_style_get()->widgetlabel.points * UI_SCALE_FAC * 1.6f);
+
+  BLF_draw_default(xoffset, yoffset - overlay_lineheight * line_pos, 0.0f, text, sizeof(text));
+}
+
+void ED_region_image_render_size_draw(
+    int x, int y, const rcti *frame, float zoomx, float zoomy, float passepartout_alpha)
+{
   GPU_matrix_push();
 
   /* Offset and zoom using GPU viewport. */
@@ -911,42 +919,12 @@ void ED_region_image_render_size_draw(const char *title,
     immRectf(pos, x2, y1, 100000, y2);
   }
 
-  /* Use a fixed text size that works well for 1k-4k images. */
-  const uiStyle *style = UI_style_get_dpi();
-  BLF_size(blf_mono_font, style->widgetlabel.points * UI_SCALE_FAC * 3);
-  UI_FontThemeColor(blf_mono_font, TH_METADATA_TEXT);
-  char text[MAX_METADATA_STR];
-  SNPRINTF(text, "%s: %dx%d", title, frame_width, frame_height);
-
-  switch (text_position) {
-    case OverlayTextPosition::UPPER_LEFT: {
-      BLF_position(
-          blf_mono_font, frame->xmin - frame_width / 2, frame->ymax - frame_height / 2, 0.0f);
-      break;
-    }
-
-    case OverlayTextPosition::UPPER_RIGHT: {
-      int font_width = BLF_width(blf_mono_font, text, sizeof(text));
-      BLF_position(blf_mono_font,
-                   frame->xmax - frame_width / 2 - font_width,
-                   frame->ymax - frame_height / 2,
-                   0.0f);
-      break;
-    }
-    default: {
-      BLI_assert_msg(false, "Unknown text position.");
-      break;
-    }
-  }
-
-  BLF_draw(blf_mono_font, text, sizeof(text));
-
   float wire_color[3];
   UI_GetThemeColor3fv(TH_WIRE_EDIT, wire_color);
   immUniformColor4f(wire_color[0], wire_color[1], wire_color[2], 1);
 
-  /* The bounding box must be drawn last to make sure it remains visible when passepartout_alpha >
-   * 0. */
+  /* The bounding box must be drawn last to ensure it remains visible when passepartout_alpha > 0.
+   */
   imm_draw_box_wire_2d(pos, x1, y1, x2, y2);
 
   immUnbindProgram();
