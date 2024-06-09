@@ -659,6 +659,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
           positions_slice_right, range, layer_space_to_object_space, positions_slice_right);
     });
 
+    const VArray<float> selected_point = *curves.attributes().lookup_or_default<float>(
+        ".selection", bke::AttrDomain::Point, true);
     const VArray<float> selected_left = *curves.attributes().lookup_or_default<float>(
         ".selection_handle_left", bke::AttrDomain::Point, true);
     const VArray<float> selected_right = *curves.attributes().lookup_or_default<float>(
@@ -692,6 +694,17 @@ static void grease_pencil_edit_batch_ensure(Object &object,
                                  layer_space_to_object_space,
                                  positions_eval_center_slice);
     });
+
+    MutableSpan<float> selection_eval_slice_left = edit_line_points_selection.slice(
+        eval_left_slice);
+    MutableSpan<float> selection_eval_slice_center = edit_line_points_selection.slice(
+        eval_center_slice);
+    MutableSpan<float> selection_eval_slice_right = edit_line_points_selection.slice(
+        eval_right_slice);
+    array_utils::copy(selection_slice_left.as_span(), selection_eval_slice_left);
+    array_utils::copy(selection_slice_right.as_span(), selection_eval_slice_right);
+
+    array_utils::gather(selected_point, bezier_points, selection_eval_slice_center);
 
     /* Add two for each bezier point, (one left, one right). */
     visible_points_num += bezier_points.size() * 2;
