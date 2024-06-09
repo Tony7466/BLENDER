@@ -403,6 +403,36 @@ static void grease_pencil_weight_batch_ensure(Object &object,
   cache->is_dirty = false;
 }
 
+static IndexMask grease_pencil_get_visible_bezier_points(Object &object,
+                                                         const bke::greasepencil::Drawing &drawing,
+                                                         int layer_index,
+                                                         IndexMaskMemory &memory)
+{
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange points_range = drawing.strokes().points_range();
+
+  if (!curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
+    return IndexMask(0);
+  }
+
+  const VArray<bool> selected_point = *curves.attributes().lookup_or_default<bool>(
+      ".selection", bke::AttrDomain::Point, true);
+  const VArray<bool> selected_left = *curves.attributes().lookup_or_default<bool>(
+      ".selection_handle_left", bke::AttrDomain::Point, true);
+  const VArray<bool> selected_right = *curves.attributes().lookup_or_default<bool>(
+      ".selection_handle_right", bke::AttrDomain::Point, true);
+
+  const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
+      object, drawing, layer_index, memory);
+
+  const IndexMask selected_points = IndexMask::from_predicate(
+      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
+        return selected_point[point_i] || selected_left[point_i] || selected_right[point_i];
+      });
+
+  return IndexMask::from_intersection(editable_points, selected_points, memory);
+}
+
 static void grease_pencil_edit_batch_ensure(Object &object,
                                             const GreasePencil &grease_pencil,
                                             const Scene &scene)
@@ -474,6 +504,19 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     total_line_points_num += curves.evaluated_points_num();
   }
 
+  int total_bezier_point_num = 0;
+  for (const ed::greasepencil::DrawingInfo &info : drawings) {
+    IndexMaskMemory memory;
+    const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
+        object, info.drawing, info.layer_index, memory);
+
+    total_bezier_point_num += bezier_points.size();
+  }
+
+  /* Add two for each bezier point, (one left, one right).*/
+  total_points_num += total_bezier_point_num * 2;
+  total_line_points_num += total_bezier_point_num * 2;
+
   GPU_vertbuf_data_alloc(*cache->edit_points_pos, total_points_num);
   GPU_vertbuf_data_alloc(*cache->edit_points_selection, total_points_num);
   GPU_vertbuf_data_alloc(*cache->edit_line_points_pos, total_line_points_num);
@@ -531,14 +574,14 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
     /* Do not show selection for locked layers. */
     if (!layer.is_locked()) {
-      MutableSpan<float> selection_slice = edit_points_selection.slice(points);
-      MutableSpan<float> line_selection_slice = edit_line_points_selection.slice(points_eval);
-
       const IndexMask selected_editable_points =
           ed::greasepencil::retrieve_editable_and_selected_points(
               object, info.drawing, info.layer_index, memory);
 
+      MutableSpan<float> selection_slice = edit_points_selection.slice(points);
       index_mask::masked_fill(selection_slice, 1.0f, selected_editable_points);
+
+      MutableSpan<float> line_selection_slice = edit_line_points_selection.slice(points_eval);
 
       /* Poly curves evaluated points match the curve points, no need to interpolate. */
       if (curves.is_single_type(CURVE_TYPE_POLY)) {
@@ -580,6 +623,39 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     /* Add one id for every point in a selected curve. */
     visible_points_num += std::accumulate(
         size_per_selected_editable_stroke.begin(), size_per_selected_editable_stroke.end(), 0);
+
+    const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
+        object, info.drawing, info.layer_index, memory);
+    if (bezier_points.is_empty()) {
+      continue;
+    }
+
+    const IndexRange left_slice = IndexRange(drawing_start_offset, bezier_points.size());
+    const IndexRange right_slice = IndexRange(drawing_start_offset + bezier_points.size(),
+                                              bezier_points.size());
+
+    MutableSpan<float3> positions_slice_left = edit_points.slice(left_slice);
+    MutableSpan<float3> positions_slice_right = edit_points.slice(right_slice);
+
+    const Span<float3> handles_left = curves.handle_positions_left();
+    const Span<float3> handles_right = curves.handle_positions_right();
+
+    array_utils::gather(handles_left, bezier_points, positions_slice_left);
+    array_utils::gather(handles_right, bezier_points, positions_slice_right);
+
+    const VArray<float> selected_left = *curves.attributes().lookup_or_default<float>(
+        ".selection_handle_left", bke::AttrDomain::Point, true);
+    const VArray<float> selected_right = *curves.attributes().lookup_or_default<float>(
+        ".selection_handle_right", bke::AttrDomain::Point, true);
+
+    MutableSpan<float> selection_slice_left = edit_points_selection.slice(left_slice);
+    MutableSpan<float> selection_slice_right = edit_points_selection.slice(right_slice);
+    array_utils::gather(selected_left, bezier_points, selection_slice_left);
+    array_utils::gather(selected_right, bezier_points, selection_slice_right);
+
+    /* Add two for each bezier point, (one left, one right).*/
+    visible_points_num += bezier_points.size() * 2;
+    drawing_start_offset += bezier_points.size() * 2;
   }
 
   GPUIndexBufBuilder elb;
@@ -637,6 +713,17 @@ static void grease_pencil_edit_batch_ensure(Object &object,
       });
 
       drawing_start_offset += curves.points_num();
+
+      const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
+          object, info.drawing, info.layer_index, memory);
+      if (!bezier_points.is_empty()) {
+        /* Add all bezier points. */
+        for (const int point : IndexRange(bezier_points.size() * 2)) {
+          GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
+        }
+
+        drawing_start_offset += bezier_points.size() * 2;
+      }
     }
 
     drawing_line_start_offset += curves.evaluated_points_num();
