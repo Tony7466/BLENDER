@@ -22,9 +22,9 @@ math::Quaternion mix3(const float3 &weights,
                       const math::Quaternion &v1,
                       const math::Quaternion &v2)
 {
-  const float v0_v1_weight = weights[0] / (weights[0] + weights[1]);
-  const float v0_v2_weight = weights[0] / (weights[0] + weights[2]);
-  const float v1_v2_weight = weights[1] / (weights[1] + weights[2]);
+  const float v0_v1_weight = math::safe_divide(weights[0], weights[0] + weights[1]);
+  const float v0_v2_weight = math::safe_divide(weights[0], weights[0] + weights[2]);
+  const float v1_v2_weight = math::safe_divide(weights[1], weights[1] + weights[2]);
   return mix2(v1_v2_weight, mix2(v0_v1_weight, v0, v1), mix2(v0_v2_weight, v0, v2));
 }
 
