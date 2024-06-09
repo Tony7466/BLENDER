@@ -1682,11 +1682,17 @@ class IMAGE_PT_overlay_image(Panel):
         layout.prop(uvedit, "show_metadata")
 
 
-class IMAGE_PT_overlay_render(Panel):
+class IMAGE_PT_overlay_render_guides(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Guides"
     bl_parent_id = "IMAGE_PT_overlay"
+
+    @classmethod
+    def poll(cls, context):
+        sima = context.space_data
+
+        return sima.show_render
 
     def draw(self, context):
         layout = self.layout
@@ -1786,7 +1792,7 @@ classes = (
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,
-    IMAGE_PT_overlay_render,
+    IMAGE_PT_overlay_render_guides,
 )
 
 

@@ -873,12 +873,12 @@ static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
   return 0;
 }
 
-void ED_region_image_render_size_text_draw(const char *title,
-                                           const int xoffset,
-                                           const int yoffset,
-                                           const int line_pos,
-                                           const int render_size_x,
-                                           const int render_size_y)
+void ED_region_image_overlay_text_draw(const char *title,
+                                       const int xoffset,
+                                       const int yoffset,
+                                       const int line_pos,
+                                       const int render_size_x,
+                                       const int render_size_y)
 {
   char text[32];
   SNPRINTF(text, "%s: %d x %d", title, render_size_x, render_size_y);
@@ -888,7 +888,7 @@ void ED_region_image_render_size_text_draw(const char *title,
   BLF_draw_default(xoffset, yoffset - overlay_lineheight * line_pos, 0.0f, text, sizeof(text));
 }
 
-void ED_region_image_render_size_draw(
+void ED_region_image_render_region_draw(
     int x, int y, const rcti *frame, float zoomx, float zoomy, float passepartout_alpha)
 {
   GPU_matrix_push();

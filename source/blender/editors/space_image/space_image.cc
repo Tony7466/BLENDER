@@ -669,7 +669,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
   }
 
   if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS &&
-      sima->overlay.flag & SI_OVERLAY_DRAW_RENDER_SIZE)
+      sima->overlay.flag & SI_OVERLAY_DRAW_RENDER_REGION)
   {
     int render_size_x, render_size_y;
 
@@ -688,7 +688,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
         &render_region, center_x, render_size_x + center_x, center_y, render_size_y + center_y);
     UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
 
-    ED_region_image_render_size_draw(
+    ED_region_image_render_region_draw(
         x, y, &render_region, zoomx, zoomy, sima->overlay.passepartout_alpha);
   }
 
@@ -705,7 +705,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     int xoffset = rect->xmin + (0.5f * U.widget_unit);
     int yoffset = rect->ymax - (0.1f * U.widget_unit);
 
-    ED_region_image_render_size_text_draw(
+    ED_region_image_overlay_text_draw(
         render_size_name, xoffset, yoffset, 1, render_size_x, render_size_y);
 
     const char viewer_size_name[MAX_NAME] = "Image Size";
@@ -713,7 +713,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     int viewer_size_x, viewer_size_y;
     ED_space_image_get_size(sima, &viewer_size_x, &viewer_size_y);
 
-    ED_region_image_render_size_text_draw(
+    ED_region_image_overlay_text_draw(
         viewer_size_name, xoffset, yoffset, 2, viewer_size_x, viewer_size_y);
   }
 
