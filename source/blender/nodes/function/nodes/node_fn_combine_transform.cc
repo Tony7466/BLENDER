@@ -5,6 +5,8 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.hh"
 
+#include "NOD_inverse_eval.hh"
+
 #include "node_function_util.hh"
 
 namespace blender::nodes::node_fn_combine_transform_cc {
@@ -75,12 +77,35 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const TransformElem transform_elem = params.get_output_elem<TransformElem>("Transform");
+  params.set_input_elem("Translation", transform_elem.translation);
+  params.set_input_elem("Rotation", transform_elem.rotation);
+  params.set_input_elem("Scale", transform_elem.scale);
+}
+
+static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
+{
+  const float4x4 transform = params.get_output<float4x4>("Transform");
+  float3 translation;
+  math::Quaternion rotation;
+  float3 scale;
+  math::to_loc_rot_scale_safe<true>(transform, translation, rotation, scale);
+  params.set_input("Translation", translation);
+  params.set_input("Rotation", rotation);
+  params.set_input("Scale", scale);
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_COMBINE_TRANSFORM, "Combine Transform", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_inverse_elem = node_eval_inverse_elem;
+  ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

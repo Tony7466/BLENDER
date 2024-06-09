@@ -69,6 +69,10 @@ class NodeDeclarationBuilder;
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
 struct NodeExtraInfoParams;
+namespace inverse_eval {
+class InverseElemEvalParams;
+class InverseEvalParams;
+}  // namespace inverse_eval
 }  // namespace nodes
 namespace realtime_compositor {
 class Context;
@@ -131,6 +135,9 @@ using NodeGetCompositorOperationFunction = blender::realtime_compositor::NodeOpe
 using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
 using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
+using NodeInverseElemEvalFunction =
+    void (*)(blender::nodes::inverse_eval::InverseElemEvalParams &params);
+using NodeInverseEvalFunction = void (*)(blender::nodes::inverse_eval::InverseEvalParams &params);
 
 /**
  * \brief Defines a socket type.
@@ -353,6 +360,9 @@ struct bNodeType {
 
   /** Get extra information that is drawn next to the node. */
   NodeExtraInfoFunction get_extra_info;
+
+  NodeInverseElemEvalFunction eval_inverse_elem;
+  NodeInverseEvalFunction eval_inverse;
 
   /**
    * Registers operators that are specific to this node. This allows nodes to be more
