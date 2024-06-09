@@ -63,13 +63,13 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     for (ed::greasepencil::MutableDrawingInfo info : drawings) {
       if (use_proportional_edit) {
         points_per_layer_per_object[layer_offset] = ed::greasepencil::retrieve_editable_points(
-            *object, info.drawing, curves_transform_data->memory);
+            *object, info.drawing, info.layer_index, curves_transform_data->memory);
         tc.data_len += points_per_layer_per_object[layer_offset].size();
       }
       else {
         points_per_layer_per_object[layer_offset] =
             ed::greasepencil::retrieve_editable_and_selected_points(
-                *object, info.drawing, curves_transform_data->memory);
+                *object, info.drawing, info.layer_index, curves_transform_data->memory);
         tc.data_len += points_per_layer_per_object[layer_offset].size();
       }
 
@@ -118,16 +118,16 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
       const IndexMask affected_strokes = use_proportional_edit ?
                                              ed::greasepencil::retrieve_editable_strokes(
-                                                 *object, info.drawing, memory) :
+                                                 *object, info.drawing, info.layer_index, memory) :
                                              IndexMask();
       curve_populate_trans_data_structs(tc,
                                         curves,
                                         layer_space_to_world_space,
                                         value_attribute,
-                                        points,
-                                        use_proportional_edit,
+                                        {points},
                                         affected_strokes,
                                         use_connected_only,
+                                        IndexMask(),
                                         layer_points_offset,
                                         info.multi_frame_falloff);
 

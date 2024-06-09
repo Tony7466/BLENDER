@@ -112,10 +112,12 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
 void WorldPipeline::render(View &view)
 {
   /* TODO(Miguel Pozo): All world probes are rendered as RAY_TYPE_GLOSSY. */
-  inst_.pipelines.data.is_probe_reflection = true;
+  inst_.pipelines.data.is_sphere_probe = true;
   inst_.uniform_data.push_update();
+
   inst_.manager->submit(cubemap_face_ps_, view);
-  inst_.pipelines.data.is_probe_reflection = false;
+
+  inst_.pipelines.data.is_sphere_probe = false;
   inst_.uniform_data.push_update();
 }
 
@@ -204,7 +206,7 @@ void ShadowPipeline::sync()
     draw::PassMain::Sub &pass = render_ps_.sub("Shadow.Surface");
     pass.state_set(state);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    pass.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
+    pass.bind_ssbo(SHADOW_RENDER_VIEW_BUF_SLOT, &inst_.shadows.render_view_buf_);
     if (!shadow_update_tbdr) {
       /* We do not need all of the shadow information when using the TBDR-optimized approach. */
       pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
@@ -403,7 +405,10 @@ PassMain::Sub *ForwardPipeline::material_transparent_add(const Object *ob,
   return pass;
 }
 
-void ForwardPipeline::render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb)
+void ForwardPipeline::render(View &view,
+                             Framebuffer &prepass_fb,
+                             Framebuffer &combined_fb,
+                             int2 extent)
 {
   if (!has_transparent_ && !has_opaque_) {
     inst_.volume.draw_resolve(view);
@@ -417,8 +422,9 @@ void ForwardPipeline::render(View &view, Framebuffer &prepass_fb, Framebuffer &c
 
   inst_.hiz_buffer.set_dirty();
 
-  inst_.shadows.set_view(view, inst_.render_buffers.depth_tx);
+  inst_.shadows.set_view(view, extent);
   inst_.volume_probes.set_view(view);
+  inst_.sphere_probes.set_view(view);
 
   if (has_opaque_) {
     combined_fb.bind();
@@ -474,7 +480,8 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
   gbuffer_ps_.bind_resources(inst.sphere_probes);
   gbuffer_ps_.bind_resources(inst.volume_probes);
 
-  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
+  DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_WRITE_STENCIL |
+                   DRW_STATE_STENCIL_ALWAYS;
 
   gbuffer_single_sided_hybrid_ps_ = &gbuffer_ps_.sub("DoubleSided");
   gbuffer_single_sided_hybrid_ps_->state_set(state | DRW_STATE_CULL_BACK);
@@ -494,6 +501,30 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
 
 void DeferredLayer::begin_sync()
 {
+  if (GPU_use_parallel_compilation()) {
+    /* Pre-compile specialization constants in parallel. */
+    Vector<ShaderSpecialization> specializations;
+    for (int i = 0; i < 3; i++) {
+      GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
+      for (bool use_split_indirect : {false, true}) {
+        for (bool use_lightprobe_eval : {false, true}) {
+          for (bool use_transmission : {false, true}) {
+            specializations.append(
+                {sh,
+                 {{"render_pass_shadow_id", inst_.render_buffers.data.shadow_id},
+                  {"use_split_indirect", use_split_indirect},
+                  {"use_lightprobe_eval", use_lightprobe_eval},
+                  {"use_transmission", use_transmission},
+                  {"shadow_ray_count", inst_.shadows.get_data().ray_count},
+                  {"shadow_ray_step_count", inst_.shadows.get_data().step_count}}});
+          }
+        }
+      }
+    }
+
+    GPU_shaders_precompile_specializations(specializations);
+  }
+
   {
     prepass_ps_.init();
     /* Textures. */
@@ -564,17 +595,26 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
       sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS);
       if (GPU_stencil_export_support()) {
         /* The shader sets the stencil directly in one full-screen pass. */
-        sub.state_stencil(0xFFu, /* Set by shader */ 0x0u, 0xFFu);
+        sub.state_stencil(uint8_t(StencilBits::HEADER_BITS), /* Set by shader */ 0x0u, 0xFFu);
         sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
       }
       else {
         /* The shader cannot set the stencil directly. So we do one full-screen pass for each
          * stencil bit we need to set and accumulate the result. */
-        for (size_t i = 0; i <= log2_ceil(closure_count_); i++) {
-          int stencil_value = 1 << i;
-          sub.push_constant("current_bit", stencil_value);
-          sub.state_stencil(stencil_value, 0xFFu, 0xFFu);
+        auto set_bit = [&](StencilBits bit) {
+          sub.push_constant("current_bit", int(bit));
+          sub.state_stencil(uint8_t(bit), 0xFFu, 0xFFu);
           sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+        };
+
+        if (closure_count_ > 0) {
+          set_bit(StencilBits::CLOSURE_COUNT_0);
+        }
+        if (closure_count_ > 1) {
+          set_bit(StencilBits::CLOSURE_COUNT_1);
+        }
+        if (closure_bits_ & CLOSURE_TRANSMISSION) {
+          set_bit(StencilBits::TRANSMISSION);
         }
       }
     }
@@ -583,7 +623,27 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
       PassSimple &pass = eval_light_ps_;
       pass.init();
 
+      /* TODO(fclem): Could also skip if no material uses thickness from shadow. */
+      if (closure_bits_ & CLOSURE_TRANSMISSION) {
+        PassSimple::Sub &sub = pass.sub("Eval.ThicknessFromShadow");
+        sub.shader_set(inst_.shaders.static_shader_get(DEFERRED_THICKNESS_AMEND));
+        sub.bind_resources(inst_.lights);
+        sub.bind_resources(inst_.shadows);
+        sub.bind_resources(inst_.hiz_buffer.front);
+        sub.bind_resources(inst_.uniform_data);
+        sub.bind_resources(inst_.sampling);
+        sub.bind_texture("gbuf_header_tx", &inst_.gbuffer.header_tx);
+        sub.bind_image("gbuf_normal_img", &inst_.gbuffer.normal_tx);
+        sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL);
+        /* Render where there is transmission and the thickness from shadow bit is set. */
+        uint8_t stencil_bits = uint8_t(StencilBits::TRANSMISSION) |
+                               uint8_t(StencilBits::THICKNESS_FROM_SHADOW);
+        sub.state_stencil(0x0u, stencil_bits, stencil_bits);
+        sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+        sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+      }
       {
+        const bool use_transmission = (closure_bits_ & CLOSURE_TRANSMISSION) != 0;
         const bool use_split_indirect = !use_raytracing_ && use_split_radiance_;
         PassSimple::Sub &sub = pass.sub("Eval.Light");
         /* Use depth test to reject background pixels which have not been stencil cleared. */
@@ -600,9 +660,10 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
           /* TODO(fclem): Could specialize directly with the pass index but this would break it for
            * OpenGL and Vulkan implementation which aren't fully supporting the specialize
            * constant. */
-          sub.specialize_constant(sh, "render_pass_shadow_enabled", rbuf_data.shadow_id != -1);
+          sub.specialize_constant(sh, "render_pass_shadow_id", rbuf_data.shadow_id);
           sub.specialize_constant(sh, "use_split_indirect", use_split_indirect);
           sub.specialize_constant(sh, "use_lightprobe_eval", !use_raytracing_);
+          sub.specialize_constant(sh, "use_transmission", false);
           const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
           sub.specialize_constant(sh, "shadow_ray_count", &shadow_scene.ray_count);
           sub.specialize_constant(sh, "shadow_ray_step_count", &shadow_scene.step_count);
@@ -621,8 +682,18 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
           sub.bind_resources(inst_.hiz_buffer.front);
           sub.bind_resources(inst_.sphere_probes);
           sub.bind_resources(inst_.volume_probes);
-          sub.state_stencil(0xFFu, i + 1, 0xFFu);
+          uint8_t compare_mask = uint8_t(StencilBits::CLOSURE_COUNT_0) |
+                                 uint8_t(StencilBits::CLOSURE_COUNT_1) |
+                                 uint8_t(StencilBits::TRANSMISSION);
+          sub.state_stencil(0x0u, i + 1, compare_mask);
           sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          if (use_transmission) {
+            /* Separate pass for transmission BSDF as their evaluation is quite costly. */
+            sub.specialize_constant(sh, "use_transmission", true);
+            sub.shader_set(sh);
+            sub.state_stencil(0x0u, (i + 1) | uint8_t(StencilBits::TRANSMISSION), compare_mask);
+            sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+          }
         }
       }
     }
@@ -649,7 +720,7 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
       /* Use stencil test to reject pixels not written by this layer. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL | DRW_STATE_STENCIL_NEQUAL);
       /* Render where stencil is not 0. */
-      pass.state_stencil(0xFFu, 0x0, 0xFFu);
+      pass.state_stencil(0x0u, 0x0u, uint8_t(StencilBits::HEADER_BITS));
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
       pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
       pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
@@ -688,6 +759,7 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
 
   bool has_shader_to_rgba = (closure_bits & CLOSURE_SHADER_TO_RGBA) != 0;
   bool backface_culling = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) != 0;
+  bool use_thickness_from_shadow = (blender_mat->blend_flag & MA_BL_THICKNESS_FROM_SHADOW) != 0;
 
   PassMain::Sub *pass = (has_shader_to_rgba) ?
                             ((backface_culling) ? gbuffer_single_sided_hybrid_ps_ :
@@ -695,7 +767,17 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
                             ((backface_culling) ? gbuffer_single_sided_ps_ :
                                                   gbuffer_double_sided_ps_);
 
-  return &pass->sub(GPU_material_get_name(gpumat));
+  PassMain::Sub *material_pass = &pass->sub(GPU_material_get_name(gpumat));
+  /* Set stencil for some deferred specialized shaders. */
+  uint8_t material_stencil_bits = 0u;
+  if (use_thickness_from_shadow) {
+    material_stencil_bits |= uint8_t(StencilBits::THICKNESS_FROM_SHADOW);
+  }
+  /* We use this opportunity to clear the stencil bits. The undefined areas are discarded using the
+   * gbuf header value. */
+  material_pass->state_stencil(0xFFu, material_stencil_bits, 0xFFu);
+
+  return material_pass;
 }
 
 GPUTexture *DeferredLayer::render(View &main_view,
@@ -730,7 +812,8 @@ GPUTexture *DeferredLayer::render(View &main_view,
   inst_.hiz_buffer.update();
 
   inst_.volume_probes.set_view(render_view);
-  inst_.shadows.set_view(render_view, inst_.render_buffers.depth_tx);
+  inst_.sphere_probes.set_view(render_view);
+  inst_.shadows.set_view(render_view, extent);
 
   inst_.gbuffer.bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, render_view);
@@ -769,7 +852,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
   inst_.manager->submit(combine_ps_);
 
   if (use_feedback_output_ && !use_clamp_direct_) {
-    /* We skip writting the radiance during the combine pass. Do a simple fast copy. */
+    /* We skip writing the radiance during the combine pass. Do a simple fast copy. */
     GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
   }
 
@@ -1219,9 +1302,12 @@ void DeferredProbePipeline::render(View &view,
   inst_.manager->submit(opaque_layer_.prepass_ps_, view);
 
   inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
+  inst_.hiz_buffer.update();
+
   inst_.lights.set_view(view, extent);
-  inst_.shadows.set_view(view, inst_.render_buffers.depth_tx);
+  inst_.shadows.set_view(view, extent);
   inst_.volume_probes.set_view(view);
+  inst_.sphere_probes.set_view(view);
 
   /* Update for lighting pass. */
   inst_.hiz_buffer.update();
@@ -1323,7 +1409,7 @@ void PlanarProbePipeline::render(View &view,
 {
   GPU_debug_group_begin("Planar.Capture");
 
-  inst_.pipelines.data.is_probe_reflection = true;
+  inst_.pipelines.data.is_sphere_probe = true;
   inst_.uniform_data.push_update();
 
   GPU_framebuffer_bind(gbuffer_fb);
@@ -1333,12 +1419,12 @@ void PlanarProbePipeline::render(View &view,
   /* TODO(fclem): This is the only place where we use the layer source to HiZ.
    * This is because the texture layer view is still a layer texture. */
   inst_.hiz_buffer.set_source(&depth_layer_tx, 0);
-  inst_.lights.set_view(view, extent);
-  inst_.shadows.set_view(view, depth_layer_tx);
-  inst_.volume_probes.set_view(view);
-
-  /* Update for lighting pass. */
   inst_.hiz_buffer.update();
+
+  inst_.lights.set_view(view, extent);
+  inst_.shadows.set_view(view, extent);
+  inst_.volume_probes.set_view(view);
+  inst_.sphere_probes.set_view(view);
 
   inst_.gbuffer.bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, view);
@@ -1346,7 +1432,7 @@ void PlanarProbePipeline::render(View &view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, view);
 
-  inst_.pipelines.data.is_probe_reflection = false;
+  inst_.pipelines.data.is_sphere_probe = false;
   inst_.uniform_data.push_update();
 
   GPU_debug_group_end();

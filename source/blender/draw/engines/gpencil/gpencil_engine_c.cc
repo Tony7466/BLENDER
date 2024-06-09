@@ -71,7 +71,7 @@ void GPENCIL_engine_init(void *ved)
 
   GPENCIL_ViewLayerData *vldata = GPENCIL_view_layer_data_ensure();
 
-  /* Resize and reset memblocks. */
+  /* Resize and reset memory-blocks. */
   BLI_memblock_clear(vldata->gp_light_pool, gpencil_light_pool_free);
   BLI_memblock_clear(vldata->gp_material_pool, gpencil_material_pool_free);
   BLI_memblock_clear(vldata->gp_object_pool, nullptr);
@@ -781,9 +781,11 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
 
-    const bool only_lines =
-        !ELEM(ob->mode, OB_MODE_PAINT_GREASE_PENCIL, OB_MODE_WEIGHT_PAINT, OB_MODE_VERTEX_PAINT) &&
-        info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
+    const bool only_lines = !ELEM(ob->mode,
+                                  OB_MODE_PAINT_GPENCIL_LEGACY,
+                                  OB_MODE_WEIGHT_GPENCIL_LEGACY,
+                                  OB_MODE_VERTEX_GPENCIL_LEGACY) &&
+                            info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
     const bool is_onion = info.onion_id != 0;
 
     visible_strokes.foreach_index([&](const int stroke_i) {

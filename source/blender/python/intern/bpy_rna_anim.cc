@@ -319,7 +319,7 @@ char pyrna_struct_keyframe_insert_doc[] =
     "      - ``INSERTKEY_AVAILABLE`` Only insert into already existing F-Curves.\n"
     "      - ``INSERTKEY_CYCLE_AWARE`` Take cyclic extrapolation into account "
     "(Cycle-Aware Keying option).\n"
-    "   :type flag: set\n"
+    "   :type options: set\n"
     "   :arg keytype: Type of the key: 'KEYFRAME', 'BREAKDOWN', 'MOVING_HOLD', 'EXTREME', "
     "'JITTER', or 'GENERATED'\n"
     "   :type keytype: string\n"
@@ -327,6 +327,7 @@ char pyrna_struct_keyframe_insert_doc[] =
     "   :rtype: boolean\n";
 PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyObject *kw)
 {
+  using namespace blender::animrig;
   /* args, pyrna_struct_keyframe_parse handles these */
   const char *path_full = nullptr;
   int index = -1;
@@ -387,14 +388,14 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     if (prop) {
       NlaStrip *strip = static_cast<NlaStrip *>(ptr.data);
       FCurve *fcu = BKE_fcurve_find(&strip->fcurves, RNA_property_identifier(prop), index);
-      result = blender::animrig::insert_keyframe_direct(&reports,
-                                                        ptr,
-                                                        prop,
-                                                        fcu,
-                                                        &anim_eval_context,
-                                                        eBezTriple_KeyframeType(keytype),
-                                                        nullptr,
-                                                        eInsertKeyFlags(options));
+      result = insert_keyframe_direct(&reports,
+                                      ptr,
+                                      prop,
+                                      fcu,
+                                      &anim_eval_context,
+                                      eBezTriple_KeyframeType(keytype),
+                                      nullptr,
+                                      eInsertKeyFlags(options));
     }
     else {
       BKE_reportf(&reports, RPT_ERROR, "Could not resolve path (%s)", path_full);
@@ -404,15 +405,19 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     ID *id = self->ptr.owner_id;
 
     BLI_assert(BKE_id_is_in_global_main(id));
-    result = (blender::animrig::insert_keyframe(G_MAIN,
-                                                &reports,
-                                                id,
-                                                group_name,
-                                                path_full,
-                                                index,
-                                                &anim_eval_context,
-                                                eBezTriple_KeyframeType(keytype),
-                                                eInsertKeyFlags(options)) != 0);
+    CombinedKeyingResult combined_result = insert_keyframe(G_MAIN,
+                                                           *id,
+                                                           group_name,
+                                                           path_full,
+                                                           index,
+                                                           &anim_eval_context,
+                                                           eBezTriple_KeyframeType(keytype),
+                                                           eInsertKeyFlags(options));
+    const int success_count = combined_result.get_count(SingleKeyingResult::SUCCESS);
+    if (success_count == 0) {
+      combined_result.generate_reports(&reports);
+    }
+    result = success_count != 0;
   }
 
   MEM_freeN((void *)path_full);
@@ -664,7 +669,7 @@ PyObject *pyrna_struct_driver_remove(BPy_StructRNA *self, PyObject *args)
 
   BKE_reports_init(&reports, RPT_STORE);
 
-  result = ANIM_remove_driver(&reports, (ID *)self->ptr.owner_id, path_full, index, 0);
+  result = ANIM_remove_driver(self->ptr.owner_id, path_full, index);
 
   if (path != path_full) {
     MEM_freeN((void *)path_full);

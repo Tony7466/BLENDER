@@ -202,6 +202,9 @@ class IndexMask : private IndexMaskData {
   static IndexMask from_bools(const IndexMask &universe,
                               Span<bool> bools,
                               IndexMaskMemory &memory);
+  static IndexMask from_bools_inverse(const IndexMask &universe,
+                                      Span<bool> bools,
+                                      IndexMaskMemory &memory);
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
@@ -344,7 +347,7 @@ class IndexMask : private IndexMaskData {
    * \return A new index mask that contains all the indices from the universe that are not in the
    * current mask.
    */
-  IndexMask complement(IndexRange universe, IndexMaskMemory &memory) const;
+  IndexMask complement(const IndexMask &universe, IndexMaskMemory &memory) const;
 
   /**
    * \return Number of segments in the mask.

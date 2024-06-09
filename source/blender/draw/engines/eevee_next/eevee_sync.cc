@@ -117,10 +117,8 @@ void SyncModule::sync_mesh(Object *ob,
     return;
   }
 
-  if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
-    /** NOTE:
-     * EEVEE doesn't render meshes with bounds or wire display type in the viewport,
-     * but Cycles does. */
+  if ((ob->dt < OB_SOLID) && ((inst_.is_viewport() && inst_.v3d->shading.type != OB_RENDER))) {
+    /** Do not render objects with display type lower than solid when in material preview mode. */
     return;
   }
 
@@ -154,8 +152,8 @@ void SyncModule::sync_mesh(Object *ob,
 
     geometry_call(material.planar_probe_prepass.sub_pass, geom, res_handle);
     geometry_call(material.planar_probe_shading.sub_pass, geom, res_handle);
-    geometry_call(material.reflection_probe_prepass.sub_pass, geom, res_handle);
-    geometry_call(material.reflection_probe_shading.sub_pass, geom, res_handle);
+    geometry_call(material.lightprobe_sphere_prepass.sub_pass, geom, res_handle);
+    geometry_call(material.lightprobe_sphere_shading.sub_pass, geom, res_handle);
 
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
     has_transparent_shadows = has_transparent_shadows || material.has_transparent_shadows;
@@ -193,7 +191,7 @@ bool SyncModule::sync_sculpt(Object *ob,
    * when switching from eevee to workbench).
    */
   if (ob_ref.object->sculpt && ob_ref.object->sculpt->pbvh) {
-    BKE_pbvh_is_drawing_set(ob_ref.object->sculpt->pbvh, pbvh_draw);
+    BKE_pbvh_is_drawing_set(*ob_ref.object->sculpt->pbvh, pbvh_draw);
   }
 
   if (!pbvh_draw) {
@@ -234,8 +232,8 @@ bool SyncModule::sync_sculpt(Object *ob,
 
     geometry_call(material.planar_probe_prepass.sub_pass, geom, res_handle);
     geometry_call(material.planar_probe_shading.sub_pass, geom, res_handle);
-    geometry_call(material.reflection_probe_prepass.sub_pass, geom, res_handle);
-    geometry_call(material.reflection_probe_shading.sub_pass, geom, res_handle);
+    geometry_call(material.lightprobe_sphere_prepass.sub_pass, geom, res_handle);
+    geometry_call(material.lightprobe_sphere_shading.sub_pass, geom, res_handle);
 
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
     has_transparent_shadows = has_transparent_shadows || material.has_transparent_shadows;
@@ -251,7 +249,7 @@ bool SyncModule::sync_sculpt(Object *ob,
 
   /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
   /* bounding box is still needed for directional shadow tile-map bounds computation. */
-  const Bounds<float3> bounds = BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh);
+  const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob_ref.object->sculpt->pbvh);
   const float3 center = math::midpoint(bounds.min, bounds.max);
   const float3 half_extent = bounds.max - center + inflate_bounds;
   inst_.manager->update_handle_bounds(res_handle, center, half_extent);
@@ -312,12 +310,11 @@ void SyncModule::sync_point_cloud(Object *ob,
 
   drawcall_add(material.planar_probe_prepass);
   drawcall_add(material.planar_probe_shading);
-  drawcall_add(material.reflection_probe_prepass);
-  drawcall_add(material.reflection_probe_shading);
+  drawcall_add(material.lightprobe_sphere_prepass);
+  drawcall_add(material.lightprobe_sphere_shading);
 
   inst_.cryptomatte.sync_object(ob, res_handle);
-  GPUMaterial *gpu_material =
-      inst_.materials.material_array_get(ob, has_motion).gpu_materials[material_slot - 1];
+  GPUMaterial *gpu_material = material.shading.gpumat;
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
 
@@ -577,12 +574,11 @@ void SyncModule::sync_curves(Object *ob,
 
   drawcall_add(material.planar_probe_prepass);
   drawcall_add(material.planar_probe_shading);
-  drawcall_add(material.reflection_probe_prepass);
-  drawcall_add(material.reflection_probe_shading);
+  drawcall_add(material.lightprobe_sphere_prepass);
+  drawcall_add(material.lightprobe_sphere_shading);
 
   inst_.cryptomatte.sync_object(ob, res_handle);
-  GPUMaterial *gpu_material =
-      inst_.materials.material_array_get(ob, has_motion).gpu_materials[mat_nr - 1];
+  GPUMaterial *gpu_material = material.shading.gpumat;
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
 

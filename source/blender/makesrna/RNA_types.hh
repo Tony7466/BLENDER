@@ -42,6 +42,8 @@ struct PointerRNA {
   void *data;
 };
 
+constexpr PointerRNA PointerRNA_NULL{nullptr, nullptr, nullptr};
+
 struct PropertyPointerRNA {
   PointerRNA ptr;
   PropertyRNA *prop;
@@ -84,7 +86,7 @@ enum PropertyUnit {
   PROP_UNIT_CAMERA = (10 << 16),       /* mm */
   PROP_UNIT_POWER = (11 << 16),        /* W */
   PROP_UNIT_TEMPERATURE = (12 << 16),  /* C */
-  PROP_UNIT_WAVELENGTH = (13 << 16),   /* nm (independent of scene) */
+  PROP_UNIT_WAVELENGTH = (13 << 16),   /* `nm` (independent of scene). */
 };
 ENUM_OPERATORS(PropertyUnit, PROP_UNIT_TEMPERATURE)
 
@@ -545,6 +547,8 @@ struct StringPropertySearchVisitParams {
   std::string text;
   /** Additional information to display. */
   std::optional<std::string> info;
+  /* Optional icon instead of #ICON_NONE. */
+  std::optional<int> icon_id;
 };
 
 enum eStringPropertySearchFlag {

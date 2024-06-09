@@ -225,7 +225,7 @@ MTLContext::MTLContext(void *ghost_window, void *ghost_context)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-method-access"
   /* Enable increased concurrent shader compiler limit.
-   * Note: Disable warning for missing method when building on older OS's, as compiled code will
+   * NOTE: Disable warning for missing method when building on older OS's, as compiled code will
    * still work correctly when run on a system with the API available. */
   if (@available(macOS 13.3, *)) {
     [this->device setShouldMaximizeConcurrentCompilation:YES];
@@ -267,11 +267,13 @@ MTLContext::MTLContext(void *ghost_window, void *ghost_context)
 
   /* Initialize samplers. */
   this->sampler_state_cache_init();
+
+  compiler = new ShaderCompilerGeneric();
 }
 
 MTLContext::~MTLContext()
 {
-  BLI_assert(this == reinterpret_cast<MTLContext *>(GPU_context_active_get()));
+  BLI_assert(this == MTLContext::get());
   /* Ensure rendering is complete command encoders/command buffers are freed. */
   if (MTLBackend::get()->is_inside_render_boundary()) {
     this->finish();
@@ -369,6 +371,8 @@ MTLContext::~MTLContext()
   if (this->device) {
     [this->device release];
   }
+
+  delete compiler;
 }
 
 void MTLContext::begin_frame()
@@ -674,9 +678,9 @@ gpu::MTLTexture *MTLContext::get_dummy_texture(eGPUTextureType type,
           GPU_vertformat_attr_add(
               &dummy_vertformat_[sampler_format], "dummy", comp_type, 4, fetch_mode);
           dummy_verts_[sampler_format] = GPU_vertbuf_create_with_format_ex(
-              &dummy_vertformat_[sampler_format],
+              dummy_vertformat_[sampler_format],
               GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-          GPU_vertbuf_data_alloc(dummy_verts_[sampler_format], 64);
+          GPU_vertbuf_data_alloc(*dummy_verts_[sampler_format], 64);
         }
         tex = GPU_texture_create_from_vertbuf("Dummy TextureBuffer", dummy_verts_[sampler_format]);
         break;
@@ -1547,7 +1551,7 @@ bool MTLContext::ensure_buffer_bindings(
         /* Bind Compute SSBO. */
         if (bool(ssbo.stage_mask & ShaderStage::COMPUTE)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
-          cs.bind_compute_buffer(ssbo_buffer, 0, buffer_bind_index, true);
+          cs.bind_compute_buffer(ssbo_buffer, 0, buffer_bind_index);
         }
       }
       else {
@@ -1664,7 +1668,7 @@ void MTLContext::ensure_texture_bindings(
             /* Texture type for bound texture (e.g. Texture2DArray) does not match what was
              * expected in the shader interface. This is a problem and we will need to bind
              * a dummy texture to ensure correct API usage. */
-            MTL_LOG_WARNING(
+            MTL_LOG_ERROR(
                 "(Shader '%s') Texture (%s) %p bound to slot %d is incompatible -- Wrong "
                 "texture target type. (Expecting type %d, actual type %d) (binding "
                 "name:'%s')(texture name:'%s')",
@@ -1679,7 +1683,7 @@ void MTLContext::ensure_texture_bindings(
           }
         }
         else {
-          MTL_LOG_WARNING(
+          MTL_LOG_ERROR(
               "Shader '%s' expected texture (%s) to be bound to location %d (texture[[%d]]) -- No "
               "texture was "
               "bound. (name:'%s')",
@@ -1715,7 +1719,7 @@ void MTLContext::ensure_texture_bindings(
         }
       }
       else {
-        MTL_LOG_WARNING(
+        MTL_LOG_ERROR(
             "Shader %p expected texture (%s) to be bound to slot %d -- Slot exceeds the "
             "hardware/API limit of '%d'. (name:'%s')",
             this->pipeline_state.active_shader,
@@ -1915,7 +1919,7 @@ void MTLContext::ensure_texture_bindings(
             /* Texture type for bound texture (e.g. Texture2DArray) does not match what was
              * expected in the shader interface. This is a problem and we will need to bind
              * a dummy texture to ensure correct API usage. */
-            MTL_LOG_WARNING(
+            MTL_LOG_ERROR(
                 "(Shader '%s') Texture (%s) %p bound to slot %d is incompatible -- Wrong "
                 "texture target type. (Expecting type %d, actual type %d) (binding "
                 "name:'%s')(texture name:'%s')",
@@ -1930,7 +1934,7 @@ void MTLContext::ensure_texture_bindings(
           }
         }
         else {
-          MTL_LOG_WARNING(
+          MTL_LOG_ERROR(
               "Shader '%s' expected texture (%s) to be bound to location %d (texture[[%d]]) -- No "
               "texture was "
               "bound. (name:'%s')",
@@ -1958,7 +1962,7 @@ void MTLContext::ensure_texture_bindings(
         }
       }
       else {
-        MTL_LOG_WARNING(
+        MTL_LOG_ERROR(
             "Shader %p expected texture (%s) to be bound to slot %d -- Slot exceeds the "
             "hardware/API limit of '%d'. (name:'%s')",
             this->pipeline_state.active_shader,
@@ -2387,9 +2391,9 @@ void MTLContext::texture_bind(gpu::MTLTexture *mtl_texture, uint texture_unit, b
   if (texture_unit < 0 || texture_unit >= GPU_max_textures() ||
       texture_unit >= MTL_MAX_TEXTURE_SLOTS)
   {
-    MTL_LOG_WARNING("Attempting to bind texture '%s' to invalid texture unit %d",
-                    mtl_texture->get_name(),
-                    texture_unit);
+    MTL_LOG_ERROR("Attempting to bind texture '%s' to invalid texture unit %d",
+                  mtl_texture->get_name(),
+                  texture_unit);
     BLI_assert(false);
     return;
   }
@@ -2411,7 +2415,7 @@ void MTLContext::sampler_bind(MTLSamplerState sampler_state, uint sampler_unit)
   if (sampler_unit < 0 || sampler_unit >= GPU_max_textures() ||
       sampler_unit >= MTL_MAX_SAMPLER_SLOTS)
   {
-    MTL_LOG_WARNING("Attempting to bind sampler to invalid sampler unit %d", sampler_unit);
+    MTL_LOG_ERROR("Attempting to bind sampler to invalid sampler unit %d", sampler_unit);
     BLI_assert(false);
     return;
   }
@@ -2588,7 +2592,7 @@ id<MTLComputePipelineState> MTLContextComputeUtils::get_buffer_clear_pso()
   }
 
   /* Fetch active context. */
-  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = MTLContext::get();
   BLI_assert(ctx);
 
   @autoreleasepool {
@@ -2659,7 +2663,7 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
              id<CAMetalDrawable> drawable)
 {
 
-  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = MTLContext::get();
   BLI_assert(ctx);
 
   /* Flush any outstanding work. */

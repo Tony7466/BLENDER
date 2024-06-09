@@ -219,6 +219,7 @@ void VolumeModule::end_sync()
   scatter_ps_.bind_resources(inst_.sphere_probes);
   scatter_ps_.bind_resources(inst_.volume_probes);
   scatter_ps_.bind_resources(inst_.shadows);
+  scatter_ps_.bind_resources(inst_.uniform_data);
   scatter_ps_.bind_resources(inst_.sampling);
   scatter_ps_.bind_image("in_scattering_img", &prop_scattering_tx_);
   scatter_ps_.bind_image("in_extinction_img", &prop_extinction_tx_);
@@ -366,6 +367,9 @@ void VolumeModule::draw_prepass(View &main_view)
   inst_.pipelines.world_volume.render(main_view);
 
   volume_view.sync(main_view.viewmat(), winmat_infinite);
+  /* TODO(fclem): The infinite projection matrix makes the culling test unreliable (see #115595).
+   * We need custom culling for these but that's not implemented yet. */
+  volume_view.visibility_test(false);
 
   if (inst_.pipelines.volume.is_enabled()) {
     inst_.pipelines.volume.render(volume_view, occupancy_tx_);
@@ -373,11 +377,22 @@ void VolumeModule::draw_prepass(View &main_view)
   DRW_stats_group_end();
 }
 
-void VolumeModule::draw_compute(View &main_view)
+void VolumeModule::draw_compute(View &main_view, int2 extent)
 {
   if (!enabled_) {
     return;
   }
+
+  if (inst_.pipelines.deferred.is_empty()) {
+    /* This assume the volume are computed after deferred passes. This is needed to avoid broken
+     * lighting and shadowing as the lights are not setup otherwise (see #121971). */
+    inst_.hiz_buffer.swap_layer();
+    inst_.hiz_buffer.update();
+    inst_.volume_probes.set_view(main_view);
+    inst_.sphere_probes.set_view(main_view);
+    inst_.shadows.set_view(main_view, extent);
+  }
+
   scatter_tx_.swap();
   extinction_tx_.swap();
 

@@ -184,6 +184,10 @@ typedef struct wmWindowManager {
   struct GSet *notifier_queue_set;
   void *_pad1;
 
+  /** Available/pending extensions updates. */
+  int extensions_updates;
+  int _pad3;
+
   /** Threaded jobs manager. */
   ListBase jobs;
 
@@ -227,6 +231,12 @@ typedef struct wmWindowManager {
 } wmWindowManager;
 
 #define WM_KEYCONFIG_ARRAY_P(wm) &(wm)->defaultconf, &(wm)->addonconf, &(wm)->userconf
+
+/** #wmWindowManager.extensions_updates */
+enum {
+  WM_EXTENSIONS_UPDATE_UNSET = -2,
+  WM_EXTENSIONS_UPDATE_CHECKING = -1,
+};
 
 /** #wmWindowManager.init_flag */
 enum {
@@ -680,14 +690,14 @@ enum {
    * Unlike #OP_IS_REPEAT the selection (and context generally) may be different each time.
    * See #60777 for an example of when this is needed.
    */
-  OP_IS_REPEAT_LAST = (1 << 1),
+  OP_IS_REPEAT_LAST = (1 << 2),
 
   /** When the cursor is grabbed */
-  OP_IS_MODAL_GRAB_CURSOR = (1 << 2),
+  OP_IS_MODAL_GRAB_CURSOR = (1 << 3),
 
   /**
    * Allow modal operators to have the region under the cursor for their context
    * (the region-type is maintained to prevent errors).
    */
-  OP_IS_MODAL_CURSOR_REGION = (1 << 3),
+  OP_IS_MODAL_CURSOR_REGION = (1 << 4),
 };
