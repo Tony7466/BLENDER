@@ -277,8 +277,8 @@ static void calc_grids(const Sculpt &sd,
 
       float3 avg = smooth::neighbor_coords_average_interior(
           ss, BKE_pbvh_make_vref(grid_verts_start + j));
-      float3 final = float3(co) + (avg - float3(co)) * fade;
-      SCULPT_clip(sd, ss, co, final);
+      float3 final_co = float3(co) + (avg - float3(co)) * fade;
+      SCULPT_clip(sd, ss, co, final_co);
     }
   }
 }
@@ -319,8 +319,8 @@ static void calc_bmesh(
                                                                &automask_data);
 
     float3 avg = smooth::neighbor_coords_average_interior(ss, BKE_pbvh_make_vref(intptr_t(vert)));
-    float3 final = float3(vert->co) + (avg - float3(vert->co)) * fade;
-    SCULPT_clip(sd, ss, vert->co, final);
+    float3 final_co = float3(vert->co) + (avg - float3(vert->co)) * fade;
+    SCULPT_clip(sd, ss, vert->co, final_co);
   }
 }
 
