@@ -3,7 +3,14 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_collision_shape.hh"
+#include "BKE_curves.hh"
+#include "BKE_geometry_set.hh"
+#include "BKE_instances.hh"
 #include "BKE_physics_geometry.hh"
+
+#include "DNA_curves_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_pointcloud_types.h"
 
 #include "NOD_rna_define.hh"
 
@@ -16,8 +23,21 @@ namespace blender::nodes::node_geo_collision_shape_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Size").default_value(1.0f);
+  b.add_input<decl::Float>("Scale").default_value(1.0f);
   b.add_input<decl::Vector>("Size", "SizeVector").default_value(float3(1.0f));
+  b.add_input<decl::Float>("Radius").default_value(1.0f);
+  b.add_input<decl::Float>("Height").default_value(1.0f);
+  b.add_input<decl::Vector>("Plane Normal").default_value(float3(0,0,1));
+  b.add_input<decl::Float>("Plane Constant").default_value(1.0f);
+  b.add_input<decl::Vector>("Point", "Point0");
+  b.add_input<decl::Vector>("Point", "Point1");
+  b.add_input<decl::Vector>("Point", "Point2");
+  b.add_input<decl::Geometry>("Geometry")
+      .supported_type({GeometryComponent::Type::Mesh,
+                       GeometryComponent::Type::Curve,
+                       GeometryComponent::Type::PointCloud});
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Geometry>("Child Shape").supported_type(GeometryComponent::Type::Physics);
   b.add_output<decl::Geometry>("Shape").propagate_all();
 }
 
@@ -45,61 +65,295 @@ static void node_update(bNodeTree *tree, bNode *node)
     return result;
   };
 
-  bNodeSocket *size_socket = next_socket();
+  bNodeSocket *scale_socket = next_socket();
   bNodeSocket *size_vector_socket = next_socket();
+  bNodeSocket *radius_socket = next_socket();
+  bNodeSocket *height_socket = next_socket();
+  bNodeSocket *plane_normal_socket = next_socket();
+  bNodeSocket *plane_constant_socket = next_socket();
+  bNodeSocket *point0_socket = next_socket();
+  bNodeSocket *point1_socket = next_socket();
+  bNodeSocket *point2_socket = next_socket();
+  bNodeSocket *geometry_socket = next_socket();
+  bNodeSocket *mesh_socket = next_socket();
+  bNodeSocket *child_shape_socket = next_socket();
 
-  bke::nodeSetSocketAvailability(tree, size_socket, ELEM(type, ShapeType::Sphere));
-  node_sock_label(size_socket, ELEM(type, ShapeType::Sphere) ? "Radius" : "");
+  bke::nodeSetSocketAvailability(tree, scale_socket, ELEM(type, ShapeType::UniformScaling));
   bke::nodeSetSocketAvailability(tree, size_vector_socket, ELEM(type, ShapeType::Box));
+  bke::nodeSetSocketAvailability(
+      tree,
+      radius_socket,
+      ELEM(type, ShapeType::Sphere, ShapeType::Cylinder, ShapeType::Cone, ShapeType::Capsule));
+  bke::nodeSetSocketAvailability(
+      tree, height_socket, ELEM(type, ShapeType::Cylinder, ShapeType::Cone, ShapeType::Capsule));
+  bke::nodeSetSocketAvailability(tree, plane_normal_socket, ELEM(type, ShapeType::StaticPlane));
+  bke::nodeSetSocketAvailability(tree, plane_constant_socket, ELEM(type, ShapeType::StaticPlane));
+  const bool use_points = ELEM(type, ShapeType::Triangle);
+  bke::nodeSetSocketAvailability(tree, point0_socket, use_points);
+  bke::nodeSetSocketAvailability(tree, point1_socket, use_points);
+  bke::nodeSetSocketAvailability(tree, point2_socket, use_points);
+  bke::nodeSetSocketAvailability(tree, geometry_socket, ELEM(type, ShapeType::ConvexHull));
+  bke::nodeSetSocketAvailability(tree, mesh_socket, ELEM(type, ShapeType::TriangleMesh));
+  bke::nodeSetSocketAvailability(
+      tree, child_shape_socket, ELEM(type, ShapeType::UniformScaling, ShapeType::Compound));
 }
 
-static bke::CollisionShape *make_collision_shape(GeoNodeExecParams params)
+static VArray<float3> gather_points(const GeometrySet &geometry_set)
+{
+  int span_count = 0;
+  int count = 0;
+  int total_num = 0;
+
+  Span<float3> positions_span;
+
+  if (const Mesh *mesh = geometry_set.get_mesh()) {
+    count++;
+    if (const VArray positions = *mesh->attributes().lookup<float3>("position")) {
+      if (positions.is_span()) {
+        span_count++;
+        positions_span = positions.get_internal_span();
+      }
+      total_num += positions.size();
+    }
+  }
+
+  if (const PointCloud *points = geometry_set.get_pointcloud()) {
+    count++;
+    if (const VArray positions = *points->attributes().lookup<float3>("position")) {
+      if (positions.is_span()) {
+        span_count++;
+        positions_span = positions.get_internal_span();
+      }
+      total_num += positions.size();
+    }
+  }
+
+  if (const Curves *curves_id = geometry_set.get_curves()) {
+    count++;
+    span_count++;
+    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    positions_span = curves.evaluated_positions();
+    total_num += positions_span.size();
+  }
+
+  if (count == 0) {
+    return nullptr;
+  }
+
+  /* If there is only one positions virtual array and it is already contiguous, avoid copying
+   * all of the positions and instead pass the span directly to the convex hull function. */
+  if (span_count == 1 && count == 1) {
+    return VArray<float3>::ForSpan(positions_span);
+  }
+
+  Array<float3> positions(total_num);
+  int offset = 0;
+
+  if (const Mesh *mesh = geometry_set.get_mesh()) {
+    if (const VArray varray = *mesh->attributes().lookup<float3>("position")) {
+      varray.materialize(positions.as_mutable_span().slice(offset, varray.size()));
+      offset += varray.size();
+    }
+  }
+
+  if (const PointCloud *points = geometry_set.get_pointcloud()) {
+    if (const VArray varray = *points->attributes().lookup<float3>("position")) {
+      varray.materialize(positions.as_mutable_span().slice(offset, varray.size()));
+      offset += varray.size();
+    }
+  }
+
+  if (const Curves *curves_id = geometry_set.get_curves()) {
+    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    Span<float3> array = curves.evaluated_positions();
+    positions.as_mutable_span().slice(offset, array.size()).copy_from(array);
+    offset += array.size();
+  }
+
+  return VArray<float3>::ForContainer(positions);
+}
+
+static const bke::CollisionShape::Ptr get_convex_collision_shape(const bke::GeometrySet &geometry_set)
+{
+  if (!geometry_set.has_physics()) {
+    return nullptr;
+  }
+  const bke::PhysicsGeometry *physics = geometry_set.get_physics();
+  if (physics->shapes_num() == 0) {
+    return nullptr;
+  }
+  const bke::CollisionShape::Ptr child_shape = physics->shapes().first();
+  if (!child_shape->is_convex()) {
+    return nullptr;
+  }
+  return child_shape;
+}
+
+static bke::CollisionShape *make_collision_shape_from_type(
+    const bke::CollisionShape::ShapeType type,
+    GeoNodeExecParams params,
+    bke::PhysicsGeometry *physics)
 {
   using ShapeType = bke::CollisionShape::ShapeType;
-  const ShapeType type = ShapeType(params.node().custom1);
 
   switch (type) {
-    case ShapeType::Invalid:
+    case ShapeType::Invalid: {
       return nullptr;
-    case ShapeType::Empty:
+    }
+    case ShapeType::Empty: {
       return new bke::EmptyCollisionShape();
+    }
     case ShapeType::Box: {
-      const float3 half_extent = params.extract_input<float3>("SizeVector");
+      const float3 half_extent = 0.5f * params.extract_input<float3>("SizeVector");
       return new bke::BoxCollisionShape(half_extent);
     }
-    case ShapeType::Triangle:
-    case ShapeType::Tetrahedral:
-    case ShapeType::ConvexTriangleMesh:
-    case ShapeType::ConvexHull:
-    case ShapeType::ConvexPointCloud:
+    case ShapeType::Triangle: {
+      const float3 point0 = params.extract_input<float3>("Point0");
+      const float3 point1 = params.extract_input<float3>("Point1");
+      const float3 point2 = params.extract_input<float3>("Point2");
+      return new bke::TriangleCollisionShape(point0, point1, point2);
+    }
+    case ShapeType::Tetrahedral: {
       return nullptr;
+    }
+    case ShapeType::ConvexTriangleMesh: {
+      return nullptr;
+    }
+    case ShapeType::ConvexHull: {
+      const GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+      const VArray<float3> points = gather_points(geometry_set);
+      return new bke::ConvexHullCollisionShape(points);
+    }
+    case ShapeType::ConvexPointCloud: {
+      return nullptr;
+    }
     case ShapeType::Sphere: {
-      const float radius = params.extract_input<float>("Size");
+      const float radius = params.extract_input<float>("Radius");
       return new bke::SphereCollisionShape(radius);
     }
-    case ShapeType::MultiSphere:
-    case ShapeType::Capsule:
-    case ShapeType::Cone:
-    case ShapeType::Convex:
-    case ShapeType::Cylinder:
-    case ShapeType::UniformScaling:
-    case ShapeType::MinkowskiSum:
-    case ShapeType::MinkowskiDifference:
-    case ShapeType::Box2D:
-    case ShapeType::Convex2D:
-    case ShapeType::TriangleMesh:
-    case ShapeType::ScaledTriangleMesh:
-    case ShapeType::StaticPlane:
-    case ShapeType::Compound:
+    case ShapeType::MultiSphere: {
       return nullptr;
+    }
+    case ShapeType::Capsule: {
+      const float height = params.extract_input<float>("Radius");
+      const float radius = params.extract_input<float>("Height");
+      return new bke::CapsuleCollisionShape(radius, height);
+    }
+    case ShapeType::Cone: {
+      const float height = params.extract_input<float>("Radius");
+      const float radius = params.extract_input<float>("Height");
+      return new bke::ConeCollisionShape(radius, height);
+    }
+    case ShapeType::Cylinder: {
+      const float height = params.extract_input<float>("Radius");
+      const float radius = params.extract_input<float>("Height");
+      return new bke::CylinderCollisionShape(radius, height);
+    }
+    case ShapeType::UniformScaling: {
+      const GeometrySet geometry_set = params.extract_input<GeometrySet>("Child Shape");
+      const float scale = params.extract_input<float>("Scale");
+      const bke::CollisionShape::Ptr child_shape = get_convex_collision_shape(geometry_set);
+      if (!child_shape) {
+        return nullptr;
+      }
+      physics->add_shape(child_shape);
+      return new bke::UniformScalingCollisionShape(child_shape.get(), scale);
+    }
+    case ShapeType::MinkowskiSum: {
+      return nullptr;
+    }
+    case ShapeType::MinkowskiDifference: {
+      return nullptr;
+    }
+    case ShapeType::Box2D: {
+      return nullptr;
+    }
+    case ShapeType::Convex2D: {
+      return nullptr;
+    }
+    case ShapeType::TriangleMesh: {
+      const GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
+      if (!geometry_set.has_mesh()) {
+        return nullptr;
+      }
+      return new bke::TriangleMeshCollisionShape(*geometry_set.get_mesh());
+    }
+    case ShapeType::ScaledTriangleMesh: {
+      return nullptr;
+    }
+    case ShapeType::StaticPlane: {
+      const float3 plane_normal = params.extract_input<float3>("Plane Normal");
+      const float plane_constant = params.extract_input<float>("Plane Constant");
+      return new bke::StaticPlaneCollisionShape(plane_normal, plane_constant);
+    }
+    case ShapeType::Compound: {
+      const GeometrySet geometry_set = params.extract_input<GeometrySet>("Child Shape");
+      const int num_shapes = geometry_set.has_physics() ?
+                                 geometry_set.get_physics()->shapes_num() :
+                                 0;
+      const int num_instances = geometry_set.has_instances() ?
+                                    geometry_set.get_instances()->instances_num() :
+                                    0;
+
+      Vector<const bke::CollisionShape *> child_shapes;
+      Vector<float4x4> child_transforms;
+      child_shapes.reserve(num_shapes + num_instances);
+      child_transforms.reserve(num_shapes + num_instances);
+      if (geometry_set.has_physics()) {
+        for (const bke::CollisionShapePtr &child_shape : geometry_set.get_physics()->shapes()) {
+          physics->add_shape(child_shape);
+          child_shapes.append(child_shape.get());
+          child_transforms.append(float4x4::identity());
+        }
+      }
+      if (geometry_set.has_instances()) {
+        const bke::Instances &instances = *geometry_set.get_instances();
+        const Span<bke::InstanceReference> references = instances.references();
+        instances.foreach_referenced_geometry([&](const GeometrySet &geometry_set) {
+          if (geometry_set.has_physics()) {
+            for (const bke::CollisionShapePtr &child_shape : geometry_set.get_physics()->shapes())
+            {
+              physics->add_shape(child_shape);
+            }
+          }
+        });
+        for (const int ref_index : instances.reference_handles()) {
+          const GeometrySet &ref_geometry_set = references[ref_index].geometry_set();
+          if (ref_geometry_set.has_physics()) {
+            for (const bke::CollisionShapePtr &child_shape :
+                 ref_geometry_set.get_physics()->shapes())
+            {
+              child_shapes.append(child_shape.get());
+              child_transforms.append(float4x4::identity());
+            }
+          }
+        }
+      }
+      return new bke::CompoundCollisionShape(
+          VArray<const bke::CollisionShape *>::ForSpan(child_shapes),
+          VArray<float4x4>::ForSpan(child_transforms));
+    }
   }
+  return nullptr;
+}
+
+static bke::CollisionShape *make_collision_shape(const bke::CollisionShape::ShapeType type,
+                                                 GeoNodeExecParams params,
+                                                 bke::PhysicsGeometry *physics)
+{
+  bke::CollisionShape *shape = make_collision_shape_from_type(type, params, physics);
+  if (shape) {
+    physics->add_shape(bke::CollisionShape::Ptr(shape));
+  }
+  return shape;
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  bke::CollisionShape *shape = make_collision_shape(params);
+  const auto shape_type = bke::CollisionShape::ShapeType(params.node().custom1);
+
   bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0);
-  physics->add_shape(bke::CollisionShape::Ptr(shape));
+  make_collision_shape(shape_type, params, physics);
 
   params.set_output("Shape", GeometrySet::from_physics(physics));
 }
@@ -121,7 +375,6 @@ static void node_rna(StructRNA *srna)
       {int(ShapeType::MultiSphere), "MULTI_SPHERE", 0, "Multi Sphere", ""},
       {int(ShapeType::Capsule), "CAPSULE", 0, "Capsule", ""},
       {int(ShapeType::Cone), "CONE", 0, "Cone", ""},
-      {int(ShapeType::Convex), "CONVEX", 0, "Convex", ""},
       {int(ShapeType::Cylinder), "CYLINDER", 0, "Cylinder", ""},
       {int(ShapeType::UniformScaling), "UNIFORM_SCALING", 0, "Uniform Scaling", ""},
       {int(ShapeType::MinkowskiSum), "MINKOWSKI_SUM", 0, "Minkowski Sum", ""},

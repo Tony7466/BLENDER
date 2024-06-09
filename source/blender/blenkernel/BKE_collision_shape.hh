@@ -47,7 +47,6 @@ class CollisionShape : public ImplicitSharingMixin {
     MultiSphere,
     Capsule,
     Cone,
-    Convex,
     Cylinder,
     UniformScaling,
     MinkowskiSum,
@@ -97,6 +96,9 @@ class CollisionShape : public ImplicitSharingMixin {
     return *static_cast<T *>(this);
   }
 
+  bool is_convex() const;
+  bool is_concave() const;
+
  protected:
   CollisionShape(CollisionShapeImpl *impl);
 
@@ -115,11 +117,62 @@ class BoxCollisionShape : public CollisionShape {
   float3 half_extent() const;
 };
 
+class TriangleCollisionShape : public CollisionShape {
+ public:
+  TriangleCollisionShape(const float3 &pt0, const float3 &pt1, const float3 &pt2);
+};
+
+class ConvexHullCollisionShape : public CollisionShape {
+ public:
+  ConvexHullCollisionShape(const VArray<float3> &points);
+};
+
 class SphereCollisionShape : public CollisionShape {
  public:
   SphereCollisionShape(float radius);
 
   float radius() const;
+};
+
+class CapsuleCollisionShape : public CollisionShape {
+ public:
+  CapsuleCollisionShape(float radius, float height);
+};
+
+class ConeCollisionShape : public CollisionShape {
+ public:
+  ConeCollisionShape(float radius, float height);
+};
+
+class CylinderCollisionShape : public CollisionShape {
+ public:
+  CylinderCollisionShape(float radius, float height);
+};
+
+class UniformScalingCollisionShape : public CollisionShape {
+ public:
+  UniformScalingCollisionShape(const CollisionShape *child_shape, float scale);
+};
+
+class TriangleMeshCollisionShape : public CollisionShape {
+ public:
+  TriangleMeshCollisionShape(const Mesh &mesh);
+};
+
+class ScaledTriangleMeshCollisionShape : public CollisionShape {
+ public:
+  ScaledTriangleMeshCollisionShape(const TriangleMeshCollisionShape *child_shape, float3 scale);
+};
+
+class StaticPlaneCollisionShape : public CollisionShape {
+ public:
+  StaticPlaneCollisionShape(const float3 &plane_normal, float plane_constant);
+};
+
+class CompoundCollisionShape : public CollisionShape {
+ public:
+  CompoundCollisionShape(const VArray<const CollisionShape *> &child_shapes,
+                         const VArray<float4x4> &child_transforms);
 };
 
 }  // namespace blender::bke
