@@ -415,6 +415,9 @@ static IndexMask grease_pencil_get_visible_bezier_points(Object &object,
     return IndexMask(0);
   }
 
+  const Array<int> point_to_curve_map = curves.point_to_curve_map();
+  const VArray<int8_t> types = curves.curve_types();
+
   const VArray<bool> selected_point = *curves.attributes().lookup_or_default<bool>(
       ".selection", bke::AttrDomain::Point, true);
   const VArray<bool> selected_left = *curves.attributes().lookup_or_default<bool>(
@@ -427,7 +430,10 @@ static IndexMask grease_pencil_get_visible_bezier_points(Object &object,
 
   const IndexMask selected_points = IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
-        return selected_point[point_i] || selected_left[point_i] || selected_right[point_i];
+        const bool is_selected = selected_point[point_i] || selected_left[point_i] ||
+                                 selected_right[point_i];
+        const bool is_bezier = types[point_to_curve_map[point_i]] == CURVE_TYPE_BEZIER;
+        return is_selected && is_bezier;
       });
 
   return IndexMask::from_intersection(editable_points, selected_points, memory);
@@ -513,9 +519,10 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     total_bezier_point_num += bezier_points.size();
   }
 
-  /* Add two for each bezier point, (one left, one right).*/
+  /* Add two for each bezier point, (one left, one right). */
   total_points_num += total_bezier_point_num * 2;
-  total_line_points_num += total_bezier_point_num * 2;
+  /* Add three for each bezier point, (one left, one right and one for the center point). */
+  total_line_points_num += total_bezier_point_num * 3;
 
   GPU_vertbuf_data_alloc(*cache->edit_points_pos, total_points_num);
   GPU_vertbuf_data_alloc(*cache->edit_points_selection, total_points_num);
@@ -555,8 +562,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const IndexRange points(drawing_start_offset, curves.points_num());
     const IndexRange points_eval(drawing_line_start_offset, curves.evaluated_points_num());
 
+    const Span<float3> positions = curves.positions();
     if (!layer.is_locked()) {
-      const Span<float3> positions = curves.positions();
       MutableSpan<float3> positions_slice = edit_points.slice(points);
       threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange range) {
         copy_transformed_positions(positions, range, layer_space_to_object_space, positions_slice);
@@ -640,8 +647,17 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const Span<float3> handles_left = curves.handle_positions_left();
     const Span<float3> handles_right = curves.handle_positions_right();
 
+    /* This will copy over the position but without the layer transform. */
     array_utils::gather(handles_left, bezier_points, positions_slice_left);
     array_utils::gather(handles_right, bezier_points, positions_slice_right);
+
+    /* Go through the position and apply the layer transform. */
+    threading::parallel_for(bezier_points.index_range(), 1024, [&](const IndexRange range) {
+      copy_transformed_positions(
+          positions_slice_left, range, layer_space_to_object_space, positions_slice_left);
+      copy_transformed_positions(
+          positions_slice_right, range, layer_space_to_object_space, positions_slice_right);
+    });
 
     const VArray<float> selected_left = *curves.attributes().lookup_or_default<float>(
         ".selection_handle_left", bke::AttrDomain::Point, true);
@@ -653,9 +669,40 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     array_utils::gather(selected_left, bezier_points, selection_slice_left);
     array_utils::gather(selected_right, bezier_points, selection_slice_right);
 
-    /* Add two for each bezier point, (one left, one right).*/
+    const IndexRange eval_left_slice = IndexRange(drawing_line_start_offset, bezier_points.size());
+    const IndexRange eval_center_slice = IndexRange(
+        drawing_line_start_offset + bezier_points.size(), bezier_points.size());
+    const IndexRange eval_right_slice = IndexRange(
+        drawing_line_start_offset + bezier_points.size() * 2, bezier_points.size());
+
+    MutableSpan<float3> positions_eval_left_slice = edit_line_points.slice(eval_left_slice);
+    MutableSpan<float3> positions_eval_center_slice = edit_line_points.slice(eval_center_slice);
+    MutableSpan<float3> positions_eval_right_slice = edit_line_points.slice(eval_right_slice);
+
+    array_utils::copy(positions_slice_left.as_span(), positions_eval_left_slice);
+    array_utils::copy(positions_slice_right.as_span(), positions_eval_right_slice);
+
+    /* This will copy over the position but without the layer transform. */
+    array_utils::gather(positions, bezier_points, positions_eval_center_slice);
+
+    /* Go through the position and apply the layer transform. */
+    threading::parallel_for(bezier_points.index_range(), 1024, [&](const IndexRange range) {
+      copy_transformed_positions(positions_eval_center_slice,
+                                 range,
+                                 layer_space_to_object_space,
+                                 positions_eval_center_slice);
+    });
+
+    /* Add two for each bezier point, (one left, one right). */
     visible_points_num += bezier_points.size() * 2;
     drawing_start_offset += bezier_points.size() * 2;
+
+    /* Add three for each bezier point, (one left, one right and one for the center point). */
+    drawing_line_start_offset += bezier_points.size() * 3;
+    total_line_ids_num += bezier_points.size() * 3;
+
+    /* Add one id for the restart after every bezier. */
+    total_line_ids_num += bezier_points.size();
   }
 
   GPUIndexBufBuilder elb;
@@ -699,6 +746,26 @@ static void grease_pencil_edit_batch_ensure(Object &object,
       GPU_indexbuf_add_primitive_restart(&elb);
     });
 
+    drawing_line_start_offset += curves.evaluated_points_num();
+
+    const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
+        object, info.drawing, info.layer_index, memory);
+    if (!bezier_points.is_empty()) {
+      /* Add all bezier points. */
+      for (const int point : IndexRange(bezier_points.size())) {
+        GPU_indexbuf_add_generic_vert(
+            &elb, point + bezier_points.size() * 0 + drawing_line_start_offset);
+        GPU_indexbuf_add_generic_vert(
+            &elb, point + bezier_points.size() * 1 + drawing_line_start_offset);
+        GPU_indexbuf_add_generic_vert(
+            &elb, point + bezier_points.size() * 2 + drawing_line_start_offset);
+
+        GPU_indexbuf_add_primitive_restart(&elb);
+      }
+
+      drawing_line_start_offset += bezier_points.size() * 3;
+    }
+
     /* Fill point indices. */
     if (!layer->is_locked()) {
       const IndexMask selected_editable_strokes =
@@ -714,8 +781,6 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
       drawing_start_offset += curves.points_num();
 
-      const IndexMask bezier_points = grease_pencil_get_visible_bezier_points(
-          object, info.drawing, info.layer_index, memory);
       if (!bezier_points.is_empty()) {
         /* Add all bezier points. */
         for (const int point : IndexRange(bezier_points.size() * 2)) {
@@ -725,8 +790,6 @@ static void grease_pencil_edit_batch_ensure(Object &object,
         drawing_start_offset += bezier_points.size() * 2;
       }
     }
-
-    drawing_line_start_offset += curves.evaluated_points_num();
   }
 
   cache->edit_line_indices = GPU_indexbuf_build(&elb);
