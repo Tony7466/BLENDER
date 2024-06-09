@@ -81,6 +81,7 @@ set(SRC
   intern/geometry_nodes_gizmos2.cc
   intern/geometry_nodes_lazy_function.cc
   intern/geometry_nodes_log.cc
+  intern/inverse_eval_path.cc
   intern/math_functions.cc
   intern/node_common.cc
   intern/node_declaration.cc
@@ -104,6 +105,8 @@ set(SRC
   NOD_geometry_nodes_gizmos2.hh
   NOD_geometry_nodes_lazy_function.hh
   NOD_geometry_nodes_log.hh
+  NOD_inverse_eval.hh
+  NOD_inverse_eval_path.hh
   NOD_math_functions.hh
   NOD_multi_function.hh
   NOD_node_declaration.hh
