@@ -5,6 +5,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 
+#include "BLI_index_mask.hh"
 #include "BLI_task.hh"
 
 #include "GEO_curve_plane.hh"
@@ -134,8 +135,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   FieldEvaluator evaluator(context, context.points_num());
 
   Field<bool> input_field = params.extract_input<Field<bool>>("Pixel Value");
-  Array<bool> byte_map(context.points_num());
-  evaluator.add_with_destination(std::move(input_field), byte_map.as_mutable_span());
+  evaluator.set_selection(std::move(input_field));
   evaluator.evaluate();
 
   AnonymousAttributeIDPtr parent_curve_id = params.get_output_anonymous_attribute_id_if_needed(
@@ -148,10 +148,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   curves_params.optimization_tolerance = math::max<float>(params.extract_input<float>("Simplify"),
                                                           0.0f);
 
-  potrace_state_t *potrace_image = geometry::potrace::image_for_predicate(
-      curves_params, [&](int64_t /*line_i*/, int64_t pixel_offset, int64_t pixel_index) -> bool {
-        return byte_map[pixel_offset + pixel_index];
-      });
+  potrace_state_t *potrace_image = geometry::potrace::image_from_mask(
+      curves_params, evaluator.get_evaluated_selection_as_mask());
 
   if (potrace_image == nullptr) {
     params.error_message_add(NodeWarningType::Warning, TIP_("Can not generate curve"));

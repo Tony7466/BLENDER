@@ -12,6 +12,7 @@
 #  include "BKE_curves.hh"
 
 #  include "BLI_array_utils.hh"
+#  include "BLI_index_mask.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_matrix.hh"
 #  include "BLI_math_matrix_types.hh"
@@ -39,46 +40,75 @@ int2 aligned_resolution(const int2 resolution)
   return int2(words_in_line(resolution.x) * word_size, resolution.y);
 }
 
-potrace_state_t *image_from_lines(const Params params,
-                                  const FunctionRef<void(int64_t line_i,
-                                                         int64_t line_offset,
-                                                         int64_t index_in_line,
-                                                         int64_t length,
-                                                         uint8_t *r_segments)> func)
+static potrace_word prefix_for_fill(const int64_t first_i)
 {
-  const int64_t words_num = words_in_line(params.resolution.x);
-  Array<potrace_word> segments(words_num * params.resolution.y);
+  const int64_t extra_in_begin = word_size - (first_i % word_size) - 1;
+  return (potrace_word(1) << extra_in_begin) - 1;
+}
 
-  const int extra_bits_num = words_num * word_size - params.resolution.x;
+static potrace_word suffix_for_fill(const int64_t last_i)
+{
+  const int64_t extra_in_end = word_size - (last_i % word_size) - 1;
+  return ~((potrace_word(1) << extra_in_end) - 1);
+}
+
+potrace_state_t *image_from_mask(const Params params, const IndexMask &mask)
+{
+  const int64_t line_words_num = words_in_line(params.resolution.x);
+  const int64_t line_bits_num = line_words_num * word_size;
+  Array<potrace_word> segments(line_words_num * params.resolution.y, potrace_word(0));
+
+  const int extra_bits_num = line_words_num * word_size - params.resolution.x;
   const potrace_word end_mask = (potrace_word(1) << extra_bits_num) - 1;
 
   threading::parallel_for(
       IndexRange(params.resolution.y),
       4096,
       [&](const IndexRange range) {
-        Array<uint8_t> buffer(sizeof(potrace_word) * words_num);
+        const IndexMask local_mask = mask.slice_content(range.start() * line_bits_num,
+                                                        range.size() * line_bits_num);
+        if (local_mask.is_empty()) {
+          return;
+        }
         for (const int64_t line_i : range) {
-          MutableSpan<potrace_word> line = segments.as_mutable_span().slice(line_i * words_num,
-                                                                            words_num);
-          func(line_i, line_i * words_num * word_size, 0, words_num * word_size, buffer.data());
-          for (const int word_i : line.index_range()) {
-            potrace_word word = 0;
-            for (const int byte_i : IndexRange(sizeof(potrace_word))) {
-              word <<= 8;
-              word |= buffer[word_i * sizeof(potrace_word) + byte_i];
+          const IndexMask line_mask = local_mask.slice_content(line_i * line_bits_num,
+                                                               line_i * line_bits_num);
+          line_mask.foreach_segment([&](IndexMaskSegment segment) {
+            if (unique_sorted_indices::non_empty_is_range(segment.base_span())) {
+              const int first_segment_i = segment[0] / word_size;
+              const int last_segment_i = segment.last() / word_size;
+              if (UNLIKELY(first_segment_i == last_segment_i)) {
+                segments[first_segment_i] |= prefix_for_fill(segment[0]) &
+                                             suffix_for_fill(segment.last());
+                return;
+              }
+              BLI_assert(last_segment_i > first_segment_i);
+              segments[first_segment_i] |= prefix_for_fill(segment[0]);
+              segments.as_mutable_span()
+                  .slice(IndexRange::from_begin_end_inclusive(first_segment_i, last_segment_i)
+                             .drop_front(1)
+                             .drop_back(1))
+                  .fill(~potrace_word(0));
+              segments[last_segment_i] |= suffix_for_fill(segment.last());
+              return;
             }
-            line[word_i] = word;
-          }
-          line.last() &= end_mask;
+            for (const int64_t i : segment) {
+              segments[i / word_size] |= potrace_word(1) << (word_size - (i % word_size) - 1);
+            }
+          });
         }
       },
-      threading::accumulated_task_sizes(
-          [&](const IndexRange range) { return range.size() * words_num; }));
+      threading::accumulated_task_sizes([&](const IndexRange range) {
+        /* This is the way to avoid data race for destination segments and keep optimal threads
+         * granulation for arbitrary mask. */
+        return mask.slice_content(range.start() * line_bits_num, range.size() * line_bits_num)
+            .size();
+      }));
 
   potrace_bitmap_t bitmap;
   bitmap.w = params.resolution.x;
   bitmap.h = params.resolution.y;
-  bitmap.dy = words_num;
+  bitmap.dy = line_words_num;
   bitmap.map = segments.data();
 
   potrace_param_t *potrace_params = potrace_param_default();
