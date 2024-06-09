@@ -494,16 +494,12 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const Layer &layer = *layers[info.layer_index];
     const float4x4 layer_space_to_object_space = layer.to_object_space(object);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const bke::AttributeAccessor attributes = curves.attributes();
-    const OffsetIndices points_by_curve_eval = curves.evaluated_points_by_curve();
+    const OffsetIndices<int> points_by_curve_eval = curves.evaluated_points_by_curve();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    const VArray<bool> cyclic = curves.cyclic();
+
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
-    const IndexMask selected_editable_points =
-        ed::greasepencil::retrieve_editable_and_selected_points(
-            object, info.drawing, info.layer_index, memory);
 
     const IndexRange points(drawing_start_offset, curves.points_num());
     const IndexRange points_eval(drawing_line_start_offset, curves.evaluated_points_num());
@@ -512,16 +508,23 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const Span<float3> positions_eval = curves.evaluated_positions();
 
     MutableSpan<float3> positions_slice = edit_points.slice(points);
+    MutableSpan<float3> positions_eval_slice = edit_line_points.slice(points_eval);
+
     threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange range) {
       copy_transformed_positions(positions, range, layer_space_to_object_space, positions_slice);
     });
 
-    MutableSpan<float3> positions_eval_slice = edit_line_points.slice(points_eval);
-    threading::parallel_for(
-        IndexRange(curves.evaluated_points_num()), 1024, [&](const IndexRange range) {
-          copy_transformed_positions(
-              positions_eval, range, layer_space_to_object_space, positions_eval_slice);
-        });
+    /* Poly curves evaluated points match the curve points, no need to recompute. */
+    if (curves.is_single_type(CURVE_TYPE_POLY)) {
+      array_utils::copy(positions_slice.as_span(), positions_eval_slice);
+    }
+    else {
+      threading::parallel_for(
+          IndexRange(curves.evaluated_points_num()), 1024, [&](const IndexRange range) {
+            copy_transformed_positions(
+                positions_eval, range, layer_space_to_object_space, positions_eval_slice);
+          });
+    }
 
     MutableSpan<float> selection_slice = edit_points_selection.slice(points);
     MutableSpan<float> line_selection_slice = edit_line_points_selection.slice(points_eval);
@@ -530,6 +533,10 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
     /* Do not show selection for locked layers. */
     if (!layer.is_locked()) {
+      const IndexMask selected_editable_points =
+          ed::greasepencil::retrieve_editable_and_selected_points(
+              object, info.drawing, info.layer_index, memory);
+
       index_mask::masked_fill(selection_slice, 1.0f, selected_editable_points);
 
       /* Poly curves evaluated points match the curve points, no need to interpolate. */
@@ -592,7 +599,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const Layer *layer = layers[info.layer_index];
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices points_by_curve_eval = curves.evaluated_points_by_curve();
+    const OffsetIndices<int> points_by_curve_eval = curves.evaluated_points_by_curve();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
@@ -644,6 +651,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   cache->edit_lines = GPU_batch_create(
       GPU_PRIM_LINE_STRIP, cache->edit_line_points_pos, cache->edit_line_indices);
   GPU_batch_vertbuf_add(cache->edit_lines, cache->edit_line_points_selection, false);
+
   /* Allow creation of buffer texture. */
   GPU_vertbuf_use(cache->edit_points_pos);
   GPU_vertbuf_use(cache->edit_line_points_pos);
