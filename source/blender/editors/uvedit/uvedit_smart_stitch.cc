@@ -2787,3 +2787,41 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_array(prop, 6);
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
+
+
+static int stitch_distance_exec(bContext *C, wmOperator *op)
+{
+  // Placeholder code
+  return OPERATOR_FINISHED;
+}
+
+
+void UV_OT_stitch_distance(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Stitch UVs by Distance";
+  ot->description =
+      "This operator will stitch UVs together based on the distance between them";
+  ot->idname = "UV_OT_stitch_distance";
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* api callbacks */
+  ot->exec = stitch_distance_exec;
+  ot->poll = ED_operator_uvedit;
+
+  RNA_def_float(ot->srna,
+                "threshold",
+                0.02f,
+                0.0f,
+                10.0f,
+                "Stitch Distance",
+                "Maximum distance between welded vertices",
+                0.0f,
+                1.0f);
+  RNA_def_boolean(ot->srna,
+                  "underlying_geometry",
+                  false,
+                  "Underlying Geometry",
+                  "Stitch UVs based on underlying geometry");
+
+}
