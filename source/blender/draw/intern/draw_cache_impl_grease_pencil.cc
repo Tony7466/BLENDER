@@ -458,6 +458,12 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
   int total_points_num = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
+    const Layer &layer = *layers[info.layer_index];
+    /* Do not show points for locked layers. */
+    if (layer.is_locked()) {
+      continue;
+    }
+
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     total_points_num += curves.points_num();
   }
@@ -485,6 +491,8 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   MutableSpan<float> edit_line_points_selection = {
       static_cast<float *>(GPU_vertbuf_get_data(*cache->edit_line_points_selection)),
       GPU_vertbuf_get_vertex_len(cache->edit_line_points_selection)};
+  edit_points_selection.fill(0.0f);
+  edit_line_points_selection.fill(0.0f);
 
   int visible_points_num = 0;
   int total_line_ids_num = 0;
@@ -504,35 +512,28 @@ static void grease_pencil_edit_batch_ensure(Object &object,
     const IndexRange points(drawing_start_offset, curves.points_num());
     const IndexRange points_eval(drawing_line_start_offset, curves.evaluated_points_num());
 
-    const Span<float3> positions = curves.positions();
+    if (!layer.is_locked()) {
+      const Span<float3> positions = curves.positions();
+      MutableSpan<float3> positions_slice = edit_points.slice(points);
+      threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange range) {
+        copy_transformed_positions(positions, range, layer_space_to_object_space, positions_slice);
+      });
+    }
+
     const Span<float3> positions_eval = curves.evaluated_positions();
 
-    MutableSpan<float3> positions_slice = edit_points.slice(points);
     MutableSpan<float3> positions_eval_slice = edit_line_points.slice(points_eval);
-
-    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange range) {
-      copy_transformed_positions(positions, range, layer_space_to_object_space, positions_slice);
-    });
-
-    /* Poly curves evaluated points match the curve points, no need to recompute. */
-    if (curves.is_single_type(CURVE_TYPE_POLY)) {
-      array_utils::copy(positions_slice.as_span(), positions_eval_slice);
-    }
-    else {
-      threading::parallel_for(
-          IndexRange(curves.evaluated_points_num()), 1024, [&](const IndexRange range) {
-            copy_transformed_positions(
-                positions_eval, range, layer_space_to_object_space, positions_eval_slice);
-          });
-    }
-
-    MutableSpan<float> selection_slice = edit_points_selection.slice(points);
-    MutableSpan<float> line_selection_slice = edit_line_points_selection.slice(points_eval);
-    selection_slice.fill(0.0f);
-    line_selection_slice.fill(0.0f);
+    threading::parallel_for(
+        IndexRange(curves.evaluated_points_num()), 1024, [&](const IndexRange range) {
+          copy_transformed_positions(
+              positions_eval, range, layer_space_to_object_space, positions_eval_slice);
+        });
 
     /* Do not show selection for locked layers. */
     if (!layer.is_locked()) {
+      MutableSpan<float> selection_slice = edit_points_selection.slice(points);
+      MutableSpan<float> line_selection_slice = edit_line_points_selection.slice(points_eval);
+
       const IndexMask selected_editable_points =
           ed::greasepencil::retrieve_editable_and_selected_points(
               object, info.drawing, info.layer_index, memory);
@@ -549,7 +550,6 @@ static void grease_pencil_edit_batch_ensure(Object &object,
       }
     }
 
-    drawing_start_offset += curves.points_num();
     drawing_line_start_offset += curves.evaluated_points_num();
 
     /* Add one id for the restart after every curve. */
@@ -568,6 +568,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
       continue;
     }
 
+    drawing_start_offset += curves.points_num();
     const IndexMask selected_editable_strokes =
         ed::greasepencil::retrieve_editable_and_selected_strokes(
             object, info.drawing, info.layer_index, memory);
@@ -634,9 +635,10 @@ static void grease_pencil_edit_batch_ensure(Object &object,
           GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
         }
       });
+
+      drawing_start_offset += curves.points_num();
     }
 
-    drawing_start_offset += curves.points_num();
     drawing_line_start_offset += curves.evaluated_points_num();
   }
 
