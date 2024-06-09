@@ -8,7 +8,6 @@
 
 #include "BLI_task.hh"
 
-#include "BKE_action.h"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
@@ -335,7 +334,7 @@ static int toggle_weight_tool_direction(bContext *C, wmOperator * /*op*/)
 
 static bool toggle_weight_tool_direction_poll(bContext *C)
 {
-  if (!grease_pencil_weight_painting_poll(C)) {
+  if (!(grease_pencil_weight_painting_poll(C) || grease_pencil_weight_gradient_poll(C))) {
     return false;
   }
 
@@ -347,7 +346,7 @@ static bool toggle_weight_tool_direction_poll(bContext *C)
   if (brush == nullptr) {
     return false;
   }
-  return brush->gpencil_weight_tool == GPWEIGHT_TOOL_DRAW;
+  return ELEM(brush->gpencil_weight_tool, GPWEIGHT_TOOL_DRAW, GPWEIGHT_TOOL_GRADIENT);
 }
 
 static void GREASE_PENCIL_OT_weight_toggle_direction(wmOperatorType *ot)
@@ -608,7 +607,8 @@ static void init_weight_gradient_cache(const bContext &C,
   /* Get or create active vertex group in GP object. */
   int object_defgroup_nr = BKE_object_defgroup_active_index_get(tool.object) - 1;
   if (object_defgroup_nr == -1) {
-    object_defgroup_nr = create_vertex_group_in_object(*tool.object);
+    BKE_object_defgroup_add(tool.object);
+    object_defgroup_nr = 0;
   }
   bDeformGroup *object_defgroup = static_cast<bDeformGroup *>(
       BLI_findlink(BKE_object_defgroup_list(tool.object), object_defgroup_nr));
@@ -622,9 +622,10 @@ static void init_weight_gradient_cache(const bContext &C,
       object_locked_defgroups.add(dg->name);
     }
   }
-  object_bone_deformed_defgroups = get_bone_deformed_vertex_groups(*tool.object);
+  object_bone_deformed_defgroups = get_bone_deformed_vertex_group_names(*tool.object);
 
-  /* Build cache for all editable drawings. */
+  /* Build a cache with screen space positions and initial weights of the stroke points in all
+   * editable drawings. */
   const Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, tool.object);
   const RegionView3D *rv3d = CTX_wm_region_view3d(&C);
@@ -735,15 +736,16 @@ static void GREASE_PENCIL_OT_weight_gradient(wmOperatorType *ot)
   ot->invoke = weight_gradient_invoke;
   ot->modal = weight_gradient_modal;
   ot->exec = weight_gradient_exec;
-  ot->poll = grease_pencil_weight_painting_poll;
+  ot->poll = grease_pencil_weight_gradient_poll;
   ot->cancel = WM_gesture_straightline_cancel;
 
   /* Flags. */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 
   /* Properties. */
   PropertyRNA *prop;
-  prop = RNA_def_enum(ot->srna, "type", gradient_types, 0, "Type", "");
+  prop = RNA_def_enum(
+      ot->srna, "type", gradient_types, 0, "Type", "The gradient type (linear or gradient)");
   RNA_def_property_flag(prop, PROP_HIDDEN);
   prop = RNA_def_enum(ot->srna, "mode", brush_modes, 0, "Mode", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
@@ -752,7 +754,6 @@ static void GREASE_PENCIL_OT_weight_gradient(wmOperatorType *ot)
 }
 
 /** \} */
-
 
 }  // namespace blender::ed::greasepencil
 

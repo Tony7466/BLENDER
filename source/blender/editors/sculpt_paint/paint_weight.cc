@@ -1515,7 +1515,7 @@ static bool weight_paint_poll_ex(bContext *C, bool check_tool)
   const Object *ob = CTX_data_active_object(C);
   const ScrArea *area;
 
-  if ((ob != nullptr) && (ob->mode & OB_MODE_WEIGHT_PAINT) && (ob->type != OB_GREASE_PENCIL) &&
+  if ((ob != nullptr) && (ob->mode & OB_MODE_WEIGHT_PAINT) &&
       (BKE_paint_brush(&CTX_data_tool_settings(C)->wpaint->paint) != nullptr) &&
       (area = CTX_wm_area(C)) && (area->spacetype == SPACE_VIEW3D))
   {
