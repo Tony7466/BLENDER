@@ -277,7 +277,7 @@ static void calc_grids(const Sculpt &sd,
 
       float3 avg = smooth::neighbor_coords_average_interior(
           ss, BKE_pbvh_make_vref(grid_verts_start + j));
-      float3 final_co = float3(co) + (avg - float3(co)) * fade;
+      float3 final_co = co + (avg - co) * fade;
       SCULPT_clip(sd, ss, co, final_co);
     }
   }
