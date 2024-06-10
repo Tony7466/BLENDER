@@ -332,11 +332,19 @@ static void create_edit_points_position_and_data(
   const VArray<int8_t> right_handle_types = curves.handle_types_right();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-  auto handle_other_curves = [&](const uint32_t fill_value) {
-    return [&, fill_value](const IndexMask &selection) {
+  const VArray<bool> selection_attr = *curves.attributes().lookup_or_default<bool>(
+      ".selection", bke::AttrDomain::Point, true);
+
+  auto handle_other_curves = [&](const uint32_t fill_value, const bool mark_active) {
+    return [&, fill_value, mark_active](const IndexMask &selection) {
       selection.foreach_index(GrainSize(256), [&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
-        data_dst.slice(points).fill(fill_value);
+        bool is_active = false;
+        if (mark_active) {
+          is_active = array_utils::count_booleans(selection_attr, points) > 0;
+        }
+        uint32_t data_value = fill_value | (is_active ? EDIT_CURVES_ACTIVE_HANDLE : 0u);
+        data_dst.slice(points).fill(data_value);
       });
     };
   };
@@ -345,11 +353,9 @@ static void create_edit_points_position_and_data(
       curves.curve_types(),
       curves.curve_type_counts(),
       curves.curves_range(),
-      handle_other_curves(0),
-      handle_other_curves(0),
+      handle_other_curves(0, false),
+      handle_other_curves(0, false),
       [&](const IndexMask &selection) {
-        const VArray<bool> selection_attr = *curves.attributes().lookup_or_default<bool>(
-            ".selection", bke::AttrDomain::Point, true);
         const VArray<bool> selection_left = *curves.attributes().lookup_or_default<bool>(
             ".selection_handle_left", bke::AttrDomain::Point, true);
         const VArray<bool> selection_right = *curves.attributes().lookup_or_default<bool>(
@@ -368,7 +374,7 @@ static void create_edit_points_position_and_data(
           }
         });
       },
-      handle_other_curves(EDIT_CURVES_NURBS_CONTROL_POINT));
+      handle_other_curves(EDIT_CURVES_NURBS_CONTROL_POINT, true));
 
   if (!bezier_point_count) {
     return;
