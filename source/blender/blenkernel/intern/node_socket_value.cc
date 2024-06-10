@@ -152,9 +152,9 @@ template<typename T> void SocketValueVariant::store_impl(T value)
   }
 #ifdef WITH_OPENVDB
   else if constexpr (std::is_same_v<T, GVolumeGrid>) {
-    const VolumeGridType volume_grid_type = value->grid_type();
-    const std::optional<eNodeSocketDatatype> new_socket_type = grid_type_to_socket_type(
-        volume_grid_type);
+    const std::optional<eNodeSocketDatatype> new_socket_type = value ? grid_type_to_socket_type(
+                                                                           value->grid_type()) :
+                                                                       SOCK_FLOAT;
     BLI_assert(new_socket_type);
     socket_type_ = *new_socket_type;
     kind_ = Kind::Grid;

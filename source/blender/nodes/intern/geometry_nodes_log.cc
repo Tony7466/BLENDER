@@ -158,17 +158,19 @@ GeometryInfoLog::GeometryInfoLog(const bke::GVolumeGrid &grid)
 {
   GridInfo &info = this->grid_info.emplace();
 #ifdef WITH_OPENVDB
-  bke::VolumeTreeAccessToken token;
-  const openvdb::GridBase &vdb_grid = grid->grid(token);
-  const VolumeGridType grid_type = bke::volume_grid::get_type(vdb_grid);
+  if (grid) {
+    bke::VolumeTreeAccessToken token;
+    const openvdb::GridBase &vdb_grid = grid->grid(token);
+    const VolumeGridType grid_type = bke::volume_grid::get_type(vdb_grid);
 
-  GridIsEmptyOp is_empty_op{vdb_grid};
-  if (BKE_volume_grid_type_operation(grid_type, is_empty_op)) {
-    info.is_empty = is_empty_op.result;
+    GridIsEmptyOp is_empty_op{vdb_grid};
+    if (BKE_volume_grid_type_operation(grid_type, is_empty_op)) {
+      info.is_empty = is_empty_op.result;
+      return;
+    }
   }
-  else {
-    info.is_empty = true;
-  }
+
+  info.is_empty = true;
 #else
   UNUSED_VARS(grid);
   info.is_empty = true;
