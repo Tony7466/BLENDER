@@ -93,21 +93,17 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
 
   for (const GizmoInput &gizmo_input : all_gizmo_inputs) {
     const ie::SocketElem gizmo_input_socket_elem{gizmo_input.gizmo_socket, gizmo_input.elem};
-    const ie::PropagationPath propagation_path = ie::find_propagation_path(
-        tree, {gizmo_input.propagation_start_socket, gizmo_input.elem});
+    const ie::LocalInversePropagationPath propagation_path =
+        ie::find_local_inverse_propagation_path(
+            tree, {gizmo_input.propagation_start_socket, gizmo_input.elem});
     const bool has_target = !propagation_path.final_input_sockets.is_empty() ||
                             !propagation_path.final_group_inputs.is_empty() ||
                             !propagation_path.final_value_nodes.is_empty();
     if (!has_target) {
       continue;
     }
-    for (const ie::PropagationPathNode &path_node : propagation_path.nodes.values()) {
-      for (const ie::SocketElem &socket_elem : path_node.inputs) {
-        socket_elem.socket->runtime->has_gizmo2 = true;
-      }
-      for (const ie::SocketElem &socket_elem : path_node.outputs) {
-        socket_elem.socket->runtime->has_gizmo2 = true;
-      }
+    for (const ie::SocketElem &socket_elem : propagation_path.intermediate_sockets) {
+      socket_elem.socket->runtime->has_gizmo2 = true;
     }
     for (const ie::SocketElem &input_socket : propagation_path.final_input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);

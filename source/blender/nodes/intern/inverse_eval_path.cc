@@ -42,13 +42,12 @@ static std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_soc
   return std::nullopt;
 }
 
-PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &initial_socket_elem)
+LocalInversePropagationPath find_local_inverse_propagation_path(
+    const bNodeTree &tree, const SocketElem &initial_socket_elem)
 {
   BLI_assert(!tree.has_available_link_cycle());
 
   tree.ensure_topology_cache();
-
-  PropagationPath propagation_path;
 
   Map<const bNodeSocket *, ElemVariant> elem_by_socket_map;
   Set<const bNodeSocket *> final_sockets;
@@ -138,6 +137,8 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
     }
   }
 
+  LocalInversePropagationPath propagation_path;
+
   for (const bNodeSocket *socket : final_sockets) {
     const bNode &node = socket->owner_node();
     const ElemVariant &elem = elem_by_socket_map.lookup(socket);
@@ -177,14 +178,7 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
   for (auto &&item : elem_by_socket_map.items()) {
     const bNodeSocket &socket = *item.key;
     const ElemVariant &elem = item.value;
-    const bNode &node = socket.owner_node();
-    PropagationPathNode &path_node = propagation_path.nodes.lookup_or_add_default(&node);
-    if (socket.is_input()) {
-      path_node.inputs.append({&socket, elem});
-    }
-    else {
-      path_node.outputs.append({&socket, elem});
-    }
+    propagation_path.intermediate_sockets.append({&socket, elem});
   }
 
   return propagation_path;

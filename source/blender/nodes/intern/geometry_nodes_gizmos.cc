@@ -49,7 +49,7 @@ static bool is_valid_gizmo_link(const bNodeLink &link)
  * Contains the nodes that propagate the gizmo from left-to-right and influence the mapping from
  * gizmo to value changes.
  */
-struct LocalPropagationPath {
+struct LocalInversePropagationPath {
   struct PathElem {
     const bNode *node = nullptr;
     ValueElem elem;
@@ -65,7 +65,7 @@ struct LocalPropagationPath {
 static std::optional<GizmoTarget> find_local_gizmo_target(
     const bNodeSocket &initial_socket,
     const ValueElem &initial_elem,
-    LocalPropagationPath &r_propagation_path,
+    LocalInversePropagationPath &r_propagation_path,
     Vector<const bNodeSocket *, 16> &r_sockets_on_propagation_path)
 {
   const bNodeSocket *current_socket = &initial_socket;
@@ -225,7 +225,7 @@ static void propagate_gizmos_from_builtin_nodes(GizmoPropagationResult &result,
         if (!is_valid_gizmo_link(*link)) {
           continue;
         }
-        LocalPropagationPath propagation_path;
+        LocalInversePropagationPath propagation_path;
         Vector<const bNodeSocket *, 16> sockets_on_propagation_path;
         if (std::optional<GizmoTarget> gizmo_target = find_local_gizmo_target(
                 *link->fromsock, ValueElem{}, propagation_path, sockets_on_propagation_path))
@@ -275,7 +275,7 @@ static void propagate_gizmos_from_group_nodes(GizmoPropagationResult &result,
       const bNodeSocket &input_socket = group_node->input_socket(group_input_ref.input_index);
       const InputSocketRef gizmo_input{&input_socket, group_input_ref.elem};
 
-      LocalPropagationPath propagation_path;
+      LocalInversePropagationPath propagation_path;
       Vector<const bNodeSocket *, 16> sockets_on_propagation_path;
       if (const std::optional<GizmoTarget> gizmo_target_opt = find_local_gizmo_target(
               input_socket, group_input_ref.elem, propagation_path, sockets_on_propagation_path))
@@ -557,7 +557,7 @@ static std::optional<GizmoTarget> find_propagated_gizmo_target_recursive(
     const ComputeContext &compute_context,
     PropagationPath &r_path)
 {
-  LocalPropagationPath local_propagation_path;
+  LocalInversePropagationPath local_propagation_path;
   Vector<const bNodeSocket *, 16> sockets_on_propagation_path;
   std::optional<GizmoTarget> gizmo_target_opt = find_local_gizmo_target(
       gizmo_socket, elem, local_propagation_path, sockets_on_propagation_path);
@@ -565,7 +565,8 @@ static std::optional<GizmoTarget> find_propagated_gizmo_target_recursive(
     return std::nullopt;
   }
 
-  for (const LocalPropagationPath::PathElem &local_path_elem : local_propagation_path.path) {
+  for (const LocalInversePropagationPath::PathElem &local_path_elem : local_propagation_path.path)
+  {
     r_path.path.append({local_path_elem.node, local_path_elem.elem, &compute_context});
   }
 

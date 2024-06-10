@@ -8,19 +8,15 @@
 
 namespace blender::nodes::inverse_eval {
 
-struct PropagationPathNode {
-  Vector<SocketElem> inputs;
-  Vector<SocketElem> outputs;
-};
+struct LocalInversePropagationPath {
+  Vector<SocketElem> intermediate_sockets;
 
-struct PropagationPath {
-  Map<const bNode *, PropagationPathNode> nodes;
   Vector<SocketElem> final_input_sockets;
   Vector<GroupInputElem> final_group_inputs;
   Vector<ValueNodeElem> final_value_nodes;
 };
 
-PropagationPath find_propagation_path(const bNodeTree &tree,
-                                      const SocketElem &initial_socket_elem);
+LocalInversePropagationPath find_local_inverse_propagation_path(
+    const bNodeTree &tree, const SocketElem &initial_socket_elem);
 
 }  // namespace blender::nodes::inverse_eval
