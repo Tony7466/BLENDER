@@ -56,8 +56,8 @@
     .fisheye_polynomial_k4 = -2.6064646454854524e-08f,\
     .central_cylindrical_range_u_min = DEG2RADF(-180.0f),\
     .central_cylindrical_range_u_max = DEG2RADF(180.0f),\
-    .central_cylindrical_range_v_min = -1f,\
-    .central_cylindrical_range_v_max = 1f,\
+    .central_cylindrical_range_v_min = -1.0f,\
+    .central_cylindrical_range_v_max = 1.0f,\
  \
     .dof = _DNA_DEFAULT_CameraDOFSettings, \
  \
