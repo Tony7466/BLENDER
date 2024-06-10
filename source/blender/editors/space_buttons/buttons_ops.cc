@@ -29,6 +29,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ED_buttons.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
@@ -37,6 +38,8 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "ANIM_action.hh"
 
 #include "buttons_intern.hh" /* own include */
 
@@ -438,6 +441,64 @@ void BUTTONS_OT_directory_browse(wmOperatorType *ot)
                                  WM_FILESEL_DIRECTORY | WM_FILESEL_RELPATH,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Action Selector Operators
+ * \{ */
+
+static int action_binding_new_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+
+  SpaceProperties *space = CTX_wm_space_properties(C);
+  ID *id = ED_buttons_context_id_path(space);
+
+  if (!id) {
+    BKE_reportf(op->reports, RPT_ERROR, "Unknown which data-block owns these Properties");
+    return OPERATOR_CANCELLED;
+  }
+
+  animrig::Action *action = animrig::get_animation(*id);
+  if (!action) {
+    BKE_reportf(op->reports,
+                RPT_ERROR,
+                "%s has no Action assigned, cannot add a new Binding",
+                id->name + 2);
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Create a new Binding and immediately assign it so that it's visible. */
+  animrig::Binding &binding = action->binding_add_for_id(*id);
+  if (!action->assign_id(&binding, *id)) {
+    BKE_reportf(
+        op->reports,
+        RPT_ERROR,
+        "Could not assign the newly created Binding on Action %s to %s, please file a bug report",
+        action->id.name + 2,
+        id->name + 2);
+    /* Need to return OPERATOR_FINISHED to ensure an undo step is created, as
+     * the binding was still created. */
+    return OPERATOR_FINISHED;
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void BUTTONS_OT_action_binding_new(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "New Binding";
+  ot->description = "Create a new Binding on this Action for this data-block";
+  ot->idname = "BUTTONS_OT_action_binding_new";
+
+  /* Callbacks. */
+  ot->exec = action_binding_new_exec;
+  ot->poll = ED_operator_buttons_active;
+
+  ot->flag = OPTYPE_UNDO;
 }
 
 /** \} */

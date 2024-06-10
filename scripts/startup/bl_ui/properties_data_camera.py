@@ -253,7 +253,7 @@ class DATA_PT_camera_animation(CameraButtonsPanel, Panel):
             col.template_search(
                 adt, "action_binding",
                 adt, "action_bindings",
-                new="",
+                new="buttons.action_binding_new",
                 unlink="",
             )
 

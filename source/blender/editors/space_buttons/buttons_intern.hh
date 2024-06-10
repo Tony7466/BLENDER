@@ -106,3 +106,5 @@ void BUTTONS_OT_file_browse(wmOperatorType *ot);
  */
 void BUTTONS_OT_directory_browse(wmOperatorType *ot);
 void BUTTONS_OT_context_menu(wmOperatorType *ot);
+
+void BUTTONS_OT_action_binding_new(wmOperatorType *ot);
