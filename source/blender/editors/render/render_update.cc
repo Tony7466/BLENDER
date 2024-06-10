@@ -144,6 +144,13 @@ void ED_render_scene_update(const DEGEditorUpdateContext *update_ctx, const bool
       if (area->spacetype == SPACE_VIEW3D) {
         ED_render_view3d_update(update_ctx->depsgraph, window, area, updated);
       }
+
+      if (area->spacetype == SPACE_NODE) {
+        if (DEG_id_type_updated(update_ctx->depsgraph, ID_OB)) {
+          SpaceNode *space_node = static_cast<SpaceNode *>(area->spacedata.first);
+          ED_node_area_tag_auto_render(space_node, area);
+        }
+      }
     }
   }
 

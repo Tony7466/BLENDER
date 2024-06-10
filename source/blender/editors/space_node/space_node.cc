@@ -236,6 +236,18 @@ void ED_node_cursor_location_set(SpaceNode *snode, const float value[2])
   copy_v2_v2(snode->runtime->cursor, value);
 }
 
+void ED_node_area_tag_auto_render(SpaceNode *snode, ScrArea *area)
+{
+  if (!ED_node_is_compositor(snode)) {
+    return;
+  }
+
+  if (snode->flag & SNODE_AUTO_RENDER) {
+    snode->runtime->recalc_auto_compositing = true;
+    ED_area_tag_refresh(area);
+  }
+}
+
 namespace blender::ed::space_node {
 
 float2 space_node_group_offset(const SpaceNode &snode)
@@ -492,24 +504,6 @@ static bool any_node_uses_id(const bNodeTree *ntree, const ID *id)
 }
 
 /**
- * Tag the space to recalculate the compositing tree using auto-compositing pipeline.
- *
- * Will check the space to be using a compositing tree, and check whether auto-compositing
- * is enabled. If the checks do not pass then the function has no affect.
- */
-static void node_area_tag_recalc_auto_compositing(SpaceNode *snode, ScrArea *area)
-{
-  if (!ED_node_is_compositor(snode)) {
-    return;
-  }
-
-  if (snode->flag & SNODE_AUTO_RENDER) {
-    snode->runtime->recalc_auto_compositing = true;
-    ED_area_tag_refresh(area);
-  }
-}
-
-/**
  * Tag the space to recalculate the current tree.
  *
  * For all node trees this will do `snode_set_context()` which takes care of setting an active
@@ -562,9 +556,6 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
           WM_gizmomap_tag_refresh(region->gizmo_map);
           break;
         }
-        case ND_TRANSFORM_DONE:
-          node_area_tag_recalc_auto_compositing(snode, area);
-          break;
       }
       break;
 

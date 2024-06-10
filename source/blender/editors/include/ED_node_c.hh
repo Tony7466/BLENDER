@@ -12,6 +12,7 @@ struct ARegion;
 struct ID;
 struct Main;
 struct Scene;
+struct ScrArea;
 struct SpaceNode;
 struct Tex;
 struct View2D;
@@ -50,6 +51,14 @@ void ED_node_cursor_location_get(const SpaceNode *snode, float value[2]);
 void ED_node_cursor_location_set(SpaceNode *snode, const float value[2]);
 
 int ED_node_tree_path_length(SpaceNode *snode);
+
+/**
+ * Tag the space to recalculate the compositing tree using auto-render pipeline.
+ *
+ * Will check the space to be using a compositing tree, and check whether auto-render is enabled.
+ * If the checks do not pass then the function has no affect. */
+void ED_node_area_tag_auto_render(SpaceNode *snode, ScrArea *area);
+
 /**
  * \param value: The path output at least the size of `ED_node_tree_path_length(snode) + 1`.
  */
