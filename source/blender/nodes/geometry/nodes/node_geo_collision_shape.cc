@@ -236,18 +236,18 @@ static bke::CollisionShape *make_collision_shape_from_type(
       return nullptr;
     }
     case ShapeType::Capsule: {
-      const float height = params.extract_input<float>("Radius");
-      const float radius = params.extract_input<float>("Height");
+      const float radius = params.extract_input<float>("Radius");
+      const float height = params.extract_input<float>("Height");
       return new bke::CapsuleCollisionShape(radius, height);
     }
     case ShapeType::Cone: {
-      const float height = params.extract_input<float>("Radius");
-      const float radius = params.extract_input<float>("Height");
+      const float radius = params.extract_input<float>("Radius");
+      const float height = params.extract_input<float>("Height");
       return new bke::ConeCollisionShape(radius, height);
     }
     case ShapeType::Cylinder: {
-      const float height = params.extract_input<float>("Radius");
-      const float radius = params.extract_input<float>("Height");
+      const float radius = params.extract_input<float>("Radius");
+      const float height = params.extract_input<float>("Height");
       return new bke::CylinderCollisionShape(radius, height);
     }
     case ShapeType::UniformScaling: {
