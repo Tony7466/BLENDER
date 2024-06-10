@@ -61,7 +61,7 @@ void ConstantFolder::make_constant(int value) const
              << ").";
 
   foreach (ShaderInput *sock, output->links) {
-    sock->set_int(value);
+    sock->set(value);
     sock->constant_folded_in = true;
   }
 
