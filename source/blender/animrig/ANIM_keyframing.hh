@@ -128,13 +128,13 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
  * that if you have an `ID` and want to pass it here for keying, you can create
  * the `PointerRNA` for it with `RNA_id_pointer_create()`.
  *
+ * \param channel_group: the channel group to put any newly created fcurves
+ * under. If not given, the standard groups are used.
+ *
  * \param rna_paths: the RNA paths to key. These paths are relative to
  * `struct_pointer`. Note that for paths to array properties, if the array index
  * is specified then only that element is keyed, but if the index is not
  * specified then *all* array elements are keyed.
- *
- * \param channel_group: the channel group to put any newly created fcurves
- * under. If not given, the standard groups are used.
  *
  * \param scene_frame: the frame to insert the keys at. This is in scene time,
  * not NLA mapped (NLA mapping is already handled internally by this function).
@@ -145,8 +145,8 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
  */
 CombinedKeyingResult insert_keyframes(Main *bmain,
                                       PointerRNA *struct_pointer,
-                                      const blender::Span<RNAPath> rna_paths,
                                       std::optional<StringRefNull> channel_group,
+                                      const blender::Span<RNAPath> rna_paths,
                                       std::optional<float> scene_frame,
                                       const AnimationEvalContext &anim_eval_context,
                                       eBezTriple_KeyframeType key_type,

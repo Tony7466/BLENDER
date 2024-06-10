@@ -212,8 +212,8 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
         PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
         CombinedKeyingResult result = insert_keyframes(ac->bmain,
                                                        &id_rna_pointer,
-                                                       {{fcu->rna_path, {}, fcu->array_index}},
                                                        channel_group,
+                                                       {{fcu->rna_path, {}, fcu->array_index}},
                                                        std::nullopt,
                                                        anim_eval_context,
                                                        eBezTriple_KeyframeType(ts->keyframe_type),

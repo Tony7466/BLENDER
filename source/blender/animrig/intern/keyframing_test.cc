@@ -142,8 +142,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   object->empty_drawsize = 42.0;
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -189,8 +189,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   object->empty_drawsize = 86.0;
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -204,8 +204,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   object->empty_drawsize = 7.0;
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -229,8 +229,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__single_element)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_rna_pointer,
-                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        std::nullopt,
+                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -262,8 +262,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__all_elements)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_rna_pointer,
-                                                       {{"rotation_euler"}},
                                                        std::nullopt,
+                                                       {{"rotation_euler"}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -300,8 +300,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__pose_bone_rna_pointer)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &pose_bone_rna_pointer,
-                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        std::nullopt,
+                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -334,8 +334,8 @@ TEST_F(KeyframingTest, insert_keyframes__pose_bone_owner_id_pointer)
   const CombinedKeyingResult result = insert_keyframes(
       bmain,
       &armature_object_rna_pointer,
-      {{"pose.bones[\"Bone\"].rotation_euler", std::nullopt, 0}},
       std::nullopt,
+      {{"pose.bones[\"Bone\"].rotation_euler", std::nullopt, 0}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -367,13 +367,13 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_properties)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_rna_pointer,
+                                                       std::nullopt,
                                                        {
                                                            {"empty_display_size"},
                                                            {"location"},
                                                            {"rotation_euler", std::nullopt, 0},
                                                            {"rotation_euler", std::nullopt, 2},
                                                        },
-                                                       std::nullopt,
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -411,8 +411,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
   /* First object should crate the action and get a binding and channel bag. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -447,8 +447,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
    * binding and channel bag. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &armature_object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -475,8 +475,8 @@ TEST_F(KeyframingTest, insert_keyframes__baklava_legacy_action)
   /* Insert a key with the experimental flag off to create a legacy action. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -496,8 +496,8 @@ TEST_F(KeyframingTest, insert_keyframes__baklava_legacy_action)
    * action, not a layered action. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"location"}},
                                                          std::nullopt,
+                                                         {{"location"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -522,8 +522,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
   /* First attempt should fail, because there are no fcurves yet. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -551,11 +551,11 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
    * will be two fcurves. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
+                                                         std::nullopt,
                                                          {
                                                              {"rotation_euler", std::nullopt, 0},
                                                              {"rotation_euler", std::nullopt, 2},
                                                          },
-                                                         std::nullopt,
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -568,8 +568,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
    * now have fcurves. */
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -596,8 +596,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
   object->rot[2] = 42.0;
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -608,11 +608,11 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
    * one key each. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
+                                                         std::nullopt,
                                                          {
                                                              {"rotation_euler", std::nullopt, 0},
                                                              {"rotation_euler", std::nullopt, 2},
                                                          },
-                                                         std::nullopt,
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -645,8 +645,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
   object->rot[2] = 86.0;
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          5.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -664,8 +664,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
    * the existing key on each fcurve. */
   const CombinedKeyingResult result_4 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -692,8 +692,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
   /* First attempt should succeed, because there are no fcurves yet. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -721,8 +721,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
    * property, but its value matches the current property value. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -739,8 +739,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
   object->rot[2] = 123.0;
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -767,8 +767,8 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
   object->empty_drawsize = 42.0;
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -789,8 +789,8 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
   object->empty_drawsize = 86.0;
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -804,8 +804,8 @@ TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
   object->empty_drawsize = 7.0;
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"empty_display_size"}},
                                                          std::nullopt,
+                                                         {{"empty_display_size"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -828,8 +828,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__optional_frame)
   object->rotmode = ROT_MODE_XYZ;
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_mode"}},
                                                          std::nullopt,
+                                                         {{"rotation_mode"}},
                                                          std::nullopt,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -843,8 +843,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__optional_frame)
   object->rotmode = ROT_MODE_QUAT;
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_mode"}},
                                                          std::nullopt,
+                                                         {{"rotation_mode"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -865,8 +865,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__optional_channel_group)
   const CombinedKeyingResult result_1 = insert_keyframes(
       bmain,
       &object_rna_pointer,
-      {{"location", std::nullopt, 0}, {"visible_shadow"}},
       std::nullopt,
+      {{"location", std::nullopt, 0}, {"visible_shadow"}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -887,8 +887,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__optional_channel_group)
   const CombinedKeyingResult result_2 = insert_keyframes(
       bmain,
       &object_rna_pointer,
-      {{"location", std::nullopt, 1}, {"hide_render"}},
       "Foo",
+      {{"location", std::nullopt, 1}, {"hide_render"}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -911,8 +911,8 @@ TEST_F(KeyframingTest, insert_keyframes__single_element)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_rna_pointer,
-                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        std::nullopt,
+                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -932,8 +932,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__all_elements)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_rna_pointer,
-                                                       {{"rotation_euler"}},
                                                        std::nullopt,
+                                                       {{"rotation_euler"}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -958,8 +958,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__pose_bone_rna_pointer)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &pose_bone_rna_pointer,
-                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        std::nullopt,
+                                                       {{"rotation_euler", std::nullopt, 0}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -982,8 +982,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__pose_bone_owner_id_point
   const CombinedKeyingResult result = insert_keyframes(
       bmain,
       &armature_object_rna_pointer,
-      {{"pose.bones[\"Bone\"].rotation_euler", std::nullopt, 0}},
       std::nullopt,
+      {{"pose.bones[\"Bone\"].rotation_euler", std::nullopt, 0}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -1007,13 +1007,13 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__multiple_properties)
 
       insert_keyframes(bmain,
                        &object_rna_pointer,
+                       std::nullopt,
                        {
                            {"empty_display_size"},
                            {"location"},
                            {"rotation_euler", std::nullopt, 0},
                            {"rotation_euler", std::nullopt, 2},
                        },
-                       std::nullopt,
                        1.0,
                        anim_eval_context,
                        BEZT_KEYTYPE_KEYFRAME,
@@ -1039,8 +1039,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_available)
   /* First attempt should fail, because there are no fcurves yet. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1060,11 +1060,11 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_available)
    * will be two fcurves. */
   insert_keyframes(bmain,
                    &object_rna_pointer,
+                   std::nullopt,
                    {
                        {"rotation_euler", std::nullopt, 0},
                        {"rotation_euler", std::nullopt, 2},
                    },
-                   std::nullopt,
                    1.0,
                    anim_eval_context,
                    BEZT_KEYTYPE_KEYFRAME,
@@ -1074,8 +1074,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_available)
    * now have fcurves. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1098,8 +1098,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_replace)
   object->rot[2] = 42.0;
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1110,11 +1110,11 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_replace)
    * one key each. */
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
+                                                         std::nullopt,
                                                          {
                                                              {"rotation_euler", std::nullopt, 0},
                                                              {"rotation_euler", std::nullopt, 2},
                                                          },
-                                                         std::nullopt,
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1143,8 +1143,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_replace)
   object->rot[2] = 86.0;
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          5.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1162,8 +1162,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_replace)
    * the existing key on each fcurve. */
   const CombinedKeyingResult result_4 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1186,8 +1186,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_needed)
   /* First attempt should succeed, because there are no fcurves yet. */
   const CombinedKeyingResult result_1 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          1.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1209,8 +1209,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_needed)
   anim_eval_context.eval_time = 10.0;
   const CombinedKeyingResult result_2 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1228,8 +1228,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__only_needed)
   object->rot[2] = 123.0;
   const CombinedKeyingResult result_3 = insert_keyframes(bmain,
                                                          &object_rna_pointer,
-                                                         {{"rotation_euler"}},
                                                          std::nullopt,
+                                                         {{"rotation_euler"}},
                                                          10.0,
                                                          anim_eval_context,
                                                          BEZT_KEYTYPE_KEYFRAME,
@@ -1250,8 +1250,8 @@ TEST_F(KeyframingTest, insert_keyframes__nla_time_remapping)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_with_nla_rna_pointer,
-                                                       {{"location", std::nullopt, 0}},
                                                        std::nullopt,
+                                                       {{"location", std::nullopt, 0}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -1282,8 +1282,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla)
 
   const CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &object_with_nla_rna_pointer,
-                                                       {{"rotation_quaternion", std::nullopt, 0}},
                                                        std::nullopt,
+                                                       {{"rotation_quaternion", std::nullopt, 0}},
                                                        1.0,
                                                        anim_eval_context,
                                                        BEZT_KEYTYPE_KEYFRAME,
@@ -1305,8 +1305,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   const CombinedKeyingResult result_1 = insert_keyframes(
       bmain,
       &object_with_nla_rna_pointer,
-      {{"rotation_quaternion", std::nullopt, 0}},
       std::nullopt,
+      {{"rotation_quaternion", std::nullopt, 0}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -1324,8 +1324,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   const CombinedKeyingResult result_2 = insert_keyframes(
       bmain,
       &object_with_nla_rna_pointer,
-      {{"rotation_quaternion", std::nullopt, 0}},
       std::nullopt,
+      {{"rotation_quaternion", std::nullopt, 0}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -1345,8 +1345,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   const CombinedKeyingResult result_1 = insert_keyframes(
       bmain,
       &object_with_nla_rna_pointer,
-      {{"rotation_quaternion", std::nullopt, 0}},
       std::nullopt,
+      {{"rotation_quaternion", std::nullopt, 0}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -1365,8 +1365,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   const CombinedKeyingResult result_2 = insert_keyframes(
       bmain,
       &object_with_nla_rna_pointer,
-      {{"rotation_quaternion", std::nullopt, 0}},
       std::nullopt,
+      {{"rotation_quaternion", std::nullopt, 0}},
       5.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,
@@ -1380,8 +1380,8 @@ TEST_F(KeyframingTest, insert_keyframes__legacy_action__quaternion_on_nla__only_
   const CombinedKeyingResult result_3 = insert_keyframes(
       bmain,
       &object_with_nla_rna_pointer,
-      {{"rotation_quaternion", std::nullopt, 0}},
       std::nullopt,
+      {{"rotation_quaternion", std::nullopt, 0}},
       1.0,
       anim_eval_context,
       BEZT_KEYTYPE_KEYFRAME,

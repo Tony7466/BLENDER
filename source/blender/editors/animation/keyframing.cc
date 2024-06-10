@@ -404,8 +404,8 @@ static int insert_key(bContext *C, wmOperator *op)
 
     combined_result.merge(animrig::insert_keyframes(bmain,
                                                     &id_ptr,
-                                                    rna_paths.as_span(),
                                                     std::nullopt,
+                                                    rna_paths.as_span(),
                                                     scene_frame,
                                                     anim_eval_context,
                                                     key_type,
@@ -1036,8 +1036,8 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         PointerRNA owner_ptr = RNA_id_pointer_create(ptr.owner_id);
         CombinedKeyingResult result = insert_keyframes(bmain,
                                                        &owner_ptr,
-                                                       {{*path, {}, array_index}},
                                                        group,
+                                                       {{*path, {}, array_index}},
                                                        std::nullopt,
                                                        anim_eval_context,
                                                        eBezTriple_KeyframeType(ts->keyframe_type),
