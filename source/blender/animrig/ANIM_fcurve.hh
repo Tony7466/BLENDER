@@ -41,7 +41,9 @@ KeyframeSettings get_keyframe_settings(bool from_userprefs);
 /**
  * Create an fcurve for a specific channel, pre-set-up with default flags and interpolation mode.
  */
-FCurve *create_fcurve_for_channel(StringRef rna_path, int array_index);
+FCurve *create_fcurve_for_channel(StringRef rna_path,
+                                  int array_index,
+                                  std::optional<PropertySubType> prop_subtype);
 
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,

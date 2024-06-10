@@ -869,31 +869,6 @@ FCurve *KeyframeStrip::fcurve_find(const Binding &binding,
   return nullptr;
 }
 
-/* Returns the appropriate fcurve color mode for the given property subtype,
- * accounting for user preferences. */
-static eFCurve_Coloring fcurve_color_for_property_subtype(
-    const std::optional<PropertySubType> prop_subtype)
-{
-  if ((U.keying_flag & KEYING_FLAG_XYZ2RGB) == 0 || !prop_subtype.has_value()) {
-    return FCURVE_COLOR_AUTO_RAINBOW;
-  }
-
-  switch (*prop_subtype) {
-    case PROP_TRANSLATION:
-    case PROP_XYZ:
-    case PROP_EULER:
-    case PROP_COLOR:
-    case PROP_COORDS:
-      return FCURVE_COLOR_AUTO_RGB;
-
-    case PROP_QUATERNION:
-      return FCURVE_COLOR_AUTO_YRGB;
-
-    default:
-      return FCURVE_COLOR_AUTO_RAINBOW;
-  }
-}
-
 FCurve &KeyframeStrip::fcurve_find_or_create(const Binding &binding,
                                              const StringRefNull rna_path,
                                              const int array_index,
@@ -903,8 +878,7 @@ FCurve &KeyframeStrip::fcurve_find_or_create(const Binding &binding,
     return *existing_fcurve;
   }
 
-  FCurve *new_fcurve = create_fcurve_for_channel(rna_path.c_str(), array_index);
-  new_fcurve->color_mode = fcurve_color_for_property_subtype(prop_subtype);
+  FCurve *new_fcurve = create_fcurve_for_channel(rna_path.c_str(), array_index, prop_subtype);
 
   ChannelBag *channels = this->channelbag_for_binding(binding);
   if (channels == nullptr) {
@@ -1101,24 +1075,23 @@ FCurve *action_fcurve_ensure(Main *bmain,
     return fcu;
   }
 
-  fcu = create_fcurve_for_channel(rna_path, array_index);
-
-  if (BLI_listbase_is_empty(&act->curves)) {
-    fcu->flag |= FCURVE_ACTIVE;
-  }
-
+  /* Determine the property subtype if we can. */
+  std::optional<PropertySubType> prop_subtype = std::nullopt;
   if (ptr != nullptr) {
-    /* For Loc/Rot/Scale and also Color F-Curves, the color of the F-Curve in the Graph Editor,
-     * is determined by the array index for the F-Curve.
-     */
     PropertyRNA *resolved_prop;
     PointerRNA resolved_ptr;
     PointerRNA id_ptr = RNA_id_pointer_create(ptr->owner_id);
     const bool resolved = RNA_path_resolve_property(
         &id_ptr, rna_path, &resolved_ptr, &resolved_prop);
     if (resolved) {
-      fcu->color_mode = fcurve_color_for_property_subtype(RNA_property_subtype(resolved_prop));
+      prop_subtype = RNA_property_subtype(resolved_prop);
     }
+  }
+
+  fcu = create_fcurve_for_channel(rna_path, array_index, prop_subtype);
+
+  if (BLI_listbase_is_empty(&act->curves)) {
+    fcu->flag |= FCURVE_ACTIVE;
   }
 
   if (group) {
