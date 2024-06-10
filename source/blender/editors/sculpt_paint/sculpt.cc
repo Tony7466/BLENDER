@@ -3832,7 +3832,14 @@ static void do_brush_action(const Sculpt &sd,
       }
       break;
     case SCULPT_TOOL_MASK:
-      SCULPT_do_mask_brush(sd, ob, nodes);
+      switch ((BrushMaskTool)brush.mask_tool) {
+        case BRUSH_MASK_DRAW:
+          ed::sculpt_paint::do_mask_brush(sd, ob, nodes);
+          break;
+        case BRUSH_MASK_SMOOTH:
+          smooth::do_smooth_mask_brush(sd, ob, nodes, ss.cache->bstrength);
+          break;
+      }
       break;
     case SCULPT_TOOL_POSE:
       pose::do_pose_brush(sd, ob, nodes);

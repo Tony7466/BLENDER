@@ -34,6 +34,7 @@ struct Sculpt;
 struct SculptSession;
 
 namespace blender::ed::sculpt_paint {
+struct StrokeCache;
 
 namespace auto_mask {
 struct Cache;
