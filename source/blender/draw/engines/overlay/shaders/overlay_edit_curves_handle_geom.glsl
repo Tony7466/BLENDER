@@ -41,7 +41,7 @@ void main()
 {
   bool showCurveHandles = true;
   uint curveHandleDisplay = CURVE_HANDLE_ALL;
-    
+
   vec4 v1 = gl_in[0].gl_Position;
   vec4 v2 = gl_in[1].gl_Position;
 
@@ -54,7 +54,8 @@ void main()
   }
 
   bool handle_selected = (showCurveHandles &&
-   ((vert[0].flag & (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
+                          ((vert[0].flag &
+                            (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
 
   /* If handle type is only selected and the edge is not selected, don't show. */
   if ((uint(curveHandleDisplay) != CURVE_HANDLE_ALL) && (!handle_selected)) {
@@ -71,12 +72,16 @@ void main()
     inner_color[1] = get_bezier_handle_color(color_id, vert[1].selection);
   }
   else if ((vert[0].flag & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u) {
-    inner_color[0] = mix(globalsBlock.color_nurb_uline, globalsBlock.color_nurb_sel_uline, vert[0].selection);
-    inner_color[1] = mix(globalsBlock.color_nurb_uline, globalsBlock.color_nurb_sel_uline, vert[1].selection);
+    inner_color[0] = mix(
+        globalsBlock.color_nurb_uline, globalsBlock.color_nurb_sel_uline, vert[0].selection);
+    inner_color[1] = mix(
+        globalsBlock.color_nurb_uline, globalsBlock.color_nurb_sel_uline, vert[1].selection);
   }
   else {
-    inner_color[0] = mix(globalsBlock.color_wire, globalsBlock.color_vertex_select, vert[0].selection);
-    inner_color[1] = mix(globalsBlock.color_wire, globalsBlock.color_vertex_select, vert[1].selection);
+    inner_color[0] = mix(
+        globalsBlock.color_wire, globalsBlock.color_vertex_select, vert[0].selection);
+    inner_color[1] = mix(
+        globalsBlock.color_wire, globalsBlock.color_vertex_select, vert[1].selection);
   }
 
   vec4 outer_color[2];
@@ -87,7 +92,8 @@ void main()
     outer_color[1] = mix(colorActiveSpline,
                          inner_color[1],
                          0.25); /* Minimize active color bleeding on inner_color. */
-  } else {
+  }
+  else {
     outer_color[0] = vec4(inner_color[0].rgb, 0.0);
     outer_color[1] = vec4(inner_color[1].rgb, 0.0);
   }

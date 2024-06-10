@@ -63,7 +63,7 @@ void main()
   for (int i = 0; i < 2; i++) {
     in_pos[i] = vertex_fetch_attribute((input_line_id * 2) + i, pos, vec3).xyz;
     vert_flag[i] = (uint)vertex_fetch_attribute((input_line_id * 2) + i, data, uchar);
-    vert_selection[i] = (float) vertex_fetch_attribute((input_line_id * 2) + i, selection, float);
+    vert_selection[i] = (float)vertex_fetch_attribute((input_line_id * 2) + i, selection, float);
     world_pos[i] = point_object_to_world(in_pos[i]);
     ndc_pos[i] = point_world_to_ndc(world_pos[i]);
   }
@@ -78,7 +78,9 @@ void main()
     return;
   }
 
-  bool handle_selected = (showCurveHandles && ((vert_flag[0] & (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
+  bool handle_selected = (showCurveHandles &&
+                          ((vert_flag[0] &
+                            (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
 
   /* If handle type is only selected and the edge is not selected, don't show. */
   if ((uint(curveHandleDisplay) != CURVE_HANDLE_ALL) && (!handle_selected)) {
@@ -94,10 +96,13 @@ void main()
     inner_color = get_bezier_handle_color(color_id, vert_selection[line_end_point]);
   }
   else if ((vert_flag[line_end_point] & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u) {
-    inner_color = mix(globalsBlock.color_nurb_uline, globalsBlock.color_nurb_sel_uline, vert_selection[line_end_point]);
+    inner_color = mix(globalsBlock.color_nurb_uline,
+                      globalsBlock.color_nurb_sel_uline,
+                      vert_selection[line_end_point]);
   }
   else {
-    inner_color = mix(globalsBlock.color_wire, globalsBlock.color_vertex_select, vert_selection[line_end_point]);
+    inner_color = mix(
+        globalsBlock.color_wire, globalsBlock.color_vertex_select, vert_selection[line_end_point]);
   }
 
   vec4 outer_color = (is_active_nurb != 0u) ?
