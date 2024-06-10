@@ -114,8 +114,7 @@ static void buttons_init(wmWindowManager * /*wm*/, ScrArea *area)
 
   if (sbuts->runtime == nullptr) {
     sbuts->runtime = static_cast<SpaceProperties_Runtime *>(
-        MEM_mallocN(sizeof(SpaceProperties_Runtime), __func__));
-    sbuts->runtime->search_string[0] = '\0';
+        MEM_callocN(sizeof(SpaceProperties_Runtime), __func__));
     sbuts->runtime->tab_search_results = BLI_BITMAP_NEW(BCONTEXT_TOT * 2, __func__);
   }
 }
@@ -130,6 +129,7 @@ static SpaceLink *buttons_duplicate(SpaceLink *sl)
   sbutsn->texuser = nullptr;
   if (sfile_old->runtime != nullptr) {
     sbutsn->runtime = static_cast<SpaceProperties_Runtime *>(MEM_dupallocN(sfile_old->runtime));
+    sbutsn->runtime->action = nullptr;
     sbutsn->runtime->search_string[0] = '\0';
     sbutsn->runtime->tab_search_results = BLI_BITMAP_NEW(BCONTEXT_TOT, __func__);
   }
@@ -331,6 +331,15 @@ void ED_buttons_search_string_set(SpaceProperties *sbuts, const char *value)
 bool ED_buttons_tab_has_search_result(SpaceProperties *sbuts, const int index)
 {
   return BLI_BITMAP_TEST(sbuts->runtime->tab_search_results, index);
+}
+
+bAction *ED_buttons_action_get(SpaceProperties *sbuts)
+{
+  return sbuts->runtime->action;
+}
+void ED_buttons_action_set(SpaceProperties *sbuts, bAction *action)
+{
+  sbuts->runtime->action = action;
 }
 
 /** \} */

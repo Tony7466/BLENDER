@@ -1284,6 +1284,11 @@ void buttons_context_register(ARegionType *art)
 ID *buttons_context_id_path(const bContext *C)
 {
   SpaceProperties *sbuts = CTX_wm_space_properties(C);
+  return ED_buttons_context_id_path(sbuts);
+}
+
+ID *ED_buttons_context_id_path(SpaceProperties *sbuts)
+{
   ButsContextPath *path = static_cast<ButsContextPath *>(sbuts->path);
 
   if (path->len == 0) {

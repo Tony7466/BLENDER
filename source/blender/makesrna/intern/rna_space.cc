@@ -584,6 +584,8 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "UI_interface.hh"
 #  include "UI_view2d.hh"
 
+#  include "ANIM_action.hh"
+
 static StructRNA *rna_Space_refine(PointerRNA *ptr)
 {
   SpaceLink *space = (SpaceLink *)ptr->data;
@@ -2130,6 +2132,121 @@ static void rna_SpaceProperties_search_filter_update(Main * /*bmain*/,
   BLI_assert(main_region != nullptr);
   ED_region_search_filter_update(area, main_region);
 }
+
+#  ifdef WITH_ANIM_BAKLAVA
+static PointerRNA rna_SpacePropertiesEditor_action_get(PointerRNA *ptr)
+{
+  using namespace blender;
+
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  ID *id = ED_buttons_context_id_path(space);
+
+  /* Note that this code does not call ED_buttons_action_get(). That would get
+   * the runtime value that is stored on the SpaceProperties, which is only
+   * there to communicate between the RNA setter and the RNA update callback.
+   *
+   * The code below actually returns the Action pointer that should be the value
+   * of this RNA property. */
+  bAction *action = nullptr;
+  if (id) {
+    action = animrig::get_animation(*id);
+  }
+
+  if (!action) {
+    return PointerRNA_NULL;
+  }
+  return rna_pointer_inherit_refine(ptr, &RNA_Action, action);
+}
+
+static void rna_SpacePropertiesEditor_action_set(PointerRNA *ptr,
+                                                 PointerRNA value,
+                                                 ReportList * /*reports*/)
+{
+  using namespace blender;
+
+  /* TODO: unify this function with rna_SpaceDopesheetEditor_action_set(). */
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  bAction *dna_action = (bAction *)value.data;
+
+  const ID *animated_id = ED_buttons_context_id_path(space);
+  if (!animated_id) {
+    /* Nothing to assign to, which is weird. */
+    BLI_assert_unreachable();
+    return;
+  }
+
+  if (animrig::is_action_assignable_to(dna_action, GS(animated_id->name))) {
+    ED_buttons_action_set(space, dna_action);
+    return;
+  }
+
+  BLI_assert(dna_action); /* nullptr can always be assigned, and thus the above
+                             animrig::is_action_assignable_to() call would have returned `true`. */
+  printf(
+      "ERROR: cannot assign Action '%s' to '%s', as action is not suitable for that data-block "
+      "type.\n",
+      dna_action->id.name + 2,
+      animated_id->name + 2);
+}
+
+bool rna_SpacePropertiesEditor_action_poll(PointerRNA *ptr, PointerRNA value)
+{
+  using namespace blender;
+
+  /* TODO: unify this function with rna_Action_actedit_assign_poll()? */
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  bAction *action = (bAction *)value.data;
+
+  BLI_assert_msg(action, "Action list should not contain nullptr values");
+  if (!action) {
+    BLI_assert_unreachable();
+    return false;
+  }
+
+  ID *animated_id = ED_buttons_context_id_path(space);
+  if (!animated_id) {
+    return true;
+  }
+
+  return animrig::is_action_assignable_to(action, GS(animated_id->name));
+}
+
+static void rna_SpacePropertiesEditor_action_update(bContext *C, PointerRNA *ptr)
+{
+  using namespace blender;
+
+  /* TODO: unify this function with rna_SpaceDopesheetEditor_action_update()? */
+  SpaceProperties *space = static_cast<SpaceProperties *>(ptr->data);
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Main *bmain = CTX_data_main(C);
+
+  BKE_view_layer_synced_ensure(scene, view_layer);
+
+  ID *animated_id = ED_buttons_context_id_path(space);
+  if (!animated_id) {
+    return;
+  }
+
+  { /* Exit NLA Tweak Mode first - we cannot change actions while in tweak-mode. */
+    AnimData *adt = BKE_animdata_from_id(animated_id);
+    if (adt) {
+      BKE_nla_tweakmode_exit(adt);
+    }
+  }
+
+  bAction *dna_action = ED_buttons_action_get(space);
+  if (dna_action) {
+    animrig::assign_animation(dna_action->wrap(), *animated_id);
+  }
+  else {
+    animrig::unassign_animation(*animated_id);
+  }
+
+  DEG_id_tag_update(animated_id, ID_RECALC_ANIMATION | ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  DEG_relations_tag_update(bmain);
+}
+#  endif  // WITH_ANIM_BAKLAVA
 
 /* Space Console */
 static void rna_ConsoleLine_body_get(PointerRNA *ptr, char *value)
@@ -5589,6 +5706,23 @@ static void rna_def_space_properties(BlenderRNA *brna)
                            "Outliner Sync",
                            "Change to the corresponding tab when outliner data icons are clicked");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+
+#  ifdef WITH_ANIM_BAKLAVA
+  /* Action selector support. */
+  prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Action");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(prop,
+                                 /* Defined in runtime struct, so needs a getter. */
+                                 "rna_SpacePropertiesEditor_action_get",
+                                 "rna_SpacePropertiesEditor_action_set",
+                                 nullptr,
+                                 "rna_SpacePropertiesEditor_action_poll");
+  RNA_def_property_ui_text(prop, "Action", "Action assigned to this data-block");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(
+      prop, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, "rna_SpacePropertiesEditor_action_update");
+#  endif
 }
 
 static void rna_def_space_image_overlay(BlenderRNA *brna)
