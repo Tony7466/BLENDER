@@ -18,24 +18,50 @@ NODE_STORAGE_FUNCS(NodeTexGabor)
 
 static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Vector").implicit_field(implicit_field_inputs::position);
-  b.add_input<decl::Float>("Scale").default_value(5.0f);
-  b.add_input<decl::Float>("Impulses").default_value(8.0f).min(0.0f).max(16.0f);
-  b.add_input<decl::Float>("Frequency").default_value(2.0f).min(0.0f);
+  b.add_input<decl::Vector>("Vector")
+      .implicit_field(implicit_field_inputs::position)
+      .description(
+          "The coordinates at which Gabor noise will be evaluated. The Z component is ignored in "
+          "the 2D case");
+  b.add_input<decl::Float>("Scale").default_value(5.0f).description(
+      "The scale of the Gabor noise");
+  b.add_input<decl::Float>("Impulses")
+      .default_value(8.0f)
+      .min(0.0f)
+      .max(16.0f)
+      .description(
+          "The number of impulses used to compute the noise. This is a quality control parameter "
+          "and has minimal effect on the structure of the output. Higher values yield higher "
+          "quality noise at the cost of more compute time");
+  b.add_input<decl::Float>("Frequency")
+      .default_value(2.0f)
+      .min(0.0f)
+      .description(
+          "The rate at which the Gabor noise change across space. This is different from the "
+          "Scale input in that it only scales perpendicular to the Gabor noise direction");
   b.add_input<decl::Float>("Anisotropy")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .description(
+          "The directionality of Gabor noise. 1 means the noise is completely directional, while "
+          "0 means the noise is completely omnidirectional");
   b.add_input<decl::Float>("Orientation", "Orientation 2D")
       .default_value(math::numbers::pi / 4)
-      .subtype(PROP_ANGLE);
+      .subtype(PROP_ANGLE)
+      .description("The direction of the anisotropic Gabor noise");
   b.add_input<decl::Vector>("Orientation", "Orientation 3D")
       .default_value({math::numbers::sqrt2, math::numbers::sqrt2, 0.0f})
-      .subtype(PROP_DIRECTION);
-  b.add_output<decl::Float>("Value");
-  b.add_output<decl::Float>("Phase");
-  b.add_output<decl::Float>("Intensity");
+      .subtype(PROP_DIRECTION)
+      .description("The direction of the anisotropic Gabor noise");
+  b.add_output<decl::Float>("Value").description(
+      "The Gabor noise value with both random intensity and phase. This is equal to sine the "
+      "phase multiplied by the intensity");
+  b.add_output<decl::Float>("Phase").description(
+      "The phase of the Gabor noise, which has no random intensity");
+  b.add_output<decl::Float>("Intensity")
+      .description("The intensity of the Gabor noise, which has no random phase");
 }
 
 static void node_shader_buts_tex_gabor(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

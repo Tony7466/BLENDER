@@ -328,8 +328,8 @@ shader node_gabor_texture(int use_mapping = 0,
 
   vector3 scaled_coordinates = coordinates * Scale;
   float isotropy = 1.0 - clamp(Anisotropy, 0.0, 1.0);
-  float frequency = max(0.0, Frequency);
-  float impulses_count = clamp(Impulses, 0.0, 16.0);
+  float frequency = max(0.001, Frequency);
+  float impulses_count = clamp(Impulses, 0.001, 16.0);
 
   vector2 phasor = vector2(0.0, 0.0);
   float standard_deviation = 1.0;

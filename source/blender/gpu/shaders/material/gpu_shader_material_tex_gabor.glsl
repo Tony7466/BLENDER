@@ -316,8 +316,8 @@ void node_tex_gabor(vec3 coordinates,
 {
   vec3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0 - clamp(anisotropy, 0.0, 1.0);
-  frequency = max(0.0, frequency);
-  impulses_count = clamp(impulses_count, 0.0, 16.0);
+  frequency = max(0.001, frequency);
+  impulses_count = clamp(impulses_count, 0.001, 16.0);
 
   vec2 phasor = vec2(0.0);
   float standard_deviation = 1.0;

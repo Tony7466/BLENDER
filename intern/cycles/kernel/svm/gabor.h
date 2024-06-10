@@ -350,8 +350,8 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
 
   float3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0f - clamp(anisotropy, 0.0f, 1.0f);
-  frequency = max(0.0f, frequency);
-  impulses_count = clamp(impulses_count, 0.0f, 16.0f);
+  frequency = max(0.001f, frequency);
+  impulses_count = clamp(impulses_count, 0.001f, 16.0f);
 
   float2 phasor = make_float2(0.0f, 0.0f);
   float standard_deviation = 1.0f;
