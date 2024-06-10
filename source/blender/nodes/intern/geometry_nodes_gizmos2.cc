@@ -211,6 +211,11 @@ void foreach_active_gizmo(const Object & /*object*/,
       foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
     }
   }
+  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_group_inputs.items()) {
+    for (const ie::SocketElem &socket_elem : item.value) {
+      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
+    }
+  }
 }
 
 ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
