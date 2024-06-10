@@ -4195,6 +4195,13 @@ static eWM_JobType filelist_jobtype_get(const FileList *filelist)
   return WM_JOB_TYPE_FILESEL_READDIR;
 }
 
+/* TODO(Julian): This is temporary, because currently the job system identifies jobs to suspend by
+ * the startjob callback, rather than the type. See PR #123033. */
+static void assetlibrary_readjob_startjob(void *flrjv, wmJobWorkerStatus *worker_status)
+{
+  filelist_readjob_startjob(flrjv, worker_status);
+}
+
 void filelist_readjob_start(FileList *filelist, const int space_notifier, const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
@@ -4247,7 +4254,8 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
   WM_jobs_customdata_set(wm_job, flrj, filelist_readjob_free);
   WM_jobs_timer(wm_job, 0.01, space_notifier, space_notifier | NA_JOB_FINISHED);
   WM_jobs_callbacks(wm_job,
-                    filelist_readjob_startjob,
+                    filelist->asset_library_ref ? assetlibrary_readjob_startjob :
+                                                  filelist_readjob_startjob,
                     nullptr,
                     filelist_readjob_update,
                     filelist_readjob_endjob);
