@@ -5,14 +5,26 @@
 #include "BLI_math_base_safe.h"
 #include "BLI_math_rotation.hh"
 
+#include "BKE_compute_contexts.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_zones.hh"
+#include "BKE_workspace.hh"
 
 #include "NOD_geometry_nodes_gizmos2.hh"
 #include "NOD_inverse_eval.hh"
 #include "NOD_inverse_eval_path.hh"
 
+#include "DNA_modifier_types.h"
+#include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
+
 namespace blender::nodes::gizmos2 {
+
+bool is_builtin_gizmo_node(const bNode &node)
+{
+  return ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_TRANSFORM);
+}
 
 static void reset_gizmo_states(bNodeTree &tree)
 {
@@ -67,7 +79,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
         all_gizmo_inputs.append({&input_socket, &input_socket, group_input_elem.elem});
       }
     }
-    if (ELEM(node->type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_TRANSFORM)) {
+    if (is_builtin_gizmo_node(*node)) {
       const bNodeSocket &gizmo_input_socket = node->input_socket(0);
       const ie::ElemVariant elem = get_gizmo_socket_elem(*node, gizmo_input_socket);
       for (const bNodeLink *link : gizmo_input_socket.directly_linked_links()) {
@@ -128,6 +140,82 @@ bool update_tree_gizmo_propagation(bNodeTree &tree)
   tree.runtime->gizmo_propagation = std::make_unique<TreeGizmoPropagation>(
       std::move(new_gizmo_propagation));
   return changed;
+}
+
+static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
+                                    ComputeContextBuilder &compute_context_builder,
+                                    const bNodeTree &tree,
+                                    const ForeachGizmoFn fn);
+
+static void foreach_gizmo_for_group_input(const bNodeTree &tree,
+                                          const ie::GroupInputElem &group_input,
+                                          ComputeContextBuilder &compute_context_builder,
+                                          const ForeachGizmoFn fn)
+{
+  const TreeGizmoPropagation &gizmo_propagation = *tree.runtime->gizmo_propagation;
+  for (const ie::SocketElem &gizmo_input :
+       gizmo_propagation.gizmo_inputs_by_group_inputs.lookup(group_input))
+  {
+    foreach_gizmo_for_input(gizmo_input, compute_context_builder, tree, fn);
+  }
+}
+
+static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
+                                    ComputeContextBuilder &compute_context_builder,
+                                    const bNodeTree &tree,
+                                    const ForeachGizmoFn fn)
+{
+  const bke::bNodeTreeZones *zones = tree.zones();
+  if (!zones) {
+    return;
+  }
+  const bNode &node = input_socket.socket->owner_node();
+  if (zones->get_zone_by_node(node.identifier) != nullptr) {
+    /* Gizmos in zones are not supportet yet. */
+    return;
+  }
+  if (is_builtin_gizmo_node(node)) {
+    /* Found an actual built-in gizmo node. */
+    fn(*compute_context_builder.current(), node);
+    return;
+  }
+  if (node.is_group()) {
+    const bNodeTree &group = *reinterpret_cast<const bNodeTree *>(node.id);
+    group.ensure_topology_cache();
+    compute_context_builder.push<bke::GroupNodeComputeContext>(node, tree);
+    foreach_gizmo_for_group_input(
+        group,
+        ie::GroupInputElem{input_socket.socket->index(), input_socket.elem},
+        compute_context_builder,
+        fn);
+    compute_context_builder.pop();
+  }
+}
+
+void foreach_active_gizmo(const Object &object,
+                          const NodesModifierData &nmd,
+                          const wmWindowManager &wm,
+                          const ForeachGizmoFn fn)
+{
+  if (!nmd.node_group) {
+    return;
+  }
+  const bNodeTree &tree = *nmd.node_group;
+  if (!tree.runtime->gizmo_propagation) {
+    return;
+  }
+  ComputeContextBuilder compute_context_builder;
+  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_value_nodes.items()) {
+    for (const ie::SocketElem &socket_elem : item.value) {
+      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
+    }
+  }
+  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_node_inputs.items()) {
+    for (const ie::SocketElem &socket_elem : item.value) {
+      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
+    }
+  }
 }
 
 }  // namespace blender::nodes::gizmos2

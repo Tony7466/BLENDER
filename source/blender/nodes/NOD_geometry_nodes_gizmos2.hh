@@ -4,9 +4,15 @@
 
 #pragma once
 
+#include "BLI_compute_context.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_multi_value_map.hh"
 
 #include "NOD_inverse_eval_path.hh"
+
+struct Object;
+struct NodesModifierData;
+struct wmWindowManager;
 
 namespace blender::nodes::gizmos2 {
 
@@ -25,6 +31,16 @@ struct TreeGizmoPropagation {
                                   gizmo_inputs_by_group_inputs)
 };
 
+bool is_builtin_gizmo_node(const bNode &node);
+
 bool update_tree_gizmo_propagation(bNodeTree &tree);
+
+using ForeachGizmoFn =
+    FunctionRef<void(const ComputeContext &compute_context, const bNode &gizmo_node)>;
+
+void foreach_active_gizmo(const Object &object,
+                          const NodesModifierData &nmd,
+                          const wmWindowManager &wm,
+                          ForeachGizmoFn fn);
 
 }  // namespace blender::nodes::gizmos2

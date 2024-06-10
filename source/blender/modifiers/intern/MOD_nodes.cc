@@ -91,7 +91,7 @@
 
 #include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_execute.hh"
-#include "NOD_geometry_nodes_gizmos.hh"
+#include "NOD_geometry_nodes_gizmos2.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 
@@ -742,7 +742,7 @@ static void find_side_effect_nodes_for_active_gizmos(
   Object *object_orig = DEG_get_original_object(ctx.object);
   const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
       BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
-  nodes::gizmos::foreach_active_gizmo(
+  nodes::gizmos2::foreach_active_gizmo(
       *object_orig,
       nmd_orig,
       wm,
@@ -750,17 +750,17 @@ static void find_side_effect_nodes_for_active_gizmos(
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
         r_socket_log_contexts.add(compute_context.hash());
 
-        const Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
-            nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
-        for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
-          for (const nodes::gizmos::PropagationPath::PathElem &elem :
-               gizmo_target.propagation_path.path)
-          {
-            try_add_side_effect_node(
-                *elem.compute_context, elem.node->identifier, nmd, r_side_effect_nodes);
-            r_socket_log_contexts.add(elem.compute_context->hash());
-          }
-        }
+        // const Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
+        //     nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
+        // for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {
+        //   for (const nodes::gizmos::PropagationPath::PathElem &elem :
+        //        gizmo_target.propagation_path.path)
+        //   {
+        //     try_add_side_effect_node(
+        //         *elem.compute_context, elem.node->identifier, nmd, r_side_effect_nodes);
+        //     r_socket_log_contexts.add(elem.compute_context->hash());
+        //   }
+        // }
       });
 }
 
@@ -2079,13 +2079,13 @@ static void draw_property_for_socket(const bContext &C,
   const int input_index =
       const_cast<const bNodeTree *>(nmd->node_group)->interface_inputs().first_index(&socket);
   bool has_gizmo = false;
-  for (auto key :
-       nmd->node_group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.keys())
-  {
-    if (key.input_index == input_index) {
-      has_gizmo = true;
-    }
-  }
+  // for (auto key :
+  //      nmd->node_group->runtime->gizmo_inferencing->gizmo_inputs_for_interface_inputs.keys())
+  // {
+  //   if (key.input_index == input_index) {
+  //     has_gizmo = true;
+  //   }
+  // }
 
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
