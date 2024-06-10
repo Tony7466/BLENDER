@@ -155,12 +155,14 @@ static void grease_pencil_batch_cache_clear(GreasePencil &grease_pencil)
 
   GPU_BATCH_DISCARD_SAFE(cache->edit_points);
   GPU_BATCH_DISCARD_SAFE(cache->edit_lines);
+
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_pos);
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_selection);
-  GPU_INDEXBUF_DISCARD_SAFE(cache->edit_line_indices);
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_points_indices);
+
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_line_pos);
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_line_selection);
+  GPU_INDEXBUF_DISCARD_SAFE(cache->edit_line_indices);
 
   cache->is_dirty = true;
 }
