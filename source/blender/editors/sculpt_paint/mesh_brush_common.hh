@@ -151,4 +151,13 @@ void apply_translations_to_shape_keys(Object &object,
  */
 void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, Span<float3> positions_orig);
 
+void scrape_calc_translations(const Span<float3> vert_positions,
+                              const Span<int> verts,
+                              const float4 &plane,
+                              const MutableSpan<float3> translations);
+void scrape_calc_plane_trim_limit(const Brush &brush,
+                                  const StrokeCache &cache,
+                                  const Span<float3> translations,
+                                  const MutableSpan<float> factors);
+
 }  // namespace blender::ed::sculpt_paint

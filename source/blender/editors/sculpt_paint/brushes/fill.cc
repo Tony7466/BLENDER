@@ -48,35 +48,6 @@ BLI_NOINLINE static void calc_plane_side_factors(const Span<float3> vert_positio
   }
 }
 
-BLI_NOINLINE static void calc_translations(const Span<float3> vert_positions,
-                                           const Span<int> verts,
-                                           const float4 &plane,
-                                           const MutableSpan<float3> translations)
-{
-  for (const int i : verts.index_range()) {
-    const float3 &position = vert_positions[verts[i]];
-    float3 closest;
-    closest_to_plane_normalized_v3(closest, plane, position);
-    translations[i] = closest - position;
-  }
-}
-
-BLI_NOINLINE static void calc_plane_trim_limit(const Brush &brush,
-                                               const StrokeCache &cache,
-                                               const Span<float3> translations,
-                                               const MutableSpan<float> factors)
-{
-  if (!(brush.flag & BRUSH_PLANE_TRIM)) {
-    return;
-  }
-  const float threshold = cache.radius_squared * cache.plane_trim_squared;
-  for (const int i : translations.index_range()) {
-    if (math::length_squared(translations[i]) <= threshold) {
-      factors[i] = 0.0f;
-    }
-  }
-}
-
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float4 &plane,
@@ -120,8 +91,8 @@ static void calc_faces(const Sculpt &sd,
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  calc_translations(positions_eval, verts, plane, translations);
-  calc_plane_trim_limit(brush, *ss.cache, translations, factors);
+  scrape_calc_translations(positions_eval, verts, plane, translations);
+  scrape_calc_plane_trim_limit(brush, *ss.cache, translations, factors);
   scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
