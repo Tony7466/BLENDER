@@ -3478,10 +3478,7 @@ static int sequencer_set_strip_length_exec(bContext *C, wmOperator *op)
   Editing *ed = SEQ_editing_get(scene);
   ListBase *channels = SEQ_channels_displayed_get(ed);
 
-  blender::Vector<Sequence *> strips;
-  for (Sequence *seq : ED_sequencer_selected_strips_from_context(C)) {
-    strips.append(seq);
-  }
+  blender::Vector<Sequence *> strips(ED_sequencer_selected_strips_from_context(C).as_span());
 
   const int new_length = RNA_int_get(op->ptr, "length");
 
