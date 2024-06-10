@@ -2124,47 +2124,41 @@ void ConvertNode::constant_fold(const ConstantFolder &folder)
   assert(special_type != SHADER_SPECIAL_TYPE_PROXY);
 
   if (folder.all_inputs_constant()) {
-    if (from == SocketType::FLOAT) {
+    if (from == SocketType::FLOAT || from == SocketType::INT) {
+      float val = value_float;
+      if (from == SocketType::INT) {
+        val = value_int;
+      }
       if (SocketType::is_float3(to)) {
-        folder.make_constant(make_float3(value_float, value_float, value_float));
+        folder.make_constant(make_float3(val, val, val));
       }
       else if (to == SocketType::INT) {
-        folder.make_constant((int)value_float);
+        folder.make_constant((int)val);
+      }
+      else if (to == SocketType::FLOAT) {
+        folder.make_constant(val);
       }
     }
     else if (SocketType::is_float3(from)) {
-      if (to == SocketType::FLOAT) {
+      if (to == SocketType::FLOAT || to == SocketType::INT) {
+        float val;
         if (from == SocketType::COLOR) {
-          /* color to float */
-          float val = folder.scene->shader_manager->linear_rgb_to_gray(value_color);
-          folder.make_constant(val);
+          /* color to scalar */
+          val = folder.scene->shader_manager->linear_rgb_to_gray(value_color);
         }
         else {
-          /* vector/point/normal to float */
-          folder.make_constant(average(value_vector));
+          /* vector/point/normal to scalar */
+          val = average(value_vector);
         }
-      }
-      else if (to == SocketType::INT) {
-        if (from == SocketType::COLOR) {
-          /* color to int */
-          float val = folder.scene->shader_manager->linear_rgb_to_gray(value_color);
+        if (to == SocketType::INT) {
           folder.make_constant((int)val);
         }
-        else {
-          /* vector/point/normal to int */
-          folder.make_constant((int)average(value_vector));
+        else if (to == SocketType::FLOAT) {
+          folder.make_constant(val);
         }
       }
       else if (SocketType::is_float3(to)) {
         folder.make_constant(value_color);
-      }
-    }
-    else if (from == SocketType::INT) {
-      if (SocketType::is_float3(to)) {
-        folder.make_constant(make_float3(value_int, value_int, value_int));
-      }
-      else if (to == SocketType::FLOAT) {
-        folder.make_constant((float)value_int);
       }
     }
   }
