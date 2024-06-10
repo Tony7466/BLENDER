@@ -49,6 +49,40 @@ class VIEW3D_PT_animation_layers(Panel):
 
         col = layout.column(align=False)
         anim = adt and adt.action
+        if anim:
+            binding_sub = col.column(align=True)
+
+            # Binding selector as pointer property + template_search:
+            row = binding_sub.split(factor=0.4, align=True)
+            row.label(text="Action")
+            row.template_search(
+                adt, "action_binding",
+                anim, "bindings",
+                new="",
+                unlink="anim.binding_unassign_object",
+            )
+
+            # Binding selector as pointer property + template_search:
+            row = binding_sub.split(factor=0.4, align=True)
+            row.label(text="ADT")
+            row.template_search(
+                adt, "action_binding",
+                adt, "action_bindings",
+                new="",
+                unlink="anim.binding_unassign_object",
+            )
+
+            binding_sub.separator()
+
+            binding = adt.action_binding
+            if binding:
+                binding_sub.prop(binding, "name_display", text="Name")
+
+            internal_sub = binding_sub.box().column(align=True)
+            internal_sub.active = False
+            internal_sub.prop(adt, "action_binding_handle", text="handle")
+            if binding:
+                internal_sub.prop(binding, "name", text="Internal Name")
 
         if adt:
             col.prop(adt, "action_binding_name", text="ADT Binding Name")

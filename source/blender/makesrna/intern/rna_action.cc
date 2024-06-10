@@ -98,7 +98,45 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 
 static animrig::Action &rna_action(const PointerRNA *ptr)
 {
+  BLI_assert(ptr->owner_id);
+  BLI_assert(GS(ptr->owner_id->name) == ID_AC);
+
   return reinterpret_cast<bAction *>(ptr->owner_id)->wrap();
+}
+
+/**
+ * Get the Action that owns the pointed-to binding.
+ *
+ * This function exists because bindings can be accessed in two ways:
+ *
+ *   1. some_action.bindings["name"]
+ *   2. id.animation_data.action_binding
+ *
+ * The latter is necessary for the UI, to be able to select and assign a binding, via a
+ * PointerProperty, to the animated ID.
+ *
+ * The tricky thing is that these two RNA paths will result in a different owner
+ * for the PointerRNA.
+ *
+ *   1. `ptr->owner_id = some_action`
+ *   2. `ptr->owner_id = id`.
+ *
+ * This function will disentangle this. If `owner_id` is not an Action, it
+ * assumes the 2nd case and returns `ptr->owner_id.adt->action`.
+ */
+static animrig::Action &rna_action_for_binding(const PointerRNA *ptr)
+{
+  BLI_assert(ptr->owner_id);
+
+  if (GS(ptr->owner_id->name) == ID_AC) {
+    /* Case 1 above. */
+    return reinterpret_cast<bAction *>(ptr->owner_id)->wrap();
+  }
+
+  /* Case 2 above. */
+  blender::animrig::Action *action = blender::animrig::get_animation(*ptr->owner_id);
+  BLI_assert_msg(action, "expecting an Action to own this Binding.");
+  return *action;
 }
 
 static animrig::Binding &rna_data_binding(const PointerRNA *ptr)
@@ -266,7 +304,7 @@ int rna_ActionBinding_name_display_length(PointerRNA *ptr)
 
 static void rna_ActionBinding_name_display_set(PointerRNA *ptr, const char *name)
 {
-  animrig::Action &anim = rna_action(ptr);
+  animrig::Action &anim = rna_action_for_binding(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
   const StringRef name_ref(name);
 
@@ -282,7 +320,7 @@ static void rna_ActionBinding_name_display_set(PointerRNA *ptr, const char *name
 
 static void rna_ActionBinding_name_set(PointerRNA *ptr, const char *name)
 {
-  animrig::Action &anim = rna_action(ptr);
+  animrig::Action &anim = rna_action_for_binding(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
   const StringRef name_ref(name);
 
@@ -309,7 +347,7 @@ static void rna_ActionBinding_name_set(PointerRNA *ptr, const char *name)
 
 static void rna_ActionBinding_name_update(Main *bmain, Scene *, PointerRNA *ptr)
 {
-  animrig::Action &anim = rna_action(ptr);
+  animrig::Action &anim = rna_action_for_binding(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
   anim.binding_name_propagate(*bmain, binding);
 }

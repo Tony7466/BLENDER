@@ -267,6 +267,105 @@ static void rna_AnimData_action_binding_handle_set(
   }
 }
 
+static AnimData &rna_animdata(const PointerRNA *ptr)
+{
+  return *reinterpret_cast<AnimData *>(ptr->data);
+}
+
+static PointerRNA rna_AnimData_action_binding_get(PointerRNA *ptr)
+{
+  using blender::animrig::Action;
+  using blender::animrig::Binding;
+
+  AnimData &adt = rna_animdata(ptr);
+
+  if (!adt.action || adt.binding_handle == Binding::unassigned) {
+    return PointerRNA_NULL;
+  }
+
+  Action &action = adt.action->wrap();
+  Binding *binding = action.binding_for_handle(adt.binding_handle);
+  if (!binding) {
+    return PointerRNA_NULL;
+  }
+
+  return rna_pointer_inherit_refine(ptr, &RNA_ActionBinding, binding);
+}
+
+static void rna_AnimData_action_binding_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
+{
+  using blender::animrig::Action;
+  using blender::animrig::Binding;
+
+  AnimData &adt = rna_animdata(ptr);
+  if (!adt.action) {
+    BKE_report(reports, RPT_ERROR, "Cannot set binding without an assigned Action.");
+    return;
+  }
+
+  ActionBinding *dna_binding = static_cast<ActionBinding *>(value.data);
+  if (!dna_binding) {
+    blender::animrig::unassign_binding(adt);
+    return;
+  }
+
+  Action &action = adt.action->wrap();
+  Binding &binding = dna_binding->wrap();
+  ID *animated_id = ptr->owner_id;
+  BLI_assert(animated_id); /* Otherwise there is nothing to own this AnimData. */
+
+  if (!action.assign_id(&binding, *animated_id)) {
+    /* TODO: make assign_id() return a different type that gives us more info about what went
+     * wrong. */
+    BKE_reportf(
+        reports, RPT_ERROR, "Cannot assign binding %s to %s,", binding.name, animated_id->name);
+    return;
+  }
+}
+
+/* Skip any binding that is not suitable for the ID owning the AnimData. */
+static bool rna_iterator_animdata_action_bindings_skip(CollectionPropertyIterator *iter,
+                                                       void *data)
+{
+  using blender::animrig::Binding;
+
+  /* Get the current Binding being iterated over. */
+  const Binding **binding_ptr_ptr = static_cast<const Binding **>(data);
+  BLI_assert(binding_ptr_ptr);
+  BLI_assert(*binding_ptr_ptr);
+  const Binding &binding = **binding_ptr_ptr;
+
+  /* Get the animated ID. */
+  const ID *animated_id = iter->parent.owner_id;
+  BLI_assert(animated_id);
+
+  /* Skip this Binding if it's not suitable for the animated ID. */
+  return !binding.is_suitable_for(*animated_id);
+}
+
+static void rna_iterator_animdata_action_bindings_begin(CollectionPropertyIterator *iter,
+                                                        PointerRNA *ptr)
+{
+  using blender::animrig::Action;
+  using blender::animrig::Binding;
+
+  AnimData &adt = rna_animdata(ptr);
+  if (!adt.action) {
+    /* No action means no bindings. */
+    rna_iterator_array_begin(iter, nullptr, 0, 0, 0, nullptr);
+    return;
+  }
+
+  Action &action = adt.action->wrap();
+  blender::Span<Binding *> bindings = action.bindings();
+  rna_iterator_array_begin(iter,
+                           (void *)bindings.data(),
+                           sizeof(Binding *),
+                           bindings.size(),
+                           0,
+                           rna_iterator_animdata_action_bindings_skip);
+}
+
 #  endif
 
 /* ****************************** */
@@ -1547,6 +1646,36 @@ static void rna_def_animdata(BlenderRNA *brna)
       "The name of the action binding. The binding identifies which sub-set of the Action "
       "is considered to be for this data-block, and its name is used to find the right binding "
       "when assigning an Action");
+
+  prop = RNA_def_property(srna, "action_binding", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ActionBinding");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(
+      prop,
+      "Action Binding",
+      "The binding identifies which sub-set of the Action is considered to be for this "
+      "data-block, and its name is used to find the right binding when assigning an Action");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_AnimData_action_binding_get",
+                                 "rna_AnimData_action_binding_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
+
+  prop = RNA_def_property(srna, "action_bindings", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ActionBinding");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_animdata_action_bindings_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_ui_text(prop, "Bindings", "The list of bindings in this animation data-block");
 
 #  endif
 
