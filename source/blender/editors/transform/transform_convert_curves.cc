@@ -351,6 +351,10 @@ void curve_populate_trans_data_structs(
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
   MutableSpan<TransData> all_tc_data = MutableSpan(tc.data, tc.data_len);
+  MutableSpan<float> all_tc_frame_falloff;
+  if (frame_falloff) {
+    all_tc_frame_falloff = MutableSpan(tc.frame_falloff, tc.data_len);
+  }
   OffsetIndices<int> position_offsets_in_td = ed::transform::curves::recent_position_offsets(
       tc.custom.type, points_to_transform_per_attr.size());
 
@@ -368,6 +372,10 @@ void curve_populate_trans_data_structs(
       continue;
     }
     MutableSpan<TransData> tc_data = all_tc_data.slice(position_offsets_in_td[selection_i]);
+    MutableSpan<float> tc_frame_falloff;
+    if (frame_falloff) {
+      tc_frame_falloff = all_tc_frame_falloff.slice(position_offsets_in_td[selection_i]);
+    }
     MutableSpan<float3> positions = positions_per_selection_attr[selection_i];
     IndexMask points_to_transform = points_to_transform_per_attr[selection_i];
     VArray<bool> selection = selection_attrs[selection_i];
@@ -395,8 +403,8 @@ void curve_populate_trans_data_structs(
         td.ext = nullptr;
 
         if (frame_falloff) {
-          tc.frame_falloff[point_i + trans_data_offset] = frame_falloff.value();
-          td.extra = &tc.frame_falloff[point_i + trans_data_offset];
+          tc_frame_falloff[tranform_point_i] = frame_falloff.value();
+          td.extra = &tc_frame_falloff[tranform_point_i];
         }
 
         copy_m3_m3(td.smtx, smtx);

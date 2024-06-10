@@ -488,7 +488,11 @@ struct TransDataContainer {
     char use_mirror_axis_any;
   };
 
-  /** Grease Pencil multi frame falloff factor for transformed data (array). */
+  /**
+   * Grease Pencil multi frame falloff factor for transformed data (array of length `data_len`).
+   * Values between 0.0 and 1.0. When multiframe editing is not enabled, all values in the array
+   * are set to 1.0 (= no falloff).
+   */
   float *frame_falloff;
 
   TransCustomDataContainer custom;
