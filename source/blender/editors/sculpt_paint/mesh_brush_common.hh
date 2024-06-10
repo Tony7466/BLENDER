@@ -38,6 +38,9 @@ namespace auto_mask {
 struct Cache;
 };
 
+void scale_translations(MutableSpan<float3> translations, Span<float> factors);
+void scale_factors(MutableSpan<float> factors, float strength);
+
 /**
  * Note on the various positions arrays:
  * - positions_orig: Positions owned by the original mesh. Not the same as `positions_eval` if
