@@ -411,6 +411,7 @@ ccl_device_inline void shader_setup_from_volume(KernelGlobals kg,
   sd->time = ray->time;
   sd->ray_length = 0.0f; /* todo: can we set this to some useful value? */
 
+  /* TODO: fill relevant fields for texture coordinates. */
   sd->object = object;
   sd->lamp = LAMP_NONE;
   sd->prim = PRIM_NONE;
