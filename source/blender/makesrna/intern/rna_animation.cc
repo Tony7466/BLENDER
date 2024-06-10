@@ -103,34 +103,6 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-#ifdef WITH_ANIM_BAKLAVA
-#  ifdef RNA_RUNTIME
-constexpr int binding_items_value_create_new = -1;
-const EnumPropertyItem rna_enum_action_binding_item_new = {
-    binding_items_value_create_new,
-    "NEW",
-    ICON_ADD,
-    "New",
-    "Create a new animation binding for this data-block"};
-const EnumPropertyItem rna_enum_action_binding_item_legacy = {
-    int(blender::animrig::Binding::unassigned),
-    "UNASSIGNED",
-    0,
-    "Legacy Action",
-    "This is a legacy Action, which does not support bindings."};
-#  endif
-const EnumPropertyItem rna_enum_action_binding_item_none = {
-    int(blender::animrig::Binding::unassigned),
-    "UNASSIGNED",
-    0,
-    "None",
-    "Not assigned any binding, and thus not animated."};
-const EnumPropertyItem rna_enum_action_binding_items[] = {
-    rna_enum_action_binding_item_none,
-    {0, nullptr, 0, nullptr, nullptr},
-};
-#endif  // WITH_ANIM_BAKLAVA
-
 #ifdef RNA_RUNTIME
 
 #  include <algorithm>
@@ -293,133 +265,6 @@ static void rna_AnimData_action_binding_handle_set(
     }
     return;
   }
-}
-
-static AnimData &rna_animdata(const PointerRNA *ptr)
-{
-  return *reinterpret_cast<AnimData *>(ptr->data);
-}
-
-static int rna_AnimData_action_binding_get(PointerRNA *ptr)
-{
-  AnimData &adt = rna_animdata(ptr);
-  return adt.binding_handle;
-}
-
-static void rna_AnimData_action_binding_set(PointerRNA *ptr, int value)
-{
-  using blender::animrig::Action;
-  using blender::animrig::Binding;
-  using blender::animrig::binding_handle_t;
-
-  AnimData &adt = rna_animdata(ptr);
-  ID &animated_id = *ptr->owner_id;
-
-  const binding_handle_t new_binding_handle = binding_handle_t(value);
-  if (new_binding_handle == Binding::unassigned) {
-    /* No need to check with the Animation, as 'no binding' is always valid. */
-    adt.binding_handle = Binding::unassigned;
-    return;
-  }
-
-  if (!adt.action) {
-    /* No Action to verify the binding handle is valid. As the binding handle
-     * will be completely ignored when re-assigning an Animation, better to
-     * refuse setting it altogether. This will make bugs in Python code more obvious. */
-    WM_reportf(RPT_ERROR,
-               "Data-block '%s' does not have an Action, cannot set binding handle",
-               animated_id.name + 2);
-    return;
-  }
-
-  Action &anim = adt.action->wrap();
-  Binding *binding = nullptr;
-
-  /* TODO: handle legacy Action. */
-  BLI_assert(anim.is_action_layered());
-
-  if (new_binding_handle == binding_items_value_create_new) {
-    /* Special case for this enum item. */
-    binding = &anim.binding_add_for_id(animated_id);
-  }
-  else {
-    binding = anim.binding_for_handle(new_binding_handle);
-    if (!binding) {
-      WM_reportf(RPT_ERROR,
-                 "Animation '%s' has no binding with handle %d",
-                 anim.id.name + 2,
-                 new_binding_handle);
-      return;
-    }
-  }
-
-  if (!anim.assign_id(binding, animated_id)) {
-    WM_reportf(RPT_ERROR,
-               "Animation '%s' binding '%s' (%d) could not be assigned to %s",
-               anim.id.name + 2,
-               binding->name_without_prefix().c_str(),
-               binding->handle,
-               animated_id.name + 2);
-    return;
-  }
-
-  WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN, nullptr);
-}
-
-static const EnumPropertyItem *rna_AnimData_action_binding_itemf(bContext * /*C*/,
-                                                                 PointerRNA *ptr,
-                                                                 PropertyRNA * /*prop*/,
-                                                                 bool *r_free)
-{
-  using blender::animrig::Action;
-  using blender::animrig::Binding;
-
-  AnimData &adt = rna_animdata(ptr);
-  if (!adt.action) {
-    *r_free = false;
-    return rna_enum_action_binding_items;
-  }
-
-  EnumPropertyItem item = {0};
-  EnumPropertyItem *items = nullptr;
-  int num_items = 0;
-
-  const Action &anim = adt.action->wrap();
-
-  bool found_assigned_binding = false;
-  for (const Binding *binding : anim.bindings()) {
-    item.value = binding->handle;
-    item.identifier = binding->name;
-    item.name = binding->name_without_prefix().c_str();
-    item.icon = UI_icon_from_idcode(binding->idtype);
-    item.description = "";
-    RNA_enum_item_add(&items, &num_items, &item);
-
-    found_assigned_binding |= binding->handle == adt.binding_handle;
-  }
-
-  if (num_items > 0) {
-    RNA_enum_item_add_separator(&items, &num_items);
-  }
-
-  /* Only add the 'New' option when this is a Layered Action. */
-  const bool is_layered = anim.is_action_layered();
-  if (is_layered) {
-    RNA_enum_item_add(&items, &num_items, &rna_enum_action_binding_item_new);
-  }
-
-  if (!found_assigned_binding) {
-    /* The assigned binding was not found, so show an option that reflects that. */
-    RNA_enum_item_add(&items,
-                      &num_items,
-                      is_layered ? &rna_enum_action_binding_item_none :
-                                   &rna_enum_action_binding_item_legacy);
-  }
-
-  RNA_enum_item_end(&items, &num_items);
-
-  *r_free = true;
-  return items;
 }
 
 #  endif
@@ -1702,18 +1547,6 @@ static void rna_def_animdata(BlenderRNA *brna)
       "The name of the action binding. The binding identifies which sub-set of the Action "
       "is considered to be for this data-block, and its name is used to find the right binding "
       "when assigning an Action");
-
-  prop = RNA_def_property(srna, "action_binding", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop,
-                              "rna_AnimData_action_binding_get",
-                              "rna_AnimData_action_binding_set",
-                              "rna_AnimData_action_binding_itemf");
-  RNA_def_property_enum_items(prop, rna_enum_action_binding_items);
-  RNA_def_property_ui_text(
-      prop,
-      "Action Binding",
-      "The binding identifies which sub-set of the Action is considered to be for this "
-      "data-block, and its name is used to find the right binding when assigning an Action");
 
 #  endif
 
