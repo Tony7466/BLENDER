@@ -541,6 +541,9 @@ class KeyframeStrip : public ::KeyframeActionStrip {
    * Find an FCurve for this binding + RNA path + array index combination.
    *
    * If it cannot be found, a new one is created.
+   *
+   * \param `prop_subtype` The subtype of the property this fcurve is for, if
+   * available.
    */
   FCurve &fcurve_find_or_create(const Binding &binding,
                                 StringRefNull rna_path,
