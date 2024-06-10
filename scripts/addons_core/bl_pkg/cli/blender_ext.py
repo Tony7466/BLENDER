@@ -121,7 +121,7 @@ def debug_stack_trace_to_file() -> None:
     """
     import inspect
     stack = inspect.stack(context=1)
-    with open("/tmp/out.txt", "w") as fh:
+    with open("/tmp/out.txt", "w", encoding="utf-8") as fh:
         for frame_info in stack[1:]:
             fh.write("{:s}:{:d}: {:s}\n".format(
                 frame_info.filename,
@@ -1361,7 +1361,7 @@ def pkg_manifest_validate_field_permissions(
         elif isinstance(value, list):
             # Historic beta convention, keep for compatibility.
             for i, item in enumerate(value):
-                if not isinstance(item_key, str):
+                if not isinstance(item, str):
                     return "Expected item at index {:d} to be an int not a {:s}".format(i, str(type(item)))
         else:
             # The caller doesn't allow this.
@@ -1877,8 +1877,9 @@ def url_is_filesystem(url: str) -> bool:
     if url.startswith(URL_KNOWN_PREFIX):
         return False
 
-    # Argument parsing must ensure this never happens.
-    raise ValueError("prefix not known")
+    # Error handling must ensure this never happens.
+    assert False, "unreachable, prefix not known"
+
     return False
 
 
@@ -2438,7 +2439,7 @@ class subcmd_client:
             directories_to_clean.remove(filepath_local_pkg_temp)
 
         if is_reinstall:
-            message_status(msg_fn, "Re-Installed \"{:s}\"".format(manifest.id))
+            message_status(msg_fn, "Reinstalled \"{:s}\"".format(manifest.id))
         else:
             message_status(msg_fn, "Installed \"{:s}\"".format(manifest.id))
 
