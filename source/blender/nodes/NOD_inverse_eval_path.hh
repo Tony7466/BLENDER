@@ -30,7 +30,7 @@ struct GlobalInverseEvalPath {
   Vector<Node> ordered_nodes;
 };
 
-GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext &initial_context,
+GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext *initial_context,
                                                     const SocketElem &initial_socket_elem);
 
 }  // namespace blender::nodes::inverse_eval

@@ -750,6 +750,14 @@ static void find_side_effect_nodes_for_active_gizmos(
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
         r_socket_log_contexts.add(compute_context.hash());
 
+        const nodes::inverse_eval::GlobalInverseEvalPath path =
+            nodes::gizmos2::find_inverse_eval_path_for_gizmo(&compute_context, gizmo_node);
+        for (const nodes::inverse_eval::GlobalInverseEvalPath::Node &intermediate_node :
+             path.ordered_nodes)
+        {
+          intermediate_node.compute_context->print_stack(std::cout, intermediate_node.node->name);
+        }
+
         // const Vector<nodes::gizmos::PropagatedGizmoTarget> gizmo_targets =
         //     nodes::gizmos::find_propagated_gizmo_targets(compute_context, gizmo_node);
         // for (const nodes::gizmos::PropagatedGizmoTarget &gizmo_target : gizmo_targets) {

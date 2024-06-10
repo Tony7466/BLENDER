@@ -43,4 +43,7 @@ void foreach_active_gizmo(const Object &object,
                           const wmWindowManager &wm,
                           ForeachGizmoFn fn);
 
+ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
+                                                           const bNode &gizmo_node);
+
 }  // namespace blender::nodes::gizmos2

@@ -213,4 +213,12 @@ void foreach_active_gizmo(const Object & /*object*/,
   }
 }
 
+ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
+                                                           const bNode &gizmo_node)
+{
+  const bNodeSocket &gizmo_socket = gizmo_node.input_socket(0);
+  return ie::find_global_inverse_eval_path(
+      gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)});
+}
+
 }  // namespace blender::nodes::gizmos2
