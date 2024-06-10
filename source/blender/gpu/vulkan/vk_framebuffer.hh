@@ -43,6 +43,7 @@ class VKFrameBuffer : public FrameBuffer {
   Vector<VkFormat> color_attachment_formats_;
 
   Array<GPULoadStore, GPU_FB_MAX_ATTACHMENT> load_stores;
+  Array<GPUAttachmentState, GPU_FB_MAX_ATTACHMENT> attachment_states_;
 
  public:
   /**
@@ -64,9 +65,6 @@ class VKFrameBuffer : public FrameBuffer {
                         const void *clear_value) override;
 
   void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore /*ls*/) override;
-
-  void begin_rendering(VKContext &context);
-  void end_rendering(VKContext &context);
 
  protected:
   void subpass_transition_impl(const GPUAttachmentState depth_attachment_state,

@@ -155,7 +155,7 @@ struct VKGraphicsInfo {
   GPUState state;
   GPUStateMutable mutable_state;
   VkPipelineLayout vk_pipeline_layout;
-  Vector<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants;
+  Vector<shader::SpecializationConstant::Value> specialization_constants;
 
   bool operator==(const VKGraphicsInfo &other) const
   {
@@ -295,7 +295,7 @@ class VKPipelinePool : public NonCopyable {
 
  private:
   VkSpecializationInfo *specialization_info_update(
-      Span<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants);
+      Span<shader::SpecializationConstant::Value> specialization_constants);
   void specialization_info_reset();
 };
 

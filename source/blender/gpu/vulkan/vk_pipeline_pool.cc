@@ -117,7 +117,7 @@ VKPipelinePool::VKPipelinePool()
 }
 
 VkSpecializationInfo *VKPipelinePool::specialization_info_update(
-    Span<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants)
+    Span<shader::SpecializationConstant::Value> specialization_constants)
 {
   if (specialization_constants.is_empty()) {
     return nullptr;
