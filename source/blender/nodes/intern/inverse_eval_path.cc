@@ -32,6 +32,12 @@ std::optional<ElemVariant> get_elem_variant_for_socket_type(const eNodeSocketDat
   }
 }
 
+static bool is_supported_value_node(const bNode &node)
+{
+  return ELEM(
+      node.type, SH_NODE_VALUE, FN_NODE_INPUT_VECTOR, FN_NODE_INPUT_BOOL, FN_NODE_INPUT_INT);
+}
+
 static std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
                                                       const bNodeSocket &new_socket,
                                                       const ElemVariant &old_elem)
@@ -101,37 +107,28 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
     }
     else {
       const bNode &node = socket.owner_node();
-      switch (node.type) {
-        case SH_NODE_VALUE:
-        case FN_NODE_INPUT_VECTOR:
-        case FN_NODE_INPUT_BOOL:
-        case FN_NODE_INPUT_INT: {
-          final_value_nodes.add(&node);
-          break;
+      if (is_supported_value_node(node)) {
+        final_value_nodes.add(&node);
+      }
+      else if (node.is_group_input()) {
+        final_group_inputs.add(socket.index());
+      }
+      else if (node.is_reroute()) {
+        sockets_to_handle.push({&node.input_socket(0), elem_variant});
+      }
+      else {
+        const bke::bNodeType &ntype = *node.typeinfo;
+        if (!ntype.eval_inverse_elem) {
+          /* Node does not support inverse propagation. */
+          continue;
         }
-        case NODE_GROUP_INPUT: {
-          final_group_inputs.add(socket.index());
-          break;
-        }
-        case NODE_REROUTE: {
-          sockets_to_handle.push({&node.input_socket(0), elem_variant});
-          break;
-        }
-        default: {
-          const bke::bNodeType &ntype = *node.typeinfo;
-          if (!ntype.eval_inverse_elem) {
-            /* Node does not support inverse propagation. */
-            continue;
+        Vector<SocketElem> input_elems;
+        InverseElemEvalParams params{node, elem_by_socket_map, input_elems};
+        ntype.eval_inverse_elem(params);
+        for (const SocketElem &input_elem : input_elems) {
+          if (input_elem.elem) {
+            sockets_to_handle.push(input_elem);
           }
-          Vector<SocketElem> input_elems;
-          InverseElemEvalParams params{node, elem_by_socket_map, input_elems};
-          ntype.eval_inverse_elem(params);
-          for (const SocketElem &input_elem : input_elems) {
-            if (input_elem.elem) {
-              sockets_to_handle.push(input_elem);
-            }
-          }
-          break;
         }
       }
     }
@@ -189,6 +186,13 @@ InverseElemEvalParams::InverseElemEvalParams(
     Vector<SocketElem> &input_elems)
     : elem_by_socket_(elem_by_socket), input_elems_(input_elems), node(node)
 {
+}
+
+GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext &initial_context,
+                                                    const SocketElem &initial_socket_elem)
+{
+  UNUSED_VARS(initial_context, initial_socket_elem);
+  return {};
 }
 
 }  // namespace blender::nodes::inverse_eval

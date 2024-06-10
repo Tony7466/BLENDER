@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_compute_context.hh"
+
 #include "NOD_inverse_eval.hh"
 
 namespace blender::nodes::inverse_eval {
@@ -18,5 +20,17 @@ struct LocalInverseEvalPath {
 
 LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
                                                   const SocketElem &initial_socket_elem);
+
+struct GlobalInverseEvalPath {
+  struct Node {
+    const ComputeContext *compute_context;
+    const bNode *node;
+  };
+
+  Vector<Node> ordered_nodes;
+};
+
+GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext &initial_context,
+                                                    const SocketElem &initial_socket_elem);
 
 }  // namespace blender::nodes::inverse_eval
