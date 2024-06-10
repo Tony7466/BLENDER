@@ -617,7 +617,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   Vector<Array<int>> tris_start_offsets_per_visible_drawing;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const OffsetIndices<int> eval_points_by_curve = curves.evaluated_points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
@@ -633,10 +633,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     int t_offset = 0;
     int pos = 0;
     for (const int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
+      IndexRange points = eval_points_by_curve[curve_i];
       if (visible_strokes.contains(curve_i)) {
-        tris_start_offsets[pos] = t_offset;
-        pos++;
+        tris_start_offsets[pos++] = t_offset;
       }
       if (points.size() >= 3) {
         t_offset += points.size() - 2;
@@ -647,7 +646,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     int num_cyclic = 0;
     int num_points = 0;
     visible_strokes.foreach_index([&](const int curve_i, const int pos) {
-      IndexRange points = points_by_curve[curve_i];
+      IndexRange points = eval_points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
       if (is_cyclic) {
@@ -695,16 +694,35 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const float4x4 layer_space_to_object_space = layer.to_object_space(object);
     const float4x4 object_space_to_layer_space = math::invert(layer_space_to_object_space);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
+    if (curves.evaluated_points_num() == 0) {
+      continue;
+    }
+
     const bke::AttributeAccessor attributes = curves.attributes();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    const Span<float3> positions = curves.positions();
+    const OffsetIndices<int> eval_points_by_curve = curves.evaluated_points_by_curve();
+    const Span<float3> positions = curves.evaluated_positions();
     const VArray<bool> cyclic = curves.cyclic();
-    const VArray<float> radii = info.drawing.radii();
-    const VArray<float> opacities = info.drawing.opacities();
-    const VArray<ColorGeometry4f> vertex_colors = *attributes.lookup_or_default<ColorGeometry4f>(
-        "vertex_color", bke::AttrDomain::Point, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
-    const VArray<float> rotations = *attributes.lookup_or_default<float>(
+
+    curves.ensure_can_interpolate_to_evaluated();
+
+    const VArray<float> radii1 = info.drawing.radii();
+    Array<float> radii(curves.evaluated_points_num());
+    curves.interpolate_to_evaluated(VArraySpan(radii1), radii.as_mutable_span());
+
+    const VArray<float> opacities1 = info.drawing.opacities();
+    Array<float> opacities(curves.evaluated_points_num());
+    curves.interpolate_to_evaluated(VArraySpan(opacities1), opacities.as_mutable_span());
+
+    const VArray<float> rotations1 = *attributes.lookup_or_default<float>(
         "rotation", bke::AttrDomain::Point, 0.0f);
+    Array<float> rotations(curves.evaluated_points_num());
+    curves.interpolate_to_evaluated(VArraySpan(rotations1), rotations.as_mutable_span());
+
+    const VArray<ColorGeometry4f> vertex_colors1 = *attributes.lookup_or_default<ColorGeometry4f>(
+        "vertex_color", bke::AttrDomain::Point, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    Array<ColorGeometry4f> vertex_colors(curves.evaluated_points_num());
+    curves.interpolate_to_evaluated(VArraySpan(vertex_colors1), vertex_colors.as_mutable_span());
+
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
     const VArray<float> selection_float = *attributes.lookup_or_default<float>(
         ".selection", bke::AttrDomain::Point, true);
@@ -776,7 +794,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     };
 
     visible_strokes.foreach_index([&](const int curve_i, const int pos) {
-      const IndexRange points = points_by_curve[curve_i];
+      const IndexRange points = eval_points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
       const int verts_start_offset = verts_start_offsets[pos];
       const int tris_start_offset = tris_start_offsets[pos];

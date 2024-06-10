@@ -313,7 +313,7 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
     DRW_shgroup_buffer_texture(grp, "gp_col_tx", color_tx);
 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const OffsetIndices<int> eval_points_by_curve = curves.evaluated_points_by_curve();
     const bke::AttributeAccessor attributes = curves.attributes();
     const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
@@ -325,7 +325,7 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
         *ob, info.drawing, memory);
 
     visible_strokes.foreach_index([&](const int stroke_i) {
-      const IndexRange points = points_by_curve[stroke_i];
+      const IndexRange points = eval_points_by_curve[stroke_i];
       const int material_index = stroke_materials[stroke_i];
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);
 
