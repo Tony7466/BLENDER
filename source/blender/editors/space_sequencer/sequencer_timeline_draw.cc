@@ -1292,10 +1292,10 @@ static void draw_strips_background(TimelineDrawContext *timeline_ctx,
                                                     strip.right_handle,
                                                     strip.handle_width,
                                                     strip.is_single_image);
-    data.flags |= GPU_SEQ_FLAG_BACKGROUND_PART;
 
     /* Background color. */
     uchar col[4];
+    data.flags |= GPU_SEQ_FLAG_BACKGROUND;
     color3ubv_from_seq(scene, strip.seq, strip.show_strip_color_tag, col);
     col[3] = mute_alpha_factor_get(timeline_ctx->channels, strip.seq);
     /* Muted strips: turn almost gray. */
@@ -1370,7 +1370,7 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
                                                     strip.right_handle,
                                                     strip.handle_width,
                                                     strip.is_single_image);
-    data.flags |= GPU_SEQ_FLAG_FOREGROUND_PART;
+    data.flags |= GPU_SEQ_FLAG_BORDER;
 
     /* Missing media state. */
     if (strip.missing_data_block || strip.missing_media) {

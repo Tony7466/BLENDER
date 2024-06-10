@@ -419,8 +419,7 @@ static void draw_seq_in_view(bContext *C, wmWindow * /*win*/, wmDrag *drag, cons
     }
 
     SeqStripDrawData &data = batch.add_strip(x1, x2, y2, y1, y2, x1, x2, 0, true);
-    data.flags |= GPU_SEQ_FLAG_BACKGROUND_PART | GPU_SEQ_FLAG_FOREGROUND_PART |
-                  GPU_SEQ_FLAG_SELECTED;
+    data.flags |= GPU_SEQ_FLAG_BACKGROUND | GPU_SEQ_FLAG_BORDER | GPU_SEQ_FLAG_SELECTED;
     data.col_background = color_pack(strip_color);
 
     if (coords->is_intersecting) {
