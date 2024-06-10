@@ -799,6 +799,14 @@ bool rna_Action_actedit_assign_poll(PointerRNA *ptr, PointerRNA value)
     return true;
   }
 
+  /* Layered Actions are never limited to a specific ID type, and so these
+   * should always be shown. This is a more expensive test than just checking
+   * `action->idroot` though, and that should always be zero for layered actions
+   * anyway. */
+  if (action->wrap().is_action_layered()) {
+    return true;
+  }
+
   if (!saction) {
     return false;
   }
