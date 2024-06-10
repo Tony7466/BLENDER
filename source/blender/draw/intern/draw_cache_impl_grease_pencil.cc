@@ -587,6 +587,14 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   cache->is_dirty = false;
 }
 
+template<typename T>
+static Array<T> attribute_interpolate(const VArray<T> input, const bke::CurvesGeometry &curves)
+{
+  Array<T> out(curves.evaluated_points_num());
+  curves.interpolate_to_evaluated(VArraySpan(input), out.as_mutable_span());
+  return out;
+};
+
 static void grease_pencil_geom_batch_ensure(Object &object,
                                             const GreasePencil &grease_pencil,
                                             const Scene &scene)
@@ -705,23 +713,14 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     curves.ensure_can_interpolate_to_evaluated();
 
-    const VArray<float> radii1 = info.drawing.radii();
-    Array<float> radii(curves.evaluated_points_num());
-    curves.interpolate_to_evaluated(VArraySpan(radii1), radii.as_mutable_span());
-
-    const VArray<float> opacities1 = info.drawing.opacities();
-    Array<float> opacities(curves.evaluated_points_num());
-    curves.interpolate_to_evaluated(VArraySpan(opacities1), opacities.as_mutable_span());
-
-    const VArray<float> rotations1 = *attributes.lookup_or_default<float>(
-        "rotation", bke::AttrDomain::Point, 0.0f);
-    Array<float> rotations(curves.evaluated_points_num());
-    curves.interpolate_to_evaluated(VArraySpan(rotations1), rotations.as_mutable_span());
-
-    const VArray<ColorGeometry4f> vertex_colors1 = *attributes.lookup_or_default<ColorGeometry4f>(
-        "vertex_color", bke::AttrDomain::Point, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
-    Array<ColorGeometry4f> vertex_colors(curves.evaluated_points_num());
-    curves.interpolate_to_evaluated(VArraySpan(vertex_colors1), vertex_colors.as_mutable_span());
+    Array<float> radii = attribute_interpolate<float>(info.drawing.radii(), curves);
+    Array<float> opacities = attribute_interpolate<float>(info.drawing.opacities(), curves);
+    Array<float> rotations = attribute_interpolate<float>(
+        *attributes.lookup_or_default<float>("rotation", bke::AttrDomain::Point, 0.0f), curves);
+    Array<ColorGeometry4f> vertex_colors = attribute_interpolate<ColorGeometry4f>(
+        *attributes.lookup_or_default<ColorGeometry4f>(
+            "vertex_color", bke::AttrDomain::Point, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f)),
+        curves);
 
     /* Assumes that if the ".selection" attribute does not exist, all points are selected. */
     const VArray<float> selection_float = *attributes.lookup_or_default<float>(
