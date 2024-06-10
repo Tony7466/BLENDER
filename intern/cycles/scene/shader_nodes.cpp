@@ -2123,12 +2123,13 @@ void ConvertNode::constant_fold(const ConstantFolder &folder)
   /* proxy nodes should have been removed at this point */
   assert(special_type != SHADER_SPECIAL_TYPE_PROXY);
 
-  /* TODO(DingTo): conversion from/to int is not supported yet, don't fold in that case */
-
   if (folder.all_inputs_constant()) {
     if (from == SocketType::FLOAT) {
       if (SocketType::is_float3(to)) {
         folder.make_constant(make_float3(value_float, value_float, value_float));
+      }
+      else if (to == SocketType::INT) {
+        folder.make_constant((int)value_float);
       }
     }
     else if (SocketType::is_float3(from)) {
@@ -2143,8 +2144,27 @@ void ConvertNode::constant_fold(const ConstantFolder &folder)
           folder.make_constant(average(value_vector));
         }
       }
+      else if (to == SocketType::INT) {
+        if (from == SocketType::COLOR) {
+          /* color to int */
+          float val = folder.scene->shader_manager->linear_rgb_to_gray(value_color);
+          folder.make_constant((int)val);
+        }
+        else {
+          /* vector/point/normal to int */
+          folder.make_constant((int)average(value_vector));
+        }
+      }
       else if (SocketType::is_float3(to)) {
         folder.make_constant(value_color);
+      }
+    }
+    else if (from == SocketType::INT) {
+      if (SocketType::is_float3(to)) {
+        folder.make_constant(make_float3(value_int, value_int, value_int));
+      }
+      else if (to == SocketType::FLOAT) {
+        folder.make_constant((float)value_int);
       }
     }
   }
