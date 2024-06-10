@@ -191,11 +191,15 @@ void main()
     /* Bottom transparent border left. */
     case 20:
     case 21: {
+      offset *= 0.75; /* Don't make the active "halo" appear very thick. */
       output_vert(offset * -2.0, vec4(colorActiveSpline.rgb, 0.0), world_pos[0], ndc_pos[0]);
+      break;
     }
     /* Bottom transparent border right. */
     case 23: {
+      offset *= 0.75; /* Don't make the active "halo" appear very thick. */
       output_vert(offset * -2.0, vec4(colorActiveSpline.rgb, 0.0), world_pos[1], ndc_pos[1]);
+      break;
     }
     default: {
       DISCARD_VERTEX
