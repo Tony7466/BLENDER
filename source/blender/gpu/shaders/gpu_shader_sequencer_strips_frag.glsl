@@ -62,6 +62,7 @@ void main()
   vec4 col = vec4(0.0);
 
   bool back_part = (strip.flags & GPU_SEQ_FLAG_BACKGROUND_PART) != 0;
+  bool fore_part = (strip.flags & GPU_SEQ_FLAG_FOREGROUND_PART) != 0;
 
   if (back_part) {
 
@@ -100,7 +101,8 @@ void main()
 
     col.rgb *= col.a; /* Premultiply alpha. */
   }
-  else {
+
+  if (fore_part) {
     /* Missing media. */
     if ((strip.flags & GPU_SEQ_FLAG_MISSING_TITLE) != 0) {
       if (co.y > strip.strip_content_top) {
@@ -145,7 +147,7 @@ void main()
   }
 
   /* Outline. */
-  if (!back_part) {
+  if (fore_part) {
     bool selected = (strip.flags & GPU_SEQ_FLAG_SELECTED) != 0;
     vec4 col_outline = unpackUnorm4x8(strip.col_outline);
     if (selected) {
