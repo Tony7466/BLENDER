@@ -10,14 +10,19 @@
 
 #include "BLI_compute_context.hh"
 
+#include "NOD_geometry_nodes_log.hh"
+
+struct NodesModifierData;
+
 namespace blender::nodes::inverse_eval {
 
 using bke::SocketValueVariant;
 
-void change_socket_value_and_update_source(
-    Object &object,
-    const ComputeContext &context,
-    bNodeSocket &socket,
-    FunctionRef<SocketValueVariant(SocketValueVariant old_value)> update_fn);
+bool try_change_link_target_and_update_source(Object &object,
+                                              NodesModifierData &nmd,
+                                              geo_eval_log::GeoModifierLog &eval_log,
+                                              const ComputeContext *initial_context,
+                                              bNodeLink &initial_link,
+                                              const SocketValueVariant &new_value);
 
 }  // namespace blender::nodes::inverse_eval

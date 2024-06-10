@@ -58,6 +58,7 @@ set(INC
   ../blenloader
   ../blentranslation
   ../bmesh
+  ../despgraph
   ../functions
   ../geometry
   ../gpu

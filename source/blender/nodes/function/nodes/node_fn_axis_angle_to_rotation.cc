@@ -52,7 +52,7 @@ static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
   const math::Quaternion rotation = params.get_output<math::Quaternion>("Rotation");
   const math::AxisAngle axis_angle = math::to_axis_angle(rotation);
   params.set_input("Axis", axis_angle.axis());
-  params.set_input("Angle", axis_angle.angle());
+  params.set_input("Angle", axis_angle.angle().radian());
 }
 
 static void node_register()

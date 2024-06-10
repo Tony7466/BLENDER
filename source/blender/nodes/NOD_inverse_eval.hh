@@ -12,6 +12,8 @@
 
 #include "DNA_node_types.h"
 
+#include "BKE_node_socket_value.hh"
+
 namespace blender::nodes::inverse_eval {
 
 struct PrimitiveValueElem {
@@ -267,27 +269,39 @@ class InverseElemEvalParams {
 };
 
 class InverseEvalParams {
+ private:
+  const Map<const bNodeSocket *, bke::SocketValueVariant> &socket_values_;
+  Map<const bNodeSocket *, bke::SocketValueVariant> &updated_socket_values_;
+
  public:
   const bNode &node;
 
-  template<typename T> T get_output(StringRef identifier) const
+  InverseEvalParams(const bNode &node,
+                    const Map<const bNodeSocket *, bke::SocketValueVariant> &socket_values,
+                    Map<const bNodeSocket *, bke::SocketValueVariant> &updated_socket_values);
+
+  template<typename T> T get_output(const StringRef identifier) const
   {
-    /* TODO */
-    UNUSED_VARS(identifier);
+    const bNodeSocket &socket = node.output_by_identifier(identifier);
+    if (const bke::SocketValueVariant *value = socket_values_.lookup_ptr(&socket)) {
+      return value->get<T>();
+    }
     return T();
   }
 
-  template<typename T> T get_input(StringRef identifier) const
+  template<typename T> T get_input(const StringRef identifier) const
   {
-    /* TODO */
-    UNUSED_VARS(identifier);
+    const bNodeSocket &socket = node.input_by_identifier(identifier);
+    if (const bke::SocketValueVariant *value = socket_values_.lookup_ptr(&socket)) {
+      return value->get<T>();
+    }
     return T();
   }
 
-  template<typename T> void set_input(StringRef identifier, T value)
+  template<typename T> void set_input(const StringRef identifier, T value)
   {
-    /* TODO */
-    UNUSED_VARS(identifier, value);
+    const bNodeSocket &socket = node.input_by_identifier(identifier);
+    updated_socket_values_.add(&socket, bke::SocketValueVariant(value));
   }
 };
 
