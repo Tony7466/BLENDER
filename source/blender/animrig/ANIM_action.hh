@@ -542,11 +542,15 @@ class KeyframeStrip : public ::KeyframeActionStrip {
    *
    * If it cannot be found, a new one is created.
    */
-  FCurve &fcurve_find_or_create(const Binding &binding, StringRefNull rna_path, int array_index);
+  FCurve &fcurve_find_or_create(const Binding &binding,
+                                StringRefNull rna_path,
+                                int array_index,
+                                std::optional<PropertySubType> prop_subtype);
 
   SingleKeyingResult keyframe_insert(const Binding &binding,
                                      StringRefNull rna_path,
                                      int array_index,
+                                     std::optional<PropertySubType> prop_subtype,
                                      float2 time_value,
                                      const KeyframeSettings &settings,
                                      eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS);
