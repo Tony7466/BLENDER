@@ -1228,6 +1228,15 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
 {
   PrimitiveToolOperation &ptd = *reinterpret_cast<PrimitiveToolOperation *>(op->customdata);
 
+  /* Check for confirm before navigation. */
+  if (event->type == EVT_MODAL_MAP) {
+    if (event->val == int(ModalKeyMode::Confirm)) {
+      grease_pencil_primitive_exit(C, op);
+
+      return OPERATOR_FINISHED;
+    }
+  }
+
   const float3 pos = ptd.control_points.first();
   if (ED_view3d_navigation_do(C, ptd.vod, event, pos)) {
     if (ptd.vc.rv3d->rflag & RV3D_NAVIGATING) {
