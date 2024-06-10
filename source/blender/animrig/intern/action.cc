@@ -163,7 +163,13 @@ Layer *Action::layer(const int64_t index)
 
 Layer &Action::layer_add(const StringRefNull name)
 {
-  using namespace blender::animrig;
+  /* If this is will be the first layer in this Action, it means that it could
+   * have been used as a legacy Action before. As a result, this->idroot may be
+   * non-zero while it should be zero for layered Actions.
+   *
+   * And since setting this to 0 when it is already supposed to be 0 is fine,
+   * there is no check for whether this is actually the first layer. */
+  this->idroot = 0;
 
   Layer &new_layer = ActionLayer_alloc();
   STRNCPY_UTF8(new_layer.name, name.c_str());

@@ -71,6 +71,20 @@ TEST_F(ActionLayersTest, add_layer)
   ASSERT_EQ(0, layer.strips().size()) << "Expected newly added layer to have no strip.";
 }
 
+TEST_F(ActionLayersTest, add_layer__reset_idroot)
+{
+  /* An empty Action is a valid legacy Action, and thus can have its idroot set to a non-zero
+   * value. If such an Action gets a layer, it no longer is a valid legacy Action, and thus its
+   * idtype should be reset to zero. */
+  anim->idroot = ID_CA; /* Fake that this was assigned to a camera data-block. */
+  ASSERT_NE(0, anim->idroot) << "anim->idroot should not be zero at the start of this test.";
+
+  Layer &layer = anim->layer_add("layer name");
+
+  EXPECT_EQ(anim->layer(0), &layer);
+  EXPECT_EQ(0, anim->idroot) << "anim->idroot should get reset when the Action becomes layered.";
+}
+
 TEST_F(ActionLayersTest, remove_layer)
 {
   Layer &layer0 = anim->layer_add("Test Læür nul");
