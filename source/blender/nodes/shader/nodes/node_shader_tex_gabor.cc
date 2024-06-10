@@ -32,12 +32,12 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
       .description(
           "The number of impulses used to compute the noise. This is a quality control parameter "
           "and has minimal effect on the structure of the output. Higher values yield higher "
-          "quality noise at the cost of more compute time");
+          "quality noise at the cost of more computation time");
   b.add_input<decl::Float>("Frequency")
       .default_value(2.0f)
       .min(0.0f)
       .description(
-          "The rate at which the Gabor noise change across space. This is different from the "
+          "The rate at which the Gabor noise changes across space. This is different from the "
           "Scale input in that it only scales perpendicular to the Gabor noise direction");
   b.add_input<decl::Float>("Anisotropy")
       .default_value(1.0f)
@@ -46,7 +46,7 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .description(
           "The directionality of Gabor noise. 1 means the noise is completely directional, while "
-          "0 means the noise is completely omnidirectional");
+          "0 means the noise is omnidirectional");
   b.add_input<decl::Float>("Orientation", "Orientation 2D")
       .default_value(math::numbers::pi / 4)
       .subtype(PROP_ANGLE)
