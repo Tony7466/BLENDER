@@ -1582,7 +1582,10 @@ enum eWM_JobType {
   WM_JOB_TYPE_SEQ_BUILD_PREVIEW,
   WM_JOB_TYPE_POINTCACHE,
   WM_JOB_TYPE_DPAINT_BAKE,
-  WM_JOB_TYPE_ALEMBIC,
+  WM_JOB_TYPE_ALEMBIC_IMPORT,
+  WM_JOB_TYPE_ALEMBIC_EXPORT,
+  WM_JOB_TYPE_USD_IMPORT,
+  WM_JOB_TYPE_USD_EXPORT,
   WM_JOB_TYPE_SHADER_COMPILATION,
   WM_JOB_TYPE_STUDIOLIGHT,
   WM_JOB_TYPE_LIGHT_BAKE,
@@ -1602,8 +1605,8 @@ enum eWM_JobType {
 /**
  * \return current job or adds new job, but doesn't run it.
  *
- * \note every owner only gets a single job,
- * adding a new one will stop running job and when stopped it starts the new one.
+ * \note every owner only gets a single running job of the same \a job_type (or with the
+ * #WM_JOB_EXCL_RENDER flag). Adding a new one will wait for the running job to finish.
  */
 wmJob *WM_jobs_get(wmWindowManager *wm,
                    wmWindow *win,
@@ -1648,7 +1651,11 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
 
 /**
  * If job running, the same owner gave it a new job.
- * if different owner starts existing #wmJob::startjob, it suspends itself.
+ *
+ * \note If a job of the same #eWM_JobType is already running, \a wm_job will wait until its
+ * finished. #WM_JOB_PRIORITY can be set so the existing job will be stopped in that case. Jobs
+ * tagged with #WM_JOB_EXCL_RENDER will behave as if they had the same job type (newly started once
+ * wait for already running one to finish).
  */
 void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job);
 /**
