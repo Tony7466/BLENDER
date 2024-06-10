@@ -8,7 +8,7 @@
 
 namespace blender::nodes::inverse_eval {
 
-struct LocalInversePropagationPath {
+struct LocalInverseEvalPath {
   Vector<SocketElem> intermediate_sockets;
 
   Vector<SocketElem> final_input_sockets;
@@ -16,7 +16,7 @@ struct LocalInversePropagationPath {
   Vector<ValueNodeElem> final_value_nodes;
 };
 
-LocalInversePropagationPath find_local_inverse_propagation_path(
-    const bNodeTree &tree, const SocketElem &initial_socket_elem);
+LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
+                                                  const SocketElem &initial_socket_elem);
 
 }  // namespace blender::nodes::inverse_eval

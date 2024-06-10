@@ -93,25 +93,24 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
 
   for (const GizmoInput &gizmo_input : all_gizmo_inputs) {
     const ie::SocketElem gizmo_input_socket_elem{gizmo_input.gizmo_socket, gizmo_input.elem};
-    const ie::LocalInversePropagationPath propagation_path =
-        ie::find_local_inverse_propagation_path(
-            tree, {gizmo_input.propagation_start_socket, gizmo_input.elem});
-    const bool has_target = !propagation_path.final_input_sockets.is_empty() ||
-                            !propagation_path.final_group_inputs.is_empty() ||
-                            !propagation_path.final_value_nodes.is_empty();
+    const ie::LocalInverseEvalPath path = ie::find_local_inverse_eval_path(
+        tree, {gizmo_input.propagation_start_socket, gizmo_input.elem});
+    const bool has_target = !path.final_input_sockets.is_empty() ||
+                            !path.final_group_inputs.is_empty() ||
+                            !path.final_value_nodes.is_empty();
     if (!has_target) {
       continue;
     }
-    for (const ie::SocketElem &socket_elem : propagation_path.intermediate_sockets) {
+    for (const ie::SocketElem &socket_elem : path.intermediate_sockets) {
       socket_elem.socket->runtime->has_gizmo2 = true;
     }
-    for (const ie::SocketElem &input_socket : propagation_path.final_input_sockets) {
+    for (const ie::SocketElem &input_socket : path.final_input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);
     }
-    for (const ie::ValueNodeElem &value_node : propagation_path.final_value_nodes) {
+    for (const ie::ValueNodeElem &value_node : path.final_value_nodes) {
       gizmo_propagation.gizmo_inputs_by_value_nodes.add(value_node, gizmo_input_socket_elem);
     }
-    for (const ie::GroupInputElem &group_input : propagation_path.final_group_inputs) {
+    for (const ie::GroupInputElem &group_input : path.final_group_inputs) {
       gizmo_propagation.gizmo_inputs_by_group_inputs.add(group_input, gizmo_input_socket_elem);
     }
   }

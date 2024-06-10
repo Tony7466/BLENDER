@@ -42,8 +42,8 @@ static std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_soc
   return std::nullopt;
 }
 
-LocalInversePropagationPath find_local_inverse_propagation_path(
-    const bNodeTree &tree, const SocketElem &initial_socket_elem)
+LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
+                                                  const SocketElem &initial_socket_elem)
 {
   BLI_assert(!tree.has_available_link_cycle());
 
@@ -137,14 +137,14 @@ LocalInversePropagationPath find_local_inverse_propagation_path(
     }
   }
 
-  LocalInversePropagationPath propagation_path;
+  LocalInverseEvalPath path;
 
   for (const bNodeSocket *socket : final_sockets) {
     const ElemVariant &elem = elem_by_socket_map.lookup(socket);
     if (!elem) {
       continue;
     }
-    propagation_path.final_input_sockets.append({socket, elem});
+    path.final_input_sockets.append({socket, elem});
   }
 
   for (const bNode *value_node : final_value_nodes) {
@@ -153,7 +153,7 @@ LocalInversePropagationPath find_local_inverse_propagation_path(
     if (!elem) {
       continue;
     }
-    propagation_path.final_value_nodes.append({value_node, elem});
+    path.final_value_nodes.append({value_node, elem});
   }
 
   for (const int group_input_index : final_group_inputs) {
@@ -171,16 +171,16 @@ LocalInversePropagationPath find_local_inverse_propagation_path(
     if (!*elem) {
       continue;
     }
-    propagation_path.final_group_inputs.append({group_input_index, *elem});
+    path.final_group_inputs.append({group_input_index, *elem});
   }
 
   for (auto &&item : elem_by_socket_map.items()) {
     const bNodeSocket &socket = *item.key;
     const ElemVariant &elem = item.value;
-    propagation_path.intermediate_sockets.append({&socket, elem});
+    path.intermediate_sockets.append({&socket, elem});
   }
 
-  return propagation_path;
+  return path;
 }
 
 InverseElemEvalParams::InverseElemEvalParams(
