@@ -27,8 +27,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Size", "SizeVector").default_value(float3(1.0f));
   b.add_input<decl::Float>("Radius").default_value(1.0f);
   b.add_input<decl::Float>("Height").default_value(1.0f);
-  b.add_input<decl::Vector>("Plane Normal").default_value(float3(0,0,1));
-  b.add_input<decl::Float>("Plane Constant").default_value(1.0f);
+  b.add_input<decl::Vector>("Plane Normal").default_value(float3(0, 0, 1));
+  b.add_input<decl::Float>("Plane Constant").default_value(0.0f);
   b.add_input<decl::Vector>("Point", "Point0");
   b.add_input<decl::Vector>("Point", "Point1");
   b.add_input<decl::Vector>("Point", "Point2");
@@ -173,7 +173,8 @@ static VArray<float3> gather_points(const GeometrySet &geometry_set)
   return VArray<float3>::ForContainer(positions);
 }
 
-static const bke::CollisionShape::Ptr get_convex_collision_shape(const bke::GeometrySet &geometry_set)
+static const bke::CollisionShape::Ptr get_convex_collision_shape(
+    const bke::GeometrySet &geometry_set)
 {
   if (!geometry_set.has_physics()) {
     return nullptr;
