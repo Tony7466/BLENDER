@@ -81,7 +81,7 @@ set(SRC
   intern/geometry_nodes_gizmos2.cc
   intern/geometry_nodes_lazy_function.cc
   intern/geometry_nodes_log.cc
-  intern/inverse_eval_path.cc
+  intern/inverse_eval.cc
   intern/math_functions.cc
   intern/node_common.cc
   intern/node_declaration.cc
