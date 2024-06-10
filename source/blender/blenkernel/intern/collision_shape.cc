@@ -193,6 +193,12 @@ bool CollisionShape::is_concave() const
   return impl_->as_bullet_shape().isConcave();
 }
 
+float3 CollisionShape::calculate_local_inertia(const float mass) const {
+  btVector3 bt_local_inertia;
+  impl_->as_bullet_shape().calculateLocalInertia(mass, bt_local_inertia);
+  return to_blender(bt_local_inertia);
+}
+
 EmptyCollisionShape::EmptyCollisionShape()
     : CollisionShape(CollisionShapeImpl::wrap(new btEmptyShape()))
 {

@@ -103,7 +103,7 @@ static void geometry_set_points_to_rigid_bodies(
     }
     body_shape_handles[pos] = shape_handles[shape_index];
   });
-  physics->set_body_shapes(IndexRange(num_bodies), body_shape_handles);
+  physics->set_body_shapes(IndexRange(num_bodies), body_shape_handles, true);
 
   AttributeWriter<int> dst_ids = physics->body_ids_for_write();
   AttributeWriter<float> dst_masses = physics->body_masses_for_write();

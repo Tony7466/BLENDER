@@ -92,7 +92,9 @@ class PhysicsGeometry {
   Span<CollisionShapePtr> shapes() const;
   std::optional<int> find_shape_handle(const CollisionShape &shape);
   int add_shape(const CollisionShapePtr &shape);
-  void set_body_shapes(const IndexMask &selection, Span<int> shape_handles);
+  void set_body_shapes(const IndexMask &selection,
+                       Span<int> shape_handles,
+                       bool update_local_inertia);
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();

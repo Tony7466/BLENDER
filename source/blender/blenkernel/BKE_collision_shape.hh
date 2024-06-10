@@ -99,6 +99,8 @@ class CollisionShape : public ImplicitSharingMixin {
   bool is_convex() const;
   bool is_concave() const;
 
+  float3 calculate_local_inertia(float mass) const;
+
  protected:
   CollisionShape(CollisionShapeImpl *impl);
 

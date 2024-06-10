@@ -849,7 +849,10 @@ int PhysicsGeometry::add_shape(const CollisionShapePtr &shape)
   return shapes_.append_and_get_index(shape);
 }
 
-void PhysicsGeometry::set_body_shapes(const IndexMask &selection, Span<int> shape_handles) {
+void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
+                                      const Span<int> shape_handles,
+                                      const bool update_local_inertia)
+{
   BLI_assert(selection.bounds().intersect(impl_->rigid_bodies.index_range()) ==
              selection.bounds());
   selection.foreach_index([&](const int index) {
@@ -866,11 +869,16 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection, Span<int> shap
       return;
     }
 
-    // XXX is const cast safe here? not sure why Bullet wants a mutable shape.
+    // XXX is const_cast safe here? not sure why Bullet wants a mutable shape.
     body->setCollisionShape(const_cast<btCollisionShape *>(bt_shape));
     if (impl_->broadphase && body->isInWorld()) {
       impl_->broadphase->getOverlappingPairCache()->cleanProxyFromPairs(body->getBroadphaseProxy(),
                                                                         impl_->dispatcher);
+    }
+    if (update_local_inertia) {
+      btVector3 bt_local_inertia;
+      bt_shape->calculateLocalInertia(body->getMass(), bt_local_inertia);
+      body->setMassProps(body->getMass(), bt_local_inertia);
     }
   });
 }
@@ -1174,7 +1182,14 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     return to_blender(body.getLocalInertia());
   };
   constexpr auto inertia_set_fn = [](btRigidBody &body, float3 value) {
-    body.setMassProps(body.getMass(), to_bullet(value));
+    if (math::is_zero(value)) {
+      btVector3 bt_inertia;
+      body.getCollisionShape()->calculateLocalInertia(body.getMass(), bt_inertia);
+      body.setMassProps(body.getMass(), bt_inertia);
+    }
+    else {
+      body.setMassProps(body.getMass(), to_bullet(value));
+    }
   };
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
       PhysicsGeometry::builtin_attributes.inertia,
