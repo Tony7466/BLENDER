@@ -387,6 +387,7 @@ struct bNodeType {
 #define NODE_CLASS_SHADER 40
 #define NODE_CLASS_GEOMETRY 41
 #define NODE_CLASS_ATTRIBUTE 42
+#define NODE_CLASS_SOUND 64
 #define NODE_CLASS_LAYOUT 100
 
 /**
@@ -1334,6 +1335,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_SET_INSTANCE_TRANSFORM 2136
 #define GEO_NODE_INPUT_INSTANCE_TRANSFORM 2137
 #define GEO_NODE_INPUT_SOUND 2200
+#define GEO_NODE_SAMPLE_SOUND 2201
 
 /** \} */
 

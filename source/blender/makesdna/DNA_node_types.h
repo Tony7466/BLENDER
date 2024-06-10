@@ -1780,6 +1780,11 @@ typedef struct NodeGeometrySampleIndex {
   char _pad[1];
 } NodeGeometrySampleIndex;
 
+typedef struct NodeGeometrySampleSound {
+  int8_t spec_chan;
+  int8_t spec_freq;
+} NodeGeometrySampleSound;
+
 typedef struct NodeGeometryRaycast {
   /** #GeometryNodeRaycastMapMode. */
   uint8_t mapping;
