@@ -1,3 +1,4 @@
 Referenced by issue #113988, Issue with weight painting a mesh (with a displacement modifier that results in non-manifold geometry) in Blender 4.0
 Referenced by pull request #114118, Fix #113988:  Deformed PBVH modifies original normals
 Referenced by commit 36f0ecb978b52d58e018c89f5592416cca3fa133, Fix #117900: Sculpt mode doesn't clear face corner normals
+Referenced by issue #122947, Shading bugs of sculpting by curve stroke on an reused mesh
