@@ -2926,6 +2926,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
               ccam, "fisheye_polynomial_k3", default_cam.fisheye_polynomial_k3);
           camera->fisheye_polynomial_k4 = version_cycles_property_float(
               ccam, "fisheye_polynomial_k4", default_cam.fisheye_polynomial_k4);
+          camera->central_cylindrical_range_u_min = version_cycles_property_float(
+              ccam, "central_cylindrical_range_u_min", default_cam.central_cylindrical_range_u_min);
+          camera->central_cylindrical_range_u_max = version_cycles_property_float(
+              ccam, "central_cylindrical_range_u_max", default_cam.central_cylindrical_range_u_max);
+          camera->central_cylindrical_range_v_min = version_cycles_property_float(
+              ccam, "central_cylindrical_range_v_min", default_cam.central_cylindrical_range_v_min);
+          camera->central_cylindrical_range_v_max = version_cycles_property_float(
+              ccam, "central_cylindrical_range_v_max", default_cam.central_cylindrical_range_v_max);
         }
         else {
           camera->panorama_type = default_cam.panorama_type;
@@ -2941,6 +2949,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           camera->fisheye_polynomial_k2 = default_cam.fisheye_polynomial_k2;
           camera->fisheye_polynomial_k3 = default_cam.fisheye_polynomial_k3;
           camera->fisheye_polynomial_k4 = default_cam.fisheye_polynomial_k4;
+          camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
+          camera->central_cylindrical_range_u_max = default_cam.central_cylindrical_range_u_max;
+          camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
+          camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
         }
       }
     }
