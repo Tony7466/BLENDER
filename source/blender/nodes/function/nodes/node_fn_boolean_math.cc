@@ -11,6 +11,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_inverse_eval.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "NOD_rna_define.hh"
@@ -128,6 +129,37 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const NodeBooleanMathOperation op = NodeBooleanMathOperation(params.node.custom1);
+  switch (op) {
+    case NODE_BOOLEAN_MATH_NOT: {
+      params.set_input_elem("Boolean", params.get_output_elem<BoolElem>("Boolean"));
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+}
+
+static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
+{
+  const NodeBooleanMathOperation op = NodeBooleanMathOperation(params.node.custom1);
+  const StringRef first_input_id = "Boolean";
+  const StringRef output_id = "Boolean";
+  switch (op) {
+    case NODE_BOOLEAN_MATH_NOT: {
+      params.set_input(first_input_id, !params.get_output<bool>(output_id));
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+}
+
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
@@ -149,6 +181,8 @@ static void node_register()
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;
+  ntype.eval_inverse_elem = node_eval_inverse_elem;
+  ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
