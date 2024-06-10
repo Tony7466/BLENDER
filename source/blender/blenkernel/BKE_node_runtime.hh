@@ -31,9 +31,6 @@ struct GeometryNodesLazyFunctionGraphInfo;
 namespace anonymous_attribute_lifetime {
 }
 namespace aal = anonymous_attribute_lifetime;
-namespace gizmos {
-struct GizmoPropagationResult;
-}
 namespace gizmos2 {
 struct TreeGizmoPropagation;
 }
@@ -144,7 +141,6 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   /** Information about usage of anonymous attributes within the group. */
   std::unique_ptr<anonymous_attribute_inferencing::AnonymousAttributeInferencingResult>
       anonymous_attribute_inferencing;
-  std::unique_ptr<nodes::gizmos::GizmoPropagationResult> gizmo_inferencing;
   std::unique_ptr<nodes::gizmos2::TreeGizmoPropagation> gizmo_propagation;
 
   /**
@@ -215,16 +211,6 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * including dragged node links that aren't actually in the tree.
    */
   short total_inputs = 0;
-
-  /**
-   * This is set in #update_gizmo_propagation and is stored here so that it can be quickly accessed
-   * during socket drawing.
-   */
-  bool has_gizmo = false;
-  /**
-   * Is set to true for sockets that have gizmos which have a valid target within the node group.
-   */
-  bool gizmo_valid = false;
 
   bool has_gizmo2 = false;
 
