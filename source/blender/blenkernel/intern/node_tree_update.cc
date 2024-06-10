@@ -28,7 +28,7 @@
 
 #include "MOD_nodes.hh"
 
-#include "NOD_geometry_nodes_gizmos2.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
@@ -511,7 +511,7 @@ class NodeTreeMainUpdater {
       if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
         result.interface_changed = true;
       }
-      if (nodes::gizmos2::update_tree_gizmo_propagation(ntree)) {
+      if (nodes::gizmos::update_tree_gizmo_propagation(ntree)) {
         result.interface_changed = true;
       }
     }

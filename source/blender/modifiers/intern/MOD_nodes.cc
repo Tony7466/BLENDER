@@ -91,7 +91,7 @@
 
 #include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_execute.hh"
-#include "NOD_geometry_nodes_gizmos2.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 
@@ -742,7 +742,7 @@ static void find_side_effect_nodes_for_active_gizmos(
   Object *object_orig = DEG_get_original_object(ctx.object);
   const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
       BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
-  nodes::gizmos2::foreach_active_gizmo(
+  nodes::gizmos::foreach_active_gizmo(
       *object_orig,
       nmd_orig,
       wm,
@@ -751,7 +751,7 @@ static void find_side_effect_nodes_for_active_gizmos(
         r_socket_log_contexts.add(compute_context.hash());
 
         const nodes::inverse_eval::GlobalInverseEvalPath path =
-            nodes::gizmos2::find_inverse_eval_path_for_gizmo(&compute_context, gizmo_node);
+            nodes::gizmos::find_inverse_eval_path_for_gizmo(&compute_context, gizmo_node);
         for (const nodes::inverse_eval::GlobalInverseEvalPath::Node &intermediate_node :
              path.ordered_nodes)
         {

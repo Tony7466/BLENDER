@@ -11,7 +11,7 @@
 #include "BKE_node_tree_zones.hh"
 #include "BKE_workspace.hh"
 
-#include "NOD_geometry_nodes_gizmos2.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_inverse_eval.hh"
 #include "NOD_inverse_eval_path.hh"
 
@@ -19,7 +19,7 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
-namespace blender::nodes::gizmos2 {
+namespace blender::nodes::gizmos {
 
 bool is_builtin_gizmo_node(const bNode &node)
 {
@@ -260,4 +260,4 @@ void apply_gizmo_change(
   }
 }
 
-}  // namespace blender::nodes::gizmos2
+}  // namespace blender::nodes::gizmos

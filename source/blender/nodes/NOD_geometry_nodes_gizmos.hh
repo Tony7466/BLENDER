@@ -15,7 +15,7 @@ struct Object;
 struct NodesModifierData;
 struct wmWindowManager;
 
-namespace blender::nodes::gizmos2 {
+namespace blender::nodes::gizmos {
 
 namespace ie = inverse_eval;
 
@@ -54,4 +54,4 @@ void apply_gizmo_change(Object &object,
                         const bNode &gizmo_node,
                         FunctionRef<void(bke::SocketValueVariant &value)> apply_on_gizmo_value_fn);
 
-}  // namespace blender::nodes::gizmos2
+}  // namespace blender::nodes::gizmos
