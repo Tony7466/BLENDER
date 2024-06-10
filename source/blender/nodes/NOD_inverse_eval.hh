@@ -13,7 +13,7 @@
 
 namespace blender::nodes::inverse_eval {
 
-struct BoolElem {
+struct PrimitiveValueElem {
   bool affected = false;
 
   operator bool() const
@@ -21,55 +21,34 @@ struct BoolElem {
     return this->affected;
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_1(BoolElem, affected)
+  BLI_STRUCT_EQUALITY_OPERATORS_1(PrimitiveValueElem, affected)
 
-  void merge(const BoolElem &other)
+  void merge(const PrimitiveValueElem &other)
   {
     this->affected |= other.affected;
   }
 
+  uint64_t hash() const
+  {
+    return get_default_hash(this->affected);
+  }
+};
+
+struct BoolElem : public PrimitiveValueElem {
   static BoolElem all()
   {
     return {true};
   }
 };
 
-struct FloatElem {
-  bool affected = false;
-
-  operator bool() const
-  {
-    return this->affected;
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_1(FloatElem, affected)
-
-  void merge(const FloatElem &other)
-  {
-    this->affected |= other.affected;
-  }
-
+struct FloatElem : public PrimitiveValueElem {
   static FloatElem all()
   {
     return {true};
   }
 };
 
-struct IntElem {
-  bool affected = false;
-
-  operator bool() const
-  {
-    return this->affected;
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_1(IntElem, affected)
-
-  void merge(const IntElem &other)
-  {
-    this->affected |= other.affected;
-  }
-
+struct IntElem : public PrimitiveValueElem {
   static IntElem all()
   {
     return {true};
@@ -87,6 +66,11 @@ struct VectorElem {
   }
 
   BLI_STRUCT_EQUALITY_OPERATORS_3(VectorElem, x, y, z)
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->x, this->y, this->z);
+  }
 
   void merge(const VectorElem &other)
   {
@@ -112,6 +96,11 @@ struct RotationElem {
   }
 
   BLI_STRUCT_EQUALITY_OPERATORS_3(RotationElem, euler, axis, angle)
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->euler, this->axis, this->angle);
+  }
 
   void merge(const RotationElem &other)
   {
@@ -148,6 +137,11 @@ struct TransformElem {
 
   BLI_STRUCT_EQUALITY_OPERATORS_3(TransformElem, translation, rotation, scale)
 
+  uint64_t hash() const
+  {
+    return get_default_hash(this->translation, this->rotation, this->scale);
+  }
+
   void merge(const TransformElem &other)
   {
     this->translation.merge(other.translation);
@@ -169,6 +163,11 @@ struct ElemVariant {
     return std::visit([](const auto &value) { return bool(value); }, this->elem);
   }
 
+  uint64_t hash() const
+  {
+    return std::visit([](auto &value) { return value.hash(); }, this->elem);
+  }
+
   void merge(const ElemVariant &other)
   {
     std::visit(
@@ -185,6 +184,37 @@ struct ElemVariant {
 struct SocketElem {
   const bNodeSocket *socket = nullptr;
   ElemVariant elem;
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->socket, this->elem);
+  }
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(SocketElem, socket, elem)
+};
+
+struct GroupInputElem {
+  int group_input_index = 0;
+  ElemVariant elem;
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->group_input_index, this->elem);
+  }
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(GroupInputElem, group_input_index, elem)
+};
+
+struct ValueNodeElem {
+  const bNode *node = nullptr;
+  ElemVariant elem;
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->node, this->elem);
+  }
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(ValueNodeElem, node, elem)
 };
 
 class InverseElemEvalParams {
