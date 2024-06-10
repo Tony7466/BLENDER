@@ -755,11 +755,8 @@ static void find_side_effect_nodes_for_active_gizmos(
         for (const nodes::inverse_eval::GlobalInverseEvalPath::Node &intermediate_node :
              path.ordered_nodes)
         {
-          intermediate_node.compute_context->print_stack(std::cout, intermediate_node.node->name);
-          try_add_side_effect_node(*intermediate_node.compute_context,
-                                   intermediate_node.node->identifier,
-                                   nmd,
-                                   r_side_effect_nodes);
+          /* Make sure that all intermediate sockets are logged. This is necessary to be able to
+           * evaluate the nodes in reverse for the gizmo. */
           r_socket_log_contexts.add(intermediate_node.compute_context->hash());
         }
       });
