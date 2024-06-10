@@ -53,6 +53,7 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
   Map<const bNodeSocket *, ElemVariant> elem_by_socket_map;
   Set<const bNodeSocket *> final_sockets;
   Set<int> final_group_inputs;
+  Set<const bNode *> final_value_nodes;
 
   Stack<SocketElem> sockets_to_handle;
   sockets_to_handle.push(initial_socket_elem);
@@ -106,7 +107,7 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
         case FN_NODE_INPUT_VECTOR:
         case FN_NODE_INPUT_BOOL:
         case FN_NODE_INPUT_INT: {
-          final_sockets.add(&socket);
+          final_value_nodes.add(&node);
           break;
         }
         case NODE_GROUP_INPUT: {
@@ -143,15 +144,34 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
     if (!elem) {
       continue;
     }
-    if (node.is_group_input()) {
-      propagation_path.final_group_inputs.append({socket->index(), elem});
+    propagation_path.final_input_sockets.append({socket, elem});
+  }
+
+  for (const bNode *value_node : final_value_nodes) {
+    const bNodeSocket &socket = value_node->output_socket(0);
+    const ElemVariant &elem = elem_by_socket_map.lookup(&socket);
+    if (!elem) {
+      continue;
     }
-    else if (socket->is_output()) {
-      propagation_path.final_value_nodes.append({&node, elem});
+    propagation_path.final_value_nodes.append({value_node, elem});
+  }
+
+  for (const int group_input_index : final_group_inputs) {
+    const eNodeSocketDatatype type = eNodeSocketDatatype(
+        tree.interface_inputs()[group_input_index]->socket_typeinfo()->type);
+    std::optional<ElemVariant> elem = get_elem_variant_for_socket_type(type);
+    if (!elem) {
+      continue;
     }
-    else {
-      propagation_path.final_input_sockets.append({socket, elem});
+    for (const bNode *node : tree.group_input_nodes()) {
+      const bNodeSocket &socket = node->output_socket(group_input_index);
+      const ElemVariant &socket_elem = elem_by_socket_map.lookup(&socket);
+      elem->merge(socket_elem);
     }
+    if (!*elem) {
+      continue;
+    }
+    propagation_path.final_group_inputs.append({group_input_index, *elem});
   }
 
   for (auto &&item : elem_by_socket_map.items()) {
