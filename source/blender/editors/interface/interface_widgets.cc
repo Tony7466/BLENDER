@@ -3675,11 +3675,8 @@ static void widget_scroll(uiBut *but,
   UI_draw_widget_scroll(wcol, rect, &rect1, (state->but_flag & UI_SELECT) ? UI_SCROLL_PRESSED : 0);
 }
 
-static void widget_progress_type_bar(uiButProgress *but_progress,
-                                     uiWidgetColors *wcol,
-                                     rcti *rect,
-                                     int roundboxalign,
-                                     const float zoom)
+static void widget_progress_type_bar(
+    float start, float end, uiWidgetColors *wcol, rcti *rect, int roundboxalign, const float zoom)
 {
   rcti rect_prog = *rect, rect_bar = *rect;
 
@@ -3688,14 +3685,16 @@ static void widget_progress_type_bar(uiButProgress *but_progress,
   widget_init(&wtb_bar);
 
   /* round corners */
-  const float factor = but_progress->progress_factor;
   const float ofs = widget_radius_from_zoom(zoom, wcol);
-  float w = factor * BLI_rcti_size_x(&rect_prog);
+
+  start *= BLI_rcti_size_x(&rect_prog);
+  end *= BLI_rcti_size_x(&rect_prog);
 
   /* Ensure minimum size. */
-  w = std::max(w, ofs);
+  end = std::max(end, ofs);
 
-  rect_bar.xmax = rect_bar.xmin + w;
+  rect_bar.xmin = rect_prog.xmin + start;
+  rect_bar.xmax = rect_prog.xmin + end;
 
   round_box_edges(&wtb, roundboxalign, &rect_prog, ofs);
   round_box_edges(&wtb_bar, roundboxalign, &rect_bar, ofs);
@@ -3709,23 +3708,22 @@ static void widget_progress_type_bar(uiButProgress *but_progress,
 }
 
 /**
- * Used for both ring & pie types.
+ * Used for both determinate and indeterminate ring types.
  */
-static void widget_progress_type_ring(uiButProgress *but_progress,
-                                      uiWidgetColors *wcol,
-                                      rcti *rect)
+static void widget_progress_type_ring(float start, float end, uiWidgetColors *wcol, rcti *rect)
 {
-  const float ring_width = 0.6; /* 0.0 would be a pie. */
-  const float outer_rad = (rect->ymax - rect->ymin) / 2.0f;
+  const float ring_width = 0.7; /* 0.0 would be a pie. */
+  const float rect_h = BLI_rcti_size_y(rect);
+  const float outer_rad = rect_h / 2.2f;
   const float inner_rad = outer_rad * ring_width;
   const float x = rect->xmin + outer_rad;
-  const float y = rect->ymin + outer_rad;
-  const float start = 0.0f;
-  const float end = but_progress->progress_factor * 360.0f;
+  const float y = rect->ymin + outer_rad + (0.1f * outer_rad);
+  start *= 360.0f;
+  end *= 360.0f;
   GPUVertFormat *format = immVertexFormat();
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor3ubvAlpha(wcol->item, 255 / UI_PIXEL_AA_JITTER * 2);
+  immUniformColor3ubvAlpha(wcol->text, 255 / UI_PIXEL_AA_JITTER * 2);
   GPU_blend(GPU_BLEND_ALPHA);
 
   for (int i = 0; i < UI_PIXEL_AA_JITTER; i++) {
@@ -3736,13 +3734,9 @@ static void widget_progress_type_ring(uiButProgress *but_progress,
                                   outer_rad,
                                   48,
                                   start,
-                                  end);
+                                  end - start);
   }
   immUnbindProgram();
-
-  if (but_progress->drawstr[0]) {
-    rect->xmin += UI_UNIT_X;
-  }
 }
 
 static void widget_progress_indicator(uiBut *but,
@@ -3755,11 +3749,30 @@ static void widget_progress_indicator(uiBut *but,
   uiButProgress *but_progress = static_cast<uiButProgress *>(but);
   switch (but_progress->progress_type) {
     case UI_BUT_PROGRESS_TYPE_BAR: {
-      widget_progress_type_bar(but_progress, wcol, rect, roundboxalign, zoom);
+      widget_progress_type_bar(
+          0.0f, std::min(but_progress->progress_factor, 1.0f), wcol, rect, roundboxalign, zoom);
+      break;
+    }
+    case UI_BUT_PROGRESS_TYPE_INDETERMINATE_BAR: {
+      float end = fmod(but_progress->progress_factor, 1.0f);
+      float start = std::max(end - (1 - end), 0.0f);
+      widget_progress_type_bar(start, end, wcol, rect, roundboxalign, zoom);
       break;
     }
     case UI_BUT_PROGRESS_TYPE_RING: {
-      widget_progress_type_ring(but_progress, wcol, rect);
+      widget_progress_type_ring(0.0f, std::min(but_progress->progress_factor, 1.0f), wcol, rect);
+      if (but_progress->drawstr[0]) {
+        rect->xmin += UI_UNIT_X;
+      }
+      break;
+    }
+    case UI_BUT_PROGRESS_TYPE_INDETERMINATE_RING: {
+      float end = fmod(but_progress->progress_factor, 1.0f);
+      float start = std::max(end - (1 - end), 0.0f);
+      widget_progress_type_ring(start, end, wcol, rect);
+      if (but_progress->drawstr[0]) {
+        rect->xmin += UI_UNIT_X;
+      }
       break;
     }
   }
