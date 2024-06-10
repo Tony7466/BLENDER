@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <optional>
 #include <variant>
 
 #include "BLI_map.hh"
@@ -178,6 +179,26 @@ struct ElemVariant {
         this->elem);
   }
 
+  void set_all()
+  {
+    std::visit(
+        [](auto &value) {
+          using T = std::decay_t<decltype(value)>;
+          value = T::all();
+        },
+        this->elem);
+  }
+
+  void clear_all()
+  {
+    std::visit(
+        [](auto &value) {
+          using T = std::decay_t<decltype(value)>;
+          value = T();
+        },
+        this->elem);
+  }
+
   BLI_STRUCT_EQUALITY_OPERATORS_1(ElemVariant, elem)
 };
 
@@ -269,5 +290,7 @@ class InverseEvalParams {
     UNUSED_VARS(identifier, value);
   }
 };
+
+std::optional<ElemVariant> get_elem_variant_for_socket_type(eNodeSocketDatatype type);
 
 }  // namespace blender::nodes::inverse_eval

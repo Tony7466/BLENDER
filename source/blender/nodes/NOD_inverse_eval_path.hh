@@ -15,7 +15,9 @@ struct PropagationPathNode {
 
 struct PropagationPath {
   Map<const bNode *, PropagationPathNode> nodes;
-  Vector<SocketElem> final_socket_elems;
+  Vector<SocketElem> final_input_sockets;
+  Vector<GroupInputElem> final_group_inputs;
+  Vector<ValueNodeElem> final_value_nodes;
 };
 
 PropagationPath find_propagation_path(const bNodeTree &tree,

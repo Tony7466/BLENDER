@@ -12,6 +12,26 @@
 
 namespace blender::nodes::inverse_eval {
 
+std::optional<ElemVariant> get_elem_variant_for_socket_type(const eNodeSocketDatatype type)
+{
+  switch (type) {
+    case SOCK_FLOAT:
+      return {{FloatElem()}};
+    case SOCK_INT:
+      return {{IntElem()}};
+    case SOCK_BOOLEAN:
+      return {{BoolElem()}};
+    case SOCK_VECTOR:
+      return {{VectorElem()}};
+    case SOCK_ROTATION:
+      return {{RotationElem()}};
+    case SOCK_MATRIX:
+      return {{TransformElem()}};
+    default:
+      return std::nullopt;
+  }
+}
+
 static std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
                                                       const bNodeSocket &new_socket,
                                                       const ElemVariant &old_elem)
@@ -41,8 +61,10 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
     const SocketElem socket_elem = sockets_to_handle.pop();
     const bNodeSocket &socket = *socket_elem.socket;
 
-    ElemVariant &elem_variant = elem_by_socket_map.lookup_or_add_default(&socket);
-    const ElemVariant &old_elem_variant = elem_variant;
+    ElemVariant &elem_variant = elem_by_socket_map.lookup_or_add_cb(&socket, [&]() {
+      return *get_elem_variant_for_socket_type(eNodeSocketDatatype(socket.type));
+    });
+    const ElemVariant old_elem_variant = elem_variant;
     elem_variant.merge(socket_elem.elem);
     if (elem_variant == old_elem_variant) {
       /* Nothing changed. */
@@ -91,6 +113,10 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
           final_group_inputs.add(socket.index());
           break;
         }
+        case NODE_REROUTE: {
+          sockets_to_handle.push({&node.input_socket(0), elem_variant});
+          break;
+        }
         default: {
           const bke::bNodeType &ntype = *node.typeinfo;
           if (!ntype.eval_inverse_elem) {
@@ -101,7 +127,9 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
           InverseElemEvalParams params{node, elem_by_socket_map, input_elems};
           ntype.eval_inverse_elem(params);
           for (const SocketElem &input_elem : input_elems) {
-            sockets_to_handle.push(input_elem);
+            if (input_elem.elem) {
+              sockets_to_handle.push(input_elem);
+            }
           }
           break;
         }
@@ -110,7 +138,20 @@ PropagationPath find_propagation_path(const bNodeTree &tree, const SocketElem &i
   }
 
   for (const bNodeSocket *socket : final_sockets) {
-    propagation_path.final_socket_elems.append({socket, elem_by_socket_map.lookup(socket)});
+    const bNode &node = socket->owner_node();
+    const ElemVariant &elem = elem_by_socket_map.lookup(socket);
+    if (!elem) {
+      continue;
+    }
+    if (node.is_group_input()) {
+      propagation_path.final_group_inputs.append({socket->index(), elem});
+    }
+    else if (socket->is_output()) {
+      propagation_path.final_value_nodes.append({&node, elem});
+    }
+    else {
+      propagation_path.final_input_sockets.append({socket, elem});
+    }
   }
 
   for (auto &&item : elem_by_socket_map.items()) {

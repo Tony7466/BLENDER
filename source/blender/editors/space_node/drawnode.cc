@@ -1325,8 +1325,8 @@ static void std_node_socket_draw(
     return;
   }
 
-  const bool has_gizmo = sock->runtime->has_gizmo;
-  const bool gizmo_valid = sock->runtime->gizmo_valid;
+  const bool has_gizmo = sock->runtime->has_gizmo2;
+  const bool gizmo_valid = true;
 
   if (sock->in_out == SOCK_OUT && has_gizmo &&
       ELEM(node->type, SH_NODE_VALUE, FN_NODE_INPUT_VECTOR, FN_NODE_INPUT_INT, NODE_GROUP_INPUT))
