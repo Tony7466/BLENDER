@@ -296,25 +296,31 @@ struct TriangleMeshInterface {
     int *triangles_ptr = const_cast<int *>(triangles.data());
 
     const Span<float3> src_positions = mesh.vert_positions();
-    Array<btVector3> dst_positions(num_vertices);
+    Array<btScalar[3]> dst_positions(num_vertices);
     for (const int i : dst_positions.index_range()) {
-      dst_positions[i] = to_bullet(src_positions[i]);
+      dst_positions[i][0] = src_positions[i].x;
+      dst_positions[i][1] = src_positions[i].y;
+      dst_positions[i][2] = src_positions[i].z;
     }
-    btScalar *dst_position_ptr = const_cast<btScalar *>(&dst_positions.data()->x());
+    btScalar *dst_position_ptr = const_cast<btScalar *>(dst_positions.data()[0]);
 
     bt_mesh_interface = btTriangleIndexVertexArray(num_triangles,
-                                                 triangles_ptr,
-                                                 sizeof(int),
-                                                 num_vertices,
-                                                 dst_position_ptr,
-                                                 sizeof(btVector3));
+                                                   triangles_ptr,
+                                                   3 * sizeof(int),
+                                                   num_vertices,
+                                                   dst_position_ptr,
+                                                   sizeof(btScalar[3]));
   }
 };
 
-static btBvhTriangleMeshShape *make_triangle_mesh_shape(const Mesh &mesh)
+static btCollisionShape *make_triangle_mesh_shape(const Mesh &mesh)
 {
   constexpr const bool use_quantized_aabb_compression = true;
   constexpr const bool build_bvh = true;
+  if (mesh.corners_num != 3 * mesh.faces_num) {
+    return new btEmptyShape();
+  }
+
   TriangleMeshInterface mesh_interface(mesh);
   return new btBvhTriangleMeshShape(
       &mesh_interface.bt_mesh_interface, use_quantized_aabb_compression, build_bvh);
