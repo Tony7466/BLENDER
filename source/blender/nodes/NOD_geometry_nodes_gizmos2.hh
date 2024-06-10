@@ -9,6 +9,7 @@
 #include "BLI_multi_value_map.hh"
 
 #include "NOD_inverse_eval_path.hh"
+#include "NOD_inverse_eval_run.hh"
 
 struct Object;
 struct NodesModifierData;
@@ -45,5 +46,12 @@ void foreach_active_gizmo(const Object &object,
 
 ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
                                                            const bNode &gizmo_node);
+
+void apply_gizmo_change(Object &object,
+                        NodesModifierData &nmd,
+                        geo_eval_log::GeoModifierLog &eval_log,
+                        const ComputeContext &gizmo_context,
+                        const bNode &gizmo_node,
+                        FunctionRef<void(bke::SocketValueVariant &value)> apply_on_gizmo_value_fn);
 
 }  // namespace blender::nodes::gizmos2

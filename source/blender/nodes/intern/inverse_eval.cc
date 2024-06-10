@@ -424,8 +424,8 @@ static bool set_modifier_value(Object &object,
   return false;
 }
 
-static SocketValueVariant get_logged_socket_value(geo_eval_log::GeoTreeLog &tree_log,
-                                                  const bNodeSocket &socket)
+std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeLog &tree_log,
+                                                          const bNodeSocket &socket)
 {
   switch (socket.type) {
     case SOCK_FLOAT: {
@@ -442,7 +442,7 @@ bool try_change_link_target_and_update_source(Object &object,
                                               NodesModifierData &nmd,
                                               geo_eval_log::GeoModifierLog &eval_log,
                                               const ComputeContext *initial_context,
-                                              bNodeLink &initial_link,
+                                              const bNodeLink &initial_link,
                                               const SocketValueVariant &new_value)
 {
   Map<SocketInContext, SocketValueVariant> value_by_socket;
@@ -546,7 +546,11 @@ bool try_change_link_target_and_update_source(Object &object,
         if (!socket->is_available()) {
           continue;
         }
-        old_socket_values.add(socket, get_logged_socket_value(tree_log, *socket));
+        if (const std::optional<SocketValueVariant> value = get_logged_socket_value(tree_log,
+                                                                                    *socket))
+        {
+          old_socket_values.add(socket, *value);
+        }
       }
       for (const bNodeSocket *socket : node.output_sockets()) {
         if (!socket->is_available()) {
@@ -555,8 +559,10 @@ bool try_change_link_target_and_update_source(Object &object,
         if (const SocketValueVariant *value = value_by_socket.lookup_ptr({context, socket})) {
           old_socket_values.add(socket, *value);
         }
-        else {
-          old_socket_values.add(socket, get_logged_socket_value(tree_log, *socket));
+        else if (const std::optional<SocketValueVariant> value = get_logged_socket_value(tree_log,
+                                                                                         *socket))
+        {
+          old_socket_values.add(socket, *value);
         }
       }
 

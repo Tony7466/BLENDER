@@ -226,4 +226,38 @@ ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext 
       gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)});
 }
 
+void apply_gizmo_change(
+    Object &object,
+    NodesModifierData &nmd,
+    geo_eval_log::GeoModifierLog &eval_log,
+    const ComputeContext &gizmo_context,
+    const bNode &gizmo_node,
+    const FunctionRef<void(bke::SocketValueVariant &value)> apply_on_gizmo_value_fn)
+{
+  geo_eval_log::GeoTreeLog &gizmo_tree_log = eval_log.get_tree_log(gizmo_context.hash());
+  const bNodeSocket &gizmo_socket = gizmo_node.input_socket(0);
+  const eNodeSocketDatatype gizmo_data_type = eNodeSocketDatatype(gizmo_socket.type);
+  for (const bNodeLink *link : gizmo_socket.directly_linked_links()) {
+    if (!link->is_used()) {
+      continue;
+    }
+    if (link->fromnode->is_dangling_reroute()) {
+      continue;
+    }
+    const std::optional<bke::SocketValueVariant> old_value = ie::get_logged_socket_value(
+        gizmo_tree_log, *link->fromsock);
+    if (!old_value) {
+      continue;
+    }
+    if (!old_value->valid_for_socket(gizmo_data_type)) {
+      continue;
+    }
+    bke::SocketValueVariant new_value = *old_value;
+    apply_on_gizmo_value_fn(new_value);
+
+    ie::try_change_link_target_and_update_source(
+        object, nmd, eval_log, &gizmo_context, *link, new_value);
+  }
+}
+
 }  // namespace blender::nodes::gizmos2

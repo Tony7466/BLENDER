@@ -22,7 +22,10 @@ bool try_change_link_target_and_update_source(Object &object,
                                               NodesModifierData &nmd,
                                               geo_eval_log::GeoModifierLog &eval_log,
                                               const ComputeContext *initial_context,
-                                              bNodeLink &initial_link,
+                                              const bNodeLink &initial_link,
                                               const SocketValueVariant &new_value);
+
+std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeLog &tree_log,
+                                                          const bNodeSocket &socket);
 
 }  // namespace blender::nodes::inverse_eval
