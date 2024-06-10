@@ -188,9 +188,9 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
   }
 }
 
-void foreach_active_gizmo(const Object &object,
+void foreach_active_gizmo(const Object & /*object*/,
                           const NodesModifierData &nmd,
-                          const wmWindowManager &wm,
+                          const wmWindowManager & /*wm*/,
                           const ForeachGizmoFn fn)
 {
   if (!nmd.node_group) {

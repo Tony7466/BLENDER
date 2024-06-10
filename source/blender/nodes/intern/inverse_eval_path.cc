@@ -140,7 +140,6 @@ LocalInversePropagationPath find_local_inverse_propagation_path(
   LocalInversePropagationPath propagation_path;
 
   for (const bNodeSocket *socket : final_sockets) {
-    const bNode &node = socket->owner_node();
     const ElemVariant &elem = elem_by_socket_map.lookup(socket);
     if (!elem) {
       continue;
