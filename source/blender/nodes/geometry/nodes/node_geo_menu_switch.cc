@@ -55,6 +55,7 @@ static bool is_supported_socket_type(const eNodeSocketDatatype data_type)
 
 static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 {
+  const bNodeTree *ntree = b.tree_or_null();
   const bNode *node = b.node_or_null();
   if (node == nullptr) {
     return;
@@ -70,7 +71,10 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
 
   for (const NodeEnumItem &enum_item : storage.enum_definition.items()) {
     const std::string identifier = MenuSwitchItemsAccessor::socket_identifier_for_item(enum_item);
-    auto &input = b.add_input(data_type, enum_item.name, std::move(identifier));
+    auto &input = b.add_input(data_type, enum_item.name, std::move(identifier))
+                      .socket_name_ptr(
+                          &ntree->id, MenuSwitchItemsAccessor::item_srna, &enum_item, "name");
+    ;
     if (supports_fields) {
       input.supports_field();
     }

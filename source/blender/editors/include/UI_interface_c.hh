@@ -128,7 +128,7 @@ enum eUIEmbossType {
   /** Pull-down menu style */
   UI_EMBOSS_PULLDOWN = 2,
   /** Pie Menu */
-  UI_EMBOSS_RADIAL = 3,
+  UI_EMBOSS_PIE_MENU = 3,
   /**
    * The same as #UI_EMBOSS_NONE, unless the button has
    * a coloring status like an animation state or red alert.
@@ -171,7 +171,7 @@ enum {
 
   UI_BLOCK_POPUP_HOLD = 1 << 18,
   UI_BLOCK_LIST_ITEM = 1 << 19,
-  UI_BLOCK_RADIAL = 1 << 20,
+  UI_BLOCK_PIE_MENU = 1 << 20,
   UI_BLOCK_POPOVER = 1 << 21,
   UI_BLOCK_POPOVER_ONCE = 1 << 22,
   /** Always show key-maps, even for non-menus. */
@@ -285,7 +285,7 @@ enum {
 
 #define UI_PANEL_WIDTH 340
 #define UI_COMPACT_PANEL_WIDTH 160
-#define UI_SIDEBAR_PANEL_WIDTH 220
+#define UI_SIDEBAR_PANEL_WIDTH 280
 #define UI_NAVIGATION_REGION_WIDTH UI_COMPACT_PANEL_WIDTH
 #define UI_NARROW_NAVIGATION_REGION_WIDTH 100
 
@@ -732,16 +732,6 @@ void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
  * to the popup `region` so layout panels state can be persistent until the popup is closed.
  */
 void UI_popup_dummy_panel_set(ARegion *region, uiBlock *block);
-/** Toggles layout panel open state and returns the new state. */
-bool UI_layout_panel_toggle_open(const bContext *C, struct LayoutPanelHeader *header);
-void UI_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
-LayoutPanelHeader *UI_layout_panel_header_under_mouse(const Panel &panel, const int my);
-/** Apply scroll to layout panels when the main panel is used in popups. */
-void UI_layout_panel_popup_scroll_apply(Panel *panel, const float dy);
-void UI_draw_layout_panels_backdrop(const ARegion *region,
-                                    const Panel *panel,
-                                    const float radius,
-                                    float subpanel_backcolor[4]);
 /**
  * Setting the button makes the popup open from the button instead of the cursor.
  */
@@ -1385,6 +1375,8 @@ void UI_but_context_ptr_set(uiBlock *block, uiBut *but, const char *name, const 
 const PointerRNA *UI_but_context_ptr_get(const uiBut *but,
                                          const char *name,
                                          const StructRNA *type = nullptr);
+std::optional<blender::StringRefNull> UI_but_context_string_get(const uiBut *but,
+                                                                const char *name);
 const bContextStore *UI_but_context_get(const uiBut *but);
 
 void UI_but_unit_type_set(uiBut *but, int unit_type);
@@ -1395,6 +1387,7 @@ std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C, uiBut &but
 std::string UI_but_string_get_rna_property_identifier(const uiBut &but);
 std::string UI_but_string_get_rna_struct_identifier(const uiBut &but);
 std::string UI_but_string_get_label(uiBut &but);
+std::string UI_but_context_menu_title_from_button(uiBut &but);
 /**
  * Query the result of #uiBut::tip_label_func().
  * Meant to allow overriding the label to be displayed in the tool-tip.
@@ -2174,6 +2167,7 @@ uiBlock *uiLayoutGetBlock(uiLayout *layout);
 
 void uiLayoutSetFunc(uiLayout *layout, uiMenuHandleFunc handlefunc, void *argv);
 void uiLayoutSetContextPointer(uiLayout *layout, const char *name, PointerRNA *ptr);
+void uiLayoutSetContextString(uiLayout *layout, const char *name, blender::StringRef value);
 bContextStore *uiLayoutGetContextStore(uiLayout *layout);
 void uiLayoutContextCopy(uiLayout *layout, const bContextStore *context);
 
@@ -2357,6 +2351,7 @@ uiLayout *uiLayoutAbsolute(uiLayout *layout, bool align);
 uiLayout *uiLayoutSplit(uiLayout *layout, float percentage, bool align);
 uiLayout *uiLayoutOverlap(uiLayout *layout);
 uiBlock *uiLayoutAbsoluteBlock(uiLayout *layout);
+/** Pie menu layout: Buttons are arranged around a center. */
 uiLayout *uiLayoutRadial(uiLayout *layout);
 
 /* templates */
@@ -3327,15 +3322,6 @@ ARegion *UI_tooltip_create_from_button_or_extra_icon(
 ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz);
 void UI_tooltip_free(bContext *C, bScreen *screen, ARegion *region);
 
-struct uiSearchItemTooltipData {
-  /** A description for the item, e.g. what happens when selecting it. */
-  char description[UI_MAX_DRAW_STR];
-  /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
-  const char *name;
-  /** Additional info about the item (e.g. library name of a linked data-block). */
-  char hint[UI_MAX_DRAW_STR];
-};
-
 /**
  * Create a tooltip from search-item tooltip data \a item_tooltip data.
  * To be called from a callback set with #UI_but_func_search_set_tooltip().
@@ -3343,11 +3329,10 @@ struct uiSearchItemTooltipData {
  * \param item_rect: Rectangle of the search item in search region space (#ui_searchbox_butrect())
  *                   which is passed to the tooltip callback.
  */
-ARegion *UI_tooltip_create_from_search_item_generic(
-    bContext *C,
-    const ARegion *searchbox_region,
-    const rcti *item_rect,
-    const uiSearchItemTooltipData *item_tooltip_data);
+ARegion *UI_tooltip_create_from_search_item_generic(bContext *C,
+                                                    const ARegion *searchbox_region,
+                                                    const rcti *item_rect,
+                                                    ID *id);
 
 /* How long before a tool-tip shows. */
 #define UI_TOOLTIP_DELAY 0.5

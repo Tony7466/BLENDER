@@ -25,6 +25,7 @@
 #include "BLI_memory_utils.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.hh"
@@ -4055,7 +4056,7 @@ static void ui_litem_layout_radial(uiLayout *litem)
       bitem->but->rect.xmax += 1.5f * UI_UNIT_X;
       /* Enable drawing as pie item if supported by widget. */
       if (ui_item_is_radial_drawable(bitem)) {
-        bitem->but->emboss = UI_EMBOSS_RADIAL;
+        bitem->but->emboss = UI_EMBOSS_PIE_MENU;
         bitem->but->drawflag |= UI_BUT_ICON_LEFT;
       }
 
@@ -5997,6 +5998,12 @@ void uiLayoutSetContextPointer(uiLayout *layout, const char *name, PointerRNA *p
 {
   uiBlock *block = layout->root->block;
   layout->context = CTX_store_add(block->contexts, name, ptr);
+}
+
+void uiLayoutSetContextString(uiLayout *layout, const char *name, blender::StringRef value)
+{
+  uiBlock *block = layout->root->block;
+  layout->context = CTX_store_add(block->contexts, name, value);
 }
 
 bContextStore *uiLayoutGetContextStore(uiLayout *layout)

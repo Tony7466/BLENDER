@@ -112,10 +112,12 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
 void WorldPipeline::render(View &view)
 {
   /* TODO(Miguel Pozo): All world probes are rendered as RAY_TYPE_GLOSSY. */
-  inst_.pipelines.data.is_probe_reflection = true;
+  inst_.pipelines.data.is_sphere_probe = true;
   inst_.uniform_data.push_update();
+
   inst_.manager->submit(cubemap_face_ps_, view);
-  inst_.pipelines.data.is_probe_reflection = false;
+
+  inst_.pipelines.data.is_sphere_probe = false;
   inst_.uniform_data.push_update();
 }
 
@@ -499,6 +501,30 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
 
 void DeferredLayer::begin_sync()
 {
+  if (GPU_use_parallel_compilation()) {
+    /* Pre-compile specialization constants in parallel. */
+    Vector<ShaderSpecialization> specializations;
+    for (int i = 0; i < 3; i++) {
+      GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
+      for (bool use_split_indirect : {false, true}) {
+        for (bool use_lightprobe_eval : {false, true}) {
+          for (bool use_transmission : {false, true}) {
+            specializations.append(
+                {sh,
+                 {{"render_pass_shadow_id", inst_.render_buffers.data.shadow_id},
+                  {"use_split_indirect", use_split_indirect},
+                  {"use_lightprobe_eval", use_lightprobe_eval},
+                  {"use_transmission", use_transmission},
+                  {"shadow_ray_count", inst_.shadows.get_data().ray_count},
+                  {"shadow_ray_step_count", inst_.shadows.get_data().step_count}}});
+          }
+        }
+      }
+    }
+
+    GPU_shaders_precompile_specializations(specializations);
+  }
+
   {
     prepass_ps_.init();
     /* Textures. */
@@ -1383,7 +1409,7 @@ void PlanarProbePipeline::render(View &view,
 {
   GPU_debug_group_begin("Planar.Capture");
 
-  inst_.pipelines.data.is_probe_reflection = true;
+  inst_.pipelines.data.is_sphere_probe = true;
   inst_.uniform_data.push_update();
 
   GPU_framebuffer_bind(gbuffer_fb);
@@ -1406,7 +1432,7 @@ void PlanarProbePipeline::render(View &view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, view);
 
-  inst_.pipelines.data.is_probe_reflection = false;
+  inst_.pipelines.data.is_sphere_probe = false;
   inst_.uniform_data.push_update();
 
   GPU_debug_group_end();
