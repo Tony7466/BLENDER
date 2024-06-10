@@ -329,10 +329,10 @@ bool autokeyframe_property(bContext *C,
         BLI_assert((fcu->array_index == rnaindex) || (rnaindex == -1));
       }
 
-      const std::string path = fcu ? fcu->rna_path :
-                                     RNA_path_from_ID_to_property(ptr, prop).value_or("");
       const std::optional<std::string> group = (fcu && fcu->grp) ? std::optional(fcu->grp->name) :
                                                                    std::nullopt;
+      const std::string path = fcu ? fcu->rna_path :
+                                     RNA_path_from_ID_to_property(ptr, prop).value_or("");
       /* NOTE: `rnaindex == -1` is a magic number, meaning either "operate on
        * all elements" or "not an array property". */
       const std::optional<int> array_index = rnaindex < 0 ? std::nullopt : std::optional(rnaindex);

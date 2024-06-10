@@ -754,11 +754,11 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
 }
 
 /* ------------------------------------------------------------
- * Tests for `insert_key_rna()` with legacy actions.
+ * Tests for `insert_keyframes()` with legacy actions.
  */
 
 /* Keying a non-array property. */
-TEST_F(KeyframingTest, insert_key_rna__legacy_action__non_array_property)
+TEST_F(KeyframingTest, insert_keyframes__legacy_action__non_array_property)
 {
   AnimationEvalContext anim_eval_context = {nullptr, 1.0};
 
