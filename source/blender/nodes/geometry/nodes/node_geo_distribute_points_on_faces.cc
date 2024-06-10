@@ -149,17 +149,17 @@ BLI_NOINLINE static void update_elimination_mask_for_close_points(
 BLI_NOINLINE static void update_elimination_mask_based_on_density_factors(
     const Mesh &mesh,
     const VArray<float> &density_factors,
-    const GroupedSpan<float3> tre_bary_coords,
+    const GroupedSpan<float3> tri_bary_coords,
     const MutableSpan<bool> elimination_mask)
 {
-  BLI_assert(tre_bary_coords.data.size() == elimination_mask.size());
+  BLI_assert(tri_bary_coords.data.size() == elimination_mask.size());
   const Span<int3> corner_tris = mesh.corner_tris();
 
   if (density_factors.is_single()) {
     const float density_factor = std::max(0.0f, density_factors.get_internal_single());
-    threading::parallel_for(tre_bary_coords.data.index_range(), 2048, [&](const IndexRange range) {
+    threading::parallel_for(tri_bary_coords.data.index_range(), 2048, [&](const IndexRange range) {
       for (const int i : range) {
-        const float hash = noise::hash_float_to_float(tre_bary_coords.data[i]);
+        const float hash = noise::hash_float_to_float(tri_bary_coords.data[i]);
         elimination_mask[i] &= hash <= density_factor;
       }
     });
@@ -167,19 +167,19 @@ BLI_NOINLINE static void update_elimination_mask_based_on_density_factors(
   }
 
   VArraySpan<float> density_factors_span(density_factors);
-  threading::parallel_for(tre_bary_coords.index_range(), 2048, [&](const IndexRange range) {
+  threading::parallel_for(tri_bary_coords.index_range(), 2048, [&](const IndexRange range) {
     for (const int tri_i : range) {
       const int3 &tri = corner_tris[tri_i];
       const float a = std::max(0.0f, density_factors_span[tri[0]]);
       const float b = std::max(0.0f, density_factors_span[tri[1]]);
       const float c = std::max(0.0f, density_factors_span[tri[2]]);
 
-      for (const int i : tre_bary_coords.offsets[tri_i]) {
+      for (const int i : tri_bary_coords.offsets[tri_i]) {
         if (!elimination_mask[i]) {
           continue;
         }
 
-        const float3 bary_coord = tre_bary_coords.data[i];
+        const float3 bary_coord = tri_bary_coords.data[i];
         const float probability = bke::attribute_math::mix3<float>(bary_coord, a, b, c);
         const float hash = noise::hash_float_to_float(bary_coord);
         if (hash > probability) {
