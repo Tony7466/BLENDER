@@ -870,6 +870,7 @@ class SEQUENCER_MT_strip_transform(Menu):
             layout.operator("transform.seq_slide", text="Move").view2d_edge_pan = True
             layout.operator("transform.transform", text="Move/Extend from Current Frame").mode = 'TIME_EXTEND'
             layout.operator("sequencer.slip", text="Slip Strip Contents")
+            layout.operator("sequencer.set_strip_length")
 
         # TODO (for preview)
         if has_sequencer:
@@ -1158,6 +1159,7 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.separator()
 
         layout.operator("sequencer.slip", text="Slip Strip Contents")
+        layout.operator("sequencer.set_strip_length")
         layout.operator("sequencer.snap")
 
         layout.separator()

@@ -3460,3 +3460,112 @@ void SEQUENCER_OT_scene_frame_range_update(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Set Strip Length Operator
+ * \{ */
+
+static int change_length_offset_get(Scene *scene, Sequence *seq, int new_length)
+{
+  const int strip_length = SEQ_time_right_handle_frame_get(scene, seq) -
+                           SEQ_time_left_handle_frame_get(scene, seq);
+  return new_length - strip_length;
+}
+
+static int sequencer_set_strip_length_exec(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *channels = SEQ_channels_displayed_get(ed);
+
+  blender::Vector<Sequence *> strips;
+  for (Sequence *seq : ED_sequencer_selected_strips_from_context(C)) {
+    strips.append(seq);
+  }
+
+  const int new_length = RNA_int_get(op->ptr, "length");
+
+  /* Offset strips. */
+  if (RNA_boolean_get(op->ptr, "offset_strips") && strips.size() > 1) {
+    std::sort(strips.begin(), strips.end(), [&](Sequence *a, Sequence *b) {
+      const int a_start = SEQ_time_left_handle_frame_get(scene, a);
+      const int b_start = SEQ_time_left_handle_frame_get(scene, b);
+      return a->machine < b->machine && a_start < b_start;
+    });
+
+    int last_channel = strips[0]->machine;
+    int offset = 0;
+    for (int i = 1; i < strips.size(); i++) {
+      Sequence *seq = strips[i];
+      if (seq->machine != last_channel) {
+        offset = 0;
+        last_channel = seq->machine;
+      }
+
+      const int orig_start = SEQ_time_start_frame_get(seq);
+      SEQ_time_start_frame_set(scene, seq, orig_start + offset);
+      offset += change_length_offset_get(scene, seq, new_length);
+    }
+  }
+
+  /* Set length. */
+  for (Sequence *seq : strips) {
+    if (SEQ_transform_sequence_can_be_translated(seq) && !SEQ_transform_is_locked(channels, seq)) {
+      const int start_frame = SEQ_time_left_handle_frame_get(scene, seq);
+      SEQ_time_right_handle_frame_set(scene, seq, start_frame + new_length);
+    }
+  }
+
+  /* Cleanup. */
+  for (Sequence *seq : strips) {
+    if (SEQ_transform_test_overlap(scene, ed->seqbasep, seq)) {
+      SEQ_transform_seqbase_shuffle(ed->seqbasep, seq, scene);
+    }
+    SEQ_relations_invalidate_cache_composite(scene, seq);
+  }
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+
+  return OPERATOR_FINISHED;
+}
+
+static int sequencer_set_strip_length_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Scene *scene = CTX_data_scene(C);
+  Sequence *seq = SEQ_select_active_get(scene);
+
+  if (!RNA_struct_property_is_set(op->ptr, "length")) {
+    const int strip_length = SEQ_time_right_handle_frame_get(scene, seq) -
+                             SEQ_time_left_handle_frame_get(scene, seq);
+    RNA_int_set(op->ptr, "length", strip_length);
+    return WM_operator_props_popup(C, op, event);
+  }
+
+  return sequencer_set_strip_length_exec(C, op);
+}
+
+void SEQUENCER_OT_set_strip_length(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Set Strip Length";
+  ot->idname = "SEQUENCER_OT_set_strip_length";
+  ot->description = "Set length of strips";
+
+  /* Api callbacks. */
+  ot->exec = sequencer_set_strip_length_exec;
+  ot->invoke = sequencer_set_strip_length_invoke;
+  ot->poll = ED_operator_sequencer_active;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Properties. */
+  RNA_def_int(ot->srna, "length", 250, 1, MAXFRAME, "Length", "New length of strip", 1, MAXFRAME);
+  RNA_def_boolean(ot->srna,
+                  "offset_strips",
+                  true,
+                  "Offst Strips",
+                  "Offset strips to prevent overlap or remove gaps");
+}
+
+/** \} */
