@@ -173,6 +173,7 @@ struct ElemVariant {
 
   void merge(const ElemVariant &other)
   {
+    BLI_assert(this->elem.index() == other.elem.index());
     std::visit(
         [&](auto &value) {
           using T = std::decay_t<decltype(value)>;

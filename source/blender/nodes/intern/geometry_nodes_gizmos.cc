@@ -93,8 +93,13 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
 
   for (const GizmoInput &gizmo_input : all_gizmo_inputs) {
     const ie::SocketElem gizmo_input_socket_elem{gizmo_input.gizmo_socket, gizmo_input.elem};
+    const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
+        *gizmo_input.gizmo_socket, *gizmo_input.propagation_start_socket, gizmo_input.elem);
+    if (!converted_elem) {
+      continue;
+    }
     const ie::LocalInverseEvalPath path = ie::find_local_inverse_eval_path(
-        tree, {gizmo_input.propagation_start_socket, gizmo_input.elem});
+        tree, {gizmo_input.propagation_start_socket, *converted_elem});
     const bool has_target = !path.final_input_sockets.is_empty() ||
                             !path.final_group_inputs.is_empty() ||
                             !path.final_value_nodes.is_empty();
@@ -238,7 +243,6 @@ void apply_gizmo_change(
 {
   const bNodeTree &gizmo_node_tree = gizmo_socket.owner_tree();
   geo_eval_log::GeoTreeLog &gizmo_tree_log = eval_log.get_tree_log(gizmo_context.hash());
-  const eNodeSocketDatatype gizmo_data_type = eNodeSocketDatatype(gizmo_socket.type);
   for (const bNodeLink *link : gizmo_socket.directly_linked_links()) {
     gizmo_node_tree.ensure_topology_cache();
     if (!link->is_used()) {
@@ -252,10 +256,12 @@ void apply_gizmo_change(
     if (!old_value) {
       continue;
     }
-    if (!old_value->valid_for_socket(gizmo_data_type)) {
+    const std::optional<bke::SocketValueVariant> old_value_converted = ie::convert_socket_value(
+        *link->fromsock, *link->tosock, *old_value);
+    if (!old_value_converted) {
       continue;
     }
-    bke::SocketValueVariant new_value = *old_value;
+    bke::SocketValueVariant new_value = *old_value_converted;
     apply_on_gizmo_value_fn(new_value);
 
     /* TODO: Call this for all modififed values at once. Otherwise, they might overwrite each

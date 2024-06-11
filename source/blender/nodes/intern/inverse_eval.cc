@@ -13,6 +13,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
+#include "BKE_type_conversions.hh"
 
 #include "BLI_map.hh"
 #include "BLI_math_euler.hh"
@@ -58,22 +59,51 @@ static bool is_supported_value_node(const bNode &node)
               FN_NODE_INPUT_ROTATION);
 }
 
-static std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
-                                                      const bNodeSocket &new_socket,
-                                                      const ElemVariant &old_elem)
+std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
+                                               const bNodeSocket &new_socket,
+                                               const ElemVariant &old_elem)
 {
-  if (old_socket.type == new_socket.type) {
+  const eNodeSocketDatatype old_type = eNodeSocketDatatype(old_socket.type);
+  const eNodeSocketDatatype new_type = eNodeSocketDatatype(new_socket.type);
+  if (old_type == new_type) {
     return old_elem;
+  }
+  switch (old_type) {
+    case SOCK_MATRIX: {
+      const TransformElem &transform_elem = std::get<TransformElem>(old_elem.elem);
+      if (new_type == SOCK_ROTATION) {
+        return ElemVariant{transform_elem.rotation};
+      }
+      break;
+    }
+    default:
+      break;
   }
   return std::nullopt;
 }
 
-static std::optional<SocketValueVariant> convert_socket_value(const bNodeSocket &old_socket,
-                                                              const bNodeSocket &new_socket,
-                                                              const SocketValueVariant &old_value)
+std::optional<SocketValueVariant> convert_socket_value(const bNodeSocket &old_socket,
+                                                       const bNodeSocket &new_socket,
+                                                       const SocketValueVariant &old_value)
 {
-  if (old_socket.type == new_socket.type) {
+  const eNodeSocketDatatype old_type = eNodeSocketDatatype(old_socket.type);
+  const eNodeSocketDatatype new_type = eNodeSocketDatatype(new_socket.type);
+  if (old_type == new_type) {
     return old_value;
+  }
+  const CPPType *old_cpp_type = old_socket.typeinfo->base_cpp_type;
+  const CPPType *new_cpp_type = new_socket.typeinfo->base_cpp_type;
+  if (!old_cpp_type || !new_cpp_type) {
+    return std::nullopt;
+  }
+  const bke::DataTypeConversions &type_conversions = bke::get_implicit_type_conversions();
+  if (type_conversions.is_convertible(*old_cpp_type, *new_cpp_type)) {
+    const void *old_value_ptr = old_value.get_single_ptr_raw();
+    SocketValueVariant new_value;
+    void *new_value_ptr = new_value.allocate_single(new_type);
+    type_conversions.convert_to_uninitialized(
+        *old_cpp_type, *new_cpp_type, old_value_ptr, new_value_ptr);
+    return new_value;
   }
   return std::nullopt;
 }
@@ -309,7 +339,7 @@ GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext *initia
             }
             ElemVariant &origin_elem = elem_by_socket.lookup_or_add({context, &origin_socket},
                                                                     *converted_elem);
-            origin_elem.merge(elem_to_forward);
+            origin_elem.merge(*converted_elem);
             const NodeInContext origin_node_in_context{context, &origin_node};
             if (added_nodes.add(origin_node_in_context)) {
               nodes_to_handle.push(origin_node_in_context);
