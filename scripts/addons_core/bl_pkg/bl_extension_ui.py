@@ -127,6 +127,7 @@ def extensions_panel_draw_legacy_addons(
     import addon_utils
     from bpy.app.translations import (
         pgettext_iface as iface_,
+        pgettext_tip as tip_,
     )
     from .bl_extension_ops import (
         pkg_info_check_exclude_filter_ex,
@@ -207,7 +208,7 @@ def extensions_panel_draw_legacy_addons(
 
             if bl_info["description"]:
                 col_a.label(
-                    text="{:s}.".format(iface_(bl_info["description"])),
+                    text="{:s}.".format(tip_(bl_info["description"])),
                     translate=False,
                 )
 
@@ -532,6 +533,7 @@ def extensions_panel_draw_impl(
     import os
     from bpy.app.translations import (
         pgettext_iface as iface_,
+        pgettext_iface as tip_,
     )
     from .bl_extension_ops import (
         blender_extension_mark,
@@ -799,7 +801,7 @@ def extensions_panel_draw_impl(
 
                 # The full tagline may be multiple lines (not yet supported by Blender's UI).
                 col_a.label(
-                    text="{:s}.".format(iface_(item_remote["tagline"])),
+                    text="{:s}.".format(tip_(item_remote["tagline"])),
                     translate=False,
                 )
 
