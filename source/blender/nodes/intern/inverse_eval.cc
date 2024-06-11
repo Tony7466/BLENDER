@@ -15,6 +15,7 @@
 #include "BKE_node_tree_update.hh"
 
 #include "BLI_map.hh"
+#include "BLI_math_euler.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 
@@ -186,8 +187,9 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
     }
     for (const bNode *node : tree.group_input_nodes()) {
       const bNodeSocket &socket = node->output_socket(group_input_index);
-      const ElemVariant &socket_elem = elem_by_socket_map.lookup(&socket);
-      elem->merge(socket_elem);
+      if (const ElemVariant *socket_elem = elem_by_socket_map.lookup_ptr(&socket)) {
+        elem->merge(*socket_elem);
+      }
     }
     if (!*elem) {
       continue;
@@ -416,6 +418,18 @@ static bool set_modifier_value(Object &object,
         IDP_Float(prop) = value;
         return true;
       }
+      break;
+    }
+    case SOCK_ROTATION: {
+      const math::Quaternion rotation = value_variant.get<math::Quaternion>();
+      const math::EulerXYZ euler = math::to_euler(rotation);
+      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                  interface_socket.identifier);
+      if (prop && prop->type == IDP_ARRAY && prop->len == 3 && prop->subtype == IDP_FLOAT) {
+        *static_cast<float3 *>(IDP_Array(prop)) = float3(euler);
+        return true;
+      }
+      break;
     }
   }
   return false;

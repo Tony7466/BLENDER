@@ -292,7 +292,7 @@ class DialGizmo : public NodeGizmos {
               offset = -offset;
             }
             self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
-              value_variant.set(value_variant.get<float>() + new_gizmo_value * offset);
+              value_variant.set(value_variant.get<float>() + offset);
             });
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
@@ -344,6 +344,93 @@ static std::unique_ptr<NodeGizmos> create_node_gizmos(const bNode &gizmo_node)
       return std::make_unique<TransformGizmos>();
   }
   return {};
+}
+
+/** Finds the gizmo transform stored directly in the geometry, ignoring the instances. */
+static const float4x4 *find_direct_gizmo_transform(const bke::GeometrySet &geometry,
+                                                   const bke::GeoNodesGizmoID &gizmo_id)
+{
+  if (const auto *edit_data_component = geometry.get_component<bke::GeometryComponentEditData>()) {
+    if (edit_data_component->gizmos_edit_hints_) {
+      if (const float4x4 *m = edit_data_component->gizmos_edit_hints_->gizmo_transforms.lookup_ptr(
+              gizmo_id))
+      {
+        return m;
+      }
+    }
+  }
+  return nullptr;
+}
+
+/**
+ * True, if the geometry contains a transform for the given gizmo. Also checks if all instances.
+ */
+static bool has_nested_gizmo_transform(const bke::GeometrySet &geometry,
+                                       const bke::GeoNodesGizmoID &gizmo_id)
+{
+  if (find_direct_gizmo_transform(geometry, gizmo_id)) {
+    return true;
+  }
+  if (!geometry.has_instances()) {
+    return false;
+  }
+  const bke::Instances *instances = geometry.get_instances();
+  for (const bke::InstanceReference &reference : instances->references()) {
+    if (reference.type() != bke::InstanceReference::Type::GeometrySet) {
+      continue;
+    }
+    const bke::GeometrySet &reference_geometry = reference.geometry_set();
+    if (has_nested_gizmo_transform(reference_geometry, gizmo_id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static std::optional<float4x4> find_gizmo_geometry_transform_recursive(
+    const bke::GeometrySet &geometry,
+    const bke::GeoNodesGizmoID &gizmo_id,
+    const float4x4 &transform)
+{
+  if (const float4x4 *m = find_direct_gizmo_transform(geometry, gizmo_id)) {
+    return transform * *m;
+  }
+  if (!geometry.has_instances()) {
+    return std::nullopt;
+  }
+  const bke::Instances *instances = geometry.get_instances();
+  const Span<bke::InstanceReference> references = instances->references();
+  const Span<int> handles = instances->reference_handles();
+  const Span<float4x4> transforms = instances->transforms();
+  for (const int reference_i : references.index_range()) {
+    const bke::InstanceReference &reference = references[reference_i];
+    if (reference.type() != bke::InstanceReference::Type::GeometrySet) {
+      continue;
+    }
+    const bke::GeometrySet &reference_geometry = reference.geometry_set();
+    if (has_nested_gizmo_transform(reference_geometry, gizmo_id)) {
+      const int index = handles.first_index_try(reference_i);
+      if (index >= 0) {
+        const float4x4 sub_transform = transform * transforms[index];
+        if (const std::optional<float4x4> m = find_gizmo_geometry_transform_recursive(
+                reference_geometry, gizmo_id, sub_transform))
+        {
+          return *m;
+        }
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+/**
+ * Tries to find a transformation of the gizmo in the given geometry.
+ */
+static std::optional<float4x4> find_gizmo_geometry_transform(const bke::GeometrySet &geometry,
+                                                             const bke::GeoNodesGizmoID &gizmo_id)
+{
+  const float4x4 identity = float4x4::identity();
+  return find_gizmo_geometry_transform_recursive(geometry, gizmo_id, identity);
 }
 
 static bool WIDGETGROUP_geometry_nodes_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
@@ -453,9 +540,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
 
+        const float4x4 geometry_transform =
+            find_gizmo_geometry_transform(geometry, gizmo_id).value_or(float4x4::identity());
+
         UpdateReport report;
         /* TODO: geometry transform */
-        GizmosUpdateParams update_params{object_to_world, gizmo_node, tree_log, report};
+        GizmosUpdateParams update_params{
+            object_to_world * geometry_transform, gizmo_node, tree_log, report};
         node_gizmos->update(update_params);
 
         bool any_interacting = false;
