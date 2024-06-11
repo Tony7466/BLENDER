@@ -1003,17 +1003,11 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
     }
 
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
-    BitVector<> elements_to_key(rna_values.size(), false);
+    BitVector<> rna_values_mask(rna_values.size(), false);
     bool force_all;
 
-    /* NOTE: this function call is complex with interesting effects. Of
-     * particular note is that in addition to doing value remapping, it also:
-     * - Fills in `elements_to_key`, flagging which elements of an array
-     *   property should actually get keyed.
-     * - Sets `force_all`, which if true means that an array property should be
-     *   treated as all-or-nothing: either all elements get keyed or none do,
-     *   regardless of how keying flags might have otherwise treated different
-     *   elements differently. */
+    /* NOTE: this function call is complex with interesting/non-obvious effects.
+     * Please see its documentation for details. */
     BKE_animsys_nla_remap_keyframe_values(nla_context,
                                           struct_pointer,
                                           prop,
@@ -1021,7 +1015,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                           rna_path.index.value_or(-1),
                                           &anim_eval_context,
                                           &force_all,
-                                          elements_to_key);
+                                          rna_values_mask);
 
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
                                                                                         prop);
@@ -1080,7 +1074,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
                                                                  rna_values.as_span(),
                                                                  insert_key_flags_adjusted,
                                                                  key_type,
-                                                                 elements_to_key);
+                                                                 rna_values_mask);
     combined_result.merge(result);
   }
 
