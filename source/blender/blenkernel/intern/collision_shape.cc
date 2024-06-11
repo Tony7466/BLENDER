@@ -17,9 +17,9 @@
 #include "physics_geometry_impl.hh"
 
 #ifdef WITH_BULLET
+#  include <BulletCollision/CollisionShapes/btTriangleShape.h>
 #  include <LinearMath/btDefaultMotionState.h>
 #  include <btBulletCollisionCommon.h>
-#  include <BulletCollision/CollisionShapes/btTriangleShape.h>
 #endif
 
 namespace blender::bke {
@@ -78,8 +78,8 @@ inline btMatrix3x3 to_bullet(const float3x3 &t)
 }
 
 inline btTransform to_bullet(const float4x4 &t)
-{  
-  return btTransform(to_bullet(t.view<3,3>()), to_bullet(t.location()));
+{
+  return btTransform(to_bullet(t.view<3, 3>()), to_bullet(t.location()));
 }
 
 static std::optional<CollisionShape::ShapeType> to_blender(const int bt_shape_type)
@@ -148,7 +148,7 @@ void CollisionShapeImpl::destroy()
   delete &this->as_bullet_shape();
 }
 
-//CollisionShape::CollisionShape() : impl_(nullptr) {}
+// CollisionShape::CollisionShape() : impl_(nullptr) {}
 
 CollisionShape::CollisionShape(CollisionShapeImpl *impl) : impl_(impl)
 {
@@ -193,7 +193,8 @@ bool CollisionShape::is_concave() const
   return impl_->as_bullet_shape().isConcave();
 }
 
-float3 CollisionShape::calculate_local_inertia(const float mass) const {
+float3 CollisionShape::calculate_local_inertia(const float mass) const
+{
   btVector3 bt_local_inertia;
   impl_->as_bullet_shape().calculateLocalInertia(mass, bt_local_inertia);
   return to_blender(bt_local_inertia);
@@ -256,7 +257,8 @@ ConeCollisionShape::ConeCollisionShape(const float radius, const float height)
 }
 
 CylinderCollisionShape::CylinderCollisionShape(const float radius, const float height)
-    : CollisionShape(CollisionShapeImpl::wrap(new btCylinderShapeZ(btVector3(radius, radius, height*0.5f))))
+    : CollisionShape(
+          CollisionShapeImpl::wrap(new btCylinderShapeZ(btVector3(radius, radius, height * 0.5f))))
 {
 }
 
@@ -282,6 +284,7 @@ UniformScalingCollisionShape::UniformScalingCollisionShape(const CollisionShape 
 }
 
 struct TriangleMeshInterface {
+  Array<btVector3> bt_positions;
   btTriangleIndexVertexArray bt_mesh_interface;
 
   TriangleMeshInterface(const Mesh &mesh)
@@ -296,20 +299,21 @@ struct TriangleMeshInterface {
     int *triangles_ptr = const_cast<int *>(triangles.data());
 
     const Span<float3> src_positions = mesh.vert_positions();
-    Array<btScalar[3]> dst_positions(num_vertices);
-    for (const int i : dst_positions.index_range()) {
-      dst_positions[i][0] = src_positions[i].x;
-      dst_positions[i][1] = src_positions[i].y;
-      dst_positions[i][2] = src_positions[i].z;
+    bt_positions.reinitialize(num_vertices);
+    for (const int i : bt_positions.index_range()) {
+      bt_positions[i][0] = src_positions[i].x;
+      bt_positions[i][1] = src_positions[i].y;
+      bt_positions[i][2] = src_positions[i].z;
+      bt_positions[i][3] = 0.0f;
     }
-    btScalar *dst_position_ptr = const_cast<btScalar *>(dst_positions.data()[0]);
+    btScalar *bt_position_ptr = const_cast<btScalar *>(&bt_positions.data()->x());
 
     bt_mesh_interface = btTriangleIndexVertexArray(num_triangles,
                                                    triangles_ptr,
                                                    3 * sizeof(int),
                                                    num_vertices,
-                                                   dst_position_ptr,
-                                                   sizeof(btScalar[3]));
+                                                   bt_position_ptr,
+                                                   sizeof(btVector3));
   }
 };
 
@@ -340,8 +344,7 @@ static btScaledBvhTriangleMeshShape *make_scaled_triangle_mesh_shape(
   BLI_assert(dynamic_cast<const btBvhTriangleMeshShape *>(&child_shape->impl().as_bullet_shape()));
 
   const btBvhTriangleMeshShape *triangle_mesh_child_shape =
-      static_cast<const btBvhTriangleMeshShape *>(
-      &child_shape->impl().as_bullet_shape());
+      static_cast<const btBvhTriangleMeshShape *>(&child_shape->impl().as_bullet_shape());
   return new btScaledBvhTriangleMeshShape(
       const_cast<btBvhTriangleMeshShape *>(triangle_mesh_child_shape), to_bullet(scale));
 }
