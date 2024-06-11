@@ -25,12 +25,34 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryTransformGizmo *storage = MEM_cnew<NodeGeometryTransformGizmo>(__func__);
+  storage->flag = (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X |
+                   GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Y |
+                   GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Z |
+                   GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X |
+                   GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_Y |
+                   GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_Z | GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X |
+                   GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_Y | GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_Z);
   node->storage = storage;
 }
 
-static void node_layout(uiLayout * /*layout*/, bContext * /*C*/, PointerRNA * /*ptr*/) {}
+static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
 
-static void node_rna(StructRNA * /*srna*/) {}
+  {
+    uiLayout *row = uiLayoutColumnWithHeading(layout, true, IFACE_("Translation"));
+    uiItemR(row, ptr, "use_translation_x", UI_ITEM_NONE, IFACE_("X"), ICON_NONE);
+    uiItemR(row, ptr, "use_translation_y", UI_ITEM_NONE, IFACE_("Y"), ICON_NONE);
+    uiItemR(row, ptr, "use_translation_z", UI_ITEM_NONE, IFACE_("Z"), ICON_NONE);
+  }
+  {
+    uiLayout *row = uiLayoutColumnWithHeading(layout, true, IFACE_("Rotation"));
+    uiItemR(row, ptr, "use_rotation_x", UI_ITEM_NONE, IFACE_("X"), ICON_NONE);
+    uiItemR(row, ptr, "use_rotation_y", UI_ITEM_NONE, IFACE_("Y"), ICON_NONE);
+    uiItemR(row, ptr, "use_rotation_z", UI_ITEM_NONE, IFACE_("Z"), ICON_NONE);
+  }
+}
 
 static void node_register()
 {
@@ -41,11 +63,9 @@ static void node_register()
                          node_free_standard_storage,
                          node_copy_standard_storage);
   ntype.declare = node_declare;
-  ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   ntype.initfunc = node_init;
   bke::nodeRegisterType(&ntype);
-
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

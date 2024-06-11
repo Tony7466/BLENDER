@@ -2001,8 +2001,21 @@ typedef struct NodeGeometryDialGizmo {
 } NodeGeometryDialGizmo;
 
 typedef struct NodeGeometryTransformGizmo {
-  char _pad;
+  /** #NodeGeometryTransformGizmoFlag.  */
+  uint32_t flag;
 } NodeGeometryTransformGizmo;
+
+typedef enum NodeGeometryTransformGizmoFlag {
+  GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X = 1 << 0,
+  GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Y = 1 << 1,
+  GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_Z = 1 << 2,
+  GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X = 1 << 3,
+  GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_Y = 1 << 4,
+  GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_Z = 1 << 5,
+  GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X = 1 << 6,
+  GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_Y = 1 << 7,
+  GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_Z = 1 << 8,
+} NodeGeometryTransformGizmoFlag;
 
 typedef struct NodeGeometryBakeItem {
   char *name;

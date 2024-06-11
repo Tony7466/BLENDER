@@ -344,14 +344,19 @@ class TransformGizmos : public NodeGizmos {
     }
   }
 
-  void update_style(const bNode & /*gizmo_node*/) override
+  void update_style(const bNode &gizmo_node) override
   {
+    const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(gizmo_node.storage);
+
     /* Translation */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = translation_gizmos_[axis];
       const ThemeColorID theme_id = get_axis_theme_color_id(axis);
       UI_GetThemeColor3fv(theme_id, gizmo->color);
       UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+
+      const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis);
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
     }
 
     /* Rotation */
@@ -365,6 +370,9 @@ class TransformGizmos : public NodeGizmos {
       int draw_options = RNA_enum_get(gizmo->ptr, "draw_options");
       SET_FLAG_FROM_TEST(draw_options, is_interacting, ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE);
       RNA_enum_set(gizmo->ptr, "draw_options", draw_options);
+
+      const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X << axis);
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
     }
   }
 
