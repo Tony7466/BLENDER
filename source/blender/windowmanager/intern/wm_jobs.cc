@@ -634,7 +634,7 @@ void WM_jobs_stop(wmWindowManager *wm, const void *owner, wm_jobs_start_callback
   }
 }
 
-void WM_jobs_stop(wmWindowManager *wm, const void *owner, eWM_JobType job_type)
+void WM_jobs_stop_type(wmWindowManager *wm, const void *owner, eWM_JobType job_type)
 {
   BLI_assert(job_type != WM_JOB_TYPE_ANY);
 
@@ -663,6 +663,8 @@ void WM_jobs_stop_all_from_owner(wmWindowManager *wm, const void *owner)
 
 void WM_jobs_kill(wmWindowManager *wm, void *owner, wm_jobs_start_callback startjob)
 {
+  BLI_assert(startjob != nullptr);
+
   LISTBASE_FOREACH_MUTABLE (wmJob *, wm_job, &wm->jobs) {
     if (owner && wm_job->owner != owner) {
       continue;

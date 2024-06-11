@@ -782,7 +782,7 @@ static void ensure_nodetree_previews(const bContext &C,
     return;
   }
   if (tree_previews.rendering) {
-    WM_jobs_stop(CTX_wm_manager(&C), CTX_wm_space_node(&C), WM_JOB_TYPE_RENDER_PREVIEW);
+    WM_jobs_stop_type(CTX_wm_manager(&C), CTX_wm_space_node(&C), WM_JOB_TYPE_RENDER_PREVIEW);
     return;
   }
   tree_previews.rendering = true;
