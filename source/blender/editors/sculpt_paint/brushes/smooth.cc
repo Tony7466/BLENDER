@@ -94,24 +94,6 @@ BLI_NOINLINE static void translations_from_new_positions(const Span<float3> new_
   }
 }
 
-BLI_NOINLINE static void scale_translations(const MutableSpan<float3> translations,
-                                            const Span<float> factors)
-{
-  for (const int i : translations.index_range()) {
-    translations[i] *= factors[i];
-  }
-}
-
-BLI_NOINLINE static void scale_factors(const MutableSpan<float> factors, const float strength)
-{
-  if (strength == 1.0f) {
-    return;
-  }
-  for (float &factor : factors) {
-    factor *= strength;
-  }
-}
-
 BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
                                                const Brush &brush,
                                                const Span<float3> positions_eval,

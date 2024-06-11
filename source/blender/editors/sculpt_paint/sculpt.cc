@@ -6737,6 +6737,23 @@ void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, const Span<float3> 
   }
 }
 
+void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
+{
+  for (const int i : translations.index_range()) {
+    translations[i] *= factors[i];
+  }
+}
+
+void scale_factors(const MutableSpan<float> factors, const float strength)
+{
+  if (strength == 1.0f) {
+    return;
+  }
+  for (float &factor : factors) {
+    factor *= strength;
+  }
+}
+
 void calc_vert_neighbors(const OffsetIndices<int> faces,
                          const Span<int> corner_verts,
                          const GroupedSpan<int> vert_to_face,
