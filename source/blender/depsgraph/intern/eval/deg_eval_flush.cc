@@ -202,14 +202,14 @@ inline OperationNode *flush_schedule_children(OperationNode *op_node, FlushQueue
   return result;
 }
 
-void flush_engine_data_update(ID *id)
+void flush_engine_data_update(ID *id, unsigned int recalculate_flags)
 {
   DrawDataList *draw_data_list = DRW_drawdatalist_from_id(id);
   if (draw_data_list == nullptr) {
     return;
   }
   LISTBASE_FOREACH (DrawData *, draw_data, draw_data_list) {
-    draw_data->recalc |= id->recalc;
+    draw_data->recalc |= recalculate_flags;
   }
 }
 
@@ -225,6 +225,7 @@ void flush_editors_id_update(Depsgraph *graph, const DEGEditorUpdateContext *upd
     ID *id_orig = id_node->id_orig;
     ID *id_cow = id_node->id_cow;
     /* Gather recalc flags from all changed components. */
+    unsigned int recalculate_flags = 0;
     for (ComponentNode *comp_node : id_node->components.values()) {
       if (comp_node->custom_flags != COMPONENT_STATE_DONE) {
         continue;
@@ -232,6 +233,7 @@ void flush_editors_id_update(Depsgraph *graph, const DEGEditorUpdateContext *upd
       DepsNodeFactory *factory = type_get_factory(comp_node->type);
       BLI_assert(factory != nullptr);
       id_cow->recalc |= factory->id_recalc_tag();
+      recalculate_flags |= factory->id_recalc_tag();
     }
     DEG_DEBUG_PRINTF((::Depsgraph *)graph,
                      EVAL,
@@ -250,7 +252,8 @@ void flush_editors_id_update(Depsgraph *graph, const DEGEditorUpdateContext *upd
         deg_editors_id_update(update_ctx, id_orig);
       }
       /* Inform draw engines that something was changed. */
-      flush_engine_data_update(id_cow);
+      flush_engine_data_update(id_orig, recalculate_flags);
+      flush_engine_data_update(id_cow, id_cow->recalc);
     }
   }
 }
