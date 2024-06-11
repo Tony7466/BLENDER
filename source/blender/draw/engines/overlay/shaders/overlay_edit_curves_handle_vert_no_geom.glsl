@@ -2,9 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma USE_SSBO_VERTEX_FETCH(TriangleList, 24)
+
+#define M_TAN_PI_BY_8 tan(M_PI / 8)
+#define M_TAN_3_PI_BY_8 tan(3 * M_PI / 8)
+#define M_SQRT2_BY_2 (M_SQRT2 / 2)
 
 #define DISCARD_VERTEX \
   gl_Position = vec4(0.0); \
@@ -112,11 +117,14 @@ void main()
                          :
                          vec4(inner_color.rgb, 0.0);
 
-  vec2 v1_2 = (ndc_pos[1].xy / ndc_pos[1].w - ndc_pos[0].xy / ndc_pos[0].w);
+  vec2 v1_2 = (ndc_pos[1].xy / ndc_pos[1].w - ndc_pos[0].xy / ndc_pos[0].w) * sizeViewport;
   vec2 offset = sizeEdge * 4.0 * sizeViewportInv; /* 4.0 is eyeballed */
 
-  if (abs(v1_2.x * sizeViewport.x) < abs(v1_2.y * sizeViewport.y)) {
+  if (abs(v1_2.x) <= M_TAN_PI_BY_8 * abs(v1_2.y)) {
     offset.y = 0.0;
+  }
+  else if (abs(v1_2.x) <= M_TAN_3_PI_BY_8 * abs(v1_2.y)) {
+    offset = offset * vec2(-M_SQRT2_BY_2 * sign(v1_2.x), M_SQRT2_BY_2 * sign(v1_2.y));
   }
   else {
     offset.x = 0.0;

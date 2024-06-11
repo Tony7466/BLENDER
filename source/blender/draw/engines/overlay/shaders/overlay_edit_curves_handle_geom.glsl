@@ -2,8 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+
+#define M_TAN_PI_BY_8 tan(M_PI / 8)
+#define M_TAN_3_PI_BY_8 tan(3 * M_PI / 8)
+#define M_SQRT2_BY_2 (M_SQRT2 / 2)
 
 float4 get_bezier_handle_color(uint color_id, float sel)
 {
@@ -98,11 +103,14 @@ void main()
     outer_color[1] = vec4(inner_color[1].rgb, 0.0);
   }
 
-  vec2 v1_2 = (v2.xy / v2.w - v1.xy / v1.w);
+  vec2 v1_2 = (v2.xy / v2.w - v1.xy / v1.w) * sizeViewport;
   vec2 offset = sizeEdge * 4.0 * sizeViewportInv; /* 4.0 is eyeballed */
 
-  if (abs(v1_2.x * sizeViewport.x) < abs(v1_2.y * sizeViewport.y)) {
+  if (abs(v1_2.x) <= M_TAN_PI_BY_8 * abs(v1_2.y)) {
     offset.y = 0.0;
+  }
+  else if (abs(v1_2.x) <= M_TAN_3_PI_BY_8 * abs(v1_2.y)) {
+    offset = offset * vec2(-M_SQRT2_BY_2 * sign(v1_2.x), M_SQRT2_BY_2 * sign(v1_2.y));
   }
   else {
     offset.x = 0.0;
