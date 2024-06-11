@@ -36,7 +36,7 @@ static Vector<float> iteration_strengths(const float strength)
   constexpr int max_iterations = 4;
 
   BLI_assert(strength >= 0.0f);
-  const float clamped_strength = std::max(strength, 1.0f);
+  const float clamped_strength = std::min(strength, 1.0f);
 
   const int count = int(clamped_strength * max_iterations);
   const float last = max_iterations * (clamped_strength - float(count) / max_iterations);
