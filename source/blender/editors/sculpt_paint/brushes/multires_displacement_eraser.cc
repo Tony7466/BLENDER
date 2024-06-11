@@ -25,7 +25,8 @@ namespace blender::ed::sculpt_paint {
 
 inline namespace multires_displacement_eraser_cc {
 
-static void calc_node(Object &object, const Brush &brush, const float strength, PBVHNode &node)
+static void calc_node(
+    const Sculpt &sd, Object &object, const Brush &brush, const float strength, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -41,8 +42,6 @@ static void calc_node(Object &object, const Brush &brush, const float strength, 
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
-  /* TODO: Remove usage of proxies. */
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   int i = 0;
   for (const int grid : bke::pbvh::node_grid_indices(node)) {
     const int grid_verts_start = grid * key.grid_area;
@@ -54,7 +53,7 @@ static void calc_node(Object &object, const Brush &brush, const float strength, 
           i++;
           continue;
         }
-        const float3 &co = CCG_elem_offset_co(key, elem, offset);
+        float3 &co = CCG_elem_offset_co(key, elem, offset);
         if (!sculpt_brush_test_sq_fn(test, co)) {
           i++;
           continue;
@@ -80,7 +79,8 @@ static void calc_node(Object &object, const Brush &brush, const float strength, 
         BKE_subdiv_ccg_eval_limit_point(*ss.subdiv_ccg, coord, limit_co);
 
         const float3 translation = (limit_co - co) * fade * strength;
-        proxy[i] = translation;
+
+        SCULPT_clip(sd, ss, co, co + translation);
 
         i++;
       }
@@ -98,7 +98,7 @@ void do_displacement_eraser_brush(const Sculpt &sd, Object &object, Span<PBVHNod
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      calc_node(object, brush, strength, *nodes[i]);
+      calc_node(sd, object, brush, strength, *nodes[i]);
     }
   });
 }
