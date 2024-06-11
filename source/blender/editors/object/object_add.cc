@@ -3383,7 +3383,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_derived_caches(newob);
         BKE_object_free_modifiers(newob, 0);
       }
-      else if (geometry.has_grease_pencil()) {
+      else if (geometry.has_grease_pencil() && geometry.get_grease_pencil()->drawings().size() > 0)
+      {
         if (keep_original) {
           basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, nullptr);
           newob = basen->object;
