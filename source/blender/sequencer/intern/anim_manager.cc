@@ -254,7 +254,7 @@ AnimManager *seq_anim_manager_ensure(Editing *ed)
 void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
 {
   mutex.lock();
-  for (ShareableAnim &sh_anim : anims.values()) {
+  for (ShareableAnim &sh_anim : anims_map.values()) {
     bool strips_use_anim = false;
     for (Sequence *user : sh_anim.users) {
       if (strips.contains(user)) {
@@ -274,15 +274,6 @@ void AnimManager::parallel_load_anims(const Scene *scene,
                                       blender::Vector<Sequence *> &strips,
                                       bool unlock)
 {
-  /* Ensure cache items. */
-  // XXX why is this needed, when cache_entry_get is locking vector? if this is not done before
-  // parallel for loop, it causes use after free in ShareableAnim::anims...
-  for (Sequence *seq : strips) {
-    if (seq->type == SEQ_TYPE_MOVIE) {
-      cache_entry_get(scene, seq);
-    }
-  }
-
   using namespace blender;
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (int i : range) {
@@ -335,7 +326,7 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
 
   mutex.lock();
-  ShareableAnim &sh_anim = anims.lookup_or_add_default(std::string(filepath));
+  ShareableAnim &sh_anim = anims_map.lookup_or_add_default(std::string(filepath));
   mutex.unlock();
   return sh_anim;
 }

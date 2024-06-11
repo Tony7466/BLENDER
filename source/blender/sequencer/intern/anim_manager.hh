@@ -31,7 +31,7 @@ class ShareableAnim {
 
 class AnimManager {
  public:
-  blender::Map<std::string, ShareableAnim> anims;
+  blender::Map<std::string, ShareableAnim> anims_map;
   std::mutex mutex;
   std::thread prefetch_thread;
 
