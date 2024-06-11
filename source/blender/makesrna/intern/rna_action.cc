@@ -1930,7 +1930,8 @@ static void rna_def_action(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   FunctionRNA *func = RNA_def_function(srna, "deselect_keys", "rna_Action_deselect_keys");
-  RNA_def_function_ui_description(func, "Deselects all keys of the Action");
+  RNA_def_function_ui_description(
+      func, "Deselects all keys of the Action. The selection status of F-Curves is unchanged");
 
   rna_def_action_legacy(brna, srna);
 

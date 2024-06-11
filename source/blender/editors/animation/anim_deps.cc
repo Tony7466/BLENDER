@@ -464,7 +464,8 @@ void ANIM_animdata_freelist(ListBase *anim_data)
 
 void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
 {
-  blender::Map<bAction *, bool> deselected_actions;
+  using namespace blender;
+  Vector<bAction *> actions;
   LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     if (ale->type != ANIMTYPE_FCURVE) {
       /* Maybe the same behavior should extend to Grease Pencil? */
@@ -473,14 +474,7 @@ void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
     if (!ale->adt || !ale->adt->action) {
       continue;
     }
-
-    if (deselected_actions.contains(ale->adt->action)) {
-      continue;
-    }
-
-    blender::animrig::Action &action = ale->adt->action->wrap();
-    action.deselect_keys();
-
-    deselected_actions.add(ale->adt->action, true);
+    actions.append(ale->adt->action);
   }
+  animrig::deselect_action_keys(actions);
 }

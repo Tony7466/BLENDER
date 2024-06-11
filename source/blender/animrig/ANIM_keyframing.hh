@@ -309,7 +309,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                     const AnimationEvalContext &anim_eval_context);
 
 /**
- * Deselect all keys within the actions the given objects hold.
+ * Deselect all keys of the actions referenced by these objects.
  */
 void deselect_action_keys(Span<Object *> objects);
 }  // namespace blender::animrig

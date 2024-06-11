@@ -662,6 +662,11 @@ FCurve *action_fcurve_ensure(Main *bmain,
  */
 FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index);
 
+/**
+ * Deselect the keys of all actions in the Span. Duplicate entries are only visited once.
+ */
+void deselect_action_keys(blender::Span<bAction *> actions);
+
 }  // namespace blender::animrig
 
 /* Wrap functions for the DNA structs. */

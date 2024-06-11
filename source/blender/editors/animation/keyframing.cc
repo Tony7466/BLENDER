@@ -365,22 +365,16 @@ static void deselect_keys_of_selection(bContext *C)
   Vector<PointerRNA> selection;
   get_selection(C, &selection);
 
-  /* Since multiple objects might use the same action, store which actions had their keys
-   * deselected, to only iterate over each action once. */
-  blender::Map<bAction *, bool> deselected_actions;
+  blender::Vector<bAction *> actions;
   for (PointerRNA &id_ptr : selection) {
     ID *selected_id = id_ptr.owner_id;
     AnimData *adt = BKE_animdata_from_id(selected_id);
     if (!adt || !adt->action) {
       continue;
     }
-    if (deselected_actions.contains(adt->action)) {
-      continue;
-    }
-    animrig::Action &action = adt->action->wrap();
-    action.deselect_keys();
-    deselected_actions.add(adt->action, true);
+    actions.append(adt->action);
   }
+  blender::animrig::deselect_action_keys(actions);
 }
 
 static int insert_key(bContext *C, wmOperator *op)

@@ -1191,19 +1191,16 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
 
 void deselect_action_keys(Span<Object *> objects)
 {
-  Map<bAction *, bool> deselected_actions;
+  Vector<bAction *> actions;
   for (Object *ob : objects) {
     AnimData *adt = BKE_animdata_from_id(&ob->id);
     if (!adt || !adt->action) {
       continue;
     }
-    if (deselected_actions.contains(adt->action)) {
-      continue;
-    }
-    Action &action = adt->action->wrap();
-    action.deselect_keys();
-    deselected_actions.add(adt->action, true);
+    actions.append(adt->action);
   }
+
+  deselect_action_keys(actions);
 }
 
 }  // namespace blender::animrig
