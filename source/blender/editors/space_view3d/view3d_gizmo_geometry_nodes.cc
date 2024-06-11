@@ -393,24 +393,28 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           any_interacting |= gizmo_is_interacting(*gizmo);
         }
 
-        node_gizmos->apply_change =
-            [C = C, gizmo_node = &gizmo_node, ob_orig = ob_orig, nmd = &nmd](
-                const StringRef socket_identifier,
-                const FunctionRef<void(bke::SocketValueVariant & value)> modify_value) {
-              const bNodeSocket &socket = gizmo_node->input_by_identifier(socket_identifier);
+        if (!any_interacting) {
+          node_gizmos->apply_change =
+              [C = C,
+               gizmo_node_tree = &gizmo_node.owner_tree(),
+               gizmo_node = &gizmo_node,
+               ob_orig = ob_orig,
+               nmd = &nmd,
+               eval_log = nmd.runtime->eval_log](
+                  const StringRef socket_identifier,
+                  const FunctionRef<void(bke::SocketValueVariant & value)> modify_value) {
+                gizmo_node_tree->ensure_topology_cache();
+                const bNodeSocket &socket = gizmo_node->input_by_identifier(socket_identifier);
 
-              bke::ModifierComputeContext compute_context{nullptr, nmd->modifier.name};
+                bke::ModifierComputeContext compute_context{nullptr, nmd->modifier.name};
 
-              nodes::gizmos::apply_gizmo_change(*ob_orig,
-                                                *nmd,
-                                                *nmd->runtime->eval_log,
-                                                compute_context,
-                                                *gizmo_node,
-                                                modify_value);
+                nodes::gizmos::apply_gizmo_change(
+                    *ob_orig, *nmd, *eval_log, compute_context, *gizmo_node, modify_value);
 
-              Main *main = CTX_data_main(C);
-              ED_node_tree_propagate_change(const_cast<bContext *>(C), main, nullptr);
-            };
+                Main *main = CTX_data_main(C);
+                ED_node_tree_propagate_change(const_cast<bContext *>(C), main, nullptr);
+              };
+        }
 
         if (report.missing_socket_logs) {
           /* Rerun modifier to make sure that values are logged. */

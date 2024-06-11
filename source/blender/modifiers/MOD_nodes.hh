@@ -28,7 +28,7 @@ struct NodesModifierRuntime {
    * Contains logged information from the last evaluation.
    * This can be used to help the user to debug a node tree.
    */
-  std::unique_ptr<nodes::geo_eval_log::GeoModifierLog> eval_log;
+  std::shared_ptr<nodes::geo_eval_log::GeoModifierLog> eval_log;
   /**
    * Simulation cache that is shared between original and evaluated modifiers. This allows the
    * original modifier to be removed, without also removing the simulation state which may still be

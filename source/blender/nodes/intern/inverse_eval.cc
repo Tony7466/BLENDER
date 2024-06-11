@@ -425,12 +425,21 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
 {
   switch (socket.type) {
     case SOCK_FLOAT: {
-      return SocketValueVariant{
-          tree_log.find_primitive_socket_value<float>(socket).value_or(0.0f)};
+      if (const std::optional<float> value = tree_log.find_primitive_socket_value<float>(socket)) {
+        return SocketValueVariant{*value};
+      }
+      break;
+    }
+    case SOCK_VECTOR: {
+      if (const std::optional<float3> value = tree_log.find_primitive_socket_value<float3>(socket))
+      {
+        return SocketValueVariant{*value};
+      }
+      break;
     }
   }
+
   /* TODO */
-  BLI_assert_unreachable();
   return {};
 }
 
