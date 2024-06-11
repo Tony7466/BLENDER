@@ -173,8 +173,7 @@ static VArray<float3> gather_points(const GeometrySet &geometry_set)
   return VArray<float3>::ForContainer(positions);
 }
 
-static const bke::CollisionShape::Ptr get_convex_collision_shape(
-    const bke::GeometrySet &geometry_set)
+static bke::CollisionShape::Ptr get_convex_collision_shape(const bke::GeometrySet &geometry_set)
 {
   if (!geometry_set.has_physics()) {
     return nullptr;
@@ -190,6 +189,7 @@ static const bke::CollisionShape::Ptr get_convex_collision_shape(
   return child_shape;
 }
 
+/* Keep in sync with the type_items enum in node_rna. */
 static bke::CollisionShape *make_collision_shape_from_type(
     const bke::CollisionShape::ShapeType type,
     GeoNodeExecParams params,
@@ -363,25 +363,27 @@ static void node_rna(StructRNA *srna)
 {
   using ShapeType = bke::CollisionShape::ShapeType;
 
+  /* Make sure this matches implemented types in make_collision_shape_from_type. */
   static EnumPropertyItem type_items[] = {
       {int(ShapeType::Invalid), "INVALID", 0, "Invalid", ""},
       {int(ShapeType::Empty), "EMPTY", 0, "Empty", ""},
       {int(ShapeType::Box), "BOX", 0, "Box", ""},
       {int(ShapeType::Triangle), "TRIANGLE", 0, "Triangle", ""},
-      {int(ShapeType::Tetrahedral), "TETRAHEDRAL", 0, "Tetrahedral", ""},
-      {int(ShapeType::ConvexTriangleMesh), "CONVEX_TRIANGLE_MESH", 0, "Convex Triangle Mesh", ""},
+      // {int(ShapeType::Tetrahedral), "TETRAHEDRAL", 0, "Tetrahedral", ""},
+      // {int(ShapeType::ConvexTriangleMesh), "CONVEX_TRIANGLE_MESH", 0, "Convex Triangle Mesh",
+      // ""},
       {int(ShapeType::ConvexHull), "CONVEX_HULL", 0, "ConvexHull", ""},
-      {int(ShapeType::ConvexPointCloud), "CONVEX_POINT_CLOUD", 0, "Convex Point Cloud", ""},
+      // {int(ShapeType::ConvexPointCloud), "CONVEX_POINT_CLOUD", 0, "Convex Point Cloud", ""},
       {int(ShapeType::Sphere), "SPHERE", 0, "Sphere", ""},
-      {int(ShapeType::MultiSphere), "MULTI_SPHERE", 0, "Multi Sphere", ""},
+      // {int(ShapeType::MultiSphere), "MULTI_SPHERE", 0, "Multi Sphere", ""},
       {int(ShapeType::Capsule), "CAPSULE", 0, "Capsule", ""},
       {int(ShapeType::Cone), "CONE", 0, "Cone", ""},
       {int(ShapeType::Cylinder), "CYLINDER", 0, "Cylinder", ""},
       {int(ShapeType::UniformScaling), "UNIFORM_SCALING", 0, "Uniform Scaling", ""},
-      {int(ShapeType::MinkowskiSum), "MINKOWSKI_SUM", 0, "Minkowski Sum", ""},
-      {int(ShapeType::MinkowskiDifference), "MINKOWSKI_DIFFERENCE", 0, "Minkowski Difference", ""},
-      {int(ShapeType::Box2D), "BOX_2D", 0, "Box 2D", ""},
-      {int(ShapeType::Convex2D), "CONVEX_2D", 0, "Convex 2D", ""},
+      // {int(ShapeType::MinkowskiSum), "MINKOWSKI_SUM", 0, "Minkowski Sum", ""},
+      // {int(ShapeType::MinkowskiDifference), "MINKOWSKI_DIFFERENCE", 0, "Minkowski Difference",
+      // ""}, {int(ShapeType::Box2D), "BOX_2D", 0, "Box 2D", ""}, {int(ShapeType::Convex2D),
+      // "CONVEX_2D", 0, "Convex 2D", ""},
       {int(ShapeType::TriangleMesh), "TRIANGLE_MESH", 0, "Triangle Mesh", ""},
       {int(ShapeType::ScaledTriangleMesh), "SCALED_TRIANGLE_MESH", 0, "Scaled Triangle Mesh", ""},
       {int(ShapeType::StaticPlane), "STATIC_PLANE", 0, "Static Plane", ""},
