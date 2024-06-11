@@ -322,29 +322,36 @@ struct TriangleMeshInterface {
   }
 };
 
-static btCollisionShape *make_triangle_mesh_shape(const Mesh &mesh,
-                                                  TriangleMeshInterface **r_mesh_interface)
+static btCollisionShape *make_triangle_mesh_shape(TriangleMeshInterface *mesh_interface)
 {
   constexpr const bool use_quantized_aabb_compression = true;
   constexpr const bool build_bvh = true;
-  if (mesh.corners_num != 3 * mesh.faces_num) {
+
+  if (mesh_interface == nullptr) {
     return new btEmptyShape();
   }
 
-  *r_mesh_interface = new TriangleMeshInterface(mesh);
   return new btBvhTriangleMeshShape(
-      &(*r_mesh_interface)->bt_mesh_interface, use_quantized_aabb_compression, build_bvh);
+      &mesh_interface->bt_mesh_interface, use_quantized_aabb_compression, build_bvh);
 }
 
-TriangleMeshCollisionShape::TriangleMeshCollisionShape(const Mesh &mesh)
-    : CollisionShape(
-          CollisionShapeImpl::wrap(make_triangle_mesh_shape(mesh, &this->mesh_interface)))
+TriangleMeshCollisionShape::TriangleMeshCollisionShape(TriangleMeshInterface *mesh_interface)
+    : CollisionShape(CollisionShapeImpl::wrap(make_triangle_mesh_shape(mesh_interface))),
+      mesh_interface(mesh_interface)
 {
 }
 
 TriangleMeshCollisionShape::~TriangleMeshCollisionShape()
 {
   delete this->mesh_interface;
+}
+
+TriangleMeshCollisionShape *TriangleMeshCollisionShape::from_mesh(const Mesh &mesh)
+{
+  TriangleMeshInterface *mesh_interface = (mesh.corners_num == 3 * mesh.faces_num ?
+                                               new TriangleMeshInterface(mesh) :
+                                               nullptr);
+  return new TriangleMeshCollisionShape(mesh_interface);
 }
 
 static btScaledBvhTriangleMeshShape *make_scaled_triangle_mesh_shape(

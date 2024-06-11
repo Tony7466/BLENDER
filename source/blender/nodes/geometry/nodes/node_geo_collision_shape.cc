@@ -277,7 +277,7 @@ static bke::CollisionShape *make_collision_shape_from_type(
       if (!geometry_set.has_mesh()) {
         return nullptr;
       }
-      return new bke::TriangleMeshCollisionShape(*geometry_set.get_mesh());
+      return bke::TriangleMeshCollisionShape::from_mesh(*geometry_set.get_mesh());
     }
     case ShapeType::ScaledTriangleMesh: {
       return nullptr;

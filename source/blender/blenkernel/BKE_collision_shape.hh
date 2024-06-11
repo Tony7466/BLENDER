@@ -23,6 +23,7 @@ class BoxCollisionShape;
 class SphereCollisionShape;
 
 struct CollisionShapeImpl;
+struct TriangleMeshInterface;
 
 class CollisionShape : public ImplicitSharingMixin {
  public:
@@ -70,7 +71,7 @@ class CollisionShape : public ImplicitSharingMixin {
 
  public:
   CollisionShape() = delete;
-  ~CollisionShape();
+  virtual ~CollisionShape();
 
   void delete_self() override;
 
@@ -165,8 +166,11 @@ class TriangleMeshCollisionShape : public CollisionShape {
  public:
   struct TriangleMeshInterface *mesh_interface = nullptr;
 
-  TriangleMeshCollisionShape(const Mesh &mesh);
-  ~TriangleMeshCollisionShape();
+  TriangleMeshCollisionShape(TriangleMeshInterface *mesh_interface);
+
+  static TriangleMeshCollisionShape *from_mesh(const Mesh &mesh);
+
+  virtual ~TriangleMeshCollisionShape();
 };
 
 class ScaledTriangleMeshCollisionShape : public CollisionShape {
