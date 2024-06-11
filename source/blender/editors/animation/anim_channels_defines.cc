@@ -971,7 +971,34 @@ static bAnimChannelType ACF_GROUP = {
 /* name for fcurve entries */
 static void acf_fcurve_name(bAnimListElem *ale, char *name)
 {
-  getname_anim_fcurve(name, ale->id, static_cast<FCurve *>(ale->data));
+  using namespace blender::animrig;
+
+  FCurve *fcurve = static_cast<FCurve *>(ale->data);
+
+  if (ale->fcurve_owner_id && GS(ale->fcurve_owner_id->name) == ID_AC &&
+      ale->binding_handle != Binding::unassigned)
+  {
+    /* F-Curve comes from a layered Action. This means that we cannot trust `ale->id` or
+     * `ale->adt`, because in the Action Editor those are set to whatever object has this Action
+     * assigned. This F-Curve may be for a different binding, though, and thus might be animating a
+     * entirely different ID type. */
+    const Action &action = reinterpret_cast<bAction *>(ale->fcurve_owner_id)->wrap();
+    const Binding *binding = action.binding_for_handle(ale->binding_handle);
+    if (!binding) {
+      /* Defer to the default F-Curve resolution, but without the animated ID
+       * pointer, as it's likely to be wrong anyway. */
+      getname_anim_fcurve(name, nullptr, fcurve);
+      return;
+    }
+
+    const std::string fcurve_name = getname_anim_fcurve_bound(*binding, *fcurve);
+    const size_t num_chars_copied = fcurve_name.copy(name, std::string::npos);
+    name[num_chars_copied] = '\0';
+
+    return;
+  }
+
+  getname_anim_fcurve(name, ale->id, fcurve);
 }
 
 /* "name" property for fcurve entries */

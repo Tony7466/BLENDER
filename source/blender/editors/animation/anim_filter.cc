@@ -1345,10 +1345,12 @@ static size_t animfilter_fcurves_span(ListBase * /*bAnimListElem*/ anim_data,
      * TODO: move to another part of the code. */
     static_assert(
         std::is_same_v<decltype(ActionBinding::handle), decltype(bAnimListElem::binding_handle)>);
-    ale->binding_handle = binding_handle;
 
-    /* Check that the ale->adt is consistent with this FCurve. */
-    BLI_assert(ale->adt->binding_handle == ale->binding_handle);
+    /* Note that this might not be the same as ale->adt->binding_handle. The reason this F-Curve is
+     * shown could be because it's in the Action editor, showing ale->adt->action with _all_
+     * bindings, and this F-Curve could be from a different binding than what's used by the owner
+     * of `ale->adt`.  */
+    ale->binding_handle = binding_handle;
 
     BLI_addtail(anim_data, ale);
     num_items++;

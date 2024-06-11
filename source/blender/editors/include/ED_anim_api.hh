@@ -896,6 +896,8 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, FCurve *c
  */
 int getname_anim_fcurve(char *name, ID *id, FCurve *fcu);
 
+std::string getname_anim_fcurve_bound(const blender::animrig::Binding &binding, FCurve &fcurve);
+
 /**
  * Automatically determine a color for the nth F-Curve.
  */
