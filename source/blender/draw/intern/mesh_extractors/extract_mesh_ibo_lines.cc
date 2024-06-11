@@ -156,10 +156,10 @@ static void extract_lines_mesh(const MeshRenderData &mr,
               const IndexRange face = faces[face_index];
               for (const int corner : face) {
                 const int edge = corner_edges[corner];
-                const int mapping = map[edge];
-                if (mapping != -1) {
+                const int vbo_index = map[edge];
+                if (vbo_index != -1) {
                   map[edge] = -1;
-                  data[mapping] = edge_from_corners(face, corner);
+                  data[vbo_index] = edge_from_corners(face, corner);
                 }
               }
             }
