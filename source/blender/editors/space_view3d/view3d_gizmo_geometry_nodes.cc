@@ -357,8 +357,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   const float4x4 object_to_world{ob_orig->object_to_world()};
 
   Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmos>> new_gizmos_by_node;
+
+  /* This needs to stay around for a bit longer because the compute contexts are required when
+   * applying the gizmo changes. */
+  auto compute_context_builder = std::make_shared<ComputeContextBuilder>();
+
   nodes::gizmos::foreach_active_gizmo(
-      *ob_orig, nmd, *wm, [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
+      *ob_orig,
+      nmd,
+      *wm,
+      *compute_context_builder,
+      [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
         const bke::GeoNodesGizmoID gizmo_id = {compute_context.hash(), gizmo_node.identifier};
         if (new_gizmos_by_node.contains(gizmo_id)) {
           /* Already handled. */
@@ -396,6 +405,8 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         if (!any_interacting) {
           node_gizmos->apply_change =
               [C = C,
+               compute_context_builder,
+               compute_context = &compute_context,
                gizmo_node_tree = &gizmo_node.owner_tree(),
                gizmo_node = &gizmo_node,
                ob_orig = ob_orig,
@@ -406,13 +417,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                 gizmo_node_tree->ensure_topology_cache();
                 const bNodeSocket &socket = gizmo_node->input_by_identifier(socket_identifier);
 
-                bke::ModifierComputeContext compute_context{nullptr, nmd->modifier.name};
-
                 nodes::gizmos::apply_gizmo_change(
-                    *ob_orig, *nmd, *eval_log, compute_context, *gizmo_node, modify_value);
+                    *ob_orig, *nmd, *eval_log, *compute_context, *gizmo_node, modify_value);
 
                 Main *main = CTX_data_main(C);
                 ED_node_tree_propagate_change(const_cast<bContext *>(C), main, nullptr);
+                WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
               };
         }
 

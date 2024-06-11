@@ -742,10 +742,12 @@ static void find_side_effect_nodes_for_active_gizmos(
   Object *object_orig = DEG_get_original_object(ctx.object);
   const NodesModifierData &nmd_orig = *reinterpret_cast<const NodesModifierData *>(
       BKE_modifier_get_original(ctx.object, const_cast<ModifierData *>(&nmd.modifier)));
+  ComputeContextBuilder compute_context_builder;
   nodes::gizmos::foreach_active_gizmo(
       *object_orig,
       nmd_orig,
       wm,
+      compute_context_builder,
       [&](const ComputeContext &compute_context, const bNode &gizmo_node) {
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
         r_socket_log_contexts.add(compute_context.hash());

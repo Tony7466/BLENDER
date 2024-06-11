@@ -133,6 +133,7 @@ class ComputeContextBuilder {
  private:
   LinearAllocator<> allocator_;
   Stack<destruct_ptr<ComputeContext>> contexts_;
+  Vector<destruct_ptr<ComputeContext>> old_contexts_;
 
  public:
   bool is_empty() const
@@ -163,7 +164,7 @@ class ComputeContextBuilder {
 
   void pop()
   {
-    contexts_.pop();
+    old_contexts_.append(contexts_.pop());
   }
 };
 

@@ -190,6 +190,7 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
 void foreach_active_gizmo(const Object & /*object*/,
                           const NodesModifierData &nmd,
                           const wmWindowManager & /*wm*/,
+                          ComputeContextBuilder &compute_context_builder,
                           const ForeachGizmoFn fn)
 {
   /* TODO: Find gizmos from open node editors. */
@@ -201,7 +202,6 @@ void foreach_active_gizmo(const Object & /*object*/,
   if (!tree.runtime->gizmo_propagation) {
     return;
   }
-  ComputeContextBuilder compute_context_builder;
   compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
   for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_value_nodes.items()) {
     for (const ie::SocketElem &socket_elem : item.value) {
