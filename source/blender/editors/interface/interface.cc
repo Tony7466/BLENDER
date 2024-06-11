@@ -3712,8 +3712,11 @@ static void ui_but_build_drawstr_float(uiBut *but, double value)
     but->drawstr = but->str + new_str;
   }
   else {
-    const int prec = ui_but_calc_float_precision(but, value);
-    but->drawstr = fmt::format("{}{:.{}f}", but->str, value, prec);
+    /* This precision has been long used as decimals, so try to get this
+     * many without going over the maximum actual decimal precision. */
+    int prec = ui_but_calc_float_precision(but, value) + integer_digits_d(value);
+    CLAMP(prec, 0, UI_PRECISION_FLOAT_MAX);
+    but->drawstr = fmt::format("{}{:.{}g}", but->str, value, prec);
   }
 }
 
