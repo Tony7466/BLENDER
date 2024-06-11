@@ -1039,9 +1039,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
      * we're faithfully reproducing the original behavior.
      */
     eInsertKeyFlags insert_key_flags_adjusted = insert_key_flags;
-    if (force_all && rna_values.size() > 0 &&
-        (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) != 0)
-    {
+    if (force_all && insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) {
       /* Determine if at least one element would succeed getting keyed. */
       bool at_least_one_would_succeed = false;
       for (int i = 0; i < rna_values.size(); i++) {
