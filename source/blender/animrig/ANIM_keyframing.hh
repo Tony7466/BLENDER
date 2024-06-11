@@ -138,7 +138,9 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
  *
  * \param scene_frame: the frame to insert the keys at. This is in scene time,
  * not NLA mapped (NLA mapping is already handled internally by this function).
- * If not given, the current scene time is used.
+ * If not given, the evaluation time from `anim_eval_context` is used instead.
+ * TODO: this redundancy between `scene_frame` and `anim_eval_context` should
+ * be eliminated. We shouldn't need both!
  *
  * \returns A summary of the successful and failed keyframe insertions, with
  * reasons for the failures.
