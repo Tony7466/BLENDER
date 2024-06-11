@@ -137,7 +137,7 @@ static void extract_lines_mesh(const MeshRenderData &mr,
               for (const int corner : face) {
                 const int edge = corner_edges[corner];
                 if (!used[edge]) {
-		  used[edge] = true;
+                  used[edge] = true;
                   data[edge] = edge_from_corners(face, corner);
                 }
               }
@@ -156,9 +156,9 @@ static void extract_lines_mesh(const MeshRenderData &mr,
               const IndexRange face = faces[face_index];
               for (const int corner : face) {
                 const int edge = corner_edges[corner];
-		const int mapping = map[edge];
+                const int mapping = map[edge];
                 if (mapping != -1) {
-		  map[edge] = -1;
+                  map[edge] = -1;
                   data[mapping] = edge_from_corners(face, corner);
                 }
               }
