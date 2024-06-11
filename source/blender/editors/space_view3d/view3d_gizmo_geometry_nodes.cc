@@ -76,6 +76,11 @@ static ThemeColorID get_gizmo_theme_color_id(const GeometryNodeGizmoColor color_
   return TH_GIZMO_PRIMARY;
 }
 
+static ThemeColorID get_axis_theme_color_id(const int axis)
+{
+  return std::array{TH_AXIS_X, TH_AXIS_Y, TH_AXIS_Z}[axis];
+}
+
 static void make_matrix_orthonormal_but_keep_z_axis(float4x4 &m)
 {
   /* Without this, the gizmos may be skewed. */
@@ -313,6 +318,10 @@ class TransformGizmos : public NodeGizmos {
  private:
   std::array<wmGizmo *, 3> translation_gizmos_ = {};
 
+  struct EditData {
+    float3 current_translation{};
+  } edit_data_;
+
  public:
   void create_gizmos(wmGizmoGroup &gzgroup) override
   {
@@ -323,9 +332,92 @@ class TransformGizmos : public NodeGizmos {
     }
   }
 
+  void update_style(const bNode & /*gizmo_node*/) override
+  {
+    for (const int axis : IndexRange(3)) {
+      wmGizmo *gizmo = translation_gizmos_[axis];
+      const ThemeColorID theme_id = get_axis_theme_color_id(axis);
+      UI_GetThemeColor3fv(theme_id, gizmo->color);
+      UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+    }
+  }
+
+  void update(GizmosUpdateParams &params) override
+  {
+    const bNodeSocket &base_socket = params.gizmo_node.input_socket(1);
+    const std::optional<float4x4> base_opt = params.tree_log.find_primitive_socket_value<float4x4>(
+        base_socket);
+    if (!base_opt) {
+      params.r_report.missing_socket_logs = true;
+      return;
+    }
+    const float4x4 &base_transform_from_socket = *base_opt;
+
+    for (const int axis_i : IndexRange(3)) {
+      const math::Axis axis = math::Axis::from_int(axis_i);
+      wmGizmo *gizmo = translation_gizmos_[axis_i];
+
+      const bool is_interacting = gizmo_is_interacting(*gizmo);
+
+      if (!is_interacting) {
+        const float3 location = base_transform_from_socket.location();
+        const float3x3 orientation = float3x3(base_transform_from_socket) *
+                                     this->get_rotation_to_axis(axis);
+        float4x4 base_transform_from_socket_for_axis = float4x4(orientation);
+        base_transform_from_socket_for_axis.location() = location;
+
+        float4x4 gizmo_transform = params.parent_transform * base_transform_from_socket_for_axis;
+        make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+        copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
+
+        edit_data_.current_translation[axis_i] = 0.0f;
+
+        wmGizmoPropertyFnParams params{};
+        params.user_data = this;
+        params.value_set_fn = [](const wmGizmo *gz,
+                                 wmGizmoProperty *gz_prop,
+                                 const void *value_ptr) {
+          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+          const int axis_i = Span(self.translation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+          const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+          self.edit_data_.current_translation[axis_i] = new_gizmo_value;
+          float3 translation{};
+          translation[axis_i] = new_gizmo_value;
+          self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+            float4x4 value = value_variant.get<float4x4>();
+            value = value * math::from_location<float4x4>(translation);
+            value_variant.set(value);
+          });
+        };
+        params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
+          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+          const int axis_i = Span(self.translation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+          *static_cast<float *>(value_ptr) = self.edit_data_.current_translation[axis_i];
+        };
+        WM_gizmo_target_property_def_func(gizmo, "offset", &params);
+      }
+    }
+  }
+
   Vector<wmGizmo *> get_all_gizmos() override
   {
     return translation_gizmos_;
+  }
+
+  static float3x3 get_rotation_to_axis(const math::Axis axis)
+  {
+    switch (axis) {
+      case math::Axis::X:
+        return math::from_rotation<float3x3>(
+            math::AxisAngle(math::AxisSigned::Y_POS, math::AngleRadian::from_degree(90)));
+      case math::Axis::Y:
+        return math::from_rotation<float3x3>(
+            math::AxisAngle(math::AxisSigned::X_POS, math::AngleRadian::from_degree(-90)));
+      case math::Axis::Z:
+        return float3x3::identity();
+    }
+    BLI_assert_unreachable();
+    return {};
   }
 };
 
