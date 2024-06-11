@@ -289,7 +289,8 @@ UniformScalingCollisionShape::UniformScalingCollisionShape(const CollisionShape 
 }
 
 struct TriangleMeshInterface {
-  Array<btVector3> bt_positions;
+  Array<btVector3> positions;
+  Array<int> indices;
   btTriangleIndexVertexArray bt_mesh_interface;
 
   TriangleMeshInterface(const Mesh &mesh)
@@ -300,21 +301,20 @@ struct TriangleMeshInterface {
     const int num_triangles = mesh.faces_num;
     const int num_vertices = mesh.verts_num;
     /* Vertex index for each corner. In a triangle mesh each face has 3 consecutive corners. */
-    const Span<int> triangles = mesh.corner_verts();
-    int *triangles_ptr = const_cast<int *>(triangles.data());
+    this->indices = mesh.corner_verts();
 
     const Span<float3> src_positions = mesh.vert_positions();
-    bt_positions.reinitialize(num_vertices);
-    for (const int i : bt_positions.index_range()) {
-      bt_positions[i][0] = src_positions[i].x;
-      bt_positions[i][1] = src_positions[i].y;
-      bt_positions[i][2] = src_positions[i].z;
-      bt_positions[i][3] = 0.0f;
+    this->positions.reinitialize(num_vertices);
+    for (const int i : this->positions.index_range()) {
+      this->positions[i][0] = src_positions[i].x;
+      this->positions[i][1] = src_positions[i].y;
+      this->positions[i][2] = src_positions[i].z;
+      this->positions[i][3] = 0.0f;
     }
-    btScalar *bt_position_ptr = const_cast<btScalar *>(&bt_positions.data()->x());
+    btScalar *bt_position_ptr = const_cast<btScalar *>(&this->positions.data()->x());
 
     bt_mesh_interface = btTriangleIndexVertexArray(num_triangles,
-                                                   triangles_ptr,
+                                                   const_cast<int *>(this->indices.data()),
                                                    3 * sizeof(int),
                                                    num_vertices,
                                                    bt_position_ptr,
@@ -322,7 +322,8 @@ struct TriangleMeshInterface {
   }
 };
 
-static btCollisionShape *make_triangle_mesh_shape(const Mesh &mesh)
+static btCollisionShape *make_triangle_mesh_shape(const Mesh &mesh,
+                                                  TriangleMeshInterface **r_mesh_interface)
 {
   constexpr const bool use_quantized_aabb_compression = true;
   constexpr const bool build_bvh = true;
@@ -330,14 +331,20 @@ static btCollisionShape *make_triangle_mesh_shape(const Mesh &mesh)
     return new btEmptyShape();
   }
 
-  TriangleMeshInterface mesh_interface(mesh);
+  *r_mesh_interface = new TriangleMeshInterface(mesh);
   return new btBvhTriangleMeshShape(
-      &mesh_interface.bt_mesh_interface, use_quantized_aabb_compression, build_bvh);
+      &(*r_mesh_interface)->bt_mesh_interface, use_quantized_aabb_compression, build_bvh);
 }
 
 TriangleMeshCollisionShape::TriangleMeshCollisionShape(const Mesh &mesh)
-    : CollisionShape(CollisionShapeImpl::wrap(make_triangle_mesh_shape(mesh)))
+    : CollisionShape(
+          CollisionShapeImpl::wrap(make_triangle_mesh_shape(mesh, &this->mesh_interface)))
 {
+}
+
+TriangleMeshCollisionShape::~TriangleMeshCollisionShape()
+{
+  delete this->mesh_interface;
 }
 
 static btScaledBvhTriangleMeshShape *make_scaled_triangle_mesh_shape(

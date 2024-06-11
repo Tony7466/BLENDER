@@ -163,7 +163,10 @@ class UniformScalingCollisionShape : public CollisionShape {
 
 class TriangleMeshCollisionShape : public CollisionShape {
  public:
+  struct TriangleMeshInterface *mesh_interface = nullptr;
+
   TriangleMeshCollisionShape(const Mesh &mesh);
+  ~TriangleMeshCollisionShape();
 };
 
 class ScaledTriangleMeshCollisionShape : public CollisionShape {
