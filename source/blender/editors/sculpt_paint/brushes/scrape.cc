@@ -17,6 +17,8 @@
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
@@ -26,45 +28,65 @@
 
 namespace blender::ed::sculpt_paint {
 
-inline namespace draw_vector_displacement_cc {
+BLI_NOINLINE void scrape_calc_translations(const Span<float3> vert_positions,
+                                           const Span<int> verts,
+                                           const float4 &plane,
+                                           const MutableSpan<float3> translations)
+{
+  for (const int i : verts.index_range()) {
+    const float3 &position = vert_positions[verts[i]];
+    float3 closest;
+    closest_to_plane_normalized_v3(closest, plane, position);
+    translations[i] = closest - position;
+  }
+}
+
+BLI_NOINLINE void scrape_calc_plane_trim_limit(const Brush &brush,
+                                               const StrokeCache &cache,
+                                               const Span<float3> translations,
+                                               const MutableSpan<float> factors)
+{
+  if (!(brush.flag & BRUSH_PLANE_TRIM)) {
+    return;
+  }
+  const float threshold = cache.radius_squared * cache.plane_trim_squared;
+  for (const int i : translations.index_range()) {
+    if (math::length_squared(translations[i]) <= threshold) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+inline namespace scrape_cc {
 
 struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
-  Vector<float4> colors;
   Vector<float3> translations;
 };
 
-static void calc_brush_texture_colors(SculptSession &ss,
-                                      const Brush &brush,
-                                      const Span<float3> vert_positions,
-                                      const Span<int> verts,
-                                      const Span<float> factors,
-                                      const MutableSpan<float4> r_colors)
+BLI_NOINLINE static void calc_plane_side_factors(const Span<float3> vert_positions,
+                                                 const Span<int> verts,
+                                                 const float4 &plane,
+                                                 const MutableSpan<float> factors)
 {
-  BLI_assert(verts.size() == r_colors.size());
-
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
   for (const int i : verts.index_range()) {
-    float texture_value;
-    float4 texture_rgba;
-    /* NOTE: This is not a thread-safe call. */
-    sculpt_apply_texture(
-        ss, brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
-
-    r_colors[i] = texture_rgba * factors[i];
+    if (plane_point_side_v3(plane, vert_positions[verts[i]]) <= 0.0f) {
+      factors[i] = 0.0f;
+    }
   }
 }
 
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
+                       const float4 &plane,
+                       const float strength,
                        const Span<float3> positions_eval,
                        const Span<float3> vert_normals,
                        const PBVHNode &node,
                        Object &object,
                        LocalData &tls,
-                       MutableSpan<float3> positions_orig)
+                       const MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -90,15 +112,17 @@ static void calc_faces(const Sculpt &sd,
     auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
-  tls.colors.reinitialize(verts.size());
-  const MutableSpan<float4> colors = tls.colors;
-  calc_brush_texture_colors(ss, brush, positions_eval, verts, factors, colors);
+  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
+
+  scale_factors(factors, strength);
+
+  calc_plane_side_factors(positions_eval, verts, plane, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  for (const int i : verts.index_range()) {
-    SCULPT_calc_vertex_displacement(ss, brush, colors[i], translations[i]);
-  }
+  scrape_calc_translations(positions_eval, verts, plane, translations);
+  scrape_calc_plane_trim_limit(brush, *ss.cache, translations, factors);
+  scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
@@ -112,22 +136,22 @@ static void calc_faces(const Sculpt &sd,
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
-static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
+static void calc_grids(
+    Object &object, const Brush &brush, const float4 &plane, const float strength, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
-
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const CCGKey key = *BKE_pbvh_get_grid_key(*ss.pbvh);
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
-  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
+
+  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = *BKE_pbvh_get_grid_key(*ss.pbvh);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
   /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
@@ -145,27 +169,40 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
         i++;
         continue;
       }
+      if (SCULPT_plane_point_side(co, plane)) {
+        i++;
+        continue;
+      }
+
+      float3 closest;
+      closest_to_plane_normalized_v3(closest, plane, co);
+      const float3 translation = closest - co;
+
+      if (!SCULPT_plane_trim(*ss.cache, brush, translation)) {
+        i++;
+        continue;
+      }
 
       auto_mask::node_update(automask_data, i);
-      float r_rgba[4];
-      SCULPT_brush_strength_color(ss,
-                                  brush,
-                                  co,
-                                  math::sqrt(test.dist),
-                                  CCG_elem_offset_no(key, elem, j),
-                                  nullptr,
-                                  key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f,
-                                  BKE_pbvh_make_vref(grid_verts_start + j),
-                                  thread_id,
-                                  &automask_data,
-                                  r_rgba);
-      SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[i]);
+      const float fade = SCULPT_brush_strength_factor(
+          ss,
+          brush,
+          co,
+          math::sqrt(test.dist),
+          CCG_elem_offset_no(key, elem, j),
+          nullptr,
+          key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f,
+          BKE_pbvh_make_vref(grid_verts_start + j),
+          thread_id,
+          &automask_data);
+      proxy[i] = translation * fade * strength;
       i++;
     }
   }
 }
 
-static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
+static void calc_bmesh(
+    Object &object, const Brush &brush, const float4 &plane, const float strength, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -173,7 +210,6 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
 
@@ -193,31 +229,55 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
       continue;
     }
 
+    if (SCULPT_plane_point_side(float3(vert->co), plane)) {
+      i++;
+      continue;
+    }
+
+    float3 closest;
+    closest_to_plane_normalized_v3(closest, plane, vert->co);
+    const float3 translation = closest - float3(vert->co);
+
+    if (!SCULPT_plane_trim(*ss.cache, brush, translation)) {
+      i++;
+      continue;
+    }
+
     auto_mask::node_update(automask_data, *vert);
     const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
-    float r_rgba[4];
-    SCULPT_brush_strength_color(ss,
-                                brush,
-                                vert->co,
-                                math::sqrt(test.dist),
-                                vert->no,
-                                nullptr,
-                                mask,
-                                BKE_pbvh_make_vref(intptr_t(vert)),
-                                thread_id,
-                                &automask_data,
-                                r_rgba);
-    SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[i]);
+    const float fade = SCULPT_brush_strength_factor(ss,
+                                                    brush,
+                                                    vert->co,
+                                                    math::sqrt(test.dist),
+                                                    vert->no,
+                                                    nullptr,
+                                                    mask,
+                                                    BKE_pbvh_make_vref(intptr_t(vert)),
+                                                    thread_id,
+                                                    &automask_data);
+    proxy[i] = translation * fade * strength;
     i++;
   }
 }
 
-}  // namespace draw_vector_displacement_cc
+}  // namespace scrape_cc
 
-void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+void do_scrape_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
   const SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
+
+  float3 area_no;
+  float3 area_co;
+  calc_brush_plane(brush, object, nodes, area_no, area_co);
+  SCULPT_tilt_apply_to_normal(area_no, ss.cache, brush.tilt_strength_factor);
+
+  const float offset = SCULPT_brush_plane_offset_get(sd, ss);
+  const float displace = -ss.cache->radius * offset;
+  area_co += area_no * ss.cache->scale * displace;
+
+  float4 plane;
+  plane_from_point_normal_v3(plane, area_co, area_no);
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
@@ -230,8 +290,16 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces(
-              sd, brush, positions_eval, vert_normals, *nodes[i], object, tls, positions_orig);
+          calc_faces(sd,
+                     brush,
+                     plane,
+                     ss.cache->bstrength,
+                     positions_eval,
+                     vert_normals,
+                     *nodes[i],
+                     object,
+                     tls,
+                     positions_orig);
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
@@ -240,14 +308,14 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
     case PBVH_GRIDS:
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
-          calc_grids(object, brush, *nodes[i]);
+          calc_grids(object, brush, plane, ss.cache->bstrength, *nodes[i]);
         }
       });
       break;
     case PBVH_BMESH:
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
-          calc_bmesh(object, brush, *nodes[i]);
+          calc_bmesh(object, brush, plane, ss.cache->bstrength, *nodes[i]);
         }
       });
       break;

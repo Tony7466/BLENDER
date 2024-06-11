@@ -174,4 +174,13 @@ void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   Span<int> verts,
                                   MutableSpan<Vector<int>> result);
 
+void scrape_calc_translations(const Span<float3> vert_positions,
+                              const Span<int> verts,
+                              const float4 &plane,
+                              const MutableSpan<float3> translations);
+void scrape_calc_plane_trim_limit(const Brush &brush,
+                                  const StrokeCache &cache,
+                                  const Span<float3> translations,
+                                  const MutableSpan<float> factors);
+
 }  // namespace blender::ed::sculpt_paint
