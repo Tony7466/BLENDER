@@ -21,6 +21,8 @@ set(INC
   ../../render
   ../../simulation
   ../../windowmanager
+  ../../io/common
+  ../../io/stl
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -87,6 +89,7 @@ set(SRC
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_import_stl.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
   nodes/node_geo_input_active_camera.cc
@@ -253,6 +256,14 @@ set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
 )
+
+if(WITH_IO_STL)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_stl
+  )
+  add_definitions(-DWITH_IO_STL)
+endif()
 
 if(WITH_BULLET)
   list(APPEND INC_SYS
