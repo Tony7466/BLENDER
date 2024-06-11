@@ -772,26 +772,23 @@ static int convert_action_exec(bContext *C, wmOperator *op)
   using namespace blender;
 
   Object *object = CTX_data_active_object(C);
-  if (!object) {
-    return OPERATOR_CANCELLED;
-  }
-
   AnimData *adt = BKE_animdata_from_id(&object->id);
-  if (!adt || !adt->action) {
-    return OPERATOR_CANCELLED;
-  }
 
   animrig::Action &anim = adt->action->wrap();
   if (anim.is_empty()) {
-    return OPERATOR_CANCELLED;
-  }
-  Main *bmain = CTX_data_main(C);
-  if (anim.is_action_layered()) {
-    BKE_report(op->reports, RPT_WARNING, "Action is already a layered type");
+    BKE_report(
+        op->reports, RPT_WARNING, "The given action is empty, so it is considered to be layered");
     return OPERATOR_CANCELLED;
   }
 
-  animrig::convert_to_layered_action(*bmain, anim);
+  Main *bmain = CTX_data_main(C);
+  animrig::Action *layered_action = animrig::convert_to_layered_action(*bmain, anim);
+  /* We did already check if the action can be converted. */
+  BLI_assert(layered_action != nullptr);
+
+  animrig::unassign_animation(object->id);
+  BLI_assert(layered_action->binding_array_num == 1);
+  layered_action->assign_id(&layered_action->binding_array[0]->wrap(), object->id);
 
   return OPERATOR_FINISHED;
 }
@@ -808,6 +805,11 @@ static bool convert_action_poll(bContext *C)
     return false;
   }
 
+  if (adt->action->wrap().is_action_layered()) {
+    CTX_wm_operator_poll_msg_set(C, "Action is already layered");
+    return false;
+  }
+
   return true;
 }
 
@@ -816,7 +818,7 @@ static void ANIM_OT_convert_to_layered_action(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Convert to Layered Action";
   ot->idname = "ANIM_OT_convert_to_layered_action";
-  ot->description = "Convert a legacy Action to a layered Action on the active object.";
+  ot->description = "Convert a legacy Action to a layered Action on the active object";
 
   /* api callbacks */
   ot->exec = convert_action_exec;

@@ -1147,13 +1147,16 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
     return nullptr;
   }
 
-  char layered_action_name[MAX_ID_NAME - 2];
-  /* In case the legacy action has a long name it is shortened to make space for "_layered". */
-  char max_legacy_name[MAX_ID_NAME - 8];
-  SNPRINTF(max_legacy_name, "%s", legacy_action.id.name);
+  std::string suffix = "_layered";
   /* Offsetting the id.name to remove the ID prefix (AC) which gets added back later. */
-  SNPRINTF(layered_action_name, "%s_layered", max_legacy_name + 2);
-  bAction *baction = BKE_action_add(&bmain, layered_action_name);
+  std::string legacy_name = legacy_action.id.name + 2;
+  /* In case the legacy action has a long name it is shortened to make space for the suffix. */
+  if (legacy_name.size() > MAX_ID_NAME - (suffix.size() + 3)) {
+    legacy_name = legacy_name.substr(0, MAX_ID_NAME - (suffix.size() + 3));
+  }
+
+  const std::string layered_action_name = legacy_name + suffix;
+  bAction *baction = BKE_action_add(&bmain, layered_action_name.c_str());
 
   Action &converted_action = baction->wrap();
   Binding &binding = converted_action.binding_add();

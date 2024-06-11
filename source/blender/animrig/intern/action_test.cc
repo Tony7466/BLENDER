@@ -520,6 +520,7 @@ TEST_F(ActionLayersTest, conversion_to_layered)
   add_fmodifier(&legacy_fcu_1->modifiers, FMODIFIER_TYPE_NOISE, legacy_fcu_1);
 
   Action *converted = convert_to_layered_action(*bmain, *anim);
+  ASSERT_TRUE(converted != anim);
   EXPECT_STREQ(converted->id.name, "ACACÄnimåtië_layered");
   Strip *strip = converted->layers()[0]->strips()[0];
   KeyframeStrip key_strip = strip->as<KeyframeStrip>();
