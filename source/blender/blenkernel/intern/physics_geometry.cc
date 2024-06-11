@@ -533,6 +533,23 @@ static void destroy_world(PhysicsGeometryImpl &impl)
   impl.overlap_filter = nullptr;
 }
 
+static void move_world(PhysicsGeometryImpl &from, PhysicsGeometryImpl &to)
+{
+  to.world = from.world;
+  to.constraint_solver = from.constraint_solver;
+  to.broadphase = from.broadphase;
+  to.dispatcher = from.dispatcher;
+  to.config = from.config;
+  to.overlap_filter = from.overlap_filter;
+
+  from.world = nullptr;
+  from.constraint_solver = nullptr;
+  from.broadphase = nullptr;
+  from.dispatcher = nullptr;
+  from.config = nullptr;
+  from.overlap_filter = nullptr;
+}
+
 PhysicsGeometryImpl::PhysicsGeometryImpl() {}
 
 PhysicsGeometryImpl::~PhysicsGeometryImpl()
@@ -599,16 +616,15 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
   impl->motion_states.reinitialize(bodies_num);
   create_bodies(impl->rigid_bodies, impl->motion_states);
   impl_ = impl;
+  std::cout << "new physics impl @ " << impl_ << std::endl;
 
   UNUSED_VARS(constraints_num);
 }
 
 PhysicsGeometry::~PhysicsGeometry()
 {
-  BLI_assert(impl_->strong_users() > 0);
-  if (impl_) {
-    impl_->remove_user_and_delete_if_last();
-  }
+  BLI_assert(impl_ && impl_->strong_users() > 0);
+  impl_->remove_user_and_delete_if_last();
 }
 
 // PhysicsGeometryImpl *PhysicsGeometry::try_steal_impl() const
@@ -688,7 +704,7 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
     if (to.world) {
       destroy_world(to);
     }
-    to.world = from_mutable.world;
+    move_world(from_mutable, to);
   }
   btDynamicsWorld *to_world = to.world;
 
