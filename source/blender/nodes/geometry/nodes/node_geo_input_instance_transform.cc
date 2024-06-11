@@ -10,9 +10,7 @@ namespace blender::nodes::node_geo_input_instance_transform_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Matrix>("Transform")
-      .field_source()
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_output<decl::Matrix>("Transform").field_source();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

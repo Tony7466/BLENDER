@@ -12,7 +12,7 @@ namespace blender::nodes::node_fn_separate_transform_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Matrix>("Transform").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input<decl::Matrix>("Transform");
   b.add_output<decl::Vector>("Translation").subtype(PROP_TRANSLATION);
   b.add_output<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Scale").subtype(PROP_XYZ);

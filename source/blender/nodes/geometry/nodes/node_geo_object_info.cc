@@ -34,9 +34,7 @@ static void node_declare(NodeDeclarationBuilder &b)
           "This allows instancing non-geometry object types");
   b.add_output<decl::Matrix>("Transform")
       .description(
-          "Transformation matrix containing the location, rotation "
-          "and scale of the object")
-      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+          "Transformation matrix containing the location, rotation and scale of the object");
   b.add_output<decl::Vector>("Location");
   b.add_output<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Scale");
