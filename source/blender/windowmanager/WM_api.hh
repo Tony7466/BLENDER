@@ -1652,11 +1652,34 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
  */
 void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job);
 /**
- * Signal job(s) from this owner or callback to stop, timer is required to get handled.
+ * Signal all jobs of this type and owner (if non-null) to stop, timer is required to get
+ * handled.
+ * Only use this if the overload taking the #eWM_JobType isn't specific enough. Best to avoid using
+ * function pointers as identifiers.
+ *
+ * Don't pass null for \a startjob. Use #WM_jobs_stop_all_from_owner() instead.
  */
 void WM_jobs_stop(wmWindowManager *wm, const void *owner, wm_jobs_start_callback startjob);
 /**
+ * Signal all jobs of this type and owner (if non-null) to stop, timer is required to get
+ * handled.
+ *
+ * Don't pass #WM_JOB_TYPE_ANY as \a job_type. Use #WM_jobs_stop_all_from_owner() instead.
+ */
+void WM_jobs_stop(wmWindowManager *wm, const void *owner, eWM_JobType job_type);
+/**
+ * Signal all jobs from this owner to stop, timer is required to get handled.
+ *
+ * Could also just be another #WM_jobs_stop() overload, but good to emphasize the effect it will
+ * have, for example passing the scene will stop **all** jobs of the scene, even otherwise
+ * unrelated ones.
+ */
+void WM_jobs_stop_all_from_owner(wmWindowManager *wm, const void *owner) ATTR_NONNULL();
+/**
  * Actually terminate thread and job timer.
+ *
+ * Only use this if #WM_jobs_kill_type() isn't specific enough. Best to avoid using function
+ * pointers as identifiers.
  */
 void WM_jobs_kill(wmWindowManager *wm, void *owner, wm_jobs_start_callback startjob);
 /**
@@ -1667,7 +1690,20 @@ void WM_jobs_kill_all(wmWindowManager *wm);
  * Wait until every job ended, except for one owner (used in undo to keep screen job alive).
  */
 void WM_jobs_kill_all_except(wmWindowManager *wm, const void *owner);
+/**
+ * Terminate thread and timer of all jobs of this type and owner (if non-null).
+ *
+ * Don't pass #WM_JOB_TYPE_ANY as \a job_type. Use #WM_jobs_kill_all_from_owner() instead.
+ */
 void WM_jobs_kill_type(wmWindowManager *wm, const void *owner, int job_type);
+/**
+ * Terminate thread and timer of all jobs from this owner.
+ *
+ * Could also just be a `WM_jobs_kill` overload, but good to emphasize the effect it will
+ * have, for example passing the scene will stop **all** jobs of the scene, even otherwise
+ * unrelated ones.
+ */
+void WM_jobs_kill_all_from_owner(wmWindowManager *wm, const void *owner) ATTR_NONNULL();
 
 bool WM_jobs_has_running(const wmWindowManager *wm);
 bool WM_jobs_has_running_type(const wmWindowManager *wm, int job_type);
