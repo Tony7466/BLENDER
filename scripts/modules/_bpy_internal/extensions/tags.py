@@ -8,7 +8,7 @@
 # The initial list of tags are the ones used by Blender Extensions Platforms (https://extensions.blender.org).
 # Other platforms can send PRs to extend this list further.
 
-[
+tags = [
     {
         "remote_url": "https://extensions.blender.org/api/v1/extensions",
         "add-ons": {
