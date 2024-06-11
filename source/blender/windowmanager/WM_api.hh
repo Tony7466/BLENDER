@@ -1650,12 +1650,17 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
                           void (*canceled)(void *));
 
 /**
- * If job running, the same owner gave it a new job.
+ * Register the given \a wm_job and try to start it immediately.
  *
- * \note If a job of the same #eWM_JobType is already running, \a wm_job will wait until its
- * finished. #WM_JOB_PRIORITY can be set so the existing job will be stopped in that case. Jobs
- * tagged with #WM_JOB_EXCL_RENDER will behave as if they had the same job type (newly started once
- * wait for already running one to finish).
+ * The new \a wm_job will not start immediately and wait for other blocking jobs
+ * to end in some way if:
+ * - the new job is flagged with #WM_JOB_EXCL_RENDER and another job with the same flag is already
+ *   running (blocks it), or...
+ * - the new job is __not__ flagged with #WM_JOB_EXCL_RENDER and a job of the same #eWM_JobType is
+ *   already running (blocks it).
+ *
+ * If the new \a wm_job is flagged with #WM_JOB_PRIORITY, it will request other blocking jobs to
+ * stop (using #WM_jobs_stop(), so this doesn't take immediate effect) rather than finish its work.
  */
 void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job);
 /**
