@@ -40,7 +40,7 @@ class CollisionShape : public ImplicitSharingMixin {
     ConvexTriangleMesh,
     ConvexHull,
     ConvexPointCloud,
-    //CustomPolyhedral,
+    // CustomPolyhedral,
 
     /* Implicit convex shapes. */
     Sphere,
@@ -53,13 +53,13 @@ class CollisionShape : public ImplicitSharingMixin {
     MinkowskiDifference,
     Box2D,
     Convex2D,
-    //CustomConvex,
+    // CustomConvex,
 
     /* Concave shapes. */
     TriangleMesh,
     ScaledTriangleMesh,
     StaticPlane,
-    //CustomConcave,
+    // CustomConcave,
 
     /* Others */
     Compound,
@@ -78,6 +78,11 @@ class CollisionShape : public ImplicitSharingMixin {
   const CollisionShapeImpl &impl() const;
 
   ShapeType type() const;
+
+  /** Shape type is supported for dynamic bodies.
+   *  Concave shapes and some other types can only be used for static bodies.
+   */
+  bool supports_motion() const;
 
   template<typename T> bool is_a()
   {

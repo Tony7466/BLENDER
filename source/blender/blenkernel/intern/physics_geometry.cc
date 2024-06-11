@@ -654,8 +654,7 @@ void move_physics_data(const PhysicsGeometry &from,
 {
   PhysicsGeometryImpl &to_impl = to.impl_for_write();
   const PhysicsGeometryImpl &from_impl = from.impl();
-  move_physics_impl_data(
-      from_impl, to_impl, use_world, bodies_offset, constraints_offset);
+  move_physics_impl_data(from_impl, to_impl, use_world, bodies_offset, constraints_offset);
 }
 
 void move_physics_impl_data(const PhysicsGeometryImpl &from,
@@ -830,7 +829,8 @@ Span<CollisionShape::Ptr> PhysicsGeometry::shapes() const
   return shapes_.as_span();
 }
 
-std::optional<int> PhysicsGeometry::find_shape_handle(const CollisionShape &shape) {
+std::optional<int> PhysicsGeometry::find_shape_handle(const CollisionShape &shape)
+{
   for (const int i : shapes_.index_range()) {
     const CollisionShapePtr &ptr = shapes_[i];
     if (ptr.get() == &shape) {
@@ -862,6 +862,7 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
     }
     const CollisionShapePtr &shape_ptr = shapes_[handle];
     const btCollisionShape *bt_shape = &shape_ptr->impl().as_bullet_shape();
+    const bool is_moveable_shape = !bt_shape->isNonMoving();
 
     btRigidBody *body = impl_->rigid_bodies[index];
     if (body->getCollisionShape() == bt_shape) {
@@ -875,33 +876,38 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
       impl_->broadphase->getOverlappingPairCache()->cleanProxyFromPairs(body->getBroadphaseProxy(),
                                                                         impl_->dispatcher);
     }
-    if (update_local_inertia) {
-      btVector3 bt_local_inertia;
-      bt_shape->calculateLocalInertia(body->getMass(), bt_local_inertia);
-      body->setMassProps(body->getMass(), bt_local_inertia);
+    if (is_moveable_shape) {
+      if (update_local_inertia) {
+        btVector3 bt_local_inertia;
+        bt_shape->calculateLocalInertia(body->getMass(), bt_local_inertia);
+        body->setMassProps(body->getMass(), bt_local_inertia);
+      }
+    }
+    else {
+      body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
     }
   });
 }
 
-//VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
+// VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
 //{
-//  auto get_fn = [](const btRigidBody &body) -> const CollisionShape * {
-//    return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
-//  };
-//  return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this, nullptr);
-// }
+//   auto get_fn = [](const btRigidBody &body) -> const CollisionShape * {
+//     return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
+//   };
+//   return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this, nullptr);
+//  }
 //
-//VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
+// VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
 //{
-//  BLI_assert(this->impl().is_mutable());
-//  constexpr auto get_fn = [](const btRigidBody &body) -> CollisionShape * {
-//    return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
-//  };
-//  constexpr auto set_fn = [](btRigidBody &body, CollisionShape *value) {
-//    body.setCollisionShape(&value->impl().as_bullet_shape());
-//  };
-//  return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this, nullptr);
-//}
+//   BLI_assert(this->impl().is_mutable());
+//   constexpr auto get_fn = [](const btRigidBody &body) -> CollisionShape * {
+//     return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
+//   };
+//   constexpr auto set_fn = [](btRigidBody &body, CollisionShape *value) {
+//     body.setCollisionShape(&value->impl().as_bullet_shape());
+//   };
+//   return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this, nullptr);
+// }
 
 VArray<int> PhysicsGeometry::body_ids() const
 {
@@ -1138,11 +1144,15 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     return body.isStaticObject();
   };
   constexpr auto static_set_fn = [](btRigidBody &body, bool value) {
-    if (value) {
-      body.setMassProps(0.0f, to_bullet(float3(0.0f)));
-    }
-    else if (body.isStaticObject()) {
-      body.setMassProps(1.0f, to_bullet(float3(1.0f)));
+    const bool is_moveable_shape = !body.getCollisionShape() ||
+                                   !body.getCollisionShape()->isNonMoving();
+    if (is_moveable_shape) {
+      if (value) {
+        body.setMassProps(0.0f, to_bullet(float3(0.0f)));
+      }
+      else if (body.isStaticObject()) {
+        body.setMassProps(1.0f, to_bullet(float3(1.0f)));
+      }
     }
   };
   static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
@@ -1169,7 +1179,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
 
   constexpr auto mass_get_fn = [](const btRigidBody &body) -> float { return body.getMass(); };
   constexpr auto mass_set_fn = [](btRigidBody &body, float value) {
-    body.setMassProps(value, body.getLocalInertia());
+    const bool is_moveable_shape = !body.getCollisionShape() ||
+                                   !body.getCollisionShape()->isNonMoving();
+    if (is_moveable_shape) {
+      body.setMassProps(value, body.getLocalInertia());
+    }
   };
   static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
       PhysicsGeometry::builtin_attributes.mass,
@@ -1182,13 +1196,17 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     return to_blender(body.getLocalInertia());
   };
   constexpr auto inertia_set_fn = [](btRigidBody &body, float3 value) {
-    if (math::is_zero(value)) {
-      btVector3 bt_inertia;
-      body.getCollisionShape()->calculateLocalInertia(body.getMass(), bt_inertia);
-      body.setMassProps(body.getMass(), bt_inertia);
-    }
-    else {
-      body.setMassProps(body.getMass(), to_bullet(value));
+    const bool is_moveable_shape = !body.getCollisionShape() ||
+                                   !body.getCollisionShape()->isNonMoving();
+    if (is_moveable_shape) {
+      if (math::is_zero(value)) {
+        btVector3 bt_inertia;
+        body.getCollisionShape()->calculateLocalInertia(body.getMass(), bt_inertia);
+        body.setMassProps(body.getMass(), bt_inertia);
+      }
+      else {
+        body.setMassProps(body.getMass(), to_bullet(value));
+      }
     }
   };
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(

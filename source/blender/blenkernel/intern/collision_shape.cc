@@ -183,6 +183,11 @@ CollisionShape::ShapeType CollisionShape::type() const
   return shape_type ? *shape_type : bke::CollisionShape::ShapeType::Invalid;
 }
 
+bool CollisionShape::supports_motion() const
+{
+  return !impl_->as_bullet_shape().isNonMoving();
+}
+
 bool CollisionShape::is_convex() const
 {
   return impl_->as_bullet_shape().isConvex();
