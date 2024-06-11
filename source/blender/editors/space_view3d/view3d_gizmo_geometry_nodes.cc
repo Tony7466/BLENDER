@@ -105,6 +105,14 @@ struct UpdateReport {
 using ApplyChangeFn = std::function<void(
     StringRef socket_identifier, FunctionRef<void(bke::SocketValueVariant &value)> modify_value)>;
 
+struct GizmosUpdateParams {
+  /* Transform of the object and geometry that the gizmo belongs to. */
+  float4x4 parent_transform;
+  const bNode &gizmo_node;
+  GeoTreeLog &tree_log;
+  UpdateReport &r_report;
+};
+
 class NodeGizmos {
  public:
   ApplyChangeFn apply_change;
@@ -115,12 +123,7 @@ class NodeGizmos {
 
   virtual void update_style(const bNode & /*gizmo_node*/) {}
 
-  virtual void update(const float4x4 & /*object_and_geometry_transform*/,
-                      const bNode & /*gizmo_node*/,
-                      GeoTreeLog & /*tree_log*/,
-                      UpdateReport & /*r_report*/)
-  {
-  }
+  virtual void update(GizmosUpdateParams & /*params*/) {}
 
   virtual Vector<wmGizmo *> get_all_gizmos() = 0;
 };
@@ -157,25 +160,22 @@ class LinearGizmo : public NodeGizmos {
     UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo_->color_hi);
   }
 
-  void update(const float4x4 &object_and_geometry_transform,
-              const bNode &gizmo_node,
-              GeoTreeLog &tree_log,
-              UpdateReport &r_report) override
+  void update(GizmosUpdateParams &params) override
   {
-    const bNodeSocket &position_socket = gizmo_node.input_socket(1);
-    const bNodeSocket &direction_socket = gizmo_node.input_socket(2);
-    const std::optional<float3> position_opt = tree_log.find_primitive_socket_value<float3>(
+    const bNodeSocket &position_socket = params.gizmo_node.input_socket(1);
+    const bNodeSocket &direction_socket = params.gizmo_node.input_socket(2);
+    const std::optional<float3> position_opt = params.tree_log.find_primitive_socket_value<float3>(
         position_socket);
-    const std::optional<float3> direction_opt = tree_log.find_primitive_socket_value<float3>(
-        direction_socket);
+    const std::optional<float3> direction_opt =
+        params.tree_log.find_primitive_socket_value<float3>(direction_socket);
     if (!position_opt || !direction_opt) {
-      r_report.missing_socket_logs = true;
+      params.r_report.missing_socket_logs = true;
       return;
     }
     const float3 position = *position_opt;
     const float3 direction = math::normalize(*direction_opt);
     if (math::is_zero(direction)) {
-      r_report.invalid_transform = true;
+      params.r_report.invalid_transform = true;
       return;
     }
     const float4x4 gizmo_base_transform = matrix_from_position_and_up_direction(
@@ -183,7 +183,7 @@ class LinearGizmo : public NodeGizmos {
 
     const bool is_interacting = gizmo_is_interacting(*gizmo_);
     if (!is_interacting) {
-      float4x4 gizmo_transform = object_and_geometry_transform * gizmo_base_transform;
+      float4x4 gizmo_transform = params.parent_transform * gizmo_base_transform;
       edit_data_.factor_from_transform = math::length(gizmo_transform.z_axis());
       make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
       copy_m4_m4(gizmo_->matrix_basis, gizmo_transform.ptr());
@@ -393,9 +393,11 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         node_gizmos->update_style(gizmo_node);
         GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
+
         UpdateReport report;
         /* TODO: geometry transform */
-        node_gizmos->update(object_to_world, gizmo_node, tree_log, report);
+        GizmosUpdateParams update_params{object_to_world, gizmo_node, tree_log, report};
+        node_gizmos->update(update_params);
 
         bool any_interacting = false;
         for (const wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
