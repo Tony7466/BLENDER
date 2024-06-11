@@ -110,6 +110,32 @@ vec2 regular_grid_2d(int i, int sample_count)
   return (vec2(i % sample_per_dim, i / sample_per_dim) + 0.5) / float(sample_per_dim);
 }
 
+/**
+ * "The Unreasonable Effectiveness of Quasirandom Sequences"
+ * by Martin Roberts
+ * https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+ */
+float r_1d(int i)
+{
+  /* Golden ratio. */
+  const float phi_1 = 1.618033988749;
+  const float alpha = 1.0 / phi_1;
+  return fract(float(i) * alpha);
+}
+vec2 r_2d(int i)
+{
+  /* Plastic constant. */
+  const float phi_2 = 1.32471795724474602596;
+  const vec2 alpha = vec2(1.0 / phi_2, 1.0 / (phi_2 * phi_2));
+  return fract(float(i) * alpha);
+}
+vec3 r_3d(int i)
+{
+  const float phi_3 = 1.22074408460575947536;
+  const vec3 alpha = vec3(1.0 / phi_3, 1.0 / (phi_3 * phi_3), 1.0 / (phi_3 * phi_3 * phi_3));
+  return fract(float(i) * alpha);
+}
+
 /* PCG */
 
 /* https://www.pcg-random.org/ */
