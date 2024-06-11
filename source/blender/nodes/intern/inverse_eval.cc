@@ -50,8 +50,12 @@ std::optional<ElemVariant> get_elem_variant_for_socket_type(const eNodeSocketDat
 
 static bool is_supported_value_node(const bNode &node)
 {
-  return ELEM(
-      node.type, SH_NODE_VALUE, FN_NODE_INPUT_VECTOR, FN_NODE_INPUT_BOOL, FN_NODE_INPUT_INT);
+  return ELEM(node.type,
+              SH_NODE_VALUE,
+              FN_NODE_INPUT_VECTOR,
+              FN_NODE_INPUT_BOOL,
+              FN_NODE_INPUT_INT,
+              FN_NODE_INPUT_ROTATION);
 }
 
 static std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
@@ -421,6 +425,27 @@ static bool set_value_node_value(bNode &node, const SocketValueVariant &value_va
       bNodeSocket &socket = node.output_socket(0);
       auto *default_value = socket.default_value_typed<bNodeSocketValueFloat>();
       default_value->value = value_variant.get<float>();
+      return true;
+    }
+    case FN_NODE_INPUT_INT: {
+      NodeInputInt &storage = *static_cast<NodeInputInt *>(node.storage);
+      storage.integer = value_variant.get<int>();
+      return true;
+    }
+    case FN_NODE_INPUT_VECTOR: {
+      NodeInputVector &storage = *static_cast<NodeInputVector *>(node.storage);
+      *reinterpret_cast<float3 *>(storage.vector) = value_variant.get<float3>();
+      return true;
+    }
+    case FN_NODE_INPUT_BOOL: {
+      NodeInputBool &storage = *static_cast<NodeInputBool *>(node.storage);
+      storage.boolean = value_variant.get<bool>();
+      return true;
+    }
+    case FN_NODE_INPUT_ROTATION: {
+      NodeInputRotation &storage = *static_cast<NodeInputRotation *>(node.storage);
+      *reinterpret_cast<float3 *>(storage.rotation_euler) = float3(
+          math::to_euler(value_variant.get<math::Quaternion>()));
       return true;
     }
   }

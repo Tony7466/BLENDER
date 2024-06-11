@@ -317,28 +317,54 @@ class DialGizmo : public NodeGizmos {
 class TransformGizmos : public NodeGizmos {
  private:
   std::array<wmGizmo *, 3> translation_gizmos_ = {};
+  std::array<wmGizmo *, 3> rotation_gizmos_ = {};
 
   struct EditData {
     float3 current_translation{};
+    float3 current_rotation{};
   } edit_data_;
 
  public:
   void create_gizmos(wmGizmoGroup &gzgroup) override
   {
+    /* Translation */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
       WM_gizmo_set_line_width(gizmo, 1.0f);
       translation_gizmos_[axis] = gizmo;
     }
+
+    /* Rotation */
+    for (const int axis : IndexRange(3)) {
+      wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_dial_3d", &gzgroup, nullptr);
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_VALUE, true);
+      WM_gizmo_set_line_width(gizmo, 2.0f);
+      RNA_boolean_set(gizmo->ptr, "wrap_angle", false);
+      rotation_gizmos_[axis] = gizmo;
+    }
   }
 
   void update_style(const bNode & /*gizmo_node*/) override
   {
+    /* Translation */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = translation_gizmos_[axis];
       const ThemeColorID theme_id = get_axis_theme_color_id(axis);
       UI_GetThemeColor3fv(theme_id, gizmo->color);
       UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+    }
+
+    /* Rotation */
+    for (const int axis : IndexRange(3)) {
+      wmGizmo *gizmo = rotation_gizmos_[axis];
+      const ThemeColorID theme_id = get_axis_theme_color_id(axis);
+      UI_GetThemeColor3fv(theme_id, gizmo->color);
+      UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+
+      const bool is_interacting = gizmo_is_interacting(*gizmo);
+      int draw_options = RNA_enum_get(gizmo->ptr, "draw_options");
+      SET_FLAG_FROM_TEST(draw_options, is_interacting, ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE);
+      RNA_enum_set(gizmo->ptr, "draw_options", draw_options);
     }
   }
 
@@ -353,6 +379,13 @@ class TransformGizmos : public NodeGizmos {
     }
     const float4x4 &base_transform_from_socket = *base_opt;
 
+    this->update_translation_gizmos(params, base_transform_from_socket);
+    this->update_rotation_gizmos(params, base_transform_from_socket);
+  }
+
+  void update_translation_gizmos(GizmosUpdateParams &params,
+                                 const float4x4 &base_transform_from_socket)
+  {
     for (const int axis_i : IndexRange(3)) {
       const math::Axis axis = math::Axis::from_int(axis_i);
       wmGizmo *gizmo = translation_gizmos_[axis_i];
@@ -399,9 +432,61 @@ class TransformGizmos : public NodeGizmos {
     }
   }
 
+  void update_rotation_gizmos(GizmosUpdateParams &params,
+                              const float4x4 &base_transform_from_socket)
+  {
+    for (const int axis_i : IndexRange(3)) {
+      const math::Axis axis = math::Axis::from_int(axis_i);
+      wmGizmo *gizmo = rotation_gizmos_[axis_i];
+
+      const bool is_interacting = gizmo_is_interacting(*gizmo);
+
+      if (!is_interacting) {
+        const float3 location = base_transform_from_socket.location();
+        const float3x3 orientation = float3x3(base_transform_from_socket) *
+                                     this->get_rotation_to_axis(axis);
+        float4x4 base_transform_from_socket_for_axis = float4x4(orientation);
+        base_transform_from_socket_for_axis.location() = location;
+
+        float4x4 gizmo_transform = params.parent_transform * base_transform_from_socket_for_axis;
+        make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+        copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
+
+        edit_data_.current_rotation[axis_i] = 0.0f;
+
+        wmGizmoPropertyFnParams params{};
+        params.user_data = this;
+        params.value_set_fn = [](const wmGizmo *gz,
+                                 wmGizmoProperty *gz_prop,
+                                 const void *value_ptr) {
+          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+          const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+          const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+          self.edit_data_.current_rotation[axis_i] = new_gizmo_value;
+          float3 rotation{};
+          rotation[axis_i] = -new_gizmo_value;
+          self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+            float4x4 value = value_variant.get<float4x4>();
+            value = value * math::from_rotation<float4x4>(math::EulerXYZ(rotation));
+            value_variant.set(value);
+          });
+        };
+        params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
+          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+          const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+          *static_cast<float *>(value_ptr) = self.edit_data_.current_rotation[axis_i];
+        };
+        WM_gizmo_target_property_def_func(gizmo, "offset", &params);
+      }
+    }
+  }
+
   Vector<wmGizmo *> get_all_gizmos() override
   {
-    return translation_gizmos_;
+    Vector<wmGizmo *> gizmos;
+    gizmos.extend(translation_gizmos_);
+    gizmos.extend(rotation_gizmos_);
+    return gizmos;
   }
 
   static float3x3 get_rotation_to_axis(const math::Axis axis)
