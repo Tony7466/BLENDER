@@ -233,12 +233,11 @@ void apply_gizmo_change(
     NodesModifierData &nmd,
     geo_eval_log::GeoModifierLog &eval_log,
     const ComputeContext &gizmo_context,
-    const bNode &gizmo_node,
+    const bNodeSocket &gizmo_socket,
     const FunctionRef<void(bke::SocketValueVariant &value)> apply_on_gizmo_value_fn)
 {
-  const bNodeTree &gizmo_node_tree = gizmo_node.owner_tree();
+  const bNodeTree &gizmo_node_tree = gizmo_socket.owner_tree();
   geo_eval_log::GeoTreeLog &gizmo_tree_log = eval_log.get_tree_log(gizmo_context.hash());
-  const bNodeSocket &gizmo_socket = gizmo_node.input_socket(0);
   const eNodeSocketDatatype gizmo_data_type = eNodeSocketDatatype(gizmo_socket.type);
   for (const bNodeLink *link : gizmo_socket.directly_linked_links()) {
     gizmo_node_tree.ensure_topology_cache();

@@ -52,7 +52,7 @@ void apply_gizmo_change(Object &object,
                         NodesModifierData &nmd,
                         geo_eval_log::GeoModifierLog &eval_log,
                         const ComputeContext &gizmo_context,
-                        const bNode &gizmo_node,
+                        const bNodeSocket &gizmo_socket,
                         FunctionRef<void(bke::SocketValueVariant &value)> apply_on_gizmo_value_fn);
 
 }  // namespace blender::nodes::gizmos
