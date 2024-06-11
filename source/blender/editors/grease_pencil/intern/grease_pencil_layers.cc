@@ -260,7 +260,6 @@ static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
   }();
 
   LayerGroup &new_group = grease_pencil.add_layer_group(parent_group, new_layer_group_name);
-  new_group.color_tag = -1;
 
   if (grease_pencil.has_active_layer()) {
     grease_pencil.move_node_after(new_group.as_node(),
