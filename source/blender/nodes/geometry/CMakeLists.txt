@@ -240,9 +240,15 @@ set(LIB
   bf_nodes
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
-  PRIVATE bf_io_common
-  PRIVATE bf_io_stl
 )
+
+if(WITH_IO_STL)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_stl
+  )
+  add_definitions(-DWITH_IO_STL)
+endif()
 
 if(WITH_BULLET)
   list(APPEND INC_SYS
