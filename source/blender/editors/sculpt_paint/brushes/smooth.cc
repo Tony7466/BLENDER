@@ -140,7 +140,7 @@ BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
-  apply_translations_to_pbvh(*ss.pbvh, verts, positions_orig);
+  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
