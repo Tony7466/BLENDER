@@ -34,12 +34,11 @@ inline namespace smooth_cc {
 static Vector<float> iteration_strengths(const float strength)
 {
   constexpr int max_iterations = 4;
-  constexpr float fract = 1.0f / max_iterations;
 
   BLI_assert(strength >= 0.0f && strength <= 1.0f);
 
   const int count = int(strength * max_iterations);
-  const float last = max_iterations * (strength - count * fract);
+  const float last = max_iterations * (strength - float(count) / max_iterations);
   Vector<float> result;
   result.append_n_times(1.0f, count);
   result.append(last);
