@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'a367cf664e0d')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-27 12:52+0000\n"
+"POT-Creation-Date: 2024-06-10 10:16+0000\n"
 "PO-Revision-Date: 2019-12-08 17:40+0700\n"
 "Last-Translator: gongpha <gongpha@gmail.com>\n"
 "Language-Team: Thai Translation Team <gongpha@gmail.com>\n"
@@ -170,30 +170,6 @@ msgid "Action Groups"
 msgstr "กลุ่มการกระทำ"
 
 
-msgid "Mix Mode"
-msgstr "โหมดผสม"
-
-
-msgid "Replace"
-msgstr "แทนที่"
-
-
-msgid "Add"
-msgstr "เพิ่ม"
-
-
-msgid "Subtract"
-msgstr "ลบ"
-
-
-msgid "Multiply"
-msgstr "คูณ"
-
-
-msgid "Keyframe"
-msgstr "คีย์เฟรม"
-
-
 msgid "Add-on"
 msgstr "แอดออน"
 
@@ -222,8 +198,20 @@ msgid "Action"
 msgstr "กระทำ"
 
 
-msgid "New"
-msgstr "ใหม่"
+msgid "Replace"
+msgstr "แทนที่"
+
+
+msgid "Add"
+msgstr "เพิ่ม"
+
+
+msgid "Subtract"
+msgstr "ลบ"
+
+
+msgid "Multiply"
+msgstr "คูณ"
 
 
 msgid "End Frame"
@@ -805,6 +793,10 @@ msgid "Armature"
 msgstr "โครงร่าง"
 
 
+msgid "Mix Mode"
+msgstr "โหมดผสม"
+
+
 msgid "Rotation X"
 msgstr "หมุน X"
 
@@ -1185,6 +1177,10 @@ msgid "Use"
 msgstr "ใช้"
 
 
+msgid "Keyframe"
+msgstr "คีย์เฟรม"
+
+
 msgid "Frames"
 msgstr "เฟรม"
 
@@ -1296,10 +1292,6 @@ msgid "Grid scale"
 msgstr "ขนาดตะแกรง"
 
 
-msgid "Translation"
-msgstr "แปลภาษา"
-
-
 msgid "Repeat"
 msgstr "ทำซ้ำ"
 
@@ -1362,10 +1354,6 @@ msgstr "โลก"
 
 msgid "Users"
 msgstr "ผู้ใช้"
-
-
-msgid "Layers"
-msgstr "ชั้น"
 
 
 msgid "Wire"
@@ -1486,6 +1474,10 @@ msgstr "เรียงตาม"
 
 msgid "Grid Settings"
 msgstr "การตั้งค่าตะแกรง"
+
+
+msgid "Layers"
+msgstr "ชั้น"
 
 
 msgid "Selected"
@@ -2198,6 +2190,10 @@ msgid "Merge Vertices"
 msgstr "ผสานจุดยอด"
 
 
+msgid "New"
+msgstr "ใหม่"
+
+
 msgid "Patch"
 msgstr "แพตช์"
 
@@ -2450,10 +2446,6 @@ msgid "Path to file"
 msgstr "ตำแหน่งไปยังไฟล์"
 
 
-msgid "URL"
-msgstr "URL"
-
-
 msgctxt "Operator"
 msgid "Add Brush"
 msgstr "เพิ่มแปรง"
@@ -2477,6 +2469,10 @@ msgstr "เส้น"
 msgctxt "Curve"
 msgid "Round"
 msgstr "มน"
+
+
+msgid "Translation"
+msgstr "แปลภาษา"
 
 
 msgctxt "Operator"
@@ -2612,6 +2608,10 @@ msgid "+Y Up"
 msgstr "+Y ขึ้น"
 
 
+msgid "URL"
+msgstr "URL"
+
+
 msgctxt "Operator"
 msgid "Add Bookmark"
 msgstr "เพิ่มบุ๊คมาร์ค"
@@ -2658,6 +2658,21 @@ msgstr "วางเนื้อหาจากไฟล์"
 msgctxt "Operator"
 msgid "Add New Layer"
 msgstr "เพิ่มชั้นใหม่"
+
+
+msgctxt "Operator"
+msgid "All"
+msgstr "ทั้งหมด"
+
+
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "หมุน"
+
+
+msgctxt "Operator"
+msgid "Scale"
+msgstr "ปรับย่อขนาด"
 
 
 msgid "Join"
@@ -2904,6 +2919,7 @@ msgid "Add an empty object to the scene"
 msgstr "เพิ่มวัตถุว่างเปล่าไปยังฉาก"
 
 
+msgctxt "Operator"
 msgid "Monkey"
 msgstr "ลิง"
 
@@ -3083,10 +3099,6 @@ msgid "Mask Filter"
 msgstr "กรองหน้ากาก"
 
 
-msgid "Relax"
-msgstr "ผ่อนคลาย"
-
-
 msgid "Grab UVs"
 msgstr "จับ UV"
 
@@ -3173,11 +3185,6 @@ msgstr "ยึดตามปริมาตร"
 msgctxt "Operator"
 msgid "Resize"
 msgstr "ขนาด"
-
-
-msgctxt "Operator"
-msgid "Rotate"
-msgstr "หมุน"
 
 
 msgctxt "Operator"
@@ -3304,10 +3311,6 @@ msgid "Toolbar"
 msgstr "แถบเครื่องมือ"
 
 
-msgid "Shapes"
-msgstr "รูปทรง"
-
-
 msgid "Show Brush"
 msgstr "แสดงแปรง"
 
@@ -3326,11 +3329,6 @@ msgstr "ตัวกรอง"
 
 msgid "Overlays"
 msgstr "วางซ้อน"
-
-
-msgctxt "Operator"
-msgid "Scale"
-msgstr "ปรับย่อขนาด"
 
 
 msgctxt "Operator"
@@ -3933,34 +3931,6 @@ msgid "Animation"
 msgstr "แอนิเมชัน"
 
 
-msgid "File:"
-msgstr "ไฟล์:"
-
-
-msgid "Missing script files"
-msgstr "ขาดไฟล์สคริปต์"
-
-
-msgid "Description:"
-msgstr "คำอธิบาย:"
-
-
-msgid "Author:"
-msgstr "ผู้สร้าง:"
-
-
-msgid "Version:"
-msgstr "เวอร์ชัน:"
-
-
-msgid "Warning:"
-msgstr "ระวัง:"
-
-
-msgid "Internet:"
-msgstr "อินเตอร์เน็ต:"
-
-
 msgctxt "Operator"
 msgid "Documentation"
 msgstr "เอกสาร"
@@ -3986,10 +3956,6 @@ msgstr "ใหม่"
 
 msgid "3D View"
 msgstr "มุมมองสามมิติ"
-
-
-msgid "Orientation:"
-msgstr "การปรับทิศทาง:"
 
 
 msgctxt "Operator"
@@ -4045,6 +4011,10 @@ msgid "+ Non-Grouped Keyframes"
 msgstr "+ คีย์เฟรมที่ไม่มีกลุ่ม"
 
 
+msgid "Shapes"
+msgstr "รูปทรง"
+
+
 msgctxt "Operator"
 msgid "Add Image"
 msgstr "เพิ่มภาพ"
@@ -4081,11 +4051,6 @@ msgstr "แม่"
 
 msgid "Animation:"
 msgstr "แอนิเมชัน:"
-
-
-msgctxt "Operator"
-msgid "All"
-msgstr "ทั้งหมด"
 
 
 msgctxt "Operator"
@@ -4383,6 +4348,10 @@ msgid "Next Word"
 msgstr "คำถัดไป"
 
 
+msgid "Orientation:"
+msgstr "การปรับทิศทาง:"
+
+
 msgctxt "Operator"
 msgid "Install Application Template..."
 msgstr "ติดตั้งแม่แบบแอปพลิเคชั่น..."
@@ -4530,10 +4499,6 @@ msgid "Render Output"
 msgstr "ผลลัพธ์การเรนเดอร์"
 
 
-msgid "Preferences:"
-msgstr "การตั้งค่า:"
-
-
 msgid "Player"
 msgstr "ตัวเล่น"
 
@@ -4544,6 +4509,34 @@ msgstr "ข้อผิดพลาด (ดูที่คอนโซล)"
 
 msgid ":"
 msgstr ":"
+
+
+msgid "Missing script files"
+msgstr "ขาดไฟล์สคริปต์"
+
+
+msgid "Description:"
+msgstr "คำอธิบาย:"
+
+
+msgid "File:"
+msgstr "ไฟล์:"
+
+
+msgid "Author:"
+msgstr "ผู้สร้าง:"
+
+
+msgid "Version:"
+msgstr "เวอร์ชัน:"
+
+
+msgid "Warning:"
+msgstr "ระวัง:"
+
+
+msgid "Internet:"
+msgstr "อินเตอร์เน็ต:"
 
 
 msgctxt "Operator"
@@ -4644,11 +4637,6 @@ msgstr "ทอรัส"
 msgctxt "Operator"
 msgid "Grid"
 msgstr "ตาราง"
-
-
-msgctxt "Operator"
-msgid "Monkey"
-msgstr "ลิง"
 
 
 msgctxt "Operator"
@@ -4953,12 +4941,22 @@ msgid "Yesterday"
 msgstr "เมื่อวาน"
 
 
-msgctxt "Object"
+msgctxt "Action"
 msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Mesh"
+msgctxt "Armature"
+msgid "New"
+msgstr "ใหม่"
+
+
+msgctxt "Brush"
+msgid "New"
+msgstr "ใหม่"
+
+
+msgctxt "Camera"
 msgid "New"
 msgstr "ใหม่"
 
@@ -4968,17 +4966,12 @@ msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Metaball"
+msgctxt "FreestyleLineStyle"
 msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Material"
-msgid "New"
-msgstr "ใหม่"
-
-
-msgctxt "Texture"
+msgctxt "GPencil"
 msgid "New"
 msgstr "ใหม่"
 
@@ -4993,37 +4986,22 @@ msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Camera"
+msgctxt "LightProbe"
 msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "World"
+msgctxt "Material"
 msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Screen"
+msgctxt "Mesh"
 msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Speaker"
-msgid "New"
-msgstr "ใหม่"
-
-
-msgctxt "Sound"
-msgid "New"
-msgstr "ใหม่"
-
-
-msgctxt "Armature"
-msgid "New"
-msgstr "ใหม่"
-
-
-msgctxt "Action"
+msgctxt "Metaball"
 msgid "New"
 msgstr "ใหม่"
 
@@ -5033,7 +5011,7 @@ msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "Brush"
+msgctxt "Object"
 msgid "New"
 msgstr "ใหม่"
 
@@ -5043,12 +5021,22 @@ msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "GPencil"
+msgctxt "Screen"
 msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "FreestyleLineStyle"
+msgctxt "Sound"
+msgid "New"
+msgstr "ใหม่"
+
+
+msgctxt "Speaker"
+msgid "New"
+msgstr "ใหม่"
+
+
+msgctxt "Texture"
 msgid "New"
 msgstr "ใหม่"
 
@@ -5058,7 +5046,7 @@ msgid "New"
 msgstr "ใหม่"
 
 
-msgctxt "LightProbe"
+msgctxt "World"
 msgid "New"
 msgstr "ใหม่"
 
@@ -5360,10 +5348,6 @@ msgstr "ระยะมุมมอง"
 
 msgid "Texture Node Editor"
 msgstr "ตัวแก้ไขโนดพื้นผิว"
-
-
-msgid "| Time:%s | "
-msgstr "| เวลา:%s | "
 
 
 msgid "%s: incorrect dimensions for partial copy '%s'"

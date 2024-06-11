@@ -1634,6 +1634,7 @@ class _defs_sculpt:
             props = tool.operator_properties("sculpt.trim_line_gesture")
             layout.prop(props, "trim_solver", expand=False)
             layout.prop(props, "trim_orientation", expand=False)
+            layout.prop(props, "trim_extrude_mode", expand=False)
             layout.prop(props, "use_cursor_depth", expand=False)
             layout.prop(props, "use_limit_to_segment", expand=False)
         return dict(
@@ -3764,6 +3765,10 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_sequencer_generic.blade,
         ],
         'SEQUENCER_PREVIEW': [
+            (
+                _defs_sequencer_select.select_timeline,
+                _defs_sequencer_select.box_timeline,
+            ),
             *_tools_annotate,
             None,
             _defs_sequencer_generic.blade,

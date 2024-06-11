@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'a367cf664e0d')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-27 12:52+0000\n"
+"POT-Creation-Date: 2024-06-10 10:16+0000\n"
 "PO-Revision-Date: 2024-04-29 13:31+0000\n"
 "Last-Translator: Gilberto Rodrigues <gilbertorodrigues@outlook.com>\n"
 "Language-Team: Bulgarian <https://translate.blender.org/projects/blender-ui/ui/bg/>\n"
@@ -36,6 +36,18 @@ msgid "Select"
 msgstr "Избор"
 
 
+msgid "Module"
+msgstr "Модул"
+
+
+msgid "On"
+msgstr "Върху"
+
+
+msgid "Action"
+msgstr "Действие"
+
+
 msgid "Replace"
 msgstr "Замени"
 
@@ -50,22 +62,6 @@ msgstr "Основа"
 
 msgid "Multiply"
 msgstr "Умножение"
-
-
-msgid "Module"
-msgstr "Модул"
-
-
-msgid "On"
-msgstr "Върху"
-
-
-msgid "Action"
-msgstr "Действие"
-
-
-msgid "New"
-msgstr "Нов"
 
 
 msgid "Nothing"
@@ -512,10 +508,6 @@ msgid "World"
 msgstr "Свят"
 
 
-msgid "Layers"
-msgstr "Слоеве"
-
-
 msgid "Wire"
 msgstr "Мрежа"
 
@@ -554,6 +546,10 @@ msgstr "Мин"
 
 msgid "Max"
 msgstr "Макс"
+
+
+msgid "Layers"
+msgstr "Слоеве"
 
 
 msgid "Movie"
@@ -794,6 +790,10 @@ msgstr "Извиване"
 
 msgid "Warp"
 msgstr "Изкр"
+
+
+msgid "New"
+msgstr "Нов"
 
 
 msgid "Randomize"
@@ -1091,6 +1091,11 @@ msgid "Unlink"
 msgstr "Развържи"
 
 
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "Завърти"
+
+
 msgid "Both"
 msgstr "Двете"
 
@@ -1227,10 +1232,6 @@ msgstr "Изпечи"
 msgctxt "Operator"
 msgid "Add Constraint"
 msgstr "Добавяне на ограничител"
-
-
-msgid "Monkey"
-msgstr "Маймуна"
 
 
 msgctxt "Operator"
@@ -1491,11 +1492,6 @@ msgstr "Запази Като"
 msgctxt "Operator"
 msgid "Push/Pull"
 msgstr "Натиск/Дърпане"
-
-
-msgctxt "Operator"
-msgid "Rotate"
-msgstr "Завърти"
 
 
 msgctxt "Operator"
@@ -1767,14 +1763,6 @@ msgid "Animated"
 msgstr "Анимирани"
 
 
-msgid "Missing script files"
-msgstr "Липсват скриптови файлове"
-
-
-msgid "Author:"
-msgstr "Автор"
-
-
 msgid "Torus"
 msgstr "Тороид"
 
@@ -1818,6 +1806,14 @@ msgstr "Минимален Интервал на Мрежата"
 
 msgid "Invert Wheel Zoom Direction"
 msgstr "Обърни посоката на увеличение"
+
+
+msgid "Missing script files"
+msgstr "Липсват скриптови файлове"
+
+
+msgid "Author:"
+msgstr "Автор"
 
 
 msgid "Layer:"

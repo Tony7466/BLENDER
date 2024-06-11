@@ -149,6 +149,7 @@ class Drawing : public ::GreasePencilDrawing {
   bool is_instanced() const;
   bool has_users() const;
 };
+static_assert(sizeof(Drawing) == sizeof(::GreasePencilDrawing));
 
 class DrawingReference : public ::GreasePencilDrawingReference {
  public:
@@ -156,6 +157,7 @@ class DrawingReference : public ::GreasePencilDrawingReference {
   DrawingReference(const DrawingReference &other);
   ~DrawingReference();
 };
+static_assert(sizeof(DrawingReference) == sizeof(::GreasePencilDrawingReference));
 
 /**
  * Copies the drawings from one array to another. Assumes that \a dst_drawings is allocated but not
@@ -185,6 +187,7 @@ class Layer;
   void set_selected(bool selected); \
   bool use_onion_skinning() const; \
   bool use_masks() const; \
+  bool use_locked_material() const; \
   bool is_child_of(const LayerGroup &group) const;
 
 /* Implements the forwarding of the methods defined by #TREENODE_COMMON_METHODS. */
@@ -232,6 +235,10 @@ class Layer;
   inline bool class_name::use_masks() const \
   { \
     return this->as_node().use_masks(); \
+  } \
+  inline bool class_name::use_locked_material() const \
+  { \
+    return this->as_node().use_locked_material(); \
   } \
   inline bool class_name::is_child_of(const LayerGroup &group) const \
   { \
@@ -289,6 +296,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    */
   int64_t depth() const;
 };
+static_assert(sizeof(TreeNode) == sizeof(::GreasePencilLayerTreeNode));
 
 /**
  * A layer mask stores a reference to a layer that will mask other layers.
@@ -300,6 +308,7 @@ class LayerMask : public ::GreasePencilLayerMask {
   LayerMask(const LayerMask &other);
   ~LayerMask();
 };
+static_assert(sizeof(LayerMask) == sizeof(::GreasePencilLayerMask));
 
 /**
  * Structure used to transform frames in a grease pencil layer.
@@ -571,6 +580,7 @@ class Layer : public ::GreasePencilLayer {
    */
   float4x4 parent_to_world(const Object &parent) const;
 };
+static_assert(sizeof(Layer) == sizeof(::GreasePencilLayer));
 
 class LayerGroupRuntime {
  public:
@@ -705,6 +715,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   void ensure_nodes_cache() const;
   void tag_nodes_cache_dirty() const;
 };
+static_assert(sizeof(LayerGroup) == sizeof(::GreasePencilLayerTreeGroup));
 
 inline void Drawing::add_user() const
 {
@@ -770,6 +781,10 @@ inline bool TreeNode::use_masks() const
 {
   return ((this->flag & GP_LAYER_TREE_NODE_HIDE_MASKS) == 0) &&
          (!this->parent_group() || this->parent_group()->as_node().use_masks());
+}
+inline bool TreeNode::use_locked_material() const
+{
+  return (this->flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL) != 0;
 }
 inline bool TreeNode::is_child_of(const LayerGroup &group) const
 {

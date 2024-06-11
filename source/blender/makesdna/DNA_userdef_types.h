@@ -649,8 +649,12 @@ typedef struct bUserExtensionRepo {
   char custom_dirpath[1024]; /* FILE_MAX */
   char remote_url[1024];     /* FILE_MAX */
 
-  int flag;
-  char _pad0[4];
+  /** Options for the repository (#eUserExtensionRepo_Flag). */
+  uint8_t flag;
+  /** The source location when the custom directory isn't used (#eUserExtensionRepo_Source). */
+  uint8_t source;
+
+  char _pad0[6];
 } bUserExtensionRepo;
 
 typedef enum eUserExtensionRepo_Flag {
@@ -662,6 +666,15 @@ typedef enum eUserExtensionRepo_Flag {
   USER_EXTENSION_REPO_FLAG_SYNC_ON_STARTUP = 1 << 4,
   USER_EXTENSION_REPO_FLAG_USE_ACCESS_TOKEN = 1 << 5,
 } eUserExtensionRepo_Flag;
+
+/**
+ * The source to use (User or System), only valid when the
+ * #USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL flag isn't set.
+ */
+typedef enum eUserExtensionRepo_Source {
+  USER_EXTENSION_REPO_SOURCE_USER = 0,
+  USER_EXTENSION_REPO_SOURCE_SYSTEM = 1,
+} eUserExtensionRepo_Source;
 
 typedef struct SolidLight {
   int flag;
@@ -727,6 +740,7 @@ typedef struct UserDef_Experimental {
   char no_asset_indexing;
   char use_viewport_debug;
   char use_all_linked_data_direct;
+  char use_extensions_debug;
   char SANITIZE_AFTER_HERE;
   /* The following options are automatically sanitized (set to 0)
    * when the release cycle is not alpha. */
@@ -738,11 +752,11 @@ typedef struct UserDef_Experimental {
   char use_grease_pencil_version3;
   char enable_overlay_next;
   char use_new_volume_nodes;
+  char use_new_file_import_nodes;
   char use_shader_node_previews;
-  char use_extension_utils;
   char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
-  char _pad[3];
+  char _pad[2];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -979,10 +993,11 @@ typedef struct UserDef {
   /** #eGPUBackendType */
   short gpu_backend;
 
+  /** Max number of parallel shader compilation subprocesses. */
+  short max_shader_compilation_subprocesses;
+
   /** Number of samples for FPS display calculations. */
   short playback_fps_samples;
-
-  char _pad7[2];
 
   /** Private, defaults to 20 for 72 DPI setting. */
   short widget_unit;
@@ -1071,7 +1086,7 @@ typedef struct UserDef {
   /** Pie menu distance from center before a direction is set. */
   short pie_menu_threshold;
 
-  short _pad6[2];
+  int sequencer_editor_flag; /* eUserpref_SeqEditorFlags */
 
   char factor_display_type;
 
@@ -1318,6 +1333,7 @@ typedef enum eUserpref_StatusBar_Flag {
   STATUSBAR_SHOW_STATS = (1 << 2),
   STATUSBAR_SHOW_VERSION = (1 << 3),
   STATUSBAR_SHOW_SCENE_DURATION = (1 << 4),
+  STATUSBAR_SHOW_EXTENSIONS_UPDATES = (1 << 5),
 } eUserpref_StatusBar_Flag;
 
 /**
@@ -1565,6 +1581,10 @@ typedef enum eUserpref_SeqProxySetup {
   USER_SEQ_PROXY_SETUP_MANUAL = 0,
   USER_SEQ_PROXY_SETUP_AUTOMATIC = 1,
 } eUserpref_SeqProxySetup;
+
+typedef enum eUserpref_SeqEditorFlags {
+  USER_SEQ_ED_SIMPLE_TWEAKING = (1 << 0),
+} eUserpref_SeqEditorFlags;
 
 /* Locale Ids. Auto will try to get local from OS. Our default is English though. */
 /** #UserDef.language */
