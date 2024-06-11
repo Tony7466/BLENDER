@@ -119,6 +119,7 @@ set(SRC
   brushes/draw_vector_displacement.cc
   brushes/fill.cc
   brushes/scrape.cc
+  brushes/multires_displacement_eraser.cc
 
   brushes/types.hh
 )
