@@ -118,6 +118,8 @@ set(SRC
   brushes/draw.cc
   brushes/draw_vector_displacement.cc
   brushes/fill.cc
+  brushes/flatten.cc
+  brushes/inflate.cc
   brushes/multires_displacement_eraser.cc
   brushes/scrape.cc
 

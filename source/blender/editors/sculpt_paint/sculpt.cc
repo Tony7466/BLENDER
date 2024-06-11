@@ -3780,7 +3780,7 @@ static void do_brush_action(const Sculpt &sd,
       SCULPT_do_pinch_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_INFLATE:
-      SCULPT_do_inflate_brush(sd, ob, nodes);
+      do_inflate_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_GRAB:
       SCULPT_do_grab_brush(sd, ob, nodes);
@@ -3792,7 +3792,7 @@ static void do_brush_action(const Sculpt &sd,
       SCULPT_do_snake_hook_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_NUDGE:
-      SCULPT_do_nudge_brush(sd, ob, nodes);
+      do_nudge_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_THUMB:
       SCULPT_do_thumb_brush(sd, ob, nodes);
@@ -3801,7 +3801,7 @@ static void do_brush_action(const Sculpt &sd,
       SCULPT_do_layer_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_FLATTEN:
-      SCULPT_do_flatten_brush(sd, ob, nodes);
+      do_flatten_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_CLAY:
       SCULPT_do_clay_brush(sd, ob, nodes);
