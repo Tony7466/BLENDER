@@ -198,8 +198,9 @@ class LinearGizmo : public NodeGizmos {
             LinearGizmo &self = *static_cast<LinearGizmo *>(gz_prop->custom_func.user_data);
             const float new_gizmo_value = *static_cast<const float *>(value_ptr);
             self.edit_data_.current_value = new_gizmo_value;
+            const float offset = new_gizmo_value * self.edit_data_.factor_from_transform;
             self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
-              value_variant.set(value_variant.get<float>() + new_gizmo_value);
+              value_variant.set(value_variant.get<float>() + offset);
             });
           };
       params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
@@ -219,6 +220,11 @@ class LinearGizmo : public NodeGizmos {
 class DialGizmo : public NodeGizmos {
  private:
   wmGizmo *gizmo_ = nullptr;
+
+  struct EditData {
+    bool is_negative_transform = false;
+    float current_value = 0.0f;
+  } edit_data_;
 
  public:
   void create_gizmos(wmGizmoGroup &gzgroup) override
@@ -242,6 +248,59 @@ class DialGizmo : public NodeGizmos {
         GeometryNodeGizmoColor(storage.color_id));
     UI_GetThemeColor3fv(color_theme_id, gizmo_->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo_->color_hi);
+  }
+
+  void update(GizmosUpdateParams &params) override
+  {
+    const bNodeSocket &position_socket = params.gizmo_node.input_socket(1);
+    const bNodeSocket &up_socket = params.gizmo_node.input_socket(2);
+    const std::optional<float3> position_opt = params.tree_log.find_primitive_socket_value<float3>(
+        position_socket);
+    const std::optional<float3> up_opt = params.tree_log.find_primitive_socket_value<float3>(
+        up_socket);
+    if (!position_opt || !up_opt) {
+      params.r_report.missing_socket_logs = true;
+      return;
+    }
+    const float3 position = *position_opt;
+    const float3 up = math::normalize(*up_opt);
+    if (math::is_zero(up)) {
+      params.r_report.invalid_transform = true;
+      return;
+    }
+
+    const float4x4 gizmo_base_transform = matrix_from_position_and_up_direction(
+        position, up, math::AxisSigned::Z_NEG);
+    const bool is_interacting = gizmo_is_interacting(*gizmo_);
+    if (!is_interacting) {
+      float4x4 gizmo_transform = params.parent_transform * gizmo_base_transform;
+      edit_data_.is_negative_transform = math::determinant(gizmo_transform) < 0.0f;
+      make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+      copy_m4_m4(gizmo_->matrix_basis, gizmo_transform.ptr());
+
+      edit_data_.current_value = 0.0f;
+
+      wmGizmoPropertyFnParams params{};
+      params.user_data = this;
+      params.value_set_fn =
+          [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
+            DialGizmo &self = *static_cast<DialGizmo *>(gz_prop->custom_func.user_data);
+            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+            self.edit_data_.current_value = new_gizmo_value;
+            float offset = new_gizmo_value;
+            if (self.edit_data_.is_negative_transform) {
+              offset = -offset;
+            }
+            self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+              value_variant.set(value_variant.get<float>() + new_gizmo_value * offset);
+            });
+          };
+      params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
+        DialGizmo &self = *static_cast<DialGizmo *>(gz_prop->custom_func.user_data);
+        *static_cast<float *>(value_ptr) = self.edit_data_.current_value;
+      };
+      WM_gizmo_target_property_def_func(gizmo_, "offset", &params);
+    }
   }
 
   Vector<wmGizmo *> get_all_gizmos() override
