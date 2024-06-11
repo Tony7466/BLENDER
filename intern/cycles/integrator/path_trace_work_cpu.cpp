@@ -114,8 +114,7 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
 {
   const bool has_bake = device_scene_->data.bake.use;
 
-  IntegratorStateCPU integrator_states[2];
-
+  IntegratorStateCPU integrator_states[2] = {0};
   IntegratorStateCPU *state = &integrator_states[0];
   IntegratorStateCPU *shadow_catcher_state = nullptr;
 

@@ -169,7 +169,7 @@ ccl_device void camera_sample_orthographic(KernelGlobals kg,
                                            const float2 rand_lens,
                                            ccl_private Ray *ray)
 {
-  /* create ray form raster position */
+  /* create ray from raster position */
   ProjectionTransform rastertocamera = kernel_data.cam.rastertocamera;
   float3 Pcamera = transform_perspective(&rastertocamera, float2_to_float3(raster_xy));
 

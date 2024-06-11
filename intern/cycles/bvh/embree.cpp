@@ -247,6 +247,32 @@ void BVHEmbree::add_object(Object *ob, int i)
   }
 }
 
+static const float EPSILON = 1e-9f;  // This seems to be the smallest value without glitches.
+static float clamp_component(const float4 &transformation_component, int index_component)
+{
+  float ret_value = 0;
+  const float v = transformation_component[index_component];
+  const float abs_v = fabsf(v);
+  const float eps = v >= 0 ? EPSILON : -EPSILON;
+  const float abs_epsilon = fabsf(eps);
+  ret_value = abs_v < abs_epsilon ? eps : v;
+  return ret_value;
+}
+
+/* Fixes a precision issue when using cycle in the viewport shading, that causes objects with very
+ * small/zero scale component to be rendered with a glitch , or result in a missed hit from
+ * embree.
+ */
+static void clamp_small_transform(Transform &r_clamped_transform,
+                                  const Transform &object_transform)
+{
+  /* Replaces 0 scale or small scale values by epsilon.*/
+  for (int i = 0; i < 3; i++) {
+    r_clamped_transform[i] = object_transform[i];
+    r_clamped_transform[i][i] = clamp_component(object_transform[i], i);
+  }
+}
+
 void BVHEmbree::add_instance(Object *ob, int i)
 {
   BVHEmbree *instance_bvh = (BVHEmbree *)(ob->get_geometry()->bvh);
@@ -278,8 +304,10 @@ void BVHEmbree::add_instance(Object *ob, int i)
     }
   }
   else {
+    Transform clamped_transform;
+    clamp_small_transform(clamped_transform, ob->get_tfm());
     rtcSetGeometryTransform(
-        geom_id, 0, RTC_FORMAT_FLOAT3X4_ROW_MAJOR, (const float *)&ob->get_tfm());
+        geom_id, 0, RTC_FORMAT_FLOAT3X4_ROW_MAJOR, (const float *)&clamped_transform);
   }
 
   rtcSetGeometryUserData(geom_id, (void *)instance_bvh->scene);
