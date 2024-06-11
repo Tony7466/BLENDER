@@ -254,7 +254,7 @@ def repo_iter_valid_local_only(context, *, exclude_system):
         if not repo_item.enabled:
             continue
         if exclude_system:
-            if (not repo_item.use_custom_directory) and (repo_item.source == 'SYSTEM'):
+            if (not repo_item.use_remote_url) and (repo_item.source == 'SYSTEM'):
                 continue
         # Ignore repositories that have invalid settings.
         directory, remote_url = repo_paths_or_none(repo_item)
@@ -520,7 +520,7 @@ def extension_repos_read_index(index, *, include_disabled=False):
             return RepoItem(
                 name=repo_item.name,
                 directory=directory,
-                source="" if repo_item.use_custom_directory else repo_item.source,
+                source="" if repo_item.use_remote_url else repo_item.source,
                 remote_url=remote_url,
                 module=repo_item.module,
                 use_cache=repo_item.use_cache,
@@ -558,7 +558,7 @@ def extension_repos_read(*, include_disabled=False, use_active_only=False):
         result.append(RepoItem(
             name=repo_item.name,
             directory=directory,
-            source="" if repo_item.use_custom_directory else repo_item.source,
+            source="" if repo_item.use_remote_url else repo_item.source,
             remote_url=remote_url,
             module=repo_item.module,
             use_cache=repo_item.use_cache,
@@ -1136,7 +1136,7 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
 class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
     """Refresh the list of extensions for all the remote repositories"""
     bl_idname = "extensions.repo_sync_all"
-    bl_label = "Check for Updates"
+    bl_label = "Refresh Remote"
     __slots__ = _ExtCmdMixIn.cls_slots
 
     use_active_only: BoolProperty(
@@ -1229,7 +1229,7 @@ class EXTENSIONS_OT_repo_refresh_all(Operator):
     """Scan extension & legacy add-ons for changes to modules & meta-data (similar to restarting). """ \
         """Any issues are reported as warnings"""
     bl_idname = "extensions.repo_refresh_all"
-    bl_label = "Refresh All"
+    bl_label = "Refresh Local"
 
     def _exceptions_as_report(self, repo_name, ex):
         self.report({'WARNING'}, "{:s}: {:s}".format(repo_name, str(ex)))
