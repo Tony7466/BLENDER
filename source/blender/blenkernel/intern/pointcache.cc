@@ -1303,7 +1303,7 @@ static int ptcache_frame_from_filename(const char *filename, const char *ext)
     return atoi(num);
   }
 
-  return -1;
+  return PTCACHE_FILE_NOT_FOUND;
 }
 
 /* Takes an Object ID and returns a unique name
@@ -2665,7 +2665,7 @@ void BKE_ptcache_id_clear(PTCacheID *pid, int mode, uint cfra)
                 /* read the number of the file */
                 const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-                if (frame != -1) {
+                if (frame != PTCACHE_FILE_NOT_FOUND) {
                   if ((mode == PTCACHE_CLEAR_BEFORE && frame < cfra) ||
                       (mode == PTCACHE_CLEAR_AFTER && frame > cfra))
                   {
@@ -2858,7 +2858,7 @@ void BKE_ptcache_id_time(
             /* read the number of the file */
             const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-            if ((frame != -1) && (frame >= sta && frame <= end)) {
+            if ((frame != PTCACHE_FILE_NOT_FOUND) && (frame >= sta && frame <= end)) {
               cache->cached_frames[frame - sta] = 1;
             }
           }
@@ -3575,7 +3575,7 @@ void BKE_ptcache_disk_cache_rename(PTCacheID *pid, const char *name_src, const c
         /* read the number of the file */
         const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-        if (frame != -1) {
+        if (frame != PTCACHE_FILE_NOT_FOUND) {
           BLI_path_join(old_path_full, sizeof(old_path_full), path, de->d_name);
           ptcache_filepath(pid, new_path_full, frame, true, true);
           BLI_rename_overwrite(old_path_full, new_path_full);
@@ -3632,7 +3632,7 @@ void BKE_ptcache_load_external(PTCacheID *pid)
         /* read the number of the file */
         const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-        if (frame != -1) {
+        if (frame != PTCACHE_FILE_NOT_FOUND) {
           if (frame) {
             start = std::min(start, frame);
             end = std::max(end, frame);

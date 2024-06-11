@@ -60,6 +60,8 @@ extern "C" {
 #define PTCACHE_READ_INTERPOLATED 2
 #define PTCACHE_READ_OLD 3
 
+#define PTCACHE_FILE_NOT_FOUND 0xFFFFFFFF
+
 /* Structs */
 struct BlendDataReader;
 struct BlendWriter;
