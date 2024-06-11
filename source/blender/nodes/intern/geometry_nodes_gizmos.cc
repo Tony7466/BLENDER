@@ -192,6 +192,8 @@ void foreach_active_gizmo(const Object & /*object*/,
                           const wmWindowManager & /*wm*/,
                           const ForeachGizmoFn fn)
 {
+  /* TODO: Find gizmos from open node editors. */
+
   if (!nmd.node_group) {
     return;
   }
