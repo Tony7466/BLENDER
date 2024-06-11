@@ -1347,6 +1347,9 @@ static size_t animfilter_fcurves_span(ListBase * /*bAnimListElem*/ anim_data,
         std::is_same_v<decltype(ActionBinding::handle), decltype(bAnimListElem::binding_handle)>);
     ale->binding_handle = binding_handle;
 
+    /* Check that the ale->adt is consistent with this FCurve. */
+    BLI_assert(ale->adt->binding_handle == ale->binding_handle);
+
     BLI_addtail(anim_data, ale);
     num_items++;
   }
