@@ -74,12 +74,18 @@ BLI_NOINLINE static void calc_smooth_positions_faces(const OffsetIndices<int> fa
                                                      const MutableSpan<float3> new_positions)
 {
   tls.vert_neighbors.reinitialize(verts.size());
-  calc_vert_neighbors(
+  calc_vert_neighbors_interior(
       faces, corner_verts, vert_to_face_map, boundary_verts, hide_poly, verts, tls.vert_neighbors);
   const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : verts.index_range()) {
-    new_positions[i] = average_positions(positions, vert_neighbors[i]);
+    const Span<int> neighbors = vert_neighbors[i];
+    if (neighbors.is_empty()) {
+      new_positions[i] = positions[verts[i]];
+    }
+    else {
+      new_positions[i] = average_positions(positions, neighbors);
+    }
   }
 }
 

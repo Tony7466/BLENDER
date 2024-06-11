@@ -6754,33 +6754,40 @@ void scale_factors(const MutableSpan<float> factors, const float strength)
   }
 }
 
-void calc_vert_neighbors(const OffsetIndices<int> faces,
-                         const Span<int> corner_verts,
-                         const GroupedSpan<int> vert_to_face,
-                         const BitSpan boundary_verts,
-                         const Span<bool> hide_poly,
-                         const Span<int> verts,
-                         const MutableSpan<Vector<int>> neighbors)
+void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
+                                  const Span<int> corner_verts,
+                                  const GroupedSpan<int> vert_to_face,
+                                  const BitSpan boundary_verts,
+                                  const Span<bool> hide_poly,
+                                  const Span<int> verts,
+                                  const MutableSpan<Vector<int>> result)
 {
-  BLI_assert(neighbors.size() == verts.size());
+  BLI_assert(result.size() == verts.size());
   BLI_assert(corner_verts.size() == faces.total_size());
-  for (Vector<int> &vector : neighbors) {
+  for (Vector<int> &vector : result) {
     vector.clear();
   }
 
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
-    const bool is_boundary = boundary_verts[vert];
+    Vector<int> &neighbors = result[i];
     for (const int face : vert_to_face[vert]) {
       if (!hide_poly.is_empty() && hide_poly[face]) {
         continue;
       }
       const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
-      if (!is_boundary || boundary_verts[verts[0]]) {
-        neighbors[i].append_non_duplicates(verts[0]);
+      neighbors.append_non_duplicates(verts[0]);
+      neighbors.append_non_duplicates(verts[1]);
+    }
+
+    if (boundary_verts[vert]) {
+      if (neighbors.size() == 2) {
+        /* Do not include neighbors of corner vertices. */
+        neighbors.clear();
       }
-      if (!is_boundary || boundary_verts[verts[1]]) {
-        neighbors[i].append_non_duplicates(verts[1]);
+      else {
+        /* Only include other boundary vertices as neighbors of boundary vertices. */
+        neighbors.remove_if([&](const int vert) { return !boundary_verts[vert]; });
       }
     }
   }

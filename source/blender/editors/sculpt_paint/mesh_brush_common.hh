@@ -156,7 +156,7 @@ void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, Span<float3> positi
 /**
  * Find vertices connected to the indexed vertices across faces. For boundary vertices (stored in
  * the \a boundary_verts argument), only include other boundary vertices. Also skip connectivity
- * accross hidden faces.
+ * accross hidden faces and skip neighbors of corner vertices.
  *
  * \note A vector allocated per element is typically not a good strategy for performance because
  * of each vector's 24 byte overhead, non-contiguous memory, and the possibility of further heap
@@ -166,12 +166,12 @@ void apply_translations_to_pbvh(PBVH &pbvh, Span<int> verts, Span<float3> positi
  *     vertex to face map. That requires deduplication when building the neighbors, which
  *     requires some intermediate data structure like a vector anyway.
  */
-void calc_vert_neighbors(OffsetIndices<int> faces,
-                         Span<int> corner_verts,
-                         GroupedSpan<int> vert_to_face,
-                         BitSpan boundary_verts,
-                         Span<bool> hide_poly,
-                         Span<int> verts,
-                         MutableSpan<Vector<int>> neighbors);
+void calc_vert_neighbors_interior(OffsetIndices<int> faces,
+                                  Span<int> corner_verts,
+                                  GroupedSpan<int> vert_to_face,
+                                  BitSpan boundary_verts,
+                                  Span<bool> hide_poly,
+                                  Span<int> verts,
+                                  MutableSpan<Vector<int>> result);
 
 }  // namespace blender::ed::sculpt_paint
