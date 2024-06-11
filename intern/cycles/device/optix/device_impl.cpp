@@ -50,8 +50,8 @@ static void execute_optix_task(TaskPool &pool, OptixTask task, OptixResult &fail
 }
 #  endif
 
-OptiXDevice::OptiXDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
-    : CUDADevice(info, stats, profiler),
+OptiXDevice::OptiXDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless)
+    : CUDADevice(info, stats, profiler, headless),
       sbt_data(this, "__sbt", MEM_READ_ONLY),
       launch_params(this, "kernel_params", false)
 {
@@ -1680,7 +1680,7 @@ void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
   }
 }
 
-void OptiXDevice::release_optix_bvh(BVH *bvh)
+void OptiXDevice::release_bvh(BVH *bvh)
 {
   thread_scoped_lock lock(delayed_free_bvh_mutex);
   /* Do delayed free of BVH memory, since geometry holding BVH might be deleted

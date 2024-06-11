@@ -17,7 +17,7 @@
 #include "BLI_string_ref.hh"
 #include "DRW_render.hh"
 #include "GPU_material.hh"
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "eevee_material.hh"
 #include "eevee_sync.hh"
@@ -38,16 +38,15 @@ enum eShaderType {
   DEFERRED_LIGHT_DOUBLE,
   DEFERRED_LIGHT_TRIPLE,
   DEFERRED_PLANAR_EVAL,
+  DEFERRED_THICKNESS_AMEND,
   DEFERRED_TILE_CLASSIFY,
-  DEFERRED_TILE_COMPACT,
-  DEFERRED_TILE_STENCIL,
 
   DEBUG_GBUFFER,
   DEBUG_SURFELS,
   DEBUG_IRRADIANCE_GRID,
 
-  DISPLAY_PROBE_GRID,
-  DISPLAY_PROBE_REFLECTION,
+  DISPLAY_PROBE_VOLUME,
+  DISPLAY_PROBE_SPHERE,
   DISPLAY_PROBE_PLANAR,
 
   DOF_BOKEH_LUT,
@@ -73,6 +72,7 @@ enum eShaderType {
   HIZ_DEBUG,
 
   HORIZON_DENOISE,
+  HORIZON_RESOLVE,
   HORIZON_SCAN,
   HORIZON_SETUP,
 
@@ -81,11 +81,13 @@ enum eShaderType {
   LIGHT_CULLING_SORT,
   LIGHT_CULLING_TILE,
   LIGHT_CULLING_ZBIN,
+  LIGHT_SHADOW_SETUP,
 
   LIGHTPROBE_IRRADIANCE_BOUNDS,
   LIGHTPROBE_IRRADIANCE_OFFSET,
   LIGHTPROBE_IRRADIANCE_RAY,
   LIGHTPROBE_IRRADIANCE_LOAD,
+  LIGHTPROBE_IRRADIANCE_WORLD,
 
   LOOKDEV_DISPLAY,
 
@@ -105,9 +107,10 @@ enum eShaderType {
   RAY_TRACE_SCREEN,
 
   SPHERE_PROBE_CONVOLVE,
+  SPHERE_PROBE_IRRADIANCE,
   SPHERE_PROBE_REMAP,
   SPHERE_PROBE_SELECT,
-  SPHERE_PROBE_UPDATE_IRRADIANCE,
+  SPHERE_PROBE_SUNLIGHT,
 
   SHADOW_CLIPMAP_CLEAR,
   SHADOW_DEBUG,
@@ -118,6 +121,7 @@ enum eShaderType {
   SHADOW_PAGE_MASK,
   SHADOW_PAGE_TILE_CLEAR,
   SHADOW_PAGE_TILE_STORE,
+  SHADOW_TILEMAP_AMEND,
   SHADOW_TILEMAP_BOUNDS,
   SHADOW_TILEMAP_FINALIZE,
   SHADOW_TILEMAP_INIT,
@@ -153,6 +157,7 @@ enum eShaderType {
 class ShaderModule {
  private:
   std::array<GPUShader *, MAX_SHADER_TYPE> shaders_;
+  BatchHandle compilation_handle_ = 0;
 
   /** Shared shader module across all engine instances. */
   static ShaderModule *g_shader_module;
@@ -161,7 +166,11 @@ class ShaderModule {
   ShaderModule();
   ~ShaderModule();
 
+  bool is_ready(bool block = false);
+
   GPUShader *static_shader_get(eShaderType shader_type);
+  GPUMaterial *material_default_shader_get(eMaterialPipeline pipeline_type,
+                                           eMaterialGeometry geometry_type);
   GPUMaterial *material_shader_get(::Material *blender_mat,
                                    bNodeTree *nodetree,
                                    eMaterialPipeline pipeline_type,

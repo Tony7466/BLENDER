@@ -28,6 +28,15 @@ struct SequenceLookup;
 struct VFont;
 struct bSound;
 
+#ifdef __cplusplus
+namespace blender::seq {
+struct MediaPresence;
+}  // namespace blender::seq
+using MediaPresence = blender::seq::MediaPresence;
+#else
+typedef struct MediaPresence MediaPresence;
+#endif
+
 /* -------------------------------------------------------------------- */
 /** \name Sequence & Editing Structs
  * \{ */
@@ -227,7 +236,7 @@ typedef struct Sequence {
 
   /** The linked "bSound" object. */
   struct bSound *sound;
-  /** Handle to #AUD_SequenceEntry*/
+  /** Handle to #AUD_SequenceEntry. */
   void *scene_sound;
   float volume;
 
@@ -298,6 +307,7 @@ typedef struct SeqTimelineChannel {
 
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
+  MediaPresence *media_presence;
   struct AnimManager *anim_lookup;
   void *_pad0;
 } EditingRuntime;
@@ -327,6 +337,9 @@ typedef struct Editing {
   int overlay_frame_flag;
   rctf overlay_frame_rect;
 
+  int show_missing_media_flag;
+  int _pad1;
+
   struct SeqCache *cache;
 
   /* Cache control */
@@ -339,7 +352,6 @@ typedef struct Editing {
   int64_t disk_cache_timestamp;
 
   EditingRuntime runtime;
-  void *_pad1;
 } Editing;
 
 /** \} */
@@ -414,10 +426,14 @@ typedef struct TextVars {
   struct VFont *text_font;
   int text_blf_id;
   float text_size;
-  float color[4], shadow_color[4], box_color[4];
+  float color[4], shadow_color[4], box_color[4], outline_color[4];
   float loc[2];
   float wrap_width;
   float box_margin;
+  float shadow_angle;
+  float shadow_offset;
+  float shadow_blur;
+  float outline_width;
   char flag;
   char align, align_y;
   char _pad[5];
@@ -429,6 +445,7 @@ enum {
   SEQ_TEXT_BOX = (1 << 1),
   SEQ_TEXT_BOLD = (1 << 2),
   SEQ_TEXT_ITALIC = (1 << 3),
+  SEQ_TEXT_OUTLINE = (1 << 4),
 };
 
 /** #TextVars.align */
@@ -558,6 +575,11 @@ enum {
   SEQ_EDIT_OVERLAY_FRAME_ABS = 2,
 };
 
+/** #Editing::show_missing_media_flag */
+enum {
+  SEQ_EDIT_SHOW_MISSING_MEDIA = 1 << 0,
+};
+
 #define SEQ_STRIP_OFSBOTTOM 0.05f
 #define SEQ_STRIP_OFSTOP 0.95f
 
@@ -660,10 +682,7 @@ enum {
 enum {
   SEQ_PROXY_TC_NONE = 0,
   SEQ_PROXY_TC_RECORD_RUN = 1 << 0,
-  SEQ_PROXY_TC_FREE_RUN = 1 << 1,
-  SEQ_PROXY_TC_INTERP_REC_DATE_FREE_RUN = 1 << 2,
-  SEQ_PROXY_TC_RECORD_RUN_NO_GAPS = 1 << 3,
-  SEQ_PROXY_TC_ALL = (1 << 4) - 1,
+  SEQ_PROXY_TC_RECORD_RUN_NO_GAPS = 1 << 1,
 };
 
 /** SeqProxy.build_flags */
@@ -808,12 +827,11 @@ enum {
 
   SEQ_CACHE_OVERRIDE = (1 << 4),
 
-  /* enable cache visualization overlay in timeline UI */
-  SEQ_CACHE_VIEW_ENABLE = (1 << 5),
-  SEQ_CACHE_VIEW_RAW = (1 << 6),
-  SEQ_CACHE_VIEW_PREPROCESSED = (1 << 7),
-  SEQ_CACHE_VIEW_COMPOSITE = (1 << 8),
-  SEQ_CACHE_VIEW_FINAL_OUT = (1 << 9),
+  SEQ_CACHE_UNUSED_5 = (1 << 5),
+  SEQ_CACHE_UNUSED_6 = (1 << 6),
+  SEQ_CACHE_UNUSED_7 = (1 << 7),
+  SEQ_CACHE_UNUSED_8 = (1 << 8),
+  SEQ_CACHE_UNUSED_9 = (1 << 9),
 
   SEQ_CACHE_PREFETCH_ENABLE = (1 << 10),
   SEQ_CACHE_DISK_CACHE_ENABLE = (1 << 11),

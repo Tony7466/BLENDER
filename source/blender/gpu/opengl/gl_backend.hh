@@ -39,6 +39,8 @@ class GLBackend : public GPUBackend {
   renderdoc::api::Renderdoc renderdoc_;
 #endif
 
+  GLShaderCompiler compiler_;
+
  public:
   GLBackend()
   {
@@ -62,6 +64,11 @@ class GLBackend : public GPUBackend {
   static GLBackend *get()
   {
     return static_cast<GLBackend *>(GPUBackend::get());
+  }
+
+  GLShaderCompiler *get_compiler()
+  {
+    return &compiler_;
   }
 
   void samplers_update() override
@@ -163,7 +170,7 @@ class GLBackend : public GPUBackend {
   void render_end() override{};
   void render_step() override{};
 
-  bool debug_capture_begin();
+  bool debug_capture_begin(const char *title);
   void debug_capture_end();
 
  private:

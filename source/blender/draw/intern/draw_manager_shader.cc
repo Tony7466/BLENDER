@@ -12,6 +12,7 @@
 
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
 #include "BLI_time.h"
@@ -22,16 +23,16 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 #include "GPU_material.hh"
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "wm_window.hh"
 
-#include "draw_manager.h"
+#include "draw_manager_c.hh"
 
 #include "CLG_log.h"
 
@@ -66,6 +67,8 @@ struct DRWShaderCompiler {
 static void drw_deferred_shader_compilation_exec(void *custom_data,
                                                  wmJobWorkerStatus *worker_status)
 {
+  using namespace blender;
+
   GPU_render_begin();
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
   void *system_gpu_context = comp->system_gpu_context;
@@ -80,13 +83,16 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     GPU_context_main_lock();
   }
 
+  const bool use_parallel_compilation = GPU_use_parallel_compilation();
+
   WM_system_gpu_context_activate(system_gpu_context);
   GPU_context_active_set(blender_gpu_context);
 
+  Vector<GPUMaterial *> next_batch;
+  Map<BatchHandle, Vector<GPUMaterial *>> batches;
+
   while (true) {
-    if (worker_status->stop != 0) {
-      /* We don't want user to be able to cancel the compilation
-       * but wm can kill the task if we are closing blender. */
+    if (worker_status->stop) {
       break;
     }
 
@@ -98,14 +104,44 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     if (mat) {
       /* Avoid another thread freeing the material mid compilation. */
       GPU_material_acquire(mat);
+      MEM_freeN(link);
     }
     BLI_spin_unlock(&comp->list_lock);
 
     if (mat) {
-      /* Do the compilation. */
-      GPU_material_compile(mat);
-      GPU_material_release(mat);
-      MEM_freeN(link);
+      /* We have a new material that must be compiled,
+       * we either compile it directly or add it to a parallel compilation batch. */
+      if (use_parallel_compilation) {
+        next_batch.append(mat);
+      }
+      else {
+        GPU_material_compile(mat);
+        GPU_material_release(mat);
+      }
+    }
+    else if (!next_batch.is_empty()) {
+      /* (only if use_parallel_compilation == true)
+       * We ran out of pending materials. Request the compilation of the current batch. */
+      BatchHandle batch_handle = GPU_material_batch_compile(next_batch);
+      batches.add(batch_handle, next_batch);
+      next_batch.clear();
+    }
+    else if (!batches.is_empty()) {
+      /* (only if use_parallel_compilation == true)
+       * Keep querying the requested batches until all of them are ready. */
+      Vector<BatchHandle> ready_handles;
+      for (BatchHandle handle : batches.keys()) {
+        if (GPU_material_batch_is_ready(handle)) {
+          ready_handles.append(handle);
+        }
+      }
+      for (BatchHandle handle : ready_handles) {
+        Vector<GPUMaterial *> batch = batches.pop(handle);
+        GPU_material_batch_finalize(handle, batch);
+        for (GPUMaterial *mat : batch) {
+          GPU_material_release(mat);
+        }
+      }
     }
     else {
       /* Check for Material Optimization job once there are no more
@@ -113,7 +149,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       BLI_spin_lock(&comp->list_lock);
       /* Pop tail because it will be less likely to lock the main thread
        * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-      link = (LinkData *)BLI_poptail(&comp->optimize_queue);
+      LinkData *link = (LinkData *)BLI_poptail(&comp->optimize_queue);
       GPUMaterial *optimize_mat = link ? (GPUMaterial *)link->data : nullptr;
       if (optimize_mat) {
         /* Avoid another thread freeing the material during optimization. */
@@ -138,6 +174,16 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     }
   }
 
+  /* We have to wait until all the requested batches are ready,
+   * even if worker_status->stop is true. */
+  for (BatchHandle handle : batches.keys()) {
+    Vector<GPUMaterial *> &batch = batches.lookup(handle);
+    GPU_material_batch_finalize(handle, batch);
+    for (GPUMaterial *mat : batch) {
+      GPU_material_release(mat);
+    }
+  }
+
   GPU_context_active_set(nullptr);
   WM_system_gpu_context_release(system_gpu_context);
   if (use_main_context_workaround) {
@@ -151,6 +197,13 @@ static void drw_deferred_shader_compilation_free(void *custom_data)
   DRWShaderCompiler *comp = (DRWShaderCompiler *)custom_data;
 
   BLI_spin_lock(&comp->list_lock);
+  LISTBASE_FOREACH (LinkData *, link, &comp->queue) {
+    GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
+  }
+  LISTBASE_FOREACH (LinkData *, link, &comp->optimize_queue) {
+    GPU_material_optimization_status_set(static_cast<GPUMaterial *>(link->data),
+                                         GPU_MAT_OPTIMIZATION_READY);
+  }
   BLI_freelistN(&comp->queue);
   BLI_freelistN(&comp->optimize_queue);
   BLI_spin_unlock(&comp->list_lock);
@@ -531,7 +584,8 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                       const bool is_volume_shader,
                                       bool deferred,
                                       GPUCodegenCallbackFn callback,
-                                      void *thunk)
+                                      void *thunk,
+                                      GPUMaterialPassReplacementCallbackFn pass_replacement_cb)
 {
   Scene *scene = (Scene *)DEG_get_original_id(&DST.draw_ctx.scene->id);
   GPUMaterial *mat = GPU_material_from_nodetree(scene,
@@ -544,7 +598,8 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                                 is_volume_shader,
                                                 false,
                                                 callback,
-                                                thunk);
+                                                thunk,
+                                                pass_replacement_cb);
 
   drw_register_shader_vlattrs(mat);
 

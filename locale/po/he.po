@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Beta (b'09ff1b1f7e3f')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'a2795852cd29')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-02-19 09:41+0000\n"
+"POT-Creation-Date: 2024-06-10 10:16+0000\n"
 "PO-Revision-Date: 2023-10-06 09:54+0000\n"
 "Last-Translator: Eitan Traurig <eitant13@gmail.com>\n"
 "Language-Team: Hebrew <https://translate.blender.org/projects/blender-ui/ui/he/>\n"
@@ -65,18 +65,6 @@ msgstr "לודומ"
 
 msgid "Module name"
 msgstr "לודומה םש"
-
-
-msgid "Password"
-msgstr "המסיס"
-
-
-msgid "Error Message"
-msgstr "האיגש תעדוה"
-
-
-msgid "Message"
-msgstr "העדוה"
 
 
 msgid "Off"
@@ -520,10 +508,6 @@ msgid "Sculpt Tool"
 msgstr "לוסיפ ילכ"
 
 
-msgid "Sculpt Tool"
-msgstr "לוסיפ ילכ"
-
-
 msgid "Up"
 msgstr "הלעמ"
 
@@ -835,16 +819,16 @@ msgid "Language"
 msgstr "הפש"
 
 
+msgid "Password"
+msgstr "המסיס"
+
+
 msgid "Language Name"
 msgstr "הפשה םש"
 
 
 msgid "Languages"
 msgstr "תופש"
-
-
-msgid "Hide Names"
-msgstr "תומש רתסה"
 
 
 msgctxt "Sequence"
@@ -867,6 +851,10 @@ msgstr "םש יפל ןיימ"
 
 msgid "AOV"
 msgstr "AOV"
+
+
+msgid "Error Message"
+msgstr "האיגש תעדוה"
 
 
 msgctxt "WindowManager"
@@ -957,6 +945,10 @@ msgid "Remove Shortcut"
 msgstr "ךרד־רוציק רסה"
 
 
+msgid "%d items"
+msgstr "‪%d‬ םיטירפ"
+
+
 msgid "Red:"
 msgstr ":םודא"
 
@@ -989,8 +981,8 @@ msgid "Stop this job"
 msgstr "וז הדובע רוצע"
 
 
-msgid "%d items"
-msgstr "‪%d‬ םיטירפ"
+msgid "Cancel"
+msgstr "לוטיב"
 
 
 msgid "vertex data"
@@ -1015,10 +1007,6 @@ msgstr ":ץבוק ביתנ"
 
 msgid "File path"
 msgstr "ץבוק ביתנ"
-
-
-msgid "Cancel"
-msgstr "לוטיב"
 
 
 msgid "File name"
