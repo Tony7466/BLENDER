@@ -225,7 +225,7 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
                               strength,
                               object,
                               tls,
-                              new_positions.as_mutable_span().slice(node_vert_offsets[i]),
+                              new_positions.as_span().slice(node_vert_offsets[i]),
                               positions_orig);
       }
     });
