@@ -16,6 +16,7 @@
 
 #include "BLI_map.hh"
 #include "BLI_math_euler.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 
@@ -385,6 +386,30 @@ static bool set_socket_value(bNodeSocket &socket, const SocketValueVariant &valu
       default_value->value = std::min(std::max(value, default_value->min), default_value->max);
       return true;
     }
+    case SOCK_INT: {
+      const int value = value_variant.get<int>();
+      auto *default_value = socket.default_value_typed<bNodeSocketValueInt>();
+      default_value->value = std::min(std::max(value, default_value->min), default_value->max);
+      return true;
+    }
+    case SOCK_BOOLEAN: {
+      const bool value = value_variant.get<bool>();
+      auto *default_value = socket.default_value_typed<bNodeSocketValueBoolean>();
+      default_value->value = value;
+      return true;
+    }
+    case SOCK_VECTOR: {
+      const float3 value = value_variant.get<float3>();
+      auto *default_value = socket.default_value_typed<bNodeSocketValueVector>();
+      *reinterpret_cast<float3 *>(default_value->value) = value;
+      return true;
+    }
+    case SOCK_ROTATION: {
+      const math::Quaternion value = value_variant.get<math::Quaternion>();
+      auto *default_value = socket.default_value_typed<bNodeSocketValueRotation>();
+      *reinterpret_cast<float3 *>(default_value->value_euler) = float3(math::to_euler(value));
+      return true;
+    }
   }
   return false;
 }
@@ -409,6 +434,7 @@ static bool set_modifier_value(Object &object,
 {
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
+  /* TODO: Take min/max into account. */
   switch (interface_socket.socket_typeinfo()->type) {
     case SOCK_FLOAT: {
       const float value = value_variant.get<float>();
@@ -417,6 +443,35 @@ static bool set_modifier_value(Object &object,
       if (prop && prop->type == IDP_FLOAT) {
         IDP_Float(prop) = value;
         return true;
+      }
+      break;
+    }
+    case SOCK_INT: {
+      const int value = value_variant.get<float>();
+      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                  interface_socket.identifier);
+      if (prop && prop->type == IDP_INT) {
+        IDP_Int(prop) = value;
+        return true;
+      }
+      break;
+    }
+    case SOCK_BOOLEAN: {
+      const bool value = value_variant.get<bool>();
+      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                  interface_socket.identifier);
+      if (prop && prop->type == IDP_BOOLEAN) {
+        IDP_Bool(prop) = value;
+        return true;
+      }
+      break;
+    }
+    case SOCK_VECTOR: {
+      const float3 value = value_variant.get<float3>();
+      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                  interface_socket.identifier);
+      if (prop && prop->type == IDP_ARRAY && prop->len == 3 && prop->subtype == IDP_FLOAT) {
+        *static_cast<float3 *>(IDP_Array(prop)) = value;
       }
       break;
     }
@@ -445,8 +500,36 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
       }
       break;
     }
+    case SOCK_INT: {
+      if (const std::optional<int> value = tree_log.find_primitive_socket_value<int>(socket)) {
+        return SocketValueVariant{*value};
+      }
+      break;
+    }
+    case SOCK_BOOLEAN: {
+      if (const std::optional<bool> value = tree_log.find_primitive_socket_value<bool>(socket)) {
+        return SocketValueVariant{*value};
+      }
+      break;
+    }
     case SOCK_VECTOR: {
       if (const std::optional<float3> value = tree_log.find_primitive_socket_value<float3>(socket))
+      {
+        return SocketValueVariant{*value};
+      }
+      break;
+    }
+    case SOCK_ROTATION: {
+      if (const std::optional<math::Quaternion> value =
+              tree_log.find_primitive_socket_value<math::Quaternion>(socket))
+      {
+        return SocketValueVariant{*value};
+      }
+      break;
+    }
+    case SOCK_MATRIX: {
+      if (const std::optional<float4x4> value = tree_log.find_primitive_socket_value<float4x4>(
+              socket))
       {
         return SocketValueVariant{*value};
       }
