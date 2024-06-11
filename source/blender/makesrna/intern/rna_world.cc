@@ -112,7 +112,6 @@ void rna_World_lightgroup_set(PointerRNA *ptr, const char *value)
 #else
 
 static const EnumPropertyItem world_probe_resolution_items[] = {
-    {LIGHT_PROBE_RESOLUTION_64, "64", 0, "64", ""},
     {LIGHT_PROBE_RESOLUTION_128, "128", 0, "128", ""},
     {LIGHT_PROBE_RESOLUTION_256, "256", 0, "256", ""},
     {LIGHT_PROBE_RESOLUTION_512, "512", 0, "512", ""},

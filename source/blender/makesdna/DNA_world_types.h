@@ -138,7 +138,6 @@ enum {
 
 /** #World::probe_resolution. */
 typedef enum eLightProbeResolution {
-  LIGHT_PROBE_RESOLUTION_64 = 6,
   LIGHT_PROBE_RESOLUTION_128 = 7,
   LIGHT_PROBE_RESOLUTION_256 = 8,
   LIGHT_PROBE_RESOLUTION_512 = 9,

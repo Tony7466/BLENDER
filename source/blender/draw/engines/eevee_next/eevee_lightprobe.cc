@@ -44,8 +44,6 @@ LightProbeModule::LightProbeModule(Instance &inst) : inst_(inst)
 static eLightProbeResolution resolution_to_probe_resolution_enum(int resolution)
 {
   switch (resolution) {
-    case 64:
-      return LIGHT_PROBE_RESOLUTION_64;
     case 128:
       return LIGHT_PROBE_RESOLUTION_128;
     case 256:
