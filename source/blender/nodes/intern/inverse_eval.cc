@@ -410,7 +410,8 @@ static bool set_modifier_value(Object &object,
   switch (interface_socket.socket_typeinfo()->type) {
     case SOCK_FLOAT: {
       const float value = value_variant.get<float>();
-      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties, interface_socket.name);
+      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                  interface_socket.identifier);
       if (prop && prop->type == IDP_FLOAT) {
         IDP_Float(prop) = value;
         return true;
