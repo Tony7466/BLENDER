@@ -3217,8 +3217,10 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
     case EVT_ESCKEY:
     case RIGHTMOUSE:
       /* Canceled; restore original value. */
-      radial_control_set_value(rc, rc->initial_value);
-      ret = OPERATOR_CANCELLED;
+      if (rc->init_event != event->type) {
+        radial_control_set_value(rc, rc->initial_value);
+        ret = OPERATOR_CANCELLED;
+      }
       break;
 
     case LEFTMOUSE:
