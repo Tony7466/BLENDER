@@ -43,7 +43,7 @@ class NODE_MT_geometry_node_GEO_COLOR(Menu):
         ops.name = "data_type"
         ops.value = "'RGBA'"
         node_add_menu.add_node_type(layout, "FunctionNodeSeparateColor")
-        node_add_menu.draw_assets_for_catalog(layout, "Utilties/Color")
+        node_add_menu.draw_assets_for_catalog(layout, "Utilities/Color")
 
 
 class NODE_MT_geometry_node_GEO_CURVE(Menu):
@@ -243,11 +243,13 @@ class NODE_MT_geometry_node_GEO_INPUT(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_INPUT"
     bl_label = "Input"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_CONSTANT")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_GROUP")
         layout.menu("NODE_MT_geometry_node_GEO_INPUT_SCENE")
+        if context.preferences.experimental.use_new_file_import_nodes:
+            layout.menu("NODE_MT_category_import")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -317,7 +319,9 @@ class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
         node_add_menu.add_node_type(layout, "GeometryNodeTranslateInstances")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetInstanceTransform")
         layout.separator()
+        node_add_menu.add_node_type(layout, "GeometryNodeInstanceTransform")
         node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceRotation")
         node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceScale")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
@@ -445,6 +449,16 @@ class NODE_MT_category_PRIMITIVES_MESH(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeMeshLine")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshUVSphere")
         node_add_menu.draw_assets_for_catalog(layout, "Mesh/Primitives")
+
+
+class NODE_MT_category_import(Menu):
+    bl_idname = "NODE_MT_category_import"
+    bl_label = "Import"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeImportSTL")
+        node_add_menu.draw_assets_for_catalog(layout, "Input/Import")
 
 
 class NODE_MT_geometry_node_mesh_topology(Menu):
@@ -575,6 +589,7 @@ class NODE_MT_category_GEO_UTILITIES_DEPRECATED(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeAlignEulerToVector")
         node_add_menu.add_node_type(layout, "FunctionNodeRotateEuler")
+        node_add_menu.draw_assets_for_catalog(layout, "Utilities/Deprecated")
 
 
 class NODE_MT_category_GEO_UTILITIES_FIELD(Menu):
@@ -586,7 +601,7 @@ class NODE_MT_category_GEO_UTILITIES_FIELD(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeAccumulateField")
         node_add_menu.add_node_type(layout, "GeometryNodeFieldAtIndex")
         node_add_menu.add_node_type(layout, "GeometryNodeFieldOnDomain")
-        node_add_menu.draw_assets_for_catalog(layout, "Utilties/Field")
+        node_add_menu.draw_assets_for_catalog(layout, "Utilities/Field")
 
 
 class NODE_MT_category_GEO_UTILITIES_ROTATION(Menu):
@@ -813,6 +828,7 @@ classes = (
     NODE_MT_geometry_node_GEO_MESH_OPERATIONS,
     NODE_MT_category_GEO_UV,
     NODE_MT_category_PRIMITIVES_MESH,
+    NODE_MT_category_import,
     NODE_MT_geometry_node_mesh_topology,
     NODE_MT_category_GEO_POINT,
     NODE_MT_category_simulation,

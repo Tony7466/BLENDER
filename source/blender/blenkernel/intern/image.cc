@@ -3842,15 +3842,23 @@ RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima)
     image_init_multilayer_multiview(ima, rr);
   }
 
-  if (!rr) {
-    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
+  if (rr) {
+    RE_ReferenceRenderResult(rr);
   }
 
+  BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
   return rr;
 }
 
 void BKE_image_release_renderresult(Scene *scene, Image *ima, RenderResult *render_result)
 {
+  if (render_result) {
+    /* Decrement user counter, and free if nobody else holds a reference to the result. */
+    BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
+    RE_FreeRenderResult(render_result);
+    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
+  }
+
   if (ima->rr) {
     /* pass */
   }
@@ -3858,10 +3866,6 @@ void BKE_image_release_renderresult(Scene *scene, Image *ima, RenderResult *rend
     if (ima->render_slot == ima->last_render_slot) {
       RE_ReleaseResult(RE_GetSceneRender(scene));
     }
-  }
-
-  if (render_result) {
-    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
   }
 }
 
@@ -4896,6 +4900,31 @@ bool BKE_image_has_ibuf(Image *ima, ImageUser *iuser)
   IMB_freeImBuf(ibuf);
 
   return ibuf != nullptr;
+}
+
+ImBuf *BKE_image_preview(Image *ima, const short max_size, short *r_width, short *r_height)
+{
+  void *lock;
+  ImBuf *image_ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+  if (image_ibuf == nullptr) {
+    return nullptr;
+  }
+
+  ImBuf *preview = IMB_dupImBuf(image_ibuf);
+  float scale = float(max_size) / float(std::max(image_ibuf->x, image_ibuf->y));
+  if (r_width) {
+    *r_width = image_ibuf->x;
+  }
+  if (r_height) {
+    *r_height = image_ibuf->y;
+  }
+  BKE_image_release_ibuf(ima, image_ibuf, lock);
+
+  /* Resize. */
+  IMB_scaleImBuf(preview, scale * image_ibuf->x, scale * image_ibuf->y);
+  IMB_rect_from_float(preview);
+
+  return preview;
 }
 
 /** \} */

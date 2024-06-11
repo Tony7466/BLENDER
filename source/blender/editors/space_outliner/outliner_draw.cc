@@ -3300,10 +3300,8 @@ static bool element_should_draw_faded(const TreeViewContext *tvc,
                                                   (ViewLayer *)tvc->view_layer, (Object *)ob);
         const bool is_visible = (base != nullptr) &&
                                 (base->flag & BASE_ENABLED_AND_VISIBLE_IN_DEFAULT_VIEWPORT);
-        if (!is_visible) {
-          return true;
-        }
-        break;
+
+        return !is_visible;
       }
       default: {
         if (te->parent) {
@@ -3434,9 +3432,7 @@ static void outliner_draw_tree_element(bContext *C,
     if (tselem->type == TSE_VIEW_COLLECTION_BASE) {
       /* Scene collection in view layer can't expand/collapse. */
     }
-    else if (te->subtree.first || ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_SCE)) ||
-             (te->flag & TE_PRETEND_HAS_CHILDREN))
-    {
+    else if (te->subtree.first || (te->flag & TE_PRETEND_HAS_CHILDREN)) {
       /* Open/close icon, only when sub-levels, except for scene. */
       int icon_x = startx;
 

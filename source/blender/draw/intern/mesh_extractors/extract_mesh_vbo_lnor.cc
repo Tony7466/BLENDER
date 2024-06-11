@@ -14,20 +14,6 @@
 
 namespace blender::draw {
 
-template<typename GPUType> inline GPUType convert_normal(const float3 &src);
-
-template<> inline GPUPackedNormal convert_normal(const float3 &src)
-{
-  return GPU_normal_convert_i10_v3(src);
-}
-
-template<> inline short4 convert_normal(const float3 &src)
-{
-  short4 dst;
-  normal_float_to_short_v3(dst, src);
-  return dst;
-}
-
 template<typename GPUType>
 static void convert_normals_impl(const Span<float3> src, MutableSpan<GPUType> dst)
 {
@@ -116,7 +102,7 @@ static void extract_paint_overlay_flags(const MeshRenderData &mr, MutableSpan<GP
   else if (mr.mesh->editflag & ME_EDIT_PAINT_VERT_SEL) {
     selection = mr.select_vert;
   }
-  if (selection.is_empty() && mr.hide_poly.is_empty() && (!mr.edit_bmesh || !mr.v_origindex)) {
+  if (selection.is_empty() && mr.hide_poly.is_empty() && (!mr.edit_bmesh || !mr.orig_index_vert)) {
     return;
   }
   const OffsetIndices faces = mr.faces;
@@ -152,9 +138,9 @@ static void extract_paint_overlay_flags(const MeshRenderData &mr, MutableSpan<GP
         }
       }
     }
-    if (mr.edit_bmesh && mr.v_origindex) {
+    if (mr.edit_bmesh && mr.orig_index_vert) {
       const Span<int> corner_verts = mr.corner_verts;
-      const Span<int> orig_indices(mr.v_origindex, mr.verts_num);
+      const Span<int> orig_indices(mr.orig_index_vert, mr.verts_num);
       for (const int face : range) {
         for (const int corner : faces[face]) {
           if (orig_indices[corner_verts[corner]] == ORIGINDEX_NONE) {
@@ -215,23 +201,28 @@ static void extract_normals_bm(const MeshRenderData &mr, MutableSpan<GPUType> no
 
 void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &vbo)
 {
+  const int size = mr.corners_num + mr.loose_indices_num;
   if (use_hq) {
     static GPUVertFormat format = {0};
     if (format.attr_len == 0) {
       GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
       GPU_vertformat_alias_add(&format, "lnor");
     }
-    GPU_vertbuf_init_with_format(&vbo, &format);
-    GPU_vertbuf_data_alloc(&vbo, mr.corners_num);
-    MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(&vbo)), mr.corners_num);
+    GPU_vertbuf_init_with_format(vbo, format);
+    GPU_vertbuf_data_alloc(vbo, size);
+    MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(vbo)), size);
+    MutableSpan corners_data = vbo_data.take_front(mr.corners_num);
+    MutableSpan loose_data = vbo_data.take_back(mr.loose_indices_num);
 
     if (mr.extract_type == MR_EXTRACT_MESH) {
-      extract_normals_mesh(mr, vbo_data);
-      extract_paint_overlay_flags(mr, vbo_data);
+      extract_normals_mesh(mr, corners_data);
+      extract_paint_overlay_flags(mr, corners_data);
     }
     else {
-      extract_normals_bm(mr, vbo_data);
+      extract_normals_bm(mr, corners_data);
     }
+
+    loose_data.fill(short4(0));
   }
   else {
     static GPUVertFormat format = {0};
@@ -239,22 +230,25 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
       GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
       GPU_vertformat_alias_add(&format, "lnor");
     }
-    GPU_vertbuf_init_with_format(&vbo, &format);
-    GPU_vertbuf_data_alloc(&vbo, mr.corners_num);
-    MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(&vbo)),
-                         mr.corners_num);
+    GPU_vertbuf_init_with_format(vbo, format);
+    GPU_vertbuf_data_alloc(vbo, size);
+    MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo)), size);
+    MutableSpan corners_data = vbo_data.take_front(mr.corners_num);
+    MutableSpan loose_data = vbo_data.take_back(mr.loose_indices_num);
 
     if (mr.extract_type == MR_EXTRACT_MESH) {
-      extract_normals_mesh(mr, vbo_data);
-      extract_paint_overlay_flags(mr, vbo_data);
+      extract_normals_mesh(mr, corners_data);
+      extract_paint_overlay_flags(mr, corners_data);
     }
     else {
-      extract_normals_bm(mr, vbo_data);
+      extract_normals_bm(mr, corners_data);
     }
+
+    loose_data.fill(GPUPackedNormal{});
   }
 }
 
-static GPUVertFormat *get_subdiv_lnor_format()
+static const GPUVertFormat &get_subdiv_lnor_format()
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
@@ -262,14 +256,14 @@ static GPUVertFormat *get_subdiv_lnor_format()
     GPU_vertformat_alias_add(&format, "lnor");
     GPU_vertformat_alias_add(&format, "vnor");
   }
-  return &format;
+  return format;
 }
 
 void extract_normals_subdiv(const DRWSubdivCache &subdiv_cache,
                             gpu::VertBuf &pos_nor,
                             gpu::VertBuf &lnor)
 {
-  GPU_vertbuf_init_build_on_device(&lnor, get_subdiv_lnor_format(), subdiv_cache.num_subdiv_loops);
+  GPU_vertbuf_init_build_on_device(lnor, get_subdiv_lnor_format(), subdiv_cache.num_subdiv_loops);
   draw_subdiv_build_lnor_buffer(subdiv_cache, &pos_nor, &lnor);
 }
 

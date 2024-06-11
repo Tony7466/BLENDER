@@ -20,6 +20,8 @@ set(INC
   ../../modifiers
   ../../render
   ../../windowmanager
+  ../../io/common
+  ../../io/stl
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -85,6 +87,7 @@ set(SRC
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_import_stl.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
   nodes/node_geo_input_active_camera.cc
@@ -96,6 +99,7 @@ set(SRC
   nodes/node_geo_input_index.cc
   nodes/node_geo_input_instance_rotation.cc
   nodes/node_geo_input_instance_scale.cc
+  nodes/node_geo_input_instance_transform.cc
   nodes/node_geo_input_material.cc
   nodes/node_geo_input_material_index.cc
   nodes/node_geo_input_mesh_edge_angle.cc
@@ -180,6 +184,7 @@ set(SRC
   nodes/node_geo_set_curve_radius.cc
   nodes/node_geo_set_curve_tilt.cc
   nodes/node_geo_set_id.cc
+  nodes/node_geo_set_instance_transform.cc
   nodes/node_geo_set_material.cc
   nodes/node_geo_set_material_index.cc
   nodes/node_geo_set_point_radius.cc
@@ -236,6 +241,14 @@ set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
 )
+
+if(WITH_IO_STL)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_stl
+  )
+  add_definitions(-DWITH_IO_STL)
+endif()
 
 if(WITH_BULLET)
   list(APPEND INC_SYS

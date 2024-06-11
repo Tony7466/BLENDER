@@ -1032,7 +1032,7 @@ static int foreach_libblock_append_add_dependencies_callback(LibraryIDLinkCallba
   const BlendfileLinkAppendContextCallBack *data =
       static_cast<BlendfileLinkAppendContextCallBack *>(cb_data->user_data);
 
-  /* Note: In append case, all dependencies are needed in the items list, to cover potential
+  /* NOTE: In append case, all dependencies are needed in the items list, to cover potential
    * complex cases (e.g. linked data from another library referencing other IDs from the  */
 
   BlendfileLinkAppendContextItem *item = static_cast<BlendfileLinkAppendContextItem *>(
@@ -1718,8 +1718,6 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
   if ((lapp_context->params->flag & FILE_LINK) != 0) {
     blendfile_link_finalize(lapp_context, reports);
   }
-
-  BKE_main_namemap_clear(lapp_context->params->bmain);
 }
 
 void BKE_blendfile_override(BlendfileLinkAppendContext *lapp_context,

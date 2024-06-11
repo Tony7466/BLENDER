@@ -7,6 +7,7 @@
 #include "usd_attribute_utils.hh"
 #include "usd_blend_shape_utils.hh"
 #include "usd_skel_convert.hh"
+#include "usd_utils.hh"
 
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
@@ -27,6 +28,9 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
 #include "BKE_report.hh"
+
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -93,6 +97,29 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
 
   if (mesh == nullptr) {
     return;
+  }
+
+  if (usd_export_context_.export_params.triangulate_meshes) {
+    const bool tag_only = false;
+    const int quad_method = usd_export_context_.export_params.quad_method;
+    const int ngon_method = usd_export_context_.export_params.ngon_method;
+
+    BMeshCreateParams bmesh_create_params{};
+    BMeshFromMeshParams bmesh_from_mesh_params{};
+    bmesh_from_mesh_params.calc_face_normal = true;
+    bmesh_from_mesh_params.calc_vert_normal = true;
+    BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &bmesh_create_params, &bmesh_from_mesh_params);
+
+    BM_mesh_triangulate(bm, quad_method, ngon_method, 4, tag_only, nullptr, nullptr, nullptr);
+
+    Mesh *triangulated_mesh = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
+    BM_mesh_free(bm);
+
+    if (needsfree) {
+      free_export_mesh(mesh);
+    }
+    mesh = triangulated_mesh;
+    needsfree = true;
   }
 
   try {
@@ -235,7 +262,8 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
   }
 
   const pxr::UsdTimeCode timecode = get_export_time_code();
-  const pxr::TfToken pv_name(pxr::TfMakeValidIdentifier(attribute_id.name()));
+  const pxr::TfToken pv_name(
+      make_safe_name(attribute_id.name(), usd_export_context_.export_params.allow_unicode));
   const pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(usd_mesh);
 
   pxr::UsdGeomPrimvar pv_attr = pv_api.CreatePrimvar(pv_name, *pv_type, *pv_interp);
@@ -256,7 +284,8 @@ void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
   }
 
   const pxr::UsdTimeCode timecode = get_export_time_code();
-  const pxr::TfToken pv_name(pxr::TfMakeValidIdentifier(attribute_id.name()));
+  const pxr::TfToken pv_name(
+      make_safe_name(attribute_id.name(), usd_export_context_.export_params.allow_unicode));
   const pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(usd_mesh);
 
   pxr::UsdGeomPrimvar pv_uv = pv_api.CreatePrimvar(
@@ -277,7 +306,8 @@ void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
   }
 
   const pxr::UsdTimeCode timecode = get_export_time_code();
-  const pxr::TfToken pv_name(pxr::TfMakeValidIdentifier(attribute_id.name()));
+  const pxr::TfToken pv_name(
+      make_safe_name(attribute_id.name(), usd_export_context_.export_params.allow_unicode));
   const pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(usd_mesh);
 
   /* Varying type depends on original domain. */
@@ -729,8 +759,9 @@ void USDGenericMeshWriter::write_surface_velocity(const Mesh *mesh, pxr::UsdGeom
 {
   /* Export velocity attribute output by fluid sim, sequence cache modifier
    * and geometry nodes. */
-  CustomDataLayer *velocity_layer = BKE_id_attribute_find(
-      &mesh->id, "velocity", CD_PROP_FLOAT3, bke::AttrDomain::Point);
+  AttributeOwner owner = AttributeOwner::from_id(const_cast<ID *>(&mesh->id));
+  CustomDataLayer *velocity_layer = BKE_attribute_find(
+      owner, "velocity", CD_PROP_FLOAT3, bke::AttrDomain::Point);
 
   if (velocity_layer == nullptr) {
     return;
@@ -850,7 +881,10 @@ void USDMeshWriter::init_blend_shapes(const HierarchyContext &context)
     return;
   }
 
-  create_blend_shapes(this->usd_export_context_.stage, context.object, mesh_prim);
+  create_blend_shapes(this->usd_export_context_.stage,
+                      context.object,
+                      mesh_prim,
+                      usd_export_context_.export_params.allow_unicode);
 }
 
 void USDMeshWriter::do_write(HierarchyContext &context)
