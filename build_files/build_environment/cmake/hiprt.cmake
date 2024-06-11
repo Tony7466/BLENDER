@@ -10,13 +10,11 @@ set(HIPRT_CMAKE_FLAGS ${DEFAULT_CMAKE_FLAGS})
 get_filename_component(_hip_path ${HIP_HIPCC_EXECUTABLE} DIRECTORY)
 get_filename_component(_hip_path ${_hip_path} DIRECTORY)
 
-if(WIN32)
-  set(hiprt_configure set HIP_PATH=${_hip_path} && set PYTHON_BIN=${PYTHON_BINARY} && .\\tools\\premake5\\win\\premake5.exe vs2019)
-  set(hiprt_build msbuild /m build/hiprt.sln /p:Configuration=Release)
-else()
-  set(hiprt_configure HIP_PATH=${_hip_path} ./tools/premake5/linux64/premake5 gmake)
-  set(hiprt_build make -C build -j config=release_x64)
-endif()
+set(HIPRT_EXTRA_ARGS
+  -DCMAKE_BUILD_TYPE=Release
+  -DHIP_PATH=${_hip_path}
+  -DBITCODE=ON
+)
 
 ExternalProject_Add(external_hiprt
   URL file://${PACKAGE_DIR}/${HIPRT_FILE}
@@ -25,26 +23,10 @@ ExternalProject_Add(external_hiprt
   PREFIX ${BUILD_DIR}/hiprt
   INSTALL_DIR ${LIBDIR}/hiprt
 
-  PATCH_COMMAND
-    ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/hiprt/src/external_hiprt < ${PATCH_DIR}/hiprt.diff &&
-    ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/orochi/src/external_orochi ${BUILD_DIR}/hiprt/src/external_hiprt/contrib/Orochi
-
-  CONFIGURE_COMMAND
-    cd ${BUILD_DIR}/hiprt/src/external_hiprt/ &&
-    ${hiprt_configure} --bitcode=true --no-unittest=true --no-encrypt=true
-  BUILD_COMMAND
-    cd ${BUILD_DIR}/hiprt/src/external_hiprt/ &&
-    ${hiprt_build}
-  INSTALL_COMMAND
-    ${CMAKE_COMMAND} -E copy ${BUILD_DIR}/hiprt/src/external_hiprt/dist/bin/Release/${LIBPREFIX}hiprt${HIPRT_LIBRARY_VERSION}64${SHAREDLIBEXT} ${LIBDIR}/hiprt/bin/${LIBPREFIX}hiprt64${SHAREDLIBEXT} &&
-    ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/hiprt ${LIBDIR}/hiprt/include/hiprt &&
-    ${CMAKE_COMMAND} -E copy_directory ${BUILD_DIR}/hiprt/src/external_hiprt/contrib/Orochi/ParallelPrimitives ${LIBDIR}/hiprt/include/orochi/ParallelPrimitives
+  CMAKE_ARGS ${DEFAULT_CMAKE_ARGS} ${HIPRT_EXTRA_ARGS} 
 )
 
-add_dependencies(
-  external_hiprt
-  external_orochi
-)
+# TODO: check installed files are as expected.
 
 if(WIN32)
   if(BUILD_MODE STREQUAL Release)
