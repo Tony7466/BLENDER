@@ -20,6 +20,8 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "ED_node.hh"
+
 #include "MOD_nodes.hh"
 
 namespace blender::nodes::inverse_eval {
@@ -374,9 +376,6 @@ GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext *initia
 
 static bool set_socket_value(bNodeSocket &socket, const SocketValueVariant &value_variant)
 {
-  bNodeTree &tree = socket.owner_tree();
-  BKE_ntree_update_tag_socket_property(&tree, &socket);
-
   switch (socket.type) {
     case SOCK_FLOAT: {
       const float value = value_variant.get<float>();
@@ -390,9 +389,6 @@ static bool set_socket_value(bNodeSocket &socket, const SocketValueVariant &valu
 
 static bool set_value_node_value(bNode &node, const SocketValueVariant &value_variant)
 {
-  bNodeTree &tree = node.owner_tree();
-  BKE_ntree_update_tag_node_property(&tree, &node);
-
   switch (node.type) {
     case SH_NODE_VALUE: {
       bNodeSocket &socket = node.output_socket(0);
@@ -450,12 +446,17 @@ bool try_change_link_target_and_update_source(Object &object,
   Set<NodeInContext> added_nodes;
   std::priority_queue<NodeInContext> nodes_to_handle;
 
+  Vector<std::pair<bNodeTree *, bNodeSocket *>> modified_sockets;
+  Vector<std::pair<bNodeTree *, bNode *>> modified_nodes;
+
   const auto set_input_value_and_forward = [&](const ComputeContext *context,
                                                const bNodeSocket &socket,
                                                const SocketValueVariant &new_value) {
     value_by_socket.add_overwrite({context, &socket}, new_value);
     if (!socket.is_logically_linked()) {
-      set_socket_value(const_cast<bNodeSocket &>(socket), new_value);
+      bNodeSocket &socket_mutable = const_cast<bNodeSocket &>(socket);
+      set_socket_value(socket_mutable, new_value);
+      modified_sockets.append({&socket_mutable.owner_tree(), &socket_mutable});
       return;
     }
     for (const bNodeLink *link : socket.directly_linked_links()) {
@@ -502,7 +503,9 @@ bool try_change_link_target_and_update_source(Object &object,
     if (is_supported_value_node(node)) {
       const SocketValueVariant &new_value = value_by_socket.lookup(
           {context, &node.output_socket(0)});
-      set_value_node_value(const_cast<bNode &>(node), new_value);
+      bNode &node_mutable = const_cast<bNode &>(node);
+      set_value_node_value(node_mutable, new_value);
+      modified_nodes.append({&node_mutable.owner_tree(), &node_mutable});
     }
     else if (node.is_reroute()) {
       const SocketValueVariant &value = value_by_socket.lookup({context, &node.output_socket(0)});
@@ -575,6 +578,13 @@ bool try_change_link_target_and_update_source(Object &object,
         set_input_value_and_forward(context, socket, value);
       }
     }
+  }
+
+  for (auto &&[tree, socket] : modified_sockets) {
+    BKE_ntree_update_tag_socket_property(tree, socket);
+  }
+  for (auto &&[tree, node] : modified_nodes) {
+    BKE_ntree_update_tag_node_property(tree, node);
   }
 
   return true;
