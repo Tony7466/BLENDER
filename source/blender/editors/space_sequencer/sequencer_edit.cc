@@ -3535,7 +3535,7 @@ static int sequencer_set_strip_length_invoke(bContext *C, wmOperator *op, const 
     const int strip_length = SEQ_time_right_handle_frame_get(scene, seq) -
                              SEQ_time_left_handle_frame_get(scene, seq);
     RNA_int_set(op->ptr, "length", strip_length);
-    return WM_operator_props_popup(C, op, event);
+    return WM_operator_props_popup_confirm(C, op, event);
   }
 
   return sequencer_set_strip_length_exec(C, op);
