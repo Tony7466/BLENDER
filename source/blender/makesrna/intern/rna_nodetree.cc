@@ -8578,6 +8578,7 @@ static void def_cmp_cryptomatte_common(StructRNA *srna)
       prop,
       "Remove",
       "Remove object or material from matte, by picking a color from the Pick output");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeCryptomatte_update_remove");
 }
 
