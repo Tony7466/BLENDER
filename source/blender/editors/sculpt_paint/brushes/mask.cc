@@ -79,7 +79,7 @@ static void calc_new_mask_values(const Span<int> verts,
 }
 
 static void calc_faces(const Brush &brush,
-                       float strength,
+                       const float strength,
                        const Span<float3> positions,
                        const Span<float3> vert_normals,
                        const PBVHNode &node,
