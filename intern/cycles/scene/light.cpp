@@ -287,6 +287,10 @@ void LightManager::device_update_distribution(Device *,
                                               Progress &progress)
 {
   KernelIntegrator *kintegrator = &dscene->data.integrator;
+  if (kintegrator->use_light_tree) {
+    dscene->light_distribution.free();
+    return;
+  }
 
   /* Update CDF over lights. */
   progress.set_status("Updating Lights", "Computing distribution");
@@ -294,9 +298,22 @@ void LightManager::device_update_distribution(Device *,
   /* Counts emissive triangles in the scene. */
   size_t num_triangles = 0;
 
+  const int num_lights = kintegrator->num_lights;
+  const size_t max_num_triangles = std::numeric_limits<int>::max() - 1 - kintegrator->num_lights;
   foreach (Object *object, scene->objects) {
     if (progress.get_cancel()) {
       return;
+    }
+
+    if (num_triangles >= max_num_triangles) {
+      num_triangles = min(num_triangles, max_num_triangles);
+      progress.set_status(
+          "Updating Lights",
+          "Warning: Number of emissive triangles exceeds the limit, the result might be "
+          "incorrect. Try disabling Emission Sampling on some emissive materials");
+      VLOG_WARNING << "Number of emissive triangles exceeds the limit, the result might be "
+                      "incorrect. Try disabling Emission Sampling on some emissive materials.";
+      break;
     }
 
     if (!object->usable_as_light()) {
@@ -319,16 +336,10 @@ void LightManager::device_update_distribution(Device *,
     }
   }
 
-  const size_t num_lights = kintegrator->num_lights;
   const size_t num_distribution = num_triangles + num_lights;
 
   /* Distribution size. */
   kintegrator->num_distribution = num_distribution;
-
-  if (kintegrator->use_light_tree) {
-    dscene->light_distribution.free();
-    return;
-  }
 
   VLOG_INFO << "Use light distribution with " << num_distribution << " emitters.";
 
@@ -343,6 +354,11 @@ void LightManager::device_update_distribution(Device *,
   foreach (Object *object, scene->objects) {
     if (progress.get_cancel()) {
       return;
+    }
+
+    if (offset == num_triangles) {
+      /* Happens when number of emissive triangles exceeds the limit. */
+      break;
     }
 
     if (!object->usable_as_light()) {
@@ -405,11 +421,16 @@ void LightManager::device_update_distribution(Device *,
 
         totarea += triangle_area(p1, p2, p3);
       }
+
+      if (offset == num_triangles) {
+        break;
+      }
     }
 
     j++;
   }
 
+  assert(offset == num_triangles);
   const float trianglearea = totarea;
 
   /* Lights. */
