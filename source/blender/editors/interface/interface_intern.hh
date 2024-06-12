@@ -1499,7 +1499,6 @@ uiBlock *ui_block_find_mouse_over(const ARegion *region, const wmEvent *event, b
 
 uiBut *ui_region_find_first_but_test_flag(ARegion *region, int flag_include, int flag_exclude);
 uiBut *ui_region_find_active_but(ARegion *region) ATTR_WARN_UNUSED_RESULT;
-uiBut *ui_region_find_always_semi_modal_active_but(const ARegion *region);
 bool ui_region_contains_point_px(const ARegion *region, const int xy[2])
     ATTR_NONNULL(1, 2) ATTR_WARN_UNUSED_RESULT;
 bool ui_region_contains_rect_px(const ARegion *region, const rcti *rect_px);
