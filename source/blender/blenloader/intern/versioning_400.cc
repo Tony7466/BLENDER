@@ -4167,12 +4167,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, space_link, &area->spacedata) {
-          switch (space_link->spacetype) {
-            case SPACE_NODE: {
-              SpaceNode *space_node = reinterpret_cast<SpaceNode *>(space_link);
-              space_node->flag &= ~SNODE_FLAG_UNUSED_5;
-              break;
-            }
+          if (space_link->spacetype == SPACE_NODE) {
+            SpaceNode *space_node = reinterpret_cast<SpaceNode *>(space_link);
+            space_node->flag &= ~SNODE_FLAG_UNUSED_5;
           }
         }
       }
