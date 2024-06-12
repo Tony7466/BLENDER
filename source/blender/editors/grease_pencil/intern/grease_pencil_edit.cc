@@ -3015,6 +3015,7 @@ static int grease_pencil_set_curve_type_exec(bContext *C, wmOperator *op)
     options.keep_catmull_rom_shape_as_nurbs = use_handles;
 
     curves = geometry::convert_curves(curves, strokes, dst_type, {}, options);
+    info.drawing.tag_topology_changed();
 
     changed = true;
   });
