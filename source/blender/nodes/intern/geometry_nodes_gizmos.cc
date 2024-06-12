@@ -19,6 +19,8 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
+#include "ED_node.hh"
+
 namespace blender::nodes::gizmos {
 
 bool is_builtin_gizmo_node(const bNode &node)
@@ -216,37 +218,110 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
   }
 }
 
-void foreach_active_gizmo(const Object & /*object*/,
-                          const NodesModifierData &nmd,
-                          const wmWindowManager & /*wm*/,
-                          ComputeContextBuilder &compute_context_builder,
-                          const ForeachGizmoFn fn)
+static void foreach_active_gizmo_in_open_node_editor(
+    const SpaceNode &snode,
+    const Object &object,
+    const NodesModifierData &nmd,
+    ComputeContextBuilder &compute_context_builder,
+    const ForeachGizmoFn fn)
 {
-  /* TODO: Find gizmos from open node editors. */
-
-  if (!nmd.node_group) {
+  if (snode.nodetree == nullptr) {
     return;
   }
+  if (!snode.edittree->runtime->gizmo_propagation) {
+    return;
+  }
+  const std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
+      ed::space_node::get_modifier_for_node_editor(snode);
+  if (!object_and_modifier) {
+    return;
+  }
+  if (object_and_modifier->object != &object) {
+    return;
+  }
+  if (object_and_modifier->nmd != &nmd) {
+    return;
+  }
+
+  compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
+  BLI_SCOPED_DEFER([&]() { compute_context_builder.pop(); });
+
+  if (!ed::space_node::push_compute_context_for_tree_path(snode, compute_context_builder)) {
+    return;
+  }
+  snode.edittree->ensure_topology_cache();
+  const TreeGizmoPropagation &gizmo_propagation = *snode.edittree->runtime->gizmo_propagation;
+  Set<ie::SocketElem> used_gizmo_inputs;
+  for (auto &&item : gizmo_propagation.gizmo_inputs_by_value_nodes.items()) {
+    const bNode &node = *item.key.node;
+    if (node.flag & NODE_SELECT) {
+      used_gizmo_inputs.add_multiple(item.value);
+    }
+  }
+  for (auto &&item : gizmo_propagation.gizmo_inputs_by_node_inputs.items()) {
+    const bNodeSocket &socket = *item.key.socket;
+    const bNode &node = socket.owner_node();
+    if (node.flag & NODE_SELECT) {
+      used_gizmo_inputs.add_multiple(item.value);
+    }
+  }
+  for (const ie::SocketElem &gizmo_input : used_gizmo_inputs) {
+    foreach_gizmo_for_input(gizmo_input, compute_context_builder, *snode.edittree, fn);
+  }
+}
+
+static void foreach_active_gizmo_exposed_to_modifier(
+    const NodesModifierData &nmd,
+    ComputeContextBuilder &compute_context_builder,
+    const ForeachGizmoFn fn)
+{
   const bNodeTree &tree = *nmd.node_group;
   if (!tree.runtime->gizmo_propagation) {
     return;
   }
   compute_context_builder.push<bke::ModifierComputeContext>(nmd.modifier.name);
-  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_value_nodes.items()) {
-    for (const ie::SocketElem &socket_elem : item.value) {
-      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
-    }
-  }
-  for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_node_inputs.items()) {
-    for (const ie::SocketElem &socket_elem : item.value) {
-      foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
-    }
-  }
+  BLI_SCOPED_DEFER([&]() { compute_context_builder.pop(); });
+
   for (auto &&item : tree.runtime->gizmo_propagation->gizmo_inputs_by_group_inputs.items()) {
     for (const ie::SocketElem &socket_elem : item.value) {
       foreach_gizmo_for_input(socket_elem, compute_context_builder, tree, fn);
     }
   }
+}
+
+void foreach_active_gizmo(const Object &object,
+                          const NodesModifierData &nmd,
+                          const wmWindowManager &wm,
+                          ComputeContextBuilder &compute_context_builder,
+                          const ForeachGizmoFn fn)
+{
+  if (!nmd.node_group) {
+    return;
+  }
+
+  LISTBASE_FOREACH (const wmWindow *, window, &wm.windows) {
+    const bScreen *active_screen = BKE_workspace_active_screen_get(window->workspace_hook);
+    Vector<const bScreen *> screens = {active_screen};
+    if (ELEM(active_screen->state, SCREENMAXIMIZED, SCREENFULL)) {
+      const ScrArea *area = static_cast<const ScrArea *>(active_screen->areabase.first);
+      screens.append(area->full);
+    }
+    for (const bScreen *screen : screens) {
+      LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+        const SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
+        if (sl == nullptr) {
+          continue;
+        }
+        if (sl->spacetype != SPACE_NODE) {
+          continue;
+        }
+        const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
+        foreach_active_gizmo_in_open_node_editor(snode, object, nmd, compute_context_builder, fn);
+      }
+    }
+  }
+
+  foreach_active_gizmo_exposed_to_modifier(nmd, compute_context_builder, fn);
 }
 
 ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
