@@ -25,9 +25,6 @@ from bl_ui.space_userpref import (
     USERPREF_MT_extensions_active_repo,
 )
 
-from . import repo_status_text
-
-
 # -----------------------------------------------------------------------------
 # Generic Utilities
 
@@ -49,26 +46,6 @@ def sizes_as_percentage_string(size_partial: int, size_final: int) -> str:
         percent = size_partial / size_final
 
     return "{:-6.2f}%".format(percent * 100)
-
-
-def license_info_to_text(license_list):
-    # See: https://spdx.org/licenses/
-    # - Note that we could include all, for now only common, GPL compatible licenses.
-    # - Note that many of the human descriptions are not especially more humanly readable
-    #   than the short versions, so it's questionable if we should attempt to add all of these.
-    _spdx_id_to_text = {
-        "GPL-2.0-only": "GNU General Public License v2.0 only",
-        "GPL-2.0-or-later": "GNU General Public License v2.0 or later",
-        "GPL-3.0-only": "GNU General Public License v3.0 only",
-        "GPL-3.0-or-later": "GNU General Public License v3.0 or later",
-    }
-    result = []
-    for item in license_list:
-        if item.startswith("SPDX:"):
-            item = item[5:]
-            item = _spdx_id_to_text.get(item, item)
-        result.append(item)
-    return ", ".join(result)
 
 
 def pkg_repo_and_id_from_theme_path(repos_all, filepath):
@@ -315,7 +292,7 @@ class notify_info:
     _update_state = None
 
     @staticmethod
-    def update_ensure(context, repos):
+    def update_ensure(repos):
         """
         Ensure updates are triggered if the preferences display extensions
         and an online sync has not yet run.
@@ -387,6 +364,10 @@ def extensions_panel_draw_online_extensions_request_impl(
     row.operator("extensions.userpref_allow_online", text="Allow Online Access", icon='CHECKMARK')
 
 
+extensions_map_from_legacy_addons = None
+extensions_map_from_legacy_addons_url = None
+
+
 # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
 def extensions_map_from_legacy_addons_ensure():
     import os
@@ -409,10 +390,6 @@ def extensions_map_from_legacy_addons_reverse_lookup(pkg_id):
         if pkg_id == value_pkg_id:
             return key_addon_module_name
     return ""
-
-
-extensions_map_from_legacy_addons = None
-extensions_map_from_legacy_addons_url = None
 
 
 # NOTE: this can be removed once upgrading from 4.1 is no longer relevant.
@@ -444,7 +421,6 @@ def extensions_panel_draw_missing_with_extension_impl(
 
     box = layout_panel.box()
     box.label(text="Add-ons previously shipped with Blender are now available from extensions.blender.org.")
-    can_install = True
 
     if repo is None:
         # Most likely the user manually removed this.
@@ -542,11 +518,13 @@ def extensions_panel_draw_impl(
         repo_cache_store_refresh_from_prefs,
     )
 
-    from . import repo_cache_store
+    from . import repo_cache_store_ensure
+
+    repo_cache_store = repo_cache_store_ensure()
 
     # This isn't elegant, but the preferences aren't available on registration.
     if not repo_cache_store.is_init():
-        repo_cache_store_refresh_from_prefs()
+        repo_cache_store_refresh_from_prefs(repo_cache_store)
 
     layout = self.layout
 
@@ -563,7 +541,7 @@ def extensions_panel_draw_impl(
     repos_all = extension_repos_read()
 
     if bpy.app.online_access:
-        if notify_info.update_ensure(context, repos_all):
+        if notify_info.update_ensure(repos_all):
             # TODO: should be part of the status bar.
             from .bl_extension_notify import update_ui_text
             text, icon = update_ui_text()
@@ -576,7 +554,7 @@ def extensions_panel_draw_impl(
     show_themes = filter_by_type in {"", "theme"}
     if show_addons:
         used_addon_module_name_map = {addon.module: addon for addon in prefs.addons}
-        addon_modules = [mod for mod in addon_utils.modules(refresh=False)]
+        addon_modules = addon_utils.modules(refresh=False)
 
     if show_themes:
         active_theme_info = pkg_repo_and_id_from_theme_path(repos_all, prefs.themes[0].filepath)
@@ -627,23 +605,24 @@ def extensions_panel_draw_impl(
                 local_ex = None
             continue
 
+        has_remote = (repos_all[repo_index].remote_url != "")
         if pkg_manifest_remote is None:
-            repo = repos_all[repo_index]
-            has_remote = (repo.remote_url != "")
             if has_remote:
                 # NOTE: it would be nice to detect when the repository ran sync and it failed.
                 # This isn't such an important distinction though, the main thing users should be aware of
                 # is that a "sync" is required.
-                errors_on_draw.append("Repository: \"{:s}\" must sync with the remote repository.".format(repo.name))
-            del repo
+                errors_on_draw.append(
+                    "Repository: \"{:s}\" must sync with the remote repository.".format(
+                        repos_all[repo_index].name,
+                    )
+                )
             continue
-        else:
-            repo = repos_all[repo_index]
-            has_remote = (repo.remote_url != "")
-            del repo
+
+        # Read-only.
+        is_system_repo = repos_all[repo_index].source == 'SYSTEM'
 
         for pkg_id, item_remote in pkg_manifest_remote.items():
-            if filter_by_type and (filter_by_type != item_remote["type"]):
+            if filter_by_type and (filter_by_type != item_remote.type):
                 continue
             if search_lower and (not pkg_info_check_exclude_filter(item_remote, search_lower)):
                 continue
@@ -655,7 +634,7 @@ def extensions_panel_draw_impl(
                 continue
 
             if extension_tags:
-                if tags := item_remote.get("tags"):
+                if tags := item_remote.tags:
                     if not any(True for t in tags if extension_tags.get(t, True)):
                         continue
                 else:
@@ -664,7 +643,7 @@ def extensions_panel_draw_impl(
 
             is_addon = False
             is_theme = False
-            match item_remote["type"]:
+            match item_remote.type:
                 case "add-on":
                     is_addon = True
                 case "theme":
@@ -690,12 +669,12 @@ def extensions_panel_draw_impl(
             if enabled_only and (not is_enabled):
                 continue
 
-            item_version = item_remote["version"]
+            item_version = item_remote.version
             if item_local is None:
                 item_local_version = None
                 is_outdated = False
             else:
-                item_local_version = item_local["version"]
+                item_local_version = item_local.version
                 is_outdated = item_local_version != item_version
 
             if updates_only:
@@ -764,7 +743,7 @@ def extensions_panel_draw_impl(
 
             sub = row.row()
             sub.active = is_enabled
-            sub.label(text=item_remote["name"], translate=False)
+            sub.label(text=item_remote.name, translate=False)
             del sub
 
             row_right = row.row()
@@ -798,9 +777,9 @@ def extensions_panel_draw_impl(
                 col_b = split.column()
 
                 # The full tagline may be multiple lines (not yet supported by Blender's UI).
-                col_a.label(text="{:s}.".format(item_remote["tagline"]), translate=False)
+                col_a.label(text="{:s}.".format(item_remote.tagline), translate=False)
 
-                if value := item_remote.get("website"):
+                if value := item_remote.website:
                     # Use half size button, for legacy add-ons there are two, here there is one
                     # however one large button looks silly, so use a half size still.
                     col_a.split(factor=0.5).operator(
@@ -816,10 +795,13 @@ def extensions_panel_draw_impl(
                 if is_installed:
                     rowsub = col_b.row()
                     rowsub.alignment = 'RIGHT'
-                    props = rowsub.operator("extensions.package_uninstall", text="Uninstall")
-                    props.repo_index = repo_index
-                    props.pkg_id = pkg_id
-                    del props, rowsub
+                    if is_system_repo:
+                        rowsub.operator("extensions.package_uninstall_system", text="Uninstall")
+                    else:
+                        props = rowsub.operator("extensions.package_uninstall", text="Uninstall")
+                        props.repo_index = repo_index
+                        props.pkg_id = pkg_id
+                        del props, rowsub
 
                 del split, col_a, col_b
 
@@ -835,16 +817,14 @@ def extensions_panel_draw_impl(
                     # WARNING: while this is documented to be a dict, old packages may contain a list of strings.
                     # As it happens dictionary keys & list values both iterate over string,
                     # however we will want to show the dictionary values eventually.
-                    if (value := item_remote.get("permissions")):
+                    if (value := item_remote.permissions):
                         col_b.label(text=", ".join([iface_(x.title()) for x in value]), translate=False)
                     else:
                         col_b.label(text="No permissions specified")
                     del value
 
-                # Remove the maintainers email while it's not private, showing prominently
-                # could cause maintainers to get direct emails instead of issue tracking systems.
                 col_a.label(text="Maintainer")
-                col_b.label(text=item_remote["maintainer"].split("<", 1)[0].rstrip(), translate=False)
+                col_b.label(text=item_remote.maintainer, translate=False)
 
                 col_a.label(text="Version")
                 if is_outdated:
@@ -857,10 +837,10 @@ def extensions_panel_draw_impl(
 
                 if has_remote:
                     col_a.label(text="Size")
-                    col_b.label(text=size_as_fmt_string(item_remote["archive_size"]), translate=False)
+                    col_b.label(text=size_as_fmt_string(item_remote.archive_size), translate=False)
 
                 col_a.label(text="License")
-                col_b.label(text=license_info_to_text(item_remote["license"]), translate=False)
+                col_b.label(text=item_remote.license, translate=False)
 
                 if len(repos_all) > 1:
                     col_a.label(text="Repository")
@@ -965,9 +945,9 @@ class USERPREF_PT_extensions_tags(Panel):
     bl_region_type = 'HEADER'
     bl_ui_units_x = 13
 
-    def draw(self, context):
+    def draw(self, _context):
         # Extended by the `bl_pkg` add-on.
-        layout = self.layout
+        pass
 
 
 class USERPREF_MT_extensions_settings(Menu):
@@ -980,24 +960,19 @@ class USERPREF_MT_extensions_settings(Menu):
 
         addon_prefs = prefs.addons[__package__].preferences
 
-        layout.operator("extensions.repo_sync_all", text="Check for Updates", icon='FILE_REFRESH')
+        layout.operator("extensions.repo_sync_all", icon='FILE_REFRESH')
+        layout.operator("extensions.repo_refresh_all")
 
         layout.separator()
 
         layout.operator("extensions.package_upgrade_all", text="Install Available Updates", icon='IMPORT')
         layout.operator("extensions.package_install_files", text="Install from Disk...")
 
-        if prefs.experimental.use_extension_utils:
+        if prefs.experimental.use_extensions_debug:
             layout.separator()
 
             layout.prop(addon_prefs, "show_development_reports")
 
-            layout.separator()
-
-            # We might want to expose this for all users, the purpose of this
-            # is to refresh after changes have been made to the repos outside of Blender
-            # it's disputable if this is a common case.
-            layout.operator("preferences.addon_refresh", text="Refresh (file-system)", icon='FILE_REFRESH')
             layout.separator()
 
             layout.operator("extensions.package_install_marked", text="Install Marked", icon='IMPORT')
@@ -1011,6 +986,10 @@ class USERPREF_MT_extensions_settings(Menu):
 
 
 def extensions_panel_draw(panel, context):
+    from . import (
+        repo_status_text,
+    )
+
     prefs = context.preferences
 
     from .bl_extension_ops import (
@@ -1019,7 +998,7 @@ def extensions_panel_draw(panel, context):
 
     addon_prefs = prefs.addons[__package__].preferences
 
-    show_development = prefs.experimental.use_extension_utils
+    show_development = prefs.experimental.use_extensions_debug
     show_development_reports = show_development and addon_prefs.show_development_reports
 
     wm = context.window_manager
@@ -1121,11 +1100,13 @@ def extensions_panel_draw(panel, context):
 
 def tags_current(wm):
     from .bl_extension_ops import blender_filter_by_type_map
-    from . import repo_cache_store
+    from . import repo_cache_store_ensure
+
+    repo_cache_store = repo_cache_store_ensure()
 
     # This isn't elegant, but the preferences aren't available on registration.
     if not repo_cache_store.is_init():
-        repo_cache_store_refresh_from_prefs()
+        repo_cache_store_refresh_from_prefs(repo_cache_store)
 
     filter_by_type = blender_filter_by_type_map[wm.extension_type]
 
@@ -1134,15 +1115,15 @@ def tags_current(wm):
         if pkg_manifest_remote is None:
             continue
         for item_remote in pkg_manifest_remote.values():
-            if filter_by_type != item_remote["type"]:
+            if filter_by_type != item_remote.type:
                 continue
-            if pkg_tags := item_remote.get("tags"):
+            if pkg_tags := item_remote.tags:
                 tags.update(pkg_tags)
 
     if filter_by_type == "add-on":
         # Legacy add-on categories as tags.
         import addon_utils
-        addon_modules = [mod for mod in addon_utils.modules(refresh=False)]
+        addon_modules = addon_utils.modules(refresh=False)
         for mod in addon_modules:
             module_name = mod.__name__
             is_extension = addon_utils.check_extension(module_name)
@@ -1177,14 +1158,14 @@ def tags_refresh(wm):
     for tag in tags_to_add:
         tags_idprop[tag] = True
 
-    return tags_idprop, list(sorted(tags_next))
+    return list(sorted(tags_next))
 
 
 def tags_panel_draw(panel, context):
     from bpy.utils import escape_identifier
     layout = panel.layout
     wm = context.window_manager
-    tags_idprop, tags_sorted = tags_refresh(wm)
+    tags_sorted = tags_refresh(wm)
     layout.label(text="Show Tags")
     # Add one so the first row is longer in the case of an odd number.
     tags_len_half = (len(tags_sorted) + 1) // 2
@@ -1196,7 +1177,7 @@ def tags_panel_draw(panel, context):
         col.prop(wm.extension_tags, "[\"{:s}\"]".format(escape_identifier(t)))
 
 
-def extensions_repo_active_draw(self, context):
+def extensions_repo_active_draw(self, _context):
     # Draw icon buttons on the right hand side of the UI-list.
     from . import repo_active_or_none
     layout = self.layout
