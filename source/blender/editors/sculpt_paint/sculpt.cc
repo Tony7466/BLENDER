@@ -5487,7 +5487,7 @@ static void sculpt_brush_stroke_init(bContext *C)
   SculptSession &ss = *CTX_data_active_object(C)->sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
-  view3d_operator_needs_opengl(C);
+  // view3d_operator_needs_opengl(C);
   sculpt_brush_init_tex(sd, ss);
 
   const bool needs_colors = SCULPT_tool_is_paint(brush->sculpt_tool) &&
