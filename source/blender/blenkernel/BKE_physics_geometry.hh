@@ -66,6 +66,10 @@ class PhysicsGeometry {
     std::string velocity;
     std::string angular_velocity;
     std::string activation_state;
+    std::string friction;
+    std::string rolling_friction;
+    std::string spinning_friction;
+    std::string restitution;
   } builtin_attributes;
 
   PhysicsGeometry();

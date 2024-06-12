@@ -619,7 +619,12 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "position",
     "rotation",
     "velocity",
-    "angular_velocity"};
+    "angular_velocity",
+    "activation_state",
+    "friction",
+    "rolling_friction",
+    "spinning_friction",
+    "restitution"};
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states)
@@ -1331,6 +1336,57 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             physics_access,
                             nullptr);
 
+  constexpr auto friction_get_fn = [](const btRigidBody &body) -> float {
+    return body.getFriction();
+  };
+  constexpr auto friction_set_fn = [](btRigidBody &body, float value) { body.setFriction(value); };
+  static BuiltinRigidBodyAttributeProvider<float, friction_get_fn, friction_set_fn> body_friction(
+      PhysicsGeometry::builtin_attributes.friction,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
+  constexpr auto rolling_friction_get_fn = [](const btRigidBody &body) -> float {
+    return body.getRollingFriction();
+  };
+  constexpr auto rolling_friction_set_fn = [](btRigidBody &body, float value) {
+    body.setRollingFriction(value);
+  };
+  static BuiltinRigidBodyAttributeProvider<float, rolling_friction_get_fn, rolling_friction_set_fn>
+      body_rolling_friction(PhysicsGeometry::builtin_attributes.rolling_friction,
+                            AttrDomain::Point,
+                            BuiltinAttributeProvider::NonDeletable,
+                            physics_access,
+                            nullptr);
+
+  constexpr auto spinning_friction_get_fn = [](const btRigidBody &body) -> float {
+    return body.getSpinningFriction();
+  };
+  constexpr auto spinning_friction_set_fn = [](btRigidBody &body, float value) {
+    body.setSpinningFriction(value);
+  };
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           spinning_friction_get_fn,
+                                           spinning_friction_set_fn>
+      body_spinning_friction(PhysicsGeometry::builtin_attributes.spinning_friction,
+                             AttrDomain::Point,
+                             BuiltinAttributeProvider::NonDeletable,
+                             physics_access,
+                             nullptr);
+
+  constexpr auto restitution_get_fn = [](const btRigidBody &body) -> float {
+    return body.getRestitution();
+  };
+  constexpr auto restitution_set_fn = [](btRigidBody &body, float value) {
+    body.setRestitution(value);
+  };
+  static BuiltinRigidBodyAttributeProvider<float, restitution_get_fn, restitution_set_fn>
+      body_restitution(PhysicsGeometry::builtin_attributes.restitution,
+                       AttrDomain::Point,
+                       BuiltinAttributeProvider::NonDeletable,
+                       physics_access,
+                       nullptr);
   return ComponentAttributeProviders({&body_id,
                                       &body_simulated,
                                       &body_static,
@@ -1341,7 +1397,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_rotation,
                                       &body_velocity,
                                       &body_angular_velocity,
-                                      &body_activation_state},
+                                      &body_activation_state,
+                                      &body_friction,
+                                      &body_rolling_friction,
+                                      &body_spinning_friction,
+                                      &body_restitution},
                                      {});
 }
 
