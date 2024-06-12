@@ -3096,6 +3096,7 @@ static int grease_pencil_set_handle_type_exec(bContext *C, wmOperator *op)
 
     curves.calculate_bezier_auto_handles();
     curves.tag_topology_changed();
+    info.drawing.tag_topology_changed();
 
     changed = true;
   });
