@@ -1019,8 +1019,6 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
     strips.append(seq);
   }
 
-  BLI_assert(strips.size() <= 2);
-
   /* Ensure, that `seq1` is left strip and `seq2` right strip. */
   if (strips.size() == 2 && strip_to_frame_distance(scene, v2d, strips[0], mouse_co[0]) <
                                 strip_to_frame_distance(scene, v2d, strips[1], mouse_co[0]))
