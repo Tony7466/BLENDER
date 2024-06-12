@@ -437,7 +437,7 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
     for (size_t x = 0; x < size_t(g->dims[0]); x++) {
       size_t offs_in = (y * size_t(dest_w) * 4) + (x * 4);
       size_t offs_out = (y * size_t(g->dims[0]) + x);
-      g->bitmap[offs_out] = render_bmp[offs_in + 3];
+      g->bitmap[offs_out] = render_bmp[size_t(offs_in + 3)];
     }
   }
 
