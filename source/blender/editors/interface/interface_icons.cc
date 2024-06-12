@@ -10,7 +10,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <map>
 
 #include "MEM_guardedalloc.h"
 
@@ -1841,25 +1840,6 @@ static int get_draw_size(enum eIconSizes size)
   }
 }
 
-#define DEF_ICON(name) STRINGIFY(name),
-#define DEF_ICON_BLANK(name) STRINGIFY(name),
-#define DEF_ICON_VECTOR(name)
-
-const char *icon_names[] = {
-#include "UI_icons.hh"
-};
-
-#undef DEF_ICON
-#undef DEF_ICON_BLANK
-#undef DEF_ICON_VECTOR
-
-static std::string icon_to_svg_file_name(BIFIconID_Static icon)
-{
-  std::string result = icon_names[icon];
-  std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-  return result + std::string(".svg");
-}
-
 static void icon_draw_size(float x,
                            float y,
                            int icon_id,
@@ -1973,9 +1953,7 @@ static void icon_draw_size(float x,
       UI_GetThemeColor4fv(TH_TEXT, color);
     }
     color[3] = alpha;
-    std::string file_name = icon_to_svg_file_name(static_cast<BIFIconID_Static>(icon_id));
     BLF_draw_svg_icon(uint(icon_id),
-                      file_name,
                       x,
                       y,
                       float(draw_size) / aspect,

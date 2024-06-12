@@ -42,6 +42,9 @@ struct rcti;
 /** Maximum number of bytes to use for cached data nodes. 0 is default of 200,000. */
 #define BLF_CACHE_BYTES 400000
 
+/** Offset from icon id to Unicode private range. */
+#define BLF_ICON_OFFSET 0x100000
+
 /**
  * We assume square pixels at a fixed DPI of 72, scaling only the size. Therefore
  * font size = points = pixels, i.e. a size of 20 will result in a 20-pixel EM square.
@@ -95,7 +98,6 @@ void blf_font_draw__wrap(FontBLF *font, const char *str, size_t str_len, ResultB
 
 void blf_draw_svg_icon(FontBLF *font,
                        uint icon_id,
-                       blender::StringRef file_name,
                        float x,
                        float y,
                        float size,
@@ -175,7 +177,7 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, uint charcode, uint
 GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int32_t pen_x);
 #endif
 
-GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, uint icon_id, blender::StringRef file_name);
+GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, uint icon_id);
 
 /**
  * Convert a character's outlines into curves.

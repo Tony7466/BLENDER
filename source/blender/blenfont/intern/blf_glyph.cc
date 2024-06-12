@@ -43,6 +43,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
 
+#include "UI_resources.hh"
+
 #include "BLI_strict_flags.h" /* Keep last. */
 
 #include "nanosvgrast.h"
@@ -346,10 +348,29 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
   return gc->glyphs.lookup(key).get();
 }
 
-static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc,
-                                         uint charcode,
-                                         blender::StringRef file_name)
+#define DEF_ICON(name) STRINGIFY(name),
+#define DEF_ICON_BLANK(name) STRINGIFY(name),
+#define DEF_ICON_VECTOR(name)
+
+const char *icon_names2[] = {
+#include "UI_icons.hh"
+};
+
+#undef DEF_ICON
+#undef DEF_ICON_BLANK
+#undef DEF_ICON_VECTOR
+
+static std::string icon_to_svg_file_name(BIFIconID_Static icon)
 {
+  std::string result = icon_names2[icon];
+  std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+  return result + std::string(".svg");
+}
+
+static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
+{
+  const std::string file_name = icon_to_svg_file_name(
+      BIFIconID_Static(charcode - BLF_ICON_OFFSET));
   const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
   char filepath[1024];
   BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.data());
@@ -1373,15 +1394,13 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
   return g;
 }
 
-GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc,
-                                const uint icon_id,
-                                blender::StringRef file_name)
+GlyphBLF *blf_glyph_ensure_icon(GlyphCacheBLF *gc, const uint icon_id)
 {
-  GlyphBLF *g = blf_glyph_cache_find_glyph(gc, 0x100000 + icon_id, 0);
+  GlyphBLF *g = blf_glyph_cache_find_glyph(gc, icon_id + BLF_ICON_OFFSET, 0);
   if (g) {
     return g;
   }
-  return blf_glyph_cache_add_svg(gc, 0x100000 + icon_id, file_name);
+  return blf_glyph_cache_add_svg(gc, icon_id + BLF_ICON_OFFSET);
 }
 
 #ifdef BLF_SUBPIXEL_AA

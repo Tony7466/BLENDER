@@ -6,6 +6,7 @@ set(INC
   PUBLIC .
   ../blenkernel
   ../blentranslation
+  ../editors/include
   ../gpu
   ../imbuf
   ../makesrna
@@ -26,6 +27,7 @@ set(SRC
   BLF_api.hh
   intern/blf_internal.hh
   intern/blf_internal_types.hh
+  ../editors/include/UI_icons.hh
 )
 
 set(LIB
