@@ -74,9 +74,7 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
 static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_global_vertices)
 {
   float4 vert;
-  /* TODO: (Before set for review ) We _will_ have 3  (that's actually the norm for a vertex, it's just for the
-  **        case of rational control points.) */
-  p = parse_floats(p, end, 0.0f, vert, 4);
+  p = parse_floats(p, end, 1.f, vert, 4);
   r_global_vertices.vertices.append(vert.xyz());
   r_global_vertices.weights.append(vert.w);
   /* OBJ extension: `xyzrgb` vertex colors, when the vertex position
