@@ -35,6 +35,7 @@ void main(void)
   float dim_factor = node_link_data.dim_factor;
   float thickness = node_link_data.thickness;
   vec3 dash_params = node_link_data.dash_params.xyz;
+  int is_split_line = node_link_data.is_split_line;
 
   vec4 colShadow = node_link_data.colors[0];
   vec4 colStart = node_link_data.colors[1];
@@ -75,7 +76,8 @@ void main(void)
   /* Approximate line length, no need for real bezier length calculation. */
   lineLength = distance(P0, P3);
   /* TODO: Incorrect U, this leads to non-uniform dash distribution. */
-  lineU = uv.x;
+  lineUV = uv;
+  isSplitLine = is_split_line;
 
   float t = uv.x;
   float t2 = t * t;

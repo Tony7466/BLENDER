@@ -10,7 +10,7 @@ void main()
   fragColor = finalColor;
 
   if ((isMainLine != 0) && (dashFactor < 1.0)) {
-    float distance_along_line = lineLength * lineU;
+    float distance_along_line = lineLength * lineUV.x;
     float normalized_distance = fract(distance_along_line / dashLength);
 
     /* Checking if `normalized_distance <= dashFactor` is already enough for a basic
@@ -29,4 +29,8 @@ void main()
   }
 
   fragColor.a *= smoothstep(lineThickness, lineThickness - ANTIALIAS, abs(colorGradient));
+  if (isMainLine != 0 && isSplitLine != 0) {
+    float center_dist_v = min(abs(lineUV.y - 0.5) * 5.0, 1.0);
+    fragColor.a *= center_dist_v;
+  }
 }
