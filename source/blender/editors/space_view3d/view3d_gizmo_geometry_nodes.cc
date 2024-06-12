@@ -81,6 +81,15 @@ static ThemeColorID get_axis_theme_color_id(const int axis)
   return std::array{TH_AXIS_X, TH_AXIS_Y, TH_AXIS_Z}[axis];
 }
 
+static void get_axis_gizmo_colors(const int axis, float *r_color, float *r_color_hi)
+{
+  const ThemeColorID theme_id = get_axis_theme_color_id(axis);
+  UI_GetThemeColor3fv(theme_id, r_color);
+  UI_GetThemeColor3fv(theme_id, r_color_hi);
+  r_color[3] = 0.6f;
+  r_color_hi[3] = 1.0f;
+}
+
 static void make_matrix_orthonormal_but_keep_z_axis(float4x4 &m)
 {
   /* Without this, the gizmos may be skewed. */
@@ -366,9 +375,7 @@ class TransformGizmos : public NodeGizmos {
     any_translation_visible = false;
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = translation_gizmos_[axis];
-      const ThemeColorID theme_id = get_axis_theme_color_id(axis);
-      UI_GetThemeColor3fv(theme_id, gizmo->color);
-      UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+      get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
 
       const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis);
       WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
@@ -379,9 +386,7 @@ class TransformGizmos : public NodeGizmos {
     any_rotation_visible = false;
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = rotation_gizmos_[axis];
-      const ThemeColorID theme_id = get_axis_theme_color_id(axis);
-      UI_GetThemeColor3fv(theme_id, gizmo->color);
-      UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
+      get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
 
       const bool is_interacting = gizmo_is_interacting(*gizmo);
       int draw_options = RNA_enum_get(gizmo->ptr, "draw_options");
@@ -397,10 +402,7 @@ class TransformGizmos : public NodeGizmos {
     any_scale_visible = false;
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = scale_gizmos_[axis];
-      const ThemeColorID theme_id = get_axis_theme_color_id(axis);
-      UI_GetThemeColor3fv(theme_id, gizmo->color);
-      UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo->color_hi);
-
+      get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
       RNA_enum_set(gizmo->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_BOX);
 
       const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X << axis);
