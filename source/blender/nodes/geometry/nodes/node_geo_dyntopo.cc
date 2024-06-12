@@ -27,12 +27,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   Field<float3> uv_field = params.extract_input<Field<float3>>("UV");
-  
+
   const float2 position = params.extract_input<float3>("Position").xy();
   const float radius = params.extract_input<float>("Radius");
   const float max_length = params.extract_input<float>("Max Length");
 
-  uv_field = bke::get_implicit_type_conversions().try_convert(std::move(uv_field), CPPType::get<float2>());
+  uv_field = bke::get_implicit_type_conversions().try_convert(std::move(uv_field),
+                                                              CPPType::get<float2>());
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const Mesh *mesh = geometry_set.get_mesh();
@@ -44,7 +45,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       evaluator.evaluate();
       const VArraySpan<float2> mesh_uv = evaluator.get_evaluated<float2>(0);
 
-      geometry_set.replace_mesh(geometry::dyntopo::subdivide(*mesh, mesh_uv, position, radius, max_length));
+      geometry_set.replace_mesh(
+          geometry::dyntopo::subdivide(*mesh, mesh_uv, position, radius, max_length));
     }
   });
 

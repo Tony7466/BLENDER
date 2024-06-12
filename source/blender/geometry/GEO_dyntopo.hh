@@ -4,13 +4,14 @@
 
 #pragma once
 
-#include "BLI_span.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 
 struct Mesh;
 
 namespace blender::geometry::dyntopo {
 
-Mesh *subdivide(const Mesh &src, Span<float2> projection, float2 position, float radius, float max_length);
+Mesh *subdivide(
+    const Mesh &src, Span<float2> projection, float2 position, float radius, float max_length);
 
 }  // namespace blender::geometry::dyntopo
