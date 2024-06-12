@@ -1007,7 +1007,7 @@ static void image_undosys_step_decode_redo(ImageUndoStep *us)
 }
 
 static void image_undosys_step_decode(
-    bContext *C, Main *bmain, UndoStep *us_p, const eUndoStepDir dir, bool is_final)
+    bContext *C, Main * /*bmain*/, UndoStep *us_p, const eUndoStepDir dir, bool is_final)
 {
   /* NOTE: behavior for undo/redo closely matches sculpt undo. */
   BLI_assert(dir != STEP_INVALID);
@@ -1025,7 +1025,7 @@ static void image_undosys_step_decode(
   }
 
   /* Refresh texture slots. */
-  ED_editors_init_for_undo(bmain);
+  ED_editors_init_for_undo(C);
 }
 
 static void image_undosys_step_free(UndoStep *us_p)

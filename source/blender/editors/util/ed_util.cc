@@ -29,6 +29,7 @@
 #include "BKE_object.hh"
 #include "BKE_packedFile.h"
 #include "BKE_paint.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_undo_system.hh"
 
@@ -47,6 +48,7 @@
 #include "ED_sculpt.hh"
 #include "ED_space_api.hh"
 #include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.hh"
 
@@ -59,9 +61,11 @@
 
 /* ********* general editor util functions, not BKE stuff please! ********* */
 
-void ED_editors_init_for_undo(Main *bmain)
+void ED_editors_init_for_undo(bContext *C)
 {
+  Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     Scene *scene = WM_window_get_active_scene(win);
     ViewLayer *view_layer = WM_window_get_active_view_layer(win);
@@ -70,6 +74,21 @@ void ED_editors_init_for_undo(Main *bmain)
     if (ob && (ob->mode & OB_MODE_TEXTURE_PAINT)) {
       BKE_texpaint_slots_refresh_object(scene, ob);
       ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
+    }
+
+    /* UI Updates. */
+    /* Flag local View3D's to check and exit if they are empty. */
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = reinterpret_cast<View3D *>(sl);
+            if (v3d->localvd) {
+              v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_EMPTY_DIRTY;
+            }
+          }
+        }
+      }
     }
   }
 }

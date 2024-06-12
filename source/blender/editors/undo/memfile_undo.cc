@@ -220,7 +220,8 @@ static void memfile_undosys_step_decode(
 
   /* bmain has been freed. */
   bmain = CTX_data_main(C);
-  ED_editors_init_for_undo(bmain);
+
+  ED_editors_init_for_undo(C);
 
   if (use_old_bmain_data) {
     /* Restore previous depsgraphs into current bmain. */

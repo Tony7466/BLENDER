@@ -20,7 +20,7 @@ class IDRemapper;
 
 /* `ed_util.cc` */
 
-void ED_editors_init_for_undo(Main *bmain);
+void ED_editors_init_for_undo(bContext *C);
 void ED_editors_init(bContext *C);
 /**
  * Frees all edit-mode stuff.
