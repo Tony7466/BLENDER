@@ -1342,9 +1342,6 @@ static void std_node_socket_draw(
       ((sock->flag & SOCK_IS_LINKED) && !all_links_muted(*sock)))
   {
     draw_node_socket_without_value(layout, sock, text);
-    if (sock->in_out == SOCK_IN && has_gizmo) {
-      draw_gizmo_icon(layout, ptr, gizmo_valid, false);
-    }
     return;
   }
 
@@ -1381,8 +1378,16 @@ static void std_node_socket_draw(
       }
       break;
     case SOCK_ROTATION: {
-      uiLayout *column = uiLayoutColumn(layout, true);
-      uiItemR(column, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
+      uiLayout *column = uiLayoutColumn(layout, false);
+      {
+        uiLayout *row = uiLayoutRow(column, true);
+        uiItemL(row, text, ICON_NONE);
+        if (has_gizmo) {
+          draw_gizmo_icon(row, ptr, gizmo_valid, true);
+          gizmo_handled = true;
+        }
+      }
+      uiItemR(column, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
       break;
     }
     case SOCK_MATRIX: {
