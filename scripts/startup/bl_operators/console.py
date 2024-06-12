@@ -123,7 +123,6 @@ class ConsoleLanguage(Operator):
 
     language: StringProperty(
         name="Language",
-        translation_context=i18n_contexts.editor_python_console,
         maxlen=32,
     )
 
