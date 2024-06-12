@@ -13,6 +13,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <fmt/format.h>
+
 #include <ft2build.h>
 
 #include FT_FREETYPE_H
@@ -377,8 +379,7 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
   std::string file_name = icon_names[charcode - BLF_ICON_OFFSET];
   std::transform(file_name.begin(), file_name.end(), file_name.begin(), ::tolower);
 
-  std::string file_path = icondir.value();
-  file_path += SEP_STR + file_name + ".svg";
+  const std::string file_path = fmt::format("{}" SEP_STR "{}.svg", icondir.value(), file_name);
   NSVGimage *image = nsvgParseFromFile(file_path.c_str(), "px", 96.0f);
 
   if (image == nullptr) {

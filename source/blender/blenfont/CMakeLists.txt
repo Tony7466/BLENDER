@@ -34,6 +34,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_gpu
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::nanosvg
 
