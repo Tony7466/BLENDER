@@ -847,10 +847,10 @@ void PhysicsGeometry::set_split_impulse(const bool split_impulse)
 
 void PhysicsGeometry::step_simulation(float delta_time)
 {
-  constexpr const float fixed_time_step = 1.0f / 60.0f;
+  constexpr const float fixed_time_step = 1.0f / 120.0f;
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  impl.world->stepSimulation(delta_time, fixed_time_step);
+  impl.world->stepSimulation(delta_time, 100, fixed_time_step);
 }
 
 int PhysicsGeometry::bodies_num() const
