@@ -43,7 +43,7 @@ std::optional<ElemVariant> get_elem_variant_for_socket_type(const eNodeSocketDat
     case SOCK_ROTATION:
       return {{RotationElem()}};
     case SOCK_MATRIX:
-      return {{TransformElem()}};
+      return {{MatrixElem()}};
     default:
       return std::nullopt;
   }
@@ -70,7 +70,7 @@ std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
   }
   switch (old_type) {
     case SOCK_MATRIX: {
-      const TransformElem &transform_elem = std::get<TransformElem>(old_elem.elem);
+      const MatrixElem &transform_elem = std::get<MatrixElem>(old_elem.elem);
       if (new_type == SOCK_ROTATION) {
         return ElemVariant{transform_elem.rotation};
       }

@@ -201,10 +201,10 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
     }
   }
 
-  TransformElem transform_elem;
-  transform_elem.translation.x = output_elems[3][0];
-  transform_elem.translation.y = output_elems[3][1];
-  transform_elem.translation.z = output_elems[3][2];
+  MatrixElem matrix_elem;
+  matrix_elem.translation.x = output_elems[3][0];
+  matrix_elem.translation.y = output_elems[3][1];
+  matrix_elem.translation.z = output_elems[3][2];
 
   bool any_inner_3x3 = false;
   for (const int col : IndexRange(3)) {
@@ -214,17 +214,17 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
   }
 
   if (any_inner_3x3) {
-    transform_elem.rotation = RotationElem::all();
-    transform_elem.scale = VectorElem::all();
+    matrix_elem.rotation = RotationElem::all();
+    matrix_elem.scale = VectorElem::all();
   }
 
   const bool any_non_transform = output_elems[0][3] | output_elems[1][3] | output_elems[2][3] |
                                  output_elems[3][3];
   if (any_non_transform) {
-    transform_elem.any_non_transform = FloatElem::all();
+    matrix_elem.any_non_transform = FloatElem::all();
   }
 
-  params.set_input_elem("Matrix", transform_elem);
+  params.set_input_elem("Matrix", matrix_elem);
 }
 
 static void node_eval_inverse(inverse_eval::InverseEvalParams &params)

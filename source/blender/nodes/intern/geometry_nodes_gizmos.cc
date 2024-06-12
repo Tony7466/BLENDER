@@ -44,7 +44,7 @@ static ie::ElemVariant get_gizmo_socket_elem(const bNode &node, const bNodeSocke
     }
     case GEO_NODE_GIZMO_TRANSFORM: {
       const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(node.storage);
-      ie::TransformElem elem;
+      ie::MatrixElem elem;
       if (storage.flag & GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_ALL) {
         elem.translation = ie::VectorElem::all();
       }

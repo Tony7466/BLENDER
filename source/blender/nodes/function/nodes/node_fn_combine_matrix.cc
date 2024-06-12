@@ -154,13 +154,13 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
-  const TransformElem transform_elem = params.get_output_elem<TransformElem>("Matrix");
+  const MatrixElem matrix_elem = params.get_output_elem<MatrixElem>("Matrix");
 
-  params.set_input_elem("Column 4 Row 1", transform_elem.translation.x);
-  params.set_input_elem("Column 4 Row 2", transform_elem.translation.y);
-  params.set_input_elem("Column 4 Row 3", transform_elem.translation.z);
+  params.set_input_elem("Column 4 Row 1", matrix_elem.translation.x);
+  params.set_input_elem("Column 4 Row 2", matrix_elem.translation.y);
+  params.set_input_elem("Column 4 Row 3", matrix_elem.translation.z);
 
-  if (transform_elem.rotation || transform_elem.scale) {
+  if (matrix_elem.rotation || matrix_elem.scale) {
     params.set_input_elem("Column 1 Row 1", FloatElem{true});
     params.set_input_elem("Column 1 Row 2", FloatElem{true});
     params.set_input_elem("Column 1 Row 3", FloatElem{true});
@@ -172,7 +172,7 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
     params.set_input_elem("Column 3 Row 3", FloatElem{true});
   }
 
-  if (transform_elem.any_non_transform) {
+  if (matrix_elem.any_non_transform) {
     params.set_input_elem("Column 1 Row 4", FloatElem{true});
     params.set_input_elem("Column 2 Row 4", FloatElem{true});
     params.set_input_elem("Column 3 Row 4", FloatElem{true});
@@ -182,26 +182,26 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 
 static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
 {
-  const float4x4 transform = params.get_output<float4x4>("Matrix");
-  params.set_input("Column 1 Row 1", transform[0][0]);
-  params.set_input("Column 1 Row 2", transform[0][1]);
-  params.set_input("Column 1 Row 3", transform[0][2]);
-  params.set_input("Column 1 Row 4", transform[0][3]);
+  const float4x4 matrix = params.get_output<float4x4>("Matrix");
+  params.set_input("Column 1 Row 1", matrix[0][0]);
+  params.set_input("Column 1 Row 2", matrix[0][1]);
+  params.set_input("Column 1 Row 3", matrix[0][2]);
+  params.set_input("Column 1 Row 4", matrix[0][3]);
 
-  params.set_input("Column 2 Row 1", transform[1][0]);
-  params.set_input("Column 2 Row 2", transform[1][1]);
-  params.set_input("Column 2 Row 3", transform[1][2]);
-  params.set_input("Column 2 Row 4", transform[1][3]);
+  params.set_input("Column 2 Row 1", matrix[1][0]);
+  params.set_input("Column 2 Row 2", matrix[1][1]);
+  params.set_input("Column 2 Row 3", matrix[1][2]);
+  params.set_input("Column 2 Row 4", matrix[1][3]);
 
-  params.set_input("Column 3 Row 1", transform[2][0]);
-  params.set_input("Column 3 Row 2", transform[2][1]);
-  params.set_input("Column 3 Row 3", transform[2][2]);
-  params.set_input("Column 3 Row 4", transform[2][3]);
+  params.set_input("Column 3 Row 1", matrix[2][0]);
+  params.set_input("Column 3 Row 2", matrix[2][1]);
+  params.set_input("Column 3 Row 3", matrix[2][2]);
+  params.set_input("Column 3 Row 4", matrix[2][3]);
 
-  params.set_input("Column 4 Row 1", transform[3][0]);
-  params.set_input("Column 4 Row 2", transform[3][1]);
-  params.set_input("Column 4 Row 3", transform[3][2]);
-  params.set_input("Column 4 Row 4", transform[3][3]);
+  params.set_input("Column 4 Row 1", matrix[3][0]);
+  params.set_input("Column 4 Row 2", matrix[3][1]);
+  params.set_input("Column 4 Row 3", matrix[3][2]);
+  params.set_input("Column 4 Row 4", matrix[3][3]);
 }
 
 static void node_register()

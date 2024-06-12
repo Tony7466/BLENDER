@@ -80,10 +80,10 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
-  const TransformElem transform_elem = params.get_output_elem<TransformElem>("Transform");
-  params.set_input_elem("Translation", transform_elem.translation);
-  params.set_input_elem("Rotation", transform_elem.rotation);
-  params.set_input_elem("Scale", transform_elem.scale);
+  const MatrixElem matrix_elem = params.get_output_elem<MatrixElem>("Transform");
+  params.set_input_elem("Translation", matrix_elem.translation);
+  params.set_input_elem("Rotation", matrix_elem.rotation);
+  params.set_input_elem("Scale", matrix_elem.scale);
 }
 
 static void node_eval_inverse(inverse_eval::InverseEvalParams &params)

@@ -128,7 +128,7 @@ struct RotationElem {
   }
 };
 
-struct TransformElem {
+struct MatrixElem {
   VectorElem translation;
   RotationElem rotation;
   VectorElem scale;
@@ -139,7 +139,7 @@ struct TransformElem {
     return this->translation || this->rotation || this->scale || this->any_non_transform;
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_4(TransformElem, translation, rotation, scale, any_non_transform)
+  BLI_STRUCT_EQUALITY_OPERATORS_4(MatrixElem, translation, rotation, scale, any_non_transform)
 
   uint64_t hash() const
   {
@@ -147,7 +147,7 @@ struct TransformElem {
         this->translation, this->rotation, this->scale, this->any_non_transform);
   }
 
-  void merge(const TransformElem &other)
+  void merge(const MatrixElem &other)
   {
     this->translation.merge(other.translation);
     this->rotation.merge(other.rotation);
@@ -155,14 +155,14 @@ struct TransformElem {
     this->any_non_transform.merge(other.any_non_transform);
   }
 
-  static TransformElem all()
+  static MatrixElem all()
   {
     return {VectorElem::all(), RotationElem::all(), VectorElem::all(), FloatElem::all()};
   }
 };
 
 struct ElemVariant {
-  std::variant<BoolElem, FloatElem, IntElem, VectorElem, RotationElem, TransformElem> elem;
+  std::variant<BoolElem, FloatElem, IntElem, VectorElem, RotationElem, MatrixElem> elem;
 
   operator bool() const
   {

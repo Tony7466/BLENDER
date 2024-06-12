@@ -78,7 +78,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
-  TransformElem transform_elem;
+  MatrixElem transform_elem;
   transform_elem.translation = params.get_output_elem<VectorElem>("Translation");
   transform_elem.rotation = params.get_output_elem<RotationElem>("Rotation");
   transform_elem.scale = params.get_output_elem<VectorElem>("Scale");

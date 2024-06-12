@@ -28,7 +28,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
-  const TransformElem first_input_elem = TransformElem::all();
+  const MatrixElem first_input_elem = MatrixElem::all();
   params.set_input_elem("Matrix", first_input_elem);
 }
 
