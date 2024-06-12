@@ -70,6 +70,10 @@ class PhysicsGeometry {
     std::string rolling_friction;
     std::string spinning_friction;
     std::string restitution;
+    std::string linear_damping;
+    std::string angular_damping;
+    std::string linear_sleeping_threshold;
+    std::string angular_sleeping_threshold;
   } builtin_attributes;
 
   PhysicsGeometry();

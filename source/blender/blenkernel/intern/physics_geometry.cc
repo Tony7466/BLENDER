@@ -624,7 +624,11 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "friction",
     "rolling_friction",
     "spinning_friction",
-    "restitution"};
+    "restitution",
+    "linear_damping",
+    "angular_damping",
+    "linear_sleeping_threshold",
+    "angular_sleeping_threshold"};
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states)
@@ -1387,6 +1391,68 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                        BuiltinAttributeProvider::NonDeletable,
                        physics_access,
                        nullptr);
+
+  constexpr auto linear_damping_get_fn = [](const btRigidBody &body) -> float {
+    return body.getLinearSleepingThreshold();
+  };
+  constexpr auto linear_damping_set_fn = [](btRigidBody &body, float value) {
+    body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
+  };
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           linear_damping_get_fn,
+                                           linear_damping_set_fn>
+      body_linear_damping(PhysicsGeometry::builtin_attributes.linear_damping,
+                                     AttrDomain::Point,
+                                     BuiltinAttributeProvider::NonDeletable,
+                                     physics_access,
+                                     nullptr);
+
+  constexpr auto angular_damping_get_fn = [](const btRigidBody &body) -> float {
+    return body.getAngularSleepingThreshold();
+  };
+  constexpr auto angular_damping_set_fn = [](btRigidBody &body, float value) {
+    body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
+  };
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           angular_damping_get_fn,
+                                           angular_damping_set_fn>
+      body_angular_damping(
+          PhysicsGeometry::builtin_attributes.angular_damping,
+          AttrDomain::Point,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          nullptr);
+
+  constexpr auto linear_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
+    return body.getLinearSleepingThreshold();
+  };
+  constexpr auto linear_sleeping_threshold_set_fn = [](btRigidBody &body, float value) {
+    body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
+  };
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           linear_sleeping_threshold_get_fn,
+                                           linear_sleeping_threshold_set_fn>
+      body_linear_sleeping_threshold(PhysicsGeometry::builtin_attributes.linear_sleeping_threshold,
+                       AttrDomain::Point,
+                       BuiltinAttributeProvider::NonDeletable,
+                       physics_access,
+                       nullptr);
+
+  constexpr auto angular_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
+    return body.getAngularSleepingThreshold();
+  };
+  constexpr auto angular_sleeping_threshold_set_fn = [](btRigidBody &body, float value) {
+    body.setSleepingThresholds(body.getLinearSleepingThreshold(), value);
+  };
+  static BuiltinRigidBodyAttributeProvider<float,
+                                           angular_sleeping_threshold_get_fn,
+                                           angular_sleeping_threshold_set_fn>
+      body_angular_sleeping_threshold(PhysicsGeometry::builtin_attributes.angular_sleeping_threshold,
+                                     AttrDomain::Point,
+                                     BuiltinAttributeProvider::NonDeletable,
+                                     physics_access,
+                                     nullptr);
+
   return ComponentAttributeProviders({&body_id,
                                       &body_simulated,
                                       &body_static,
@@ -1401,7 +1467,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_friction,
                                       &body_rolling_friction,
                                       &body_spinning_friction,
-                                      &body_restitution},
+                                      &body_restitution,
+                                      &body_linear_damping,
+                                      &body_angular_damping,
+                                      &body_linear_sleeping_threshold,
+                                      &body_angular_sleeping_threshold},
                                      {});
 }
 
