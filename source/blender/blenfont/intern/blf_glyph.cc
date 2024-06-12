@@ -335,6 +335,17 @@ static GlyphBLF *blf_glyph_cache_add_glyph(
   return gc->glyphs.lookup(key).get();
 }
 
+static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
+{
+  /* Add an empty GlyphBLF to the cache and return it. With
+   * zero dimensions it will be skipped by blf_glyph_draw. */
+  std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
+  g->c = charcode;
+  GlyphCacheKey key = {charcode, 0};
+  gc->glyphs.add(key, std::move(g));
+  return gc->glyphs.lookup(key).get();
+}
+
 static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc,
                                          uint charcode,
                                          blender::StringRef file_name)
@@ -346,27 +357,24 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc,
   NSVGimage *image = nsvgParseFromFile(filepath, "px", 96.0f);
 
   if (image == nullptr) {
-    return nullptr;
+    return blf_glyph_cache_add_blank(gc, charcode);
   }
 
   if (image->width == 0 || image->height == 0) {
     nsvgDelete(image);
-    return nullptr;
+    return blf_glyph_cache_add_blank(gc, charcode);
   }
-
-  int w = int(image->width);
-  int h = int(image->height);
 
   NSVGrasterizer *rast = nsvgCreateRasterizer();
   if (rast == nullptr) {
     nsvgDelete(image);
-    return nullptr;
+    return blf_glyph_cache_add_blank(gc, charcode);
   }
 
   const float scale = (gc->size / 1600.0f);
   const float full = 1600.0f * scale;
-  const int dest_h = int(float(h) * scale);
-  const int dest_w = int(float(w) * scale);
+  const int dest_h = int(image->height * scale);
+  const int dest_w = int(image->width * scale);
   const int render_size = dest_w * dest_h * 4;
   blender::Array<uchar> render_bmp(render_size);
 
