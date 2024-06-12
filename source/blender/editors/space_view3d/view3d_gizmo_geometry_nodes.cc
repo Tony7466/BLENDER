@@ -320,6 +320,10 @@ class TransformGizmos : public NodeGizmos {
   std::array<wmGizmo *, 3> rotation_gizmos_ = {};
   std::array<wmGizmo *, 3> scale_gizmos_ = {};
 
+  bool any_translation_visible = false;
+  bool any_rotation_visible = false;
+  bool any_scale_visible = false;
+
   struct EditData {
     float3 current_translation{};
     float3 current_rotation{};
@@ -358,6 +362,8 @@ class TransformGizmos : public NodeGizmos {
     const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(gizmo_node.storage);
 
     /* Translation */
+
+    any_translation_visible = false;
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = translation_gizmos_[axis];
       const ThemeColorID theme_id = get_axis_theme_color_id(axis);
@@ -366,9 +372,11 @@ class TransformGizmos : public NodeGizmos {
 
       const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis);
       WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
+      any_translation_visible |= is_used;
     }
 
     /* Rotation */
+    any_rotation_visible = false;
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = rotation_gizmos_[axis];
       const ThemeColorID theme_id = get_axis_theme_color_id(axis);
@@ -382,9 +390,11 @@ class TransformGizmos : public NodeGizmos {
 
       const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X << axis);
       WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
+      any_rotation_visible |= is_used;
     }
 
     /* Scale */
+    any_scale_visible = false;
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = scale_gizmos_[axis];
       const ThemeColorID theme_id = get_axis_theme_color_id(axis);
@@ -395,6 +405,10 @@ class TransformGizmos : public NodeGizmos {
 
       const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X << axis);
       WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
+      any_scale_visible |= is_used;
+
+      const float length = any_translation_visible ? 0.8f : 1.0f;
+      RNA_float_set(gizmo->ptr, "length", length);
     }
   }
 
@@ -532,7 +546,7 @@ class TransformGizmos : public NodeGizmos {
         make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
-        edit_data_.current_scale[axis_i] = 1.0f;
+        edit_data_.current_scale[axis_i] = 0.0f;
 
         wmGizmoPropertyFnParams params{};
         params.user_data = this;
@@ -544,7 +558,7 @@ class TransformGizmos : public NodeGizmos {
           const float new_gizmo_value = *static_cast<const float *>(value_ptr);
           self.edit_data_.current_scale[axis_i] = new_gizmo_value;
           float3 scale{1.0f, 1.0f, 1.0f};
-          scale[axis_i] = new_gizmo_value;
+          scale[axis_i] += new_gizmo_value;
           self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
             float4x4 value = value_variant.get<float4x4>();
             value = value * math::from_scale<float4x4>(scale);
