@@ -794,17 +794,17 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           new_gizmos_by_node.add(gizmo_id, std::move(new_node_gizmos));
         }
 
+        /* Unhide all, may be hidden below again. */
+        for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
+          WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
+        }
+
         node_gizmos->update_style(gizmo_node);
         GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
 
         const float4x4 geometry_transform =
             find_gizmo_geometry_transform(geometry, gizmo_id).value_or(float4x4::identity());
-
-        /* Unhide all, may be hidden below again. */
-        for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
-          WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
-        }
 
         UpdateReport report;
         GizmosUpdateParams update_params{
