@@ -74,7 +74,7 @@ static void calc_new_mask_values(const Span<int> verts,
   BLI_assert(verts.size() == factors.size());
 
   for (const int i : verts.index_range()) {
-    mask[verts[i]] = clamp_f(factors[i] + mask[verts[i]], 0.0f, 1.0f);
+    mask[verts[i]] = std::clamp(factors[i] + mask[verts[i]], 0.0f, 1.0f);
   }
 }
 
