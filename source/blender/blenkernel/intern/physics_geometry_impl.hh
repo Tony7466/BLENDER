@@ -117,4 +117,7 @@ struct CollisionShapeImpl {
   }
 };
 
+int activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState state);
+bke::PhysicsGeometry::BodyActivationState activation_state_to_blender(int bt_state);
+
 }  // namespace blender::bke

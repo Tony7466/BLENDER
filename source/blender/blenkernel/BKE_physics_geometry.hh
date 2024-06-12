@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_quaternion_types.hh"
@@ -16,9 +15,9 @@
 #include "BLI_virtual_array_fwd.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_geometry_fields.hh"
 
 #include <functional>
-#include <mutex>
 
 namespace blender::bke {
 class AttributeAccessor;
@@ -149,5 +148,11 @@ void move_physics_data(const PhysicsGeometry &from,
                        bool use_world,
                        int rigid_bodies_offset,
                        int constraints_offset);
+
+// class FlagToBoolFieldInput : public bke::AttributeFieldInput {
+//  public:
+//   GVArray get_varray_for_context(const GeometryFieldContext &context,
+//                                  const IndexMask &mask) const override;
+// };
 
 }  // namespace blender::bke

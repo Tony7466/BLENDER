@@ -2,8 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
+
+#include "BKE_attribute.hh"
 #include "BKE_node.hh"
 #include "BKE_physics_geometry.hh"
+
+#include "FN_field.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -34,20 +39,27 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  using BodyActivationState = bke::PhysicsGeometry::BodyActivationState;
+
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Physics");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
-  Field<int> activation_state_field = params.extract_input<Field<int>>("Activation State");
+  const BodyActivationState state = BodyActivationState(params.node().custom1);
 
   if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
     bke::PhysicsFieldContext context(*physics, AttrDomain::Point);
-    bke::try_capture_field_on_geometry(physics->attributes_for_write(),
-                                       context,
-                                       bke::PhysicsGeometry::builtin_attributes.activation_state,
-                                       AttrDomain::Point,
-                                       selection_field,
-                                       activation_state_field);
+    fn::FieldEvaluator evaluator(context, physics->bodies_num());
+    evaluator.add(selection_field);
+    evaluator.evaluate();
+    IndexMask selection = evaluator.get_evaluated_as_mask(0);
 
-    physics->tag_physics_changed();
+    bke::AttributeWriter<int> activation_state_writer =
+        physics->attributes_for_write().lookup_for_write<int>(
+            bke::PhysicsGeometry::builtin_attributes.activation_state);
+
+    selection.foreach_index(
+        [&](const int index) { activation_state_writer.varray.set(index, int(state)); });
+
+    activation_state_writer.finish();
   }
 
   params.set_output("Physics", std::move(geometry_set));
@@ -87,7 +99,7 @@ static void node_rna(StructRNA *srna)
   };
 
   RNA_def_node_enum(srna,
-                    "activation_state_items",
+                    "activation_state",
                     "Activation State",
                     "",
                     activation_state_items,

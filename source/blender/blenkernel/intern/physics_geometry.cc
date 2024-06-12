@@ -12,6 +12,7 @@
 #include "BKE_physics_geometry.hh"
 
 #include "BLI_array_utils.hh"
+#include "BLI_assert.h"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_mempool.h"
@@ -102,6 +103,44 @@ inline btVector3 to_bullet(const float3 &v)
 inline btQuaternion to_bullet(const math::Quaternion &q)
 {
   return btQuaternion(q.x, q.y, q.z, q.w);
+}
+
+int activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState state)
+{
+  using BodyActivationState = bke::PhysicsGeometry::BodyActivationState;
+  switch (state) {
+    case BodyActivationState::AlwaysActive:
+      return DISABLE_DEACTIVATION;
+    case BodyActivationState::Active:
+      return ACTIVE_TAG;
+    case BodyActivationState::WantsSleep:
+      return WANTS_DEACTIVATION;
+    case BodyActivationState::Sleeping:
+      return ISLAND_SLEEPING;
+    case BodyActivationState::AlwaysSleeping:
+      return DISABLE_SIMULATION;
+  }
+  return DISABLE_SIMULATION;
+}
+
+bke::PhysicsGeometry::BodyActivationState activation_state_to_blender(int bt_state)
+{
+  using BodyActivationState = bke::PhysicsGeometry::BodyActivationState;
+  switch (bt_state) {
+    case ACTIVE_TAG:
+      return BodyActivationState::Active;
+    case ISLAND_SLEEPING:
+      return BodyActivationState::Sleeping;
+    case WANTS_DEACTIVATION:
+      return BodyActivationState::WantsSleep;
+    case DISABLE_DEACTIVATION:
+      return BodyActivationState::AlwaysActive;
+    case DISABLE_SIMULATION:
+      return BodyActivationState::AlwaysSleeping;
+    default:
+      BLI_assert_unreachable();
+      return BodyActivationState::AlwaysSleeping;
+  }
 }
 
 struct DefaultOverlapFilter : public btOverlapFilterCallback {
@@ -1296,13 +1335,14 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             nullptr);
 
   constexpr auto activation_state_get_fn = [](const btRigidBody &body) -> int {
-    body.getActivationState();
+    return int(activation_state_to_blender(body.getActivationState()));
   };
   constexpr auto activation_state_set_fn = [](btRigidBody &body, int value) {
     /* Note: there is also setActivationState, but that only sets if the state is not always-active
      * or always-sleeping. This check can be performed on the caller side if the "always-x" state
      * must be retained. */
-    body.forceActivationState(value);
+    body.forceActivationState(
+        activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState(value)));
   };
   static BuiltinRigidBodyAttributeProvider<int, activation_state_get_fn, activation_state_set_fn>
       body_activation_state(PhysicsGeometry::builtin_attributes.activation_state,
