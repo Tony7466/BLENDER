@@ -68,6 +68,15 @@ std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
   if (old_type == new_type) {
     return old_elem;
   }
+  if (ELEM(old_type, SOCK_INT, SOCK_FLOAT, SOCK_BOOLEAN) &&
+      ELEM(new_type, SOCK_INT, SOCK_FLOAT, SOCK_BOOLEAN))
+  {
+    std::optional<ElemVariant> new_elem = get_elem_variant_for_socket_type(new_type);
+    if (old_elem) {
+      new_elem->set_all();
+    }
+    return new_elem;
+  }
   switch (old_type) {
     case SOCK_MATRIX: {
       const MatrixElem &transform_elem = std::get<MatrixElem>(old_elem.elem);

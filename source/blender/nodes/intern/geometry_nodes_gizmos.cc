@@ -261,7 +261,8 @@ static void foreach_active_gizmo_in_open_node_editor(
   Set<ie::SocketElem> used_gizmo_inputs;
   for (auto &&item : gizmo_propagation.gizmo_inputs_by_value_nodes.items()) {
     const bNode &node = *item.key.node;
-    if (node.flag & NODE_SELECT) {
+    const bNodeSocket &output_socket = node.output_socket(0);
+    if (node.flag & NODE_SELECT || (output_socket.flag & SOCK_GIZMO_PIN)) {
       used_gizmo_inputs.add_multiple(item.value);
     }
   }

@@ -1318,7 +1318,13 @@ static void std_node_socket_draw(
   const bool has_gizmo = sock->runtime->has_gizmo;
 
   if (sock->in_out == SOCK_OUT && has_gizmo &&
-      ELEM(node->type, SH_NODE_VALUE, FN_NODE_INPUT_VECTOR, FN_NODE_INPUT_INT, NODE_GROUP_INPUT))
+      ELEM(node->type,
+           SH_NODE_VALUE,
+           FN_NODE_INPUT_VECTOR,
+           FN_NODE_INPUT_INT,
+           FN_NODE_INPUT_BOOL,
+           FN_NODE_INPUT_ROTATION,
+           NODE_GROUP_INPUT))
   {
     uiLayout *row = uiLayoutRow(layout, false);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);

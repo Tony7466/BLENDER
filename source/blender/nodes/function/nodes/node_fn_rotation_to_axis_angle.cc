@@ -64,7 +64,13 @@ static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
 {
   const float3 axis = params.get_output<float3>("Axis");
   const float angle = params.get_output<float>("Angle");
-  const math::Quaternion rotation = math::to_quaternion(math::AxisAngle(axis, angle));
+  math::Quaternion rotation;
+  if (math::is_zero(axis)) {
+    rotation = math::Quaternion::identity();
+  }
+  else {
+    rotation = math::to_quaternion(math::AxisAngle(math::normalize(axis), angle));
+  }
   params.set_input("Rotation", rotation);
 }
 
