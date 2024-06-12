@@ -373,7 +373,7 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
       BIFIconID_Static(charcode - BLF_ICON_OFFSET));
   const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
   char filepath[1024];
-  BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.data());
+  BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.c_str());
 
   NSVGimage *image = nsvgParseFromFile(filepath, "px", 96.0f);
 
