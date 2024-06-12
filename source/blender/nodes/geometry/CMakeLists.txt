@@ -217,6 +217,8 @@ set(SRC
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
 
+  nodes/node_geo_dyntopo.cc
+
   include/NOD_geo_bake.hh
   include/NOD_geo_index_switch.hh
   include/NOD_geo_menu_switch.hh

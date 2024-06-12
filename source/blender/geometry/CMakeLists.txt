@@ -18,6 +18,7 @@ set(INC_SYS
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
+  intern/dyntopo.cc
   intern/extend_curves.cc
   intern/fillet_curves.cc
   intern/join_geometries.cc
@@ -54,6 +55,7 @@ set(SRC
 
   GEO_add_curves_on_mesh.hh
   GEO_curve_constraints.hh
+  GEO_dyntopo.hh
   GEO_extend_curves.hh
   GEO_fillet_curves.hh
   GEO_join_geometries.hh

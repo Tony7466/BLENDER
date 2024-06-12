@@ -413,6 +413,8 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
 
     def draw(self, context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeDyntopo")
+        layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeDualMesh")
         node_add_menu.add_node_type(layout, "GeometryNodeEdgePathsToCurves")
         node_add_menu.add_node_type(layout, "GeometryNodeEdgePathsToSelection")
