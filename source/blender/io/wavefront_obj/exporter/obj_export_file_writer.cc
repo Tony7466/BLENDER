@@ -443,16 +443,16 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
   for (int spline_idx = 0; spline_idx < total_splines; spline_idx++) {
     const int total_vertices = obj_nurbs_data.total_spline_vertices(spline_idx);
     for (int vertex_idx = 0; vertex_idx < total_vertices; vertex_idx++) {
-      const float3 vertex_coords = obj_nurbs_data.vertex_coordinates(
+      const float4 vertex_coords = obj_nurbs_data.vertex_coordinates(
           spline_idx, vertex_idx, export_params_.global_scale);
-      fh.write_obj_vertex(vertex_coords[0], vertex_coords[1], vertex_coords[2]);
+      fh.write_obj_vertex(vertex_coords[0], vertex_coords[1], vertex_coords[2], vertex_coords[3]);
     }
 
     const char *nurbs_name = obj_nurbs_data.get_curve_name();
-    const int nurbs_degree = obj_nurbs_data.get_nurbs_degree(spline_idx);
+    const std::pair<int, int> nurbs_degrees = obj_nurbs_data.get_nurbs_degree(spline_idx);
     fh.write_obj_group(nurbs_name);
     fh.write_obj_cstype();
-    fh.write_obj_nurbs_degree(nurbs_degree);
+    fh.write_obj_nurbs_degree(nurbs_degrees);
     /**
      * The numbers written here are indices into the vertex coordinates written
      * earlier, relative to the line that is going to be written.
@@ -460,38 +460,47 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
      * 0.0 1.0 -1 -2 -3 -4 for a non-cyclic curve with 4 vertices.
      * 0.0 1.0 -1 -2 -3 -4 -1 -2 -3 for a cyclic curve with 4 vertices.
      */
-    const int total_control_points = obj_nurbs_data.total_spline_control_points(spline_idx);
-    fh.write_obj_curve_begin();
-    for (int i = 0; i < total_control_points; i++) {
-      /* "+1" to keep indices one-based, even if they're negative: i.e., -1 refers to the
-       * last vertex coordinate, -2 second last. */
-      fh.write_obj_face_v(-((i % total_vertices) + 1));
+    const int spline_control_points_u = obj_nurbs_data.spline_control_points(spline_idx, 0);
+    const int spline_control_points_v = obj_nurbs_data.spline_control_points(spline_idx, 1);
+    const int total_control_points_u = obj_nurbs_data.total_spline_control_points(spline_idx, 0);
+    const int total_control_points_v = obj_nurbs_data.total_spline_control_points(spline_idx, 1);
+    fh.write_obj_curve_begin(obj_nurbs_data.get_object_type());
+    for (int j = 0; j < total_control_points_v; j++) {
+      for (int i = 0; i < total_control_points_u; i++) {
+        /* "+1" to keep indices one-based, even if they're negative: i.e., -1 refers to the
+         * last vertex coordinate, -2 second last. */
+        fh.write_obj_face_v(
+            -(((i % spline_control_points_u) + ((j % spline_control_points_v) * spline_control_points_u)) + 1));
+      }
     }
-    fh.write_obj_curve_end();
+    fh.write_obj_newline();
 
     /**
      * In `parm u 0 0.1 ..` line:, (total control points + 2) equidistant numbers in the
      * parameter range are inserted. However for curves with endpoint flag,
      * first degree+1 numbers are zeroes, and last degree+1 numbers are ones
      */
-
-    const short flagsu = obj_nurbs_data.get_nurbs_flagu(spline_idx);
-    const bool cyclic = flagsu & CU_NURB_CYCLIC;
-    const bool endpoint = !cyclic && (flagsu & CU_NURB_ENDPOINT);
-    fh.write_obj_nurbs_parm_begin();
-    for (int i = 1; i <= total_control_points + 2; i++) {
-      float parm = 1.0f * i / (total_control_points + 2 + 1);
-      if (endpoint) {
-        if (i <= nurbs_degree) {
-          parm = 0;
+    for (int uv = 0; 2 != uv; ++uv) {
+      const int nurbs_degree = uv ? nurbs_degrees.second : nurbs_degrees.first;
+      const short flags = obj_nurbs_data.get_nurbs_flags(spline_idx, uv);
+      const bool cyclic = flags & CU_NURB_CYCLIC;
+      const bool endpoint = !cyclic && (flags & CU_NURB_ENDPOINT);
+      const int control_points = obj_nurbs_data.total_spline_control_points(spline_idx, uv);
+      fh.write_obj_nurbs_parm_begin(uv);
+      for (int i = 1; i <= control_points + 2; i++) {
+        float parm = 1.0f * i / (control_points + 2 + 1);
+        if (endpoint) {
+          if (i <= nurbs_degree) {
+            parm = 0;
+          }
+          else if (i > control_points + 2 - nurbs_degree) {
+            parm = 1;
+          }
         }
-        else if (i > total_control_points + 2 - nurbs_degree) {
-          parm = 1;
-        }
+        fh.write_obj_nurbs_parm(parm);
       }
-      fh.write_obj_nurbs_parm(parm);
+      fh.write_obj_nurbs_parm_end();
     }
-    fh.write_obj_nurbs_parm_end();
     fh.write_obj_nurbs_group_end();
   }
 }

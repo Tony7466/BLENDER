@@ -13,6 +13,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_blenlib.h"
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
@@ -1186,6 +1187,50 @@ void BKE_nurb_knot_calc_u(Nurb *nu)
 void BKE_nurb_knot_calc_v(Nurb *nu)
 {
   makeknots(nu, 2);
+}
+
+static void setknots(float *r_knots, blender::Span<float> parms)
+{
+  blender::array_utils::copy(parms, blender::MutableSpan(r_knots, parms.size()));
+}
+
+static void setknots(Nurb *nu, short uv, blender::Span<float> parms)
+{
+  if (nu->type == CU_NURBS) {
+    if (uv == 1) {
+      if (nu->knotsu) {
+        MEM_freeN(nu->knotsu);
+      }
+      if (BKE_nurb_check_valid_u(nu)) {
+        nu->knotsu = (float *)MEM_calloc_arrayN(parms.size(), sizeof(float), "setknots");
+        setknots(nu->knotsu, parms);
+      }
+      else {
+        nu->knotsu = nullptr;
+      }
+    }
+    else if (uv == 2) {
+      if (nu->knotsv) {
+        MEM_freeN(nu->knotsv);
+      }
+      if (BKE_nurb_check_valid_v(nu)) {
+        nu->knotsv = (float *)MEM_calloc_arrayN(parms.size(), sizeof(float), "setknots");
+        setknots(nu->knotsv, parms);
+      }
+      else {
+        nu->knotsv = nullptr;
+      }
+    }
+  }
+}
+void BKE_nurb_knot_set_u(Nurb *nu, blender::Span<float> parms)
+{
+  setknots(nu, 1, parms);
+}
+
+void BKE_nurb_knot_set_v(Nurb *nu, blender::Span<float> parms)
+{
+  setknots(nu, 2, parms);
 }
 
 static void basisNurb(

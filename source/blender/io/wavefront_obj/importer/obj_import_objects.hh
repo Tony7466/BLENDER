@@ -25,6 +25,7 @@ struct GlobalVertices {
   Vector<float3> vertices;
   Vector<float2> uv_vertices;
   Vector<float3> vert_normals;
+  Vector<float> weights;
 
   /**
    * Vertex colors might not be present in the file at all, or only
@@ -68,23 +69,27 @@ struct NurbsElement {
    * It may also serve as the name of the curve if not specified explicitly.
    */
   std::string group_;
-  int degree = 0;
-  float2 range{0.0f, 1.0f};
   /**
    * Indices into the global list of vertex coordinates. Must be non-negative.
    */
   Vector<int> curv_indices;
-  /* Values in the parm u/v line in a curve definition. */
-  Vector<float> parm;
+  struct {
+    int degree = 0;
+    float2 range{0.0f, 1.0f};
+    /* Values in the parm u/v line in a curve definition. */
+    Vector<float> parms;
+  } u, v;
 };
 
 enum eGeometryType {
   GEOM_MESH = OB_MESH,
   GEOM_CURVE = OB_CURVES_LEGACY,
+  GEOM_SURF = OB_SURF,
 };
 
 struct Geometry {
   eGeometryType geom_type_ = GEOM_MESH;
+  bool rational_;
   std::string geometry_name_;
   Map<std::string, int> group_indices_;
   Vector<std::string> group_order_;

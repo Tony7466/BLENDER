@@ -88,7 +88,7 @@ static void print_exception_error(const std::system_error &ex)
 static bool is_curve_nurbs_compatible(const Nurb *nurb)
 {
   while (nurb) {
-    if (nurb->type == CU_BEZIER || nurb->pntsv != 1) {
+    if (nurb->type == CU_BEZIER) {
       return false;
     }
     nurb = nurb->next;
@@ -109,19 +109,16 @@ filter_supported_objects(Depsgraph *depsgraph, const OBJExportParams &export_par
   DEGObjectIterSettings deg_iter_settings{};
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE |
-                            DEG_ITER_OBJECT_FLAG_DUPLI;
+                            DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET | DEG_ITER_OBJECT_FLAG_VISIBLE;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, object) {
     if (export_params.export_selected_objects && !(object->base_flag & BASE_SELECTED)) {
       continue;
     }
     switch (object->type) {
-      case OB_SURF:
-        /* Evaluated surface objects appear as mesh objects from the iterator. */
-        break;
       case OB_MESH:
         r_exportable_meshes.append(std::make_unique<OBJMesh>(depsgraph, export_params, object));
         break;
+      case OB_SURF:
       case OB_CURVES_LEGACY: {
         Curve *curve = static_cast<Curve *>(object->data);
         Nurb *nurb{static_cast<Nurb *>(curve->nurb.first)};

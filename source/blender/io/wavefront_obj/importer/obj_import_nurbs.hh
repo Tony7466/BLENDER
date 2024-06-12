@@ -33,6 +33,7 @@ class CurveFromGeometry : NonMovable, NonCopyable {
   }
 
   Object *create_curve(Main *bmain, const OBJImportParams &import_params);
+  Object *create_surf(Main *bmain, const OBJImportParams &import_params);
 
  private:
   /**

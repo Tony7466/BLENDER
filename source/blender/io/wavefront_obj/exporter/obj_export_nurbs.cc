@@ -42,9 +42,21 @@ void OBJCurve::set_world_axes_transform(const eIOAxis forward, const eIOAxis up)
   world_axes_transform_[3][3] = export_object_eval_->object_to_world()[3][3];
 }
 
+ObjectType OBJCurve::get_object_type() const
+{
+  return ObjectType(export_object_eval_->type);
+}
+
 const char *OBJCurve::get_curve_name() const
 {
   return export_object_eval_->id.name + 2;
+}
+
+short OBJCurve::get_curve_type() const
+{
+  Curve *curve = static_cast<Curve *>(export_object_eval_->data);
+  Nurb *nurb{static_cast<Nurb *>(curve->nurb.first)};
+  return nurb->type & CU_TYPE;
 }
 
 int OBJCurve::total_splines() const
@@ -58,42 +70,49 @@ int OBJCurve::total_spline_vertices(const int spline_index) const
   return nurb->pntsu * nurb->pntsv;
 }
 
-float3 OBJCurve::vertex_coordinates(const int spline_index,
+float4 OBJCurve::vertex_coordinates(const int spline_index,
                                     const int vertex_index,
                                     const float global_scale) const
 {
   const Nurb *const nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
-  float3 r_coord;
+  float4 r_coord;
   const BPoint &bpoint = nurb->bp[vertex_index];
   copy_v3_v3(r_coord, bpoint.vec);
   mul_m4_v3(world_axes_transform_, r_coord);
   mul_v3_fl(r_coord, global_scale);
+  r_coord.w = bpoint.vec[3];
   return r_coord;
 }
 
-int OBJCurve::total_spline_control_points(const int spline_index) const
+int OBJCurve::spline_control_points(const int spline_index, int uv) const {
+  const Nurb *nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
+  return uv ? nurb->pntsv : nurb->pntsu;
+}
+
+int OBJCurve::total_spline_control_points(const int spline_index, int uv) const
 {
-  const Nurb *const nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
-  int degree = nurb->type == CU_POLY ? 1 : nurb->orderu - 1;
+  const Nurb *const nurb = static_cast<const Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
+  int degree = nurb->type == CU_POLY ? 1 : (uv ? nurb->orderv : nurb->orderu) - 1;
   /* Total control points = Number of points in the curve (+ degree of the
    * curve if it is cyclic). */
-  int tot_control_points = nurb->pntsv * nurb->pntsu;
-  if (nurb->flagu & CU_NURB_CYCLIC) {
+  int tot_control_points = uv ? nurb->pntsv : nurb->pntsu;
+  if ((uv ? nurb->flagv : nurb->flagu) & CU_NURB_CYCLIC) {
     tot_control_points += degree;
   }
   return tot_control_points;
 }
 
-int OBJCurve::get_nurbs_degree(const int spline_index) const
+std::pair<int, int> OBJCurve::get_nurbs_degree(const int spline_index) const
 {
   const Nurb *const nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
-  return nurb->type == CU_POLY ? 1 : nurb->orderu - 1;
+  return {nurb->type == CU_POLY ? 1 : nurb->orderu - 1,
+          nurb->type == CU_POLY ? 1 : nurb->orderv - 1};
 }
 
-short OBJCurve::get_nurbs_flagu(const int spline_index) const
+short OBJCurve::get_nurbs_flags(const int spline_index, int uv) const
 {
   const Nurb *const nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
-  return nurb->flagu;
+  return 0 == uv ? nurb->flagu : nurb->flagu;
 }
 
 }  // namespace blender::io::obj

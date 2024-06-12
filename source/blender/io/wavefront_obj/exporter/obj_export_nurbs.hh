@@ -29,7 +29,9 @@ class OBJCurve : NonCopyable {
  public:
   OBJCurve(const Depsgraph *depsgraph, const OBJExportParams &export_params, Object *curve_object);
 
+  ObjectType get_object_type() const;
   const char *get_curve_name() const;
+  short get_curve_type() const;
   int total_splines() const;
   /**
    * \param spline_index: Zero-based index of spline of interest.
@@ -39,20 +41,25 @@ class OBJCurve : NonCopyable {
   /**
    * Get coordinates of the vertex at the given index on the given spline.
    */
-  float3 vertex_coordinates(int spline_index, int vertex_index, float global_scale) const;
+  float4 vertex_coordinates(int spline_index, int vertex_index, float global_scale) const;
   /**
-   * Get total control points of the NURBS spline at the given index. This is different than total
-   * vertices of a spline.
+   * \param spline_index: Zero-based index of spline of interest.
+   * \return: Number of control point on the requested axis of the surface.
    */
-  int total_spline_control_points(int spline_index) const;
+  int spline_control_points(const int spline_index, int uv) const;
+  /**
+   * Get total control points of the NURBS spline at the given index along a specific axis.
+   * This is different than total vertices of a spline.
+   */
+  int total_spline_control_points(int spline_index, int uv) const;
   /**
    * Get the degree of the NURBS spline at the given index.
    */
-  int get_nurbs_degree(int spline_index) const;
+  std::pair<int, int> get_nurbs_degree(int spline_index) const;
   /**
    * Get the U flags (CU_NURB_*) of the NURBS spline at the given index.
    */
-  short get_nurbs_flagu(int spline_index) const;
+  short get_nurbs_flags(int spline_index, int uv) const;
 
  private:
   /**

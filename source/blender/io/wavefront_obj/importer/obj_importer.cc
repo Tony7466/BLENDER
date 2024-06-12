@@ -109,6 +109,10 @@ static void geometry_to_blender_objects(Main *bmain,
       CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
       obj = curve_ob_from_geometry.create_curve(bmain, import_params);
     }
+    else if (geometry->geom_type_ == GEOM_SURF) {
+      CurveFromGeometry curve_ob_from_geometry(*geometry, global_vertices);
+      obj = curve_ob_from_geometry.create_surf(bmain, import_params);
+    }
     if (obj != nullptr) {
       Collection *target_collection = find_or_create_collection(
           bmain, lc->collection, geometry->geometry_name_, import_params);

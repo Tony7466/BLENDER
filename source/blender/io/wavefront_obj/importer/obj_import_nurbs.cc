@@ -6,6 +6,8 @@
  * \ingroup obj
  */
 
+#include <algorithm>
+
 #include "BKE_object.hh"
 
 #include "BLI_listbase.h"
@@ -20,6 +22,8 @@
 
 namespace blender::io::obj {
 
+static const std::string untitled = "Untitled";
+
 Object *CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &import_params)
 {
   std::string ob_name = get_geometry_name(curve_geometry_.geometry_name_,
@@ -28,7 +32,7 @@ Object *CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &impo
     ob_name = curve_geometry_.nurbs_element_.group_;
   }
   if (ob_name.empty()) {
-    ob_name = "Untitled";
+    ob_name = untitled;
   }
   BLI_assert(!curve_geometry_.nurbs_element_.curv_indices.is_empty());
 
@@ -36,6 +40,35 @@ Object *CurveFromGeometry::create_curve(Main *bmain, const OBJImportParams &impo
   Object *obj = BKE_object_add_only_object(bmain, OB_CURVES_LEGACY, ob_name.c_str());
 
   curve->flag = CU_3D;
+  curve->resolu = curve->resolv = 12;
+  /* Only one NURBS spline will be created in the curve object. */
+  curve->actnu = 0;
+
+  Nurb *nurb = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), "OBJ import NURBS curve"));
+  BLI_addtail(BKE_curve_nurbs_get(curve), nurb);
+  create_nurbs(curve);
+
+  obj->data = curve;
+  transform_object(obj, import_params);
+
+  return obj;
+}
+
+Object *CurveFromGeometry::create_surf(Main *bmain, const OBJImportParams &import_params)
+{
+  std::string ob_name = get_geometry_name(curve_geometry_.geometry_name_,
+                                          import_params.collection_separator);
+  if (ob_name.empty() && !curve_geometry_.nurbs_element_.group_.empty()) {
+    ob_name = curve_geometry_.nurbs_element_.group_;
+  }
+  if (ob_name.empty()) {
+    ob_name = untitled;
+  }
+  BLI_assert(!curve_geometry_.nurbs_element_.curv_indices.is_empty());
+
+  Curve *curve = BKE_curve_add(bmain, ob_name.c_str(), OB_SURF);
+  Object *obj = BKE_object_add_only_object(bmain, OB_SURF, ob_name.c_str());
+  curve->flag |= CU_3D;
   curve->resolu = curve->resolv = 12;
   /* Only one NURBS spline will be created in the curve object. */
   curve->actnu = 0;
@@ -58,48 +91,71 @@ void CurveFromGeometry::create_nurbs(Curve *curve)
   nurb->type = CU_NURBS;
   nurb->flag = CU_3D;
   nurb->next = nurb->prev = nullptr;
-  /* BKE_nurb_points_add later on will update pntsu. If this were set to total curv points,
-   * we get double the total points in viewport. */
-  nurb->pntsu = 0;
-  /* Total points = pntsu * pntsv. */
-  nurb->pntsv = 1;
-  nurb->orderu = nurb->orderv = (nurbs_geometry.degree + 1 > SHRT_MAX) ? 4 :
-                                                                         nurbs_geometry.degree + 1;
-  nurb->resolu = nurb->resolv = curve->resolu;
+  nurb->resolu = curve->resolu;
+  nurb->resolv = curve->resolv;
+  nurb->orderu = nurbs_geometry.u.degree + 1;
+  nurb->orderv = nurbs_geometry.v.degree + 1;
 
   const int64_t tot_vert{nurbs_geometry.curv_indices.size()};
 
   BKE_nurb_points_add(nurb, tot_vert);
+  nurb->pntsu = nurbs_geometry.u.parms.size() - nurb->orderu;
+  nurb->pntsv = std::max(int(nurbs_geometry.v.parms.size() - nurb->orderv), 1);
+  BLI_assert( tot_vert == nurb->pntsu * nurb->pntsv);
+
   for (int i = 0; i < tot_vert; i++) {
     BPoint &bpoint = nurb->bp[i];
     copy_v3_v3(bpoint.vec, global_vertices_.vertices[nurbs_geometry.curv_indices[i]]);
-    bpoint.vec[3] = 1.0f;
+    bpoint.vec[3] = curve_geometry_.rational_
+      ? global_vertices_.weights[nurbs_geometry.curv_indices[i]]
+      : 1.f;
     bpoint.weight = 1.0f;
   }
+  bool do_endpoints = false;
+  struct {
+    int degree;
+    short &flag;
+    const Vector<float> &parm;
+    const float2 &range;
+  } do_uv[] = {
+    {
+      nurbs_geometry.u.degree,
+      nurb->flagu,
+      nurbs_geometry.u.parms,
+      nurbs_geometry.u.range
+    },
+    {
+      nurbs_geometry.v.degree,
+      nurb->flagv,
+      nurbs_geometry.v.parms,
+      nurbs_geometry.v.range
+}
+  };
 
-  BKE_nurb_knot_calc_u(nurb);
-
+  BKE_nurb_knot_set_u(nurb, nurbs_geometry.u.parms);
+  BKE_nurb_knot_set_v(nurb, nurbs_geometry.v.parms);
   /* Figure out whether curve should have U endpoint flag set:
    * the parameters should have at least (degree+1) values on each end,
    * and their values should match curve range. */
-  bool do_endpoints = false;
-  int deg1 = nurbs_geometry.degree + 1;
-  if (nurbs_geometry.parm.size() >= deg1 * 2) {
-    do_endpoints = true;
-    const float2 range = nurbs_geometry.range;
-    for (int i = 0; i < deg1; ++i) {
-      if (abs(nurbs_geometry.parm[i] - range.x) > 0.0001f) {
-        do_endpoints = false;
-        break;
-      }
-      if (abs(nurbs_geometry.parm[nurbs_geometry.parm.size() - 1 - i] - range.y) > 0.0001f) {
-        do_endpoints = false;
-        break;
+  for (int douv_i = 0; ARRAY_SIZE(do_uv) != douv_i; ++douv_i) {
+    int deg1 = do_uv[douv_i].degree + 1;
+    if (do_uv[douv_i].parm.size() >= deg1 * 2) {
+      do_endpoints = true;
+      const float2 &range = do_uv[douv_i].range;
+      for (int i = 0; i < deg1; ++i) {
+        if (abs(do_uv[douv_i].parm[i] - range.x) > 0.0001f) {
+          do_endpoints = false;
+          break;
+        }
+        if (abs(do_uv[douv_i].parm[do_uv[douv_i].parm.size() - 1 - i] - range.y) > 0.0001f) {
+          do_endpoints = false;
+          break;
+        }
       }
     }
-  }
-  if (do_endpoints) {
-    nurb->flagu = CU_NURB_ENDPOINT;
+    if (do_endpoints) {
+      do_uv[douv_i].flag = CU_NURB_ENDPOINT;
+    }
   }
 }
 

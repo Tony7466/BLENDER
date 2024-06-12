@@ -10,6 +10,7 @@
 
 #include <optional>
 
+#include "BLI_span.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_sys_types.h"
@@ -268,6 +269,8 @@ void BKE_curve_calc_coords_axis(const BezTriple *bezt_array,
 
 void BKE_nurb_knot_calc_u(Nurb *nu);
 void BKE_nurb_knot_calc_v(Nurb *nu);
+void BKE_nurb_knot_set_u(Nurb *nu, blender::Span<float> parms);
+void BKE_nurb_knot_set_v(Nurb *nu, blender::Span<float> parms);
 
 /* nurb checks if they can be drawn, also clamp order func */
 bool BKE_nurb_check_valid_u(const Nurb *nu);

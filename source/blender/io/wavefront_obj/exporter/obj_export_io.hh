@@ -73,6 +73,10 @@ class FormatHandler : NonCopyable, NonMovable {
   {
     write_impl("v {:.6f} {:.6f} {:.6f}\n", x, y, z);
   }
+  void write_obj_vertex(float x, float y, float z, float w)
+  {
+    write_impl("v {:.6f} {:.6f} {:.6f} {:.6f}\n", x, y, z, w);
+  }
   void write_obj_vertex_color(float x, float y, float z, float r, float g, float b)
   {
     write_impl("v {:.6f} {:.6f} {:.6f} {:.4f} {:.4f} {:.4f}\n", x, y, z, r, g, b);
@@ -135,23 +139,32 @@ class FormatHandler : NonCopyable, NonMovable {
   }
   void write_obj_cstype()
   {
-    write_impl("cstype bspline\n");
+    write_impl("cstype rat bspline\n");
   }
-  void write_obj_nurbs_degree(int deg)
+  void write_obj_nurbs_degree(std::pair<int, int> degs)
   {
-    write_impl("deg {}\n", deg);
+    write_impl("deg {} {}\n", degs.first, degs.second);
   }
-  void write_obj_curve_begin()
+  void write_obj_curve_begin(ObjectType type)
   {
-    write_impl("curv 0.0 1.0");
+    switch (type) {
+      case OB_CURVES_LEGACY:
+        write_impl("curv 0.0 1.0");
+        break;
+      case OB_SURF:
+        write_impl("surf 0.0 1.0 0.0 1.0");
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
   }
-  void write_obj_curve_end()
+  void write_obj_surface_begin()
   {
-    write_obj_newline();
+    write_impl("surf 0.0 1.0 0.0 1.0");
   }
-  void write_obj_nurbs_parm_begin()
+  void write_obj_nurbs_parm_begin(int uv)
   {
-    write_impl("parm u 0.0");
+    write_impl("parm {} 0.0", uv ? "v" : "u");
   }
   void write_obj_nurbs_parm(float v)
   {

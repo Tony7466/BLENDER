@@ -56,10 +56,10 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
       prev_geometry->geometry_name_ = name;
       return prev_geometry;
     }
-    if (new_type == GEOM_CURVE) {
+    if (new_type == GEOM_CURVE || new_type == GEOM_SURF) {
       /* The object originally created is not a mesh now that curve data
        * follows the vertex coordinates list. */
-      prev_geometry->geom_type_ = GEOM_CURVE;
+      prev_geometry->geom_type_ = new_type;
       return prev_geometry;
     }
   }
@@ -73,9 +73,12 @@ static Geometry *create_geometry(Geometry *const prev_geometry,
 
 static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_global_vertices)
 {
-  float3 vert;
-  p = parse_floats(p, end, 0.0f, vert, 3);
-  r_global_vertices.vertices.append(vert);
+  float4 vert;
+  /* TODO: (Before set for review ) We _will_ have 3  (that's actually the norm for a vertex, it's just for the
+  **        case of rational control points.) */
+  p = parse_floats(p, end, 0.0f, vert, 4);
+  r_global_vertices.vertices.append(vert.xyz());
+  r_global_vertices.weights.append(vert.w);
   /* OBJ extension: `xyzrgb` vertex colors, when the vertex position
    * is followed by 3 more RGB color components. See
    * http://paulbourke.net/dataformats/obj/colour.html */
@@ -339,27 +342,42 @@ static Geometry *geom_set_curve_type(Geometry *geom,
                                      Vector<std::unique_ptr<Geometry>> &r_all_geometries)
 {
   p = drop_whitespace(p, end);
-  if (!StringRef(p, end).startswith("bspline")) {
+  bool rational;
+  if (StringRef(p, end).startswith("rat bspline")) {
+    rational = true;
+  }
+  else if (StringRef(p, end).startswith("bspline")) {
+    rational = false;
+  }
+  else {
     std::cerr << "Curve type not supported: '" << std::string(p, end) << "'" << std::endl;
     return geom;
   }
   geom = create_geometry(geom, GEOM_CURVE, group_name, r_all_geometries);
   geom->nurbs_element_.group_ = group_name;
+  geom->rational_ = rational;
   return geom;
 }
 
 static void geom_set_curve_degree(Geometry *geom, const char *p, const char *end)
 {
-  parse_int(p, end, 3, geom->nurbs_element_.degree);
+  p = parse_int(p, end, 3, geom->nurbs_element_.u.degree);
+  p = drop_whitespace(p, end);
+  p = parse_int(p, end, 1, geom->nurbs_element_.v.degree);
 }
 
-static void geom_add_curve_vertex_indices(Geometry *geom,
-                                          const char *p,
-                                          const char *end,
-                                          const GlobalVertices &global_vertices)
+static void geom_set_element_type_and_add_vertex_indices(Geometry *geom,
+                                                         eGeometryType type,
+                                                         const char *p,
+                                                         const char *end,
+                                                         const GlobalVertices &global_vertices)
 {
+  geom->geom_type_ = type;
   /* Parse curve parameter range. */
-  p = parse_floats(p, end, 0, geom->nurbs_element_.range, 2);
+  p = parse_floats(p, end, 0, geom->nurbs_element_.u.range, 2);
+  if (GEOM_SURF == type) {
+    p = parse_floats(p, end, 0, geom->nurbs_element_.v.range, 2);
+  }
   /* Parse indices. */
   while (p < end) {
     int index;
@@ -380,7 +398,12 @@ static void geom_add_curve_parameters(Geometry *geom, const char *p, const char 
     std::cerr << "Invalid OBJ curve parm line" << std::endl;
     return;
   }
-  if (*p != 'u') {
+  Vector<float> *parm = nullptr;
+  if (*p == 'u') {
+    parm = &geom->nurbs_element_.u.parms;
+  } else if (*p == 'v') {
+    parm = &geom->nurbs_element_.v.parms;
+  } else {
     std::cerr << "OBJ curve surfaces are not supported: '" << *p << "'" << std::endl;
     return;
   }
@@ -390,7 +413,7 @@ static void geom_add_curve_parameters(Geometry *geom, const char *p, const char 
     float val;
     p = parse_float(p, end, FLT_MAX, val);
     if (val != FLT_MAX) {
-      geom->nurbs_element_.parm.append(val);
+      parm->append(val);
     }
     else {
       std::cerr << "OBJ curve parm line has invalid number" << std::endl;
@@ -682,7 +705,10 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
         geom_set_curve_degree(curr_geom, p, end);
       }
       else if (parse_keyword(p, end, "curv")) {
-        geom_add_curve_vertex_indices(curr_geom, p, end, r_global_vertices);
+        geom_set_element_type_and_add_vertex_indices(curr_geom, GEOM_CURVE, p, end, r_global_vertices);
+      }
+      else if (parse_keyword(p, end, "surf")) {
+        geom_set_element_type_and_add_vertex_indices(curr_geom, GEOM_SURF, p, end, r_global_vertices);
       }
       else if (parse_keyword(p, end, "parm")) {
         geom_add_curve_parameters(curr_geom, p, end);
