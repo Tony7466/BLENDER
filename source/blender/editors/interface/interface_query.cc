@@ -743,11 +743,11 @@ uiBut *ui_region_find_active_but(ARegion *region)
   return nullptr;
 }
 
-uiBut *ui_region_find_always_active_but(const ARegion *region)
+uiBut *ui_region_find_always_semi_modal_active_but(const ARegion *region)
 {
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-      if (but->flag2 & UI_BUT2_FILTER_TEXT_ALWAYS_ACTIVE) {
+      if (but->flag2 & UI_BUT2_FORCE_SEMI_MODAL_ACTIVE) {
         return but;
       }
     }

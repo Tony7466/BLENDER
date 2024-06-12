@@ -2484,8 +2484,8 @@ void uiItemFullR(uiLayout *layout,
     if (placeholder) {
       UI_but_placeholder_set(but, placeholder);
     }
-    if (flag & UI_ITEM_R_FILTER_TEXT_ALWAYS_ACTIVE) {
-      UI_but_flag2_enable(but, UI_BUT2_FILTER_TEXT_ALWAYS_ACTIVE);
+    if (flag & UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE) {
+      UI_but_flag2_enable(but, UI_BUT2_FORCE_SEMI_MODAL_ACTIVE);
     }
   }
 

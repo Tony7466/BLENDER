@@ -209,7 +209,7 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
   uiItemR(sub,
           &shelf_ptr,
           "search_filter",
-          UI_ITEM_R_IMMEDIATE | UI_ITEM_R_FILTER_TEXT_ALWAYS_ACTIVE,
+          UI_ITEM_R_IMMEDIATE | UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE,
           "",
           ICON_VIEWZOOM);
 

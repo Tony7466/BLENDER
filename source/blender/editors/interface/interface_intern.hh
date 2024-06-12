@@ -290,11 +290,13 @@ struct uiBut {
    * case is to keep some filter button active to receive text input, while other buttons remain
    * active for interaction.
    *
-   * Buttons that have #priority_active set will be temporarily activated for event handling, and
+   * Buttons that have #semi_modal_state set will be temporarily activated for event handling, and
    * only if they don't consume the event (for example text input events) the event will be
-   * forwarded to normal active button.
+   * forwarded to other buttons.
+   *
+   * Currently only text buttons support this well.
    */
-  uiHandleButtonData *priority_active = nullptr;
+  uiHandleButtonData *semi_modal_state = nullptr;
 
   /** Custom button data (borrowed, not owned). */
   void *custom_data = nullptr;
@@ -1163,7 +1165,7 @@ void ui_but_activate_over(bContext *C, ARegion *region, uiBut *but);
 void ui_but_execute_begin(bContext *C, ARegion *region, uiBut *but, void **active_back);
 void ui_but_execute_end(bContext *C, ARegion *region, uiBut *but, void *active_back);
 void ui_but_active_free(const bContext *C, uiBut *but);
-void ui_but_priority_active_free(const bContext *C, uiBut *but);
+void ui_but_semi_modal_state_free(const bContext *C, uiBut *but);
 /**
  * In some cases we may want to update the view (#View2D) in-between layout definition and drawing.
  * E.g. to make sure a button is visible while editing.
@@ -1497,7 +1499,7 @@ uiBlock *ui_block_find_mouse_over(const ARegion *region, const wmEvent *event, b
 
 uiBut *ui_region_find_first_but_test_flag(ARegion *region, int flag_include, int flag_exclude);
 uiBut *ui_region_find_active_but(ARegion *region) ATTR_WARN_UNUSED_RESULT;
-uiBut *ui_region_find_always_active_but(const ARegion *region);
+uiBut *ui_region_find_always_semi_modal_active_but(const ARegion *region);
 bool ui_region_contains_point_px(const ARegion *region, const int xy[2])
     ATTR_NONNULL(1, 2) ATTR_WARN_UNUSED_RESULT;
 bool ui_region_contains_rect_px(const ARegion *region, const rcti *rect_px);

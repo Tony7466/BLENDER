@@ -178,13 +178,13 @@ static void ui_mouse_motion_keynav_init(uiKeyNavLock *keynav, const wmEvent *eve
 static bool ui_mouse_motion_keynav_test(uiKeyNavLock *keynav, const wmEvent *event);
 #endif
 
-static void with_priority_button_active(bContext *C,
-                                        ARegion *region,
-                                        uiBut *priority_but,
-                                        blender::FunctionRef<void()> fn);
-static void with_priority_button_active(bContext *C,
-                                        ARegion *region,
-                                        blender::FunctionRef<void(uiBut *priority_but)> fn);
+static void with_semi_modal_but_active(bContext *C,
+                                       ARegion *region,
+                                       uiBut *semi_modal_but,
+                                       blender::FunctionRef<void()> fn);
+static void with_semi_modal_but_active(bContext *C,
+                                       ARegion *region,
+                                       blender::FunctionRef<void(uiBut *semi_modal_but)> fn);
 
 /** \} */
 
@@ -8644,7 +8644,8 @@ static void button_activate_init(bContext *C,
                                  uiBut *but,
                                  uiButtonActivateType type)
 {
-  if (but->priority_active) {
+  /* Don't activate semi-modal buttons the normal way, they have special activation handling. */
+  if (but->semi_modal_state) {
     return;
   }
   /* Only ever one active button! */
@@ -8860,8 +8861,8 @@ static void button_activate_exit(
     }
   }
 
-  BLI_assert(!but->priority_active || but->priority_active == but->active);
-  but->priority_active = nullptr;
+  BLI_assert(!but->semi_modal_state || but->semi_modal_state == but->active);
+  but->semi_modal_state = nullptr;
   /* clean up button */
   MEM_SAFE_FREE(but->active);
 
@@ -8891,13 +8892,14 @@ void ui_but_active_free(const bContext *C, uiBut *but)
   }
 }
 
-void ui_but_priority_active_free(const bContext *C, uiBut *but)
+void ui_but_semi_modal_state_free(const bContext *C, uiBut *but)
 {
-  if (!but->priority_active) {
+  if (!but->semi_modal_state) {
     return;
   }
-  with_priority_button_active(
-      (bContext *)C, but->priority_active->region, but, [&]() { ui_but_active_free(C, but); });
+  /* Activate the button (using the semi modal state) and use the normal active button freeing. */
+  with_semi_modal_but_active(
+      (bContext *)C, but->semi_modal_state->region, but, [&]() { ui_but_active_free(C, but); });
 }
 
 /* returns the active button with an optional checking function */
@@ -9289,15 +9291,16 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
 }
 
 /**
- * Temporarily deactivates the regular active button, activates the priority button
- * (#ui_region_find_always_active_but()), calls \a fn and reactivates the regular active button.
+ * Temporarily deactivates the regular active button, activates the semi-modal button
+ * (#ui_region_find_always_semi_modal_active_but()), calls \a fn and reactivates the regular active
+ * button.
  */
-static void with_priority_button_active(bContext *C,
-                                        ARegion *region,
-                                        uiBut *priority_but,
-                                        blender::FunctionRef<void()> fn)
+static void with_semi_modal_but_active(bContext *C,
+                                       ARegion *region,
+                                       uiBut *semi_modal_but,
+                                       blender::FunctionRef<void()> fn)
 {
-  BLI_assert(priority_but->active == nullptr);
+  BLI_assert(semi_modal_but->active == nullptr);
 
   uiBut *regular_active_but = ui_region_find_active_but(region);
   uiHandleButtonData *regular_active_data = regular_active_but ? regular_active_but->active :
@@ -9306,33 +9309,33 @@ static void with_priority_button_active(bContext *C,
   if (regular_active_but) {
     regular_active_but->active = nullptr;
   }
-  if (!priority_but->priority_active) {
-    ui_but_activate_event(C, region, priority_but);
-    priority_but->priority_active = priority_but->active;
-    priority_but->priority_active->handle_transparent = true;
+  if (!semi_modal_but->semi_modal_state) {
+    ui_but_activate_event(C, region, semi_modal_but);
+    semi_modal_but->semi_modal_state = semi_modal_but->active;
+    semi_modal_but->semi_modal_state->handle_transparent = true;
   }
-  priority_but->active = priority_but->priority_active;
+  semi_modal_but->active = semi_modal_but->semi_modal_state;
 
   fn();
 
   /* Popup might have been closed, so lookup button again. */
-  if (uiBut *priority_but = ui_region_find_always_active_but(region)) {
-    priority_but->active = nullptr;
+  if (uiBut *semi_modal_but = ui_region_find_always_semi_modal_active_but(region)) {
+    semi_modal_but->active = nullptr;
   }
   if (regular_active_but) {
     regular_active_but->active = regular_active_data;
   }
 }
 
-static void with_priority_button_active(bContext *C,
-                                        ARegion *region,
-                                        blender::FunctionRef<void(uiBut *priority_but)> fn)
+static void with_semi_modal_but_active(bContext *C,
+                                       ARegion *region,
+                                       blender::FunctionRef<void(uiBut *semi_modal_but)> fn)
 {
-  uiBut *priority_but = ui_region_find_always_active_but(region);
-  if (!priority_but) {
+  uiBut *semi_modal_but = ui_region_find_always_semi_modal_active_but(region);
+  if (!semi_modal_but) {
     return;
   }
-  with_priority_button_active(C, region, priority_but, [&]() { fn(priority_but); });
+  with_semi_modal_but_active(C, region, semi_modal_but, [&]() { fn(semi_modal_but); });
 }
 
 /** \} */
@@ -11559,8 +11562,8 @@ static int ui_handle_menus_recursive(bContext *C,
   }
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
-    with_priority_button_active(C, menu->region, [&](uiBut *priority_but) {
-      retval = ui_handle_button_event(C, event, priority_but);
+    with_semi_modal_but_active(C, menu->region, [&](uiBut *semi_modal_but) {
+      retval = ui_handle_button_event(C, event, semi_modal_but);
     });
   }
 
@@ -11673,8 +11676,8 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
   }
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
-    with_priority_button_active(C, region, [&](uiBut *priority_active) {
-      retval = ui_handle_button_event(C, event, priority_active);
+    with_semi_modal_but_active(C, region, [&](uiBut *semi_modal_but) {
+      retval = ui_handle_button_event(C, event, semi_modal_but);
     });
   }
 
