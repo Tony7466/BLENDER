@@ -3817,7 +3817,7 @@ static void do_brush_action(const Sculpt &sd,
       SCULPT_do_clay_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_CLAY_STRIPS:
-      SCULPT_do_clay_strips_brush(sd, ob, nodes);
+      do_clay_strips_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_MULTIPLANE_SCRAPE:
       SCULPT_do_multiplane_scrape_brush(sd, ob, nodes);
@@ -6574,6 +6574,29 @@ void calc_distance_falloff(SculptSession &ss,
       continue;
     }
     r_distances[i] = math::sqrt(test.dist);
+  }
+}
+
+void calc_cube_distance_falloff(SculptSession &ss,
+                                const Brush &brush,
+                                const float4x4 &mat,
+                                const Span<float3> positions,
+                                const Span<int> verts,
+                                const MutableSpan<float> r_distances,
+                                const MutableSpan<float> factors)
+{
+  SculptBrushTest test;
+  SCULPT_brush_test_init(ss, test);
+  const float tip_roundness = brush.tip_roundness;
+  const float tip_scale_x = brush.tip_scale_x;
+  for (const int i : verts.index_range()) {
+    /* TODO: Break up #SCULPT_brush_test_cube. */
+    if (!SCULPT_brush_test_cube(test, positions[verts[i]], mat.ptr(), tip_roundness, tip_scale_x))
+    {
+      factors[i] = 0.0f;
+      r_distances[i] = FLT_MAX;
+    }
+    r_distances[i] = test.dist;
   }
 }
 
