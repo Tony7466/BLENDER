@@ -6517,28 +6517,39 @@ void SCULPT_cube_tip_init(const Sculpt & /*sd*/,
 
 namespace blender::ed::sculpt_paint {
 
+void fill_factor_from_hide(const Mesh &mesh,
+                           const Span<int> verts,
+                           const MutableSpan<float> r_factors)
+{
+  BLI_assert(verts.size() == r_factors.size());
+
+  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  if (const VArray hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point)) {
+    const VArraySpan span(hide_vert);
+    for (const int i : verts.index_range()) {
+      r_factors[i] = span[verts[i]] ? 0.0f : 1.0f;
+    }
+  }
+  else {
+    r_factors.fill(1.0f);
+  }
+}
+
 void fill_factor_from_hide_and_mask(const Mesh &mesh,
                                     const Span<int> verts,
                                     const MutableSpan<float> r_factors)
 {
   BLI_assert(verts.size() == r_factors.size());
 
+  fill_factor_from_hide(mesh, verts, r_factors);
+
   /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
   const bke::AttributeAccessor attributes = mesh.attributes();
   if (const VArray mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point)) {
     const VArraySpan span(mask);
     for (const int i : verts.index_range()) {
-      r_factors[i] = 1.0f - span[verts[i]];
-    }
-  }
-  else {
-    r_factors.fill(1.0f);
-  }
-
-  if (const VArray hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point)) {
-    const VArraySpan span(hide_vert);
-    for (const int i : verts.index_range()) {
-      r_factors[i] = span[verts[i]] ? 0.0f : r_factors[i];
+      r_factors[i] -= std::max(1.0f - span[verts[i]], 0.0f);
     }
   }
 }

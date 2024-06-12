@@ -29,26 +29,6 @@ struct LocalData {
   Vector<float> distances;
 };
 
-/** Few brushes completely ignore the existing hide value. */
-static void fill_factor_from_hide(const Mesh &mesh,
-                                  const Span<int> verts,
-                                  const MutableSpan<float> r_factors)
-{
-  BLI_assert(verts.size() == r_factors.size());
-
-  /* TODO: Avoid overhead of accessing attributes for every PBVH node. */
-  const bke::AttributeAccessor attributes = mesh.attributes();
-  if (const VArray hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point)) {
-    const VArraySpan span(hide_vert);
-    for (const int i : verts.index_range()) {
-      r_factors[i] = span[verts[i]] ? 0.0f : r_factors[i];
-    }
-  }
-  else {
-    r_factors.fill(1.0f);
-  }
-}
-
 static void calc_current_mask_factor(const float strength,
                                      const Span<int> verts,
                                      const Span<float> mask,
