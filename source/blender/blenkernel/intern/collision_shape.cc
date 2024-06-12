@@ -12,6 +12,7 @@
 #include "BKE_collision_shape.hh"
 #include "BKE_mesh.hh"
 
+#include "BLI_math_vector.hh"
 #include "DNA_meshdata_types.h"
 
 #include "physics_geometry_impl.hh"
@@ -374,10 +375,20 @@ ScaledTriangleMeshCollisionShape::ScaledTriangleMeshCollisionShape(
 {
 }
 
+static btStaticPlaneShape *make_static_plane_shape(const float3 &plane_normal,
+                                                   const float plane_constant)
+{
+  const float3 normalized_normal = math::normalize(plane_normal);
+  /* Bullet requires normalized non-zero vectors. */
+  const float3 safe_normal = math::is_zero(normalized_normal) ? float3(0, 0, 1) :
+                                                                normalized_normal;
+  return new btStaticPlaneShape(to_bullet(safe_normal), plane_constant);
+}
+
 StaticPlaneCollisionShape::StaticPlaneCollisionShape(const float3 &plane_normal,
                                                      const float plane_constant)
-    : CollisionShape(CollisionShapeImpl::wrap(
-          new btStaticPlaneShape(to_bullet(plane_normal), plane_constant)))
+    : CollisionShape(
+          CollisionShapeImpl::wrap(make_static_plane_shape(plane_normal, plane_constant)))
 {
 }
 
