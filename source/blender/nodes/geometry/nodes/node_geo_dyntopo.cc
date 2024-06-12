@@ -25,15 +25,15 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
-  Field<float3> uv_field = params.extract_input<Field<float3>>("UV");
+  GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
+  GField uv_field = params.extract_input<GField>("UV");
 
   const float2 position = params.extract_input<float3>("Position").xy();
   const float radius = params.extract_input<float>("Radius");
   const float max_length = params.extract_input<float>("Max Length");
 
-  uv_field = bke::get_implicit_type_conversions().try_convert(std::move(uv_field),
-                                                              CPPType::get<float2>());
+  const Field<float2> uv_field_typed = bke::get_implicit_type_conversions().try_convert(
+      std::move(uv_field), CPPType::get<float2>());
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const Mesh *mesh = geometry_set.get_mesh();
@@ -41,7 +41,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
       bke::MeshFieldContext context(*mesh, bke::AttrDomain::Point);
       FieldEvaluator evaluator(context, mesh->verts_num);
-      evaluator.add(uv_field);
+      evaluator.add(uv_field_typed);
       evaluator.evaluate();
       const VArraySpan<float2> mesh_uv = evaluator.get_evaluated<float2>(0);
 
@@ -50,7 +50,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   });
 
-  params.set_output("Geometry", std::move(geometry_set));
+  params.set_output("Mesh", std::move(geometry_set));
 }
 
 static void node_register()
