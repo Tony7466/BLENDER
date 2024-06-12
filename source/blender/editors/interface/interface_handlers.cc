@@ -182,6 +182,7 @@ static void with_but_active_as_semi_modal(bContext *C,
                                           ARegion *region,
                                           uiBut *semi_modal_but,
                                           blender::FunctionRef<void()> fn);
+static int ui_handle_region_semi_modal_buttons(bContext *C, const wmEvent *event, ARegion *region);
 
 /** \} */
 
@@ -11579,11 +11580,7 @@ static int ui_handle_menus_recursive(bContext *C,
   }
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
-    foreach_semi_modal_but_as_active(C, menu->region, [&](uiBut *semi_modal_but) {
-      if (retval == WM_UI_HANDLER_CONTINUE) {
-        retval = ui_handle_button_event(C, event, semi_modal_but);
-      }
-    });
+    retval = ui_handle_region_semi_modal_buttons(C, event, menu->region);
   }
 
   /* now handle events for our own menu */
@@ -11695,11 +11692,7 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
   }
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
-    foreach_semi_modal_but_as_active(C, region, [&](uiBut *semi_modal_but) {
-      if (retval == WM_UI_HANDLER_CONTINUE) {
-        retval = ui_handle_button_event(C, event, semi_modal_but);
-      }
-    });
+    retval = ui_handle_region_semi_modal_buttons(C, event, region);
   }
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
@@ -11750,6 +11743,27 @@ static void ui_region_handler_remove(bContext *C, void * /*userdata*/)
   if (BLI_findindex(&screen->regionbase, region) == -1) {
     ui_apply_but_funcs_after(C);
   }
+}
+
+static int ui_handle_region_semi_modal_buttons(bContext *C, const wmEvent *event, ARegion *region)
+{
+  /* If there's a fully modal button, it has priority. */
+  if (const uiBut *active_but = ui_region_find_active_but(region)) {
+    BLI_assert(active_but->semi_modal_state == nullptr);
+    if (button_modal_state(active_but->active->state)) {
+      return WM_UI_HANDLER_CONTINUE;
+    }
+  }
+
+  int retval = WM_UI_HANDLER_CONTINUE;
+
+  foreach_semi_modal_but_as_active(C, region, [&](uiBut *semi_modal_but) {
+    if (retval == WM_UI_HANDLER_CONTINUE) {
+      retval = ui_handle_button_event(C, event, semi_modal_but);
+    }
+  });
+
+  return retval;
 }
 
 /* handle buttons at the window level, modal, for example while
