@@ -16,6 +16,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "physics_geometry_impl.hh"
+#include <BulletCollision/CollisionShapes/btEmptyShape.h>
 
 #ifdef WITH_BULLET
 #  include <BulletCollision/CollisionShapes/btTriangleShape.h>
@@ -230,16 +231,24 @@ TriangleCollisionShape::TriangleCollisionShape(const float3 &pt0,
 {
 }
 
-ConvexHullCollisionShape::ConvexHullCollisionShape(const VArray<float3> &points)
-    : CollisionShape(CollisionShapeImpl::wrap(new btConvexHullShape(nullptr, points.size())))
+static btConvexHullShape *make_convex_hull_shape(const VArray<float3> &points)
 {
-  /* Constructor only allocates points, data filled in here. */
-  btConvexHullShape &impl = static_cast<btConvexHullShape &>(this->impl_->as_bullet_shape());
-  MutableSpan<btVector3> bt_points = {impl.getUnscaledPoints(), impl.getNumPoints()};
+  if (points.is_empty()) {
+    return new btConvexHullShape(nullptr, 0);
+  }
+
+  Array<btVector3> bt_points(points.size());
   for (const int i : bt_points.index_range()) {
     bt_points[i] = to_bullet(points[i]);
   }
-  impl.recalcLocalAabb();
+  btConvexHullShape *shape = new btConvexHullShape(&bt_points.data()->x(), bt_points.size());
+  shape->recalcLocalAabb();
+  return shape;
+}
+
+ConvexHullCollisionShape::ConvexHullCollisionShape(const VArray<float3> &points)
+    : CollisionShape(CollisionShapeImpl::wrap(make_convex_hull_shape(points)))
+{
 }
 
 SphereCollisionShape::SphereCollisionShape(const float radius)
