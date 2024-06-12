@@ -166,6 +166,18 @@ class ComputeContextBuilder {
   {
     old_contexts_.append(contexts_.pop());
   }
+
+  void pop_until(const ComputeContext *context)
+  {
+    while (!contexts_.is_empty()) {
+      if (contexts_.peek().get() == context) {
+        return;
+      }
+      contexts_.pop();
+    }
+    /* Should have found the context above if it's not null. */
+    BLI_assert(context == nullptr);
+  }
 };
 
 }  // namespace blender

@@ -686,7 +686,9 @@ bool try_change_link_target_and_update_source(Object &object,
       if (const auto *group_context = dynamic_cast<const bke::GroupNodeComputeContext *>(context))
       {
         const bNode *caller_group_node = group_context->caller_group_node();
-        BLI_assert(caller_group_node);
+        const bNodeTree *caller_tree = group_context->caller_tree();
+        BLI_assert(caller_group_node && caller_tree);
+        caller_tree->ensure_topology_cache();
         const ComputeContext *caller_context = context->parent();
 
         for (const bNodeSocket *socket : node.output_sockets()) {

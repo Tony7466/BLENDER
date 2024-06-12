@@ -189,7 +189,7 @@ class LinearGizmo : public NodeGizmos {
     const bool is_interacting = gizmo_is_interacting(*gizmo_);
     if (!is_interacting) {
       float4x4 gizmo_transform = params.parent_transform * gizmo_base_transform;
-      edit_data_.factor_from_transform = math::length(gizmo_transform.z_axis());
+      edit_data_.factor_from_transform = safe_divide(1.0f, math::length(gizmo_transform.z_axis()));
       make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
       copy_m4_m4(gizmo_->matrix_basis, gizmo_transform.ptr());
 
