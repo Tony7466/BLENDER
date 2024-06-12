@@ -4,6 +4,8 @@
 
 #include "BLI_math_matrix.hh"
 
+#include "NOD_inverse_eval.hh"
+
 #include "node_function_util.hh"
 
 namespace blender::nodes::node_fn_combine_matrix_cc {
@@ -149,12 +151,66 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
+static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
+{
+  using namespace inverse_eval;
+  const TransformElem transform_elem = params.get_output_elem<TransformElem>("Matrix");
+  if (transform_elem.any) {
+    for (const bNodeSocket *socket : params.node.input_sockets()) {
+      params.set_input_elem(socket->identifier, FloatElem{true});
+    }
+    return;
+  }
+
+  params.set_input_elem("Column 4 Row 1", transform_elem.translation.x);
+  params.set_input_elem("Column 4 Row 2", transform_elem.translation.y);
+  params.set_input_elem("Column 4 Row 3", transform_elem.translation.z);
+
+  if (transform_elem.rotation || transform_elem.scale) {
+    params.set_input_elem("Column 1 Row 1", FloatElem{true});
+    params.set_input_elem("Column 1 Row 2", FloatElem{true});
+    params.set_input_elem("Column 1 Row 3", FloatElem{true});
+    params.set_input_elem("Column 2 Row 1", FloatElem{true});
+    params.set_input_elem("Column 2 Row 2", FloatElem{true});
+    params.set_input_elem("Column 2 Row 3", FloatElem{true});
+    params.set_input_elem("Column 3 Row 1", FloatElem{true});
+    params.set_input_elem("Column 3 Row 2", FloatElem{true});
+    params.set_input_elem("Column 3 Row 3", FloatElem{true});
+  }
+}
+
+static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
+{
+  const float4x4 transform = params.get_output<float4x4>("Matrix");
+  params.set_input("Column 1 Row 1", transform[0][0]);
+  params.set_input("Column 1 Row 2", transform[0][1]);
+  params.set_input("Column 1 Row 3", transform[0][2]);
+  params.set_input("Column 1 Row 4", transform[0][3]);
+
+  params.set_input("Column 2 Row 1", transform[1][0]);
+  params.set_input("Column 2 Row 2", transform[1][1]);
+  params.set_input("Column 2 Row 3", transform[1][2]);
+  params.set_input("Column 2 Row 4", transform[1][3]);
+
+  params.set_input("Column 3 Row 1", transform[2][0]);
+  params.set_input("Column 3 Row 2", transform[2][1]);
+  params.set_input("Column 3 Row 3", transform[2][2]);
+  params.set_input("Column 3 Row 4", transform[2][3]);
+
+  params.set_input("Column 4 Row 1", transform[3][0]);
+  params.set_input("Column 4 Row 2", transform[3][1]);
+  params.set_input("Column 4 Row 3", transform[3][2]);
+  params.set_input("Column 4 Row 4", transform[3][3]);
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_COMBINE_MATRIX, "Combine Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
+  ntype.eval_inverse_elem = node_eval_inverse_elem;
+  ntype.eval_inverse = node_eval_inverse;
   blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)

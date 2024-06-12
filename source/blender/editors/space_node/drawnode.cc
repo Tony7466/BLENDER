@@ -1274,23 +1274,13 @@ static bool socket_needs_attribute_search(bNode &node, bNodeSocket &socket)
   return node_decl->inputs[socket_index]->is_attribute_name;
 }
 
-static void draw_gizmo_icon(uiLayout *layout,
-                            PointerRNA *socket_ptr,
-                            const bool valid,
-                            const bool editable)
+static void draw_gizmo_icon(uiLayout *layout, PointerRNA *socket_ptr, const bool allow_pinning)
 {
-  if (valid) {
-    if (editable) {
-      uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
-    }
-    else {
-      uiItemL(layout, "", ICON_GIZMO);
-    }
+  if (allow_pinning) {
+    uiItemR(layout, socket_ptr, "pin_gizmo", UI_ITEM_NONE, "", ICON_GIZMO);
   }
   else {
-    uiLayout *row = uiLayoutRow(layout, true);
-    uiLayoutSetEnabled(row, false);
-    uiItemL(row, "", ICON_GIZMO);
+    uiItemL(layout, "", ICON_GIZMO);
   }
 }
 
@@ -1326,7 +1316,6 @@ static void std_node_socket_draw(
   }
 
   const bool has_gizmo = sock->runtime->has_gizmo;
-  const bool gizmo_valid = true;
 
   if (sock->in_out == SOCK_OUT && has_gizmo &&
       ELEM(node->type, SH_NODE_VALUE, FN_NODE_INPUT_VECTOR, FN_NODE_INPUT_INT, NODE_GROUP_INPUT))
@@ -1334,7 +1323,7 @@ static void std_node_socket_draw(
     uiLayout *row = uiLayoutRow(layout, false);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
     node_socket_button_label(C, row, ptr, node_ptr, text);
-    draw_gizmo_icon(row, ptr, true, node->type != NODE_GROUP_INPUT);
+    draw_gizmo_icon(row, ptr, node->type != NODE_GROUP_INPUT);
     return;
   }
 
@@ -1369,7 +1358,7 @@ static void std_node_socket_draw(
             uiLayout *row = uiLayoutRow(column, true);
             uiItemL(row, text, ICON_NONE);
             if (has_gizmo) {
-              draw_gizmo_icon(row, ptr, gizmo_valid, true);
+              draw_gizmo_icon(row, ptr, true);
               gizmo_handled = true;
             }
           }
@@ -1383,7 +1372,7 @@ static void std_node_socket_draw(
         uiLayout *row = uiLayoutRow(column, true);
         uiItemL(row, text, ICON_NONE);
         if (has_gizmo) {
-          draw_gizmo_icon(row, ptr, gizmo_valid, true);
+          draw_gizmo_icon(row, ptr, true);
           gizmo_handled = true;
         }
       }
@@ -1516,7 +1505,7 @@ static void std_node_socket_draw(
   }
 
   if (has_gizmo && !gizmo_handled) {
-    draw_gizmo_icon(layout, ptr, true, true);
+    draw_gizmo_icon(layout, ptr, true);
   }
 }
 

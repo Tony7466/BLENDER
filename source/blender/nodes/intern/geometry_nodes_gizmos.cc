@@ -33,11 +33,34 @@ static void reset_gizmo_states(bNodeTree &tree)
   }
 }
 
-static ie::ElemVariant get_gizmo_socket_elem(const bNode & /*node*/, const bNodeSocket &socket)
+static ie::ElemVariant get_gizmo_socket_elem(const bNode &node, const bNodeSocket &socket)
 {
-  if (std::optional<ie::ElemVariant> elem = ie::get_elem_variant_for_socket_type(
-          eNodeSocketDatatype(socket.type)))
-  {
+  switch (node.type) {
+    case GEO_NODE_GIZMO_LINEAR: {
+      return {ie::FloatElem::all()};
+    }
+    case GEO_NODE_GIZMO_DIAL: {
+      return {ie::FloatElem::all()};
+    }
+    case GEO_NODE_GIZMO_TRANSFORM: {
+      const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(node.storage);
+      ie::TransformElem elem;
+      if (storage.flag & GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_ALL) {
+        elem.translation = ie::VectorElem::all();
+      }
+      if (storage.flag &
+          (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_ALL | GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_ALL))
+      {
+        /* These gizmos could affect all components. */
+        elem.translation = ie::VectorElem::all();
+        elem.rotation = ie::RotationElem::all();
+        elem.scale = ie::VectorElem::all();
+      }
+      return {elem};
+    }
+  }
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(socket.type);
+  if (std::optional<ie::ElemVariant> elem = ie::get_elem_variant_for_socket_type(socket_type)) {
     elem->set_all();
     return *elem;
   }
