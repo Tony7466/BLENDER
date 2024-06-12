@@ -173,7 +173,7 @@ class ComputeContextBuilder {
       if (contexts_.peek().get() == context) {
         return;
       }
-      contexts_.pop();
+      this->pop();
     }
     /* Should have found the context above if it's not null. */
     BLI_assert(context == nullptr);
