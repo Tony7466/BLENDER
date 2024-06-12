@@ -1242,8 +1242,8 @@ static void view3d_main_region_listener(const wmRegionListenerParams *params)
       }
       break;
     case NC_NODE:
-      switch (wmn->action) {
-        case NA_SELECTED: {
+      switch (wmn->data) {
+        case ND_NODE_GIZMO: {
           WM_gizmomap_tag_refresh(gzmap);
           break;
         }

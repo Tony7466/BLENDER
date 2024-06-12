@@ -105,6 +105,10 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
       }
     }
     if (is_builtin_gizmo_node(*node)) {
+      if (node->is_muted()) {
+        continue;
+      }
+      gizmo_propagation.gizmo_nodes.append(node);
       const bNodeSocket &gizmo_input_socket = node->input_socket(0);
       const ie::ElemVariant elem = get_gizmo_socket_elem(*node, gizmo_input_socket);
       for (const bNodeLink *link : gizmo_input_socket.directly_linked_links()) {
@@ -201,6 +205,9 @@ static void foreach_gizmo_for_input(const ie::SocketElem &input_socket,
     return;
   }
   if (is_builtin_gizmo_node(node)) {
+    if (node.is_muted()) {
+      return;
+    }
     /* Found an actual built-in gizmo node. */
     fn(*compute_context_builder.current(), node);
     return;
@@ -261,8 +268,19 @@ static void foreach_active_gizmo_in_open_node_editor(
   for (auto &&item : gizmo_propagation.gizmo_inputs_by_node_inputs.items()) {
     const bNodeSocket &socket = *item.key.socket;
     const bNode &node = socket.owner_node();
-    if (node.flag & NODE_SELECT) {
+    if (node.flag & NODE_SELECT || (socket.flag & SOCK_GIZMO_PIN)) {
       used_gizmo_inputs.add_multiple(item.value);
+    }
+  }
+  for (const bNode *gizmo_node : gizmo_propagation.gizmo_nodes) {
+    if (gizmo_node->is_muted()) {
+      continue;
+    }
+    const bNodeSocket &gizmo_input_socket = gizmo_node->input_socket(0);
+    if (!gizmo_input_socket.is_logically_linked() || (gizmo_node->flag & NODE_SELECT)) {
+      used_gizmo_inputs.add(
+          {&gizmo_input_socket,
+           *ie::get_elem_variant_for_socket_type(eNodeSocketDatatype(gizmo_input_socket.type))});
     }
   }
   for (const ie::SocketElem &gizmo_input : used_gizmo_inputs) {
