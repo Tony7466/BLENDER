@@ -513,7 +513,7 @@ def extensions_panel_draw_impl(
     import os
     from bpy.app.translations import (
         pgettext_iface as iface_,
-        pgettext_iface as tip_,
+        pgettext_tip as tip_,
     )
     from .bl_extension_ops import (
         blender_extension_mark,
