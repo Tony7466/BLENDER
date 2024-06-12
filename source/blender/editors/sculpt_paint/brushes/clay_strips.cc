@@ -18,6 +18,7 @@
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
@@ -28,7 +29,7 @@
 
 namespace blender::ed::sculpt_paint {
 
-inline namespace scrape_cc {
+inline namespace clay_strips_cc {
 
 struct LocalData {
   Vector<float> factors;
@@ -38,6 +39,7 @@ struct LocalData {
 
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
+                       const float4x4 &mat,
                        const float4 &plane,
                        const float strength,
                        const Span<float3> positions_eval,
@@ -50,6 +52,7 @@ static void calc_faces(const Sculpt &sd,
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const bool flip = strength < 0.0f;
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
 
@@ -63,8 +66,8 @@ static void calc_faces(const Sculpt &sd,
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
-  calc_distance_falloff(
-      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+  calc_cube_distance_falloff(ss, brush, mat, positions_eval, verts, distances, factors);
+  scale_factors(distances, ss.cache->radius);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
   if (ss.cache->automasking) {
@@ -75,7 +78,12 @@ static void calc_faces(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  filter_below_plane_factors(positions_eval, verts, plane, factors);
+  if (flip) {
+    filter_below_plane_factors(positions_eval, verts, plane, factors);
+  }
+  else {
+    filter_above_plane_factors(positions_eval, verts, plane, factors);
+  }
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -95,17 +103,21 @@ static void calc_faces(const Sculpt &sd,
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
-static void calc_grids(
-    Object &object, const Brush &brush, const float4 &plane, const float strength, PBVHNode &node)
+static void calc_grids(Object &object,
+                       const Brush &brush,
+                       const float4x4 &mat,
+                       const float4 &plane,
+                       const float strength,
+                       PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
 
   SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
+  SCULPT_brush_test_init(ss, test);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
+  const bool flip = strength < 0.0f;
 
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = *BKE_pbvh_get_grid_key(*ss.pbvh);
@@ -124,21 +136,26 @@ static void calc_grids(
         continue;
       }
       const float3 &co = CCG_elem_offset_co(key, elem, j);
-      if (!sculpt_brush_test_sq_fn(test, co)) {
-        i++;
+      if (!SCULPT_brush_test_cube(test, co, mat.ptr(), brush.tip_roundness, brush.tip_scale_x)) {
         continue;
       }
-      if (SCULPT_plane_point_side(co, plane)) {
-        i++;
-        continue;
+
+      if (flip) {
+        if (plane_point_side_v3(plane, co) <= 0.0f) {
+          continue;
+        }
+      }
+      else {
+        if (plane_point_side_v3(plane, co) > 0.0f) {
+          continue;
+        }
       }
 
       float3 closest;
-      closest_to_plane_normalized_v3(closest, plane, co);
+      closest_to_plane_normalized_v3(closest, test.plane_tool, co);
       const float3 translation = closest - co;
 
       if (!SCULPT_plane_trim(*ss.cache, brush, translation)) {
-        i++;
         continue;
       }
 
@@ -160,17 +177,21 @@ static void calc_grids(
   }
 }
 
-static void calc_bmesh(
-    Object &object, const Brush &brush, const float4 &plane, const float strength, PBVHNode &node)
+static void calc_bmesh(Object &object,
+                       const Brush &brush,
+                       const float4x4 &mat,
+                       const float4 &plane,
+                       const float strength,
+                       PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
 
   SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
+  SCULPT_brush_test_init(ss, test);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
   auto_mask::NodeData automask_data = auto_mask::node_begin(
       object, ss.cache->automasking.get(), node);
+  const bool flip = strength < 0.0f;
 
   const int mask_offset = CustomData_get_offset_named(
       &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
@@ -183,22 +204,27 @@ static void calc_bmesh(
       i++;
       continue;
     }
-    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
-      i++;
+    if (!SCULPT_brush_test_cube(test, vert->co, mat.ptr(), brush.tip_roundness, brush.tip_scale_x))
+    {
       continue;
     }
 
-    if (SCULPT_plane_point_side(float3(vert->co), plane)) {
-      i++;
-      continue;
+    if (flip) {
+      if (plane_point_side_v3(plane, vert->co) <= 0.0f) {
+        continue;
+      }
+    }
+    else {
+      if (plane_point_side_v3(plane, vert->co) > 0.0f) {
+        continue;
+      }
     }
 
     float3 closest;
-    closest_to_plane_normalized_v3(closest, plane, vert->co);
+    closest_to_plane_normalized_v3(closest, test.plane_tool, vert->co);
     const float3 translation = closest - float3(vert->co);
 
     if (!SCULPT_plane_trim(*ss.cache, brush, translation)) {
-      i++;
       continue;
     }
 
@@ -219,24 +245,84 @@ static void calc_bmesh(
   }
 }
 
-}  // namespace scrape_cc
+}  // namespace clay_strips_cc
 
-void do_scrape_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
-  const SculptSession &ss = *object.sculpt;
+  SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
+  const bool flip = (ss.cache->bstrength < 0.0f);
+  const float radius = flip ? -ss.cache->radius : ss.cache->radius;
+  const float offset = SCULPT_brush_plane_offset_get(sd, ss);
+  const float displace = radius * (0.18f + offset);
+
+  /* The sculpt-plane normal (whatever its set to). */
+  float3 area_no_sp;
+
+  /* Geometry normal */
   float3 area_no;
   float3 area_co;
-  calc_brush_plane(brush, object, nodes, area_no, area_co);
-  SCULPT_tilt_apply_to_normal(area_no, ss.cache, brush.tilt_strength_factor);
 
-  const float offset = SCULPT_brush_plane_offset_get(sd, ss);
-  const float displace = -ss.cache->radius * offset;
-  area_co += area_no * ss.cache->scale * displace;
+  float temp[3];
+  float4x4 mat;
+  float scale[4][4];
+  float tmat[4][4];
+
+  calc_brush_plane(brush, object, nodes, area_no_sp, area_co);
+  SCULPT_tilt_apply_to_normal(area_no_sp, ss.cache, brush.tilt_strength_factor);
+
+  if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA || (brush.flag & BRUSH_ORIGINAL_NORMAL)) {
+    area_no = calc_area_normal(brush, object, nodes).value_or(float3(0));
+  }
+  else {
+    area_no = area_no_sp;
+  }
+
+  if (is_zero_v3(ss.cache->grab_delta_symmetry)) {
+    return;
+  }
+
+  mul_v3_v3v3(temp, area_no_sp, ss.cache->scale);
+  mul_v3_fl(temp, displace);
+  add_v3_v3(area_co, temp);
+
+  /* Clay Strips uses a cube test with falloff in the XY axis (not in Z) and a plane to deform the
+   * vertices. When in Add mode, vertices that are below the plane and inside the cube are moved
+   * towards the plane. In this situation, there may be cases where a vertex is outside the cube
+   * but below the plane, so won't be deformed, causing artifacts. In order to prevent these
+   * artifacts, this displaces the test cube space in relation to the plane in order to
+   * deform more vertices that may be below it. */
+  /* The 0.7 and 1.25 factors are arbitrary and don't have any relation between them, they were set
+   * by doing multiple tests using the default "Clay Strips" brush preset. */
+  float area_co_displaced[3];
+  madd_v3_v3v3fl(area_co_displaced, area_co, area_no, -radius * 0.7f);
+
+  cross_v3_v3v3(mat[0], area_no, ss.cache->grab_delta_symmetry);
+  mat[0][3] = 0.0f;
+  cross_v3_v3v3(mat[1], area_no, mat[0]);
+  mat[1][3] = 0.0f;
+  copy_v3_v3(mat[2], area_no);
+  mat[2][3] = 0.0f;
+  copy_v3_v3(mat[3], area_co_displaced);
+  mat[3][3] = 1.0f;
+  normalize_m4(mat.ptr());
+
+  /* Scale brush local space matrix. */
+  scale_m4_fl(scale, ss.cache->radius);
+  mul_m4_m4m4(tmat, mat.ptr(), scale);
+
+  mul_v3_fl(tmat[1], brush.tip_scale_x);
+
+  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
+   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
+   * during big deformation while keeping the surface as uniform as possible. */
+  mul_v3_fl(tmat[2], 1.25f);
+
+  invert_m4_m4(mat.ptr(), tmat);
 
   float4 plane;
-  plane_from_point_normal_v3(plane, area_co, area_no);
+  plane_from_point_normal_v3(plane, area_co, area_no_sp);
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
@@ -251,6 +337,7 @@ void do_scrape_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
         for (const int i : range) {
           calc_faces(sd,
                      brush,
+                     mat,
                      plane,
                      ss.cache->bstrength,
                      positions_eval,
@@ -267,14 +354,14 @@ void do_scrape_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
     case PBVH_GRIDS:
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
-          calc_grids(object, brush, plane, ss.cache->bstrength, *nodes[i]);
+          calc_grids(object, brush, mat, plane, ss.cache->bstrength, *nodes[i]);
         }
       });
       break;
     case PBVH_BMESH:
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         for (const int i : range) {
-          calc_bmesh(object, brush, plane, ss.cache->bstrength, *nodes[i]);
+          calc_bmesh(object, brush, mat, plane, ss.cache->bstrength, *nodes[i]);
         }
       });
       break;

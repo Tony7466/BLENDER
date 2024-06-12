@@ -6824,10 +6824,10 @@ void calc_plane_trim_limit_factors(const Brush &brush,
   }
 }
 
-void calc_above_plane_factors(const Span<float3> vert_positions,
-                              const Span<int> verts,
-                              const float4 &plane,
-                              const MutableSpan<float> factors)
+void filter_below_plane_factors(const Span<float3> vert_positions,
+                                const Span<int> verts,
+                                const float4 &plane,
+                                const MutableSpan<float> factors)
 {
   for (const int i : verts.index_range()) {
     if (plane_point_side_v3(plane, vert_positions[verts[i]]) <= 0.0f) {
@@ -6836,10 +6836,10 @@ void calc_above_plane_factors(const Span<float3> vert_positions,
   }
 }
 
-void calc_below_plane_factors(const Span<float3> vert_positions,
-                              const Span<int> verts,
-                              const float4 &plane,
-                              const MutableSpan<float> factors)
+void filter_above_plane_factors(const Span<float3> vert_positions,
+                                const Span<int> verts,
+                                const float4 &plane,
+                                const MutableSpan<float> factors)
 {
   for (const int i : verts.index_range()) {
     if (plane_point_side_v3(plane, vert_positions[verts[i]]) > 0.0f) {

@@ -188,15 +188,15 @@ void calc_plane_trim_limit_factors(const Brush &brush,
                                    MutableSpan<float> factors);
 
 /** Ignore points below the plane. */
-void calc_above_plane_factors(Span<float3> vert_positions,
-                              Span<int> verts,
-                              const float4 &plane,
-                              MutableSpan<float> factors);
+void filter_below_plane_factors(Span<float3> vert_positions,
+                                Span<int> verts,
+                                const float4 &plane,
+                                MutableSpan<float> factors);
 
 /* Ignore points above the plane. */
-void calc_below_plane_factors(Span<float3> vert_positions,
-                              Span<int> verts,
-                              const float4 &plane,
-                              MutableSpan<float> factors);
+void filter_above_plane_factors(Span<float3> vert_positions,
+                                Span<int> verts,
+                                const float4 &plane,
+                                MutableSpan<float> factors);
 
 }  // namespace blender::ed::sculpt_paint

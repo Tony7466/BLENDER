@@ -75,7 +75,7 @@ static void calc_faces(const Sculpt &sd,
 
   scale_factors(factors, strength);
 
-  calc_below_plane_factors(positions_eval, verts, plane, factors);
+  filter_above_plane_factors(positions_eval, verts, plane, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
