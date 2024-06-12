@@ -224,11 +224,20 @@ void do_mask_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
           ".sculpt_mask", bke::AttrDomain::Point);
 
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-        LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_faces(
-              brush, bstrength, positions, vert_normals, *nodes[i], object, mesh, tls, mask.span);
-        }
+        threading::isolate_task([&]() {
+          LocalData &tls = all_tls.local();
+          for (const int i : range) {
+            calc_faces(brush,
+                       bstrength,
+                       positions,
+                       vert_normals,
+                       *nodes[i],
+                       object,
+                       mesh,
+                       tls,
+                       mask.span);
+          }
+        });
       });
       mask.finish();
       break;
