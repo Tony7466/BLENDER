@@ -362,8 +362,7 @@ class Context : public realtime_compositor::Context {
   IDRecalcFlag query_id_recalc_flag(ID *id) const override
   {
     DrawEngineType *owner = (DrawEngineType *)this;
-    DrawData *draw_data = DRW_drawdata_ensure(
-        DEG_get_original_id(id), owner, sizeof(DrawData), nullptr, nullptr);
+    DrawData *draw_data = DRW_drawdata_ensure(id, owner, sizeof(DrawData), nullptr, nullptr);
     IDRecalcFlag recalc_flag = IDRecalcFlag(draw_data->recalc);
     draw_data->recalc = IDRecalcFlag(0);
     return recalc_flag;
