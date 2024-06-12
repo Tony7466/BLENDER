@@ -94,6 +94,7 @@ set(SRC
   nodes/node_geo_index_switch.cc
   nodes/node_geo_input_active_camera.cc
   nodes/node_geo_input_body_physics_mode.cc
+  nodes/node_geo_input_body_activation_state.cc
   nodes/node_geo_input_curve_handles.cc
   nodes/node_geo_input_curve_tilt.cc
   nodes/node_geo_input_edge_smooth.cc
@@ -187,6 +188,7 @@ set(SRC
   nodes/node_geo_self_object.cc
   nodes/node_geo_separate_components.cc
   nodes/node_geo_separate_geometry.cc
+  nodes/node_geo_set_body_activation_state.cc
   nodes/node_geo_set_body_kinematic.cc
   nodes/node_geo_set_body_simulated.cc
   nodes/node_geo_set_body_static.cc

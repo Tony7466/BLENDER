@@ -36,6 +36,14 @@ class PhysicsGeometry {
  public:
   using OverlapFilterFn = std::function<bool(const int a, const int b)>;
 
+  enum class BodyActivationState {
+    AlwaysActive = 0,
+    Active,
+    WantsSleep,
+    Sleeping,
+    AlwaysSleeping,
+  };
+
  private:
   /* Implementation of the physics world and rigid bodies.
    * This is an implicit shared pointer, multiple users can read the physics data. Requesting write
@@ -58,6 +66,7 @@ class PhysicsGeometry {
     std::string rotation;
     std::string velocity;
     std::string angular_velocity;
+    std::string activation_state;
   } builtin_attributes;
 
   PhysicsGeometry();
@@ -122,6 +131,10 @@ class PhysicsGeometry {
 
   VArray<float3> body_angular_velocities() const;
   AttributeWriter<float3> body_angular_velocities_for_write();
+
+  /* Type is #BodyActivationState, can't return enum as VArray (no CPPType). */
+  VArray<int> body_activation_states() const;
+  AttributeWriter<int> body_activation_states_for_write();
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();

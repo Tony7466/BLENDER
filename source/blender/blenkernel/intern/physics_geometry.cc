@@ -616,7 +616,6 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
   impl->motion_states.reinitialize(bodies_num);
   create_bodies(impl->rigid_bodies, impl->motion_states);
   impl_ = impl;
-  std::cout << "new physics impl @ " << impl_ << std::endl;
 
   UNUSED_VARS(constraints_num);
 }
@@ -1010,6 +1009,16 @@ AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
   return attributes_for_write().lookup_for_write<float3>(builtin_attributes.angular_velocity);
 }
 
+VArray<int> PhysicsGeometry::body_activation_states() const
+{
+  return attributes().lookup<int>(builtin_attributes.activation_state).varray;
+}
+
+AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.activation_state);
+}
+
 void PhysicsGeometry::tag_collision_shapes_changed() {}
 
 void PhysicsGeometry::tag_body_transforms_changed() {}
@@ -1286,6 +1295,22 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                             physics_access,
                             nullptr);
 
+  constexpr auto activation_state_get_fn = [](const btRigidBody &body) -> int {
+    body.getActivationState();
+  };
+  constexpr auto activation_state_set_fn = [](btRigidBody &body, int value) {
+    /* Note: there is also setActivationState, but that only sets if the state is not always-active
+     * or always-sleeping. This check can be performed on the caller side if the "always-x" state
+     * must be retained. */
+    body.forceActivationState(value);
+  };
+  static BuiltinRigidBodyAttributeProvider<int, activation_state_get_fn, activation_state_set_fn>
+      body_activation_state(PhysicsGeometry::builtin_attributes.activation_state,
+                            AttrDomain::Point,
+                            BuiltinAttributeProvider::NonDeletable,
+                            physics_access,
+                            nullptr);
+
   return ComponentAttributeProviders({&body_id,
                                       &body_simulated,
                                       &body_static,
@@ -1295,7 +1320,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_position,
                                       &body_rotation,
                                       &body_velocity,
-                                      &body_angular_velocity},
+                                      &body_angular_velocity,
+                                      &body_activation_state},
                                      {});
 }
 
