@@ -344,7 +344,9 @@ void VIEW3D_OT_render_border(wmOperatorType *ot)
   ot->poll = ED_operator_region_view3d_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER; /* No undo, edited data is usually not undoable. */
+  /* No undo, edited data is usually not undoable, otherwise (camera view), a manual undo push is
+   * done. */
+  ot->flag = OPTYPE_REGISTER;
 
   /* properties */
   WM_operator_properties_border(ot);
@@ -401,7 +403,9 @@ void VIEW3D_OT_clear_render_border(wmOperatorType *ot)
   ot->poll = ED_operator_view3d_active;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER; /* No undo, edited data is usually not undoable. */
+  /* No undo, edited data is usually not undoable, otherwise (camera view), a manual undo push is
+   * done. */
+  ot->flag = OPTYPE_REGISTER;
 }
 
 /** \} */
