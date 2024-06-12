@@ -838,7 +838,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
 
         if (report.missing_socket_logs) {
           /* Rerun modifier to make sure that values are logged. */
-          DEG_id_tag_update(&ob_orig->id, ID_RECALC_GEOMETRY);
+          DEG_id_tag_update_for_side_effect_request(depsgraph, &ob_orig->id, ID_RECALC_GEOMETRY);
           WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
         }
         if (!any_interacting) {
