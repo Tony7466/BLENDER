@@ -1,1 +1,2 @@
 Referenced by commit fad031a3a9495387c6bfe16e61596598aff21c95, Fix (unreported) crash when setting current frame from the UI.
+Referenced by pull request #123130, VSE: Fix mouse over assert
