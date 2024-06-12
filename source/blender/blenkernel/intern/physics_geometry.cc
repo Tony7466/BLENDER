@@ -943,26 +943,6 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
   });
 }
 
-// VArray<const CollisionShape *> PhysicsGeometry::body_collision_shapes() const
-//{
-//   auto get_fn = [](const btRigidBody &body) -> const CollisionShape * {
-//     return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
-//   };
-//   return VArray_For_PhysicsBodies<const CollisionShape *, get_fn>(this, nullptr);
-//  }
-//
-// VMutableArray<CollisionShape *> PhysicsGeometry::body_collision_shapes_for_write()
-//{
-//   BLI_assert(this->impl().is_mutable());
-//   constexpr auto get_fn = [](const btRigidBody &body) -> CollisionShape * {
-//     return static_cast<CollisionShape *>(body.getCollisionShape()->getUserPointer());
-//   };
-//   constexpr auto set_fn = [](btRigidBody &body, CollisionShape *value) {
-//     body.setCollisionShape(&value->impl().as_bullet_shape());
-//   };
-//   return VMutableArray_For_PhysicsBodies<CollisionShape *, get_fn, set_fn>(this, nullptr);
-// }
-
 VArray<int> PhysicsGeometry::body_ids() const
 {
   return attributes().lookup(builtin_attributes.id).varray.typed<int>();
@@ -1263,7 +1243,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     const bool is_moveable_shape = !body.getCollisionShape() ||
                                    !body.getCollisionShape()->isNonMoving();
     if (is_moveable_shape) {
-      if (math::is_zero(value)) {
+      if (math::is_zero(value) && body.getCollisionShape()) {
         btVector3 bt_inertia;
         body.getCollisionShape()->calculateLocalInertia(body.getMass(), bt_inertia);
         body.setMassProps(body.getMass(), bt_inertia);
