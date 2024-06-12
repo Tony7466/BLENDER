@@ -119,14 +119,17 @@ static void calc_grids(Object &object, const Brush &brush, const float strength,
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
+  int i = 0;
   for (const int grid : bke::pbvh::node_grid_indices(node)) {
     const int grid_verts_start = grid * key.grid_area;
     CCGElem *elem = grids[grid];
     for (const int j : IndexRange(key.grid_area)) {
       if (!grid_hidden.is_empty() && grid_hidden[grid][j]) {
+        i++;
         continue;
       }
       if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
+        i++;
         continue;
       }
       auto_mask::node_update(automask_data, i);
@@ -144,6 +147,7 @@ static void calc_grids(Object &object, const Brush &brush, const float strength,
       const float current_mask = key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f;
       const float new_mask = calc_new_mask(current_mask, fade, strength);
       CCG_elem_offset_mask(key, elem, j) = new_mask;
+      i++;
     }
   }
 }
