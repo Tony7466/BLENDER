@@ -24,9 +24,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       bke::PhysicsGeometry::builtin_attributes.is_static);
   Field<bool> kinematic_field = AttributeFieldInput::Create<bool>(
       bke::PhysicsGeometry::builtin_attributes.is_kinematic);
-  params.set_output("Simulated", fn::invert_boolean_field(std::move(simulated_field)));
-  params.set_output("Static", fn::invert_boolean_field(std::move(static_field)));
-  params.set_output("Kinematic", fn::invert_boolean_field(std::move(kinematic_field)));
+  params.set_output("Simulated", std::move(simulated_field));
+  params.set_output("Static", std::move(static_field));
+  params.set_output("Kinematic", std::move(kinematic_field));
 }
 
 static void node_register()
