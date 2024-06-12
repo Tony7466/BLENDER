@@ -203,6 +203,16 @@ void Sampling::step()
     data_.dimensions[SAMPLING_SSS_V] = r[1];
   }
 
+  data_.sample_index = sample_;
+
+  /**
+   * "The Unreasonable Effectiveness of Quasirandom Sequences"
+   * by Martin Roberts
+   * https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+   */
+  const float phi_2 = 1.32471795724474602596f;
+  data_.blue_noise_offset = math::fract(sample_ / float2(phi_2, square_f(phi_2))) * UTIL_TEX_SIZE;
+
   data_.push_update();
 
   viewport_sample_++;

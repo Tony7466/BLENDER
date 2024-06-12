@@ -9,6 +9,11 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 
+/* Prototypes */
+#ifndef GPU_METAL
+vec2 r_2d(int i);
+#endif
+
 /* -------------------------------------------------------------------- */
 /** \name Sampling data.
  *
@@ -34,6 +39,11 @@ vec3 sampling_rng_3D_get(const eSamplingDimension dimension)
   return vec3(sampling_buf.dimensions[dimension],
               sampling_buf.dimensions[dimension + 1u],
               sampling_buf.dimensions[dimension + 2u]);
+}
+
+vec2 sampling_blue_noise_rng_get(vec2 pixel, const eBlueNoiseUsage offset)
+{
+  return pixel + r_2d(offset) * float(UTIL_TEX_SIZE) + sampling_buf.blue_noise_offset;
 }
 
 #endif

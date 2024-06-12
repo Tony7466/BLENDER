@@ -228,6 +228,7 @@ enum PrecomputeType : uint32_t {
 /** \name Sampling
  * \{ */
 
+/* Sampling dimensions for pseudo random number generators needed on CPU. */
 enum eSamplingDimension : uint32_t {
   SAMPLING_FILTER_U = 0u,
   SAMPLING_FILTER_V = 1u,
@@ -260,6 +261,14 @@ enum eSamplingDimension : uint32_t {
   SAMPLING_SHADOW_K = 28u,
 };
 
+/* Blue noise texture usage. Avoid correlation artifacts. */
+enum eBlueNoiseUsage : uint32_t {
+  /* Random point on disk for filtering. */
+  SAMPLING_SHADOW_FILTER = 0u,
+  /* Random point in cone for tracing + jittered trace time. */
+  SAMPLING_SHADOW_TRACE = 1u,
+};
+
 /**
  * IMPORTANT: Make sure the array can contain all sampling dimensions.
  * Also note that it needs to be multiple of 4.
@@ -270,6 +279,10 @@ enum eSamplingDimension : uint32_t {
 struct SamplingData {
   /** Array containing random values from Low Discrepancy Sequence in [0..1) range. */
   float dimensions[SAMPLING_DIMENSION_COUNT];
+  /** Index used for low discrepancy sequence. */
+  float2 blue_noise_offset;
+  uint sample_index;
+  int _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(SamplingData, 16)
 

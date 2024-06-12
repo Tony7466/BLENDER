@@ -425,9 +425,11 @@ float shadow_eval(LightData light,
 #  elif defined(GPU_COMPUTE_SHADER)
   vec2 pixel = vec2(gl_GlobalInvocationID.xy);
 #  endif
-  vec3 blue_noise_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
-  vec3 random_shadow_3d = fract(blue_noise_3d + sampling_rng_3D_get(SAMPLING_SHADOW_U));
-  vec2 random_pcf_2d = fract(blue_noise_3d.xy + sampling_rng_2D_get(SAMPLING_SHADOW_X));
+  vec2 rng_trace = sampling_blue_noise_rng_get(pixel, SAMPLING_SHADOW_TRACE);
+  vec3 random_shadow_3d = utility_tx_fetch(utility_tx, rng_trace, UTIL_BLUE_NOISE_LAYER).rgb;
+
+  vec2 rng_pcf = sampling_blue_noise_rng_get(pixel, SAMPLING_SHADOW_FILTER);
+  vec2 random_pcf_2d = utility_tx_fetch(utility_tx, rng_pcf, UTIL_BLUE_NOISE_LAYER).rg;
 #else
   /* Case of surfel light eval. */
   vec3 random_shadow_3d = vec3(0.5);
