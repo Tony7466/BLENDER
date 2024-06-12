@@ -368,9 +368,9 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc,
   const int dest_h = int(float(h) * scale);
   const int dest_w = int(float(w) * scale);
   const int render_size = dest_w * dest_h * 4;
-  uchar *render_bmp = static_cast<uchar *>(MEM_mallocN(size_t(render_size), "svg bitmap"));
+  blender::Array<uchar> render_bmp(render_size);
 
-  nsvgRasterize(rast, image, 0, 0, scale, render_bmp, dest_w, dest_h, dest_w * 4);
+  nsvgRasterize(rast, image, 0, 0, scale, render_bmp.data(), dest_w, dest_h, dest_w * 4);
   nsvgDeleteRasterizer(rast);
   nsvgDelete(image);
 
@@ -406,8 +406,6 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc,
       g->bitmap[offs_out] = render_bmp[offs_in + 3];
     }
   }
-
-  MEM_freeN(render_bmp);
 
   GlyphCacheKey key = {charcode, 0};
   gc->glyphs.add(key, std::move(g));
