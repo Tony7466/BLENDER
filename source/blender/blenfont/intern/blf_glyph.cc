@@ -372,6 +372,13 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
   const std::string file_name = icon_to_svg_file_name(
       BIFIconID_Static(charcode - BLF_ICON_OFFSET));
   const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
+  if (!icondir.has_value()) {
+#ifndef NDEBUG
+    printf("Error: datafiles/icons folder not found.\n");
+#endif
+    return blf_glyph_cache_add_blank(gc, charcode);
+  }
+
   char filepath[1024];
   BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.c_str());
 
