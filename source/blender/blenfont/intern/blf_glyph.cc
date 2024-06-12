@@ -332,9 +332,10 @@ static GlyphBLF *blf_glyph_cache_add_glyph(
     }
   }
 
+  GlyphBLF *result = g.get();
   GlyphCacheKey key = {charcode, subpixel};
   gc->glyphs.add(key, std::move(g));
-  return gc->glyphs.lookup(key).get();
+  return result;
 }
 
 static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
@@ -343,9 +344,11 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
    * zero dimensions it will be skipped by blf_glyph_draw. */
   std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
   g->c = charcode;
+
+  GlyphBLF *result = g.get();
   GlyphCacheKey key = {charcode, 0};
   gc->glyphs.add(key, std::move(g));
-  return gc->glyphs.lookup(key).get();
+  return result;
 }
 
 #define DEF_ICON(name) STRINGIFY(name),
