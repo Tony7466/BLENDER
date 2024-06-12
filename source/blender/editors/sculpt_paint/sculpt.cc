@@ -6808,10 +6808,10 @@ void calc_translations_to_plane(const Span<float3> vert_positions,
   }
 }
 
-void calc_plane_trim_limit_factors(const Brush &brush,
-                                   const StrokeCache &cache,
-                                   const Span<float3> translations,
-                                   const MutableSpan<float> factors)
+void filter_plane_trim_limit_factors(const Brush &brush,
+                                     const StrokeCache &cache,
+                                     const Span<float3> translations,
+                                     const MutableSpan<float> factors)
 {
   if (!(brush.flag & BRUSH_PLANE_TRIM)) {
     return;

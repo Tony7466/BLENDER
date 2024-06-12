@@ -182,10 +182,10 @@ void calc_translations_to_plane(Span<float3> vert_positions,
                                 MutableSpan<float3> translations);
 
 /** Ignore points that fall below the "plane trim" threshold for the brush. */
-void calc_plane_trim_limit_factors(const Brush &brush,
-                                   const StrokeCache &cache,
-                                   Span<float3> translations,
-                                   MutableSpan<float> factors);
+void filter_plane_trim_limit_factors(const Brush &brush,
+                                     const StrokeCache &cache,
+                                     Span<float3> translations,
+                                     MutableSpan<float> factors);
 
 /** Ignore points below the plane. */
 void filter_below_plane_factors(Span<float3> vert_positions,
