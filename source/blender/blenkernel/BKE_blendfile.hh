@@ -162,9 +162,7 @@ namespace blender::bke::blendfile {
  *
  * The context can then be written to disk, and destroyed.
  *
- * \todo Re-check on the need to provide a blendfile path here, and the related relative file
- * paths remapping topic. Also affect proper handling of libraries (in case saved filepath is the
- * same as one of the current libraries).
+ * Design task: #122061
  */
 class PartialWriteContext {
  public:
@@ -172,6 +170,17 @@ class PartialWriteContext {
   Main bmain;
 
  private:
+  /**
+   * The filepath that should be used a root for IDs _added_ to the context, when handling
+   * remapping of their relative filepaths.
+   *
+   * Typically, the current G_MAIN's filepath.
+   *
+   * \note Currently always also copied into the temp bmain.filepath, as this simplifies remapping
+   * of relative filepaths. This may change in the future, if context can be loaded from external
+   * blendfiles.
+   */
+  std::string reference_root_filepath;
   /**
    * This mapping only contains entries for IDs in the context which have a known matching ID in
    * current G_MAIN.
@@ -215,7 +224,10 @@ class PartialWriteContext {
   Library *ensure_library_(blender::StringRefNull library_absolute_path);
 
  public:
-  PartialWriteContext(blender::StringRefNull blendfile_path = {});
+  /* Passing a reference root filepath is mandatory, for remapping of relative paths to work as
+   * expected. */
+  PartialWriteContext() = delete;
+  PartialWriteContext(blender::StringRefNull reference_root_filepath);
   ~PartialWriteContext();
   /* Delete regular copy constructor, such that only the default move copy constructor (and
    * assignement operator) can be used. */
@@ -349,13 +361,16 @@ class PartialWriteContext {
   bool write(const char *filepath, int write_flags, int remap_mode, ReportList &reports);
   bool write(const char *filepath, ReportList &reports);
 
-  /* TODO:
+  /* TODO: To allow editing an existing external blendfile:
    *   - API to load a context from a blendfile.
    *   - API to 'match' a context's content with another Main database's content (based on ID
    *     names and libraries).
    *   - API to replace the matching context IDs by a 'new version' (similar to 'add_id', but
    *     ensuring that the context ID, if it already exists, is a pristine copy of the given source
    *     one).
+   *   - Rework the remapping of relative filepaths, since data already exisitng in the
+   *     loaded-from-disk temp context wil have different rootpath than the data from current
+   *     G_MAIN.
    */
 };
 
