@@ -13,6 +13,7 @@
 #include "BKE_subdiv_ccg.hh"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_span.hh"
@@ -27,34 +28,38 @@ inline namespace mask_cc {
 struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
+  Vector<float> masks;
 };
 
-static void calc_current_mask_factor(const float strength,
-                                     const Span<int> verts,
-                                     const Span<float> mask,
-                                     const MutableSpan<float> factors)
+static void invert_mask(const MutableSpan<float> masks)
 {
-  BLI_assert(verts.size() == factors.size());
-
-  for (const int i : verts.index_range()) {
-    float current_mask = mask[verts[i]];
-    if (strength > 0.0f) {
-      factors[i] *= strength * (1.0f - current_mask);
-    }
-    else {
-      factors[i] *= strength * current_mask;
-    }
+  for (float &mask : masks) {
+    mask = 1.0f - mask;
   }
 }
 
-static void calc_new_mask_values(const Span<int> verts,
-                                 const Span<float> factors,
-                                 const MutableSpan<float> mask)
+static void calc_factors(const float strength,
+                         const Span<float> masks,
+                         const MutableSpan<float> factors)
 {
-  BLI_assert(verts.size() == factors.size());
+  BLI_assert(factors.size() == masks.size());
+  for (const int i : masks.index_range()) {
+    factors[i] *= masks[i] * strength;
+  }
+}
 
-  for (const int i : verts.index_range()) {
-    mask[verts[i]] = std::clamp(factors[i] + mask[verts[i]], 0.0f, 1.0f);
+static void apply_factors(const Span<float> factors, const MutableSpan<float> masks)
+{
+  BLI_assert(factors.size() == masks.size());
+  for (const int i : masks.index_range()) {
+    masks[i] += factors[i];
+  }
+}
+
+static void clamp_mask(const MutableSpan<float> masks)
+{
+  for (float &mask : masks) {
+    mask = std::clamp(mask, 0.0f, 1.0f);
   }
 }
 
@@ -92,8 +97,21 @@ static void calc_faces(const Brush &brush,
   }
 
   calc_brush_texture_factors(ss, brush, positions, verts, factors);
-  calc_current_mask_factor(strength, verts, mask, factors);
-  calc_new_mask_values(verts, factors, mask);
+
+  tls.masks.reinitialize(verts.size());
+  const MutableSpan<float> new_masks = tls.masks;
+  array_utils::gather(mask.as_span(), verts, new_masks);
+  if (strength > 0.0f) {
+    invert_mask(new_masks);
+  }
+  calc_factors(strength, new_masks, factors);
+  /* Repopulate the mask data, as the "inverted" value is only used to modify the
+   * factor.*/
+  array_utils::gather(mask.as_span(), verts, new_masks);
+  apply_factors(factors, new_masks);
+  clamp_mask(new_masks);
+
+  array_utils::scatter(new_masks.as_span(), verts, mask);
 }
 
 static float calc_new_mask(const float mask, const float factor, const float strength)
