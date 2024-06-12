@@ -92,6 +92,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
   }
 
   for (const GizmoInput &gizmo_input : all_gizmo_inputs) {
+    gizmo_input.gizmo_socket->runtime->has_gizmo = true;
     const ie::SocketElem gizmo_input_socket_elem{gizmo_input.gizmo_socket, gizmo_input.elem};
     const std::optional<ie::ElemVariant> converted_elem = ie::convert_socket_elem(
         *gizmo_input.gizmo_socket, *gizmo_input.propagation_start_socket, gizmo_input.elem);

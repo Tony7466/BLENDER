@@ -2198,7 +2198,10 @@ static bool node_link_is_gizmo_link(const SpaceNode &snode, const bNodeLink &lin
   if (snode.edittree->type != NTREE_GEOMETRY) {
     return false;
   }
-  return link.fromsock ? link.fromsock->runtime->has_gizmo : false;
+  if (!link.fromsock || !link.tosock) {
+    return false;
+  }
+  return link.fromsock->runtime->has_gizmo && link.tosock->runtime->has_gizmo;
 }
 
 static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
@@ -2232,7 +2235,7 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
   draw_config.thickness = LINK_WIDTH * max_ff(UI_SCALE_FAC * scale, 1.0f) *
                           (field_link ? 0.7f : 1.0f);
   if (gizmo_link) {
-    draw_config.thickness *= 1.7f;
+    draw_config.thickness *= 1.4f;
   }
   draw_config.is_split = gizmo_link;
   draw_config.highlighted = link.flag & NODE_LINK_TEMP_HIGHLIGHT;

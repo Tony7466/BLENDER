@@ -30,7 +30,8 @@ void main()
 
   fragColor.a *= smoothstep(lineThickness, lineThickness - ANTIALIAS, abs(colorGradient));
   if (isMainLine != 0 && isSplitLine != 0) {
-    float center_dist_v = min(abs(lineUV.y - 0.5) * 5.0, 1.0);
-    fragColor.a *= center_dist_v;
+    float center_dist_v = abs(lineUV.y - 0.5) * 2.0;
+    float split_factor = clamp(center_dist_v * 2.0, 0.3, 1.0);
+    fragColor.rgb *= split_factor;
   }
 }
