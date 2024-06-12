@@ -2484,7 +2484,7 @@ void uiItemFullR(uiLayout *layout,
     if (placeholder) {
       UI_but_placeholder_set(but, placeholder);
     }
-    if (flag & UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE) {
+    if (ELEM(but->type, UI_BTYPE_TEXT) && (flag & UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE)) {
       UI_but_flag2_enable(but, UI_BUT2_FORCE_SEMI_MODAL_ACTIVE);
     }
   }
