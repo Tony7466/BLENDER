@@ -64,9 +64,9 @@ static void library_copy_data(Main *bmain,
 
   /* Libraries are copyable now, but there should still be only one library ID for each linked
    * blendfile (based on absolute filepath). */
-  BLI_assert(BLI_findstring(&bmain->libraries,
-                            library_src->runtime.filepath_abs,
-                            offsetof(Library, runtime.filepath_abs)) == nullptr);
+  BLI_assert(!bmain || BLI_findstring(&bmain->libraries,
+                                      library_src->runtime.filepath_abs,
+                                      offsetof(Library, runtime.filepath_abs)) == nullptr);
 
   Library *library_dst = reinterpret_cast<Library *>(id_dst);
   if (library_src->packedfile) {

@@ -1820,6 +1820,11 @@ ID *PartialWriteContext::id_add(
   BLI_assert(clear_dependencies || add_dependencies);
   BLI_assert(!clear_dependencies || !(add_dependencies || duplicate_dependencies));
 
+  /* Do not directly add an embedded ID. Add its owner instead. */
+  if (id->flag & LIB_EMBEDDED_DATA) {
+    id = BKE_id_owner_get(const_cast<ID *>(id), true);
+  }
+
   /* The given ID may have already been added (either explicitely or as a dependency) before. */
   ID *ctx_root_id = BKE_main_idmap_lookup_uid(matching_uid_map_, id->session_uid);
   if (ctx_root_id) {
@@ -2093,6 +2098,23 @@ bool PartialWriteContext::write(const char *write_filepath,
                                 const int remap_mode,
                                 ReportList &reports)
 {
+  BLI_assert_msg(write_filepath != this->reference_root_filepath,
+                 "A library blendfile should not overwrite currently edited blendfile");
+
+  /* In case the write path is the same as one of the libraries used by this context, make this
+   * library local, and delete it (and all of its potentially remaining linked data). */
+  Library *make_local_lib = nullptr;
+  LISTBASE_FOREACH (Library *, library, &this->bmain.libraries) {
+    if (STREQ(write_filepath, library->runtime.filepath_abs)) {
+      make_local_lib = library;
+    }
+  }
+  if (make_local_lib) {
+    BKE_library_make_local(&this->bmain, make_local_lib, nullptr, false, false, false);
+    BKE_id_delete(&this->bmain, make_local_lib);
+    make_local_lib = nullptr;
+  }
+
   BLI_assert(this->is_valid());
 
   BlendFileWriteParams blend_file_write_params{};
