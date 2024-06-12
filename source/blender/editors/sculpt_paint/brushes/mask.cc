@@ -139,17 +139,14 @@ static void calc_grids(Object &object, const Brush &brush, const float strength,
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
 
-  int i = 0;
   for (const int grid : bke::pbvh::node_grid_indices(node)) {
     const int grid_verts_start = grid * key.grid_area;
     CCGElem *elem = grids[grid];
     for (const int j : IndexRange(key.grid_area)) {
       if (!grid_hidden.is_empty() && grid_hidden[grid][j]) {
-        i++;
         continue;
       }
       if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
-        i++;
         continue;
       }
       auto_mask::node_update(automask_data, i);
@@ -167,7 +164,6 @@ static void calc_grids(Object &object, const Brush &brush, const float strength,
       const float current_mask = key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f;
       const float new_mask = calc_new_mask(current_mask, fade, strength);
       CCG_elem_offset_mask(key, elem, j) = new_mask;
-      i++;
     }
   }
 }
@@ -186,14 +182,11 @@ static void calc_bmesh(Object &object, const Brush &brush, const float strength,
   const int mask_offset = CustomData_get_offset_named(
       &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
-  int i = 0;
   for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&node)) {
     if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
-      i++;
       continue;
     }
     if (!sculpt_brush_test_sq_fn(test, vert->co)) {
-      i++;
       continue;
     }
     auto_mask::node_update(automask_data, *vert);
@@ -210,7 +203,6 @@ static void calc_bmesh(Object &object, const Brush &brush, const float strength,
                                                     &automask_data);
     const float new_mask = calc_new_mask(mask, fade, strength);
     BM_ELEM_CD_SET_FLOAT(vert, mask_offset, new_mask);
-    i++;
   }
 }
 }  // namespace mask_cc
