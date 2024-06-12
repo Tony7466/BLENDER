@@ -893,6 +893,19 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
   }
 };
 
+static bool gizmo_is_used(const GeoNodesLFUserData &user_data,
+                          const lf::FunctionNode &lf_gizmo_node)
+{
+  if (!user_data.call_data->side_effect_nodes) {
+    return false;
+  }
+  const Span<const lf::FunctionNode *> nodes_with_side_effects =
+      user_data.call_data->side_effect_nodes->nodes_by_context.lookup(
+          user_data.compute_context->hash());
+  const bool is_used = nodes_with_side_effects.contains(&lf_gizmo_node);
+  return is_used;
+}
+
 /**
  * A lazy-function that is used for gizmo nodes. All inputs are only required if the node is a side
  * effect node. They are evaluated because their value has to be logged. The transform output
@@ -934,16 +947,7 @@ class LazyFunctionForGizmoNode : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     const auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-
-    if (!user_data.call_data->side_effect_nodes) {
-      set_default_remaining_node_outputs(params, bnode_);
-      return;
-    }
-    const Span<const lf::FunctionNode *> nodes_with_side_effects =
-        user_data.call_data->side_effect_nodes->nodes_by_context.lookup(
-            user_data.compute_context->hash());
-    const bool is_used = nodes_with_side_effects.contains(this->self_node);
-    if (!is_used) {
+    if (!gizmo_is_used(user_data, *this->self_node)) {
       set_default_remaining_node_outputs(params, bnode_);
       return;
     }
@@ -961,6 +965,27 @@ class LazyFunctionForGizmoNode : public LazyFunction {
     for (const int i : inputs_.index_range()) {
       params.try_get_input_data_ptr_or_request(i);
     }
+  }
+};
+
+class LazyFunctionForGizmoInputsUsage : public LazyFunction {
+ private:
+  const bNode *gizmo_node_;
+  const lf::FunctionNode *lf_gizmo_node_ = nullptr;
+
+ public:
+  LazyFunctionForGizmoInputsUsage(const bNode &gizmo_node, const lf::FunctionNode &lf_gizmo_node)
+      : gizmo_node_(&gizmo_node), lf_gizmo_node_(&lf_gizmo_node)
+  {
+    debug_name_ = gizmo_node.name;
+    outputs_.append_as("Need Inputs", CPPType::get<bool>());
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  {
+    const auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    const bool is_used = gizmo_is_used(user_data, *lf_gizmo_node_);
+    params.set_output(0, is_used);
   }
 };
 
@@ -2685,7 +2710,7 @@ struct GeometryNodesLazyFunctionBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();
@@ -3625,7 +3650,20 @@ struct GeometryNodesLazyFunctionBuilder {
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
 
+    this->build_gizmo_node_socket_usage(bnode, graph_params, lf_gizmo_node);
+
     mapping_->possible_side_effect_node_map.add(&bnode, &lf_gizmo_node);
+  }
+
+  void build_gizmo_node_socket_usage(const bNode &bnode,
+                                     BuildGraphParams &graph_params,
+                                     const lf::FunctionNode &lf_gizmo_node)
+  {
+    const auto &usage_fn = scope_.construct<LazyFunctionForGizmoInputsUsage>(bnode, lf_gizmo_node);
+    lf::FunctionNode &lf_usage_node = graph_params.lf_graph.add_function(usage_fn);
+    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
+      graph_params.usage_by_bsocket.add(bsocket, &lf_usage_node.output(0));
+    }
   }
 
   lf::FunctionNode *insert_simulation_input_node(const bNodeTree &node_tree,
