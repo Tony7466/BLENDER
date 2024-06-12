@@ -11,6 +11,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_math_base.h"
 #include "BLI_task.hh"
+#include "BLI_threads.h"
 #include "BLI_timeit.hh"
 
 #include "BKE_image.h"
@@ -254,17 +255,17 @@ AnimManager *seq_anim_manager_ensure(Editing *ed)
 void AnimManager::free_unused_anims(blender::Vector<Sequence *> &strips)
 {
   mutex.lock();
-  for (ShareableAnim &sh_anim : anims_map.values()) {
+  for (std::unique_ptr<ShareableAnim> &sh_anim : anims_map.values()) {
     bool strips_use_anim = false;
-    for (Sequence *user : sh_anim.users) {
+    for (Sequence *user : sh_anim->users) {
       if (strips.contains(user)) {
         strips_use_anim = true;
         break;
       }
     }
 
-    if (!strips_use_anim && sh_anim.users.size() > 0) {
-      sh_anim.release_from_all_strips();
+    if (!strips_use_anim && sh_anim->users.size() > 0) {
+      sh_anim->release_from_all_strips();
     }
   }
   mutex.unlock();
@@ -275,6 +276,7 @@ void AnimManager::parallel_load_anims(const Scene *scene,
                                       bool unlock)
 {
   using namespace blender;
+
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (int i : range) {
       Sequence *seq = strips[i];
@@ -326,7 +328,11 @@ ShareableAnim &AnimManager::cache_entry_get(const Scene *scene, const Sequence *
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
 
   mutex.lock();
-  ShareableAnim &sh_anim = anims_map.lookup_or_add_default(std::string(filepath));
+  ShareableAnim &sh_anim = *anims_map.lookup_or_add_cb(std::string(filepath), [&]() {
+    std::unique_ptr<ShareableAnim> new_sh_anim = std::make_unique<ShareableAnim>();
+    new_sh_anim->tracker.track_as(std::string(filepath));
+    return new_sh_anim;
+  });
   mutex.unlock();
   return sh_anim;
 }

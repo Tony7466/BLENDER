@@ -14,12 +14,27 @@ struct Sequence;
 
 #include "BLI_map.hh"
 
+class MemTracker {
+ public:
+  std::string name = "No Name";
+  void track_as(std::string track_name)
+  {
+    name = track_name;
+  }
+
+  ~MemTracker()
+  {
+    printf("Freeing %s\n", name.c_str());
+  }
+};
+
 class ShareableAnim {
  public:
   blender::Vector<ImBufAnim *> anims; /* Ordered by view_id. */
   blender::Vector<Sequence *> users;
   bool multiview_loaded = false;
   std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>();
+  MemTracker tracker;
 
   void release_from_strip(Sequence *seq);
   void release_from_all_strips(void);
@@ -31,7 +46,7 @@ class ShareableAnim {
 
 class AnimManager {
  public:
-  blender::Map<std::string, ShareableAnim> anims_map;
+  blender::Map<std::string, std::unique_ptr<ShareableAnim>> anims_map;
   std::mutex mutex;
   std::thread prefetch_thread;
 
