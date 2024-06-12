@@ -1039,6 +1039,28 @@ def dump_addon_bl_info(msgs, reports, module, settings):
         )
 
 
+def dump_extension_metadata(msgs, reports, settings):
+    from _bpy_internal.extensions import (
+        tags,
+        permissions,
+    )
+    i18n_contexts = bpy.app.translations.contexts
+
+    # Extract tags for add-on and theme extensions.
+    addon_tags = set()
+    theme_tags = set()
+    for extension_repo in tags.tags:
+        addon_tags.update(extension_repo["add-ons"])
+        theme_tags.update(extension_repo["themes"])
+    for extension_type, tag_set in (("Add-on", addon_tags), ("Theme", theme_tags)):
+        for tag in sorted(tag_set):
+            process_msg(msgs, i18n_contexts.script, tag, extension_type + " extension tag", reports, None, settings)
+
+    # Extract extension permissions.
+    for permission in sorted(permissions.permissions):
+        process_msg(msgs, settings.DEFAULT_CONTEXT, permission, "Extension permission", reports, None, settings)
+
+
 ##### Main functions! #####
 def dump_messages(do_messages, do_checks, settings):
     bl_ver = "Blender " + bpy.app.version_string
@@ -1103,6 +1125,9 @@ def dump_messages(do_messages, do_checks, settings):
             # Only special categories get a tip (All and User).
             process_msg(msgs, settings.DEFAULT_CONTEXT, label, "Add-ons' categories", reports, None, settings)
             process_msg(msgs, settings.DEFAULT_CONTEXT, tip, "Add-ons' categories", reports, None, settings)
+
+    # Get strings from extension tags and permissions.
+    dump_extension_metadata(msgs, reports, settings)
 
     # Get strings specific to translations' menu.
     for lng in settings.LANGUAGES:

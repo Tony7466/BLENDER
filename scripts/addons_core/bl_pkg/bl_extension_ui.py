@@ -818,7 +818,7 @@ def extensions_panel_draw_impl(
                     # As it happens dictionary keys & list values both iterate over string,
                     # however we will want to show the dictionary values eventually.
                     if (value := item_remote.permissions):
-                        col_b.label(text=", ".join([iface_(x.title()) for x in value]), translate=False)
+                        col_b.label(text=", ".join([iface_(x).title() for x in value]), translate=False)
                     else:
                         col_b.label(text="No permissions specified")
                     del value
@@ -1163,6 +1163,7 @@ def tags_refresh(wm):
 
 def tags_panel_draw(panel, context):
     from bpy.utils import escape_identifier
+    from bpy.app.translations import contexts as i18n_contexts
     layout = panel.layout
     wm = context.window_manager
     tags_sorted = tags_refresh(wm)
@@ -1174,7 +1175,12 @@ def tags_panel_draw(panel, context):
     for i, t in enumerate(sorted(tags_sorted)):
         if i == tags_len_half:
             col = split.column()
-        col.prop(wm.extension_tags, "[\"{:s}\"]".format(escape_identifier(t)))
+        col.prop(
+            wm.extension_tags,
+            "[\"{:s}\"]".format(escape_identifier(t)),
+            text=t,
+            text_ctxt=i18n_contexts.script,
+        )
 
 
 def extensions_repo_active_draw(self, _context):

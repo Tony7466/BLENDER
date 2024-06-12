@@ -12,6 +12,7 @@ tags = [
     {
         "remote_url": "https://extensions.blender.org/api/v1/extensions",
         "add-ons": {
+            "All",  # Added automatically for legacy add-ons without a category.
             "3D View",
             "Add Curve",
             "Add Mesh",
@@ -26,13 +27,13 @@ tags = [
             "Import-Export",
             "Lighting",
             "Material",
-            "Modeling",
             "Mesh",
+            "Modeling",
             "Node",
             "Object",
             "Paint",
-            "Pipeline",
             "Physics",
+            "Pipeline",
             "Render",
             "Rigging",
             "Scene",
