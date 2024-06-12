@@ -29,7 +29,7 @@ bool is_builtin_gizmo_node(const bNode &node)
 static void reset_gizmo_states(bNodeTree &tree)
 {
   for (bNodeSocket *socket : tree.all_sockets()) {
-    socket->runtime->has_gizmo2 = false;
+    socket->runtime->has_gizmo = false;
   }
 }
 
@@ -107,7 +107,7 @@ static TreeGizmoPropagation build_tree_gizmo_propagation(bNodeTree &tree)
       continue;
     }
     for (const ie::SocketElem &socket_elem : path.intermediate_sockets) {
-      socket_elem.socket->runtime->has_gizmo2 = true;
+      socket_elem.socket->runtime->has_gizmo = true;
     }
     for (const ie::SocketElem &input_socket : path.final_input_sockets) {
       gizmo_propagation.gizmo_inputs_by_node_inputs.add(input_socket, gizmo_input_socket_elem);

@@ -1325,7 +1325,7 @@ static void std_node_socket_draw(
     return;
   }
 
-  const bool has_gizmo = sock->runtime->has_gizmo2;
+  const bool has_gizmo = sock->runtime->has_gizmo;
   const bool gizmo_valid = true;
 
   if (sock->in_out == SOCK_OUT && has_gizmo &&
@@ -2198,7 +2198,7 @@ static bool node_link_is_gizmo_link(const SpaceNode &snode, const bNodeLink &lin
   if (snode.edittree->type != NTREE_GEOMETRY) {
     return false;
   }
-  return link.fromsock ? link.fromsock->runtime->has_gizmo2 : false;
+  return link.fromsock ? link.fromsock->runtime->has_gizmo : false;
 }
 
 static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
