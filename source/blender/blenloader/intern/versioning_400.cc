@@ -66,7 +66,9 @@
 #include "IMB_imbuf_enums.h"
 
 #include "SEQ_iterator.hh"
+#include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -2646,6 +2648,22 @@ static void add_image_editor_asset_shelf(Main &bmain)
   }
 }
 
+static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data)
+{
+  const float speed_factor = seq->speed_factor;
+  if (speed_factor == 1.0f) {
+    return true;
+  }
+
+  Scene *scene = static_cast<Scene *>(user_data);
+  const int strip_len = round_fl_to_int(seq->len / speed_factor);
+  SEQ_retiming_data_ensure(seq);
+  SeqRetimingKey *last_key = &SEQ_retiming_keys_get(seq)[1];
+  last_key->strip_frame_index = strip_len;
+
+  return true;
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -3100,6 +3118,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             SpaceSeq *sseq = (SpaceSeq *)sl;
             sseq->timeline_overlay.flag |= SEQ_TIMELINE_SHOW_STRIP_RETIMING;
           }
+        }
+      }
+
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        Editing *ed = SEQ_editing_get(scene);
+        if (ed != nullptr) {
+          SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, scene);
         }
       }
     }
