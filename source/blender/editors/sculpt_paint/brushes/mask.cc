@@ -118,7 +118,7 @@ static float calc_new_mask(const float mask, const float factor, const float str
 {
   const float modified_value = strength > 0.0f ? (1.0f - mask) : mask;
   const float result = mask + factor * strength * modified_value;
-  return clamp_f(result, 0.0f, 1.0f);
+  return std::clamp(result, 0.0f, 1.0f);
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float strength, PBVHNode &node)
