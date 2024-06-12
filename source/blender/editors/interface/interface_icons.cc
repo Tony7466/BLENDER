@@ -1841,11 +1841,11 @@ static int get_draw_size(enum eIconSizes size)
   }
 }
 
-#define DEF_ICON(name) {ICON_##name, STRINGIFY(name)},
-#define DEF_ICON_BLANK(name)
+#define DEF_ICON(name) STRINGIFY(name),
+#define DEF_ICON_BLANK(name) STRINGIFY(name),
 #define DEF_ICON_VECTOR(name)
 
-static std::unordered_map<int, const char *> icon_names{
+const char *icon_names[] = {
 #include "UI_icons.hh"
 };
 
