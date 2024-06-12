@@ -11619,7 +11619,7 @@ static void ui_region_handler_remove(bContext *C, void * /*userdata*/)
     return;
   }
 
-  UI_blocklist_free(C, region);
+  UI_blocklist_exit_and_free(C, region);
   bScreen *screen = CTX_wm_screen(C);
   if (screen == nullptr) {
     return;

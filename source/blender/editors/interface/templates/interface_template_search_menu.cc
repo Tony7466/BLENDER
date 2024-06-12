@@ -802,14 +802,14 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
                 region->runtime.block_name_map, sub_block->name.c_str(), nullptr, nullptr);
             BLI_remlink(&region->uiblocks, sub_block);
           }
-          UI_block_free(nullptr, sub_block);
+          UI_block_free(sub_block);
         }
       }
       if (region) {
         BLI_ghash_remove(region->runtime.block_name_map, block->name.c_str(), nullptr, nullptr);
         BLI_remlink(&region->uiblocks, block);
       }
-      UI_block_free(nullptr, block);
+      UI_block_free(block);
 
       if (single_menu_idname == nullptr) {
         /* Add key-map items as a second pass, so all menus are accessed from the header & top-bar

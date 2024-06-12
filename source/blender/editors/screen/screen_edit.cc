@@ -1551,7 +1551,7 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
      * switching screens with tooltip open because region and tooltip
      * are no longer in the same screen */
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-      UI_blocklist_free(C, region);
+      UI_blocklist_exit_and_free(C, region);
       if (region->regiontimer) {
         WM_event_timer_remove(wm, nullptr, region->regiontimer);
         region->regiontimer = nullptr;

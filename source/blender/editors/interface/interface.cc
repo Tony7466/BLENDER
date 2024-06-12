@@ -96,7 +96,7 @@ static void ui_def_but_rna__menu_type(bContext * /*C*/, uiLayout *layout, void *
  * `ui_blah_blah()` internal function.
  */
 
-static void ui_but_free(const bContext *C, uiBut *but);
+static void ui_but_free(uiBut *but);
 
 static bool ui_but_is_unit_radians_ex(const UnitSettings *unit, const int unit_type)
 {
@@ -954,10 +954,7 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
 /**
  * \return true when \a but_p is set (only done for active buttons).
  */
-static bool ui_but_update_from_old_block(const bContext *C,
-                                         uiBlock *block,
-                                         uiBut **but_p,
-                                         uiBut **but_old_p)
+static bool ui_but_update_from_old_block(uiBlock *block, uiBut **but_p, uiBut **but_old_p)
 {
   uiBlock *oldblock = block->oldblock;
   uiBut *but = *but_p;
@@ -1003,7 +1000,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
     }
 
     BLI_remlink(&block->buttons, but);
-    ui_but_free(C, but);
+    ui_but_free(but);
 
     found_active = true;
   }
@@ -1021,7 +1018,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
     /* ensures one button can get activated, and in case the buttons
      * draw are the same this gives O(1) lookup for each button */
     BLI_remlink(&oldblock->buttons, oldbut);
-    ui_but_free(C, oldbut);
+    ui_but_free(oldbut);
   }
 
   return found_active;
@@ -1061,7 +1058,7 @@ bool UI_but_active_only_ex(
       if (but->layout) {
         ui_layout_remove_but(but->layout, but);
       }
-      ui_but_free(C, but);
+      ui_but_free(but);
     }
     return false;
   }
@@ -1801,7 +1798,7 @@ void UI_block_update_from_old(const bContext *C, uiBlock *block)
   }
 
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
-    if (ui_but_update_from_old_block(C, block, &but, &but_old)) {
+    if (ui_but_update_from_old_block(block, &but, &but_old)) {
       ui_but_update(but);
 
       /* redraw dynamic tooltip if we have one open */
@@ -3384,8 +3381,7 @@ static void ui_but_free_type_specific(uiBut *but)
   }
 }
 
-/* can be called with C==nullptr */
-static void ui_but_free(const bContext *C, uiBut *but)
+static void ui_but_free(uiBut *but)
 {
   if (but->opptr) {
     WM_operator_properties_free(but->opptr);
@@ -3411,15 +3407,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
   ui_but_free_type_specific(but);
 
   if (but->active) {
-    /* XXX solve later, buttons should be free-able without context ideally,
-     * however they may have open tooltips or popup windows, which need to
-     * be closed using a context pointer */
-    if (C) {
-      ui_but_active_free(C, but);
-    }
-    else {
-      MEM_freeN(but->active);
-    }
+    MEM_freeN(but->active);
   }
 
   if ((but->type == UI_BTYPE_IMAGE) && but->poin) {
@@ -3457,12 +3445,12 @@ void UI_block_set_active_operator(uiBlock *block, wmOperator *op, const bool fre
   }
 }
 
-void UI_block_free(const bContext *C, uiBlock *block)
+void UI_block_free(uiBlock *block)
 {
   UI_butstore_clear(block);
 
   while (uiBut *but = static_cast<uiBut *>(BLI_pophead(&block->buttons))) {
-    ui_but_free(C, but);
+    ui_but_free(but);
   }
 
   if (block->unit) {
@@ -3526,11 +3514,24 @@ void UI_blocklist_draw(const bContext *C, const ListBase *lb)
   }
 }
 
-void UI_blocklist_free(const bContext *C, ARegion *region)
+void UI_blocklist_exit_and_free(const bContext *C, ARegion *region)
+{
+  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
+    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+      if (but->active) {
+        ui_but_active_free(C, but);
+      }
+    }
+  }
+
+  UI_blocklist_free(region);
+}
+
+void UI_blocklist_free(ARegion *region)
 {
   ListBase *lb = &region->uiblocks;
   while (uiBlock *block = static_cast<uiBlock *>(BLI_pophead(lb))) {
-    UI_block_free(C, block);
+    UI_block_free(block);
   }
   if (region->runtime.block_name_map != nullptr) {
     BLI_ghash_free(region->runtime.block_name_map, nullptr, nullptr);
@@ -3538,7 +3539,7 @@ void UI_blocklist_free(const bContext *C, ARegion *region)
   }
 }
 
-void UI_blocklist_free_inactive(const bContext *C, ARegion *region)
+void UI_blocklist_free_inactive(ARegion *region)
 {
   ListBase *lb = &region->uiblocks;
 
@@ -3556,7 +3557,7 @@ void UI_blocklist_free_inactive(const bContext *C, ARegion *region)
           }
         }
         BLI_remlink(lb, block);
-        UI_block_free(C, block);
+        UI_block_free(block);
       }
     }
   }

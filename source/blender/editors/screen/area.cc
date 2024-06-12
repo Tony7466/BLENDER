@@ -558,7 +558,7 @@ void ED_region_do_draw(bContext *C, ARegion *region)
 
   memset(&region->drawrct, 0, sizeof(region->drawrct));
 
-  UI_blocklist_free_inactive(C, region);
+  UI_blocklist_free_inactive(region);
 
   if (area) {
     const bScreen *screen = WM_window_get_active_screen(win);
@@ -2257,7 +2257,7 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
     }
     else {
       /* prevent uiblocks to run */
-      UI_blocklist_free(nullptr, region);
+      UI_blocklist_free(region);
     }
 
     /* Some AZones use View2D data which is only updated in region init, so call that first! */
@@ -3634,7 +3634,7 @@ bool ED_region_property_search(const bContext *C,
   }
 
   /* Free the panels and blocks, as they are only used for search. */
-  UI_blocklist_free(C, region);
+  UI_blocklist_free(region);
   UI_panels_free_instanced(C, region);
   BKE_area_region_panels_free(&region->panels);
 

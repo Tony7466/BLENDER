@@ -530,7 +530,7 @@ bool UI_popup_menu_end_or_cancel(bContext *C, uiPopupMenu *pup)
   }
   UI_block_layout_resolve(pup->block, nullptr, nullptr);
   MEM_freeN(pup->block->handle);
-  UI_block_free(C, pup->block);
+  UI_block_free(pup->block);
   MEM_delete(pup);
   return false;
 }

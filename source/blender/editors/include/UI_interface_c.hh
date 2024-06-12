@@ -856,18 +856,20 @@ void UI_block_set_search_only(uiBlock *block, bool search_only);
  */
 void UI_block_set_active_operator(uiBlock *block, wmOperator *op, const bool free);
 
-/**
- * Can be called with C==NULL.
- */
-void UI_block_free(const bContext *C, uiBlock *block);
+void UI_block_free(uiBlock *block);
 
 void UI_block_listen(const uiBlock *block, const wmRegionListenerParams *listener_params);
 
 /**
- * Can be called with C==NULL.
+ * Besides freeing all blocks and buttons, this cleanly cancels all button state, resetting
+ * cursors, tooltip timers, etc. Call this whenever some previously visible region gets
+ * removed/hidden.
  */
-void UI_blocklist_free(const bContext *C, ARegion *region);
-void UI_blocklist_free_inactive(const bContext *C, ARegion *region);
+void UI_blocklist_exit_and_free(const bContext *C, ARegion *region) ATTR_NONNULL();
+/** Only frees data, but doesn't correctly exit states, e.g. button cursors might be stuck. Use
+ * #UI_blocklist_exit_and_free() to exit state clearly. */
+void UI_blocklist_free(ARegion *region);
+void UI_blocklist_free_inactive(ARegion *region);
 
 /**
  * Is called by notifier.
