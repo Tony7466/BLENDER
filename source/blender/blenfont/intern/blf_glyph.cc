@@ -352,7 +352,7 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
 #define DEF_ICON_BLANK(name) STRINGIFY(name),
 #define DEF_ICON_VECTOR(name)
 
-const char *icon_names2[] = {
+const char *icon_names[] = {
 #include "UI_icons.hh"
 };
 
@@ -360,17 +360,8 @@ const char *icon_names2[] = {
 #undef DEF_ICON_BLANK
 #undef DEF_ICON_VECTOR
 
-static std::string icon_to_svg_file_name(BIFIconID_Static icon)
-{
-  std::string result = icon_names2[icon];
-  std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-  return result + std::string(".svg");
-}
-
 static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
 {
-  const std::string file_name = icon_to_svg_file_name(
-      BIFIconID_Static(charcode - BLF_ICON_OFFSET));
   const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
   if (!icondir.has_value()) {
 #ifndef NDEBUG
@@ -379,10 +370,13 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
     return blf_glyph_cache_add_blank(gc, charcode);
   }
 
-  char filepath[1024];
-  BLI_path_join(filepath, sizeof(filepath), icondir->c_str(), file_name.c_str());
+  /* Get stringified name from icon_id, then lowercase it. */
+  std::string file_name = icon_names[charcode - BLF_ICON_OFFSET];
+  std::transform(file_name.begin(), file_name.end(), file_name.begin(), ::tolower);
 
-  NSVGimage *image = nsvgParseFromFile(filepath, "px", 96.0f);
+  std::string file_path = icondir.value();
+  file_path += SEP_STR + file_name + ".svg";
+  NSVGimage *image = nsvgParseFromFile(file_path.c_str(), "px", 96.0f);
 
   if (image == nullptr) {
     return blf_glyph_cache_add_blank(gc, charcode);
