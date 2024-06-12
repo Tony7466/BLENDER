@@ -801,8 +801,12 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         const float4x4 geometry_transform =
             find_gizmo_geometry_transform(geometry, gizmo_id).value_or(float4x4::identity());
 
+        /* Unhide all, may be hidden below again. */
+        for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
+          WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
+        }
+
         UpdateReport report;
-        /* TODO: geometry transform */
         GizmosUpdateParams update_params{
             object_to_world * geometry_transform, gizmo_node, tree_log, report};
         node_gizmos->update(update_params);
@@ -843,6 +847,10 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
         }
         if (!any_interacting) {
           if (report.missing_socket_logs || report.invalid_transform) {
+            /* Avoid showing gizmos which are in the wrong place. */
+            for (wmGizmo *gizmo : node_gizmos->get_all_gizmos()) {
+              WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, true);
+            }
             return;
           }
         }
