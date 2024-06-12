@@ -432,12 +432,13 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
   const int buffer_size = g->dims[0] * g->dims[1] * g->num_channels;
   g->bitmap = static_cast<uchar *>(MEM_mallocN(size_t(buffer_size), "glyph bitmap"));
 
-  /* Convert from RGBA to A. */
-  for (size_t y = 0; y < size_t(g->dims[1]); y++) {
-    for (size_t x = 0; x < size_t(g->dims[0]); x++) {
-      size_t offs_in = (y * size_t(dest_w) * 4) + (x * 4);
-      size_t offs_out = (y * size_t(g->dims[0]) + x);
-      g->bitmap[offs_out] = render_bmp[size_t(offs_in + 3)];
+  /* Convert from RGBA to coverage map. */
+  for (int64_t y = 0; y < int64_t(g->dims[1]); y++) {
+    for (int64_t x = 0; x < int64_t(g->dims[0]); x++) {
+      int64_t offs_in = (y * int64_t(dest_w) * 4) + (x * 4);
+      int64_t offs_out = (y * int64_t(g->dims[0]) + x);
+      /* Just using the alpha since this is monochrome. */
+      g->bitmap[offs_out] = render_bmp[int64_t(offs_in + 3)];
     }
   }
 
