@@ -420,7 +420,12 @@ struct uiHandleButtonData {
    */
   bool disable_force;
 
-  bool handle_transparent;
+  /**
+   * Semi-modal buttons: Instead of capturing all events, pass on events that aren't relevant to
+   * own handling. This way a text button (e.g. a search/filter field) can stay active while the
+   * remaining UI stays interactive. Only few button types support this well currently.
+   */
+  bool is_semi_modal;
 
   /* auto open */
   bool used_mouse;
@@ -3740,7 +3745,7 @@ static int ui_do_but_textedit(
     case RIGHTMOUSE:
     case EVT_ESCKEY:
       /* Don't consume cancel events (would usually end text editing), let menu code handle it. */
-      if (data->handle_transparent) {
+      if (data->is_semi_modal) {
         break;
       }
       if (event->val == KM_PRESS) {
@@ -3802,7 +3807,7 @@ static int ui_do_but_textedit(
           button_activate_state(C, but, BUTTON_STATE_TEXT_SELECTING);
           retval = WM_UI_HANDLER_BREAK;
         }
-        else if (inbox == false && !data->handle_transparent) {
+        else if (inbox == false && !data->is_semi_modal) {
           /* if searchbox, click outside will cancel */
           if (data->searchbox) {
             data->cancel = data->escapecancel = true;
@@ -3832,7 +3837,7 @@ static int ui_do_but_textedit(
           changed = true;
         }
       }
-      else if (inbox && !data->handle_transparent) {
+      else if (inbox && !data->is_semi_modal) {
         /* if we allow activation on key press,
          * it gives problems launching operators #35713. */
         if (event->val == KM_RELEASE) {
@@ -4794,13 +4799,13 @@ static int ui_do_but_TEX(
   }
   else if (data->state == BUTTON_STATE_TEXT_EDITING) {
     const int retval = ui_do_but_textedit(C, block, but, data, event);
-    /* Swallow all events unless transparent handling is used. */
-    return data->handle_transparent ? retval : WM_UI_HANDLER_BREAK;
+    /* Swallow all events unless semi-modal handling is requested. */
+    return data->is_semi_modal ? retval : WM_UI_HANDLER_BREAK;
   }
   else if (data->state == BUTTON_STATE_TEXT_SELECTING) {
     const int retval = ui_do_but_textedit_select(C, block, but, data, event);
-    /* Swallow all events unless transparent handling is used. */
-    return data->handle_transparent ? retval : WM_UI_HANDLER_BREAK;
+    /* Swallow all events unless semi-modal handling is requested. */
+    return data->is_semi_modal ? retval : WM_UI_HANDLER_BREAK;
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -9300,17 +9305,16 @@ static void with_but_active_as_semi_modal(bContext *C,
 {
   BLI_assert(but->active == nullptr);
 
-  uiBut *regular_active_but = ui_region_find_active_but(region);
-  uiHandleButtonData *regular_active_data = regular_active_but ? regular_active_but->active :
-                                                                 nullptr;
+  uiBut *prev_active_but = ui_region_find_active_but(region);
+  uiHandleButtonData *prev_active_data = prev_active_but ? prev_active_but->active : nullptr;
 
-  if (regular_active_but) {
-    regular_active_but->active = nullptr;
+  if (prev_active_but) {
+    prev_active_but->active = nullptr;
   }
   if (!but->semi_modal_state) {
     ui_but_activate_event(C, region, but);
     but->semi_modal_state = but->active;
-    but->semi_modal_state->handle_transparent = true;
+    but->semi_modal_state->is_semi_modal = true;
   }
   but->active = but->semi_modal_state;
 
@@ -9325,8 +9329,8 @@ static void with_but_active_as_semi_modal(bContext *C,
     }
   }
 
-  if (regular_active_but) {
-    regular_active_but->active = regular_active_data;
+  if (prev_active_but) {
+    prev_active_but->active = prev_active_data;
   }
 }
 
