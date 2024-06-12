@@ -155,12 +155,6 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
 {
   using namespace inverse_eval;
   const TransformElem transform_elem = params.get_output_elem<TransformElem>("Matrix");
-  if (transform_elem.any) {
-    for (const bNodeSocket *socket : params.node.input_sockets()) {
-      params.set_input_elem(socket->identifier, FloatElem{true});
-    }
-    return;
-  }
 
   params.set_input_elem("Column 4 Row 1", transform_elem.translation.x);
   params.set_input_elem("Column 4 Row 2", transform_elem.translation.y);
@@ -176,6 +170,13 @@ static void node_eval_inverse_elem(inverse_eval::InverseElemEvalParams &params)
     params.set_input_elem("Column 3 Row 1", FloatElem{true});
     params.set_input_elem("Column 3 Row 2", FloatElem{true});
     params.set_input_elem("Column 3 Row 3", FloatElem{true});
+  }
+
+  if (transform_elem.any_non_transform) {
+    params.set_input_elem("Column 1 Row 4", FloatElem{true});
+    params.set_input_elem("Column 2 Row 4", FloatElem{true});
+    params.set_input_elem("Column 3 Row 4", FloatElem{true});
+    params.set_input_elem("Column 4 Row 4", FloatElem{true});
   }
 }
 

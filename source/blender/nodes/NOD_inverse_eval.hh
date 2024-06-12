@@ -132,18 +132,19 @@ struct TransformElem {
   VectorElem translation;
   RotationElem rotation;
   VectorElem scale;
-  FloatElem any;
+  FloatElem any_non_transform;
 
   operator bool() const
   {
-    return this->translation || this->rotation || this->scale || this->any;
+    return this->translation || this->rotation || this->scale || this->any_non_transform;
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_4(TransformElem, translation, rotation, scale, any)
+  BLI_STRUCT_EQUALITY_OPERATORS_4(TransformElem, translation, rotation, scale, any_non_transform)
 
   uint64_t hash() const
   {
-    return get_default_hash(this->translation, this->rotation, this->scale, this->any);
+    return get_default_hash(
+        this->translation, this->rotation, this->scale, this->any_non_transform);
   }
 
   void merge(const TransformElem &other)
@@ -151,7 +152,7 @@ struct TransformElem {
     this->translation.merge(other.translation);
     this->rotation.merge(other.rotation);
     this->scale.merge(other.scale);
-    this->any.merge(other.any);
+    this->any_non_transform.merge(other.any_non_transform);
   }
 
   static TransformElem all()
