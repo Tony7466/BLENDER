@@ -170,6 +170,7 @@ static void action_copy_data(Main * /*bmain*/,
                                                              __func__);
   for (int i : action_src.bindings().index_range()) {
     action_dst.binding_array[i] = MEM_new<animrig::Binding>(__func__, *action_src.binding(i));
+    action_dst.binding_array[i]->binding_runtime = nullptr;
   }
 
   if (flag & LIB_ID_COPY_NO_PREVIEW) {
@@ -214,6 +215,19 @@ static void action_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
   const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
+  /* This function is called when Blender is remapping IDs. With such use, the IDWALK_READONLY
+   * flag will be cleared. The rempaping will make the binding-to-ID mapping invalid, and thus
+   * needs to be marked as dirty.
+   *
+   * This must happen before any call to the BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL() macro, as
+   * that may force a `return` from this function.
+   *
+   * IDWALK_RECURSE implies IDWALK_READONLY so we have to check for both. */
+  const bool is_readonly = flag & (IDWALK_READONLY | IDWALK_RECURSE);
+  if (!is_readonly) {
+    animrig::Binding::users_invalidate();
+  }
 
   /* TODO: it might be nice to have some iterator that just visits all animation channels
    * in the layered Action data, and use that to replace this nested for-loop. */
@@ -305,7 +319,12 @@ static void write_bindings(BlendWriter *writer, Span<animrig::Binding *> binding
 {
   BLO_write_pointer_array(writer, bindings.size(), bindings.data());
   for (animrig::Binding *binding : bindings) {
+    animrig::BindingRuntime *runtime = binding->binding_runtime;
+    binding->binding_runtime = nullptr;
+
     BLO_write_struct(writer, ActionBinding, binding);
+
+    binding->binding_runtime = runtime;
   }
 }
 
@@ -383,6 +402,7 @@ static void read_bindings(BlendDataReader *reader, animrig::Action &anim)
 
   for (int i = 0; i < anim.binding_array_num; i++) {
     BLO_read_struct(reader, ActionBinding, &anim.binding_array[i]);
+    anim.binding_array[i]->binding_runtime = nullptr;
   }
 }
 

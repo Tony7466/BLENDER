@@ -314,6 +314,17 @@ static void rna_ActionBinding_name_update(Main *bmain, Scene *, PointerRNA *ptr)
   anim.binding_name_propagate(*bmain, binding);
 }
 
+void rna_ActionBinding_debug_log_users(struct ActionBinding *self)
+{
+  animrig::Binding &binding = self->wrap();
+
+  printf("Binding '%s' users:\n", binding.name);
+  for (ID *user : binding.users()) {
+    printf("  - %s\n", user->name);
+  }
+  printf("That's it!\n");
+}
+
 static std::optional<std::string> rna_ActionLayer_path(const PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
@@ -1269,6 +1280,8 @@ static void rna_def_action_binding(BlenderRNA *brna)
                          "Number specific to this Binding, unique within the Animation data-block"
                          "This is used, for example, on a KeyframeActionStrip to look up the "
                          "ActionChannelBag for this Binding");
+
+  RNA_def_function(srna, "debug_log_users", "rna_ActionBinding_debug_log_users");
 }
 
 static void rna_def_ActionLayer_strips(BlenderRNA *brna, PropertyRNA *cprop)

@@ -41,6 +41,7 @@
 
 #include "ANIM_action.hh"
 #include "ANIM_fcurve.hh"
+#include "action_runtime.hh"
 
 #include "atomic_ops.h"
 
@@ -468,6 +469,8 @@ bool Action::assign_id(Binding *binding, ID &animated_id)
   /* Unassign any previously-assigned Binding. */
   Binding *binding_to_unassign = this->binding_for_handle(adt->binding_handle);
   if (binding_to_unassign) {
+    binding_to_unassign->users_remove(animated_id);
+
     /* Before unassigning, make sure that the stored Binding name is up to date. The binding name
      * might have changed in a way that wasn't copied into the ADT yet (for example when the
      * Action is linked from another file), so better copy the name to be sure that it can be
@@ -491,6 +494,7 @@ bool Action::assign_id(Binding *binding, ID &animated_id)
   if (binding) {
     this->binding_setup_for_id(*binding, animated_id);
     adt->binding_handle = binding->handle;
+    binding->users_add(animated_id);
 
     /* Always make sure the ID's binding name matches the assigned binding. */
     STRNCPY_UTF8(adt->binding_name, binding->name);
@@ -616,6 +620,11 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 
 /* ----- ActionBinding implementation ----------- */
 
+Binding::~Binding()
+{
+  MEM_SAFE_FREE(this->binding_runtime);
+}
+
 bool Binding::is_suitable_for(const ID &animated_id) const
 {
   if (!this->has_idtype()) {
@@ -632,6 +641,41 @@ bool Binding::has_idtype() const
 {
   return this->idtype != 0;
 }
+
+BindingRuntime &Binding::runtime()
+{
+  if (!this->binding_runtime) {
+    this->binding_runtime = MEM_new<BindingRuntime>(__func__);
+  }
+  return *this->binding_runtime;
+}
+
+Set<ID *> &Binding::users()
+{
+  BindingRuntime &runtime = this->runtime();
+  if (runtime.is_users_dirty) {
+    internal::rebuild_binding_user_cache();
+  }
+
+  return runtime.users;
+}
+
+void Binding::users_add(ID &animated_id)
+{
+  this->users().add(&animated_id);
+}
+
+void Binding::users_remove(ID &animated_id)
+{
+  this->users().remove(&animated_id);
+}
+
+void Binding::users_invalidate()
+{
+  BindingRuntime::is_users_dirty = true;
+}
+
+/* ----- Functions  ----------- */
 
 bool assign_animation(Action &anim, ID &animated_id)
 {
@@ -705,6 +749,24 @@ Action *get_animation(ID &animated_id)
     return nullptr;
   }
   return &adt->action->wrap();
+}
+
+std::optional<std::pair<Action *, Binding *>> get_action_binding_pair(ID &animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+  if (!adt || !adt->action) {
+    /* Not animated by any Action. */
+    return std::nullopt;
+  }
+
+  Action &action = adt->action->wrap();
+  Binding *binding = action.binding_for_handle(adt->binding_handle);
+  if (!binding) {
+    /* Will not receive any animation from this Action. */
+    return std::nullopt;
+  }
+
+  return std::make_pair(&action, binding);
 }
 
 std::string Binding::name_prefix_for_idtype() const

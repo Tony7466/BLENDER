@@ -440,7 +440,7 @@ class Binding : public ::ActionBinding {
  public:
   Binding() = default;
   Binding(const Binding &other) = default;
-  ~Binding() = default;
+  ~Binding();
 
   /**
    * Binding handle value indicating that there is no binding assigned.
@@ -473,6 +473,32 @@ class Binding : public ::ActionBinding {
   /** Return whether this Binding has an `idtype` set. */
   bool has_idtype() const;
 
+  /** Return the set of IDs that are animated by this Binding. */
+  Set<ID *> &users();
+
+  /**
+   * Register this ID as animated by this Binding.
+   *
+   * This is a low-level function and should not typically be used.
+   * Use #Action::assign_id(binding, animated_id) instead.
+   */
+  void users_add(ID &animated_id);
+
+  /**
+   * Register this ID as no longer animated by this Binding.
+   *
+   * This is a low-level function and should not typically be used.
+   * Use #Action::assign_id(nullptr, animated_id) instead.
+   */
+  void users_remove(ID &animated_id);
+
+  /**
+   * Mark the users cache as 'dirty', triggering a full rebuild next time it is accessed.
+   *
+   * This is typically not necessary, and only called from low-level code.
+   */
+  static void users_invalidate();
+
  protected:
   friend Action;
 
@@ -483,6 +509,9 @@ class Binding : public ::ActionBinding {
    * the responsibility of the caller.
    */
   void name_ensure_prefix();
+
+  /** Obtain the runtime struct, ensuring that it exists. */
+  BindingRuntime &runtime();
 };
 static_assert(sizeof(Binding) == sizeof(::ActionBinding),
               "DNA struct and its C++ wrapper must have the same size");
@@ -626,6 +655,17 @@ void unassign_binding(ID &animated_id);
  * Return the Animation of this ID, or nullptr if it has none.
  */
 Action *get_animation(ID &animated_id);
+
+/**
+ * Get the Action and the Binding that animate this ID.
+ *
+ * \return One of two options:
+ *  - pair<Action, Binding> when an Action and a Binding are assigned. In other
+ *    words, when this ID is actually animated by this Action+Binding pair.
+ *  - nullopt: when this ID is not animated. This can have several causes: not
+ *    an animatable type, no Action assigned, or no Binding assigned.
+ */
+std::optional<std::pair<Action *, Binding *>> get_action_binding_pair(ID &animated_id);
 
 /**
  * Return the F-Curves for this specific binding handle.
