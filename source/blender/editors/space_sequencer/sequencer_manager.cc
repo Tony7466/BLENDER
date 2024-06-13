@@ -3,11 +3,72 @@
 #include "BKE_report.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
+#include "DNA_ID.h"
 #include "ED_screen.h"
 #include "UI_interface.h"
 #include "UI_resources.h"
 #include "WM_api.h"
 #include "WM_types.h"
+#include "SEQ_add.h"
+#include "DNA_sequence_types.h"
+#include "BLI_string.h"
+
+/* Define a simple cache for imported files */
+#define MAX_CACHED_FILES 100
+static ID cached_files[MAX_CACHED_FILES];
+static int cached_file_count = 0;
+static int current_file_id = 0;
+
+/* Add a file to the cache */
+static void add_to_cache(const char *filepath)
+{
+    if (cached_file_count < MAX_CACHED_FILES) {
+        ID *file = &cached_files[cached_file_count];
+        file->file_id = current_file_id++;
+        BLI_strncpy(file->file_path, filepath, sizeof(file->file_path));
+        cached_file_count++;
+    }
+}
+
+/* Draw the cached files in the panel */
+static void draw_cached_files(uiLayout *layout)
+{
+    for (int i = 0; i < cached_file_count; i++) {
+        uiItemL(layout, cached_files[i].file_path, ICON_FILE);
+    }
+}
+
+/* Search for files */
+static void search_files(const char *query, uiLayout *layout)
+{
+    for (int i = 0; i < cached_file_count; i++) {
+        if (BLI_strcasestr(cached_files[i].file_path, query)) {
+            uiItemL(layout, cached_files[i].file_path, ICON_FILE);
+        }
+    }
+}
+
+/* Operator for selecting text files */
+static int open_text_file_exec(bContext *C, wmOperator *op)
+{
+    char filepath[FILE_MAX];
+    RNA_string_get(op->ptr, "filepath", filepath);
+    add_to_cache(filepath);
+    BKE_reportf(op->reports, RPT_INFO, "Selected text file: %s", filepath);
+    return OPERATOR_FINISHED;
+}
+
+static void open_text_file(wmOperatorType *ot)
+{
+    ot->name = "Open Text File";
+    ot->idname = "FILE_OT_open_text_file";
+    ot->description = "Select a text file";
+
+    ot->exec = open_text_file_exec;
+    ot->poll = ED_operator_areaactive;
+
+    WM_operator_properties_filesel(ot, FILE_TYPE_FOLDER | FILE_TYPE_TEXT, FILE_SPECIAL, FILE_OPENFILE, WM_FILESEL_FILEPATH, FILE_DEFAULTDISPLAY);
+}
 
 /* Search for files */
 static void search_files(const char *query, uiLayout *layout)
@@ -120,6 +181,9 @@ static void file_selector_panel_draw(const bContext *C, Panel *panel)
     uiItemO(layout, "Select Video File", ICON_FILE_MOVIE, "FILE_OT_open_video_file");
     uiItemO(layout, "Select Sound File", ICON_SOUND, "FILE_OT_open_sound_file");
     uiItemO(layout, "Select Image File", ICON_IMAGE_DATA, "FILE_OT_open_image_file");
+
+    /* Draw the cached files */
+    draw_cached_files(layout);
 
 }
 
