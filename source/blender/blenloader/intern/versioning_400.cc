@@ -2926,14 +2926,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
               ccam, "fisheye_polynomial_k3", default_cam.fisheye_polynomial_k3);
           camera->fisheye_polynomial_k4 = version_cycles_property_float(
               ccam, "fisheye_polynomial_k4", default_cam.fisheye_polynomial_k4);
-          camera->central_cylindrical_range_u_min = version_cycles_property_float(
-              ccam, "central_cylindrical_range_u_min", default_cam.central_cylindrical_range_u_min);
-          camera->central_cylindrical_range_u_max = version_cycles_property_float(
-              ccam, "central_cylindrical_range_u_max", default_cam.central_cylindrical_range_u_max);
-          camera->central_cylindrical_range_v_min = version_cycles_property_float(
-              ccam, "central_cylindrical_range_v_min", default_cam.central_cylindrical_range_v_min);
-          camera->central_cylindrical_range_v_max = version_cycles_property_float(
-              ccam, "central_cylindrical_range_v_max", default_cam.central_cylindrical_range_v_max);
         }
         else {
           camera->panorama_type = default_cam.panorama_type;
@@ -2949,10 +2941,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           camera->fisheye_polynomial_k2 = default_cam.fisheye_polynomial_k2;
           camera->fisheye_polynomial_k3 = default_cam.fisheye_polynomial_k3;
           camera->fisheye_polynomial_k4 = default_cam.fisheye_polynomial_k4;
-          camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
-          camera->central_cylindrical_range_u_max = default_cam.central_cylindrical_range_u_max;
-          camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
-          camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
         }
       }
     }
@@ -4274,6 +4262,17 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->view_settings.temperature = 6500.0f;
       scene->view_settings.tint = 10.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 1)) {
+    Camera default_cam = *DNA_struct_default_get(Camera);
+    LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
+      camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
+      camera->central_cylindrical_range_u_max = default_cam.central_cylindrical_range_u_max;
+      camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
+      camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
+      camera->central_cylindrical_radius = default_cam.central_cylindrical_radius;
     }
   }
 

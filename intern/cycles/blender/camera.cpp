@@ -68,6 +68,7 @@ struct BlenderCamera {
   float central_cylindrical_range_u_max;
   float central_cylindrical_range_v_min;
   float central_cylindrical_range_v_max;
+  float central_cylindrical_radius;
 
   enum { AUTO, HORIZONTAL, VERTICAL } sensor_fit;
   float sensor_width;
@@ -241,6 +242,8 @@ static void blender_camera_from_object(BlenderCamera *bcam,
     bcam->central_cylindrical_range_u_max = b_camera.central_cylindrical_range_u_max();
     bcam->central_cylindrical_range_v_min = b_camera.central_cylindrical_range_v_min();
     bcam->central_cylindrical_range_v_max = b_camera.central_cylindrical_range_v_max();
+    bcam->central_cylindrical_radius = b_camera.central_cylindrical_radius();
+    
 
     bcam->interocular_distance = b_camera.stereo().interocular_distance();
     if (b_camera.stereo().convergence_mode() == BL::CameraStereoData::convergence_mode_PARALLEL) {
@@ -527,6 +530,7 @@ static void blender_camera_sync(Camera *cam,
   cam->set_central_cylindrical_range_u_max(bcam->central_cylindrical_range_u_max);
   cam->set_central_cylindrical_range_v_min(bcam->central_cylindrical_range_v_min);
   cam->set_central_cylindrical_range_v_max(bcam->central_cylindrical_range_v_max);
+  cam->set_central_cylindrical_radius(bcam->central_cylindrical_radius);
 
   /* panorama stereo */
   cam->set_interocular_distance(bcam->interocular_distance);

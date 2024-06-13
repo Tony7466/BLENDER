@@ -111,8 +111,9 @@ NODE_DEFINE(Camera)
 
   SOCKET_FLOAT(central_cylindrical_range_u_min, "Central Cylindrical Range U Min", -M_PI_F);
   SOCKET_FLOAT(central_cylindrical_range_u_max, "Central Cylindrical Range U Max", M_PI_F);
-  SOCKET_FLOAT(central_cylindrical_range_v_min, "Central Cylindrical Range V Min", -10.0f); //soft-limit
+  SOCKET_FLOAT(central_cylindrical_range_v_min, "Central Cylindrical Range V Min", -10.0f);
   SOCKET_FLOAT(central_cylindrical_range_v_max, "Central Cylindrical Range V Max", 10.0f);
+  SOCKET_FLOAT(central_cylindrical_radius, "Cylinder radius", 10.0f);
 
   static NodeEnum stereo_eye_enum;
   stereo_eye_enum.insert("none", STEREO_NONE);
@@ -430,6 +431,8 @@ void Camera::update(Scene *scene)
                                                 central_cylindrical_range_u_max,
                                                 central_cylindrical_range_v_min,
                                                 central_cylindrical_range_v_max);
+  kcam->central_cylindrical_radius = central_cylindrical_radius;
+
 
   switch (stereo_eye) {
     case STEREO_LEFT:

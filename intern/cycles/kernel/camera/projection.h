@@ -61,16 +61,17 @@ ccl_device float3 equirectangular_to_direction(float u, float v)
 
 ccl_device float2 direction_to_central_cylindrical(float3 dir, float4 range)
 {
-  float u = (atan2f(dir.y, dir.x) - range.x) / (range.y - range.x);
-  float v = (dir.z - range.z) / (range.w - range.z);
-  return make_float2(u, v);
+    float theta = -atan2f(dir.y, dir.x);  
+    float u = inverse_lerp(theta, range.x, range.y);
+    float v = (dir.z - range.z) / (range.w - range.z);
+    return make_float2(u, v);
 }
 
-ccl_device float3 central_cylindrical_to_direction(float u, float v, float4 range)
+ccl_device float3 central_cylindrical_to_direction(float u, float v, float4 range, float radius)
 {
-  float phi = (u * (range.y - range.x)) + range.x;
-  float z = (v * (range.w - range.z) + range.z);
-  return make_float3(cosf(-phi), sinf(-phi), z);
+    float theta = -mix(range.x, range.y, u);
+    float z = v * (range.w - range.z) + range.z;
+    return make_float3(radius * cosf(theta), radius * sinf(theta), z);
 }
 
 /* Fisheye <-> Cartesian direction */
@@ -277,7 +278,7 @@ ccl_device_inline float3 panorama_to_direction(ccl_constant KernelCamera *cam, f
                                                   cam->sensorwidth,
                                                   cam->sensorheight);
     case PANORAMA_CENTRAL_CYLINDRICAL:
-      return central_cylindrical_to_direction(u, v, cam->central_cylindrical_range);                                                 
+      return central_cylindrical_to_direction(u, v, cam->central_cylindrical_range, cam->central_cylindrical_radius);                                                 
     case PANORAMA_FISHEYE_EQUISOLID:
     default:
       return fisheye_equisolid_to_direction(
@@ -303,7 +304,7 @@ ccl_device_inline float2 direction_to_panorama(ccl_constant KernelCamera *cam, f
                                                   cam->sensorwidth,
                                                   cam->sensorheight);
     case PANORAMA_CENTRAL_CYLINDRICAL:
-    return direction_to_central_cylindrical(dir, cam->central_cylindrical_range);
+      return direction_to_central_cylindrical(dir, cam->central_cylindrical_range);
                                            
     case PANORAMA_FISHEYE_EQUISOLID:
     default:
