@@ -132,6 +132,7 @@ const char *BLT_translate_do_new_dataname(const char *msgctxt, const char *msgid
 /* Editors-types contexts. */
 #define BLT_I18NCONTEXT_EDITOR_FILEBROWSER "File browser"
 #define BLT_I18NCONTEXT_EDITOR_PREFERENCES "Preferences"
+#define BLT_I18NCONTEXT_EDITOR_PYTHON_CONSOLE "Python console"
 #define BLT_I18NCONTEXT_EDITOR_VIEW3D "View3D"
 
 /* Generic contexts. */
@@ -205,6 +206,7 @@ struct BLT_i18n_contexts_descriptor {
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_WORKSPACE, "id_workspace"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_WORLD, "id_world"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_EDITOR_FILEBROWSER, "editor_filebrowser"), \
+        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_EDITOR_PYTHON_CONSOLE, "editor_python_console"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_EDITOR_PREFERENCES, "editor_preferences"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_EDITOR_VIEW3D, "editor_view3d"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_AMOUNT, "amount"), \
