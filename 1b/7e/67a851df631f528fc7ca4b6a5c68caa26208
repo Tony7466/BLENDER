@@ -4,3 +4,4 @@ Referenced by issue #121400, Invisible & Crashing bone widgets with GPU Subdivis
 Referenced by issue #121444, Hiding part of a mesh in Edit Mode causes edges to draw between the wrong vertices.
 Referenced by issue #121503, GN: crash with resample / fillet curve nodes (ngon fill)
 Referenced by commit c4051c3216c4a1b9c80cb1383de7133f7dac6b61, Fix #121347: GPU subdivision loose edges hidden with no non-loose edges
+Referenced by issue #123171, Curve modifier on a mesh with "display in editmode" ON crashes when going into editmode
