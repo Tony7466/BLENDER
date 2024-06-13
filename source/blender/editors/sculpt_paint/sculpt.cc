@@ -6590,6 +6590,10 @@ void calc_cube_distance_falloff(SculptSession &ss,
   const float tip_roundness = brush.tip_roundness;
   const float tip_scale_x = brush.tip_scale_x;
   for (const int i : verts.index_range()) {
+    if (factors[i] == 0.0f) {
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
     /* TODO: Break up #SCULPT_brush_test_cube. */
     if (!SCULPT_brush_test_cube(test, positions[verts[i]], mat.ptr(), tip_roundness, tip_scale_x))
     {
