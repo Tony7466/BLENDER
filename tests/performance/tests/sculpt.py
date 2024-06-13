@@ -129,6 +129,7 @@ def _run(args):
         end = time.time()
 
     result = {'time': end - start}
+    # bpy.ops.wm.save_mainfile(filepath="/home/hans/Documents/test.blend")
     return result
 
 
