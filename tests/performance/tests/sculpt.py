@@ -115,7 +115,7 @@ def _run(args):
     context = bpy.context
 
     # Create an undo stack explicitly. This isn't created by default in background mode.
-    bpy.ops.ed.undo_push()
+    # bpy.ops.ed.undo_push()
 
     prepare_sculpt_scene(context)
 

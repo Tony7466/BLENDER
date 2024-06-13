@@ -31,6 +31,7 @@
  */
 
 #include <cstddef>
+#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -1671,6 +1672,13 @@ void push_begin(Object &ob, const wmOperator *op)
 
 void push_begin_ex(Object &ob, const char *name)
 {
+  if (G.background) {
+    wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+    if (wm->undo_stack == nullptr) {
+      wm->undo_stack = BKE_undosys_stack_create();
+    }
+  }
+
   UndoStack *ustack = ED_undo_stack_get();
 
   /* If possible, we need to tag the object and its geometry data as 'changed in the future' in
@@ -1714,7 +1722,9 @@ void push_end_ex(Object &ob, const bool use_nested_undo)
 
   /* We could remove this and enforce all callers run in an operator using 'OPTYPE_UNDO'. */
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
-  if (wm->op_undo_depth == 0 || use_nested_undo) {
+  std::cout << "wm->op_undo_depth: " << wm->op_undo_depth << '\n';
+  std::cout << "use_nested_undo: " << use_nested_undo << '\n';
+  if (true || wm->op_undo_depth == 0 || use_nested_undo) {
     UndoStack *ustack = ED_undo_stack_get();
     BKE_undosys_step_push(ustack, nullptr, nullptr);
     if (wm->op_undo_depth == 0) {

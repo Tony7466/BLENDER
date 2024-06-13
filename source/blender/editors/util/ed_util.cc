@@ -215,6 +215,10 @@ void ED_editors_init(bContext *C)
 
 void ED_editors_exit(Main *bmain, bool do_undo_system)
 {
+  printf("%s\n", __func__);
+  printf("  %p\n", bmain);
+  printf("  %d\n", int(do_undo_system));
+  printf("  %p\n", G_MAIN->wm.first);
   using namespace blender::ed;
   if (!bmain) {
     return;

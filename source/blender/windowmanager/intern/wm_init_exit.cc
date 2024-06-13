@@ -459,6 +459,8 @@ void UV_clipboard_free();
 
 void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_actions)
 {
+  printf("%s\n", __func__);
+  printf("  %p\n", C);
   using namespace blender;
   wmWindowManager *wm = C ? CTX_wm_manager(C) : nullptr;
 
