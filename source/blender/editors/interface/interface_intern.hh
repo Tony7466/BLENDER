@@ -286,13 +286,13 @@ struct uiBut {
    */
   uiHandleButtonData *active = nullptr;
   /**
-   * Only one active button is supported, but there are cases where that's not enough. A common
-   * case is to keep some filter button active to receive text input, while other buttons remain
-   * active for interaction.
+   * Event handling only supports one active button at a time, but there are cases where that's not
+   * enough. A common one is to keep some filter button active to receive text input, while other
+   * buttons remain active for interaction.
    *
-   * Buttons that have #semi_modal_state set will be temporarily activated for event handling, and
-   * only if they don't consume the event (for example text input events) the event will be
-   * forwarded to other buttons.
+   * Buttons that have #semi_modal_state set will be temporarily activated for event handling. If
+   * they don't consume the event (for example text input events) the event will be forwarded to
+   * other buttons.
    *
    * Currently only text buttons support this well.
    */

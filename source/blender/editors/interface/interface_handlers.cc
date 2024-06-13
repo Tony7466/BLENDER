@@ -4089,7 +4089,8 @@ static int ui_do_but_textedit(
     }
   }
 
-  return retval;
+  /* Swallow all events unless semi-modal handling is requested. */
+  return data->is_semi_modal ? retval : WM_UI_HANDLER_BREAK;
 }
 
 static int ui_do_but_textedit_select(
@@ -4799,14 +4800,10 @@ static int ui_do_but_TEX(
     }
   }
   else if (data->state == BUTTON_STATE_TEXT_EDITING) {
-    const int retval = ui_do_but_textedit(C, block, but, data, event);
-    /* Swallow all events unless semi-modal handling is requested. */
-    return data->is_semi_modal ? retval : WM_UI_HANDLER_BREAK;
+    return ui_do_but_textedit(C, block, but, data, event);
   }
   else if (data->state == BUTTON_STATE_TEXT_SELECTING) {
-    const int retval = ui_do_but_textedit_select(C, block, but, data, event);
-    /* Swallow all events unless semi-modal handling is requested. */
-    return data->is_semi_modal ? retval : WM_UI_HANDLER_BREAK;
+    return ui_do_but_textedit_select(C, block, but, data, event);
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -8901,8 +8898,10 @@ void ui_but_semi_modal_state_free(const bContext *C, uiBut *but)
     return;
   }
   /* Activate the button (using the semi modal state) and use the normal active button freeing. */
-  with_but_active_as_semi_modal(
-      (bContext *)C, but->semi_modal_state->region, but, [&]() { ui_but_active_free(C, but); });
+  with_but_active_as_semi_modal(const_cast<bContext *>(C),
+                                but->semi_modal_state->region,
+                                but,
+                                [&]() { ui_but_active_free(C, but); });
 }
 
 /* returns the active button with an optional checking function */
@@ -9294,10 +9293,14 @@ static bool ui_handle_button_activate_by_type(bContext *C, ARegion *region, uiBu
 }
 
 /**
- * Temporarily deactivates the regular active button, activates the given button
- * using semi-modal state (preserved in #uiBut.semi_modal_state), calls \a fn and reactivates the
- * regular active button. During the \a fn call, the button will appear to be the active button,
- * i.e. #ui_region_find_active_but() will return this button.
+ * Calls \a fn with \a but activated for semi-modal handling.
+ *
+ * Button handling code requires the button to be active, but at the same time only one active
+ * button per region is supported. So if there's a different active button already, it needs to be
+ * deactivated temporarily (by unsetting its #uiBut.active member and restoring it when done).
+ *
+ * During the \fn call, the passed \a but will appear to be the active button of the region, i.e.
+ * #ui_region_find_active_but() will return \a but.
  */
 static void with_but_active_as_semi_modal(bContext *C,
                                           ARegion *region,
@@ -9312,11 +9315,14 @@ static void with_but_active_as_semi_modal(bContext *C,
   if (prev_active_but) {
     prev_active_but->active = nullptr;
   }
+  /* Enforce the button to actually be active, using #uiBut.semi_modal_state to store its handling
+   * state. */
   if (!but->semi_modal_state) {
     ui_but_activate_event(C, region, but);
     but->semi_modal_state = but->active;
     but->semi_modal_state->is_semi_modal = true;
   }
+  /* Activate the button using the previously created/stored semi-modal state. */
   but->active = but->semi_modal_state;
 
   fn();
@@ -11579,11 +11585,12 @@ static int ui_handle_menus_recursive(bContext *C,
     }
   }
 
+  /* now handle events for our own menu */
+
   if (retval == WM_UI_HANDLER_CONTINUE) {
     retval = ui_handle_region_semi_modal_buttons(C, event, menu->region);
   }
 
-  /* now handle events for our own menu */
   if (retval == WM_UI_HANDLER_CONTINUE || event->type == TIMER) {
     const bool do_but_search = (but && (but->type == UI_BTYPE_SEARCH_MENU));
     if (submenu && submenu->menuretval) {
