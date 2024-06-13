@@ -11,6 +11,7 @@
 #include <string>
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "RNA_types.hh"
@@ -295,6 +296,8 @@ struct PanelType {
   short region_type;
   /* For popovers, 0 for default. */
   int ui_units_x;
+  /** For popovers, adds an offset to the popover if it's not attached to a button. */
+  blender::float2 offset_units_xy;
   int order;
 
   int flag;

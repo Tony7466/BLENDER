@@ -10,6 +10,7 @@
 
 #include "BKE_screen.hh"
 
+#include "BKE_global.hh"
 #include "BLI_string.h"
 
 #include "BLT_translation.hh"
@@ -78,6 +79,22 @@ static AssetShelf *get_shelf_for_popup(const bContext &C, AssetShelfType &shelf_
   return nullptr;
 }
 
+class CatalogTreeItem : public ui::BasicTreeViewItem {
+  /* Inherit constructors. */
+  using ui::BasicTreeViewItem::BasicTreeViewItem;
+
+  void build_row(uiLayout &row) override
+  {
+    ui::BasicTreeViewItem::build_row(row);
+
+    uiButViewItem *view_item_but = view_item_button();
+    /* Without this, the popup will spawn with the active catalog under the cursor, which is not
+     * wanted. The cursor should be somewhere over the actual assets. */
+    UI_but_flag2_enable(reinterpret_cast<uiBut *>(view_item_but),
+                        UI_BUT2_IGNORE_POPOVER_POSITIONING);
+  }
+};
+
 class AssetCatalogTreeView : public ui::AbstractTreeView {
   AssetShelf &shelf_;
   asset_system::AssetCatalogTree catalog_tree_;
@@ -103,7 +120,7 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
       return;
     }
 
-    auto &all_item = this->add_tree_item<ui::BasicTreeViewItem>(IFACE_("All"));
+    auto &all_item = this->add_tree_item<CatalogTreeItem>(IFACE_("All"));
     all_item.set_on_activate_fn([this](bContext &C, ui::BasicTreeViewItem &) {
       settings_set_all_catalog_active(shelf_.settings);
       send_redraw_notifier(C);
@@ -123,7 +140,7 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
       ui::TreeViewOrItem &parent_view_item,
       const asset_system::AssetCatalogTreeItem &catalog_item) const
   {
-    ui::BasicTreeViewItem &view_item = parent_view_item.add_tree_item<ui::BasicTreeViewItem>(
+    ui::BasicTreeViewItem &view_item = parent_view_item.add_tree_item<CatalogTreeItem>(
         catalog_item.get_name());
 
     std::string catalog_path = catalog_item.catalog_path().str();
@@ -180,6 +197,21 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
   const int left_col_width_units = 10;
   const int right_col_width_units = 30;
   const int layout_width_units = left_col_width_units + right_col_width_units;
+
+  /* TODO: Testing different popup spawn positions. */
+  if (G.debug_value == 1) {
+    /* Move to have first asset item under cursor. */
+    panel->type->offset_units_xy.x = -(left_col_width_units + 1.5f);
+    /* Offset so mouse is below search button, over the first row of assets. */
+    panel->type->offset_units_xy.y = 2.5f;
+  }
+  else if (G.debug_value == 2) {
+    panel->type->offset_units_xy.x = -(left_col_width_units + (right_col_width_units / 2));
+    panel->type->offset_units_xy.y = 2.5f;
+  }
+  else {
+    panel->type->offset_units_xy = {};
+  }
 
   uiLayout *layout = panel->layout;
   uiLayoutSetUnitsX(layout, layout_width_units);
