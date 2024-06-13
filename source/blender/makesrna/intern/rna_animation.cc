@@ -303,16 +303,17 @@ static void rna_AnimData_action_binding_set(PointerRNA *ptr, PointerRNA value, R
     return;
   }
 
+  ID *animated_id = ptr->owner_id;
+  BLI_assert(animated_id); /* Otherwise there is nothing to own this AnimData. */
+
   ActionBinding *dna_binding = static_cast<ActionBinding *>(value.data);
   if (!dna_binding) {
-    blender::animrig::unassign_binding(adt);
+    blender::animrig::unassign_binding(*animated_id);
     return;
   }
 
   Action &action = adt.action->wrap();
   Binding &binding = dna_binding->wrap();
-  ID *animated_id = ptr->owner_id;
-  BLI_assert(animated_id); /* Otherwise there is nothing to own this AnimData. */
 
   if (!action.assign_id(&binding, *animated_id)) {
     /* TODO: make assign_id() return a different type that gives us more info about what went
