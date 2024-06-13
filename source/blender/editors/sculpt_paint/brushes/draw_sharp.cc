@@ -35,32 +35,11 @@ struct LocalData {
   Vector<float3> translations;
 };
 
-static void mesh_orig_vert_data_update(SculptOrigVertData &orig_data, const int vert)
-{
-  if (orig_data.unode->type == undo::Type::Position) {
-    orig_data.co = orig_data.coords[vert];
-    orig_data.no = orig_data.normals[vert];
-  }
-  else if (orig_data.unode->type == undo::Type::Color) {
-    orig_data.col = orig_data.colors[vert];
-  }
-  else if (orig_data.unode->type == undo::Type::Mask) {
-    orig_data.mask = orig_data.vmasks[vert];
-  }
-}
-
- void calc_orig_vert(SculptOrigVertData &orig_data,const Span<int> verts)
-{
-  for (const int i : verts.index_range()) {
-    mesh_orig_vert_data_update(orig_data, i);
-  }
-}
-
 static void calc_faces_sharp(const Sculpt &sd,
                              const Brush &brush,
                              const float3 &offset,
-                             const Span<float3> positions_eval,
-                             const Span<float3> vert_normals,
+                             const Span<float3> positions_eval2,
+                             const Span<float3> vert_normals2,
                              const PBVHNode &node,
                              Object &object,
                              LocalData &tls,
@@ -72,28 +51,32 @@ static void calc_faces_sharp(const Sculpt &sd,
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
-
+    SCULPT_orig_vert_data_update(orig_data, 0);
+    
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
+    
+   // const Span<float3> positions_eval(reinterpret_cast<const float3*>(orig_data.coords), verts.size());
+   // const Span<float3> vert_normals(reinterpret_cast<const float3*>(orig_data.normals), verts.size());
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(mesh, verts, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+    calc_front_face(cache.view_normal, orig_data, verts, factors);
   }
 
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
-      ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
+      ss, orig_data, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
   calc_brush_strength_factors(ss, brush, verts, distances, factors);
 
   if (ss.cache->automasking) {
     auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
   }
 
-  calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
+  calc_brush_texture_factors(ss, brush, orig_data, verts, factors);
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
@@ -102,7 +85,7 @@ static void calc_faces_sharp(const Sculpt &sd,
     translations[i] = offset * factors[i];
   }
 
-  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
+  clip_and_lock_translations(sd, ss, orig_data, verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
@@ -185,7 +168,7 @@ static void calc_bmesh_sharp(Object &object, const Brush &brush, const float3 &o
       i++;
       continue;
     }
-    SCULPT_orig_vert_data_update(bmesh, vert);
+    //SCULPT_orig_vert_data_update(bmesh, vert);
     if (!sculpt_brush_test_sq_fn(test, vert->co)) {
       i++;
       continue;

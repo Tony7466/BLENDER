@@ -7,6 +7,7 @@
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+#include "sculpt_intern.hh"
 
 #include "DNA_brush_enums.h"
 
@@ -62,6 +63,11 @@ void calc_front_face(const float3 &view_normal,
                      Span<int> vert_indices,
                      MutableSpan<float> factors);
 
+void calc_front_face(const float3 &view_normal,
+                     const SculptOrigVertData &orig_data,
+                     const Span<int> verts,
+                     const MutableSpan<float> factors);
+
 /**
  * Modify influence factors based on the distance from the brush cursor and various other settings.
  * Also fill an array of distances from the brush cursor for "in bounds" vertices.
@@ -72,6 +78,13 @@ void calc_distance_falloff(SculptSession &ss,
                            eBrushFalloffShape falloff_shape,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
+
+void calc_distance_falloff(SculptSession &ss,
+                           const SculptOrigVertData &orig_data,
+                           const Span<int> verts,
+                           const eBrushFalloffShape falloff_shape,
+                           const MutableSpan<float> r_distances,
+                           const MutableSpan<float> factors);
 
 /**
  * Modify the factors based on distances to the brush cursor, using various brush settings.
@@ -90,6 +103,12 @@ void calc_brush_texture_factors(SculptSession &ss,
                                 Span<float3> vert_positions,
                                 Span<int> vert_indices,
                                 MutableSpan<float> factors);
+
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                const SculptOrigVertData &orig_data,
+                                const Span<int> verts,
+                                const MutableSpan<float> factors);
 
 namespace auto_mask {
 
@@ -131,6 +150,12 @@ void clip_and_lock_translations(const Sculpt &sd,
                                 Span<float3> positions,
                                 Span<int> verts,
                                 MutableSpan<float3> translations);
+
+void clip_and_lock_translations(const Sculpt &sd,
+                                const SculptSession &ss,
+                                const SculptOrigVertData &orig_data,
+                                const Span<int> verts,
+                                const MutableSpan<float3> translations);
 
 /**
  * Applying final positions to shape keys is non-trivial because the mesh positions and the active

@@ -6538,6 +6538,19 @@ void calc_front_face(const float3 &view_normal,
   }
 }
 
+void calc_front_face(const float3 &view_normal,
+                     const SculptOrigVertData &orig_data,
+                     const Span<int> verts,
+                     const MutableSpan<float> factors)
+{
+  //BLI_assert(verts.size() == factors.size());
+
+  for (const int i : verts.index_range()) {
+    const float dot = math::dot(view_normal, orig_data.normals[i]);
+    factors[i] *= dot > 0.0f ? dot : 0.0f;
+  }
+}
+
 void calc_distance_falloff(SculptSession &ss,
                            const Span<float3> positions,
                            const Span<int> verts,
@@ -6558,6 +6571,34 @@ void calc_distance_falloff(SculptSession &ss,
       continue;
     }
     if (!sculpt_brush_test_sq_fn(test, positions[verts[i]])) {
+      factors[i] = 0.0f;
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
+    r_distances[i] = math::sqrt(test.dist);
+  }
+}
+
+void calc_distance_falloff(SculptSession &ss,
+                           const SculptOrigVertData &orig_data,
+                           const Span<int> verts,
+                           const eBrushFalloffShape falloff_shape,
+                           const MutableSpan<float> r_distances,
+                           const MutableSpan<float> factors)
+{
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == r_distances.size());
+
+  SculptBrushTest test;
+  const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, test, falloff_shape);
+
+  for (const int i : verts.index_range()) {
+    if (factors[i] == 0.0f) {
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
+    if (!sculpt_brush_test_sq_fn(test, orig_data.coords[i])) {
       factors[i] = 0.0f;
       r_distances[i] = FLT_MAX;
       continue;
@@ -6612,6 +6653,31 @@ void calc_brush_texture_factors(SculptSession &ss,
     /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
         ss, brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
+
+    factors[i] *= texture_value;
+  }
+}
+
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                const SculptOrigVertData &orig_data,
+                                const Span<int> verts,
+                                const MutableSpan<float> factors)
+{
+  BLI_assert(verts.size() == factors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  const MTex *mtex = BKE_brush_mask_texture_get(&brush, OB_MODE_SCULPT);
+  if (!mtex->tex) {
+    return;
+  }
+
+  for (const int i : verts.index_range()) {
+    float texture_value;
+    float4 texture_rgba;
+    /* NOTE: This is not a thread-safe call. */
+    sculpt_apply_texture(
+        ss, brush, orig_data.coords[i], thread_id, &texture_value, texture_rgba);
 
     factors[i] *= texture_value;
   }
@@ -6678,6 +6744,48 @@ void clip_and_lock_translations(const Sculpt &sd,
       co_mirror[axis] = 0.0f;
       const float3 co_local = math::transform_point(mirror_inverse, co_mirror);
       translations[i][axis] = co_local[axis] - positions[vert][axis];
+    }
+  }
+}
+
+void clip_and_lock_translations(const Sculpt &sd,
+                                const SculptSession &ss,
+                                const SculptOrigVertData &orig_data,
+                                const Span<int> verts,
+                                const MutableSpan<float3> translations)
+{
+  BLI_assert(verts.size() == translations.size());
+
+  const StrokeCache *cache = ss.cache;
+  if (!cache) {
+    return;
+  }
+  for (const int axis : IndexRange(3)) {
+    if (sd.flags & (SCULPT_LOCK_X << axis)) {
+      for (float3 &translation : translations) {
+        translation[axis] = 0.0f;
+      }
+      continue;
+    }
+
+    if (!(cache->flag & (CLIP_X << axis))) {
+      continue;
+    }
+
+    const float4x4 mirror(cache->clip_mirror_mtx);
+    const float4x4 mirror_inverse = math::invert(mirror);
+    for (const int i : verts.index_range()) {
+        const int vert = i; //verts[i];
+
+      /* Transform into the space of the mirror plane, check translations, then transform back. */
+      float3 co_mirror = math::transform_point(mirror, orig_data.coords[vert]);
+      if (math::abs(co_mirror[axis]) > cache->clip_tolerance[axis]) {
+        continue;
+      }
+      /* Clear the translation in the local space of the mirror object. */
+      co_mirror[axis] = 0.0f;
+      const float3 co_local = math::transform_point(mirror_inverse, co_mirror);
+      translations[i][axis] = co_local[axis] - orig_data.coords[vert][axis];
     }
   }
 }
