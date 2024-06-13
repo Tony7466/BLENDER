@@ -9311,10 +9311,10 @@ static void with_but_active_as_semi_modal(bContext *C,
 
   uiBut *prev_active_but = ui_region_find_active_but(region);
   uiHandleButtonData *prev_active_data = prev_active_but ? prev_active_but->active : nullptr;
-
   if (prev_active_but) {
     prev_active_but->active = nullptr;
   }
+
   /* Enforce the button to actually be active, using #uiBut.semi_modal_state to store its handling
    * state. */
   if (!but->semi_modal_state) {
@@ -9322,19 +9322,11 @@ static void with_but_active_as_semi_modal(bContext *C,
     but->semi_modal_state = but->active;
     but->semi_modal_state->is_semi_modal = true;
   }
+
   /* Activate the button using the previously created/stored semi-modal state. */
   but->active = but->semi_modal_state;
-
   fn();
-
-  /* Popup might have been closed, so lookup button again. */
-  LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    LISTBASE_FOREACH (uiBut *, iter_but, &block->buttons) {
-      if (iter_but == but) {
-        iter_but->active = nullptr;
-      }
-    }
-  }
+  but->active = nullptr;
 
   if (prev_active_but) {
     prev_active_but->active = prev_active_data;
