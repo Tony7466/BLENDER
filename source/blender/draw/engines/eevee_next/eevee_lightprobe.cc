@@ -52,11 +52,13 @@ static eLightProbeResolution resolution_to_probe_resolution_enum(int resolution)
       return LIGHT_PROBE_RESOLUTION_512;
     case 1024:
       return LIGHT_PROBE_RESOLUTION_1024;
-    default:
-      /* Default to maximum resolution because the old max was 4K for Legacy-EEVEE. */
     case 2048:
       return LIGHT_PROBE_RESOLUTION_2048;
+    case 4096:
+      return LIGHT_PROBE_RESOLUTION_4096;
   }
+  BLI_assert_unreachable();
+  return LIGHT_PROBE_RESOLUTION_2048;
 }
 
 void LightProbeModule::init()

@@ -117,6 +117,7 @@ static const EnumPropertyItem world_probe_resolution_items[] = {
     {LIGHT_PROBE_RESOLUTION_512, "512", 0, "512", ""},
     {LIGHT_PROBE_RESOLUTION_1024, "1024", 0, "1024", ""},
     {LIGHT_PROBE_RESOLUTION_2048, "2048", 0, "2048", ""},
+    {LIGHT_PROBE_RESOLUTION_4096, "4096", 0, "4096", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
