@@ -48,7 +48,7 @@ class PlaneDistortBaseOperation : public MultiThreadedOperation {
 };
 
 class PlaneDistortWarpImageOperation : public PlaneDistortBaseOperation {
-private:
+ private:
   PixelSampler sampler_;
 
  public:
