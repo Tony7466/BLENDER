@@ -8,6 +8,7 @@
 #include "NOD_inverse_eval_path.hh"
 #include "NOD_inverse_eval_run.hh"
 
+#include "BKE_anim_data.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_idprop.hh"
 #include "BKE_modifier.hh"
@@ -497,6 +498,80 @@ static bool set_value_node_value(bNode &node, const SocketValueVariant &value_va
   return false;
 }
 
+[[nodiscard]] static bool try_set_driver_source_value(bContext &C,
+                                                      ID &id,
+                                                      const StringRef property_path,
+                                                      const SocketValueVariant &value_variant)
+{
+  AnimData *adt = BKE_animdata_from_id(&id);
+  if (!adt) {
+    return false;
+  }
+  LISTBASE_FOREACH (FCurve *, driver, &adt->drivers) {
+    if (driver->rna_path != property_path) {
+      continue;
+    }
+    if (!driver->driver) {
+      continue;
+    }
+    if (!ELEM(driver->driver->type,
+              DRIVER_TYPE_AVERAGE,
+              DRIVER_TYPE_SUM,
+              DRIVER_TYPE_MIN,
+              DRIVER_TYPE_MAX))
+    {
+      continue;
+    }
+    if (BLI_listbase_count(&driver->driver->variables) != 1) {
+      continue;
+    }
+    DriverVar &driver_var = *static_cast<DriverVar *>(driver->driver->variables.first);
+    if (driver_var.type != DVAR_TYPE_SINGLE_PROP) {
+      continue;
+    }
+    if (driver_var.num_targets != 1) {
+      continue;
+    }
+    DriverTarget &driver_target = driver_var.targets[0];
+    PointerRNA dst_id_ptr = RNA_id_pointer_create(driver_target.id);
+    PointerRNA dst_value_ptr;
+    PropertyRNA *dst_prop;
+    if (!RNA_path_resolve(&dst_id_ptr, driver_target.rna_path, &dst_value_ptr, &dst_prop)) {
+      continue;
+    }
+    const PropertyType dst_type = RNA_property_type(dst_prop);
+    const int array_len = RNA_property_array_length(&dst_value_ptr, dst_prop);
+    switch (dst_type) {
+      case PROP_FLOAT: {
+        if (array_len == 0) {
+          if (value_variant.valid_for_socket(SOCK_FLOAT)) {
+            const float value = value_variant.get<float>();
+            RNA_property_float_set(&dst_value_ptr, dst_prop, value);
+            RNA_property_update(&C, &dst_value_ptr, dst_prop);
+            return true;
+          }
+        }
+        break;
+      }
+      case PROP_INT: {
+        if (array_len == 0) {
+          if (value_variant.valid_for_socket(SOCK_INT)) {
+            const int value = value_variant.get<int>();
+            RNA_property_int_set(&dst_value_ptr, dst_prop, value);
+            RNA_property_update(&C, &dst_value_ptr, dst_prop);
+            return true;
+          }
+        }
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }
+  return false;
+}
+
 static bool set_modifier_value(bContext &C,
                                Object &object,
                                NodesModifierData &nmd,
@@ -505,49 +580,16 @@ static bool set_modifier_value(bContext &C,
 {
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
+  const std::string prop_data_path = fmt::format(
+      "modifiers[\"{}\"][\"{}\"]", nmd.modifier.name, interface_socket.identifier);
+  if (try_set_driver_source_value(C, object.id, prop_data_path, value_variant)) {
+    return true;
+  }
+
   /* TODO: Take min/max into account. */
   switch (interface_socket.socket_typeinfo()->type) {
     case SOCK_FLOAT: {
       const float value = value_variant.get<float>();
-      if (object.adt) {
-        const std::string modifier_prop_data_path = fmt::format(
-            "modifiers[\"{}\"][\"{}\"]", nmd.modifier.name, interface_socket.identifier);
-        LISTBASE_FOREACH (FCurve *, driver, &object.adt->drivers) {
-          if (driver->rna_path == modifier_prop_data_path) {
-            if (driver->driver) {
-              if (ELEM(driver->driver->type,
-                       DRIVER_TYPE_AVERAGE,
-                       DRIVER_TYPE_SUM,
-                       DRIVER_TYPE_MIN,
-                       DRIVER_TYPE_MAX))
-              {
-                if (BLI_listbase_count(&driver->driver->variables) == 1) {
-                  DriverVar &driver_var = *static_cast<DriverVar *>(
-                      driver->driver->variables.first);
-                  if (driver_var.type == DVAR_TYPE_SINGLE_PROP) {
-                    if (driver_var.num_targets == 1) {
-                      DriverTarget &driver_target = driver_var.targets[0];
-                      PointerRNA src_id_ptr = RNA_id_pointer_create(driver_target.id);
-                      PointerRNA src_value_ptr;
-                      PropertyRNA *src_prop;
-                      if (RNA_path_resolve(
-                              &src_id_ptr, driver_target.rna_path, &src_value_ptr, &src_prop))
-                      {
-                        if (RNA_property_type(src_prop) == PROP_FLOAT) {
-                          RNA_property_float_set(&src_value_ptr, src_prop, value);
-                          RNA_property_update(&C, &src_value_ptr, src_prop);
-                          return true;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
       IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
                                                   interface_socket.identifier);
       if (prop && prop->type == IDP_FLOAT) {
