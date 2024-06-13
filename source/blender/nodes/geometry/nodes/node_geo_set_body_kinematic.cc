@@ -32,7 +32,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       bke::PhysicsFieldContext context(*physics, AttrDomain::Point);
       bke::try_capture_field_on_geometry(physics->attributes_for_write(),
                                          context,
-                                         bke::PhysicsGeometry::builtin_attributes.is_kinematic,
+                                         bke::PhysicsGeometry::body_attributes.is_kinematic,
                                          AttrDomain::Point,
                                          selection_field,
                                          kinematic_field);

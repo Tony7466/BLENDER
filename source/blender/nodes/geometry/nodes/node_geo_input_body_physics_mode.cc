@@ -19,11 +19,11 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   Field<bool> simulated_field = AttributeFieldInput::Create<bool>(
-      bke::PhysicsGeometry::builtin_attributes.is_simulated);
+      bke::PhysicsGeometry::body_attributes.is_simulated);
   Field<bool> static_field = AttributeFieldInput::Create<bool>(
-      bke::PhysicsGeometry::builtin_attributes.is_static);
+      bke::PhysicsGeometry::body_attributes.is_static);
   Field<bool> kinematic_field = AttributeFieldInput::Create<bool>(
-      bke::PhysicsGeometry::builtin_attributes.is_kinematic);
+      bke::PhysicsGeometry::body_attributes.is_kinematic);
   params.set_output("Simulated", std::move(simulated_field));
   params.set_output("Static", std::move(static_field));
   params.set_output("Kinematic", std::move(kinematic_field));

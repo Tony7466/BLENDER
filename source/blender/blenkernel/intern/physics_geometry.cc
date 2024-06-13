@@ -609,7 +609,7 @@ void PhysicsGeometryImpl::delete_self()
   delete this;
 }
 
-const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
+const PhysicsGeometry::BodyAttributes PhysicsGeometry::body_attributes = {
     "id",
     "simulated",
     "static",
@@ -954,97 +954,97 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
 
 VArray<int> PhysicsGeometry::body_ids() const
 {
-  return attributes().lookup(builtin_attributes.id).varray.typed<int>();
+  return attributes().lookup(body_attributes.id).varray.typed<int>();
 }
 
 AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.id);
+  return attributes_for_write().lookup_for_write<int>(body_attributes.id);
 }
 
 VArray<bool> PhysicsGeometry::body_is_simulated() const
 {
-  return attributes().lookup(builtin_attributes.is_simulated).varray.typed<bool>();
+  return attributes().lookup(body_attributes.is_simulated).varray.typed<bool>();
 }
 
 AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
 {
-  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
+  return attributes_for_write().lookup_for_write<bool>(body_attributes.is_simulated);
 }
 
 VArray<bool> PhysicsGeometry::body_is_static() const
 {
-  return attributes().lookup(builtin_attributes.is_static).varray.typed<bool>();
+  return attributes().lookup(body_attributes.is_static).varray.typed<bool>();
 }
 
 VArray<float> PhysicsGeometry::body_masses() const
 {
-  return attributes().lookup(builtin_attributes.mass).varray.typed<float>();
+  return attributes().lookup(body_attributes.mass).varray.typed<float>();
 }
 
 AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
 {
-  return attributes_for_write().lookup_for_write<float>(builtin_attributes.mass);
+  return attributes_for_write().lookup_for_write<float>(body_attributes.mass);
 }
 
 VArray<float3> PhysicsGeometry::body_inertias() const
 {
-  return attributes().lookup(builtin_attributes.inertia).varray.typed<float3>();
+  return attributes().lookup(body_attributes.inertia).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.inertia);
+  return attributes_for_write().lookup_for_write<float3>(body_attributes.inertia);
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
 {
-  return attributes().lookup(builtin_attributes.position).varray.typed<float3>();
+  return attributes().lookup(body_attributes.position).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_positions_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.position);
+  return attributes_for_write().lookup_for_write<float3>(body_attributes.position);
 }
 
 VArray<math::Quaternion> PhysicsGeometry::body_rotations() const
 {
-  return attributes().lookup(builtin_attributes.rotation).varray.typed<math::Quaternion>();
+  return attributes().lookup(body_attributes.rotation).varray.typed<math::Quaternion>();
 }
 
 AttributeWriter<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
 {
-  return attributes_for_write().lookup_for_write<math::Quaternion>(builtin_attributes.rotation);
+  return attributes_for_write().lookup_for_write<math::Quaternion>(body_attributes.rotation);
 }
 
 VArray<float3> PhysicsGeometry::body_velocities() const
 {
-  return attributes().lookup(builtin_attributes.velocity).varray.typed<float3>();
+  return attributes().lookup(body_attributes.velocity).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_velocities_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.velocity);
+  return attributes_for_write().lookup_for_write<float3>(body_attributes.velocity);
 }
 
 VArray<float3> PhysicsGeometry::body_angular_velocities() const
 {
-  return attributes().lookup(builtin_attributes.angular_velocity).varray.typed<float3>();
+  return attributes().lookup(body_attributes.angular_velocity).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.angular_velocity);
+  return attributes_for_write().lookup_for_write<float3>(body_attributes.angular_velocity);
 }
 
 VArray<int> PhysicsGeometry::body_activation_states() const
 {
-  return attributes().lookup<int>(builtin_attributes.activation_state).varray;
+  return attributes().lookup<int>(body_attributes.activation_state).varray;
 }
 
 AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.activation_state);
+  return attributes_for_write().lookup_for_write<int>(body_attributes.activation_state);
 }
 
 void PhysicsGeometry::tag_collision_shapes_changed() {}
@@ -1173,7 +1173,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   constexpr auto id_get_fn = [](const btRigidBody &body) -> int { return body.getUserIndex(); };
   constexpr auto id_set_fn = [](btRigidBody &body, int value) { body.setUserIndex(value); };
   static BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
-      PhysicsGeometry::builtin_attributes.id,
+      PhysicsGeometry::body_attributes.id,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1187,7 +1187,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   static BuiltinRigidBodyAttributeProvider<bool, simulated_get_fn, simulated_set_fn>
       body_simulated(
-          PhysicsGeometry::builtin_attributes.is_simulated,
+          PhysicsGeometry::body_attributes.is_simulated,
           AttrDomain::Point,
           BuiltinAttributeProvider::NonDeletable,
           physics_access,
@@ -1209,7 +1209,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     }
   };
   static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
-      PhysicsGeometry::builtin_attributes.is_static,
+      PhysicsGeometry::body_attributes.is_static,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1224,7 +1224,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setCollisionFlags(bt_collision_flags);
   };
   static BuiltinRigidBodyAttributeProvider<bool, kinematic_get_fn, kinematic_set_fn>
-      body_kinematic(PhysicsGeometry::builtin_attributes.is_kinematic,
+      body_kinematic(PhysicsGeometry::body_attributes.is_kinematic,
                      AttrDomain::Point,
                      BuiltinAttributeProvider::NonDeletable,
                      physics_access,
@@ -1239,7 +1239,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     }
   };
   static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
-      PhysicsGeometry::builtin_attributes.mass,
+      PhysicsGeometry::body_attributes.mass,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1263,7 +1263,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     }
   };
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
-      PhysicsGeometry::builtin_attributes.inertia,
+      PhysicsGeometry::body_attributes.inertia,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1276,7 +1276,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.getWorldTransform().setOrigin(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3, position_get_fn, position_set_fn> body_position(
-      PhysicsGeometry::builtin_attributes.position,
+      PhysicsGeometry::body_attributes.position,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1289,7 +1289,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.getWorldTransform().setRotation(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<math::Quaternion, rotation_get_fn, rotation_set_fn>
-      body_rotation(PhysicsGeometry::builtin_attributes.rotation,
+      body_rotation(PhysicsGeometry::body_attributes.rotation,
                     AttrDomain::Point,
                     BuiltinAttributeProvider::NonDeletable,
                     physics_access,
@@ -1302,7 +1302,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setLinearVelocity(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3, velocity_get_fn, velocity_set_fn> body_velocity(
-      PhysicsGeometry::builtin_attributes.velocity,
+      PhysicsGeometry::body_attributes.velocity,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1317,7 +1317,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float3,
                                            angular_velocity_get_fn,
                                            angular_velocity_set_fn>
-      body_angular_velocity(PhysicsGeometry::builtin_attributes.angular_velocity,
+      body_angular_velocity(PhysicsGeometry::body_attributes.angular_velocity,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
@@ -1334,7 +1334,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState(value)));
   };
   static BuiltinRigidBodyAttributeProvider<int, activation_state_get_fn, activation_state_set_fn>
-      body_activation_state(PhysicsGeometry::builtin_attributes.activation_state,
+      body_activation_state(PhysicsGeometry::body_attributes.activation_state,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
@@ -1345,7 +1345,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   constexpr auto friction_set_fn = [](btRigidBody &body, float value) { body.setFriction(value); };
   static BuiltinRigidBodyAttributeProvider<float, friction_get_fn, friction_set_fn> body_friction(
-      PhysicsGeometry::builtin_attributes.friction,
+      PhysicsGeometry::body_attributes.friction,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1358,7 +1358,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setRollingFriction(value);
   };
   static BuiltinRigidBodyAttributeProvider<float, rolling_friction_get_fn, rolling_friction_set_fn>
-      body_rolling_friction(PhysicsGeometry::builtin_attributes.rolling_friction,
+      body_rolling_friction(PhysicsGeometry::body_attributes.rolling_friction,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
@@ -1373,7 +1373,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float,
                                            spinning_friction_get_fn,
                                            spinning_friction_set_fn>
-      body_spinning_friction(PhysicsGeometry::builtin_attributes.spinning_friction,
+      body_spinning_friction(PhysicsGeometry::body_attributes.spinning_friction,
                              AttrDomain::Point,
                              BuiltinAttributeProvider::NonDeletable,
                              physics_access,
@@ -1386,7 +1386,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setRestitution(value);
   };
   static BuiltinRigidBodyAttributeProvider<float, restitution_get_fn, restitution_set_fn>
-      body_restitution(PhysicsGeometry::builtin_attributes.restitution,
+      body_restitution(PhysicsGeometry::body_attributes.restitution,
                        AttrDomain::Point,
                        BuiltinAttributeProvider::NonDeletable,
                        physics_access,
@@ -1398,14 +1398,12 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   constexpr auto linear_damping_set_fn = [](btRigidBody &body, float value) {
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
-  static BuiltinRigidBodyAttributeProvider<float,
-                                           linear_damping_get_fn,
-                                           linear_damping_set_fn>
-      body_linear_damping(PhysicsGeometry::builtin_attributes.linear_damping,
-                                     AttrDomain::Point,
-                                     BuiltinAttributeProvider::NonDeletable,
-                                     physics_access,
-                                     nullptr);
+  static BuiltinRigidBodyAttributeProvider<float, linear_damping_get_fn, linear_damping_set_fn>
+      body_linear_damping(PhysicsGeometry::body_attributes.linear_damping,
+                          AttrDomain::Point,
+                          BuiltinAttributeProvider::NonDeletable,
+                          physics_access,
+                          nullptr);
 
   constexpr auto angular_damping_get_fn = [](const btRigidBody &body) -> float {
     return body.getAngularSleepingThreshold();
@@ -1413,15 +1411,12 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   constexpr auto angular_damping_set_fn = [](btRigidBody &body, float value) {
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
-  static BuiltinRigidBodyAttributeProvider<float,
-                                           angular_damping_get_fn,
-                                           angular_damping_set_fn>
-      body_angular_damping(
-          PhysicsGeometry::builtin_attributes.angular_damping,
-          AttrDomain::Point,
-          BuiltinAttributeProvider::NonDeletable,
-          physics_access,
-          nullptr);
+  static BuiltinRigidBodyAttributeProvider<float, angular_damping_get_fn, angular_damping_set_fn>
+      body_angular_damping(PhysicsGeometry::body_attributes.angular_damping,
+                           AttrDomain::Point,
+                           BuiltinAttributeProvider::NonDeletable,
+                           physics_access,
+                           nullptr);
 
   constexpr auto linear_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
     return body.getLinearSleepingThreshold();
@@ -1432,11 +1427,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float,
                                            linear_sleeping_threshold_get_fn,
                                            linear_sleeping_threshold_set_fn>
-      body_linear_sleeping_threshold(PhysicsGeometry::builtin_attributes.linear_sleeping_threshold,
-                       AttrDomain::Point,
-                       BuiltinAttributeProvider::NonDeletable,
-                       physics_access,
-                       nullptr);
+      body_linear_sleeping_threshold(PhysicsGeometry::body_attributes.linear_sleeping_threshold,
+                                     AttrDomain::Point,
+                                     BuiltinAttributeProvider::NonDeletable,
+                                     physics_access,
+                                     nullptr);
 
   constexpr auto angular_sleeping_threshold_get_fn = [](const btRigidBody &body) -> float {
     return body.getAngularSleepingThreshold();
@@ -1447,11 +1442,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float,
                                            angular_sleeping_threshold_get_fn,
                                            angular_sleeping_threshold_set_fn>
-      body_angular_sleeping_threshold(PhysicsGeometry::builtin_attributes.angular_sleeping_threshold,
-                                     AttrDomain::Point,
-                                     BuiltinAttributeProvider::NonDeletable,
-                                     physics_access,
-                                     nullptr);
+      body_angular_sleeping_threshold(PhysicsGeometry::body_attributes.angular_sleeping_threshold,
+                                      AttrDomain::Point,
+                                      BuiltinAttributeProvider::NonDeletable,
+                                      physics_access,
+                                      nullptr);
 
   return ComponentAttributeProviders({&body_id,
                                       &body_simulated,

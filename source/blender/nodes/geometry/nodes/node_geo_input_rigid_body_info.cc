@@ -19,11 +19,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   params.set_output("ID",
-                    AttributeFieldInput::Create<int>(bke::PhysicsGeometry::builtin_attributes.id));
-  params.set_output("Mass",
-                    AttributeFieldInput::Create<float>(bke::PhysicsGeometry::builtin_attributes.mass));
-  params.set_output("Inertia",
-                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.inertia));
+                    AttributeFieldInput::Create<int>(bke::PhysicsGeometry::body_attributes.id));
+  params.set_output(
+      "Mass", AttributeFieldInput::Create<float>(bke::PhysicsGeometry::body_attributes.mass));
+  params.set_output(
+      "Inertia",
+      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attributes.inertia));
 }
 
 static void node_register()

@@ -54,7 +54,7 @@ class PhysicsGeometry {
   Vector<CollisionShapePtr> shapes_;
 
  public:
-  static const struct BuiltinAttributes {
+  static const struct BodyAttributes {
     std::string id;
     std::string is_simulated;
     std::string is_static;
@@ -74,7 +74,7 @@ class PhysicsGeometry {
     std::string angular_damping;
     std::string linear_sleeping_threshold;
     std::string angular_sleeping_threshold;
-  } builtin_attributes;
+  } body_attributes;
 
   PhysicsGeometry();
   explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num);
