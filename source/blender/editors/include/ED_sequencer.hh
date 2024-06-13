@@ -46,3 +46,8 @@ Sequence *ED_sequencer_special_preview_get();
 void ED_sequencer_special_preview_set(bContext *C, const int mval[2]);
 void ED_sequencer_special_preview_clear();
 bool sequencer_retiming_mode_is_active(const bContext *C);
+
+void ED_sequencer_file_manager(void){
+    register_file_selector_panel();
+    register_sequencer_dropbox();
+}
