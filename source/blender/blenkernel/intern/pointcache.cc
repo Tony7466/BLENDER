@@ -2578,7 +2578,7 @@ int BKE_ptcache_write(PTCacheID *pid, uint cfra)
     cache->last_exact = cfra;
     cache->flag &= ~PTCACHE_FRAMES_SKIPPED;
   }
-  /* Don't mark skipped when writing info file (frame 0) */
+  /* Don't mark skipped when writing info file (frame magic number PTCACHE_NO_FILE) */
   else if (cfra != PTCACHE_NO_FILE) {
     cache->flag |= PTCACHE_FRAMES_SKIPPED;
   }
@@ -3633,13 +3633,11 @@ void BKE_ptcache_load_external(PTCacheID *pid)
         const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
         if (frame != PTCACHE_NO_FILE) {
-          if (frame) {
-            start = std::min(start, frame);
-            end = std::max(end, frame);
-          }
-          else {
-            info = 1;
-          }
+          start = std::min(start, frame);
+          end = std::max(end, frame);
+        }
+        else {
+          info = 1;
         }
       }
     }
@@ -3656,9 +3654,9 @@ void BKE_ptcache_load_external(PTCacheID *pid)
     if (pid->type == PTCACHE_TYPE_SMOKE_DOMAIN) {
       /* necessary info in every file */
     }
-    /* read totpoint from info file (frame 0) */
+    /* read totpoint from info file (number PTCACHE_NO_FILE is used to identify the info file) */
     else if (info) {
-      pf = ptcache_file_open(pid, PTCACHE_FILE_READ, 0);
+      pf = ptcache_file_open(pid, PTCACHE_FILE_READ, PTCACHE_NO_FILE);
 
       if (pf) {
         if (ptcache_file_header_begin_read(pf)) {
