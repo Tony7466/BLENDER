@@ -496,6 +496,10 @@ class Binding : public ::ActionBinding {
    * Mark the users cache as 'dirty', triggering a full rebuild next time it is accessed.
    *
    * This is typically not necessary, and only called from low-level code.
+   *
+   * \note This static method invalidates all user caches of all Action Bindings.
+   *
+   * \see blender::animrig::internal::rebuild_binding_user_cache()
    */
   static void users_invalidate();
 
