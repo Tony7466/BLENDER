@@ -68,7 +68,6 @@
 #include "SEQ_iterator.hh"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
-#include "SEQ_time.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -2655,7 +2654,12 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void * /*user_d
     return true;
   }
 
-  const int strip_len = round_fl_to_int(seq->len / speed_factor);
+  float length_factor = speed_factor;
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
+    length_factor = 1.0f;
+  }
+
+  const int strip_len = round_fl_to_int(seq->len / length_factor);
   SEQ_retiming_data_ensure(seq);
   SeqRetimingKey *last_key = &SEQ_retiming_keys_get(seq)[1];
   last_key->strip_frame_index = strip_len;
