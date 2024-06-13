@@ -114,6 +114,9 @@ def _run(args):
     import time
     context = bpy.context
 
+    # Create an undo stack explicitly. This isn't created by default in background mode.
+    bpy.ops.ed.undo_push()
+
     prepare_sculpt_scene(context)
 
     context_override = context.copy()
