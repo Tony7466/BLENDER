@@ -443,9 +443,7 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
   impl->motion_states.reinitialize(bodies_num);
   create_bodies(impl->rigid_bodies, impl->motion_states);
   impl->constraints.reinitialize(constraints_num);
-  for (const int i : impl->constraints.index_range()) {
-    impl->constraints[i] = nullptr;
-  }
+  impl->constraints.fill(nullptr);
   impl_ = impl;
 
   this->tag_topology_changed();
@@ -472,6 +470,8 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     PhysicsGeometryImpl *new_impl = new PhysicsGeometryImpl();
     new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
     new_impl->motion_states.reinitialize(impl_->motion_states.size());
+    new_impl->constraints.reinitialize(impl_->constraints.size());
+    new_impl->constraints.fill(nullptr);
     move_physics_impl_data(*impl_, *new_impl, true, 0, 0);
 
     impl_ = new_impl;
@@ -1002,20 +1002,6 @@ VArray<int> PhysicsGeometry::constraint_type() const
       this->impl());
 }
 
-AttributeWriter<int> PhysicsGeometry::constraint_type_for_write()
-{
-  if (this->impl().is_cached) {
-    return {VMutableArray<int>::template For<VArrayImpl_For_PhysicsStub<int>>(
-                -1, this->constraints_num()),
-            bke::AttrDomain::Edge,
-            nullptr};
-  }
-  return {
-      VMutableArray<int>::template For<VMutableArrayImpl_For_PhysicsConstraintTypes>(this->impl()),
-      bke::AttrDomain::Edge,
-      nullptr};
-}
-
 VArray<int> PhysicsGeometry::constraint_body_1() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body1).varray;
@@ -1024,6 +1010,84 @@ VArray<int> PhysicsGeometry::constraint_body_1() const
 VArray<int> PhysicsGeometry::constraint_body_2() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
+}
+
+static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                               btRigidBody &body1,
+                                               btRigidBody &body2)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  btTransform zero_mat = btTransform::getIdentity();
+  btVector3 zero_vec = btVector3(0, 0, 0);
+  btVector3 axis_x = btVector3(1, 0, 0);
+  btVector3 axis_y = btVector3(0, 1, 0);
+  btVector3 axis_z = btVector3(0, 0, 1);
+
+  switch (type) {
+    case ConstraintType::None:
+      return nullptr;
+    case ConstraintType::Fixed:
+      return new btFixedConstraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::Point:
+      return new btPoint2PointConstraint(body1, body2, zero_vec, zero_vec);
+    case ConstraintType::Hinge:
+      return new btHinge2Constraint(body1, body2, zero_vec, axis_x, axis_y);
+    case ConstraintType::Slider:
+      return new btSliderConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::ConeTwist:
+      return new btConeTwistConstraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::SixDoF:
+      return new btGeneric6DofConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::SixDoFSpring:
+      return new btGeneric6DofSpringConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::SixDoFSpring2:
+      return new btGeneric6DofSpring2Constraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::Contact:
+      /* Can't be created manually. */
+      return nullptr;
+    case ConstraintType::Gear:
+      return new btGearConstraint(body1, body2, zero_vec, zero_vec);
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+void PhysicsGeometry::create_constraints(const IndexMask &selection,
+                                         VArray<int> types,
+                                         VArray<int> bodies1,
+                                         VArray<int> bodies2)
+{
+  if (this->impl().is_cached) {
+    return;
+  }
+
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+  const IndexRange bodies_range = impl.rigid_bodies.index_range();
+  selection.foreach_index([&](const int index) {
+    const ConstraintType type = ConstraintType(types[index]);
+    const int body_index1 = bodies1[index];
+    const int body_index2 = bodies2[index];
+    btRigidBody *fixed_body = &btTypedConstraint::getFixedBody();
+    btRigidBody *body1 = bodies_range.contains(body_index1) ? impl.rigid_bodies[body_index1] :
+                                                              fixed_body;
+    btRigidBody *body2 = bodies_range.contains(body_index2) ? impl.rigid_bodies[body_index2] :
+                                                              fixed_body;
+
+    if (impl.constraints[index]) {
+      const btTypedConstraint &current_constraint = *impl.constraints[index];
+      const ConstraintType current_type = to_blender(current_constraint.getConstraintType());
+      const btRigidBody *current_body1 = &current_constraint.getRigidBodyA();
+      const btRigidBody *current_body2 = &current_constraint.getRigidBodyB();
+      if (current_type == type && current_body1 == body1 && current_body2 == body2) {
+        return;
+      }
+
+      delete impl.constraints[index];
+    }
+
+    impl.constraints[index] = make_constraint_type(type, *body1, *body2);
+  });
 }
 
 static ComponentAttributeProviders create_attribute_providers_for_physics()

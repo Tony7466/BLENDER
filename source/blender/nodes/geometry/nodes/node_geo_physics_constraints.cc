@@ -61,21 +61,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     field_evaluator.add(body2_field);
     field_evaluator.evaluate();
 
+    const VArray<int> src_type = VArray<int>::ForSingle(int(constraint_type),
+                                                        new_constraints.min_array_size());
     const VArray<int> src_body1 = field_evaluator.get_evaluated<int>(0);
     const VArray<int> src_body2 = field_evaluator.get_evaluated<int>(1);
 
-    AttributeWriter<int> dst_constraint_type = physics->constraint_type_for_write();
-    AttributeWriter<int> dst_body1 = physics->constraint_body_1_for_write();
-    AttributeWriter<int> dst_body2 = physics->constraint_body_2_for_write();
-
-    new_constraints.foreach_index([&](const int index) {
-      dst_constraint_type.varray.set(index, int(constraint_type));
-      dst_body1.varray.set(index, src_body1[index]);
-      dst_body2.varray.set(index, src_body2[index]);
-    });
-
-    dst_body1.finish();
-    dst_body2.finish();
+    physics->create_constraints(new_constraints, src_type, src_body1, src_body2);
   }
 
   params.set_output("Physics", std::move(geometry_set));

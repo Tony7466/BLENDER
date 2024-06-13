@@ -165,13 +165,13 @@ class PhysicsGeometry {
   AttributeWriter<int> body_activation_states_for_write();
 
   VArray<int> constraint_type() const;
-  AttributeWriter<int> constraint_type_for_write();
-
   VArray<int> constraint_body_1() const;
-  AttributeWriter<int> constraint_body_1_for_write();
-
   VArray<int> constraint_body_2() const;
-  AttributeWriter<int> constraint_body_2_for_write();
+
+  void create_constraints(const IndexMask &selection,
+                          VArray<int> types,
+                          VArray<int> bodies1,
+                          VArray<int> bodies2);
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
