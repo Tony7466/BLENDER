@@ -71,6 +71,49 @@ static int3 gather_tri(const IndexRange range, const Span<int> indices)
   return int3(indices[range[0]], indices[range[1]], indices[range[2]]);
 }
 
+static bool elem(const int2 items, const int to_check)
+{
+  return ELEM(to_check, items[0], items[1]);
+}
+
+static bool elem(const int3 items, const int to_check)
+{
+  return ELEM(to_check, items[0], items[1], items[2]);
+}
+
+static int exclusive_one(const int3 set, const int2 part)
+{
+  BLI_assert(elem(set, part[0]));
+  BLI_assert(elem(set, part[1]));
+  BLI_assert(set[0] >= 0 && set[1] >= 0 && set[2] >= 0);
+  const int exclusive_elem = (set[0] - part[0]) + (set[1] - part[1]) + set[2];
+  BLI_assert(elem(set, exclusive_elem));
+  BLI_assert(!elem(part, exclusive_elem));
+  BLI_assert(exclusive_elem >= 0);
+  return exclusive_elem;
+}
+
+static int exclusive_one(const int2 set, const int part)
+{
+  BLI_assert(elem(set, part));
+  BLI_assert(set[0] >= 0 && set[1] >= 0);
+  const int exclusive_elem = (set[0] - part) + set[1];
+  BLI_assert(elem(set, exclusive_elem));
+  BLI_assert(exclusive_elem >= 0);
+  return exclusive_elem;
+}
+
+static void insert_verts_is(const float2 a_vert,
+                            const float2 b_vert,
+                            const float2 c_vert,
+                            const float2 ab_vert,
+                            const float2 bc_vert const float2 ca_vert const float2 position,
+                            const float radius,
+                            const float max_length,
+                            int &r_total_verts_in)
+{
+}
+
 Mesh *subdivide(const Mesh &src_mesh,
                 const Span<float2> projection,
                 const float2 position,
@@ -88,6 +131,7 @@ Mesh *subdivide(const Mesh &src_mesh,
   }());
 
   const OffsetIndices<int> faces = src_mesh.faces();
+  const Span<int2> edges = src_mesh.edges();
   const Span<int> corner_edges = src_mesh.corner_edges();
   const Span<int> corner_verts = src_mesh.corner_verts();
 
@@ -100,12 +144,16 @@ Mesh *subdivide(const Mesh &src_mesh,
 
   for (const int face_i : faces.index_range()) {
     const IndexRange face = faces[face_i];
-    const int3 edges = gather_tri(face, corner_edges);
-    const int3 verts = gather_tri(face, corner_verts);
+    const int3 face_edges = gather_tri(face, corner_edges);
+    const int3 face_verts = gather_tri(face, corner_verts);
 
-    const Span<int> a_faces = edge_to_face_map[edges[0]];
-    const Span<int> b_faces = edge_to_face_map[edges[1]];
-    const Span<int> c_faces = edge_to_face_map[edges[2]];
+    const int2 edge_a = edges[face_edges[0]];
+    const int2 edge_b = edges[face_edges[1]];
+    const int2 edge_c = edges[face_edges[2]];
+
+    const Span<int> a_faces = edge_to_face_map[face_edges[0]];
+    const Span<int> b_faces = edge_to_face_map[face_edges[1]];
+    const Span<int> c_faces = edge_to_face_map[face_edges[2]];
 
     const int3 a_verts = gather_tri(faces[a_faces[0] == face_i ? a_faces[1] : a_faces[0]],
                                     corner_verts);
@@ -113,6 +161,35 @@ Mesh *subdivide(const Mesh &src_mesh,
                                     corner_verts);
     const int3 c_verts = gather_tri(faces[c_faces[0] == face_i ? c_faces[1] : c_faces[0]],
                                     corner_verts);
+
+    BLI_assert(elem(a_verts, edge_a[0]) && elem(a_verts, edge_a[1]));
+    BLI_assert(elem(b_verts, edge_b[0]) && elem(b_verts, edge_b[1]));
+    BLI_assert(elem(c_verts, edge_c[0]) && elem(c_verts, edge_c[1]));
+
+    const int a_vert = exclusive_one(a_verts, edge_a);
+    const int b_vert = exclusive_one(b_verts, edge_b);
+    const int c_vert = exclusive_one(c_verts, edge_c);
+
+    const int ab_vert = exclusive_one(face_verts, edge_a);
+    const int bc_vert = exclusive_one(face_verts, edge_b);
+    const int ca_vert = exclusive_one(face_verts, edge_c);
+
+    BLI_assert(!elem(face_verts, a_vert));
+    BLI_assert(!elem(face_verts, b_vert));
+    BLI_assert(!elem(face_verts, c_vert));
+
+    int total_verts_in = 0;
+    insert_verts_is(projection[bc_vert],
+                    projection[ca_vert],
+                    projection[ab_vert],
+                    projection[b_vert],
+                    projection[c_vert],
+                    projection[a_vert],
+                    position,
+                    radius,
+                    max_length,
+                    total_verts_in);
+    face_total_points[face_i] = total_verts_in;
   }
 
   std::cout << face_total_points.as_span() << ";\n";
