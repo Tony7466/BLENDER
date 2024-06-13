@@ -213,29 +213,48 @@ std::string getname_anim_fcurve_bound(const blender::animrig::Binding &binding, 
   char name_buffer[name_maxncpy];
   name_buffer[0] = '\0';
 
+  /* Check the Binding's users to see if we can find an ID* that can resolve the F-Curve. */
+  for (ID *user : binding.users()) {
+    const int icon = getname_anim_fcurve(name_buffer, user, &fcurve);
+    if (icon) {
+      /* Managed to find a name! */
+      return name_buffer;
+    }
+  }
+
+  if (!binding.users().is_empty()) {
+    /* This binding is assigned to at least one ID, and still the property it animates could not be
+     * found. There is no use in continuing. */
+    fcurve.flag |= FCURVE_DISABLED;
+    return fmt::format("\"{}[{}]\"", fcurve.rna_path, fcurve.array_index);
+  }
+
+  /* If this part of the code is hit, the binding is not assigned to anything. The remainder of
+   * this function is all a best-effort attempt. Because of that, it will not set the
+   * FCURVE_DISABLED flag on the F-Curve, as having unassigned animation data is not an error (and
+   * that flag indicates an error). */
+
+  /* Fall back to the ID type of the binding for simple properties. */
   if (!binding.has_idtype()) {
-    /* Cannot do anything here, so defer to the default function's 'nullptr' handling. */
-    getname_anim_fcurve(name_buffer, nullptr, &fcurve);
-    return name_buffer;
+    /* The Binding has never been assigned to any ID, so we don't even know what type of ID it is
+     * meant for. */
+    return fmt::format("\"{}[{}]\"", fcurve.rna_path, fcurve.array_index);
   }
 
   if (blender::StringRef(fcurve.rna_path).find(".") != blender::StringRef::not_found) {
-    // TODO: support this case too.
+    /* Not a simple property, so bail out. This needs path resolution, which needs an ID*. */
     return fmt::format("\"{}[{}]\"", fcurve.rna_path, fcurve.array_index);
   }
 
   /* Find the StructRNA for this Binding's ID type. */
   StructRNA *srna = ID_code_to_RNA_type(binding.idtype);
   if (!srna) {
-    /* TODO: determine how to expose this issue in the UI. */
-    fcurve.flag |= FCURVE_DISABLED;
     return fmt::format("\"{}[{}]\"", fcurve.rna_path, fcurve.array_index);
   }
 
   /* Find the property. */
   PropertyRNA *prop = RNA_struct_type_find_property(srna, fcurve.rna_path);
   if (!prop) {
-    fcurve.flag |= FCURVE_DISABLED;
     return fmt::format("\"{}[{}]\"", fcurve.rna_path, fcurve.array_index);
   }
 

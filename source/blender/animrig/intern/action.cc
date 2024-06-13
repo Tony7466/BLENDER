@@ -683,15 +683,34 @@ void Binding::set_selected(const bool selected)
   }
 }
 
-BindingRuntime &Binding::runtime()
+BindingRuntime &Binding::runtime() const
 {
-  if (!this->binding_runtime) {
-    this->binding_runtime = MEM_new<BindingRuntime>(__func__);
+  /* Cast away the constness to make `this->binding_runtime` mutable. This prevents having to have
+   * a `mutable` keyword in the DNA definition (which then needs to be protected with #ifdef
+   * __cplusplus guards, which then cause some formatting issues).
+   *
+   * Alternatively, the runtime could always be allocated, and not on demand, and then all its
+   * fields could be marked with the 'mutable' keyword. This would require more allocation code to
+   * be spread to blenkernel, where now a `binding->runtime = nullptr` suffices.  */
+  Binding *mutable_this = const_cast<Binding *>(this);
+
+  if (!mutable_this->binding_runtime) {
+    mutable_this->binding_runtime = MEM_new<BindingRuntime>(__func__);
   }
-  return *this->binding_runtime;
+  return *mutable_this->binding_runtime;
 }
 
 Set<ID *> &Binding::users()
+{
+  BindingRuntime &runtime = this->runtime();
+  if (runtime.is_users_dirty) {
+    internal::rebuild_binding_user_cache();
+  }
+
+  return runtime.users;
+}
+
+Set<ID *> Binding::users() const
 {
   BindingRuntime &runtime = this->runtime();
   if (runtime.is_users_dirty) {

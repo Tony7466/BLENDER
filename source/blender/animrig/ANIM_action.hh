@@ -487,6 +487,7 @@ class Binding : public ::ActionBinding {
 
   /** Return the set of IDs that are animated by this Binding. */
   Set<ID *> &users();
+  Set<ID *> users() const;
 
   /**
    * Register this ID as animated by this Binding.
@@ -527,7 +528,7 @@ class Binding : public ::ActionBinding {
   void name_ensure_prefix();
 
   /** Obtain the runtime struct, ensuring that it exists. */
-  BindingRuntime &runtime();
+  BindingRuntime &runtime() const;
 };
 static_assert(sizeof(Binding) == sizeof(::ActionBinding),
               "DNA struct and its C++ wrapper must have the same size");
