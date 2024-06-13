@@ -3391,21 +3391,6 @@ static void area_join_draw_cb(const wmWindow *win, void *userdata)
   }
   else {
     screen_draw_join_highlight(jd->sa1, jd->sa2, jd->join_dir);
-
-    if (jd->dock_target == DOCKING_NONE) {
-      const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
-      const bTheme *btheme = UI_GetTheme();
-      const uiWidgetColors *wcol = &btheme->tui.wcol_tooltip;
-      float col_fg[4], col_bg[4];
-      rgba_uchar_to_float(col_fg, wcol->text);
-      rgba_uchar_to_float(col_bg, wcol->inner);
-      UI_fontstyle_draw_simple_backdrop(fstyle,
-                                        win->eventstate->xy[0] + (UI_SCALE_FAC * 10),
-                                        win->eventstate->xy[1] - (UI_SCALE_FAC * 3),
-                                        TIP_("Expand into this space"),
-                                        col_fg,
-                                        col_bg);
-    }
   }
 }
 
@@ -3416,22 +3401,8 @@ static void area_join_dock_cb(const struct wmWindow *win, void *userdata)
   if (!jd || !jd->sa2 || jd->join_dir != SCREEN_DIR_NONE || jd->sa1 == jd->sa2) {
     return;
   }
-
-  screen_draw_dock_preview(win, jd->sa2, jd->dock_target);
-  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
-  const bTheme *btheme = UI_GetTheme();
-  const uiWidgetColors *wcol = &btheme->tui.wcol_tooltip;
-  float col_fg[4], col_bg[4];
-  rgba_uchar_to_float(col_fg, wcol->text);
-  rgba_uchar_to_float(col_bg, wcol->inner);
-  const char *desc = (jd->dock_target == DOCKING_CENTER) ? TIP_("Replace this area") :
-                                                           TIP_("Split and move here");
-  UI_fontstyle_draw_simple_backdrop(fstyle,
-                                    win->eventstate->xy[0] + (UI_SCALE_FAC * 10),
-                                    win->eventstate->xy[1] - (UI_SCALE_FAC * 3),
-                                    desc,
-                                    col_fg,
-                                    col_bg);
+  screen_draw_dock_preview(win, jd->sa1, jd->sa2, jd->dock_target);
+  int icon = jd->sa1->type->iconid;
 }
 
 static void area_join_dock_cb_window(sAreaJoinData *jd, wmOperator *op)

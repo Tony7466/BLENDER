@@ -22,6 +22,9 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
+
 #include "screen_intern.hh"
 
 #define CORNER_RESOLUTION 3
@@ -214,6 +217,35 @@ void ED_screen_draw_edges(wmWindow *win)
   }
 }
 
+static void screen_draw_area_icon(float center_x, float center_y, int icon, bool outline)
+{
+  const uchar icon_color[4] = {255, 255, 255, 255};
+  const float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.5f};
+  const float bg_width = U.pixelsize * 50.0f;
+  const float bg_height = U.pixelsize * 40.0f;
+  const float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
+  rctf combined = {center_x - (bg_width / 2.0f),
+                   center_x + bg_width - (bg_width / 2.0f),
+                   center_y - (bg_height / 2.0f),
+                   center_y + bg_height - (bg_height / 2.0f)};
+  UI_draw_roundbox_4fv_ex(&combined,
+                          bg_color,
+                          nullptr,
+                          1.0f,
+                          outline ? outline_color : nullptr,
+                          U.pixelsize,
+                          6 * U.pixelsize);
+  UI_icon_draw_ex(center_x - U.pixelsize * 16.0f,
+                  center_y - U.pixelsize * 16.0f,
+                  icon,
+                  0.5f,
+                  1.0f,
+                  0.0f,
+                  icon_color,
+                  false,
+                  UI_NO_ICON_OVERLAY_TEXT);
+}
+
 void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 {
   if (dir == SCREEN_DIR_NONE || !sa2) {
@@ -223,6 +255,12 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
     float darken[4] = {0.0f, 0.0f, 0.0f, 0.8f};
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
     UI_draw_roundbox_4fv_ex(&rect, darken, nullptr, 1.0f, nullptr, U.pixelsize, 6 * U.pixelsize);
+    if (BLI_rctf_size_x(&rect) > U.pixelsize * 75.0f &&
+        BLI_rctf_size_y(&rect) > U.pixelsize * 60.0f)
+    {
+      screen_draw_area_icon(
+          (rect.xmin + rect.xmax) / 2.0f, (rect.ymin + rect.ymax) / 2.0f, ICON_CANCEL, false);
+    }
     return;
   }
 
@@ -251,29 +289,93 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
     if (vertical) {
       if (sa1->totrct.xmin < combined.xmin) {
         immRectf(pos_id, sa1->totrct.xmin, sa1->totrct.ymin, combined.xmin, sa1->totrct.ymax);
+        if ((combined.xmin - sa1->totrct.xmin) > U.pixelsize * 75.0f &&
+            (sa1->totrct.ymax - sa1->totrct.ymin) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((sa1->totrct.xmin + combined.xmin) / 2.0f,
+                                (sa1->totrct.ymin + sa1->totrct.ymax) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
       if (sa2->totrct.xmin < combined.xmin) {
         immRectf(pos_id, sa2->totrct.xmin, sa2->totrct.ymin, combined.xmin, sa2->totrct.ymax);
+        if ((combined.xmin - sa2->totrct.xmin) > U.pixelsize * 75.0f &&
+            (sa2->totrct.ymax - sa2->totrct.ymin) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((sa2->totrct.xmin + combined.xmin) / 2.0f,
+                                (sa2->totrct.ymin + sa2->totrct.ymax) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
       if (sa1->totrct.xmax > combined.xmax) {
         immRectf(pos_id, combined.xmax, sa1->totrct.ymin, sa1->totrct.xmax, sa1->totrct.ymax);
+        if ((sa1->totrct.xmax - combined.xmax) > U.pixelsize * 75.0f &&
+            (sa1->totrct.ymax - sa1->totrct.ymin) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((combined.xmax + sa1->totrct.xmax) / 2.0f,
+                                (sa1->totrct.ymin + sa1->totrct.ymax) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
       if (sa2->totrct.xmax > combined.xmax) {
         immRectf(pos_id, combined.xmax, sa2->totrct.ymin, sa2->totrct.xmax, sa2->totrct.ymax);
+        if ((sa2->totrct.xmax - combined.xmax) > U.pixelsize * 75.0f &&
+            (sa2->totrct.ymax - sa2->totrct.ymin) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((combined.xmax + sa2->totrct.xmax) / 2.0f,
+                                (sa2->totrct.ymin + sa2->totrct.ymax) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
     }
     else {
       if (sa1->totrct.ymin < combined.ymin) {
-        immRectf(pos_id, sa1->totrct.xmin, combined.ymin, sa1->totrct.xmax, sa1->totrct.ymin);
+        immRectf(pos_id, sa1->totrct.xmin, sa1->totrct.ymin, sa1->totrct.xmax, combined.ymin);
+        if ((sa1->totrct.xmax - sa1->totrct.xmin) > U.pixelsize * 75.0f &&
+            (combined.ymin - sa1->totrct.ymin) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((sa1->totrct.xmin + sa1->totrct.xmax) / 2.0f,
+                                (combined.ymin + sa1->totrct.ymin) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
       if (sa2->totrct.ymin < combined.ymin) {
-        immRectf(pos_id, sa2->totrct.xmin, combined.ymin, sa2->totrct.xmax, sa2->totrct.ymin);
+        immRectf(pos_id, sa2->totrct.xmin, sa2->totrct.ymin, sa2->totrct.xmax, combined.ymin);
+        if ((sa2->totrct.xmax - sa2->totrct.xmin) > U.pixelsize * 75.0f &&
+            (combined.ymin - sa2->totrct.ymin) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((sa2->totrct.xmin + sa2->totrct.xmax) / 2.0f,
+                                (combined.ymin + sa2->totrct.ymin) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
       if (sa1->totrct.ymax > combined.ymax) {
-        immRectf(pos_id, sa1->totrct.xmin, sa1->totrct.ymax, sa1->totrct.xmax, combined.ymax);
+        immRectf(pos_id, sa1->totrct.xmin, combined.ymax, sa1->totrct.xmax, sa1->totrct.ymax);
+        if ((sa1->totrct.xmax - sa1->totrct.xmin) > U.pixelsize * 75.0f &&
+            (sa1->totrct.ymax - combined.ymax) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((sa1->totrct.xmin + sa1->totrct.xmax) / 2.0f,
+                                (sa1->totrct.ymax + combined.ymax) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
       if (sa2->totrct.ymax > combined.ymax) {
-        immRectf(pos_id, sa2->totrct.xmin, sa2->totrct.ymax, sa2->totrct.xmax, combined.ymax);
+        immRectf(pos_id, sa2->totrct.xmin, combined.ymax, sa2->totrct.xmax, sa2->totrct.ymax);
+        if ((sa2->totrct.xmax - sa2->totrct.xmin) > U.pixelsize * 75.0f &&
+            (sa2->totrct.ymax - combined.ymax) > U.pixelsize * 60.0f)
+        {
+          screen_draw_area_icon((sa2->totrct.xmin + sa2->totrct.xmax) / 2.0f,
+                                (sa2->totrct.ymax + combined.ymax) / 2.0f,
+                                ICON_CANCEL,
+                                false);
+        }
       }
     }
     immUnbindProgram();
@@ -285,38 +387,113 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
   float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
   float inner[4] = {1.0f, 1.0f, 1.0f, 0.15f};
   UI_draw_roundbox_4fv_ex(&combined, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+
+  if (BLI_rctf_size_x(&combined) > U.pixelsize * 75.0f &&
+      BLI_rctf_size_y(&combined) > U.pixelsize * 60.0f)
+  {
+    const int icon =
+        rna_enum_space_type_items[RNA_enum_from_value(rna_enum_space_type_items, sa1->spacetype)]
+            .icon;
+    screen_draw_area_icon((combined.xmin + combined.xmax) / 2.0f,
+                          (combined.ymin + combined.ymax) / 2.0f,
+                          icon,
+                          true);
+  }
 }
 
 void screen_draw_dock_preview(const struct wmWindow * /* win */,
-                              struct ScrArea *area,
+                              ScrArea *source,
+                              ScrArea *target,
                               eAreaDockTarget dock_target)
 {
+  if (dock_target == DOCKING_NONE) {
+    return;
+  }
+
+  float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+  float inner[4] = {1.0f, 1.0f, 1.0f, 0.15f};
+  float border[4];
+  UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, border);
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  float half_line_width = 2.0f * U.pixelsize;
+
   rctf dest;
-  BLI_rctf_rcti_copy(&dest, &area->totrct);
+  rctf remainder;
+  BLI_rctf_rcti_copy(&dest, &target->totrct);
+  BLI_rctf_rcti_copy(&remainder, &target->totrct);
+
+  const int icon1 =
+      rna_enum_space_type_items[RNA_enum_from_value(rna_enum_space_type_items, source->spacetype)]
+          .icon;
+  const int icon2 =
+      rna_enum_space_type_items[RNA_enum_from_value(rna_enum_space_type_items, target->spacetype)]
+          .icon;
+
+  float split;
 
   if (dock_target == DOCKING_RIGHT) {
-    dest.xmin = std::min(dest.xmin + area->winx * 0.55f, dest.xmax - AREAMINX * UI_SCALE_FAC);
+    split = std::min(dest.xmin + target->winx * 0.55f, dest.xmax - AREAMINX * UI_SCALE_FAC);
+    dest.xmin = split + half_line_width;
+    remainder.xmax = split - half_line_width;
   }
   else if (dock_target == DOCKING_LEFT) {
-    dest.xmax = std::max(dest.xmax - area->winx * 0.55f, dest.xmin + AREAMINX * UI_SCALE_FAC);
+    split = std::max(dest.xmax - target->winx * 0.55f, dest.xmin + AREAMINX * UI_SCALE_FAC);
+    dest.xmax = split - half_line_width;
+    remainder.xmin = split + half_line_width;
   }
   else if (dock_target == DOCKING_TOP) {
-    dest.ymin = std::min(dest.ymin + area->winy * 0.55f, dest.ymax - HEADERY * UI_SCALE_FAC);
+    split = std::min(dest.ymin + target->winy * 0.55f, dest.ymax - HEADERY * UI_SCALE_FAC);
+    dest.ymin = split + half_line_width;
+    remainder.ymax = split - half_line_width;
   }
   else if (dock_target == DOCKING_BOTTOM) {
-    dest.ymax = std::max(dest.ymax - area->winy * 0.55f, dest.ymin + HEADERY * UI_SCALE_FAC);
+    split = std::max(dest.ymax - target->winy * 0.55f, dest.ymin + HEADERY * UI_SCALE_FAC);
+    dest.ymax = split - half_line_width;
+    remainder.ymin = split + half_line_width;
   }
 
-  UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  float inner[4] = {1.0f, 1.0f, 1.0f, 0.15f};
-  float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
-  UI_draw_roundbox_4fv_ex(&dest,
-                          (dock_target == DOCKING_NONE) ? nullptr : inner,
-                          nullptr,
-                          1.0f,
-                          outline,
-                          U.pixelsize,
-                          6 * U.pixelsize);
+  if (dock_target == DOCKING_CENTER) {
+    UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+    if (BLI_rctf_size_x(&dest) > U.pixelsize * 75.0f &&
+        BLI_rctf_size_y(&dest) > U.pixelsize * 60.0f)
+    {
+      screen_draw_area_icon(
+          (dest.xmin + dest.xmax) / 2.0f, (dest.ymin + dest.ymax) / 2.0f, icon1, true);
+    }
+  }
+  else {
+    UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+
+    if (BLI_rctf_size_x(&dest) > U.pixelsize * 75.0f &&
+        BLI_rctf_size_y(&dest) > U.pixelsize * 60.0f)
+    {
+      screen_draw_area_icon(
+          (dest.xmin + dest.xmax) / 2.0f, (dest.ymin + dest.ymax) / 2.0f, icon1, true);
+    }
+
+    UI_draw_roundbox_4fv_ex(
+        &remainder, nullptr, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+
+    if (BLI_rctf_size_x(&remainder) > U.pixelsize * 75.0f &&
+        BLI_rctf_size_y(&remainder) > U.pixelsize * 60.0f)
+    {
+      screen_draw_area_icon((remainder.xmin + remainder.xmax) / 2.0f,
+                            (remainder.ymin + remainder.ymax) / 2.0f,
+                            icon2,
+                            false);
+    }
+
+    /* Darken the split position itself. */
+    if (ELEM(dock_target, DOCKING_RIGHT, DOCKING_LEFT)) {
+      dest.xmin = split - half_line_width;
+      dest.xmax = split + half_line_width;
+    }
+    else {
+      dest.ymin = split - half_line_width;
+      dest.ymax = split + half_line_width;
+    }
+    UI_draw_roundbox_4fv(&dest, true, 0.0f, border);
+  }
 }
 
 void screen_draw_split_preview(ScrArea *area, const eScreenAxis dir_axis, const float fac)
