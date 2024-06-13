@@ -103,14 +103,29 @@ static int exclusive_one(const int2 set, const int part)
   return exclusive_elem;
 }
 
-static void insert_verts_is(const float2 a_vert,
-                            const float2 b_vert,
-                            const float2 c_vert,
-                            const float2 ab_vert,
-                            const float2 bc_vert const float2 ca_vert const float2 position,
-                            const float radius,
-                            const float max_length,
-                            int &r_total_verts_in)
+static void insert_verts_count(const float2 a_vert,
+                               const float2 b_vert,
+                               const float2 c_vert,
+                               const float2 ab_vert,
+                               const float2 bc_vert,
+                               const float2 ca_vert,
+                               const float2 position,
+                               const float radius,
+                               const float max_length,
+                               int &r_total_verts_in)
+{
+}
+
+static void insert_verts_positions(const float2 a_vert,
+                                   const float2 b_vert,
+                                   const float2 c_vert,
+                                   const float2 ab_vert,
+                                   const float2 bc_vert,
+                                   const float2 ca_vert,
+                                   const float2 position,
+                                   const float radius,
+                                   const float max_length,
+                                   MutableSpan<float2> r_positions)
 {
 }
 
@@ -179,22 +194,84 @@ Mesh *subdivide(const Mesh &src_mesh,
     BLI_assert(!elem(face_verts, c_vert));
 
     int total_verts_in = 0;
-    insert_verts_is(projection[bc_vert],
-                    projection[ca_vert],
-                    projection[ab_vert],
-                    projection[b_vert],
-                    projection[c_vert],
-                    projection[a_vert],
-                    position,
-                    radius,
-                    max_length,
-                    total_verts_in);
+    insert_verts_count(projection[bc_vert],
+                       projection[ca_vert],
+                       projection[ab_vert],
+                       projection[b_vert],
+                       projection[c_vert],
+                       projection[a_vert],
+                       position,
+                       radius,
+                       max_length,
+                       total_verts_in);
     face_total_points[face_i] = total_verts_in;
   }
 
   std::cout << face_total_points.as_span() << ";\n";
 
-  return nullptr;
+  const OffsetIndices<int> subdive_verts = offset_indices::accumulate_counts_to_offsets(
+      face_total_points);
+
+  Mesh *dst_mesh = BKE_mesh_new_nomain(subdive_verts.total_size(), 0, 0, 0);
+  MutableSpan<float3> positions = dst_mesh->vert_positions_for_write();
+
+  for (const int face_i : faces.index_range()) {
+    const IndexRange face = faces[face_i];
+    const int3 face_edges = gather_tri(face, corner_edges);
+    const int3 face_verts = gather_tri(face, corner_verts);
+
+    const int2 edge_a = edges[face_edges[0]];
+    const int2 edge_b = edges[face_edges[1]];
+    const int2 edge_c = edges[face_edges[2]];
+
+    const Span<int> a_faces = edge_to_face_map[face_edges[0]];
+    const Span<int> b_faces = edge_to_face_map[face_edges[1]];
+    const Span<int> c_faces = edge_to_face_map[face_edges[2]];
+
+    const int3 a_verts = gather_tri(faces[a_faces[0] == face_i ? a_faces[1] : a_faces[0]],
+                                    corner_verts);
+    const int3 b_verts = gather_tri(faces[b_faces[0] == face_i ? b_faces[1] : b_faces[0]],
+                                    corner_verts);
+    const int3 c_verts = gather_tri(faces[c_faces[0] == face_i ? c_faces[1] : c_faces[0]],
+                                    corner_verts);
+
+    BLI_assert(elem(a_verts, edge_a[0]) && elem(a_verts, edge_a[1]));
+    BLI_assert(elem(b_verts, edge_b[0]) && elem(b_verts, edge_b[1]));
+    BLI_assert(elem(c_verts, edge_c[0]) && elem(c_verts, edge_c[1]));
+
+    const int a_vert = exclusive_one(a_verts, edge_a);
+    const int b_vert = exclusive_one(b_verts, edge_b);
+    const int c_vert = exclusive_one(c_verts, edge_c);
+
+    const int ab_vert = exclusive_one(face_verts, edge_a);
+    const int bc_vert = exclusive_one(face_verts, edge_b);
+    const int ca_vert = exclusive_one(face_verts, edge_c);
+
+    BLI_assert(!elem(face_verts, a_vert));
+    BLI_assert(!elem(face_verts, b_vert));
+    BLI_assert(!elem(face_verts, c_vert));
+
+    IndexRange points_range = subdive_verts[face_i];
+    Array<float2> uv_positions(points_range.size());
+
+    insert_verts_positions(projection[bc_vert],
+                           projection[ca_vert],
+                           projection[ab_vert],
+                           projection[b_vert],
+                           projection[c_vert],
+                           projection[a_vert],
+                           position,
+                           radius,
+                           max_length,
+                           uv_positions);
+
+    parallel_transform(uv_positions.as_span(),
+                       4096,
+                       positions.slice(points_range),
+                       [&](const float2 uv) { return float3(uv, 0.0f); });
+  }
+
+  return dst_mesh;
 }
 
 }  // namespace blender::geometry::dyntopo
