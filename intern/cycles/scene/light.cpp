@@ -305,17 +305,6 @@ void LightManager::device_update_distribution(Device *,
       return;
     }
 
-    if (num_triangles >= max_num_triangles) {
-      num_triangles = min(num_triangles, max_num_triangles);
-      progress.set_status(
-          "Updating Lights",
-          "Warning: Number of emissive triangles exceeds the limit, the result might be "
-          "incorrect. Try disabling Emission Sampling on some emissive materials");
-      VLOG_WARNING << "Number of emissive triangles exceeds the limit, the result might be "
-                      "incorrect. Try disabling Emission Sampling on some emissive materials.";
-      break;
-    }
-
     if (!object->usable_as_light()) {
       continue;
     }
@@ -333,6 +322,12 @@ void LightManager::device_update_distribution(Device *,
       if (shader->emission_sampling != EMISSION_SAMPLING_NONE) {
         num_triangles++;
       }
+    }
+
+    if (num_triangles > max_num_triangles) {
+      progress.set_error(
+          "Number of emissive triangles exceeds the limit, consider using Light Tree or disabling "
+          "Emission Sampling on some emissive materials");
     }
   }
 
@@ -354,11 +349,6 @@ void LightManager::device_update_distribution(Device *,
   foreach (Object *object, scene->objects) {
     if (progress.get_cancel()) {
       return;
-    }
-
-    if (offset == num_triangles) {
-      /* Happens when number of emissive triangles exceeds the limit. */
-      break;
     }
 
     if (!object->usable_as_light()) {
@@ -421,16 +411,11 @@ void LightManager::device_update_distribution(Device *,
 
         totarea += triangle_area(p1, p2, p3);
       }
-
-      if (offset == num_triangles) {
-        break;
-      }
     }
 
     j++;
   }
 
-  assert(offset == num_triangles);
   const float trianglearea = totarea;
 
   /* Lights. */
