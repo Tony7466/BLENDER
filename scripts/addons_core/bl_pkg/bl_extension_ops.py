@@ -35,20 +35,11 @@ from bpy.app.translations import (
     pgettext_iface as iface_,
 )
 
-# Localize imports.
-from . import (
-    bl_extension_utils,
-)  # noqa: E402
-
 from . import (
     cookie_from_session,
-    repo_status_text,
+    repo_cache_store_ensure,
     repo_stats_calc,
-)
-
-from .bl_extension_utils import (
-    RepoLock,
-    RepoLockContext,
+    repo_status_text,
 )
 
 rna_prop_url = StringProperty(name="URL", subtype='FILE_PATH', options={'HIDDEN'})
@@ -69,7 +60,8 @@ rna_prop_enable_on_install_type_map = {
 
 
 def url_append_defaults(url):
-    return bl_extension_utils.url_append_query_for_blender(url, blender_version=bpy.app.version)
+    from .bl_extension_utils import url_append_query_for_blender
+    return url_append_query_for_blender(url, blender_version=bpy.app.version)
 
 
 def rna_prop_repo_enum_local_only_itemf(_self, context):
@@ -156,12 +148,12 @@ def extension_url_find_repo_index_and_pkg_id(url):
         pkg_manifest_archive_url_abs_from_remote_url,
     )
     # return repo_index, pkg_id
-    from . import repo_cache_store
 
     # NOTE: we might want to use `urllib.parse.urlsplit` so it's possible to include variables in the URL.
     url_basename = url.rpartition("/")[2]
 
     repos_all = extension_repos_read()
+    repo_cache_store = repo_cache_store_ensure()
 
     for repo_index, (
             pkg_manifest_remote,
@@ -180,7 +172,7 @@ def extension_url_find_repo_index_and_pkg_id(url):
         if not remote_url:
             continue
         for pkg_id, item_remote in pkg_manifest_remote.items():
-            archive_url = item_remote["archive_url"]
+            archive_url = item_remote.archive_url
             archive_url_basename = archive_url.rpartition("/")[2]
             # First compare the filenames, if this matches, check the full URL.
             if url_basename != archive_url_basename:
@@ -230,7 +222,7 @@ def pkg_info_check_exclude_filter_ex(name, tagline, search_lower):
 
 
 def pkg_info_check_exclude_filter(item, search_lower):
-    return pkg_info_check_exclude_filter_ex(item["name"], item["tagline"], search_lower)
+    return pkg_info_check_exclude_filter_ex(item.name, item.tagline, search_lower)
 
 
 def extension_theme_enable_filepath(filepath):
@@ -262,7 +254,7 @@ def repo_iter_valid_local_only(context, *, exclude_system):
         if not repo_item.enabled:
             continue
         if exclude_system:
-            if (not repo_item.use_custom_directory) and (repo_item.source == 'SYSTEM'):
+            if (not repo_item.use_remote_url) and (repo_item.source == 'SYSTEM'):
                 continue
         # Ignore repositories that have invalid settings.
         directory, remote_url = repo_paths_or_none(repo_item)
@@ -315,8 +307,7 @@ class RepoItem(NamedTuple):
     access_token: str
 
 
-def repo_cache_store_refresh_from_prefs(include_disabled=False):
-    from . import repo_cache_store
+def repo_cache_store_refresh_from_prefs(repo_cache_store, include_disabled=False):
     from . import repo_paths_or_none
     extension_repos = bpy.context.preferences.extensions.repos
     repos = []
@@ -452,14 +443,14 @@ def _preferences_install_post_enable_on_install(
             print("Package should have been installed but not found:", pkg_id)
             return
 
-        if item_local["type"] == "add-on":
+        if item_local.type == "add-on":
             # Check if the add-on will have been enabled from re-installing.
             if pkg_id in pkg_id_sequence_upgrade:
                 continue
 
             addon_module_name = "bl_ext.{:s}.{:s}".format(repo_item.module, pkg_id)
             addon_utils.enable(addon_module_name, default_set=True, handle_error=handle_error)
-        elif item_local["type"] == "theme":
+        elif item_local.type == "theme":
             if has_theme:
                 continue
             extension_theme_enable(directory, pkg_id)
@@ -483,7 +474,7 @@ def _preferences_ui_refresh_addons():
 def _preferences_ensure_sync():
     # TODO: define when/where exactly sync should be ensured.
     # This is a general issue:
-    from . import repo_cache_store
+    repo_cache_store = repo_cache_store_ensure()
     sync_required = False
     for (
             pkg_manifest_remote,
@@ -529,7 +520,7 @@ def extension_repos_read_index(index, *, include_disabled=False):
             return RepoItem(
                 name=repo_item.name,
                 directory=directory,
-                source="" if repo_item.use_custom_directory else repo_item.source,
+                source="" if repo_item.use_remote_url else repo_item.source,
                 remote_url=remote_url,
                 module=repo_item.module,
                 use_cache=repo_item.use_cache,
@@ -567,7 +558,7 @@ def extension_repos_read(*, include_disabled=False, use_active_only=False):
         result.append(RepoItem(
             name=repo_item.name,
             directory=directory,
-            source="" if repo_item.use_custom_directory else repo_item.source,
+            source="" if repo_item.use_remote_url else repo_item.source,
             remote_url=remote_url,
             module=repo_item.module,
             use_cache=repo_item.use_cache,
@@ -625,7 +616,7 @@ def _pkg_marked_by_repo(pkg_manifest_all):
         item = pkg_manifest.get(pkg_id)
         if item is None:
             continue
-        if filter_by_type and (filter_by_type != item["type"]):
+        if filter_by_type and (filter_by_type != item.type):
             continue
         if search_lower and not pkg_info_check_exclude_filter(item, search_lower):
             continue
@@ -719,10 +710,8 @@ def _extensions_repo_sync_wheels(repo_cache_store):
         repo_directory = repo.directory
         for pkg_id, item_local in pkg_manifest_local.items():
             pkg_dirpath = os.path.join(repo_directory, pkg_id)
-            wheels_rel = item_local.get("wheels", None)
-            if wheels_rel is None:
-                continue
-            if not isinstance(wheels_rel, list):
+            wheels_rel = item_local.wheels
+            if not wheels_rel:
                 continue
 
             # Filter only the wheels for this platform.
@@ -1042,6 +1031,11 @@ class _ExtCmdMixIn:
         return result
 
     def cancel(self, context):
+        # Happens when canceling before the operator has run any commands.
+        # Canceling from an operator popup dialog for example.
+        if not hasattr(self, "_runtime_handle"):
+            return
+
         canceled = True
         self._runtime_handle.op_modal_cancel(self, context)
         self.exec_command_finish(canceled)
@@ -1053,6 +1047,8 @@ class EXTENSIONS_OT_dummy_progress(Operator, _ExtCmdMixIn):
     __slots__ = _ExtCmdMixIn.cls_slots
 
     def exec_command_iter(self, is_modal):
+        from . import bl_extension_utils
+
         return bl_extension_utils.CommandBatch(
             title="Dummy Progress",
             batch=[
@@ -1076,6 +1072,8 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
     repo_index: rna_prop_repo_index
 
     def exec_command_iter(self, is_modal):
+        from . import bl_extension_utils
+
         directory = _repo_dir_and_index_get(self.repo_index, self.repo_directory, self.report)
         if not directory:
             return None
@@ -1093,10 +1091,8 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
         # Needed to refresh.
         self.repo_directory = directory
 
-        # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=[directory], cookie=cookie_from_session())
-        if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
-            return None
+        # See comment for `EXTENSIONS_OT_repo_sync_all`.
+        repos_lock = []
 
         cmd_batch = []
         if repo_item.remote_url:
@@ -1111,6 +1107,15 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
                     use_idle=is_modal,
                 )
             )
+            repos_lock.append(repo_item.directory)
+
+        # Lock repositories.
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=repos_lock,
+            cookie=cookie_from_session(),
+        )
+        if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
+            return None
 
         return bl_extension_utils.CommandBatch(
             title="Sync",
@@ -1118,9 +1123,8 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
         )
 
     def exec_command_finish(self, canceled):
-        from . import repo_cache_store
-
-        repo_cache_store_refresh_from_prefs()
+        repo_cache_store = repo_cache_store_ensure()
+        repo_cache_store_refresh_from_prefs(repo_cache_store)
         repo_cache_store.refresh_remote_from_directory(
             directory=self.repo_directory,
             error_fn=self.error_fn_from_exception,
@@ -1139,7 +1143,7 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
 class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
     """Refresh the list of extensions for all the remote repositories"""
     bl_idname = "extensions.repo_sync_all"
-    bl_label = "Check for Updates"
+    bl_label = "Refresh Remote"
     __slots__ = _ExtCmdMixIn.cls_slots
 
     use_active_only: BoolProperty(
@@ -1159,6 +1163,8 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
         return ""  # Default.
 
     def exec_command_iter(self, is_modal):
+        from . import bl_extension_utils
+
         use_active_only = self.use_active_only
         repos_all = extension_repos_read(use_active_only=use_active_only)
 
@@ -1177,6 +1183,10 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
                     self.report({'WARNING'}, str(ex))
                     return None
 
+        # It's only required to lock remote repositories, local repositories can refresh without being modified,
+        # this is essential for system repositories which may be read-only.
+        repos_lock = []
+
         cmd_batch = []
         for repo_item in repos_all:
             # Local only repositories should still refresh, but not run the sync.
@@ -1190,11 +1200,13 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
                     access_token=repo_item.access_token,
                     use_idle=is_modal,
                 ))
-
-        repos_lock = [repo_item.directory for repo_item in repos_all]
+                repos_lock.append(repo_item.directory)
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=repos_lock, cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=repos_lock,
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -1204,9 +1216,8 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
         )
 
     def exec_command_finish(self, canceled):
-        from . import repo_cache_store
-
-        repo_cache_store_refresh_from_prefs()
+        repo_cache_store = repo_cache_store_ensure()
+        repo_cache_store_refresh_from_prefs(repo_cache_store)
 
         for repo_item in extension_repos_read():
             repo_cache_store.refresh_remote_from_directory(
@@ -1222,6 +1233,87 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
         repo_stats_calc()
 
         _preferences_ui_redraw()
+
+
+class EXTENSIONS_OT_repo_refresh_all(Operator):
+    """Scan extension & legacy add-ons for changes to modules & meta-data (similar to restarting). """ \
+        """Any issues are reported as warnings"""
+    bl_idname = "extensions.repo_refresh_all"
+    bl_label = "Refresh Local"
+
+    def _exceptions_as_report(self, repo_name, ex):
+        self.report({'WARNING'}, "{:s}: {:s}".format(repo_name, str(ex)))
+
+    def execute(self, context):
+        import addon_utils
+
+        repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
+
+        for repo_item in repos_all:
+            # Re-generate JSON meta-data from TOML files (needed for offline repository).
+            repo_cache_store.refresh_remote_from_directory(
+                directory=repo_item.directory,
+                error_fn=lambda ex: self._exceptions_as_report(repo_item.name, ex),
+                force=True,
+            )
+            repo_cache_store.refresh_local_from_directory(
+                directory=repo_item.directory,
+                error_fn=lambda ex: self._exceptions_as_report(repo_item.name, ex),
+            )
+
+        # In-line `bpy.ops.preferences.addon_refresh`.
+        addon_utils.modules_refresh()
+
+        _preferences_ui_redraw()
+        _preferences_ui_refresh_addons()
+
+        return {'FINISHED'}
+
+
+# Show a dialog when dropping a URL from an unknown repository,
+# with the option to add the repository.
+class EXTENSIONS_OT_repo_add_from_drop(Operator):
+    bl_idname = "extensions.repo_add_from_drop"
+    bl_label = "Add Repository Drop"
+    bl_options = {'INTERNAL'}
+
+    url: rna_prop_url
+
+    def invoke(self, context, _event):
+        wm = context.window_manager
+
+        wm.invoke_props_dialog(
+            self,
+            width=400,
+            confirm_text="Add Repository",
+            title="Unknown Repository",
+        )
+
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        # Open an "Add Remote Repository" popup with the URL pre-filled.
+        bpy.ops.preferences.extension_repo_add('INVOKE_DEFAULT', type='REMOTE', remote_url=self.url)
+        return {'CANCELLED'}
+
+    def draw(self, context):
+        url = self.url
+        # Skip the URL prefix scheme, e.g. `https://` for less "noisy" outpout.
+        url_split = url.partition("://")
+        url_for_display = url_split[2] if url_split[2] else url
+
+        layout = self.layout
+        col = layout.column()
+        lines = (
+            iface_("The dropped URL comes from an unknown repository from:"),
+            url_for_display,
+            iface_("You may optionally add this repository now."),
+            iface_("Once the repository has been created the URL"),
+            iface_("will need to be dropped again."),
+        )
+        for line in lines:
+            col.label(text=line, translate=False)
 
 
 class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
@@ -1258,13 +1350,16 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
         return ""  # Default.
 
     def exec_command_iter(self, is_modal):
-        from . import repo_cache_store
+        from . import bl_extension_utils
         self._repo_directories = set()
         self._addon_restore = []
         self._theme_restore = _preferences_theme_state_create()
 
         use_active_only = self.use_active_only
+
         repos_all = extension_repos_read(use_active_only=use_active_only)
+        repo_cache_store = repo_cache_store_ensure()
+
         repo_directory_supset = [repo_entry.directory for repo_entry in repos_all] if use_active_only else None
 
         if not repos_all:
@@ -1310,7 +1405,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                     # Not installed.
                     continue
 
-                if item_remote["version"] != item_local["version"]:
+                if item_remote.version != item_local.version:
                     packages_to_upgrade[repo_index].append(pkg_id)
                     package_count += 1
 
@@ -1339,7 +1434,10 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
             return None
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=list(self._repo_directories), cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=list(self._repo_directories),
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -1366,7 +1464,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
         del self.repo_lock
 
         # Refresh installed packages for repositories that were operated on.
-        from . import repo_cache_store
+        repo_cache_store = repo_cache_store_ensure()
         for directory in self._repo_directories:
             repo_cache_store.refresh_local_from_directory(
                 directory=directory,
@@ -1401,8 +1499,11 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
     enable_on_install: rna_prop_enable_on_install
 
     def exec_command_iter(self, is_modal):
-        from . import repo_cache_store
+        from . import bl_extension_utils
+
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
+
         pkg_manifest_remote_all = list(repo_cache_store.pkg_manifest_from_remote_ensure(
             error_fn=self.error_fn_from_exception,
         ))
@@ -1442,7 +1543,9 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
             pkg_manifest_remote = pkg_manifest_remote_all[repo_index]
 
             pkg_id_sequence_addon_only = [
-                pkg_id for pkg_id in pkg_id_sequence if pkg_manifest_remote[pkg_id]["type"] == "add-on"]
+                pkg_id for pkg_id in pkg_id_sequence
+                if pkg_manifest_remote[pkg_id].type == "add-on"
+            ]
             if pkg_id_sequence_addon_only:
                 self._repo_map_packages_addon_only.append((repo_item.directory, pkg_id_sequence_addon_only))
 
@@ -1451,7 +1554,10 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
             return None
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=list(self._repo_directories), cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=list(self._repo_directories),
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -1467,7 +1573,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
         del self.repo_lock
 
         # Refresh installed packages for repositories that were operated on.
-        from . import repo_cache_store
+        repo_cache_store = repo_cache_store_ensure()
         for directory in self._repo_directories:
             repo_cache_store.refresh_local_from_directory(
                 directory=directory,
@@ -1511,10 +1617,12 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
     )
 
     def exec_command_iter(self, is_modal):
-        from . import repo_cache_store
+        from . import bl_extension_utils
         # TODO: check if the packages are already installed (notify the user).
         # Perhaps re-install?
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
+
         pkg_manifest_local_all = list(repo_cache_store.pkg_manifest_from_local_ensure(
             error_fn=self.error_fn_from_exception,
         ))
@@ -1559,7 +1667,10 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
             return None
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=list(self._repo_directories), cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=list(self._repo_directories),
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -1583,7 +1694,7 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
         del self.repo_lock
 
         # Refresh installed packages for repositories that were operated on.
-        from . import repo_cache_store
+        repo_cache_store = repo_cache_store_ensure()
         for directory in self._repo_directories:
             repo_cache_store.refresh_local_from_directory(
                 directory=directory,
@@ -1653,6 +1764,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
     url: rna_prop_url
 
     def exec_command_iter(self, is_modal):
+        from . import bl_extension_utils
         from .bl_extension_utils import (
             pkg_manifest_dict_from_file_or_error,
             pkg_is_legacy_addon,
@@ -1735,7 +1847,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
         # Detect upgrade.
         if pkg_id_sequence:
-            from . import repo_cache_store
+            repo_cache_store = repo_cache_store_ensure()
             pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
                 directory=self.repo_directory,
                 error_fn=self.error_fn_from_exception,
@@ -1752,7 +1864,10 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
             del repo_cache_store, pkg_manifest_local
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=[repo_item.directory], cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=[repo_item.directory],
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -1771,7 +1886,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
     def exec_command_finish(self, canceled):
 
         # Refresh installed packages for repositories that were operated on.
-        from . import repo_cache_store
+        repo_cache_store = repo_cache_store_ensure()
 
         # Re-generate JSON meta-data from TOML files (needed for offline repository).
         repo_cache_store.refresh_remote_from_directory(
@@ -1986,6 +2101,8 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         return True
 
     def exec_command_iter(self, is_modal):
+        from . import bl_extension_utils
+
         self._addon_restore = []
         self._theme_restore = _preferences_theme_state_create()
 
@@ -2002,7 +2119,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             return None
 
         # Detect upgrade.
-        from . import repo_cache_store
+        repo_cache_store = repo_cache_store_ensure()
         pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
             directory=self.repo_directory,
             error_fn=self.error_fn_from_exception,
@@ -2021,7 +2138,10 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             del pkg_id_sequence
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=[repo_item.directory], cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=[repo_item.directory],
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -2048,7 +2168,8 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         del self.repo_lock
 
         # Refresh installed packages for repositories that were operated on.
-        from . import repo_cache_store
+        repo_cache_store = repo_cache_store_ensure()
+
         pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
             directory=self.repo_directory,
             error_fn=self.error_fn_from_exception,
@@ -2115,7 +2236,11 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         repo_index, repo_name, pkg_id, item_remote, item_local = extension_url_find_repo_index_and_pkg_id(url)
 
         if repo_index == -1:
-            self.report({'ERROR'}, "Extension: URL not found in remote repositories!\n{:s}".format(url))
+            # The `remote_url` may not be defined, in this case there is not much we can do.
+            if not remote_url:
+                self.report({'ERROR'}, "Extension: URL not found in remote repositories!\n{:s}".format(url))
+            else:
+                bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url=remote_url)
             return {'CANCELLED'}
 
         if item_local is not None:
@@ -2143,17 +2268,17 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
         _repo_index, repo_name, pkg_id, item_remote = self._drop_variables
 
-        layout.label(text="Do you want to install the following {:s}?".format(item_remote["type"]))
+        layout.label(text="Do you want to install the following {:s}?".format(item_remote.type))
 
         col = layout.column(align=True)
-        col.label(text="Name: {:s}".format(item_remote["name"]))
+        col.label(text="Name: {:s}".format(item_remote.name))
         col.label(text="Repository: {:s}".format(repo_name))
-        col.label(text="Size: {:s}".format(size_as_fmt_string(item_remote["archive_size"], precision=0)))
+        col.label(text="Size: {:s}".format(size_as_fmt_string(item_remote.archive_size, precision=0)))
         del col
 
         layout.separator()
 
-        layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote["type"]])
+        layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote.type])
 
     @staticmethod
     def _do_legacy_replace(pkg_id, pkg_manifest_local):
@@ -2192,6 +2317,7 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
     pkg_id: rna_prop_pkg_id
 
     def exec_command_iter(self, is_modal):
+        from . import bl_extension_utils
 
         self._theme_restore = _preferences_theme_state_create()
 
@@ -2214,7 +2340,10 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
         )
 
         # Lock repositories.
-        self.repo_lock = RepoLock(repo_directories=[repo_item.directory], cookie=cookie_from_session())
+        self.repo_lock = bl_extension_utils.RepoLock(
+            repo_directories=[repo_item.directory],
+            cookie=cookie_from_session(),
+        )
         if lock_result_any_failed_with_report(self, self.repo_lock.acquire()):
             return None
 
@@ -2233,9 +2362,9 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
     def exec_command_finish(self, canceled):
 
         # Refresh installed packages for repositories that were operated on.
-        from . import repo_cache_store
-
+        repo_cache_store = repo_cache_store_ensure()
         repo_item = _extensions_repo_from_directory(self.repo_directory)
+
         if repo_item.remote_url == "":
             # Re-generate JSON meta-data from TOML files (needed for offline repository).
             # NOTE: This could be slow with many local extensions,
@@ -2436,18 +2565,21 @@ class EXTENSIONS_OT_package_obselete_marked(Operator):
     bl_label = "Obsolete Marked"
 
     def execute(self, _context):
-        from . import (
-            repo_cache_store,
-        )
+        from . import bl_extension_utils
 
         repos_all = extension_repos_read()
+        repo_cache_store = repo_cache_store_ensure()
+
         pkg_manifest_local_all = list(repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print))
         repo_pkg_map = _pkg_marked_by_repo(pkg_manifest_local_all)
         found = False
 
         repos_lock = [repos_all[repo_index].directory for repo_index in sorted(repo_pkg_map.keys())]
 
-        with RepoLockContext(repo_directories=repos_lock, cookie=cookie_from_session()) as lock_result:
+        with bl_extension_utils.RepoLockContext(
+                repo_directories=repos_lock,
+                cookie=cookie_from_session(),
+        ) as lock_result:
             if lock_result_any_failed_with_report(self, lock_result):
                 return {'CANCELLED'}
 
@@ -2502,10 +2634,15 @@ class EXTENSIONS_OT_repo_lock(Operator):
     lock = None
 
     def execute(self, _context):
+        from . import bl_extension_utils
+
         repos_all = extension_repos_read()
         repos_lock = [repo_item.directory for repo_item in repos_all]
 
-        lock_handle = RepoLock(repo_directories=repos_lock, cookie=cookie_from_session())
+        lock_handle = bl_extension_utils.RepoLock(
+            repo_directories=repos_lock,
+            cookie=cookie_from_session(),
+        )
         lock_result = lock_handle.acquire()
         if lock_result_any_failed_with_report(self, lock_result):
             # At least one lock failed, unlock all and return.
@@ -2676,6 +2813,8 @@ class EXTENSIONS_OT_package_enable_not_installed(Operator):
 classes = (
     EXTENSIONS_OT_repo_sync,
     EXTENSIONS_OT_repo_sync_all,
+    EXTENSIONS_OT_repo_refresh_all,
+    EXTENSIONS_OT_repo_add_from_drop,
 
     EXTENSIONS_OT_package_install_files,
     EXTENSIONS_OT_package_install,
