@@ -370,20 +370,48 @@ class TransformGizmos : public NodeGizmos {
   {
     const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(gizmo_node.storage);
 
-    /* Translation */
-
     any_translation_visible = false;
+    any_rotation_visible = false;
+    any_scale_visible = false;
+
+    for (const int axis : IndexRange(3)) {
+      const bool translation_used = storage.flag &
+                                    (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis);
+      const bool rotation_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X << axis);
+      const bool scale_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X << axis);
+
+      WM_gizmo_set_flag(translation_gizmos_[axis], WM_GIZMO_HIDDEN, !translation_used);
+      WM_gizmo_set_flag(rotation_gizmos_[axis], WM_GIZMO_HIDDEN, !rotation_used);
+      WM_gizmo_set_flag(scale_gizmos_[axis], WM_GIZMO_HIDDEN, !scale_used);
+
+      any_translation_visible |= translation_used;
+      any_rotation_visible |= rotation_used;
+      any_scale_visible |= scale_used;
+    }
+
+    /* Translation. */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = translation_gizmos_[axis];
       get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
 
-      const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_TRANSLATION_X << axis);
-      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
-      any_translation_visible |= is_used;
+      float start = 0.0f;
+      float length = 1.0f;
+      if (any_rotation_visible) {
+        start = 1.125;
+        length = 0.0f;
+      }
+      else if (any_scale_visible) {
+        start = 1.0f;
+        length = 0.0f;
+      }
+
+      unit_m4(gizmo->matrix_offset);
+      gizmo->matrix_offset[3][2] = start;
+      RNA_float_set(gizmo->ptr, "length", length);
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_OFFSET_SCALE, true);
     }
 
-    /* Rotation */
-    any_rotation_visible = false;
+    /* Rotation. */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = rotation_gizmos_[axis];
       get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
@@ -392,24 +420,15 @@ class TransformGizmos : public NodeGizmos {
       int draw_options = RNA_enum_get(gizmo->ptr, "draw_options");
       SET_FLAG_FROM_TEST(draw_options, is_interacting, ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE);
       RNA_enum_set(gizmo->ptr, "draw_options", draw_options);
-
-      const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_X << axis);
-      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
-      any_rotation_visible |= is_used;
     }
 
-    /* Scale */
-    any_scale_visible = false;
+    /* Scale. */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = scale_gizmos_[axis];
       get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
       RNA_enum_set(gizmo->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_BOX);
 
-      const bool is_used = storage.flag & (GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X << axis);
-      WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, !is_used);
-      any_scale_visible |= is_used;
-
-      const float length = any_translation_visible ? 0.8f : 1.0f;
+      const float length = (any_translation_visible || any_rotation_visible) ? 0.775f : 1.0f;
       RNA_float_set(gizmo->ptr, "length", length);
     }
   }
