@@ -1197,7 +1197,7 @@ def tags_panel_draw(panel, context):
             wm.extension_tags,
             "[\"{:s}\"]".format(escape_identifier(t)),
             text=t,
-            text_ctxt=i18n_contexts.script,
+            text_ctxt=i18n_contexts.editor_preferences,
         )
 
 

@@ -1048,9 +1048,9 @@ def dump_extension_metadata(msgs, reports, settings):
 
     # Extract tags for add-on and theme extensions.
     for tag in sorted(tags.addons):
-        process_msg(msgs, i18n_contexts.script, tag, "Add-on extension tag", reports, None, settings)
+        process_msg(msgs, i18n_contexts.editor_preferences, tag, "Add-on extension tag", reports, None, settings)
     for tag in sorted(tags.themes):
-        process_msg(msgs, i18n_contexts.script, tag, "Theme extension tag", reports, None, settings)
+        process_msg(msgs, i18n_contexts.editor_preferences, tag, "Theme extension tag", reports, None, settings)
 
     # Extract extension permissions.
     for permission in sorted(permissions.permissions):
