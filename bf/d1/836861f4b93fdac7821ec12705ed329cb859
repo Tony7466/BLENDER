@@ -1,1 +1,2 @@
 Referenced by pull request #123177, Fix #74816: crash in Cycles light distribution due to integer overflow
+Referenced by commit e639c3d6e23b7cdb0c1df97a7547731426a95508, Fix #74816: crash in Cycles light distribution due to integer overflow
