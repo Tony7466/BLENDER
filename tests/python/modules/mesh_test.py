@@ -167,7 +167,14 @@ class MeshTest(ABC):
     A mesh testing Abstract class that hold common functionalities for testting operations.
     """
 
-    def __init__(self, test_object_name, exp_object_name, test_name=None, threshold=None, allow_index_change=False, do_compare=True):
+    def __init__(
+            self,
+            test_object_name,
+            exp_object_name,
+            test_name=None,
+            threshold=None,
+            allow_index_change=False,
+            do_compare=True):
         """
         :arg test_object_name: str - Name of object of mesh type to run the operations on.
         :arg exp_object_name: str - Name of object of mesh type that has the expected
@@ -256,7 +263,11 @@ class MeshTest(ABC):
             print("Compare evaluated and expected object in Blender.\n")
             return False
 
-        result = self.compare_meshes(self.evaluated_object, self.expected_object, self.threshold, self.allow_index_change)
+        result = self.compare_meshes(
+            self.evaluated_object,
+            self.expected_object,
+            self.threshold,
+            self.allow_index_change)
 
         # Initializing with True to get correct resultant of result_code booleans.
         success = True
