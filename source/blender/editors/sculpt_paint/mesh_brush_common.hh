@@ -34,6 +34,19 @@ struct PBVHNode;
 struct Sculpt;
 struct SculptSession;
 
+namespace blender {
+namespace bits {
+class BitSpan;
+}
+using bits::BitSpan;
+namespace offset_indices {
+template<typename T> class OffsetIndices;
+template<typename T> class GroupedSpan;
+}  // namespace offset_indices
+using offset_indices::GroupedSpan;
+using offset_indices::OffsetIndices;
+}  // namespace blender
+
 namespace blender::ed::sculpt_paint {
 struct StrokeCache;
 

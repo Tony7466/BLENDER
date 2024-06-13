@@ -3847,7 +3847,7 @@ static void do_brush_action(const Sculpt &sd,
           do_mask_brush(sd, ob, nodes);
           break;
         case BRUSH_MASK_SMOOTH:
-          smooth::do_smooth_mask_brush(sd, ob, nodes, ss.cache->bstrength);
+          do_smooth_mask_brush(sd, ob, nodes, ss.cache->bstrength);
           break;
       }
       break;
