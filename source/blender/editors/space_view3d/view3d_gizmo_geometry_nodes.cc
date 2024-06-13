@@ -345,7 +345,7 @@ class TransformGizmos : public NodeGizmos {
     /* Translation */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
-      WM_gizmo_set_line_width(gizmo, 1.0f);
+      WM_gizmo_set_line_width(gizmo, 2.0f);
       translation_gizmos_[axis] = gizmo;
     }
 
@@ -353,15 +353,17 @@ class TransformGizmos : public NodeGizmos {
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_dial_3d", &gzgroup, nullptr);
       WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_VALUE, true);
-      WM_gizmo_set_line_width(gizmo, 2.0f);
+      WM_gizmo_set_line_width(gizmo, 3.0f);
       RNA_boolean_set(gizmo->ptr, "wrap_angle", false);
+      /* The clipping currently looks a bit weird without the white circle around the gizmo. */
+      // RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_CLIP);
       rotation_gizmos_[axis] = gizmo;
     }
 
     /* Scale */
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
-      WM_gizmo_set_line_width(gizmo, 1.0f);
+      WM_gizmo_set_line_width(gizmo, 2.0f);
       scale_gizmos_[axis] = gizmo;
     }
   }
