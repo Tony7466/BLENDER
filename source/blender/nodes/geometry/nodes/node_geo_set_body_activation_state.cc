@@ -2,9 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_array_utils.hh"
-
 #include "BKE_attribute.hh"
+#include "BKE_geometry_set.hh"
 #include "BKE_node.hh"
 #include "BKE_physics_geometry.hh"
 
@@ -21,7 +20,7 @@ namespace blender::nodes::node_geo_set_body_activation_state_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Physics");
+  b.add_input<decl::Geometry>("Physics").supported_type(bke::GeometryComponent::Type::Physics);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_output<decl::Geometry>("Physics").propagate_all();
 }

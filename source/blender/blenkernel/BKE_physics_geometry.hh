@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "BLI_cache_mutex.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_quaternion_types.hh"
@@ -45,8 +44,8 @@ class PhysicsGeometry {
   };
 
   enum class ConstraintType {
-    None,
-    Fixed,
+    None = -1,
+    Fixed = 0,
     Point,
     Hinge,
     Slider,
@@ -97,7 +96,7 @@ class PhysicsGeometry {
   } builtin_attributes;
 
   PhysicsGeometry();
-  explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num);
+  explicit PhysicsGeometry(int bodies_num, int constraints_num);
   PhysicsGeometry(const PhysicsGeometry &other);
   ~PhysicsGeometry();
 
@@ -114,6 +113,8 @@ class PhysicsGeometry {
   IndexRange bodies_range() const;
   IndexRange constraints_range() const;
   IndexRange shapes_range() const;
+
+  void resize(int bodies_num, int constraints_num);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();
@@ -163,6 +164,9 @@ class PhysicsGeometry {
   VArray<int> body_activation_states() const;
   AttributeWriter<int> body_activation_states_for_write();
 
+  VArray<int> constraint_type() const;
+  AttributeWriter<int> constraint_type_for_write();
+
   VArray<int> constraint_body_1() const;
   AttributeWriter<int> constraint_body_1_for_write();
 
@@ -171,7 +175,7 @@ class PhysicsGeometry {
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
-  void tag_body_topology_changed();
+  void tag_topology_changed();
   void tag_physics_changed();
 
   bke::AttributeAccessor attributes() const;

@@ -11,33 +11,30 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
 
-#include "BLI_array_utils.hh"
 #include "BLI_assert.h"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_mempool.h"
 #include "BLI_utildefines.h"
 #include "BLI_virtual_array.hh"
 
-#include <BulletCollision/CollisionShapes/btBoxShape.h>
-#include <BulletCollision/CollisionShapes/btCollisionShape.h>
-#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
-#include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
-#include <LinearMath/btMotionState.h>
-#include <LinearMath/btTransform.h>
-#include <functional>
-#include <mutex>
-#include <shared_mutex>
-
-#include "attribute_access_intern.hh"
+#include "physics_geometry_attributes.hh"
 #include "physics_geometry_impl.hh"
 
+#include <functional>
+#include <mutex>
+
 #ifdef WITH_BULLET
+#  include <BulletCollision/CollisionShapes/btBoxShape.h>
+#  include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #  include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 #  include <BulletCollision/Gimpact/btGImpactShape.h>
+#  include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
+#  include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
 #  include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 #  include <BulletDynamics/Dynamics/btRigidBody.h>
 #  include <LinearMath/btDefaultMotionState.h>
+#  include <LinearMath/btMotionState.h>
+#  include <LinearMath/btTransform.h>
 #  include <btBulletDynamicsCommon.h>
 #endif
 
@@ -255,7 +252,18 @@ static int get_body_index(const btRigidBody &body)
 
 static void set_body_index(btRigidBody &body, const int index)
 {
+  /* XXX Bullet shares the same body 2 for all unilateral constraints.
+   * These must be ignored, but there is no direct way to check for this case.
+   * Use existence of the motion state as a proxy to gain some measure of safety. */
+  BLI_assert_msg(
+      body.getMotionState() != nullptr,
+      "Body does not have motion state, are you accessing body 2 of a unilateral constraint?");
   body.setUserIndex3(index);
+}
+
+static bool is_constraint_unilateral(const btTypedConstraint &constraint)
+{
+  return &constraint.getRigidBodyB() == &constraint.getFixedBody();
 }
 
 /* -------------------------------------------------------------------- */
@@ -440,7 +448,7 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
   }
   impl_ = impl;
 
-  this->tag_body_topology_changed();
+  this->tag_topology_changed();
 }
 
 PhysicsGeometry::~PhysicsGeometry()
@@ -650,18 +658,92 @@ IndexRange PhysicsGeometry::shapes_range() const
   return shapes_.index_range();
 }
 
+/* Returns an index mask of all constraints affecting the bodies. */
+static IndexMask get_constraints_mask_for_points(const PhysicsGeometryImpl &impl,
+                                                 const IndexMask &body_selection,
+                                                 IndexMaskMemory &memory)
+{
+  BLI_assert(impl.body_index_cache_.is_cached());
+
+  return IndexMask::from_predicate(
+      impl.constraints.index_range(), GrainSize(1024), memory, [&](const int index) {
+        const btTypedConstraint *constraint = impl.constraints[index];
+        if (constraint == nullptr) {
+          return false;
+        }
+        const int index1 = get_body_index(constraint->getRigidBodyA());
+        const int index2 = is_constraint_unilateral(*constraint) ?
+                               -1 :
+                               get_body_index(constraint->getRigidBodyB());
+        return body_selection.contains(index1) || body_selection.contains(index2);
+      });
+}
+
+void PhysicsGeometry::resize(int bodies_num, int constraints_num)
+{
+  PhysicsGeometryImpl &impl = this->impl_for_write();
+  impl.ensure_body_indices();
+
+  const IndexMask bodies_to_delete = impl.rigid_bodies.index_range().drop_front(bodies_num);
+  const IndexMask constraints_to_delete = impl.constraints.index_range().drop_front(
+      constraints_num);
+  IndexMaskMemory constraint_memory;
+  const IndexMask extra_constraints_to_delete = get_constraints_mask_for_points(
+      impl, bodies_to_delete, constraint_memory);
+
+  bodies_to_delete.foreach_index([&](const int index) {
+    delete impl.rigid_bodies[index];
+    impl.rigid_bodies[index] = nullptr;
+    delete impl.motion_states[index];
+    impl.motion_states[index] = nullptr;
+  });
+  constraints_to_delete.foreach_index([&](const int index) {
+    delete impl.constraints[index];
+    impl.constraints[index] = nullptr;
+  });
+  extra_constraints_to_delete.foreach_index([&](const int index) {
+    delete impl.constraints[index];
+    impl.constraints[index] = nullptr;
+  });
+
+  Array<btRigidBody *> new_bodies(bodies_num);
+  Array<btMotionState *> new_motion_states(bodies_num);
+  Array<btTypedConstraint *> new_constraints(constraints_num);
+  new_bodies.as_mutable_span().take_front(impl.rigid_bodies.size()).copy_from(impl.rigid_bodies);
+  new_motion_states.as_mutable_span()
+      .take_front(impl.motion_states.size())
+      .copy_from(impl.motion_states);
+  new_constraints.as_mutable_span()
+      .take_front(impl.constraints.size())
+      .copy_from(impl.constraints);
+  /* Bodies and motion states must always exist. */
+  const IndexRange bodies_to_initialize = new_bodies.index_range().drop_front(
+      impl.rigid_bodies.size());
+  const IndexRange constraints_to_initialize = new_constraints.index_range().drop_front(
+      impl.constraints.size());
+  create_bodies(new_bodies.as_mutable_span().slice(bodies_to_initialize),
+                new_motion_states.as_mutable_span().slice(bodies_to_initialize));
+  new_constraints.as_mutable_span().slice(constraints_to_initialize).fill(nullptr);
+
+  impl.rigid_bodies = std::move(new_bodies);
+  impl.motion_states = std::move(new_motion_states);
+  impl.constraints = std::move(new_constraints);
+
+  this->tag_topology_changed();
+}
+
 void PhysicsGeometry::tag_collision_shapes_changed() {}
 
 void PhysicsGeometry::tag_body_transforms_changed() {}
 
-void PhysicsGeometry::tag_body_topology_changed()
+void PhysicsGeometry::tag_topology_changed()
 {
   this->impl_for_write().tag_body_topology_changed();
 }
 
 void PhysicsGeometry::tag_physics_changed()
 {
-  this->tag_body_topology_changed();
+  this->tag_topology_changed();
 }
 
 Span<CollisionShape::Ptr> PhysicsGeometry::shapes() const
@@ -824,243 +906,125 @@ AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
   return attributes_for_write().lookup_for_write<int>(builtin_attributes.activation_state);
 }
 
+static btTypedConstraint *make_constraint_type(const btTypedConstraintType bt_type)
+{
+  switch (bt_type) {
+    default:
+      return nullptr;
+  }
+}
+
+/* Specialization for changing btTypedConstraint pointers. */
+class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayImpl<int> {
+  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
+
+ private:
+  const PhysicsGeometryImpl *impl_;
+  // XXX causes mystery crashes, investigate ...
+  // std::unique_lock<std::shared_mutex> lock_;
+
+ public:
+  VMutableArrayImpl_For_PhysicsConstraintTypes(const PhysicsGeometryImpl &impl)
+      : VMutableArrayImpl<int>(impl.constraints.size()),
+        impl_(&impl) /*, lock_(impl_->data_mutex)*/
+  {
+    // lock_.lock();
+  }
+
+  ~VMutableArrayImpl_For_PhysicsConstraintTypes()
+  {
+    // lock_.unlock();
+  }
+
+ private:
+  ConstraintType get_constraint_type(const btTypedConstraint *constraint) const
+  {
+    return constraint ? to_blender(constraint->getConstraintType()) : ConstraintType::None;
+  }
+
+  btTypedConstraint *ensure_constraint_type(btTypedConstraint *constraint,
+                                            const ConstraintType type) const
+  {
+    const btTypedConstraintType bt_type = to_bullet(type);
+    if (constraint && constraint->getConstraintType() == bt_type) {
+      return constraint;
+    }
+
+    delete constraint;
+    return make_constraint_type(bt_type);
+  }
+
+  int get(const int64_t index) const override
+  {
+    return int(get_constraint_type(impl_->constraints[index]));
+  }
+
+  void set(const int64_t index, int value) override
+  {
+    bke::PhysicsGeometryImpl &impl = *const_cast<bke::PhysicsGeometryImpl *>(impl_);
+    impl.constraints[index] = this->ensure_constraint_type(impl.constraints[index],
+                                                           ConstraintType(value));
+  }
+
+  void materialize(const IndexMask &mask, int *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = int(get_constraint_type(impl_->constraints[i])); });
+  }
+
+  void materialize_to_uninitialized(const IndexMask &mask, int *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = int(get_constraint_type(impl_->constraints[i])); });
+  }
+
+  void materialize_compressed(const IndexMask &mask, int *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
+      dst[pos] = int(get_constraint_type(impl_->constraints[i]));
+    });
+  }
+
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, int *dst) const override
+  {
+    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
+      dst[pos] = int(get_constraint_type(impl_->constraints[i]));
+    });
+  }
+};
+
+VArray<int> PhysicsGeometry::constraint_type() const
+{
+  if (this->impl().is_cached) {
+    return VArray<int>::ForSingle(-1, this->constraints_num());
+  }
+  return VMutableArray<int>::template For<VMutableArrayImpl_For_PhysicsConstraintTypes>(
+      this->impl());
+}
+
+AttributeWriter<int> PhysicsGeometry::constraint_type_for_write()
+{
+  if (this->impl().is_cached) {
+    return {VMutableArray<int>::template For<VArrayImpl_For_PhysicsStub<int>>(
+                -1, this->constraints_num()),
+            bke::AttrDomain::Edge,
+            nullptr};
+  }
+  return {
+      VMutableArray<int>::template For<VMutableArrayImpl_For_PhysicsConstraintTypes>(this->impl()),
+      bke::AttrDomain::Edge,
+      nullptr};
+}
+
 VArray<int> PhysicsGeometry::constraint_body_1() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body1).varray;
-}
-
-AttributeWriter<int> PhysicsGeometry::constraint_body_1_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body1);
 }
 
 VArray<int> PhysicsGeometry::constraint_body_2() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
 }
-
-AttributeWriter<int> PhysicsGeometry::constraint_body_2_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body2);
-}
-
-/**
- * Utility to group together multiple functions that are used to access custom data on geometry
- * components in a generic way.
- */
-struct PhysicsAccessInfo {
-  using PhysicsGetter = PhysicsGeometry *(*)(void *owner);
-  using ConstPhysicsGetter = const PhysicsGeometry *(*)(const void *owner);
-
-  PhysicsGetter get_physics;
-  ConstPhysicsGetter get_const_physics;
-};
-
-template<typename T> using RigidBodyGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
-template<typename T>
-using RigidBodyGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl);
-template<typename T> using ConstraintGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
-template<typename T>
-using ConstraintGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl);
-
-/**
- * Provider for builtin rigid body attributes.
- */
-template<typename T,
-         RigidBodyGetFn<T> GetFn,
-         RigidBodySetFn<T> SetFn = nullptr,
-         RigidBodyGetCacheFn<T> GetCacheFn = nullptr,
-         RigidBodyGetMutableCacheFn<T> GetMutableCacheFn = nullptr>
-class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
-  using UpdateOnChange = void (*)(void *owner);
-  const PhysicsAccessInfo physics_access_;
-  const UpdateOnChange update_on_change_;
-
- public:
-  BuiltinRigidBodyAttributeProvider(std::string attribute_name,
-                                    const AttrDomain domain,
-                                    const DeletableEnum deletable,
-                                    const PhysicsAccessInfo physics_access,
-                                    const UpdateOnChange update_on_change,
-                                    const AttributeValidator validator = {})
-      : BuiltinAttributeProvider(std::move(attribute_name),
-                                 domain,
-                                 cpp_type_to_custom_data_type(CPPType::get<T>()),
-                                 deletable,
-                                 validator),
-        physics_access_(physics_access),
-        update_on_change_(update_on_change)
-  {
-  }
-
-  GAttributeReader try_get_for_read(const void *owner) const final
-  {
-    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
-    GVArray varray;
-    if constexpr (GetCacheFn == nullptr) {
-      varray = VArray_For_PhysicsBodies<T, GetFn>(physics, T());
-    }
-    else {
-      varray = VArray_For_PhysicsBodies<T, GetFn>(physics, GetCacheFn(physics->impl()));
-    }
-
-    return {std::move(varray), domain_, nullptr};
-  }
-
-  GAttributeWriter try_get_for_write(void *owner) const final
-  {
-    if constexpr (SetFn == nullptr) {
-      return {};
-    }
-    PhysicsGeometry *physics = physics_access_.get_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
-    // GVMutableArray varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics);
-    PhysicsGeometryImpl &impl = physics->impl_for_write();
-
-    GVMutableArray varray;
-    if constexpr (GetMutableCacheFn == nullptr) {
-      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, T());
-    }
-    else {
-      varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics, GetMutableCacheFn(impl));
-    }
-
-    std::function<void()> tag_modified_fn;
-    if (update_on_change_ != nullptr) {
-      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
-    }
-
-    return {std::move(varray), domain_, std::move(tag_modified_fn)};
-  }
-
-  bool try_delete(void * /*owner*/) const final
-  {
-    return false;
-  }
-
-  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
-  {
-    return false;
-  }
-
-  bool exists(const void * /*owner*/) const final
-  {
-    return true;
-  }
-};
-
-/**
- * Provider for builtin constraint attributes.
- */
-template<typename T,
-         ConstraintGetFn<T> GetFn,
-         ConstraintSetFn<T> SetFn = nullptr,
-         ConstraintGetCacheFn<T> GetCacheFn = nullptr,
-         ConstraintGetMutableCacheFn<T> GetMutableCacheFn = nullptr>
-class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributeProvider {
-  using UpdateOnChange = void (*)(void *owner);
-  using EnsureOnAccess = void (*)(const void *owner);
-  const PhysicsAccessInfo physics_access_;
-  const UpdateOnChange update_on_change_;
-  const EnsureOnAccess ensure_on_access_;
-
- public:
-  BuiltinConstraintAttributeProvider(std::string attribute_name,
-                                     const AttrDomain domain,
-                                     const DeletableEnum deletable,
-                                     const PhysicsAccessInfo physics_access,
-                                     const UpdateOnChange update_on_change,
-                                     const AttributeValidator validator = {},
-                                     const EnsureOnAccess ensure_on_access = nullptr)
-      : BuiltinAttributeProvider(std::move(attribute_name),
-                                 domain,
-                                 cpp_type_to_custom_data_type(CPPType::get<T>()),
-                                 deletable,
-                                 validator),
-        physics_access_(physics_access),
-        update_on_change_(update_on_change),
-        ensure_on_access_(ensure_on_access)
-  {
-  }
-
-  GAttributeReader try_get_for_read(const void *owner) const final
-  {
-    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
-    if (ensure_on_access_) {
-      ensure_on_access_(owner);
-    }
-
-    GVArray varray;
-    if constexpr (GetCacheFn == nullptr) {
-      varray = VArray_For_PhysicsConstraints<T, GetFn>(physics, T());
-    }
-    else {
-      varray = VArray_For_PhysicsConstraints<T, GetFn>(physics, GetCacheFn(physics->impl()));
-    }
-
-    return {std::move(varray), domain_, nullptr};
-  }
-
-  GAttributeWriter try_get_for_write(void *owner) const final
-  {
-    if constexpr (SetFn == nullptr) {
-      return {};
-    }
-    PhysicsGeometry *physics = physics_access_.get_physics(owner);
-    if (physics == nullptr) {
-      return {};
-    }
-
-    if (ensure_on_access_) {
-      ensure_on_access_(owner);
-    }
-
-    // GVMutableArray varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics);
-    PhysicsGeometryImpl &impl = physics->impl_for_write();
-
-    GVMutableArray varray;
-    if constexpr (GetMutableCacheFn == nullptr) {
-      varray = VMutableArray_For_PhysicsConstraints<T, GetFn, SetFn>(physics, T());
-    }
-    else {
-      varray = VMutableArray_For_PhysicsConstraints<T, GetFn, SetFn>(physics,
-                                                                     GetMutableCacheFn(impl));
-    }
-
-    std::function<void()> tag_modified_fn;
-    if (update_on_change_ != nullptr) {
-      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
-    }
-
-    return {std::move(varray), domain_, std::move(tag_modified_fn)};
-  }
-
-  bool try_delete(void * /*owner*/) const final
-  {
-    return false;
-  }
-
-  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
-  {
-    return false;
-  }
-
-  bool exists(const void * /*owner*/) const final
-  {
-    return true;
-  }
-};
 
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
@@ -1227,9 +1191,9 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     return int(activation_state_to_blender(body.getActivationState()));
   };
   constexpr auto activation_state_set_fn = [](btRigidBody &body, int value) {
-    /* Note: there is also setActivationState, but that only sets if the state is not always-active
-     * or always-sleeping. This check can be performed on the caller side if the "always-x" state
-     * must be retained. */
+    /* Note: there is also setActivationState, but that only sets if the state is not
+     * always-active or always-sleeping. This check can be performed on the caller side if the
+     * "always-x" state must be retained. */
     body.forceActivationState(
         activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState(value)));
   };
@@ -1349,8 +1313,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           physics_access,
           nullptr);
 
-  constexpr auto constraint_body1_get_fn = [](const btTypedConstraint &constraint) -> int {
-    return get_body_index(constraint.getRigidBodyA());
+  constexpr auto constraint_body1_get_fn = [](const btTypedConstraint *constraint) -> int {
+    return constraint ? get_body_index(constraint->getRigidBodyA()) : -1;
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body1_get_fn> constraint_body1(
       PhysicsGeometry::builtin_attributes.constraint_body1,
@@ -1364,8 +1328,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         physics->impl().ensure_body_indices();
       });
 
-  constexpr auto constraint_body2_get_fn = [](const btTypedConstraint &constraint) -> int {
-    return get_body_index(constraint.getRigidBodyB());
+  constexpr auto constraint_body2_get_fn = [](const btTypedConstraint *constraint) -> int {
+    /* Unilateral constraints use a shared fixed body that should not be considered. */
+    return constraint && !is_constraint_unilateral(*constraint) ?
+               get_body_index(constraint->getRigidBodyB()) :
+               -1;
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
       PhysicsGeometry::builtin_attributes.constraint_body2,

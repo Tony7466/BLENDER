@@ -522,6 +522,7 @@ class NODE_MT_category_simulation(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeCollisionShape")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsTimeStep")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsWorld")
+        node_add_menu.add_node_type(layout, "GeometryNodePhysicsConstraints")
         node_add_menu.add_node_type(layout, "GeometryNodeInputRigidBodyInfo")
         node_add_menu.add_node_type(layout, "GeometryNodeInputRigidBodyMotion")
         node_add_menu.add_node_type(layout, "GeometryNodeInputBodyActivationState")

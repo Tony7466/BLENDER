@@ -14,8 +14,7 @@ namespace blender::nodes::node_geo_set_body_simulated_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Physics").supported_type(
-      {GeometryComponent::Type::Curve, GeometryComponent::Type::Physics});
+  b.add_input<decl::Geometry>("Physics").supported_type(bke::GeometryComponent::Type::Physics);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Bool>("Simulated").default_value(true).field_on_all();
   b.add_output<decl::Geometry>("Physics").propagate_all();

@@ -267,6 +267,7 @@ set(SRC
   intern/pbvh_pixels_copy.cc
   intern/pbvh_uv_islands.cc
   intern/physics_geometry.cc
+  intern/physics_geometry_attributes.hh
   intern/physics_geometry_impl.hh
   intern/pointcache.cc
   intern/pointcloud.cc
