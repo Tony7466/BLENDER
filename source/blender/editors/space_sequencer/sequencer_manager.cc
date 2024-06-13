@@ -111,10 +111,16 @@ static void file_selector_panel_draw(const bContext *C, Panel *panel)
     uiLayout *layout = panel->layout;
     uiLayoutSetPropSep(layout, true);
     
+        /* Draw the search bar */
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiItemL(row, "Search:", ICON_VIEWZOOM);
+    uiItemR(row, NULL, 0, 0, "search", ICON_NONE);
+
     uiItemO(layout, "Select Text File", ICON_FILE_BLEND, "FILE_OT_open_text_file");
     uiItemO(layout, "Select Video File", ICON_FILE_MOVIE, "FILE_OT_open_video_file");
     uiItemO(layout, "Select Sound File", ICON_SOUND, "FILE_OT_open_sound_file");
     uiItemO(layout, "Select Image File", ICON_IMAGE_DATA, "FILE_OT_open_image_file");
+
 }
 
 void file_selector_panel_register(ARegionType *art)
