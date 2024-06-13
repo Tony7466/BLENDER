@@ -50,7 +50,8 @@ void foreach_active_gizmo(const Object &object,
 ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
                                                            const bNode &gizmo_node);
 
-void apply_gizmo_change(Object &object,
+void apply_gizmo_change(bContext &C,
+                        Object &object,
                         NodesModifierData &nmd,
                         geo_eval_log::GeoModifierLog &eval_log,
                         const ComputeContext &gizmo_context,

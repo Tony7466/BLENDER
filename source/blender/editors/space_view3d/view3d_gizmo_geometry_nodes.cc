@@ -866,8 +866,13 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
                 gizmo_node_tree->ensure_topology_cache();
                 const bNodeSocket &socket = gizmo_node->input_by_identifier(socket_identifier);
 
-                nodes::gizmos::apply_gizmo_change(
-                    *ob_orig, *nmd, *eval_log, *compute_context, socket, modify_value);
+                nodes::gizmos::apply_gizmo_change(*const_cast<bContext *>(C),
+                                                  *ob_orig,
+                                                  *nmd,
+                                                  *eval_log,
+                                                  *compute_context,
+                                                  socket,
+                                                  modify_value);
 
                 Main *main = CTX_data_main(C);
                 ED_node_tree_propagate_change(const_cast<bContext *>(C), main, nullptr);

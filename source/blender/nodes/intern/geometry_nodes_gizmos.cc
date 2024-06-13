@@ -353,6 +353,7 @@ ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext 
 }
 
 void apply_gizmo_change(
+    bContext &C,
     Object &object,
     NodesModifierData &nmd,
     geo_eval_log::GeoModifierLog &eval_log,
@@ -386,7 +387,7 @@ void apply_gizmo_change(
     /* TODO: Call this for all modififed values at once. Otherwise, they might overwrite each
      * other. */
     ie::try_change_link_target_and_update_source(
-        object, nmd, eval_log, &gizmo_context, *link, new_value);
+        C, object, nmd, eval_log, &gizmo_context, *link, new_value);
   }
 }
 

@@ -18,7 +18,8 @@ namespace blender::nodes::inverse_eval {
 
 using bke::SocketValueVariant;
 
-bool try_change_link_target_and_update_source(Object &object,
+bool try_change_link_target_and_update_source(bContext &C,
+                                              Object &object,
                                               NodesModifierData &nmd,
                                               geo_eval_log::GeoModifierLog &eval_log,
                                               const ComputeContext *initial_context,

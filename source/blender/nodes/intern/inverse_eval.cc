@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <fmt/format.h>
 #include <queue>
 
 #include "NOD_inverse_eval_path.hh"
@@ -23,7 +24,12 @@
 
 #include "DEG_depsgraph.hh"
 
+#include "DNA_anim_types.h"
+
 #include "ED_node.hh"
+
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "MOD_nodes.hh"
 
@@ -491,7 +497,8 @@ static bool set_value_node_value(bNode &node, const SocketValueVariant &value_va
   return false;
 }
 
-static bool set_modifier_value(Object &object,
+static bool set_modifier_value(bContext &C,
+                               Object &object,
                                NodesModifierData &nmd,
                                const bNodeTreeInterfaceSocket &interface_socket,
                                const SocketValueVariant &value_variant)
@@ -502,6 +509,45 @@ static bool set_modifier_value(Object &object,
   switch (interface_socket.socket_typeinfo()->type) {
     case SOCK_FLOAT: {
       const float value = value_variant.get<float>();
+      if (object.adt) {
+        const std::string modifier_prop_data_path = fmt::format(
+            "modifiers[\"{}\"][\"{}\"]", nmd.modifier.name, interface_socket.identifier);
+        LISTBASE_FOREACH (FCurve *, driver, &object.adt->drivers) {
+          if (driver->rna_path == modifier_prop_data_path) {
+            if (driver->driver) {
+              if (ELEM(driver->driver->type,
+                       DRIVER_TYPE_AVERAGE,
+                       DRIVER_TYPE_SUM,
+                       DRIVER_TYPE_MIN,
+                       DRIVER_TYPE_MAX))
+              {
+                if (BLI_listbase_count(&driver->driver->variables) == 1) {
+                  DriverVar &driver_var = *static_cast<DriverVar *>(
+                      driver->driver->variables.first);
+                  if (driver_var.type == DVAR_TYPE_SINGLE_PROP) {
+                    if (driver_var.num_targets == 1) {
+                      DriverTarget &driver_target = driver_var.targets[0];
+                      PointerRNA src_id_ptr = RNA_id_pointer_create(driver_target.id);
+                      PointerRNA src_value_ptr;
+                      PropertyRNA *src_prop;
+                      if (RNA_path_resolve(
+                              &src_id_ptr, driver_target.rna_path, &src_value_ptr, &src_prop))
+                      {
+                        if (RNA_property_type(src_prop) == PROP_FLOAT) {
+                          RNA_property_float_set(&src_value_ptr, src_prop, value);
+                          RNA_property_update(&C, &src_value_ptr, src_prop);
+                          return true;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
       IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
                                                   interface_socket.identifier);
       if (prop && prop->type == IDP_FLOAT) {
@@ -605,7 +651,8 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
   return {};
 }
 
-bool try_change_link_target_and_update_source(Object &object,
+bool try_change_link_target_and_update_source(bContext &C,
+                                              Object &object,
                                               NodesModifierData &nmd,
                                               geo_eval_log::GeoModifierLog &eval_log,
                                               const ComputeContext *initial_context,
@@ -704,7 +751,7 @@ bool try_change_link_target_and_update_source(Object &object,
           if (const SocketValueVariant *value = value_by_socket.lookup_ptr({context, socket})) {
             const bNodeTreeInterfaceSocket &interface_socket =
                 *node.owner_tree().interface_inputs()[socket->index()];
-            set_modifier_value(object, nmd, interface_socket, *value);
+            set_modifier_value(C, object, nmd, interface_socket, *value);
           }
         }
       }
