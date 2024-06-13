@@ -2655,7 +2655,7 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void * /*user_d
   }
 
   float length_factor = speed_factor;
-  if (seq->type == SEQ_TYPE_SOUND_RAM) {
+  if (seq->type == SEQ_TYPE_SOUND_RAM || !SEQ_retiming_is_allowed(seq)) {
     length_factor = 1.0f;
   }
 
