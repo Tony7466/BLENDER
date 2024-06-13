@@ -117,6 +117,7 @@ set(SRC
 
   brushes/draw.cc
   brushes/draw_vector_displacement.cc
+  brushes/draw_sharp.cc
 
   brushes/types.hh
 )

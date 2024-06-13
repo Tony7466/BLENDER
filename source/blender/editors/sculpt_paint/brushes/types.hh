@@ -16,5 +16,6 @@ namespace blender::ed::sculpt_paint {
 void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
 /** A simple normal-direction displacement based on image texture RGB/XYZ values. */
 void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
-
+/** A draw sharp brush */
+void do_draw_sharp_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes);
 }  // namespace blender::ed::sculpt_paint
