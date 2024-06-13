@@ -258,42 +258,30 @@ static void calc_bmesh(Object &object,
 void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
   SculptSession &ss = *object.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
+  if (math::is_zero(ss.cache->grab_delta_symmetry)) {
+    return;
+  }
 
+  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const bool flip = (ss.cache->bstrength < 0.0f);
   const float radius = flip ? -ss.cache->radius : ss.cache->radius;
   const float offset = SCULPT_brush_plane_offset_get(sd, ss);
   const float displace = radius * (0.18f + offset);
 
-  /* The sculpt-plane normal (whatever its set to). */
-  float3 area_no_sp;
+  float3 area_position;
+  float3 plane_normal;
+  calc_brush_plane(brush, object, nodes, plane_normal, area_position);
+  SCULPT_tilt_apply_to_normal(plane_normal, ss.cache, brush.tilt_strength_factor);
 
-  /* Geometry normal */
-  float3 area_no;
-  float3 area_co;
-
-  float temp[3];
-  float4x4 mat;
-  float scale[4][4];
-  float tmat[4][4];
-
-  calc_brush_plane(brush, object, nodes, area_no_sp, area_co);
-  SCULPT_tilt_apply_to_normal(area_no_sp, ss.cache, brush.tilt_strength_factor);
-
+  float3 area_normal;
   if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA || (brush.flag & BRUSH_ORIGINAL_NORMAL)) {
-    area_no = calc_area_normal(brush, object, nodes).value_or(float3(0));
+    area_normal = calc_area_normal(brush, object, nodes).value_or(float3(0));
   }
   else {
-    area_no = area_no_sp;
+    area_normal = plane_normal;
   }
 
-  if (is_zero_v3(ss.cache->grab_delta_symmetry)) {
-    return;
-  }
-
-  mul_v3_v3v3(temp, area_no_sp, ss.cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
+  area_position += plane_normal * ss.cache->scale * displace;
 
   /* Clay Strips uses a cube test with falloff in the XY axis (not in Z) and a plane to deform the
    * vertices. When in Add mode, vertices that are below the plane and inside the cube are moved
@@ -303,34 +291,31 @@ void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nod
    * deform more vertices that may be below it. */
   /* The 0.7 and 1.25 factors are arbitrary and don't have any relation between them, they were set
    * by doing multiple tests using the default "Clay Strips" brush preset. */
-  float area_co_displaced[3];
-  madd_v3_v3v3fl(area_co_displaced, area_co, area_no, -radius * 0.7f);
+  const float3 area_position_displaced = area_position + area_normal * -radius * 0.7f;
 
-  cross_v3_v3v3(mat[0], area_no, ss.cache->grab_delta_symmetry);
-  mat[0][3] = 0.0f;
-  cross_v3_v3v3(mat[1], area_no, mat[0]);
-  mat[1][3] = 0.0f;
-  copy_v3_v3(mat[2], area_no);
-  mat[2][3] = 0.0f;
-  copy_v3_v3(mat[3], area_co_displaced);
-  mat[3][3] = 1.0f;
-  normalize_m4(mat.ptr());
+  float4x4 mat = float4x4::identity();
+  mat.x_axis() = math::cross(area_normal, ss.cache->grab_delta_symmetry);
+  mat.y_axis() = math::cross(area_normal, float3(mat[0]));
+  mat.z_axis() = area_normal;
+  mat.location() = area_position_displaced;
+
+  mat = math::normalize(mat);
 
   /* Scale brush local space matrix. */
-  scale_m4_fl(scale, ss.cache->radius);
-  mul_m4_m4m4(tmat, mat.ptr(), scale);
+  const float4x4 scale = math::from_scale<float4x4>(float3(ss.cache->radius));
+  float4x4 tmat = mat * scale;
 
-  mul_v3_fl(tmat[1], brush.tip_scale_x);
+  tmat.y_axis() *= brush.tip_scale_x;
 
   /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
    * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
    * during big deformation while keeping the surface as uniform as possible. */
-  mul_v3_fl(tmat[2], 1.25f);
+  tmat.z_axis() *= 1.25f;
 
-  invert_m4_m4(mat.ptr(), tmat);
+  mat = math::invert(tmat);
 
   float4 plane;
-  plane_from_point_normal_v3(plane, area_co, area_no_sp);
+  plane_from_point_normal_v3(plane, area_position, plane_normal);
 
   const float strength = std::abs(ss.cache->bstrength);
 
