@@ -45,6 +45,7 @@ typedef struct GPUVertBufHandle GPUVertBufHandle;
 /* Forward declarations so the actual declarations can happen top-down. */
 struct ActionLayer;
 struct ActionBinding;
+struct ActionBinding_runtime;
 struct ActionStrip;
 struct ActionChannelBag;
 
@@ -53,11 +54,15 @@ struct ActionChannelBag;
 namespace blender::animrig {
 class Action;
 class Binding;
+class BindingRuntime;
 class ChannelBag;
 class KeyframeStrip;
 class Layer;
 class Strip;
 }  // namespace blender::animrig
+using ActionBindingRuntimeHandle = blender::animrig::BindingRuntime;
+#else
+typedef struct ActionBindingRuntimeHandle ActionBindingRuntimeHandle;
 #endif
 
 /* ************************************************ */
@@ -848,6 +853,12 @@ typedef enum eDopeSheet_FilterFlag {
   /** for 'DopeSheet' Editors - include 'summary' line */
   ADS_FILTER_SUMMARY = (1 << 4),
 
+  /**
+   * Show all Action bindings; if not set, only show the Binding of the
+   * data-block that's being animated by the Action.
+   */
+  ADS_FILTER_ALL_BINDINGS = (1 << 5),
+
   /* datatype-based filtering */
   ADS_FILTER_NOSHAPEKEYS = (1 << 6),
   ADS_FILTER_NOMESH = (1 << 7),
@@ -935,8 +946,11 @@ typedef struct SpaceAction {
   /** Copied to region. */
   View2D v2d DNA_DEPRECATED;
 
-  /** The currently active action. */
+  /** The currently active action and its binding. */
   bAction *action;
+  int32_t action_binding_handle;
+  char _pad2[4];
+
   /** The currently active context (when not showing action). */
   bDopeSheet ads;
 
@@ -1137,6 +1151,17 @@ typedef struct ActionBinding {
    */
   int32_t handle;
 
+  /** \see #blender::animrig::Binding::flags() */
+  int8_t binding_flags;
+  uint8_t _pad1[3];
+
+  /**
+   * Runtime data. Set to nullptr when writing to disk.
+   *
+   * Use blender::animrig::Binding::runtime() to get the actual runtime class.
+   */
+  ActionBindingRuntimeHandle *binding_runtime;
+
 #ifdef __cplusplus
   blender::animrig::Binding &wrap();
   const blender::animrig::Binding &wrap() const;
@@ -1213,4 +1238,6 @@ static_assert(
     std::is_same_v<decltype(ActionBinding::handle), decltype(bAction::last_binding_handle)>);
 static_assert(
     std::is_same_v<decltype(ActionBinding::handle), decltype(ActionChannelBag::binding_handle)>);
+static_assert(
+    std::is_same_v<decltype(ActionBinding::handle), decltype(SpaceAction::action_binding_handle)>);
 #endif

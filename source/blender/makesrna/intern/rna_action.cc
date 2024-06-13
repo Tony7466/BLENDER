@@ -352,6 +352,17 @@ static void rna_ActionBinding_name_update(Main *bmain, Scene *, PointerRNA *ptr)
   anim.binding_name_propagate(*bmain, binding);
 }
 
+void rna_ActionBinding_debug_log_users(struct ActionBinding *self)
+{
+  animrig::Binding &binding = self->wrap();
+
+  printf("Binding '%s' users:\n", binding.name);
+  for (ID *user : binding.users()) {
+    printf("  - %s\n", user->name);
+  }
+  printf("That's it!\n");
+}
+
 static std::optional<std::string> rna_ActionLayer_path(const PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
@@ -914,6 +925,12 @@ static void rna_def_dopesheet(BlenderRNA *brna)
   RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, 0);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 
+  prop = RNA_def_property(srna, "show_all_bindings", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "filterflag", ADS_FILTER_ALL_BINDINGS);
+  RNA_def_property_ui_text(prop, "Show All Bindings", "Show all the Action's Bindings");
+  RNA_def_property_ui_icon(prop, ICON_LINKED, 0); /* TODO: select icon for Bindings. */
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
+
   prop = RNA_def_property(srna, "show_hidden", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "filterflag", ADS_FILTER_INCL_HIDDEN);
   RNA_def_property_ui_text(
@@ -1307,6 +1324,8 @@ static void rna_def_action_binding(BlenderRNA *brna)
                          "Number specific to this Binding, unique within the Animation data-block"
                          "This is used, for example, on a KeyframeActionStrip to look up the "
                          "ActionChannelBag for this Binding");
+
+  RNA_def_function(srna, "debug_log_users", "rna_ActionBinding_debug_log_users");
 }
 
 static void rna_def_ActionLayer_strips(BlenderRNA *brna, PropertyRNA *cprop)

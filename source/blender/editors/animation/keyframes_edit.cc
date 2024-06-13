@@ -416,7 +416,7 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
      */
     case ALE_GROUP: /* action group */
       return agrp_keyframes_loop(ked, (bActionGroup *)ale->data, key_ok, key_cb, fcu_cb);
-    case ALE_ACTION_LAYERED: { /* Animation data-block. */
+    case ALE_ACTION_LAYERED: { /* Layered Action. */
 #ifdef WITH_ANIM_BAKLAVA
       /* This assumes that the ALE_ACTION_LAYERED channel is shown in the dopesheet context,
        * underneath the data-block that owns `ale->adt`. So that means that the loop is limited to
@@ -428,7 +428,18 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
       return 0;
 #endif
     }
-    case ALE_ACT: /* action */
+    case ALE_ACTION_BINDING: {
+#ifdef WITH_ANIM_BAKLAVA
+      animrig::Action *action = static_cast<animrig::Action *>(ale->key_data);
+      BLI_assert(action);
+      animrig::Binding *binding = static_cast<animrig::Binding *>(ale->data);
+      return anim_keyframes_loop(ked, *action, binding, key_ok, key_cb, fcu_cb);
+#else
+      return 0;
+#endif
+    }
+
+    case ALE_ACT: /* Legacy Action. */
       return act_keyframes_loop(ked, (bAction *)ale->key_data, key_ok, key_cb, fcu_cb);
     case ALE_OB: /* object */
       return ob_keyframes_loop(ked, ads, (Object *)ale->key_data, key_ok, key_cb, fcu_cb);
@@ -475,8 +486,9 @@ short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked,
     case ALE_GROUP: /* action group */
       return agrp_keyframes_loop(ked, (bActionGroup *)data, key_ok, key_cb, fcu_cb);
     case ALE_ACTION_LAYERED:
+    case ALE_ACTION_BINDING:
       /* This function is only used in nlaedit_apply_scale_exec(). Since the NLA has no support for
-       * Animation data-blocks in strips, there is no need to implement this here. */
+       * layered Actions in strips, there is no need to implement this here. */
       return 0;
     case ALE_ACT: /* action */
       return act_keyframes_loop(ked, (bAction *)data, key_ok, key_cb, fcu_cb);
