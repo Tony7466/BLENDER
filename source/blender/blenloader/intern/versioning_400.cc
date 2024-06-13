@@ -2655,7 +2655,9 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void * /*user_d
   }
 
   float length_factor = speed_factor;
-  if (seq->type == SEQ_TYPE_SOUND_RAM || !SEQ_retiming_is_allowed(seq)) {
+  if (seq->type == SEQ_TYPE_SOUND_RAM || !SEQ_retiming_is_allowed(seq) ||
+      SEQ_retiming_keys_count(seq) > 0)
+  {
     length_factor = 1.0f;
   }
 
@@ -3121,13 +3123,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             SpaceSeq *sseq = (SpaceSeq *)sl;
             sseq->timeline_overlay.flag |= SEQ_TIMELINE_SHOW_STRIP_RETIMING;
           }
-        }
-      }
-
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        Editing *ed = SEQ_editing_get(scene);
-        if (ed != nullptr) {
-          SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, nullptr);
         }
       }
     }
@@ -4193,6 +4188,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 59)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, nullptr);
+      }
+    }
+  }
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
