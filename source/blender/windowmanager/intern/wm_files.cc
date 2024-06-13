@@ -799,16 +799,14 @@ static void wm_file_read_post(bContext *C,
   }
 
   if (use_data) {
-    if (!G.background) {
-      if (wm->undo_stack == nullptr) {
-        wm->undo_stack = BKE_undosys_stack_create();
-      }
-      else {
-        BKE_undosys_stack_clear(wm->undo_stack);
-      }
-      BKE_undosys_stack_init_from_main(wm->undo_stack, bmain);
-      BKE_undosys_stack_init_from_context(wm->undo_stack, C);
+    if (wm->undo_stack == nullptr) {
+      wm->undo_stack = BKE_undosys_stack_create();
     }
+    else {
+      BKE_undosys_stack_clear(wm->undo_stack);
+    }
+    BKE_undosys_stack_init_from_main(wm->undo_stack, bmain);
+    BKE_undosys_stack_init_from_context(wm->undo_stack, C);
   }
 
   if (use_data) {
