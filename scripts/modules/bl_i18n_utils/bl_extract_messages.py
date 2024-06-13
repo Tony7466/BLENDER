@@ -1047,14 +1047,10 @@ def dump_extension_metadata(msgs, reports, settings):
     i18n_contexts = bpy.app.translations.contexts
 
     # Extract tags for add-on and theme extensions.
-    addon_tags = set()
-    theme_tags = set()
-    for extension_repo in tags.tags:
-        addon_tags.update(extension_repo["add-ons"])
-        theme_tags.update(extension_repo["themes"])
-    for extension_type, tag_set in (("Add-on", addon_tags), ("Theme", theme_tags)):
-        for tag in sorted(tag_set):
-            process_msg(msgs, i18n_contexts.script, tag, extension_type + " extension tag", reports, None, settings)
+    for tag in sorted(tags.addons):
+        process_msg(msgs, i18n_contexts.script, tag, "Add-on extension tag", reports, None, settings)
+    for tag in sorted(tags.themes):
+        process_msg(msgs, i18n_contexts.script, tag, "Theme extension tag", reports, None, settings)
 
     # Extract extension permissions.
     for permission in sorted(permissions.permissions):
