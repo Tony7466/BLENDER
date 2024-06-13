@@ -1303,7 +1303,7 @@ static int ptcache_frame_from_filename(const char *filename, const char *ext)
     return atoi(num);
   }
 
-  return PTCACHE_FILE_NOT_FOUND;
+  return PTCACHE_NO_FILE;
 }
 
 /* Takes an Object ID and returns a unique name
@@ -2498,7 +2498,7 @@ static int ptcache_write_needed(PTCacheID *pid, int cfra, int *overwrite)
   int ofra = 0, efra = cache->endframe;
 
   /* always start from scratch on the first frame */
-  if (cfra && cfra == cache->startframe) {
+  if (cfra != PTCACHE_NO_FILE && cfra == cache->startframe) {
     BKE_ptcache_id_clear(pid, PTCACHE_CLEAR_ALL, cfra);
     cache->flag &= ~PTCACHE_REDO_NEEDED;
     return 1;
@@ -2523,7 +2523,7 @@ static int ptcache_write_needed(PTCacheID *pid, int cfra, int *overwrite)
   else {
     PTCacheMem *pm = static_cast<PTCacheMem *>(cache->mem_cache.last);
     /* don't write info file in memory */
-    if (cfra == 0) {
+    if (cfra == PTCACHE_NO_FILE) {
       return 0;
     }
 
@@ -2558,7 +2558,7 @@ int BKE_ptcache_write(PTCacheID *pid, uint cfra)
   int totpoint = pid->totpoint(pid->calldata, cfra);
   int overwrite = 0, error = 0;
 
-  if (totpoint == 0 || (cfra ? pid->data_types == 0 : pid->info_types == 0)) {
+  if (totpoint == 0 || ((cfra != PTCACHE_NO_FILE) ? pid->data_types == 0 : pid->info_types == 0)) {
     return 0;
   }
 
@@ -2579,12 +2579,12 @@ int BKE_ptcache_write(PTCacheID *pid, uint cfra)
     cache->flag &= ~PTCACHE_FRAMES_SKIPPED;
   }
   /* Don't mark skipped when writing info file (frame 0) */
-  else if (cfra) {
+  else if (cfra != PTCACHE_NO_FILE) {
     cache->flag |= PTCACHE_FRAMES_SKIPPED;
   }
 
   /* Update timeline cache display */
-  if (cfra && cache->cached_frames) {
+  if (cfra != PTCACHE_NO_FILE && cache->cached_frames) {
     cache->cached_frames[cfra - cache->startframe] = 1;
   }
 
@@ -2665,7 +2665,7 @@ void BKE_ptcache_id_clear(PTCacheID *pid, int mode, uint cfra)
                 /* read the number of the file */
                 const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-                if (frame != PTCACHE_FILE_NOT_FOUND) {
+                if (frame != PTCACHE_NO_FILE) {
                   if ((mode == PTCACHE_CLEAR_BEFORE && frame < cfra) ||
                       (mode == PTCACHE_CLEAR_AFTER && frame > cfra))
                   {
@@ -2858,7 +2858,7 @@ void BKE_ptcache_id_time(
             /* read the number of the file */
             const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-            if ((frame != PTCACHE_FILE_NOT_FOUND) && (frame >= sta && frame <= end)) {
+            if ((frame != PTCACHE_NO_FILE) && (frame >= sta && frame <= end)) {
               cache->cached_frames[frame - sta] = 1;
             }
           }
@@ -3368,10 +3368,10 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
           ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
           ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
           BKE_ptcache_id_from_particles(&pid_eval, ob_eval, psys_eval);
-          BKE_ptcache_write(&pid_eval, 0);
+          BKE_ptcache_write(&pid_eval, PTCACHE_NO_FILE);
         }
         else {
-          BKE_ptcache_write(pid, 0);
+          BKE_ptcache_write(pid, PTCACHE_NO_FILE);
         }
       }
     }
@@ -3411,10 +3411,10 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
               ParticleSystem *psys = static_cast<ParticleSystem *>(pid->calldata);
               ParticleSystem *psys_eval = psys_eval_get(depsgraph, ob, psys);
               BKE_ptcache_id_from_particles(&pid_eval, ob_eval, psys_eval);
-              BKE_ptcache_write(&pid_eval, 0);
+              BKE_ptcache_write(&pid_eval, PTCACHE_NO_FILE);
             }
             else {
-              BKE_ptcache_write(pid, 0);
+              BKE_ptcache_write(pid, PTCACHE_NO_FILE);
             }
           }
         }
@@ -3483,7 +3483,7 @@ void BKE_ptcache_mem_to_disk(PTCacheID *pid)
 
   /* write info file */
   if (cache->flag & PTCACHE_BAKED) {
-    BKE_ptcache_write(pid, 0);
+    BKE_ptcache_write(pid, PTCACHE_NO_FILE);
   }
 }
 void BKE_ptcache_toggle_disk_cache(PTCacheID *pid)
@@ -3575,7 +3575,7 @@ void BKE_ptcache_disk_cache_rename(PTCacheID *pid, const char *name_src, const c
         /* read the number of the file */
         const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-        if (frame != PTCACHE_FILE_NOT_FOUND) {
+        if (frame != PTCACHE_NO_FILE) {
           BLI_path_join(old_path_full, sizeof(old_path_full), path, de->d_name);
           ptcache_filepath(pid, new_path_full, frame, true, true);
           BLI_rename_overwrite(old_path_full, new_path_full);
@@ -3632,7 +3632,7 @@ void BKE_ptcache_load_external(PTCacheID *pid)
         /* read the number of the file */
         const int frame = ptcache_frame_from_filename(de->d_name, ext);
 
-        if (frame != PTCACHE_FILE_NOT_FOUND) {
+        if (frame != PTCACHE_NO_FILE) {
           if (frame) {
             start = std::min(start, frame);
             end = std::max(end, frame);
