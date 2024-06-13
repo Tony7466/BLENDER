@@ -842,11 +842,19 @@ void bezt_remap_times(KeyframeEditData *ked, BezTriple *bezt)
 /* ******************************************* */
 /* Transform */
 
+static inline void apply_bezt_delta(BezTriple *bezt, const float delta)
+{
+  bezt->vec[0][0] += delta;
+  bezt->vec[1][0] += delta;
+  bezt->vec[2][0] += delta;
+}
+
 /* snaps the keyframe to the nearest frame */
 static short snap_bezier_nearest(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(floorf(bezt->vec[1][0] + 0.5f));
+    const float delta = floorf(bezt->vec[1][0] + 0.5f) - bezt->vec[1][0];
+    apply_bezt_delta(bezt, delta);
   }
   return 0;
 }
@@ -858,7 +866,8 @@ static short snap_bezier_nearestsec(KeyframeEditData *ked, BezTriple *bezt)
   const float secf = float(FPS);
 
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(floorf(bezt->vec[1][0] / secf + 0.5f)) * secf;
+    const float delta = floorf(bezt->vec[1][0] / secf + 0.5f) * secf - bezt->vec[1][0];
+    apply_bezt_delta(bezt, delta);
   }
   return 0;
 }
@@ -868,7 +877,8 @@ static short snap_bezier_cframe(KeyframeEditData *ked, BezTriple *bezt)
 {
   const Scene *scene = ked->scene;
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(scene->r.cfra);
+    const float delta = float(scene->r.cfra) - bezt->vec[1][0];
+    apply_bezt_delta(bezt, delta);
   }
   return 0;
 }
@@ -877,7 +887,9 @@ static short snap_bezier_cframe(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_nearmarker(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(ED_markers_find_nearest_marker_time(&ked->list, bezt->vec[1][0]));
+    const float delta = float(ED_markers_find_nearest_marker_time(&ked->list, bezt->vec[1][0])) -
+                        bezt->vec[1][0];
+    apply_bezt_delta(bezt, delta);
   }
   return 0;
 }
@@ -886,7 +898,8 @@ static short snap_bezier_nearmarker(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_horizontal(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[0][1] = bezt->vec[2][1] = bezt->vec[1][1];
+    const float delta = bezt->vec[2][1] = bezt->vec[1][1] - bezt->vec[1][0];
+    apply_bezt_delta(bezt, delta);
 
     if (ELEM(bezt->h1, HD_AUTO, HD_AUTO_ANIM, HD_VECT)) {
       bezt->h1 = HD_ALIGN;
@@ -902,7 +915,8 @@ static short snap_bezier_horizontal(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short snap_bezier_time(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = ked->f1;
+    const float delta = ked->f1 - bezt->vec[1][0];
+    apply_bezt_delta(bezt, delta);
   }
   return 0;
 }
@@ -911,7 +925,10 @@ static short snap_bezier_time(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_value(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][1] = ked->f1;
+    const float delta = ked->f1 - bezt->vec[1][1];
+    bezt->vec[0][1] += delta;
+    bezt->vec[1][1] += delta;
+    bezt->vec[2][1] += delta;
   }
   return 0;
 }
