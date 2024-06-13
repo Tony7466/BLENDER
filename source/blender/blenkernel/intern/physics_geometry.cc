@@ -21,6 +21,8 @@
 
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
 #include <LinearMath/btMotionState.h>
 #include <LinearMath/btTransform.h>
 #include <functional>
@@ -143,6 +145,66 @@ bke::PhysicsGeometry::BodyActivationState activation_state_to_blender(int bt_sta
   }
 }
 
+inline btTypedConstraintType to_bullet(bke::PhysicsGeometry::ConstraintType type)
+{
+  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
+  switch (type) {
+    case ConstraintType::None:
+      return FIXED_CONSTRAINT_TYPE;
+    case ConstraintType::Fixed:
+      return FIXED_CONSTRAINT_TYPE;
+    case ConstraintType::Point:
+      return POINT2POINT_CONSTRAINT_TYPE;
+    case ConstraintType::Hinge:
+      return HINGE_CONSTRAINT_TYPE;
+    case ConstraintType::Slider:
+      return SLIDER_CONSTRAINT_TYPE;
+    case ConstraintType::ConeTwist:
+      return CONETWIST_CONSTRAINT_TYPE;
+    case ConstraintType::SixDoF:
+      return D6_CONSTRAINT_TYPE;
+    case ConstraintType::SixDoFSpring:
+      return D6_SPRING_CONSTRAINT_TYPE;
+    case ConstraintType::SixDoFSpring2:
+      return D6_SPRING_2_CONSTRAINT_TYPE;
+    case ConstraintType::Contact:
+      return CONTACT_CONSTRAINT_TYPE;
+    case ConstraintType::Gear:
+      return GEAR_CONSTRAINT_TYPE;
+  }
+  return FIXED_CONSTRAINT_TYPE;
+}
+
+inline bke::PhysicsGeometry::ConstraintType to_blender(btTypedConstraintType type)
+{
+  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
+  switch (type) {
+    case FIXED_CONSTRAINT_TYPE:
+      return ConstraintType::Fixed;
+    case POINT2POINT_CONSTRAINT_TYPE:
+      return ConstraintType::Point;
+    case HINGE_CONSTRAINT_TYPE:
+      return ConstraintType::Hinge;
+    case SLIDER_CONSTRAINT_TYPE:
+      return ConstraintType::Slider;
+    case CONETWIST_CONSTRAINT_TYPE:
+      return ConstraintType::ConeTwist;
+    case D6_CONSTRAINT_TYPE:
+      return ConstraintType::SixDoF;
+    case D6_SPRING_CONSTRAINT_TYPE:
+      return ConstraintType::SixDoFSpring;
+    case D6_SPRING_2_CONSTRAINT_TYPE:
+      return ConstraintType::SixDoFSpring2;
+    case CONTACT_CONSTRAINT_TYPE:
+      return ConstraintType::Contact;
+    case GEAR_CONSTRAINT_TYPE:
+      return ConstraintType::Gear;
+
+    default:
+      return ConstraintType::None;
+  }
+}
+
 struct DefaultOverlapFilter : public btOverlapFilterCallback {
   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
   {
@@ -186,332 +248,19 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
   return body.setUserIndex2(int(current));
 }
 
-/* -------------------------------------------------------------------- */
-/** \name Physics World
- * \{ */
-
-// PhysicsWorldImpl::PhysicsWorldImpl()
-//{
-//   this->config = new btDefaultCollisionConfiguration();
-//   this->dispatcher = new btCollisionDispatcher(this->config);
-//   btGImpactCollisionAlgorithm::registerAlgorithm((btCollisionDispatcher *)this->dispatcher);
-//
-//   this->broadphase = new btDbvtBroadphase();
-//   this->overlap_filter = new DefaultOverlapFilter();
-//   this->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(this->overlap_filter);
-//
-//   this->constraint_solver = new btSequentialImpulseConstraintSolver();
-//
-//   this->world = new btDiscreteDynamicsWorld(
-//       this->dispatcher, this->broadphase, this->constraint_solver, this->config);
-// }
-//
-// PhysicsWorldImpl::~PhysicsWorldImpl()
-//{
-//   delete this->world;
-//   delete this->constraint_solver;
-//   delete this->broadphase;
-//   delete this->dispatcher;
-//   delete this->config;
-//   delete this->overlap_filter;
-//
-//   this->world = 0;
-//   this->constraint_solver = 0;
-//   this->broadphase = 0;
-//   this->dispatcher = 0;
-//   this->config = 0;
-//   this->overlap_filter = 0;
-// }
-
-// PhysicsWorld::PhysicsWorld(PhysicsWorldImpl *impl) : impl_(impl)
-//{
-// }
-//
-// PhysicsWorld::~PhysicsWorld()
-//{
-// }
-//
-// PhysicsWorldImpl &PhysicsWorld::impl()
-//{
-//   return *impl_;
-// }
-//
-// const PhysicsWorldImpl &PhysicsWorld::impl() const
-//{
-//   return *impl_;
-// }
-//
-// void PhysicsWorld::set_overlap_filter(OverlapFilterFn fn)
-//{
-//   impl_->overlap_filter = new OverlapFilterWrapper(std::move(fn));
-//   impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
-// }
-//
-// void PhysicsWorld::clear_overlap_filter()
-//{
-//   if (impl_->overlap_filter) {
-//     delete impl_->overlap_filter;
-//     impl_->overlap_filter = new DefaultOverlapFilter();
-//   }
-//   impl_->broadphase->getOverlappingPairCache()->setOverlapFilterCallback(impl_->overlap_filter);
-// }
-//
-// float3 PhysicsWorld::gravity() const
-//{
-//   return to_blender(impl_->world->getGravity());
-// }
-//
-// void PhysicsWorld::set_gravity(const float3 &gravity)
-//{
-//   impl_->world->setGravity(to_bullet(gravity));
-// }
-//
-// void PhysicsWorld::set_solver_iterations(const int num_solver_iterations)
-//{
-//   btContactSolverInfo &info = impl_->world->getSolverInfo();
-//   info.m_numIterations = num_solver_iterations;
-// }
-//
-// void PhysicsWorld::set_split_impulse(const bool split_impulse)
-//{
-//   btContactSolverInfo &info = impl_->world->getSolverInfo();
-//   /* Note: Bullet stores this as int, but it's used as a bool. */
-//   info.m_splitImpulse = int(split_impulse);
-// }
-//
-// void PhysicsWorld::step_simulation(float delta_time)
-//{
-//   constexpr const float fixed_time_step = 1.0f / 60.0f;
-//   impl_->world->stepSimulation(delta_time, fixed_time_step);
-// }
-
-/** \} */
-
-template<typename T> using RigidBodyGetFn = T (*)(const btRigidBody &body);
-template<typename T> using RigidBodySetFn = void (*)(btRigidBody &body, T value);
-
-/* Placeholder that ignores get/set. */
-template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
-class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
- private:
-  const PhysicsGeometryImpl *impl_;
-  // XXX causes mystery crashes, investigate ...
-  // std::shared_lock<std::shared_mutex> lock_;
-
- public:
-  VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
-      : VArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl) /*, lock_(impl_->data_mutex)*/
-  {
-    // lock_.lock();
-  }
-
-  ~VArrayImpl_For_PhysicsBodies()
-  {
-    // lock_.unlock();
-  }
-
-  template<typename OtherElemT,
-           RigidBodyGetFn<OtherElemT> OtherGetFn,
-           RigidBodySetFn<OtherElemT> OtherSetFn>
-  friend class VArrayImpl_For_PhysicsBodies;
-
- private:
-  ElemT get(const int64_t index) const override
-  {
-    return GetFn(*impl_->rigid_bodies[index]);
-  }
-
-  void materialize(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { dst[i] = GetFn(*impl_->rigid_bodies[i]); });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i])); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(*impl_->rigid_bodies[i]); });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
-    });
-  }
-};
-
-/* Placeholder that ignores get/set. */
-template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
-class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
- private:
-  const PhysicsGeometryImpl *impl_;
-  // XXX causes mystery crashes, investigate ...
-  // std::unique_lock<std::shared_mutex> lock_;
-
- public:
-  VMutableArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
-      : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()),
-        impl_(&impl) /*, lock_(impl_->data_mutex)*/
-  {
-    // lock_.lock();
-  }
-
-  ~VMutableArrayImpl_For_PhysicsBodies()
-  {
-    // lock_.unlock();
-  }
-
-  template<typename OtherElemT,
-           RigidBodyGetFn<OtherElemT> OtherGetFn,
-           RigidBodySetFn<OtherElemT> OtherSetFn>
-  friend class VMutableArrayImpl_For_PhysicsBodies;
-
- private:
-  ElemT get(const int64_t index) const override
-  {
-    return GetFn(*impl_->rigid_bodies[index]);
-  }
-
-  void set(const int64_t index, ElemT value) override
-  {
-    SetFn(*impl_->rigid_bodies[index], value);
-  }
-
-  void materialize(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { dst[i] = GetFn(*impl_->rigid_bodies[i]); });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i])); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(*impl_->rigid_bodies[i]); });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
-    });
-  }
-};
-
-template<typename ElemT>
-class VArrayImpl_For_PhysicsBodiesStub final : public VMutableArrayImpl<ElemT> {
- private:
-  ElemT value_;
-
- public:
-  VArrayImpl_For_PhysicsBodiesStub(const ElemT value, const size_t size)
-      : VMutableArrayImpl<ElemT>(size), value_(value)
-  {
-  }
-
-  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsBodiesStub;
-
- private:
-  ElemT get(const int64_t /*index*/) const override
-  {
-    return value_;
-  }
-
-  void set(const int64_t /*index*/, ElemT /*value*/) override {}
-
-  void materialize(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = value_; });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) ElemT(value_); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t /*i*/, const int64_t pos) { dst[pos] = value_; });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t /*i*/, const int64_t pos) { new (dst + pos) ElemT(value_); });
-  }
-};
-
-template<typename T, RigidBodyGetFn<T> GetFn>
-static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const Span<T> cache)
+static int get_body_index(const btRigidBody &body)
 {
-  if (physics->impl().is_cached) {
-    return VArray<T>::ForSpan(cache);
-  }
-  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics->impl());
+  return body.getUserIndex3();
 }
 
-template<typename T, RigidBodyGetFn<T> GetFn>
-static VArray<T> VArray_For_PhysicsBodies(const PhysicsGeometry *physics, const T value)
+static void set_body_index(btRigidBody &body, const int index)
 {
-  if (physics->impl().is_cached) {
-    const int bodies_num = physics->impl().attribute_cache.body_positions.size();
-    return VArray<T>::ForSingle(value, bodies_num);
-  }
-  return VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn, nullptr>>(physics->impl());
-}
-
-template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
-static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
-                                                        const MutableSpan<T> cache)
-{
-  if (physics->impl().is_cached) {
-    return VMutableArray<T>::ForSpan(cache);
-  }
-  return VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
-      physics->impl());
-}
-
-template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn>
-static VMutableArray<T> VMutableArray_For_PhysicsBodies(const PhysicsGeometry *physics,
-                                                        const T value)
-{
-  if (physics->impl().is_cached) {
-    const int bodies_num = physics->impl().attribute_cache.body_positions.size();
-    return VMutableArray<T>::template For<VArrayImpl_For_PhysicsBodiesStub<T>>(value, bodies_num);
-  }
-  return VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
-      physics->impl());
+  body.setUserIndex3(index);
 }
 
 /* -------------------------------------------------------------------- */
 /** \name Physics Geometry
  * \{ */
-
-// static void remove_all_bodies_from_world(PhysicsGeometry &physics)
-//{
-//   if (physics.world() == nullptr) {
-//     return;
-//   }
-//   btDynamicsWorld *world = physics.world_for_write()->impl().world;
-//   for (btRigidBody *body : physics.impl_for_write().rigid_bodies) {
-//     if (body->isInWorld()) {
-//       world->removeRigidBody(body);
-//     }
-//   }
-// }
 
 /* Make sure any body flagged for simulation is actually in the world. */
 static void ensure_bodies_simulated(PhysicsGeometry &physics)
@@ -602,6 +351,9 @@ PhysicsGeometryImpl::~PhysicsGeometryImpl()
   for (const int i : this->motion_states.index_range()) {
     delete this->motion_states[i];
   }
+  for (const int i : this->constraints.index_range()) {
+    delete this->constraints[i];
+  }
 }
 
 void PhysicsGeometryImpl::delete_self()
@@ -609,7 +361,24 @@ void PhysicsGeometryImpl::delete_self()
   delete this;
 }
 
-const PhysicsGeometry::BodyAttributes PhysicsGeometry::body_attributes = {
+void PhysicsGeometryImpl::tag_body_topology_changed()
+{
+  this->body_index_cache_.tag_dirty();
+}
+
+void PhysicsGeometryImpl::ensure_body_indices() const
+{
+  this->body_index_cache_.ensure([&]() {
+    for (const int i : this->rigid_bodies.index_range()) {
+      /* Note: Technically the btRigidBody is not mutable here! We're just using it as a cache with
+       * exclusive write access, so it's fine. */
+      btRigidBody &body = const_cast<btRigidBody &>(*this->rigid_bodies[i]);
+      set_body_index(body, i);
+    }
+  });
+}
+
+const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "id",
     "simulated",
     "static",
@@ -628,7 +397,9 @@ const PhysicsGeometry::BodyAttributes PhysicsGeometry::body_attributes = {
     "linear_damping",
     "angular_damping",
     "linear_sleeping_threshold",
-    "angular_sleeping_threshold"};
+    "angular_sleeping_threshold",
+    "constraint_body1",
+    "constraint_body2"};
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states)
@@ -663,9 +434,13 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
   impl->rigid_bodies.reinitialize(bodies_num);
   impl->motion_states.reinitialize(bodies_num);
   create_bodies(impl->rigid_bodies, impl->motion_states);
+  impl->constraints.reinitialize(constraints_num);
+  for (const int i : impl->constraints.index_range()) {
+    impl->constraints[i] = nullptr;
+  }
   impl_ = impl;
 
-  UNUSED_VARS(constraints_num);
+  this->tag_body_topology_changed();
 }
 
 PhysicsGeometry::~PhysicsGeometry()
@@ -673,18 +448,6 @@ PhysicsGeometry::~PhysicsGeometry()
   BLI_assert(impl_ && impl_->strong_users() > 0);
   impl_->remove_user_and_delete_if_last();
 }
-
-// PhysicsGeometryImpl *PhysicsGeometry::try_steal_impl() const
-//{
-//   if (!impl_) {
-//     return nullptr;
-//   }
-//
-//   std::scoped_lock lock(impl_mutex_);
-//   PhysicsGeometryImpl *impl = impl_;
-//   impl_ = nullptr;
-//   return impl;
-// }
 
 const PhysicsGeometryImpl &PhysicsGeometry::impl() const
 {
@@ -887,6 +650,20 @@ IndexRange PhysicsGeometry::shapes_range() const
   return shapes_.index_range();
 }
 
+void PhysicsGeometry::tag_collision_shapes_changed() {}
+
+void PhysicsGeometry::tag_body_transforms_changed() {}
+
+void PhysicsGeometry::tag_body_topology_changed()
+{
+  this->impl_for_write().tag_body_topology_changed();
+}
+
+void PhysicsGeometry::tag_physics_changed()
+{
+  this->tag_body_topology_changed();
+}
+
 Span<CollisionShape::Ptr> PhysicsGeometry::shapes() const
 {
   return shapes_.as_span();
@@ -954,104 +731,118 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
 
 VArray<int> PhysicsGeometry::body_ids() const
 {
-  return attributes().lookup(body_attributes.id).varray.typed<int>();
+  return attributes().lookup(builtin_attributes.id).varray.typed<int>();
 }
 
 AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(body_attributes.id);
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.id);
 }
 
 VArray<bool> PhysicsGeometry::body_is_simulated() const
 {
-  return attributes().lookup(body_attributes.is_simulated).varray.typed<bool>();
+  return attributes().lookup(builtin_attributes.is_simulated).varray.typed<bool>();
 }
 
 AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
 {
-  return attributes_for_write().lookup_for_write<bool>(body_attributes.is_simulated);
+  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
 }
 
 VArray<bool> PhysicsGeometry::body_is_static() const
 {
-  return attributes().lookup(body_attributes.is_static).varray.typed<bool>();
+  return attributes().lookup(builtin_attributes.is_static).varray.typed<bool>();
 }
 
 VArray<float> PhysicsGeometry::body_masses() const
 {
-  return attributes().lookup(body_attributes.mass).varray.typed<float>();
+  return attributes().lookup(builtin_attributes.mass).varray.typed<float>();
 }
 
 AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
 {
-  return attributes_for_write().lookup_for_write<float>(body_attributes.mass);
+  return attributes_for_write().lookup_for_write<float>(builtin_attributes.mass);
 }
 
 VArray<float3> PhysicsGeometry::body_inertias() const
 {
-  return attributes().lookup(body_attributes.inertia).varray.typed<float3>();
+  return attributes().lookup(builtin_attributes.inertia).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(body_attributes.inertia);
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.inertia);
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
 {
-  return attributes().lookup(body_attributes.position).varray.typed<float3>();
+  return attributes().lookup(builtin_attributes.position).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_positions_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(body_attributes.position);
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.position);
 }
 
 VArray<math::Quaternion> PhysicsGeometry::body_rotations() const
 {
-  return attributes().lookup(body_attributes.rotation).varray.typed<math::Quaternion>();
+  return attributes().lookup(builtin_attributes.rotation).varray.typed<math::Quaternion>();
 }
 
 AttributeWriter<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
 {
-  return attributes_for_write().lookup_for_write<math::Quaternion>(body_attributes.rotation);
+  return attributes_for_write().lookup_for_write<math::Quaternion>(builtin_attributes.rotation);
 }
 
 VArray<float3> PhysicsGeometry::body_velocities() const
 {
-  return attributes().lookup(body_attributes.velocity).varray.typed<float3>();
+  return attributes().lookup(builtin_attributes.velocity).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_velocities_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(body_attributes.velocity);
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.velocity);
 }
 
 VArray<float3> PhysicsGeometry::body_angular_velocities() const
 {
-  return attributes().lookup(body_attributes.angular_velocity).varray.typed<float3>();
+  return attributes().lookup(builtin_attributes.angular_velocity).varray.typed<float3>();
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
 {
-  return attributes_for_write().lookup_for_write<float3>(body_attributes.angular_velocity);
+  return attributes_for_write().lookup_for_write<float3>(builtin_attributes.angular_velocity);
 }
 
 VArray<int> PhysicsGeometry::body_activation_states() const
 {
-  return attributes().lookup<int>(body_attributes.activation_state).varray;
+  return attributes().lookup<int>(builtin_attributes.activation_state).varray;
 }
 
 AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
 {
-  return attributes_for_write().lookup_for_write<int>(body_attributes.activation_state);
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.activation_state);
 }
 
-void PhysicsGeometry::tag_collision_shapes_changed() {}
+VArray<int> PhysicsGeometry::constraint_body_1() const
+{
+  return attributes().lookup<int>(builtin_attributes.constraint_body1).varray;
+}
 
-void PhysicsGeometry::tag_body_transforms_changed() {}
+AttributeWriter<int> PhysicsGeometry::constraint_body_1_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body1);
+}
 
-void PhysicsGeometry::tag_physics_changed() {}
+VArray<int> PhysicsGeometry::constraint_body_2() const
+{
+  return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
+}
+
+AttributeWriter<int> PhysicsGeometry::constraint_body_2_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body2);
+}
 
 /**
  * Utility to group together multiple functions that are used to access custom data on geometry
@@ -1068,6 +859,9 @@ struct PhysicsAccessInfo {
 template<typename T> using RigidBodyGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
 template<typename T>
 using RigidBodyGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl);
+template<typename T> using ConstraintGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
+template<typename T>
+using ConstraintGetMutableCacheFn = MutableSpan<T> (*)(PhysicsGeometryImpl &impl);
 
 /**
  * Provider for builtin rigid body attributes.
@@ -1162,6 +956,112 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
   }
 };
 
+/**
+ * Provider for builtin constraint attributes.
+ */
+template<typename T,
+         ConstraintGetFn<T> GetFn,
+         ConstraintSetFn<T> SetFn = nullptr,
+         ConstraintGetCacheFn<T> GetCacheFn = nullptr,
+         ConstraintGetMutableCacheFn<T> GetMutableCacheFn = nullptr>
+class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributeProvider {
+  using UpdateOnChange = void (*)(void *owner);
+  using EnsureOnAccess = void (*)(const void *owner);
+  const PhysicsAccessInfo physics_access_;
+  const UpdateOnChange update_on_change_;
+  const EnsureOnAccess ensure_on_access_;
+
+ public:
+  BuiltinConstraintAttributeProvider(std::string attribute_name,
+                                     const AttrDomain domain,
+                                     const DeletableEnum deletable,
+                                     const PhysicsAccessInfo physics_access,
+                                     const UpdateOnChange update_on_change,
+                                     const AttributeValidator validator = {},
+                                     const EnsureOnAccess ensure_on_access = nullptr)
+      : BuiltinAttributeProvider(std::move(attribute_name),
+                                 domain,
+                                 cpp_type_to_custom_data_type(CPPType::get<T>()),
+                                 deletable,
+                                 validator),
+        physics_access_(physics_access),
+        update_on_change_(update_on_change),
+        ensure_on_access_(ensure_on_access)
+  {
+  }
+
+  GAttributeReader try_get_for_read(const void *owner) const final
+  {
+    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    if (ensure_on_access_) {
+      ensure_on_access_(owner);
+    }
+
+    GVArray varray;
+    if constexpr (GetCacheFn == nullptr) {
+      varray = VArray_For_PhysicsConstraints<T, GetFn>(physics, T());
+    }
+    else {
+      varray = VArray_For_PhysicsConstraints<T, GetFn>(physics, GetCacheFn(physics->impl()));
+    }
+
+    return {std::move(varray), domain_, nullptr};
+  }
+
+  GAttributeWriter try_get_for_write(void *owner) const final
+  {
+    if constexpr (SetFn == nullptr) {
+      return {};
+    }
+    PhysicsGeometry *physics = physics_access_.get_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    if (ensure_on_access_) {
+      ensure_on_access_(owner);
+    }
+
+    // GVMutableArray varray = VMutableArray_For_PhysicsBodies<T, GetFn, SetFn>(physics);
+    PhysicsGeometryImpl &impl = physics->impl_for_write();
+
+    GVMutableArray varray;
+    if constexpr (GetMutableCacheFn == nullptr) {
+      varray = VMutableArray_For_PhysicsConstraints<T, GetFn, SetFn>(physics, T());
+    }
+    else {
+      varray = VMutableArray_For_PhysicsConstraints<T, GetFn, SetFn>(physics,
+                                                                     GetMutableCacheFn(impl));
+    }
+
+    std::function<void()> tag_modified_fn;
+    if (update_on_change_ != nullptr) {
+      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
+    }
+
+    return {std::move(varray), domain_, std::move(tag_modified_fn)};
+  }
+
+  bool try_delete(void * /*owner*/) const final
+  {
+    return false;
+  }
+
+  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
+  {
+    return false;
+  }
+
+  bool exists(const void * /*owner*/) const final
+  {
+    return true;
+  }
+};
+
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
   static PhysicsAccessInfo physics_access = {
@@ -1173,7 +1073,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   constexpr auto id_get_fn = [](const btRigidBody &body) -> int { return body.getUserIndex(); };
   constexpr auto id_set_fn = [](btRigidBody &body, int value) { body.setUserIndex(value); };
   static BuiltinRigidBodyAttributeProvider<int, id_get_fn, id_set_fn> body_id(
-      PhysicsGeometry::body_attributes.id,
+      PhysicsGeometry::builtin_attributes.id,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1187,7 +1087,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   static BuiltinRigidBodyAttributeProvider<bool, simulated_get_fn, simulated_set_fn>
       body_simulated(
-          PhysicsGeometry::body_attributes.is_simulated,
+          PhysicsGeometry::builtin_attributes.is_simulated,
           AttrDomain::Point,
           BuiltinAttributeProvider::NonDeletable,
           physics_access,
@@ -1209,7 +1109,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     }
   };
   static BuiltinRigidBodyAttributeProvider<bool, static_get_fn, static_set_fn> body_static(
-      PhysicsGeometry::body_attributes.is_static,
+      PhysicsGeometry::builtin_attributes.is_static,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1224,7 +1124,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setCollisionFlags(bt_collision_flags);
   };
   static BuiltinRigidBodyAttributeProvider<bool, kinematic_get_fn, kinematic_set_fn>
-      body_kinematic(PhysicsGeometry::body_attributes.is_kinematic,
+      body_kinematic(PhysicsGeometry::builtin_attributes.is_kinematic,
                      AttrDomain::Point,
                      BuiltinAttributeProvider::NonDeletable,
                      physics_access,
@@ -1239,7 +1139,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     }
   };
   static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
-      PhysicsGeometry::body_attributes.mass,
+      PhysicsGeometry::builtin_attributes.mass,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1263,7 +1163,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     }
   };
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
-      PhysicsGeometry::body_attributes.inertia,
+      PhysicsGeometry::builtin_attributes.inertia,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1276,7 +1176,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.getWorldTransform().setOrigin(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3, position_get_fn, position_set_fn> body_position(
-      PhysicsGeometry::body_attributes.position,
+      PhysicsGeometry::builtin_attributes.position,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1289,7 +1189,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.getWorldTransform().setRotation(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<math::Quaternion, rotation_get_fn, rotation_set_fn>
-      body_rotation(PhysicsGeometry::body_attributes.rotation,
+      body_rotation(PhysicsGeometry::builtin_attributes.rotation,
                     AttrDomain::Point,
                     BuiltinAttributeProvider::NonDeletable,
                     physics_access,
@@ -1302,7 +1202,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setLinearVelocity(to_bullet(value));
   };
   static BuiltinRigidBodyAttributeProvider<float3, velocity_get_fn, velocity_set_fn> body_velocity(
-      PhysicsGeometry::body_attributes.velocity,
+      PhysicsGeometry::builtin_attributes.velocity,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1317,7 +1217,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float3,
                                            angular_velocity_get_fn,
                                            angular_velocity_set_fn>
-      body_angular_velocity(PhysicsGeometry::body_attributes.angular_velocity,
+      body_angular_velocity(PhysicsGeometry::builtin_attributes.angular_velocity,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
@@ -1334,7 +1234,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState(value)));
   };
   static BuiltinRigidBodyAttributeProvider<int, activation_state_get_fn, activation_state_set_fn>
-      body_activation_state(PhysicsGeometry::body_attributes.activation_state,
+      body_activation_state(PhysicsGeometry::builtin_attributes.activation_state,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
@@ -1345,7 +1245,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   constexpr auto friction_set_fn = [](btRigidBody &body, float value) { body.setFriction(value); };
   static BuiltinRigidBodyAttributeProvider<float, friction_get_fn, friction_set_fn> body_friction(
-      PhysicsGeometry::body_attributes.friction,
+      PhysicsGeometry::builtin_attributes.friction,
       AttrDomain::Point,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
@@ -1358,7 +1258,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setRollingFriction(value);
   };
   static BuiltinRigidBodyAttributeProvider<float, rolling_friction_get_fn, rolling_friction_set_fn>
-      body_rolling_friction(PhysicsGeometry::body_attributes.rolling_friction,
+      body_rolling_friction(PhysicsGeometry::builtin_attributes.rolling_friction,
                             AttrDomain::Point,
                             BuiltinAttributeProvider::NonDeletable,
                             physics_access,
@@ -1373,7 +1273,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float,
                                            spinning_friction_get_fn,
                                            spinning_friction_set_fn>
-      body_spinning_friction(PhysicsGeometry::body_attributes.spinning_friction,
+      body_spinning_friction(PhysicsGeometry::builtin_attributes.spinning_friction,
                              AttrDomain::Point,
                              BuiltinAttributeProvider::NonDeletable,
                              physics_access,
@@ -1386,7 +1286,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setRestitution(value);
   };
   static BuiltinRigidBodyAttributeProvider<float, restitution_get_fn, restitution_set_fn>
-      body_restitution(PhysicsGeometry::body_attributes.restitution,
+      body_restitution(PhysicsGeometry::builtin_attributes.restitution,
                        AttrDomain::Point,
                        BuiltinAttributeProvider::NonDeletable,
                        physics_access,
@@ -1399,7 +1299,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
   static BuiltinRigidBodyAttributeProvider<float, linear_damping_get_fn, linear_damping_set_fn>
-      body_linear_damping(PhysicsGeometry::body_attributes.linear_damping,
+      body_linear_damping(PhysicsGeometry::builtin_attributes.linear_damping,
                           AttrDomain::Point,
                           BuiltinAttributeProvider::NonDeletable,
                           physics_access,
@@ -1412,7 +1312,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     body.setSleepingThresholds(value, body.getAngularSleepingThreshold());
   };
   static BuiltinRigidBodyAttributeProvider<float, angular_damping_get_fn, angular_damping_set_fn>
-      body_angular_damping(PhysicsGeometry::body_attributes.angular_damping,
+      body_angular_damping(PhysicsGeometry::builtin_attributes.angular_damping,
                            AttrDomain::Point,
                            BuiltinAttributeProvider::NonDeletable,
                            physics_access,
@@ -1427,7 +1327,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float,
                                            linear_sleeping_threshold_get_fn,
                                            linear_sleeping_threshold_set_fn>
-      body_linear_sleeping_threshold(PhysicsGeometry::body_attributes.linear_sleeping_threshold,
+      body_linear_sleeping_threshold(PhysicsGeometry::builtin_attributes.linear_sleeping_threshold,
                                      AttrDomain::Point,
                                      BuiltinAttributeProvider::NonDeletable,
                                      physics_access,
@@ -1442,11 +1342,42 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   static BuiltinRigidBodyAttributeProvider<float,
                                            angular_sleeping_threshold_get_fn,
                                            angular_sleeping_threshold_set_fn>
-      body_angular_sleeping_threshold(PhysicsGeometry::body_attributes.angular_sleeping_threshold,
-                                      AttrDomain::Point,
-                                      BuiltinAttributeProvider::NonDeletable,
-                                      physics_access,
-                                      nullptr);
+      body_angular_sleeping_threshold(
+          PhysicsGeometry::builtin_attributes.angular_sleeping_threshold,
+          AttrDomain::Point,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          nullptr);
+
+  constexpr auto constraint_body1_get_fn = [](const btTypedConstraint &constraint) -> int {
+    return get_body_index(constraint.getRigidBodyA());
+  };
+  static BuiltinConstraintAttributeProvider<int, constraint_body1_get_fn> constraint_body1(
+      PhysicsGeometry::builtin_attributes.constraint_body1,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {},
+      [](const void *owner) {
+        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
+        physics->impl().ensure_body_indices();
+      });
+
+  constexpr auto constraint_body2_get_fn = [](const btTypedConstraint &constraint) -> int {
+    return get_body_index(constraint.getRigidBodyB());
+  };
+  static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
+      PhysicsGeometry::builtin_attributes.constraint_body2,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {},
+      [](const void *owner) {
+        const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
+        physics->impl().ensure_body_indices();
+      });
 
   return ComponentAttributeProviders({&body_id,
                                       &body_simulated,
@@ -1466,7 +1397,9 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_linear_damping,
                                       &body_angular_damping,
                                       &body_linear_sleeping_threshold,
-                                      &body_angular_sleeping_threshold},
+                                      &body_angular_sleeping_threshold,
+                                      &constraint_body1,
+                                      &constraint_body2},
                                      {});
 }
 

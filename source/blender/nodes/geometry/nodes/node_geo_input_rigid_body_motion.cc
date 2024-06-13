@@ -21,16 +21,16 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   params.set_output(
       "Position",
-      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attributes.position));
+      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.position));
   params.set_output("Rotation",
                     AttributeFieldInput::Create<math::Quaternion>(
-                        bke::PhysicsGeometry::body_attributes.rotation));
+                        bke::PhysicsGeometry::builtin_attributes.rotation));
   params.set_output(
       "Velocity",
-      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attributes.velocity));
-  params.set_output(
-      "Angular Velocity",
-      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attributes.angular_velocity));
+      AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::builtin_attributes.velocity));
+  params.set_output("Angular Velocity",
+                    AttributeFieldInput::Create<float3>(
+                        bke::PhysicsGeometry::builtin_attributes.angular_velocity));
 }
 
 static void node_register()

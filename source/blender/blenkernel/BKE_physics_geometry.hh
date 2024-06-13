@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_cache_mutex.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_quaternion_types.hh"
@@ -43,6 +44,20 @@ class PhysicsGeometry {
     AlwaysSleeping,
   };
 
+  enum class ConstraintType {
+    None,
+    Fixed,
+    Point,
+    Hinge,
+    Slider,
+    ConeTwist,
+    SixDoF,
+    SixDoFSpring,
+    SixDoFSpring2,
+    Contact,
+    Gear,
+  };
+
  private:
   /* Implementation of the physics world and rigid bodies.
    * This is an implicit shared pointer, multiple users can read the physics data. Requesting write
@@ -54,7 +69,8 @@ class PhysicsGeometry {
   Vector<CollisionShapePtr> shapes_;
 
  public:
-  static const struct BodyAttributes {
+  static const struct BuiltinAttributes {
+    /* Body attributes. */
     std::string id;
     std::string is_simulated;
     std::string is_static;
@@ -74,7 +90,11 @@ class PhysicsGeometry {
     std::string angular_damping;
     std::string linear_sleeping_threshold;
     std::string angular_sleeping_threshold;
-  } body_attributes;
+
+    /* Constraint attributes. */
+    std::string constraint_body1;
+    std::string constraint_body2;
+  } builtin_attributes;
 
   PhysicsGeometry();
   explicit PhysicsGeometry(int rigid_bodies_num, int constraints_num);
@@ -143,8 +163,15 @@ class PhysicsGeometry {
   VArray<int> body_activation_states() const;
   AttributeWriter<int> body_activation_states_for_write();
 
+  VArray<int> constraint_body_1() const;
+  AttributeWriter<int> constraint_body_1_for_write();
+
+  VArray<int> constraint_body_2() const;
+  AttributeWriter<int> constraint_body_2_for_write();
+
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
+  void tag_body_topology_changed();
   void tag_physics_changed();
 
   bke::AttributeAccessor attributes() const;
