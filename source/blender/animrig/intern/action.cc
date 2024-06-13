@@ -41,6 +41,7 @@
 
 #include "ANIM_action.hh"
 #include "ANIM_fcurve.hh"
+#include "action_runtime.hh"
 
 #include "atomic_ops.h"
 
@@ -469,26 +470,46 @@ bool Action::assign_id(Binding *binding, ID &animated_id)
     return false;
   }
 
-  if (binding) {
-    if (!binding->is_suitable_for(animated_id)) {
-      return false;
-    }
-    this->binding_setup_for_id(*binding, animated_id);
+  /* Check that the new Binding is suitable, before changing `adt`. */
+  if (binding && !binding->is_suitable_for(animated_id)) {
+    return false;
+  }
 
+  /* Unassign any previously-assigned Binding. */
+  Binding *binding_to_unassign = this->binding_for_handle(adt->binding_handle);
+  if (binding_to_unassign) {
+    binding_to_unassign->users_remove(animated_id);
+
+    /* Before unassigning, make sure that the stored Binding name is up to date. The binding name
+     * might have changed in a way that wasn't copied into the ADT yet (for example when the
+     * Action is linked from another file), so better copy the name to be sure that it can be
+     * transparently reassigned later.
+     *
+     * TODO: Replace this with a BLI_assert() that the name is as expected, and "simply" ensure
+     * this name is always correct. */
+    STRNCPY_UTF8(adt->binding_name, binding_to_unassign->name);
+  }
+
+  /* Assign the Action itself. */
+  if (!adt->action) {
+    /* Due to the precondition check above, we know that adt->action is either 'this' (in which
+     * case the user count is already correct) or `nullptr` (in which case this is a new
+     * reference, and the user count should be increased). */
+    id_us_plus(&this->id);
+    adt->action = this;
+  }
+
+  /* Assign the Binding. */
+  if (binding) {
+    this->binding_setup_for_id(*binding, animated_id);
     adt->binding_handle = binding->handle;
+    binding->users_add(animated_id);
+
     /* Always make sure the ID's binding name matches the assigned binding. */
     STRNCPY_UTF8(adt->binding_name, binding->name);
   }
   else {
-    unassign_binding(*adt);
-  }
-
-  if (!adt->action) {
-    /* Due to the precondition check above, we know that adt->action is either 'this' (in which
-     * case the user count is already correct) or `nullptr` (in which case this is a new reference,
-     * and the user count should be increased). */
-    id_us_plus(&this->id);
-    adt->action = this;
+    adt->binding_handle = Binding::unassigned;
   }
 
   return true;
@@ -517,8 +538,10 @@ void Action::unassign_id(ID &animated_id)
   BLI_assert_msg(adt, "ID is not animated at all");
   BLI_assert_msg(adt->action == this, "ID is not assigned to this Animation");
 
-  unassign_binding(*adt);
+  /* Unassign the Binding first. */
+  this->assign_id(nullptr, animated_id);
 
+  /* Unassign the Action itself. */
   id_us_min(&this->id);
   adt->action = nullptr;
 }
@@ -606,6 +629,11 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 
 /* ----- ActionBinding implementation ----------- */
 
+Binding::~Binding()
+{
+  MEM_SAFE_FREE(this->binding_runtime);
+}
+
 bool Binding::is_suitable_for(const ID &animated_id) const
 {
   if (!this->has_idtype()) {
@@ -655,10 +683,43 @@ void Binding::set_selected(const bool selected)
   }
 }
 
+BindingRuntime &Binding::runtime()
+{
+  if (!this->binding_runtime) {
+    this->binding_runtime = MEM_new<BindingRuntime>(__func__);
+  }
+  return *this->binding_runtime;
+}
+
+Set<ID *> &Binding::users()
+{
+  BindingRuntime &runtime = this->runtime();
+  if (runtime.is_users_dirty) {
+    internal::rebuild_binding_user_cache();
+  }
+
+  return runtime.users;
+}
+
+void Binding::users_add(ID &animated_id)
+{
+  this->users().add(&animated_id);
+}
+
+void Binding::users_remove(ID &animated_id)
+{
+  this->users().remove(&animated_id);
+}
+
+void Binding::users_invalidate()
+{
+  BindingRuntime::is_users_dirty = true;
+}
+
+/* ----- Functions  ----------- */
+
 bool assign_animation(Action &anim, ID &animated_id)
 {
-  BLI_assert(anim.is_action_layered());
-
   unassign_animation(animated_id);
 
   Binding *binding = anim.find_suitable_binding_for(animated_id);
@@ -698,24 +759,24 @@ void unassign_animation(ID &animated_id)
   anim->unassign_id(animated_id);
 }
 
-void unassign_binding(AnimData &adt)
+void unassign_binding(ID &animated_id)
 {
-  /* Before unassigning, make sure that the stored Binding name is up to date. The binding name
-   * might have changed in a way that wasn't copied into the ADT yet (for example when the
-   * Animation data-block is linked from another file), so better copy the name to be sure that it
-   * can be transparently reassigned later.
-   *
-   * TODO: Replace this with a BLI_assert() that the name is as expected, and "simply" ensure this
-   * name is always correct. */
-  if (adt.action) {
-    const Action &anim = adt.action->wrap();
-    const Binding *binding = anim.binding_for_handle(adt.binding_handle);
-    if (binding) {
-      STRNCPY_UTF8(adt.binding_name, binding->name);
-    }
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+  BLI_assert_msg(adt, "Cannot unassign an Action Binding from a non-animated ID.");
+  if (!adt) {
+    return;
   }
 
-  adt.binding_handle = Binding::unassigned;
+  if (!adt->action) {
+    /* Nothing assigned. */
+    BLI_assert_msg(adt->binding_handle == Binding::unassigned,
+                   "Binding handle should be 'unassigned' when no Action is assigned");
+    return;
+  }
+
+  /* Assign the 'nullptr' binding, effectively unassigning it. */
+  Action &action = adt->action->wrap();
+  action.assign_id(nullptr, animated_id);
 }
 
 /* TODO: rename to get_action(). */
@@ -729,6 +790,24 @@ Action *get_animation(ID &animated_id)
     return nullptr;
   }
   return &adt->action->wrap();
+}
+
+std::optional<std::pair<Action *, Binding *>> get_action_binding_pair(ID &animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+  if (!adt || !adt->action) {
+    /* Not animated by any Action. */
+    return std::nullopt;
+  }
+
+  Action &action = adt->action->wrap();
+  Binding *binding = action.binding_for_handle(adt->binding_handle);
+  if (!binding) {
+    /* Will not receive any animation from this Action. */
+    return std::nullopt;
+  }
+
+  return std::make_pair(&action, binding);
 }
 
 std::string Binding::name_prefix_for_idtype() const

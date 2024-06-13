@@ -43,6 +43,7 @@
 #include "BLI_utildefines.h"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
@@ -50,6 +51,10 @@
 #include "RNA_path.hh"
 
 #include "CLG_log.h"
+
+#ifdef WITH_ANIM_BAKLAVA
+#  include "ANIM_action.hh"
+#endif  // WITH_ANIM_BAKLAVA
 
 static CLG_LogRef LOG = {"bke.anim_sys"};
 
@@ -165,6 +170,10 @@ static bool animdata_set_action(ReportList *reports, ID *id, bAction **act_slot,
   *act_slot = act;
   id_us_plus((ID *)*act_slot);
 
+#ifdef WITH_ANIM_BAKLAVA
+  blender::animrig::Binding::users_invalidate();
+#endif  // WITH_ANIM_BAKLAVA
+
   return true;
 }
 
@@ -230,42 +239,52 @@ bool BKE_animdata_action_ensure_idroot(const ID *owner, bAction *action)
 
 void BKE_animdata_free(ID *id, const bool do_id_user)
 {
-  /* Only some ID-blocks have this info for now, so we cast the
-   * types that do to be of type IdAdtTemplate
-   */
-  if (id_can_have_animdata(id)) {
-    IdAdtTemplate *iat = (IdAdtTemplate *)id;
-    AnimData *adt = iat->adt;
+  if (!id_can_have_animdata(id)) {
+    return;
+  }
 
-    /* check if there's any AnimData to start with */
-    if (adt) {
-      if (do_id_user) {
-        /* unlink action (don't free, as it's in its own list) */
-        if (adt->action) {
-          id_us_min(&adt->action->id);
-        }
-        /* same goes for the temporarily displaced action */
-        if (adt->tmpact) {
-          id_us_min(&adt->tmpact->id);
-        }
-      }
+  IdAdtTemplate *iat = (IdAdtTemplate *)id;
+  AnimData *adt = iat->adt;
+  if (!adt) {
+    return;
+  }
 
-      /* free nla data */
-      BKE_nla_tracks_free(&adt->nla_tracks, do_id_user);
-
-      /* free drivers - stored as a list of F-Curves */
-      BKE_fcurves_free(&adt->drivers);
-
-      /* free driver array cache */
-      MEM_SAFE_FREE(adt->driver_array);
-
-      /* free overrides */
-      /* TODO... */
-
-      /* free animdata now */
-      MEM_freeN(adt);
-      iat->adt = nullptr;
+  if (do_id_user) {
+    /* unlink action (don't free, as it's in its own list) */
+    if (adt->action) {
+      id_us_min(&adt->action->id);
     }
+    /* same goes for the temporarily displaced action */
+    if (adt->tmpact) {
+      id_us_min(&adt->tmpact->id);
+    }
+  }
+
+  /* free nla data */
+  BKE_nla_tracks_free(&adt->nla_tracks, do_id_user);
+
+  /* free drivers - stored as a list of F-Curves */
+  BKE_fcurves_free(&adt->drivers);
+
+  /* free driver array cache */
+  MEM_SAFE_FREE(adt->driver_array);
+
+  /* free overrides */
+  /* TODO... */
+
+  /* free animdata now */
+  MEM_freeN(adt);
+  iat->adt = nullptr;
+
+  /* Action references may have changed, either through this call directly (if `do_id_user=true`)
+   * or indirectly by the caller (because it's freeing its own data as part of a larger
+   * operation). In either case it's a good idea to refresh the Bindings user cache here, so that
+   * not every caller needs to worry about this.
+   *
+   * This user cache only concerns original IDs though, and doesn't track evaluated copies, hence
+   * the condition. */
+  if (DEG_is_original_id(id)) {
+    blender::animrig::Binding::users_invalidate();
   }
 }
 
@@ -374,6 +393,14 @@ AnimData *BKE_animdata_copy_in_lib(Main *bmain,
 
   /* don't copy overrides */
   BLI_listbase_clear(&dadt->overrides);
+
+  const bool is_main = (flag & LIB_ID_CREATE_NO_MAIN) == 0;
+  if (is_main) {
+    /* Action references were changed, so the Binding-to-user map is incomplete now. Only necessary
+     * when this happens in the main database though, as the user cache only tracks original IDs,
+     * not evaluated copies. */
+    blender::animrig::Binding::users_invalidate();
+  }
 
   /* return */
   return dadt;

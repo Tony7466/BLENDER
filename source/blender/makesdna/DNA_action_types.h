@@ -45,6 +45,7 @@ typedef struct GPUVertBufHandle GPUVertBufHandle;
 /* Forward declarations so the actual declarations can happen top-down. */
 struct ActionLayer;
 struct ActionBinding;
+struct ActionBinding_runtime;
 struct ActionStrip;
 struct ActionChannelBag;
 
@@ -53,11 +54,15 @@ struct ActionChannelBag;
 namespace blender::animrig {
 class Action;
 class Binding;
+class BindingRuntime;
 class ChannelBag;
 class KeyframeStrip;
 class Layer;
 class Strip;
 }  // namespace blender::animrig
+using ActionBindingRuntimeHandle = blender::animrig::BindingRuntime;
+#else
+typedef struct ActionBindingRuntimeHandle ActionBindingRuntimeHandle;
 #endif
 
 /* ************************************************ */
@@ -1149,6 +1154,13 @@ typedef struct ActionBinding {
   /** \see #blender::animrig::Binding::flags() */
   int8_t binding_flags;
   uint8_t _pad1[3];
+
+  /**
+   * Runtime data. Set to nullptr when writing to disk.
+   *
+   * Use blender::animrig::Binding::runtime() to get the actual runtime class.
+   */
+  ActionBindingRuntimeHandle *binding_runtime;
 
 #ifdef __cplusplus
   blender::animrig::Binding &wrap();
