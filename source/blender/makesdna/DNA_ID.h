@@ -173,6 +173,25 @@ typedef struct IDProperty {
   IDPropertyUIData *ui_data;
 } IDProperty;
 
+typedef struct ID {
+    void *next, *prev;
+    struct ID *newid;
+    struct Library *lib;
+    char name[66]; /* MAX_ID_NAME */
+    short flag;
+    short tag;
+    int us, icon_id;
+    int recalc;
+    int recalc_up_to_undo_push;
+    short idcode;
+    char _pad[6];
+
+    /* NEW: Custom fields for file selector */
+    int file_id;
+    char file_path[1024]; /* Maximum file path length */
+} ID;
+
+
 #define MAX_IDPROP_NAME 64
 #define DEFAULT_ALLOC_FOR_NULL_STRINGS 64
 
