@@ -6585,6 +6585,9 @@ void calc_cube_distance_falloff(SculptSession &ss,
                                 const MutableSpan<float> r_distances,
                                 const MutableSpan<float> factors)
 {
+  BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == r_distances.size());
+
   SculptBrushTest test;
   SCULPT_brush_test_init(ss, test);
   const float tip_roundness = brush.tip_roundness;
