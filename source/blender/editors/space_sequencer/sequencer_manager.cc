@@ -9,6 +9,15 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
+/* Search for files */
+static void search_files(const char *query, uiLayout *layout)
+{
+    for (int i = 0; i < cached_file_count; i++) {
+        if (BLI_strcasestr(cached_files[i].file_path, query)) {
+            uiItemL(layout, cached_files[i].file_path, ICON_FILE);
+        }
+    }
+}
 /* Operator for selecting text files */
 static int open_text_file_exec(bContext *C, wmOperator *op)
 {
