@@ -339,7 +339,8 @@ static void sequencer_listener(const wmSpaceTypeListenerParams *params)
       break;
   }
 }
-
+/*fonction of sequencer_manager.cc*/
+ extern void register_file_selector_panel(void);
 /* DO NOT make this static, this hides the symbol and breaks API generation script. */
 extern "C" const char *sequencer_context_dir[]; /* Quiet warning. */
 const char *sequencer_context_dir[] = {"edit_mask", nullptr};
