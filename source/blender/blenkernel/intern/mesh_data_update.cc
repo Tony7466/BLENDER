@@ -1016,9 +1016,10 @@ static void mesh_build_data(Depsgraph &depsgraph,
   BKE_object_eval_assign_data(&ob, &mesh_eval->id, is_mesh_eval_owned);
 
   /* If the mesh is empty, remove it all together to prevent warnings in Geometry Nodes. */
-  if(BKE_mesh_wrapper_vert_len(mesh_eval) == 0){
+  if (BKE_mesh_wrapper_vert_len(mesh_eval) == 0) {
     geometry_set_eval->remove(GeometryComponent::Type::Mesh);
-  }else{
+  }
+  else {
     /* Add the final mesh as a non-owning component to the geometry set. */
     MeshComponent &mesh_component = geometry_set_eval->get_component_for_write<MeshComponent>();
     mesh_component.replace(mesh_eval, GeometryOwnershipType::Editable);
