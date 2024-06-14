@@ -52,7 +52,6 @@
 #include "DNA_world_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_math_vector.h"
 #include "BLI_mempool.h"
 #include "BLI_system.h"
