@@ -175,7 +175,6 @@ struct VKGraphicsInfo {
     hash = hash * 33 ^ uint64_t(vk_pipeline_layout);
     hash = hash * 33 ^ get_default_hash(specialization_constants);
     hash = hash * 33 ^ state.data;
-    /* TODO: Fix mutable state. */
     hash = hash * 33 ^ mutable_state.data[0];
     hash = hash * 33 ^ mutable_state.data[1];
     hash = hash * 33 ^ mutable_state.data[2];
