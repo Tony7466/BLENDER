@@ -698,7 +698,9 @@ static float fcm_cycles_time(
       return evaltime;
     }
 
-    /* calculate the 'number' of the cycle */
+    /* Calculate the 'number' of the cycle. Needs to be a double to combat precision issues like
+     * #119360. With floats it can happen that the `cycle` jumps to the next full number, while
+     * `cyct` below is still behind. */
     const double cycle = side * (double(evaltime) - double(ofs)) / double(cycdx);
     /* calculate the time inside the cycle */
     const float cyct = fmod(evaltime - ofs, cycdx);
