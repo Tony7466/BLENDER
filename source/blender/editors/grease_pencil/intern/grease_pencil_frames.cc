@@ -169,6 +169,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     GreasePencilFrame frame_duplicate = frame;
     frame_duplicate.drawing_index = duplicated_drawing_index;
     trans_data.duplicated_frames_buffer.add_overwrite(frame_number, frame_duplicate);
+    trans_data.duplicate_drawing_array.append(grease_pencil.drawing(duplicated_drawing_index));
 
     /* Deselect the current frame, so that only the copy is selected. */
     frame.flag ^= GP_FRAME_SELECTED;

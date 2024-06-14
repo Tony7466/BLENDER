@@ -336,6 +336,8 @@ struct LayerTransformData {
    * Used in the move+duplicate operator. */
   Map<int, GreasePencilFrame> duplicated_frames_buffer;
 
+  Vector<GreasePencilDrawingBase *> duplicate_drawing_array;
+
   FrameTransformationStatus status{TRANS_CLEAR};
 };
 
