@@ -4088,7 +4088,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 99)) { /* TODO: set subversion once patch is done */
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
-      sequencer_tool_settings->snap_mode |= SEQ_SNAP_BOUNDS_TO_BORDERS | SEQ_SNAP_PIVOT_TO_CENTERS;
+      sequencer_tool_settings->snap_mode |= SEQ_SNAP_TO_RENDER_BORDERS |
+                                            SEQ_SNAP_TO_RENDER_CENTERS;
     }
   }
 

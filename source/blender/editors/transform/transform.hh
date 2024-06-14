@@ -311,6 +311,8 @@ struct TransSnap {
   /* Snapped Element Type (currently for objects only). */
   eSnapMode source_type;
   eSnapMode target_type;
+  /* For independent snapping in different directions (currently used only by VSE preview). */
+  eSnapDir direction;
   /** Snapping from this point (in global-space). */
   float snap_source[3];
   /** To this point (in global-space). */

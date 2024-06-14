@@ -2867,7 +2867,7 @@ class SEQUENCER_PT_preview_snapping(Panel):
         col = layout.column(heading="Snap to", align=True)
         col.prop(sequencer_tool_settings, "snap_to_borders")
         col.prop(sequencer_tool_settings, "snap_to_centers")
-        col.prop(sequencer_tool_settings, "snap_to_other_strips")
+        col.prop(sequencer_tool_settings, "snap_to_strips_preview")
 
 class SEQUENCER_PT_sequencer_snapping(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'

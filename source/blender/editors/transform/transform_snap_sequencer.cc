@@ -24,6 +24,7 @@
 #include "SEQ_render.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
+#include "SEQ_transform.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -243,14 +244,17 @@ static bool seq_snap_target_points_build(Scene *scene,
 /** \name Snap utilities
  * \{ */
 
-static int seq_snap_threshold_get_frame_distance(const TransInfo *t)
+static int seq_snap_threshold_get_view_distance(const TransInfo *t, bool do_round)
 {
   const int snap_distance = SEQ_tool_settings_snap_distance_get(t->scene);
   const View2D *v2d = &t->region->v2d;
-  return round_fl_to_int(UI_view2d_region_to_view_x(v2d, snap_distance) -
-                         UI_view2d_region_to_view_x(v2d, 0));
+  float view_distance = UI_view2d_region_to_view_x(v2d, snap_distance) -
+                        UI_view2d_region_to_view_x(v2d, 0);
+  if (do_round) {
+    view_distance = round_fl_to_int(view_distance);
+  }
+  return view_distance;
 }
-
 /** \} */
 
 TransSeqSnapData *transform_snap_sequencer_data_alloc(const TransInfo *t)
@@ -312,7 +316,7 @@ bool transform_snap_sequencer_calc(TransInfo *t)
     }
   }
 
-  if (best_dist > seq_snap_threshold_get_frame_distance(t)) {
+  if (best_dist > seq_snap_threshold_get_view_distance(t, true)) {
     return false;
   }
 
@@ -321,9 +325,141 @@ bool transform_snap_sequencer_calc(TransInfo *t)
   return true;
 }
 
-void transform_snap_sequencer_apply_translate(TransInfo *t, float *vec)
+static void transform_snap_sequencer_image_to_targets(const TransInfo *t,
+                                                      const float point[2],
+                                                      float r_dist[2],
+                                                      float r_target[2],
+                                                      float r_source[2])
+{
+  View2D *v2d = &t->region->v2d;
+  float dist_x;
+  float dist_y;
+
+  // TODO: get rid of so much code copy-paste...
+  if (t->tsnap.mode & SEQ_SNAP_TO_RENDER_BORDERS) {
+    dist_x = abs(point[0] - v2d->tot.xmin);
+    if (dist_x < r_dist[0]) {
+      r_dist[0] = dist_x;
+      r_source[0] = point[0];
+      r_target[0] = v2d->tot.xmin;
+    }
+
+    dist_x = abs(point[0] - v2d->tot.xmax);
+    if (dist_x < r_dist[0]) {
+      r_dist[0] = dist_x;
+      r_source[0] = point[0];
+      r_target[0] = v2d->tot.xmax;
+    }
+
+    dist_y = abs(point[1] - v2d->tot.ymin);
+    if (dist_y < r_dist[1]) {
+      r_dist[1] = dist_y;
+      r_source[1] = point[1];
+      r_target[1] = v2d->tot.ymin;
+    }
+
+    dist_y = abs(point[1] - v2d->tot.ymax);
+    if (dist_y < r_dist[1]) {
+      r_dist[1] = dist_y;
+      r_source[1] = point[1];
+      r_target[1] = v2d->tot.ymax;
+    }
+  }
+
+  if (t->tsnap.mode & SEQ_SNAP_TO_RENDER_CENTERS) {
+    dist_x = abs(point[0] - 0);
+    if (dist_x < r_dist[0]) {
+      r_dist[0] = dist_x;
+      r_source[0] = point[0];
+      r_target[0] = 0;
+    }
+
+    dist_y = abs(point[1] - 0);
+    if (dist_y < r_dist[1]) {
+      r_dist[1] = dist_y;
+      r_source[0] = point[0];
+      r_target[1] = 0;
+    }
+  }
+  // if (t->tsnap.mode & SEQ_SNAP_TO_STRIPS_PREVIEW) {
+  // }
+}
+
+bool transform_snap_sequencer_image_calc(TransInfo *t)
+{
+  Scene *scene = t->scene;
+  if (scene->ed == nullptr) {
+    return false;
+  }
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *channels = SEQ_channels_displayed_get(ed);
+
+  blender::VectorSet source_strips = SEQ_query_rendered_strips(
+      scene, channels, ed->seqbasep, scene->r.cfra, 0);
+  source_strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
+  if (source_strips.size() == 0) {
+    return false;
+  }
+
+  /* Store best snap candidates in x and y directions separately. */
+  float best_dist[2] = {FLT_MAX, FLT_MAX}, best_target[2] = {0, 0}, best_source[2] = {0, 0};
+
+  for (Sequence *seq : source_strips) {
+    /* Source points are all four corners and the center of an image quad. */
+    float seq_image_quad[4][2];
+    SEQ_image_transform_final_quad_get(scene, seq, seq_image_quad);
+    for (int i = 0; i < 4; i++) {
+      transform_snap_sequencer_image_to_targets(
+          t, seq_image_quad[i], best_dist, best_target, best_source);
+    }
+
+    StripTransform *st = seq->strip->transform;
+    float center[2] = {st->origin[0], st->origin[1]};
+    transform_snap_sequencer_image_to_targets(t, center, best_dist, best_target, best_source);
+  }
+
+  bool retval = false;
+  t->tsnap.direction &= ~(SCE_SNAP_GLOBAL_X | SCE_SNAP_GLOBAL_Y);
+
+  float snap_threshold = seq_snap_threshold_get_view_distance(t, false);
+  if (best_dist[0] <= snap_threshold) {
+    t->tsnap.snap_target[0] = best_target[0];
+    t->tsnap.snap_source[0] = best_source[0];
+    t->tsnap.direction |= SCE_SNAP_GLOBAL_X;
+    retval = true;
+  }
+
+  if (best_dist[1] <= snap_threshold) {
+    t->tsnap.snap_target[1] = best_target[1];
+    t->tsnap.snap_source[1] = best_source[1];
+    t->tsnap.direction |= SCE_SNAP_GLOBAL_Y;
+    retval = true;
+  }
+
+  return retval;
+}
+
+// TODO: add snaptesting
+// static bool snapTest(View2D *v2d)
+// {
+//   return true;
+// }
+
+void transform_snap_sequencer_apply_seqslide(TransInfo *t, float *vec)
 {
   *vec += t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
+}
+
+void transform_snap_sequencer_image_apply_translate(TransInfo *t, float vec[2])
+{
+  /* Apply snap along x and y axes independently. */
+  if (t->tsnap.direction & SCE_SNAP_GLOBAL_X) {
+    vec[0] += t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
+  }
+
+  if (t->tsnap.direction & SCE_SNAP_GLOBAL_Y) {
+    vec[1] += t->tsnap.snap_target[1] - t->tsnap.snap_source[1];
+  }
 }
 
 static int transform_snap_sequencer_to_closest_strip_ex(TransInfo *t, int frame_1, int frame_2)
@@ -352,7 +488,7 @@ static int transform_snap_sequencer_to_closest_strip_ex(TransInfo *t, int frame_
   float snap_offset = 0;
   if (snap_success) {
     t->tsnap.status |= (SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
-    transform_snap_sequencer_apply_translate(t, &snap_offset);
+    transform_snap_sequencer_apply_seqslide(t, &snap_offset);
   }
   else {
     t->tsnap.status &= ~(SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);

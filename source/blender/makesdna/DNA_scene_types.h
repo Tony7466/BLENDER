@@ -2389,6 +2389,13 @@ typedef enum eSnapTargetOP {
 } eSnapTargetOP;
 ENUM_OPERATORS(eSnapTargetOP, SCE_SNAP_TARGET_NOT_NONEDITED)
 
+typedef enum eSnapDir {
+  SCE_SNAP_GLOBAL_X = (1 << 0),
+  SCE_SNAP_GLOBAL_Y = (1 << 1),
+  SCE_SNAP_GLOBAL_Z = (1 << 2),
+} eSnapDir;
+ENUM_OPERATORS(eSnapDir, SCE_SNAP_GLOBAL_Z)
+
 /** #ToolSettings::snap_mode */
 typedef enum eSnapMode {
   SCE_SNAP_TO_NONE = 0,
@@ -2440,7 +2447,7 @@ enum {
   /* Preview snapping. */
   SEQ_SNAP_TO_RENDER_BORDERS = 1 << 4,
   SEQ_SNAP_TO_RENDER_CENTERS = 1 << 5,
-  SEQ_SNAP_TO_
+  SEQ_SNAP_TO_STRIPS_PREVIEW = 1 << 6,
 };
 
 /** #SequencerToolSettings::snap_flag */

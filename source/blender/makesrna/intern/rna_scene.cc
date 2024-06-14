@@ -4227,7 +4227,7 @@ static void rna_def_sequencer_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Centers", "Snap to horizontal and vertical render centers");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
-  prop = RNA_def_property(srna, "snap_to_other_strips", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "snap_to_strips_preview", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_mode", SEQ_SNAP_TO_STRIPS_PREVIEW);
   RNA_def_property_ui_text(
       prop, "Other Strips", "Snap to borders and centers of deselected, visible strips");
