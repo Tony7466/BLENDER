@@ -55,9 +55,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const ConstraintType constraint_type = ConstraintType(params.node().custom1);
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Physics");
-  int count = params.extract_input<int>("Count");
-  Field<int> body1_field = params.extract_input<Field<int>>("Body 1");
-  Field<int> body2_field = params.extract_input<Field<int>>("Body 2");
+  const int count = params.extract_input<int>("Count");
+  const Field<int> body1_field = params.extract_input<Field<int>>("Body 1");
+  const Field<int> body2_field = params.extract_input<Field<int>>("Body 2");
 
   if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
     physics->resize(physics->bodies_num(), physics->constraints_num() + std::max(count, 0));

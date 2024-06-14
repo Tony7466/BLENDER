@@ -169,9 +169,9 @@ class PhysicsGeometry {
   VArray<int> constraint_body_2() const;
 
   void create_constraints(const IndexMask &selection,
-                          VArray<int> types,
-                          VArray<int> bodies1,
-                          VArray<int> bodies2);
+                          const VArray<int> &types,
+                          const VArray<int> &bodies1,
+                          const VArray<int> &bodies2);
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();

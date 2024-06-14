@@ -1054,9 +1054,9 @@ static btTypedConstraint *make_constraint_type(const PhysicsGeometry::Constraint
 }
 
 void PhysicsGeometry::create_constraints(const IndexMask &selection,
-                                         VArray<int> types,
-                                         VArray<int> bodies1,
-                                         VArray<int> bodies2)
+                                         const VArray<int> &types,
+                                         const VArray<int> &bodies1,
+                                         const VArray<int> &bodies2)
 {
   if (this->impl().is_cached) {
     return;
