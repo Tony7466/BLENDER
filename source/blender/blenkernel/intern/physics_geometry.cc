@@ -308,6 +308,7 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = [
   attributes.is_kinematic = "kinematic";
   attributes.mass = "mass";
   attributes.inertia = "inertia";
+  attributes.center_of_mass = "center_of_mass";
   attributes.position = "position";
   attributes.rotation = "rotation";
   attributes.velocity = "velocity";
@@ -1177,6 +1178,19 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
+  constexpr auto center_of_mass_get_fn = [](const btRigidBody &body) -> float4x4 {
+    return to_blender(body.getCenterOfMassTransform());
+  };
+  constexpr auto center_of_mass_set_fn = [](btRigidBody &body, float4x4 value) {
+    body.setCenterOfMassTransform(to_bullet(value));
+  };
+  static BuiltinRigidBodyAttributeProvider<float4x4, center_of_mass_get_fn, center_of_mass_set_fn>
+      body_center_of_mass(PhysicsGeometry::builtin_attributes.center_of_mass,
+                          AttrDomain::Point,
+                          BuiltinAttributeProvider::NonDeletable,
+                          physics_access,
+                          nullptr);
+
   constexpr auto position_get_fn = [](const btRigidBody &body) -> float3 {
     return to_blender(body.getWorldTransform().getOrigin());
   };
@@ -1712,6 +1726,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_kinematic,
                                       &body_mass,
                                       &body_inertia,
+                                      &body_center_of_mass,
                                       &body_position,
                                       &body_rotation,
                                       &body_velocity,

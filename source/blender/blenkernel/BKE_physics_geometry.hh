@@ -75,6 +75,7 @@ class PhysicsGeometry {
     std::string is_kinematic;
     std::string mass;
     std::string inertia;
+    std::string center_of_mass;
     std::string position;
     std::string rotation;
     std::string velocity;
