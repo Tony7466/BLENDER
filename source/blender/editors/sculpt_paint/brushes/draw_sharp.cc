@@ -164,6 +164,9 @@ static void calc_bmesh_sharp(Object &object,
   const int mask_offset = CustomData_get_offset_named(
       &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
+  SculptOrigVertData orig_data;
+  SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
+
   /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   int i = 0;
@@ -173,7 +176,12 @@ static void calc_bmesh_sharp(Object &object,
       continue;
     }
 
-    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
+    SCULPT_orig_vert_data_update(orig_data, *vert);
+    //  if (orig_data.bm_log) {
+    //        BM_log_original_vert_data(orig_data.bm_log, vert, &orig_data.co, &orig_data.no);
+    //      }
+
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       i++;
       continue;
     }
@@ -181,9 +189,9 @@ static void calc_bmesh_sharp(Object &object,
     const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
-                                                    vert->co,
+                                                    orig_data.co,
                                                     math::sqrt(test.dist),
-                                                    vert->no,
+                                                    orig_data.no,
                                                     nullptr,
                                                     mask,
                                                     BKE_pbvh_make_vref(intptr_t(vert)),
