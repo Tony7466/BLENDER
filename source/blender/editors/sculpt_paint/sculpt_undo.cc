@@ -1736,6 +1736,7 @@ void push_end_ex(Object &ob, const bool use_nested_undo)
   UndoStack *ustack = ED_undo_stack_get();
   SculptUndoStep *us = (SculptUndoStep *)BKE_undosys_stack_init_or_active_with_type(
       ustack, BKE_UNDOSYS_TYPE_SCULPT);
+  std::cout << "us: " << us << '\n';
 
   save_active_attribute(ob, &us->active_color_end);
   print_nodes(ob, nullptr);
