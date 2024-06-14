@@ -36,6 +36,7 @@
 #include "ED_time_scrub_ui.hh"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "SEQ_iterator.hh"
 #include "SEQ_sequencer.hh"
@@ -788,7 +789,12 @@ static int convert_action_exec(bContext *C, wmOperator *op)
 
   animrig::unassign_animation(object->id);
   BLI_assert(layered_action->binding_array_num == 1);
-  layered_action->assign_id(&layered_action->binding_array[0]->wrap(), object->id);
+  layered_action->assign_id(layered_action->binding(0), object->id);
+
+  ANIM_id_update(bmain, &object->id);
+  DEG_relations_tag_update(CTX_data_main(C));
+
+  WM_main_add_notifier(NC_ANIMATION | ND_NLA_ACTCHANGE, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -805,7 +811,8 @@ static bool convert_action_poll(bContext *C)
     return false;
   }
 
-  if (adt->action->wrap().is_action_layered()) {
+  /* This will also convert empty actions, to layered by just adding an empty binding. */
+  if (!adt->action->wrap().is_action_legacy()) {
     CTX_wm_operator_poll_msg_set(C, "Action is already layered");
     return false;
   }

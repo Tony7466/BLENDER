@@ -1186,7 +1186,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
 
 Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
 {
-  if (legacy_action.is_empty() || legacy_action.is_action_layered()) {
+  if (!legacy_action.is_action_legacy()) {
     return nullptr;
   }
 
@@ -1199,16 +1199,15 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   }
 
   const std::string layered_action_name = legacy_name + suffix;
-  bAction *baction = BKE_action_add(&bmain, layered_action_name.c_str());
+  bAction *dna_action = BKE_action_add(&bmain, layered_action_name.c_str());
 
-  Action &converted_action = baction->wrap();
+  Action &converted_action = dna_action->wrap();
   Binding &binding = converted_action.binding_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
-  Strip &strip = layer.strip_add(Strip::Type::Keyframe);
-  KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
-  ChannelBag *bag = key_strip.channelbag_for_binding(binding);
+  KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
+  ChannelBag *bag = strip.channelbag_for_binding(binding);
   if (!bag) {
-    bag = &key_strip.channelbag_for_binding_add(binding);
+    bag = &strip.channelbag_for_binding_add(binding);
   }
 
   LISTBASE_FOREACH (FCurve *, fcu, &legacy_action.curves) {

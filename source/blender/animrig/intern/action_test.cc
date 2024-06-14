@@ -564,9 +564,9 @@ TEST_F(ActionLayersTest, conversion_to_layered)
   Action *converted = convert_to_layered_action(*bmain, *anim);
   ASSERT_TRUE(converted != anim);
   EXPECT_STREQ(converted->id.name, "ACACÄnimåtië_layered");
-  Strip *strip = converted->layers()[0]->strips()[0];
+  Strip *strip = converted->layer(0)->strip(0);
   KeyframeStrip key_strip = strip->as<KeyframeStrip>();
-  ChannelBag *bag = key_strip.channelbags()[0];
+  ChannelBag *bag = key_strip.channelbag(0);
   ASSERT_EQ(bag->fcurve_array_num, 2);
   ASSERT_EQ(bag->fcurve_array[0]->totvert, 2);
 
@@ -581,6 +581,15 @@ TEST_F(ActionLayersTest, conversion_to_layered)
    * "_layered". */
   EXPECT_STREQ(converted->id.name,
                "ACname_for_an_action_that_is_exactly_64_chars_which_is_MA_layered");
+}
+
+TEST_F(ActionLayersTest, empty_to_layered)
+{
+  ASSERT_TRUE(anim->is_empty());
+  Action *converted = convert_to_layered_action(*bmain, *anim);
+  ASSERT_TRUE(converted != anim);
+  ASSERT_TRUE(converted->is_action_layered());
+  ASSERT_FALSE(converted->is_action_legacy());
 }
 
 }  // namespace blender::animrig::tests
