@@ -1449,12 +1449,6 @@ void *blo_read_get_new_globaldata_address(FileData *fd, const void *adr)
   return oldnewmap_lookup_and_inc(fd->globmap, adr, true);
 }
 
-/* Used to restore packed data after undo. */
-static void *newpackedadr(FileData *fd, const void *adr)
-{
-  return oldnewmap_lookup_and_inc(fd->datamap, adr, true);
-}
-
 /* only lib data */
 static void *newlibadr(FileData *fd, ID * /*self_id*/, const bool is_linked_only, const void *adr)
 {
@@ -4725,11 +4719,6 @@ void *BLO_read_get_new_data_address_no_us(BlendDataReader *reader,
 {
   void *new_address = newdataadr_no_us(reader->fd, old_address);
   return blo_verify_data_address(new_address, old_address, expected_size);
-}
-
-void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_address)
-{
-  return newpackedadr(reader->fd, old_address);
 }
 
 void *BLO_read_struct_array_with_size(BlendDataReader *reader,
