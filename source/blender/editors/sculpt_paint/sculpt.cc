@@ -6543,7 +6543,7 @@ void calc_front_face(const float3 &view_normal,
                      const Span<int> verts,
                      const MutableSpan<float> factors)
 {
-  //BLI_assert(verts.size() == factors.size());
+  BLI_assert(verts.size() == factors.size());
 
   for (const int i : verts.index_range()) {
     const float dot = math::dot(view_normal, orig_data.normals[i]);
@@ -6676,8 +6676,7 @@ void calc_brush_texture_factors(SculptSession &ss,
     float texture_value;
     float4 texture_rgba;
     /* NOTE: This is not a thread-safe call. */
-    sculpt_apply_texture(
-        ss, brush, orig_data.coords[i], thread_id, &texture_value, texture_rgba);
+    sculpt_apply_texture(ss, brush, orig_data.coords[i], thread_id, &texture_value, texture_rgba);
 
     factors[i] *= texture_value;
   }
@@ -6775,7 +6774,7 @@ void clip_and_lock_translations(const Sculpt &sd,
     const float4x4 mirror(cache->clip_mirror_mtx);
     const float4x4 mirror_inverse = math::invert(mirror);
     for (const int i : verts.index_range()) {
-        const int vert = i; //verts[i];
+      const int vert = i;  // verts[i];
 
       /* Transform into the space of the mirror plane, check translations, then transform back. */
       float3 co_mirror = math::transform_point(mirror, orig_data.coords[vert]);

@@ -38,8 +38,6 @@ struct LocalData {
 static void calc_faces_sharp(const Sculpt &sd,
                              const Brush &brush,
                              const float3 &offset,
-                             const Span<float3> positions_eval2,
-                             const Span<float3> vert_normals2,
                              const PBVHNode &node,
                              Object &object,
                              LocalData &tls,
@@ -51,12 +49,12 @@ static void calc_faces_sharp(const Sculpt &sd,
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
-    SCULPT_orig_vert_data_update(orig_data, 0);
-    
+
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
-    
-   // const Span<float3> positions_eval(reinterpret_cast<const float3*>(orig_data.coords), verts.size());
-   // const Span<float3> vert_normals(reinterpret_cast<const float3*>(orig_data.normals), verts.size());
+
+  for (const int i : verts.index_range()) {
+    SCULPT_orig_vert_data_update(orig_data, i);
+  }
 
   tls.factors.reinitialize(verts.size());
   const MutableSpan<float> factors = tls.factors;
@@ -96,7 +94,10 @@ static void calc_faces_sharp(const Sculpt &sd,
   apply_translations_to_pbvh(*ss.pbvh, verts, translations);
 }
 
-static void calc_grids_sharp(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
+static void calc_grids_sharp(Object &object,
+                             const Brush &brush,
+                             const float3 &offset,
+                             PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -123,7 +124,7 @@ static void calc_grids_sharp(Object &object, const Brush &brush, const float3 &o
         i++;
         continue;
       }
-      //SCULPT_orig_vert_data_update_ss(subdiv_ccg, key, elem, j);
+      // SCULPT_orig_vert_data_update_ss(subdiv_ccg, key, elem, j);
       if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
         i++;
         continue;
@@ -146,7 +147,10 @@ static void calc_grids_sharp(Object &object, const Brush &brush, const float3 &o
   }
 }
 
-static void calc_bmesh_sharp(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
+static void calc_bmesh_sharp(Object &object,
+                             const Brush &brush,
+                             const float3 &offset,
+                             PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -160,6 +164,9 @@ static void calc_bmesh_sharp(Object &object, const Brush &brush, const float3 &o
   const int mask_offset = CustomData_get_offset_named(
       &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
+  SculptOrigVertData orig_data;
+  SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
+
   /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   int i = 0;
@@ -168,8 +175,9 @@ static void calc_bmesh_sharp(Object &object, const Brush &brush, const float3 &o
       i++;
       continue;
     }
-    //SCULPT_orig_vert_data_update(bmesh, vert);
-    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
+
+    SCULPT_orig_vert_data_update(orig_data, *vert); // WIP <--- Fix this null data
+    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       i++;
       continue;
     }
@@ -177,9 +185,9 @@ static void calc_bmesh_sharp(Object &object, const Brush &brush, const float3 &o
     const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
-                                                    vert->co,
+                                                    orig_data.co,
                                                     math::sqrt(test.dist),
-                                                    vert->no,
+                                                    orig_data.no,
                                                     nullptr,
                                                     mask,
                                                     BKE_pbvh_make_vref(intptr_t(vert)),
@@ -208,22 +216,11 @@ void do_draw_sharp_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> node
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      const PBVH &pbvh = *ss.pbvh;
-      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces_sharp(sd,
-                           brush,
-                           offset,
-                           positions_eval,
-                           vert_normals,
-                           *nodes[i],
-                           object,
-                           tls,
-                           positions_orig);
+          calc_faces_sharp(sd, brush, offset, *nodes[i], object, tls, positions_orig);
           BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
