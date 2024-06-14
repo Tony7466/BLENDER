@@ -893,10 +893,7 @@ static std::string get_tex_image_asset_filepath(Image *ima,
                                                 const pxr::UsdStageRefPtr stage,
                                                 const USDExportParams &export_params)
 {
-  Image *ima = reinterpret_cast<Image *>(node->id);
   std::string stage_path = stage->GetRootLayer()->GetRealPath();
-  return get_tex_image_asset_filepath(ima, stage_path, export_params);
-}
 
   if (!ima) {
     return "";
@@ -1111,31 +1108,6 @@ static void export_texture(Image *ima,
   else {
     copy_single_file(ima, dest_dir, allow_overwrite, reports);
   }
-}
-
-void export_texture(bNode *node,
-                    const pxr::UsdStageRefPtr stage,
-                    const bool allow_overwrite,
-                    ReportList *reports)
-{
-  if (!ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
-    return;
-  }
-
-  Image *ima = reinterpret_cast<Image *>(node->id);
-  if (!ima) {
-    return;
-  }
-
-  return export_texture(ima, stage, allow_overwrite, reports);
-}
-
-static void export_texture(const USDExporterContext &usd_export_context, bNode *node)
-{
-  export_texture(node,
-                 usd_export_context.stage,
-                 usd_export_context.export_params.overwrite_textures,
-                 usd_export_context.export_params.worker_status->reports);
 }
 
 static void export_texture(const USDExporterContext &usd_export_context, Image *ima)
@@ -1525,52 +1497,6 @@ void export_texture(bNode *node,
   else {
     copy_single_file(ima, dest_dir, allow_overwrite, reports);
   }
-}
-
-/* Export the texture of every texture image node in the given
- * node tree. */
-static void export_textures(const bNodeTree *ntree,
-                            const pxr::UsdStageRefPtr stage,
-                            const bool allow_overwrite,
-                            ReportList *reports)
-{
-  if (!ntree) {
-    return;
-  }
-
-  if (!stage) {
-    return;
-  }
-
-  ntree->ensure_topology_cache();
-
-  for (bNode *node = (bNode *)ntree->nodes.first; node; node = node->next) {
-    if (ELEM(node->type, SH_NODE_TEX_IMAGE, SH_NODE_TEX_ENVIRONMENT)) {
-      export_texture(node, stage, allow_overwrite, reports);
-    }
-    else if (node->is_group()) {
-      if (const bNodeTree *sub_tree = reinterpret_cast<const bNodeTree *>(node->id)) {
-        export_textures(sub_tree, stage, allow_overwrite, reports);
-      }
-    }
-  }
-}
-
-/* Export the texture of every texture image node in the given material's node tree. */
-static void export_textures(const Material *material,
-                            const pxr::UsdStageRefPtr stage,
-                            const bool allow_overwrite,
-                            ReportList *reports)
-{
-  if (!(material && material->use_nodes)) {
-    return;
-  }
-
-  if (!stage) {
-    return;
-  }
-
-  export_textures(material->nodetree, stage, allow_overwrite, reports);
 }
 
 

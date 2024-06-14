@@ -1165,9 +1165,26 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
 
   if (!file_input) {
     CLOG_WARN(&LOG,
-              "Couldn't get file input for USD shader %s",
+              "Couldn't get file input property for USD shader %s",
               usd_shader.GetPath().GetAsString().c_str());
     return;
+  }
+
+  /* File input may have a connected source, e.g., if it's been overridden by
+   * an input on the mateial. */
+  if (file_input.HasConnectedSource()) {
+    pxr::UsdShadeConnectableAPI source;
+    pxr::TfToken source_name;
+    pxr::UsdShadeAttributeType source_type;
+
+    if (file_input.GetConnectedSource(&source, &source_name, &source_type)) {
+      file_input = source.GetInput(source_name);
+    }
+    else {
+      CLOG_WARN(&LOG,
+                "ERROR: couldn't get connected source for file input %s (%s)\n",
+                file_input.GetPrim().GetPath().GetText(), file_input.GetFullName().GetText());
+    }
   }
 
   pxr::VtValue file_val;

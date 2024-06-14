@@ -418,14 +418,19 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
       const bool preview = RNA_boolean_get(ptr, "generate_preview_surface");
       const bool materialx = RNA_boolean_get(ptr, "generate_materialx_network");
       const bool export_tex = RNA_boolean_get(ptr, "export_textures");
+      const bool use_orig_paths = RNA_boolean_get(ptr, "use_original_paths");
 
       uiLayout *row = uiLayoutRow(col, true);
       uiItemR(row, ptr, "export_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiLayoutSetActive(row, export_materials && (preview || materialx));
 
       row = uiLayoutRow(col, true);
-      uiItemR(row, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(row, ptr, "use_original_paths", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiLayoutSetActive(row, export_tex && (preview || materialx));
+
+      row = uiLayoutRow(col, true);
+      uiItemR(row, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiLayoutSetActive(row, export_tex && (preview || materialx) && (!use_orig_paths));
 
       uiLayout *col2 = uiLayoutColumn(col, true);
       uiLayoutSetPropSep(col2, true);
@@ -649,6 +654,12 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Relative Paths",
                   "Use relative paths to reference external files (i.e. textures, volumes) in "
                   "USD, otherwise use absolute paths");
+
+  RNA_def_boolean(ot->srna,
+                  "use_original_paths",
+                  false,
+                  "Use Original Paths",
+                  "Export textures with original paths, and not next to USD file");
 
   RNA_def_enum(ot->srna,
                "xform_op_mode",
