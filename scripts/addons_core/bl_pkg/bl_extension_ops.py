@@ -115,6 +115,11 @@ blender_filter_by_type_map = {
     "THEME": "theme",
 }
 
+# Map how we want to show the type on the interface.
+user_interface_type_map = {
+    "add-on": "Add-on",
+    "theme": "Theme",
+}
 
 # -----------------------------------------------------------------------------
 # Signal Context Manager (Catch Control-C)
@@ -2361,7 +2366,10 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             return {'CANCELLED'}
 
         if item_local is not None:
-            self.report({'ERROR'}, "Extension: \"{:s}\" Already installed!".format(pkg_id))
+            self.report({'ERROR'}, "{:s} \"{:s}\" already installed!".format(
+                user_interface_type_map.get(item_local.type, "Extension"),
+                item_local.name,
+            ))
             return {'CANCELLED'}
 
         self._drop_variables = repo_index, repo_name, pkg_id, item_remote
