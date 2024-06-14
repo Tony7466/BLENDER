@@ -42,9 +42,9 @@ std::string get_tex_image_asset_filepath(bNode *node,
                                          const pxr::UsdStageRefPtr stage,
                                          const USDExportParams &export_params);
 
-std::string get_tex_image_asset_filepath(Image* ima,
-                                         const std::string& stage_path,
-                                         const USDExportParams& export_params);
+std::string get_tex_image_asset_filepath(Image *ima,
+                                         const std::string &stage_path,
+                                         const USDExportParams &export_params);
 
 std::string get_tex_image_asset_filepath(const std::string &asset_path,
                                          const std::string &stage_path,

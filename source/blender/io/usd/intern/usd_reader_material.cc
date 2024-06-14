@@ -1183,7 +1183,8 @@ void USDMaterialReader::load_tex_image(const pxr::UsdShadeShader &usd_shader,
     else {
       CLOG_WARN(&LOG,
                 "ERROR: couldn't get connected source for file input %s (%s)\n",
-                file_input.GetPrim().GetPath().GetText(), file_input.GetFullName().GetText());
+                file_input.GetPrim().GetPath().GetText(),
+                file_input.GetFullName().GetText());
     }
   }
 

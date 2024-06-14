@@ -927,7 +927,7 @@ static std::string get_tex_image_asset_filepath(Image *ima,
  * may be absolute, relative to the USD file, or in a 'textures' directory
  * in the same directory as the USD file, depending on the export parameters. */
 std::string get_tex_image_asset_filepath(const std::string &path,
-                                         const std::string& stage_path,
+                                         const std::string &stage_path,
                                          const USDExportParams &export_params)
 {
   if (path.empty()) {
@@ -1498,6 +1498,5 @@ void export_texture(bNode *node,
     copy_single_file(ima, dest_dir, allow_overwrite, reports);
   }
 }
-
 
 }  // namespace blender::io::usd
