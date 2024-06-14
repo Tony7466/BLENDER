@@ -130,6 +130,7 @@ void GpencilExporterSVG::export_gpencil_layers()
 
   for (ObjectZ &obz : ob_list_) {
     Object *ob = obz.ob;
+    gpd_ = static_cast<bGPdata *>(ob->data);
 
     /* Camera clipping. */
     if (is_clipping) {
