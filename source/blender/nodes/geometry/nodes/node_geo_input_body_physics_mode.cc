@@ -11,20 +11,16 @@ namespace blender::nodes::node_geo_input_body_physics_mode_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Bool>("Simulated").field_source();
   b.add_output<decl::Bool>("Static").field_source();
   b.add_output<decl::Bool>("Kinematic").field_source();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  Field<bool> simulated_field = AttributeFieldInput::Create<bool>(
-      bke::PhysicsGeometry::builtin_attributes.is_simulated);
   Field<bool> static_field = AttributeFieldInput::Create<bool>(
       bke::PhysicsGeometry::builtin_attributes.is_static);
   Field<bool> kinematic_field = AttributeFieldInput::Create<bool>(
       bke::PhysicsGeometry::builtin_attributes.is_kinematic);
-  params.set_output("Simulated", std::move(simulated_field));
   params.set_output("Static", std::move(static_field));
   params.set_output("Kinematic", std::move(kinematic_field));
 }

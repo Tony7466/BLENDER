@@ -226,24 +226,21 @@ struct OverlapFilterWrapper : public btOverlapFilterCallback {
   }
 };
 
-/* Extra flags stored in btRigidBody. */
-enum class RigidBodyUserFlag : int {
-  /* The body gets added to the simulation world. */
-  IsSimulated = (1 << 0),
-};
-ENUM_OPERATORS(RigidBodyUserFlag, RigidBodyUserFlag::IsSimulated)
+// /* Extra flags stored in btRigidBody. */
+// enum class RigidBodyUserFlag : int {};
+// ENUM_OPERATORS(RigidBodyUserFlag, 0)
 
-static RigidBodyUserFlag get_body_user_flags(const btRigidBody &body)
-{
-  return RigidBodyUserFlag(body.getUserIndex2());
-}
+// static RigidBodyUserFlag get_body_user_flags(const btRigidBody &body)
+// {
+//   return RigidBodyUserFlag(body.getUserIndex2());
+// }
 
-static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag, bool enable)
-{
-  RigidBodyUserFlag current = RigidBodyUserFlag(body.getUserIndex2());
-  SET_FLAG_FROM_TEST(current, enable, flag);
-  return body.setUserIndex2(int(current));
-}
+// static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag, bool enable)
+// {
+//   RigidBodyUserFlag current = RigidBodyUserFlag(body.getUserIndex2());
+//   SET_FLAG_FROM_TEST(current, enable, flag);
+//   return body.setUserIndex2(int(current));
+// }
 
 static int get_body_index(const btRigidBody &body)
 {
@@ -270,32 +267,6 @@ static void set_body_index(btRigidBody &body, const int index)
 /* -------------------------------------------------------------------- */
 /** \name Physics Geometry
  * \{ */
-
-/* Make sure any body flagged for simulation is actually in the world. */
-static void ensure_bodies_simulated(PhysicsGeometry &physics)
-{
-  PhysicsGeometryImpl &impl = physics.impl_for_write();
-  /* TODO there are threadsafe versions of Bullet world that could allow this in parallel. */
-  btDynamicsWorld *world = impl.world;
-  if (world == nullptr) {
-    return;
-  }
-
-  for (btRigidBody *body : impl.rigid_bodies) {
-    const bool should_be_simulated = (get_body_user_flags(*body) &
-                                      RigidBodyUserFlag::IsSimulated) != RigidBodyUserFlag(0);
-    if (should_be_simulated) {
-      if (!body->isInWorld()) {
-        world->addRigidBody(body);
-      }
-    }
-    else {
-      if (body->isInWorld()) {
-        world->removeRigidBody(body);
-      }
-    }
-  }
-}
 
 static void create_world(PhysicsGeometryImpl &impl)
 {
@@ -347,11 +318,50 @@ static void move_world(PhysicsGeometryImpl &from, PhysicsGeometryImpl &to)
   from.overlap_filter = nullptr;
 }
 
+static void add_to_world(btDynamicsWorld *world,
+                         Span<btRigidBody *> bodies,
+                         Span<btTypedConstraint *> constraints)
+{
+  if (!world) {
+    return;
+  }
+  for (btRigidBody *body : bodies) {
+    world->addRigidBody(body);
+  }
+  for (btTypedConstraint *constraint : constraints) {
+    if (!constraint) {
+      continue;
+    }
+
+    world->addConstraint(constraint);
+  }
+}
+
+static void remove_from_world(btDynamicsWorld *world,
+                              Span<btRigidBody *> bodies,
+                              Span<btTypedConstraint *> constraints)
+{
+  if (!world) {
+    return;
+  }
+  for (btRigidBody *body : bodies) {
+    world->removeRigidBody(body);
+  }
+  for (btTypedConstraint *constraint : constraints) {
+    if (!constraint) {
+      continue;
+    }
+
+    world->removeConstraint(constraint);
+  }
+}
+
 PhysicsGeometryImpl::PhysicsGeometryImpl() {}
 
 PhysicsGeometryImpl::~PhysicsGeometryImpl()
 {
   if (this->world) {
+    remove_from_world(this->world, this->rigid_bodies, this->constraints);
     destroy_world(*this);
   }
   for (const int i : this->rigid_bodies.index_range()) {
@@ -389,7 +399,6 @@ void PhysicsGeometryImpl::ensure_body_indices() const
 
 const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
     "id",
-    "simulated",
     "static",
     "kinematic",
     "mass",
@@ -420,6 +429,7 @@ static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
     btCollisionShape *collision_shape = nullptr;
     rigid_bodies[i] = new btRigidBody(
         mass, motion_state, collision_shape, to_bullet(local_inertia));
+    rigid_bodies[i]->updateInertiaTensor();
   }
 }
 
@@ -528,30 +538,28 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
   btDynamicsWorld *to_world = to.world;
 
   for (const int i_body : body_range.index_range()) {
-    btRigidBody *body = from_mutable.rigid_bodies[i_body];
-    btMotionState *motion_state = from_mutable.motion_states[i_body];
+    to.rigid_bodies[body_range[i_body]] = from_mutable.rigid_bodies[i_body];
+    to.motion_states[body_range[i_body]] = from_mutable.motion_states[i_body];
+  }
+  for (const int i_constraint : constraint_range.index_range()) {
+    to.constraints[constraint_range[i_constraint]] = from_mutable.constraints[i_constraint];
+  }
 
-    const bool add_to_world = (get_body_user_flags(*body) & RigidBodyUserFlag::IsSimulated) !=
-                              RigidBodyUserFlag(0);
-    if (add_to_world && to_world != from_world) {
-      /* Move all to new world. */
-      if (from_world != nullptr) {
-        from_world->removeRigidBody(body);
-      }
-
-      if (to_world != nullptr) {
-        to_world->addRigidBody(body);
-      }
-    }
-
-    to.rigid_bodies[body_range[i_body]] = body;
-    to.motion_states[body_range[i_body]] = motion_state;
+  /* Move all bodies and constraints to the new world. */
+  if (to_world != from_world) {
+    remove_from_world(from_world,
+                      to.rigid_bodies.as_span().slice(body_range),
+                      to.constraints.as_span().slice(constraint_range));
+    add_to_world(to_world,
+                 to.rigid_bodies.as_span().slice(body_range),
+                 to.constraints.as_span().slice(constraint_range));
   }
 
   /* Clear source pointers. */
   from_mutable.world = nullptr;
   from_mutable.rigid_bodies.reinitialize(0);
   from_mutable.motion_states.reinitialize(0);
+  from_mutable.constraints.reinitialize(0);
 }
 
 bool PhysicsGeometry::has_world() const
@@ -802,10 +810,12 @@ void PhysicsGeometry::set_body_shapes(const IndexMask &selection,
         btVector3 bt_local_inertia;
         bt_shape->calculateLocalInertia(body->getMass(), bt_local_inertia);
         body->setMassProps(body->getMass(), bt_local_inertia);
+        body->updateInertiaTensor();
       }
     }
     else {
       body->setMassProps(0.0f, btVector3(0.0f, 0.0f, 0.0f));
+      body->updateInertiaTensor();
     }
   });
 }
@@ -818,16 +828,6 @@ VArray<int> PhysicsGeometry::body_ids() const
 AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
 {
   return attributes_for_write().lookup_for_write<int>(builtin_attributes.id);
-}
-
-VArray<bool> PhysicsGeometry::body_is_simulated() const
-{
-  return attributes().lookup(builtin_attributes.is_simulated).varray.typed<bool>();
-}
-
-AttributeWriter<bool> PhysicsGeometry::body_is_simulated_for_write()
-{
-  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.is_simulated);
 }
 
 VArray<bool> PhysicsGeometry::body_is_static() const
@@ -1106,20 +1106,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       physics_access,
       nullptr);
 
-  constexpr auto simulated_get_fn = [](const btRigidBody &body) -> bool {
-    return (get_body_user_flags(body) & RigidBodyUserFlag::IsSimulated) != RigidBodyUserFlag(0);
-  };
-  constexpr auto simulated_set_fn = [](btRigidBody &body, bool value) {
-    set_body_user_flags(body, RigidBodyUserFlag::IsSimulated, value);
-  };
-  static BuiltinRigidBodyAttributeProvider<bool, simulated_get_fn, simulated_set_fn>
-      body_simulated(
-          PhysicsGeometry::builtin_attributes.is_simulated,
-          AttrDomain::Point,
-          BuiltinAttributeProvider::NonDeletable,
-          physics_access,
-          [](void *owner) { ensure_bodies_simulated(*static_cast<PhysicsGeometry *>(owner)); });
-
   constexpr auto static_get_fn = [](const btRigidBody &body) -> bool {
     return body.isStaticObject();
   };
@@ -1129,9 +1115,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
     if (is_moveable_shape) {
       if (value) {
         body.setMassProps(0.0f, to_bullet(float3(0.0f)));
+        body.updateInertiaTensor();
       }
       else if (body.isStaticObject()) {
         body.setMassProps(1.0f, to_bullet(float3(1.0f)));
+        body.updateInertiaTensor();
       }
     }
   };
@@ -1163,6 +1151,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                    !body.getCollisionShape()->isNonMoving();
     if (is_moveable_shape) {
       body.setMassProps(value, body.getLocalInertia());
+      body.updateInertiaTensor();
     }
   };
   static BuiltinRigidBodyAttributeProvider<float, mass_get_fn, mass_set_fn> body_mass(
@@ -1187,6 +1176,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       else {
         body.setMassProps(body.getMass(), to_bullet(value));
       }
+      body.updateInertiaTensor();
     }
   };
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
@@ -1408,7 +1398,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       });
 
   return ComponentAttributeProviders({&body_id,
-                                      &body_simulated,
                                       &body_static,
                                       &body_kinematic,
                                       &body_mass,

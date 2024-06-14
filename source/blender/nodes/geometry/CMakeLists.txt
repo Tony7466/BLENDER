@@ -191,7 +191,6 @@ set(SRC
   nodes/node_geo_separate_geometry.cc
   nodes/node_geo_set_body_activation_state.cc
   nodes/node_geo_set_body_kinematic.cc
-  nodes/node_geo_set_body_simulated.cc
   nodes/node_geo_set_body_static.cc
   nodes/node_geo_set_curve_handles.cc
   nodes/node_geo_set_curve_normal.cc

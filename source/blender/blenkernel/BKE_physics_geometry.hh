@@ -71,7 +71,6 @@ class PhysicsGeometry {
   static const struct BuiltinAttributes {
     /* Body attributes. */
     std::string id;
-    std::string is_simulated;
     std::string is_static;
     std::string is_kinematic;
     std::string mass;
@@ -135,9 +134,6 @@ class PhysicsGeometry {
 
   VArray<int> body_ids() const;
   AttributeWriter<int> body_ids_for_write();
-
-  VArray<bool> body_is_simulated() const;
-  AttributeWriter<bool> body_is_simulated_for_write();
 
   VArray<bool> body_is_static() const;
 

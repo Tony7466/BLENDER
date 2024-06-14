@@ -460,7 +460,6 @@ DefNode(GeometryNode, GEO_NODE_SEPARATE_GEOMETRY, 0, "SEPARATE_GEOMETRY", Separa
 DefNode(GeometryNode, GEO_NODE_SET_BODY_ACTIVATION_STATE, 0, "SET_BODY_ACTIVATION_STATE", SetBodyActivationState, "Set Body Activation State", "Set body activation state in the simulation")
 DefNode(GeometryNode, GEO_NODE_SET_BODY_KINEMATIC, 0, "SET_BODY_KINEMATIC", SetBodyKinematic, "Set Body Kinematic", "Set bodies to kinematic state where animation controls movement")
 DefNode(GeometryNode, GEO_NODE_SET_BODY_STATIC, 0, "SET_BODY_STATIC", SetBodyStatic, "Set Body Static", "Set bodies to static state so it does not react to collisions")
-DefNode(GeometryNode, GEO_NODE_SET_BODY_SIMULATED, 0, "SET_BODY_SIMULATED", SetBodySimulated, "Set Body Simulated", "Toggle simulation for bodies")
 DefNode(GeometryNode, GEO_NODE_SET_CURVE_HANDLES, 0, "SET_CURVE_HANDLES", SetCurveHandlePositions, "Set Handle Positions", "Set the positions for the handles of Bézier curves")
 DefNode(GeometryNode, GEO_NODE_SET_CURVE_NORMAL, 0, "SET_CURVE_NORMAL", SetCurveNormal, "Set Curve Normal", "Set the evaluation mode for curve normals")
 DefNode(GeometryNode, GEO_NODE_SET_CURVE_RADIUS, 0, "SET_CURVE_RADIUS", SetCurveRadius, "Set Curve Radius", "Set the radius of the curve at each control point")

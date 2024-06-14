@@ -31,7 +31,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Rotation>("Rotation").field_on({0}).hide_value();
   b.add_input<decl::Vector>("Velocity").field_on({0}).hide_value();
   b.add_input<decl::Vector>("Angular Velocity").field_on({0}).hide_value();
-  b.add_input<decl::Bool>("Simulate").default_value(true).field_on({0});
   b.add_output<decl::Geometry>("Rigid Bodies").propagate_all();
 }
 
@@ -45,7 +44,6 @@ static void geometry_set_points_to_rigid_bodies(
     Field<math::Quaternion> &rotation_field,
     Field<float3> &velocity_field,
     Field<float3> &angular_velocity_field,
-    Field<bool> &is_simulated_field,
     const GeometrySet shapes_geometry,
     Field<int> shape_index_field,
     const AnonymousAttributePropagationInfo & /*propagation_info*/)
@@ -68,7 +66,6 @@ static void geometry_set_points_to_rigid_bodies(
   field_evaluator.add(rotation_field);
   field_evaluator.add(velocity_field);
   field_evaluator.add(angular_velocity_field);
-  field_evaluator.add(is_simulated_field);
   field_evaluator.add(shape_index_field);
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
@@ -81,8 +78,7 @@ static void geometry_set_points_to_rigid_bodies(
       4);
   const VArray<float3> src_velocities = field_evaluator.get_evaluated<float3>(5);
   const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(6);
-  const VArray<bool> src_is_simulated = field_evaluator.get_evaluated<bool>(7);
-  const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(8);
+  const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(7);
 
   const Span<CollisionShapePtr> shapes = shapes_geometry.has_physics() ?
                                              shapes_geometry.get_physics()->shapes() :
@@ -112,7 +108,6 @@ static void geometry_set_points_to_rigid_bodies(
   AttributeWriter<math::Quaternion> dst_rotations = physics->body_rotations_for_write();
   AttributeWriter<float3> dst_velocities = physics->body_velocities_for_write();
   AttributeWriter<float3> dst_angular_velocities = physics->body_angular_velocities_for_write();
-  AttributeWriter<bool> dst_is_simulated = physics->body_is_simulated_for_write();
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
     dst_ids.varray.set(pos, src_ids[index]);
@@ -122,7 +117,6 @@ static void geometry_set_points_to_rigid_bodies(
     dst_rotations.varray.set(pos, src_rotations[index]);
     dst_velocities.varray.set(pos, src_velocities[index]);
     dst_angular_velocities.varray.set(pos, src_angular_velocities[index]);
-    dst_is_simulated.varray.set(pos, src_is_simulated[index]);
   });
 
   dst_ids.finish();
@@ -132,7 +126,6 @@ static void geometry_set_points_to_rigid_bodies(
   dst_rotations.finish();
   dst_velocities.finish();
   dst_angular_velocities.finish();
-  dst_is_simulated.finish();
 
   geometry_set.replace_physics(physics);
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Physics});
@@ -150,7 +143,6 @@ static void node_geo_exec(GeoNodeExecParams params)
       "Rotation");
   Field<float3> velocity_field = params.extract_input<Field<float3>>("Velocity");
   Field<float3> angular_velocity_field = params.extract_input<Field<float3>>("Angular Velocity");
-  Field<bool> is_simulated_field = params.extract_input<Field<bool>>("Simulate");
   GeometrySet shapes_geometry = params.extract_input<GeometrySet>("Shapes");
   Field<int> shape_index_field = params.extract_input<Field<int>>("Shape Index");
 
@@ -164,7 +156,6 @@ static void node_geo_exec(GeoNodeExecParams params)
                                         rotation_field,
                                         velocity_field,
                                         angular_velocity_field,
-                                        is_simulated_field,
                                         shapes_geometry,
                                         shape_index_field,
                                         params.get_output_propagation_info("Rigid Bodies"));
