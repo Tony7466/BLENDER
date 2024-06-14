@@ -12,7 +12,6 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
