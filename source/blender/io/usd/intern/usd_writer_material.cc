@@ -889,9 +889,9 @@ static std::string get_tex_image_asset_filepath(const USDExporterContext &usd_ex
       node, usd_export_context.stage, usd_export_context.export_params);
 }
 
-static std::string get_tex_image_asset_filepath(Image *ima,
-                                                const pxr::UsdStageRefPtr stage,
-                                                const USDExportParams &export_params)
+std::string get_tex_image_asset_filepath(Image *ima,
+                                         const pxr::UsdStageRefPtr stage,
+                                         const USDExportParams &export_params)
 {
   std::string stage_path = stage->GetRootLayer()->GetRealPath();
 
@@ -979,7 +979,6 @@ std::string get_tex_image_asset_filepath(bNode *node,
                                          const pxr::UsdStageRefPtr stage,
                                          const USDExportParams &export_params)
 {
-
   Image *ima = reinterpret_cast<Image *>(node->id);
   return get_tex_image_asset_filepath(ima, stage, export_params);
 }

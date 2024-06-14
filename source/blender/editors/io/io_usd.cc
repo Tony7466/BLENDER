@@ -420,17 +420,23 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
       const bool export_tex = RNA_boolean_get(ptr, "export_textures");
       const bool use_orig_paths = RNA_boolean_get(ptr, "use_original_paths");
 
-      uiLayout *row = uiLayoutRow(col, true);
-      uiItemR(row, ptr, "export_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiLayoutSetActive(row, export_materials && (preview || materialx));
+      col = uiLayoutColumnWithHeading(panel.body, true, IFACE_("Textures: "));
+      uiLayoutSetPropSep(col, true);
 
-      row = uiLayoutRow(col, true);
-      uiItemR(row, ptr, "use_original_paths", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiLayoutSetActive(row, export_tex && (preview || materialx));
-
-      row = uiLayoutRow(col, true);
-      uiItemR(row, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiLayoutSetActive(row, export_tex && (preview || materialx) && (!use_orig_paths));
+      uiItemFullR(col,
+                  ptr,
+                  RNA_struct_find_property(ptr, "export_textures"),
+                  0,
+                  0,
+                  UI_ITEM_NONE,
+                  nullptr,
+                  ICON_NONE);
+      if (RNA_boolean_get(ptr, "export_textures")) {
+        uiItemR(col, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
+      }
+      else {
+        uiItemR(col, ptr, "use_original_paths", UI_ITEM_NONE, nullptr, ICON_NONE);
+      }
 
       uiLayout *col2 = uiLayoutColumn(col, true);
       uiLayoutSetPropSep(col2, true);
