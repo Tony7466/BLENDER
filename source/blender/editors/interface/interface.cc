@@ -3280,8 +3280,8 @@ void ui_but_range_set_soft(uiBut *but)
       int imin, imax, istep;
 
       RNA_property_int_ui_range(&but->rnapoin, but->rnaprop, &imin, &imax, &istep);
-      softmin = (imin == INT_MIN) ? -1e4 : imin;
-      softmax = (imin == INT_MAX) ? 1e4 : imax;
+      softmin = max_ii(imin, INT_MIN);
+      softmax = min_ii(imax, INT_MAX);
       // step = istep;  /* UNUSED */
       // precision = 1; /* UNUSED */
 
