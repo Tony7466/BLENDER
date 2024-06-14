@@ -247,23 +247,24 @@ static void set_body_user_flags(btRigidBody &body, const RigidBodyUserFlag flag,
 
 static int get_body_index(const btRigidBody &body)
 {
+  /* Bullet uses the btTypedConstraint static fixed body for unilateral constraints.
+   * This is represented by index -1. */
+  if (&body == &btTypedConstraint::getFixedBody()) {
+    return -1;
+  }
+
   return body.getUserIndex3();
 }
 
 static void set_body_index(btRigidBody &body, const int index)
 {
-  /* XXX Bullet shares the same body 2 for all unilateral constraints.
-   * These must be ignored, but there is no direct way to check for this case.
-   * Use existence of the motion state as a proxy to gain some measure of safety. */
-  BLI_assert_msg(
-      body.getMotionState() != nullptr,
-      "Body does not have motion state, are you accessing body 2 of a unilateral constraint?");
-  body.setUserIndex3(index);
-}
+  /* Bullet uses the btTypedConstraint static fixed body for unilateral constraints.
+   * This body should not be modified. */
+  if (&body == &btTypedConstraint::getFixedBody()) {
+    return;
+  }
 
-static bool is_constraint_unilateral(const btTypedConstraint &constraint)
-{
-  return &constraint.getRigidBodyB() == &constraint.getFixedBody();
+  body.setUserIndex3(index);
 }
 
 /* -------------------------------------------------------------------- */
@@ -672,9 +673,7 @@ static IndexMask get_constraints_mask_for_points(const PhysicsGeometryImpl &impl
           return false;
         }
         const int index1 = get_body_index(constraint->getRigidBodyA());
-        const int index2 = is_constraint_unilateral(*constraint) ?
-                               -1 :
-                               get_body_index(constraint->getRigidBodyB());
+        const int index2 = get_body_index(constraint->getRigidBodyB());
         return body_selection.contains(index1) || body_selection.contains(index2);
       });
 }
@@ -1018,11 +1017,11 @@ static btTypedConstraint *make_constraint_type(const PhysicsGeometry::Constraint
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
-  btTransform zero_mat = btTransform::getIdentity();
-  btVector3 zero_vec = btVector3(0, 0, 0);
-  btVector3 axis_x = btVector3(1, 0, 0);
-  btVector3 axis_y = btVector3(0, 1, 0);
-  btVector3 axis_z = btVector3(0, 0, 1);
+  [[maybe_unused]] btTransform zero_mat = btTransform::getIdentity();
+  [[maybe_unused]] btVector3 zero_vec = btVector3(0, 0, 0);
+  [[maybe_unused]] btVector3 axis_x = btVector3(1, 0, 0);
+  [[maybe_unused]] btVector3 axis_y = btVector3(0, 1, 0);
+  [[maybe_unused]] btVector3 axis_z = btVector3(0, 0, 1);
 
   switch (type) {
     case ConstraintType::None:
@@ -1394,9 +1393,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
 
   constexpr auto constraint_body2_get_fn = [](const btTypedConstraint *constraint) -> int {
     /* Unilateral constraints use a shared fixed body that should not be considered. */
-    return constraint && !is_constraint_unilateral(*constraint) ?
-               get_body_index(constraint->getRigidBodyB()) :
-               -1;
+    return constraint ? get_body_index(constraint->getRigidBodyB()) : -1;
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
       PhysicsGeometry::builtin_attributes.constraint_body2,
