@@ -8,8 +8,11 @@
 
 #pragma once
 
+#include "BLI_implicit_sharing.h"
+
 typedef struct PackedFile {
   int size;
   int seek;
-  void *data;
+  const void *data;
+  const ImplicitSharingInfoHandle *sharing_info;
 } PackedFile;

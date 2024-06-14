@@ -1518,7 +1518,7 @@ static void change_link_placeholder_to_real_ID_pointer(ListBase *mainlist,
 static void insert_packedmap(FileData *fd, PackedFile *pf)
 {
   oldnewmap_insert(fd->packedmap, pf, pf, 0);
-  oldnewmap_insert(fd->packedmap, pf->data, pf->data, 0);
+  oldnewmap_insert(fd->packedmap, pf->data, const_cast<void *>(pf->data), 0);
 }
 
 void blo_make_packed_pointer_map(FileData *fd, Main *oldmain)
