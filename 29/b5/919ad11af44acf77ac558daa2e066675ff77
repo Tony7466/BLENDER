@@ -1,1 +1,2 @@
 Referenced by issue #107797, Resizing window causes crash on Wayland (libdecor)
+Referenced by issue #123201, Regression: Cycles: OSL misses Bump (from Material > Settings > Surface > Displacement > Displacement and Bump)
