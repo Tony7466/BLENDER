@@ -618,9 +618,12 @@ static void tree_element_active_ebone__sel(bContext *C, bArmature *arm, EditBone
   if (sel) {
     arm->act_edbone = ebone;
   }
-  ED_armature_ebone_select_set(ebone, sel);
+  if (!(ebone->flag & BONE_HIDDEN_A)) {
+    ED_armature_ebone_select_set(ebone, sel);
+  }
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_ACTIVE, CTX_data_edit_object(C));
 }
+
 static void tree_element_ebone_activate(bContext *C,
                                         const Scene *scene,
                                         ViewLayer *view_layer,
@@ -633,28 +636,23 @@ static void tree_element_ebone_activate(bContext *C,
   EditBone *ebone = static_cast<EditBone *>(te->directdata);
 
   if (set == OL_SETSEL_NORMAL) {
-    if (!(ebone->flag & BONE_HIDDEN_A)) {
+    ObjectsInModeParams ob_params{};
+    ob_params.object_mode = OB_MODE_EDIT;
+    ob_params.no_dup_data = true;
 
-      ObjectsInModeParams ob_params{};
-      ob_params.object_mode = OB_MODE_EDIT;
-      ob_params.no_dup_data = true;
+    Vector<Base *> bases = BKE_view_layer_array_from_bases_in_mode_params(
+        scene, view_layer, nullptr, &ob_params);
+    ED_armature_edit_deselect_all_multi_ex(bases);
 
-      Vector<Base *> bases = BKE_view_layer_array_from_bases_in_mode_params(
-          scene, view_layer, nullptr, &ob_params);
-      ED_armature_edit_deselect_all_multi_ex(bases);
-
-      tree_element_active_ebone__sel(C, arm, ebone, true);
-    }
+    tree_element_active_ebone__sel(C, arm, ebone, true);
   }
   else if (set == OL_SETSEL_EXTEND) {
-    if (!(ebone->flag & BONE_HIDDEN_A)) {
-      if (!(ebone->flag & BONE_SELECTED)) {
-        tree_element_active_ebone__sel(C, arm, ebone, true);
-      }
-      else {
-        /* entirely selected, so de-select */
-        tree_element_active_ebone__sel(C, arm, ebone, false);
-      }
+    if (!(ebone->flag & BONE_SELECTED)) {
+      tree_element_active_ebone__sel(C, arm, ebone, true);
+    }
+    else {
+      /* entirely selected, so de-select */
+      tree_element_active_ebone__sel(C, arm, ebone, false);
     }
   }
 
