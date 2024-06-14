@@ -318,6 +318,15 @@ static void move_world(PhysicsGeometryImpl &from, PhysicsGeometryImpl &to)
   from.overlap_filter = nullptr;
 }
 
+/* Various checks on constraints to ensure Bullet doesn't crash. */
+static bool is_constraint_valid(const btTypedConstraint &constraint)
+{
+  if (&constraint.getRigidBodyA() == &constraint.getRigidBodyB()) {
+    return false;
+  }
+  return true;
+}
+
 static void add_to_world(btDynamicsWorld *world,
                          Span<btRigidBody *> bodies,
                          Span<btTypedConstraint *> constraints)
@@ -329,10 +338,9 @@ static void add_to_world(btDynamicsWorld *world,
     world->addRigidBody(body);
   }
   for (btTypedConstraint *constraint : constraints) {
-    if (!constraint) {
+    if (!constraint || !is_constraint_valid(*constraint)) {
       continue;
     }
-
     world->addConstraint(constraint);
   }
 }
@@ -351,7 +359,6 @@ static void remove_from_world(btDynamicsWorld *world,
     if (!constraint) {
       continue;
     }
-
     world->removeConstraint(constraint);
   }
 }
