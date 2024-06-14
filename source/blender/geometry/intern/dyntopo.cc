@@ -58,13 +58,6 @@ static void parallel_transform(const Span<In> src,
   });
 }
 
-static float len_squared_to_tris(const std::array<float3, 3> tri, const float3 pos)
-{
-  float3 result;
-  closest_on_tri_to_point_v3(result, pos, tri[0], tri[1], tri[2]);
-  return math::distance_squared(result, pos);
-}
-
 static int3 gather_tri(const IndexRange range, const Span<int> indices)
 {
   BLI_assert(range.size() == 3);
@@ -103,35 +96,406 @@ static int exclusive_one(const int2 set, const int part)
   return exclusive_elem;
 }
 
+static float len_squared_to_tris(const std::array<float2, 3> tri, const float2 pos)
+{
+  float3 result;
+  std::array<float3, 3> tri_3d;
+  tri_3d[0] = float3(tri[0], 0.0f);
+  tri_3d[1] = float3(tri[1], 0.0f);
+  tri_3d[2] = float3(tri[2], 0.0f);
+  const float3 pos_3d(pos, 0.0f);
+  closest_on_tri_to_point_v3(result, pos_3d, tri_3d[0], tri_3d[1], tri_3d[2]);
+  return math::distance_squared(result, pos_3d);
+}
+
+static int dominant_axis(const float3 a)
+{
+  return ((a.x > a.y) ? ((a.x > a.z) ? 0 : 2) : ((a.y > a.z) ? 1 : 2));
+}
+
+struct Triangle {
+  float2 a;
+  float2 b;
+  float2 c;
+
+  /* Neighboards of triangle: abd, bce, caf. */
+  float2 d;
+  float2 e;
+  float2 f;
+
+  bool ab_is_real_edge;
+  bool bc_is_real_edge;
+  bool ca_is_real_edge;
+};
+
 static void insert_verts_count(const float2 a_vert,
                                const float2 b_vert,
                                const float2 c_vert,
-                               const float2 ab_vert,
-                               const float2 bc_vert,
-                               const float2 ca_vert,
-                               const float2 position,
+                               const float2 d_vert,
+                               const float2 e_vert,
+                               const float2 f_vert,
+                               const float2 centre,
                                const float radius,
                                const float max_length,
                                int &r_total_verts_in)
 {
+  // std::cout << "Face Size:\n";
+  Vector<Triangle> stack = {{a_vert, b_vert, c_vert, d_vert, e_vert, f_vert}};
+  while (!stack.is_empty()) {
+    const Triangle triangle_and_neighboards = stack.pop_last();
+    const float2 vert_a = triangle_and_neighboards.a;
+    const float2 vert_b = triangle_and_neighboards.b;
+    const float2 vert_c = triangle_and_neighboards.c;
+
+    const float2 vert_d = triangle_and_neighboards.d;
+    const float2 vert_e = triangle_and_neighboards.e;
+    const float2 vert_f = triangle_and_neighboards.f;
+    // std::cout << "  " << triangle_and_neighboards << ";\n";
+
+    if (len_squared_to_tris({vert_a, vert_b, vert_c}, centre) > radius) {
+      const bool a_is_affected = len_squared_to_tris({vert_a, vert_b, vert_d}, centre) < radius;
+      const bool b_is_affected = len_squared_to_tris({vert_b, vert_c, vert_e}, centre) < radius;
+      const bool c_is_affected = len_squared_to_tris({vert_c, vert_a, vert_f}, centre) < radius;
+      if (!(a_is_affected || b_is_affected || c_is_affected)) {
+        continue;
+      }
+
+      float abd_max = std::numeric_limits<float>::lowest();
+      float bce_max = std::numeric_limits<float>::lowest();
+      float caf_max = std::numeric_limits<float>::lowest();
+      int largest_abd_side = -1;
+      int largest_bce_side = -1;
+      int largest_caf_side = -1;
+
+      if (a_is_affected) {
+        const float ab_length = math::distance_squared(vert_a, vert_b);
+        const float bd_length = math::distance_squared(vert_b, vert_d);
+        const float da_length = math::distance_squared(vert_d, vert_a);
+        const float3 abd(ab_length, bd_length, da_length);
+        largest_abd_side = dominant_axis(abd);
+        abd_max = abd[largest_abd_side];
+      }
+
+      if (b_is_affected) {
+        const float bc_length = math::distance_squared(vert_b, vert_c);
+        const float ce_length = math::distance_squared(vert_c, vert_e);
+        const float eb_length = math::distance_squared(vert_e, vert_b);
+        const float3 bce(bc_length, ce_length, eb_length);
+        largest_bce_side = dominant_axis(bce);
+        bce_max = bce[largest_bce_side];
+      }
+
+      if (c_is_affected) {
+        const float ca_length = math::distance_squared(vert_c, vert_a);
+        const float af_length = math::distance_squared(vert_a, vert_f);
+        const float fc_length = math::distance_squared(vert_f, vert_c);
+        const float3 caf(ca_length, af_length, fc_length);
+        largest_caf_side = dominant_axis(caf);
+        caf_max = caf[largest_caf_side];
+      }
+
+      const float3 larges_side_in(abd_max, bce_max, caf_max);
+      const int larges_side = dominant_axis(larges_side_in);
+
+      if (larges_side_in[larges_side] < max_length) {
+        continue;
+      }
+
+      switch (larges_side) {
+        case 0: {
+          switch (largest_abd_side) {
+            case 0: {
+              const float2 mid = math::midpoint(vert_a, vert_b);
+              stack.append({vert_a, mid, vert_c, vert_d, vert_b, vert_f});
+              stack.append({mid, vert_b, vert_c, vert_d, vert_e, vert_a});
+              r_total_verts_in++;
+              break;
+            }
+            case 1: {
+              const float2 mid = math::midpoint(vert_d, vert_b);
+              stack.append({vert_a, vert_b, vert_c, mid, vert_e, vert_f});
+              break;
+            }
+            case 2: {
+              const float2 mid = math::midpoint(vert_a, vert_d);
+              stack.append({vert_a, vert_b, vert_c, mid, vert_e, vert_f});
+              break;
+            }
+          }
+          break;
+        }
+        case 1: {
+          switch (largest_bce_side) {
+            case 0: {
+              const float2 mid = math::midpoint(vert_b, vert_c);
+              stack.append({vert_a, vert_b, mid, vert_d, vert_e, vert_c});
+              stack.append({vert_a, mid, vert_c, vert_b, vert_e, vert_f});
+              r_total_verts_in++;
+              break;
+            }
+            case 1: {
+              const float2 mid = math::midpoint(vert_c, vert_e);
+              stack.append({vert_a, vert_b, vert_c, vert_d, mid, vert_f});
+              break;
+            }
+            case 2: {
+              const float2 mid = math::midpoint(vert_e, vert_b);
+              stack.append({vert_a, vert_b, vert_c, vert_d, mid, vert_f});
+              break;
+            }
+          }
+          break;
+        }
+        case 2: {
+          switch (largest_caf_side) {
+            case 0: {
+              const float2 mid = math::midpoint(vert_c, vert_a);
+              stack.append({vert_a, vert_b, mid, vert_d, vert_c, vert_f});
+              stack.append({mid, vert_b, vert_c, vert_a, vert_e, vert_f});
+              r_total_verts_in++;
+              break;
+            }
+            case 1: {
+              const float2 mid = math::midpoint(vert_a, vert_f);
+              stack.append({vert_a, vert_b, vert_c, vert_d, vert_e, mid});
+              break;
+            }
+            case 2: {
+              const float2 mid = math::midpoint(vert_f, vert_c);
+              stack.append({vert_a, vert_b, vert_c, vert_d, vert_e, mid});
+              break;
+            }
+          }
+          break;
+        }
+      }
+
+      continue;
+    }
+
+    const float ab_length = math::distance_squared(vert_a, vert_b);
+    const float bc_length = math::distance_squared(vert_b, vert_c);
+    const float ca_length = math::distance_squared(vert_c, vert_a);
+    const float3 triangle_sides(ab_length, bc_length, ca_length);
+    const int largest_side = dominant_axis(triangle_sides);
+    if (triangle_sides[largest_side] < max_length) {
+      continue;
+    }
+
+    switch (largest_side) {
+      case 0: {
+        const float2 mid = math::midpoint(vert_a, vert_b);
+        stack.append({vert_a, mid, vert_c, vert_d, vert_b, vert_f});
+        stack.append({mid, vert_b, vert_c, vert_d, vert_e, vert_a});
+        break;
+      }
+      case 1: {
+        const float2 mid = math::midpoint(vert_b, vert_c);
+        stack.append({vert_a, vert_b, mid, vert_d, vert_e, vert_c});
+        stack.append({vert_a, mid, vert_c, vert_b, vert_e, vert_f});
+        break;
+      }
+      case 2: {
+        const float2 mid = math::midpoint(vert_c, vert_a);
+        stack.append({vert_a, vert_b, mid, vert_d, vert_c, vert_f});
+        stack.append({mid, vert_b, vert_c, vert_a, vert_e, vert_f});
+        break;
+      }
+    }
+
+    r_total_verts_in++;
+  }
 }
 
 static void insert_verts_positions(const float2 a_vert,
                                    const float2 b_vert,
                                    const float2 c_vert,
-                                   const float2 ab_vert,
-                                   const float2 bc_vert,
-                                   const float2 ca_vert,
-                                   const float2 position,
+                                   const float2 d_vert,
+                                   const float2 e_vert,
+                                   const float2 f_vert,
+                                   const float2 centre,
                                    const float radius,
                                    const float max_length,
                                    MutableSpan<float2> r_positions)
 {
+  // std::cout << "Face Size:\n";
+  Vector<std::array<float2, 6>> stack = {{a_vert, b_vert, c_vert, d_vert, e_vert, f_vert}};
+  int r_total_verts_in = 0;
+  while (!stack.is_empty()) {
+    const std::array<float2, 6> triangle_and_neighboards = stack.pop_last();
+    const float2 vert_a = triangle_and_neighboards[0];
+    const float2 vert_b = triangle_and_neighboards[1];
+    const float2 vert_c = triangle_and_neighboards[2];
+
+    const float2 vert_d = triangle_and_neighboards[3];
+    const float2 vert_e = triangle_and_neighboards[4];
+    const float2 vert_f = triangle_and_neighboards[5];
+    // std::cout << "  " << triangle_and_neighboards << ";\n";
+
+    if (len_squared_to_tris({vert_a, vert_b, vert_c}, centre) > radius) {
+      const bool a_is_affected = len_squared_to_tris({vert_a, vert_b, vert_d}, centre) < radius;
+      const bool b_is_affected = len_squared_to_tris({vert_b, vert_c, vert_e}, centre) < radius;
+      const bool c_is_affected = len_squared_to_tris({vert_c, vert_a, vert_f}, centre) < radius;
+      if (!(a_is_affected || b_is_affected || c_is_affected)) {
+        continue;
+      }
+
+      float abd_max = std::numeric_limits<float>::lowest();
+      float bce_max = std::numeric_limits<float>::lowest();
+      float caf_max = std::numeric_limits<float>::lowest();
+      int largest_abd_side = -1;
+      int largest_bce_side = -1;
+      int largest_caf_side = -1;
+
+      if (a_is_affected) {
+        const float ab_length = math::distance_squared(vert_a, vert_b);
+        const float bd_length = math::distance_squared(vert_b, vert_d);
+        const float da_length = math::distance_squared(vert_d, vert_a);
+        const float3 abd(ab_length, bd_length, da_length);
+        largest_abd_side = dominant_axis(abd);
+        abd_max = abd[largest_abd_side];
+      }
+
+      if (b_is_affected) {
+        const float bc_length = math::distance_squared(vert_b, vert_c);
+        const float ce_length = math::distance_squared(vert_c, vert_e);
+        const float eb_length = math::distance_squared(vert_e, vert_b);
+        const float3 bce(bc_length, ce_length, eb_length);
+        largest_bce_side = dominant_axis(bce);
+        bce_max = bce[largest_bce_side];
+      }
+
+      if (c_is_affected) {
+        const float ca_length = math::distance_squared(vert_c, vert_a);
+        const float af_length = math::distance_squared(vert_a, vert_f);
+        const float fc_length = math::distance_squared(vert_f, vert_c);
+        const float3 caf(ca_length, af_length, fc_length);
+        largest_caf_side = dominant_axis(caf);
+        caf_max = caf[largest_caf_side];
+      }
+
+      const float3 larges_side_in(abd_max, bce_max, caf_max);
+      const int larges_side = dominant_axis(larges_side_in);
+
+      if (larges_side_in[larges_side] < max_length) {
+        continue;
+      }
+
+      switch (larges_side) {
+        case 0: {
+          switch (largest_abd_side) {
+            case 0: {
+              const float2 mid = math::midpoint(vert_a, vert_b);
+              stack.append({vert_a, mid, vert_c, vert_d, vert_b, vert_f});
+              stack.append({mid, vert_b, vert_c, vert_d, vert_e, vert_a});
+              r_positions[r_total_verts_in] = mid;
+              r_total_verts_in++;
+              break;
+            }
+            case 1: {
+              const float2 mid = math::midpoint(vert_d, vert_b);
+              stack.append({vert_a, vert_b, vert_c, mid, vert_e, vert_f});
+              break;
+            }
+            case 2: {
+              const float2 mid = math::midpoint(vert_a, vert_d);
+              stack.append({vert_a, vert_b, vert_c, mid, vert_e, vert_f});
+              break;
+            }
+          }
+          break;
+        }
+        case 1: {
+          switch (largest_bce_side) {
+            case 0: {
+              const float2 mid = math::midpoint(vert_b, vert_c);
+              stack.append({vert_a, vert_b, mid, vert_d, vert_e, vert_c});
+              stack.append({vert_a, mid, vert_c, vert_b, vert_e, vert_f});
+              r_positions[r_total_verts_in] = mid;
+              r_total_verts_in++;
+              break;
+            }
+            case 1: {
+              const float2 mid = math::midpoint(vert_c, vert_e);
+              stack.append({vert_a, vert_b, vert_c, vert_d, mid, vert_f});
+              break;
+            }
+            case 2: {
+              const float2 mid = math::midpoint(vert_e, vert_b);
+              stack.append({vert_a, vert_b, vert_c, vert_d, mid, vert_f});
+              break;
+            }
+          }
+          break;
+        }
+        case 2: {
+          switch (largest_caf_side) {
+            case 0: {
+              const float2 mid = math::midpoint(vert_c, vert_a);
+              stack.append({vert_a, vert_b, mid, vert_d, vert_c, vert_f});
+              stack.append({mid, vert_b, vert_c, vert_a, vert_e, vert_f});
+              r_positions[r_total_verts_in] = mid;
+              r_total_verts_in++;
+              break;
+            }
+            case 1: {
+              const float2 mid = math::midpoint(vert_a, vert_f);
+              stack.append({vert_a, vert_b, vert_c, vert_d, vert_e, mid});
+              break;
+            }
+            case 2: {
+              const float2 mid = math::midpoint(vert_f, vert_c);
+              stack.append({vert_a, vert_b, vert_c, vert_d, vert_e, mid});
+              break;
+            }
+          }
+          break;
+        }
+      }
+
+      continue;
+    }
+
+    const float ab_length = math::distance_squared(vert_a, vert_b);
+    const float bc_length = math::distance_squared(vert_b, vert_c);
+    const float ca_length = math::distance_squared(vert_c, vert_a);
+    const float3 triangle_sides(ab_length, bc_length, ca_length);
+    const int largest_side = dominant_axis(triangle_sides);
+    if (triangle_sides[largest_side] < max_length) {
+      continue;
+    }
+
+    switch (largest_side) {
+      case 0: {
+        const float2 mid = math::midpoint(vert_a, vert_b);
+        stack.append({vert_a, mid, vert_c, vert_d, vert_b, vert_f});
+        stack.append({mid, vert_b, vert_c, vert_d, vert_e, vert_a});
+        r_positions[r_total_verts_in] = mid;
+        break;
+      }
+      case 1: {
+        const float2 mid = math::midpoint(vert_b, vert_c);
+        stack.append({vert_a, vert_b, mid, vert_d, vert_e, vert_c});
+        stack.append({vert_a, mid, vert_c, vert_b, vert_e, vert_f});
+        r_positions[r_total_verts_in] = mid;
+        break;
+      }
+      case 2: {
+        const float2 mid = math::midpoint(vert_c, vert_a);
+        stack.append({vert_a, vert_b, mid, vert_d, vert_c, vert_f});
+        stack.append({mid, vert_b, vert_c, vert_a, vert_e, vert_f});
+        r_positions[r_total_verts_in] = mid;
+        break;
+      }
+    }
+
+    r_total_verts_in++;
+  }
 }
 
 Mesh *subdivide(const Mesh &src_mesh,
                 const Span<float2> projection,
-                const float2 position,
+                const float2 centre,
                 const float radius,
                 const float max_length)
 {
@@ -144,6 +508,8 @@ Mesh *subdivide(const Mesh &src_mesh,
     }
     return true;
   }());
+
+  const float squared_radius = radius * radius;
 
   const OffsetIndices<int> faces = src_mesh.faces();
   const Span<int2> edges = src_mesh.edges();
@@ -162,52 +528,52 @@ Mesh *subdivide(const Mesh &src_mesh,
     const int3 face_edges = gather_tri(face, corner_edges);
     const int3 face_verts = gather_tri(face, corner_verts);
 
-    const int2 edge_a = edges[face_edges[0]];
-    const int2 edge_b = edges[face_edges[1]];
-    const int2 edge_c = edges[face_edges[2]];
+    const int2 edge_ab = edges[face_edges[0]];
+    const int2 edge_bc = edges[face_edges[1]];
+    const int2 edge_ca = edges[face_edges[2]];
 
-    const Span<int> a_faces = edge_to_face_map[face_edges[0]];
-    const Span<int> b_faces = edge_to_face_map[face_edges[1]];
-    const Span<int> c_faces = edge_to_face_map[face_edges[2]];
+    const Span<int> ab_faces = edge_to_face_map[face_edges[0]];
+    const Span<int> bc_faces = edge_to_face_map[face_edges[1]];
+    const Span<int> ca_faces = edge_to_face_map[face_edges[2]];
 
-    const int3 a_verts = gather_tri(faces[a_faces[0] == face_i ? a_faces[1] : a_faces[0]],
-                                    corner_verts);
-    const int3 b_verts = gather_tri(faces[b_faces[0] == face_i ? b_faces[1] : b_faces[0]],
-                                    corner_verts);
-    const int3 c_verts = gather_tri(faces[c_faces[0] == face_i ? c_faces[1] : c_faces[0]],
-                                    corner_verts);
+    const int3 abd_verts = gather_tri(faces[ab_faces[0] == face_i ? ab_faces[1] : ab_faces[0]],
+                                      corner_verts);
+    const int3 bce_verts = gather_tri(faces[bc_faces[0] == face_i ? bc_faces[1] : bc_faces[0]],
+                                      corner_verts);
+    const int3 caf_verts = gather_tri(faces[ca_faces[0] == face_i ? ca_faces[1] : ca_faces[0]],
+                                      corner_verts);
 
-    BLI_assert(elem(a_verts, edge_a[0]) && elem(a_verts, edge_a[1]));
-    BLI_assert(elem(b_verts, edge_b[0]) && elem(b_verts, edge_b[1]));
-    BLI_assert(elem(c_verts, edge_c[0]) && elem(c_verts, edge_c[1]));
+    BLI_assert(elem(abd_verts, edge_ab[0]) && elem(abd_verts, edge_ab[1]));
+    BLI_assert(elem(bce_verts, edge_bc[0]) && elem(bce_verts, edge_bc[1]));
+    BLI_assert(elem(caf_verts, edge_ca[0]) && elem(caf_verts, edge_ca[1]));
 
-    const int a_vert = exclusive_one(a_verts, edge_a);
-    const int b_vert = exclusive_one(b_verts, edge_b);
-    const int c_vert = exclusive_one(c_verts, edge_c);
+    const int a_vert = exclusive_one(face_verts, edge_bc);
+    const int b_vert = exclusive_one(face_verts, edge_ca);
+    const int c_vert = exclusive_one(face_verts, edge_ab);
 
-    const int ab_vert = exclusive_one(face_verts, edge_a);
-    const int bc_vert = exclusive_one(face_verts, edge_b);
-    const int ca_vert = exclusive_one(face_verts, edge_c);
+    const int d_vert = exclusive_one(abd_verts, edge_ab);
+    const int e_vert = exclusive_one(bce_verts, edge_bc);
+    const int f_vert = exclusive_one(caf_verts, edge_ca);
 
-    BLI_assert(!elem(face_verts, a_vert));
-    BLI_assert(!elem(face_verts, b_vert));
-    BLI_assert(!elem(face_verts, c_vert));
+    BLI_assert(!elem(face_verts, d_vert));
+    BLI_assert(!elem(face_verts, e_vert));
+    BLI_assert(!elem(face_verts, f_vert));
 
     int total_verts_in = 0;
-    insert_verts_count(projection[bc_vert],
-                       projection[ca_vert],
-                       projection[ab_vert],
+    insert_verts_count(projection[a_vert],
                        projection[b_vert],
                        projection[c_vert],
-                       projection[a_vert],
-                       position,
-                       radius,
+                       projection[d_vert],
+                       projection[e_vert],
+                       projection[f_vert],
+                       centre,
+                       squared_radius,
                        max_length,
                        total_verts_in);
     face_total_points[face_i] = total_verts_in;
   }
 
-  std::cout << face_total_points.as_span() << ";\n";
+  std::cout << ">> " << face_total_points.as_span() << ";\n";
 
   const OffsetIndices<int> subdive_verts = offset_indices::accumulate_counts_to_offsets(
       face_total_points);
@@ -220,48 +586,48 @@ Mesh *subdivide(const Mesh &src_mesh,
     const int3 face_edges = gather_tri(face, corner_edges);
     const int3 face_verts = gather_tri(face, corner_verts);
 
-    const int2 edge_a = edges[face_edges[0]];
-    const int2 edge_b = edges[face_edges[1]];
-    const int2 edge_c = edges[face_edges[2]];
+    const int2 edge_ab = edges[face_edges[0]];
+    const int2 edge_bc = edges[face_edges[1]];
+    const int2 edge_ca = edges[face_edges[2]];
 
-    const Span<int> a_faces = edge_to_face_map[face_edges[0]];
-    const Span<int> b_faces = edge_to_face_map[face_edges[1]];
-    const Span<int> c_faces = edge_to_face_map[face_edges[2]];
+    const Span<int> ab_faces = edge_to_face_map[face_edges[0]];
+    const Span<int> bc_faces = edge_to_face_map[face_edges[1]];
+    const Span<int> ca_faces = edge_to_face_map[face_edges[2]];
 
-    const int3 a_verts = gather_tri(faces[a_faces[0] == face_i ? a_faces[1] : a_faces[0]],
-                                    corner_verts);
-    const int3 b_verts = gather_tri(faces[b_faces[0] == face_i ? b_faces[1] : b_faces[0]],
-                                    corner_verts);
-    const int3 c_verts = gather_tri(faces[c_faces[0] == face_i ? c_faces[1] : c_faces[0]],
-                                    corner_verts);
+    const int3 abd_verts = gather_tri(faces[ab_faces[0] == face_i ? ab_faces[1] : ab_faces[0]],
+                                      corner_verts);
+    const int3 bce_verts = gather_tri(faces[bc_faces[0] == face_i ? bc_faces[1] : bc_faces[0]],
+                                      corner_verts);
+    const int3 caf_verts = gather_tri(faces[ca_faces[0] == face_i ? ca_faces[1] : ca_faces[0]],
+                                      corner_verts);
 
-    BLI_assert(elem(a_verts, edge_a[0]) && elem(a_verts, edge_a[1]));
-    BLI_assert(elem(b_verts, edge_b[0]) && elem(b_verts, edge_b[1]));
-    BLI_assert(elem(c_verts, edge_c[0]) && elem(c_verts, edge_c[1]));
+    BLI_assert(elem(abd_verts, edge_ab[0]) && elem(abd_verts, edge_ab[1]));
+    BLI_assert(elem(bce_verts, edge_bc[0]) && elem(bce_verts, edge_bc[1]));
+    BLI_assert(elem(caf_verts, edge_ca[0]) && elem(caf_verts, edge_ca[1]));
 
-    const int a_vert = exclusive_one(a_verts, edge_a);
-    const int b_vert = exclusive_one(b_verts, edge_b);
-    const int c_vert = exclusive_one(c_verts, edge_c);
+    const int a_vert = exclusive_one(face_verts, edge_bc);
+    const int b_vert = exclusive_one(face_verts, edge_ca);
+    const int c_vert = exclusive_one(face_verts, edge_ab);
 
-    const int ab_vert = exclusive_one(face_verts, edge_a);
-    const int bc_vert = exclusive_one(face_verts, edge_b);
-    const int ca_vert = exclusive_one(face_verts, edge_c);
+    const int d_vert = exclusive_one(abd_verts, edge_ab);
+    const int e_vert = exclusive_one(bce_verts, edge_bc);
+    const int f_vert = exclusive_one(caf_verts, edge_ca);
 
-    BLI_assert(!elem(face_verts, a_vert));
-    BLI_assert(!elem(face_verts, b_vert));
-    BLI_assert(!elem(face_verts, c_vert));
+    BLI_assert(!elem(face_verts, d_vert));
+    BLI_assert(!elem(face_verts, e_vert));
+    BLI_assert(!elem(face_verts, f_vert));
 
     IndexRange points_range = subdive_verts[face_i];
     Array<float2> uv_positions(points_range.size());
 
-    insert_verts_positions(projection[bc_vert],
-                           projection[ca_vert],
-                           projection[ab_vert],
+    insert_verts_positions(projection[a_vert],
                            projection[b_vert],
                            projection[c_vert],
-                           projection[a_vert],
-                           position,
-                           radius,
+                           projection[d_vert],
+                           projection[e_vert],
+                           projection[f_vert],
+                           centre,
+                           squared_radius,
                            max_length,
                            uv_positions);
 
