@@ -1382,7 +1382,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body1_get_fn> constraint_body1(
       PhysicsGeometry::builtin_attributes.constraint_body1,
-      AttrDomain::Point,
+      AttrDomain::Edge,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr,
@@ -1400,7 +1400,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
       PhysicsGeometry::builtin_attributes.constraint_body2,
-      AttrDomain::Point,
+      AttrDomain::Edge,
       BuiltinAttributeProvider::NonDeletable,
       physics_access,
       nullptr,
