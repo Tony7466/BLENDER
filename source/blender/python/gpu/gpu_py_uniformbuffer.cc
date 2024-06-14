@@ -15,15 +15,12 @@
 
 #include "BLI_string.h"
 
-#include "GPU_context.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_context.hh"
+#include "GPU_uniform_buffer.hh"
 
-#include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
 
-#include "gpu_py.h"
-
-#include "gpu_py_uniformbuffer.h" /* own include */
+#include "gpu_py_uniformbuffer.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name GPUUniformBuf Common Utilities

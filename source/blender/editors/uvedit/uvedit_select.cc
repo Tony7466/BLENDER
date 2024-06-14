@@ -25,7 +25,7 @@
 #include "BLI_heap.h"
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -65,6 +65,8 @@
 
 #include "uvedit_intern.hh"
 
+using blender::Array;
+using blender::int2;
 using blender::Span;
 using blender::Vector;
 
@@ -193,7 +195,14 @@ void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, const b
         EDBM_deselect_flush(em);
       }
       else {
-        EDBM_select_flush(em);
+        if (ts->selectmode & SCE_SELECT_VERTEX) {
+          EDBM_select_flush(em);
+        }
+        else {
+          /* Use instead of #EDBM_select_flush so selecting edges doesn't
+           * flush vertex to face selection, see: #117320. */
+          EDBM_selectmode_flush(em);
+        }
       }
     }
 
@@ -379,7 +388,7 @@ void uvedit_face_select_disable(const Scene *scene,
   }
 }
 
-bool uvedit_edge_select_test_ex(const ToolSettings *ts, BMLoop *l, const BMUVOffsets offsets)
+bool uvedit_edge_select_test_ex(const ToolSettings *ts, const BMLoop *l, const BMUVOffsets offsets)
 {
   BLI_assert(offsets.select_vert >= 0);
   BLI_assert(offsets.select_edge >= 0);
@@ -576,7 +585,7 @@ void uvedit_edge_select_disable(const Scene *scene,
   }
 }
 
-bool uvedit_uv_select_test_ex(const ToolSettings *ts, BMLoop *l, const BMUVOffsets offsets)
+bool uvedit_uv_select_test_ex(const ToolSettings *ts, const BMLoop *l, const BMUVOffsets offsets)
 {
   BLI_assert(offsets.select_vert >= 0);
   if (ts->uv_flag & UV_SYNC_SELECTION) {
@@ -2975,13 +2984,13 @@ static int uv_select_linked_internal(bContext *C, wmOperator *op, const wmEvent 
       scene, objects, pick ? &hit : nullptr, extend, deselect, false, select_faces);
 
   if (pick) {
-    DEG_id_tag_update(static_cast<ID *>(hit.ob->data), ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+    DEG_id_tag_update(static_cast<ID *>(hit.ob->data), ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, hit.ob->data);
   }
   else {
     for (Object *obedit : objects) {
       DEG_id_tag_update(static_cast<ID *>(obedit->data),
-                        ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+                        ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
     }
   }
@@ -3892,15 +3901,14 @@ void UV_OT_select_circle(wmOperatorType *ot)
 
 static bool do_lasso_select_mesh_uv_is_point_inside(const ARegion *region,
                                                     const rcti *clip_rect,
-                                                    const int mcoords[][2],
-                                                    const int mcoords_len,
+                                                    const Span<int2> mcoords,
                                                     const float co_test[2])
 {
   int co_screen[2];
   if (UI_view2d_view_to_region_clip(
           &region->v2d, co_test[0], co_test[1], &co_screen[0], &co_screen[1]) &&
       BLI_rcti_isect_pt_v(clip_rect, co_screen) &&
-      BLI_lasso_is_point_inside(mcoords, mcoords_len, co_screen[0], co_screen[1], V2D_IS_CLIPPED))
+      BLI_lasso_is_point_inside(mcoords, co_screen[0], co_screen[1], V2D_IS_CLIPPED))
   {
     return true;
   }
@@ -3909,8 +3917,7 @@ static bool do_lasso_select_mesh_uv_is_point_inside(const ARegion *region,
 
 static bool do_lasso_select_mesh_uv_is_edge_inside(const ARegion *region,
                                                    const rcti *clip_rect,
-                                                   const int mcoords[][2],
-                                                   const int mcoords_len,
+                                                   const Span<int2> mcoords,
                                                    const float co_test_a[2],
                                                    const float co_test_b[2])
 {
@@ -3919,17 +3926,14 @@ static bool do_lasso_select_mesh_uv_is_edge_inside(const ARegion *region,
           &region->v2d, co_test_a, co_test_b, co_screen_a, co_screen_b) &&
       BLI_rcti_isect_segment(clip_rect, co_screen_a, co_screen_b) &&
       BLI_lasso_is_edge_inside(
-          mcoords, mcoords_len, UNPACK2(co_screen_a), UNPACK2(co_screen_b), V2D_IS_CLIPPED))
+          mcoords, UNPACK2(co_screen_a), UNPACK2(co_screen_b), V2D_IS_CLIPPED))
   {
     return true;
   }
   return false;
 }
 
-static bool do_lasso_select_mesh_uv(bContext *C,
-                                    const int mcoords[][2],
-                                    const int mcoords_len,
-                                    const eSelectOp sel_op)
+static bool do_lasso_select_mesh_uv(bContext *C, const Span<int2> mcoords, const eSelectOp sel_op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   const ARegion *region = CTX_wm_region(C);
@@ -3955,7 +3959,7 @@ static bool do_lasso_select_mesh_uv(bContext *C,
   bool changed_multi = false;
   rcti rect;
 
-  BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
+  BLI_lasso_boundbox(&rect, mcoords);
 
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
@@ -3982,7 +3986,7 @@ static bool do_lasso_select_mesh_uv(bContext *C,
         if (select != uvedit_face_select_test(scene, efa, offsets)) {
           float cent[2];
           BM_face_uv_calc_center_median(efa, offsets.uv, cent);
-          if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, mcoords_len, cent)) {
+          if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, cent)) {
             BM_elem_flag_enable(efa, BM_ELEM_TAG);
             changed = true;
           }
@@ -4006,9 +4010,8 @@ static bool do_lasso_select_mesh_uv(bContext *C,
 
         BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
           float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-          if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, mcoords_len, luv) &&
-              do_lasso_select_mesh_uv_is_point_inside(
-                  region, &rect, mcoords, mcoords_len, luv_prev))
+          if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, luv) &&
+              do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, luv_prev))
           {
             uvedit_edge_select_set_with_sticky(scene, em, l_prev, select, false, offsets);
             do_second_pass = false;
@@ -4031,9 +4034,7 @@ static bool do_lasso_select_mesh_uv(bContext *C,
 
           BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
             float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-            if (do_lasso_select_mesh_uv_is_edge_inside(
-                    region, &rect, mcoords, mcoords_len, luv, luv_prev))
-            {
+            if (do_lasso_select_mesh_uv_is_edge_inside(region, &rect, mcoords, luv, luv_prev)) {
               uvedit_edge_select_set_with_sticky(scene, em, l_prev, select, false, offsets);
               changed = true;
             }
@@ -4054,8 +4055,7 @@ static bool do_lasso_select_mesh_uv(bContext *C,
         BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
           if (select != uvedit_uv_select_test(scene, l, offsets)) {
             float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-            if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, mcoords_len, luv))
-            {
+            if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, luv)) {
               uvedit_uv_select_set(scene, em->bm, l, select, false, offsets);
               changed = true;
               BM_elem_flag_enable(l->v, BM_ELEM_TAG);
@@ -4093,18 +4093,15 @@ static bool do_lasso_select_mesh_uv(bContext *C,
 
 static int uv_lasso_select_exec(bContext *C, wmOperator *op)
 {
-  int mcoords_len;
-  const int(*mcoords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcoords_len);
-
-  if (mcoords) {
-    const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
-    bool changed = do_lasso_select_mesh_uv(C, mcoords, mcoords_len, sel_op);
-    MEM_freeN((void *)mcoords);
-
-    return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+  Array<int2> mcoords = WM_gesture_lasso_path_to_array(C, op);
+  if (mcoords.is_empty()) {
+    return OPERATOR_PASS_THROUGH;
   }
 
-  return OPERATOR_PASS_THROUGH;
+  const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
+  bool changed = do_lasso_select_mesh_uv(C, mcoords, sel_op);
+
+  return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void UV_OT_select_lasso(wmOperatorType *ot)
@@ -4712,7 +4709,7 @@ static int uv_select_similar_vert_exec(bContext *C, wmOperator *op)
 
     const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     BMFace *face;
     BMIter iter;
@@ -4748,7 +4745,7 @@ static int uv_select_similar_vert_exec(bContext *C, wmOperator *op)
 
     const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     BMFace *face;
     BMIter iter;
@@ -4819,7 +4816,7 @@ static int uv_select_similar_edge_exec(bContext *C, wmOperator *op)
 
     const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     BMFace *face;
     BMIter iter;
@@ -4857,7 +4854,7 @@ static int uv_select_similar_edge_exec(bContext *C, wmOperator *op)
     bool changed = false;
     const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     BMFace *face;
     BMIter iter;
@@ -4919,7 +4916,7 @@ static int uv_select_similar_face_exec(bContext *C, wmOperator *op)
     BMesh *bm = em->bm;
 
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
 
@@ -4954,7 +4951,7 @@ static int uv_select_similar_face_exec(bContext *C, wmOperator *op)
     const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
 
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     BMFace *face;
     BMIter iter;
@@ -5037,7 +5034,7 @@ static int uv_select_similar_island_exec(bContext *C, wmOperator *op)
     }
 
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, obedit->object_to_world);
+    copy_m3_m4(ob_m3, obedit->object_to_world().ptr());
 
     int index;
     LISTBASE_FOREACH_INDEX (FaceIsland *, island, &island_list_ptr[ob_index], index) {
@@ -5066,7 +5063,7 @@ static int uv_select_similar_island_exec(bContext *C, wmOperator *op)
       continue;
     }
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, obedit->object_to_world);
+    copy_m3_m4(ob_m3, obedit->object_to_world().ptr());
 
     bool changed = false;
     int index;
@@ -5540,7 +5537,7 @@ static int uv_select_mode_exec(bContext *C, wmOperator *op)
   /* Handle UV selection states according to new select mode and sticky mode. */
   ED_uvedit_selectmode_clean_multi(C);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
   WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   return OPERATOR_FINISHED;
