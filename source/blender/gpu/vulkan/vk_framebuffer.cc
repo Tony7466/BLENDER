@@ -312,7 +312,6 @@ void VKFrameBuffer::subpass_transition_impl(const GPUAttachmentState depth_attac
   attachment_states_.as_mutable_span()
       .slice(GPU_FB_COLOR_ATTACHMENT0, color_attachment_states.size())
       .copy_from(color_attachment_states);
-  // TODO: BIND GPU_ATTACHEMENT_READ textures to texture slots
   for (int index : IndexRange(color_attachment_states.size())) {
     if (color_attachment_states[index] == GPU_ATTACHMENT_READ) {
       VKTexture *texture = unwrap(unwrap(color_tex(index)));
@@ -774,7 +773,6 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   depth_attachment_format_ = VK_FORMAT_UNDEFINED;
   stencil_attachment_format_ = VK_FORMAT_UNDEFINED;
 
-  // TODO: add depth + stencil attachment.
   viewport_reset();
   scissor_reset();
 

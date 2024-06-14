@@ -312,10 +312,6 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     debugging_tools.print_labels(callback_data);
   }
 
-  if (callback_data->messageIdNumber == 1187072739) {
-    return VK_FALSE;
-  }
-
   return VK_FALSE;
 };
 
