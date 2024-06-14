@@ -1001,25 +1001,13 @@ elseif(WIN32)
       ALL
     )
   endif()
-
+  # 4.1 fftw libs need to be installed, in 4.2 fftw got turned into a static lib 
+  # and the files below no longer exist. 
   if(EXISTS ${LIBDIR}/fftw3/lib/fftw3.dll)
-    set(FFTW_DLL ${LIBDIR}/fftw3/lib/fftw3.dll)
-  else()
-    set(FFTW_DLL ${LIBDIR}/fftw3/lib/libfftw3-3.dll)
-  endif()
-
-  windows_install_shared_manifest(
-    FILES ${FFTW_DLL}
-    ALL
-  )
-  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3f-3.dll)
     windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
-      ALL
-    )
-  elseif(EXISTS ${LIBDIR}/fftw3/lib/fftw3f.dll)
-    windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/fftw3f.dll
+      FILES
+        ${LIBDIR}/fftw3/lib/fftw3.dll
+        ${LIBDIR}/fftw3/lib/fftw3f.dll
       ALL
     )
   endif()
@@ -1707,12 +1695,6 @@ install(
 # Bundle assets
 
 set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/release/datafiles/assets/publish/)
-
-# TODO temporary change for development only. Remove before merging.
-set(ASSET_BUNDLE_TESTING_DIR "${ASSET_BUNDLE_DIR}/../testing/")
-if(EXISTS "${ASSET_BUNDLE_TESTING_DIR}")
-  set(ASSET_BUNDLE_DIR "${ASSET_BUNDLE_TESTING_DIR}")
-endif()
 
 if(EXISTS "${ASSET_BUNDLE_DIR}")
   install(

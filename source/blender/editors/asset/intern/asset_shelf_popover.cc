@@ -152,10 +152,16 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
       return settings_is_active_catalog(shelf_.settings, catalog_path);
     });
 
-    catalog_item.foreach_child(
-        [&view_item, this](const asset_system::AssetCatalogTreeItem &child) {
-          build_catalog_items_recursive(view_item, child);
-        });
+    const int parent_count = view_item.count_parents() + 1;
+
+    catalog_item.foreach_child([&, this](const asset_system::AssetCatalogTreeItem &child) {
+      ui::BasicTreeViewItem &child_item = build_catalog_items_recursive(view_item, child);
+
+      /* Uncollapse to some level (gives quick acces, but don't let the tree get too big). */
+      if (parent_count < 3) {
+        child_item.uncollapse_by_default();
+      }
+    });
 
     return view_item;
   }
@@ -238,7 +244,13 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
   uiLayout *sub = uiLayoutRow(right_col, false);
   /* Same as file/asset browser header. */
   PointerRNA shelf_ptr = RNA_pointer_create(&screen->id, &RNA_AssetShelf, shelf);
-  uiItemR(sub, &shelf_ptr, "search_filter", UI_ITEM_R_IMMEDIATE, "", ICON_VIEWZOOM);
+  uiItemR(sub,
+          &shelf_ptr,
+          "search_filter",
+          /* Force the button to be active in a semi-modal state. */
+          UI_ITEM_R_TEXT_BUT_FORCE_SEMI_MODAL_ACTIVE,
+          "",
+          ICON_VIEWZOOM);
 
   uiLayout *asset_view_col = uiLayoutColumn(right_col, false);
   uiLayoutSetUnitsX(asset_view_col, right_col_width_units);
