@@ -121,18 +121,26 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_geometry
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_util
   bf_functions
   PRIVATE bf::intern::guardedalloc
   bf_nodes_composite
   bf_nodes_function
+  PRIVATE bf_nodes_functions_generated
   bf_nodes_geometry
+  PRIVATE bf_nodes_geometry_generated
   bf_nodes_shader
   bf_nodes_texture
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_rna
 )
 
 if(WITH_BULLET)

@@ -370,11 +370,17 @@ set(METAL_SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_draw
+  PRIVATE bf_editor_interface
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::clog
+  PRIVATE bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes_shader
 )
 
 # Select Backend source based on availability

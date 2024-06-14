@@ -29,8 +29,11 @@ set(SRC_HEADERS
 
 set(LIB
   cycles_device
+  PRIVATE cycles_graph
   cycles_integrator
+  PRIVATE cycles_scene
   cycles_util
+  PRIVATE extern_glog
 )
 
 include_directories(${INC})

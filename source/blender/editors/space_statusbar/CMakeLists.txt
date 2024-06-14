@@ -25,8 +25,11 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
   PRIVATE bf::dna
+  PRIVATE bf_editor_screen
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_windowmanager
 )
 
 

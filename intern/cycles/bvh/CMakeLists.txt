@@ -53,8 +53,10 @@ set(SRC_HEADERS
 )
 
 set(LIB
+  PRIVATE cycles_graph
   cycles_scene
   cycles_util
+  PRIVATE extern_glog
 )
 
 include_directories(${INC})

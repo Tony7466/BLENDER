@@ -133,13 +133,31 @@ set(SRC
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf_blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_scene
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_buttons
+  PRIVATE bf_editor_space_file
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_sequencer
+  PRIVATE bf_editor_space_text
   bf_editor_undo
+  PRIVATE bf_gpu
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
   extern_fmtlib
 )
 

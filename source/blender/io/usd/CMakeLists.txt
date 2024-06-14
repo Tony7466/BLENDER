@@ -214,14 +214,22 @@ endif()
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::animrig
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_object
   bf_imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_io_common
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_nodes_shader
+  PRIVATE bf_python
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 list(APPEND LIB

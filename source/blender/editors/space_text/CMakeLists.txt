@@ -38,8 +38,18 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::dna
+  PRIVATE bf_editor_curve
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_undo
+  PRIVATE bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 

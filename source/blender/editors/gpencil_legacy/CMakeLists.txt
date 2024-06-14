@@ -59,9 +59,25 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_clip
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_transform
+  PRIVATE bf_editor_util
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_POTRACE)

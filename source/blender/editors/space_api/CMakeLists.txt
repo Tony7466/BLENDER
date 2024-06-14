@@ -21,9 +21,31 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_asset
+  PRIVATE bf_editor_curve
+  PRIVATE bf_editor_curves
   bf_editor_geometry
+  PRIVATE bf_editor_gizmo_library
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_grease_pencil
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_io
+  PRIVATE bf_editor_lattice
+  PRIVATE bf_editor_mask
+  PRIVATE bf_editor_mesh
+  PRIVATE bf_editor_metaball
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_physics
+  PRIVATE bf_editor_render
+  PRIVATE bf_editor_scene
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_sound
   bf_editor_space_action
   bf_editor_space_buttons
   bf_editor_space_clip
@@ -43,6 +65,10 @@ set(LIB
   bf_editor_space_topbar
   bf_editor_space_userpref
   bf_editor_space_view3d
+  PRIVATE bf_editor_transform
+  PRIVATE bf_editor_util
+  PRIVATE bf_editor_uvedit
+  PRIVATE bf_gpu
   PRIVATE bf::intern::guardedalloc
 )
 

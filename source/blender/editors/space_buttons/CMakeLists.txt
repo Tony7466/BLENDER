@@ -29,9 +29,20 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_physics
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_undo
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 

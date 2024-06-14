@@ -93,9 +93,11 @@ set(SRC_HEADERS
 set(LIB
   cycles_bvh
   cycles_device
+  PRIVATE cycles_graph
   cycles_integrator
   cycles_subd
   cycles_util
+  PRIVATE extern_glog
 )
 
 if(CYCLES_STANDALONE_REPOSITORY)

@@ -51,12 +51,17 @@ set(SRC
 set(LIB
   bf_blenkernel
   bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   bf::dna
+  PRIVATE bf_editor_animation
   PRIVATE bf_editor_interface
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::clog
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
+  PRIVATE extern_fmtlib
 )
 
 

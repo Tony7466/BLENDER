@@ -565,12 +565,18 @@ if(WITH_COMPOSITOR_CPU)
   set(LIB
     bf_blenkernel
     PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
     PRIVATE bf::depsgraph
     PRIVATE bf::dna
+  PRIVATE bf_imbuf
     PRIVATE bf::intern::clog
     PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes_composite
+  PRIVATE bf_nodes_texture
     bf_realtime_compositor
     PRIVATE bf::intern::atomic
+  PRIVATE bf_render
+  PRIVATE bf_rna
   )
 
   if(WITH_TBB)

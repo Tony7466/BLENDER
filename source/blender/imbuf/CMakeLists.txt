@@ -77,10 +77,12 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
   bf_blenloader
   PRIVATE bf::dna
+  PRIVATE bf_gpu
   bf_imbuf_openimageio
   PRIVATE bf::intern::guardedalloc
   bf_intern_memutil
@@ -88,6 +90,8 @@ set(LIB
   PRIVATE bf::extern::nanosvg
 
   ${JPEG_LIBRARIES}
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
 )
 
 if(WITH_IMAGE_OPENEXR)

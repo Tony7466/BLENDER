@@ -141,10 +141,26 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PUBLIC bf::dna
+  PRIVATE bf_editor_grease_pencil
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_undo
+  PRIVATE bf_editor_util
+  PRIVATE bf_geometry
+  PRIVATE bf_gpencil_modifiers_legacy
+  PRIVATE bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_nodes
+  PRIVATE bf_nodes_geometry
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_ALEMBIC)

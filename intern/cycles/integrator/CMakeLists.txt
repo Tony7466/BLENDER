@@ -61,9 +61,12 @@ set(LIB
 
   # NOTE: Is required for RenderBuffers access. Might consider moving files around a bit to
   # avoid such cyclic dependency.
+  PRIVATE cycles_graph
+  PRIVATE cycles_scene
   cycles_session
 
   cycles_util
+  PRIVATE extern_glog
 )
 
 if(WITH_OPENIMAGEDENOISE)

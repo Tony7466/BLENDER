@@ -126,11 +126,22 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_compositor
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes
   bf_realtime_compositor
+  PRIVATE bf_render
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_IMAGE_OPENEXR)

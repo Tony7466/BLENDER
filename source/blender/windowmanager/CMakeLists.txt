@@ -96,16 +96,47 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE audaspace
+  PRIVATE bf_asset_system
   PRIVATE bf::blenfont
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_draw
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_asset
+  PRIVATE bf_editor_datafiles
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_grease_pencil
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_render
+  PRIVATE bf_editor_scene
   bf_editor_screen
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_file
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_info
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_transform
   bf_editor_undo
+  PRIVATE bf_editor_util
+  PRIVATE bf_editor_uvedit
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig
+  PRIVATE bf_intern_memutil
+  PRIVATE bf_python
+  PRIVATE bf_render
+  PRIVATE bf_rna
   bf_sequencer
   bf_intern_ghost
 )

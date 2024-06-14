@@ -52,15 +52,35 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE audaspace
   PRIVATE bf::blenfont
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_draw
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_gpencil_legacy
   bf_editor_interface
+  PRIVATE bf_editor_scene
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_file
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_transform
   bf_editor_util
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_AUDASPACE)

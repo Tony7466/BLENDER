@@ -414,6 +414,7 @@ set(SRC_UTIL_HEADERS
 
 set(LIB
 
+  PRIVATE cycles_util
 )
 
 # CUDA module

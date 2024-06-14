@@ -117,6 +117,27 @@ set(SRC
 set(LIB
   PRIVATE bf::animrig
   PRIVATE bf::blenfont
+  PRIVATE bf_blentranslation
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_curves
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_grease_pencil
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_mesh
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_physics
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_clip
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_nla
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_sequencer
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_util
+  PRIVATE bf_editor_uvedit
   PRIVATE bf::extern::fmtlib
   bf_blenkernel
   PRIVATE bf::blenlib
@@ -125,7 +146,11 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_mask
   bf_gpu
+  PRIVATE bf_ikplugin
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
 )
 
 

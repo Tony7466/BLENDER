@@ -30,12 +30,21 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_asset_system
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_asset
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_mesh
   bf_editor_object
+  PRIVATE bf_editor_sculpt_paint
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes
+  PRIVATE bf_rna
   bf_windowmanager
 )
 

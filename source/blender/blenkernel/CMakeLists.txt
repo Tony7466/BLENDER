@@ -549,6 +549,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE audaspace
   PRIVATE bf::animrig
   bf_asset_system
   PRIVATE bf::blenfont
@@ -559,21 +560,32 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_draw
+  PRIVATE bf_editor_asset
   PRIVATE bf::extern::curve_fit_nd
   bf_functions
   bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
   bf_imbuf
+  PRIVATE bf_imbuf_openexr
+  PRIVATE bf_intern_audaspace
   PRIVATE bf::intern::clog
+  PRIVATE bf_intern_eigen
   bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
   bf_intern_libmv  # Uses stub when disabled.
   bf_intern_mikktspace
   bf_intern_opensubdiv  # Uses stub when disabled.
+  PRIVATE bf_io_alembic
+  PRIVATE bf_io_usd
   bf_modifiers
   bf_nodes
+  PRIVATE bf_nodes_geometry
+  PRIVATE bf_nodes_shader
+  PRIVATE bf_nodes_texture
+  PRIVATE bf_render
   bf_rna
+  PRIVATE bf_sequencer
   bf_shader_fx
   bf_simulation
   PRIVATE bf::extern::fmtlib

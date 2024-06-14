@@ -65,10 +65,15 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
   bf_functions
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes
+  PRIVATE bf_rna
 )
 
 add_node_discovery(

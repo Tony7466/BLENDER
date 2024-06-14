@@ -23,11 +23,17 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE audaspace
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_util
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_AUDASPACE)

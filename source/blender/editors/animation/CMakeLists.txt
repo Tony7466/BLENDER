@@ -45,10 +45,25 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::animrig
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_graph
+  PRIVATE bf_editor_space_nla
+  PRIVATE bf_editor_space_sequencer
+  PRIVATE bf_editor_undo
+  PRIVATE bf_editor_util
+  PRIVATE bf_gpu
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
+  PRIVATE extern_fmtlib
 )
 
 if(WITH_PYTHON)

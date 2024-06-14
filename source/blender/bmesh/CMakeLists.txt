@@ -169,7 +169,10 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::clog
+  PRIVATE bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_intern_rigidbody
+  PRIVATE bf_python_bmesh
   extern_rangetree
   PRIVATE bf::intern::atomic
 )

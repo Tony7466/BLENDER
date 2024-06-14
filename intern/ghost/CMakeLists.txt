@@ -72,6 +72,7 @@ set(SRC
 set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::clog
 )
 

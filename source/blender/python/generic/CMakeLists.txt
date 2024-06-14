@@ -41,10 +41,16 @@ set(SRC
 set(LIB
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
+  PRIVATE bf_blenfont
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python
+  PRIVATE bf_rna
 )
 
 # NOTE: use irrespective of `WITH_OPENGL_BACKEND` as the `bgl` module uses this for constants.

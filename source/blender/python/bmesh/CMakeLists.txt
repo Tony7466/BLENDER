@@ -37,9 +37,12 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_mesh
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python_ext
   bf_python_mathutils
 
   ${PYTHON_LINKFLAGS}

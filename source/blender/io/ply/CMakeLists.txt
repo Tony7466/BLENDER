@@ -52,8 +52,10 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_geometry
   PRIVATE bf::intern::guardedalloc
   bf_io_common
   PRIVATE bf::extern::fmtlib

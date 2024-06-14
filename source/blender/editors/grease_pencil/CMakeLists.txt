@@ -42,10 +42,25 @@ set(LIB
   bf_blenkernel
   PRIVATE bf::animrig
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_curves
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_undo
+  PRIVATE bf_geometry
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::intern::clog
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
   extern_curve_fit_nd
   extern_fmtlib
 )

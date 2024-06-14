@@ -91,7 +91,11 @@ set(SRC
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_bmesh
   PRIVATE bf::dna
+  PRIVATE bf_editor_uvedit
+  PRIVATE bf_functions
+  PRIVATE bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::fmtlib
 )

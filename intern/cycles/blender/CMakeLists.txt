@@ -58,12 +58,17 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_render
+  PRIVATE bf_rna
   cycles_bvh
   cycles_device
   cycles_graph
+  PRIVATE cycles_integrator
   cycles_kernel
   cycles_scene
   cycles_session

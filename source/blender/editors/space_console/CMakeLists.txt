@@ -27,8 +27,15 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_info
+  PRIVATE bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_PYTHON)

@@ -22,6 +22,7 @@ endif()
   )
 
 set(LIB
+  PRIVATE bf_blenkernel
 )
 
 if(NOT WITH_SYSTEM_AUDASPACE)

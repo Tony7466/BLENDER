@@ -36,11 +36,34 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_draw
+  PRIVATE bf_editor_curve
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_mesh
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_scene
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_util
+  PRIVATE bf_freestyle
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes_composite
+  PRIVATE bf_render
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_HEADLESS)

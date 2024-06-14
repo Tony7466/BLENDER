@@ -312,11 +312,34 @@ set(LIB
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_curves
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_grease_pencil
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_mesh
+  PRIVATE bf_editor_physics
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_uvedit
+  PRIVATE bf_gpu
+  PRIVATE bf_gpu_shaders
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_intern_mantaflow
+  PRIVATE bf_intern_opensubdiv
+  PRIVATE bf_nodes
   bf_realtime_compositor
+  PRIVATE bf_render
   bf_windowmanager
   PRIVATE bf::intern::atomic
 )

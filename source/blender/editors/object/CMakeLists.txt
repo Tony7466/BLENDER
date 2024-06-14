@@ -62,18 +62,48 @@ set(SRC
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf_asset_system
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_asset
+  PRIVATE bf_editor_curve
+  PRIVATE bf_editor_curves
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_lattice
   bf_editor_mesh
   bf_editor_metaball
   bf_editor_grease_pencil
+  PRIVATE bf_editor_physics
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_undo
+  PRIVATE bf_editor_util
+  PRIVATE bf_editor_uvedit
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_geometry
+  PRIVATE bf_gpencil_modifiers_legacy
+  PRIVATE bf_gpu
+  PRIVATE bf_ikplugin
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_modifiers
+  PRIVATE bf_nodes
+  PRIVATE bf_python
   bf_render
+  PRIVATE bf_rna
   bf_windowmanager
 )
 

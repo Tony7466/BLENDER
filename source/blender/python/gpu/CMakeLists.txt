@@ -60,9 +60,14 @@ set(SRC
 set(LIB
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python_ext
+  PRIVATE bf_python_mathutils
 )
 
 if(WITH_OPENGL_BACKEND)

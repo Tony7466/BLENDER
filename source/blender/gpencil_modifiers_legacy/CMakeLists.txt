@@ -89,10 +89,18 @@ endif()
 
 set(LIB
   PRIVATE bf::blenfont
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_object
+  PRIVATE bf_geometry
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_render
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 blender_add_lib(bf_gpencil_modifiers_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

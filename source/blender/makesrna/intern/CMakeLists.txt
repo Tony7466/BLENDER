@@ -484,7 +484,49 @@ set(SRC
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf_asset_system
+  PRIVATE bf_blenfont
+  PRIVATE bf_blenkernel
+  PRIVATE bf_blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_geometry
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_buttons
+  PRIVATE bf_editor_space_clip
+  PRIVATE bf_editor_space_file
+  PRIVATE bf_editor_space_graph
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_info
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_space_spreadsheet
+  PRIVATE bf_editor_space_text
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_uvedit
+  PRIVATE bf_freestyle
+  PRIVATE bf_gpu
+  PRIVATE bf_ikplugin
+  PRIVATE bf_imbuf
+  PRIVATE bf_intern_clog
+  PRIVATE bf_intern_mantaflow
+  PRIVATE bf_intern_memutil
+  PRIVATE bf_intern_rigidbody
+  PRIVATE bf_io_alembic
+  PRIVATE bf_io_usd
+  PRIVATE bf_modifiers
+  PRIVATE bf_nodes
+  PRIVATE bf_nodes_composite
+  PRIVATE bf_nodes_geometry
+  PRIVATE bf_nodes_shader
+  PRIVATE bf_nodes_texture
+  PRIVATE bf_python
+  PRIVATE bf_python_ext
+  PRIVATE bf_render
+  PRIVATE bf_sequencer
+  PRIVATE bf_windowmanager
   PRIVATE extern_fmtlib
   bf_editor_space_api
 

@@ -61,11 +61,20 @@ set(LIB
   PRIVATE bf::animrig
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_draw
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_modifiers
+  PRIVATE bf_nodes
+  PRIVATE bf_nodes_composite
+  PRIVATE bf_nodes_shader
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
 )
 
 if(WITH_BUILDINFO)

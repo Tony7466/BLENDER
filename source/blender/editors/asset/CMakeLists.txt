@@ -56,12 +56,19 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_asset_system
   bf_blenkernel
   PRIVATE bf::blenlib
   bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_file
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 blender_add_lib(bf_editor_asset "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -404,6 +404,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PUBLIC bf::dna
   PRIVATE bf::extern::fmtlib
   PRIVATE bf::extern::xxhash

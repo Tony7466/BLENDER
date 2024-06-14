@@ -530,14 +530,21 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python
+  PRIVATE bf_python_ext
   bf_python_mathutils
 
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
+  PRIVATE bf_render
+  PRIVATE bf_rna
 )
 
 set(INC

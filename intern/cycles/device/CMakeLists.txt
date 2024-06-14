@@ -140,8 +140,14 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE cycles_bvh
+  PRIVATE cycles_graph
+  PRIVATE cycles_integrator
   cycles_kernel
+  PRIVATE cycles_kernel_osl
+  PRIVATE cycles_scene
   cycles_util
+  PRIVATE extern_glog
 )
 
 if(WITH_CYCLES_DEVICE_OPTIX OR WITH_CYCLES_DEVICE_CUDA)

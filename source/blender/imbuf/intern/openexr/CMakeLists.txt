@@ -20,8 +20,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
 )
 

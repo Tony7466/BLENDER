@@ -74,9 +74,15 @@ set(LIB
   ${BOOST_LIBRARIES}
   ${USD_LIBRARIES}
   ${TBB_LIBRARIES}
+  PRIVATE bf_blenkernel
+  PRIVATE bf_blenlib
   PRIVATE bf::depsgraph
+  PRIVATE bf_gpu
   PRIVATE bf::intern::clog
   bf_io_usd
+  PRIVATE bf_python
+  PRIVATE bf_python_ext
+  PRIVATE bf_render
 )
 
 set(SRC

@@ -50,11 +50,23 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenfont
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_curves
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_util
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_gpu
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_OPENVDB)

@@ -230,16 +230,26 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_util
   bf_functions
   bf_geometry
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_intern_rigidbody
   bf_nodes
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_IO_STL)

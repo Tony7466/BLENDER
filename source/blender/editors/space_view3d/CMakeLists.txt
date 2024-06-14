@@ -79,14 +79,47 @@ set(SRC
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf_asset_system
   PRIVATE bf::blenfont
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_draw
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_asset
+  PRIVATE bf_editor_curve
   bf_editor_curves
+  PRIVATE bf_editor_geometry
+  PRIVATE bf_editor_gizmo_library
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_grease_pencil
+  PRIVATE bf_editor_interface
   bf_editor_lattice
   bf_editor_mesh
+  PRIVATE bf_editor_metaball
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_physics
+  PRIVATE bf_editor_render
+  PRIVATE bf_editor_scene
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_info
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_transform
+  PRIVATE bf_editor_undo
+  PRIVATE bf_editor_util
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python_ext
+  PRIVATE bf_render
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_PYTHON)

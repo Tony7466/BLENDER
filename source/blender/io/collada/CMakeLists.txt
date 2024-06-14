@@ -114,10 +114,18 @@ set(LIB
   ${PCRE_LIBRARIES}
   ${XML2_LIBRARIES}
   PRIVATE bf::animrig
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blentranslation
+  PRIVATE bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_screen
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_BUILDINFO)

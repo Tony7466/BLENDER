@@ -98,15 +98,45 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_asset_system
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_animation
+  PRIVATE bf_editor_armature
+  PRIVATE bf_editor_asset
   bf_editor_datafiles
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_render
+  PRIVATE bf_editor_screen
+  PRIVATE bf_editor_sculpt_paint
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_buttons
+  PRIVATE bf_editor_space_clip
+  PRIVATE bf_editor_space_file
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_info
+  PRIVATE bf_editor_space_node
+  PRIVATE bf_editor_space_outliner
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_undo
+  PRIVATE bf_editor_util
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
+  PRIVATE bf_intern_ghost
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig
+  PRIVATE bf_nodes_composite
+  PRIVATE bf_python
+  PRIVATE bf_python_ext
+  PRIVATE bf_render
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_INTERNATIONAL)

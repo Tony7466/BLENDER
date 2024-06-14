@@ -27,6 +27,9 @@ set(SRC_HEADERS
 
 set(LIB
 
+  PRIVATE cycles_graph
+  PRIVATE cycles_scene
+  PRIVATE cycles_util
 )
 
 include_directories(${INC})

@@ -154,11 +154,16 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_animrig
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf_draw
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_python_ext
+  PRIVATE bf_rna
+  PRIVATE bf_sequencer
 )
 
 if(WITH_PYTHON)

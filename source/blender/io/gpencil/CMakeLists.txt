@@ -37,6 +37,9 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_object
+  PRIVATE bf_editor_space_view3d
   PRIVATE bf::extern::nanosvg
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc

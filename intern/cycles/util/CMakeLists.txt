@@ -32,6 +32,8 @@ set(SRC
 
 set(LIB
   ${TBB_LIBRARIES}
+  PRIVATE extern_gflags
+  PRIVATE extern_glog
 )
 
 set(SRC_HEADERS

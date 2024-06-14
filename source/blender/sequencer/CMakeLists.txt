@@ -78,14 +78,20 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE audaspace
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_render
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_AUDASPACE)

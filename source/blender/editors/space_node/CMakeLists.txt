@@ -52,15 +52,38 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_asset_system
   PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf_draw
+  PRIVATE bf_editor_asset
+  PRIVATE bf_editor_gpencil_legacy
+  PRIVATE bf_editor_interface
+  PRIVATE bf_editor_io
+  PRIVATE bf_editor_render
   bf_editor_screen
+  PRIVATE bf_editor_space_api
+  PRIVATE bf_editor_space_image
+  PRIVATE bf_editor_space_view3d
+  PRIVATE bf_editor_undo
+  PRIVATE bf_editor_util
+  PRIVATE bf_geometry
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf_nodes
+  PRIVATE bf_nodes_composite
+  PRIVATE bf_nodes_geometry
   bf_realtime_compositor
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf_render
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 if(WITH_COMPOSITOR_CPU)

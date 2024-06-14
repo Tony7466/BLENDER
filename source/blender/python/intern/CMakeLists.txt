@@ -120,19 +120,37 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf_blenloader
+  PRIVATE bf_blentranslation
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_animation
   bf_editor_interface
   bf_editor_space_api
+  PRIVATE bf_freestyle
+  PRIVATE bf_gpu
+  PRIVATE bf_imbuf_openimageio
+  PRIVATE bf_intern_audaspace
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig
+  PRIVATE bf_intern_mantaflow
+  PRIVATE bf_intern_opencolorio
+  PRIVATE bf_intern_opensubdiv
+  PRIVATE bf_intern_openvdb
+  PRIVATE bf_io_alembic
+  PRIVATE bf_io_usd
+  PRIVATE bf_python_bmesh
+  PRIVATE bf_python_ext
   bf_python_gpu
 
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
+  PRIVATE bf_python_mathutils
+  PRIVATE bf_rna
+  PRIVATE bf_windowmanager
 )
 
 # only to check if buildinfo is available

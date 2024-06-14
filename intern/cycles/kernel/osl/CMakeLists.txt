@@ -32,6 +32,8 @@ set(LIB
   ${OSL_LIBRARIES}
   ${OPENIMAGEIO_LIBRARIES}
   ${PUGIXML_LIBRARIES}
+  PRIVATE cycles_util
+  PRIVATE extern_glog
 )
 
 if(APPLE)
