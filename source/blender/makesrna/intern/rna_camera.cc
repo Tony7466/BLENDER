@@ -22,6 +22,13 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+static const EnumPropertyItem camera_type_items[] = {
+    {CAM_PERSP, "PERSP", 0, "Perspective", ""},
+    {CAM_ORTHO, "ORTHO", 0, "Orthographic", ""},
+    {CAM_PANO, "PANO", 0, "Panoramic", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include <fmt/format.h>
@@ -224,6 +231,33 @@ static void rna_CameraDOFSettings_aperture_blades_set(PointerRNA *ptr, const int
   else {
     dofsettings->aperture_blades = value;
   }
+}
+
+static const EnumPropertyItem *rna_Camera_type_itemf(bContext *C,
+                                                     PointerRNA * /*ptr*/,
+                                                     PropertyRNA * /*prop*/,
+                                                     bool *r_free)
+{
+  EnumPropertyItem *item = nullptr;
+  const EnumPropertyItem *type_item = nullptr;
+  int totitem = 0;
+
+  Scene *scene = CTX_data_scene(C);
+  const bool is_cycles = STREQ(scene->r.engine, RE_engine_id_CYCLES);
+
+  for (int a = 0; camera_type_items[a].identifier; a++) {
+    type_item = &camera_type_items[a];
+    if ((type_item->value == CAM_PANO) && !is_cycles) {
+      continue;
+    }
+
+    RNA_enum_item_add(&item, &totitem, type_item);
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
 }
 
 #else
@@ -574,12 +608,6 @@ void RNA_def_camera(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  static const EnumPropertyItem prop_type_items[] = {
-      {CAM_PERSP, "PERSP", 0, "Perspective", ""},
-      {CAM_ORTHO, "ORTHO", 0, "Orthographic", ""},
-      {CAM_PANO, "PANO", 0, "Panoramic", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
   static const EnumPropertyItem prop_lens_unit_items[] = {
       {0, "MILLIMETERS", 0, "Millimeters", "Specify focal length of the lens in millimeters"},
       {CAM_ANGLETOGGLE,
@@ -643,7 +671,8 @@ void RNA_def_camera(BlenderRNA *brna)
 
   /* Enums */
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, prop_type_items);
+  RNA_def_property_enum_items(prop, camera_type_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_Camera_type_itemf");
   RNA_def_property_ui_text(prop, "Type", "Camera types");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
