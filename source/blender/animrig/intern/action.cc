@@ -1191,14 +1191,12 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   }
 
   std::string suffix = "_layered";
-  /* Offsetting the id.name to remove the ID prefix (AC) which gets added back later. */
-  std::string legacy_name = legacy_action.id.name + 2;
   /* In case the legacy action has a long name it is shortened to make space for the suffix. */
-  if (legacy_name.size() > MAX_ID_NAME - (suffix.size() + 3)) {
-    legacy_name = legacy_name.substr(0, MAX_ID_NAME - (suffix.size() + 3));
-  }
+  char legacy_name[MAX_ID_NAME - 10];
+  /* Offsetting the id.name to remove the ID prefix (AC) which gets added back later. */
+  STRNCPY_UTF8(legacy_name, legacy_action.id.name + 2);
 
-  const std::string layered_action_name = legacy_name + suffix;
+  const std::string layered_action_name = std::string(legacy_name) + suffix;
   bAction *dna_action = BKE_action_add(&bmain, layered_action_name.c_str());
 
   Action &converted_action = dna_action->wrap();
