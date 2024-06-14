@@ -331,6 +331,8 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = [
   attributes.applied_impulse = "applied_impulse";
   attributes.breaking_impulse_threshold = "breaking_impulse_threshold";
   attributes.disable_collision = "disable_collision";
+  attributes.total_force = "total_force";
+  attributes.total_torque = "total_torque";
 
   return attributes;
 }();
@@ -821,12 +823,120 @@ AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
   return attributes_for_write().lookup_for_write<int>(builtin_attributes.activation_state);
 }
 
-static btTypedConstraint *make_constraint_type(const btTypedConstraintType bt_type)
+VArray<float3> PhysicsGeometry::body_total_force() const
 {
-  switch (bt_type) {
-    default:
-      return nullptr;
+  return attributes().lookup<float3>(builtin_attributes.total_force).varray;
+}
+
+VArray<float3> PhysicsGeometry::body_total_torque() const
+{
+  return attributes().lookup<float3>(builtin_attributes.total_torque).varray;
+}
+
+void PhysicsGeometry::apply_force(const IndexMask &selection,
+                                  const VArray<float3> &forces,
+                                  const VArray<float3> &relative_positions)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+
+  if (!relative_positions) {
+    selection.foreach_index([&](const int index) {
+      const float3 force = forces[index];
+      impl.rigid_bodies[index]->applyCentralForce(to_bullet(force));
+    });
   }
+
+  selection.foreach_index([&](const int index) {
+    const float3 force = forces[index];
+    const float3 relative_position = relative_positions[index];
+    impl.rigid_bodies[index]->applyForce(to_bullet(force), to_bullet(relative_position));
+  });
+}
+
+void PhysicsGeometry::apply_torque(const IndexMask &selection, const VArray<float3> &torques)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+  selection.foreach_index([&](const int index) {
+    const float3 torque = torques[index];
+    impl.rigid_bodies[index]->applyTorque(to_bullet(torque));
+  });
+}
+
+void PhysicsGeometry::apply_impulse(const IndexMask &selection,
+                                    const VArray<float3> &impulses,
+                                    const VArray<float3> &relative_positions)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+
+  if (!relative_positions) {
+    selection.foreach_index([&](const int index) {
+      const float3 impulse = impulses[index];
+      impl.rigid_bodies[index]->applyCentralImpulse(to_bullet(impulse));
+    });
+  }
+
+  selection.foreach_index([&](const int index) {
+    const float3 impulse = impulses[index];
+    const float3 relative_position = relative_positions[index];
+    impl.rigid_bodies[index]->applyImpulse(to_bullet(impulse), to_bullet(relative_position));
+  });
+}
+
+void PhysicsGeometry::apply_angular_impulse(const IndexMask &selection,
+                                            const VArray<float3> &angular_impulses)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+  selection.foreach_index([&](const int index) {
+    const float3 angular_impulse = angular_impulses[index];
+    impl.rigid_bodies[index]->applyTorqueImpulse(to_bullet(angular_impulse));
+  });
+}
+
+void PhysicsGeometry::clear_forces(const IndexMask &selection)
+{
+  PhysicsGeometryImpl &impl = impl_for_write();
+  selection.foreach_index([&](const int index) { impl.rigid_bodies[index]->clearForces(); });
+}
+
+static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                               btRigidBody &body1,
+                                               btRigidBody &body2)
+{
+  using ConstraintType = PhysicsGeometry::ConstraintType;
+
+  [[maybe_unused]] btTransform zero_mat = btTransform::getIdentity();
+  [[maybe_unused]] btVector3 zero_vec = btVector3(0, 0, 0);
+  [[maybe_unused]] btVector3 axis_x = btVector3(1, 0, 0);
+  [[maybe_unused]] btVector3 axis_y = btVector3(0, 1, 0);
+  [[maybe_unused]] btVector3 axis_z = btVector3(0, 0, 1);
+
+  switch (type) {
+    case ConstraintType::None:
+      return nullptr;
+    case ConstraintType::Fixed:
+      return new btFixedConstraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::Point:
+      return new btPoint2PointConstraint(body1, body2, zero_vec, zero_vec);
+    case ConstraintType::Hinge:
+      return new btHinge2Constraint(body1, body2, zero_vec, axis_x, axis_y);
+    case ConstraintType::Slider:
+      return new btSliderConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::ConeTwist:
+      return new btConeTwistConstraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::SixDoF:
+      return new btGeneric6DofConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::SixDoFSpring:
+      return new btGeneric6DofSpringConstraint(body1, body2, zero_mat, zero_mat, true);
+    case ConstraintType::SixDoFSpring2:
+      return new btGeneric6DofSpring2Constraint(body1, body2, zero_mat, zero_mat);
+    case ConstraintType::Contact:
+      /* Can't be created manually. */
+      return nullptr;
+    case ConstraintType::Gear:
+      return new btGearConstraint(body1, body2, zero_vec, zero_vec);
+  }
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 /* Specialization for changing btTypedConstraint pointers. */
@@ -861,12 +971,14 @@ class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayI
                                             const ConstraintType type) const
   {
     const btTypedConstraintType bt_type = to_bullet(type);
-    if (constraint && constraint->getConstraintType() == bt_type) {
+    if (!constraint || constraint->getConstraintType() == bt_type) {
       return constraint;
     }
 
+    btRigidBody &body1 = constraint->getRigidBodyA();
+    btRigidBody &body2 = constraint->getRigidBodyB();
     delete constraint;
-    return make_constraint_type(bt_type);
+    return make_constraint_type(type, body1, body2);
   }
 
   int get(const int64_t index) const override
@@ -925,47 +1037,6 @@ VArray<int> PhysicsGeometry::constraint_body_1() const
 VArray<int> PhysicsGeometry::constraint_body_2() const
 {
   return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
-}
-
-static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
-                                               btRigidBody &body1,
-                                               btRigidBody &body2)
-{
-  using ConstraintType = PhysicsGeometry::ConstraintType;
-
-  [[maybe_unused]] btTransform zero_mat = btTransform::getIdentity();
-  [[maybe_unused]] btVector3 zero_vec = btVector3(0, 0, 0);
-  [[maybe_unused]] btVector3 axis_x = btVector3(1, 0, 0);
-  [[maybe_unused]] btVector3 axis_y = btVector3(0, 1, 0);
-  [[maybe_unused]] btVector3 axis_z = btVector3(0, 0, 1);
-
-  switch (type) {
-    case ConstraintType::None:
-      return nullptr;
-    case ConstraintType::Fixed:
-      return new btFixedConstraint(body1, body2, zero_mat, zero_mat);
-    case ConstraintType::Point:
-      return new btPoint2PointConstraint(body1, body2, zero_vec, zero_vec);
-    case ConstraintType::Hinge:
-      return new btHinge2Constraint(body1, body2, zero_vec, axis_x, axis_y);
-    case ConstraintType::Slider:
-      return new btSliderConstraint(body1, body2, zero_mat, zero_mat, true);
-    case ConstraintType::ConeTwist:
-      return new btConeTwistConstraint(body1, body2, zero_mat, zero_mat);
-    case ConstraintType::SixDoF:
-      return new btGeneric6DofConstraint(body1, body2, zero_mat, zero_mat, true);
-    case ConstraintType::SixDoFSpring:
-      return new btGeneric6DofSpringConstraint(body1, body2, zero_mat, zero_mat, true);
-    case ConstraintType::SixDoFSpring2:
-      return new btGeneric6DofSpring2Constraint(body1, body2, zero_mat, zero_mat);
-    case ConstraintType::Contact:
-      /* Can't be created manually. */
-      return nullptr;
-    case ConstraintType::Gear:
-      return new btGearConstraint(body1, body2, zero_vec, zero_vec);
-  }
-  BLI_assert_unreachable();
-  return nullptr;
 }
 
 void PhysicsGeometry::create_constraints(const IndexMask &selection,
@@ -1371,6 +1442,26 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           physics_access,
           nullptr);
 
+  constexpr auto total_force_get_fn = [](const btRigidBody &body) -> float3 {
+    return to_blender(body.getTotalForce());
+  };
+  static BuiltinRigidBodyAttributeProvider<float3, total_force_get_fn> body_total_force(
+      PhysicsGeometry::builtin_attributes.total_force,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
+  constexpr auto total_torque_get_fn = [](const btRigidBody &body) -> float3 {
+    return to_blender(body.getTotalTorque());
+  };
+  static BuiltinRigidBodyAttributeProvider<float3, total_torque_get_fn> body_total_torque(
+      PhysicsGeometry::builtin_attributes.total_torque,
+      AttrDomain::Point,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr);
+
   constexpr auto constraint_enabled_get_fn = [](const btTypedConstraint *constraint) -> bool {
     return constraint ? constraint->isEnabled() : false;
   };
@@ -1740,6 +1831,8 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_angular_damping,
                                       &body_linear_sleeping_threshold,
                                       &body_angular_sleeping_threshold,
+                                      &body_total_force,
+                                      &body_total_torque,
                                       &constraint_enabled,
                                       &constraint_body1,
                                       &constraint_body2,

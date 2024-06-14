@@ -89,6 +89,8 @@ class PhysicsGeometry {
     std::string angular_damping;
     std::string linear_sleeping_threshold;
     std::string angular_sleeping_threshold;
+    std::string total_force;
+    std::string total_torque;
 
     /* Constraint attributes. */
     std::string constraint_enabled;
@@ -166,6 +168,19 @@ class PhysicsGeometry {
   /* Type is #BodyActivationState, can't return enum as VArray (no CPPType). */
   VArray<int> body_activation_states() const;
   AttributeWriter<int> body_activation_states_for_write();
+
+  VArray<float3> body_total_force() const;
+  VArray<float3> body_total_torque() const;
+  void apply_force(const IndexMask &selection,
+                   const VArray<float3> &forces,
+                   const VArray<float3> &relative_positions = {});
+  void apply_torque(const IndexMask &selection, const VArray<float3> &torques);
+
+  void apply_impulse(const IndexMask &selection,
+                     const VArray<float3> &impulses,
+                     const VArray<float3> &relative_positions = {});
+  void apply_angular_impulse(const IndexMask &selection, const VArray<float3> &angular_impulses);
+  void clear_forces(const IndexMask &selection);
 
   VArray<int> constraint_type() const;
   VArray<int> constraint_body_1() const;

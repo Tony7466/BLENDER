@@ -520,6 +520,10 @@ class NODE_MT_category_simulation(Menu):
         layout = self.layout
         node_add_menu.add_simulation_zone(layout, label="Simulation Zone")
         node_add_menu.add_node_type(layout, "GeometryNodeCollisionShape")
+        node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyAngularImpulse")
+        node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyForce")
+        node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyImpulse")
+        node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyTorque")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsTimeStep")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsWorld")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsConstraints")

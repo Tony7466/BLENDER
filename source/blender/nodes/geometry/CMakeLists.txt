@@ -162,6 +162,10 @@ set(SRC
   nodes/node_geo_mouse_position.cc
   nodes/node_geo_object_info.cc
   nodes/node_geo_offset_point_in_curve.cc
+  nodes/node_geo_physics_apply_angular_impulse.cc
+  nodes/node_geo_physics_apply_force.cc
+  nodes/node_geo_physics_apply_impulse.cc
+  nodes/node_geo_physics_apply_torque.cc
   nodes/node_geo_physics_constraints.cc
   nodes/node_geo_physics_time_step.cc
   nodes/node_geo_physics_world.cc

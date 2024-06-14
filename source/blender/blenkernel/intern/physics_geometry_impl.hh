@@ -26,7 +26,7 @@ class btCollisionConfiguration;
 class btCollisionDispatcher;
 class btBroadphaseInterface;
 class btConstraintSolver;
-class btOverlapFilterCallback;
+struct btOverlapFilterCallback;
 class btRigidBody;
 class btMotionState;
 class btCollisionShape;

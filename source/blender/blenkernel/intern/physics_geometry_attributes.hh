@@ -451,7 +451,7 @@ struct PhysicsAccessInfo {
  */
 template<typename T,
          RigidBodyGetFn<T> GetFn,
-         RigidBodySetFn<T> SetFn,
+         RigidBodySetFn<T> SetFn = nullptr,
          RigidBodyGetCacheFn<T> GetCacheFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
@@ -505,8 +505,6 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
-    BLI_STATIC_ASSERT((GetFn != nullptr || GetCacheFn != nullptr) && SetFn != nullptr,
-                      "A getter and setter function must be defined");
     Span<T> cache = {};
     if constexpr (GetCacheFn) {
       cache = GetCacheFn(physics->impl());
