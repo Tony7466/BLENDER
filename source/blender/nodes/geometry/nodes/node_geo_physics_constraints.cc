@@ -23,10 +23,18 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Physics").supported_type(bke::GeometryComponent::Type::Physics);
   b.add_input<decl::Int>("Count").default_value(1).min(0).description(
       "The number of points to create");
-  b.add_input<decl::Int>("Body 1").supports_field().description(
-      "Index of the first constrained body");
-  b.add_input<decl::Int>("Body 2").supports_field().description(
-      "Index of the second constrained body");
+  b.add_input<decl::Int>("Body 1")
+      .default_value(-1)
+      .min(-1)
+      .supports_field()
+      .description("Index of the first constrained body")
+      .hide_value();
+  b.add_input<decl::Int>("Body 2")
+      .default_value(-1)
+      .min(-1)
+      .supports_field()
+      .description("Index of the second constrained body")
+      .hide_value();
   b.add_output<decl::Geometry>("Physics");
 }
 
