@@ -17,7 +17,10 @@ namespace blender::nodes::node_geo_import_stl {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::String>("Path").default_value("").description("Path to a STL file");
+  b.add_input<decl::String>("Path")
+      .default_value("")
+      .subtype(PROP_FILEPATH)
+      .description("Path to a STL file");
 
   b.add_output<decl::Geometry>("Mesh");
 }

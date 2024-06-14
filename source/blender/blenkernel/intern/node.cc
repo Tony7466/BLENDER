@@ -2161,7 +2161,12 @@ const char *nodeStaticSocketType(const int type, const int subtype)
     case SOCK_RGBA:
       return "NodeSocketColor";
     case SOCK_STRING:
-      return "NodeSocketString";
+      switch (PropertySubType(subtype)) {
+        case PROP_FILEPATH:
+          return "NodeSocketStringFilePath";
+        default:
+          return "NodeSocketString";
+      }
     case SOCK_SHADER:
       return "NodeSocketShader";
     case SOCK_OBJECT:
