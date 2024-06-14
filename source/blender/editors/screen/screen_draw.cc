@@ -432,22 +432,22 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
   float split;
 
   if (dock_target == DOCKING_RIGHT) {
-    split = std::min(dest.xmin + target->winx * 0.55f, dest.xmax - AREAMINX * UI_SCALE_FAC);
+    split = std::min(dest.xmin + target->winx * 0.501f, dest.xmax - AREAMINX * UI_SCALE_FAC);
     dest.xmin = split + half_line_width;
     remainder.xmax = split - half_line_width;
   }
   else if (dock_target == DOCKING_LEFT) {
-    split = std::max(dest.xmax - target->winx * 0.55f, dest.xmin + AREAMINX * UI_SCALE_FAC);
+    split = std::max(dest.xmax - target->winx * 0.501f, dest.xmin + AREAMINX * UI_SCALE_FAC);
     dest.xmax = split - half_line_width;
     remainder.xmin = split + half_line_width;
   }
   else if (dock_target == DOCKING_TOP) {
-    split = std::min(dest.ymin + target->winy * 0.55f, dest.ymax - HEADERY * UI_SCALE_FAC);
+    split = std::min(dest.ymin + target->winy * 0.501f, dest.ymax - HEADERY * UI_SCALE_FAC);
     dest.ymin = split + half_line_width;
     remainder.ymax = split - half_line_width;
   }
   else if (dock_target == DOCKING_BOTTOM) {
-    split = std::max(dest.ymax - target->winy * 0.55f, dest.ymin + HEADERY * UI_SCALE_FAC);
+    split = std::max(dest.ymax - target->winy * 0.501f, dest.ymin + HEADERY * UI_SCALE_FAC);
     dest.ymax = split - half_line_width;
     remainder.ymin = split + half_line_width;
   }

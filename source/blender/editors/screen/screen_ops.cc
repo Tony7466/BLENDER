@@ -3560,7 +3560,7 @@ void static area_docking_apply(bContext *C, wmOperator *op)
   if (!(jd->dock_target == DOCKING_CENTER)) {
     eScreenAxis dir = (ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_RIGHT)) ? SCREEN_AXIS_V :
                                                                              SCREEN_AXIS_H;
-    float fac = ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_BOTTOM) ? 0.45f : 0.55f;
+    float fac = ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_BOTTOM) ? 0.499f : 0.501f;
     ScrArea *newa = area_split(
         jd->win2, WM_window_get_active_screen(jd->win2), jd->sa2, dir, fac, true);
     jd->sa2 = newa;
