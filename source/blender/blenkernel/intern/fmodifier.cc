@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -624,7 +625,7 @@ static float fcm_cycles_time(
 {
   const FMod_Cycles *data = (FMod_Cycles *)fcm->data;
   tFCMED_Cycles *storage = static_cast<tFCMED_Cycles *>(storage_);
-  float prevkey[2], lastkey[2], cycyofs = 0.0f;
+  float firstkey[2], lastkey[2], cycyofs = 0.0f;
   short side = 0, mode = 0;
   int cycles = 0;
   float ofs = 0;
@@ -642,11 +643,11 @@ static float fcm_cycles_time(
 
   /* calculate new evaltime due to cyclic interpolation */
   if (fcu->bezt) {
-    const BezTriple *prevbezt = fcu->bezt;
-    const BezTriple *lastbezt = prevbezt + fcu->totvert - 1;
+    const BezTriple *firstbezt = &fcu->bezt[0];
+    const BezTriple *lastbezt = &fcu->bezt[fcu->totvert - 1];
 
-    prevkey[0] = prevbezt->vec[1][0];
-    prevkey[1] = prevbezt->vec[1][1];
+    firstkey[0] = firstbezt->vec[1][0];
+    firstkey[1] = firstbezt->vec[1][1];
 
     lastkey[0] = lastbezt->vec[1][0];
     lastkey[1] = lastbezt->vec[1][1];
@@ -656,8 +657,8 @@ static float fcm_cycles_time(
     const FPoint *prevfpt = fcu->fpt;
     const FPoint *lastfpt = prevfpt + fcu->totvert - 1;
 
-    prevkey[0] = prevfpt->vec[0];
-    prevkey[1] = prevfpt->vec[1];
+    firstkey[0] = prevfpt->vec[0];
+    firstkey[1] = prevfpt->vec[1];
 
     lastkey[0] = lastfpt->vec[0];
     lastkey[1] = lastfpt->vec[1];
@@ -667,12 +668,12 @@ static float fcm_cycles_time(
    * 1) if in data range, definitely don't do anything
    * 2) if before first frame or after last frame, make sure some cycling is in use
    */
-  if (evaltime < prevkey[0]) {
+  if (evaltime < firstkey[0]) {
     if (data->before_mode) {
       side = -1;
       mode = data->before_mode;
       cycles = data->before_cycles;
-      ofs = prevkey[0];
+      ofs = firstkey[0];
     }
   }
   else if (evaltime > lastkey[0]) {
@@ -690,8 +691,8 @@ static float fcm_cycles_time(
   /* find relative place within a cycle */
   {
     /* calculate period and amplitude (total height) of a cycle */
-    const float cycdx = lastkey[0] - prevkey[0];
-    const float cycdy = lastkey[1] - prevkey[1];
+    const float cycdx = lastkey[0] - firstkey[0];
+    const float cycdy = lastkey[1] - firstkey[1];
 
     /* check if cycle is infinitely small, to be point of being impossible to use */
     if (cycdx == 0) {
@@ -699,8 +700,7 @@ static float fcm_cycles_time(
     }
 
     /* calculate the 'number' of the cycle */
-    const float cycle = (float(side) * (evaltime - ofs) / cycdx);
-
+    const double cycle = side * (double(evaltime) - double(ofs)) / double(cycdx);
     /* calculate the time inside the cycle */
     const float cyct = fmod(evaltime - ofs, cycdx);
 
@@ -730,10 +730,10 @@ static float fcm_cycles_time(
 
     /* special case for cycle start/end */
     if (cyct == 0.0f) {
-      evaltime = (side == 1 ? lastkey[0] : prevkey[0]);
+      evaltime = (side == 1 ? lastkey[0] : firstkey[0]);
 
       if ((mode == FCM_EXTRAPOLATE_MIRROR) && (int(cycle) % 2)) {
-        evaltime = (side == 1 ? prevkey[0] : lastkey[0]);
+        evaltime = (side == 1 ? firstkey[0] : lastkey[0]);
       }
     }
     /* calculate where in the cycle we are (overwrite evaltime to reflect this) */
@@ -744,7 +744,7 @@ static float fcm_cycles_time(
        *   (result of fmod will be negative, and with different phase).
        */
       if (side < 0) {
-        evaltime = prevkey[0] - cyct;
+        evaltime = firstkey[0] - cyct;
       }
       else {
         evaltime = lastkey[0] - cyct;
@@ -752,9 +752,9 @@ static float fcm_cycles_time(
     }
     else {
       /* the cycle is played normally... */
-      evaltime = prevkey[0] + cyct;
+      evaltime = firstkey[0] + cyct;
     }
-    if (evaltime < prevkey[0]) {
+    if (evaltime < firstkey[0]) {
       evaltime += cycdx;
     }
   }
