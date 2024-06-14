@@ -1235,7 +1235,6 @@ NODE_DEFINE(GaborTextureNode)
 
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
-  SOCKET_IN_FLOAT(impulses, "Impulses", 16.0f);
   SOCKET_IN_FLOAT(frequency, "Frequency", 2.0f);
   SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 1.0f);
   SOCKET_IN_FLOAT(orientation_2d, "Orientation 2D", M_PI_F / 4.0f);
@@ -1254,7 +1253,6 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *vector_in = input("Vector");
   ShaderInput *scale_in = input("Scale");
-  ShaderInput *impulses_in = input("Impulses");
   ShaderInput *frequency_in = input("Frequency");
   ShaderInput *anisotropy_in = input("Anisotropy");
   ShaderInput *orientation_2d_in = input("Orientation 2D");
@@ -1266,7 +1264,6 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
 
   int vector_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
   int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
-  int impulses_stack_offset = compiler.stack_assign_if_linked(impulses_in);
   int frequency_stack_offset = compiler.stack_assign_if_linked(frequency_in);
   int anisotropy_stack_offset = compiler.stack_assign_if_linked(anisotropy_in);
   int orientation_2d_stack_offset = compiler.stack_assign_if_linked(orientation_2d_in);
@@ -1279,17 +1276,18 @@ void GaborTextureNode::compile(SVMCompiler &compiler)
   compiler.add_node(
       NODE_TEX_GABOR,
       type,
-      compiler.encode_uchar4(
-          vector_stack_offset, scale_stack_offset, impulses_stack_offset, frequency_stack_offset),
-      compiler.encode_uchar4(
-          anisotropy_stack_offset, orientation_2d_stack_offset, orientation_3d_stack_offset));
+      compiler.encode_uchar4(vector_stack_offset,
+                             scale_stack_offset,
+                             frequency_stack_offset,
+                             anisotropy_stack_offset),
+      compiler.encode_uchar4(orientation_2d_stack_offset, orientation_3d_stack_offset));
 
   compiler.add_node(
       compiler.encode_uchar4(value_stack_offset, phase_stack_offset, intensity_stack_offset),
       __float_as_int(scale),
-      __float_as_int(impulses),
-      __float_as_int(frequency));
-  compiler.add_node(__float_as_int(anisotropy), __float_as_int(orientation_2d));
+      __float_as_int(frequency),
+      __float_as_int(anisotropy));
+  compiler.add_node(__float_as_int(orientation_2d));
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }

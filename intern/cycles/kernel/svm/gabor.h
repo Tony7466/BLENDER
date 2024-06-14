@@ -22,6 +22,14 @@
 
 CCL_NAMESPACE_BEGIN
 
+/* The original Gabor noise paper specifies that the impulses count for each cell should be
+ * computed by sampling a Poisson distribution whose mean is the impulse density. However,
+ * Tavernier's paper showed that stratified Poisson point sampling is better assuming the weights
+ * are sampled using a Bernoulli distribution, as shown in Figure (3). By stratified sampling, they
+ * mean a constant number of impulses per cell, so the stratification is the grid itself in that
+ * sense, as described in the supplementary material of the paper. */
+#define IMPULSES_COUNT 8
+
 /* Computes a 2D Gabor kernel based on Equation (6) in the original Gabor noise paper. Where the
  * frequency argument is the F_0 parameter and the orientation argument is the w_0 parameter. We
  * assume the Gaussian envelope has a unit magnitude, that is, K = 1. That is because we will
@@ -85,24 +93,11 @@ ccl_device float2 compute_2d_gabor_kernel(float2 position, float frequency, floa
  * Secondly, we note that the second moment of the weights distribution is 0.5 since it is a
  * fair Bernoulli distribution. So the final standard deviation expression is square root the
  * integral multiplied by the impulse density multiplied by the second moment. */
-ccl_device float compute_2d_gabor_standard_deviation(float impulse_density, float frequency)
+ccl_device float compute_2d_gabor_standard_deviation(float frequency)
 {
   float integral_of_gabor_squared = (1.0f - expf(-2.0f * M_PI_F * frequency * frequency)) / 4.0f;
   float second_moment = 0.5f;
-  return sqrtf(impulse_density * second_moment * integral_of_gabor_squared);
-}
-
-/* The original Gabor noise paper specifies that the impulses count for each cell should be
- * computed by sampling a Poisson distribution whose mean is the impulse density. However,
- * Tavernier's paper showed that stratified Poisson point sampling is better assuming the weights
- * are sampled using a Bernoulli distribution, as shown in Figure (3). By stratified sampling, they
- * mean a constant number of impulses per cell, so the stratification is the grid itself in that
- * sense, as described in the supplementary material of the paper. However, to allow fractional
- * impulses count, an additional impulse is added following a Bernoulli distribution whose
- * probability is the fractional part of the impulses count. */
-ccl_device int compute_impulses_count_for_2d_cell(float2 cell, float impulses_count)
-{
-  return int(impulses_count) + (hash_float2_to_float(cell) < fractf(impulses_count) ? 1 : 0);
+  return sqrtf(IMPULSES_COUNT * second_moment * integral_of_gabor_squared);
 }
 
 /* Computes the Gabor noise value at the given position for the given cell. This is essentially the
@@ -111,17 +106,12 @@ ccl_device int compute_impulses_count_for_2d_cell(float2 cell, float impulses_co
  * noise while it is random for isotropic noise. The original Gabor noise paper mentions that the
  * weights should be uniformly distributed in the [-1, 1] range, however, Tavernier's paper showed
  * that using a Bernoulli distribution yields better results, so that is what we do. */
-ccl_device float2 compute_2d_gabor_noise_cell(float2 cell,
-                                              float2 position,
-                                              float impulses_count,
-                                              float frequency,
-                                              float isotropy,
-                                              float base_orientation)
+ccl_device float2 compute_2d_gabor_noise_cell(
+    float2 cell, float2 position, float frequency, float isotropy, float base_orientation)
 
 {
   float2 noise = make_float2(0.0f, 0.0f);
-  int impulses_count_for_cell = compute_impulses_count_for_2d_cell(cell, impulses_count);
-  for (int i = 0; i < impulses_count_for_cell; ++i) {
+  for (int i = 0; i < IMPULSES_COUNT; ++i) {
     /* Compute unique seeds for each of the needed random variables. */
     float3 seed_for_orientation = make_float3(cell.x, cell.y, i * 3);
     float3 seed_for_kernel_center = make_float3(cell.x, cell.y, i * 3 + 1);
@@ -149,7 +139,6 @@ ccl_device float2 compute_2d_gabor_noise_cell(float2 cell,
 /* Computes the Gabor noise value by dividing the space into a grid and evaluating the Gabor noise
  * in the space of each cell of the 3x3 cell neighbourhood. */
 ccl_device float2 compute_2d_gabor_noise(float2 coordinates,
-                                         float impulses_count,
                                          float frequency,
                                          float isotropy,
                                          float base_orientation)
@@ -163,12 +152,8 @@ ccl_device float2 compute_2d_gabor_noise(float2 coordinates,
       float2 cell_offset = make_float2(i, j);
       float2 current_cell_position = cell_position + cell_offset;
       float2 position_in_cell_space = local_position - cell_offset;
-      sum += compute_2d_gabor_noise_cell(current_cell_position,
-                                         position_in_cell_space,
-                                         impulses_count,
-                                         frequency,
-                                         isotropy,
-                                         base_orientation);
+      sum += compute_2d_gabor_noise_cell(
+          current_cell_position, position_in_cell_space, frequency, isotropy, base_orientation);
     }
   }
 
@@ -202,18 +187,12 @@ ccl_device float2 compute_3d_gabor_kernel(float3 position, float frequency, floa
 /* Identical to compute_2d_gabor_standard_deviation except we do triple integration in 3D. The only
  * difference is the denominator in the integral expression, which is 2^{5 / 2} for the 3D case
  * instead of 4 for the 2D case.  */
-ccl_device float compute_3d_gabor_standard_deviation(float impulse_density, float frequency)
+ccl_device float compute_3d_gabor_standard_deviation(float frequency)
 {
   float integral_of_gabor_squared = (1.0f - expf(-2.0f * M_PI_F * frequency * frequency)) /
                                     powf(2.0f, 5.0f / 2.0f);
   float second_moment = 0.5f;
-  return sqrtf(impulse_density * second_moment * integral_of_gabor_squared);
-}
-
-/* Identical to compute_impulses_count_for_2d_cell but works on 3D cells. */
-ccl_device int compute_impulses_count_for_3d_cell(float3 cell, float impulses_count)
-{
-  return int(impulses_count) + (hash_float3_to_float(cell) < fractf(impulses_count) ? 1 : 0);
+  return sqrtf(IMPULSES_COUNT * second_moment * integral_of_gabor_squared);
 }
 
 /* Computes the orientation of the Gabor kernel such that it is is constant for anisotropic
@@ -244,17 +223,12 @@ ccl_device float3 compute_3d_orientation(float3 orientation, float isotropy, flo
       sinf(inclination) * cosf(azimuth), sinf(inclination) * sinf(azimuth), cosf(inclination));
 }
 
-ccl_device float2 compute_3d_gabor_noise_cell(float3 cell,
-                                              float3 position,
-                                              float impulses_count,
-                                              float frequency,
-                                              float isotropy,
-                                              float3 base_orientation)
+ccl_device float2 compute_3d_gabor_noise_cell(
+    float3 cell, float3 position, float frequency, float isotropy, float3 base_orientation)
 
 {
   float2 noise = make_float2(0.0f, 0.0f);
-  int impulses_count_for_cell = compute_impulses_count_for_3d_cell(cell, impulses_count);
-  for (int i = 0; i < impulses_count_for_cell; ++i) {
+  for (int i = 0; i < IMPULSES_COUNT; ++i) {
     /* Compute unique seeds for each of the needed random variables. */
     float4 seed_for_orientation = make_float4(cell.x, cell.y, cell.z, i * 3);
     float4 seed_for_kernel_center = make_float4(cell.x, cell.y, cell.z, i * 3 + 1);
@@ -276,7 +250,6 @@ ccl_device float2 compute_3d_gabor_noise_cell(float3 cell,
 
 /* Identical to compute_2d_gabor_noise but works in the 3D neighbourhood of the noise. */
 ccl_device float2 compute_3d_gabor_noise(float3 coordinates,
-                                         float impulses_count,
                                          float frequency,
                                          float isotropy,
                                          float3 base_orientation)
@@ -291,12 +264,8 @@ ccl_device float2 compute_3d_gabor_noise(float3 coordinates,
         float3 cell_offset = make_float3(i, j, k);
         float3 current_cell_position = cell_position + cell_offset;
         float3 position_in_cell_space = local_position - cell_offset;
-        sum += compute_3d_gabor_noise_cell(current_cell_position,
-                                           position_in_cell_space,
-                                           impulses_count,
-                                           frequency,
-                                           isotropy,
-                                           base_orientation);
+        sum += compute_3d_gabor_noise_cell(
+            current_cell_position, position_in_cell_space, frequency, isotropy, base_orientation);
       }
     }
   }
@@ -314,7 +283,6 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
 {
   uint coordinates_stack_offset;
   uint scale_stack_offset;
-  uint impulses_stack_offset;
   uint frequency_stack_offset;
   uint anisotropy_stack_offset;
   uint orientation_2d_stack_offset;
@@ -323,12 +291,10 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
   svm_unpack_node_uchar4(stack_offsets_1,
                          &coordinates_stack_offset,
                          &scale_stack_offset,
-                         &impulses_stack_offset,
-                         &frequency_stack_offset);
-  svm_unpack_node_uchar3(stack_offsets_2,
-                         &anisotropy_stack_offset,
-                         &orientation_2d_stack_offset,
-                         &orientation_3d_stack_offset);
+                         &frequency_stack_offset,
+                         &anisotropy_stack_offset);
+  svm_unpack_node_uchar2(
+      stack_offsets_2, &orientation_2d_stack_offset, &orientation_3d_stack_offset);
 
   float3 coordinates = stack_load_float3(stack, coordinates_stack_offset);
 
@@ -340,36 +306,32 @@ ccl_device_noinline int svm_node_tex_gabor(KernelGlobals kg,
   svm_unpack_node_uchar3(
       node_1.x, &value_stack_offset, &phase_stack_offset, &intensity_stack_offset);
   float scale = stack_load_float_default(stack, scale_stack_offset, node_1.y);
-  float impulses_count = stack_load_float_default(stack, impulses_stack_offset, node_1.z);
-  float frequency = stack_load_float_default(stack, frequency_stack_offset, node_1.w);
+  float frequency = stack_load_float_default(stack, frequency_stack_offset, node_1.z);
+  float anisotropy = stack_load_float_default(stack, anisotropy_stack_offset, node_1.w);
 
   uint4 node_2 = read_node(kg, &offset);
-  float anisotropy = stack_load_float_default(stack, anisotropy_stack_offset, node_2.x);
-  float orientation_2d = stack_load_float_default(stack, orientation_2d_stack_offset, node_2.y);
+  float orientation_2d = stack_load_float_default(stack, orientation_2d_stack_offset, node_2.x);
   float3 orientation_3d = stack_load_float3(stack, orientation_3d_stack_offset);
 
   float3 scaled_coordinates = coordinates * scale;
   float isotropy = 1.0f - clamp(anisotropy, 0.0f, 1.0f);
   frequency = max(0.001f, frequency);
-  impulses_count = clamp(impulses_count, 0.001f, 16.0f);
 
   float2 phasor = make_float2(0.0f, 0.0f);
   float standard_deviation = 1.0f;
   switch ((NodeGaborType)type) {
     case NODE_GABOR_TYPE_2D: {
       phasor = compute_2d_gabor_noise(make_float2(scaled_coordinates.x, scaled_coordinates.y),
-                                      impulses_count,
                                       frequency,
                                       isotropy,
                                       orientation_2d);
-      standard_deviation = compute_2d_gabor_standard_deviation(impulses_count, frequency);
+      standard_deviation = compute_2d_gabor_standard_deviation(frequency);
       break;
     }
     case NODE_GABOR_TYPE_3D: {
       float3 orientation = normalize(orientation_3d);
-      phasor = compute_3d_gabor_noise(
-          scaled_coordinates, impulses_count, frequency, isotropy, orientation);
-      standard_deviation = compute_3d_gabor_standard_deviation(impulses_count, frequency);
+      phasor = compute_3d_gabor_noise(scaled_coordinates, frequency, isotropy, orientation);
+      standard_deviation = compute_3d_gabor_standard_deviation(frequency);
       break;
     }
   }

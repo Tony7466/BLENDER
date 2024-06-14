@@ -25,14 +25,6 @@ static void sh_node_tex_gabor_declare(NodeDeclarationBuilder &b)
           "the 2D case");
   b.add_input<decl::Float>("Scale").default_value(5.0f).description(
       "The scale of the Gabor noise");
-  b.add_input<decl::Float>("Impulses")
-      .default_value(8.0f)
-      .min(0.0f)
-      .max(16.0f)
-      .description(
-          "The number of impulses used to compute the noise. This is a quality control parameter "
-          "and has minimal effect on the structure of the output. Higher values yield higher "
-          "quality noise at the cost of more computation time");
   b.add_input<decl::Float>("Frequency")
       .default_value(2.0f)
       .min(0.0f)
