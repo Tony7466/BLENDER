@@ -307,7 +307,7 @@ bool transform_snap_sequencer_calc(TransInfo *t)
 
       best_dist = dist;
       best_target_frame = snap_target_frame;
-      best_source_frame = snap_source_frame;
+      best_source_frame = frame_src;
     }
   }
 
@@ -322,7 +322,7 @@ bool transform_snap_sequencer_calc(TransInfo *t)
 
 void transform_snap_sequencer_apply_translate(TransInfo *t, float *vec)
 {
-  *vec += t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
+  *vec = t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
 }
 
 static int transform_snap_sequencer_to_closest_strip_ex(TransInfo *t, int frame_1, int frame_2)
