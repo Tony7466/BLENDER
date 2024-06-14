@@ -124,7 +124,7 @@ static void calc_grids_sharp(Object &object,
         i++;
         continue;
       }
-      // SCULPT_orig_vert_data_update_ss(subdiv_ccg, key, elem, j);
+
       if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
         i++;
         continue;
@@ -164,9 +164,6 @@ static void calc_bmesh_sharp(Object &object,
   const int mask_offset = CustomData_get_offset_named(
       &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
-  SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(orig_data, object, node, undo::Type::Position);
-
   /* TODO: Remove usage of proxies. */
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
   int i = 0;
@@ -176,8 +173,7 @@ static void calc_bmesh_sharp(Object &object,
       continue;
     }
 
-    SCULPT_orig_vert_data_update(orig_data, *vert); // WIP <--- Fix this null data
-    if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
+    if (!sculpt_brush_test_sq_fn(test, vert->co)) {
       i++;
       continue;
     }
@@ -185,9 +181,9 @@ static void calc_bmesh_sharp(Object &object,
     const float mask = mask_offset == -1 ? 0.0f : BM_ELEM_CD_GET_FLOAT(vert, mask_offset);
     const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
-                                                    orig_data.co,
+                                                    vert->co,
                                                     math::sqrt(test.dist),
-                                                    orig_data.no,
+                                                    vert->no,
                                                     nullptr,
                                                     mask,
                                                     BKE_pbvh_make_vref(intptr_t(vert)),
