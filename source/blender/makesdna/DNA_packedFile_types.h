@@ -13,6 +13,11 @@
 typedef struct PackedFile {
   int size;
   int seek;
+  /**
+   * Raw data from the shared file. This data is const because it uses implicit sharing and may be
+   * shared with e.g. the undo system.
+   */
   const void *data;
+  /** Sharing info corresponding to the data above. */
   const ImplicitSharingInfoHandle *sharing_info;
 } PackedFile;

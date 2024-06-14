@@ -1364,11 +1364,8 @@ static bool image_memorypack_imbuf(
   }
 
   ImagePackedFile *imapf;
-  PackedFile *pf = MEM_cnew<PackedFile>("PackedFile");
-
-  pf->size = ibuf->encoded_size;
-  pf->data = IMB_steal_encoded_buffer(ibuf);
-  pf->sharing_info = blender::implicit_sharing::info_for_mem_free(const_cast<void *>(pf->data));
+  PackedFile *pf = BKE_packedfile_new_from_memory(IMB_steal_encoded_buffer(ibuf),
+                                                  ibuf->encoded_size);
 
   imapf = static_cast<ImagePackedFile *>(MEM_mallocN(sizeof(ImagePackedFile), "Image PackedFile"));
   STRNCPY(imapf->filepath, filepath);
