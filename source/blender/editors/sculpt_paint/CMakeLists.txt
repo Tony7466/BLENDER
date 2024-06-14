@@ -115,6 +115,7 @@ set(SRC
   paint_intern.hh
   sculpt_intern.hh
 
+  brushes/crease.cc
   brushes/draw_vector_displacement.cc
   brushes/draw.cc
   brushes/fill.cc
