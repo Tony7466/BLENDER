@@ -10,6 +10,7 @@
 
 #include "NOD_rna_define.hh"
 
+#include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -35,6 +36,14 @@ static void node_declare(NodeDeclarationBuilder &b)
       .supports_field()
       .description("Index of the second constrained body")
       .hide_value();
+  b.add_input<decl::Matrix>("Frame 1").supports_field().description(
+      "Placement of the constraint relative to the first body");
+  b.add_input<decl::Matrix>("Frame 2").supports_field().description(
+      "Placement of the constraint relative to the second body");
+  b.add_input<decl::Bool>("Disable Collision")
+      .default_value(true)
+      .supports_field()
+      .description("Disable collisions between the constrained bodies");
   b.add_output<decl::Geometry>("Physics");
 }
 
@@ -58,6 +67,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   const int count = params.extract_input<int>("Count");
   const Field<int> body1_field = params.extract_input<Field<int>>("Body 1");
   const Field<int> body2_field = params.extract_input<Field<int>>("Body 2");
+  const Field<float4x4> frame1_field = params.extract_input<Field<float4x4>>("Frame 1");
+  const Field<float4x4> frame2_field = params.extract_input<Field<float4x4>>("Frame 2");
+  const Field<bool> disable_collision_field = params.extract_input<Field<bool>>(
+      "Disable Collision");
 
   if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
     physics->resize(physics->bodies_num(), physics->constraints_num() + std::max(count, 0));
@@ -67,14 +80,33 @@ static void node_geo_exec(GeoNodeExecParams params)
     fn::FieldEvaluator field_evaluator{field_context, &new_constraints};
     field_evaluator.add(body1_field);
     field_evaluator.add(body2_field);
+    field_evaluator.add(frame1_field);
+    field_evaluator.add(frame2_field);
+    field_evaluator.add(disable_collision_field);
     field_evaluator.evaluate();
 
     const VArray<int> src_type = VArray<int>::ForSingle(int(constraint_type),
                                                         new_constraints.min_array_size());
     const VArray<int> src_body1 = field_evaluator.get_evaluated<int>(0);
     const VArray<int> src_body2 = field_evaluator.get_evaluated<int>(1);
+    const VArray<float4x4> src_frame1 = field_evaluator.get_evaluated<float4x4>(2);
+    const VArray<float4x4> src_frame2 = field_evaluator.get_evaluated<float4x4>(3);
+    const VArray<bool> src_disable_collision = field_evaluator.get_evaluated<bool>(4);
 
     physics->create_constraints(new_constraints, src_type, src_body1, src_body2);
+
+    bke::AttributeWriter<float4x4> dst_frame1 = physics->constraint_frame1_for_write();
+    bke::AttributeWriter<float4x4> dst_frame2 = physics->constraint_frame2_for_write();
+    bke::AttributeWriter<bool> dst_disable_collision =
+        physics->constraint_disable_collision_for_write();
+    new_constraints.foreach_index([&](const int index) {
+      dst_frame1.varray.set(index, src_frame1[index]);
+      dst_frame2.varray.set(index, src_frame2[index]);
+      dst_disable_collision.varray.set(index, src_disable_collision[index]);
+    });
+    dst_frame1.finish();
+    dst_frame2.finish();
+    dst_disable_collision.finish();
   }
 
   params.set_output("Physics", std::move(geometry_set));

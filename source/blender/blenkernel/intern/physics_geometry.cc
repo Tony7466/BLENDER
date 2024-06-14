@@ -13,13 +13,19 @@
 
 #include "BLI_assert.h"
 #include "BLI_index_mask.hh"
-#include "BLI_mempool.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_utildefines.h"
 #include "BLI_virtual_array.hh"
 
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_impl.hh"
 
+#include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btGearConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btGeneric6DofConstraint.h>
+#include <BulletDynamics/ConstraintSolver/btGeneric6DofSpring2Constraint.h>
+#include <BulletDynamics/ConstraintSolver/btGeneric6DofSpringConstraint.h>
 #include <functional>
 #include <mutex>
 
@@ -40,167 +46,7 @@
 
 namespace blender::bke {
 
-template<typename T, int chunk_size, bool allow_iterator> class MemPool {
- private:
-  BLI_mempool *pool_;
-
- public:
-  MemPool(const int size = 0)
-  {
-    const int flag = allow_iterator ? BLI_MEMPOOL_ALLOW_ITER : BLI_MEMPOOL_NOP;
-    pool_ = BLI_mempool_create(sizeof(T), size, chunk_size, flag);
-  }
-
-  ~MemPool()
-  {
-    BLI_mempool_destroy(pool_);
-  }
-
-  template<typename... Args> T *alloc(Args &&...args)
-  {
-    return new (BLI_mempool_alloc(pool_)) T(std::forward<Args>(args)...);
-  }
-
-  void free(T *ptr)
-  {
-    BLI_mempool_free(pool_, ptr);
-  }
-
-  int size() const
-  {
-    return BLI_mempool_len(pool_);
-  }
-};
-
 #ifdef WITH_BULLET
-
-inline float to_blender(const btScalar v)
-{
-  return float(v);
-}
-
-inline float3 to_blender(const btVector3 &v)
-{
-  return float3(v.x(), v.y(), v.z());
-}
-
-inline math::Quaternion to_blender(const btQuaternion &q)
-{
-  return math::Quaternion(q.w(), q.x(), q.y(), q.z());
-}
-
-inline btScalar to_bullet(const float v)
-{
-  return btScalar(v);
-}
-
-inline btVector3 to_bullet(const float3 &v)
-{
-  return btVector3(v.x, v.y, v.z);
-}
-
-inline btQuaternion to_bullet(const math::Quaternion &q)
-{
-  return btQuaternion(q.x, q.y, q.z, q.w);
-}
-
-int activation_state_to_bullet(bke::PhysicsGeometry::BodyActivationState state)
-{
-  using BodyActivationState = bke::PhysicsGeometry::BodyActivationState;
-  switch (state) {
-    case BodyActivationState::AlwaysActive:
-      return DISABLE_DEACTIVATION;
-    case BodyActivationState::Active:
-      return ACTIVE_TAG;
-    case BodyActivationState::WantsSleep:
-      return WANTS_DEACTIVATION;
-    case BodyActivationState::Sleeping:
-      return ISLAND_SLEEPING;
-    case BodyActivationState::AlwaysSleeping:
-      return DISABLE_SIMULATION;
-  }
-  return DISABLE_SIMULATION;
-}
-
-bke::PhysicsGeometry::BodyActivationState activation_state_to_blender(int bt_state)
-{
-  using BodyActivationState = bke::PhysicsGeometry::BodyActivationState;
-  switch (bt_state) {
-    case ACTIVE_TAG:
-      return BodyActivationState::Active;
-    case ISLAND_SLEEPING:
-      return BodyActivationState::Sleeping;
-    case WANTS_DEACTIVATION:
-      return BodyActivationState::WantsSleep;
-    case DISABLE_DEACTIVATION:
-      return BodyActivationState::AlwaysActive;
-    case DISABLE_SIMULATION:
-      return BodyActivationState::AlwaysSleeping;
-    default:
-      BLI_assert_unreachable();
-      return BodyActivationState::AlwaysSleeping;
-  }
-}
-
-inline btTypedConstraintType to_bullet(bke::PhysicsGeometry::ConstraintType type)
-{
-  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
-  switch (type) {
-    case ConstraintType::None:
-      return FIXED_CONSTRAINT_TYPE;
-    case ConstraintType::Fixed:
-      return FIXED_CONSTRAINT_TYPE;
-    case ConstraintType::Point:
-      return POINT2POINT_CONSTRAINT_TYPE;
-    case ConstraintType::Hinge:
-      return HINGE_CONSTRAINT_TYPE;
-    case ConstraintType::Slider:
-      return SLIDER_CONSTRAINT_TYPE;
-    case ConstraintType::ConeTwist:
-      return CONETWIST_CONSTRAINT_TYPE;
-    case ConstraintType::SixDoF:
-      return D6_CONSTRAINT_TYPE;
-    case ConstraintType::SixDoFSpring:
-      return D6_SPRING_CONSTRAINT_TYPE;
-    case ConstraintType::SixDoFSpring2:
-      return D6_SPRING_2_CONSTRAINT_TYPE;
-    case ConstraintType::Contact:
-      return CONTACT_CONSTRAINT_TYPE;
-    case ConstraintType::Gear:
-      return GEAR_CONSTRAINT_TYPE;
-  }
-  return FIXED_CONSTRAINT_TYPE;
-}
-
-inline bke::PhysicsGeometry::ConstraintType to_blender(btTypedConstraintType type)
-{
-  using ConstraintType = bke::PhysicsGeometry::ConstraintType;
-  switch (type) {
-    case FIXED_CONSTRAINT_TYPE:
-      return ConstraintType::Fixed;
-    case POINT2POINT_CONSTRAINT_TYPE:
-      return ConstraintType::Point;
-    case HINGE_CONSTRAINT_TYPE:
-      return ConstraintType::Hinge;
-    case SLIDER_CONSTRAINT_TYPE:
-      return ConstraintType::Slider;
-    case CONETWIST_CONSTRAINT_TYPE:
-      return ConstraintType::ConeTwist;
-    case D6_CONSTRAINT_TYPE:
-      return ConstraintType::SixDoF;
-    case D6_SPRING_CONSTRAINT_TYPE:
-      return ConstraintType::SixDoFSpring;
-    case D6_SPRING_2_CONSTRAINT_TYPE:
-      return ConstraintType::SixDoFSpring2;
-    case CONTACT_CONSTRAINT_TYPE:
-      return ConstraintType::Contact;
-    case GEAR_CONSTRAINT_TYPE:
-      return ConstraintType::Gear;
-
-    default:
-      return ConstraintType::None;
-  }
-}
 
 struct DefaultOverlapFilter : public btOverlapFilterCallback {
   virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
@@ -262,6 +108,16 @@ static void set_body_index(btRigidBody &body, const int index)
   }
 
   body.setUserIndex3(index);
+}
+
+static int get_constraint_index(const btTypedConstraint &constraint)
+{
+  return constraint.getUserConstraintId();
+}
+
+static void set_constraint_index(btTypedConstraint &constraint, const int index)
+{
+  constraint.setUserConstraintId(index);
 }
 
 /* -------------------------------------------------------------------- */
@@ -387,14 +243,20 @@ void PhysicsGeometryImpl::delete_self()
   delete this;
 }
 
+void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
+{
+  this->constraint_disable_collision_cache.tag_dirty();
+}
+
 void PhysicsGeometryImpl::tag_body_topology_changed()
 {
-  this->body_index_cache_.tag_dirty();
+  this->body_index_cache.tag_dirty();
+  this->tag_constraint_disable_collision_changed();
 }
 
 void PhysicsGeometryImpl::ensure_body_indices() const
 {
-  this->body_index_cache_.ensure([&]() {
+  this->body_index_cache.ensure([&]() {
     for (const int i : this->rigid_bodies.index_range()) {
       /* Note: Technically the btRigidBody is not mutable here! We're just using it as a cache with
        * exclusive write access, so it's fine. */
@@ -404,27 +266,73 @@ void PhysicsGeometryImpl::ensure_body_indices() const
   });
 }
 
-const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = {
-    "id",
-    "static",
-    "kinematic",
-    "mass",
-    "inertia",
-    "position",
-    "rotation",
-    "velocity",
-    "angular_velocity",
-    "activation_state",
-    "friction",
-    "rolling_friction",
-    "spinning_friction",
-    "restitution",
-    "linear_damping",
-    "angular_damping",
-    "linear_sleeping_threshold",
-    "angular_sleeping_threshold",
-    "constraint_body1",
-    "constraint_body2"};
+void PhysicsGeometryImpl::ensure_constraint_indices() const
+{
+  this->constraint_index_cache.ensure([&]() {
+    for (const int i : this->constraints.index_range()) {
+      /* Note: Technically the btTypedConstraint is not mutable here! We're just using it as a
+       * cache with exclusive write access, so it's fine. */
+      btTypedConstraint *constraint = const_cast<btTypedConstraint *>(this->constraints[i]);
+      if (constraint) {
+        set_constraint_index(*constraint, i);
+      }
+    }
+  });
+}
+
+void PhysicsGeometryImpl::ensure_constraint_disable_collision() const
+{
+  this->constraint_disable_collision_cache.ensure([&]() {
+    ensure_constraint_indices();
+
+    this->constraint_disable_collision.reinitialize(this->constraints.size());
+    this->constraint_disable_collision.fill(false);
+    for (const int i_body : this->rigid_bodies.index_range()) {
+      /* Note: Technically the btRigidBody is not mutable here, Bullet is just very incorrect with
+       * const usage ... */
+      btRigidBody &body = const_cast<btRigidBody &>(*this->rigid_bodies[i_body]);
+      for (const int i_ref : IndexRange(body.getNumConstraintRefs())) {
+        const btTypedConstraint *constraint = body.getConstraintRef(i_ref);
+        BLI_assert(constraint != nullptr);
+        const int i_constraint = get_constraint_index(*constraint);
+        this->constraint_disable_collision[i_constraint] = true;
+      }
+    }
+  });
+}
+
+const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = []() {
+  PhysicsGeometry::BuiltinAttributes attributes;
+  attributes.id = "id";
+  attributes.is_static = "static";
+  attributes.is_kinematic = "kinematic";
+  attributes.mass = "mass";
+  attributes.inertia = "inertia";
+  attributes.position = "position";
+  attributes.rotation = "rotation";
+  attributes.velocity = "velocity";
+  attributes.angular_velocity = "angular_velocity";
+  attributes.activation_state = "activation_state";
+  attributes.friction = "friction";
+  attributes.rolling_friction = "rolling_friction";
+  attributes.spinning_friction = "spinning_friction";
+  attributes.restitution = "restitution";
+  attributes.linear_damping = "linear_damping";
+  attributes.angular_damping = "angular_damping";
+  attributes.linear_sleeping_threshold = "linear_sleeping_threshold";
+  attributes.angular_sleeping_threshold = "angular_sleeping_threshold";
+  attributes.constraint_enabled = "enabled";
+  attributes.constraint_body1 = "constraint_body1";
+  attributes.constraint_body2 = "constraint_body2";
+  attributes.constraint_frame1 = "constraint_frame1";
+  attributes.constraint_frame2 = "constraint_frame2";
+  attributes.constraint_enabled = "constraint_enabled";
+  attributes.applied_impulse = "applied_impulse";
+  attributes.breaking_impulse_threshold = "breaking_impulse_threshold";
+  attributes.disable_collision = "disable_collision";
+
+  return attributes;
+}();
 
 static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
                           MutableSpan<btMotionState *> motion_states)
@@ -679,7 +587,7 @@ static IndexMask get_constraints_mask_for_points(const PhysicsGeometryImpl &impl
                                                  const IndexMask &body_selection,
                                                  IndexMaskMemory &memory)
 {
-  BLI_assert(impl.body_index_cache_.is_cached());
+  BLI_assert(impl.body_index_cache.is_cached());
 
   return IndexMask::from_predicate(
       impl.constraints.index_range(), GrainSize(1024), memory, [&](const int index) {
@@ -1096,6 +1004,82 @@ void PhysicsGeometry::create_constraints(const IndexMask &selection,
   });
 }
 
+VArray<bool> PhysicsGeometry::constraint_enabled() const
+{
+  return attributes().lookup<bool>(builtin_attributes.constraint_enabled).varray;
+}
+
+AttributeWriter<bool> PhysicsGeometry::constraint_enabled_for_write()
+{
+  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.constraint_enabled);
+}
+
+VArray<int> PhysicsGeometry::constraint_body1() const
+{
+  return attributes().lookup<int>(builtin_attributes.constraint_body1).varray;
+}
+
+AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body1);
+}
+
+VArray<int> PhysicsGeometry::constraint_body2() const
+{
+  return attributes().lookup<int>(builtin_attributes.constraint_body2).varray;
+}
+
+AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
+{
+  return attributes_for_write().lookup_for_write<int>(builtin_attributes.constraint_body2);
+}
+
+VArray<float4x4> PhysicsGeometry::constraint_frame1() const
+{
+  return attributes().lookup<float4x4>(builtin_attributes.constraint_frame1).varray;
+}
+
+AttributeWriter<float4x4> PhysicsGeometry::constraint_frame1_for_write()
+{
+  return attributes_for_write().lookup_for_write<float4x4>(builtin_attributes.constraint_frame1);
+}
+
+VArray<float4x4> PhysicsGeometry::constraint_frame2() const
+{
+  return attributes().lookup<float4x4>(builtin_attributes.constraint_frame2).varray;
+}
+
+AttributeWriter<float4x4> PhysicsGeometry::constraint_frame2_for_write()
+{
+  return attributes_for_write().lookup_for_write<float4x4>(builtin_attributes.constraint_frame2);
+}
+
+VArray<float> PhysicsGeometry::constraint_applied_impulse() const
+{
+  return attributes().lookup<float>(builtin_attributes.applied_impulse).varray;
+}
+
+VArray<float> PhysicsGeometry::constraint_breaking_impulse_threshold_impulse() const
+{
+  return attributes().lookup<float>(builtin_attributes.breaking_impulse_threshold).varray;
+}
+
+AttributeWriter<float> PhysicsGeometry::constraint_breaking_impulse_threshold_for_write()
+{
+  return attributes_for_write().lookup_for_write<float>(
+      builtin_attributes.breaking_impulse_threshold);
+}
+
+VArray<bool> PhysicsGeometry::constraint_disable_collision() const
+{
+  return attributes().lookup<bool>(builtin_attributes.disable_collision).varray;
+}
+
+AttributeWriter<bool> PhysicsGeometry::constraint_disable_collision_for_write()
+{
+  return attributes_for_write().lookup_for_write<bool>(builtin_attributes.disable_collision);
+}
+
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
   static PhysicsAccessInfo physics_access = {
@@ -1373,6 +1357,24 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
           physics_access,
           nullptr);
 
+  constexpr auto constraint_enabled_get_fn = [](const btTypedConstraint *constraint) -> bool {
+    return constraint ? constraint->isEnabled() : false;
+  };
+  constexpr auto constraint_enabled_set_fn = [](btTypedConstraint *constraint, const bool value) {
+    if (constraint) {
+      constraint->setEnabled(value);
+    }
+  };
+  static BuiltinConstraintAttributeProvider<bool,
+                                            constraint_enabled_get_fn,
+                                            constraint_enabled_set_fn>
+      constraint_enabled(PhysicsGeometry::builtin_attributes.constraint_enabled,
+                         AttrDomain::Edge,
+                         BuiltinAttributeProvider::NonDeletable,
+                         physics_access,
+                         nullptr,
+                         {});
+
   constexpr auto constraint_body1_get_fn = [](const btTypedConstraint *constraint) -> int {
     return constraint ? get_body_index(constraint->getRigidBodyA()) : -1;
   };
@@ -1389,7 +1391,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       });
 
   constexpr auto constraint_body2_get_fn = [](const btTypedConstraint *constraint) -> int {
-    /* Unilateral constraints use a shared fixed body that should not be considered. */
     return constraint ? get_body_index(constraint->getRigidBodyB()) : -1;
   };
   static BuiltinConstraintAttributeProvider<int, constraint_body2_get_fn> constraint_body2(
@@ -1403,6 +1404,308 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
         const PhysicsGeometry *physics = static_cast<const PhysicsGeometry *>(owner);
         physics->impl().ensure_body_indices();
       });
+
+  constexpr auto constraint_frame1_get_fn = [](const btTypedConstraint *constraint) -> float4x4 {
+    if (!constraint) {
+      return float4x4::identity();
+    }
+    switch (constraint->getConstraintType()) {
+      case FIXED_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btFixedConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetA());
+      }
+      case POINT2POINT_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btPoint2PointConstraint *>(constraint);
+        return math::from_location<float4x4>(to_blender(typed_constraint->getPivotInA()));
+      }
+      case HINGE_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btHingeConstraint *>(constraint);
+        return to_blender(typed_constraint->getAFrame());
+      }
+      case SLIDER_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btSliderConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetA());
+      }
+      case CONETWIST_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btConeTwistConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetA());
+      }
+      case D6_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGeneric6DofConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetA());
+      }
+      case D6_SPRING_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGeneric6DofSpringConstraint *>(
+            constraint);
+        return to_blender(typed_constraint->getFrameOffsetA());
+      }
+      case D6_SPRING_2_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGeneric6DofSpring2Constraint *>(
+            constraint);
+        return to_blender(typed_constraint->getFrameOffsetA());
+      }
+      case GEAR_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
+        return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisA()));
+      }
+      default:
+        BLI_assert_unreachable();
+        return float4x4::identity();
+    }
+  };
+  constexpr auto constraint_frame1_set_fn = [](btTypedConstraint *constraint, float4x4 value) {
+    if (!constraint) {
+      return;
+    }
+    switch (constraint->getConstraintType()) {
+      case FIXED_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btFixedConstraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+        break;
+      }
+      case POINT2POINT_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btPoint2PointConstraint *>(constraint);
+        typed_constraint->setPivotA(to_bullet(value.location()));
+        break;
+      }
+      case HINGE_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btHingeConstraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getBFrame());
+        break;
+      }
+      case SLIDER_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btSliderConstraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+        break;
+      }
+      case CONETWIST_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btConeTwistConstraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+        break;
+      }
+      case D6_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGeneric6DofConstraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+        break;
+      }
+      case D6_SPRING_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGeneric6DofSpringConstraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+        break;
+      }
+      case D6_SPRING_2_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGeneric6DofSpring2Constraint *>(constraint);
+        typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+        break;
+      }
+      case GEAR_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGearConstraint *>(constraint);
+        btVector3 bt_axis = to_bullet(value.z_axis());
+        typed_constraint->setAxisA(bt_axis);
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+  };
+  static BuiltinConstraintAttributeProvider<float4x4,
+                                            constraint_frame1_get_fn,
+                                            constraint_frame1_set_fn>
+      constraint_frame1(PhysicsGeometry::builtin_attributes.constraint_frame1,
+                        AttrDomain::Edge,
+                        BuiltinAttributeProvider::NonDeletable,
+                        physics_access,
+                        nullptr,
+                        {});
+
+  constexpr auto constraint_frame2_get_fn = [](const btTypedConstraint *constraint) -> float4x4 {
+    if (!constraint) {
+      return float4x4::identity();
+    }
+    switch (constraint->getConstraintType()) {
+      case FIXED_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btFixedConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetB());
+      }
+      case POINT2POINT_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btPoint2PointConstraint *>(constraint);
+        return math::from_location<float4x4>(to_blender(typed_constraint->getPivotInB()));
+      }
+      case HINGE_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btHingeConstraint *>(constraint);
+        return to_blender(typed_constraint->getBFrame());
+      }
+      case SLIDER_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btSliderConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetB());
+      }
+      case CONETWIST_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btConeTwistConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetB());
+      }
+      case D6_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGeneric6DofConstraint *>(constraint);
+        return to_blender(typed_constraint->getFrameOffsetB());
+      }
+      case D6_SPRING_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGeneric6DofSpringConstraint *>(
+            constraint);
+        return to_blender(typed_constraint->getFrameOffsetB());
+      }
+      case D6_SPRING_2_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGeneric6DofSpring2Constraint *>(
+            constraint);
+        return to_blender(typed_constraint->getFrameOffsetB());
+      }
+      case GEAR_CONSTRAINT_TYPE: {
+        const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
+        return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisB()));
+      }
+      default:
+        BLI_assert_unreachable();
+        return float4x4::identity();
+    }
+  };
+  constexpr auto constraint_frame2_set_fn = [](btTypedConstraint *constraint, float4x4 value) {
+    if (!constraint) {
+      return;
+    }
+    switch (constraint->getConstraintType()) {
+      case FIXED_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btFixedConstraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+        break;
+      }
+      case POINT2POINT_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btPoint2PointConstraint *>(constraint);
+        typed_constraint->setPivotB(to_bullet(value.location()));
+        break;
+      }
+      case HINGE_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btHingeConstraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getAFrame(), to_bullet(value));
+        break;
+      }
+      case SLIDER_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btSliderConstraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+        break;
+      }
+      case CONETWIST_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btConeTwistConstraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+        break;
+      }
+      case D6_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGeneric6DofConstraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+        break;
+      }
+      case D6_SPRING_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGeneric6DofSpringConstraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+        break;
+      }
+      case D6_SPRING_2_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGeneric6DofSpring2Constraint *>(constraint);
+        typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+        break;
+      }
+      case GEAR_CONSTRAINT_TYPE: {
+        auto *typed_constraint = static_cast<btGearConstraint *>(constraint);
+        btVector3 bt_axis = to_bullet(value.z_axis());
+        typed_constraint->setAxisB(bt_axis);
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+  };
+  static BuiltinConstraintAttributeProvider<float4x4,
+                                            constraint_frame2_get_fn,
+                                            constraint_frame2_set_fn>
+      constraint_frame2(PhysicsGeometry::builtin_attributes.constraint_frame2,
+                        AttrDomain::Edge,
+                        BuiltinAttributeProvider::NonDeletable,
+                        physics_access,
+                        nullptr,
+                        {});
+
+  constexpr auto constraint_applied_impulse_get_fn =
+      [](const btTypedConstraint *constraint) -> float {
+    /* Note: applied transform requires that needsFeedback is set first. */
+    return constraint && constraint->needsFeedback() ?
+               to_blender(constraint->getAppliedImpulse()) :
+               float(0.0f);
+  };
+  static BuiltinConstraintAttributeProvider<float, constraint_applied_impulse_get_fn>
+      constraint_applied_impulse(PhysicsGeometry::builtin_attributes.applied_impulse,
+                                 AttrDomain::Edge,
+                                 BuiltinAttributeProvider::NonDeletable,
+                                 physics_access,
+                                 nullptr,
+                                 {});
+
+  constexpr auto constraint_breaking_impulse_threshold_get_fn =
+      [](const btTypedConstraint *constraint) -> float {
+    return constraint ? to_blender(constraint->getBreakingImpulseThreshold()) : float(0.0f);
+  };
+  constexpr auto constraint_breaking_impulse_threshold_set_fn = [](btTypedConstraint *constraint,
+                                                                   const float value) {
+    if (constraint) {
+      constraint->setBreakingImpulseThreshold(value);
+    }
+  };
+  static BuiltinConstraintAttributeProvider<float,
+                                            constraint_breaking_impulse_threshold_get_fn,
+                                            constraint_breaking_impulse_threshold_set_fn>
+      constraint_breaking_impulse_threshold(
+          PhysicsGeometry::builtin_attributes.breaking_impulse_threshold,
+          AttrDomain::Edge,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          nullptr,
+          {});
+
+  constexpr auto constraint_disable_collision_get_cache_fn =
+      [](const PhysicsGeometryImpl &impl) -> Span<bool> {
+    return impl.constraint_disable_collision;
+  };
+  constexpr auto constraint_disable_collision_set_fn = [](btTypedConstraint *constraint,
+                                                          bool value) {
+    if (constraint) {
+      if (value) {
+        constraint->getRigidBodyA().addConstraintRef(constraint);
+        constraint->getRigidBodyB().addConstraintRef(constraint);
+      }
+      else {
+        constraint->getRigidBodyA().removeConstraintRef(constraint);
+        constraint->getRigidBodyB().removeConstraintRef(constraint);
+      }
+    }
+  };
+  static BuiltinConstraintAttributeProvider<bool,
+                                            nullptr,
+                                            constraint_disable_collision_set_fn,
+                                            constraint_disable_collision_get_cache_fn>
+      constraint_disable_collision(
+          PhysicsGeometry::builtin_attributes.disable_collision,
+          AttrDomain::Edge,
+          BuiltinAttributeProvider::NonDeletable,
+          physics_access,
+          [](void *owner) {
+            static_cast<PhysicsGeometry *>(owner)
+                ->impl_for_write()
+                .tag_constraint_disable_collision_changed();
+          },
+          {},
+          [](const void *owner) {
+            static_cast<const PhysicsGeometry *>(owner)
+                ->impl()
+                .ensure_constraint_disable_collision();
+          });
 
   return ComponentAttributeProviders({&body_id,
                                       &body_static,
@@ -1422,8 +1725,14 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_angular_damping,
                                       &body_linear_sleeping_threshold,
                                       &body_angular_sleeping_threshold,
+                                      &constraint_enabled,
                                       &constraint_body1,
-                                      &constraint_body2},
+                                      &constraint_body2,
+                                      &constraint_frame1,
+                                      &constraint_frame2,
+                                      &constraint_applied_impulse,
+                                      &constraint_breaking_impulse_threshold,
+                                      &constraint_disable_collision},
                                      {});
 }
 

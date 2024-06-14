@@ -90,8 +90,14 @@ class PhysicsGeometry {
     std::string angular_sleeping_threshold;
 
     /* Constraint attributes. */
+    std::string constraint_enabled;
     std::string constraint_body1;
     std::string constraint_body2;
+    std::string constraint_frame1;
+    std::string constraint_frame2;
+    std::string applied_impulse;
+    std::string breaking_impulse_threshold;
+    std::string disable_collision;
   } builtin_attributes;
 
   PhysicsGeometry();
@@ -168,6 +174,29 @@ class PhysicsGeometry {
                           const VArray<int> &types,
                           const VArray<int> &bodies1,
                           const VArray<int> &bodies2);
+
+  VArray<bool> constraint_enabled() const;
+  AttributeWriter<bool> constraint_enabled_for_write();
+
+  VArray<int> constraint_body1() const;
+  AttributeWriter<int> constraint_body1_for_write();
+
+  VArray<int> constraint_body2() const;
+  AttributeWriter<int> constraint_body2_for_write();
+
+  VArray<float4x4> constraint_frame1() const;
+  AttributeWriter<float4x4> constraint_frame1_for_write();
+
+  VArray<float4x4> constraint_frame2() const;
+  AttributeWriter<float4x4> constraint_frame2_for_write();
+
+  VArray<float> constraint_applied_impulse() const;
+
+  VArray<float> constraint_breaking_impulse_threshold_impulse() const;
+  AttributeWriter<float> constraint_breaking_impulse_threshold_for_write();
+
+  VArray<bool> constraint_disable_collision() const;
+  AttributeWriter<bool> constraint_disable_collision_for_write();
 
   void tag_collision_shapes_changed();
   void tag_body_transforms_changed();
