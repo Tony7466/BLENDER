@@ -67,11 +67,11 @@ static void calc_faces(const Sculpt &sd,
   tls.distances.reinitialize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_cube_distance_falloff(ss, brush, mat, positions_eval, verts, distances, factors);
-  scale_factors(distances, ss.cache->radius);
+  scale_factors(distances, cache.radius);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (ss.cache->automasking) {
-    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
@@ -88,7 +88,7 @@ static void calc_faces(const Sculpt &sd,
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   calc_translations_to_plane(positions_eval, verts, plane, translations);
-  filter_plane_trim_limit_factors(brush, *ss.cache, translations, factors);
+  filter_plane_trim_limit_factors(brush, cache, translations, factors);
   scale_translations(translations, factors);
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
