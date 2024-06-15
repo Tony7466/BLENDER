@@ -128,73 +128,6 @@ struct Triangle {
   bool ca_is_real_edge;
 };
 
-[[nodiscard]] static int edge_count_segments(const float2 a_vert,
-                                             const float2 b_vert,
-                                             const float2 c_vert,
-                                             const float2 d_vert,
-                                             const float2 centre,
-                                             const float radius,
-                                             const float max_length,
-                                             int &r_total_verts_in)
-{
-  int segments_num;
-  Vector<std::array<float2, 4>> stack = {{a_vert, b_vert, c_vert, d_vert}};
-  while (!stack.is_empty()) {
-    const std::array<float2, 4> edge_and_tris = stack.pop_last();
-
-    const float segment_length = math::distance_squared(edge_and_tris[0], edge_and_tris[1]);
-    if (segment_length < max_length) {
-      segments_num++;
-      continue;
-    }
-
-    const bool left_is_affected = len_squared_to_tris(
-                                      {edge_and_tris[0], edge_and_tris[1], edge_and_tris[2]},
-                                      centre) <= radius;
-    const bool right_is_affected = len_squared_to_tris(
-                                       {edge_and_tris[0], edge_and_tris[1], edge_and_tris[3]},
-                                       centre) <= radius;
-    if (!(left_is_affected || right_is_affected)) {
-      segments_num++;
-      continue;
-    }
-
-    const float ac_length = math::distance_squared(edge_and_tris[0], edge_and_tris[2]);
-    const float bc_length = math::distance_squared(edge_and_tris[1], edge_and_tris[2]);
-    const float abc_max = math::max(ac_length, bc_length);
-
-    const float ad_length = math::distance_squared(edge_and_tris[0], edge_and_tris[3]);
-    const float bd_length = math::distance_squared(edge_and_tris[1], edge_and_tris[3]);
-    const float abd_max = math::max(ad_length, bd_length);
-
-    if (math::max(abc_max, abd_max) < radius) {
-      continue;
-    }
-
-    if (abc_max > abd_max) {
-      if (ac_length > bc_length) {
-        const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[2]);
-        stack.append({edge_and_tris[0], edge_and_tris[1], mid, edge_and_tris[3]});
-      }
-      else {
-        const float2 mid = math::midpoint(edge_and_tris[1], edge_and_tris[2]);
-        stack.append({edge_and_tris[0], edge_and_tris[1], mid, edge_and_tris[3]});
-      }
-    }
-    else {
-      if (ad_length > bd_length) {
-        const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[3]);
-        stack.append({edge_and_tris[0], edge_and_tris[1], edge_and_tris[2], mid});
-      }
-      else {
-        const float2 mid = math::midpoint(edge_and_tris[1], edge_and_tris[3]);
-        stack.append({edge_and_tris[0], edge_and_tris[1], edge_and_tris[2], mid});
-      }
-    }
-  }
-  return segments_num;
-}
-
 static void edge_subdivide_count(const float2 a_vert,
                                  const float2 b_vert,
                                  const float2 c_vert,
@@ -208,6 +141,13 @@ static void edge_subdivide_count(const float2 a_vert,
   Vector<std::array<float2, 4>> stack = {{a_vert, b_vert, c_vert, d_vert}};
   while (!stack.is_empty()) {
     const std::array<float2, 4> edge_and_tris = stack.pop_last();
+    // std::cout << "  " << edge_and_tris << ";\n";
+
+    const float ab_length = math::distance_squared(edge_and_tris[0], edge_and_tris[1]);
+    if (ab_length < max_length) {
+      continue;
+    }
+    // std::cout << "  is enought large" << ";\n";
 
     const bool left_is_affected = len_squared_to_tris(
                                       {edge_and_tris[0], edge_and_tris[1], edge_and_tris[2]},
@@ -218,8 +158,7 @@ static void edge_subdivide_count(const float2 a_vert,
     if (!(left_is_affected || right_is_affected)) {
       continue;
     }
-
-    const float ab_length = math::distance_squared(edge_and_tris[0], edge_and_tris[1]);
+    // std::cout << "  is_affected" << ";\n";
 
     const float ac_length = math::distance_squared(edge_and_tris[0], edge_and_tris[2]);
     const float bc_length = math::distance_squared(edge_and_tris[1], edge_and_tris[2]);
@@ -229,19 +168,22 @@ static void edge_subdivide_count(const float2 a_vert,
     const float bd_length = math::distance_squared(edge_and_tris[1], edge_and_tris[3]);
     const float abd_max = math::max(ad_length, bd_length);
 
-    if (math::max(math::max(ab_length, abc_max), abd_max) < radius) {
+    if (math::max(abd_max, abc_max) < max_length) {
       continue;
     }
+    // std::cout << "  Is in range" << ";\n";
 
     if (ab_length > abc_max && ab_length > abd_max) {
       const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[1]);
       stack.append({edge_and_tris[0], mid, edge_and_tris[2], edge_and_tris[3]});
       stack.append({mid, edge_and_tris[1], edge_and_tris[2], edge_and_tris[3]});
       r_total_verts_in++;
+      // std::cout << "  Is AB Split" << ";\n";
       continue;
     }
 
     if (abc_max > abd_max) {
+      // std::cout << "  Is ABC split" << ";\n";
       if (ac_length > bc_length) {
         const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[2]);
         stack.append({edge_and_tris[0], edge_and_tris[1], mid, edge_and_tris[3]});
@@ -252,6 +194,7 @@ static void edge_subdivide_count(const float2 a_vert,
       }
     }
     else {
+      // std::cout << "  Is ABD split" << ";\n";
       if (ad_length > bd_length) {
         const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[3]);
         stack.append({edge_and_tris[0], edge_and_tris[1], edge_and_tris[2], mid});
@@ -386,6 +329,12 @@ static void edge_subdivide_uv(const float2 a_vert,
   Vector<std::array<float2, 4>> stack = {{a_vert, b_vert, c_vert, d_vert}};
   while (!stack.is_empty()) {
     const std::array<float2, 4> edge_and_tris = stack.pop_last();
+    // std::cout << "  " << edge_and_tris << ";\n";
+
+    const float ab_length = math::distance_squared(edge_and_tris[0], edge_and_tris[1]);
+    if (ab_length < max_length) {
+      continue;
+    }
 
     const bool left_is_affected = len_squared_to_tris(
                                       {edge_and_tris[0], edge_and_tris[1], edge_and_tris[2]},
@@ -396,8 +345,7 @@ static void edge_subdivide_uv(const float2 a_vert,
     if (!(left_is_affected || right_is_affected)) {
       continue;
     }
-
-    const float ab_length = math::distance_squared(edge_and_tris[0], edge_and_tris[1]);
+    // std::cout << "  is_affected" << ";\n";
 
     const float ac_length = math::distance_squared(edge_and_tris[0], edge_and_tris[2]);
     const float bc_length = math::distance_squared(edge_and_tris[1], edge_and_tris[2]);
@@ -407,9 +355,10 @@ static void edge_subdivide_uv(const float2 a_vert,
     const float bd_length = math::distance_squared(edge_and_tris[1], edge_and_tris[3]);
     const float abd_max = math::max(ad_length, bd_length);
 
-    if (math::max(math::max(ab_length, abc_max), abd_max) < radius) {
+    if (math::max(abc_max, abd_max) < max_length) {
       continue;
     }
+    // std::cout << "  Is in range" << ";\n";
 
     if (ab_length > abc_max && ab_length > abd_max) {
       const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[1]);
@@ -417,10 +366,12 @@ static void edge_subdivide_uv(const float2 a_vert,
       stack.append({mid, edge_and_tris[1], edge_and_tris[2], edge_and_tris[3]});
       r_positions[r_total_verts_in] = mid;
       r_total_verts_in++;
+      // std::cout << "  Is AB Split" << ";\n";
       continue;
     }
 
     if (abc_max > abd_max) {
+      // std::cout << "  Is ABC split" << ";\n";
       if (ac_length > bc_length) {
         const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[2]);
         stack.append({edge_and_tris[0], edge_and_tris[1], mid, edge_and_tris[3]});
@@ -431,6 +382,7 @@ static void edge_subdivide_uv(const float2 a_vert,
       }
     }
     else {
+      // std::cout << "  Is ABD split" << ";\n";
       if (ad_length > bd_length) {
         const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[3]);
         stack.append({edge_and_tris[0], edge_and_tris[1], edge_and_tris[2], mid});
@@ -615,13 +567,15 @@ Mesh *subdivide(const Mesh &src_mesh,
     const Span<int> edge_faces = edge_to_face_map[edge_i];
 
     const int3 left_verts = gather_tri(faces[edge_faces[0]], corner_verts);
-    const int3 right_verts = gather_tri(faces[edge_faces[0]], corner_verts);
+    const int3 right_verts = gather_tri(faces[edge_faces[1]], corner_verts);
 
     BLI_assert(elem(left_verts, edge[0]) && elem(left_verts, edge[1]));
     BLI_assert(elem(right_verts, edge[0]) && elem(right_verts, edge[1]));
 
     const int a_vert = exclusive_one(left_verts, edge);
     const int b_vert = exclusive_one(right_verts, edge);
+
+    // std::cout << "Edge: " << edge_i << ";\n";
 
     int total_verts_in = 0;
     edge_subdivide_count(projection[edge[0]],
@@ -745,7 +699,7 @@ Mesh *subdivide(const Mesh &src_mesh,
     const Span<int> edge_faces = edge_to_face_map[edge_i];
 
     const int3 left_verts = gather_tri(faces[edge_faces[0]], corner_verts);
-    const int3 right_verts = gather_tri(faces[edge_faces[0]], corner_verts);
+    const int3 right_verts = gather_tri(faces[edge_faces[1]], corner_verts);
 
     BLI_assert(elem(left_verts, edge[0]) && elem(left_verts, edge[1]));
     BLI_assert(elem(right_verts, edge[0]) && elem(right_verts, edge[1]));
@@ -823,6 +777,7 @@ Mesh *subdivide(const Mesh &src_mesh,
                        4096,
                        positions.slice(points_range),
                        [&](const float2 uv) { return float3(uv, 0.0f); });
+    positions.slice(points_range).fill({});
   }
 
   return dst_mesh;
