@@ -285,10 +285,6 @@ void do_crease_brush(const Scene &scene, const Sculpt &sd, Object &object, Span<
     strength *= -1.0f;
   }
 
-  /* Use surface normal for 'spvc', so the vertices are pinched towards a line instead of a single
-   * point. Without this we get a 'flat' surface surrounding the pinch. */
-  //   sculpt_project_v3_cache_init(&spvc, ss.cache->sculpt_normal_symm);
-
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<LocalData> all_tls;
