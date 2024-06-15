@@ -2253,7 +2253,12 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
     case SOCK_RGBA:
       return "NodeTreeInterfaceSocketColor";
     case SOCK_STRING:
-      return "NodeTreeInterfaceSocketString";
+      switch (PropertySubType(subtype)) {
+        case PROP_FILEPATH:
+          return "NodeTreeInterfaceSocketVectorTranslation";
+        default:
+          return "NodeTreeInterfaceSocketString";
+      }
     case SOCK_SHADER:
       return "NodeTreeInterfaceSocketShader";
     case SOCK_OBJECT:
