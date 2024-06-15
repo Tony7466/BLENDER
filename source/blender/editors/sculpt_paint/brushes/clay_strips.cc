@@ -51,7 +51,7 @@ static void calc_faces(const Sculpt &sd,
                        const MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
-  StrokeCache &cache = *ss.cache;
+  const StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -272,6 +272,7 @@ void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nod
   float3 plane_normal;
   calc_brush_plane(brush, object, nodes, plane_normal, area_position);
   SCULPT_tilt_apply_to_normal(plane_normal, ss.cache, brush.tilt_strength_factor);
+  area_position += plane_normal * ss.cache->scale * displace;
 
   float3 area_normal;
   if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA || (brush.flag & BRUSH_ORIGINAL_NORMAL)) {
@@ -280,8 +281,6 @@ void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nod
   else {
     area_normal = plane_normal;
   }
-
-  area_position += plane_normal * ss.cache->scale * displace;
 
   /* Clay Strips uses a cube test with falloff in the XY axis (not in Z) and a plane to deform the
    * vertices. When in Add mode, vertices that are below the plane and inside the cube are moved
@@ -298,7 +297,6 @@ void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nod
   mat.y_axis() = math::cross(area_normal, float3(mat[0]));
   mat.z_axis() = area_normal;
   mat.location() = area_position_displaced;
-
   mat = math::normalize(mat);
 
   /* Scale brush local space matrix. */
