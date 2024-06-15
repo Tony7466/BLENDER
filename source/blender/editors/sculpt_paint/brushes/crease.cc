@@ -280,8 +280,7 @@ void do_crease_brush(const Scene &scene, const Sculpt &sd, Object &object, Span<
   }
 
   /* We always want crease to pinch or blob to relax even when draw is negative. */
-  float strength = std::abs(ss.cache->bstrength);
-
+  float strength = std::abs(ss.cache->bstrength) * crease_correction;
   if (brush.sculpt_tool == SCULPT_TOOL_BLOB) {
     strength *= -1.0f;
   }
