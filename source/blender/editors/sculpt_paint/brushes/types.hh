@@ -6,6 +6,7 @@
 
 #include "BLI_span.hh"
 
+struct Scene;
 struct Sculpt;
 struct Object;
 struct PBVHNode;
