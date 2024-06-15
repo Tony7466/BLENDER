@@ -31,7 +31,6 @@
 #include "WM_types.hh"
 
 #include "ED_node.hh"
-#include "ED_sequencer.hh"
 #include "ED_transform_snap_object_context.hh"
 #include "ED_uvedit.hh"
 #include "ED_view3d.hh"
@@ -63,7 +62,6 @@ static void snap_target_view3d_fn(TransInfo *t, float *vec);
 static void snap_target_uv_fn(TransInfo *t, float *vec);
 static void snap_target_node_fn(TransInfo *t, float *vec);
 static void snap_target_sequencer_fn(TransInfo *t, float *vec);
-static void snap_target_sequencer_image_fn(TransInfo *t, float *vec);
 static void snap_target_nla_fn(TransInfo *t, float *vec);
 
 static void snap_source_median_fn(TransInfo *t);
@@ -362,26 +360,25 @@ void drawSnapping(TransInfo *t)
     uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
     immUniformColor4ubv(col);
+    float pixelx = BLI_rctf_size_x(&region->v2d.cur) / BLI_rcti_size_x(&region->v2d.mask);
 
     if (region->regiontype == RGN_TYPE_PREVIEW) {
-      float size = 2.5f * UI_GetThemeValuef(TH_VERTEX_SIZE);
       if (t->tsnap.direction & SCE_SNAP_GLOBAL_X) {
         immRectf(pos,
-                 t->tsnap.snap_target[0] - size,
+                 t->tsnap.snap_target[0] - pixelx,
                  region->v2d.cur.ymax,
-                 t->tsnap.snap_target[0] + size,
+                 t->tsnap.snap_target[0] + pixelx,
                  region->v2d.cur.ymin);
       }
       if (t->tsnap.direction & SCE_SNAP_GLOBAL_Y) {
         immRectf(pos,
                  region->v2d.cur.xmin,
-                 t->tsnap.snap_target[1] - size,
+                 t->tsnap.snap_target[1] - pixelx,
                  region->v2d.cur.xmax,
-                 t->tsnap.snap_target[1] + size);
+                 t->tsnap.snap_target[1] + pixelx);
       }
     }
     else {
-      float pixelx = BLI_rctf_size_x(&region->v2d.cur) / BLI_rcti_size_x(&region->v2d.mask);
       immRectf(pos,
                t->tsnap.snap_target[0] - pixelx,
                region->v2d.cur.ymax,
@@ -1013,12 +1010,7 @@ static void setSnappingCallback(TransInfo *t)
     t->tsnap.snap_target_fn = snap_target_node_fn;
   }
   else if (t->spacetype == SPACE_SEQ) {
-    if (t->region->regiontype == RGN_TYPE_PREVIEW) {
-      t->tsnap.snap_target_fn = snap_target_sequencer_image_fn;
-    }
-    else {
-      t->tsnap.snap_target_fn = snap_target_sequencer_fn;
-    }
+    t->tsnap.snap_target_fn = snap_target_sequencer_fn;
     /* The target is calculated along with the snap point. */
     return;
   }
@@ -1307,17 +1299,6 @@ static void snap_target_sequencer_fn(TransInfo *t, float * /*vec*/)
 {
   BLI_assert(t->spacetype == SPACE_SEQ);
   if (transform_snap_sequencer_calc(t)) {
-    t->tsnap.status |= (SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
-  }
-  else {
-    t->tsnap.status &= ~(SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
-  }
-}
-
-static void snap_target_sequencer_image_fn(TransInfo *t, float * /*vec*/)
-{
-  BLI_assert(t->spacetype == SPACE_SEQ && t->region->regiontype == RGN_TYPE_PREVIEW);
-  if (transform_snap_sequencer_image_calc(t)) {
     t->tsnap.status |= (SNAP_TARGET_FOUND | SNAP_SOURCE_FOUND);
   }
   else {
