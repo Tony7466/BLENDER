@@ -26,8 +26,6 @@
 
 namespace blender::nodes::node_composite_cornerpin_cc {
 
-NODE_STORAGE_FUNCS(NodeCornerPinData)
-
 static void cmp_node_cornerpin_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>("Image")
@@ -55,12 +53,6 @@ static void cmp_node_cornerpin_declare(NodeDeclarationBuilder &b)
       .compositor_expects_single_value();
   b.add_output<decl::Color>("Image");
   b.add_output<decl::Float>("Plane");
-}
-
-static void node_composit_init_cornerpin(bNodeTree * /*ntree*/, bNode *node)
-{
-  NodeCornerPinData *data = MEM_cnew<NodeCornerPinData>(__func__);
-  node->storage = data;
 }
 
 static void node_composit_buts_cornerpin(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -199,9 +191,6 @@ void register_node_type_cmp_cornerpin()
   cmp_node_type_base(&ntype, CMP_NODE_CORNERPIN, "Corner Pin", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_cornerpin_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_cornerpin;
-  ntype.initfunc = file_ns::node_composit_init_cornerpin;
-  node_type_storage(
-      &ntype, "NodeCornerPinData", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   blender::bke::nodeRegisterType(&ntype);

@@ -1428,10 +1428,6 @@ typedef struct NodePlaneTrackDeformData {
   float motion_blur_shutter;
 } NodePlaneTrackDeformData;
 
-typedef struct NodeCornerPinData {
-  short interpolation;
-} NodeCornerPinData;
-
 typedef struct NodeShaderScript {
   int mode;
   int flag;
