@@ -3402,7 +3402,6 @@ static void area_join_dock_cb(const struct wmWindow *win, void *userdata)
     return;
   }
   screen_draw_dock_preview(win, jd->sa1, jd->sa2, jd->dock_target);
-  int icon = jd->sa1->type->iconid;
 }
 
 static void area_join_dock_cb_window(sAreaJoinData *jd, wmOperator *op)
