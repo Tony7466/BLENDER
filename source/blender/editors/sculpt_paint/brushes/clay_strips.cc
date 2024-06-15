@@ -68,7 +68,7 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float> distances = tls.distances;
   calc_cube_distance_falloff(ss, brush, mat, positions_eval, verts, distances, factors);
   scale_factors(distances, ss.cache->radius);
-  calc_brush_strength_factors(ss, brush, verts, distances, factors);
+  calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (ss.cache->automasking) {
     auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);

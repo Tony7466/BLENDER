@@ -53,6 +53,11 @@ void scale_factors(MutableSpan<float> factors, float strength);
  */
 
 /**
+ * Calculate initial influence factors based on vertex visibility.
+ */
+void fill_factor_from_hide(const Mesh &mesh, Span<int> vert_indices, MutableSpan<float> r_factors);
+
+/**
  * Calculate initial influence factors based on vertex visibility and masking.
  */
 void fill_factor_from_hide_and_mask(const Mesh &mesh,
@@ -93,9 +98,8 @@ void calc_cube_distance_falloff(SculptSession &ss,
 /**
  * Modify the factors based on distances to the brush cursor, using various brush settings.
  */
-void calc_brush_strength_factors(const SculptSession &ss,
+void calc_brush_strength_factors(const StrokeCache &cache,
                                  const Brush &brush,
-                                 Span<int> vert_indices,
                                  Span<float> distances,
                                  MutableSpan<float> factors);
 
