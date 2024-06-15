@@ -195,6 +195,8 @@ struct ColormanageCacheViewSettings {
   float exposure;
   float gamma;
   float dither;
+  float temperature;
+  float tint;
   CurveMapping *curve_mapping;
 };
 
@@ -213,6 +215,8 @@ struct ColormanageCacheData {
   float exposure;              /* exposure value cached buffer is calculated with */
   float gamma;                 /* gamma value cached buffer is calculated with */
   float dither;                /* dither value cached buffer is calculated with */
+  float temperature;           /* temperature value cached buffer is calculated with */
+  float tint;                  /* tint value cached buffer is calculated with */
   CurveMapping *curve_mapping; /* curve mapping used for cached buffer */
   int curve_mapping_timestamp; /* time stamp of curve mapping used for cached buffer */
 };
@@ -299,6 +303,8 @@ static void colormanage_view_settings_to_cache(ImBuf *ibuf,
   cache_view_settings->exposure = view_settings->exposure;
   cache_view_settings->gamma = view_settings->gamma;
   cache_view_settings->dither = ibuf->dither;
+  cache_view_settings->temperature = view_settings->temperature;
+  cache_view_settings->tint = view_settings->tint;
   cache_view_settings->flag = view_settings->flag;
   cache_view_settings->curve_mapping = view_settings->curve_mapping;
 }
@@ -378,7 +384,9 @@ static uchar *colormanage_cache_get(ImBuf *ibuf,
     if (cache_data->look != view_settings->look ||
         cache_data->exposure != view_settings->exposure ||
         cache_data->gamma != view_settings->gamma || cache_data->dither != view_settings->dither ||
-        cache_data->flag != view_settings->flag || cache_data->curve_mapping != curve_mapping ||
+        cache_data->temperature != view_settings->temperature ||
+        cache_data->tint != view_settings->tint || cache_data->flag != view_settings->flag ||
+        cache_data->curve_mapping != curve_mapping ||
         cache_data->curve_mapping_timestamp != curve_mapping_timestamp)
     {
       *cache_handle = nullptr;
@@ -424,6 +432,8 @@ static void colormanage_cache_put(ImBuf *ibuf,
   cache_data->exposure = view_settings->exposure;
   cache_data->gamma = view_settings->gamma;
   cache_data->dither = view_settings->dither;
+  cache_data->temperature = view_settings->temperature;
+  cache_data->tint = view_settings->tint;
   cache_data->flag = view_settings->flag;
   cache_data->curve_mapping = curve_mapping;
   cache_data->curve_mapping_timestamp = curve_mapping_timestamp;
@@ -1056,6 +1066,8 @@ void IMB_colormanagement_init_default_view_settings(
   view_settings->flag = 0;
   view_settings->gamma = 1.0f;
   view_settings->exposure = 0.0f;
+  view_settings->temperature = 6500.0f;
+  view_settings->tint = 10.0f;
   view_settings->curve_mapping = nullptr;
 }
 
@@ -4252,6 +4264,10 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   const float gamma = applied_view_settings->gamma;
   const float scale = (exposure == 0.0f) ? 1.0f : powf(2.0f, exposure);
   const float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
+  const float temperature = applied_view_settings->temperature;
+  const float tint = applied_view_settings->tint;
+  const bool use_white_balance = (applied_view_settings->flag &
+                                  COLORMANAGE_VIEW_USE_WHITE_BALANCE) != 0;
   const bool use_hdr = GPU_hdr_support() &&
                        (applied_view_settings->flag & COLORMANAGE_VIEW_USE_HDR) != 0;
 
@@ -4267,9 +4283,12 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
                                                                 scale,
                                                                 exponent,
                                                                 dither,
+                                                                temperature,
+                                                                tint,
                                                                 predivide,
                                                                 do_overlay_merge,
-                                                                use_hdr);
+                                                                use_hdr,
+                                                                use_white_balance);
 
   OCIO_configRelease(config);
 

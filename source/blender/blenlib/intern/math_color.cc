@@ -6,7 +6,11 @@
  * \ingroup bli
  */
 
+#include "BLI_array.hh"
 #include "BLI_math_color.h"
+#include "BLI_math_color.hh"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_simd.hh"
 #include "BLI_utildefines.h"
 
@@ -839,3 +843,85 @@ void BLI_init_srgb_conversion()
     BLI_color_to_srgb_table[i] = ushort(b * 0x100);
   }
 }
+
+namespace blender::math {
+
+blender::float3x3 chromatic_adaption_matrix(const float temperature,
+                                            const float tint,
+                                            const blender::float3 target)
+{
+  struct table_entry_t {
+    float mired; /* Inverse temperature */
+    float2 uv;   /* CIE 1960 uv coordinates */
+    float t;     /* Isotherm parameter */
+  };
+
+  /* Tabulated approximation of the Planckian locus.
+   * Based on http://www.brucelindbloom.com/index.html?Eqn_T_to_xy.html.
+   * Original source:
+   * "Color Science: Concepts and Methods, Quantitative Data and Formulae", Second Edition,
+   * Gunter Wyszecki and W. S. Stiles, John Wiley & Sons, 1982, pp. 227, 228. */
+  static const blender::Array<table_entry_t> locus({
+      {0.0f, {0.18006f, 0.26352f}, -0.24341f},   {10.0f, {0.18066f, 0.26589f}, -0.25479f},
+      {20.0f, {0.18133f, 0.26846f}, -0.26876f},  {30.0f, {0.18208f, 0.27119f}, -0.28539f},
+      {40.0f, {0.18293f, 0.27407f}, -0.30470f},  {50.0f, {0.18388f, 0.27709f}, -0.32675f},
+      {60.0f, {0.18494f, 0.28021f}, -0.35156f},  {70.0f, {0.18611f, 0.28342f}, -0.37915f},
+      {80.0f, {0.18740f, 0.28668f}, -0.40955f},  {90.0f, {0.18880f, 0.28997f}, -0.44278f},
+      {100.0f, {0.19032f, 0.29326f}, -0.47888f}, {125.0f, {0.19462f, 0.30141f}, -0.58204f},
+      {150.0f, {0.19962f, 0.30921f}, -0.70471f}, {175.0f, {0.20525f, 0.31647f}, -0.84901f},
+      {200.0f, {0.21142f, 0.32312f}, -1.0182f},  {225.0f, {0.21807f, 0.32909f}, -1.2168f},
+      {250.0f, {0.22511f, 0.33439f}, -1.4512f},  {275.0f, {0.23247f, 0.33904f}, -1.7298f},
+      {300.0f, {0.24010f, 0.34308f}, -2.0637f},  {325.0f, {0.24792f, 0.34655f}, -2.4681f},
+      {350.0f, {0.25591f, 0.34951f}, -2.9641f},  {375.0f, {0.26400f, 0.35200f}, -3.5814f},
+      {400.0f, {0.27218f, 0.35407f}, -4.3633f},  {425.0f, {0.28039f, 0.35577f}, -5.3762f},
+      {450.0f, {0.28863f, 0.35714f}, -6.7262f},  {475.0f, {0.29685f, 0.35823f}, -8.5955f},
+      {500.0f, {0.30505f, 0.35907f}, -11.324f},  {525.0f, {0.31320f, 0.35968f}, -15.628f},
+      {550.0f, {0.32129f, 0.36011f}, -23.325f},  {575.0f, {0.32931f, 0.36038f}, -40.770f},
+      {600.0f, {0.33724f, 0.36051f}, -116.45f},
+  });
+
+  /* Bradford transformation matrix (XYZ -> LMS). */
+  static const blender::float3x3 bradford{
+      {0.8951f, -0.7502f, 0.0389f},
+      {0.2664f, 1.7135f, -0.0685f},
+      {-0.1614f, 0.0367f, 1.0296f},
+  };
+
+  /* Find table entry. */
+  const float mired = clamp(1e6f / temperature, locus.first().mired, locus.last().mired);
+  auto compare = [](const table_entry_t &entry, const float val) { return entry.mired < val; };
+  const long i = std::lower_bound(locus.begin(), locus.end(), mired, compare) - locus.begin();
+  const table_entry_t &low = locus[i - 1], high = locus[i];
+
+  /* Find interpolation factor. */
+  const float f = (mired - low.mired) / (high.mired - low.mired);
+
+  /* Interpolate point along Planckian locus. */
+  float2 uv = interpolate(low.uv, high.uv, f);
+
+  /* Compute and interpolate isotherm. */
+  const float2 isotherm0 = normalize(float2(1.0f, low.t));
+  const float2 isotherm1 = normalize(float2(1.0f, high.t));
+  const float2 isotherm = normalize(interpolate(isotherm0, isotherm1, f));
+
+  /* Offset away from the Planckian locus according to the tint.
+   * Tint is parametrized such that +-3000 tint corresponds to +-1 delta UV. */
+  uv -= isotherm * tint / 3000.0f;
+
+  /* Convert CIE 1960 uv -> xyY. */
+  const float x = 3.0f * uv.x / (2.0f * uv.x - 8.0f * uv.y + 4.0f);
+  const float y = 2.0f * uv.y / (2.0f * uv.x - 8.0f * uv.y + 4.0f);
+
+  /* Convert xyY -> XYZ (assuming Y=1).  */
+  const float3 from_XYZ{x / y, 1.0f, (1.0f - x - y) / y};
+  const float3 to_XYZ = target / target.y;
+
+  /* Compute white points in LMS space. */
+  const float3 from_LMS = bradford * from_XYZ;
+  const float3 to_LMS = bradford * to_XYZ;
+
+  /* Assemble full transform: XYZ -> LMS -> adapted LMS -> adapted XYZ. */
+  return invert(bradford) * from_scale<float3x3>(to_LMS / from_LMS) * bradford;
+}
+
+}  // namespace blender::math

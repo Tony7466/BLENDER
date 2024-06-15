@@ -294,9 +294,12 @@ bool OCIO_gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
                                const float scale,
                                const float exponent,
                                const float dither,
+                               const float temperature,
+                               const float tint,
                                const bool use_predivide,
                                const bool use_overlay,
-                               const bool use_hdr)
+                               const bool use_hdr,
+                               const bool use_white_balance)
 {
   return impl->gpuDisplayShaderBind(config,
                                     input,
@@ -307,9 +310,12 @@ bool OCIO_gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
                                     scale,
                                     exponent,
                                     dither,
+                                    temperature,
+                                    tint,
                                     use_predivide,
                                     use_overlay,
-                                    use_hdr);
+                                    use_hdr,
+                                    use_white_balance);
 }
 
 void OCIO_gpuDisplayShaderUnbind()

@@ -197,9 +197,12 @@ bool OCIO_gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
                                const float scale,
                                const float exponent,
                                const float dither,
+                               const float temperature,
+                               const float tint,
                                const bool use_predivide,
                                const bool use_overlay,
-                               const bool use_hdr);
+                               const bool use_hdr,
+                               const bool use_white_balance);
 void OCIO_gpuDisplayShaderUnbind(void);
 void OCIO_gpuCacheFree(void);
 

@@ -39,4 +39,5 @@ struct OCIO_GPUParameters {
   bool32_t use_hdr;
   int _pad0;
   int _pad1;
+  float4x4 white_balance;
 };

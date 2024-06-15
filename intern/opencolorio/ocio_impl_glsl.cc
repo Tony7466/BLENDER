@@ -27,6 +27,10 @@
 
 using namespace OCIO_NAMESPACE;
 
+#include "BLI_math_color.h"
+#include "BLI_math_color.hh"
+#include "BLI_math_matrix.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "ocio_impl.h"
@@ -552,7 +556,8 @@ static void updateGPUDisplayParameters(OCIO_GPUShader &shader,
                                        float dither,
                                        bool use_predivide,
                                        bool use_overlay,
-                                       bool use_hdr)
+                                       bool use_hdr,
+                                       float4x4 white_balance)
 {
   bool do_update = false;
   if (shader.parameters_buffer == nullptr) {
@@ -582,6 +587,10 @@ static void updateGPUDisplayParameters(OCIO_GPUShader &shader,
   }
   if (bool(data.use_hdr) != use_hdr) {
     data.use_hdr = use_hdr;
+    do_update = true;
+  }
+  if (data.white_balance != white_balance) {
+    data.white_balance = white_balance;
     do_update = true;
   }
   if (do_update) {
@@ -724,9 +733,12 @@ bool OCIOImpl::gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
                                     const float scale,
                                     const float exponent,
                                     const float dither,
+                                    const float temperature,
+                                    const float tint,
                                     const bool use_predivide,
                                     const bool use_overlay,
-                                    const bool use_hdr)
+                                    const bool use_hdr,
+                                    const bool use_white_balance)
 {
   /* Get GPU shader from cache or create new one. */
   OCIO_GPUDisplayShader &display_shader = getGPUDisplayShader(
@@ -761,7 +773,21 @@ bool OCIOImpl::gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
     GPU_uniformbuf_bind(textures.uniforms_buffer, UNIFORMBUF_SLOT_LUTS);
   }
 
-  updateGPUDisplayParameters(shader, scale, exponent, dither, use_predivide, use_overlay, use_hdr);
+  blender::float4x4 white_balance = blender::float4x4::identity();
+  if (use_white_balance) {
+    /* Compute white point of the scene space in XYZ.*/
+    blender::float3x3 xyz_to_scene;
+    configGetXYZtoSceneLinear(config, xyz_to_scene.ptr());
+    blender::float3x3 scene_to_xyz = blender::math::invert(xyz_to_scene);
+    blender::float3 scene_white = scene_to_xyz * blender::float3(1.0f);
+
+    /* Compute chromatic adaption matrix. */
+    white_balance = blender::float4x4(
+        xyz_to_scene * blender::math::white_balance_matrix(temperature, tint, scene_white) *
+        scene_to_xyz);
+  }
+  updateGPUDisplayParameters(
+      shader, scale, exponent, dither, use_predivide, use_overlay, use_hdr, white_balance);
   GPU_uniformbuf_bind(shader.parameters_buffer, UNIFORMBUF_SLOT_DISPLAY);
 
   /* TODO(fclem): remove remains of IMM. */

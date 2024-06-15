@@ -113,9 +113,12 @@ class IOCIOImpl {
                                     const float /*scale*/,
                                     const float /*exponent*/,
                                     const float /*dither*/,
+                                    const float /*temperature*/,
+                                    const float /*tint*/,
                                     const bool /*use_predivide*/,
                                     const bool /*use_overlay*/,
-                                    const bool /*use_hdr*/)
+                                    const bool /*use_hdr*/,
+                                    const bool /*use_white_balance*/)
   {
     return false;
   }
@@ -313,9 +316,12 @@ class OCIOImpl : public IOCIOImpl {
                             const float scale,
                             const float exponent,
                             const float dither,
+                            const float temperature,
+                            const float tint,
                             const bool use_predivide,
                             const bool use_overlay,
-                            const bool use_hdr);
+                            const bool use_hdr,
+                            const bool use_white_balance);
   void gpuDisplayShaderUnbind(void);
   void gpuCacheFree(void);
 

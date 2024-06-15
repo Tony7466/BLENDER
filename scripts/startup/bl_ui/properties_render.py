@@ -150,6 +150,39 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
         layout.template_curve_mapping(view, "curve_mapping", type='COLOR', levels=True)
 
 
+class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
+    bl_label = "Use White Balance"
+    bl_parent_id = "RENDER_PT_color_management"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+    }
+
+    def draw_header(self, context):
+        scene = context.scene
+        view = scene.view_settings
+
+        self.layout.prop(view, "use_white_balance", text="")
+
+    def draw(self, context):
+        layout = self.layout
+
+        scene = context.scene
+        view = scene.view_settings
+
+        layout.use_property_split = False
+        layout.use_property_decorate = False  # No animation.
+
+        layout.enabled = view.use_white_balance
+
+        col = layout.column()
+        col.prop(view, "white_balance_temperature")
+        col.prop(view, "white_balance_tint")
+
+
 class RENDER_PT_eevee_ambient_occlusion(RenderButtonsPanel, Panel):
     bl_label = "Ambient Occlusion"
     bl_options = {'DEFAULT_CLOSED'}
@@ -1385,6 +1418,7 @@ classes = (
     RENDER_PT_color_management,
     RENDER_PT_color_management_display_settings,
     RENDER_PT_color_management_curves,
+    RENDER_PT_color_management_white_balance,
 )
 
 if __name__ == "__main__":  # only for live edit.

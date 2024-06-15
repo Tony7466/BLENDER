@@ -4237,6 +4237,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
 
+  LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+    scene->view_settings.temperature = 6500.0f;
+    scene->view_settings.tint = 10.0f;
+  }
+
   /* Always run this versioning; meshes are written with the legacy format which always needs to
    * be converted to the new format on file load. Can be moved to a subversion check in a larger
    * breaking release. */
