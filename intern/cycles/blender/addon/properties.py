@@ -16,7 +16,8 @@ from bpy.props import (
 )
 from bpy.app.translations import (
     contexts as i18n_contexts,
-    pgettext_rpt as rpt_
+    pgettext_tip as n_,
+    pgettext_rpt as rpt_,
 )
 
 from math import pi
@@ -82,11 +83,26 @@ def enum_sampling_pattern(self, context):
          5)]
 
     debug_items = [
-        ('SOBOL_BURLEY', "Sobol-Burley", "Use on-the-fly computed Owen-scrambled Sobol for random sampling", 0),
-        ('TABULATED_SOBOL', "Tabulated Sobol", "Use pre-computed tables of Owen-scrambled Sobol for random sampling", 1),
-        ('BLUE_NOISE', "Blue-Noise (pure)", "Blue-Noise (pure)", 2),
-        ('BLUE_NOISE_FIRST', "Blue-Noise (first)", "Blue-Noise (first)", 3),
-        ('BLUE_NOISE_ROUND', "Blue-Noise (round)", "Blue-Noise (round)", 4),
+        ('SOBOL_BURLEY',
+         "Sobol-Burley",
+         "Use on-the-fly computed Owen-scrambled Sobol for random sampling",
+         0),
+        ('TABULATED_SOBOL',
+         "Tabulated Sobol",
+         "Use pre-computed tables of Owen-scrambled Sobol for random sampling",
+         1),
+        ('BLUE_NOISE',
+         "Blue-Noise (pure)",
+         "Use a blue-noise pattern, which optimizes the frequency distribution of noise, for random sampling",
+         2),
+        ('BLUE_NOISE_FIRST',
+         "Blue-Noise (first)",
+         "Use a blue-noise pattern for the first sample, then use Tabulated Sobol for the remaining samples, for random sampling",
+         3),
+        ('BLUE_NOISE_ROUND',
+         "Blue-Noise (round)",
+         "Use a blue-noise sequence with a length rounded up to the next power of 2, for random sampling",
+         4),
     ]
 
     non_debug_items = [
@@ -248,13 +264,14 @@ def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
         return [('OPENIMAGEDENOISE', "OpenImageDenoise",
-                 "Use Intel OpenImageDenoise AI denoiser", 4)]
+                 n_("Use Intel OpenImageDenoise AI denoiser"), 4)]
     return []
 
 
 def enum_optix_denoiser(self, context):
     if not context or bool(context.preferences.addons[__package__].preferences.get_devices_for_type('OPTIX')):
-        return [('OPTIX', "OptiX", "Use the OptiX AI denoiser with GPU acceleration, only available on NVIDIA GPUs when configured in the system tab in the user preferences", 2)]
+        return [('OPTIX', "OptiX", n_(
+            "Use the OptiX AI denoiser with GPU acceleration, only available on NVIDIA GPUs when configured in the system tab in the user preferences"), 2)]
     return []
 
 
@@ -266,11 +283,11 @@ def enum_preview_denoiser(self, context):
         items = [
             ('AUTO',
              "Automatic",
-             ("Use GPU accelerated denoising if supported, for the best performance. "
-              "Prefer OpenImageDenoise over OptiX"),
+             n_("Use GPU accelerated denoising if supported, for the best performance. "
+                "Prefer OpenImageDenoise over OptiX"),
              0)]
     else:
-        items = [('AUTO', "None", "Blender was compiled without a viewport denoiser", 0)]
+        items = [('AUTO', "None", n_("Blender was compiled without a viewport denoiser"), 0)]
 
     items += optix_items
     items += oidn_items

@@ -38,6 +38,7 @@ struct SimulationData;
 }
 namespace undo {
 struct Node;
+enum class Type : int8_t;
 }
 }
 struct BMLog;
@@ -101,7 +102,7 @@ struct SculptVertexNeighborIter {
 struct SculptOrigVertData {
   BMLog *bm_log;
 
-  const blender::ed::sculpt_paint::undo::Node *unode;
+  blender::ed::sculpt_paint::undo::Type undo_type;
   const blender::float3 *coords;
   const blender::float3 *normals;
   const float *vmasks;
@@ -114,13 +115,6 @@ struct SculptOrigVertData {
   const float *col;
 };
 
-struct SculptOrigFaceData {
-  blender::ed::sculpt_paint::undo::Node *unode;
-  BMLog *bm_log;
-  const int *face_sets;
-  int face_set;
-};
-
 enum eBoundaryAutomaskMode {
   AUTOMASK_INIT_BOUNDARY_EDGES = 1,
   AUTOMASK_INIT_BOUNDARY_FACE_SETS = 2,
@@ -128,7 +122,7 @@ enum eBoundaryAutomaskMode {
 
 namespace blender::ed::sculpt_paint::undo {
 
-enum class Type {
+enum class Type : int8_t {
   Position,
   HideVert,
   HideFace,
@@ -389,6 +383,10 @@ struct StrokeCache {
   bool pen_flip;
   bool invert;
   float pressure;
+  /**
+   * Depending on the mode, can either be the raw brush strength, or a scaled (possibly negative)
+   * value. See #brush_strength for Sculpt Mode.
+   */
   float bstrength;
   float normal_weight; /* from brush (with optional override) */
   float x_tilt;
@@ -461,7 +459,10 @@ struct StrokeCache {
   float4x4 symm_rot_mat;
   float4x4 symm_rot_mat_inv;
 
-  /* Accumulate mode. Note: inverted for SCULPT_TOOL_DRAW_SHARP. */
+  /**
+   * Accumulate mode.
+   * \note inverted for #SCULPT_TOOL_DRAW_SHARP.
+   */
   bool accum;
 
   float3 anchored_location;
@@ -1004,7 +1005,7 @@ Set<int> gather_hidden_face_sets(Span<bool> hide_poly, Span<int> face_sets);
  * handles #BMesh, #Mesh, and multi-resolution.
  */
 void SCULPT_orig_vert_data_init(SculptOrigVertData &data,
-                                Object &ob,
+                                const Object &ob,
                                 const PBVHNode &node,
                                 blender::ed::sculpt_paint::undo::Type type);
 /**
@@ -1014,13 +1015,6 @@ void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVerte
 void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert);
 void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, int i);
 
-/**
- * Initialize a #SculptOrigVertData for accessing original vertex data;
- * handles #BMesh, #Mesh, and multi-resolution.
- */
-void SCULPT_orig_vert_data_unode_init(SculptOrigVertData &data,
-                                      const Object &ob,
-                                      const blender::ed::sculpt_paint::undo::Node &unode);
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1029,28 +1023,31 @@ void SCULPT_orig_vert_data_unode_init(SculptOrigVertData &data,
 
 bool SCULPT_tool_needs_all_pbvh_nodes(const Brush &brush);
 
-void SCULPT_calc_brush_plane(const Sculpt &sd,
-                             Object &ob,
-                             blender::Span<PBVHNode *> nodes,
-                             float r_area_no[3],
-                             float r_area_co[3]);
+namespace blender::ed::sculpt_paint {
 
-std::optional<blender::float3> SCULPT_calc_area_normal(const Sculpt &sd,
-                                                       Object &ob,
-                                                       blender::Span<PBVHNode *> nodes);
+void calc_brush_plane(const Brush &brush,
+                      Object &ob,
+                      Span<PBVHNode *> nodes,
+                      float r_area_no[3],
+                      float r_area_co[3]);
+
+std::optional<float3> calc_area_normal(const Brush &brush, Object &ob, Span<PBVHNode *> nodes);
+
 /**
  * This calculates flatten center and area normal together,
  * amortizing the memory bandwidth and loop overhead to calculate both at the same time.
  */
-void SCULPT_calc_area_normal_and_center(const Sculpt &sd,
-                                        const Object &ob,
-                                        blender::Span<PBVHNode *> nodes,
-                                        float r_area_no[3],
-                                        float r_area_co[3]);
-void SCULPT_calc_area_center(const Sculpt &sd,
-                             const Object &ob,
-                             blender::Span<PBVHNode *> nodes,
-                             float r_area_co[3]);
+void calc_area_normal_and_center(const Brush &brush,
+                                 const Object &ob,
+                                 Span<PBVHNode *> nodes,
+                                 float r_area_no[3],
+                                 float r_area_co[3]);
+void calc_area_center(const Brush &brush,
+                      const Object &ob,
+                      Span<PBVHNode *> nodes,
+                      float r_area_co[3]);
+
+}
 
 PBVHVertRef SCULPT_nearest_vertex_get(const Object &ob,
                                       const float co[3],
@@ -1331,7 +1328,7 @@ struct NodeData {
 /**
  * Call before PBVH vertex iteration.
  */
-NodeData node_begin(Object &object, const Cache *automasking, const PBVHNode &node);
+NodeData node_begin(const Object &object, const Cache *automasking, const PBVHNode &node);
 
 /* Call before factor_get and SCULPT_brush_strength_factor. */
 void node_update(NodeData &automask_data, const PBVHVertexIter &vd);
@@ -1585,8 +1582,7 @@ float4 neighbor_color_average(SculptSession &ss, PBVHVertRef vertex);
  */
 float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef vertex);
 
-void do_smooth_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes, float bstrength);
-void do_smooth_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
+void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
 
 void do_smooth_mask_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes, float bstrength);
 
@@ -1617,13 +1613,6 @@ void relax_vertex(SculptSession &ss,
 }
 
 /** \} */
-
-/**
- * Expose 'calc_area_normal' externally (just for vertex paint).
- */
-std::optional<blender::float3> SCULPT_pbvh_calc_area_normal(const Brush &brush,
-                                                            Object &ob,
-                                                            blender::Span<PBVHNode *> nodes);
 
 /**
  * Flip all the edit-data across the axis/axes specified by \a symm.
@@ -2017,20 +2006,13 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 float SCULPT_clay_thumb_get_stabilized_pressure(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
-void SCULPT_do_draw_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-
-void SCULPT_do_fill_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_scrape_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_flatten_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_clay_strips_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_inflate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_nudge_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_crease_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_grab_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
@@ -2041,11 +2023,6 @@ void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBV
 void SCULPT_do_displacement_smear_brush(const Sculpt &sd,
                                         Object &ob,
                                         blender::Span<PBVHNode *> nodes);
-void SCULPT_do_displacement_eraser_brush(const Sculpt &sd,
-                                         Object &ob,
-                                         blender::Span<PBVHNode *> nodes);
-void SCULPT_do_mask_brush_draw(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_mask_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 /** \} */
 
 void SCULPT_bmesh_topology_rake(const Sculpt &sd,

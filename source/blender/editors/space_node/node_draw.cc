@@ -1521,7 +1521,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
       case bke::GeometryComponent::Type::Curve: {
         const geo_log::GeometryInfoLog::CurveInfo &curve_info = *value_log.curve_info;
         fmt::format_to(fmt::appender(buf),
-                       TIP_("\u2022 Curve: {} points,{} splines"),
+                       TIP_("\u2022 Curve: {} points, {} splines"),
                        to_string(curve_info.points_num),
                        to_string(curve_info.splines_num));
         break;
@@ -4479,6 +4479,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     immUnbindProgram();
   }
 
+  GPU_blend(GPU_BLEND_ALPHA);
+
   for (const int zone_i : zone_draw_order) {
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the contour lines. */
@@ -4497,6 +4499,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
     immUnbindProgram();
   }
+
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 #define USE_DRAW_TOT_UPDATE

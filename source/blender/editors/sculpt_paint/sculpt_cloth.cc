@@ -962,7 +962,7 @@ static void cloth_brush_apply_brush_foces(const Sculpt &sd, Object &ob, Span<PBV
   if (brush.cloth_deform_type == BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR ||
       brush.cloth_force_falloff_type == BRUSH_CLOTH_FORCE_FALLOFF_PLANE)
   {
-    SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
+    calc_brush_plane(brush, ob, nodes, area_no, area_co);
 
     /* Initialize stroke local space matrix. */
     cross_v3_v3v3(mat[0], area_no, ss.cache->grab_delta_symmetry);
@@ -1464,7 +1464,7 @@ static void cloth_filter_apply_forces_task(Object &ob,
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)

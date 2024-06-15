@@ -793,7 +793,7 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
 
   /* Driver can stall if only using minimal image count. */
   uint32_t image_count = capabilities.minImageCount + 1;
-  /* Note: maxImageCount == 0 means no limit. */
+  /* NOTE: maxImageCount == 0 means no limit. */
   if (image_count > capabilities.maxImageCount && capabilities.maxImageCount > 0) {
     image_count = capabilities.maxImageCount;
   }
@@ -936,6 +936,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   extensions_device.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   extensions_device.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
   extensions_device.push_back(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
+  extensions_device.push_back(VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME);
 
   /* Enable MoltenVK required instance extensions. */
 #ifdef __APPLE__

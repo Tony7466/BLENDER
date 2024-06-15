@@ -180,6 +180,7 @@ CCL_NAMESPACE_BEGIN
 #define __SHADOW_LINKING__
 #define __LIGHT_TREE__
 #define __OBJECT_MOTION__
+#define __MNEE__
 #define __PASSES__
 #define __PATCH_EVAL__
 #define __POINTCLOUD__
@@ -211,8 +212,8 @@ CCL_NAMESPACE_BEGIN
 
 /* MNEE caused "Compute function exceeds available temporary registers" in macOS < 13 due to a bug
  * in spill buffer allocation sizing. */
-#if !defined(__KERNEL_METAL__) || (__KERNEL_METAL_MACOS__ >= 13)
-#  define __MNEE__
+#if defined(__KERNEL_METAL__) && (__KERNEL_METAL_MACOS__ < 13)
+#  undef __MNEE__
 #endif
 
 #if defined(__KERNEL_METAL_AMD__)
@@ -577,6 +578,7 @@ typedef enum PassType {
   PASS_CATEGORY_DATA_END = 63,
 
   PASS_BAKE_PRIMITIVE,
+  PASS_BAKE_SEED,
   PASS_BAKE_DIFFERENTIAL,
   PASS_CATEGORY_BAKE_END = 95,
 
@@ -758,11 +760,11 @@ typedef struct Intersection {
 } Intersection;
 
 /* On certain GPUs (Apple Silicon), splitting every integrator state field into its own separate
- * array can be detrimental for cache utilisation. By enabling __INTEGRATOR_GPU_PACKED_STATE__, we
+ * array can be detrimental for cache utilization. By enabling __INTEGRATOR_GPU_PACKED_STATE__, we
  * specify that certain fields should be packed together. This improves cache hit ratios in cases
  * where fields are often accessed together (e.g. "ray" and "isect").
  */
-#if defined(TARGET_CPU_ARM64) || defined(__KERNEL_METAL_APPLE__)
+#if (defined(__APPLE__) && TARGET_CPU_ARM64) || defined(__KERNEL_METAL_APPLE__)
 #  define __INTEGRATOR_GPU_PACKED_STATE__
 
 /* Generate packed layouts for structs declared with KERNEL_STRUCT_BEGIN_PACKED. For example the

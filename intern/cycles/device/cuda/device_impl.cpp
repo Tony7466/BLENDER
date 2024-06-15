@@ -53,8 +53,8 @@ void CUDADevice::set_error(const string &error)
   }
 }
 
-CUDADevice::CUDADevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
-    : GPUDevice(info, stats, profiler)
+CUDADevice::CUDADevice(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless)
+    : GPUDevice(info, stats, profiler, headless)
 {
   /* Verify that base class types can be used with specific backend types */
   static_assert(sizeof(texMemObject) == sizeof(CUtexObject));
@@ -127,9 +127,6 @@ CUDADevice::CUDADevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
   cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cuDevId);
   cuDeviceGetAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cuDevId);
   cuDevArchitecture = major * 100 + minor * 10;
-
-  /* Pop context set by cuCtxCreate. */
-  cuCtxPopCurrent(NULL);
 }
 
 CUDADevice::~CUDADevice()
@@ -964,6 +961,13 @@ bool CUDADevice::should_use_graphics_interop()
    * Using CUDA device for graphics interoperability which is not part of the OpenGL context is
    * possible, but from the empiric measurements it can be considerably slower than using naive
    * pixels copy. */
+
+  if (headless) {
+    /* Avoid any call which might involve interaction with a graphics backend when we know that
+     * we don't have active graphics context. This avoid crash on certain platforms when calling
+     * cuGLGetDevices(). */
+    return false;
+  }
 
   CUDAContextScope scope(this);
 
