@@ -13,6 +13,8 @@
 #include "GPU_platform.hh"
 #include "GPU_state.hh"
 
+#include "BKE_screen.hh"
+
 #include "BLI_listbase.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
@@ -245,6 +247,24 @@ static void screen_draw_area_icon(float center_x,
                   UI_NO_ICON_OVERLAY_TEXT);
 }
 
+static int area_icon(ScrArea *area)
+{
+  const int index = RNA_enum_from_value(rna_enum_space_type_items, area->spacetype);
+  const EnumPropertyItem item = rna_enum_space_type_items[index];
+  if (item.value == SPACE_ACTION) {
+    const int subtype = area->type->space_subtype_get(area);
+    int subindex = RNA_enum_from_value(rna_enum_space_action_mode_items, subtype);
+    return rna_enum_space_action_mode_items[subindex].icon;
+  }
+  if (item.value == SPACE_IMAGE) {
+    const int subtype = area->type->space_subtype_get(area);
+    int subindex = RNA_enum_from_value(rna_enum_space_image_mode_items, subtype);
+    return rna_enum_space_image_mode_items[subindex].icon;
+  }
+  /* Can't figure out how to differenciate between node editors. */
+  return item.icon;
+}
+
 void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 {
   if (dir == SCREEN_DIR_NONE || !sa2) {
@@ -401,9 +421,7 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
   if (BLI_rctf_size_x(&sa2new) > U.pixelsize * 75.0f &&
       BLI_rctf_size_y(&sa2new) > U.pixelsize * 60.0f)
   {
-    const int icon =
-        rna_enum_space_type_items[RNA_enum_from_value(rna_enum_space_type_items, sa1->spacetype)]
-            .icon;
+    const int icon = area_icon(sa1);
     uchar icon_color[4] = {255, 255, 255, 255};
     float bg_color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
     float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
@@ -437,12 +455,8 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
   BLI_rctf_rcti_copy(&dest, &target->totrct);
   BLI_rctf_rcti_copy(&remainder, &target->totrct);
 
-  const int icon1 =
-      rna_enum_space_type_items[RNA_enum_from_value(rna_enum_space_type_items, source->spacetype)]
-          .icon;
-  const int icon2 =
-      rna_enum_space_type_items[RNA_enum_from_value(rna_enum_space_type_items, target->spacetype)]
-          .icon;
+  const int icon1 = area_icon(source);
+  const int icon2 = area_icon(target);
 
   uchar icon_color[4] = {255, 255, 255, 255};
   float outline_color[4] = {1.0f, 1.0f, 1.0f, 0.4f};
