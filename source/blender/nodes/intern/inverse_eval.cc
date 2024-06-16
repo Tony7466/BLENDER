@@ -58,18 +58,29 @@ struct NodeInContext {
 
   uint64_t hash() const
   {
-    return get_default_hash(this->context, this->node);
+    return get_default_hash(this->context_hash(), this->node);
+  }
+
+  ComputeContextHash context_hash() const
+  {
+    return context ? context->hash() : ComputeContextHash{};
   }
 
   friend bool operator<(const NodeInContext &a, const NodeInContext &b)
   {
     const Vector<int> a_sort_vec = get_global_node_sort_vector(a.context, *a.node);
     const Vector<int> b_sort_vec = get_global_node_sort_vector(b.context, *b.node);
+    const int common_length = std::min(a_sort_vec.size(), b_sort_vec.size());
+    const Span<int> a_common = Span<int>(a_sort_vec).take_front(common_length);
+    const Span<int> b_common = Span<int>(b_sort_vec).take_front(common_length);
+    if (a_common == b_common) {
+      return a_sort_vec.size() < b_sort_vec.size();
+    }
     return std::lexicographical_compare(
-        b_sort_vec.begin(), b_sort_vec.end(), a_sort_vec.begin(), a_sort_vec.end());
+        b_common.begin(), b_common.end(), a_common.begin(), a_common.end());
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(NodeInContext, context, node)
+  BLI_STRUCT_EQUALITY_OPERATORS_2(NodeInContext, context_hash(), node)
 };
 
 struct SocketInContext {
@@ -78,10 +89,15 @@ struct SocketInContext {
 
   uint64_t hash() const
   {
-    return get_default_hash(this->context, this->socket);
+    return get_default_hash(this->context_hash(), this->socket);
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_2(SocketInContext, context, socket)
+  ComputeContextHash context_hash() const
+  {
+    return context ? context->hash() : ComputeContextHash{};
+  }
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(SocketInContext, context_hash(), socket)
 };
 
 std::optional<ElemVariant> get_elem_variant_for_socket_type(const eNodeSocketDatatype type)
@@ -179,6 +195,8 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
 
   tree.ensure_topology_cache();
 
+  ResourceScope scope;
+
   Map<SocketInContext, ElemVariant> elem_by_socket;
 
   Set<NodeInContext> added_nodes;
@@ -199,22 +217,40 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
           }
           const bNodeSocket &origin_socket = *link->fromsock;
           const bNode &origin_node = *link->fromnode;
-          if (origin_node.is_group()) {
-            /* Not yet supported. */
+
+          const std::optional<ElemVariant> converted_elem = convert_socket_elem(
+              socket, origin_socket, new_elem);
+          if (!converted_elem) {
+            continue;
           }
-          else {
-            const std::optional<ElemVariant> converted_elem = convert_socket_elem(
-                socket, origin_socket, new_elem);
-            if (!converted_elem) {
+          ElemVariant &origin_elem = elem_by_socket.lookup_or_add({context, &origin_socket},
+                                                                  *converted_elem);
+          origin_elem.merge(*converted_elem);
+
+          if (origin_node.is_group()) {
+            const bNodeTree *group = reinterpret_cast<const bNodeTree *>(origin_node.id);
+            if (!group) {
               continue;
             }
-            ElemVariant &origin_elem = elem_by_socket.lookup_or_add({context, &origin_socket},
-                                                                    *converted_elem);
-            origin_elem.merge(*converted_elem);
-            const NodeInContext origin_node_in_context{context, &origin_node};
-            if (added_nodes.add(origin_node_in_context)) {
-              nodes_to_handle.push(origin_node_in_context);
+            group->ensure_topology_cache();
+            if (group->has_available_link_cycle()) {
+              continue;
             }
+            const bNode *group_output = group->group_output_node();
+            if (!group_output) {
+              continue;
+            }
+            const ComputeContext &group_context = scope.construct<bke::GroupNodeComputeContext>(
+                context, origin_node, origin_node.owner_tree());
+
+            const NodeInContext group_output_node_in_context{&group_context, group_output};
+            if (added_nodes.add(group_output_node_in_context)) {
+              nodes_to_handle.push(group_output_node_in_context);
+            }
+          }
+          const NodeInContext origin_node_in_context{context, &origin_node};
+          if (added_nodes.add(origin_node_in_context)) {
+            nodes_to_handle.push(origin_node_in_context);
           }
         }
       };
@@ -235,8 +271,47 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
       const ElemVariant elem = elem_by_socket.lookup({context, &node.output_socket(0)});
       set_input_elem_and_forward(context, node.input_socket(0), elem);
     }
-    else if (node.is_group_input()) {
-      /* Nothing to do yet. */
+    else if (node.is_group()) {
+      const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id);
+      const bke::GroupNodeComputeContext group_context{context, node, node.owner_tree()};
+      for (const int i : node.input_sockets().index_range()) {
+        const bNodeSocket &socket = node.input_socket(i);
+        std::optional<ElemVariant> elem_to_forward = get_elem_variant_for_socket_type(
+            eNodeSocketDatatype(socket.type));
+        if (!elem_to_forward) {
+          continue;
+        }
+        for (const bNode *group_input_node : group->group_input_nodes()) {
+          const bNodeSocket &child_socket = group_input_node->output_socket(i);
+          if (const ElemVariant *child_elem = elem_by_socket.lookup_ptr(
+                  {&group_context, &child_socket}))
+          {
+            elem_to_forward->merge(*child_elem);
+          }
+        }
+        if (*elem_to_forward) {
+          set_input_elem_and_forward(context, socket, *elem_to_forward);
+        }
+      }
+    }
+    else if (node.is_group_output()) {
+      if (!context) {
+        continue;
+      }
+      const auto *group_context = dynamic_cast<const bke::GroupNodeComputeContext *>(context);
+      if (!group_context) {
+        continue;
+      }
+      const ComputeContext *caller_context = group_context->parent();
+      const bNode &caller_node = *group_context->caller_group_node();
+      for (const int i : node.input_sockets().drop_back(1).index_range()) {
+        const bNodeSocket &socket = node.input_socket(i);
+        const bNodeSocket &caller_socket = caller_node.output_socket(i);
+        if (const ElemVariant *elem = elem_by_socket.lookup_ptr({caller_context, &caller_socket}))
+        {
+          set_input_elem_and_forward(context, socket, *elem);
+        }
+      }
     }
     else {
       const bke::bNodeType &ntype = *node.typeinfo;
