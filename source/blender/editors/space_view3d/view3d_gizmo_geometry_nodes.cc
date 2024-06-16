@@ -475,20 +475,8 @@ class TransformGizmos : public NodeGizmos {
       const bool is_interacting = gizmo_is_interacting(*gizmo);
 
       if (!is_interacting) {
-        float4x4 gizmo_transform;
-        const float3 global_location =
-            (params.parent_transform * base_transform_from_socket).location();
-        const float3x3 axis_rotation = this->get_rotation_to_axis(axis);
-        if (transform_orientation_ == V3D_ORIENT_GLOBAL) {
-          gizmo_transform = float4x4(axis_rotation);
-          gizmo_transform.location() = global_location;
-        }
-        else {
-          gizmo_transform = params.parent_transform *
-                            float4x4(base_transform_from_socket.view<3, 3>() * axis_rotation);
-          make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
-        }
-        gizmo_transform.location() = global_location;
+        const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
+            axis, base_transform_from_socket, params);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_translation[axis_i] = 0.0f;
@@ -539,20 +527,8 @@ class TransformGizmos : public NodeGizmos {
       const bool is_interacting = gizmo_is_interacting(*gizmo);
 
       if (!is_interacting) {
-        float4x4 gizmo_transform;
-        const float3 global_location =
-            (params.parent_transform * base_transform_from_socket).location();
-        const float3x3 axis_rotation = this->get_rotation_to_axis(axis);
-        if (transform_orientation_ == V3D_ORIENT_GLOBAL) {
-          gizmo_transform = float4x4(axis_rotation);
-          gizmo_transform.location() = global_location;
-        }
-        else {
-          gizmo_transform = params.parent_transform *
-                            float4x4(base_transform_from_socket.view<3, 3>() * axis_rotation);
-          make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
-        }
-        gizmo_transform.location() = global_location;
+        const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
+            axis, base_transform_from_socket, params);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_rotation[axis_i] = 0.0f;
@@ -642,6 +618,27 @@ class TransformGizmos : public NodeGizmos {
         WM_gizmo_target_property_def_func(gizmo, "offset", &params);
       }
     }
+  }
+
+  float4x4 get_axis_gizmo_matrix_basis(const math::Axis axis,
+                                       const float4x4 &base_transform_from_socket,
+                                       const GizmosUpdateParams &params) const
+  {
+    float4x4 gizmo_transform;
+    const float3 global_location =
+        (params.parent_transform * base_transform_from_socket).location();
+    const float3x3 axis_rotation = this->get_rotation_to_axis(axis);
+    if (transform_orientation_ == V3D_ORIENT_GLOBAL) {
+      gizmo_transform = float4x4(axis_rotation);
+      gizmo_transform.location() = global_location;
+    }
+    else {
+      gizmo_transform = params.parent_transform *
+                        float4x4(base_transform_from_socket.view<3, 3>() * axis_rotation);
+      make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+    }
+    gizmo_transform.location() = global_location;
+    return gizmo_transform;
   }
 
   Vector<wmGizmo *> get_all_gizmos() override
