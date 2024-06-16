@@ -596,13 +596,26 @@ class TransformGizmos : public NodeGizmos {
                                  const void *value_ptr) {
           TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
           const int axis_i = Span(self.scale_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+          const math::Axis axis = math::Axis::from_int(axis_i);
           const float new_gizmo_value = *static_cast<const float *>(value_ptr);
           self.edit_data_.current_scale[axis_i] = new_gizmo_value;
           float3 scale{1.0f, 1.0f, 1.0f};
           scale[axis_i] += new_gizmo_value;
           self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
             float4x4 value = value_variant.get<float4x4>();
-            value = value * math::from_scale<float4x4>(scale);
+            float3 local_scale_axis;
+            if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
+              local_scale_axis = math::normalize(math::transform_direction(
+                  math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
+            }
+            else {
+              local_scale_axis = math::normalize(float3(value[axis_i]));
+            }
+            const float3x3 rotation_matrix = math::from_rotation<float3x3>(
+                math::AxisAngle(local_scale_axis, math::to_vector<float3>(axis)));
+            const float3x3 scale_matrix = math::invert(rotation_matrix) *
+                                          math::from_scale<float3x3>(scale) * rotation_matrix;
+            value.view<3, 3>() = scale_matrix * value.view<3, 3>();
             value_variant.set(value);
           });
         };
