@@ -552,7 +552,9 @@ void PhysicsGeometry::step_simulation(float delta_time)
   constexpr const float fixed_time_step = 1.0f / 120.0f;
 
   PhysicsGeometryImpl &impl = this->impl_for_write();
-  impl.world->stepSimulation(delta_time, 100, fixed_time_step);
+  if (impl.world) {
+    impl.world->stepSimulation(delta_time, 100, fixed_time_step);
+  }
 }
 
 int PhysicsGeometry::bodies_num() const
