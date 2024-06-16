@@ -581,14 +581,8 @@ class TransformGizmos : public NodeGizmos {
       const bool is_interacting = gizmo_is_interacting(*gizmo);
 
       if (!is_interacting) {
-        const float3 location = base_transform_from_socket.location();
-        const float3x3 orientation = float3x3(base_transform_from_socket) *
-                                     this->get_rotation_to_axis(axis);
-        float4x4 base_transform_from_socket_for_axis = float4x4(orientation);
-        base_transform_from_socket_for_axis.location() = location;
-
-        float4x4 gizmo_transform = params.parent_transform * base_transform_from_socket_for_axis;
-        make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+        const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
+            axis, base_transform_from_socket, params);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_scale[axis_i] = 0.0f;
