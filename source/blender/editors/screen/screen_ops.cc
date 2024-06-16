@@ -1478,7 +1478,7 @@ static int area_dupli_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* Create new window. No need to set space_type since it will be copied over. */
   wmWindow *newwin = WM_window_open(C,
-                                    "Blender",
+                                    nullptr,
                                     &window_rect,
                                     SPACE_EMPTY,
                                     false,
@@ -2279,6 +2279,8 @@ static bool area_split_apply(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
   /* Update preview thumbnail */
   BKE_icon_changed(screen->id.icon_id);
+
+  WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
 
   return true;
 }
@@ -3569,6 +3571,11 @@ static bool area_join_apply(bContext *C, wmOperator *op)
   if (CTX_wm_area(C) == jd->sa2) {
     CTX_wm_area_set(C, nullptr);
     CTX_wm_region_set(C, nullptr);
+  }
+
+  if (BLI_listbase_is_single(&CTX_wm_screen(C)->areabase)) {
+    /* Areas reduced to just one, so update the window title. */
+    WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
   }
 
   return true;
@@ -5237,7 +5244,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
 
   /* changes context! */
   if (WM_window_open(C,
-                     IFACE_("Blender Preferences"),
+                     nullptr,
                      &window_rect,
                      SPACE_USERPREF,
                      false,

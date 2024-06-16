@@ -46,6 +46,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
+#include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -479,54 +480,82 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
   }
 }
 
-void wm_window_title(wmWindowManager *wm, wmWindow *win)
+void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
 {
   if (win->ghostwin == nullptr) {
     return;
   }
 
-  if (WM_window_is_temp_screen(win)) {
-    /* Nothing to do for 'temp' windows,
-     * because #WM_window_open always sets window title. */
-    return;
-  }
-
   GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
+  bool is_main_window = !win->parent && !WM_window_is_temp_screen(win);
 
-  const char *filepath = BKE_main_blendfile_path_from_global();
-  const char *filename = BLI_path_basename(filepath);
+  if (is_main_window) {
+    const char *filepath = BKE_main_blendfile_path_from_global();
+    const char *filename = BLI_path_basename(filepath);
+    const bool has_filepath = filepath[0] != '\0';
+    const bool include_filepath = has_filepath && (filepath != filename) &&
+                                  (GHOST_SetPath(handle, filepath) == GHOST_kFailure);
 
-  const bool has_filepath = filepath[0] != '\0';
-  const bool include_filepath = has_filepath && (filepath != filename) &&
-                                (GHOST_SetPath(handle, filepath) == GHOST_kFailure);
+    std::string str;
+    if (!wm->file_saved) {
+      str += "* ";
+    }
 
-  std::string str;
-  if (!wm->file_saved) {
-    str += "* ";
+    if (has_filepath) {
+      const size_t filename_no_ext_len = BLI_path_extension_or_end(filename) - filename;
+      str.append(filename, filename_no_ext_len);
+    }
+    else {
+      str += IFACE_("(Unsaved)");
+    }
+
+    if (G_MAIN->recovered) {
+      str += IFACE_(" (Recovered)");
+    }
+
+    if (include_filepath) {
+      str += " [";
+      str += filepath;
+      str += "]";
+    }
+
+    str += " - Blender ";
+    str += BKE_blender_version_string_compact();
+
+    GHOST_SetTitle(handle, str.c_str());
   }
-
-  if (has_filepath) {
-    const size_t filename_no_ext_len = BLI_path_extension_or_end(filename) - filename;
-    str.append(filename, filename_no_ext_len);
+  else if (title) {
+    GHOST_SetTitle(handle, title);
   }
   else {
-    str += IFACE_("(Unsaved)");
+    bScreen *screen = WM_window_get_active_screen(win);
+    const bool is_single = screen && BLI_listbase_is_single(&screen->areabase);
+    ScrArea *area = (screen) ? static_cast<ScrArea *>(screen->areabase.first) : nullptr;
+    if (is_single && area) {
+      PointerRNA ptr = RNA_pointer_create(&(screen->id), &RNA_Area, area);
+      PropertyRNA *prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
+      const int space_type_ui = RNA_property_enum_get(&ptr, prop_ui_type);
+      int space_type = space_type_ui >> 16;
+      const char *area_name = "";
+
+      bContext *C = CTX_create();
+      CTX_data_main_set(C, G_MAIN);
+      CTX_data_scene_set(C, WM_window_get_active_scene(win));
+      CTX_wm_manager_set(C, wm);
+      CTX_wm_window_set(C, win);
+      CTX_wm_screen_set(C, screen);
+      CTX_wm_area_set(C, area);
+
+      RNA_property_enum_name_gettexted(
+          C, &ptr, prop_ui_type, RNA_property_enum_get(&ptr, prop_ui_type), &area_name);
+      CTX_free(C);
+
+      GHOST_SetTitle(handle, area_name);
+    }
+    else {
+      GHOST_SetTitle(handle, "Blender");
+    }
   }
-
-  if (G_MAIN->recovered) {
-    str += IFACE_(" (Recovered)");
-  }
-
-  if (include_filepath) {
-    str += " [";
-    str += filepath;
-    str += "]";
-  }
-
-  str += " - Blender ";
-  str += BKE_blender_version_string_compact();
-
-  GHOST_SetTitle(handle, str.c_str());
 
   /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
    * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
@@ -856,7 +885,7 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
     ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
     WM_event_add_dropbox_handler(&win->handlers, lb);
   }
-  wm_window_title(wm, win);
+  WM_window_title(wm, win);
 
   /* Add top-bar. */
   ED_screen_global_areas_refresh(win);
@@ -1082,7 +1111,7 @@ wmWindow *WM_window_open(bContext *C,
 
   if (win->ghostwin) {
     wm_window_raise(win);
-    GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), title);
+    WM_window_title(wm, win, title);
     return win;
   }
 
@@ -1119,7 +1148,7 @@ int wm_window_new_exec(bContext *C, wmOperator *op)
   };
 
   bool ok = (WM_window_open(C,
-                            IFACE_("Blender"),
+                            nullptr,
                             &window_rect,
                             area->spacetype,
                             false,
