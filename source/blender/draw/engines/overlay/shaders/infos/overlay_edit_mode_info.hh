@@ -376,28 +376,33 @@ GPU_SHADER_CREATE_INFO(overlay_edit_uv_mask_image)
 /** \name UV Stretching
  * \{ */
 
-GPU_SHADER_CREATE_INFO(overlay_edit_uv_stretching)
+GPU_SHADER_CREATE_INFO(overlay_edit_uv_color)
     .vertex_in(0, Type::VEC2, "pos")
     .push_constant(Type::VEC2, "aspect")
-    .push_constant(Type::FLOAT, "stretch_opacity")
+    .push_constant(Type::FLOAT, "color_opacity")
     .vertex_out(overlay_edit_nopersp_color_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
-    .vertex_source("overlay_edit_uv_stretching_vert.glsl")
+    .vertex_source("overlay_edit_uv_color_vert.glsl")
     .fragment_source("overlay_varying_color.glsl")
     .additional_info("draw_mesh", "draw_globals");
 
-GPU_SHADER_CREATE_INFO(overlay_edit_uv_stretching_area)
+GPU_SHADER_CREATE_INFO(overlay_edit_uv_color_stretching_area)
     .do_static_compilation(true)
     .vertex_in(1, Type::FLOAT, "ratio")
     .push_constant(Type::FLOAT, "totalAreaRatio")
-    .additional_info("overlay_edit_uv_stretching");
+    .additional_info("overlay_edit_uv_color");
 
-GPU_SHADER_CREATE_INFO(overlay_edit_uv_stretching_angle)
+GPU_SHADER_CREATE_INFO(overlay_edit_uv_color_stretching_angle)
     .do_static_compilation(true)
     .define("STRETCH_ANGLE")
     .vertex_in(1, Type::VEC2, "uv_angles")
     .vertex_in(2, Type::FLOAT, "angle")
-    .additional_info("overlay_edit_uv_stretching");
+    .additional_info("overlay_edit_uv_color");
+
+GPU_SHADER_CREATE_INFO(overlay_edit_uv_color_orientation)
+    .do_static_compilation(true)
+    .vertex_in(1, Type::VEC3, "uv_nor")
+    .additional_info("overlay_edit_uv_color");
 
 /** \} */
 

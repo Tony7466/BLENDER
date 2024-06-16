@@ -253,6 +253,11 @@ void draw_subdiv_build_edituv_stretch_angle_buffer(const DRWSubdivCache &cache,
                                                    int uvs_offset,
                                                    gpu::VertBuf *stretch_angles);
 
+void draw_subdiv_build_edituv_orientation_buffer(const DRWSubdivCache &cache,
+                                                 gpu::VertBuf *uvs,
+                                                 int uvs_offset,
+                                                 gpu::VertBuf *orientations);
+
 /** Return the format used for the positions and normals VBO. */
 const GPUVertFormat &draw_subdiv_get_pos_nor_format();
 

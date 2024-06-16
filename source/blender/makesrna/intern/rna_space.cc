@@ -216,37 +216,35 @@ const EnumPropertyItem rna_enum_space_file_browse_mode_items[] = {
 };
 
 #define SACT_ITEM_DOPESHEET \
-  { \
-    SACTCONT_DOPESHEET, "DOPESHEET", ICON_ACTION, "Dope Sheet", "Edit all keyframes in scene" \
-  }
+  {SACTCONT_DOPESHEET, "DOPESHEET", ICON_ACTION, "Dope Sheet", "Edit all keyframes in scene"}
 #define SACT_ITEM_TIMELINE \
-  { \
-    SACTCONT_TIMELINE, "TIMELINE", ICON_TIME, "Timeline", "Timeline and playback controls" \
-  }
+  {SACTCONT_TIMELINE, "TIMELINE", ICON_TIME, "Timeline", "Timeline and playback controls"}
 #define SACT_ITEM_ACTION \
-  { \
-    SACTCONT_ACTION, "ACTION", ICON_OBJECT_DATA, "Action Editor", \
-        "Edit keyframes in active object's Object-level action" \
-  }
+  {SACTCONT_ACTION, \
+   "ACTION", \
+   ICON_OBJECT_DATA, \
+   "Action Editor", \
+   "Edit keyframes in active object's Object-level action"}
 #define SACT_ITEM_SHAPEKEY \
-  { \
-    SACTCONT_SHAPEKEY, "SHAPEKEY", ICON_SHAPEKEY_DATA, "Shape Key Editor", \
-        "Edit keyframes in active object's Shape Keys action" \
-  }
+  {SACTCONT_SHAPEKEY, \
+   "SHAPEKEY", \
+   ICON_SHAPEKEY_DATA, \
+   "Shape Key Editor", \
+   "Edit keyframes in active object's Shape Keys action"}
 #define SACT_ITEM_GPENCIL \
-  { \
-    SACTCONT_GPENCIL, "GPENCIL", ICON_GREASEPENCIL, "Grease Pencil", \
-        "Edit timings for all Grease Pencil sketches in file" \
-  }
+  {SACTCONT_GPENCIL, \
+   "GPENCIL", \
+   ICON_GREASEPENCIL, \
+   "Grease Pencil", \
+   "Edit timings for all Grease Pencil sketches in file"}
 #define SACT_ITEM_MASK \
-  { \
-    SACTCONT_MASK, "MASK", ICON_MOD_MASK, "Mask", "Edit timings for Mask Editor splines" \
-  }
+  {SACTCONT_MASK, "MASK", ICON_MOD_MASK, "Mask", "Edit timings for Mask Editor splines"}
 #define SACT_ITEM_CACHEFILE \
-  { \
-    SACTCONT_CACHEFILE, "CACHEFILE", ICON_FILE, "Cache File", \
-        "Edit timings for Cache File data-blocks" \
-  }
+  {SACTCONT_CACHEFILE, \
+   "CACHEFILE", \
+   ICON_FILE, \
+   "Cache File", \
+   "Edit timings for Cache File data-blocks"}
 
 #ifndef RNA_RUNTIME
 /* XXX: action-editor is currently for object-level only actions,
@@ -290,21 +288,10 @@ const EnumPropertyItem rna_enum_space_action_mode_items[] = {
 #undef SACT_ITEM_CACHEFILE
 
 #define SI_ITEM_VIEW(identifier, name, icon) \
-  { \
-    SI_MODE_VIEW, identifier, icon, name, "View the image" \
-  }
-#define SI_ITEM_UV \
-  { \
-    SI_MODE_UV, "UV", ICON_UV, "UV Editor", "UV edit in mesh editmode" \
-  }
-#define SI_ITEM_PAINT \
-  { \
-    SI_MODE_PAINT, "PAINT", ICON_TPAINT_HLT, "Paint", "2D image painting mode" \
-  }
-#define SI_ITEM_MASK \
-  { \
-    SI_MODE_MASK, "MASK", ICON_MOD_MASK, "Mask", "Mask editing" \
-  }
+  {SI_MODE_VIEW, identifier, icon, name, "View the image"}
+#define SI_ITEM_UV {SI_MODE_UV, "UV", ICON_UV, "UV Editor", "UV edit in mesh editmode"}
+#define SI_ITEM_PAINT {SI_MODE_PAINT, "PAINT", ICON_TPAINT_HLT, "Paint", "2D image painting mode"}
+#define SI_ITEM_MASK {SI_MODE_MASK, "MASK", ICON_MOD_MASK, "Mask", "Mask editing"}
 
 const EnumPropertyItem rna_enum_space_image_mode_all_items[] = {
     SI_ITEM_VIEW("VIEW", "View", ICON_FILE_IMAGE),
@@ -3673,9 +3660,20 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem dt_uvstretch_items[] = {
-      {SI_UVDT_STRETCH_ANGLE, "ANGLE", 0, "Angle", "Angular distortion between UV and 3D angles"},
-      {SI_UVDT_STRETCH_AREA, "AREA", 0, "Area", "Area distortion between UV and 3D faces"},
+  static const EnumPropertyItem dt_uvcolor_items[] = {
+      {SI_UVDT_STRETCH_ANGLE,
+       "ANGLE",
+       0,
+       "Angle Stretch",
+       "Angular distortion between UV and 3D angles (blue for low distortion, red for high "
+       "distortion)"},
+      {SI_UVDT_STRETCH_AREA,
+       "AREA",
+       0,
+       "Area Stretch",
+       "Area distortion between UV and 3D faces (blue for low distortion, red for high "
+       "distortion)"},
+      {SI_UVDT_ORIENTATION, "UV_ORIENTATION", 0, "Orientation", "Orientation of UV normals"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -3706,19 +3704,18 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Display As", "Display style for UV edges");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
-  prop = RNA_def_property(srna, "show_stretch", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SI_DRAW_STRETCH);
+  prop = RNA_def_property(srna, "show_color", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SI_DRAW_COLOR);
   RNA_def_property_ui_text(
       prop,
-      "Display Stretch",
-      "Display faces colored according to the difference in shape between UVs and "
-      "their 3D coordinates (blue for low distortion, red for high distortion)");
+      "Display Color Overlay",
+      "Color UV faces based on the selected overlay type (stretching, orientation)");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
-  prop = RNA_def_property(srna, "display_stretch_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "dt_uvstretch");
-  RNA_def_property_enum_items(prop, dt_uvstretch_items);
-  RNA_def_property_ui_text(prop, "Display Stretch Type", "Type of stretch to display");
+  prop = RNA_def_property(srna, "display_color_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "dt_uvcolor");
+  RNA_def_property_enum_items(prop, dt_uvcolor_items);
+  RNA_def_property_ui_text(prop, "Display Color Overlay Type", "Type of color overlay to display");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
@@ -3787,10 +3784,10 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "UV Opacity", "Opacity of UV overlays");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
-  prop = RNA_def_property(srna, "stretch_opacity", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_sdna(prop, nullptr, "stretch_opacity");
+  prop = RNA_def_property(srna, "color_opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "color_opacity");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Stretch Opacity", "Opacity of the UV Stretch overlay");
+  RNA_def_property_ui_text(prop, "Color Opacity", "Opacity of the UV Color overlay");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
   prop = RNA_def_property(srna, "pixel_round_mode", PROP_ENUM, PROP_NONE);

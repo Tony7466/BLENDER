@@ -131,15 +131,15 @@ void OVERLAY_edit_uv_init(OVERLAY_Data *vedata)
   const bool do_face_dots = (ts->uv_flag & UV_SYNC_SELECTION) ?
                                 (ts->selectmode & SCE_SELECT_FACE) != 0 :
                                 (ts->uv_selectmode == UV_SELECT_FACE);
-  const bool do_uvstretching_overlay = is_image_type && is_uv_editor && is_edit_mode &&
-                                       ((sima->flag & SI_DRAW_STRETCH) != 0);
+  const bool do_uvcolor_overlay = is_image_type && is_uv_editor && is_edit_mode &&
+                                  ((sima->flag & SI_DRAW_COLOR) != 0);
   const bool do_tex_paint_shadows = (sima->flag & SI_NO_DRAW_TEXPAINT) == 0;
   const bool do_stencil_overlay = is_paint_mode && is_image_type && brush &&
                                   (brush->imagepaint_tool == PAINT_TOOL_CLONE) &&
                                   brush->clone.image;
 
   pd->edit_uv.do_verts = show_overlays && (!do_edges_only);
-  pd->edit_uv.do_faces = show_overlays && do_faces && !do_uvstretching_overlay;
+  pd->edit_uv.do_faces = show_overlays && do_faces && !do_uvcolor_overlay;
   pd->edit_uv.do_face_dots = show_overlays && do_faces && do_face_dots;
   pd->edit_uv.do_uv_overlay = show_overlays && do_uv_overlay;
   pd->edit_uv.do_uv_shadow_overlay = show_overlays && is_image_type &&
@@ -160,9 +160,9 @@ void OVERLAY_edit_uv_init(OVERLAY_Data *vedata)
                                                 draw_ctx->depsgraph, &sima->mask_info.mask->id) :
                                             nullptr;
 
-  pd->edit_uv.do_uv_stretching_overlay = show_overlays && do_uvstretching_overlay;
+  pd->edit_uv.do_uv_color_overlay = show_overlays && do_uvcolor_overlay;
   pd->edit_uv.uv_opacity = sima->uv_opacity;
-  pd->edit_uv.stretch_opacity = sima->stretch_opacity;
+  pd->edit_uv.color_opacity = sima->color_opacity;
   pd->edit_uv.do_tiled_image_overlay = show_overlays && is_image_type && is_tiled_image;
   pd->edit_uv.do_tiled_image_border_overlay = is_image_type && is_tiled_image;
   pd->edit_uv.dash_length = 4.0f * UI_SCALE_FAC;
@@ -170,7 +170,7 @@ void OVERLAY_edit_uv_init(OVERLAY_Data *vedata)
   pd->edit_uv.do_smooth_wire = ((U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0);
   pd->edit_uv.do_stencil_overlay = show_overlays && do_stencil_overlay;
 
-  pd->edit_uv.draw_type = eSpaceImage_UVDT_Stretch(sima->dt_uvstretch);
+  pd->edit_uv.draw_type = eSpaceImage_UVDT_Color(sima->dt_uvcolor);
   BLI_listbase_clear(&pd->edit_uv.totals);
   pd->edit_uv.total_area_ratio = 0.0f;
 
@@ -277,26 +277,34 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
     }
   }
 
-  /* uv stretching */
-  if (pd->edit_uv.do_uv_stretching_overlay) {
-    DRW_PASS_CREATE(psl->edit_uv_stretching_ps,
+  /* uv color overlay */
+  if (pd->edit_uv.do_uv_color_overlay) {
+    DRW_PASS_CREATE(psl->edit_uv_color_ps,
                     DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
     if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_ANGLE) {
       GPUShader *sh = OVERLAY_shader_edit_uv_stretching_angle_get();
-      pd->edit_uv_stretching_grp = DRW_shgroup_create(sh, psl->edit_uv_stretching_ps);
-      DRW_shgroup_uniform_block(pd->edit_uv_stretching_grp, "globalsBlock", G_draw.block_ubo);
-      DRW_shgroup_uniform_vec2_copy(pd->edit_uv_stretching_grp, "aspect", pd->edit_uv.uv_aspect);
+      pd->edit_uv_color_grp = DRW_shgroup_create(sh, psl->edit_uv_color_ps);
+      DRW_shgroup_uniform_block(pd->edit_uv_color_grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_vec2_copy(pd->edit_uv_color_grp, "aspect", pd->edit_uv.uv_aspect);
       DRW_shgroup_uniform_float_copy(
-          pd->edit_uv_stretching_grp, "stretch_opacity", pd->edit_uv.stretch_opacity);
+          pd->edit_uv_color_grp, "color_opacity", pd->edit_uv.color_opacity);
     }
-    else /* SI_UVDT_STRETCH_AREA */ {
+    else if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_AREA) {
       GPUShader *sh = OVERLAY_shader_edit_uv_stretching_area_get();
-      pd->edit_uv_stretching_grp = DRW_shgroup_create(sh, psl->edit_uv_stretching_ps);
-      DRW_shgroup_uniform_block(pd->edit_uv_stretching_grp, "globalsBlock", G_draw.block_ubo);
+      pd->edit_uv_color_grp = DRW_shgroup_create(sh, psl->edit_uv_color_ps);
+      DRW_shgroup_uniform_block(pd->edit_uv_color_grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_float(
-          pd->edit_uv_stretching_grp, "totalAreaRatio", &pd->edit_uv.total_area_ratio, 1);
+          pd->edit_uv_color_grp, "totalAreaRatio", &pd->edit_uv.total_area_ratio, 1);
       DRW_shgroup_uniform_float_copy(
-          pd->edit_uv_stretching_grp, "stretch_opacity", pd->edit_uv.stretch_opacity);
+          pd->edit_uv_color_grp, "color_opacity", pd->edit_uv.color_opacity);
+    }
+    else /* SI_UVDT_ORIENTATION */ {
+      GPUShader *sh = OVERLAY_shader_edit_uv_orientation_get();
+      pd->edit_uv_color_grp = DRW_shgroup_create(sh, psl->edit_uv_color_ps);
+      DRW_shgroup_uniform_block(pd->edit_uv_color_grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_vec2_copy(pd->edit_uv_color_grp, "aspect", pd->edit_uv.uv_aspect);
+      DRW_shgroup_uniform_float_copy(
+          pd->edit_uv_color_grp, "color_opacity", pd->edit_uv.color_opacity);
     }
   }
 
@@ -476,19 +484,22 @@ static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object &ob)
       }
     }
 
-    if (pd->edit_uv.do_uv_stretching_overlay) {
+    if (pd->edit_uv.do_uv_color_overlay) {
       if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_ANGLE) {
         geom = DRW_mesh_batch_cache_get_edituv_faces_stretch_angle(ob, mesh);
       }
-      else /* SI_UVDT_STRETCH_AREA */ {
+      else if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_AREA) {
         OVERLAY_StretchingAreaTotals *totals = static_cast<OVERLAY_StretchingAreaTotals *>(
             MEM_mallocN(sizeof(OVERLAY_StretchingAreaTotals), __func__));
         BLI_addtail(&pd->edit_uv.totals, totals);
         geom = DRW_mesh_batch_cache_get_edituv_faces_stretch_area(
             ob, mesh, &totals->total_area, &totals->total_area_uv);
       }
+      else /* SI_UVDT_ORIENTATION */ {
+        geom = DRW_mesh_batch_cache_get_edituv_faces_orientation(ob, mesh);
+      }
       if (geom) {
-        DRW_shgroup_call_obmat(pd->edit_uv_stretching_grp, geom, nullptr);
+        DRW_shgroup_call_obmat(pd->edit_uv_color_grp, geom, nullptr);
       }
     }
   }
@@ -529,7 +540,7 @@ void OVERLAY_edit_uv_cache_finish(OVERLAY_Data *vedata)
   OVERLAY_StorageList *stl = vedata->stl;
   OVERLAY_PrivateData *pd = stl->pd;
 
-  if (pd->edit_uv.do_uv_stretching_overlay) {
+  if (pd->edit_uv.do_uv_color_overlay) {
     edit_uv_stretching_update_ratios(vedata);
   }
 }
@@ -567,8 +578,8 @@ void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata)
     }
   }
 
-  if (pd->edit_uv.do_uv_stretching_overlay) {
-    DRW_draw_pass(psl->edit_uv_stretching_ps);
+  if (pd->edit_uv.do_uv_color_overlay) {
+    DRW_draw_pass(psl->edit_uv_color_ps);
   }
 
   if (pd->edit_uv.do_uv_overlay) {

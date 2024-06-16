@@ -25,7 +25,7 @@
 #  define USE_GEOM_SHADER_WORKAROUND 0
 #endif
 
-/* Needed for eSpaceImage_UVDT_Stretch and eMaskOverlayMode */
+/* Needed for eSpaceImage_UVDT_Color and eMaskOverlayMode */
 #include "DNA_mask_types.h"
 #include "DNA_space_types.h"
 /* Forward declarations */
@@ -93,7 +93,7 @@ struct OVERLAY_PassList {
   DRWPass *edit_uv_edges_ps;
   DRWPass *edit_uv_verts_ps;
   DRWPass *edit_uv_faces_ps;
-  DRWPass *edit_uv_stretching_ps;
+  DRWPass *edit_uv_color_ps;
   DRWPass *edit_uv_tiled_image_borders_ps;
   DRWPass *edit_uv_stencil_ps;
   DRWPass *edit_uv_mask_ps;
@@ -275,7 +275,7 @@ struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_uv_shadow_edges_grp;
   DRWShadingGroup *edit_uv_faces_grp;
   DRWShadingGroup *edit_uv_face_dots_grp;
-  DRWShadingGroup *edit_uv_stretching_grp;
+  DRWShadingGroup *edit_uv_color_grp;
   DRWShadingGroup *edit_curves_points_grp[2];
   DRWShadingGroup *edit_curves_handles_grp;
   DRWShadingGroup *edit_curves_lines_grp[2];
@@ -385,7 +385,7 @@ struct OVERLAY_PrivateData {
   struct {
     bool do_uv_overlay;
     bool do_uv_shadow_overlay;
-    bool do_uv_stretching_overlay;
+    bool do_uv_color_overlay;
     bool do_tiled_image_overlay;
     bool do_tiled_image_border_overlay;
     bool do_stencil_overlay;
@@ -397,7 +397,7 @@ struct OVERLAY_PrivateData {
 
     float uv_opacity;
 
-    float stretch_opacity;
+    float color_opacity;
 
     int image_size[2];
     float image_aspect[2];
@@ -409,7 +409,7 @@ struct OVERLAY_PrivateData {
 
     /* stretching overlay */
     float uv_aspect[2];
-    eSpaceImage_UVDT_Stretch draw_type;
+    eSpaceImage_UVDT_Color draw_type;
     ListBase totals;
     float total_area_ratio;
 
@@ -763,6 +763,7 @@ GPUShader *OVERLAY_shader_edit_uv_face_dots_get();
 GPUShader *OVERLAY_shader_edit_uv_verts_get();
 GPUShader *OVERLAY_shader_edit_uv_stretching_area_get();
 GPUShader *OVERLAY_shader_edit_uv_stretching_angle_get();
+GPUShader *OVERLAY_shader_edit_uv_orientation_get();
 GPUShader *OVERLAY_shader_edit_uv_tiled_image_borders_get();
 GPUShader *OVERLAY_shader_edit_uv_stencil_image();
 GPUShader *OVERLAY_shader_edit_uv_mask_image();

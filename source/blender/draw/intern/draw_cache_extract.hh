@@ -70,6 +70,7 @@ struct MeshBufferList {
     gpu::VertBuf *edituv_data;
     gpu::VertBuf *edituv_stretch_area;
     gpu::VertBuf *edituv_stretch_angle;
+    gpu::VertBuf *edituv_orientation;
     gpu::VertBuf *mesh_analysis;
     gpu::VertBuf *fdots_pos;
     gpu::VertBuf *fdots_nor;
@@ -125,6 +126,7 @@ struct MeshBatchList {
   /* Edit UVs */
   gpu::Batch *edituv_faces_stretch_area;
   gpu::Batch *edituv_faces_stretch_angle;
+  gpu::Batch *edituv_faces_orientation;
   gpu::Batch *edituv_faces;
   gpu::Batch *edituv_edges;
   gpu::Batch *edituv_verts;
@@ -168,6 +170,7 @@ enum DRWBatchFlag {
   MBC_SKIN_ROOTS = (1u << MBC_BATCH_INDEX(edit_skin_roots)),
   MBC_EDITUV_FACES_STRETCH_AREA = (1u << MBC_BATCH_INDEX(edituv_faces_stretch_area)),
   MBC_EDITUV_FACES_STRETCH_ANGLE = (1u << MBC_BATCH_INDEX(edituv_faces_stretch_angle)),
+  MBC_EDITUV_FACES_ORIENTATION = (1u << MBC_BATCH_INDEX(edituv_faces_orientation)),
   MBC_EDITUV_FACES = (1u << MBC_BATCH_INDEX(edituv_faces)),
   MBC_EDITUV_EDGES = (1u << MBC_BATCH_INDEX(edituv_edges)),
   MBC_EDITUV_VERTS = (1u << MBC_BATCH_INDEX(edituv_verts)),
@@ -279,8 +282,9 @@ struct MeshBatchCache {
 };
 
 #define MBC_EDITUV \
-  (MBC_EDITUV_FACES_STRETCH_AREA | MBC_EDITUV_FACES_STRETCH_ANGLE | MBC_EDITUV_FACES | \
-   MBC_EDITUV_EDGES | MBC_EDITUV_VERTS | MBC_EDITUV_FACEDOTS | MBC_WIRE_LOOPS_UVS)
+  (MBC_EDITUV_FACES_STRETCH_AREA | MBC_EDITUV_FACES_STRETCH_ANGLE | \
+   MBC_EDITUV_FACES_ORIENTATION | MBC_EDITUV_FACES | MBC_EDITUV_EDGES | MBC_EDITUV_VERTS | \
+   MBC_EDITUV_FACEDOTS | MBC_WIRE_LOOPS_UVS)
 
 void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
                                         MeshBatchCache &cache,

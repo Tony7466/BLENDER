@@ -1583,10 +1583,10 @@ class IMAGE_PT_overlay_guides(Panel):
             layout.prop(uvedit, "tile_grid_shape", text="Tiles")
 
 
-class IMAGE_PT_overlay_uv_stretch(Panel):
+class IMAGE_PT_overlay_uv_color(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
-    bl_label = "UV Stretch"
+    bl_label = "UV Color"
     bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
@@ -1604,11 +1604,11 @@ class IMAGE_PT_overlay_uv_stretch(Panel):
         layout.active = overlay.show_overlays
 
         row = layout.row(align=True)
-        row.row().prop(uvedit, "show_stretch", text="")
+        row.row().prop(uvedit, "show_color", text="")
         subrow = row.row()
-        subrow.active = uvedit.show_stretch
-        subrow.prop(uvedit, "display_stretch_type", text="")
-        subrow.prop(uvedit, "stretch_opacity", text="Opacity")
+        subrow.active = uvedit.show_color
+        subrow.prop(uvedit, "display_color_type", text="")
+        subrow.prop(uvedit, "color_opacity", text="Opacity")
 
 
 class IMAGE_PT_overlay_uv_edit_geometry(Panel):
@@ -1639,7 +1639,7 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
 
         # Faces
         row = col.row()
-        row.active = not uvedit.show_stretch
+        row.active = not uvedit.show_color
         row.prop(uvedit, "show_faces", text="Faces")
 
 
@@ -1758,7 +1758,7 @@ classes = (
     IMAGE_PT_gizmo_display,
     IMAGE_PT_overlay,
     IMAGE_PT_overlay_guides,
-    IMAGE_PT_overlay_uv_stretch,
+    IMAGE_PT_overlay_uv_color,
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,

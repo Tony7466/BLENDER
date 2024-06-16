@@ -372,6 +372,11 @@ void extract_edituv_stretch_angle_subdiv(const MeshRenderData &mr,
                                          const DRWSubdivCache &subdiv_cache,
                                          const MeshBatchCache &cache,
                                          gpu::VertBuf &vbo);
+void extract_edituv_nor(const MeshRenderData &mr, gpu::VertBuf &vbo);
+void extract_edituv_nor_subdiv(const MeshRenderData &mr,
+                               const DRWSubdivCache &subdiv_cache,
+                               const MeshBatchCache &cache,
+                               gpu::VertBuf &vbo);
 void extract_edituv_data(const MeshRenderData &mr, gpu::VertBuf &vbo);
 void extract_edituv_data_subdiv(const MeshRenderData &mr,
                                 const DRWSubdivCache &subdiv_cache,

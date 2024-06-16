@@ -3642,21 +3642,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 4)) {
-    if (!DNA_struct_member_exists(fd->filesdna, "SpaceImage", "float", "stretch_opacity")) {
-      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-            if (sl->spacetype == SPACE_IMAGE) {
-              SpaceImage *sima = reinterpret_cast<SpaceImage *>(sl);
-              sima->stretch_opacity = 0.9f;
-            }
-          }
-        }
-      }
-    }
-  }
-
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 5)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       image_settings_avi_to_ffmpeg(scene);
@@ -4170,6 +4155,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           if (space_link->spacetype == SPACE_NODE) {
             SpaceNode *space_node = reinterpret_cast<SpaceNode *>(space_link);
             space_node->flag &= ~SNODE_FLAG_UNUSED_5;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "SpaceImage", "float", "color_opacity")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_IMAGE) {
+              SpaceImage *sima = reinterpret_cast<SpaceImage *>(sl);
+              sima->color_opacity = 0.9f;
+            }
           }
         }
       }

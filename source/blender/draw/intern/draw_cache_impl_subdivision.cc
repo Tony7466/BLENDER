@@ -59,6 +59,7 @@ extern "C" char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
 extern "C" char datatoc_common_subdiv_vbo_sculpt_data_comp_glsl[];
 extern "C" char datatoc_common_subdiv_vbo_edituv_strech_angle_comp_glsl[];
 extern "C" char datatoc_common_subdiv_vbo_edituv_strech_area_comp_glsl[];
+extern "C" char datatoc_common_subdiv_vbo_edituv_nor_comp_glsl[];
 
 namespace blender::draw {
 
@@ -84,6 +85,7 @@ enum {
   SHADER_BUFFER_SCULPT_DATA,
   SHADER_BUFFER_UV_STRETCH_ANGLE,
   SHADER_BUFFER_UV_STRETCH_AREA,
+  SHADER_BUFFER_UV_ORIENTATION,
 
   NUM_SHADERS,
 };
@@ -139,6 +141,9 @@ static const char *get_shader_code(int shader_type)
     }
     case SHADER_BUFFER_UV_STRETCH_AREA: {
       return datatoc_common_subdiv_vbo_edituv_strech_area_comp_glsl;
+    }
+    case SHADER_BUFFER_UV_ORIENTATION: {
+      return datatoc_common_subdiv_vbo_edituv_nor_comp_glsl;
     }
   }
   return nullptr;
@@ -204,6 +209,9 @@ static const char *get_shader_name(int shader_type)
     }
     case SHADER_BUFFER_UV_STRETCH_AREA: {
       return "subdiv uv stretch area";
+    }
+    case SHADER_BUFFER_UV_ORIENTATION: {
+      return "subdiv uv orientation";
     }
   }
   return nullptr;
@@ -1984,6 +1992,31 @@ void draw_subdiv_build_edituv_stretch_angle_buffer(const DRWSubdivCache &cache,
 
   /* Outputs */
   GPU_vertbuf_bind_as_ssbo(stretch_angles, binding_point++);
+  BLI_assert(binding_point <= MAX_GPU_SUBDIV_SSBOS);
+
+  drw_subdiv_compute_dispatch(cache, shader, uvs_offset, 0, cache.num_subdiv_quads);
+
+  /* This generates a vertex buffer, so we need to put a barrier on the vertex attribute array. */
+  GPU_memory_barrier(GPU_BARRIER_VERTEX_ATTRIB_ARRAY);
+
+  /* Cleanup. */
+  GPU_shader_unbind();
+}
+
+void draw_subdiv_build_edituv_orientation_buffer(const DRWSubdivCache &cache,
+                                                 gpu::VertBuf *uvs,
+                                                 int uvs_offset,
+                                                 gpu::VertBuf *orientations)
+{
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_UV_ORIENTATION);
+  GPU_shader_bind(shader);
+
+  int binding_point = 0;
+  /* Inputs */
+  GPU_vertbuf_bind_as_ssbo(uvs, binding_point++);
+
+  /* Outputs */
+  GPU_vertbuf_bind_as_ssbo(orientations, binding_point++);
   BLI_assert(binding_point <= MAX_GPU_SUBDIV_SSBOS);
 
   drw_subdiv_compute_dispatch(cache, shader, uvs_offset, 0, cache.num_subdiv_quads);

@@ -1279,7 +1279,7 @@ typedef struct SpaceImage {
   /** UV draw type. */
   char dt_uv;
   /** Sticky selection type. */
-  char dt_uvstretch;
+  char dt_uvcolor;
   char around;
 
   char gizmo_flag;
@@ -1291,7 +1291,7 @@ typedef struct SpaceImage {
 
   float uv_opacity;
 
-  float stretch_opacity;
+  float color_opacity;
 
   int tile_grid_shape[2];
   /**
@@ -1312,11 +1312,12 @@ typedef enum eSpaceImage_UVDT {
   SI_UVDT_WHITE = 3,
 } eSpaceImage_UVDT;
 
-/** #SpaceImage.dt_uvstretch */
-typedef enum eSpaceImage_UVDT_Stretch {
+/** #SpaceImage.dt_uvcolor */
+typedef enum eSpaceImage_UVDT_Color {
   SI_UVDT_STRETCH_ANGLE = 0,
   SI_UVDT_STRETCH_AREA = 1,
-} eSpaceImage_UVDT_Stretch;
+  SI_UVDT_ORIENTATION = 2,
+} eSpaceImage_UVDT_Color;
 
 /** #SpaceImage.pixel_round_mode */
 typedef enum eSpaceImage_PixelRoundMode {
@@ -1365,7 +1366,7 @@ typedef enum eSpaceImage_Flag {
    */
   SI_DRAW_TILE = (1 << 19),
   SI_FLAG_UNUSED_20 = (1 << 20), /* cleared */
-  SI_DRAW_STRETCH = (1 << 21),
+  SI_DRAW_COLOR = (1 << 21),
   SI_SHOW_GPENCIL = (1 << 22),
   SI_FLAG_UNUSED_23 = (1 << 23), /* cleared */
 

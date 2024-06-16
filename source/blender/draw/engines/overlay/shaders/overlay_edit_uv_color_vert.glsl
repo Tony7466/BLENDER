@@ -70,17 +70,18 @@ void main()
   vec3 world_pos = point_object_to_world(vec3(pos, 0.0));
   gl_Position = point_world_to_ndc(world_pos);
 
-#ifdef STRETCH_ANGLE
+#if defined(STRETCH_ANGLE)
   vec2 v1 = angle_to_v2(uv_angles.x * M_PI);
   vec2 v2 = angle_to_v2(uv_angles.y * M_PI);
   float uv_angle = angle_normalized_v2v2(v1, v2) / M_PI;
-  float stretch = 1.0 - abs(uv_angle - angle);
-  stretch = stretch;
-  stretch = 1.0 - stretch * stretch;
-#else
-  float stretch = 1.0 - area_ratio_to_stretch(ratio, totalAreaRatio);
+  float weight = 1.0 - abs(uv_angle - angle);
+  weight = 1.0 - weight * weight;
+#elif defined(STRETCH_AREA)
+  float weight = 1.0 - area_ratio_to_stretch(ratio, totalAreaRatio);
+#else /* NORMAL ORIENTATION */
+  float weight = (uv_nor.z + 1.0) / 2.0;
 
 #endif
 
-  finalColor = vec4(weight_to_rgb(stretch), stretch_opacity);
+  finalColor = vec4(weight_to_rgb(weight), color_opacity);
 }

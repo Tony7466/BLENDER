@@ -164,6 +164,7 @@ void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
       !DRW_vbo_requested(buffers.vbo.fdots_edituv_data) && !DRW_vbo_requested(buffers.vbo.uv) &&
       !DRW_vbo_requested(buffers.vbo.edituv_stretch_area) &&
       !DRW_vbo_requested(buffers.vbo.edituv_stretch_angle) &&
+      !DRW_vbo_requested(buffers.vbo.edituv_orientation) &&
       !DRW_vbo_requested(buffers.vbo.edituv_data) && !DRW_ibo_requested(buffers.ibo.edituv_tris) &&
       !DRW_ibo_requested(buffers.ibo.edituv_lines) &&
       !DRW_ibo_requested(buffers.ibo.edituv_points) &&
@@ -521,6 +522,21 @@ void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
         [](void *task_data) { delete static_cast<TaskData *>(task_data); });
     BLI_task_graph_edge_create(task_node_mesh_render_data, task_node);
   }
+  if (DRW_vbo_requested(buffers.vbo.edituv_orientation)) {
+    struct TaskData {
+      MeshRenderData &mr;
+      MeshBufferList &buffers;
+    };
+    TaskNode *task_node = BLI_task_graph_node_create(
+        &task_graph,
+        [](void *__restrict task_data) {
+          const TaskData &data = *static_cast<TaskData *>(task_data);
+          extract_edituv_nor(data.mr, *data.buffers.vbo.edituv_orientation);
+        },
+        new TaskData{*mr, buffers},
+        [](void *task_data) { delete static_cast<TaskData *>(task_data); });
+    BLI_task_graph_edge_create(task_node_mesh_render_data, task_node);
+  }
   if (DRW_vbo_requested(buffers.vbo.edituv_data)) {
     struct TaskData {
       MeshRenderData &mr;
@@ -773,6 +789,7 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
       !DRW_ibo_requested(buffers.ibo.fdots) && !DRW_vbo_requested(buffers.vbo.uv) &&
       !DRW_vbo_requested(buffers.vbo.edituv_stretch_area) &&
       !DRW_vbo_requested(buffers.vbo.edituv_stretch_angle) &&
+      !DRW_vbo_requested(buffers.vbo.edituv_orientation) &&
       !DRW_vbo_requested(buffers.vbo.edituv_data) && !DRW_ibo_requested(buffers.ibo.edituv_tris) &&
       !DRW_ibo_requested(buffers.ibo.edituv_lines) &&
       !DRW_ibo_requested(buffers.ibo.edituv_points) &&
@@ -852,6 +869,9 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   if (DRW_vbo_requested(buffers.vbo.edituv_stretch_area)) {
     extract_edituv_stretch_angle_subdiv(
         mr, subdiv_cache, cache, *buffers.vbo.edituv_stretch_angle);
+  }
+  if (DRW_vbo_requested(buffers.vbo.edituv_orientation)) {
+    extract_edituv_nor_subdiv(mr, subdiv_cache, cache, *buffers.vbo.edituv_orientation);
   }
   if (DRW_vbo_requested(buffers.vbo.edituv_data)) {
     extract_edituv_data_subdiv(mr, subdiv_cache, *buffers.vbo.edituv_data);

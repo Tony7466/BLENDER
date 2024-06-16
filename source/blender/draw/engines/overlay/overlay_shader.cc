@@ -61,6 +61,7 @@ struct OVERLAY_Shaders {
   GPUShader *edit_uv_face_dots;
   GPUShader *edit_uv_stretching_angle;
   GPUShader *edit_uv_stretching_area;
+  GPUShader *edit_uv_orientation;
   GPUShader *edit_uv_tiled_image_borders;
   GPUShader *edit_uv_stencil_image;
   GPUShader *edit_uv_mask_image;
@@ -1112,7 +1113,7 @@ GPUShader *OVERLAY_shader_edit_uv_stretching_area_get()
   OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
   if (!sh_data->edit_uv_stretching_area) {
     sh_data->edit_uv_stretching_area = GPU_shader_create_from_info_name(
-        "overlay_edit_uv_stretching_area");
+        "overlay_edit_uv_color_stretching_area");
   }
 
   return sh_data->edit_uv_stretching_area;
@@ -1123,10 +1124,21 @@ GPUShader *OVERLAY_shader_edit_uv_stretching_angle_get()
   OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
   if (!sh_data->edit_uv_stretching_angle) {
     sh_data->edit_uv_stretching_angle = GPU_shader_create_from_info_name(
-        "overlay_edit_uv_stretching_angle");
+        "overlay_edit_uv_color_stretching_angle");
   }
 
   return sh_data->edit_uv_stretching_angle;
+}
+
+GPUShader *OVERLAY_shader_edit_uv_orientation_get()
+{
+  OVERLAY_Shaders *sh_data = &e_data.sh_data[0];
+  if (!sh_data->edit_uv_orientation) {
+    sh_data->edit_uv_orientation = GPU_shader_create_from_info_name(
+        "overlay_edit_uv_color_orientation");
+  }
+
+  return sh_data->edit_uv_orientation;
 }
 
 GPUShader *OVERLAY_shader_edit_uv_tiled_image_borders_get()

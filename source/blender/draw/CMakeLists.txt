@@ -50,6 +50,7 @@ set(SRC
   intern/mesh_extractors/extract_mesh_vbo_edituv_data.cc
   intern/mesh_extractors/extract_mesh_vbo_edituv_stretch_angle.cc
   intern/mesh_extractors/extract_mesh_vbo_edituv_stretch_area.cc
+  intern/mesh_extractors/extract_mesh_vbo_edituv_nor.cc
   intern/mesh_extractors/extract_mesh_vbo_fdots_edituv_data.cc
   intern/mesh_extractors/extract_mesh_vbo_fdots_nor.cc
   intern/mesh_extractors/extract_mesh_vbo_fdots_pos.cc
@@ -559,6 +560,7 @@ set(GLSL_SRC
   intern/shaders/common_subdiv_vbo_edge_fac_comp.glsl
   intern/shaders/common_subdiv_vbo_edituv_strech_angle_comp.glsl
   intern/shaders/common_subdiv_vbo_edituv_strech_area_comp.glsl
+  intern/shaders/common_subdiv_vbo_edituv_nor_comp.glsl
   intern/shaders/common_subdiv_vbo_lnor_comp.glsl
   intern/shaders/common_subdiv_vbo_sculpt_data_comp.glsl
   intern/shaders/common_view_clipping_lib.glsl
@@ -670,7 +672,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_edit_uv_faces_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_image_mask_frag.glsl
   engines/overlay/shaders/overlay_edit_uv_image_vert.glsl
-  engines/overlay/shaders/overlay_edit_uv_stretching_vert.glsl
+  engines/overlay/shaders/overlay_edit_uv_color_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_tiled_image_borders_vert.glsl
   engines/overlay/shaders/overlay_edit_uv_verts_frag.glsl
   engines/overlay/shaders/overlay_edit_uv_verts_vert.glsl

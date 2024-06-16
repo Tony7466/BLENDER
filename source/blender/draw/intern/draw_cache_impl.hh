@@ -261,6 +261,7 @@ blender::gpu::Batch *DRW_mesh_batch_cache_get_edituv_faces_stretch_area(Object &
                                                                         float **tot_uv_area);
 blender::gpu::Batch *DRW_mesh_batch_cache_get_edituv_faces_stretch_angle(Object &object,
                                                                          Mesh &mesh);
+blender::gpu::Batch *DRW_mesh_batch_cache_get_edituv_faces_orientation(Object &object, Mesh &mesh);
 blender::gpu::Batch *DRW_mesh_batch_cache_get_edituv_faces(Object &object, Mesh &mesh);
 blender::gpu::Batch *DRW_mesh_batch_cache_get_edituv_edges(Object &object, Mesh &mesh);
 blender::gpu::Batch *DRW_mesh_batch_cache_get_edituv_verts(Object &object, Mesh &mesh);
