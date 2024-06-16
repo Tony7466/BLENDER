@@ -477,7 +477,7 @@ class TransformGizmos : public NodeGizmos {
 
       if (!is_interacting) {
         const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params, false);
+            axis, base_transform_from_socket, params);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_translation[axis_i] = 0.0f;
@@ -531,7 +531,7 @@ class TransformGizmos : public NodeGizmos {
 
       if (!is_interacting) {
         const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params, true);
+            axis, base_transform_from_socket, params);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_rotation[axis_i] = 0.0f;
@@ -543,25 +543,24 @@ class TransformGizmos : public NodeGizmos {
                                  const void *value_ptr) {
           TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
           const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+          const math::Axis axis = math::Axis::from_int(axis_i);
           const float new_gizmo_value = *static_cast<const float *>(value_ptr);
           self.edit_data_.current_rotation[axis_i] = new_gizmo_value;
-          float3 rotation{};
-          rotation[axis_i] = -new_gizmo_value;
           self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
             float4x4 value = value_variant.get<float4x4>();
-            const float3 old_location = value.location();
-            float3x3 new_orientation;
+            float3x3 rotation_matrix;
             if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
-              new_orientation = math::invert(float3x3(self.parent_transform_)) *
-                                math::from_rotation<float3x3>(math::EulerXYZ(rotation)) *
-                                float3x3(self.parent_transform_) * float3x3(value);
+              const float3 local_rotation_axis = math::normalize(math::transform_direction(
+                  math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
+              rotation_matrix = math::from_rotation<float3x3>(
+                  math::AxisAngle(local_rotation_axis, -new_gizmo_value));
             }
             else {
-              new_orientation = float3x3(value) *
-                                math::from_rotation<float3x3>(math::EulerXYZ(rotation));
+              const float3 local_rotation_axis = math::normalize(float3(value[axis_i]));
+              rotation_matrix = math::from_rotation<float3x3>(
+                  math::AxisAngle(local_rotation_axis, -new_gizmo_value));
             }
-            value = float4x4(new_orientation);
-            value.location() = old_location;
+            value.view<3, 3>() = rotation_matrix * value.view<3, 3>();
             value_variant.set(value);
           });
         };
@@ -585,7 +584,7 @@ class TransformGizmos : public NodeGizmos {
 
       if (!is_interacting) {
         const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params, false);
+            axis, base_transform_from_socket, params);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_scale[axis_i] = 0.0f;
@@ -619,8 +618,7 @@ class TransformGizmos : public NodeGizmos {
 
   float4x4 get_axis_gizmo_matrix_basis(const math::Axis axis,
                                        const float4x4 &base_transform_from_socket,
-                                       const GizmosUpdateParams &params,
-                                       const bool invert_direction) const
+                                       const GizmosUpdateParams &params) const
   {
     float4x4 gizmo_transform;
     const float3 global_location =
@@ -637,10 +635,8 @@ class TransformGizmos : public NodeGizmos {
     }
     global_direction = math::normalize(global_direction);
     gizmo_transform.location() = global_location;
-    return matrix_from_position_and_up_direction(global_location,
-                                                 global_direction,
-                                                 invert_direction ? math::AxisSigned::Z_NEG :
-                                                                    math::AxisSigned::Z_POS);
+    return matrix_from_position_and_up_direction(
+        global_location, global_direction, math::AxisSigned::Z_POS);
   }
 
   Vector<wmGizmo *> get_all_gizmos() override
