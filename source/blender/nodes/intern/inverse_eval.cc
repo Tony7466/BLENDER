@@ -711,7 +711,7 @@ bool try_change_link_target_and_update_source(bContext &C,
 
   const auto set_input_value_and_forward = [&](const ComputeContext *context,
                                                const bNodeSocket &socket,
-                                               const SocketValueVariant &new_value) {
+                                               const SocketValueVariant new_value) {
     value_by_socket.add_overwrite({context, &socket}, new_value);
     if (!socket.is_logically_linked()) {
       bNodeSocket &socket_mutable = const_cast<bNodeSocket &>(socket);
