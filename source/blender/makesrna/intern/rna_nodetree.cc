@@ -9750,6 +9750,26 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_geo_sample_sound(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySampleSound", "storage");
+
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, "spec_chan", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Specify channel",
+                           // TODO: fill in the tooltips
+                           "Specify channel");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "spec_freq", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Specify frequency",
+                           "Specify frequency");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+
 static void rna_def_menu_switch_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;

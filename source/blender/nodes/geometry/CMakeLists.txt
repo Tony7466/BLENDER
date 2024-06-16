@@ -253,9 +253,6 @@ if(WITH_IO_STL)
 endif()
 
 if(WITH_AUDASPACE)
-  list(APPEND LIB
-    bf_intern_audaspace
-  )
   list(APPEND INC_SYS
     ${AUDASPACE_C_INCLUDE_DIRS}
   )
@@ -319,6 +316,16 @@ if(WITH_OPENVDB)
     ${OPENVDB_INCLUDE_DIRS}
   )
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
+endif()
+
+if(WITH_FFTW3)
+  list(APPEND INC_SYS
+    ${FFTW3_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${FFTW3_LIBRARIES}
+  )
+  add_definitions(-DWITH_FFTW3)
 endif()
 
 add_node_discovery(

@@ -442,7 +442,7 @@ DefNode(GeometryNode, GEO_NODE_SAMPLE_GRID_INDEX, 0, "SAMPLE_GRID_INDEX", Sample
 DefNode(GeometryNode, GEO_NODE_SAMPLE_INDEX, def_geo_sample_index, "SAMPLE_INDEX", SampleIndex, "Sample Index", "Retrieve values from specific geometry elements")
 DefNode(GeometryNode, GEO_NODE_SAMPLE_NEAREST_SURFACE, 0, "SAMPLE_NEAREST_SURFACE", SampleNearestSurface, "Sample Nearest Surface", "Calculate the interpolated value of a mesh attribute on the closest point of its surface")
 DefNode(GeometryNode, GEO_NODE_SAMPLE_NEAREST, 0, "SAMPLE_NEAREST", SampleNearest, "Sample Nearest", "Find the element of a geometry closest to a position. Similar to the \"Index of Nearest\" node")
-DefNode(GeometryNode, GEO_NODE_SAMPLE_SOUND, 0, "SAMPLE_SOUND", SampleSound, "Sample Sound", "Retrieve amplitude/frequency response values at specific time from a sound")
+DefNode(GeometryNode, GEO_NODE_SAMPLE_SOUND, def_geo_sample_sound, "SAMPLE_SOUND", SampleSound, "Sample Sound", "Retrieve amplitude/frequency response values at specific time from a sound")
 DefNode(GeometryNode, GEO_NODE_SAMPLE_UV_SURFACE, 0, "SAMPLE_UV_SURFACE", SampleUVSurface, "Sample UV Surface", "Calculate the interpolated values of a mesh attribute at a UV coordinate")
 DefNode(GeometryNode, GEO_NODE_SCALE_ELEMENTS, 0, "SCALE_ELEMENTS", ScaleElements, "Scale Elements", "Scale groups of connected edges and faces")
 DefNode(GeometryNode, GEO_NODE_SCALE_INSTANCES, 0, "SCALE_INSTANCES", ScaleInstances, "Scale Instances", "Scale geometry instances in local or global space")
