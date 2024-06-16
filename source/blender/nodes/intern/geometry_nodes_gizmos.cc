@@ -53,8 +53,6 @@ static ie::ElemVariant get_gizmo_socket_elem(const bNode &node, const bNodeSocke
       if (storage.flag &
           (GEO_NODE_TRANSFORM_GIZMO_USE_ROTATION_ALL | GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_ALL))
       {
-        /* These gizmos could affect all components. */
-        elem.translation = ie::VectorElem::all();
         elem.rotation = ie::RotationElem::all();
         elem.scale = ie::VectorElem::all();
       }
