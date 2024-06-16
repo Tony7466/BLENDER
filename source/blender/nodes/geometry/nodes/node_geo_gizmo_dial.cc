@@ -20,6 +20,11 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("Value").hide_value().multi_input();
   b.add_input<decl::Vector>("Position");
   b.add_input<decl::Vector>("Up").default_value({0, 0, 1});
+  b.add_input<decl::Bool>("Screen Space")
+      .default_value(true)
+      .description(
+          "If true, true gizmo is displayed in screen space. Otherwise it's in object space");
+  b.add_input<decl::Float>("Radius").default_value(1.0f);
   b.add_output<decl::Geometry>("Transform");
 }
 

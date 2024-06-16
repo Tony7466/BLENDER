@@ -268,19 +268,27 @@ class DialGizmo : public NodeGizmos {
 
   void update(GizmosUpdateParams &params) override
   {
-    const bNodeSocket &position_socket = params.gizmo_node.input_socket(1);
-    const bNodeSocket &up_socket = params.gizmo_node.input_socket(2);
+    const bNodeSocket &position_socket = params.gizmo_node.input_by_identifier("Position");
+    const bNodeSocket &up_socket = params.gizmo_node.input_by_identifier("Up");
+    const bNodeSocket &screen_space_socket = params.gizmo_node.input_by_identifier("Screen Space");
+    const bNodeSocket &scale_socket = params.gizmo_node.input_by_identifier("Radius");
     const std::optional<float3> position_opt = params.tree_log.find_primitive_socket_value<float3>(
         position_socket);
     const std::optional<float3> up_opt = params.tree_log.find_primitive_socket_value<float3>(
         up_socket);
-    if (!position_opt || !up_opt) {
+    const std::optional<bool> screen_space_opt = params.tree_log.find_primitive_socket_value<bool>(
+        screen_space_socket);
+    const std::optional<float> scale_opt = params.tree_log.find_primitive_socket_value<float>(
+        scale_socket);
+    if (!position_opt || !up_opt || !screen_space_opt || !scale_opt) {
       params.r_report.missing_socket_logs = true;
       return;
     }
     const float3 position = *position_opt;
     const float3 up = math::normalize(*up_opt);
-    if (math::is_zero(up)) {
+    const bool screen_space = *screen_space_opt;
+    const float scale = *scale_opt;
+    if (math::is_zero(up) || math::is_zero(scale)) {
       params.r_report.invalid_transform = true;
       return;
     }
@@ -293,6 +301,10 @@ class DialGizmo : public NodeGizmos {
       edit_data_.is_negative_transform = math::determinant(gizmo_transform) < 0.0f;
       make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
       copy_m4_m4(gizmo_->matrix_basis, gizmo_transform.ptr());
+
+      WM_gizmo_set_flag(gizmo_, WM_GIZMO_DRAW_NO_SCALE, !screen_space);
+      copy_m4_m4(gizmo_->matrix_offset,
+                 math::from_scale<float4x4>(float3(scale, scale, scale)).ptr());
 
       edit_data_.current_value = 0.0f;
 
