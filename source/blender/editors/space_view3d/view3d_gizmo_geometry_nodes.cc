@@ -96,6 +96,7 @@ static void make_matrix_orthonormal_but_keep_z_axis(float4x4 &m)
   m.x_axis() = math::normalize(math::cross(m.y_axis(), m.z_axis()));
   m.y_axis() = math::normalize(math::cross(m.z_axis(), m.x_axis()));
   m.z_axis() = math::normalize(m.z_axis());
+  BLI_assert(math::is_orthonormal(float3x3(m)));
 }
 
 static float4x4 matrix_from_position_and_up_direction(const float3 &position,
@@ -476,7 +477,7 @@ class TransformGizmos : public NodeGizmos {
 
       if (!is_interacting) {
         const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params);
+            axis, base_transform_from_socket, params, false);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_translation[axis_i] = 0.0f;
@@ -494,16 +495,18 @@ class TransformGizmos : public NodeGizmos {
           translation[axis_i] = new_gizmo_value;
           self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
             float4x4 value = value_variant.get<float4x4>();
+            const float3x3 orientation = float3x3(value);
+            float3 offset{};
             if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
-              value = math::from_location<float4x4>(math::transform_direction(
-                          math::invert(self.parent_transform_), translation)) *
-                      value;
+              offset = math::transform_direction(math::invert(self.parent_transform_),
+                                                 translation);
             }
             else {
-              value = value * math::from_location<float4x4>(
-                                  translation *
-                                  safe_divide(1.0f, math::length(self.parent_transform_[axis_i])));
+              const float factor = safe_divide(
+                  1.0f, math::length((self.parent_transform_.view<3, 3>() * orientation)[axis_i]));
+              offset = math::transform_direction(orientation, translation) * factor;
             }
+            value.location() += offset;
             value_variant.set(value);
           });
         };
@@ -528,7 +531,7 @@ class TransformGizmos : public NodeGizmos {
 
       if (!is_interacting) {
         const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params);
+            axis, base_transform_from_socket, params, true);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_rotation[axis_i] = 0.0f;
@@ -582,7 +585,7 @@ class TransformGizmos : public NodeGizmos {
 
       if (!is_interacting) {
         const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params);
+            axis, base_transform_from_socket, params, false);
         copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
 
         edit_data_.current_scale[axis_i] = 0.0f;
@@ -616,23 +619,28 @@ class TransformGizmos : public NodeGizmos {
 
   float4x4 get_axis_gizmo_matrix_basis(const math::Axis axis,
                                        const float4x4 &base_transform_from_socket,
-                                       const GizmosUpdateParams &params) const
+                                       const GizmosUpdateParams &params,
+                                       const bool invert_direction) const
   {
     float4x4 gizmo_transform;
     const float3 global_location =
         (params.parent_transform * base_transform_from_socket).location();
-    const float3x3 axis_rotation = this->get_rotation_to_axis(axis);
+    const float3 axis_direction = math::to_vector<float3>(axis);
+    float3 global_direction{};
     if (transform_orientation_ == V3D_ORIENT_GLOBAL) {
-      gizmo_transform = float4x4(axis_rotation);
-      gizmo_transform.location() = global_location;
+      global_direction = axis_direction;
     }
     else {
-      gizmo_transform = params.parent_transform *
-                        float4x4(base_transform_from_socket.view<3, 3>() * axis_rotation);
-      make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+      global_direction = math::transform_direction(params.parent_transform.view<3, 3>() *
+                                                       base_transform_from_socket.view<3, 3>(),
+                                                   axis_direction);
     }
+    global_direction = math::normalize(global_direction);
     gizmo_transform.location() = global_location;
-    return gizmo_transform;
+    return matrix_from_position_and_up_direction(global_location,
+                                                 global_direction,
+                                                 invert_direction ? math::AxisSigned::Z_NEG :
+                                                                    math::AxisSigned::Z_POS);
   }
 
   Vector<wmGizmo *> get_all_gizmos() override
@@ -642,22 +650,6 @@ class TransformGizmos : public NodeGizmos {
     gizmos.extend(rotation_gizmos_);
     gizmos.extend(scale_gizmos_);
     return gizmos;
-  }
-
-  static float3x3 get_rotation_to_axis(const math::Axis axis)
-  {
-    switch (axis) {
-      case math::Axis::X:
-        return math::from_rotation<float3x3>(
-            math::AxisAngle(math::AxisSigned::Y_POS, math::AngleRadian::from_degree(90)));
-      case math::Axis::Y:
-        return math::from_rotation<float3x3>(
-            math::AxisAngle(math::AxisSigned::X_POS, math::AngleRadian::from_degree(-90)));
-      case math::Axis::Z:
-        return float3x3::identity();
-    }
-    BLI_assert_unreachable();
-    return {};
   }
 };
 
