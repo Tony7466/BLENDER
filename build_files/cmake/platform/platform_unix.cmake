@@ -312,7 +312,9 @@ if(WITH_CODEC_FFMPEG)
       theora theoradec theoraenc
       vorbis vorbisenc vorbisfile ogg
       vpx
-      x264)
+      x264
+      x265
+    )
     if(DEFINED LIBDIR)
       if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
         list(APPEND FFMPEG_FIND_COMPONENTS aom)
@@ -397,7 +399,7 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
 endif()
 add_bundled_libraries(osl/lib)
 
-if(WITH_CYCLES AND WITH_CYCLES_DEVICE_ONEAPI AND DEFINED LIBDIR)
+if(WITH_CYCLES AND DEFINED LIBDIR)
   set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
   mark_as_advanced(CYCLES_LEVEL_ZERO)
   if(EXISTS ${CYCLES_LEVEL_ZERO} AND NOT LEVEL_ZERO_ROOT_DIR)
