@@ -752,11 +752,12 @@ typedef struct UserDef_Experimental {
   char use_grease_pencil_version3;
   char enable_overlay_next;
   char use_new_volume_nodes;
+  char use_new_file_import_nodes;
   char use_shader_node_previews;
   char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
   char use_text_shaping;
-  char _pad[2];
+  char _pad[1];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -937,7 +938,14 @@ typedef struct UserDef {
   /** Flag for all extensions (#eUserPref_ExtensionFlag).  */
   char extension_flag;
 
-  char _pad14[5];
+  /* Network settings, used by extensions but not specific to extensions. */
+
+  /** Time in seconds to wait before timing out online operation (0 uses the systems default). */
+  uint8_t network_timeout;
+  /** Maximum number of simulations connection limit for online operations. */
+  uint8_t network_connection_limit;
+
+  char _pad14[3];
 
   short undosteps;
   int undomemory;
