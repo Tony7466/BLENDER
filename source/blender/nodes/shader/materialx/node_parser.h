@@ -32,7 +32,7 @@ class NodeParser {
   const bNodeSocket *socket_out_;
   NodeItem::Type to_type_;
   GroupNodeParser *group_parser_;
-  ExportImageFunction export_image_fn_;
+  ExportParams export_params_;
 
  public:
   NodeParser(MaterialX::GraphElement *graph,
@@ -42,7 +42,7 @@ class NodeParser {
              const bNodeSocket *socket_out,
              NodeItem::Type to_type,
              GroupNodeParser *group_parser,
-             ExportImageFunction export_image_fn);
+             const ExportParams &export_params);
   virtual ~NodeParser() = default;
 
   virtual NodeItem compute() = 0;
@@ -104,7 +104,7 @@ struct NodeParserData {
   NodeItem::Type to_type;
   GroupNodeParser *group_parser;
   NodeItem result;
-  ExportImageFunction export_image_fn;
+  ExportParams export_params;
 };
 
 #define NODE_SHADER_MATERIALX_BEGIN \
@@ -131,7 +131,7 @@ struct NodeParserData {
                                     out, \
                                     d->to_type, \
                                     d->group_parser, \
-                                    d->export_image_fn) \
+                                    d->export_params) \
                     .compute_full(); \
   }
 

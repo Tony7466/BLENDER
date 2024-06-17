@@ -25,7 +25,7 @@ NodeParser::NodeParser(MaterialX::GraphElement *graph,
                        const bNodeSocket *socket_out,
                        NodeItem::Type to_type,
                        GroupNodeParser *group_parser,
-                       ExportImageFunction export_image_fn)
+                       const ExportParams &export_params)
     : graph_(graph),
       depsgraph_(depsgraph),
       material_(material),
@@ -33,7 +33,7 @@ NodeParser::NodeParser(MaterialX::GraphElement *graph,
       socket_out_(socket_out),
       to_type_(to_type),
       group_parser_(group_parser),
-      export_image_fn_(export_image_fn)
+      export_params_(export_params)
 {
 }
 
@@ -249,7 +249,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket,
                            link->fromsock,
                            to_type,
                            group_parser_,
-                           export_image_fn_,
+                           export_params_,
                            use_group_default)
         .compute_full();
   }
@@ -261,7 +261,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket,
                                 link->fromsock,
                                 to_type,
                                 group_parser_,
-                                export_image_fn_,
+                                export_params_,
                                 use_group_default)
         .compute_full();
   }
@@ -275,7 +275,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket,
   }
 
   NodeParserData data = {
-      graph_, depsgraph_, material_, to_type, group_parser_, empty(), export_image_fn_};
+      graph_, depsgraph_, material_, to_type, group_parser_, empty(), export_params_};
   from_node->typeinfo->materialx_fn(&data, const_cast<bNode *>(from_node), link->fromsock);
   return data.result;
 }
