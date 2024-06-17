@@ -55,6 +55,9 @@ class Film {
   /** Incoming combined buffer with post FX applied (motion blur + depth of field). */
   GPUTexture *combined_final_tx_ = nullptr;
 
+  /** Are we using the compute shader/pipeline. */
+  bool use_compute_;
+
   /**
    * Main accumulation textures containing every render-pass except depth, cryptomatte and
    * combined.

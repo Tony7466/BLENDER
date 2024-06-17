@@ -437,9 +437,10 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 void Film::sync()
 {
   /* We use a fragment shader for viewport because we need to output the depth. */
-  bool use_compute = (inst_.is_viewport() == false);
+  use_compute_ = true;  //(!inst_.is_viewport() || GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC,
+                        // GPU_DRIVER_ANY));
 
-  eShaderType shader = use_compute ? FILM_COMP : FILM_FRAG;
+  eShaderType shader = use_compute_ ? FILM_COMP : FILM_FRAG;
 
   /* TODO(fclem): Shader variation for panoramic & scaled resolution. */
 
@@ -486,7 +487,7 @@ void Film::sync()
   accumulate_ps_.bind_image("cryptomatte_img", &cryptomatte_tx_);
   /* Sync with rendering passes. */
   accumulate_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
-  if (use_compute) {
+  if (use_compute_) {
     accumulate_ps_.dispatch(int3(math::divide_ceil(data_.extent, int2(FILM_GROUP_SIZE)), 1));
   }
   else {
@@ -678,6 +679,12 @@ void Film::accumulate(View &view, GPUTexture *combined_final_tx)
   inst_.uniform_data.push_update();
 
   inst_.manager->submit(accumulate_ps_, view);
+
+  if (inst_.is_viewport() && use_compute_) {
+    DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+    GPU_texture_copy(dtxl->color, combined_tx_.current());
+    // GPU_texture_copy(dtxl->depth, depth_tx_);
+  }
 
   combined_tx_.swap();
   weight_tx_.swap();
