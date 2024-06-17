@@ -1350,16 +1350,14 @@ class EXTENSIONS_OT_repo_add_from_drop(Operator):
         url_for_display = url_split[2] if url_split[2] else url
 
         layout = self.layout
-        col = layout.column()
-        lines = (
-            iface_("The dropped URL comes from an unknown repository from:"),
-            url_for_display,
-            iface_("You may optionally add this repository now."),
-            iface_("Once the repository has been created the URL"),
-            iface_("will need to be dropped again."),
-        )
-        for line in lines:
-            col.label(text=line, translate=False)
+        col = layout.column(align=True)
+        col.label(text="The dropped extension comes from an unknown repository.")
+        col.label(text="If you trust its source, add the repository and try again.")
+
+        col.separator()
+        box = col.box()
+        subcol = box.column(align=True)
+        subcol.label(text="URL: " + url_for_display)
 
 
 # Show a dialog when dropping an extensions for a disabled repository.
