@@ -900,6 +900,11 @@ class USERPREF_PT_viewport_subdivision(ViewportPanel, CenterAlignMixIn, Panel):
     bl_label = "Subdivision"
     bl_options = {'DEFAULT_CLOSED'}
 
+    @classmethod
+    def poll(cls, context):
+        backend = context.preferences.system.gpu_backend
+        return backend == "OPENGL"
+
     def draw_centered(self, context, layout):
         prefs = context.preferences
         system = prefs.system
