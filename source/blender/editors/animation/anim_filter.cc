@@ -2479,7 +2479,7 @@ static size_t animdata_filter_ds_materials(bAnimContext *ac,
 /* Temporary context for modifier linked-data channel extraction */
 struct tAnimFilterModifiersContext {
   bAnimContext *ac; /* anim editor context */
-  bDopeSheet *ads;  /* dopesheet filtering settings */
+  bDopeSheet *ads;  /* TODO: Remove this pointer from the struct and just use ac->ads. */
 
   ListBase tmp_data; /* list of channels created (but not yet added to the main list) */
   size_t items;      /* number of channels created */
