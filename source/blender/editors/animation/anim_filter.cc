@@ -1974,52 +1974,6 @@ static size_t animdata_filter_grease_pencil_data(bAnimContext *ac,
   return items;
 }
 
-/* Helper for Grease Pencil - Grease Pencil data-block - GP Frames. */
-static size_t animdata_filter_gpencil_legacy_data(bAnimContext *ac,
-                                                  ListBase *anim_data,
-                                                  bGPdata *gpd,
-                                                  eAnimFilter_Flags filter_mode)
-{
-  size_t items = 0;
-
-  /* When asked from "AnimData" blocks (i.e. the top-level containers for normal animation),
-   * for convenience, this will return GP Data-blocks instead.
-   * This may cause issues down the track, but for now, this will do.
-   */
-  if (filter_mode & ANIMFILTER_ANIMDATA) {
-    /* just add GPD as a channel - this will add everything needed */
-    ANIMCHANNEL_NEW_CHANNEL(gpd, ANIMTYPE_GPDATABLOCK, gpd, nullptr);
-  }
-  else {
-    ListBase tmp_data = {nullptr, nullptr};
-    size_t tmp_items = 0;
-
-    if (!(filter_mode & ANIMFILTER_FCURVESONLY)) {
-      /* add gpencil animation channels */
-      BEGIN_ANIMFILTER_SUBCHANNELS (EXPANDED_GPD(gpd)) {
-        tmp_items += animdata_filter_gpencil_layers_data_legacy(ac, &tmp_data, gpd, filter_mode);
-      }
-      END_ANIMFILTER_SUBCHANNELS;
-    }
-
-    /* did we find anything? */
-    if (tmp_items) {
-      /* include data-expand widget first */
-      if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
-        /* add gpd as channel too (if for drawing, and it has layers) */
-        ANIMCHANNEL_NEW_CHANNEL(gpd, ANIMTYPE_GPDATABLOCK, nullptr, nullptr);
-      }
-
-      /* now add the list of collected channels */
-      BLI_movelisttolist(anim_data, &tmp_data);
-      BLI_assert(BLI_listbase_is_empty(&tmp_data));
-      items += tmp_items;
-    }
-  }
-
-  return items;
-}
-
 static size_t animdata_filter_grease_pencil(bAnimContext *ac,
                                             ListBase *anim_data,
                                             const eAnimFilter_Flags filter_mode)
@@ -2069,92 +2023,6 @@ static size_t animdata_filter_grease_pencil(bAnimContext *ac,
   }
 
   /* Return the number of items added to the list */
-  return items;
-}
-
-/**
- * Grab all Grease Pencil data-blocks in file.
- *
- * TODO: should this be amalgamated with the dope-sheet filtering code?
- */
-static size_t animdata_filter_gpencil_legacy(bAnimContext *ac,
-                                             ListBase *anim_data,
-                                             void * /*data*/,
-                                             const eAnimFilter_Flags filter_mode)
-{
-  bDopeSheet *ads = ac->ads;
-  size_t items = 0;
-
-  Scene *scene = ac->scene;
-  ViewLayer *view_layer = (ViewLayer *)ac->view_layer;
-
-  /* Include all annotation datablocks. */
-  if (((ac->ads->filterflag & ADS_FILTER_ONLYSEL) == 0) ||
-      (ac->ads->filterflag & ADS_FILTER_INCL_HIDDEN))
-  {
-    LISTBASE_FOREACH (bGPdata *, gpd, &ac->bmain->gpencils) {
-      if (gpd->flag & GP_DATA_ANNOTATIONS) {
-        items += animdata_filter_gpencil_legacy_data(ac, anim_data, gpd, filter_mode);
-      }
-    }
-  }
-  /* Objects in the scene */
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
-    /* Only consider this object if it has got some GP data (saving on all the other tests) */
-    if (base->object && (base->object->type == OB_GPENCIL_LEGACY)) {
-      Object *ob = base->object;
-
-      /* firstly, check if object can be included, by the following factors:
-       * - if only visible, must check for layer and also viewport visibility
-       *   --> while tools may demand only visible, user setting takes priority
-       *       as user option controls whether sets of channels get included while
-       *       tool-flag takes into account collapsed/open channels too
-       * - if only selected, must check if object is selected
-       * - there must be animation data to edit (this is done recursively as we
-       *   try to add the channels)
-       */
-      if ((filter_mode & ANIMFILTER_DATA_VISIBLE) &&
-          !(ac->ads->filterflag & ADS_FILTER_INCL_HIDDEN))
-      {
-        /* Layer visibility - we check both object and base,
-         * since these may not be in sync yet. */
-        if ((base->flag & BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT) == 0 ||
-            (base->flag & BASE_ENABLED_AND_VISIBLE_IN_DEFAULT_VIEWPORT) == 0)
-        {
-          continue;
-        }
-
-        /* outliner restrict-flag */
-        if (ob->visibility_flag & OB_HIDE_VIEWPORT) {
-          continue;
-        }
-      }
-
-      /* check selection and object type filters */
-      if ((ac->ads->filterflag & ADS_FILTER_ONLYSEL) && !(base->flag & BASE_SELECTED)) {
-        /* only selected should be shown */
-        continue;
-      }
-
-      /* check if object belongs to the filtering group if option to filter
-       * objects by the grouped status is on
-       * - used to ease the process of doing multiple-character choreographies
-       */
-      if (ads->filter_grp != nullptr) {
-        if (BKE_collection_has_object_recursive(ads->filter_grp, ob) == 0) {
-          continue;
-        }
-      }
-
-      /* finally, include this object's grease pencil data-block. */
-      /* XXX: Should we store these under expanders per item? */
-      items += animdata_filter_gpencil_legacy_data(
-          ac, anim_data, static_cast<bGPdata *>(ob->data), filter_mode);
-    }
-  }
-
-  /* return the number of items added to the list */
   return items;
 }
 
@@ -3096,13 +2964,9 @@ static size_t animdata_filter_dopesheet_ob(bAnimContext *ac,
     if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) &&
         !(ads_filterflag & ADS_FILTER_NOGPENCIL))
     {
-      if ((ob->type == OB_GREASE_PENCIL) && U.experimental.use_grease_pencil_version3) {
+      if ((ob->type == OB_GREASE_PENCIL)) {
         tmp_items += animdata_filter_grease_pencil_data(
             ac, &tmp_data, static_cast<GreasePencil *>(ob->data), filter_mode);
-      }
-      else {
-        tmp_items += animdata_filter_ds_gpencil(
-            ac, &tmp_data, static_cast<bGPdata *>(ob->data), filter_mode);
       }
     }
   }
@@ -3799,12 +3663,7 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
     /* Modes for Specialty Data Types (i.e. not keyframes) */
     case ANIMCONT_GPENCIL: {
       if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
-        if (U.experimental.use_grease_pencil_version3) {
-          items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
-        }
-        else {
-          items = animdata_filter_gpencil_legacy(ac, anim_data, data, filter_mode);
-        }
+        items = animdata_filter_grease_pencil(ac, anim_data, filter_mode);
       }
       break;
     }
