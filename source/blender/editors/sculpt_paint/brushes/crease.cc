@@ -50,8 +50,10 @@ BLI_NOINLINE static void translations_from_position(const Span<float3> positions
 BLI_NOINLINE static void project_translations(const MutableSpan<float3> translations,
                                               const float3 &plane)
 {
+  /* Inlined implementation of #project_plane_v3_v3v3. */
+  const float len_sq_inv_neg = -math::safe_rcp(math::length_squared(plane));
   for (const int i : translations.index_range()) {
-    project_plane_v3_v3v3(translations[i], translations[i], plane);
+    translations[i] += plane * math::dot(translations[i], plane) * len_sq_inv_neg;
   }
 }
 
