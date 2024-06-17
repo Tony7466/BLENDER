@@ -196,18 +196,20 @@ static void do_smooth_brush_mesh(const Brush &brush,
     });
 
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        apply_masks_faces(brush,
-                          positions_eval,
-                          vert_normals,
-                          *nodes[i],
-                          strength,
-                          object,
-                          tls,
-                          new_masks.as_span().slice(node_vert_offsets[i]),
-                          mask.span);
-      }
+      threading::isolate_task([&]() {
+        LocalData &tls = all_tls.local();
+        for (const int i : range) {
+          apply_masks_faces(brush,
+                            positions_eval,
+                            vert_normals,
+                            *nodes[i],
+                            strength,
+                            object,
+                            tls,
+                            new_masks.as_span().slice(node_vert_offsets[i]),
+                            mask.span);
+        }
+      });
     });
   }
   mask.finish();
