@@ -664,7 +664,7 @@ static OCIO_GPUDisplayShader &getGPUDisplayShader(
   OCIO_ConstProcessorRcPtr *processor_to_scene_linear = OCIO_configGetProcessorWithNames(
       config, input, ROLE_SCENE_LINEAR);
   OCIO_ConstProcessorRcPtr *processor_to_display = OCIO_createDisplayProcessor(
-      config, ROLE_SCENE_LINEAR, view, display, look, 1.0f, 1.0f, false);
+      config, ROLE_SCENE_LINEAR, view, display, look, 1.0f, 1.0f, 0.0f, 0.0f, false, false);
 
   /* Create shader descriptions. */
   if (processor_to_scene_linear && processor_to_display) {

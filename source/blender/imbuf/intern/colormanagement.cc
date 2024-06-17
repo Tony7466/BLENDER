@@ -884,8 +884,11 @@ static ColorSpace *display_transform_get_colorspace(
 static OCIO_ConstCPUProcessorRcPtr *create_display_buffer_processor(const char *look,
                                                                     const char *view_transform,
                                                                     const char *display,
-                                                                    float exposure,
-                                                                    float gamma,
+                                                                    const float exposure,
+                                                                    const float gamma,
+                                                                    const float temperature,
+                                                                    const float tint,
+                                                                    const bool use_white_balance,
                                                                     const char *from_colorspace)
 {
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
@@ -900,6 +903,9 @@ static OCIO_ConstCPUProcessorRcPtr *create_display_buffer_processor(const char *
                                                                     (use_look) ? look : "",
                                                                     scale,
                                                                     exponent,
+                                                                    temperature,
+                                                                    tint,
+                                                                    use_white_balance,
                                                                     false);
 
   OCIO_configRelease(config);
@@ -992,6 +998,9 @@ static OCIO_ConstCPUProcessorRcPtr *display_from_scene_linear_processor(
                                                 nullptr,
                                                 1.0f,
                                                 1.0f,
+                                                0.0f,
+                                                0.0f,
+                                                false,
                                                 false);
 
         OCIO_configRelease(config);
@@ -1021,8 +1030,17 @@ static OCIO_ConstCPUProcessorRcPtr *display_to_scene_linear_processor(ColorManag
       OCIO_ConstProcessorRcPtr *processor = nullptr;
 
       if (view_name && config) {
-        processor = OCIO_createDisplayProcessor(
-            config, global_role_scene_linear, view_name, display->name, nullptr, 1.0f, 1.0f, true);
+        processor = OCIO_createDisplayProcessor(config,
+                                                global_role_scene_linear,
+                                                view_name,
+                                                display->name,
+                                                nullptr,
+                                                1.0f,
+                                                1.0f,
+                                                0.0f,
+                                                0.0f,
+                                                false,
+                                                true);
 
         OCIO_configRelease(config);
       }
@@ -3946,12 +3964,16 @@ ColormanageProcessor *IMB_colormanagement_display_processor_new(
     cm_processor->is_data_result = display_space->is_data;
   }
 
+  const bool use_white_balance = applied_view_settings->flag & COLORMANAGE_VIEW_USE_WHITE_BALANCE;
   cm_processor->cpu_processor = create_display_buffer_processor(
       applied_view_settings->look,
       applied_view_settings->view_transform,
       display_settings->display_device,
       applied_view_settings->exposure,
       applied_view_settings->gamma,
+      applied_view_settings->temperature,
+      applied_view_settings->tint,
+      use_white_balance,
       global_role_scene_linear);
 
   if (applied_view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) {

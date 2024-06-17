@@ -175,6 +175,9 @@ OCIO_ConstProcessorRcPtr *OCIO_createDisplayProcessor(OCIO_ConstConfigRcPtr *con
                                                       const char *look,
                                                       const float scale,
                                                       const float exponent,
+                                                      const float temperature,
+                                                      const float tint,
+                                                      const bool use_white_balance,
                                                       const bool inverse);
 
 struct OCIO_PackedImageDesc *OCIO_createOCIO_PackedImageDesc(float *data,
