@@ -130,6 +130,7 @@ set(LIB
 
 if(WITH_BUILDINFO)
   add_definitions(-DWITH_BUILDINFO)
+  list(APPEND LIB buildinfoobj)
 endif()
 
 blender_add_lib(bf_io_collada "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
