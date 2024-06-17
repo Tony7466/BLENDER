@@ -16,7 +16,7 @@ from bpy.props import (
 from bpy.app.translations import pgettext_rpt as rpt_
 
 
-def animated_properties_get(sequence):
+def _animated_properties_get(sequence):
     animated_properties = []
     if hasattr(sequence, "volume"):
         animated_properties.append("volume")
@@ -159,7 +159,7 @@ class SequencerFadesClear(Operator):
             if curve.data_path.startswith("sequence_editor.sequences_all")
         }
         for sequence in context.selected_sequences:
-            for animated_property in animated_properties_get(sequence):
+            for animated_property in _animated_properties_get(sequence):
                 data_path = sequence.path_from_id() + "." + animated_property
                 curve = fcurve_map.get(data_path)
                 if curve:
@@ -239,7 +239,7 @@ class SequencerFadesAdd(Operator):
             if not self.is_long_enough(sequence, duration):
                 continue
 
-            for animated_property in animated_properties_get(sequence):
+            for animated_property in _animated_properties_get(sequence):
                 fade_fcurve = self.fade_find_or_create_fcurve(context, sequence, animated_property)
                 fades = self.calculate_fades(sequence, fade_fcurve, animated_property, duration)
                 self.fade_animation_clear(fade_fcurve, fades)
