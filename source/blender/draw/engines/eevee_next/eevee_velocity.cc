@@ -153,6 +153,8 @@ bool VelocityModule::step_object_sync(Object *ob,
   VelocityObjectData &vel = velocity_map.lookup_or_add_default(object_key);
   vel.obj.ofs[step_] = object_steps_usage[step_]++;
   vel.obj.resource_id = resource_handle.resource_index();
+  /* While VelocityObjectData is unique for each object/instance, multiple VelocityObjectDatas can
+   * point to the same offset in VelocityGeometryData, since geometry is stored local space. */
   vel.id = particle_sys ? uint64_t(particle_sys) : uint64_t(ob->data);
   object_steps[step_]->get_or_resize(vel.obj.ofs[step_]) = ob->object_to_world();
   if (step_ == STEP_CURRENT) {
