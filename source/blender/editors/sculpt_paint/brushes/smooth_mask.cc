@@ -11,6 +11,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_subdiv_ccg.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_base.hh"
 #include "BLI_offset_indices.hh"
@@ -27,7 +28,7 @@ struct LocalData {
   Vector<float> factors;
   Vector<float> distances;
   Vector<Vector<int>> vert_neighbors;
-  Vector<float> mask_deltas;
+  Vector<float> masks;
 };
 
 /* TODO: Extract this and the similarly named smooth.cc function
@@ -58,15 +59,15 @@ static float average_masks(const Span<float> masks, const Span<int> indices)
   return result;
 }
 
-BLI_NOINLINE static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
-                                                 const Span<int> corner_verts,
-                                                 const GroupedSpan<int> vert_to_face_map,
-                                                 const BitSpan boundary_verts,
-                                                 const Span<bool> hide_poly,
-                                                 const Span<int> verts,
-                                                 const Span<float> masks,
-                                                 LocalData &tls,
-                                                 const MutableSpan<float> new_masks)
+static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
+                                    const Span<int> corner_verts,
+                                    const GroupedSpan<int> vert_to_face_map,
+                                    const BitSpan boundary_verts,
+                                    const Span<bool> hide_poly,
+                                    const Span<int> verts,
+                                    const Span<float> masks,
+                                    LocalData &tls,
+                                    const MutableSpan<float> new_masks)
 {
   tls.vert_neighbors.reinitialize(verts.size());
   calc_vert_neighbors_interior(
@@ -84,29 +85,15 @@ BLI_NOINLINE static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
   }
 }
 
-static void calculate_mask_delta(const Span<float> current_masks,
-                                 const Span<int> verts,
-                                 const Span<float> mask_averages,
-                                 const Span<float> factors,
-                                 const MutableSpan<float> mask_deltas)
+static void calc_mask(const Span<float> mask_averages,
+                      const Span<float> factors,
+                      const MutableSpan<float> masks)
 {
-  BLI_assert(verts.size() == mask_averages.size());
-  BLI_assert(verts.size() == factors.size());
-  BLI_assert(verts.size() == mask_deltas.size());
+  BLI_assert(mask_averages.size() == factors.size());
+  BLI_assert(mask_averages.size() == masks.size());
 
-  for (const int i : verts.index_range()) {
-    mask_deltas[i] = (mask_averages[i] - current_masks[verts[i]]) * factors[i];
-  }
-}
-
-static void apply_delta(const Span<float> mask_deltas,
-                        const Span<int> verts,
-                        const MutableSpan<float> masks)
-{
-  BLI_assert(verts.size() == mask_deltas.size());
-
-  for (const int i : verts.index_range()) {
-    masks[verts[i]] += mask_deltas[i];
+  for (const int i : masks.index_range()) {
+    masks[i] += (mask_averages[i] - masks[i]) * factors[i];
   }
 }
 
@@ -155,12 +142,14 @@ static void apply_masks_faces(const Brush &brush,
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
-  tls.mask_deltas.reinitialize(verts.size());
-  const MutableSpan<float> mask_deltas = tls.mask_deltas;
+  tls.masks.reinitialize(verts.size());
+  const MutableSpan<float> new_masks = tls.masks;
+  array_utils::gather(mask.as_span(), verts, new_masks);
 
-  calculate_mask_delta(mask, verts, mask_averages, factors, mask_deltas);
-  apply_delta(mask_deltas, verts, mask);
-  clamp_mask(mask);
+  calc_mask(mask_averages, factors, new_masks);
+  clamp_mask(new_masks);
+
+  array_utils::scatter(new_masks.as_span(), verts, mask);
 }
 
 static void do_smooth_brush_mesh(const Brush &brush,
