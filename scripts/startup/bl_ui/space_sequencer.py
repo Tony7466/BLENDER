@@ -2866,6 +2866,7 @@ class SEQUENCER_PT_custom_props(SequencerButtonsPanel, PropertyPanel, Panel):
     _property_type = (bpy.types.Sequence,)
     bl_category = "Strip"
 
+
 class SEQUENCER_PT_snapping(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'HEADER'
@@ -2873,6 +2874,7 @@ class SEQUENCER_PT_snapping(Panel):
 
     def draw(self, _context):
         pass
+
 
 class SEQUENCER_PT_preview_snapping(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
@@ -2884,7 +2886,6 @@ class SEQUENCER_PT_preview_snapping(Panel):
     def poll(cls, context):
         st = context.space_data
         return st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}
-
 
     def draw(self, context):
         tool_settings = context.tool_settings
@@ -2898,6 +2899,7 @@ class SEQUENCER_PT_preview_snapping(Panel):
         col.prop(sequencer_tool_settings, "snap_to_borders")
         col.prop(sequencer_tool_settings, "snap_to_centers")
         col.prop(sequencer_tool_settings, "snap_to_strips_preview")
+
 
 class SEQUENCER_PT_sequencer_snapping(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
@@ -2929,7 +2931,6 @@ class SEQUENCER_PT_sequencer_snapping(Panel):
 
         col = layout.column(heading="Current Frame", align=True)
         col.prop(sequencer_tool_settings, "use_snap_current_frame_to_strips", text="Snap to Strips")
-
 
 
 classes = (

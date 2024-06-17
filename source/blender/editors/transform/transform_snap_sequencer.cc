@@ -35,8 +35,8 @@ struct TransSeqSnapData {
   blender::Array<int> target_snap_frames;
 
   /* Preview snapping. */
-  blender::Array<float[2]> source_snap_points;
-  blender::Array<float[2]> target_snap_points;
+  blender::Array<blender::float2> source_snap_points;
+  blender::Array<blender::float2> target_snap_points;
 
 #ifdef WITH_CXX_GUARDEDALLOC
   MEM_CXX_CLASS_ALLOC_FUNCS("TransSeqSnapData")
