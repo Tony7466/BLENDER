@@ -79,7 +79,6 @@ static void calc_faces(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const float3 &location = cache.location;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
