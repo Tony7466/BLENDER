@@ -354,7 +354,7 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
 }
 
 #define DEF_ICON(name) STRINGIFY(name),
-#define DEF_ICON_BLANK(name) "",
+#define DEF_ICON_BLANK(name)
 #define DEF_ICON_VECTOR(name)
 
 const char *icon_names[] = {
