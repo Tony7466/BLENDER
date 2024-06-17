@@ -578,7 +578,7 @@ float3 Camera::transform_raster_to_world(float raster_x, float raster_y)
     D = make_float3(0.0f, 0.0f, 1.0f);
     /* TODO(sergey): Aperture support? */
     P = transform_perspective(&rastertocamera, make_float3(raster_x, raster_y, 0.0f));
-    P = transform_point(&cameratoworld, P);
+    P = transform_point(&cameratoworld, make_float3(P.x, P.y, nearclip));
     D = normalize(transform_direction(&cameratoworld, D));
   }
   else {
