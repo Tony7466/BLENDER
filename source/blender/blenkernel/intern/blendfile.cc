@@ -29,6 +29,7 @@
 #include "BLI_system.h"
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector_set.hh"
 
 #include "BLT_translation.hh"
 
@@ -1851,7 +1852,7 @@ ID *PartialWriteContext::id_add(
   post_process_ids_todo.append({ctx_root_id, options});
   ensure_id_user_(ctx_root_id, set_fake_user);
 
-  blender::Set<ID *> ids_to_process{ctx_root_id};
+  blender::VectorSet<ID *> ids_to_process{ctx_root_id};
   auto dependencies_cb = [this,
                           options,
                           &local_ctx_id_map,
