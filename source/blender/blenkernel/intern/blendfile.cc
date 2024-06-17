@@ -1946,9 +1946,10 @@ ID *PartialWriteContext::id_add(
     *id_ptr = ctx_deps_id;
     return IDWALK_RET_NOP;
   };
-  while (std::optional<ID *> ctx_id = ids_to_process.pop()) {
+  while (!ids_to_process.is_empty()) {
+    ID *ctx_id = ids_to_process.pop();
     BKE_library_foreach_ID_link(
-        &this->bmain, *ctx_id, dependencies_cb, &options, IDWALK_DO_INTERNAL_RUNTIME_POINTERS);
+        &this->bmain, ctx_id, dependencies_cb, &options, IDWALK_DO_INTERNAL_RUNTIME_POINTERS);
   }
 
   /* Post process all newly added IDs in the context:
