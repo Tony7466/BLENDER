@@ -155,7 +155,10 @@ class Film {
   static bool pass_is_float3(eViewLayerEEVEEPassType pass_type)
   {
     return pass_storage_type(pass_type) == PASS_STORAGE_COLOR &&
-           !ELEM(pass_type, EEVEE_RENDER_PASS_COMBINED, EEVEE_RENDER_PASS_VECTOR);
+           !ELEM(pass_type,
+                 EEVEE_RENDER_PASS_COMBINED,
+                 EEVEE_RENDER_PASS_VECTOR,
+                 EEVEE_RENDER_PASS_TRANSPARENT);
   }
 
   /* Returns layer offset in the accumulation texture. -1 if the pass is not enabled. */
@@ -267,6 +270,9 @@ class Film {
         break;
       case EEVEE_RENDER_PASS_AO:
         result.append(RE_PASSNAME_AO);
+        break;
+      case EEVEE_RENDER_PASS_TRANSPARENT:
+        result.append(RE_PASSNAME_TRANSPARENT);
         break;
       case EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT:
         build_cryptomatte_passes(RE_PASSNAME_CRYPTOMATTE_OBJECT);

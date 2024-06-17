@@ -67,7 +67,7 @@ static void calc_faces(const Sculpt &sd,
                        MutableSpan<float3> positions_orig)
 {
   SculptSession &ss = *object.sculpt;
-  StrokeCache &cache = *ss.cache;
+  const StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<int> verts = bke::pbvh::node_unique_verts(node);
@@ -84,10 +84,10 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
       ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
-  calc_brush_strength_factors(ss, brush, verts, distances, factors);
+  calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (ss.cache->automasking) {
-    auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
+  if (cache.automasking) {
+    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
   }
 
   tls.colors.reinitialize(verts.size());
@@ -102,13 +102,14 @@ static void calc_faces(const Sculpt &sd,
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
+  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
+
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
   apply_translations(translations, verts, positions_orig);
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
-  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -139,7 +140,8 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
         i++;
         continue;
       }
-      if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
+      const float3 &co = CCG_elem_offset_co(key, elem, j);
+      if (!sculpt_brush_test_sq_fn(test, co)) {
         i++;
         continue;
       }
@@ -148,7 +150,7 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
       float r_rgba[4];
       SCULPT_brush_strength_color(ss,
                                   brush,
-                                  CCG_elem_offset_co(key, elem, j),
+                                  co,
                                   math::sqrt(test.dist),
                                   CCG_elem_offset_no(key, elem, j),
                                   nullptr,

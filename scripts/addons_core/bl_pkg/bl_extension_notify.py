@@ -11,10 +11,12 @@ __all__ = (
     "update_ui_text",
 )
 
-
-import os
-import bpy
 import sys
+import os
+
+import bpy
+
+from bpy.app.translations import pgettext_rpt as rpt_
 
 from . import bl_extension_ops
 from . import bl_extension_utils
@@ -173,6 +175,10 @@ def sync_status_generator(repos_fn):
 
     from functools import partial
 
+    prefs = bpy.context.preferences
+    network_timeout = prefs.system.network_timeout
+    network_connection_limit = prefs.system.network_connection_limit
+
     cmd_batch_partial = []
     for repo_item, do_online_sync in repos_and_do_online:
         # Local only repositories should still refresh, but not run the sync.
@@ -184,6 +190,7 @@ def sync_status_generator(repos_fn):
             remote_url=bl_extension_ops.url_append_defaults(repo_item.remote_url),
             online_user_agent=bl_extension_ops.online_user_agent_from_blender(),
             access_token=repo_item.access_token,
+            timeout=network_timeout,
             # Never sleep while there is no input, as this blocks Blender.
             use_idle=False,
             # Needed so the user can exit blender without warnings about a broken pipe.
@@ -220,6 +227,7 @@ def sync_status_generator(repos_fn):
         # Used as a prefix in status.
         title="Update",
         batch=cmd_batch_partial,
+        batch_job_limit=network_connection_limit,
     )
     del cmd_batch_partial
 
@@ -349,7 +357,7 @@ class NotifyHandle:
 
     def ui_text(self):
         if self.sync_info is None:
-            return "Checking for Extension Updates", 'SORTTIME', WM_EXTENSIONS_UPDATE_CHECKING
+            return rpt_("Checking for Extension Updates"), 'SORTTIME', WM_EXTENSIONS_UPDATE_CHECKING
         status_data, update_count, extra_warnings = self.sync_info
         text, icon = bl_extension_utils.CommandBatch.calc_status_text_icon_from_data(
             status_data, update_count,
@@ -364,7 +372,7 @@ class NotifyHandle:
 _notify_queue = []
 
 
-def _ui_refresh_apply(*, notify):
+def _ui_refresh_apply():
     # Ensure the preferences are redrawn when the update is complete.
     if bpy.context.preferences.active_section == 'EXTENSIONS':
         for wm in bpy.data.window_managers:
@@ -407,7 +415,7 @@ def _ui_refresh_timer():
 
     # If the generator exited, either step to the next action or early exit here.
     if sync_info is ...:
-        _ui_refresh_apply(notify=notify)
+        _ui_refresh_apply()
         if len(_notify_queue) <= 1:
             # Keep `_notify_queuy[0]` because we may want to keep accessing the text even when updates are complete.
             if wm.extensions_updates == WM_EXTENSIONS_UPDATE_CHECKING:
@@ -418,7 +426,7 @@ def _ui_refresh_timer():
         return default_wait
 
     # TODO: redraw the status bar.
-    _ui_refresh_apply(notify=notify)
+    _ui_refresh_apply()
 
     update_count = notify.updates_count()
     if update_count != wm.extensions_updates:

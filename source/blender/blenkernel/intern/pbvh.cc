@@ -1620,9 +1620,10 @@ IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
 
 bool BKE_pbvh_get_color_layer(Mesh *mesh, CustomDataLayer **r_layer, AttrDomain *r_domain)
 {
-  *r_layer = BKE_id_attribute_search_for_write(
-      &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
-  *r_domain = *r_layer ? BKE_id_attribute_domain(&mesh->id, *r_layer) : AttrDomain::Point;
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  *r_layer = BKE_attribute_search_for_write(
+      owner, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+  *r_domain = *r_layer ? BKE_attribute_domain(owner, *r_layer) : AttrDomain::Point;
   return *r_layer != nullptr;
 }
 
@@ -2822,7 +2823,7 @@ void BKE_pbvh_vert_coords_apply(PBVH &pbvh, const Span<float3> vert_positions)
     }
 
     for (PBVHNode &node : pbvh.nodes) {
-      BKE_pbvh_node_mark_update(&node);
+      BKE_pbvh_node_mark_positions_update(&node);
     }
 
     update_bounds(pbvh);
