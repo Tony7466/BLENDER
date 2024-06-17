@@ -218,17 +218,29 @@ static float calc_new_mask(float neighbor_average, float current_mask, float fad
   return std::clamp(new_mask, 0.0f, 1.0f);
 }
 
-static float neighbor_mask_average_grids(const SculptSession &ss, const PBVHVertRef &vertex)
+static float neighbor_mask_average_grids(const SubdivCCG &subdiv_ccg,
+                                         const CCGKey &key,
+                                         int grid_index,
+                                         int elem_index)
 {
+
+  int y = elem_index / key.grid_size;
+  int x = elem_index % key.grid_size;
+
+  SubdivCCGCoord coord{};
+  coord.grid_index = grid_index;
+  coord.x = x;
+  coord.y = y;
+
+  SubdivCCGNeighbors neighbors;
+  BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
+
   float sum = 0.0f;
   int total = 0;
-  SculptVertexNeighborIter ni;
-  SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
-    sum += SCULPT_mask_get_at_grids_vert_index(
-        *ss.subdiv_ccg, *BKE_pbvh_get_grid_key(*ss.pbvh), ni.vertex.i);
-    total++;
+  for (const SubdivCCGCoord neighbor : neighbors.coords) {
+    sum += CCG_grid_elem_mask(key, subdiv_ccg.grids[neighbor.grid_index], neighbor.x, neighbor.y);
+    total += 1;
   }
-  SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
   return sum / total;
 }
 
@@ -265,7 +277,6 @@ static void calc_grids(Object &object,
         continue;
       }
       auto_mask::node_update(automask_data, i);
-      const PBVHVertRef vert_ref = BKE_pbvh_make_vref(grid_verts_start + j);
       const float fade = SCULPT_brush_strength_factor(ss,
                                                       brush,
                                                       CCG_elem_offset_co(key, elem, j),
@@ -273,14 +284,15 @@ static void calc_grids(Object &object,
                                                       CCG_elem_offset_no(key, elem, j),
                                                       nullptr,
                                                       0.0f,
-                                                      vert_ref,
+                                                      BKE_pbvh_make_vref(grid_verts_start + j),
                                                       thread_id,
                                                       &automask_data);
 
-      const float new_mask = calc_new_mask(neighbor_mask_average_grids(ss, vert_ref),
-                                           CCG_elem_offset_mask(key, elem, j),
-                                           fade,
-                                           strength);
+      const float new_mask = calc_new_mask(
+          neighbor_mask_average_grids(*ss.subdiv_ccg, key, grid, j),
+          CCG_elem_offset_mask(key, elem, j),
+          fade,
+          strength);
       CCG_elem_offset_mask(key, elem, j) = new_mask;
       i++;
     }
