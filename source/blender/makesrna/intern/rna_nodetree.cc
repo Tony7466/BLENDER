@@ -5035,7 +5035,7 @@ static void rna_def_geo_gizmo_transform(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Use Rotation Z", nullptr);
   RNA_def_property_update(prop, 0, "rna_Node_update");
 
-    prop = RNA_def_property(srna, "use_scale_x", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_scale_x", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_TRANSFORM_GIZMO_USE_SCALE_X);
   RNA_def_property_ui_text(prop, "Use Scale X", nullptr);
   RNA_def_property_update(prop, 0, "rna_Node_update");
