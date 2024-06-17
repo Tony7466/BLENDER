@@ -3037,7 +3037,7 @@ def km_sequencer(params):
         ("transform.seq_slide", {"type": 'G', "value": 'PRESS'},
          {"properties": [("view2d_edge_pan", True)]}),
         ("transform.seq_slide", {"type": params.select_mouse, "value": 'CLICK_DRAG'},
-         {"properties": [("view2d_edge_pan", True)]}),
+         {"properties": [("view2d_edge_pan", True), ("use_restore_handle_selection", True)]}),
         ("transform.transform", {"type": 'E', "value": 'PRESS'},
          {"properties": [("mode", 'TIME_EXTEND')]}),
         ("marker.add", {"type": 'M', "value": 'PRESS'}, None),
@@ -8101,6 +8101,58 @@ def km_3d_view_tool_edit_curve_extrude_to_cursor(params):
 # ------------------------------------------------------------------------------
 # Tool System (3D View, Sculpt)
 
+def km_3d_view_tool_sculpt_box_mask(params):
+    return (
+        "3D View Tool: Sculpt, Box Mask",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.mask_box_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_box_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("value", 0.0)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_lasso_mask(params):
+    return (
+        "3D View Tool: Sculpt, Lasso Mask",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.mask_lasso_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_lasso_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("value", 0.0)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_line_mask(params):
+    return (
+        "3D View Tool: Sculpt, Line Mask",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.mask_line_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_line_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("value", 0.0)]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_polyline_mask(params):
+    return (
+        "3D View Tool: Sculpt, Polyline Mask",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.mask_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"},
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
+             {"properties": [("value", 0.0)]}),
+        ]},
+    )
+
+
 def km_3d_view_tool_sculpt_box_hide(params):
     return (
         "3D View Tool: Sculpt, Box Hide",
@@ -8155,45 +8207,6 @@ def km_3d_view_tool_sculpt_polyline_hide(params):
              {"properties": [("action", 'HIDE')]}),
             ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
              {"properties": [("action", 'SHOW')]}),
-        ]},
-    )
-
-
-def km_3d_view_tool_sculpt_box_mask(params):
-    return (
-        "3D View Tool: Sculpt, Box Mask",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("paint.mask_box_gesture", params.tool_maybe_tweak_event,
-             {"properties": [("value", 1.0)]}),
-            ("paint.mask_box_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
-             {"properties": [("value", 0.0)]}),
-        ]},
-    )
-
-
-def km_3d_view_tool_sculpt_lasso_mask(params):
-    return (
-        "3D View Tool: Sculpt, Lasso Mask",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("paint.mask_lasso_gesture", params.tool_maybe_tweak_event,
-             {"properties": [("value", 1.0)]}),
-            ("paint.mask_lasso_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
-             {"properties": [("value", 0.0)]}),
-        ]},
-    )
-
-
-def km_3d_view_tool_sculpt_polyline_mask(params):
-    return (
-        "3D View Tool: Sculpt, Polyline Mask",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("paint.mask_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"},
-             {"properties": [("value", 1.0)]}),
-            ("paint.mask_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
-             {"properties": [("value", 0.0)]}),
         ]},
     )
 
@@ -8275,19 +8288,6 @@ def km_3d_view_tool_sculpt_polyline_trim(params):
         {"items": [
             ("sculpt.trim_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"}, None)
         ]}
-    )
-
-
-def km_3d_view_tool_sculpt_line_mask(params):
-    return (
-        "3D View Tool: Sculpt, Line Mask",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("paint.mask_line_gesture", params.tool_maybe_tweak_event,
-             {"properties": [("value", 1.0)]}),
-            ("paint.mask_line_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
-             {"properties": [("value", 0.0)]}),
-        ]},
     )
 
 
@@ -8869,10 +8869,11 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
 
 def km_sequencer_editor_tool_generic_select_timeline_rcs(params, fallback):
     return [
+        ("sequencer.select_handle", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         *_template_items_change_frame(params),
         # Frame change can be canceled if click happens on strip handle. In such case move the handle.
         ("transform.seq_slide", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-         {"properties": [("view2d_edge_pan", True)]}),
+         {"properties": [("view2d_edge_pan", True), ("use_restore_handle_selection", True)]}),
     ]
 
 
@@ -9283,13 +9284,14 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_curve_extrude(params),
         km_3d_view_tool_edit_curve_extrude_to_cursor(params),
         km_3d_view_tool_edit_curves_draw(params),
+        km_3d_view_tool_sculpt_box_mask(params),
+        km_3d_view_tool_sculpt_lasso_mask(params),
+        km_3d_view_tool_sculpt_line_mask(params),
+        km_3d_view_tool_sculpt_polyline_mask(params),
         km_3d_view_tool_sculpt_box_hide(params),
         km_3d_view_tool_sculpt_lasso_hide(params),
         km_3d_view_tool_sculpt_line_hide(params),
         km_3d_view_tool_sculpt_polyline_hide(params),
-        km_3d_view_tool_sculpt_box_mask(params),
-        km_3d_view_tool_sculpt_lasso_mask(params),
-        km_3d_view_tool_sculpt_polyline_mask(params),
         km_3d_view_tool_sculpt_box_face_set(params),
         km_3d_view_tool_sculpt_lasso_face_set(params),
         km_3d_view_tool_sculpt_line_face_set(params),
@@ -9298,7 +9300,6 @@ def generate_keymaps(params=None):
         km_3d_view_tool_sculpt_lasso_trim(params),
         km_3d_view_tool_sculpt_line_trim(params),
         km_3d_view_tool_sculpt_polyline_trim(params),
-        km_3d_view_tool_sculpt_line_mask(params),
         km_3d_view_tool_sculpt_line_project(params),
         km_3d_view_tool_sculpt_mesh_filter(params),
         km_3d_view_tool_sculpt_cloth_filter(params),

@@ -383,7 +383,13 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
   void build_layer_group_name(uiLayout &row)
   {
     uiItemS_ex(&row, 0.8f);
-    uiBut *but = uiItemL_ex(&row, group_.name().c_str(), ICON_FILE_FOLDER, false, false);
+
+    short icon = ICON_FILE_FOLDER;
+    if (group_.color_tag != LAYERGROUP_COLOR_NONE) {
+      icon = ICON_LAYERGROUP_COLOR_01 + group_.color_tag;
+    }
+
+    uiBut *but = uiItemL_ex(&row, group_.name().c_str(), icon, false, false);
     if (!group_.is_editable()) {
       UI_but_disable(but, "Layer Group is locked or not visible");
     }
@@ -468,6 +474,7 @@ void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C)
       *block,
       "Grease Pencil Layer Tree View",
       std::make_unique<blender::ui::greasepencil::LayerTreeView>(grease_pencil));
+  tree_view->set_context_menu_title("Grease Pencil Layer");
   tree_view->set_min_rows(3);
 
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);

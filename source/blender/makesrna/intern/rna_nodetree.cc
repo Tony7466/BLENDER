@@ -4784,19 +4784,35 @@ static void def_sh_tex_sky(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "air_density", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_ui_text(prop, "Air", "Density of air molecules");
+  RNA_def_property_ui_text(prop,
+                           "Air",
+                           "Density of air molecules.\n"
+                           "\u2022 0 - No air.\n"
+                           "\u2022 1 - Clear day atmosphere.\n"
+                           "\u2022 2 - Highly polluted day");
   RNA_def_property_range(prop, 0.0f, 10.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "dust_density", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_ui_text(prop, "Dust", "Density of dust molecules and water droplets");
+  RNA_def_property_ui_text(prop,
+                           "Dust",
+                           "Density of dust molecules and water droplets.\n"
+                           "\u2022 0 - No dust.\n"
+                           "\u2022 1 - Clear day atmosphere.\n"
+                           "\u2022 5 - City like atmosphere.\n"
+                           "\u2022 10 - Hazy day");
   RNA_def_property_range(prop, 0.0f, 10.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "ozone_density", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_ui_text(prop, "Ozone", "Density of ozone layer");
+  RNA_def_property_ui_text(prop,
+                           "Ozone",
+                           "Density of ozone layer.\n"
+                           "\u2022 0 - No ozone.\n"
+                           "\u2022 1 - Clear day atmosphere.\n"
+                           "\u2022 2 - City like atmosphere");
   RNA_def_property_range(prop, 0.0f, 10.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
@@ -5039,6 +5055,7 @@ static void def_sh_tex_noise(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "dimensions");
   RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
   RNA_def_property_ui_text(prop, "Dimensions", "Number of dimensions to output noise for");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXTURE);
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 
   prop = RNA_def_property(srna, "noise_type", PROP_ENUM, PROP_NONE);
@@ -5070,28 +5087,36 @@ static void def_sh_tex_brick(StructRNA *srna)
   RNA_def_property_int_sdna(prop, nullptr, "offset_freq");
   RNA_def_property_int_default(prop, 2);
   RNA_def_property_range(prop, 1, 99);
-  RNA_def_property_ui_text(prop, "Offset Frequency", "");
+  RNA_def_property_ui_text(
+      prop,
+      "Offset Frequency",
+      "How often rows are offset. A value of 2 gives an even/uneven pattern of rows");
   RNA_def_property_update(prop, 0, "rna_Node_update");
 
   prop = RNA_def_property(srna, "squash_frequency", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "squash_freq");
   RNA_def_property_int_default(prop, 2);
   RNA_def_property_range(prop, 1, 99);
-  RNA_def_property_ui_text(prop, "Squash Frequency", "");
+  RNA_def_property_ui_text(
+      prop, "Squash Frequency", "How often rows consist of “squished” bricks");
   RNA_def_property_update(prop, 0, "rna_Node_update");
 
   prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "offset");
   RNA_def_property_float_default(prop, 0.5f);
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Offset Amount", "");
+  RNA_def_property_ui_text(
+      prop, "Offset Amount", "Determines the brick offset of the various rows");
   RNA_def_property_update(prop, 0, "rna_Node_update");
 
   prop = RNA_def_property(srna, "squash", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "squash");
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_range(prop, 0.0f, 99.0f);
-  RNA_def_property_ui_text(prop, "Squash Amount", "");
+  RNA_def_property_ui_text(
+      prop,
+      "Squash Amount",
+      "Factor to adjust the brick’s width for particular rows determined by the Offset Frequency");
   RNA_def_property_update(prop, 0, "rna_Node_update");
 }
 
@@ -5155,6 +5180,7 @@ static void def_sh_tex_voronoi(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "dimensions");
   RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
   RNA_def_property_ui_text(prop, "Dimensions", "Number of dimensions to output noise for");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXTURE);
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 
   prop = RNA_def_property(srna, "distance", PROP_ENUM, PROP_NONE);
@@ -5250,6 +5276,7 @@ static void def_sh_tex_white_noise(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
   RNA_def_property_ui_text(prop, "Dimensions", "Number of dimensions to output noise for");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXTURE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 
@@ -8564,6 +8591,7 @@ static void def_cmp_cryptomatte_common(StructRNA *srna)
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_text(
       prop, "Add", "Add object or material to matte, by picking a color from the Pick output");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeCryptomatte_update_add");
 
   prop = RNA_def_property(srna, "remove", PROP_FLOAT, PROP_COLOR);
@@ -8574,6 +8602,7 @@ static void def_cmp_cryptomatte_common(StructRNA *srna)
       prop,
       "Remove",
       "Remove object or material from matte, by picking a color from the Pick output");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeCryptomatte_update_remove");
 }
 
@@ -8827,7 +8856,8 @@ static void def_tex_bricks(StructRNA *srna)
   prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "custom3");
   RNA_def_property_range(prop, 0.0f, 1.0f);
-  RNA_def_property_ui_text(prop, "Offset Amount", "");
+  RNA_def_property_ui_text(
+      prop, "Offset Amount", "Determines the brick offset of the various rows");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "offset_frequency", PROP_INT, PROP_NONE);
@@ -8839,7 +8869,11 @@ static void def_tex_bricks(StructRNA *srna)
   prop = RNA_def_property(srna, "squash", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "custom4");
   RNA_def_property_range(prop, 0.0f, 99.0f);
-  RNA_def_property_ui_text(prop, "Squash Amount", "");
+  RNA_def_property_ui_text(
+      prop,
+      "Squash Amount",
+      "Factor to adjust the brick’s width for particular rows determined by the Offset Frequency");
+
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "squash_frequency", PROP_INT, PROP_NONE);

@@ -757,7 +757,7 @@ static int view_socket(const bContext &C,
     bNode &target_node = *link->tonode;
     if (is_viewer_socket(target_socket) && ELEM(viewer_node, nullptr, &target_node)) {
       finalize_viewer_link(C, snode, target_node, *link);
-      position_viewer_node(btree, *viewer_node, bnode_to_view, region);
+      position_viewer_node(btree, target_node, bnode_to_view, region);
       return OPERATOR_FINISHED;
     }
   }
@@ -782,6 +782,8 @@ static int view_socket(const bContext &C,
   if (viewer_bsocket == nullptr) {
     return OPERATOR_CANCELLED;
   }
+  viewer_bsocket->flag &= ~SOCK_HIDDEN;
+
   bNodeLink *viewer_link = nullptr;
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &btree.links) {
     if (link->tosock == viewer_bsocket) {
@@ -940,6 +942,10 @@ static bool should_create_drag_link_search_menu(const bNodeTree &node_tree,
   /* Don't allow a drag from the "new socket" (group input node or simulation nodes currently).
    * Handling these properly in node callbacks increases the complexity too much for now. */
   if (nldrag.start_socket->type == SOCK_CUSTOM) {
+    return false;
+  }
+  if (nldrag.start_socket->type == SOCK_TEXTURE) {
+    /* This socket types is not used anymore, but can currently still exists in files. */
     return false;
   }
   return true;
@@ -2263,6 +2269,9 @@ static bool node_can_be_inserted_on_link(bNodeTree &tree, bNode &node, const bNo
   const bNodeSocket *main_output = get_main_socket(tree, node, SOCK_IN);
   if (ELEM(nullptr, main_input, main_output)) {
     return false;
+  }
+  if (node.is_reroute()) {
+    return true;
   }
   if (!tree.typeinfo->validate_link) {
     return true;

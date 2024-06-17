@@ -273,7 +273,7 @@ class SEQUENCER_PT_preview_overlay(Panel):
     @classmethod
     def poll(cls, context):
         st = context.space_data
-        return st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'} and st.display_mode == 'IMAGE'
+        return st.view_type in {'PREVIEW', 'SEQUENCER_PREVIEW'}
 
     def draw(self, context):
         ed = context.scene.sequence_editor
@@ -281,13 +281,18 @@ class SEQUENCER_PT_preview_overlay(Panel):
         overlay_settings = st.preview_overlay
         layout = self.layout
 
-        layout.active = st.show_overlays
-        layout.prop(overlay_settings, "show_image_outline")
-        layout.prop(overlay_settings, "show_cursor")
-        layout.prop(ed, "show_overlay_frame", text="Frame Overlay")
-        layout.prop(overlay_settings, "show_safe_areas", text="Safe Areas")
-        layout.prop(overlay_settings, "show_metadata", text="Metadata")
-        layout.prop(overlay_settings, "show_annotation", text="Annotations")
+        layout.active = st.show_overlays and st.display_mode == 'IMAGE'
+
+        split = layout.column().split()
+        col = split.column()
+        col.prop(overlay_settings, "show_image_outline")
+        col.prop(ed, "show_overlay_frame", text="Frame Overlay")
+        col.prop(overlay_settings, "show_metadata", text="Metadata")
+
+        col = split.column()
+        col.prop(overlay_settings, "show_cursor")
+        col.prop(overlay_settings, "show_safe_areas", text="Safe Areas")
+        col.prop(overlay_settings, "show_annotation", text="Annotations")
 
 
 class SEQUENCER_PT_sequencer_overlay(Panel):
@@ -322,6 +327,11 @@ class SEQUENCER_PT_sequencer_overlay_strips(Panel):
     bl_parent_id = "SEQUENCER_PT_overlay"
     bl_label = "Strips"
 
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        return st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}
+
     def draw(self, context):
         st = context.space_data
         overlay_settings = st.timeline_overlay
@@ -348,6 +358,11 @@ class SEQUENCER_PT_sequencer_overlay_waveforms(Panel):
     bl_region_type = 'HEADER'
     bl_parent_id = "SEQUENCER_PT_overlay"
     bl_label = "Waveforms"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        return st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}
 
     def draw(self, context):
         st = context.space_data
@@ -1829,6 +1844,47 @@ class SEQUENCER_PT_source(SequencerButtonsPanel, Panel):
                 split.label(text="{:.2f}".format(elem.orig_fps), translate=False)
 
 
+class SEQUENCER_PT_movie_clip(SequencerButtonsPanel, Panel):
+    bl_label = "Movie Clip"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_category = "Strip"
+
+    @classmethod
+    def poll(cls, context):
+        if not cls.has_sequencer(context):
+            return False
+
+        strip = context.active_sequence_strip
+        if not strip:
+            return False
+
+        return strip.type == 'MOVIECLIP'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        strip = context.active_sequence_strip
+
+        layout.active = not strip.mute
+        layout.template_ID(strip, "clip")
+
+        if strip.type == 'MOVIECLIP':
+            col = layout.column(heading="Use")
+            col.prop(strip, "stabilize2d", text="2D Stabilized Clip")
+            col.prop(strip, "undistort", text="Undestorted Clip")
+
+        clip = strip.clip
+        if clip:
+            sta = clip.frame_start
+            end = clip.frame_start + clip.frame_duration
+            layout.label(
+                text=rpt_("Original frame range: {:d}-{:d} ({:d})").format(sta, end, end - sta + 1),
+                translate=False,
+            )
+
+
 class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
     bl_label = "Scene"
     bl_category = "Strip"
@@ -2265,17 +2321,6 @@ class SEQUENCER_PT_adjust_video(SequencerButtonsPanel, Panel):
         layout.active = not strip.mute
 
         col.prop(strip, "strobe")
-
-        if strip.type == 'MOVIECLIP':
-            col = layout.column()
-            col.label(text="Tracker")
-            col.prop(strip, "stabilize2d")
-
-            col = layout.column()
-            col.label(text="Distortion")
-            col.prop(strip, "undistort")
-            col.separator()
-
         col.prop(strip, "use_reverse_frames")
 
 
@@ -2906,6 +2951,7 @@ classes = (
     SEQUENCER_PT_mask,
     SEQUENCER_PT_effect_text_style,
     SEQUENCER_PT_effect_text_layout,
+    SEQUENCER_PT_movie_clip,
 
     SEQUENCER_PT_adjust_comp,
     SEQUENCER_PT_adjust_transform,

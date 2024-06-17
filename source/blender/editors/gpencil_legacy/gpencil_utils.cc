@@ -1727,7 +1727,7 @@ void ED_gpencil_brush_draw_eraser(Brush *brush, int x, int y)
   GPU_line_smooth(false);
 }
 
-static bool gpencil_brush_cursor_poll(bContext *C)
+bool ED_gpencil_brush_cursor_poll(bContext *C)
 {
   if (WM_toolsystem_active_tool_is_brush(C)) {
     return true;
@@ -2018,7 +2018,7 @@ void ED_gpencil_toggle_brush_cursor(bContext *C, bool enable, void *customdata)
     /* enable cursor */
     gset->paintcursor = WM_paint_cursor_activate(SPACE_TYPE_ANY,
                                                  RGN_TYPE_ANY,
-                                                 gpencil_brush_cursor_poll,
+                                                 ED_gpencil_brush_cursor_poll,
                                                  gpencil_brush_cursor_draw,
                                                  (lastpost) ? customdata : nullptr);
   }
@@ -3430,7 +3430,11 @@ int ED_gpencil_new_layer_dialog(bContext *C, wmOperator *op)
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       gpencil_layer_new_name_get(gpd, name, sizeof(name));
       RNA_property_string_set(op->ptr, prop, name);
-      return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Add New Layer"), IFACE_("Add"));
+      return WM_operator_props_dialog_popup(C,
+                                            op,
+                                            200,
+                                            IFACE_("Add New Layer"),
+                                            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
     }
   }
   return 0;

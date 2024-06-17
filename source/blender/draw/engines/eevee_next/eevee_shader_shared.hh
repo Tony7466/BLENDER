@@ -795,6 +795,11 @@ struct LightCullingData {
   uint tile_y_len;
   /** Number of word per tile. Depends on the maximum number of lights. */
   uint tile_word_len;
+  /** Is the view being processed by light culling flipped (true for light probe planes). */
+  bool32_t view_is_flipped;
+  uint _pad0;
+  uint _pad1;
+  uint _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(LightCullingData, 16)
 
@@ -1317,8 +1322,8 @@ struct ShadowTileMapData {
   eLightType light_type;
   /** Entire tilemap (all tiles) needs to be tagged as dirty. */
   bool32_t is_dirty;
-
-  float _pad1;
+  /** Effective minimum resolution after update throttle. */
+  int effective_lod_min;
   float _pad2;
   /** Near and far clip distances for punctual. */
   float clip_near;

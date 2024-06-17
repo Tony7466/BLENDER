@@ -131,6 +131,11 @@ struct TreeDrawContext {
 
   blender::Map<bNodeInstanceKey, blender::timeit::Nanoseconds>
       *compositor_per_node_execution_time = nullptr;
+
+  /**
+   * Label for reroute nodes that is derived from upstream reroute nodes.
+   */
+  blender::Map<const bNode *, blender::StringRefNull> reroute_auto_labels;
 };
 
 float ED_node_grid_size()
@@ -1516,7 +1521,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
       case bke::GeometryComponent::Type::Curve: {
         const geo_log::GeometryInfoLog::CurveInfo &curve_info = *value_log.curve_info;
         fmt::format_to(fmt::appender(buf),
-                       TIP_("\u2022 Curve: {} points,{} splines"),
+                       TIP_("\u2022 Curve: {} points, {} splines"),
                        to_string(curve_info.points_num),
                        to_string(curve_info.splines_num));
         break;
@@ -2058,6 +2063,15 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
 
   /* Restore. */
   GPU_blend(state);
+}
+
+/** Some elements of the node UI are hidden, when they get too small. */
+#define NODE_TREE_SCALE_SMALL 0.2f
+
+/** The node tree scales both with the view and with the UI. */
+static float node_tree_view_scale(const SpaceNode &snode)
+{
+  return (1.0f / snode.runtime->aspect) * UI_SCALE_FAC;
 }
 
 static void node_draw_preview_background(rctf *rect)
@@ -3625,11 +3639,8 @@ static void node_draw_basis(const bContext &C,
     UI_draw_roundbox_4fv(&rect, false, BASIS_RAD + outline_width, color_outline);
   }
 
-  float scale;
-  UI_view2d_scale_get(&v2d, &scale, nullptr);
-
   /* Skip slow socket drawing if zoom is small. */
-  if (scale > 0.2f) {
+  if (node_tree_view_scale(snode) > NODE_TREE_SCALE_SMALL) {
     node_draw_sockets(v2d, C, ntree, node, block, true, false);
   }
 
@@ -4103,8 +4114,8 @@ static void frame_node_draw(const bContext &C,
                             TreeDrawContext &tree_draw_ctx,
                             const ARegion &region,
                             const SpaceNode &snode,
-                            bNodeTree &ntree,
-                            bNode &node,
+                            const bNodeTree &ntree,
+                            const bNode &node,
                             uiBlock &block)
 {
   /* Skip if out of view. */
@@ -4151,8 +4162,108 @@ static void frame_node_draw(const bContext &C,
   UI_block_draw(&C, &block);
 }
 
-static void reroute_node_draw(
-    const bContext &C, ARegion &region, bNodeTree &ntree, const bNode &node, uiBlock &block)
+/**
+ * Returns the reroute node linked to the input of the given reroute, if there is one.
+ */
+static const bNode *reroute_node_get_linked_reroute(const bNode &reroute)
+{
+  BLI_assert(reroute.is_reroute());
+
+  const bNodeSocket *input_socket = reroute.input_sockets().first();
+  if (input_socket->directly_linked_links().is_empty()) {
+    return nullptr;
+  }
+  const bNodeLink *input_link = input_socket->directly_linked_links().first();
+  const bNode *from_node = input_link->fromnode;
+  return from_node->is_reroute() ? from_node : nullptr;
+}
+
+/**
+ * The auto label overlay displays a label on reroute nodes based on the user-defined label of a
+ * linked reroute upstream.
+ */
+static StringRefNull reroute_node_get_auto_label(TreeDrawContext &tree_draw_ctx,
+                                                 const bNode &src_reroute)
+{
+  BLI_assert(src_reroute.is_reroute());
+
+  if (src_reroute.label[0] != '\0') {
+    return StringRefNull(src_reroute.label);
+  }
+
+  Map<const bNode *, StringRefNull> &reroute_auto_labels = tree_draw_ctx.reroute_auto_labels;
+
+  StringRefNull label;
+  Vector<const bNode *> reroute_path;
+
+  /* Traverse reroute path backwards until label, non-reroute node or link-cycle is found. */
+  for (const bNode *reroute = &src_reroute; reroute;
+       reroute = reroute_node_get_linked_reroute(*reroute))
+  {
+    reroute_path.append(reroute);
+    if (const StringRefNull *label_ptr = reroute_auto_labels.lookup_ptr(reroute)) {
+      label = *label_ptr;
+      break;
+    }
+    if (reroute->label[0] != '\0') {
+      label = reroute->label;
+      break;
+    }
+    /* This makes sure that the loop eventually ends even if there are link-cycles. */
+    reroute_auto_labels.add(reroute, "");
+  }
+
+  /* Remember the label for each node on the path to avoid recomputing it. */
+  for (const bNode *reroute : reroute_path) {
+    reroute_auto_labels.add_overwrite(reroute, label);
+  }
+
+  return label;
+}
+
+static void reroute_node_draw_label(TreeDrawContext &tree_draw_ctx,
+                                    const SpaceNode &snode,
+                                    const bNode &node,
+                                    uiBlock &block)
+{
+  const bool has_label = node.label[0] != '\0';
+  const bool use_auto_label = !has_label && (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+                              (snode.overlay.flag & SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS);
+
+  if (!has_label && !use_auto_label) {
+    return;
+  }
+
+  /* Don't show the automatic label, when being zoomed out. */
+  if (!has_label && node_tree_view_scale(snode) < NODE_TREE_SCALE_SMALL) {
+    return;
+  }
+
+  char showname[128];
+  STRNCPY(showname,
+          has_label ? node.label : reroute_node_get_auto_label(tree_draw_ctx, node).c_str());
+
+  const short width = 512;
+  const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
+  const int y = node.runtime->totr.ymax;
+
+  uiBut *label_but = uiDefBut(
+      &block, UI_BTYPE_LABEL, 0, showname, x, y, width, short(NODE_DY), nullptr, 0, 0, nullptr);
+
+  UI_but_drawflag_disable(label_but, UI_BUT_TEXT_LEFT);
+
+  if (use_auto_label && !(node.flag & NODE_SELECT)) {
+    UI_but_flag_enable(label_but, UI_BUT_INACTIVE);
+  }
+}
+
+static void reroute_node_draw(const bContext &C,
+                              TreeDrawContext &tree_draw_ctx,
+                              ARegion &region,
+                              const SpaceNode &snode,
+                              bNodeTree &ntree,
+                              const bNode &node,
+                              uiBlock &block)
 {
   /* Skip if out of view. */
   const rctf &rct = node.runtime->totr;
@@ -4163,19 +4274,7 @@ static void reroute_node_draw(
     return;
   }
 
-  if (node.label[0] != '\0') {
-    /* Draw title (node label). */
-    char showname[128]; /* 128 used below */
-    STRNCPY(showname, node.label);
-    const short width = 512;
-    const int x = BLI_rctf_cent_x(&node.runtime->totr) - (width / 2);
-    const int y = node.runtime->totr.ymax;
-
-    uiBut *label_but = uiDefBut(
-        &block, UI_BTYPE_LABEL, 0, showname, x, y, width, short(NODE_DY), nullptr, 0, 0, nullptr);
-
-    UI_but_drawflag_disable(label_but, UI_BUT_TEXT_LEFT);
-  }
+  reroute_node_draw_label(tree_draw_ctx, snode, node, block);
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
@@ -4195,10 +4294,11 @@ static void node_draw(const bContext &C,
                       bNodeInstanceKey key)
 {
   if (node.is_frame()) {
-    frame_node_draw(C, tree_draw_ctx, region, snode, ntree, node, block);
+    /* Should have been drawn before already. */
+    BLI_assert_unreachable();
   }
   else if (node.is_reroute()) {
-    reroute_node_draw(C, region, ntree, node, block);
+    reroute_node_draw(C, tree_draw_ctx, region, snode, ntree, node, block);
   }
   else {
     const View2D &v2d = region.v2d;
@@ -4288,10 +4388,12 @@ static void find_bounds_by_zone_recursive(const SpaceNode &snode,
   }
 }
 
-static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
-                            const ARegion &region,
-                            const SpaceNode &snode,
-                            const bNodeTree &ntree)
+static void node_draw_zones_and_frames(const bContext &C,
+                                       TreeDrawContext &tree_draw_ctx,
+                                       const ARegion &region,
+                                       const SpaceNode &snode,
+                                       const bNodeTree &ntree,
+                                       Span<uiBlock *> blocks)
 {
   const bNodeTreeZones *zones = ntree.zones();
   if (zones == nullptr) {
@@ -4301,7 +4403,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   Array<Vector<float2>> bounds_by_zone(zones->zones.size());
   Array<bke::CurvesGeometry> fillet_curve_by_zone(zones->zones.size());
   /* Bounding box area of zones is used to determine draw order. */
-  Array<float> bounding_box_area_by_zone(zones->zones.size());
+  Array<float> bounding_box_width_by_zone(zones->zones.size());
 
   for (const int zone_i : zones->zones.index_range()) {
     const bNodeTreeZone &zone = *zones->zones[zone_i];
@@ -4311,9 +4413,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     const int boundary_positions_num = boundary_positions.size();
 
     const Bounds<float2> bounding_box = *bounds::min_max(boundary_positions);
-    const float bounding_box_area = (bounding_box.max.x - bounding_box.min.x) *
-                                    (bounding_box.max.y - bounding_box.min.y);
-    bounding_box_area_by_zone[zone_i] = bounding_box_area;
+    const float bounding_box_width = bounding_box.max.x - bounding_box.min.x;
+    bounding_box_width_by_zone[zone_i] = bounding_box_width;
 
     bke::CurvesGeometry boundary_curve(boundary_positions_num, 1);
     boundary_curve.cyclic_for_write().first() = true;
@@ -4348,39 +4449,72 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
   const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  Vector<int> zone_draw_order;
-  for (const int zone_i : zones->zones.index_range()) {
-    zone_draw_order.append(zone_i);
+  using ZoneOrNode = std::variant<const bNodeTreeZone *, const bNode *>;
+  Vector<ZoneOrNode> draw_order;
+  for (const std::unique_ptr<bNodeTreeZone> &zone : zones->zones) {
+    draw_order.append(zone.get());
   }
-  std::sort(zone_draw_order.begin(), zone_draw_order.end(), [&](const int a, const int b) {
+  for (const bNode *node : ntree.all_nodes()) {
+    if (node->flag & NODE_BACKGROUND) {
+      draw_order.append(node);
+    }
+  }
+  auto get_zone_or_node_width = [&](const ZoneOrNode &zone_or_node) {
+    if (const bNodeTreeZone *const *zone_p = std::get_if<const bNodeTreeZone *>(&zone_or_node)) {
+      const bNodeTreeZone &zone = **zone_p;
+      return bounding_box_width_by_zone[zone.index];
+    }
+    if (const bNode *const *node_p = std::get_if<const bNode *>(&zone_or_node)) {
+      const bNode &node = **node_p;
+      return BLI_rctf_size_x(&node.runtime->totr);
+    }
+    BLI_assert_unreachable();
+    return 0.0f;
+  };
+  std::sort(draw_order.begin(), draw_order.end(), [&](const ZoneOrNode &a, const ZoneOrNode &b) {
     /* Draw zones with smaller bounding box on top to make them visible. */
-    return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
+    return get_zone_or_node_width(a) > get_zone_or_node_width(b);
   });
 
-  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones.
-   */
-  for (const int zone_i : zone_draw_order) {
-    float zone_color[4];
-    UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
-    if (zone_color[3] == 0.0f) {
-      break;
-    }
-    const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
-    /* Draw the background. */
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformThemeColorBlend(TH_BACK, get_theme_id(zone_i), zone_color[3]);
+  for (const ZoneOrNode &zone_or_node : draw_order) {
+    if (const bNodeTreeZone *const *zone_p = std::get_if<const bNodeTreeZone *>(&zone_or_node)) {
+      const bNodeTreeZone &zone = **zone_p;
+      const int zone_i = zone.index;
+      float zone_color[4];
+      UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
+      if (zone_color[3] == 0.0f) {
+        continue;
+      }
+      const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
+      /* Draw the background. */
+      immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+      immUniformThemeColorBlend(TH_BACK, get_theme_id(zone_i), zone_color[3]);
 
-    immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
-    for (const float3 &p : fillet_boundary_positions) {
-      immVertex3fv(pos, p);
-    }
-    immVertex3fv(pos, fillet_boundary_positions[0]);
-    immEnd();
+      immBegin(GPU_PRIM_TRI_FAN, fillet_boundary_positions.size() + 1);
+      for (const float3 &p : fillet_boundary_positions) {
+        immVertex3fv(pos, p);
+      }
+      immVertex3fv(pos, fillet_boundary_positions[0]);
+      immEnd();
 
-    immUnbindProgram();
+      immUnbindProgram();
+    }
+    if (const bNode *const *node_p = std::get_if<const bNode *>(&zone_or_node)) {
+      const bNode &node = **node_p;
+      frame_node_draw(C, tree_draw_ctx, region, snode, ntree, node, *blocks[node.index()]);
+    }
   }
 
-  for (const int zone_i : zone_draw_order) {
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones. */
+  for (const ZoneOrNode &zone_or_node : draw_order) {
+    const bNodeTreeZone *const *zone_p = std::get_if<const bNodeTreeZone *>(&zone_or_node);
+    if (!zone_p) {
+      continue;
+    }
+    const bNodeTreeZone &zone = **zone_p;
+    const int zone_i = zone.index;
     const Span<float3> fillet_boundary_positions = fillet_curve_by_zone[zone_i].positions();
     /* Draw the contour lines. */
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
@@ -4398,6 +4532,8 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
 
     immUnbindProgram();
   }
+
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 #define USE_DRAW_TOT_UPDATE
@@ -4415,20 +4551,12 @@ static void node_draw_nodetree(const bContext &C,
   BLI_rctf_init_minmax(&region.v2d.tot);
 #endif
 
-  /* Draw background nodes, last nodes in front. */
   for (const int i : nodes.index_range()) {
 #ifdef USE_DRAW_TOT_UPDATE
     /* Unrelated to background nodes, update the v2d->tot,
      * can be anywhere before we draw the scroll bars. */
     BLI_rctf_union(&region.v2d.tot, &nodes[i]->runtime->totr);
 #endif
-
-    if (!(nodes[i]->flag & NODE_BACKGROUND)) {
-      continue;
-    }
-
-    const bNodeInstanceKey key = bke::BKE_node_instance_key(parent_key, &ntree, nodes[i]);
-    node_draw(C, tree_draw_ctx, region, snode, ntree, *nodes[i], *blocks[i], key);
   }
 
   /* Node lines. */
@@ -4454,6 +4582,7 @@ static void node_draw_nodetree(const bContext &C,
   /* Draw foreground nodes, last nodes in front. */
   for (const int i : nodes.index_range()) {
     if (nodes[i]->flag & NODE_BACKGROUND) {
+      /* Background nodes are drawn before mixed with zones already. */
       continue;
     }
 
@@ -4580,7 +4709,7 @@ static void draw_nodetree(const bContext &C,
   }
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);
-  node_draw_zones(tree_draw_ctx, region, *snode, ntree);
+  node_draw_zones_and_frames(C, tree_draw_ctx, region, *snode, ntree, blocks);
   node_draw_nodetree(C, tree_draw_ctx, region, *snode, ntree, nodes, blocks, parent_key);
 }
 

@@ -40,6 +40,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
+#include "DNA_world_types.h"
 
 #include "BKE_appdir.hh"
 #include "BKE_attribute.hh"
@@ -724,12 +725,15 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
     brush->blur_kernel_radius = 2;
 
-    /* Use full strength for all non-sculpt brushes,
-     * when painting we want to use full color/weight always.
-     *
-     * Note that sculpt is an exception,
-     * its values are overwritten by #BKE_brush_sculpt_reset below. */
-    brush->alpha = 1.0;
+    /* Grease Pencil brushes have specific alpha values set. */
+    if (!brush->gpencil_settings) {
+      /* Use full strength for all non-sculpt brushes,
+       * when painting we want to use full color/weight always.
+       *
+       * Note that sculpt is an exception,
+       * its values are overwritten by #BKE_brush_sculpt_reset below. */
+      brush->alpha = 1.0;
+    }
 
     /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
@@ -911,18 +915,17 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     }
   }
 
-  if (app_template && STREQ(app_template, "2D_Animation")) {
-    /* Disable the unified paint setting for the brush radius. */
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->toolsettings->unified_paint_settings.flag &= ~UNIFIED_PAINT_SIZE;
-    }
-  }
-
   {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->shadow_maximum_resolution = 0.001f;
       light->transmission_fac = 1.0f;
       SET_FLAG_FROM_TEST(light->mode, false, LA_SHAD_RES_ABSOLUTE);
+    }
+  }
+
+  {
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      SET_FLAG_FROM_TEST(world->flag, true, WO_USE_SUN_SHADOW);
     }
   }
 }
