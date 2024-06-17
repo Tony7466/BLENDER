@@ -515,10 +515,10 @@ void Film::sync()
 
 void Film::end_sync()
 {
-  use_reprojection_ = inst_.sampling.interactive_mode();
+  use_reprojection_ = inst_.sampling.interactive_mode() && !force_disable_reprojection_;
 
   /* Just bypass the reprojection and reset the accumulation. */
-  if (inst_.is_viewport() && force_disable_reprojection_ && inst_.sampling.is_reset()) {
+  if (inst_.is_viewport() && !use_reprojection_ && inst_.sampling.is_reset()) {
     use_reprojection_ = false;
     data_.use_history = false;
   }
