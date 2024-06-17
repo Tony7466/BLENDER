@@ -115,8 +115,8 @@ static void calc_faces(const Sculpt &sd,
   scale_translations(translations, factors);
   scale_translations(translations, strength);
 
-  /* Use surface normal for 'spvc', so the vertices are pinched towards a line instead of a
-   * single point. Without this we get a 'flat' surface surrounding the pinch. */
+  /* The vertices are pinched towards a line instead of a single point. Without this we get a
+   * 'flat' surface surrounding the pinch. */
   project_translations(translations, cache.sculpt_normal_symm);
 
   add_offset_to_translations(translations, factors, offset);
@@ -181,8 +181,8 @@ static void calc_grids(
       translation *= fade;
       translation *= strength;
 
-      /* Use surface normal for 'spvc', so the vertices are pinched towards a line instead of a
-       * single point. Without this we get a 'flat' surface surrounding the pinch. */
+      /* The vertices are pinched towards a line instead of a single point. Without this we get a
+       * 'flat' surface surrounding the pinch. */
       project_plane_v3_v3v3(translation, translation, cache.sculpt_normal_symm);
 
       translation += offset * fade;
@@ -244,8 +244,8 @@ static void calc_bmesh(
     translation *= fade;
     translation *= strength;
 
-    /* Use surface normal for 'spvc', so the vertices are pinched towards a line instead of a
-     * single point. Without this we get a 'flat' surface surrounding the pinch. */
+    /* The vertices are pinched towards a line instead of a single point. Without this we get a
+     * 'flat' surface surrounding the pinch. */
     project_plane_v3_v3v3(translation, translation, cache.sculpt_normal_symm);
 
     translation += offset * fade;
