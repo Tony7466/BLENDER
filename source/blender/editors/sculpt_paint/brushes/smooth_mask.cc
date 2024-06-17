@@ -179,8 +179,8 @@ static void do_smooth_brush_mesh(const Brush &brush,
 
   bke::MutableAttributeAccessor write_attributes = mesh.attributes_for_write();
 
-  bke::SpanAttributeWriter<float> mask = write_attributes.lookup_or_add_for_write_span<float>(
-      ".sculpt_mask", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> mask = write_attributes.lookup_for_write_span<float>(
+      ".sculpt_mask");
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
   for (const float strength : iteration_strengths(brush_strength)) {
