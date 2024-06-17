@@ -61,7 +61,6 @@ static float average_masks(const Span<float> masks, const Span<int> indices)
 static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
                                     const Span<int> corner_verts,
                                     const GroupedSpan<int> vert_to_face_map,
-                                    const BitSpan boundary_verts,
                                     const Span<bool> hide_poly,
                                     const Span<int> verts,
                                     const Span<float> masks,
@@ -69,8 +68,7 @@ static void calc_smooth_masks_faces(const OffsetIndices<int> faces,
                                     const MutableSpan<float> new_masks)
 {
   tls.vert_neighbors.reinitialize(verts.size());
-  calc_vert_neighbors_interior(
-      faces, corner_verts, vert_to_face_map, boundary_verts, hide_poly, verts, tls.vert_neighbors);
+  calc_vert_neighbors(faces, corner_verts, vert_to_face_map, hide_poly, verts, tls.vert_neighbors);
   const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : verts.index_range()) {
@@ -189,7 +187,6 @@ static void do_smooth_brush_mesh(const Brush &brush,
         calc_smooth_masks_faces(faces,
                                 corner_verts,
                                 ss.vert_to_face_map,
-                                ss.vertex_info.boundary,
                                 hide_poly,
                                 bke::pbvh::node_unique_verts(*nodes[i]),
                                 mask.span.as_span(),
