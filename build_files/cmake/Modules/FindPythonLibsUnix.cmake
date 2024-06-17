@@ -50,7 +50,7 @@ if(APPLE)
   endif()
 else()
   # See: http://docs.python.org/extending/embedding.html#linking-requirements
-  set(PYTHON_LINKFLAGS "-Xlinker -export-dynamic" CACHE STRING "Linker flags for python")
+  set(PYTHON_LINKFLAGS "-Xlinker -export-dynamic -lpthread -ldl -lm  -lutil" CACHE STRING "Linker flags for python")
   mark_as_advanced(PYTHON_LINKFLAGS)
 endif()
 
