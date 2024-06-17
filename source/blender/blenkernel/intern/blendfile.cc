@@ -1661,13 +1661,13 @@ static CLG_LogRef LOG_PARTIALWRITE = {"bke.blendfile.partial_write"};
 namespace blender::bke::blendfile {
 
 PartialWriteContext::PartialWriteContext(StringRefNull reference_root_filepath)
-    : reference_root_filepath(reference_root_filepath)
+    : reference_root_filepath_(reference_root_filepath)
 {
   memset(&this->bmain, 0, sizeof(this->bmain));
   BKE_main_init(this->bmain);
-  if (!reference_root_filepath.is_empty()) {
+  if (!reference_root_filepath_.empty()) {
     BLI_strncpy(
-        this->bmain.filepath, reference_root_filepath.c_str(), sizeof(this->bmain.filepath));
+        this->bmain.filepath, reference_root_filepath_.c_str(), sizeof(this->bmain.filepath));
   }
   /* Only for IDs matching existing data in current G_MAIN. */
   matching_uid_map_ = BKE_main_idmap_create(&this->bmain, false, nullptr, MAIN_IDMAP_TYPE_UID);
@@ -1684,7 +1684,7 @@ PartialWriteContext::~PartialWriteContext()
   BKE_main_destroy(this->bmain);
 };
 
-void PartialWriteContext::preempt_session_uid_(ID *ctx_id, unsigned int session_uid)
+void PartialWriteContext::preempt_session_uid(ID *ctx_id, unsigned int session_uid)
 {
   /* If there is already an existing ID in the 'matching' set with that UID, it should be the same
    * as the given ctx_id. */
@@ -1724,7 +1724,7 @@ void PartialWriteContext::preempt_session_uid_(ID *ctx_id, unsigned int session_
   ctx_id->session_uid = session_uid;
 }
 
-void PartialWriteContext::ensure_id_user_(ID *ctx_id, const bool set_fake_user)
+void PartialWriteContext::ensure_id_user(ID *ctx_id, const bool set_fake_user)
 {
   if (set_fake_user) {
     id_fake_user_set(ctx_id);
@@ -1736,7 +1736,7 @@ void PartialWriteContext::ensure_id_user_(ID *ctx_id, const bool set_fake_user)
   }
 }
 
-ID *PartialWriteContext::id_add_copy_(const ID *id, const bool regenerate_session_uid)
+ID *PartialWriteContext::id_add_copy(const ID *id, const bool regenerate_session_uid)
 {
   ID *ctx_root_id = nullptr;
   BLI_assert(BKE_main_idmap_lookup_uid(matching_uid_map_, id->session_uid) == nullptr);
@@ -1753,16 +1753,16 @@ ID *PartialWriteContext::id_add_copy_(const ID *id, const bool regenerate_sessio
     BLI_assert(BKE_main_idmap_lookup_uid(matching_uid_map_, id->session_uid) == nullptr);
   }
   else {
-    preempt_session_uid_(ctx_root_id, id->session_uid);
+    this->preempt_session_uid(ctx_root_id, id->session_uid);
     BKE_main_idmap_insert_id(matching_uid_map_, ctx_root_id);
   }
   BKE_main_idmap_insert_id(this->bmain.id_map, ctx_root_id);
   BKE_libblock_management_main_add(&this->bmain, ctx_root_id);
-  /* TODO: remap external file paths as needed. */
+  /* Note: remapping of external file relative paths is done as part of the 'write' process. */
   return ctx_root_id;
 }
 
-void PartialWriteContext::make_local_(ID *ctx_id, const int make_local_flags)
+void PartialWriteContext::make_local(ID *ctx_id, const int make_local_flags)
 {
   /* Making an ID local typically resets its session UID, here we want to keep the same value. */
   const unsigned int ctx_id_session_uid = ctx_id->session_uid;
@@ -1771,12 +1771,12 @@ void PartialWriteContext::make_local_(ID *ctx_id, const int make_local_flags)
 
   BKE_lib_id_make_local(&this->bmain, ctx_id, make_local_flags);
 
-  preempt_session_uid_(ctx_id, ctx_id_session_uid);
+  this->preempt_session_uid(ctx_id, ctx_id_session_uid);
   BKE_main_idmap_insert_id(this->bmain.id_map, ctx_id);
   BKE_main_idmap_insert_id(matching_uid_map_, ctx_id);
 }
 
-Library *PartialWriteContext::ensure_library_(ID *ctx_id)
+Library *PartialWriteContext::ensure_library(ID *ctx_id)
 {
   if (!ID_IS_LINKED(ctx_id)) {
     return nullptr;
@@ -1784,13 +1784,13 @@ Library *PartialWriteContext::ensure_library_(ID *ctx_id)
   blender::StringRefNull lib_path = ctx_id->lib->runtime.filepath_abs;
   Library *ctx_lib = this->libraries_map_.lookup_default(lib_path, nullptr);
   if (!ctx_lib) {
-    ctx_lib = reinterpret_cast<Library *>(id_add_copy_(&ctx_id->lib->id, true));
+    ctx_lib = reinterpret_cast<Library *>(id_add_copy(&ctx_id->lib->id, true));
     this->libraries_map_.add(lib_path, ctx_lib);
   }
   ctx_id->lib = ctx_lib;
   return ctx_lib;
 }
-Library *PartialWriteContext::ensure_library_(blender::StringRefNull library_absolute_path)
+Library *PartialWriteContext::ensure_library(blender::StringRefNull library_absolute_path)
 {
   Library *ctx_lib = this->libraries_map_.lookup_default(library_absolute_path, nullptr);
   if (!ctx_lib) {
@@ -1832,7 +1832,7 @@ ID *PartialWriteContext::id_add(
     /* If the root orig ID is already in the context, assume all of its dependencies are as well.
      */
     BLI_assert(ctx_root_id->session_uid == id->session_uid);
-    ensure_id_user_(ctx_root_id, set_fake_user);
+    this->ensure_id_user(ctx_root_id, set_fake_user);
     return ctx_root_id;
   }
 
@@ -1846,11 +1846,11 @@ ID *PartialWriteContext::id_add(
    * otherwise). */
   blender::Vector<std::pair<ID *, PartialWriteContext::AddIDOptions>> post_process_ids_todo;
 
-  ctx_root_id = id_add_copy_(id, false);
+  ctx_root_id = id_add_copy(id, false);
   BLI_assert(ctx_root_id->session_uid == id->session_uid);
   local_ctx_id_map.add(id, ctx_root_id);
   post_process_ids_todo.append({ctx_root_id, options});
-  ensure_id_user_(ctx_root_id, set_fake_user);
+  this->ensure_id_user(ctx_root_id, set_fake_user);
 
   blender::VectorSet<ID *> ids_to_process{ctx_root_id};
   auto dependencies_cb = [this,
@@ -1930,7 +1930,7 @@ ID *PartialWriteContext::id_add(
         *id_ptr = nullptr;
         return IDWALK_RET_NOP;
       }
-      ctx_deps_id = this->id_add_copy_(orig_deps_id, duplicate_dependencies);
+      ctx_deps_id = this->id_add_copy(orig_deps_id, duplicate_dependencies);
       local_ctx_id_map.add(orig_deps_id, ctx_deps_id);
       ids_to_process.add(ctx_deps_id);
       post_process_ids_todo.append({ctx_deps_id, options_final});
@@ -1941,7 +1941,7 @@ ID *PartialWriteContext::id_add(
     else {
       BLI_assert(ctx_deps_id->session_uid == orig_deps_id->session_uid);
     }
-    ensure_id_user_(ctx_deps_id, set_fake_user);
+    this->ensure_id_user(ctx_deps_id, set_fake_user);
     /* In-place remapping. */
     *id_ptr = ctx_deps_id;
     return IDWALK_RET_NOP;
@@ -1956,12 +1956,12 @@ ID *PartialWriteContext::id_add(
    *   - Make them local or ensure that their library reference is also in the context.
    */
   for (auto [ctx_id, options_final] : post_process_ids_todo) {
-    const bool make_local = (options_final & MAKE_LOCAL) != 0;
-    if (make_local) {
-      make_local_(ctx_id, make_local_flags);
+    const bool do_make_local = (options_final & MAKE_LOCAL) != 0;
+    if (do_make_local) {
+      this->make_local(ctx_id, make_local_flags);
     }
     else {
-      ensure_library_(ctx_id);
+      this->ensure_library(ctx_id);
     }
   }
 
@@ -1977,13 +1977,13 @@ ID *PartialWriteContext::id_create(const short id_type,
 
   Library *ctx_library = nullptr;
   if (library) {
-    ctx_library = ensure_library_(library->runtime.filepath_abs);
+    ctx_library = this->ensure_library(library->runtime.filepath_abs);
   }
   ID *ctx_id = static_cast<ID *>(
       BKE_id_new_in_lib(&this->bmain, ctx_library, id_type, id_name.c_str()));
   ctx_id->tag |= LIB_TAG_TEMP_MAIN;
   id_us_min(ctx_id);
-  ensure_id_user_(ctx_id, set_fake_user);
+  this->ensure_id_user(ctx_id, set_fake_user);
   /* See function doc about why handling of #matching_uid_map_ can be skipped here. */
   BKE_main_idmap_insert_id(this->bmain.id_map, ctx_id);
   return ctx_id;
@@ -2027,13 +2027,13 @@ void PartialWriteContext::remove_unused(const bool clear_extra_user)
   BKE_id_multi_tagged_delete(&this->bmain);
 }
 
-void PartialWriteContext::clear(void)
+void PartialWriteContext::clear()
 {
   BKE_main_idmap_clear(*matching_uid_map_);
   BKE_main_clear(this->bmain);
 }
 
-bool PartialWriteContext::is_valid(void)
+bool PartialWriteContext::is_valid()
 {
   blender::Set<ID *> ids_in_context;
   blender::Set<uint> session_uids_in_context;
@@ -2100,7 +2100,7 @@ bool PartialWriteContext::write(const char *write_filepath,
                                 const int remap_mode,
                                 ReportList &reports)
 {
-  BLI_assert_msg(write_filepath != this->reference_root_filepath,
+  BLI_assert_msg(write_filepath != reference_root_filepath_,
                  "A library blendfile should not overwrite currently edited blendfile");
 
   /* In case the write path is the same as one of the libraries used by this context, make this

@@ -268,6 +268,9 @@ void BKE_main_init(Main &bmain);
 /**
  * Make given \a bmain empty again, and free all runtime mappings.
  *
+ * This is similar to a call to #BKE_main_destroy followed by #BKE_main_init, however the internal
+ * #Main::lock is kept unchanged, and the #Main::is_global_main flag is not reset to `true` either.
+ *
  * \note: Unlike #BKE_main_free, only process the given \a bmain, without handling any potential
  * other linked Main.
  */

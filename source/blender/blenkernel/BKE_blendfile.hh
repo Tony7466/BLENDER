@@ -11,6 +11,7 @@
 
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
+#include "BLI_utility_mixins.hh"
 
 #include <string>
 
@@ -158,20 +159,26 @@ namespace blender::bke::blendfile {
  * This wrapper around the Main struct is designed to have a very short life span, during which it
  * will contain independent copies of the IDs that are added to it.
  *
- * It also has advanced ways to handle dependencies and libraries for linked IDs.
+ * In general, the #G_MAIN data should not change while such a context exists, otherwise mapping
+ * info between the context content and the G_MAIN content cannot be kept up-to-date.
  *
  * The context can then be written to disk, and destroyed.
  *
+ * It also has advanced ways to handle ID dependencies (and libraries for linked IDs), by allowing
+ * specific handling for each dependency individually. By using the `dependencies_filter_cb`
+ * optional parameter of #id_add, it is possible to skip (ignore) certain dependencies, or make
+ * linked ones local in the context, etc.
+ *
  * Design task: #122061
  */
-class PartialWriteContext {
+class PartialWriteContext : NonCopyable, NonMovable {
  public:
   /** The temp Main itself, storing all IDs copied into this partial write context. */
   Main bmain;
 
  private:
   /**
-   * The filepath that should be used a root for IDs _added_ to the context, when handling
+   * The filepath that should be used as root for IDs _added_ to the context, when handling
    * remapping of their relative filepaths.
    *
    * Typically, the current G_MAIN's filepath.
@@ -180,7 +187,7 @@ class PartialWriteContext {
    * of relative filepaths. This may change in the future, if context can be loaded from external
    * blendfiles.
    */
-  std::string reference_root_filepath;
+  std::string reference_root_filepath_;
   /**
    * This mapping only contains entries for IDs in the context which have a known matching ID in
    * current G_MAIN.
@@ -198,42 +205,37 @@ class PartialWriteContext {
    * context, the added one should be able to 'steal' that session_uid in the context, and
    * re-assign a new one to the other ID.
    */
-  void preempt_session_uid_(ID *ctx_id, unsigned int session_uid);
+  void preempt_session_uid(ID *ctx_id, unsigned int session_uid);
   /**
    * Ensures that given ID will be written on disk (within current context).
    *
    * This is achieved either by setting the 'fake user' flag, or the (runtime-only, cleared on next
    * file load) 'extra user' tag. */
-  void ensure_id_user_(ID *ctx_id, bool set_fake_user);
+  void ensure_id_user(ID *ctx_id, bool set_fake_user);
   /**
    * Utils for #PartialWriteContext::id_add, only adds (duplicate) the given source ID into
    * current context.
    */
-  ID *id_add_copy_(const ID *id, bool regenerate_session_uid);
+  ID *id_add_copy(const ID *id, bool regenerate_session_uid);
   /** Make given context ID local to the context. */
-  void make_local_(ID *ctx_id, int make_local_flags);
+  void make_local(ID *ctx_id, int make_local_flags);
   /**
    * Ensure that the given ID's library has a matching Library ID in the context, copying the
    * current `ctx_id->lib` one if needed.
    */
-  Library *ensure_library_(ID *ctx_id);
+  Library *ensure_library(ID *ctx_id);
   /**
    * Ensure that the given library path has a matching Library ID in the context, creating a new
    * one if needed.
    */
-  Library *ensure_library_(blender::StringRefNull library_absolute_path);
+  Library *ensure_library(StringRefNull library_absolute_path);
 
  public:
   /* Passing a reference root filepath is mandatory, for remapping of relative paths to work as
    * expected. */
   PartialWriteContext() = delete;
-  PartialWriteContext(blender::StringRefNull reference_root_filepath);
+  PartialWriteContext(StringRefNull reference_root_filepath);
   ~PartialWriteContext();
-  /* Delete regular copy constructor, such that only the default move copy constructor (and
-   * assignement operator) can be used. */
-  PartialWriteContext(const PartialWriteContext &) = delete;
-  PartialWriteContext(PartialWriteContext &&) = default;
-  PartialWriteContext &operator=(PartialWriteContext &&) = default;
 
   /**
    * Control how to handle IDs and their dependencies when they are added to this context.
@@ -294,7 +296,7 @@ class PartialWriteContext {
    * \return The pointer to the duplicated ID in the partial write context.
    */
   ID *id_add(const ID *id,
-             PartialWriteContext::AddIDOptions options,
+             AddIDOptions options,
              blender::FunctionRef<PartialWriteContext::AddIDOptions(
                  LibraryIDLinkCallbackData *cb_data, PartialWriteContext::AddIDOptions options)>
                  dependencies_filter_cb = nullptr);
@@ -312,7 +314,7 @@ class PartialWriteContext {
    *                 option currently is the #SET_FAKE_USER one.
    */
   ID *id_create(short id_type,
-                blender::StringRefNull id_name,
+                StringRefNull id_name,
                 Library *library,
                 PartialWriteContext::AddIDOptions options);
 
@@ -342,7 +344,7 @@ class PartialWriteContext {
   /**
    * Fully empty the partial write context.
    */
-  void clear(void);
+  void clear();
 
   /**
    * Debug: Check if the current partial write context is fully valid.
@@ -351,7 +353,7 @@ class PartialWriteContext {
    *
    * \return false if the context is invalid.
    */
-  bool is_valid(void);
+  bool is_valid();
 
   /**
    * Write the content of the current context as a blendfile on disk.
