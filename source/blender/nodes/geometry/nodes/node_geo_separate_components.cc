@@ -16,6 +16,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Volume")
       .translation_context(BLT_I18NCONTEXT_ID_ID)
       .propagate_all();
+  b.add_output<decl::Geometry>("Physics").propagate_all();
   b.add_output<decl::Geometry>("Instances").propagate_all();
 }
 
@@ -39,6 +40,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet point_clouds;
   GeometrySet volumes;
   GeometrySet instances;
+  GeometrySet physics;
 
   if (geometry_set.has<MeshComponent>()) {
     meshes.add(*geometry_set.get_component<MeshComponent>());
@@ -58,6 +60,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (geometry_set.has<InstancesComponent>()) {
     instances.add(*geometry_set.get_component<InstancesComponent>());
   }
+  if (geometry_set.has<PhysicsComponent>()) {
+    physics.add(*geometry_set.get_component<PhysicsComponent>());
+  }
 
   params.set_output("Mesh", meshes);
   params.set_output("Curve", curves);
@@ -67,6 +72,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Point Cloud", point_clouds);
   params.set_output("Volume", volumes);
   params.set_output("Instances", instances);
+  params.set_output("Physics", physics);
 }
 
 static void node_register()
