@@ -4,8 +4,10 @@
 
 #pragma once
 
+#include "BLI_bit_span.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
@@ -33,19 +35,6 @@ struct PBVH;
 struct PBVHNode;
 struct Sculpt;
 struct SculptSession;
-
-namespace blender {
-namespace bits {
-class BitSpan;
-}
-using bits::BitSpan;
-namespace offset_indices {
-template<typename T> class OffsetIndices;
-template<typename T> class GroupedSpan;
-}  // namespace offset_indices
-using offset_indices::GroupedSpan;
-using offset_indices::OffsetIndices;
-}  // namespace blender
 
 namespace blender::ed::sculpt_paint {
 struct StrokeCache;
