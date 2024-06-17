@@ -257,14 +257,18 @@ static void calc_bmesh(
 
 }  // namespace crease_cc
 
-void do_crease_brush(const Scene &scene, const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+void do_crease_brush(const Scene &scene,
+                     const Sculpt &sd,
+                     const bool invert_strength,
+                     Object &object,
+                     Span<PBVHNode *> nodes)
 {
   const SculptSession &ss = *object.sculpt;
+  const StrokeCache &cache = *ss.cache;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
   /* Offset with as much as possible factored in already. */
-  const float3 offset = ss.cache->sculpt_normal_symm * ss.cache->scale * ss.cache->radius *
-                        ss.cache->bstrength;
+  const float3 offset = cache.sculpt_normal_symm * cache.scale * cache.radius * cache.bstrength;
 
   /* We divide out the squared alpha and multiply by the squared crease
    * to give us the pinch strength. */
@@ -275,10 +279,8 @@ void do_crease_brush(const Scene &scene, const Sculpt &sd, Object &object, Span<
   }
 
   /* We always want crease to pinch or blob to relax even when draw is negative. */
-  float strength = std::abs(ss.cache->bstrength) * crease_correction;
-  if (brush.sculpt_tool == SCULPT_TOOL_BLOB) {
-    strength *= -1.0f;
-  }
+  const float strength = std::abs(cache.bstrength) * crease_correction *
+                         (invert_strength ? -1.0f : 1.0f);
 
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {

@@ -3780,10 +3780,10 @@ static void do_brush_action(const Scene &scene,
       }
       break;
     case SCULPT_TOOL_CREASE:
-      do_crease_brush(scene, sd, ob, nodes);
+      do_crease_brush(scene, sd, false, ob, nodes);
       break;
     case SCULPT_TOOL_BLOB:
-      do_crease_brush(scene, sd, ob, nodes);
+      do_crease_brush(scene, sd, true, ob, nodes);
       break;
     case SCULPT_TOOL_PINCH:
       SCULPT_do_pinch_brush(sd, ob, nodes);
