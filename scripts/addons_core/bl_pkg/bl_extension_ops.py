@@ -1355,9 +1355,12 @@ class EXTENSIONS_OT_repo_add_from_drop(Operator):
         col.label(text="If you trust its source, add the repository and try again.")
 
         col.separator()
-        box = col.box()
-        subcol = box.column(align=True)
-        subcol.label(text="URL: " + url_for_display)
+        if url_for_display:
+            box = col.box()
+            subcol = box.column(align=True)
+            subcol.label(text="URL: " + url_for_display)
+        else:
+            col.label(text="Alternatively download the extension to Install from Disk.")
 
 
 # Show a dialog when dropping an extensions for a disabled repository.
@@ -2359,11 +2362,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         repo_index, repo_name, pkg_id, item_remote, item_local = extension_url_find_repo_index_and_pkg_id(url)
 
         if repo_index == -1:
-            # The `remote_url` may not be defined, in this case there is not much we can do.
-            if not remote_url:
-                self.report({'ERROR'}, "Extension: URL not found in remote repositories!\n{:s}".format(url))
-            else:
-                bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url=remote_url)
+            bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url="" if remote_url is None else remote_url)
             return {'CANCELLED'}
 
         if item_local is not None:
