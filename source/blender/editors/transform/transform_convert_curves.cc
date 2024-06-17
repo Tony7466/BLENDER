@@ -272,24 +272,26 @@ static void fill_map(const CurveType curve_type,
                      const int handles_offset,
                      MutableSpan<int> map)
 {
-  const int attr_num = (curve_type == CURVE_TYPE_BEZIER) ? 3 : 1;
-  const int left_handle_index = handles_offset + position_offsets_in_td[1].start();
   const int position_index = curve_points.start() + position_offsets_in_td[0].start();
-  const int right_handle_index = handles_offset + position_offsets_in_td[2].start();
-
-  std::array<int, 3> first_per_attr = {curve_type == CURVE_TYPE_BEZIER ? left_handle_index :
-                                                                         position_index,
-                                       /* Next two unused for non Bezier curves. */
-                                       position_index,
-                                       right_handle_index};
-
-  threading::parallel_for(curve_points.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      for (const int attr : IndexRange(attr_num)) {
-        map[i * attr_num + attr] = first_per_attr[attr] + i;
+  if (curve_type == CURVE_TYPE_BEZIER) {
+    const int left_handle_index = handles_offset + position_offsets_in_td[1].start();
+    const int right_handle_index = handles_offset + position_offsets_in_td[2].start();
+    std::array<int, 3> first_per_attr = {left_handle_index, position_index, right_handle_index};
+    threading::parallel_for(curve_points.index_range(), 4096, [&](const IndexRange range) {
+      for (const int i : range) {
+        for (const int attr : IndexRange(3)) {
+          map[i * 3 + attr] = first_per_attr[attr] + i;
+        }
       }
-    }
-  });
+    });
+  }
+  else {
+    threading::parallel_for(curve_points.index_range(), 4096, [&](const IndexRange range) {
+      for (const int i : range) {
+        map[i] = position_index + i;
+      }
+    });
+  }
 }
 
 }  // namespace blender::ed::transform::curves
