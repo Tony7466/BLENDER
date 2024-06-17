@@ -21,6 +21,7 @@
 #include "MEM_guardedalloc.h" /* for MEM_freeN MEM_mallocN MEM_callocN */
 
 #include "BLI_endian_switch.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -526,12 +527,14 @@ static bool init_structDNA(SDNA *sdna, bool do_endian_swap, const char **r_error
   sdna->types_alignment = static_cast<int *>(
       MEM_malloc_arrayN(sdna->types_len, sizeof(int), __func__));
   for (int i = 0; i < sdna->types_len; i++) {
-    const int size = sdna->types_size[i];
     sdna->types_alignment[i] = int(__STDCPP_DEFAULT_NEW_ALIGNMENT__);
   }
   {
     uint dummy_index = 0;
-    sdna->types_alignment[DNA_struct_find_without_alias_ex(sdna, "mat4x4f", &dummy_index)] = 16;
+    /* TODO: This should be generalized at some point. We should be able to specify overaligned
+     * types directly in the DNA struct definitions. */
+    sdna->types_alignment[DNA_struct_find_without_alias_ex(sdna, "mat4x4f", &dummy_index)] =
+        alignof(blender::float4x4);
   }
 
   return true;
