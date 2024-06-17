@@ -240,11 +240,11 @@ class PartialWriteContext : NonCopyable, NonMovable {
   /**
    * Control how to handle IDs and their dependencies when they are added to this context.
    *
-   * \note For linked IDs, if #MAKE_LOCAL is not used, the library ID opinter is _not_ considered
+   * \note For linked IDs, if #MAKE_LOCAL is not used, the library ID pointer is _not_ considered
    * nor hanlded as a regular dependency. Instead, the library is _always_ added to the context
    * data, and never duplicated. Also, library matching always happens based on absolute filepath.
    */
-  enum AddIDOptions {
+  enum IDAddOperations {
     NOP = 0,
     /**
      * Do not keep linked info (library and/or liboverride references).
@@ -282,13 +282,19 @@ class PartialWriteContext : NonCopyable, NonMovable {
     DUPLICATE_DEPENDENCIES = 1 << 10,
   };
   /**
+   * Options passed to the #id_add method.
+   */
+  struct IDAddOptions {
+    IDAddOperations operations;
+  };
+  /**
    * Add a copy of the given ID to the partial write context.
    *
    * \note The duplicated ID will have the same session_uid as its source. In case a matching ID
    * already exists in the context, it is returned instead of duplicating it again.
    *
    * \param options: Control how the added ID (and its dependencies) are handled. See
-   *                 #PartialWriteContext::AddIDOptions above for details.
+   *                 #IDAddOptions and #IDAddOperations above for details.
    * \param dependencies_filter_cb: optional, a callback called for each ID usages. Currently, only
    *                                accepted return values are #MAKE_LOCAL, #SET_FAKE_USER, and
    *                                #ADD_DEPENDENCIES or #CLEAR_DEPENDENCIES.
@@ -296,10 +302,10 @@ class PartialWriteContext : NonCopyable, NonMovable {
    * \return The pointer to the duplicated ID in the partial write context.
    */
   ID *id_add(const ID *id,
-             AddIDOptions options,
-             blender::FunctionRef<PartialWriteContext::AddIDOptions(
-                 LibraryIDLinkCallbackData *cb_data, PartialWriteContext::AddIDOptions options)>
-                 dependencies_filter_cb = nullptr);
+             IDAddOptions options,
+             blender::FunctionRef<IDAddOperations(LibraryIDLinkCallbackData *cb_data,
+                                                  IDAddOptions options)> dependencies_filter_cb =
+                 nullptr);
 
   /**
    * Add and return a new ID into the partial write context.
@@ -310,13 +316,10 @@ class PartialWriteContext : NonCopyable, NonMovable {
    * preempted later by another ID added from the current G_MAIN).
    *
    * \param options: Control how the added ID (and its dependencies) are handled. See
-   *                 #PartialWriteContext::AddIDOptions above for details, note that only relevant
-   *                 option currently is the #SET_FAKE_USER one.
+   *                 #IDAddOptions and #IDAddOperations above for details, note that only
+   *                 relevant operation currently is the #SET_FAKE_USER one.
    */
-  ID *id_create(short id_type,
-                StringRefNull id_name,
-                Library *library,
-                PartialWriteContext::AddIDOptions options);
+  ID *id_create(short id_type, StringRefNull id_name, Library *library, IDAddOptions options);
 
   /**
    * Delete the copy of the given ID from the partial write context.

@@ -1806,18 +1806,18 @@ Library *PartialWriteContext::ensure_library(blender::StringRefNull library_abso
 
 ID *PartialWriteContext::id_add(
     const ID *id,
-    PartialWriteContext::AddIDOptions options,
-    blender::FunctionRef<PartialWriteContext::AddIDOptions(
-        LibraryIDLinkCallbackData *cb_data, PartialWriteContext::AddIDOptions options)>
+    PartialWriteContext::IDAddOptions options,
+    blender::FunctionRef<PartialWriteContext::IDAddOperations(
+        LibraryIDLinkCallbackData *cb_data, PartialWriteContext::IDAddOptions options)>
         dependencies_filter_cb)
 {
   constexpr int make_local_flags = (LIB_ID_MAKELOCAL_INDIRECT | LIB_ID_MAKELOCAL_FORCE_LOCAL |
                                     LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR);
 
-  const bool set_fake_user = (options & SET_FAKE_USER) != 0;
-  const bool add_dependencies = (options & ADD_DEPENDENCIES) != 0;
-  const bool clear_dependencies = (options & CLEAR_DEPENDENCIES) != 0;
-  const bool duplicate_dependencies = (options & DUPLICATE_DEPENDENCIES) != 0;
+  const bool set_fake_user = (options.operations & SET_FAKE_USER) != 0;
+  const bool add_dependencies = (options.operations & ADD_DEPENDENCIES) != 0;
+  const bool clear_dependencies = (options.operations & CLEAR_DEPENDENCIES) != 0;
+  const bool duplicate_dependencies = (options.operations & DUPLICATE_DEPENDENCIES) != 0;
   BLI_assert(clear_dependencies || add_dependencies);
   BLI_assert(!clear_dependencies || !(add_dependencies || duplicate_dependencies));
 
@@ -1841,15 +1841,15 @@ ID *PartialWriteContext::id_add(
    * dependencies of the added ID. */
   blender::Map<const ID *, ID *> local_ctx_id_map;
   /* A list of IDs to post-process. Only contains IDs that were actually added to the context (not
-   * the ones that were already there and were re-used). The #AddIDOptions item of the pair stores
-   * the returned value from the given #dependencies_filter_cb (or given global #options parameter
-   * otherwise). */
-  blender::Vector<std::pair<ID *, PartialWriteContext::AddIDOptions>> post_process_ids_todo;
+   * the ones that were already there and were re-used). The #IDAddOperations item of the pair
+   * stores the returned value from the given #dependencies_filter_cb (or given global #options
+   * parameter otherwise). */
+  blender::Vector<std::pair<ID *, PartialWriteContext::IDAddOperations>> post_process_ids_todo;
 
   ctx_root_id = id_add_copy(id, false);
   BLI_assert(ctx_root_id->session_uid == id->session_uid);
   local_ctx_id_map.add(id, ctx_root_id);
-  post_process_ids_todo.append({ctx_root_id, options});
+  post_process_ids_todo.append({ctx_root_id, options.operations});
   this->ensure_id_user(ctx_root_id, set_fake_user);
 
   blender::VectorSet<ID *> ids_to_process{ctx_root_id};
@@ -1859,9 +1859,9 @@ ID *PartialWriteContext::id_add(
                           &ids_to_process,
                           &post_process_ids_todo,
                           dependencies_filter_cb](LibraryIDLinkCallbackData *cb_data) -> int {
-    constexpr PartialWriteContext::AddIDOptions per_id_options_filter =
-        PartialWriteContext::AddIDOptions(MAKE_LOCAL | SET_FAKE_USER | CLEAR_DEPENDENCIES |
-                                          DUPLICATE_DEPENDENCIES);
+    constexpr PartialWriteContext::IDAddOperations per_id_operations_filter =
+        PartialWriteContext::IDAddOperations(MAKE_LOCAL | SET_FAKE_USER | CLEAR_DEPENDENCIES |
+                                             DUPLICATE_DEPENDENCIES);
     ID **id_ptr = cb_data->id_pointer;
     const ID *orig_deps_id = *id_ptr;
 
@@ -1878,17 +1878,19 @@ ID *PartialWriteContext::id_add(
       return IDWALK_RET_NOP;
     }
 
-    PartialWriteContext::AddIDOptions options_final = options;
+    PartialWriteContext::IDAddOperations operations_final = options.operations;
     if (dependencies_filter_cb) {
-      PartialWriteContext::AddIDOptions options_per_id = dependencies_filter_cb(cb_data, options);
-      options_final = PartialWriteContext::AddIDOptions((options_per_id & per_id_options_filter) |
-                                                        (options & ~per_id_options_filter));
+      PartialWriteContext::IDAddOperations operations_per_id = dependencies_filter_cb(cb_data,
+                                                                                      options);
+      operations_final = PartialWriteContext::IDAddOperations(
+          (operations_per_id & per_id_operations_filter) |
+          (options.operations & ~per_id_operations_filter));
     }
 
-    const bool set_fake_user = (options & SET_FAKE_USER) != 0;
-    const bool add_dependencies = (options_final & ADD_DEPENDENCIES) != 0;
-    const bool clear_dependencies = (options_final & CLEAR_DEPENDENCIES) != 0;
-    const bool duplicate_dependencies = (options_final & DUPLICATE_DEPENDENCIES) != 0;
+    const bool set_fake_user = (operations_final & SET_FAKE_USER) != 0;
+    const bool add_dependencies = (operations_final & ADD_DEPENDENCIES) != 0;
+    const bool clear_dependencies = (operations_final & CLEAR_DEPENDENCIES) != 0;
+    const bool duplicate_dependencies = (operations_final & DUPLICATE_DEPENDENCIES) != 0;
     BLI_assert(clear_dependencies || add_dependencies);
     BLI_assert(!clear_dependencies || !(add_dependencies || duplicate_dependencies));
 
@@ -1933,7 +1935,7 @@ ID *PartialWriteContext::id_add(
       ctx_deps_id = this->id_add_copy(orig_deps_id, duplicate_dependencies);
       local_ctx_id_map.add(orig_deps_id, ctx_deps_id);
       ids_to_process.add(ctx_deps_id);
-      post_process_ids_todo.append({ctx_deps_id, options_final});
+      post_process_ids_todo.append({ctx_deps_id, operations_final});
     }
     if (duplicate_dependencies) {
       BLI_assert(ctx_deps_id->session_uid != orig_deps_id->session_uid);
@@ -1971,9 +1973,9 @@ ID *PartialWriteContext::id_add(
 ID *PartialWriteContext::id_create(const short id_type,
                                    const blender::StringRefNull id_name,
                                    Library *library,
-                                   PartialWriteContext::AddIDOptions options)
+                                   PartialWriteContext::IDAddOptions options)
 {
-  const bool set_fake_user = (options & SET_FAKE_USER) != 0;
+  const bool set_fake_user = (options.operations & SET_FAKE_USER) != 0;
 
   Library *ctx_library = nullptr;
   if (library) {

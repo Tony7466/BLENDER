@@ -125,8 +125,11 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   const char *scene_name = "copybuffer_vse_scene";
 
   /* Add a dummy empty scene to the temporary Main copy buffer. */
-  Scene *scene_dst = reinterpret_cast<Scene *>(copy_buffer.id_create(
-      ID_SCE, scene_name, nullptr, blendfile::PartialWriteContext::AddIDOptions::SET_FAKE_USER));
+  Scene *scene_dst = reinterpret_cast<Scene *>(
+      copy_buffer.id_create(ID_SCE,
+                            scene_name,
+                            nullptr,
+                            {blendfile::PartialWriteContext::IDAddOperations::SET_FAKE_USER}));
   id_fake_user_set(&scene_dst->id);
   scene_dst->id.flag |= LIB_CLIPBOARD_MARK;
 
@@ -161,7 +164,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
     BLI_assert(scene_dst->adt == nullptr);
     scene_dst->adt = BKE_animdata_ensure_id(&scene_dst->id);
     scene_dst->adt->action = reinterpret_cast<bAction *>(copy_buffer.id_create(
-        ID_AC, scene_name, nullptr, blendfile::PartialWriteContext::AddIDOptions::NOP));
+        ID_AC, scene_name, nullptr, {blendfile::PartialWriteContext::IDAddOperations::NOP}));
     id_fake_user_set(&scene_dst->adt->action->id);
     BLI_movelisttolist(&scene_dst->adt->action->curves, &fcurves_dst);
     BLI_movelisttolist(&scene_dst->adt->drivers, &drivers_dst);
@@ -207,20 +210,21 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
        */
       auto partial_write_dependencies_filter_cb =
           [](LibraryIDLinkCallbackData *cb_deps_data,
-             blendfile::PartialWriteContext::AddIDOptions /*options*/)
-          -> blendfile::PartialWriteContext::AddIDOptions {
+             blendfile::PartialWriteContext::IDAddOptions /*options*/)
+          -> blendfile::PartialWriteContext::IDAddOperations {
         ID *id_deps_src = *cb_deps_data->id_pointer;
         const ID_Type id_type = GS((id_deps_src)->name);
         if (ELEM(id_type, VSE_COPYBUFFER_IDTYPES) ||
             (cb_deps_data->cb_flag & IDWALK_CB_NEVER_NULL))
         {
-          return blendfile::PartialWriteContext::AddIDOptions::ADD_DEPENDENCIES;
+          return blendfile::PartialWriteContext::IDAddOperations::ADD_DEPENDENCIES;
         }
-        return blendfile::PartialWriteContext::AddIDOptions::CLEAR_DEPENDENCIES;
+        return blendfile::PartialWriteContext::IDAddOperations::CLEAR_DEPENDENCIES;
       };
-      id_dst = copy_buffer.id_add(id_src,
-                                  blendfile::PartialWriteContext::AddIDOptions::CLEAR_DEPENDENCIES,
-                                  partial_write_dependencies_filter_cb);
+      id_dst = copy_buffer.id_add(
+          id_src,
+          {blendfile::PartialWriteContext::IDAddOperations::CLEAR_DEPENDENCIES},
+          partial_write_dependencies_filter_cb);
     }
     *cb_data->id_pointer = id_dst;
     return IDWALK_RET_NOP;
