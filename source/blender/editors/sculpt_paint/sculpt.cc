@@ -6786,6 +6786,13 @@ void scale_translations(const MutableSpan<float3> translations, const Span<float
   }
 }
 
+void scale_translations(const MutableSpan<float3> translations, const float factor)
+{
+  for (const int i : translations.index_range()) {
+    translations[i] *= factor;
+  }
+}
+
 void scale_factors(const MutableSpan<float> factors, const float strength)
 {
   if (strength == 1.0f) {

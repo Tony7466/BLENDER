@@ -37,25 +37,31 @@ struct LocalData {
   Vector<float3> translations;
 };
 
-static void write_translations(const Sculpt &sd,
-                               Object &object,
-                               const Span<float3> positions_eval,
-                               const Span<int> verts,
-                               const MutableSpan<float3> translations,
-                               const MutableSpan<float3> positions_orig)
+BLI_NOINLINE static void translations_from_position(const Span<float3> positions_eval,
+                                                    const Span<int> verts,
+                                                    const float3 &location,
+                                                    const MutableSpan<float3> translations)
 {
-  SculptSession &ss = *object.sculpt;
-
-  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
-
-  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
-
-  if (!ss.deform_imats.is_empty()) {
-    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
+  for (const int i : verts.index_range()) {
+    translations[i] = location - positions_eval[verts[i]];
   }
+}
 
-  apply_translations(translations, verts, positions_orig);
-  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
+BLI_NOINLINE static void project_translations(const MutableSpan<float3> translations,
+                                              const float3 &plane)
+{
+  for (const int i : translations.index_range()) {
+    project_plane_v3_v3v3(translations[i], translations[i], plane);
+  }
+}
+
+BLI_NOINLINE static void add_offset_to_translations(const MutableSpan<float3> translations,
+                                                    const Span<float> factors,
+                                                    const float3 &offset)
+{
+  for (const int i : translations.index_range()) {
+    translations[i] += offset * factors[i];
+  }
 }
 
 static void calc_faces(const Sculpt &sd,
@@ -100,31 +106,20 @@ static void calc_faces(const Sculpt &sd,
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-
-  for (const int i : verts.index_range()) {
-    translations[i] = location - positions_eval[verts[i]];
-  }
+  translations_from_position(positions_eval, verts, cache.location, translations);
 
   if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-    for (const int i : verts.index_range()) {
-      project_plane_v3_v3v3(translations[i], translations[i], cache.view_normal);
-    }
+    project_translations(translations, cache.view_normal);
   }
 
   scale_translations(translations, factors);
-  for (const int i : translations.index_range()) {
-    translations[i] *= strength;
-  }
+  scale_translations(translations, strength);
 
   /* Use surface normal for 'spvc', so the vertices are pinched towards a line instead of a
    * single point. Without this we get a 'flat' surface surrounding the pinch. */
-  for (const int i : verts.index_range()) {
-    project_plane_v3_v3v3(translations[i], translations[i], cache.sculpt_normal_symm);
-  }
+  project_translations(translations, cache.sculpt_normal_symm);
 
-  for (const int i : verts.index_range()) {
-    translations[i] += offset * factors[i];
-  }
+  add_offset_to_translations(translations, factors, offset);
 
   write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
