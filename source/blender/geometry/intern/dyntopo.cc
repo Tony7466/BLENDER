@@ -110,6 +110,12 @@ static float len_squared_to_tris(const std::array<float2, 3> tri, const float2 p
   return math::distance_squared(result, pos_3d);
 }
 
+static bool triangle_is_in_range(
+    const float2 &a, const float2 &b, const float2 &c, const float2 &centre, const float range)
+{
+  return len_squared_to_tris({a, b, c}, centre) < range;
+}
+
 static int dominant_axis(const float3 a)
 {
   return ((a.x > a.y) ? ((a.x > a.z) ? 0 : 2) : ((a.y > a.z) ? 1 : 2));
@@ -653,6 +659,242 @@ static void face_subdivide_uv(const float2 a_vert,
   }
 }
 
+static std::optional<int2> largest_side_to_split(
+    const float2 &a, const float2 &b, const float2 &c, const int3 verts, const float max_length)
+{
+  /* For length of edge AB use index of vertex C as the key for stable comparison with other edges
+   * and its keys. */
+  using Edge = std::pair<float, int>;
+  const std::array<Edge, 3> to_compare = {Edge{math::distance_squared(a, b), 2},
+                                          Edge{math::distance_squared(b, c), 0},
+                                          Edge{math::distance_squared(c, a), 1}};
+  const Edge &max_elem = *std::max_element(
+      to_compare.begin(), to_compare.end(), [&](const Edge &a, const Edge &b) -> bool {
+        if (UNLIKELY(a.first == b.first)) {
+          return verts[a.second] < verts[b.second];
+        }
+        return a.first < b.first;
+      });
+
+  if (UNLIKELY(max_elem.first <= max_length)) {
+    return std::nullopt;
+  }
+
+  switch (max_elem.second) {
+    case 0:
+      return int2(1, 2);
+    case 1:
+      return int2(0, 2);
+    case 2:
+      return int2(0, 1);
+    default:
+      BLI_assert_unreachable();
+      return {};
+  }
+}
+
+namespace FaceVerts {
+static constexpr const int a = 0;
+static constexpr const int b = 1;
+static constexpr const int c = 2;
+static const int3 abc(0, 1, 2);
+}  // namespace FaceVerts
+
+namespace EdgeState {
+static constexpr const int8_t ab_is_real_edge = 1 << 0;
+static constexpr const int8_t bc_is_real_edge = 1 << 1;
+static constexpr const int8_t ca_is_real_edge = 1 << 2;
+}  // namespace EdgeState
+
+static void split_edge_for_vert(const std::array<float2, 6> &verts,
+                                const int2 split_edge,
+                                Vector<std::array<float2, 6>> &r_list)
+{
+  switch (exclusive_one(int3(0, 1, 2), split_edge)) {
+    case 2: {
+      const float2 mid = math::midpoint(verts[0], verts[1]);
+      r_list.append({verts[0], mid, verts[2], verts[3], verts[2], verts[5]});
+      r_list.append({mid, verts[1], verts[2], verts[3], verts[4], verts[0]});
+      break;
+    }
+    case 0: {
+      const float2 mid = math::midpoint(verts[1], verts[2]);
+      r_list.append({verts[0], verts[1], mid, verts[3], verts[4], verts[2]});
+      r_list.append({verts[0], mid, verts[2], verts[2], verts[4], verts[5]});
+      break;
+    }
+    case 1: {
+      const float2 mid = math::midpoint(verts[2], verts[0]);
+      r_list.append({verts[0], verts[1], mid, verts[3], verts[2], verts[5]});
+      r_list.append({mid, verts[1], verts[2], verts[0], verts[4], verts[5]});
+      break;
+    }
+  }
+}
+
+static void split_edge_for_state(const int8_t state, const int2 split_edge, Vector<int8_t> &r_list)
+{
+  switch (exclusive_one(FaceVerts::abc, split_edge)) {
+    case FaceVerts::a: {
+      r_list.append(state & ~EdgeState::ca_is_real_edge);
+      r_list.append(state & ~EdgeState::ab_is_real_edge);
+      break;
+    }
+    case FaceVerts::b: {
+      r_list.append(state & ~EdgeState::bc_is_real_edge);
+      r_list.append(state & ~EdgeState::ab_is_real_edge);
+      break;
+    }
+    case FaceVerts::c: {
+      r_list.append(state & ~EdgeState::bc_is_real_edge);
+      r_list.append(state & ~EdgeState::ca_is_real_edge);
+      break;
+    }
+  }
+}
+
+static void split_edge_for_virtual_indices(const int3 verts,
+                                           const int new_vert,
+                                           const int2 split_edge,
+                                           Vector<int3> &r_list)
+{
+  switch (exclusive_one(FaceVerts::abc, split_edge)) {
+    case FaceVerts::a: {
+      r_list.append(int3(verts[0], verts[1], new_vert));
+      r_list.append(int3(verts[0], new_vert, verts[2]));
+      break;
+    }
+    case FaceVerts::b: {
+      r_list.append(int3(verts[0], verts[1], new_vert));
+      r_list.append(int3(new_vert, verts[1], verts[2]));
+      break;
+    }
+    case FaceVerts::c: {
+      r_list.append(int3(verts[0], new_vert, verts[2]));
+      r_list.append(int3(new_vert, verts[1], verts[2]));
+      break;
+    }
+  }
+}
+
+static void face_subdivide_edge_verts(const float2 a_vert,
+                                      const float2 b_vert,
+                                      const float2 c_vert,
+                                      const float2 d_vert,
+                                      const float2 e_vert,
+                                      const float2 f_vert,
+                                      const float2 centre,
+                                      const float radius,
+                                      const float max_length,
+                                      const int3 face_verts,
+                                      const bool ab_order,
+                                      const bool bc_order,
+                                      const bool ca_order,
+                                      const IndexRange verts_range,
+                                      const IndexRange ab_points_range,
+                                      const IndexRange bc_points_range,
+                                      const IndexRange ca_points_range,
+                                      MutableSpan<int2> r_face_edges)
+{
+  static const int3 abc_verts(0, 1, 2);
+  static const int3 abd_verts(0, 1, 3);
+  static const int3 bce_verts(1, 2, 4);
+  static const int3 caf_verts(2, 0, 5);
+
+  static const int2 ab_edge(0, 1);
+  static const int2 bc_edge(1, 2);
+  static const int2 ca_edge(2, 0);
+
+  VectorSet<OrderedEdge> edges;
+  edges.add({-1, -2});
+  edges.add({-2, -3});
+  edges.add({-3, -1});
+
+  VectorSet<OrderedEdge> result_face_edges;
+
+  Vector<std::array<float2, 6>> vertices = {{a_vert, b_vert, c_vert, d_vert, e_vert, f_vert}};
+  Vector<int3> virtual_indices = {int3(-3, -2, -1)};
+  Vector<int8_t> is_real_edges = {EdgeState::ab_is_real_edge | EdgeState::bc_is_real_edge |
+                                  EdgeState::ca_is_real_edge};
+
+  while (!vertices.is_empty()) {
+    BLI_assert(vertices.size() == is_real_edges.size());
+    BLI_assert(vertices.size() == virtual_indices.size());
+    const std::array<float2, 6> verts = vertices.pop_last();
+    const int8_t edges_is_real = is_real_edges.pop_last();
+    const int3 virtual_face_indices = virtual_indices.pop_last();
+
+    const float2 &vert_a = verts[abc_verts[0]];
+    const float2 &vert_b = verts[abc_verts[1]];
+    const float2 &vert_c = verts[abc_verts[2]];
+
+    const bool abc_is_affected = triangle_is_in_range(vert_a, vert_b, vert_c, centre, radius);
+    if (!abc_is_affected) {
+      // TODO: Handle neighboards...
+      continue;
+    }
+
+    const std::optional<int2> edge_to_split = largest_side_to_split(
+        vert_a, vert_b, vert_c, face_verts, max_length);
+    if (edge_to_split.has_value()) {
+      if ((edges_is_real & EdgeState::ab_is_real_edge) == 0) {
+        const int a_vert = virtual_face_indices[0];
+        const int b_vert = virtual_face_indices[1];
+        result_face_edges.add(int2(verts_range[a_vert], verts_range[b_vert]));
+      }
+      else {
+        const int a_vert = virtual_face_indices[0];
+        const int b_vert = virtual_face_indices[1];
+        const int corner_a_vert = a_vert < 0 ? face_verts[3 + a_vert] : ab_points_range[a_vert];
+        const int corner_b_vert = b_vert < 0 ? face_verts[3 + b_vert] : ab_points_range[b_vert];
+        result_face_edges.add(int2(corner_a_vert, corner_b_vert));
+      }
+
+      if ((edges_is_real & EdgeState::bc_is_real_edge) == 0) {
+        const int b_vert = virtual_face_indices[1];
+        const int c_vert = virtual_face_indices[2];
+        result_face_edges.add(int2(verts_range[b_vert], verts_range[c_vert]));
+      }
+      else {
+        const int b_vert = virtual_face_indices[1];
+        const int c_vert = virtual_face_indices[2];
+        const int corner_b_vert = b_vert < 0 ? face_verts[3 + b_vert] : bc_points_range[b_vert];
+        const int corner_c_vert = c_vert < 0 ? face_verts[3 + c_vert] : bc_points_range[c_vert];
+        result_face_edges.add(int2(corner_b_vert, corner_c_vert));
+      }
+
+      if ((edges_is_real & EdgeState::ca_is_real_edge) == 0) {
+        const int c_vert = virtual_face_indices[2];
+        const int a_vert = virtual_face_indices[0];
+        result_face_edges.add(int2(verts_range[c_vert], verts_range[a_vert]));
+      }
+      else {
+        const int c_vert = virtual_face_indices[2];
+        const int a_vert = virtual_face_indices[0];
+        const int corner_c_vert = c_vert < 0 ? face_verts[3 + c_vert] : ca_points_range[c_vert];
+        const int corner_a_vert = a_vert < 0 ? face_verts[3 + a_vert] : ca_points_range[a_vert];
+        result_face_edges.add(int2(corner_c_vert, corner_a_vert));
+      }
+
+      continue;
+    }
+
+    split_edge_for_vert(verts, *edge_to_split, vertices);
+    split_edge_for_state(edges_is_real, *edge_to_split, is_real_edges);
+    const int2 virtual_edge(virtual_face_indices[(*edge_to_split)[0]],
+                            virtual_face_indices[(*edge_to_split)[1]]);
+    const int virtual_vert = edges.index_of_or_add(virtual_edge);
+    split_edge_for_virtual_indices(
+        virtual_face_indices, virtual_vert, *edge_to_split, virtual_indices);
+  }
+
+  int i = 0;
+  for (const OrderedEdge edge : result_face_edges.as_span().take_front(r_face_edges.size())) {
+    r_face_edges[i] = int2(edge.v_low, edge.v_high);
+    i++;
+  }
+}
+
 Mesh *subdivide(const Mesh &src_mesh,
                 const Span<float2> projection,
                 const float2 centre,
@@ -948,7 +1190,20 @@ Mesh *subdivide(const Mesh &src_mesh,
     BLI_assert(!elem(face_verts, e_vert));
     BLI_assert(!elem(face_verts, f_vert));
 
-    IndexRange points_range = subdive_face_verts[face_i].shift(src_mesh.verts_num);
+    IndexRange verts_range = subdive_face_verts[face_i].shift(src_mesh.verts_num);
+    IndexRange edges_range = subdive_face_edges[face_i].shift(src_mesh.edges_num);
+
+    const bool ab_order = face_verts.xy() == edge_ab;
+    const bool bc_order = face_verts.yz() == edge_bc;
+    const bool ca_order = int2(face_verts[2], face_verts[0]) == edge_ca;
+
+    const IndexRange ab_points_range = subdive_edge_verts[face_edges[0]].shift(
+        src_mesh.verts_num + subdive_face_verts.total_size());
+    const IndexRange bc_points_range = subdive_edge_verts[face_edges[1]].shift(
+        src_mesh.verts_num + subdive_face_verts.total_size());
+    const IndexRange ca_points_range = subdive_edge_verts[face_edges[2]].shift(
+        src_mesh.verts_num + subdive_face_verts.total_size());
+
     face_subdivide_edge_verts(projection[a_vert],
                               projection[b_vert],
                               projection[c_vert],
@@ -958,7 +1213,15 @@ Mesh *subdivide(const Mesh &src_mesh,
                               centre,
                               squared_radius,
                               max_length,
-                              uv_positions);
+                              face_verts,
+                              ab_order,
+                              bc_order,
+                              ca_order,
+                              verts_range,
+                              ab_points_range,
+                              bc_points_range,
+                              ca_points_range,
+                              dst_edges.slice(edges_range));
   }
 
   return dst_mesh;
