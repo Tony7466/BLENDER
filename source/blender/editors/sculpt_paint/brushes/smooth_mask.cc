@@ -219,8 +219,7 @@ static float calc_new_mask(float neighbor_average, float current_mask, float fad
 {
   float delta = (neighbor_average - current_mask) * fade * strength;
   float new_mask = current_mask + delta;
-  std::clamp(new_mask, 0.0f, 1.0f);
-  return new_mask;
+  return std::clamp(new_mask, 0.0f, 1.0f);
 }
 
 static float neighbor_mask_average_grids(const SculptSession &ss, const PBVHVertRef &vertex)
