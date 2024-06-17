@@ -284,9 +284,10 @@ static void calc_grids(Object &object,
                                                       thread_id,
                                                       &automask_data);
 
-      const float current_mask = key.has_mask ? CCG_elem_offset_mask(key, elem, j) : 0.0f;
-      const float new_mask = calc_new_mask(
-          neighbor_mask_average_grids(ss, vert_ref), current_mask, fade, strength);
+      const float new_mask = calc_new_mask(neighbor_mask_average_grids(ss, vert_ref),
+                                           CCG_elem_offset_mask(key, elem, j),
+                                           fade,
+                                           strength);
       CCG_elem_offset_mask(key, elem, j) = new_mask;
       i++;
     }
