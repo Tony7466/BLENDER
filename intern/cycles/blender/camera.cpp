@@ -264,7 +264,8 @@ static void blender_camera_from_object(BlenderCamera *bcam,
 
       bcam->apertureblades = b_camera.dof().aperture_blades();
       bcam->aperturerotation = b_camera.dof().aperture_rotation();
-      bcam->focaldistance = blender_camera_focal_distance(b_engine, b_ob, b_camera, bcam);
+      bcam->focaldistance = max(blender_camera_focal_distance(b_engine, b_ob, b_camera, bcam),
+                                1e-5f);
       bcam->aperture_ratio = b_camera.dof().aperture_ratio();
     }
     else {
