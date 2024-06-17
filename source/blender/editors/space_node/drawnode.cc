@@ -1354,16 +1354,20 @@ static void std_node_socket_draw(
       break;
     }
     case SOCK_STRING: {
-      uiLayout *row = uiLayoutSplit(layout, 0.4f, false);
-      uiItemL(row, text, ICON_NONE);
-
-      if (socket_needs_attribute_search(*node, *sock)) {
-        node_geometry_add_attribute_search_button(*C, *node, *ptr, *row);
+      if (sock->typeinfo->subtype == PROP_FILEPATH) {
+        uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
       }
       else {
-        uiItemR(row, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
-      }
+        uiLayout *row = uiLayoutSplit(layout, 0.4f, false);
+        uiItemL(row, text, ICON_NONE);
 
+        if (socket_needs_attribute_search(*node, *sock)) {
+          node_geometry_add_attribute_search_button(*C, *node, *ptr, *row);
+        }
+        else {
+          uiItemR(row, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+        }
+      }
       break;
     }
     case SOCK_MENU: {
