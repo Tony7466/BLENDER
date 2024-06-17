@@ -6788,6 +6788,15 @@ void scale_factors(const MutableSpan<float> factors, const float strength)
   }
 }
 
+OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes, Array<int> &node_data)
+{
+  node_data.reinitialize(nodes.size() + 1);
+  for (const int i : nodes.index_range()) {
+    node_data[i] = bke::pbvh::node_unique_verts(*nodes[i]).size();
+  }
+  return offset_indices::accumulate_counts_to_offsets(node_data);
+}
+
 void calc_vert_neighbors(const OffsetIndices<int> faces,
                          const Span<int> corner_verts,
                          const GroupedSpan<int> vert_to_face,

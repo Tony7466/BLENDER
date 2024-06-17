@@ -173,6 +173,12 @@ void write_translations(const Sculpt &sd,
                         MutableSpan<float3> positions_orig);
 
 /**
+ * Creates OffsetIndices based on each node's unique vertex count, allowing for easy slicing of a
+ * new array.
+ */
+OffsetIndices<int> create_node_vert_offsets(Span<PBVHNode *> nodes, Array<int> &node_data);
+
+/**
  * Find vertices connected to the indexed vertices across faces.
  *
  * Does not handle boundary vertices differently, so this method is generally inappropriate for
