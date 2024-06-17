@@ -3725,6 +3725,142 @@ void MESH_OT_select_linked_pick(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Select by pole count operator
+ * \{ */
+
+static int edbm_select_by_pole_count_exec(bContext *C, wmOperator *op)
+{
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  const bool extend = RNA_boolean_get(op->ptr, "extend");
+  const bool exclude_nonmanifold = RNA_boolean_get(op->ptr, "exclude_nonmanifold");
+  const int pole_count = RNA_int_get(op->ptr, "pole_count");
+  const int type = RNA_enum_get(op->ptr, "type");
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+
+  for (Object *obedit : objects) {
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+
+    BMIter iter;
+    BMIter element_iter;
+
+    BMVert *vert;
+    BMEdge *edge;
+    BMFace *face;
+
+    if (!extend) {
+      EDBM_flag_disable_all(em, BM_ELEM_SELECT);
+    }
+
+    BM_ITER_MESH (vert, &iter, em->bm, BM_VERTS_OF_MESH) {
+      bool select;
+
+      int vert_edges = BM_vert_edge_count_at_most(vert, pole_count + 1);
+
+      switch (type) {
+        case 0:
+          select = (vert_edges < pole_count);
+          break;
+        case 1:
+          select = (vert_edges == pole_count);
+          break;
+        case 2:
+          select = (vert_edges > pole_count);
+          break;
+        case 3:
+          select = (vert_edges != pole_count);
+          break;
+        default:
+          BLI_assert_unreachable(); /* Bad value of selection type. */
+          select = false;
+          break;
+      }
+
+      /* Exclude nonmanifold vertices (no edges) */
+      if (exclude_nonmanifold && select) {
+        if (BM_vert_is_manifold(vert) == false) {
+          select = false;
+        }
+      }
+
+      /* Exclude vertices with nonmanifold edges */
+      if (exclude_nonmanifold && select) {
+        BM_ITER_ELEM (edge, &element_iter, vert, BM_EDGES_OF_VERT) {
+          if (BM_edge_is_manifold(edge) == false) {
+            select = false;
+            break;
+          }
+        }
+      }
+
+      /* Multiple selection modes may be active. Select elements per the finest-grained choice. */
+      if (select) {
+
+        if (em->selectmode & SCE_SELECT_VERTEX) {
+          BM_vert_select_set(em->bm, vert, true);
+        }
+        else if (em->selectmode & SCE_SELECT_EDGE) {
+          BM_ITER_ELEM (edge, &element_iter, vert, BM_EDGES_OF_VERT) {
+            BM_edge_select_set(em->bm, edge, true);
+          }
+        }
+        else if (em->selectmode & SCE_SELECT_FACE) {
+          BM_ITER_ELEM (face, &element_iter, vert, BM_FACES_OF_VERT) {
+            BM_face_select_set(em->bm, face, true);
+          }
+        }
+        else {
+          BLI_assert_unreachable(); /* SCE_SELECT_VERTEX / EDGE / FACE are all false? */
+        }
+      }
+    }
+
+    EDBM_selectmode_flush(em);
+
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void MESH_OT_select_by_pole_count(wmOperatorType *ot)
+{
+  static const EnumPropertyItem type_items[] = {
+      {0, "LESS", false, "Less Than", ""},
+      {1, "EQUAL", false, "Equal To", ""},
+      {2, "GREATER", false, "Greater Than", ""},
+      {3, "NOTEQUAL", false, "Not Equal To", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  /* identifiers */
+  ot->name = "Select By Pole Count";
+  ot->description = "Select elements that touch a pole by the pole count";
+  ot->idname = "MESH_OT_select_by_pole_count";
+
+  /* api callbacks */
+  ot->exec = edbm_select_by_pole_count_exec;
+  ot->poll = ED_operator_editmesh;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  RNA_def_int(ot->srna, "pole_count", 4, 0, INT_MAX, "Pole Count", "", 0, INT_MAX);
+  RNA_def_enum(ot->srna, "type", type_items, 3, "Type", "Type of comparison to make");
+  RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
+  RNA_def_boolean(ot->srna,
+                  "exclude_nonmanifold",
+                  true,
+                  "Exclude Non Manifold Poles",
+                  "If checked, do not select any poles which are not manifold");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Select Face by Sides Operator
  * \{ */
 
