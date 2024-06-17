@@ -457,10 +457,9 @@ static bool transform_snap_sequencer_calc_timeline(TransInfo *t, const TransSeqS
 
   int best_dist = MAXFRAME, best_target_frame = 0, best_source_frame = 0;
 
-  for (int frame_src : snap_data->source_snap_frames) {
-    int snap_source_frame = frame_src + round_fl_to_int(t->values[0]);
+  for (int snap_source_frame : snap_data->source_snap_frames) {
     for (int snap_target_frame : snap_data->target_snap_frames) {
-      int dist = abs(snap_target_frame - snap_source_frame);
+      int dist = abs(snap_target_frame - (snap_source_frame + round_fl_to_int(t->values[0])));
       if (dist > best_dist) {
         continue;
       }
@@ -541,7 +540,7 @@ bool transform_snap_sequencer_calc(TransInfo *t)
 
 void transform_snap_sequencer_apply_seqslide(TransInfo *t, float *vec)
 {
-  *vec += t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
+  *vec = t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
 }
 
 void transform_snap_sequencer_image_apply_translate(TransInfo *t, float vec[2])
