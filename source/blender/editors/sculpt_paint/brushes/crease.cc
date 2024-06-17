@@ -104,8 +104,6 @@ static void calc_faces(const Sculpt &sd,
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
-  scale_factors(factors, strength);
-
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   translations_from_position(positions_eval, verts, cache.location, translations);
