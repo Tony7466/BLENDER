@@ -1372,6 +1372,7 @@ class EXTENSIONS_OT_repo_enable_from_drop(Operator):
 
     __slots__ = (
         "_repo_name",
+        "_repo_remote_url",
     )
 
     def invoke(self, context, _event):
@@ -1379,6 +1380,7 @@ class EXTENSIONS_OT_repo_enable_from_drop(Operator):
         if (repo := repo_lookup_by_index_or_none_with_report(self.repo_index, self.report)) is None:
             return {'CANCELLED'}
         self._repo_name = repo.name
+        self._repo_remote_url = repo.remote_url
 
         wm = context.window_manager
         wm.invoke_props_dialog(
@@ -1399,13 +1401,14 @@ class EXTENSIONS_OT_repo_enable_from_drop(Operator):
     def draw(self, _context):
         layout = self.layout
         col = layout.column()
-        lines = (
-            iface_("The dropped URL comes from a disabled repository:"),
-            self._repo_name,
-            iface_("Enabled the repository before dropping again or cancel."),
-        )
-        for line in lines:
-            col.label(text=line, translate=False)
+        col.label(text="The dropped extension comes from a disabled repository.")
+        col.label(text="Enable the repository and try again.")
+        col.separator()
+
+        box = col.box()
+        subcol = box.column(align=True)
+        subcol.label(text="Name: " + self._repo_name)
+        subcol.label(text="URL: " + self._repo_remote_url)
 
 
 class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
