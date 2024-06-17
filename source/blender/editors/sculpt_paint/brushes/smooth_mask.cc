@@ -14,7 +14,6 @@
 #include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_base.hh"
-#include "BLI_offset_indices.hh"
 #include "BLI_task.h"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
@@ -132,7 +131,7 @@ static void apply_masks_faces(const Brush &brush,
   const MutableSpan<float> distances = tls.distances;
   calc_distance_falloff(
       ss, positions_eval, verts, eBrushFalloffShape(brush.falloff_shape), distances, factors);
-  calc_brush_strength_factors(ss, brush, verts, distances, factors);
+  calc_brush_strength_factors(cache, brush, distances, factors);
 
   if (ss.cache->automasking) {
     auto_mask::calc_vert_factors(object, *ss.cache->automasking, node, verts, factors);
