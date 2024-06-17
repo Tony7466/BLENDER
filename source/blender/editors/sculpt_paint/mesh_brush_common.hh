@@ -198,13 +198,7 @@ void calc_vert_neighbors(OffsetIndices<int> faces,
  * the \a boundary_verts argument), only include other boundary vertices. Also skip connectivity
  * accross hidden faces and skip neighbors of corner vertices.
  *
- * \note A vector allocated per element is typically not a good strategy for performance because
- * of each vector's 24 byte overhead, non-contiguous memory, and the possibility of further heap
- * allocations. However, it's done here for now for two reasons:
- *  1. In typical quad meshes there are just 4 neighbors, which fit in the inline buffer.
- *  2. We want to avoid using edges, and the remaining topology map we have access to is the
- *     vertex to face map. That requires deduplication when building the neighbors, which
- *     requires some intermediate data structure like a vector anyway.
+ * \note See #calc_vert_neighbors for information on why we use a Vector per element.
  */
 void calc_vert_neighbors_interior(OffsetIndices<int> faces,
                                   Span<int> corner_verts,
