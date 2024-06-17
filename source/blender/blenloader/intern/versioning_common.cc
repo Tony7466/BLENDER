@@ -661,7 +661,7 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
     BKE_main_mesh_legacy_convert_auto_smooth(*new_bmain);
   }
 
-  if (!blendfile_or_libraries_versions_atleast(new_bmain, 403, 1)) {
+  if (!blendfile_or_libraries_versions_atleast(new_bmain, 403, 3)) {
     /* Convert all the legacy grease pencil objects. This does not touch annotations. */
     blender::bke::greasepencil::convert::legacy_main(*new_bmain, *reports);
   }
