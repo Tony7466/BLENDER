@@ -20,6 +20,7 @@ namespace blender::nodes::materialx {
 
 struct ExportParams {
   std::function<std::string(Main *, Scene *, Image *, ImageUser *)> image_fn;
+  std::string active_uvmap_name;
 };
 
 MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,

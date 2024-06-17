@@ -180,7 +180,15 @@ NodeItem NodeParser::texcoord_node(NodeItem::Type type)
   NodeItem res = empty();
   res.node = graph_->getNode(name);
   if (!res.node) {
-    res = create_node("texcoord", type);
+    /* TODO: Use "Pref" generated texture coordinates for 3D, but needs
+     * work in USD and Hydra mesh export. */
+    if (export_params_.active_uvmap_name == "st") {
+      res = create_node("texcoord", type);
+    }
+    else {
+      res = create_node(
+          "geompropvalue", type, {{"geomprop", val(export_params_.active_uvmap_name)}});
+    }
     res.node->setName(name);
   }
   return res;
