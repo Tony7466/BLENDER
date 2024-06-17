@@ -130,7 +130,10 @@ GPU_SHADER_CREATE_INFO(eevee_geom_world)
     .builtins(BuiltinBits::VERTEX_ID)
     .vertex_source("eevee_geom_world_vert.glsl")
     .vertex_out(eevee_surf_iface)
-    .additional_info("draw_modelmat_new", "draw_resource_id_varying", "draw_view");
+    .additional_info("draw_modelmat_new",
+                     "draw_object_infos_new", /* Unused, but allow debug compilation. */
+                     "draw_resource_id_varying",
+                     "draw_view");
 
 /** \} */
 
