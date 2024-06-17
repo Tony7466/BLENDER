@@ -836,7 +836,7 @@ static void face_subdivide_edge_verts(const float2 a_vert,
 
     const std::optional<int2> edge_to_split = largest_side_to_split(
         vert_a, vert_b, vert_c, face_verts, max_length);
-    if (edge_to_split.has_value()) {
+    if (!edge_to_split.has_value()) {
       if ((edges_is_real & EdgeState::ab_is_real_edge) == 0) {
         const int a_vert = virtual_face_indices[0];
         const int b_vert = virtual_face_indices[1];
@@ -1134,7 +1134,7 @@ Mesh *subdivide(const Mesh &src_mesh,
     BLI_assert(!elem(face_verts, e_vert));
     BLI_assert(!elem(face_verts, f_vert));
 
-    IndexRange points_range = subdive_face_verts[face_i].shift(src_mesh.verts_num);
+    const IndexRange points_range = subdive_face_verts[face_i].shift(src_mesh.verts_num);
     Array<float2> uv_positions(points_range.size());
 
     face_subdivide_uv(projection[a_vert],
