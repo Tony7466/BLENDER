@@ -36,6 +36,8 @@ using namespace OCIO_NAMESPACE;
 #include "ocio_impl.h"
 #include "ocio_shader_shared.hh"
 
+using blender::float3x3;
+
 /* **** OpenGL drawing routines using GLSL for color space transform ***** */
 
 enum OCIO_GPUTextureSlots {
@@ -551,13 +553,12 @@ static void updateGPUCurveMapping(OCIO_GPUCurveMappping &curvemap,
 }
 
 static void updateGPUDisplayParameters(OCIO_GPUShader &shader,
-                                       float scale,
                                        float exponent,
+                                       float4x4 scene_linear_matrix,
                                        float dither,
                                        bool use_predivide,
                                        bool use_overlay,
-                                       bool use_hdr,
-                                       float4x4 white_balance)
+                                       bool use_hdr)
 {
   bool do_update = false;
   if (shader.parameters_buffer == nullptr) {
@@ -565,8 +566,8 @@ static void updateGPUDisplayParameters(OCIO_GPUShader &shader,
     do_update = true;
   }
   OCIO_GPUParameters &data = shader.parameters;
-  if (data.scale != scale) {
-    data.scale = scale;
+  if (data.scene_linear_matrix != scene_linear_matrix) {
+    data.scene_linear_matrix = scene_linear_matrix;
     do_update = true;
   }
   if (data.exponent != exponent) {
@@ -587,10 +588,6 @@ static void updateGPUDisplayParameters(OCIO_GPUShader &shader,
   }
   if (bool(data.use_hdr) != use_hdr) {
     data.use_hdr = use_hdr;
-    do_update = true;
-  }
-  if (data.white_balance != white_balance) {
-    data.white_balance = white_balance;
     do_update = true;
   }
   if (do_update) {
@@ -773,21 +770,23 @@ bool OCIOImpl::gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
     GPU_uniformbuf_bind(textures.uniforms_buffer, UNIFORMBUF_SLOT_LUTS);
   }
 
-  blender::float4x4 white_balance = blender::float4x4::identity();
+  float3x3 matrix = float3x3::identity() * scale;
   if (use_white_balance) {
     /* Compute white point of the scene space in XYZ.*/
-    blender::float3x3 xyz_to_scene;
+    float3x3 xyz_to_scene;
     configGetXYZtoSceneLinear(config, xyz_to_scene.ptr());
-    blender::float3x3 scene_to_xyz = blender::math::invert(xyz_to_scene);
-    blender::float3 scene_white = scene_to_xyz * blender::float3(1.0f);
+    float3x3 scene_to_xyz = blender::math::invert(xyz_to_scene);
+    float3 target = scene_to_xyz * float3(1.0f);
 
-    /* Compute chromatic adaption matrix. */
-    white_balance = blender::float4x4(
-        xyz_to_scene * blender::math::white_balance_matrix(temperature, tint, scene_white) *
-        scene_to_xyz);
+    /* Add operations to the matrix.
+     * Note: Since we're multiplying from the right, the operations here will be performed in
+     * reverse list order (scene-to-XYZ, then adaption, then XYZ-to-scene, then exposure). */
+    matrix *= xyz_to_scene;
+    matrix *= blender::math::chromatic_adaption_matrix(temperature, tint, target);
+    matrix *= scene_to_xyz;
   }
   updateGPUDisplayParameters(
-      shader, scale, exponent, dither, use_predivide, use_overlay, use_hdr, white_balance);
+      shader, exponent, float4x4(matrix), dither, use_predivide, use_overlay, use_hdr);
   GPU_uniformbuf_bind(shader.parameters_buffer, UNIFORMBUF_SLOT_DISPLAY);
 
   /* TODO(fclem): remove remains of IMM. */

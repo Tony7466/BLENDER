@@ -32,12 +32,12 @@ struct OCIO_GPUCurveMappingParameters {
 
 struct OCIO_GPUParameters {
   float dither;
-  float scale;
   float exponent;
   bool32_t use_predivide;
   bool32_t use_overlay;
   bool32_t use_hdr;
   int _pad0;
   int _pad1;
-  float4x4 white_balance;
+  int _pad2;
+  float4x4 scene_linear_matrix;
 };
