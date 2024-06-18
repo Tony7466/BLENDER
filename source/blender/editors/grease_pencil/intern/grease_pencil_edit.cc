@@ -3047,10 +3047,8 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       const float2 texture_scale = float2(gp_style->texture_scale);
       const float2 texture_offset = float2(gp_style->texture_offset);
 
-      const float sin_rotation = sin(texture_angle);
-      const float cos_rotation = cos(texture_angle);
-      const float2x2 texture_rotation = float2x2(float2(cos_rotation, sin_rotation),
-                                                 float2(-sin_rotation, cos_rotation));
+      const float2x2 texture_rotation = math::from_rotation<float2x2>(
+          math::AngleRadian(texture_angle));
 
       const float3 point = math::transform_point(layer_space_to_world_space,
                                                  positions[points_by_curve[curve_i].first()]);
