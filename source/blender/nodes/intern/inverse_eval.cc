@@ -334,6 +334,65 @@ std::optional<SocketValueVariant> convert_socket_value(const bNodeSocket &old_so
   return std::nullopt;
 }
 
+namespace traverse_elem {
+
+static void evaluate_node(const NodeInContext &ctx_node,
+                          Vector<const bNodeSocket *> &r_modified_inputs,
+                          Map<SocketInContext, ElemVariant> &elem_by_socket)
+{
+  const bNode &node = *ctx_node.node;
+  const bke::bNodeType &ntype = *node.typeinfo;
+  if (!ntype.eval_inverse_elem) {
+    /* Node does not support inverse evaluation. */
+    return;
+  }
+  Vector<SocketElem> input_elems;
+  Map<const bNodeSocket *, ElemVariant> elem_by_local_socket;
+  for (const bNodeSocket *output_socket : node.output_sockets()) {
+    if (const ElemVariant *elem = elem_by_socket.lookup_ptr({ctx_node.context, output_socket})) {
+      elem_by_local_socket.add(output_socket, *elem);
+    }
+  }
+  InverseElemEvalParams params{node, elem_by_local_socket, input_elems};
+  ntype.eval_inverse_elem(params);
+  for (const SocketElem &input_elem : input_elems) {
+    if (input_elem.elem) {
+      elem_by_socket.add({ctx_node.context, input_elem.socket}, input_elem.elem);
+      r_modified_inputs.append(input_elem.socket);
+    }
+  }
+}
+
+static bool propagate_value(const SocketInContext &ctx_from,
+                            const SocketInContext &ctx_to,
+                            Map<SocketInContext, ElemVariant> &elem_by_socket)
+{
+  const ElemVariant *from_elem = elem_by_socket.lookup_ptr(ctx_from);
+  if (!from_elem) {
+    return false;
+  }
+  const std::optional<ElemVariant> to_elem = convert_socket_elem(
+      *ctx_from.socket, *ctx_to.socket, *from_elem);
+  if (!to_elem || !*to_elem) {
+    return false;
+  }
+  elem_by_socket.lookup_or_add(ctx_to, *to_elem).merge(*to_elem);
+  return true;
+}
+
+static void get_inputs_to_propagate(const NodeInContext &ctx_node,
+                                    Vector<const bNodeSocket *> &r_sockets,
+                                    Map<SocketInContext, ElemVariant> &elem_by_socket)
+{
+  for (const bNodeSocket *socket : ctx_node.node->input_sockets()) {
+    if (elem_by_socket.contains({ctx_node.context, socket})) {
+      r_sockets.append(socket);
+    }
+  }
+}
+
+}  // namespace traverse_elem
+
 LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
                                                   const SocketElem &initial_socket_elem)
 {
@@ -353,50 +412,15 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
       scope,
       /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
-        const bNode &node = *ctx_node.node;
-        const bke::bNodeType &ntype = *node.typeinfo;
-        if (!ntype.eval_inverse_elem) {
-          /* Node does not support inverse evaluation. */
-          return;
-        }
-        Vector<SocketElem> input_elems;
-        Map<const bNodeSocket *, ElemVariant> elem_by_local_socket;
-        for (const bNodeSocket *output_socket : node.output_sockets()) {
-          if (const ElemVariant *elem = elem_by_socket.lookup_ptr(
-                  {ctx_node.context, output_socket})) {
-            elem_by_local_socket.add(output_socket, *elem);
-          }
-        }
-        InverseElemEvalParams params{node, elem_by_local_socket, input_elems};
-        ntype.eval_inverse_elem(params);
-        for (const SocketElem &input_elem : input_elems) {
-          if (input_elem.elem) {
-            elem_by_socket.add({ctx_node.context, input_elem.socket}, input_elem.elem);
-            r_modified_inputs.append(input_elem.socket);
-          }
-        }
+        traverse_elem::evaluate_node(ctx_node, r_modified_inputs, elem_by_socket);
       },
       /* Propagate value. */
       [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
-        const ElemVariant *from_elem = elem_by_socket.lookup_ptr(ctx_from);
-        if (!from_elem) {
-          return false;
-        }
-        const std::optional<ElemVariant> to_elem = convert_socket_elem(
-            *ctx_from.socket, *ctx_to.socket, *from_elem);
-        if (!to_elem || !*to_elem) {
-          return false;
-        }
-        elem_by_socket.lookup_or_add(ctx_to, *to_elem).merge(*to_elem);
-        return true;
+        return traverse_elem::propagate_value(ctx_from, ctx_to, elem_by_socket);
       },
       /* Get input sockets to propagate. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets) {
-        for (const bNodeSocket *socket : ctx_node.node->input_sockets()) {
-          if (elem_by_socket.contains({ctx_node.context, socket})) {
-            r_sockets.append(socket);
-          }
-        }
+        traverse_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
       },
       final_sockets,
       final_value_nodes);
@@ -479,102 +503,33 @@ GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext *initia
   if (!initial_socket_elem.elem) {
     return {};
   }
+  ResourceScope scope;
   Map<SocketInContext, ElemVariant> elem_by_socket;
+  elem_by_socket.add({nullptr, initial_socket_elem.socket}, initial_socket_elem.elem);
 
-  Set<NodeInContext> added_nodes;
-  std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextUpstreamComparator>
-      nodes_to_handle;
-
-  const auto set_input_elem_and_forward =
-      [&](const ComputeContext *context, const bNodeSocket &socket, const ElemVariant new_elem) {
-        ElemVariant &elem = elem_by_socket.lookup_or_add({context, &socket}, new_elem);
-        elem.merge(new_elem);
-        const ElemVariant elem_to_forward = elem;
-        for (const bNodeLink *link : socket.directly_linked_links()) {
-          if (!link->is_used()) {
-            continue;
-          }
-          const bNodeSocket &origin_socket = *link->fromsock;
-          const bNode &origin_node = *link->fromnode;
-          if (origin_node.is_group()) {
-            /* Not yet supported. */
-          }
-          else {
-            const std::optional<ElemVariant> converted_elem = convert_socket_elem(
-                socket, origin_socket, elem_to_forward);
-            if (!converted_elem) {
-              continue;
-            }
-            ElemVariant &origin_elem = elem_by_socket.lookup_or_add({context, &origin_socket},
-                                                                    *converted_elem);
-            origin_elem.merge(*converted_elem);
-            const NodeInContext origin_node_in_context{context, &origin_node};
-            if (added_nodes.add(origin_node_in_context)) {
-              nodes_to_handle.push(origin_node_in_context);
-            }
-          }
-        }
-      };
-
-  set_input_elem_and_forward(
-      initial_context, *initial_socket_elem.socket, initial_socket_elem.elem);
+  Set<SocketInContext> final_sockets;
+  Set<NodeInContext> final_value_nodes;
 
   GlobalInverseEvalPath path;
-  while (!nodes_to_handle.empty()) {
-    const NodeInContext node_in_context = nodes_to_handle.top();
-    nodes_to_handle.pop();
 
-    const bNode &node = *node_in_context.node;
-    const ComputeContext *context = node_in_context.context;
-    path.ordered_nodes.append({context, &node});
-
-    if (is_supported_value_node(node)) {
-      /* Inverse evaluation ends here. */
-    }
-    else if (node.is_reroute()) {
-      const ElemVariant elem = elem_by_socket.lookup({context, &node.output_socket(0)});
-      set_input_elem_and_forward(context, node.input_socket(0), elem);
-    }
-    else if (node.is_group_input()) {
-      if (const auto *group_context = dynamic_cast<const bke::GroupNodeComputeContext *>(context))
-      {
-        const bNode *caller_group_node = group_context->caller_group_node();
-        BLI_assert(caller_group_node);
-        const ComputeContext *caller_context = context->parent();
-
-        for (const bNodeSocket *socket : node.output_sockets()) {
-          if (const ElemVariant *elem = elem_by_socket.lookup_ptr({context, socket})) {
-            if (*elem) {
-              const bNodeSocket &caller_input_socket = caller_group_node->input_socket(
-                  socket->index());
-              set_input_elem_and_forward(caller_context, caller_input_socket, *elem);
-            }
-          }
-        }
-      }
-    }
-    else {
-      const bke::bNodeType &ntype = *node.typeinfo;
-      if (!ntype.eval_inverse_elem) {
-        /* Node does not support inverse evaluation. */
-        continue;
-      }
-      Vector<SocketElem> input_elems;
-      Map<const bNodeSocket *, ElemVariant> elem_by_local_socket;
-      for (const bNodeSocket *output_socket : node.output_sockets()) {
-        if (const ElemVariant *elem = elem_by_socket.lookup_ptr({context, output_socket})) {
-          elem_by_local_socket.add(output_socket, *elem);
-        }
-      }
-      InverseElemEvalParams params{node, elem_by_local_socket, input_elems};
-      ntype.eval_inverse_elem(params);
-      for (const SocketElem &input_elem : input_elems) {
-        if (input_elem.elem) {
-          set_input_elem_and_forward(context, *input_elem.socket, input_elem.elem);
-        }
-      }
-    }
-  }
+  traverse_upstream(
+      {{initial_context, initial_socket_elem.socket}},
+      scope,
+      /* Evaluate node. */
+      [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
+        traverse_elem::evaluate_node(ctx_node, r_modified_inputs, elem_by_socket);
+        path.ordered_nodes.append({ctx_node.context, ctx_node.node});
+      },
+      /* Propagate value. */
+      [&](const SocketInContext &ctx_from, const SocketInContext &ctx_to) {
+        return traverse_elem::propagate_value(ctx_from, ctx_to, elem_by_socket);
+      },
+      /* Get input sockets to propagate. */
+      [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_sockets) {
+        traverse_elem::get_inputs_to_propagate(ctx_node, r_sockets, elem_by_socket);
+      },
+      final_sockets,
+      final_value_nodes);
 
   return path;
 }
