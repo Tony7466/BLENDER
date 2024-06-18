@@ -456,9 +456,10 @@ class TransformGizmos : public NodeGizmos {
   void update(GizmosUpdateParams &params) override
   {
     const bNodeSocket &base_socket = params.gizmo_node.input_socket(1);
-    /* TODO: Handle case when rotation is linked to base input. */
-    const std::optional<float4x4> base_opt = params.tree_log.find_primitive_socket_value<float4x4>(
-        base_socket);
+    const std::optional<float4x4> base_opt =
+        base_socket.is_logically_linked() ?
+            params.tree_log.find_primitive_socket_value<float4x4>(base_socket) :
+            float4x4::identity();
     if (!base_opt) {
       params.r_report.missing_socket_logs = true;
       return;

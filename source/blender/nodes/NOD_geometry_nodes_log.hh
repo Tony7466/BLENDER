@@ -305,6 +305,9 @@ class GeoTreeLog {
   void ensure_debug_messages();
 
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
+  [[nodiscard]] bool try_convert_primitive_socket_value(const GenericValueLog &value_log,
+                                                        const CPPType &dst_type,
+                                                        void *dst);
 
   template<typename T>
   std::optional<T> find_primitive_socket_value(const bNodeSocket &query_socket)
@@ -312,8 +315,9 @@ class GeoTreeLog {
     if (auto *value_log = dynamic_cast<GenericValueLog *>(
             this->find_socket_value_log(query_socket)))
     {
-      if (value_log->value.is_type<T>()) {
-        return *value_log->value.get<T>();
+      T value;
+      if (this->try_convert_primitive_socket_value(*value_log, CPPType::get<T>(), &value)) {
+        return value;
       }
     }
     return std::nullopt;
