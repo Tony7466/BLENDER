@@ -264,11 +264,11 @@ static void rna_grease_pencil_layer_name_update(Main *bmain, Scene *scene, Point
   }
 
   if (grease_pencil->runtime->LayerRenamePreviousName) {
-    free(grease_pencil->runtime->LayerRenamePreviousName);
+    MEM_freeN(grease_pencil->runtime->LayerRenamePreviousName);
     grease_pencil->runtime->LayerRenamePreviousName = nullptr;
   }
   if (grease_pencil->runtime->LayerRenameCurrentName) {
-    free(grease_pencil->runtime->LayerRenameCurrentName);
+    MEM_freeN(grease_pencil->runtime->LayerRenameCurrentName);
     grease_pencil->runtime->LayerRenameCurrentName = nullptr;
   }
 
