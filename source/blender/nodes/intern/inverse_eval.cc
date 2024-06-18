@@ -811,9 +811,7 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
       break;
     }
   }
-
-  /* TODO */
-  return {};
+  return std::nullopt;
 }
 
 bool try_change_link_target_and_update_source(bContext &C,
