@@ -558,4 +558,12 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
 
 }  // namespace image_render
 
+bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
+                                          const IndexMask &strokes,
+                                          const float4x4 &transform,
+                                          int subdivisions,
+                                          float radius_offset,
+                                          int material_index,
+                                          bool keep_shape);
+
 }  // namespace blender::ed::greasepencil
