@@ -430,7 +430,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   const auto flip_mode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
-    Layer &layer = *grease_pencil.layers_for_write()[layer_index];
+    Layer &layer = *grease_pencil.layer(layer_index);
     const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
 
     /* Drawings must be created on operator invoke. */
@@ -485,7 +485,7 @@ static void grease_pencil_interpolate_restore(bContext &C, wmOperator &op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
-    Layer &layer = *grease_pencil.layers_for_write()[layer_index];
+    Layer &layer = *grease_pencil.layer(layer_index);
     const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
 
     if (layer_data.orig_curves) {
@@ -541,15 +541,13 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
           grease_pencil.layers().index_range(),
           GrainSize(1024),
           data.layer_mask_memory,
-          [&](const int layer_index) {
-            return grease_pencil.layers()[layer_index]->is_editable();
-          });
+          [&](const int layer_index) { return grease_pencil.layer(layer_index)->is_editable(); });
       break;
   }
 
   data.layer_data.reinitialize(grease_pencil.layers().size());
   data.layer_mask.foreach_index([&](const int layer_index) {
-    Layer &layer = *grease_pencil.layers_for_write()[layer_index];
+    Layer &layer = *grease_pencil.layer(layer_index);
     GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
 
     /* Pair from/to curves by index. */
