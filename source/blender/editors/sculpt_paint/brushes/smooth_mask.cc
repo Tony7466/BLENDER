@@ -1,4 +1,3 @@
-
 /* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -223,7 +222,6 @@ static float neighbor_mask_average_grids(const SubdivCCG &subdiv_ccg,
                                          int grid_index,
                                          int elem_index)
 {
-
   int y = elem_index / key.grid_size;
   int x = elem_index % key.grid_size;
 
@@ -358,7 +356,6 @@ void do_smooth_mask_brush(const Sculpt &sd,
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
   SCULPT_boundary_info_ensure(object);
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES:
