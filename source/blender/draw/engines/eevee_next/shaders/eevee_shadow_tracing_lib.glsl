@@ -168,7 +168,7 @@ ShadowRayDirectional shadow_ray_generate_directional(
   float shadow_angle = min(light_sun_data_get(light).shadow_angle, max_tracing_angle);
 
   /* Light shape is 1 unit away from the shading point. */
-  vec3 direction = sample_uniform_cone(random_2d, cos(shadow_angle));
+  vec3 direction = sample_uniform_cone_from_disk(random_2d * 2.0 - 1.0, cos(shadow_angle));
 
   direction = shadow_ray_above_horizon_ensure(direction, lNg, max_tracing_distance);
 
@@ -230,10 +230,8 @@ struct ShadowRayPunctual {
 ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, vec3 lP, vec3 lNg)
 {
   if (light.type == LIGHT_RECT) {
+    /* TODO(fclem): Broken because random_2d is a disk already. */
     random_2d = random_2d * 2.0 - 1.0;
-  }
-  else {
-    random_2d = sample_disk(random_2d);
   }
 
   float clip_far = intBitsToFloat(light.clip_far);
@@ -426,13 +424,21 @@ float shadow_eval(LightData light,
   vec2 pixel = vec2(gl_GlobalInvocationID.xy);
 #  endif
   vec2 rng_trace = sampling_blue_noise_rng_get(pixel, SAMPLING_SHADOW_TRACE);
-  vec3 random_shadow_3d = utility_tx_fetch(utility_tx, rng_trace, UTIL_BLUE_NOISE_LAYER).rgb;
+  vec4 random_shadow_4d = utility_tx_fetch(
+                              utility_tx,
+                              rng_trace,
+                              float(UTIL_FAST_NOISE_LAYER + sampling_buf.sample_index % 32))
+                              .rgba;
 
   vec2 rng_pcf = sampling_blue_noise_rng_get(pixel, SAMPLING_SHADOW_FILTER);
-  vec2 random_pcf_2d = utility_tx_fetch(utility_tx, rng_pcf, UTIL_BLUE_NOISE_LAYER).rg;
+  vec2 random_pcf_2d = utility_tx_fetch(
+                           utility_tx,
+                           rng_pcf,
+                           float(UTIL_FAST_NOISE_LAYER + sampling_buf.sample_index % 32))
+                           .rg;
 #else
   /* Case of surfel light eval. */
-  vec3 random_shadow_3d = vec3(0.5);
+  vec4 random_shadow_4d = vec4(0.5);
   vec2 random_pcf_2d = vec2(0.0);
 #endif
 
@@ -478,17 +484,16 @@ float shadow_eval(LightData light,
 
   float surface_hit = 0.0;
   for (int ray_index = 0; ray_index < ray_count && ray_index < SHADOW_MAX_RAY; ray_index++) {
-    vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
-
     bool has_hit;
     if (is_directional) {
       ShadowRayDirectional clip_ray = shadow_ray_generate_directional(
-          light, random_ray_2d, lP, lNg, texel_radius);
-      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
+          light, random_shadow_4d.xy, lP, lNg, texel_radius);
+      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_4d.w);
     }
     else {
-      ShadowRayPunctual clip_ray = shadow_ray_generate_punctual(light, random_ray_2d, lP, lNg);
-      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
+      ShadowRayPunctual clip_ray = shadow_ray_generate_punctual(
+          light, random_shadow_4d.xy, lP, lNg);
+      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_4d.w);
     }
 
     surface_hit += float(has_hit);

@@ -122,6 +122,7 @@ set(SRC
   engines/eevee_next/eevee_lightprobe.cc
   engines/eevee_next/eevee_lookdev.cc
   engines/eevee_next/eevee_lut.cc
+  engines/eevee_next/eevee_lut_noise.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc

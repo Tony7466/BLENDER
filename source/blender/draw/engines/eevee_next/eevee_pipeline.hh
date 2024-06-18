@@ -601,7 +601,7 @@ class UtilityTexture : public Texture {
 
   static constexpr int lut_size = UTIL_TEX_SIZE;
   static constexpr int lut_size_sqr = lut_size * lut_size;
-  static constexpr int layer_count = UTIL_BTDF_LAYER + UTIL_BTDF_LAYER_COUNT;
+  static constexpr int layer_count = UTIL_BTDF_LAYER + UTIL_BTDF_LAYER_COUNT + 32;
 
  public:
   UtilityTexture()
@@ -658,6 +658,20 @@ class UtilityTexture : public Texture {
         }
       }
     }
+    {
+      for (auto layer_id : IndexRange(32)) {
+        Layer &layer = data[UTIL_FAST_NOISE_LAYER + layer_id];
+        for (auto x : IndexRange(lut_size)) {
+          for (auto y : IndexRange(lut_size)) {
+            layer.data[y][x][0] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][0];
+            layer.data[y][x][1] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][1];
+            layer.data[y][x][2] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][2];
+            layer.data[y][x][3] = 0.0f;
+          }
+        }
+      }
+    }
+
     GPU_texture_update_mipmap(*this, 0, GPU_DATA_FLOAT, data.data());
   }
 

@@ -31,6 +31,13 @@ extern const float burley_sss_profile[64][1];
 /* Precomputed translucency profile of a slab of material with varying thickness. */
 extern const float random_walk_sss_profile[64][1];
 
+/**
+ * Fast noise generated using FastNoise generator
+ * https://github.com/electronicarts/fastnoise/tree/main
+ * The bigger texture are 64px^2 * 32 temporal samples.
+ */
+extern const float fast_noise_sphere_cosine_binomial3_64x32[32][64][64][3];
+
 #ifdef CYCLES_REFERENCE_LUT
 /* Precomputed translucency profile of a slab of material with varying thickness. */
 extern const float cycles_burley_reference_sss_profile[256][3];

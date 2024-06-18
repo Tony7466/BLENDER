@@ -43,7 +43,7 @@ vec3 sampling_rng_3D_get(const eSamplingDimension dimension)
 
 vec2 sampling_blue_noise_rng_get(vec2 pixel, const eBlueNoiseUsage offset)
 {
-  return pixel + r_2d(offset) * float(UTIL_TEX_SIZE) + sampling_buf.blue_noise_offset;
+  return pixel + r_2d(offset) * float(UTIL_TEX_SIZE);
 }
 
 #endif
@@ -289,6 +289,11 @@ vec3 sample_uniform_cone(vec2 rand, float cos_angle)
   float cos_theta = mix(cos_angle, 1.0, rand.x);
   float sin_theta = safe_sqrt(1.0 - square(cos_theta));
   return vec3(sin_theta * sample_circle(rand.y), cos_theta);
+}
+
+vec3 sample_uniform_cone_from_disk(vec2 disk, float cos_angle)
+{
+  return vec3(sin_from_cos(cos_angle) * disk, cos_angle);
 }
 
 /** \} */
