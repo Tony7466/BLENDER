@@ -264,9 +264,15 @@ enum eSamplingDimension : uint32_t {
 /* Blue noise texture usage. Avoid correlation artifacts. */
 enum eBlueNoiseUsage : uint32_t {
   /* Random point on disk for filtering. */
-  SAMPLING_SHADOW_FILTER = 0u,
+  RNG_SHADOW_FILTER = 0u,
   /* Random point in cone for tracing + jittered trace time. */
-  SAMPLING_SHADOW_TRACE = 1u,
+  RNG_SHADOW_TRACE = 1u,
+};
+
+/* Blue noise type. */
+enum eBlueNoiseType : uint32_t {
+  NOISE_HEMISPHERE_BINOMIAL = 0u,
+  NOISE_HEMISPHERE_BOX = 32u,
 };
 
 /**
@@ -281,8 +287,8 @@ struct SamplingData {
   float dimensions[SAMPLING_DIMENSION_COUNT];
   /** Index used for low discrepancy sequence. */
   float2 blue_noise_offset;
+  float blue_noise_layer;
   uint sample_index;
-  int _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(SamplingData, 16)
 
@@ -2114,6 +2120,7 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 #define UTIL_DISK_INTEGRAL_LAYER UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER
 #define UTIL_DISK_INTEGRAL_COMP 3
 #define UTIL_FAST_NOISE_LAYER 20
+#define UTIL_FAST_NOISE_LEN 32
 
 #ifdef GPU_SHADER
 

@@ -9,11 +9,6 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 
-/* Prototypes */
-#ifndef GPU_METAL
-vec2 r_2d(int i);
-#endif
-
 /* -------------------------------------------------------------------- */
 /** \name Sampling data.
  *
@@ -41,11 +36,20 @@ vec3 sampling_rng_3D_get(const eSamplingDimension dimension)
               sampling_buf.dimensions[dimension + 2u]);
 }
 
-vec2 sampling_blue_noise_rng_get(vec2 pixel, const eBlueNoiseUsage offset)
+#  ifdef EEVEE_UTILITY_TX
+vec4 sampling_blue_noise_fetch(vec2 pixel, const eBlueNoiseUsage usage, const eBlueNoiseType type)
 {
-  return pixel + r_2d(offset + (sampling_buf.sample_index / 32) * 4) * float(UTIL_TEX_SIZE);
-}
+  /* R2 sequence. Flattened for constant folding. */
+  const float phi_2 = 1.32471795724474602596;
+  const vec2 alpha = vec2(1.0 / phi_2, 1.0 / (phi_2 * phi_2));
+  const vec2 offset = fract(float(usage) * alpha) * float(UTIL_TEX_SIZE);
 
+  pixel += offset + sampling_buf.blue_noise_offset;
+  float layer = float(type) + sampling_buf.blue_noise_layer;
+
+  return utility_tx_fetch(utility_tx, pixel, layer);
+}
+#  endif
 #endif
 
 /** \} */

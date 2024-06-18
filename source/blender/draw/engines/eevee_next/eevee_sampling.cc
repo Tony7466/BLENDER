@@ -205,14 +205,13 @@ void Sampling::step()
 
   data_.sample_index = sample_;
 
-  /**
-   * "The Unreasonable Effectiveness of Quasirandom Sequences"
-   * by Martin Roberts
-   * https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-   */
-  const float phi_2 = 1.32471795724474602596f;
-  data_.blue_noise_offset = math::fract(sample_ / float2(phi_2, square_f(phi_2))) * UTIL_TEX_SIZE;
-
+  /* Bijection of 64x64 to sequential indices. */
+  /* TODO(fclem): Could try random index into morton order. */
+  int blue_noise_sample_index = ((sample_ / UTIL_FAST_NOISE_LEN) * 937) % square_i(UTIL_TEX_SIZE);
+  data_.blue_noise_offset = float2(blue_noise_sample_index % UTIL_TEX_SIZE,
+                                   blue_noise_sample_index / UTIL_TEX_SIZE);
+  /* Number of blue noise slices. */
+  data_.blue_noise_layer = UTIL_FAST_NOISE_LAYER + (sample_ % UTIL_FAST_NOISE_LEN);
   data_.push_update();
 
   viewport_sample_++;
