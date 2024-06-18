@@ -24,7 +24,6 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include <filesystem>
 #include <string_view>
 
 namespace fs = std::filesystem;
@@ -334,6 +333,20 @@ std::string import_asset(const char *src,
   return copy_asset_to_directory(src, dest_dir_path, name_collision_mode, reports);
 }
 
+/**
+ * Returns true if the parent directory of the given path exists on the
+ * file system.
+ *
+ * \param path: input file path
+ * \return true if the parent directory exists
+ */
+static bool parent_dir_exists_on_file_system(const std::string &path)
+{
+  char dir_path[FILE_MAX];
+  BLI_path_split_dir_part(path.c_str(), dir_path, FILE_MAX);
+  return BLI_is_dir(dir_path);
+}
+
 bool is_udim_path(const std::string &path)
 {
   return path.find(UDIM_PATTERN) != std::string::npos ||
@@ -364,18 +377,11 @@ std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage)
 
   /* If parent of the stage path exists as a file system directory, try to create the
    * textures directory. */
-  if (parent_dir_exists_on_file_system(stage_path.GetPathString().c_str())) {
+  if (parent_dir_exists_on_file_system(stage_path.GetPathString())) {
     BLI_dir_create_recursive(textures_dir.c_str());
   }
 
   return textures_dir;
-}
-
-bool parent_dir_exists_on_file_system(const char *path)
-{
-  char dir_path[FILE_MAX];
-  BLI_path_split_dir_part(path, dir_path, FILE_MAX);
-  return BLI_is_dir(dir_path);
 }
 
 bool should_import_asset(const std::string &path)
@@ -610,18 +616,23 @@ std::string get_relative_path(const std::string &path, const std::string &anchor
   resolved_path = "/root" + resolved_path.substr(last_slash_pos);
   resolved_anchor = "/root" + resolved_anchor.substr(last_slash_pos);
 
-  fs::path path_obj(resolved_path);
-  fs::path anchor_obj(resolved_anchor);
+  char anchor_parent_dir[FILE_MAX];
+  BLI_path_split_dir_part(resolved_anchor.c_str(), anchor_parent_dir, FILE_MAX);
 
-  anchor_obj = anchor_obj.parent_path();
-
-  if (anchor_obj.empty()) {
+  if (anchor_parent_dir[0] == '\0') {
     return path;
   }
 
-  std::string rel_path = fs::relative(path_obj, anchor_obj).generic_string();
-  if (!rel_path.empty()) {
-    return rel_path;
+  char result_path[FILE_MAX];
+  BLI_strncpy(result_path, resolved_path.c_str(), FILE_MAX);
+  BLI_path_rel(result_path, anchor_parent_dir);
+
+  if ((result_path[0] != '\0') && (BLI_strnlen(result_path, FILE_MAX) > 2) &&
+      (result_path[0] == result_path[1] == '/'))
+  {
+    /* Strip the Blender relative path marker, and set paths to Unix-style. */
+    BLI_string_replace_char(result_path, '\\', '/');
+    return std::string(result_path + 2);
   }
 
   return path;

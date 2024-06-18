@@ -75,15 +75,6 @@ bool is_udim_path(const std::string &path);
 std::string get_export_textures_dir(const pxr::UsdStageRefPtr stage);
 
 /**
- * Returns true if the parent directory of the given path exists on the
- * file system.
- *
- * \param path: input file path
- * \return true if the parent directory exists
- */
-bool parent_dir_exists_on_file_system(const char *path);
-
-/**
  * Return true if the asset at the given path is a candidate for importing
  * with the USD asset resolver.  The following heuristics are currently
  * applied for this test:
@@ -103,7 +94,7 @@ bool parent_dir_exists_on_file_system(const char *path);
 bool should_import_asset(const std::string &path);
 
 /**
- * Invokes the USD asset resolver to resolve the givn paths and
+ * Invokes the USD asset resolver to resolve the given paths and
  * returns true if the resolved paths are equal.
  *
  * \param p1: first path to compare

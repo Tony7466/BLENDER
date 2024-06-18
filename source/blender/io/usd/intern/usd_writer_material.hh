@@ -38,6 +38,13 @@ void export_texture(bNode *node,
                     const bool allow_overwrite = false,
                     ReportList *reports = nullptr);
 
+/* Gets an asset path for the given texture image / node. The resulting path
+ * may be absolute, relative to the USD file, or in a 'textures' directory
+ * in the same directory as the USD file, depending on the export parameters.
+ * The filename is typically the image filepath but might also be automatically
+ * generated based on the image name for in-memory textures when exporting textures.
+ * This function may return an empty string if the image does not have a filepath
+ * assigned and no asset path could be determined. */
 std::string get_tex_image_asset_filepath(bNode *node,
                                          const pxr::UsdStageRefPtr stage,
                                          const USDExportParams &export_params);

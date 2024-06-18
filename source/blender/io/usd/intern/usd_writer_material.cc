@@ -1487,7 +1487,7 @@ void export_texture(bNode *node,
   if (is_packed_texture(ima)) {
     export_packed_texture(ima, dest_dir, allow_overwrite, reports);
   }
-  if (is_in_memory_texture(ima)) {
+  else if (is_in_memory_texture(ima)) {
     export_in_memory_texture(ima, dest_dir, allow_overwrite, reports);
   }
   else if (ima->source == IMA_SRC_TILED) {
