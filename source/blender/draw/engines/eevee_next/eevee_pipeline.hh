@@ -666,7 +666,7 @@ class UtilityTexture : public Texture {
             layer.data[y][x][0] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][0];
             layer.data[y][x][1] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][1];
             layer.data[y][x][2] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][2];
-            layer.data[y][x][3] = 0.0f;
+            layer.data[y][x][3] = lut::fast_noise_real_uniform_binomial3_64x32[layer_id][y][x][0];
           }
         }
       }

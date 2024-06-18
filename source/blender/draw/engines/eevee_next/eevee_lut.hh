@@ -37,6 +37,7 @@ extern const float random_walk_sss_profile[64][1];
  * The bigger texture are 64px^2 * 32 temporal samples.
  */
 extern const float fast_noise_sphere_cosine_binomial3_64x32[32][64][64][3];
+extern const float fast_noise_real_uniform_binomial3_64x32[32][64][64][1];
 
 #ifdef CYCLES_REFERENCE_LUT
 /* Precomputed translucency profile of a slab of material with varying thickness. */
