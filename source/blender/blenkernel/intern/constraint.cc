@@ -1761,11 +1761,12 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
   /* Limit the euler values. */
   if (data->flag & LIMIT_ROT_LEGACY_BEHAVIOR) {
     /* The legacy behavior, which just does a naive clamping of the angles as
-     * simple numbers. Since the input angles are always in the range [-180°,
-     * 180°] due to being derived from matrix decomposition, this naive approach
-     * causes problems when rotations cross 180 degrees. Specifically, it
-     * results in unpredictable and unwanted rotation flips of the constrained
-     * objects/bones, especially when the constraint isn't in local space.
+     * simple numbers. Since the input angles are always in the range [-180,
+     * 180] degrees due to being derived from matrix decomposition, this naive
+     * approach causes problems when rotations cross 180 degrees. Specifically,
+     * it results in unpredictable and unwanted rotation flips of the
+     * constrained objects/bones, especially when the constraint isn't in local
+     * space.
      *
      * The correct thing to do is a more sophisticated form of clamping that
      * treats the angles as existing on a continuous loop, which is what the
