@@ -36,6 +36,7 @@ namespace blender::eevee {
 
 void SyncModule::view_update()
 {
+    BLI_assert(inst_.depsgraph);
   if (DEG_id_type_updated(inst_.depsgraph, ID_WO)) {
     world_updated_ = true;
   }

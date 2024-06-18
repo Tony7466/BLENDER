@@ -15,6 +15,7 @@
 #include "BLI_hash.h"
 #include "BLI_rect.h"
 
+#include "GPU_debug.hh"
 #include "GPU_framebuffer.hh"
 #include "GPU_texture.hh"
 
@@ -437,8 +438,8 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 void Film::sync()
 {
   /* We use a fragment shader for viewport because we need to output the depth. */
-  use_compute_ = true;  //(!inst_.is_viewport() || GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC,
-                        // GPU_DRIVER_ANY));
+  use_compute_ = (!inst_.is_viewport() || GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC,
+                        GPU_DRIVER_ANY));
 
   eShaderType shader = use_compute_ ? FILM_COMP : FILM_FRAG;
 
@@ -682,7 +683,7 @@ void Film::accumulate(View &view, GPUTexture *combined_final_tx)
 
   if (inst_.is_viewport() && use_compute_) {
     DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
-    GPU_texture_copy(dtxl->color, combined_tx_.current());
+    GPU_texture_copy(dtxl->color, combined_tx_.previous());
     // GPU_texture_copy(dtxl->depth, depth_tx_);
   }
 
