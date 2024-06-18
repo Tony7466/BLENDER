@@ -319,6 +319,7 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                    segment_range,
                                    sample_indices,
                                    sample_factors,
+                                   false,
                                    false);
         }
 
@@ -330,7 +331,8 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                  segment_range,
                                  sample_indices,
                                  sample_factors,
-                                 true);
+                                 true,
+                                 false);
 
         if (!attributes.dst_tangents.is_empty()) {
           resample_curve_attribute(src_curves,
@@ -340,7 +342,8 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                    segment_range,
                                    sample_indices,
                                    sample_factors,
-                                   true);
+                                   true,
+                                   false);
           normalize_curve_point_data(
               selection_segment, dst_points_by_curve, attributes.dst_tangents);
         }
@@ -352,7 +355,8 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                    segment_range,
                                    sample_indices,
                                    sample_factors,
-                                   true);
+                                   true,
+                                   false);
           normalize_curve_point_data(
               selection_segment, dst_points_by_curve, attributes.dst_normals);
         }
@@ -602,6 +606,7 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                               const IndexMask &curve_selection,
                               Span<int> sample_indices,
                               Span<float> sample_factors,
+                              const float mix_weight,
                               const bool is_evaluated_data)
 {
   const CPPType &type = src_data.type();
@@ -631,10 +636,11 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
         const IndexRange src_evaluated_points = src_evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];
 
-        length_parameterize::interpolate(src.slice(src_evaluated_points),
-                                         sample_indices.slice(dst_points),
-                                         sample_factors.slice(dst_points),
-                                         dst.slice(dst_points));
+        length_parameterize::interpolate_mix(src.slice(src_evaluated_points),
+                                             sample_indices.slice(dst_points),
+                                             sample_factors.slice(dst_points),
+                                             mix_weight,
+                                             dst.slice(dst_points));
       });
     }
     else {
@@ -643,10 +649,11 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
         const IndexRange dst_points = dst_points_by_curve[i_curve];
 
         if (curve_types[i_curve] == CURVE_TYPE_POLY) {
-          length_parameterize::interpolate(src.slice(src_points),
-                                           sample_indices.slice(dst_points),
-                                           sample_factors.slice(dst_points),
-                                           dst.slice(dst_points));
+          length_parameterize::interpolate_mix(src.slice(src_points),
+                                               sample_indices.slice(dst_points),
+                                               sample_factors.slice(dst_points),
+                                               mix_weight,
+                                               dst.slice(dst_points));
         }
         else {
           const IndexRange src_evaluated_points = src_evaluated_points_by_curve[i_curve];
@@ -654,10 +661,11 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
           MutableSpan<T> evaluated = evaluated_buffer.as_mutable_span().cast<T>();
           src_curves.interpolate_to_evaluated(i_curve, src.slice(src_points), evaluated);
 
-          length_parameterize::interpolate(evaluated.as_span(),
-                                           sample_indices.slice(dst_points),
-                                           sample_factors.slice(dst_points),
-                                           dst.slice(dst_points));
+          length_parameterize::interpolate_mix(evaluated.as_span(),
+                                               sample_indices.slice(dst_points),
+                                               sample_factors.slice(dst_points),
+                                               mix_weight,
+                                               dst.slice(dst_points));
         }
       });
     }

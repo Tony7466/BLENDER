@@ -14,6 +14,7 @@
 #include "DNA_customdata_types.h"
 
 #include "GEO_interpolate_curves.hh"
+#include "GEO_resample_curves.hh"
 
 namespace blender::geometry {
 
@@ -152,162 +153,6 @@ static void gather_point_attributes_to_interpolate(const CurvesGeometry &from_cu
                            result.dst_attributes);
 }
 
-template<typename T>
-inline void bilinear_interpolate(const Span<T> src_a,
-                                 const Span<T> src_b,
-                                 const Span<int> indices_a,
-                                 const Span<int> indices_b,
-                                 const Span<float> factors_a,
-                                 const Span<float> factors_b,
-                                 const float mix_factor,
-                                 const IndexMask &dst_mask,
-                                 MutableSpan<T> dst)
-{
-  BLI_assert(indices_a.size() == dst_mask.size());
-  BLI_assert(indices_b.size() == dst_mask.size());
-  BLI_assert(factors_a.size() == dst_mask.size());
-  BLI_assert(factors_b.size() == dst_mask.size());
-  const int last_src_index_a = src_a.size() - 1;
-  const int last_src_index_b = src_b.size() - 1;
-
-  dst_mask.foreach_segment_optimized([&](const auto dst_segment, const int64_t dst_segment_pos) {
-    for (const int i : dst_segment.index_range()) {
-      const int prev_index_a = indices_a[dst_segment_pos + i];
-      const int prev_index_b = indices_b[dst_segment_pos + i];
-      const float factor_a = factors_a[dst_segment_pos + i];
-      const float factor_b = factors_b[dst_segment_pos + i];
-      const bool is_cyclic_case_a = (prev_index_a == last_src_index_a);
-      const bool is_cyclic_case_b = (prev_index_b == last_src_index_b);
-
-      const T value_a = is_cyclic_case_a ?
-                            math::interpolate(src_a.last(), src_a.first(), factor_a) :
-                            math::interpolate(
-                                src_a[prev_index_a], src_a[prev_index_a + 1], factor_a);
-      const T value_b = is_cyclic_case_b ?
-                            math::interpolate(src_b.last(), src_b.first(), factor_b) :
-                            math::interpolate(
-                                src_b[prev_index_b], src_b[prev_index_b + 1], factor_b);
-      dst[dst_segment[i]] = math::interpolate(value_a, value_b, mix_factor);
-    }
-  });
-}
-
-static void interpolate_attribute_from_single_curve(const CurvesGeometry &src_curves,
-                                                    CurvesGeometry &dst_curves,
-                                                    const IndexMaskSegment &selection_segment,
-                                                    const Span<int> src_indices_segment,
-                                                    const Span<int> sample_indices,
-                                                    const Span<float> sample_factors,
-                                                    const GSpan src_data,
-                                                    GMutableSpan dst_data)
-{
-  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
-  const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
-  const OffsetIndices evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
-  const VArray<int8_t> curve_types = src_curves.curve_types();
-
-  const CPPType &type = src_data.type();
-  bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
-    using T = decltype(dummy);
-    const Span<T> src_from = src_data.typed<T>();
-    MutableSpan<T> dst = dst_data.typed<T>();
-
-    for (const int i : selection_segment.index_range()) {
-      const int i_dst_curve = selection_segment[i];
-      const int i_src_curve = src_indices_segment[i];
-      const IndexRange src_points = src_points_by_curve[i_src_curve];
-      const IndexRange dst_points = dst_points_by_curve[i_dst_curve];
-
-      if (curve_types[i_dst_curve] == CURVE_TYPE_POLY) {
-        length_parameterize::interpolate(src_from.slice(src_points),
-                                         sample_indices.slice(dst_points),
-                                         sample_factors.slice(dst_points),
-                                         dst.slice(dst_points));
-      }
-      else {
-        Vector<T> evaluated_buffer(evaluated_points_by_curve[i_src_curve].size());
-        src_curves.interpolate_to_evaluated(
-            i_src_curve, src_data.slice(src_points), evaluated_buffer.as_mutable_span());
-
-        length_parameterize::interpolate(evaluated_buffer.as_span(),
-                                         sample_indices.slice(dst_points),
-                                         sample_factors.slice(dst_points),
-                                         dst.slice(dst_points));
-      }
-    }
-  });
-}
-
-static void interpolate_attribute_from_two_curves(const CurvesGeometry &from_curves,
-                                                  const CurvesGeometry &to_curves,
-                                                  CurvesGeometry &dst_curves,
-                                                  const IndexMaskSegment &selection_segment,
-                                                  const Span<int> from_indices_segment,
-                                                  const Span<int> to_indices_segment,
-                                                  const Span<int> from_sample_indices,
-                                                  const Span<int> to_sample_indices,
-                                                  const Span<float> from_sample_factors,
-                                                  const Span<float> to_sample_factors,
-                                                  const float mix_factor,
-                                                  const GSpan from_data,
-                                                  const GSpan to_data,
-                                                  GMutableSpan dst_data)
-{
-  const OffsetIndices from_points_by_curve = from_curves.points_by_curve();
-  const OffsetIndices to_points_by_curve = to_curves.points_by_curve();
-  const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
-  const OffsetIndices from_evaluated_points_by_curve = from_curves.evaluated_points_by_curve();
-  const OffsetIndices to_evaluated_points_by_curve = from_curves.evaluated_points_by_curve();
-  const VArray<int8_t> curve_types = from_curves.curve_types();
-
-  const CPPType &type = from_data.type();
-  bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
-    using T = decltype(dummy);
-    const Span<T> src_from = from_data.typed<T>();
-    const Span<T> src_to = to_data.typed<T>();
-    MutableSpan<T> dst = dst_data.typed<T>();
-
-    for (const int i : selection_segment.index_range()) {
-      const int i_dst_curve = selection_segment[i];
-      const int i_from_curve = from_indices_segment[i];
-      const int i_to_curve = to_indices_segment[i];
-      const IndexRange from_points = from_points_by_curve[i_from_curve];
-      const IndexRange to_points = to_points_by_curve[i_to_curve];
-      const IndexRange dst_points = dst_points_by_curve[i_dst_curve];
-
-      if (curve_types[i_from_curve] == CURVE_TYPE_POLY) {
-        bilinear_interpolate(src_from.slice(from_points),
-                             src_to.slice(to_points),
-                             from_sample_indices.slice(dst_points),
-                             to_sample_indices.slice(dst_points),
-                             from_sample_factors.slice(dst_points),
-                             to_sample_factors.slice(dst_points),
-                             mix_factor,
-                             dst_points.index_range(),
-                             dst.slice(dst_points));
-      }
-      else {
-        Vector<T> from_evaluated_buffer(from_evaluated_points_by_curve[i_from_curve].size());
-        Vector<T> to_evaluated_buffer(to_evaluated_points_by_curve[i_to_curve].size());
-        from_curves.interpolate_to_evaluated(
-            i_from_curve, from_data.slice(from_points), from_evaluated_buffer.as_mutable_span());
-        to_curves.interpolate_to_evaluated(
-            i_to_curve, to_data.slice(to_points), to_evaluated_buffer.as_mutable_span());
-
-        bilinear_interpolate(from_evaluated_buffer.as_span(),
-                             to_evaluated_buffer.as_span(),
-                             from_sample_indices.slice(dst_points),
-                             to_sample_indices.slice(dst_points),
-                             from_sample_factors.slice(dst_points),
-                             to_sample_factors.slice(dst_points),
-                             mix_factor,
-                             dst_points.index_range(),
-                             dst.slice(dst_points));
-      }
-    }
-  });
-}
-
 void interpolate_curves(const CurvesGeometry &from_curves,
                         const CurvesGeometry &to_curves,
                         const Span<int> from_curve_indices,
@@ -324,8 +169,6 @@ void interpolate_curves(const CurvesGeometry &from_curves,
     return;
   }
 
-  const OffsetIndices from_evaluated_points_by_curve = from_curves.evaluated_points_by_curve();
-  const OffsetIndices to_evaluated_points_by_curve = to_curves.evaluated_points_by_curve();
   const VArray<bool> from_curves_cyclic = from_curves.cyclic();
   const VArray<bool> to_curves_cyclic = to_curves.cyclic();
   const Span<float3> from_evaluated_positions = from_curves.evaluated_positions();
@@ -359,6 +202,8 @@ void interpolate_curves(const CurvesGeometry &from_curves,
    * time or one curve at a time. */
   selection.foreach_segment(
       GrainSize(512), [&](const IndexMaskSegment selection_segment, const int64_t segment_pos) {
+        const IndexRange segment_range = selection_segment.index_range().shift(
+            segment_pos + selection_segment.offset());
         const Span<int> from_indices_segment = from_curve_indices.slice(segment_pos,
                                                                         selection_segment.size());
         const Span<int> to_indices_segment = to_curve_indices.slice(segment_pos,
@@ -415,63 +260,69 @@ void interpolate_curves(const CurvesGeometry &from_curves,
         for (const int i_attribute : attributes.dst.index_range()) {
           if (attributes.src_from[i_attribute].is_empty()) {
             BLI_assert(!attributes.src_to[i_attribute].is_empty());
-            interpolate_attribute_from_single_curve(to_curves,
-                                                    dst_curves,
-                                                    selection_segment,
-                                                    to_indices_segment,
-                                                    to_sample_indices,
-                                                    to_sample_factors,
-                                                    attributes.src_to[i_attribute],
-                                                    attributes.dst[i_attribute]);
+            resample_curve_attribute(to_curves,
+                                     dst_curves,
+                                     attributes.src_to[i_attribute],
+                                     attributes.dst[i_attribute],
+                                     segment_range,
+                                     to_sample_indices,
+                                     to_sample_factors,
+                                     1.0f,
+                                     false);
           }
           else if (attributes.src_to[i_attribute].is_empty()) {
-            interpolate_attribute_from_single_curve(from_curves,
-                                                    dst_curves,
-                                                    selection_segment,
-                                                    from_indices_segment,
-                                                    from_sample_indices,
-                                                    from_sample_factors,
-                                                    attributes.src_from[i_attribute],
-                                                    attributes.dst[i_attribute]);
+            resample_curve_attribute(from_curves,
+                                     dst_curves,
+                                     attributes.src_from[i_attribute],
+                                     attributes.dst[i_attribute],
+                                     segment_range,
+                                     from_sample_indices,
+                                     from_sample_factors,
+                                     1.0f,
+                                     false);
           }
           else {
-            interpolate_attribute_from_two_curves(from_curves,
-                                                  to_curves,
-                                                  dst_curves,
-                                                  selection_segment,
-                                                  from_indices_segment,
-                                                  to_indices_segment,
-                                                  from_sample_indices,
-                                                  to_sample_indices,
-                                                  from_sample_factors,
-                                                  to_sample_factors,
-                                                  mix_factor,
-                                                  attributes.src_from[i_attribute],
-                                                  attributes.src_to[i_attribute],
-                                                  attributes.dst[i_attribute]);
+            /* Resample 'from' curves, then mix with 'to' curves. */
+            resample_curve_attribute(from_curves,
+                                     dst_curves,
+                                     attributes.src_from[i_attribute],
+                                     attributes.dst[i_attribute],
+                                     segment_range,
+                                     from_sample_indices,
+                                     from_sample_factors,
+                                     1.0f,
+                                     false);
+            resample_curve_attribute(to_curves,
+                                     dst_curves,
+                                     attributes.src_to[i_attribute],
+                                     attributes.dst[i_attribute],
+                                     segment_range,
+                                     to_sample_indices,
+                                     to_sample_factors,
+                                     mix_factor,
+                                     false);
           }
         }
 
         /* Interpolate the evaluated positions to the resampled curves. */
-        for (const int i : selection_segment.index_range()) {
-          const int i_dst_curve = selection_segment[i];
-          const int i_from_curve = from_indices_segment[i];
-          const int i_to_curve = to_indices_segment[i];
-          const IndexRange from_points = from_evaluated_points_by_curve[i_from_curve];
-          const IndexRange to_points = to_evaluated_points_by_curve[i_to_curve];
-          const IndexRange dst_points = dst_points_by_curve[i_dst_curve];
-          bilinear_interpolate(from_evaluated_positions.slice(from_points),
-                               to_evaluated_positions.slice(to_points),
-                               from_sample_indices.as_span().slice(dst_points),
-                               to_sample_indices.as_span().slice(dst_points),
-                               from_sample_factors.as_span().slice(dst_points),
-                               to_sample_factors.as_span().slice(dst_points),
-                               mix_factor,
-                               dst_points.index_range(),
-                               dst_positions.slice(dst_points));
-        }
-
-        // interpolate_evaluated_data(evaluated_positions, dst_positions);
+        resample_curve_attribute(from_curves,
+                                 dst_curves,
+                                 from_evaluated_positions,
+                                 dst_positions,
+                                 segment_range,
+                                 from_sample_indices,
+                                 from_sample_factors,
+                                 1.0f,
+                                 false);
+        resample_curve_attribute(to_curves,
+                                 dst_curves,
+                                 to_evaluated_positions,
+                                 dst_positions,
+                                 segment_range,
+                                 to_sample_indices,
+                                 to_sample_factors,
+                                 mix_factor,
+                                 false);
       });
 
   for (bke::GSpanAttributeWriter &attribute : attributes.dst_attributes) {

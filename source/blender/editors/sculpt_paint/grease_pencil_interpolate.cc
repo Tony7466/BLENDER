@@ -553,11 +553,11 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
     Layer &layer = *grease_pencil.layers_for_write()[layer_index];
     GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
 
-    ensure_drawing_at_exact_frame(grease_pencil, layer, layer_data, current_frame);
-
     /* Pair from/to curves by index. */
     find_curve_mapping_from_index(
         grease_pencil, layer, current_frame, data.exclude_breakdowns, layer_data.curve_pairs);
+
+    ensure_drawing_at_exact_frame(grease_pencil, layer, layer_data, current_frame);
   });
 
   const std::optional<FramesMapKeyInterval> active_layer_interval = find_frames_interval(

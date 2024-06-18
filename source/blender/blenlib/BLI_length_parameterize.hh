@@ -70,12 +70,58 @@ inline void interpolate_to_masked(const Span<T> src,
 }
 
 template<typename T>
+inline void interpolate_to_masked_mix(const Span<T> src,
+                                      const Span<int> indices,
+                                      const Span<float> factors,
+                                      const float weight,
+                                      const IndexMask &dst_mask,
+                                      MutableSpan<T> dst)
+{
+  BLI_assert(indices.size() == factors.size());
+  BLI_assert(indices.size() == dst_mask.size());
+  const int last_src_index = src.size() - 1;
+
+  dst_mask.foreach_segment_optimized([&](const auto dst_segment, const int64_t dst_segment_pos) {
+    for (const int i : dst_segment.index_range()) {
+      const int prev_index = indices[dst_segment_pos + i];
+      const float factor = factors[dst_segment_pos + i];
+      const bool is_cyclic_case = prev_index == last_src_index;
+      T value;
+      if (is_cyclic_case) {
+        value = math::interpolate(src.last(), src.first(), factor);
+      }
+      else {
+        value = math::interpolate(src[prev_index], src[prev_index + 1], factor);
+      }
+      /* Mix existing and new value. */
+      dst[dst_segment[i]] = math::interpolate(dst[dst_segment[i]], value, weight);
+    }
+  });
+}
+
+template<typename T>
 inline void interpolate(const Span<T> src,
                         const Span<int> indices,
                         const Span<float> factors,
                         MutableSpan<T> dst)
 {
   interpolate_to_masked(src, indices, factors, dst.index_range(), dst);
+}
+
+/* Interpolate curves and mix with existing values. */
+template<typename T>
+inline void interpolate_mix(const Span<T> src,
+                            const Span<int> indices,
+                            const Span<float> factors,
+                            const float weight,
+                            MutableSpan<T> dst)
+{
+  if (weight == 1.0f) {
+    interpolate_to_masked(src, indices, factors, dst.index_range(), dst);
+  }
+  else {
+    interpolate_to_masked_mix(src, indices, factors, weight, dst.index_range(), dst);
+  }
 }
 
 /**

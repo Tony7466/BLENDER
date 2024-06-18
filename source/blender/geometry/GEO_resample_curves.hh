@@ -70,6 +70,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
  * \param curve_selection: Selection of curves to interpolate, unselected curves are not modified.
  * \param sample_indices: Point index in source curves to sample from for each target point.
  * \param sample_indices: Interpolation factor between start and end point for each target point.
+ * \param mix_weight: Mix factor for blending with existing data (0 = no change, 1 = replace data).
  * \param is_evaluated_data: Source data is for evaluated points.
  */
 void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
@@ -79,6 +80,7 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                               const IndexMask &curve_selection,
                               Span<int> sample_indices,
                               Span<float> sample_factors,
+                              float mix_weight,
                               bool is_evaluated_data);
 
 }  // namespace blender::geometry
