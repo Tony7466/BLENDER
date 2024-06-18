@@ -605,7 +605,7 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
 
   const float4x4 transform_inv = math::invert(transform);
   threading::EnumerableThreadSpecific<PerimeterData> thread_data;
-  strokes.foreach_index([&](const int64_t curve_i) {
+  strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
     PerimeterData &data = thread_data.local();
 
     const bool is_cyclic_curve = src_cyclic[curve_i];
