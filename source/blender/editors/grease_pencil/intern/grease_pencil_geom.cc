@@ -335,7 +335,7 @@ blender::bke::CurvesGeometry curves_merge_by_distance(
 static void generate_arc_from_point_to_point(const float3 &from,
                                              const float3 &to,
                                              const float3 &center_pt,
-                                             const int subdivisions,
+                                             const int corner_subdivisions,
                                              const int src_point_index,
                                              Vector<float3> &r_perimeter,
                                              Vector<int> &r_src_indices)
@@ -353,10 +353,10 @@ static void generate_arc_from_point_to_point(const float3 &from,
   /* Compute angle in range [0, 2pi) so that the rotation is always counter-clockwise. */
   const float angle = math::atan2(-sin_angle, -cos_angle) + M_PI;
 
-  /* Number of points is 2^(n+1) + 1 on half a circle (n=subdivisions)
+  /* Number of points is 2^(n+1) + 1 on half a circle (n=corner_subdivisions)
    * so we multiply by (angle / pi) to get the right amount of
    * points to insert. */
-  const int num_full = (1 << (subdivisions + 1)) + 1;
+  const int num_full = (1 << (corner_subdivisions + 1)) + 1;
   const int num_points = num_full * math::abs(angle) / M_PI;
   if (num_points < 2) {
     r_perimeter.append(center_pt + vec_from);
@@ -382,7 +382,7 @@ static void generate_arc_from_point_to_point(const float3 &from,
 static void generate_cap(const float3 &point,
                          const float3 &tangent,
                          const float radius,
-                         const int subdivisions,
+                         const int corner_subdivisions,
                          const eGPDstroke_Caps cap_type,
                          const int src_point_index,
                          Vector<float3> &r_perimeter,
@@ -394,7 +394,7 @@ static void generate_cap(const float3 &point,
       generate_arc_from_point_to_point(point - normal * radius,
                                        point + normal * radius,
                                        point,
-                                       subdivisions,
+                                       corner_subdivisions,
                                        src_point_index,
                                        r_perimeter,
                                        r_src_indices);
@@ -416,7 +416,7 @@ static void generate_corner(const float3 &pt_a,
                             const float3 &pt_b,
                             const float3 &pt_c,
                             const float radius,
-                            const int subdivisions,
+                            const int corner_subdivisions,
                             const int src_point_index,
                             Vector<float3> &r_perimeter,
                             Vector<int> &r_src_indices)
@@ -436,7 +436,7 @@ static void generate_corner(const float3 &pt_a,
     generate_arc_from_point_to_point(pt_b + normal_prev * radius,
                                      pt_b + normal * radius,
                                      pt_b,
-                                     subdivisions,
+                                     corner_subdivisions,
                                      src_point_index,
                                      r_perimeter,
                                      r_src_indices);
@@ -460,12 +460,12 @@ static void generate_corner(const float3 &pt_a,
 static void generate_stroke_perimeter(const Span<float3> all_positions,
                                       const VArray<float> all_radii,
                                       const IndexRange points,
-                                      const int subdivisions,
+                                      const int corner_subdivisions,
                                       const bool is_cyclic,
                                       const bool use_caps,
                                       const eGPDstroke_Caps start_cap_type,
                                       const eGPDstroke_Caps end_cap_type,
-                                      const float radius_offset,
+                                      const float outline_offset,
                                       Vector<float3> &r_perimeter,
                                       Vector<int> &r_point_counts,
                                       Vector<int> &r_point_indices)
@@ -481,15 +481,17 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
     const float3 pt_a = positions[a];
     const float3 pt_b = positions[b];
     const float3 pt_c = positions[c];
-    const float radius = std::max(all_radii[point] + radius_offset, 0.0f);
-    generate_corner(pt_a, pt_b, pt_c, radius, subdivisions, point, r_perimeter, r_point_indices);
+    const float radius = std::max(all_radii[point] + outline_offset, 0.0f);
+    generate_corner(
+        pt_a, pt_b, pt_c, radius, corner_subdivisions, point, r_perimeter, r_point_indices);
   };
   auto add_cap = [&](const int center_i, const int next_i, const eGPDstroke_Caps cap_type) {
     const int point = points[center_i];
     const float3 &center = positions[center_i];
     const float3 dir = math::normalize(positions[next_i] - center);
-    const float radius = std::max(all_radii[point] + radius_offset, 0.0f);
-    generate_cap(center, dir, radius, subdivisions, cap_type, point, r_perimeter, r_point_indices);
+    const float radius = std::max(all_radii[point] + outline_offset, 0.0f);
+    generate_cap(
+        center, dir, radius, corner_subdivisions, cap_type, point, r_perimeter, r_point_indices);
   };
 
   /* Creates a single cyclic curve with end caps. */
@@ -575,10 +577,10 @@ struct PerimeterData {
 bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
                                           const IndexMask &strokes,
                                           const float4x4 &transform,
-                                          const int subdivisions,
-                                          const float radius_offset,
-                                          int material_index,
-                                          const bool keep_shape)
+                                          const int corner_subdivisions,
+                                          const float outline_radius,
+                                          const float outline_offset,
+                                          const int material_index)
 {
   const bke::CurvesGeometry &src_curves = drawing.strokes();
   Span<float3> src_positions = src_curves.positions();
@@ -616,20 +618,18 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
     const int prev_curve_num = data.point_counts.size();
     const IndexRange points = src_curves.points_by_curve()[curve_i];
 
-    generate_stroke_perimeter(
-        transformed_positions,
-        src_radii,
-        points,
-        subdivisions,
-        is_cyclic_curve,
-        use_caps,
-        eGPDstroke_Caps(src_start_caps[curve_i]),
-        eGPDstroke_Caps(src_end_caps[curve_i]),
-        /* Offset the strokes by the radius so the outside aligns with the input stroke. */
-        keep_shape ? -radius_offset : 0.0f,
-        data.positions,
-        data.point_counts,
-        data.point_indices);
+    generate_stroke_perimeter(transformed_positions,
+                              src_radii,
+                              points,
+                              corner_subdivisions,
+                              is_cyclic_curve,
+                              use_caps,
+                              eGPDstroke_Caps(src_start_caps[curve_i]),
+                              eGPDstroke_Caps(src_end_caps[curve_i]),
+                              outline_offset,
+                              data.positions,
+                              data.point_counts,
+                              data.point_indices);
 
     /* Transform perimeter positions back into object space. */
     for (float3 &pos : data.positions.as_mutable_span().drop_front(prev_point_num)) {
@@ -689,7 +689,7 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
     /* Append point data. */
     dst_positions.slice(points).copy_from(data.positions);
     dst_point_map.as_mutable_span().slice(points).copy_from(data.point_indices);
-    dst_radius.span.slice(points).fill(radius_offset);
+    dst_radius.span.slice(points).fill(outline_radius);
   }
   offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
 

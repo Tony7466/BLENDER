@@ -190,14 +190,17 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
   const float object_scale = math::length(
       math::transform_direction(ctx.object->object_to_world(), float3(M_SQRT1_3)));
   /* Legacy thickness setting is diameter in pixels, divide by 2000 to get radius. */
-  const float radius = math::max(omd.thickness * object_scale, 1.0f) * 0.0005f;
-  const bool keep_shape = omd.flag & MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE;
+  const float radius = math::max(omd.thickness * object_scale, 1.0f) /
+                       bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+  /* Offset the strokes by the radius so the outside aligns with the input stroke. */
+  const float outline_offset = (omd.flag & MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE) != 0 ? -radius :
+                                                                                        0.0f;
   const int mat_nr = (omd.outline_material ?
                           BKE_object_material_index_get(ctx.object, omd.outline_material) :
                           -1);
 
   bke::CurvesGeometry curves = ed::greasepencil::create_curves_outline(
-      drawing, curves_mask, viewmat, omd.subdiv, radius, mat_nr, keep_shape);
+      drawing, curves_mask, viewmat, omd.subdiv, radius, outline_offset, mat_nr);
 
   /* Cyclic curve reordering feature. */
   if (omd.object) {
