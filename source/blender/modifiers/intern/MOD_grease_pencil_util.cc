@@ -92,6 +92,7 @@ void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, Pointe
   PointerRNA ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
   const bool use_layer_pass = RNA_boolean_get(ptr, "use_layer_pass_filter");
+  const bool use_layer_group_filter = RNA_boolean_get(ptr, "use_layer_group_filter");
   uiLayout *row, *col, *sub, *subsub;
 
   uiLayoutSetPropSep(layout, true);
@@ -99,8 +100,15 @@ void draw_layer_filter_settings(const bContext * /*C*/, uiLayout *layout, Pointe
   col = uiLayoutColumn(layout, true);
   row = uiLayoutRow(col, true);
   uiLayoutSetPropDecorate(row, false);
-  uiItemPointerR(row, ptr, "layer_filter", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
+  if (use_layer_group_filter) {
+    uiItemPointerR(
+        row, ptr, "layer_filter", &obj_data_ptr, "layer_groups", nullptr, ICON_GREASEPENCIL);
+  }
+  else {
+    uiItemPointerR(row, ptr, "layer_filter", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
+  }
   sub = uiLayoutRow(row, true);
+  uiItemR(sub, ptr, "use_layer_group_filter", UI_ITEM_NONE, "", ICON_FILE_FOLDER);
   uiItemR(sub, ptr, "invert_layer_filter", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
   row = uiLayoutRowWithHeading(col, true, "Layer Pass");
@@ -207,13 +215,35 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
   const VArray<int> layer_passes =
       layer_attributes.lookup_or_default<int>("pass_index", bke::AttrDomain::Layer, 0).varray;
 
+  const Span<const blender::bke::greasepencil::LayerGroup *> layer_groups =
+      grease_pencil.layer_groups();
+  int filter_layer_group = -1;
+  if (layer_name_filter) {
+    for (int i : layer_groups.index_range()) {
+      if (layer_groups[i]->name() == layer_name_filter.value()) {
+        filter_layer_group = i;
+        break;
+      }
+    }
+  }
+
   IndexMask result = IndexMask::from_predicate(
       full_mask, GrainSize(4096), memory, [&](const int64_t layer_i) {
         if (layer_name_filter) {
-          const Layer &layer = *layers[layer_i];
-          const bool match = (layer.name() == layer_name_filter.value());
-          if (match == layer_filter_invert) {
-            return false;
+          if (filter_layer_group > -1) {
+            const blender::bke::greasepencil::LayerGroup *group = layer_groups[filter_layer_group];
+            const Layer *layer = layers[layer_i];
+            const bool match = group->layers().contains(layer);
+            if (match == layer_filter_invert) {
+              return false;
+            }
+          }
+          else {
+            const Layer &layer = *layers[layer_i];
+            const bool match = (layer.name() == layer_name_filter.value());
+            if (match == layer_filter_invert) {
+              return false;
+            }
           }
         }
         if (layer_pass_filter) {
