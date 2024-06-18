@@ -416,10 +416,9 @@ static int insert_key(bContext *C, wmOperator *op)
   if (combined_result.get_count(animrig::SingleKeyingResult::SUCCESS) == 0) {
     combined_result.generate_reports(op->reports);
   }
-  else {
-    for (ID *id : ids) {
-      DEG_id_tag_update(id, ID_RECALC_ANIMATION_NO_FLUSH);
-    }
+
+  for (ID *id : ids) {
+    DEG_id_tag_update(id, ID_RECALC_ANIMATION_NO_FLUSH);
   }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
