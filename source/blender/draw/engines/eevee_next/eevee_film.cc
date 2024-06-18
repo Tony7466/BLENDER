@@ -437,7 +437,11 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 
 void Film::sync()
 {
-  /* We use a fragment shader for viewport because we need to output the depth. */
+  /* We use a fragment shader for viewport because we need to output the depth.
+   *
+   * Compute shader is also used to work around Metal/Intel iGPU issues concerning
+   * read write support for array textures. In this case the copy_ps_ is used to
+   * copy the right color/value to the framebuffer. */
   use_compute_ = !inst_.is_viewport() ||
                  GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_MAC, GPU_DRIVER_ANY);
 
