@@ -386,13 +386,15 @@ struct StrokeCache {
    * Whether or not the modifier key that controls inverting brush behavior is active currently.
    * Generally signals a change in behavior for brushes.
    *
-   * See BrushStrokeMode::BRUSH_STROKE_INVERT.
+   * \see BrushStrokeMode::BRUSH_STROKE_INVERT.
    */
   bool invert;
   float pressure;
   /**
    * Depending on the mode, can either be the raw brush strength, or a scaled (possibly negative)
-   * value. See #brush_strength for Sculpt Mode.
+   * value.
+   *
+   * \see #brush_strength for Sculpt Mode.
    */
   float bstrength;
   float normal_weight; /* from brush (with optional override) */
@@ -524,7 +526,7 @@ struct StrokeCache {
    * Whether or not the modifier key that controls smoothing is active currently.
    * Generally signals a change in behavior for different brushes.
    *
-   * See BrushStrokeMode::BRUSH_STROKE_SMOOTH.
+   * \see BrushStrokeMode::BRUSH_STROKE_SMOOTH.
    */
   bool alt_smooth;
 
