@@ -43,10 +43,10 @@ void DRW_pointcloud_init()
     uint dummy_id = GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
     g_dummy_vbo = GPU_vertbuf_create_with_format_ex(
-        &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+        format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
     const float vert[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    GPU_vertbuf_data_alloc(g_dummy_vbo, 1);
+    GPU_vertbuf_data_alloc(*g_dummy_vbo, 1);
     GPU_vertbuf_attr_fill(g_dummy_vbo, dummy_id, vert);
   }
 }
@@ -87,11 +87,11 @@ DRWShadingGroup *DRW_shgroup_pointcloud_create_sub(Object *object,
     // }
 
     /* Only single material supported for now. */
-    GPUBatch **geom = pointcloud_surface_shaded_get(&pointcloud, &gpu_material, 1);
+    gpu::Batch **geom = pointcloud_surface_shaded_get(&pointcloud, &gpu_material, 1);
     DRW_shgroup_call(shgrp, geom[0], object);
   }
   else {
-    GPUBatch *geom = pointcloud_surface_get(&pointcloud);
+    gpu::Batch *geom = pointcloud_surface_get(&pointcloud);
     DRW_shgroup_call(shgrp, geom, object);
   }
   return shgrp;
@@ -103,9 +103,9 @@ void DRW_pointcloud_free()
 }
 
 template<typename PassT>
-GPUBatch *point_cloud_sub_pass_setup_implementation(PassT &sub_ps,
-                                                    Object *object,
-                                                    GPUMaterial *gpu_material)
+gpu::Batch *point_cloud_sub_pass_setup_implementation(PassT &sub_ps,
+                                                      Object *object,
+                                                      GPUMaterial *gpu_material)
 {
   BLI_assert(object->type == OB_POINTCLOUD);
   PointCloud &pointcloud = *static_cast<PointCloud *>(object->data);
@@ -133,20 +133,20 @@ GPUBatch *point_cloud_sub_pass_setup_implementation(PassT &sub_ps,
     }
   }
 
-  GPUBatch *geom = pointcloud_surface_get(&pointcloud);
+  gpu::Batch *geom = pointcloud_surface_get(&pointcloud);
   return geom;
 }
 
-GPUBatch *point_cloud_sub_pass_setup(PassMain::Sub &sub_ps,
-                                     Object *object,
-                                     GPUMaterial *gpu_material)
+gpu::Batch *point_cloud_sub_pass_setup(PassMain::Sub &sub_ps,
+                                       Object *object,
+                                       GPUMaterial *gpu_material)
 {
   return point_cloud_sub_pass_setup_implementation(sub_ps, object, gpu_material);
 }
 
-GPUBatch *point_cloud_sub_pass_setup(PassSimple::Sub &sub_ps,
-                                     Object *object,
-                                     GPUMaterial *gpu_material)
+gpu::Batch *point_cloud_sub_pass_setup(PassSimple::Sub &sub_ps,
+                                       Object *object,
+                                       GPUMaterial *gpu_material)
 {
   return point_cloud_sub_pass_setup_implementation(sub_ps, object, gpu_material);
 }

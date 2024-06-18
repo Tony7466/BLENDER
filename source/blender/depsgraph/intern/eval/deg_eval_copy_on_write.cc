@@ -29,7 +29,7 @@
 #include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh_types.hh"
@@ -604,8 +604,8 @@ void update_list_orig_pointers(const ListBase *listbase_orig,
     element_orig = element_orig->next;
   }
 
-  BLI_assert((element_orig == nullptr && element_cow == nullptr) ||
-             !"list of pointers of different sizes, unable to reliably set orig pointer");
+  BLI_assert_msg(element_orig == nullptr && element_cow == nullptr,
+                 "list of pointers of different sizes, unable to reliably set orig pointer");
 }
 
 void update_particle_system_orig_pointers(const Object *object_orig, Object *object_cow)
@@ -725,7 +725,6 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       Scene *scene_cow = (Scene *)id_cow;
       const Scene *scene_orig = (const Scene *)id_orig;
       scene_cow->toolsettings = scene_orig->toolsettings;
-      scene_cow->eevee.light_cache_data = scene_orig->eevee.light_cache_data;
       scene_setup_view_layers_after_remap(depsgraph, id_node, reinterpret_cast<Scene *>(id_cow));
       break;
     }
@@ -837,11 +836,18 @@ ID *deg_expand_eval_copy_datablock(const Depsgraph *depsgraph, const IDNode *id_
   /* Perform remapping of the nodes. */
   RemapCallbackUserData user_data = {nullptr};
   user_data.depsgraph = depsgraph;
+  /* About IDWALK flags:
+   *  - #IDWALK_IGNORE_EMBEDDED_ID: In depsgraph embedded IDs are handled (mostly) as regular IDs,
+   *    and processed on their own, not as part of their owner ID (the owner ID's pointer to its
+   *    embedded data is set to null before actual copying, in #id_copy_inplace_no_main).
+   *  - #IDWALK_IGNORE_MISSING_OWNER_ID is necessary for the same reason: when directly processing
+   *    an embedded ID here, its owner is unknown, and its internal owner ID pointer is not yet
+   *    remapped, so it is currently 'invalid'. */
   BKE_library_foreach_ID_link(nullptr,
                               id_cow,
                               foreach_libblock_remap_callback,
                               (void *)&user_data,
-                              IDWALK_IGNORE_EMBEDDED_ID);
+                              IDWALK_IGNORE_EMBEDDED_ID | IDWALK_IGNORE_MISSING_OWNER_ID);
   /* Correct or tweak some pointers which are not taken care by foreach
    * from above. */
   update_id_after_copy(depsgraph, id_node, id_orig, id_cow);
@@ -947,7 +953,6 @@ void discard_scene_pointers(ID *id_cow)
 {
   Scene *scene_cow = (Scene *)id_cow;
   scene_cow->toolsettings = nullptr;
-  scene_cow->eevee.light_cache_data = nullptr;
 }
 
 /* nullptr-ify all edit mode pointers which points to data from

@@ -33,7 +33,7 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 
 #include "draw_manager_c.hh"
 
@@ -74,8 +74,8 @@ static bool is_cursor_visible(const DRWContextState *draw_ctx, Scene *scene, Vie
     }
     /* exception: object in texture paint mode, clone brush, use_clone_layer disabled */
     else if (draw_ctx->object_mode & OB_MODE_TEXTURE_PAINT) {
-      const Paint *p = BKE_paint_get_active(scene, view_layer);
-      const Brush *brush = (p) ? BKE_paint_brush_for_read(p) : nullptr;
+      const Paint *paint = BKE_paint_get_active(scene, view_layer);
+      const Brush *brush = (paint) ? BKE_paint_brush_for_read(paint) : nullptr;
 
       if (brush && brush->imagepaint_tool == PAINT_TOOL_CLONE) {
         if ((scene->toolsettings->imapaint.flag & IMAGEPAINT_PROJECT_LAYER_CLONE) == 0) {
@@ -184,7 +184,7 @@ void DRW_draw_cursor()
   GPU_matrix_translate_2f(co[0] + 0.5f, co[1] + 0.5f);
   GPU_matrix_scale_2f(U.widget_unit, U.widget_unit);
 
-  GPUBatch *cursor_batch = DRW_cache_cursor_get(is_aligned);
+  blender::gpu::Batch *cursor_batch = DRW_cache_cursor_get(is_aligned);
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_FLAT_COLOR);
   GPU_batch_set_shader(cursor_batch, shader);
 
@@ -247,7 +247,7 @@ void DRW_draw_cursor_2d_ex(const ARegion *region, const float cursor[2])
   GPU_matrix_translate_2f(co[0] + 0.5f, co[1] + 0.5f);
   GPU_matrix_scale_2f(U.widget_unit, U.widget_unit);
 
-  GPUBatch *cursor_batch = DRW_cache_cursor_get(true);
+  blender::gpu::Batch *cursor_batch = DRW_cache_cursor_get(true);
 
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_FLAT_COLOR);
   GPU_batch_set_shader(cursor_batch, shader);

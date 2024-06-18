@@ -343,19 +343,18 @@ static void node_rna(StructRNA *srna)
                     "Attribute domain for the Selection and Group ID inputs",
                     rna_enum_attribute_domain_without_corner_items,
                     NOD_inline_enum_accessors(custom1),
-                    int(AttrDomain::Point),
-                    enums::domain_without_corner_experimental_grease_pencil_version3_fn);
+                    int(AttrDomain::Point));
 }
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_SPLIT_TO_INSTANCES, "Split to Instances", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

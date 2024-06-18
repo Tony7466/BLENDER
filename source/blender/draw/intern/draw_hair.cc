@@ -56,10 +56,10 @@ static void drw_hair_ensure_vbo()
   uint dummy_id = GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   g_dummy_vbo = GPU_vertbuf_create_with_format_ex(
-      &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+      format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
   const float vert[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  GPU_vertbuf_data_alloc(g_dummy_vbo, 1);
+  GPU_vertbuf_data_alloc(*g_dummy_vbo, 1);
   GPU_vertbuf_attr_fill(g_dummy_vbo, dummy_id, vert);
   /* Create VBO immediately to bind to texture buffer. */
   GPU_vertbuf_use(g_dummy_vbo);
@@ -72,12 +72,7 @@ static void drw_hair_ensure_vbo()
 
 void DRW_hair_init()
 {
-  if (GPU_transform_feedback_support() || GPU_compute_shader_support()) {
-    g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_NO_DRAW);
-  }
-  else {
-    g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_WRITE_COLOR);
-  }
+  g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_NO_DRAW);
 
   drw_hair_ensure_vbo();
 }
@@ -212,6 +207,7 @@ DRWShadingGroup *DRW_shgroup_hair_create_sub(Object *object,
   if (hair_cache->num_uv_layers == 0) {
     DRW_shgroup_buffer_texture(shgrp, "u", g_dummy_vbo);
     DRW_shgroup_buffer_texture(shgrp, "au", g_dummy_vbo);
+    DRW_shgroup_buffer_texture(shgrp, "a", g_dummy_vbo);
   }
   if (hair_cache->num_col_layers == 0) {
     DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
@@ -247,7 +243,7 @@ DRWShadingGroup *DRW_shgroup_hair_create_sub(Object *object,
   }
   /* TODO(fclem): Until we have a better way to cull the hair and render with orco, bypass
    * culling test. */
-  GPUBatch *geom = hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
+  blender::gpu::Batch *geom = hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
   DRW_shgroup_call_no_cull(shgrp, geom, object);
 
   return shgrp;
@@ -352,12 +348,12 @@ void hair_free()
 }
 
 template<typename PassT>
-GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
-                                             const Scene *scene,
-                                             Object *object,
-                                             ParticleSystem *psys,
-                                             ModifierData *md,
-                                             GPUMaterial *gpu_material)
+blender::gpu::Batch *hair_sub_pass_setup_implementation(PassT &sub_ps,
+                                                        const Scene *scene,
+                                                        Object *object,
+                                                        ParticleSystem *psys,
+                                                        ModifierData *md,
+                                                        GPUMaterial *gpu_material)
 {
   /** NOTE: This still relies on the old DRW_hair implementation. */
 
@@ -383,6 +379,7 @@ GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
   if (hair_cache->num_uv_layers == 0) {
     sub_ps.bind_texture("u", g_dummy_vbo);
     sub_ps.bind_texture("au", g_dummy_vbo);
+    sub_ps.bind_texture("a", g_dummy_vbo);
   }
   if (hair_cache->num_col_layers == 0) {
     sub_ps.bind_texture("c", g_dummy_vbo);
@@ -416,22 +413,22 @@ GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
   return hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
 }
 
-GPUBatch *hair_sub_pass_setup(PassMain::Sub &sub_ps,
-                              const Scene *scene,
-                              Object *object,
-                              ParticleSystem *psys,
-                              ModifierData *md,
-                              GPUMaterial *gpu_material)
+blender::gpu::Batch *hair_sub_pass_setup(PassMain::Sub &sub_ps,
+                                         const Scene *scene,
+                                         Object *object,
+                                         ParticleSystem *psys,
+                                         ModifierData *md,
+                                         GPUMaterial *gpu_material)
 {
   return hair_sub_pass_setup_implementation(sub_ps, scene, object, psys, md, gpu_material);
 }
 
-GPUBatch *hair_sub_pass_setup(PassSimple::Sub &sub_ps,
-                              const Scene *scene,
-                              Object *object,
-                              ParticleSystem *psys,
-                              ModifierData *md,
-                              GPUMaterial *gpu_material)
+blender::gpu::Batch *hair_sub_pass_setup(PassSimple::Sub &sub_ps,
+                                         const Scene *scene,
+                                         Object *object,
+                                         ParticleSystem *psys,
+                                         ModifierData *md,
+                                         GPUMaterial *gpu_material)
 {
   return hair_sub_pass_setup_implementation(sub_ps, scene, object, psys, md, gpu_material);
 }

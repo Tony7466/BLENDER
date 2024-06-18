@@ -88,6 +88,7 @@ set(SRC
   GPU_capabilities.hh
   GPU_common.hh
   GPU_common_types.hh
+  GPU_compilation_subprocess.hh
   GPU_compute.hh
   GPU_context.hh
   GPU_debug.hh
@@ -114,7 +115,6 @@ set(SRC
   GPU_viewport.hh
 
   intern/gpu_backend.hh
-  intern/gpu_batch_private.hh
   intern/gpu_capabilities_private.hh
   intern/gpu_codegen.hh
   intern/gpu_context_private.hh
@@ -151,6 +151,7 @@ set(OPENGL_SRC
 
   opengl/gl_backend.cc
   opengl/gl_batch.cc
+  opengl/gl_compilation_subprocess.cc
   opengl/gl_compute.cc
   opengl/gl_context.cc
   opengl/gl_debug.cc
@@ -172,6 +173,7 @@ set(OPENGL_SRC
 
   opengl/gl_backend.hh
   opengl/gl_batch.hh
+  opengl/gl_compilation_subprocess.hh
   opengl/gl_compute.hh
   opengl/gl_context.hh
   opengl/gl_debug.hh
@@ -204,6 +206,7 @@ set(VULKAN_SRC
   vulkan/vk_debug.cc
   vulkan/vk_descriptor_pools.cc
   vulkan/vk_descriptor_set.cc
+  vulkan/vk_descriptor_set_layouts.cc
   vulkan/vk_device.cc
   vulkan/vk_drawlist.cc
   vulkan/vk_fence.cc
@@ -214,10 +217,19 @@ set(VULKAN_SRC
   vulkan/vk_memory.cc
   vulkan/vk_memory_layout.cc
   vulkan/vk_pipeline.cc
+  vulkan/vk_pipeline_pool.cc
   vulkan/vk_pipeline_state.cc
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
   vulkan/vk_query.cc
+  vulkan/render_graph/nodes/vk_pipeline_data.cc
+  vulkan/render_graph/vk_command_buffer_wrapper.cc
+  vulkan/render_graph/vk_command_builder.cc
+  vulkan/render_graph/vk_render_graph.cc
+  vulkan/render_graph/vk_render_graph_links.cc
+  vulkan/render_graph/vk_resource_access_info.cc
+  vulkan/render_graph/vk_resource_state_tracker.cc
+  vulkan/render_graph/vk_scheduler.cc
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
   vulkan/vk_samplers.cc
@@ -229,6 +241,7 @@ set(VULKAN_SRC
   vulkan/vk_storage_buffer.cc
   vulkan/vk_texture.cc
   vulkan/vk_timeline_semaphore.cc
+  vulkan/vk_to_string.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_attribute_object.cc
   vulkan/vk_vertex_buffer.cc
@@ -245,6 +258,7 @@ set(VULKAN_SRC
   vulkan/vk_debug.hh
   vulkan/vk_descriptor_pools.hh
   vulkan/vk_descriptor_set.hh
+  vulkan/vk_descriptor_set_layouts.hh
   vulkan/vk_device.hh
   vulkan/vk_drawlist.hh
   vulkan/vk_fence.hh
@@ -255,10 +269,39 @@ set(VULKAN_SRC
   vulkan/vk_memory.hh
   vulkan/vk_memory_layout.hh
   vulkan/vk_pipeline.hh
+  vulkan/vk_pipeline_pool.hh
   vulkan/vk_pipeline_state.hh
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
+  vulkan/render_graph/nodes/vk_blit_image_node.hh
+  vulkan/render_graph/nodes/vk_begin_rendering_node.hh
+  vulkan/render_graph/nodes/vk_clear_attachments_node.hh
+  vulkan/render_graph/nodes/vk_clear_color_image_node.hh
+  vulkan/render_graph/nodes/vk_clear_depth_stencil_image_node.hh
+  vulkan/render_graph/nodes/vk_copy_buffer_node.hh
+  vulkan/render_graph/nodes/vk_copy_buffer_to_image_node.hh
+  vulkan/render_graph/nodes/vk_copy_image_node.hh
+  vulkan/render_graph/nodes/vk_copy_image_to_buffer_node.hh
+  vulkan/render_graph/nodes/vk_dispatch_node.hh
+  vulkan/render_graph/nodes/vk_draw_node.hh
+  vulkan/render_graph/nodes/vk_draw_indexed_node.hh
+  vulkan/render_graph/nodes/vk_draw_indexed_indirect_node.hh
+  vulkan/render_graph/nodes/vk_draw_indirect_node.hh
+  vulkan/render_graph/nodes/vk_end_rendering_node.hh
+  vulkan/render_graph/nodes/vk_fill_buffer_node.hh
+  vulkan/render_graph/nodes/vk_node_info.hh
+  vulkan/render_graph/nodes/vk_pipeline_data.hh
+  vulkan/render_graph/nodes/vk_synchronization_node.hh
+  vulkan/render_graph/nodes/vk_update_mipmaps_node.hh
+  vulkan/render_graph/vk_command_buffer_wrapper.hh
+  vulkan/render_graph/vk_command_builder.hh
+  vulkan/render_graph/vk_render_graph.hh
+  vulkan/render_graph/vk_render_graph_links.hh
+  vulkan/render_graph/vk_render_graph_node.hh
+  vulkan/render_graph/vk_resource_access_info.hh
+  vulkan/render_graph/vk_resource_state_tracker.hh
+  vulkan/render_graph/vk_scheduler.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
   vulkan/vk_samplers.hh
@@ -270,6 +313,7 @@ set(VULKAN_SRC
   vulkan/vk_storage_buffer.hh
   vulkan/vk_texture.hh
   vulkan/vk_timeline_semaphore.hh
+  vulkan/vk_to_string.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_attribute_object.hh
   vulkan/vk_vertex_buffer.hh
@@ -353,7 +397,6 @@ endif()
 
 
 if(WITH_VULKAN_BACKEND)
-
   if(APPLE)
     list(APPEND INC_SYS
       ${MOLTENVK_INCLUDE_DIRS}
@@ -469,6 +512,9 @@ set(GLSL_SRC
   shaders/gpu_shader_keyframe_shape_vert.glsl
   shaders/gpu_shader_keyframe_shape_frag.glsl
 
+  shaders/gpu_shader_sequencer_strips_vert.glsl
+  shaders/gpu_shader_sequencer_strips_frag.glsl
+
   shaders/gpu_shader_codegen_lib.glsl
 
   shaders/common/gpu_shader_bicubic_sampler_lib.glsl
@@ -485,6 +531,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_math_matrix_lib.glsl
   shaders/common/gpu_shader_math_rotation_lib.glsl
   shaders/common/gpu_shader_math_vector_lib.glsl
+  shaders/common/gpu_shader_shared_exponent_lib.glsl
   shaders/common/gpu_shader_smaa_lib.glsl
   shaders/common/gpu_shader_test_lib.glsl
   shaders/common/gpu_shader_utildefines_lib.glsl
@@ -537,6 +584,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_particle_info.glsl
   shaders/material/gpu_shader_material_point_info.glsl
   shaders/material/gpu_shader_material_principled.glsl
+  shaders/material/gpu_shader_material_ray_portal.glsl
   shaders/material/gpu_shader_material_refraction.glsl
   shaders/material/gpu_shader_material_rgb_to_bw.glsl
   shaders/material/gpu_shader_material_separate_color.glsl
@@ -678,13 +726,13 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_depth_of_field_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_irradiance_cache_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_volume_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_sphere_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lookdev_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lut_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_reflection_probe_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_subsurface_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_tracing_info.hh
@@ -716,16 +764,6 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/workbench/shaders/infos/workbench_shadow_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_transparent_resolve_info.hh
   ../draw/engines/workbench/shaders/infos/workbench_volume_info.hh
-
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_bloom_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_common_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_dof_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_effects_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_lightprobe_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_material_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_motion_blur_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_shadow_info.hh
-  ../draw/engines/eevee/shaders/infos/eevee_legacy_volume_info.hh
 
   ../draw/engines/image/shaders/infos/engine_image_info.hh
   ../draw/intern/shaders/draw_debug_info.hh
@@ -762,6 +800,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/gpu_shader_instance_varying_color_varying_size_info.hh
   shaders/infos/gpu_shader_keyframe_shape_info.hh
   shaders/infos/gpu_shader_line_dashed_uniform_color_info.hh
+  shaders/infos/gpu_shader_sequencer_info.hh
   shaders/infos/gpu_shader_simple_lighting_info.hh
   shaders/infos/gpu_shader_text_info.hh
   shaders/infos/gpu_srgb_to_framebuffer_space_info.hh
@@ -811,6 +850,10 @@ target_link_libraries(bf_gpu PUBLIC
   bf_gpu_shaders
 )
 
+if(WITH_OPENGL_BACKEND AND UNIX)
+target_link_libraries(bf_gpu PUBLIC rt)
+endif()
+
 if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
 endif()
@@ -843,7 +886,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   unset(_manifest)
   setup_platform_linker_flags(shader_builder)
 
-  if (WITH_BUILD_INFO)
+  if(WITH_BUILD_INFO)
     target_link_libraries(shader_builder PRIVATE buildinfoobj)
   endif()
   target_link_libraries(shader_builder PRIVATE
@@ -907,8 +950,13 @@ if(WITH_GTESTS)
 
   if(WITH_VULKAN_BACKEND)
     list(APPEND TEST_SRC
-      vulkan/vk_data_conversion_test.cc
-      vulkan/vk_memory_layout_test.cc
+      vulkan/tests/vk_data_conversion_test.cc
+      vulkan/tests/vk_memory_layout_test.cc
+      vulkan/render_graph/tests/vk_render_graph_test_compute.cc
+      vulkan/render_graph/tests/vk_render_graph_test_present.cc
+      vulkan/render_graph/tests/vk_render_graph_test_render.cc
+      vulkan/render_graph/tests/vk_render_graph_test_scheduler.cc
+      vulkan/render_graph/tests/vk_render_graph_test_transfer.cc
     )
   endif()
 
@@ -919,7 +967,7 @@ if(WITH_GTESTS)
     )
   endif()
 
-  if (TEST_SRC)
+  if(TEST_SRC)
     set(TEST_COMMON_SRC
       tests/gpu_testing.cc
       tests/gpu_testing.hh

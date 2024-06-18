@@ -289,7 +289,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, uiTooltipData *tip, 
       char size[16];
       BLI_filelist_entry_size_to_string(nullptr, file->size, false, size);
       if (file->size < 10000) {
-        char size_full[16];
+        char size_full[BLI_STR_FORMAT_UINT64_GROUPED_SIZE];
         BLI_str_format_uint64_grouped(size_full, file->size);
         UI_tooltip_text_field_add(
             tip,
@@ -1393,8 +1393,15 @@ void file_draw_list(const bContext *C, ARegion *region)
       text_col[3] /= 2;
     }
 
-    const char *message = is_filtered ? IFACE_("No results match the search filter") :
-                                        IFACE_("No items");
+    const char *message = [&]() {
+      if (!filelist_is_ready(files)) {
+        return IFACE_("Loading...");
+      }
+      if (is_filtered) {
+        return IFACE_("No results match the search filter");
+      }
+      return IFACE_("No items");
+    }();
 
     UI_fontstyle_draw_simple(&style->widget,
                              tile_draw_rect.xmin + UI_UNIT_X,

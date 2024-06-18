@@ -61,7 +61,9 @@
 #  define DRW_DEBUG_FILE_LINE_ARGS
 #endif
 
-struct GPUBatch;
+namespace blender::gpu {
+class Batch;
+}
 struct GPUMaterial;
 struct GPUShader;
 struct GPUTexture;
@@ -304,14 +306,16 @@ GPUMaterial *DRW_shader_from_world(World *wo,
                                    bool deferred,
                                    GPUCodegenCallbackFn callback,
                                    void *thunk);
-GPUMaterial *DRW_shader_from_material(Material *ma,
-                                      bNodeTree *ntree,
-                                      eGPUMaterialEngine engine,
-                                      const uint64_t shader_id,
-                                      const bool is_volume_shader,
-                                      bool deferred,
-                                      GPUCodegenCallbackFn callback,
-                                      void *thunk);
+GPUMaterial *DRW_shader_from_material(
+    Material *ma,
+    bNodeTree *ntree,
+    eGPUMaterialEngine engine,
+    const uint64_t shader_id,
+    const bool is_volume_shader,
+    bool deferred,
+    GPUCodegenCallbackFn callback,
+    void *thunk,
+    GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);
 void DRW_shader_queue_optimize_material(GPUMaterial *mat);
 void DRW_shader_free(GPUShader *shader);
 #define DRW_SHADER_FREE_SAFE(shader) \
@@ -393,7 +397,7 @@ typedef bool(DRWCallVisibilityFn)(bool vis_in, void *user_data);
 void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          const Object *ob,
                          const float (*obmat)[4],
-                         GPUBatch *geom,
+                         blender::gpu::Batch *geom,
                          bool bypass_culling,
                          void *user_data);
 
@@ -421,12 +425,12 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   DRW_shgroup_call_ex(shgroup, ob, nullptr, geom, true, nullptr)
 
 void DRW_shgroup_call_range(
-    DRWShadingGroup *shgroup, const Object *ob, GPUBatch *geom, uint v_sta, uint v_num);
+    DRWShadingGroup *shgroup, const Object *ob, blender::gpu::Batch *geom, uint v_sta, uint v_num);
 /**
  * A count of 0 instance will use the default number of instance in the batch.
  */
 void DRW_shgroup_call_instance_range(
-    DRWShadingGroup *shgroup, const Object *ob, GPUBatch *geom, uint i_sta, uint i_num);
+    DRWShadingGroup *shgroup, const Object *ob, blender::gpu::Batch *geom, uint i_sta, uint i_num);
 
 void DRW_shgroup_call_compute(DRWShadingGroup *shgroup,
                               int groups_x_len,
@@ -453,15 +457,15 @@ void DRW_shgroup_call_procedural_indirect(DRWShadingGroup *shgroup,
  */
 void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
                                 const Object *ob,
-                                GPUBatch *geom,
+                                blender::gpu::Batch *geom,
                                 uint count);
 /**
  * \warning Only use with Shaders that have INSTANCED_ATTR defined.
  */
 void DRW_shgroup_call_instances_with_attrs(DRWShadingGroup *shgroup,
                                            const Object *ob,
-                                           GPUBatch *geom,
-                                           GPUBatch *inst_attributes);
+                                           blender::gpu::Batch *geom,
+                                           blender::gpu::Batch *inst_attributes);
 
 void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
                              Object *ob,
@@ -481,7 +485,7 @@ DRWCallBuffer *DRW_shgroup_call_buffer(DRWShadingGroup *shgroup,
                                        GPUPrimType prim_type);
 DRWCallBuffer *DRW_shgroup_call_buffer_instance(DRWShadingGroup *shgroup,
                                                 GPUVertFormat *format,
-                                                GPUBatch *geom);
+                                                blender::gpu::Batch *geom);
 
 void DRW_buffer_add_entry_struct(DRWCallBuffer *callbuf, const void *data);
 void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint attr_len);
@@ -947,9 +951,13 @@ bool DRW_state_is_scene_render();
 bool DRW_state_is_viewport_image_render();
 bool DRW_state_is_playback();
 /**
- * Is the user navigating the region.
+ * Is the user navigating or painting the region.
  */
 bool DRW_state_is_navigating();
+/**
+ * Is the user painting?
+ */
+bool DRW_state_is_painting();
 /**
  * Should text draw in this mode?
  */

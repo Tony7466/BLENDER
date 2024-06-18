@@ -40,6 +40,8 @@ const char *GPU_extension_get(int i);
 
 int GPU_texture_size_with_limit(int res);
 
+bool GPU_use_parallel_compilation();
+
 bool GPU_mip_render_workaround();
 bool GPU_depth_blitting_workaround();
 bool GPU_use_main_context_workaround();
@@ -48,7 +50,6 @@ bool GPU_clear_viewport_workaround();
 bool GPU_crappy_amd_driver();
 
 bool GPU_geometry_shader_support();
-bool GPU_compute_shader_support();
 bool GPU_shader_draw_parameters_support();
 bool GPU_hdr_support();
 bool GPU_texture_view_support();

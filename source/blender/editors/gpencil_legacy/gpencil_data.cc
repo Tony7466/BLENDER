@@ -67,7 +67,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ************************************************ */
 /* Datablock Operators */
@@ -2200,7 +2200,7 @@ static int gpencil_brush_reset_all_exec(bContext *C, wmOperator * /*op*/)
       }
     }
 
-    BKE_paint_toolslots_brush_validate(bmain, paint);
+    BKE_paint_brush_validate(bmain, paint);
 
     /* Set Again the first brush of the mode. */
     Brush *deft_brush = gpencil_brush_get_first_by_mode(bmain, paint, mode, tool);
@@ -3056,7 +3056,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
       }
 
       /* Free the old object */
-      ED_object_base_free_and_unlink(bmain, scene, ob_iter);
+      blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
     }
   }
   CTX_DATA_END;
@@ -3764,7 +3764,7 @@ bool ED_gpencil_add_lattice_modifier(const bContext *C,
   /* if no lattice modifier, add a new one */
   GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Lattice);
   if (md == nullptr) {
-    md = ED_object_gpencil_modifier_add(
+    md = blender::ed::object::gpencil_modifier_add(
         reports, bmain, scene, ob, "Lattice", eGpencilModifierType_Lattice);
     if (md == nullptr) {
       BKE_report(reports, RPT_ERROR, "Unable to add a new Lattice modifier to object");

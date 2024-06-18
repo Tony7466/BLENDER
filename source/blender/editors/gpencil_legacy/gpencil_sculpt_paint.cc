@@ -66,7 +66,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define SEARCH_RADIUS_PIXEL 20
 
@@ -1469,7 +1469,7 @@ static bool gpencil_sculpt_brush_do_stroke(tGP_BrushEditData *gso,
                                            GP_BrushApplyCb apply)
 {
   GP_SpaceConversion *gsc = &gso->gsc;
-  rcti *rect = &gso->brush_rect;
+  const rcti *rect = &gso->brush_rect;
   Brush *brush = gso->brush;
   const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                              gso->brush->size;

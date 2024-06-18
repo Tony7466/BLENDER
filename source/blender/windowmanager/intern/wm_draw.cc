@@ -891,7 +891,7 @@ void wm_draw_region_blend(ARegion *region, int view, bool blend)
   GPU_shader_uniform_float_ex(shader, rect_geo_loc, 4, 1, rectg);
   GPU_shader_uniform_float_ex(shader, color_loc, 4, 1, blender::float4{1, 1, 1, 1});
 
-  GPUBatch *quad = GPU_batch_preset_quad();
+  blender::gpu::Batch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
   GPU_batch_draw(quad);
 
@@ -1009,7 +1009,7 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
 
       GPU_debug_group_end();
 
-      region->do_draw = false;
+      region->do_draw = 0;
       CTX_wm_region_set(C, nullptr);
     }
 
@@ -1023,7 +1023,7 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
     if (!region->visible) {
       continue;
     }
-    CTX_wm_menu_set(C, region);
+    CTX_wm_region_popup_set(C, region);
 
     GPU_debug_group_begin("Menu");
 
@@ -1043,8 +1043,8 @@ static void wm_draw_window_offscreen(bContext *C, wmWindow *win, bool stereo)
 
     GPU_debug_group_end();
 
-    region->do_draw = false;
-    CTX_wm_menu_set(C, nullptr);
+    region->do_draw = 0;
+    CTX_wm_region_popup_set(C, nullptr);
   }
 }
 
@@ -1610,7 +1610,7 @@ void wm_draw_region_test(bContext *C, ScrArea *area, ARegion *region)
   wm_draw_region_bind(region, 0);
   ED_region_do_draw(C, region);
   wm_draw_region_unbind(region);
-  region->do_draw = false;
+  region->do_draw = 0;
 }
 
 void WM_redraw_windows(bContext *C)

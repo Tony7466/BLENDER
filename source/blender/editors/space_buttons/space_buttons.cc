@@ -39,7 +39,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Default Callbacks for Properties Space
@@ -812,12 +812,13 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
       }
       break;
     case NC_GPENCIL:
-      switch (wmn->data) {
-        case ND_DATA:
-          if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED, NA_SELECTED, NA_RENAME)) {
-            ED_area_tag_redraw(area);
-          }
-          break;
+      if (wmn->data == ND_DATA) {
+        if (ELEM(wmn->action, NA_EDITED, NA_ADDED, NA_REMOVED, NA_SELECTED, NA_RENAME)) {
+          ED_area_tag_redraw(area);
+        }
+      }
+      else if (wmn->action == NA_EDITED) {
+        ED_area_tag_redraw(area);
       }
       break;
     case NC_NODE:
@@ -914,7 +915,7 @@ static void buttons_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
 
-  BKE_LIB_FOREACHID_PROCESS_ID(data, sbuts->pinid, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sbuts->pinid, IDWALK_CB_DIRECT_WEAK_LINK);
   if (!is_readonly) {
     if (sbuts->pinid == nullptr) {
       sbuts->flag &= ~SB_PIN_CONTEXT;
@@ -926,7 +927,7 @@ static void buttons_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data
 
   if (sbuts->texuser) {
     ButsContextTexture *ct = static_cast<ButsContextTexture *>(sbuts->texuser);
-    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, ct->texture, IDWALK_CB_NOP);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, ct->texture, IDWALK_CB_DIRECT_WEAK_LINK);
 
     if (!is_readonly) {
       BLI_freelistN(&ct->users);

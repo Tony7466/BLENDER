@@ -1,7 +1,7 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Beta (b'4b7cc5b6608a')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'b143cc1885ef')\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2020-01-01 00:00+0000\n"
 "PO-Revision-Date: 2023-10-06 09:54+0000\n"
@@ -67,24 +67,16 @@ msgid "Module name"
 msgstr "לודומה םש"
 
 
-msgid "Password"
-msgstr "המסיס"
-
-
-msgid "Error Message"
-msgstr "האיגש תעדוה"
-
-
-msgid "Message"
-msgstr "העדוה"
-
-
 msgid "Off"
 msgstr "יובכ"
 
 
 msgid "Full"
 msgstr "אלמ"
+
+
+msgid "Center"
+msgstr "זכרמ"
 
 
 msgid "Animation Data"
@@ -252,10 +244,6 @@ msgid "Tail"
 msgstr "בנז"
 
 
-msgid "Remove"
-msgstr "רסה"
-
-
 msgid "Vertex Color"
 msgstr "דוקדוק עבצ"
 
@@ -301,10 +289,6 @@ msgstr "לאמש"
 
 msgid "Right"
 msgstr "ןימי"
-
-
-msgid "Center"
-msgstr "זכרמ"
 
 
 msgid "Gamma"
@@ -516,10 +500,6 @@ msgstr "קלח"
 
 
 msgctxt "Brush"
-msgid "Sculpt Tool"
-msgstr "לוסיפ ילכ"
-
-
 msgid "Sculpt Tool"
 msgstr "לוסיפ ילכ"
 
@@ -767,6 +747,10 @@ msgid "Select Vertex Group"
 msgstr "דוקדוק תצובק רחב"
 
 
+msgid "Remove"
+msgstr "רסה"
+
+
 msgid "Image Name"
 msgstr "הנומת םש"
 
@@ -835,16 +819,16 @@ msgid "Language"
 msgstr "הפש"
 
 
+msgid "Password"
+msgstr "המסיס"
+
+
 msgid "Language Name"
 msgstr "הפשה םש"
 
 
 msgid "Languages"
 msgstr "תופש"
-
-
-msgid "Hide Names"
-msgstr "תומש רתסה"
 
 
 msgctxt "Sequence"
@@ -869,6 +853,10 @@ msgid "AOV"
 msgstr "AOV"
 
 
+msgid "Error Message"
+msgstr "האיגש תעדוה"
+
+
 msgctxt "WindowManager"
 msgid "Grease Pencil"
 msgstr "Grease Pencil"
@@ -882,6 +870,10 @@ msgstr "הנומת"
 msgctxt "WindowManager"
 msgid "Animation"
 msgstr "היצמינא"
+
+
+msgid "name"
+msgstr "םש"
 
 
 msgid "Credits"
@@ -899,10 +891,6 @@ msgstr "טוריפ"
 
 msgid "Dimension"
 msgstr "דמימ"
-
-
-msgid "name"
-msgstr "םש"
 
 
 msgid "Sort By"
@@ -957,6 +945,10 @@ msgid "Remove Shortcut"
 msgstr "ךרד־רוציק רסה"
 
 
+msgid "%d items"
+msgstr "‪%d‬ םיטירפ"
+
+
 msgid "Red:"
 msgstr ":םודא"
 
@@ -989,8 +981,8 @@ msgid "Stop this job"
 msgstr "וז הדובע רוצע"
 
 
-msgid "%d items"
-msgstr "‪%d‬ םיטירפ"
+msgid "Cancel"
+msgstr "לוטיב"
 
 
 msgid "vertex data"
@@ -1015,10 +1007,6 @@ msgstr ":ץבוק ביתנ"
 
 msgid "File path"
 msgstr "ץבוק ביתנ"
-
-
-msgid "Cancel"
-msgstr "לוטיב"
 
 
 msgid "File name"

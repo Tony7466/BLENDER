@@ -232,6 +232,7 @@ void SEQ_render_new_render_data(Main *bmain,
   r_context->rectx = rectx;
   r_context->recty = recty;
   r_context->preview_render_size = preview_render_size;
+  r_context->ignore_missing_media = false;
   r_context->for_render = for_render;
   r_context->motion_blur_samples = 0;
   r_context->motion_blur_shutter = 0;
@@ -882,7 +883,7 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
   float fac;
   int i;
   SeqEffectHandle sh = SEQ_effect_handle_get(seq);
-  FCurve *fcu = nullptr;
+  const FCurve *fcu = nullptr;
   ImBuf *ibuf[3];
   Sequence *input[3];
   ImBuf *out = nullptr;
@@ -981,7 +982,6 @@ static ImBuf *seq_render_image_strip_view(const SeqRenderData *context,
                                           const char *ext,
                                           int view_id)
 {
-
   ImBuf *ibuf = nullptr;
 
   int flag = IB_rect | IB_metadata;
@@ -1014,11 +1014,15 @@ static ImBuf *seq_render_image_strip_view(const SeqRenderData *context,
   return ibuf;
 }
 
-static bool seq_image_strip_is_multiview_render(
-    Scene *scene, Sequence *seq, int totfiles, char *name, char *r_prefix, const char *r_ext)
+static bool seq_image_strip_is_multiview_render(Scene *scene,
+                                                Sequence *seq,
+                                                int totfiles,
+                                                const char *filepath,
+                                                char *r_prefix,
+                                                const char *r_ext)
 {
   if (totfiles > 1) {
-    BKE_scene_multiview_view_prefix_get(scene, name, r_prefix, &r_ext);
+    BKE_scene_multiview_view_prefix_get(scene, filepath, r_prefix, &r_ext);
     if (r_prefix[0] == '\0') {
       return false;
     }
@@ -1028,6 +1032,24 @@ static bool seq_image_strip_is_multiview_render(
   }
 
   return (seq->flag & SEQ_USE_VIEWS) != 0 && (scene->r.scemode & R_MULTIVIEW) != 0;
+}
+
+static ImBuf *create_missing_media_image(const SeqRenderData *context, const StripElem *orig)
+{
+  if (context->ignore_missing_media) {
+    return nullptr;
+  }
+  if (context->scene == nullptr || context->scene->ed == nullptr ||
+      (context->scene->ed->show_missing_media_flag & SEQ_EDIT_SHOW_MISSING_MEDIA) == 0)
+  {
+    return nullptr;
+  }
+
+  ImBuf *ibuf = IMB_allocImBuf(
+      max_ii(orig->orig_width, 1), max_ii(orig->orig_height, 1), 32, IB_rect);
+  float col[4] = {0.85f, 0.0f, 0.75f, 1.0f};
+  IMB_rectfill(ibuf, col);
+  return ibuf;
 }
 
 static ImBuf *seq_render_image_strip(const SeqRenderData *context,
@@ -1104,8 +1126,9 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
     ibuf = seq_render_image_strip_view(context, seq, filepath, prefix, ext, context->view_id);
   }
 
+  blender::seq::media_presence_set_missing(context->scene, seq, ibuf == nullptr);
   if (ibuf == nullptr) {
-    return nullptr;
+    return create_missing_media_image(context, s_elem);
   }
 
   s_elem->orig_width = ibuf->x;
@@ -1267,8 +1290,9 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
     ibuf = seq_render_movie_strip_view(context, seq, timeline_frame, sanim, r_is_proxy_image);
   }
 
+  blender::seq::media_presence_set_missing(context->scene, seq, ibuf == nullptr);
   if (ibuf == nullptr) {
-    return nullptr;
+    return create_missing_media_image(context, seq->strip->stripdata);
   }
 
   if (*r_is_proxy_image == false) {
@@ -1565,7 +1589,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
   is_frame_update = (orig_data.timeline_frame != scene->r.cfra) ||
                     (orig_data.subframe != scene->r.subframe);
 
-  if ((sequencer_view3d_fn && do_seq_gl && camera)) {
+  if (sequencer_view3d_fn && do_seq_gl && camera) {
     char err_out[256] = "unknown";
     int width, height;
     BKE_render_resolution(&scene->r, false, &width, &height);
@@ -1946,6 +1970,26 @@ static ImBuf *seq_render_strip_stack_apply_effect(
   return out;
 }
 
+static bool is_opaque_alpha_over(const Sequence *seq)
+{
+  if (seq->blend_mode != SEQ_TYPE_ALPHAOVER) {
+    return false;
+  }
+  if (seq->blend_opacity < 100.0f) {
+    return false;
+  }
+  if (seq->mul < 1.0f && (seq->flag & SEQ_MULTIPLY_ALPHA) != 0) {
+    return false;
+  }
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
+    /* Assume result is not opaque if there is an enabled Mask modifier. */
+    if ((smd->flag & SEQUENCE_MODIFIER_MUTE) == 0 && smd->type == seqModifierType_Mask) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
                                      SeqRenderState *state,
                                      ListBase *channels,
@@ -1984,9 +2028,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
 
     /* Early out for alpha over. It requires image to be rendered, so it can't use
      * `seq_get_early_out_for_blend_mode`. */
-    if (out == nullptr && seq->blend_mode == SEQ_TYPE_ALPHAOVER &&
-        early_out == StripEarlyOut::DoEffect && seq->blend_opacity == 100.0f)
-    {
+    if (out == nullptr && early_out == StripEarlyOut::DoEffect && is_opaque_alpha_over(seq)) {
       ImBuf *test = seq_render_strip(context, state, seq, timeline_frame);
       if (ELEM(test->planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB)) {
         early_out = StripEarlyOut::UseInput2;
@@ -2249,7 +2291,7 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
                                                               upper_thumb_bound;
 
   float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, frame_step, view_area);
-  while ((timeline_frame < upper_thumb_bound) & !*stop) {
+  while ((timeline_frame < upper_thumb_bound) && !*stop) {
     ImBuf *ibuf = seq_cache_get(
         context, seq_orig, round_fl_to_int(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {

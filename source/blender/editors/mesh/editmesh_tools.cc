@@ -1767,7 +1767,7 @@ static int edbm_face_make_planar_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -2642,7 +2642,7 @@ static int edbm_do_smooth_vertex_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       tot_locked++;
       continue;
     }
@@ -2781,7 +2781,7 @@ static int edbm_do_smooth_laplacian_vertex_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       tot_locked++;
       continue;
     }
@@ -3075,14 +3075,15 @@ static int edbm_rotate_colors_exec(bContext *C, wmOperator *op)
     BMOperator bmop;
 
     Mesh *mesh = BKE_object_get_original_mesh(ob);
-    const CustomDataLayer *layer = BKE_id_attribute_search(
-        &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_CORNER);
+    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+    const CustomDataLayer *layer = BKE_attribute_search(
+        owner, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_CORNER);
     if (!layer) {
       continue;
     }
 
-    int color_index = BKE_id_attribute_to_index(
-        &mesh->id, layer, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
+    int color_index = BKE_attribute_to_index(
+        owner, layer, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
     EDBM_op_init(em,
                  &bmop,
                  op,
@@ -3123,16 +3124,17 @@ static int edbm_reverse_colors_exec(bContext *C, wmOperator *op)
     }
 
     Mesh *mesh = BKE_object_get_original_mesh(obedit);
-    const CustomDataLayer *layer = BKE_id_attribute_search(
-        &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_CORNER);
+    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+    const CustomDataLayer *layer = BKE_attribute_search(
+        owner, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_CORNER);
     if (!layer) {
       continue;
     }
 
     BMOperator bmop;
 
-    int color_index = BKE_id_attribute_to_index(
-        &mesh->id, layer, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
+    int color_index = BKE_attribute_to_index(
+        owner, layer, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
     EDBM_op_init(
         em, &bmop, op, "reverse_colors faces=%hf color_index=%i", BM_ELEM_SELECT, color_index);
 
@@ -3584,7 +3586,10 @@ static int edbm_remove_doubles_exec(bContext *C, wmOperator *op)
     }
   }
 
-  BKE_reportf(op->reports, RPT_INFO, "Removed %d vertice(s)", count_multi);
+  BKE_reportf(op->reports,
+              RPT_INFO,
+              count_multi == 1 ? "Removed %d vertex" : "Removed %d vertices",
+              count_multi);
 
   return OPERATOR_FINISHED;
 }
@@ -3675,14 +3680,14 @@ static int edbm_shape_propagate_to_all_exec(bContext *C, wmOperator *op)
       scene, view_layer, CTX_wm_view3d(C));
   for (Object *obedit : objects) {
     Mesh *mesh = static_cast<Mesh *>(obedit->data);
-    BMEditMesh *em = mesh->runtime->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh.get();
 
     if (em->bm->totvertsel == 0) {
       continue;
     }
 
     /* Check for locked shape keys. */
-    if (ED_object_report_if_any_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_any_locked(obedit, op->reports)) {
       tot_locked++;
       continue;
     }
@@ -3754,7 +3759,7 @@ static int edbm_blend_from_shape_exec(bContext *C, wmOperator *op)
   Mesh *me_ref = static_cast<Mesh *>(obedit_ref->data);
   Key *key_ref = me_ref->key;
   KeyBlock *kb_ref = nullptr;
-  BMEditMesh *em_ref = me_ref->runtime->edit_mesh;
+  BMEditMesh *em_ref = me_ref->runtime->edit_mesh.get();
   BMVert *eve;
   BMIter iter;
   const Scene *scene = CTX_data_scene(C);
@@ -3790,14 +3795,14 @@ static int edbm_blend_from_shape_exec(bContext *C, wmOperator *op)
     Mesh *mesh = static_cast<Mesh *>(obedit->data);
     Key *key = mesh->key;
     KeyBlock *kb = nullptr;
-    BMEditMesh *em = mesh->runtime->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh.get();
     int shape;
 
     if (em->bm->totvertsel == 0) {
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       tot_locked++;
       continue;
     }
@@ -4391,7 +4396,7 @@ static Base *mesh_separate_tagged(
 
   /* Take into account user preferences for duplicating actions. */
   const eDupli_ID_Flags dupflag = eDupli_ID_Flags(USER_DUP_MESH | (U.dupflag & USER_DUP_ACT));
-  Base *base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_old, dupflag);
+  Base *base_new = blender::ed::object::add_duplicate(bmain, scene, view_layer, base_old, dupflag);
 
   /* normally would call directly after but in this case delay recalc */
   // DAG_relations_tag_update(bmain);
@@ -4403,7 +4408,7 @@ static Base *mesh_separate_tagged(
                                    *BKE_object_material_len_p(obedit),
                                    false);
 
-  ED_object_base_select(base_new, BA_SELECT);
+  blender::ed::object::base_select(base_new, blender::ed::object::BA_SELECT);
 
   BMO_op_callf(bm_old,
                (BMO_FLAG_DEFAULTS & ~BMO_FLAG_RESPECT_HIDE),
@@ -4467,7 +4472,7 @@ static Base *mesh_separate_arrays(Main *bmain,
 
   /* Take into account user preferences for duplicating actions. */
   const eDupli_ID_Flags dupflag = eDupli_ID_Flags(USER_DUP_MESH | (U.dupflag & USER_DUP_ACT));
-  Base *base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_old, dupflag);
+  Base *base_new = blender::ed::object::add_duplicate(bmain, scene, view_layer, base_old, dupflag);
 
   /* normally would call directly after but in this case delay recalc */
   // DAG_relations_tag_update(bmain);
@@ -4479,7 +4484,7 @@ static Base *mesh_separate_arrays(Main *bmain,
                                    *BKE_object_material_len_p(obedit),
                                    false);
 
-  ED_object_base_select(base_new, BA_SELECT);
+  blender::ed::object::base_select(base_new, blender::ed::object::BA_SELECT);
 
   BM_mesh_copy_arrays(bm_old, bm_new, verts, verts_len, edges, edges_len, faces, faces_len);
 
@@ -5106,15 +5111,14 @@ static int edbm_fill_grid_exec(bContext *C, wmOperator *op)
 
     Object *obedit = objects[ob_index];
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    if (em->bm->totedgesel == 0) {
+      continue;
+    }
 
     bool use_prepare = true;
     const bool use_smooth = edbm_add_edge_face__smooth_get(em->bm);
     const int totedge_orig = em->bm->totedge;
     const int totface_orig = em->bm->totface;
-
-    if (em->bm->totedgesel == 0) {
-      continue;
-    }
 
     if (use_prepare) {
       /* use when we have a single loop selected */
@@ -5498,8 +5502,6 @@ static int edbm_quads_convert_to_tris_exec(bContext *C, wmOperator *op)
     BMOIter oiter;
     BMFace *f;
 
-    BM_custom_loop_normals_to_vector_layer(em->bm);
-
     EDBM_op_init(em,
                  &bmop,
                  op,
@@ -5523,8 +5525,6 @@ static int edbm_quads_convert_to_tris_exec(bContext *C, wmOperator *op)
     if (!EDBM_op_finish(em, &bmop, op, true)) {
       continue;
     }
-
-    BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
     EDBMUpdate_Params params{};
     params.calc_looptris = true;
@@ -5682,7 +5682,7 @@ static void join_triangle_props(wmOperatorType *ot)
   RNA_def_property_float_default(prop, DEG2RADF(40.0f));
 
   RNA_def_boolean(ot->srna, "uvs", false, "Compare UVs", "");
-  RNA_def_boolean(ot->srna, "vcols", false, "Compare VCols", "");
+  RNA_def_boolean(ot->srna, "vcols", false, "Compare Color Attributes", "");
   RNA_def_boolean(ot->srna, "seam", false, "Compare Seam", "");
   RNA_def_boolean(ot->srna, "sharp", false, "Compare Sharp", "");
   RNA_def_boolean(ot->srna, "materials", false, "Compare Materials", "");
@@ -7892,7 +7892,7 @@ static int mesh_symmetry_snap_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -8546,7 +8546,7 @@ static int edbm_point_normals_modal(bContext *C, wmOperator *op, const wmEvent *
         params.sel_op = SEL_OP_SET;
         if (EDBM_select_pick(C, event->mval, &params)) {
           /* Point to newly selected active. */
-          ED_object_calc_active_center_for_editmode(obedit, false, target);
+          blender::ed::object::calc_active_center_for_editmode(obedit, false, target);
 
           add_v3_v3(target, obedit->loc);
           ret = OPERATOR_RUNNING_MODAL;
@@ -8591,7 +8591,7 @@ static int edbm_point_normals_modal(bContext *C, wmOperator *op, const wmEvent *
             break;
 
           case V3D_AROUND_ACTIVE:
-            if (!ED_object_calc_active_center_for_editmode(obedit, false, target)) {
+            if (!blender::ed::object::calc_active_center_for_editmode(obedit, false, target)) {
               zero_v3(target);
             }
             add_v3_v3(target, obedit->loc);
@@ -9198,12 +9198,13 @@ static bool average_normals_draw_check_prop(PointerRNA *ptr,
   const char *prop_id = RNA_property_identifier(prop);
   const int average_type = RNA_enum_get(ptr, "average_type");
 
-  /* Only show weight/threshold options in loop average type. */
+  /* Only show weight/threshold options when not in loop average type. */
+  const bool is_clor_average_loop = average_type == EDBM_CLNOR_AVERAGE_LOOP;
   if (STREQ(prop_id, "weight")) {
-    return (average_type == EDBM_CLNOR_AVERAGE_LOOP);
+    return !is_clor_average_loop;
   }
   if (STREQ(prop_id, "threshold")) {
-    return (average_type == EDBM_CLNOR_AVERAGE_LOOP);
+    return !is_clor_average_loop;
   }
 
   /* Else, show it! */
@@ -9508,7 +9509,7 @@ void MESH_OT_normals_tools(wmOperatorType *ot)
                   "absolute",
                   false,
                   "Absolute Coordinates",
-                  "Copy Absolute coordinates or Normal vector");
+                  "Copy Absolute coordinates of Normal vector");
 }
 
 /** \} */

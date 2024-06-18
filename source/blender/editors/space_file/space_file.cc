@@ -433,6 +433,10 @@ static void file_main_region_init(wmWindowManager *wm, ARegion *region)
 
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
+  /* Truncate, otherwise these can be on ".5" and give fuzzy text. #77696. */
+  region->v2d.cur.ymin = trunc(region->v2d.cur.ymin);
+  region->v2d.cur.ymax = trunc(region->v2d.cur.ymax);
+
   /* own keymaps */
   keymap = WM_keymap_ensure(wm->defaultconf, "File Browser", SPACE_FILE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
@@ -576,7 +580,7 @@ static void file_main_region_draw(const bContext *C, ARegion *region)
 
   /* on first read, find active file */
   if (params->highlight_file == -1) {
-    wmEvent *event = CTX_wm_window(C)->eventstate;
+    const wmEvent *event = CTX_wm_window(C)->eventstate;
     file_highlight_set(sfile, region, event->xy[0], event->xy[1]);
   }
 
@@ -869,8 +873,8 @@ static void file_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   sfile->previews_timer = nullptr;
   sfile->tags = 0;
   sfile->runtime = nullptr;
-  BLO_read_data_address(reader, &sfile->params);
-  BLO_read_data_address(reader, &sfile->asset_params);
+  BLO_read_struct(reader, FileSelectParams, &sfile->params);
+  BLO_read_struct(reader, FileAssetSelectParams, &sfile->asset_params);
   if (sfile->params) {
     sfile->params->rename_id = nullptr;
   }

@@ -282,7 +282,8 @@ static void curves_sculptmode_enter(bContext *C)
   wmMsgBus *mbus = CTX_wm_message_bus(C);
 
   Object *ob = CTX_data_active_object(C);
-  BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
+  BKE_paint_ensure(
+      CTX_data_main(C), scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
   CurvesSculpt *curves_sculpt = scene->toolsettings->curves_sculpt;
 
   ob->mode = OB_MODE_SCULPT_CURVES;
@@ -315,7 +316,7 @@ static int curves_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = ob->mode == OB_MODE_SCULPT_CURVES;
 
   if (is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, OB_MODE_SCULPT_CURVES, op->reports)) {
+    if (!object::mode_compat_set(C, ob, OB_MODE_SCULPT_CURVES, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }

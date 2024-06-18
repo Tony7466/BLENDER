@@ -314,8 +314,8 @@ std::string FramebufferBind::serialize() const
 std::string SubPassTransition::serialize() const
 {
   auto to_str = [](GPUAttachmentState state) {
-    return (state != GPU_ATTACHEMENT_IGNORE) ?
-               ((state == GPU_ATTACHEMENT_WRITE) ? "write" : "read") :
+    return (state != GPU_ATTACHMENT_IGNORE) ?
+               ((state == GPU_ATTACHMENT_WRITE) ? "write" : "read") :
                "ignore";
   };
 
@@ -501,7 +501,7 @@ std::string Draw::serialize() const
          ")";
 }
 
-std::string DrawMulti::serialize(std::string line_prefix) const
+std::string DrawMulti::serialize(const std::string &line_prefix) const
 {
   DrawMultiBuf::DrawGroupBuf &groups = multi_draw_buf->group_buf_;
 

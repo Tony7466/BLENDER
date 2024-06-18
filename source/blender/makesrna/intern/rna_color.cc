@@ -14,6 +14,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.hh"
+
 #include "BKE_node_tree_update.hh"
 
 #include "RNA_define.hh"
@@ -93,6 +95,11 @@ static void rna_CurveMapping_clip_set(PointerRNA *ptr, bool value)
 {
   CurveMapping *cumap = (CurveMapping *)ptr->data;
 
+  /* Clipping is always done for wrapped curves, so don't allow user to change it. */
+  if (cumap->flag & CUMA_USE_WRAPPING) {
+    return;
+  }
+
   if (value) {
     cumap->flag |= CUMA_DO_CLIP;
   }
@@ -121,8 +128,16 @@ static void rna_CurveMapping_white_level_set(PointerRNA *ptr, const float *value
   BKE_curvemapping_set_black_white(cumap, nullptr, nullptr);
 }
 
-static void rna_CurveMapping_tone_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
+static void rna_CurveMapping_tone_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
+  /* Film-like tone only works with the combined curve, which is the fourth curve, so if the user
+   * changed to film-like make the combined curve current, as we now hide the rest of the curves
+   * since they no longer have an effect. */
+  CurveMapping *curve_mapping = (CurveMapping *)ptr->data;
+  if (curve_mapping->tone == CURVE_TONE_FILMLIKE) {
+    curve_mapping->cur = 3;
+  }
+
   WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
 }
@@ -200,13 +215,11 @@ static std::optional<std::string> rna_ColorRamp_path(const PointerRNA *ptr)
       case ID_LS: {
         /* may be nullptr */
         return BKE_linestyle_path_to_color_ramp((FreestyleLineStyle *)id, (ColorBand *)ptr->data);
-        break;
       }
 
       default:
         /* everything else just uses 'color_ramp' */
         return "color_ramp";
-        break;
     }
   }
   else {
@@ -597,8 +610,11 @@ struct Seq_colorspace_cb_data {
   Sequence *r_seq;
 };
 
-/* Colorspace could be changed for scene, but also VSE strip. If property pointer matches one of
- * strip, set `r_seq`, so not all cached images have to be invalidated. */
+/**
+ * Color-space could be changed for scene, but also sequencer-strip.
+ * If property pointer matches one of strip, set `r_seq`,
+ * so not all cached images have to be invalidated.
+ */
 static bool seq_find_colorspace_settings_cb(Sequence *seq, void *user_data)
 {
   Seq_colorspace_cb_data *cd = (Seq_colorspace_cb_data *)user_data;
@@ -814,8 +830,13 @@ static void rna_def_curvemapping(BlenderRNA *brna)
   FunctionRNA *func;
 
   static const EnumPropertyItem tone_items[] = {
-      {CURVE_TONE_STANDARD, "STANDARD", 0, "Standard", ""},
-      {CURVE_TONE_FILMLIKE, "FILMLIKE", 0, "Filmlike", ""},
+      {CURVE_TONE_STANDARD,
+       "STANDARD",
+       0,
+       "Standard",
+       "Combined curve is applied to each channel individually, which may result in a change of "
+       "hue"},
+      {CURVE_TONE_FILMLIKE, "FILMLIKE", 0, "Filmlike", "Keeps the hue constant"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1120,6 +1141,7 @@ static void rna_def_histogram(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "mode");
   RNA_def_property_enum_items(prop, prop_mode_items);
   RNA_def_property_ui_text(prop, "Mode", "Channels to display in the histogram");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
 
   prop = RNA_def_property(srna, "show_line", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", HISTO_FLAG_LINE);
@@ -1190,7 +1212,6 @@ static void rna_def_scopes(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, "Scopes", "vecscope_alpha");
   RNA_def_property_range(prop, 0, 1);
   RNA_def_property_ui_text(prop, "Vectorscope Opacity", "Opacity of the points");
-  RNA_def_property_update(prop, 0, "rna_Scopes_update");
 }
 
 static void rna_def_colormanage(BlenderRNA *brna)
