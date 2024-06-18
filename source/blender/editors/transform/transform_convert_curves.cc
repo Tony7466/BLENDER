@@ -287,11 +287,7 @@ static void fill_map(const CurveType curve_type,
     });
   }
   else {
-    threading::parallel_for(curve_points.index_range(), 4096, [&](const IndexRange range) {
-      for (const int i : range) {
-        map[i] = position_index + i;
-      }
-    });
+    array_utils::fill_index_range(map, position_index);
   }
 }
 
