@@ -618,15 +618,42 @@ BoundBox Camera::viewplane_bounds_get()
     }
   }
   else {
-    bounds.grow(transform_raster_to_world(0.0f, 0.0f));
-    bounds.grow(transform_raster_to_world(0.0f, (float)height));
-    bounds.grow(transform_raster_to_world((float)width, (float)height));
-    bounds.grow(transform_raster_to_world((float)width, 0.0f));
+
+    /* max_dof_ray = A vector that represents a ray traveling from edge of aperture to focus point.
+     Scale that vector based on the ratio between focaldistance and nearclip.
+     Then figure out if the  horizontal (x) component of this scaled vector is longer or shorter
+     than nearclip and add it to `extend` to extend the bounding box to account for these rays.
+
+     ----------------- nearclip plane
+               / scaled_dof_ray.x, nearclip
+              / (In some situations scaled_dof_ray.x is larger than nearclip)
+             /
+            / max_dof_ray = max_aperture_size, focaldistance
+           /|
+          / |
+         /  |
+        /   |
+       ------ max_aperture_size, 0
+      0, 0
+     */
+
+    const float max_aperture_size = aperture_ratio < 1.0f ? aperturesize / aperture_ratio :
+                                                            aperturesize;
+
+    const float2 max_dof_ray = make_float2(max_aperture_size, focaldistance);
+    const float2 scaled_dof_ray = max_dof_ray * (nearclip / focaldistance);
+
+    const float extend = aperturesize + max(nearclip, scaled_dof_ray.x);
+
+    bounds.grow(transform_raster_to_world(0.0f, 0.0f), extend);
+    bounds.grow(transform_raster_to_world(0.0f, (float)height), extend);
+    bounds.grow(transform_raster_to_world((float)width, (float)height), extend);
+    bounds.grow(transform_raster_to_world((float)width, 0.0f), extend);
     if (camera_type == CAMERA_PERSPECTIVE) {
       /* Center point has the most distance in local Z axis,
        * use it to construct bounding box/
        */
-      bounds.grow(transform_raster_to_world(0.5f * width, 0.5f * height));
+      bounds.grow(transform_raster_to_world(0.5f * width, 0.5f * height), extend);
     }
   }
   return bounds;
