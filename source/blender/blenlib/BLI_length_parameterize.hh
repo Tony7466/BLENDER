@@ -86,13 +86,12 @@ inline void interpolate_to_masked_mix(const Span<T> src,
       const int prev_index = indices[dst_segment_pos + i];
       const float factor = factors[dst_segment_pos + i];
       const bool is_cyclic_case = prev_index == last_src_index;
-      T value;
-      if (is_cyclic_case) {
-        value = math::interpolate(src.last(), src.first(), factor);
-      }
-      else {
-        value = math::interpolate(src[prev_index], src[prev_index + 1], factor);
-      }
+      const T value = [&]() -> T {
+        if (is_cyclic_case) {
+          return math::interpolate(src.last(), src.first(), factor);
+        }
+        return math::interpolate(src[prev_index], src[prev_index + 1], factor);
+      }();
       /* Mix existing and new value. */
       dst[dst_segment[i]] = math::interpolate(dst[dst_segment[i]], value, weight);
     }
