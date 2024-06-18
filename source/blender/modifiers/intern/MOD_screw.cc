@@ -423,6 +423,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
       CustomData_get_layer_for_write(&result->face_data, CD_ORIGINDEX, result->faces_num));
 
   CustomData_copy_data(&mesh->vert_data, &result->vert_data, 0, 0, int(totvert));
+  CustomData_copy_data(&mesh->edge_data, &result->edge_data, 0, 0, int(totedge));
 
   if (mloopuv_layers_tot) {
     const float zero_co[3] = {0};
@@ -877,6 +878,10 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     }
 
     for (step = 0; step <= step_last; step++) {
+      uint edge_index_new = edge_offset + step + (i * (step_tot - 1));
+
+      /* Edge */
+      CustomData_copy_data(&mesh->edge_data, &result->edge_data, int(i), int(edge_index_new), 1);
 
       /* Polygon */
       if (has_mpoly_orig) {
@@ -953,11 +958,10 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
         corner_verts_new[new_loop_index + quad_ord[2]] = int(i2 + totvert);
         corner_verts_new[new_loop_index + quad_ord[3]] = int(i1 + totvert);
 
-        corner_edges_new[new_loop_index + quad_ord_ofs[0]] = int(
-            step == 0 ? i : (edge_offset + step + (i * (step_tot - 1))) - 1);
+        corner_edges_new[new_loop_index + quad_ord_ofs[0]] = int(step == 0 ? i :
+                                                                             edge_index_new - 1);
         corner_edges_new[new_loop_index + quad_ord_ofs[1]] = int(totedge + i2);
-        corner_edges_new[new_loop_index + quad_ord_ofs[2]] = int(edge_offset + step +
-                                                                 (i * (step_tot - 1)));
+        corner_edges_new[new_loop_index + quad_ord_ofs[2]] = int(edge_index_new);
         corner_edges_new[new_loop_index + quad_ord_ofs[3]] = int(totedge + i1);
 
         /* new vertical edge */
