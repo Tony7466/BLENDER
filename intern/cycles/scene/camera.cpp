@@ -593,12 +593,11 @@ BoundBox Camera::viewplane_bounds_get()
    * checks we need in a more clear and smart fashion? */
   BoundBox bounds = BoundBox::empty;
 
-  float extend;
   const float max_aperture_size = aperture_ratio < 1.0f ? aperturesize / aperture_ratio :
                                                           aperturesize;
 
   if (camera_type == CAMERA_PANORAMA) {
-    extend = max_aperture_size + nearclip;
+    const float extend = max_aperture_size + nearclip;
     if (use_spherical_stereo == false) {
       bounds.grow(make_float3(cameratoworld.x.w, cameratoworld.y.w, cameratoworld.z.w), extend);
     }
@@ -624,32 +623,30 @@ BoundBox Camera::viewplane_bounds_get()
   }
   else {
     /* max_aperture_size = Max horizontal distance a ray travels from aperture edge to focus point.
-     Scale that value based on the ratio between focaldistance and nearclip to figure out the
-     horizontal distance the DOF ray will travel before reaching the nearclip plane, where it will
-     start rendering from.
-     In some cases (focus distance is close to camera, and nearclip plane is far from camera), this
-     scaled value is larger than nearclip, in which case we add it to `extend` to extend the
-     bounding box to account for these rays.
-
-     ----------------- nearclip plane
-               / scaled_horz_dof_ray, nearclip
-              / (In some situations scaled_horz_dof_ray is larger than nearclip)
-             /
-            / horz_dof_ray, focaldistance
-           /|
-          / |
-         /  |
-        /   |
-       ------ max_aperture_size, 0
-      0, 0
+     * Scale that value based on the ratio between focaldistance and nearclip to figure out the
+     * horizontal distance the DOF ray will travel before reaching the nearclip plane, where it
+     * will start rendering from.
+     * In some cases (focus distance is close to camera, and nearclip plane is far from camera),
+     * this scaled value is larger than nearclip, in which case we add it to `extend` to extend the
+     * bounding box to account for these rays.
+     *
+     * ----------------- nearclip plane
+     *           / scaled_horz_dof_ray, nearclip
+     *          /
+     *         /
+     *        / horz_dof_ray, focaldistance
+     *       /|
+     *      / |
+     *     /  |
+     *    /   |
+     *   ------ max_aperture_size, 0
+     *  0, 0
      */
 
-    float scaled_horz_dof_ray = 0.0f;
-    if (max_aperture_size > 0.0f) {
-      scaled_horz_dof_ray = max_aperture_size * (nearclip / focaldistance);
-    }
-
-    extend = max_aperture_size + max(nearclip, scaled_horz_dof_ray);
+    const float scaled_horz_dof_ray = (max_aperture_size > 0.0f) ?
+                                          max_aperture_size * (nearclip / focaldistance) :
+                                          0.0f;
+    const float extend = max_aperture_size + max(nearclip, scaled_horz_dof_ray);
 
     bounds.grow(transform_raster_to_world(0.0f, 0.0f), extend);
     bounds.grow(transform_raster_to_world(0.0f, (float)height), extend);
