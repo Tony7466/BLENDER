@@ -618,7 +618,6 @@ static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const w
 
   grease_pencil_interpolate_status_indicators(*C, opdata);
 
-  // DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
   WM_event_add_modal_handler(C, op);
