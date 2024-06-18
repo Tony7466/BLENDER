@@ -34,7 +34,6 @@
 #include "RNA_define.hh"
 
 #include <climits>
-#include <iostream>
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
