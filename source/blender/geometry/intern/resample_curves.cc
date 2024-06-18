@@ -304,6 +304,7 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
             length_parameterize::sample_uniform(
                 lengths,
                 !curves_cyclic[i_curve],
+                false,
                 sample_indices.as_mutable_span().slice(dst_points),
                 sample_factors.as_mutable_span().slice(dst_points));
           }

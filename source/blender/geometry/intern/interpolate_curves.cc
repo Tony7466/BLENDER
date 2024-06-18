@@ -229,6 +229,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
             length_parameterize::sample_uniform(
                 from_lengths,
                 !from_curves_cyclic[i_from_curve],
+                false,
                 from_sample_indices.as_mutable_span().slice(dst_points),
                 from_sample_factors.as_mutable_span().slice(dst_points));
           }
@@ -239,9 +240,10 @@ void interpolate_curves(const CurvesGeometry &from_curves,
           }
           else {
             if (curve_flip_direction[i_dst_curve]) {
-              length_parameterize::sample_uniform_reverse(
+              length_parameterize::sample_uniform(
                   to_lengths,
                   !to_curves_cyclic[i_to_curve],
+                  true,
                   to_sample_indices.as_mutable_span().slice(dst_points),
                   to_sample_factors.as_mutable_span().slice(dst_points));
             }
@@ -249,6 +251,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
               length_parameterize::sample_uniform(
                   to_lengths,
                   !to_curves_cyclic[i_to_curve],
+                  false,
                   to_sample_indices.as_mutable_span().slice(dst_points),
                   to_sample_factors.as_mutable_span().slice(dst_points));
             }

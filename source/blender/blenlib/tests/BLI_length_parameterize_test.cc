@@ -35,7 +35,7 @@ TEST(length_parameterize, FloatSimple)
 
   Array<int> indices(4);
   Array<float> factors(4);
-  sample_uniform(lengths, true, indices, factors);
+  sample_uniform(lengths, true, false, indices, factors);
   Array<float> results(4);
   interpolate<float>(values, indices, factors, results);
   Array<float> expected({
@@ -57,7 +57,7 @@ TEST(length_parameterize, Float)
 
   Array<int> indices(20);
   Array<float> factors(20);
-  sample_uniform(lengths, true, indices, factors);
+  sample_uniform(lengths, true, false, indices, factors);
   Array<float> results(20);
   interpolate<float>(values, indices, factors, results);
   Array<float> expected({
@@ -78,7 +78,7 @@ TEST(length_parameterize, Float2)
 
   Array<int> indices(12);
   Array<float> factors(12);
-  sample_uniform(lengths, true, indices, factors);
+  sample_uniform(lengths, true, false, indices, factors);
   Array<float2> results(12);
   interpolate<float2>(values, indices, factors, results);
   Array<float2> expected({
@@ -108,7 +108,7 @@ TEST(length_parameterize, Float2Cyclic)
 
   Array<int> indices(12);
   Array<float> factors(12);
-  sample_uniform(lengths, false, indices, factors);
+  sample_uniform(lengths, false, false, indices, factors);
   Array<float2> results(12);
   interpolate<float2>(values, indices, factors, results);
   Array<float2> expected({
@@ -138,7 +138,7 @@ TEST(length_parameterize, LineMany)
 
   Array<int> indices(5007);
   Array<float> factors(5007);
-  sample_uniform(lengths, true, indices, factors);
+  sample_uniform(lengths, true, false, indices, factors);
   Array<float> results(5007);
   interpolate<float>(values, indices, factors, results);
   Array<float> expected({
@@ -157,7 +157,7 @@ TEST(length_parameterize, CyclicMany)
 
   Array<int> indices(5007);
   Array<float> factors(5007);
-  sample_uniform(lengths, false, indices, factors);
+  sample_uniform(lengths, false, false, indices, factors);
   Array<float2> results(5007);
   interpolate<float2>(values, indices, factors, results);
   Array<float2> expected({
@@ -181,7 +181,7 @@ TEST(length_parameterize, InterpolateColor)
 
   Array<int> indices(10);
   Array<float> factors(10);
-  sample_uniform(lengths, false, indices, factors);
+  sample_uniform(lengths, false, false, indices, factors);
   Array<ColorGeometry4f> results(10);
   interpolate<ColorGeometry4f>(colors, indices, factors, results);
   Array<ColorGeometry4f> expected({

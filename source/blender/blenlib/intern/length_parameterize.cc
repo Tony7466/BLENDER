@@ -9,6 +9,7 @@ namespace blender::length_parameterize {
 
 void sample_uniform(const Span<float> accumulated_segment_lengths,
                     const bool include_last_point,
+                    const bool reverse,
                     MutableSpan<int> r_segment_indices,
                     MutableSpan<float> r_factors)
 {
@@ -19,37 +20,14 @@ void sample_uniform(const Span<float> accumulated_segment_lengths,
       std::is_sorted(accumulated_segment_lengths.begin(), accumulated_segment_lengths.end()));
 
   if (count == 1) {
-    r_segment_indices[0] = 0;
-    r_factors[0] = 0.0f;
-    return;
-  }
-  const float total_length = accumulated_segment_lengths.last();
-  const float step_length = total_length / (count - include_last_point);
-  threading::parallel_for(IndexRange(count), 512, [&](const IndexRange range) {
-    SampleSegmentHint hint;
-    for (const int i : range) {
-      /* Use minimum to avoid issues with floating point accuracy. */
-      const float sample_length = std::min(total_length, i * step_length);
-      sample_at_length(
-          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], &hint);
+    if (reverse) {
+      r_segment_indices[0] = accumulated_segment_lengths.size() - 1;
+      r_factors[0] = 1.0f;
     }
-  });
-}
-
-void sample_uniform_reverse(const Span<float> accumulated_segment_lengths,
-                            const bool include_last_point,
-                            MutableSpan<int> r_segment_indices,
-                            MutableSpan<float> r_factors)
-{
-  const int count = r_segment_indices.size();
-  BLI_assert(count > 0);
-  BLI_assert(accumulated_segment_lengths.size() >= 1);
-  BLI_assert(
-      std::is_sorted(accumulated_segment_lengths.begin(), accumulated_segment_lengths.end()));
-
-  if (count == 1) {
-    r_segment_indices[0] = accumulated_segment_lengths.size() - 1;
-    r_factors[0] = 1.0f;
+    else {
+      r_segment_indices[0] = 0;
+      r_factors[0] = 0.0f;
+    }
     return;
   }
   const float total_length = accumulated_segment_lengths.last();
@@ -58,7 +36,8 @@ void sample_uniform_reverse(const Span<float> accumulated_segment_lengths,
     SampleSegmentHint hint;
     for (const int i : range) {
       /* Use minimum to avoid issues with floating point accuracy. */
-      const float sample_length = std::max(0.0f, total_length - i * step_length);
+      const float sample_length = (reverse ? std::max(0.0f, total_length - i * step_length) :
+                                             std::min(total_length, i * step_length));
       sample_at_length(
           accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], &hint);
     }
