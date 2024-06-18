@@ -226,15 +226,13 @@ static float neighbor_mask_average_grids(
   coord.y = y;
 
   SubdivCCGNeighbors neighbors;
-  BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
+  BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
   float sum = 0.0f;
-  int total = 0;
   for (const SubdivCCGCoord neighbor : neighbors.coords) {
     sum += CCG_grid_elem_mask(key, subdiv_ccg.grids[neighbor.grid_index], neighbor.x, neighbor.y);
-    total += 1;
   }
-  return sum / total;
+  return sum / neighbors.coords.size();
 }
 
 static void calc_grids(Object &object,
