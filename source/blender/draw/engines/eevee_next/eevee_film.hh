@@ -74,6 +74,7 @@ class Film {
   SwapChain<Texture, 2> weight_tx_;
 
   PassSimple accumulate_ps_ = {"Film.Accumulate"};
+  PassSimple copy_ps_ = {"Film.Copy"};
   PassSimple cryptomatte_post_ps_ = {"Film.Cryptomatte.Post"};
 
   FilmData &data_;
@@ -299,6 +300,8 @@ class Film {
    * Precompute sample weights if they are uniform across the whole film extent.
    */
   void update_sample_table();
+
+  void init_pass(PassSimple &pass, GPUShader *sh);
 };
 
 /** \} */
