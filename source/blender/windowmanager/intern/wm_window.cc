@@ -534,18 +534,13 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
     if (is_single && area) {
       PointerRNA ptr = RNA_pointer_create(&(screen->id), &RNA_Area, area);
       PropertyRNA *prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
-      const int space_type_ui = RNA_property_enum_get(&ptr, prop_ui_type);
-      int space_type = space_type_ui >> 16;
       const char *area_name = "";
 
       bContext *C = CTX_create();
-      CTX_data_main_set(C, G_MAIN);
-      CTX_data_scene_set(C, WM_window_get_active_scene(win));
       CTX_wm_manager_set(C, wm);
       CTX_wm_window_set(C, win);
       CTX_wm_screen_set(C, screen);
       CTX_wm_area_set(C, area);
-
       RNA_property_enum_name_gettexted(
           C, &ptr, prop_ui_type, RNA_property_enum_get(&ptr, prop_ui_type), &area_name);
       CTX_free(C);
