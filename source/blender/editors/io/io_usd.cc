@@ -156,6 +156,20 @@ const EnumPropertyItem prop_usdz_downscale_size[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem prop_textures[] = {
+    {USD_TEX_EXPORT_NONE, "NONE", 0, "None", "Do not export textures"},
+    {USD_TEX_EXPORT_USE_ORIGINAL_PATHS,
+     "ORIGINAL",
+     0,
+     "Use original paths",
+     "Reference original paths of textures"},
+    {USD_TEX_EXPORT_NEW_PATH,
+     "NEW",
+     0,
+     "Export under new path",
+     "Exports textures next to USD file in a ./textures folder"},
+    {0, nullptr, 0, nullptr, nullptr}};
+
 /* Stored in the wmOperator's customdata field to indicate it should run as a background job.
  * This is set when the operator is invoked, and not set when it is only executed. */
 struct eUSDOperatorOptions {
@@ -233,7 +247,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const bool generate_preview_surface = RNA_boolean_get(op->ptr, "generate_preview_surface");
   const bool generate_materialx_network = RNA_boolean_get(op->ptr, "generate_materialx_network");
-  const bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
   const bool overwrite_textures = RNA_boolean_get(op->ptr, "overwrite_textures");
   const bool relative_paths = RNA_boolean_get(op->ptr, "relative_paths");
 
@@ -268,7 +281,27 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool allow_unicode = false;
 #  endif
 
+  /* When the texture export settings were moved into an enum this bit
+   * became more involved, but it needs to stick around for API backwards
+   * compatibility until Blender 5.0. */
+
+  const eUSDTexExportMode textures_mode = eUSDTexExportMode(RNA_enum_get(op->ptr, "textures"));
+  bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
   bool use_original_paths = RNA_boolean_get(op->ptr, "use_original_paths");
+
+  if (!export_textures) {
+    switch (textures_mode) {
+      case eUSDTexExportMode::USD_TEX_EXPORT_USE_ORIGINAL_PATHS:
+        export_textures = true;
+        use_original_paths = true;
+        break;
+      case eUSDTexExportMode::USD_TEX_EXPORT_NEW_PATH:
+        export_textures = true;
+        use_original_paths = false;
+      default:
+        use_original_paths = false;
+    }
+  }
 
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
@@ -415,32 +448,17 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
       uiItemR(col, ptr, "generate_materialx_network", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(col, ptr, "convert_world_material", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-      const bool preview = RNA_boolean_get(ptr, "generate_preview_surface");
-      const bool materialx = RNA_boolean_get(ptr, "generate_materialx_network");
-      const bool export_tex = RNA_boolean_get(ptr, "export_textures");
-      const bool use_orig_paths = RNA_boolean_get(ptr, "use_original_paths");
-
-      col = uiLayoutColumnWithHeading(panel.body, true, IFACE_("Textures: "));
+      col = uiLayoutColumn(panel.body, true);
       uiLayoutSetPropSep(col, true);
 
-      uiItemFullR(col,
-                  ptr,
-                  RNA_struct_find_property(ptr, "export_textures"),
-                  0,
-                  0,
-                  UI_ITEM_NONE,
-                  nullptr,
-                  ICON_NONE);
-      if (RNA_boolean_get(ptr, "export_textures")) {
-        uiItemR(col, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
-      }
-      else {
-        uiItemR(col, ptr, "use_original_paths", UI_ITEM_NONE, nullptr, ICON_NONE);
-      }
+      uiItemR(col, ptr, "textures", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+      const eUSDTexExportMode textures_mode = eUSDTexExportMode(RNA_enum_get(op->ptr, "textures"));
 
       uiLayout *col2 = uiLayoutColumn(col, true);
       uiLayoutSetPropSep(col2, true);
-      uiLayoutSetEnabled(col2, RNA_boolean_get(ptr, "export_textures"));
+      uiLayoutSetEnabled(col2, textures_mode == USD_TEX_EXPORT_NEW_PATH);
+      uiItemR(col2, ptr, "overwrite_textures", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(col2, ptr, "usdz_downscale_size", UI_ITEM_NONE, nullptr, ICON_NONE);
       if (RNA_enum_get(ptr, "usdz_downscale_size") == USD_TEXTURE_SIZE_CUSTOM) {
         uiItemR(col2, ptr, "usdz_downscale_custom_size", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -643,10 +661,19 @@ void WM_OT_usd_export(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "export_textures",
-                  true,
+                  false,
                   "Export Textures",
                   "If exporting materials, export textures referenced by material nodes "
                   "to a 'textures' directory in the same directory as the USD file");
+
+  RNA_def_enum(ot->srna,
+               "textures",
+               prop_textures,
+               USD_TEX_EXPORT_NEW_PATH,
+               "Export Textures",
+               "None: Do not export; "
+               "Use original paths: Use original paths to files on disk; "
+               "Export as new paths: Export to ./textures folder beside USD file");
 
   RNA_def_boolean(ot->srna,
                   "overwrite_textures",

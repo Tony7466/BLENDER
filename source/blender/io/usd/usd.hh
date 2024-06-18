@@ -95,6 +95,15 @@ typedef enum eUSDZTextureDownscaleSize {
   USD_TEXTURE_SIZE_4096 = 4096
 } eUSDZTextureDownscaleSize;
 
+/**
+ *  Behavior when exporting textures.
+ */
+enum eUSDTexExportMode {
+  USD_TEX_EXPORT_NONE = 0,
+  USD_TEX_EXPORT_USE_ORIGINAL_PATHS,
+  USD_TEX_EXPORT_NEW_PATH,
+};
+
 struct USDExportParams {
   bool export_animation = false;
   bool export_hair = true;
@@ -112,7 +121,7 @@ struct USDExportParams {
   enum eEvaluationMode evaluation_mode = DAG_EVAL_VIEWPORT;
   bool generate_preview_surface = true;
   bool generate_materialx_network = true;
-  bool export_textures = true;
+  bool export_textures = false;
   bool overwrite_textures = true;
   bool relative_paths = true;
   bool export_custom_properties = true;
