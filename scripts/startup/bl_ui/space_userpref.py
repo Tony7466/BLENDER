@@ -2262,6 +2262,24 @@ class USERPREF_PT_extensions_repos(Panel):
 
 
 # -----------------------------------------------------------------------------
+# Extensions Panels
+
+
+class ExtensionsPanel:
+    bl_space_type = 'PREFERENCES'
+    bl_region_type = 'WINDOW'
+    bl_context = "extensions"
+
+
+class USERPREF_PT_extensions(ExtensionsPanel, Panel):
+    bl_label = "Extensions"
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        pass
+
+
+# -----------------------------------------------------------------------------
 # Add-on Panels
 
 # Only a popover.
@@ -2279,7 +2297,7 @@ class USERPREF_PT_addons_filter(Panel):
 class AddOnPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
-    bl_context = "extensions"
+    bl_context = "addons"
 
 
 class USERPREF_PT_addons(AddOnPanel, Panel):
@@ -2950,6 +2968,7 @@ classes = (
 
     USERPREF_PT_keymap,
 
+    USERPREF_PT_extensions,
     USERPREF_PT_addons,
 
     USERPREF_MT_extensions_active_repo,
