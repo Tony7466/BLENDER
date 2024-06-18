@@ -61,4 +61,24 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
                                      const fn::Field<bool> &selection_field,
                                      const ResampleCurvesOutputAttributeIDs &output_ids = {});
 
+/**
+ * Resample a span of attribute values from source curves to a destination buffer.
+ * \param src_curves: Curves to resample.
+ * \param dst_curves: Curves to write resampled data to.
+ * \param src_data: Source point attribute data to resample.
+ * \param dst_data: Target point attribute span to write to.
+ * \param curve_selection: Selection of curves to interpolate, unselected curves are not modified.
+ * \param sample_indices: Point index in source curves to sample from for each target point.
+ * \param sample_indices: Interpolation factor between start and end point for each target point.
+ * \param is_evaluated_data: Source data is for evaluated points.
+ */
+void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
+                              bke::CurvesGeometry &dst_curves,
+                              GSpan src_data,
+                              GMutableSpan dst_data,
+                              const IndexMask &curve_selection,
+                              Span<int> sample_indices,
+                              Span<float> sample_factors,
+                              bool is_evaluated_data);
+
 }  // namespace blender::geometry

@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_math_color.hh"
 #include "BLI_math_quaternion.hh"
 
 #include "BLI_length_parameterize.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 
 #include "FN_field.hh"
@@ -254,8 +256,6 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
     return;
   }
 
-  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
-  const OffsetIndices evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
   const VArray<bool> curves_cyclic = src_curves.cyclic();
   const VArray<int8_t> curve_types = src_curves.curve_types();
   const Span<float3> evaluated_positions = src_curves.evaluated_positions();
@@ -283,91 +283,88 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
   /* Use a "for each group of curves: for each attribute: for each curve" pattern to work on
    * smaller sections of data that ideally fit into CPU cache better than simply one attribute at a
    * time or one curve at a time. */
-  selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment selection_segment) {
-    Vector<std::byte> evaluated_buffer;
+  selection.foreach_segment(
+      GrainSize(512), [&](const IndexMaskSegment selection_segment, const int segment_pos) {
+        /* Actual range from mask segments requires both "position" and offset. */
+        const IndexRange segment_range = selection_segment.index_range().shift(
+            selection_segment.offset() + segment_pos);
+        Vector<std::byte> evaluated_buffer;
 
-    /* Gather uniform samples based on the accumulated lengths of the original curve. */
-    for (const int i_curve : selection_segment) {
-      const bool cyclic = curves_cyclic[i_curve];
-      const IndexRange dst_points = dst_points_by_curve[i_curve];
-      const Span<float> lengths = src_curves.evaluated_lengths_for_curve(i_curve, cyclic);
-      if (lengths.is_empty()) {
-        /* Handle curves with only one evaluated point. */
-        sample_indices.as_mutable_span().slice(dst_points).fill(0);
-        sample_factors.as_mutable_span().slice(dst_points).fill(0.0f);
-      }
-      else {
-        length_parameterize::sample_uniform(lengths,
-                                            !curves_cyclic[i_curve],
-                                            sample_indices.as_mutable_span().slice(dst_points),
-                                            sample_factors.as_mutable_span().slice(dst_points));
-      }
-    }
-
-    /* For every attribute, evaluate attributes from every curve in the range in the original
-     * curve's "evaluated points", then use linear interpolation to sample to the result. */
-    for (const int i_attribute : attributes.dst.index_range()) {
-      const CPPType &type = attributes.src[i_attribute].type();
-      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
-        using T = decltype(dummy);
-        Span<T> src = attributes.src[i_attribute].typed<T>();
-        MutableSpan<T> dst = attributes.dst[i_attribute].typed<T>();
-
+        /* Gather uniform samples based on the accumulated lengths of the original curve. */
         for (const int i_curve : selection_segment) {
-          const IndexRange src_points = src_points_by_curve[i_curve];
+          const bool cyclic = curves_cyclic[i_curve];
           const IndexRange dst_points = dst_points_by_curve[i_curve];
-
-          if (curve_types[i_curve] == CURVE_TYPE_POLY) {
-            length_parameterize::interpolate(src.slice(src_points),
-                                             sample_indices.as_span().slice(dst_points),
-                                             sample_factors.as_span().slice(dst_points),
-                                             dst.slice(dst_points));
+          const Span<float> lengths = src_curves.evaluated_lengths_for_curve(i_curve, cyclic);
+          if (lengths.is_empty()) {
+            /* Handle curves with only one evaluated point. */
+            sample_indices.as_mutable_span().slice(dst_points).fill(0);
+            sample_factors.as_mutable_span().slice(dst_points).fill(0.0f);
           }
           else {
-            evaluated_buffer.reinitialize(sizeof(T) * evaluated_points_by_curve[i_curve].size());
-            MutableSpan<T> evaluated = evaluated_buffer.as_mutable_span().cast<T>();
-            src_curves.interpolate_to_evaluated(i_curve, src.slice(src_points), evaluated);
+            length_parameterize::sample_uniform(
+                lengths,
+                !curves_cyclic[i_curve],
+                sample_indices.as_mutable_span().slice(dst_points),
+                sample_factors.as_mutable_span().slice(dst_points));
+          }
+        }
 
-            length_parameterize::interpolate(evaluated.as_span(),
-                                             sample_indices.as_span().slice(dst_points),
-                                             sample_factors.as_span().slice(dst_points),
-                                             dst.slice(dst_points));
+        /* For every attribute, evaluate attributes from every curve in the range in the original
+         * curve's "evaluated points", then use linear interpolation to sample to the result. */
+        for (const int i_attribute : attributes.dst.index_range()) {
+          resample_curve_attribute(src_curves,
+                                   dst_curves,
+                                   attributes.src[i_attribute],
+                                   attributes.dst[i_attribute],
+                                   segment_range,
+                                   sample_indices,
+                                   sample_factors,
+                                   false);
+        }
+
+        /* Interpolate the evaluated positions to the resampled curves. */
+        resample_curve_attribute(src_curves,
+                                 dst_curves,
+                                 evaluated_positions,
+                                 dst_positions,
+                                 segment_range,
+                                 sample_indices,
+                                 sample_factors,
+                                 true);
+
+        if (!attributes.dst_tangents.is_empty()) {
+          resample_curve_attribute(src_curves,
+                                   dst_curves,
+                                   attributes.src_evaluated_tangents,
+                                   attributes.dst_tangents,
+                                   segment_range,
+                                   sample_indices,
+                                   sample_factors,
+                                   true);
+          normalize_curve_point_data(
+              selection_segment, dst_points_by_curve, attributes.dst_tangents);
+        }
+        if (!attributes.dst_normals.is_empty()) {
+          resample_curve_attribute(src_curves,
+                                   dst_curves,
+                                   attributes.src_evaluated_normals,
+                                   attributes.dst_normals,
+                                   segment_range,
+                                   sample_indices,
+                                   sample_factors,
+                                   true);
+          normalize_curve_point_data(
+              selection_segment, dst_points_by_curve, attributes.dst_normals);
+        }
+
+        /* Fill the default value for non-interpolating attributes that still must be copied. */
+        for (GMutableSpan dst : attributes.dst_no_interpolation) {
+          for (const int i_curve : selection_segment) {
+            const IndexRange dst_points = dst_points_by_curve[i_curve];
+            dst.type().value_initialize_n(dst.slice(dst_points).data(), dst_points.size());
           }
         }
       });
-    }
-
-    auto interpolate_evaluated_data = [&](const Span<float3> src, MutableSpan<float3> dst) {
-      for (const int i_curve : selection_segment) {
-        const IndexRange src_points = evaluated_points_by_curve[i_curve];
-        const IndexRange dst_points = dst_points_by_curve[i_curve];
-        length_parameterize::interpolate(src.slice(src_points),
-                                         sample_indices.as_span().slice(dst_points),
-                                         sample_factors.as_span().slice(dst_points),
-                                         dst.slice(dst_points));
-      }
-    };
-
-    /* Interpolate the evaluated positions to the resampled curves. */
-    interpolate_evaluated_data(evaluated_positions, dst_positions);
-
-    if (!attributes.dst_tangents.is_empty()) {
-      interpolate_evaluated_data(attributes.src_evaluated_tangents, attributes.dst_tangents);
-      normalize_curve_point_data(selection_segment, dst_points_by_curve, attributes.dst_tangents);
-    }
-    if (!attributes.dst_normals.is_empty()) {
-      interpolate_evaluated_data(attributes.src_evaluated_normals, attributes.dst_normals);
-      normalize_curve_point_data(selection_segment, dst_points_by_curve, attributes.dst_normals);
-    }
-
-    /* Fill the default value for non-interpolating attributes that still must be copied. */
-    for (GMutableSpan dst : attributes.dst_no_interpolation) {
-      for (const int i_curve : selection_segment) {
-        const IndexRange dst_points = dst_points_by_curve[i_curve];
-        dst.type().value_initialize_n(dst.slice(dst_points).data(), dst_points.size());
-      }
-    }
-  });
 
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
@@ -601,6 +598,75 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   evaluator.evaluate();
   return resample_to_evaluated(
       src_curves, evaluator.get_evaluated_selection_as_mask(), output_ids);
+}
+
+void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
+                              bke::CurvesGeometry &dst_curves,
+                              GSpan src_data,
+                              GMutableSpan dst_data,
+                              const IndexMask &curve_selection,
+                              Span<int> sample_indices,
+                              Span<float> sample_factors,
+                              const bool is_evaluated_data)
+{
+  const CPPType &type = src_data.type();
+  BLI_assert(dst_data.type() == type);
+
+  const OffsetIndices<int> src_points_by_curve = src_curves.points_by_curve();
+  const OffsetIndices<int> src_evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
+  const OffsetIndices<int> dst_points_by_curve = dst_curves.points_by_curve();
+  const VArray<int8_t> curve_types = src_curves.curve_types();
+
+  const int curves_num = src_curves.curves_num();
+  BLI_assert(src_points_by_curve.size() == curves_num);
+  BLI_assert(dst_points_by_curve.size() == curves_num);
+  BLI_assert(curve_types.size() == curves_num);
+
+  const int dst_points_num = dst_data.size();
+  BLI_assert(sample_indices.size() == dst_points_num);
+  BLI_assert(sample_factors.size() == dst_points_num);
+
+  bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
+    using T = decltype(dummy);
+    Span<T> src = src_data.typed<T>();
+    MutableSpan<T> dst = dst_data.typed<T>();
+
+    if (is_evaluated_data) {
+      curve_selection.foreach_index([&](const int i_curve) {
+        const IndexRange src_evaluated_points = src_evaluated_points_by_curve[i_curve];
+        const IndexRange dst_points = dst_points_by_curve[i_curve];
+
+        length_parameterize::interpolate(src.slice(src_evaluated_points),
+                                         sample_indices.slice(dst_points),
+                                         sample_factors.slice(dst_points),
+                                         dst.slice(dst_points));
+      });
+    }
+    else {
+      curve_selection.foreach_index([&](const int i_curve) {
+        const IndexRange src_points = src_points_by_curve[i_curve];
+        const IndexRange dst_points = dst_points_by_curve[i_curve];
+
+        if (curve_types[i_curve] == CURVE_TYPE_POLY) {
+          length_parameterize::interpolate(src.slice(src_points),
+                                           sample_indices.slice(dst_points),
+                                           sample_factors.slice(dst_points),
+                                           dst.slice(dst_points));
+        }
+        else {
+          const IndexRange src_evaluated_points = src_evaluated_points_by_curve[i_curve];
+          Vector<std::byte> evaluated_buffer(sizeof(T) * src_evaluated_points.size());
+          MutableSpan<T> evaluated = evaluated_buffer.as_mutable_span().cast<T>();
+          src_curves.interpolate_to_evaluated(i_curve, src.slice(src_points), evaluated);
+
+          length_parameterize::interpolate(evaluated.as_span(),
+                                           sample_indices.slice(dst_points),
+                                           sample_factors.slice(dst_points),
+                                           dst.slice(dst_points));
+        }
+      });
+    }
+  });
 }
 
 }  // namespace blender::geometry
