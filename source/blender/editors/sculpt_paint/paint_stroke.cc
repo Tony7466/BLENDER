@@ -637,9 +637,7 @@ static bool paint_smooth_stroke(PaintStroke *stroke,
 
     /* If the mouse is moving within the radius of the last move,
      * don't update the mouse position. This allows sharp turns. */
-    if (len_squared_v2v2(stroke->last_mouse_position, sample->mouse) < square_f(radius) &&
-        stroke->tot_samples != 0)
-    {
+    if (len_squared_v2v2(stroke->last_mouse_position, sample->mouse) < square_f(radius)) {
       return false;
     }
 
@@ -1502,24 +1500,6 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
 
     stroke->stroke_init = true;
     first_modal = true;
-  }
-
-  /* Smoothing can be activated and deactivated while running, so the cursor has to update. */
-  if ((br->flag & BRUSH_LINE) == 0) {
-    if (paint_supports_smooth_stroke(stroke, *br, mode)) {
-      /* Activate if it is not active. */
-      if (!stroke->stroke_cursor) {
-        stroke->stroke_cursor = WM_paint_cursor_activate(
-            SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_tool_poll, paint_draw_smooth_cursor, stroke);
-      }
-    }
-    else {
-      /* Deactivate it if it is active. */
-      if (stroke->stroke_cursor) {
-        WM_paint_cursor_end(static_cast<wmPaintCursor *>(stroke->stroke_cursor));
-        stroke->stroke_cursor = nullptr;
-      }
-    }
   }
 
   /* one time stroke initialization */

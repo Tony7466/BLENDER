@@ -2978,13 +2978,6 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette(View3DPanel, Panel):
             col.template_palette(settings, "palette", color=True)
 
 
-class VIEW3D_PT_tools_grease_pencil_v3_brush_stabilize_stroke(View3DPanel, Panel, SmoothStrokePanel):
-    bl_context = ".grease_pencil_paint"  # dot on purpose (access from topbar)
-    bl_label = "Stabilize Stroke"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_v3_brush_stroke"
-    bl_options = {'DEFAULT_CLOSED'}
-
-
 classes = (
     VIEW3D_MT_brush_context_menu,
     VIEW3D_MT_brush_gpencil_context_menu,
@@ -3085,8 +3078,6 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_v3_brush_stabilizer,
     VIEW3D_PT_tools_grease_pencil_v3_brush_mixcolor,
     VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette,
-    VIEW3D_PT_tools_grease_pencil_v3_brush_stroke,
-    VIEW3D_PT_tools_grease_pencil_v3_brush_stabilize_stroke,
 
     VIEW3D_PT_tools_grease_pencil_brush_paint_falloff,
     VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff,
