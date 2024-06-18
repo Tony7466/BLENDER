@@ -628,7 +628,6 @@ static void paint_brush_stroke_add_step(
 static bool paint_smooth_stroke(PaintStroke *stroke,
                                 const PaintSample *sample,
                                 PaintMode mode,
-                                const wmEvent *event,
                                 float r_mouse[2],
                                 float *r_pressure)
 {
@@ -1507,7 +1506,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
 
   /* Smoothing can be activated and deactivated while running, so the cursor has to update. */
   if ((br->flag & BRUSH_LINE) == 0) {
-    if (paint_supports_smooth_stroke(br, mode, event)) {
+    if (paint_supports_smooth_stroke(stroke, *br, mode)) {
       /* Activate if it is not active. */
       if (!stroke->stroke_cursor) {
         stroke->stroke_cursor = WM_paint_cursor_activate(
@@ -1603,7 +1602,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
            ((br->flag & BRUSH_AIRBRUSH) && event->type == TIMER &&
             event->customdata == stroke->timer))
   {
-    if (paint_smooth_stroke(stroke, &sample_average, mode, event, mouse, &pressure)) {
+    if (paint_smooth_stroke(stroke, &sample_average, mode, mouse, &pressure)) {
       if (stroke->stroke_started) {
         if (paint_space_stroke_enabled(*br, mode)) {
           if (paint_space_stroke(C, op, stroke, mouse, pressure)) {

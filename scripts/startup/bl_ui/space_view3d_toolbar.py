@@ -2978,25 +2978,6 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette(View3DPanel, Panel):
             col.template_palette(settings, "palette", color=True)
 
 
-class VIEW3D_PT_tools_grease_pencil_v3_brush_stroke(Panel, View3DPanel):
-    bl_context = ".grease_pencil_paint"
-    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_v3_brush_settings"
-    bl_label = "Stroke"
-    bl_category = "Tool"
-    bl_options = {'DEFAULT_CLOSED'}
-    bl_ui_units_x = 12
-
-    @classmethod
-    def poll(cls, context):
-        brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'DRAW'
-
-    def draw(self, _context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-
 class VIEW3D_PT_tools_grease_pencil_v3_brush_stabilize_stroke(View3DPanel, Panel, SmoothStrokePanel):
     bl_context = ".grease_pencil_paint"  # dot on purpose (access from topbar)
     bl_label = "Stabilize Stroke"
