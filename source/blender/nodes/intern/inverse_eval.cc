@@ -581,18 +581,30 @@ static bool set_value_node_value(bNode &node, const SocketValueVariant &value_va
   return false;
 }
 
+using DriverValueVariant = std::variant<float, int, bool>;
+static bool set_rna_property_inverse(bContext &C,
+                                     ID &id,
+                                     const StringRefNull rna_path,
+                                     const DriverValueVariant &value);
+
 [[nodiscard]] static bool try_set_driver_source_value(bContext &C,
                                                       ID &id,
-                                                      const StringRef property_path,
-                                                      const SocketValueVariant &value_variant)
+                                                      const StringRefNull rna_path,
+                                                      const std::optional<int> index,
+                                                      const DriverValueVariant &value_variant)
 {
   AnimData *adt = BKE_animdata_from_id(&id);
   if (!adt) {
     return false;
   }
   LISTBASE_FOREACH (FCurve *, driver, &adt->drivers) {
-    if (driver->rna_path != property_path) {
+    if (driver->rna_path != rna_path) {
       continue;
+    }
+    if (index.has_value()) {
+      if (driver->array_index != *index) {
+        continue;
+      }
     }
     if (!driver->driver) {
       continue;
@@ -616,42 +628,92 @@ static bool set_value_node_value(bNode &node, const SocketValueVariant &value_va
       continue;
     }
     DriverTarget &driver_target = driver_var.targets[0];
-    PointerRNA dst_id_ptr = RNA_id_pointer_create(driver_target.id);
-    PointerRNA dst_value_ptr;
-    PropertyRNA *dst_prop;
-    if (!RNA_path_resolve(&dst_id_ptr, driver_target.rna_path, &dst_value_ptr, &dst_prop)) {
-      continue;
-    }
-    const PropertyType dst_type = RNA_property_type(dst_prop);
-    const int array_len = RNA_property_array_length(&dst_value_ptr, dst_prop);
-    switch (dst_type) {
-      case PROP_FLOAT: {
-        if (array_len == 0) {
-          if (value_variant.valid_for_socket(SOCK_FLOAT)) {
-            const float value = value_variant.get<float>();
-            RNA_property_float_set(&dst_value_ptr, dst_prop, value);
-            RNA_property_update(&C, &dst_value_ptr, dst_prop);
-            return true;
-          }
-        }
-        break;
-      }
-      case PROP_INT: {
-        if (array_len == 0) {
-          if (value_variant.valid_for_socket(SOCK_INT)) {
-            const int value = value_variant.get<int>();
-            RNA_property_int_set(&dst_value_ptr, dst_prop, value);
-            RNA_property_update(&C, &dst_value_ptr, dst_prop);
-            return true;
-          }
-        }
-        break;
-      }
-      default: {
-        break;
-      }
-    }
+    return set_rna_property_inverse(C, *driver_target.id, driver_target.rna_path, value_variant);
   }
+  return false;
+}
+
+static bool set_rna_property_inverse(bContext &C,
+                                     ID &id,
+                                     const StringRefNull rna_path,
+                                     const DriverValueVariant &value_variant)
+{
+  if (!ID_IS_EDITABLE(&id)) {
+    return false;
+  }
+
+  PointerRNA id_ptr = RNA_id_pointer_create(&id);
+  PointerRNA value_ptr;
+  PropertyRNA *prop;
+  int index;
+  if (!RNA_path_resolve_property_full(&id_ptr, rna_path.c_str(), &value_ptr, &prop, &index)) {
+    return false;
+  }
+
+  const std::optional<std::string> rna_path_without_index = RNA_path_from_ID_to_property(
+      &value_ptr, prop);
+  if (!rna_path_without_index) {
+    return false;
+  }
+
+  std::optional<int> index_opt;
+  if (index >= 0) {
+    index_opt = index;
+  }
+  if (try_set_driver_source_value(C, id, *rna_path_without_index, index_opt, value_variant)) {
+    return true;
+  }
+
+  const PropertyType dst_type = RNA_property_type(prop);
+  const int array_len = RNA_property_array_length(&value_ptr, prop);
+
+  switch (dst_type) {
+    case PROP_FLOAT: {
+      const float value = std::visit([](auto v) { return float(v); }, value_variant);
+      if (array_len == 0) {
+        RNA_property_float_set(&value_ptr, prop, value);
+        RNA_property_update(&C, &value_ptr, prop);
+        return true;
+      }
+      if (index >= 0 && index < array_len) {
+        RNA_property_float_set_index(&value_ptr, prop, index, value);
+        RNA_property_update(&C, &value_ptr, prop);
+        return true;
+      }
+      break;
+    }
+    case PROP_INT: {
+      const int value = std::visit([](auto v) { return int(v); }, value_variant);
+      if (array_len == 0) {
+        RNA_property_int_set(&value_ptr, prop, value);
+        RNA_property_update(&C, &value_ptr, prop);
+        return true;
+      }
+      if (index >= 0 && index < array_len) {
+        RNA_property_int_set_index(&value_ptr, prop, index, value);
+        RNA_property_update(&C, &value_ptr, prop);
+        return true;
+      }
+      break;
+    }
+    case PROP_BOOLEAN: {
+      const bool value = std::visit([](auto v) { return bool(v); }, value_variant);
+      if (array_len == 0) {
+        RNA_property_boolean_set(&value_ptr, prop, value);
+        RNA_property_update(&C, &value_ptr, prop);
+        return true;
+      }
+      if (index >= 0 && index < array_len) {
+        RNA_property_boolean_set_index(&value_ptr, prop, index, value);
+        RNA_property_update(&C, &value_ptr, prop);
+        return true;
+      }
+      break;
+    }
+    default:
+      break;
+  };
+
   return false;
 }
 
@@ -663,63 +725,41 @@ static bool set_modifier_value(bContext &C,
 {
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
-  const std::string prop_data_path = fmt::format(
+  const std::string main_prop_rna_path = fmt::format(
       "modifiers[\"{}\"][\"{}\"]", nmd.modifier.name, interface_socket.identifier);
-  if (try_set_driver_source_value(C, object.id, prop_data_path, value_variant)) {
-    return true;
-  }
 
-  /* TODO: Take min/max into account. */
   switch (interface_socket.socket_typeinfo()->type) {
     case SOCK_FLOAT: {
       const float value = value_variant.get<float>();
-      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                  interface_socket.identifier);
-      if (prop && prop->type == IDP_FLOAT) {
-        IDP_Float(prop) = value;
-        return true;
-      }
-      break;
+      return set_rna_property_inverse(C, object.id, main_prop_rna_path, value);
     }
     case SOCK_INT: {
-      const int value = value_variant.get<float>();
-      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                  interface_socket.identifier);
-      if (prop && prop->type == IDP_INT) {
-        IDP_Int(prop) = value;
-        return true;
-      }
-      break;
+      const int value = value_variant.get<int>();
+      return set_rna_property_inverse(C, object.id, main_prop_rna_path, value);
     }
     case SOCK_BOOLEAN: {
       const bool value = value_variant.get<bool>();
-      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                  interface_socket.identifier);
-      if (prop && prop->type == IDP_BOOLEAN) {
-        IDP_Bool(prop) = value;
-        return true;
-      }
-      break;
+      return set_rna_property_inverse(C, object.id, main_prop_rna_path, value);
     }
     case SOCK_VECTOR: {
       const float3 value = value_variant.get<float3>();
-      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                  interface_socket.identifier);
-      if (prop && prop->type == IDP_ARRAY && prop->len == 3 && prop->subtype == IDP_FLOAT) {
-        *static_cast<float3 *>(IDP_Array(prop)) = value;
+      bool any_success = false;
+      for (const int i : IndexRange(3)) {
+        const std::string rna_path = fmt::format("{}[{}]", main_prop_rna_path, i);
+        any_success |= set_rna_property_inverse(C, object.id, rna_path, value[i]);
       }
-      break;
+      return any_success;
     }
     case SOCK_ROTATION: {
       const math::Quaternion rotation = value_variant.get<math::Quaternion>();
       const math::EulerXYZ euler = math::to_euler(rotation);
-      IDProperty *prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
-                                                  interface_socket.identifier);
-      if (prop && prop->type == IDP_ARRAY && prop->len == 3 && prop->subtype == IDP_FLOAT) {
-        *static_cast<float3 *>(IDP_Array(prop)) = float3(euler);
-        return true;
+      const float3 euler_vec{euler};
+      bool any_success = false;
+      for (const int i : IndexRange(3)) {
+        const std::string rna_path = fmt::format("{}[{}]", main_prop_rna_path, i);
+        any_success |= set_rna_property_inverse(C, object.id, rna_path, euler_vec[i]);
       }
-      break;
+      return any_success;
     }
   }
   return false;
