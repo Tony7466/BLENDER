@@ -320,7 +320,7 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                    segment_range,
                                    sample_indices,
                                    sample_factors,
-                                   false,
+                                   1.0f,
                                    false);
         }
 
@@ -332,8 +332,8 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                  segment_range,
                                  sample_indices,
                                  sample_factors,
-                                 true,
-                                 false);
+                                 1.0f,
+                                 true);
 
         if (!attributes.dst_tangents.is_empty()) {
           resample_curve_attribute(src_curves,
@@ -343,8 +343,8 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                    segment_range,
                                    sample_indices,
                                    sample_factors,
-                                   true,
-                                   false);
+                                   1.0f,
+                                   true);
           normalize_curve_point_data(
               selection_segment, dst_points_by_curve, attributes.dst_tangents);
         }
@@ -356,8 +356,8 @@ static void resample_to_uniform(const CurvesGeometry &src_curves,
                                    segment_range,
                                    sample_indices,
                                    sample_factors,
-                                   true,
-                                   false);
+                                   1.0f,
+                                   true);
           normalize_curve_point_data(
               selection_segment, dst_points_by_curve, attributes.dst_normals);
         }
