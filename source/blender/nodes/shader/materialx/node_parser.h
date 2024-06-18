@@ -66,7 +66,8 @@ class NodeParser {
   NodeItem get_input_value(int index, NodeItem::Type to_type);
   NodeItem empty() const;
   template<class T> NodeItem val(const T &data) const;
-  NodeItem texcoord_node(NodeItem::Type type = NodeItem::Type::Vector2);
+  NodeItem texcoord_node(NodeItem::Type type = NodeItem::Type::Vector2,
+                         const std::string &attribute_name = "");
 
  private:
   NodeItem get_default(const bNodeSocket &socket, NodeItem::Type to_type);

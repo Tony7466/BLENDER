@@ -86,7 +86,8 @@ void MaterialData::init()
   pxr::UsdShadeMaterial usd_material;
 #ifdef WITH_MATERIALX
   if (scene_delegate_->use_materialx) {
-    blender::nodes::materialx::ExportParams materialx_export_params{cache_or_get_image_file, "st"};
+    blender::nodes::materialx::ExportParams materialx_export_params{
+        cache_or_get_image_file, "st", "UVMap"};
     std::string material_name = pxr::TfMakeValidIdentifier(id->name);
     MaterialX::DocumentPtr doc = blender::nodes::materialx::export_to_materialx(
         scene_delegate_->depsgraph, (Material *)id, material_name, materialx_export_params);

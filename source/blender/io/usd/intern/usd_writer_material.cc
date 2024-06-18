@@ -1179,6 +1179,7 @@ static void create_usd_materialx_material(const USDExporterContext &usd_export_c
                                                        std::placeholders::_4),
       /* Active UV map name to use for default texture coordinates. */
       (usd_export_context.export_params.rename_uvmaps) ? "st" : active_uvmap_name,
+      active_uvmap_name,
   };
 
   std::string material_name = usd_path.GetElementString();

@@ -170,7 +170,7 @@ NodeItem NodeParser::empty() const
   return NodeItem(graph_);
 }
 
-NodeItem NodeParser::texcoord_node(NodeItem::Type type)
+NodeItem NodeParser::texcoord_node(NodeItem::Type type, const std::string &attribute_name)
 {
   BLI_assert(ELEM(type, NodeItem::Type::Vector2, NodeItem::Type::Vector3));
   std::string name = TEXCOORD_NODE_NAME;
@@ -182,12 +182,15 @@ NodeItem NodeParser::texcoord_node(NodeItem::Type type)
   if (!res.node) {
     /* TODO: Use "Pref" generated texture coordinates for 3D, but needs
      * work in USD and Hydra mesh export. */
-    if (export_params_.active_uvmap_name == "st") {
+    const bool is_active_uvmap = attribute_name == "" ||
+                                 attribute_name == export_params_.original_active_uvmap_name;
+    if (export_params_.new_active_uvmap_name == "st" && is_active_uvmap) {
       res = create_node("texcoord", type);
     }
     else {
-      res = create_node(
-          "geompropvalue", type, {{"geomprop", val(export_params_.active_uvmap_name)}});
+      const std::string &geomprop = (is_active_uvmap) ? export_params_.new_active_uvmap_name :
+                                                        attribute_name;
+      res = create_node("geompropvalue", type, {{"geomprop", val(geomprop)}});
     }
     res.node->setName(name);
   }
