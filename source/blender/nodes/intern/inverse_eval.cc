@@ -36,6 +36,23 @@
 
 namespace blender::nodes::inverse_eval {
 
+struct NodeInContext {
+  const ComputeContext *context = nullptr;
+  const bNode *node = nullptr;
+
+  uint64_t hash() const
+  {
+    return get_default_hash(this->context_hash(), this->node);
+  }
+
+  ComputeContextHash context_hash() const
+  {
+    return context ? context->hash() : ComputeContextHash{};
+  }
+
+  BLI_STRUCT_EQUALITY_OPERATORS_2(NodeInContext, context_hash(), node)
+};
+
 static Vector<int> get_global_node_sort_vector(const ComputeContext *initial_context,
                                                const bNode &initial_node)
 {
@@ -52,21 +69,14 @@ static Vector<int> get_global_node_sort_vector(const ComputeContext *initial_con
   return vec;
 }
 
-struct NodeInContext {
-  const ComputeContext *context = nullptr;
-  const bNode *node = nullptr;
-
-  uint64_t hash() const
-  {
-    return get_default_hash(this->context_hash(), this->node);
-  }
-
-  ComputeContextHash context_hash() const
-  {
-    return context ? context->hash() : ComputeContextHash{};
-  }
-
-  friend bool operator<(const NodeInContext &a, const NodeInContext &b)
+/**
+ * Defines a partial order of #NodeInContext that can be used to evaluate nodes right to left
+ * (upstream).
+ * - Downstream nodes are sorted before upstream nodes.
+ * - Nodes inside a node group are sorted before the group node.
+ */
+struct NodeInContextUpstreamComparator {
+  bool operator()(const NodeInContext &a, const NodeInContext &b) const
   {
     const Vector<int> a_sort_vec = get_global_node_sort_vector(a.context, *a.node);
     const Vector<int> b_sort_vec = get_global_node_sort_vector(b.context, *b.node);
@@ -79,8 +89,6 @@ struct NodeInContext {
     return std::lexicographical_compare(
         b_common.begin(), b_common.end(), a_common.begin(), a_common.end());
   }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_2(NodeInContext, context_hash(), node)
 };
 
 struct SocketInContext {
@@ -200,7 +208,8 @@ LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
   Map<SocketInContext, ElemVariant> elem_by_socket;
 
   Set<NodeInContext> added_nodes;
-  std::priority_queue<NodeInContext> nodes_to_handle;
+  std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextUpstreamComparator>
+      nodes_to_handle;
 
   Set<const bNodeSocket *> final_sockets;
   Set<const bNode *> final_value_nodes;
@@ -409,7 +418,8 @@ GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext *initia
   Map<SocketInContext, ElemVariant> elem_by_socket;
 
   Set<NodeInContext> added_nodes;
-  std::priority_queue<NodeInContext> nodes_to_handle;
+  std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextUpstreamComparator>
+      nodes_to_handle;
 
   const auto set_input_elem_and_forward =
       [&](const ComputeContext *context, const bNodeSocket &socket, const ElemVariant new_elem) {
@@ -782,7 +792,8 @@ bool try_change_link_target_and_update_source(bContext &C,
   Map<SocketInContext, SocketValueVariant> value_by_socket;
 
   Set<NodeInContext> added_nodes;
-  std::priority_queue<NodeInContext> nodes_to_handle;
+  std::priority_queue<NodeInContext, std::vector<NodeInContext>, NodeInContextUpstreamComparator>
+      nodes_to_handle;
 
   Vector<std::pair<bNodeTree *, bNodeSocket *>> modified_sockets;
   Vector<std::pair<bNodeTree *, bNode *>> modified_nodes;
