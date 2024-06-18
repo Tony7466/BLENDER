@@ -7,6 +7,7 @@
 
 #include "NOD_inverse_eval_path.hh"
 #include "NOD_inverse_eval_run.hh"
+#include "NOD_node_in_compute_context.hh"
 
 #include "BKE_anim_data.hh"
 #include "BKE_compute_contexts.hh"
@@ -46,23 +47,6 @@ static bool is_supported_value_node(const bNode &node)
               FN_NODE_INPUT_ROTATION);
 }
 
-struct NodeInContext {
-  const ComputeContext *context = nullptr;
-  const bNode *node = nullptr;
-
-  uint64_t hash() const
-  {
-    return get_default_hash(this->context_hash(), this->node);
-  }
-
-  ComputeContextHash context_hash() const
-  {
-    return context ? context->hash() : ComputeContextHash{};
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_2(NodeInContext, context_hash(), node)
-};
-
 static Vector<int> get_global_node_sort_vector(const ComputeContext *initial_context,
                                                const bNode &initial_node)
 {
@@ -99,23 +83,6 @@ struct NodeInContextUpstreamComparator {
     return std::lexicographical_compare(
         b_common.begin(), b_common.end(), a_common.begin(), a_common.end());
   }
-};
-
-struct SocketInContext {
-  const ComputeContext *context = nullptr;
-  const bNodeSocket *socket = nullptr;
-
-  uint64_t hash() const
-  {
-    return get_default_hash(this->context_hash(), this->socket);
-  }
-
-  ComputeContextHash context_hash() const
-  {
-    return context ? context->hash() : ComputeContextHash{};
-  }
-
-  BLI_STRUCT_EQUALITY_OPERATORS_2(SocketInContext, context_hash(), socket)
 };
 
 static void traverse_upstream(
