@@ -473,10 +473,13 @@ static void create_uvmap_shader(const USDExporterContext &usd_export_context,
   std::string uv_name = active_uvmap_name;
   if (uv_node && uv_node->storage) {
     NodeShaderUVMap *shader_uv_map = static_cast<NodeShaderUVMap *>(uv_node->storage);
-    /* We need to make valid here because actual uv primvar has been. */
-    uv_name = make_safe_name(shader_uv_map->uv_map,
-                             usd_export_context.export_params.allow_unicode);
+    uv_name = shader_uv_map->uv_map;
   }
+  if (usd_export_context.export_params.rename_uvmaps && uv_name == active_uvmap_name) {
+    uv_name = usdtokens::st;
+  }
+  /* We need to make valid, same as was done when exporting UV primvar. */
+  uv_name = make_safe_name(uv_name, usd_export_context.export_params.allow_unicode);
 
   uv_shader.CreateInput(usdtokens::varname, pxr::SdfValueTypeNames->String).Set(uv_name);
   usd_input.ConnectToSource(uv_shader.ConnectableAPI(), usdtokens::result);
