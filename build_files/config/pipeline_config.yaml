@@ -15,7 +15,7 @@ buildbot:
     hip:
         version: '5.5.30571'
     hiprt:
-        version: '2.0.3a134c7'
+        version: '2.0.e1ff193'
     optix:
         version: '7.3.0'
     ocloc:
