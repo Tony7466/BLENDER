@@ -64,7 +64,32 @@ void main()
     radius = 0.0;
   }
 
+  bool border = (strip.flags & GPU_SEQ_FLAG_BORDER) != 0;
+  bool selected = (strip.flags & GPU_SEQ_FLAG_SELECTED) != 0;
+  float outline_width = selected ? 2.0 : 1.0;
+
+  /* Distance to whole strip shape. */
   float sdf = sdf_rounded_box(pos - center, size, radius);
+
+  /* Distance to inner part when optional handles are taken into account. */
+  float sdf_inner = sdf;
+  if ((strip.flags & GPU_SEQ_FLAG_HANDLES) != 0) {
+    float handle_width = strip.handle_width * view_to_pixel.x;
+    /* Take left/right handle from horizontal sides. */
+    if (strip.col_handle_left != 0) {
+      pos1.x += handle_width;
+    }
+    if (strip.col_handle_right != 0) {
+      pos2.x -= handle_width;
+    }
+    /* Reduce vertical size by outline width. */
+    pos1.y += context_data.pixelsize * outline_width;
+    pos2.y -= context_data.pixelsize * outline_width;
+
+    size = (pos2 - pos1) * 0.5;
+    center = (pos1 + pos2) * 0.5;
+    sdf_inner = sdf_rounded_box(pos - center, size, radius);
+  }
 
   vec4 col = vec4(0.0);
 
@@ -135,13 +160,28 @@ void main()
 
   /* Handles. */
   if ((strip.flags & GPU_SEQ_FLAG_HANDLES) != 0) {
-    float handle_width = strip.handle_width * view_to_pixel.x;
-    if (pos.x >= pos1.x && pos.x < pos1.x + handle_width) {
-      col = blend_color(col, unpackUnorm4x8(strip.col_handle_left));
+    bool left_side = pos.x < center.x;
+    /* Blend in handle color in between strip shape and inner handle shape. */
+    if (sdf <= 0.0 && sdf_inner >= 0.0) {
+      vec4 hcol = unpackUnorm4x8(left_side ? strip.col_handle_left : strip.col_handle_right);
+      hcol.a *= clamp(sdf_inner, 0.0, 1.0);
+      col = blend_color(col, hcol);
     }
-    if (pos.x > pos2.x - handle_width && pos.x <= pos2.x) {
-      col = blend_color(col, unpackUnorm4x8(strip.col_handle_right));
+    /* For an unselected handle, no longer take it into account
+     * for the "inner" distance. */
+    if (left_side && (strip.flags & GPU_SEQ_FLAG_SELECTED_LH) == 0) {
+      sdf_inner = sdf;
     }
+    if (!left_side && (strip.flags & GPU_SEQ_FLAG_SELECTED_RH) == 0) {
+      sdf_inner = sdf;
+    }
+  }
+
+  /* Inset 1px line with background color. */
+  if (border && selected) {
+    /* Inset line should be inside regular border or inside the handles. */
+    float d = max(sdf_inner - 2.0 * context_data.pixelsize, sdf);
+    col = add_outline(d, 2.0, 3.0, col, unpackUnorm4x8(context_data.col_back));
   }
 
   /* Outside of strip rounded rectangle? */
@@ -150,18 +190,9 @@ void main()
   }
 
   /* Outline / border. */
-  if ((strip.flags & GPU_SEQ_FLAG_BORDER) != 0) {
-    bool selected = (strip.flags & GPU_SEQ_FLAG_SELECTED) != 0;
+  if (border) {
     vec4 col_outline = unpackUnorm4x8(strip.col_outline);
-    if (selected) {
-      /* Inset 1px line with background color. */
-      col = add_outline(sdf, 2.0, 3.0, col, unpackUnorm4x8(context_data.col_back));
-      /* 2px wide outline. */
-      col = add_outline(sdf, 0.0, 2.0, col, col_outline);
-    }
-    else {
-      col = add_outline(sdf, 0.0, 1.0, col, col_outline);
-    }
+    col = add_outline(sdf, 0.0, outline_width, col, col_outline);
   }
 
   fragColor = col;

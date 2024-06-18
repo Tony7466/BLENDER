@@ -1435,17 +1435,20 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
 
     /* Handles on left/right side. */
     if (!locked && ED_sequencer_can_select_handle(scene, strip.seq, timeline_ctx->v2d)) {
-      data.flags |= GPU_SEQ_FLAG_HANDLES;
       const bool selected_l = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_LEFT);
       const bool selected_r = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_RIGHT);
       const bool show_l = show_handles || (selected && selected_l);
       const bool show_r = show_handles || (selected && selected_r);
+      if (show_l || show_r) {
+        data.flags |= GPU_SEQ_FLAG_HANDLES;
+      }
 
       /* Left handle color. */
       col[0] = col[1] = col[2] = 0;
       col[3] = 50;
       if (selected && selected_l) {
         UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+        data.flags |= GPU_SEQ_FLAG_SELECTED_LH;
       }
       if (!show_l) {
         col[3] = 0;
@@ -1457,6 +1460,7 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
       col[3] = 50;
       if (selected && selected_r) {
         UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+        data.flags |= GPU_SEQ_FLAG_SELECTED_RH;
       }
       if (!show_r) {
         col[3] = 0;

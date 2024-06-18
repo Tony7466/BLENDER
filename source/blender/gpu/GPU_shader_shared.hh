@@ -105,6 +105,8 @@ enum eGPUSeqFlags : uint32_t {
   GPU_SEQ_FLAG_HIGHLIGHT = (1u << 9u),
   GPU_SEQ_FLAG_HANDLES = (1u << 10u),
   GPU_SEQ_FLAG_BORDER = (1u << 11u),
+  GPU_SEQ_FLAG_SELECTED_LH = (1u << 12u),
+  GPU_SEQ_FLAG_SELECTED_RH = (1u << 13u),
 };
 
 /* VSE per-strip data for timeline rendering. */
