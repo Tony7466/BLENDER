@@ -4,10 +4,12 @@
 
 #include <iostream>
 
+#include "BKE_attribute.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
@@ -108,6 +110,16 @@ static float len_squared_to_tris(const std::array<float2, 3> tri, const float2 p
   const float3 pos_3d(pos, 0.0f);
   closest_on_tri_to_point_v3(result, pos_3d, tri_3d[0], tri_3d[1], tri_3d[2]);
   return math::distance_squared(result, pos_3d);
+}
+
+static float3 bary_weight_for_tris_point(const float2 a,
+                                         const float2 b,
+                                         const float2 c,
+                                         const float2 p)
+{
+  float3 result;
+  barycentric_weights_v2(a, b, c, p, result);
+  return result;
 }
 
 static bool triangle_is_in_range(
@@ -217,13 +229,16 @@ static void edge_subdivide_uv(const float2 a_vert,
                               const float2 centre,
                               const float radius,
                               const float max_length,
-                              MutableSpan<float2> r_positions)
+                              MutableSpan<float> r_factors)
 {
   int r_total_verts_in = 0;
   // std::cout << "Face Size:\n";
+  Vector<float2> factor_range_stack = {{0.0f, 1.0f}};
   Vector<std::array<float2, 4>> stack = {{a_vert, b_vert, c_vert, d_vert}};
   while (!stack.is_empty()) {
+    BLI_assert(factor_range_stack.size() == stack.size());
     const std::array<float2, 4> edge_and_tris = stack.pop_last();
+    const float2 edge_factor = factor_range_stack.pop_last();
     // std::cout << "  " << edge_and_tris << ";\n";
 
     const float ab_length = math::distance_squared(edge_and_tris[0], edge_and_tris[1]);
@@ -260,7 +275,10 @@ static void edge_subdivide_uv(const float2 a_vert,
       const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[1]);
       stack.append({edge_and_tris[0], mid, edge_and_tris[2], edge_and_tris[3]});
       stack.append({mid, edge_and_tris[1], edge_and_tris[2], edge_and_tris[3]});
-      r_positions[r_total_verts_in] = mid;
+      const float factor_mid = math::midpoint(edge_factor[0], edge_factor[1]);
+      factor_range_stack.append({edge_factor[0], factor_mid});
+      factor_range_stack.append({factor_mid, edge_factor[1]});
+      r_factors[r_total_verts_in] = factor_mid;
       r_total_verts_in++;
       // std::cout << "  Is AB Split" << ";\n";
       continue;
@@ -271,10 +289,12 @@ static void edge_subdivide_uv(const float2 a_vert,
       if (ac_length > bc_length) {
         const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[2]);
         stack.append({edge_and_tris[0], edge_and_tris[1], mid, edge_and_tris[3]});
+        factor_range_stack.append(edge_factor);
       }
       else {
         const float2 mid = math::midpoint(edge_and_tris[1], edge_and_tris[2]);
         stack.append({edge_and_tris[0], edge_and_tris[1], mid, edge_and_tris[3]});
+        factor_range_stack.append(edge_factor);
       }
     }
     else {
@@ -282,10 +302,12 @@ static void edge_subdivide_uv(const float2 a_vert,
       if (ad_length > bd_length) {
         const float2 mid = math::midpoint(edge_and_tris[0], edge_and_tris[3]);
         stack.append({edge_and_tris[0], edge_and_tris[1], edge_and_tris[2], mid});
+        factor_range_stack.append(edge_factor);
       }
       else {
         const float2 mid = math::midpoint(edge_and_tris[1], edge_and_tris[3]);
         stack.append({edge_and_tris[0], edge_and_tris[1], edge_and_tris[2], mid});
+        factor_range_stack.append(edge_factor);
       }
     }
   }
@@ -302,10 +324,7 @@ static void edge_subdivide_verts(const float2 a_vert,
                                  const IndexRange verts_range,
                                  MutableSpan<int2> r_verts)
 {
-  if (verts_range.is_empty()) {
-    r_verts[0] = edge;
-    return;
-  }
+  BLI_assert(!verts_range.is_empty());
 
   int r_total_verts_in = 0;
   int edge_iter = 0;
@@ -550,7 +569,7 @@ static void face_subdivide_uv(const float2 a_vert,
                               const float2 centre,
                               const float radius,
                               const float max_length,
-                              MutableSpan<float2> r_positions)
+                              MutableSpan<float3> r_bary_weights)
 {
   // std::cout << "Face Size:\n";
   Vector<Triangle> stack = {{a_vert, b_vert, c_vert, d_vert, e_vert, f_vert, true, true, true}};
@@ -595,7 +614,8 @@ static void face_subdivide_uv(const float2 a_vert,
                       triangle.bc_is_real_edge,
                       false});
         if (!sibdivide_real_edge) {
-          r_positions[r_total_verts_in] = mid;
+          r_bary_weights[r_total_verts_in] = bary_weight_for_tris_point(
+              a_vert, b_vert, c_vert, mid);
         }
         break;
       }
@@ -621,7 +641,8 @@ static void face_subdivide_uv(const float2 a_vert,
                       triangle.bc_is_real_edge,
                       triangle.ca_is_real_edge});
         if (!sibdivide_real_edge) {
-          r_positions[r_total_verts_in] = mid;
+          r_bary_weights[r_total_verts_in] = bary_weight_for_tris_point(
+              a_vert, b_vert, c_vert, mid);
         }
         break;
       }
@@ -647,7 +668,8 @@ static void face_subdivide_uv(const float2 a_vert,
                       triangle.bc_is_real_edge,
                       triangle.ca_is_real_edge});
         if (!sibdivide_real_edge) {
-          r_positions[r_total_verts_in] = mid;
+          r_bary_weights[r_total_verts_in] = bary_weight_for_tris_point(
+              a_vert, b_vert, c_vert, mid);
         }
         break;
       }
@@ -1023,6 +1045,20 @@ Mesh *subdivide(const Mesh &src_mesh,
   // std::cout << std::endl;
   // std::cout << ">> Faces: " << face_total_verts.as_span() << ";\n";
 
+  IndexMaskMemory memory;
+  const IndexMask changed_edges = IndexMask::from_predicate(
+      IndexMask(src_mesh.edges_num), GrainSize(8192), memory, [&](const int i) {
+        return edge_total_verts[i] > 0;
+      });
+
+  const IndexMask changed_faces = IndexMask::from_predicate(
+      IndexMask(src_mesh.faces_num), GrainSize(8192), memory, [&](const int i) {
+        return face_total_edges[i] > 0;
+      });
+
+  const IndexMask keeped_edges = changed_edges.complement(IndexMask(src_mesh.edges_num), memory);
+  const IndexMask keeped_faces = changed_faces.complement(IndexMask(src_mesh.edges_num), memory);
+
   const OffsetIndices<int> subdive_edge_verts = offset_indices::accumulate_counts_to_offsets(
       edge_total_verts);
   const OffsetIndices<int> subdive_face_verts = offset_indices::accumulate_counts_to_offsets(
@@ -1030,19 +1066,45 @@ Mesh *subdivide(const Mesh &src_mesh,
   const OffsetIndices<int> subdive_face_edges = offset_indices::accumulate_counts_to_offsets(
       face_total_edges);
 
-  Mesh *dst_mesh = BKE_mesh_new_nomain(
-      src_mesh.verts_num + subdive_face_verts.total_size() + subdive_edge_verts.total_size(),
-      src_mesh.edges_num + subdive_edge_verts.total_size() + subdive_face_edges.total_size(),
-      0,
-      0);
-  MutableSpan<float3> positions = dst_mesh->vert_positions_for_write();
+  const IndexRange verts_range(src_mesh.verts_num);
+  const IndexRange edges_verts_range = verts_range.after(subdive_edge_verts.total_size());
+  const IndexRange faces_verts_range = edges_verts_range.after(subdive_face_verts.total_size());
+
+  const IndexRange edges_range(keeped_edges.size());
+  const IndexRange edges_edges_range = edges_range.after(changed_edges.size() +
+                                                         subdive_edge_verts.total_size());
+  const IndexRange faces_edges_range = edges_edges_range.after(subdive_face_edges.total_size());
+
+  const int total_verts = faces_verts_range.one_after_last();
+  const int total_edges = faces_edges_range.one_after_last();
+
+  Mesh *dst_mesh = BKE_mesh_new_nomain(total_verts, total_edges, 0, 0);
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
+
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Point, {}, {}, verts_range, dst_attributes);
+
+  Array<int> keeped_edge_indices(keeped_edges.size());
+  keeped_edges.foreach_index_optimized<int>(GrainSize(8092), [&](const int i, const int pos) {
+    keeped_edge_indices[pos] = edge_total_verts[i] + i;
+  });
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Edge,
+                         {},
+                         {},
+                         keeped_edge_indices.as_span(),
+                         dst_attributes);
+
+  MutableSpan<float3> positions = dst_mesh->vert_positions_for_write().drop_front(
+      src_mesh.verts_num);
   MutableSpan<int2> dst_edges = dst_mesh->edges_for_write();
+  index_mask::masked_fill(dst_edges, {0, 1}, changed_edges);
 
-  dst_edges.fill({0, 1});
+  Array<float> edge_vertices_factor_weight(edges_verts_range.size());
+  Array<float3> face_vertices_bary_weight(faces_verts_range.size());
 
-  positions.take_front(src_mesh.verts_num).copy_from(src_mesh.vert_positions());
-
-  for (const int edge_i : IndexRange(src_mesh.edges_num)) {
+  changed_edges.foreach_index([&](const int edge_i) {
     const int2 edge = edges[edge_i];
 
     const Span<int> edge_faces = edge_to_face_map[edge_i];
@@ -1055,31 +1117,21 @@ Mesh *subdivide(const Mesh &src_mesh,
 
     const int a_vert = exclusive_one(left_verts, edge);
     const int b_vert = exclusive_one(right_verts, edge);
-
-    const IndexRange points_range = subdive_edge_verts[edge_i].shift(
-        src_mesh.verts_num + subdive_face_verts.total_size());
-    Array<float2> uv_positions(points_range.size());
 
     // std::cout << "Edge: " << edge_i << ";\n";
+    edge_subdivide_uv(
+        projection[edge[0]],
+        projection[edge[1]],
+        projection[a_vert],
+        projection[b_vert],
+        centre,
+        squared_radius,
+        max_length,
+        edge_vertices_factor_weight.as_mutable_span().slice(subdive_edge_verts[edge_i]));
+  });
 
-    edge_subdivide_uv(projection[edge[0]],
-                      projection[edge[1]],
-                      projection[a_vert],
-                      projection[b_vert],
-                      centre,
-                      squared_radius,
-                      max_length,
-                      uv_positions);
-
-    parallel_transform(uv_positions.as_span(),
-                       4096,
-                       positions.slice(points_range),
-                       [&](const float2 uv) { return float3(uv, 0.0f); });
-  }
-
-  for (const int edge_i : IndexRange(src_mesh.edges_num)) {
+  changed_edges.foreach_index([&](const int edge_i) {
     const int2 edge = edges[edge_i];
-
     const Span<int> edge_faces = edge_to_face_map[edge_i];
 
     const int3 left_verts = gather_tri(faces[edge_faces[0]], corner_verts);
@@ -1091,11 +1143,10 @@ Mesh *subdivide(const Mesh &src_mesh,
     const int a_vert = exclusive_one(left_verts, edge);
     const int b_vert = exclusive_one(right_verts, edge);
 
-    const IndexRange points_range = subdive_edge_verts[edge_i].shift(
-        src_mesh.verts_num + subdive_face_verts.total_size());
-    const IndexRange edge_points_range = subdive_edge_verts[edge_i];
-    const IndexRange edges_range = IndexRange::from_begin_size(edge_points_range.start() + edge_i,
-                                                               edge_points_range.size() + 1);
+    const IndexRange edge_verts_range = subdive_edge_verts[edge_i];
+    const IndexRange edge_verts_indices_range = edge_verts_range.shift(edges_verts_range.start());
+    const IndexRange edge_edges_range = IndexRange::from_begin_size(
+        edge_verts_range.start() + edge_i, edge_verts_range.size() + 1);
 
     edge_subdivide_verts(projection[edge[0]],
                          projection[edge[1]],
@@ -1105,11 +1156,11 @@ Mesh *subdivide(const Mesh &src_mesh,
                          squared_radius,
                          max_length,
                          edge,
-                         points_range,
-                         dst_edges.slice(edges_range));
-  }
+                         edge_verts_indices_range,
+                         dst_edges.slice(edge_edges_range));
+  });
 
-  for (const int face_i : faces.index_range()) {
+  changed_faces.foreach_index([&](const int face_i) {
     const IndexRange face = faces[face_i];
     const int3 face_edges = gather_tri(face, corner_edges);
     const int3 face_verts = gather_tri(face, corner_verts);
@@ -1145,8 +1196,10 @@ Mesh *subdivide(const Mesh &src_mesh,
     BLI_assert(!elem(face_verts, e_vert));
     BLI_assert(!elem(face_verts, f_vert));
 
-    const IndexRange points_range = subdive_face_verts[face_i].shift(src_mesh.verts_num);
-    Array<float2> uv_positions(points_range.size());
+    const IndexRange points_range = subdive_face_verts[face_i].shift(
+        src_mesh.verts_num + subdive_edge_verts.total_size());
+    MutableSpan<float3> face_verts_bary_weight = face_vertices_bary_weight.as_mutable_span().slice(
+        subdive_face_verts[face_i]);
 
     face_subdivide_uv(projection[a_vert],
                       projection[b_vert],
@@ -1157,15 +1210,10 @@ Mesh *subdivide(const Mesh &src_mesh,
                       centre,
                       squared_radius,
                       max_length,
-                      uv_positions);
+                      face_verts_bary_weight);
+  });
 
-    parallel_transform(uv_positions.as_span(),
-                       4096,
-                       positions.slice(points_range),
-                       [&](const float2 uv) { return float3(uv, 0.0f); });
-  }
-
-  for (const int face_i : faces.index_range()) {
+  changed_faces.foreach_index([&](const int face_i) {
     const IndexRange face = faces[face_i];
     const int3 face_edges = gather_tri(face, corner_edges);
     const int3 face_verts = gather_tri(face, corner_verts);
@@ -1238,7 +1286,10 @@ Mesh *subdivide(const Mesh &src_mesh,
                               bc_points_range,
                               ca_points_range,
                               dst_edges.slice(edges_range));
-  }
+  });
+
+  // interpolate_face_vertices(faces, corner_verts,
+  // positions.drop_front(src_mesh.verts_num).take_front());
 
   return dst_mesh;
 }
