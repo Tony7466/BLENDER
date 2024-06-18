@@ -584,11 +584,10 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
     return;
   }
 
-  /* Use either "st" or active UV map name from mesh, depending if it was renamed. */
-  std::string uvmap_name = (usd_export_context.export_params.rename_uvmaps) ? usdtokens::st :
-                                                                              active_uvmap_name;
-
   if (bNodeLink *mapping_link = traverse_channel(input_socket, SH_NODE_MAPPING)) {
+    /* Use either "st" or active UV map name from mesh, depending if it was renamed. */
+    std::string uvmap_name = (usd_export_context.export_params.rename_uvmaps) ? usdtokens::st :
+                                                                                active_uvmap_name;
     create_transform2d_shader(
         usd_export_context, mapping_link, usd_material, usd_input, uvmap_name, reports);
     return;
@@ -598,7 +597,7 @@ static void create_uv_input(const USDExporterContext &usd_export_context,
 
   /* Note that uvmap_link might be null, but create_uv_shader() can handle this case. */
   create_uvmap_shader(
-      usd_export_context, uvmap_link, usd_material, usd_input, uvmap_name, reports);
+      usd_export_context, uvmap_link, usd_material, usd_input, active_uvmap_name, reports);
 }
 
 /* Generate a file name for an in-memory image that doesn't have a
