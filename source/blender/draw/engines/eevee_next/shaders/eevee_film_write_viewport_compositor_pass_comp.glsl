@@ -1,0 +1,23 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+void main()
+{
+  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+  if (any(greaterThan(texel, imageSize(output_img) - ivec2(1)))) {
+    return;
+  }
+
+  ivec2 input_bounds = textureSize(input_tx, 0).xy - ivec2(1);
+  if (any(lessThan(texel, offset)) || any(greaterThan(texel, offset + input_bounds))) {
+    imageStoreFast(output_img, texel, vec4(0.0));
+    return;
+  }
+
+#if defined(IS_ARRAY_INPUT)
+  imageStoreFast(output_img, texel, texelFetch(input_tx, ivec3(texel - offset, 0), 0));
+#else
+  imageStoreFast(output_img, texel, texelFetch(input_tx, texel - offset, 0));
+#endif
+}

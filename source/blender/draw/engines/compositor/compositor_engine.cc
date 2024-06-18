@@ -22,6 +22,7 @@
 
 #include "ED_view3d.hh"
 
+#include "DRW_gpu_wrapper.hh"
 #include "DRW_render.hh"
 
 #include "COM_context.hh"
@@ -143,6 +144,11 @@ class Context : public realtime_compositor::Context {
 
     if (view_layer != 0) {
       return nullptr;
+    }
+
+    GPUTexture *pass_texture = DRW_viewport_pass_texture_get(pass_name).gpu_texture();
+    if (pass_texture) {
+      return pass_texture;
     }
 
     if (STREQ(pass_name, RE_PASSNAME_COMBINED)) {

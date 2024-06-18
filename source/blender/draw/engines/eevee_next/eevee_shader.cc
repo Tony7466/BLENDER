@@ -117,6 +117,16 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_film_comp";
     case FILM_CRYPTOMATTE_POST:
       return "eevee_film_cryptomatte_post";
+    case FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_COMBINED:
+      return "eevee_film_write_viewport_compositor_pass_combined";
+    case FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_DEPTH:
+      return "eevee_film_write_viewport_compositor_pass_depth";
+    case FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_VALUE:
+      return "eevee_film_write_viewport_compositor_pass_value";
+    case FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_COLOR:
+      return "eevee_film_write_viewport_compositor_pass_color";
+    case FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_CRYPTOMATTE:
+      return "eevee_film_write_viewport_compositor_pass_cryptomatte";
     case DEFERRED_COMBINE:
       return "eevee_deferred_combine";
     case DEFERRED_LIGHT_SINGLE:

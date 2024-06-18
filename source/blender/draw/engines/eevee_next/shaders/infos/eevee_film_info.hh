@@ -57,3 +57,51 @@ GPU_SHADER_CREATE_INFO(eevee_film_cryptomatte_post)
     .local_group_size(FILM_GROUP_SIZE, FILM_GROUP_SIZE)
     .compute_source("eevee_film_cryptomatte_post_comp.glsl")
     .additional_info("eevee_shared");
+
+/* The combined pass is stored into its own 2D texture with a format of GPU_RGBA16F. */
+GPU_SHADER_CREATE_INFO(eevee_film_write_viewport_compositor_pass_combined)
+    .local_group_size(FILM_GROUP_SIZE, FILM_GROUP_SIZE)
+    .push_constant(Type::IVEC2, "offset")
+    .sampler(0, ImageType::FLOAT_2D, "input_tx")
+    .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
+    .compute_source("eevee_film_write_viewport_compositor_pass_comp.glsl")
+    .do_static_compilation(true);
+
+/* The depth pass is stored into its own 2D texture with a format of GPU_R32F. */
+GPU_SHADER_CREATE_INFO(eevee_film_write_viewport_compositor_pass_depth)
+    .local_group_size(FILM_GROUP_SIZE, FILM_GROUP_SIZE)
+    .push_constant(Type::IVEC2, "offset")
+    .sampler(0, ImageType::FLOAT_2D, "input_tx")
+    .image(0, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
+    .compute_source("eevee_film_write_viewport_compositor_pass_comp.glsl")
+    .do_static_compilation(true);
+
+/* Value passes are stored in a slice of a 2D texture array with a format of GPU_R16F. */
+GPU_SHADER_CREATE_INFO(eevee_film_write_viewport_compositor_pass_value)
+    .local_group_size(FILM_GROUP_SIZE, FILM_GROUP_SIZE)
+    .push_constant(Type::IVEC2, "offset")
+    .define("IS_ARRAY_INPUT")
+    .sampler(0, ImageType::FLOAT_2D_ARRAY, "input_tx")
+    .image(0, GPU_R16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
+    .compute_source("eevee_film_write_viewport_compositor_pass_comp.glsl")
+    .do_static_compilation(true);
+
+/* Color passes are stored in a slice of a 2D texture array with a format of GPU_RGBA16F. */
+GPU_SHADER_CREATE_INFO(eevee_film_write_viewport_compositor_pass_color)
+    .local_group_size(FILM_GROUP_SIZE, FILM_GROUP_SIZE)
+    .push_constant(Type::IVEC2, "offset")
+    .define("IS_ARRAY_INPUT")
+    .sampler(0, ImageType::FLOAT_2D_ARRAY, "input_tx")
+    .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
+    .compute_source("eevee_film_write_viewport_compositor_pass_comp.glsl")
+    .do_static_compilation(true);
+
+/* Cryptomatte passes are stored in a slice of a 2D texture array with a format of GPU_RGBA32F. */
+GPU_SHADER_CREATE_INFO(eevee_film_write_viewport_compositor_pass_cryptomatte)
+    .local_group_size(FILM_GROUP_SIZE, FILM_GROUP_SIZE)
+    .push_constant(Type::IVEC2, "offset")
+    .define("IS_ARRAY_INPUT")
+    .sampler(0, ImageType::FLOAT_2D_ARRAY, "input_tx")
+    .image(0, GPU_RGBA32F, Qualifier::WRITE, ImageType::FLOAT_2D, "output_img")
+    .compute_source("eevee_film_write_viewport_compositor_pass_comp.glsl")
+    .do_static_compilation(true);
