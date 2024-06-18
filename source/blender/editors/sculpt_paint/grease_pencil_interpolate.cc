@@ -101,11 +101,11 @@ static std::optional<FramesMapKeyIntervalT> find_frames_interval(
 
   /* Skip over invalid keyframes on either side. */
   auto is_valid_keyframe = [&](const FramesMapKeyT key) {
-    const GreasePencilFrame &frame = *layer.frame_at(key);
-    if (frame.is_end()) {
+    const GreasePencilFrame *frame = layer.frame_at(key);
+    if (!frame || frame->is_end()) {
       return false;
     }
-    if (exclude_breakdowns && frame.type == BEZT_KEYTYPE_BREAKDOWN) {
+    if (exclude_breakdowns && frame->type == BEZT_KEYTYPE_BREAKDOWN) {
       return false;
     }
     return true;
