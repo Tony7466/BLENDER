@@ -1,1 +1,1 @@
-Referenced by pull request #123341, Fix #123324: Incorrect camera BBox for involume check of orthographic camera
+Referenced by pull request #123341, Fix #123324: Improve Cycles camera bounding box size calculation
