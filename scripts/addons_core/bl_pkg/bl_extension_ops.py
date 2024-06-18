@@ -81,6 +81,22 @@ def rna_prop_repo_enum_local_only_itemf(_self, context):
     return result
 
 
+def repo_lookup_by_index_or_none(index):
+    extensions = bpy.context.preferences.extensions
+    extension_repos = extensions.repos
+    try:
+        return extension_repos[index]
+    except IndexError:
+        return None
+
+
+def repo_lookup_by_index_or_none_with_report(index, report_fn):
+    result = repo_lookup_by_index_or_none(index)
+    if result is None:
+        report_fn({'WARNING'}, "Called with invalid index")
+    return result
+
+
 is_background = bpy.app.background
 
 # Execute tasks concurrently.
@@ -133,14 +149,21 @@ class CheckSIGINT_Context:
 # Internal Utilities
 #
 
+def _sequence_split_with_job_limit(items, job_limit):
+    # When only one job is allowed at a time, there is no advantage to splitting the sequence.
+    if job_limit == 1:
+        return (items,)
+    return [(elem,) for elem in items]
+
+
 def _preferences_repo_find_by_remote_url(context, remote_url):
     remote_url = remote_url.rstrip("/")
     prefs = context.preferences
     extension_repos = prefs.extensions.repos
-    for repo in extension_repos:
+    for i, repo in enumerate(extension_repos):
         if repo.use_remote_url and repo.remote_url.rstrip("/") == remote_url:
-            return repo
-    return None
+            return repo, i
+    return None, -1
 
 
 def extension_url_find_repo_index_and_pkg_id(url):
@@ -172,7 +195,7 @@ def extension_url_find_repo_index_and_pkg_id(url):
         if not remote_url:
             continue
         for pkg_id, item_remote in pkg_manifest_remote.items():
-            archive_url = item_remote["archive_url"]
+            archive_url = item_remote.archive_url
             archive_url_basename = archive_url.rpartition("/")[2]
             # First compare the filenames, if this matches, check the full URL.
             if url_basename != archive_url_basename:
@@ -222,7 +245,7 @@ def pkg_info_check_exclude_filter_ex(name, tagline, search_lower):
 
 
 def pkg_info_check_exclude_filter(item, search_lower):
-    return pkg_info_check_exclude_filter_ex(item["name"], item["tagline"], search_lower)
+    return pkg_info_check_exclude_filter_ex(item.name, item.tagline, search_lower)
 
 
 def extension_theme_enable_filepath(filepath):
@@ -370,7 +393,7 @@ def _preferences_ensure_disabled(*, repo_item, pkg_id_sequence, default_set):
     # Needed for `startswith` check.
     prefix_addon_modules = {prefix_base + pkg_id for pkg_id in modules_clear}
     # Needed for `startswith` check (sub-modules).
-    prefix_addon_modules_base = tuple([module + "." for module in prefix_addon_modules])
+    prefix_addon_modules_base = tuple(module + "." for module in prefix_addon_modules)
 
     # NOTE(@ideasman42): clearing the modules is not great practice,
     # however we need to ensure this is fully un-loaded then reloaded.
@@ -443,14 +466,14 @@ def _preferences_install_post_enable_on_install(
             print("Package should have been installed but not found:", pkg_id)
             return
 
-        if item_local["type"] == "add-on":
+        if item_local.type == "add-on":
             # Check if the add-on will have been enabled from re-installing.
             if pkg_id in pkg_id_sequence_upgrade:
                 continue
 
             addon_module_name = "bl_ext.{:s}.{:s}".format(repo_item.module, pkg_id)
             addon_utils.enable(addon_module_name, default_set=True, handle_error=handle_error)
-        elif item_local["type"] == "theme":
+        elif item_local.type == "theme":
             if has_theme:
                 continue
             extension_theme_enable(directory, pkg_id)
@@ -616,7 +639,7 @@ def _pkg_marked_by_repo(pkg_manifest_all):
         item = pkg_manifest.get(pkg_id)
         if item is None:
             continue
-        if filter_by_type and (filter_by_type != item["type"]):
+        if filter_by_type and (filter_by_type != item.type):
             continue
         if search_lower and not pkg_info_check_exclude_filter(item, search_lower):
             continue
@@ -657,6 +680,7 @@ def _extensions_wheel_filter_for_platform(wheels):
         wheel_filename_split = wheel_filename[:-4].split("-")
         # Skipping, should never happen as validation will fail,
         # keep paranoid check although this might be removed in the future.
+        # pylint: disable-next=superfluous-parens
         if not (5 <= len(wheel_filename_split) <= 6):
             print("Error: wheel doesn't follow naming spec \"{:s}\"".format(wheel_filename))
             continue
@@ -710,10 +734,8 @@ def _extensions_repo_sync_wheels(repo_cache_store):
         repo_directory = repo.directory
         for pkg_id, item_local in pkg_manifest_local.items():
             pkg_dirpath = os.path.join(repo_directory, pkg_id)
-            wheels_rel = item_local.get("wheels", None)
-            if wheels_rel is None:
-                continue
-            if not isinstance(wheels_rel, list):
+            wheels_rel = item_local.wheels
+            if not wheels_rel:
                 continue
 
             # Filter only the wheels for this platform.
@@ -842,7 +864,7 @@ class CommandHandle:
 
         handle.wm.modal_handler_add(op)
 
-        op._runtime_handle = handle
+        op.runtime_handle_set(handle)
         return {'RUNNING_MODAL'}
 
     def op_modal_step(self, op, context):
@@ -882,7 +904,7 @@ class CommandHandle:
 
         if command_result.all_complete:
             self.wm.event_timer_remove(self.modal_timer)
-            del op._runtime_handle
+            op.runtime_handle_clear()
             context.workspace.status_text_set(None)
             repo_status_text.running = False
 
@@ -1042,6 +1064,14 @@ class _ExtCmdMixIn:
         self._runtime_handle.op_modal_cancel(self, context)
         self.exec_command_finish(canceled)
 
+    def runtime_handle_set(self, runtime_handle):
+        assert isinstance(runtime_handle, CommandHandle)
+        # pylint: disable-next=attribute-defined-outside-init
+        self._runtime_handle = runtime_handle
+
+    def runtime_handle_clear(self):
+        del self._runtime_handle
+
 
 class EXTENSIONS_OT_dummy_progress(Operator, _ExtCmdMixIn):
     bl_idname = "extensions.dummy_progress"
@@ -1059,6 +1089,7 @@ class EXTENSIONS_OT_dummy_progress(Operator, _ExtCmdMixIn):
                     use_idle=is_modal,
                 ),
             ],
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -1090,6 +1121,8 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
                 self.report({'ERROR'}, str(ex))
                 return {'CANCELLED'}
 
+        prefs = bpy.context.preferences
+
         # Needed to refresh.
         self.repo_directory = directory
 
@@ -1106,6 +1139,7 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
                     remote_url=url_append_defaults(repo_item.remote_url),
                     online_user_agent=online_user_agent_from_blender(),
                     access_token=repo_item.access_token,
+                    timeout=prefs.system.network_timeout,
                     use_idle=is_modal,
                 )
             )
@@ -1122,6 +1156,7 @@ class EXTENSIONS_OT_repo_sync(Operator, _ExtCmdMixIn):
         return bl_extension_utils.CommandBatch(
             title="Sync",
             batch=cmd_batch,
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -1185,6 +1220,8 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
                     self.report({'WARNING'}, str(ex))
                     return None
 
+        prefs = bpy.context.preferences
+
         # It's only required to lock remote repositories, local repositories can refresh without being modified,
         # this is essential for system repositories which may be read-only.
         repos_lock = []
@@ -1200,6 +1237,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
                     remote_url=url_append_defaults(repo_item.remote_url),
                     online_user_agent=online_user_agent_from_blender(),
                     access_token=repo_item.access_token,
+                    timeout=prefs.system.network_timeout,
                     use_idle=is_modal,
                 ))
                 repos_lock.append(repo_item.directory)
@@ -1215,6 +1253,7 @@ class EXTENSIONS_OT_repo_sync_all(Operator, _ExtCmdMixIn):
         return bl_extension_utils.CommandBatch(
             title="Sync \"{:s}\"".format(repos_all[0].name) if use_active_only else "Sync All",
             batch=cmd_batch,
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -1246,7 +1285,7 @@ class EXTENSIONS_OT_repo_refresh_all(Operator):
     def _exceptions_as_report(self, repo_name, ex):
         self.report({'WARNING'}, "{:s}: {:s}".format(repo_name, str(ex)))
 
-    def execute(self, context):
+    def execute(self, _context):
         import addon_utils
 
         repos_all = extension_repos_read()
@@ -1294,28 +1333,78 @@ class EXTENSIONS_OT_repo_add_from_drop(Operator):
 
         return {'RUNNING_MODAL'}
 
-    def execute(self, context):
+    def execute(self, _context):
         # Open an "Add Remote Repository" popup with the URL pre-filled.
         bpy.ops.preferences.extension_repo_add('INVOKE_DEFAULT', type='REMOTE', remote_url=self.url)
         return {'CANCELLED'}
 
-    def draw(self, context):
+    def draw(self, _context):
         url = self.url
         # Skip the URL prefix scheme, e.g. `https://` for less "noisy" outpout.
         url_split = url.partition("://")
         url_for_display = url_split[2] if url_split[2] else url
 
         layout = self.layout
-        col = layout.column()
-        lines = (
-            iface_("The dropped URL comes from an unknown repository from:"),
-            url_for_display,
-            iface_("You may optionally add this repository now."),
-            iface_("Once the repository has been created the URL"),
-            iface_("will need to be dropped again."),
+        col = layout.column(align=True)
+        col.label(text="The dropped extension comes from an unknown repository.")
+        col.label(text="If you trust its source, add the repository and try again.")
+
+        col.separator()
+        if url_for_display:
+            box = col.box()
+            subcol = box.column(align=True)
+            subcol.label(text=iface_("URL: {:s}").format(url_for_display), translate=False)
+        else:
+            col.label(text="Alternatively download the extension to Install from Disk.")
+
+
+# Show a dialog when dropping an extensions for a disabled repository.
+class EXTENSIONS_OT_repo_enable_from_drop(Operator):
+    bl_idname = "extensions.repo_enable_from_drop"
+    bl_label = "Enable Repository from Drop"
+    bl_options = {'INTERNAL'}
+
+    repo_index: rna_prop_repo_index
+
+    __slots__ = (
+        "_repo_name",
+        "_repo_remote_url",
+    )
+
+    def invoke(self, context, _event):
+        print(self.repo_index)
+        if (repo := repo_lookup_by_index_or_none_with_report(self.repo_index, self.report)) is None:
+            return {'CANCELLED'}
+        self._repo_name = repo.name
+        self._repo_remote_url = repo.remote_url
+
+        wm = context.window_manager
+        wm.invoke_props_dialog(
+            self,
+            width=400,
+            confirm_text="Enable Repository",
+            title="Disabled Repository",
         )
-        for line in lines:
-            col.label(text=line, translate=False)
+
+        return {'RUNNING_MODAL'}
+
+    def execute(self, _context):
+        if (repo := repo_lookup_by_index_or_none(self.repo_index)) is not None:
+            repo.enabled = True
+
+        return {'CANCELLED'}
+
+    def draw(self, _context):
+        layout = self.layout
+        col = layout.column()
+        col.label(text="The dropped extension comes from a disabled repository.")
+        col.label(text="Enable the repository and try again.")
+        col.separator()
+
+        box = col.box()
+        subcol = box.column(align=True)
+        subcol.label(text=iface_("Name: {:s}").format(self._repo_name), translate=False)
+        subcol.label(text=iface_("URL: {:s}").format(self._repo_remote_url), translate=False)
 
 
 class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
@@ -1371,6 +1460,10 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                 assert False, "unreachable"  # Poll prevents this.
             return None
 
+        prefs = bpy.context.preferences
+
+        network_connection_limit = prefs.system.network_connection_limit
+
         # NOTE: Unless we have a "clear-cache" operator - there isn't a great place to apply cache-clearing.
         # So when cache is disabled simply clear all cache before performing an update.
         # Further, individual install & remove operation will manage the cache
@@ -1407,7 +1500,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                     # Not installed.
                     continue
 
-                if item_remote["version"] != item_local["version"]:
+                if item_remote.version != item_local.version:
                     packages_to_upgrade[repo_index].append(pkg_id)
                     package_count += 1
 
@@ -1418,17 +1511,21 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
         for repo_index, pkg_id_sequence in enumerate(packages_to_upgrade):
             if not pkg_id_sequence:
                 continue
+
             repo_item = repos_all[repo_index]
-            cmd_batch.append(partial(
-                bl_extension_utils.pkg_install,
-                directory=repo_item.directory,
-                remote_url=url_append_defaults(repo_item.remote_url),
-                pkg_id_sequence=pkg_id_sequence,
-                online_user_agent=online_user_agent_from_blender(),
-                access_token=repo_item.access_token,
-                use_cache=repo_item.use_cache,
-                use_idle=is_modal,
-            ))
+            for pkg_id_sequence in _sequence_split_with_job_limit(pkg_id_sequence, network_connection_limit):
+                cmd_batch.append(partial(
+                    bl_extension_utils.pkg_install,
+                    directory=repo_item.directory,
+                    remote_url=url_append_defaults(repo_item.remote_url),
+                    pkg_id_sequence=pkg_id_sequence,
+                    online_user_agent=online_user_agent_from_blender(),
+                    blender_version=bpy.app.version,
+                    access_token=repo_item.access_token,
+                    timeout=prefs.system.network_timeout,
+                    use_cache=repo_item.use_cache,
+                    use_idle=is_modal,
+                ))
             self._repo_directories.add(repo_item.directory)
 
         if not cmd_batch:
@@ -1457,6 +1554,7 @@ class EXTENSIONS_OT_package_upgrade_all(Operator, _ExtCmdMixIn):
                 "Update {:d} Package(s)".format(package_count)
             ),
             batch=cmd_batch,
+            batch_job_limit=network_connection_limit,
         )
 
     def exec_command_finish(self, canceled):
@@ -1514,6 +1612,10 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
         self._repo_map_packages_addon_only = []
         package_count = 0
 
+        prefs = bpy.context.preferences
+
+        network_connection_limit = prefs.system.network_connection_limit
+
         cmd_batch = []
         for repo_index, pkg_id_sequence in sorted(repo_pkg_map.items()):
             repo_item = repos_all[repo_index]
@@ -1528,16 +1630,20 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
             if not pkg_id_sequence:
                 continue
 
-            cmd_batch.append(partial(
-                bl_extension_utils.pkg_install,
-                directory=repo_item.directory,
-                remote_url=url_append_defaults(repo_item.remote_url),
-                pkg_id_sequence=pkg_id_sequence,
-                online_user_agent=online_user_agent_from_blender(),
-                access_token=repo_item.access_token,
-                use_cache=repo_item.use_cache,
-                use_idle=is_modal,
-            ))
+            for pkg_id_sequence in _sequence_split_with_job_limit(pkg_id_sequence, network_connection_limit):
+                cmd_batch.append(partial(
+                    bl_extension_utils.pkg_install,
+                    directory=repo_item.directory,
+                    remote_url=url_append_defaults(repo_item.remote_url),
+                    pkg_id_sequence=pkg_id_sequence,
+                    online_user_agent=online_user_agent_from_blender(),
+                    blender_version=bpy.app.version,
+                    access_token=repo_item.access_token,
+                    timeout=prefs.system.network_timeout,
+                    use_cache=repo_item.use_cache,
+                    use_idle=is_modal,
+                ))
+
             self._repo_directories.add(repo_item.directory)
             package_count += len(pkg_id_sequence)
 
@@ -1545,7 +1651,9 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
             pkg_manifest_remote = pkg_manifest_remote_all[repo_index]
 
             pkg_id_sequence_addon_only = [
-                pkg_id for pkg_id in pkg_id_sequence if pkg_manifest_remote[pkg_id]["type"] == "add-on"]
+                pkg_id for pkg_id in pkg_id_sequence
+                if pkg_manifest_remote[pkg_id].type == "add-on"
+            ]
             if pkg_id_sequence_addon_only:
                 self._repo_map_packages_addon_only.append((repo_item.directory, pkg_id_sequence_addon_only))
 
@@ -1564,6 +1672,7 @@ class EXTENSIONS_OT_package_install_marked(Operator, _ExtCmdMixIn):
         return bl_extension_utils.CommandBatch(
             title="Install {:d} Marked Package(s)".format(package_count),
             batch=cmd_batch,
+            batch_job_limit=network_connection_limit,
         )
 
     def exec_command_finish(self, canceled):
@@ -1685,6 +1794,7 @@ class EXTENSIONS_OT_package_uninstall_marked(Operator, _ExtCmdMixIn):
         return bl_extension_utils.CommandBatch(
             title="Uninstall {:d} Marked Package(s)".format(package_count),
             batch=cmd_batch,
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -1881,6 +1991,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
                     use_idle=is_modal,
                 )
             ],
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -2043,7 +2154,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
         layout = self.layout
         layout.operator_context = 'EXEC_DEFAULT'
 
-        pkg_id, pkg_type = self._drop_variables
+        _pkg_id, pkg_type = self._drop_variables
 
         layout.label(text="Local Repository")
         layout.prop(self, "repo", text="")
@@ -2118,6 +2229,8 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             self.report({'ERROR'}, "Package ID not set")
             return None
 
+        prefs = bpy.context.preferences
+
         # Detect upgrade.
         repo_cache_store = repo_cache_store_ensure()
         pkg_manifest_local = repo_cache_store.refresh_local_from_directory(
@@ -2154,11 +2267,14 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
                     remote_url=url_append_defaults(repo_item.remote_url),
                     pkg_id_sequence=(pkg_id,),
                     online_user_agent=online_user_agent_from_blender(),
+                    blender_version=bpy.app.version,
                     access_token=repo_item.access_token,
+                    timeout=prefs.system.network_timeout,
                     use_cache=repo_item.use_cache,
                     use_idle=is_modal,
                 )
             ],
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -2217,6 +2333,7 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         return self.execute(context)
 
     def _invoke_for_drop(self, context, _event):
+        import string
         from .bl_extension_utils import url_parse_for_blender
 
         url = self.url
@@ -2225,26 +2342,30 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         # First check if this is part of a disabled repository.
         url, url_params = url_parse_for_blender(url)
         remote_url = url_params.get("repository")
-        repo_from_url = None if remote_url is None else _preferences_repo_find_by_remote_url(context, remote_url)
+        repo_from_url, repo_index_from_url = (
+            (None, -1) if remote_url is None else
+            _preferences_repo_find_by_remote_url(context, remote_url)
+        )
 
         if repo_from_url and not repo_from_url.enabled:
-            self.report({'ERROR'}, "Extension: repository \"{:s}\" exists but is disabled".format(repo_from_url.name))
+            bpy.ops.extensions.repo_enable_from_drop('INVOKE_DEFAULT', repo_index=repo_index_from_url)
             return {'CANCELLED'}
+
+        del repo_from_url, repo_index_from_url
 
         _preferences_ensure_sync()
 
         repo_index, repo_name, pkg_id, item_remote, item_local = extension_url_find_repo_index_and_pkg_id(url)
 
         if repo_index == -1:
-            # The `remote_url` may not be defined, in this case there is not much we can do.
-            if not remote_url:
-                self.report({'ERROR'}, "Extension: URL not found in remote repositories!\n{:s}".format(url))
-            else:
-                bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url=remote_url)
+            bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url="" if remote_url is None else remote_url)
             return {'CANCELLED'}
 
         if item_local is not None:
-            self.report({'ERROR'}, "Extension: \"{:s}\" Already installed!".format(pkg_id))
+            self.report({'ERROR'}, iface_("{:s} \"{:s}\" already installed!").format(
+                iface_(string.capwords(item_local.type)),
+                item_local.name,
+            ))
             return {'CANCELLED'}
 
         self._drop_variables = repo_index, repo_name, pkg_id, item_remote
@@ -2268,17 +2389,17 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
         _repo_index, repo_name, pkg_id, item_remote = self._drop_variables
 
-        layout.label(text="Do you want to install the following {:s}?".format(item_remote["type"]))
+        layout.label(text="Do you want to install the following {:s}?".format(item_remote.type))
 
         col = layout.column(align=True)
-        col.label(text="Name: {:s}".format(item_remote["name"]))
+        col.label(text="Name: {:s}".format(item_remote.name))
         col.label(text="Repository: {:s}".format(repo_name))
-        col.label(text="Size: {:s}".format(size_as_fmt_string(item_remote["archive_size"], precision=0)))
+        col.label(text="Size: {:s}".format(size_as_fmt_string(item_remote.archive_size, precision=0)))
         del col
 
         layout.separator()
 
-        layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote["type"]])
+        layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[item_remote.type])
 
     @staticmethod
     def _do_legacy_replace(pkg_id, pkg_manifest_local):
@@ -2357,6 +2478,7 @@ class EXTENSIONS_OT_package_uninstall(Operator, _ExtCmdMixIn):
                     use_idle=is_modal,
                 ),
             ],
+            batch_job_limit=1,
         )
 
     def exec_command_finish(self, canceled):
@@ -2717,7 +2839,7 @@ class EXTENSIONS_OT_userpref_show_online(Operator):
                 return False
         return True
 
-    def execute(self, context):
+    def execute(self, _context):
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
         return {'FINISHED'}
 
@@ -2730,7 +2852,7 @@ class EXTENSIONS_OT_userpref_allow_online(Operator):
     bl_options = {'INTERNAL'}
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         if bpy.app.online_access_override:
             if not bpy.app.online_access:
                 cls.poll_message_set("Blender was launched in offline-mode which cannot be changed at runtime")
@@ -2751,11 +2873,11 @@ class EXTENSIONS_OT_userpref_allow_online_popup(Operator):
     bl_label = ""
     bl_options = {'INTERNAL'}
 
-    def execute(self, context):
+    def execute(self, _context):
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT', section='SYSTEM')
         return {'FINISHED'}
 
-    def invoke(self, context, event):
+    def invoke(self, context, _event):
         wm = context.window_manager
         if bpy.app.online_access_override:
             # No Cancel/Confirm buttons.
@@ -2772,7 +2894,7 @@ class EXTENSIONS_OT_userpref_allow_online_popup(Operator):
             )
         return {'RUNNING_MODAL'}
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         col = layout.column()
         if bpy.app.online_access_override:
@@ -2797,11 +2919,11 @@ class EXTENSIONS_OT_package_enable_not_installed(Operator):
     bl_label = "Enable Extension"
 
     @classmethod
-    def poll(cls, context):
+    def poll(cls, _context):
         cls.poll_message_set("Extension needs to be installed before it can be enabled")
         return False
 
-    def execute(self, context):
+    def execute(self, _context):
         # This operator only exists to be able to show disabled check-boxes for extensions
         # while giving users a reasonable explanation on why is that.
         return {'CANCELLED'}
@@ -2815,6 +2937,7 @@ classes = (
     EXTENSIONS_OT_repo_sync_all,
     EXTENSIONS_OT_repo_refresh_all,
     EXTENSIONS_OT_repo_add_from_drop,
+    EXTENSIONS_OT_repo_enable_from_drop,
 
     EXTENSIONS_OT_package_install_files,
     EXTENSIONS_OT_package_install,
