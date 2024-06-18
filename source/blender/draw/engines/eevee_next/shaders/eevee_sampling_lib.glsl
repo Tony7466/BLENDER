@@ -43,7 +43,7 @@ vec3 sampling_rng_3D_get(const eSamplingDimension dimension)
 
 vec2 sampling_blue_noise_rng_get(vec2 pixel, const eBlueNoiseUsage offset)
 {
-  return pixel + r_2d(offset) * float(UTIL_TEX_SIZE);
+  return pixel + r_2d(offset + (sampling_buf.sample_index / 32) * 4) * float(UTIL_TEX_SIZE);
 }
 
 #endif
