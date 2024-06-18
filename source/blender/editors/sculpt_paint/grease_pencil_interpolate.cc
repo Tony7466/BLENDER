@@ -83,9 +83,9 @@ struct GreasePencilInterpolateOpData {
   int active_layer_index;
 };
 
-using FramesMapKeyInterval = std::pair<int, int>;
+using FramesMapKeyIntervalT = std::pair<int, int>;
 
-static std::optional<FramesMapKeyInterval> find_frames_interval(
+static std::optional<FramesMapKeyIntervalT> find_frames_interval(
     const bke::greasepencil::Layer &layer, const int frame_number, const bool exclude_breakdowns)
 {
   using bke::greasepencil::FramesMapKeyT;
@@ -137,7 +137,7 @@ static void find_curve_mapping_from_index(const GreasePencil &grease_pencil,
 {
   using bke::greasepencil::Drawing;
 
-  const std::optional<FramesMapKeyInterval> interval = find_frames_interval(
+  const std::optional<FramesMapKeyIntervalT> interval = find_frames_interval(
       layer, current_frame, exclude_breakdowns);
   if (!interval) {
     return;
@@ -559,7 +559,7 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
     ensure_drawing_at_exact_frame(grease_pencil, layer, layer_data, current_frame);
   });
 
-  const std::optional<FramesMapKeyInterval> active_layer_interval = find_frames_interval(
+  const std::optional<FramesMapKeyIntervalT> active_layer_interval = find_frames_interval(
       active_layer, current_frame, data.exclude_breakdowns);
   data.init_factor = active_layer_interval ?
                          float(current_frame - active_layer_interval->first) /
