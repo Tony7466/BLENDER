@@ -639,11 +639,14 @@ BoundBox Camera::viewplane_bounds_get()
 
     const float max_aperture_size = aperture_ratio < 1.0f ? aperturesize / aperture_ratio :
                                                             aperturesize;
+    float2 scaled_dof_ray = zero_float2();
 
-    const float2 max_dof_ray = make_float2(max_aperture_size, focaldistance);
-    const float2 scaled_dof_ray = max_dof_ray * (nearclip / focaldistance);
+    if (max_aperture_size > 0.0f) {
+      const float2 max_dof_ray = make_float2(max_aperture_size, focaldistance);
+      scaled_dof_ray = max_dof_ray * (nearclip / focaldistance);
+    }
 
-    const float extend = aperturesize + max(nearclip, scaled_dof_ray.x);
+    const float extend = max_aperture_size + max(nearclip, scaled_dof_ray.x);
 
     bounds.grow(transform_raster_to_world(0.0f, 0.0f), extend);
     bounds.grow(transform_raster_to_world(0.0f, (float)height), extend);
