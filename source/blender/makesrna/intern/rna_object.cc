@@ -619,10 +619,8 @@ static StructRNA *rna_Object_data_typef(PointerRNA *ptr)
       return &RNA_LightProbe;
     case OB_GPENCIL_LEGACY:
       return &RNA_GreasePencil;
-#  ifdef WITH_GREASE_PENCIL_V3
     case OB_GREASE_PENCIL:
       return &RNA_GreasePencilv3;
-#  endif
     case OB_CURVES:
       return &RNA_Curves;
     case OB_POINTCLOUD:
@@ -1623,6 +1621,9 @@ static bConstraint *rna_Object_constraints_new(Object *object, Main *bmain, int 
 
   blender::ed::object::constraint_tag_update(bmain, object, new_con);
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_ADDED, object);
+
+  /* The Depsgraph needs to be updated to reflect the new relationship that was added. */
+  DEG_relations_tag_update(bmain);
 
   return new_con;
 }

@@ -370,10 +370,13 @@ float ambient_occlusion_eval(vec3 normal,
                     noise,
                     uniform_buf.ao.pixel_size,
                     max_distance,
-                    uniform_buf.ao.thickness,
+                    uniform_buf.ao.thickness_near,
+                    uniform_buf.ao.thickness_far,
                     uniform_buf.ao.angle_bias,
+                    2,
                     10,
-                    inverted != 0.0);
+                    inverted != 0.0,
+                    true);
 
   return saturate(ctx.occlusion_result.r);
 #  else
@@ -633,7 +636,7 @@ vec3 displacement_bump()
 void fragment_displacement()
 {
 #ifdef MAT_DISPLACEMENT_BUMP
-  g_data.N = displacement_bump();
+  g_data.N = g_data.Ni = displacement_bump();
 #endif
 }
 
@@ -728,7 +731,7 @@ float film_scaling_factor_get()
 /* Point clouds and curves are not compatible with volume grids.
  * They will fallback to their own attributes loading. */
 #if defined(MAT_VOLUME) && !defined(MAT_GEOM_CURVES) && !defined(MAT_GEOM_POINT_CLOUD)
-#  if defined(OBINFO_LIB) && !defined(MAT_GEOM_WORLD)
+#  if defined(VOLUME_INFO_LIB) && !defined(MAT_GEOM_WORLD)
 /* We could just check for GRID_ATTRIBUTES but this avoids for header dependency. */
 #    define GRID_ATTRIBUTES_LOAD_POST
 #  endif
@@ -737,7 +740,7 @@ float film_scaling_factor_get()
 float attr_load_temperature_post(float attr)
 {
 #ifdef GRID_ATTRIBUTES_LOAD_POST
-  /* Bring the into standard range without having to modify the grid values */
+  /* Bring the value into standard range without having to modify the grid values */
   attr = (attr > 0.01) ? (attr * drw_volume.temperature_mul + drw_volume.temperature_bias) : 0.0;
 #endif
   return attr;

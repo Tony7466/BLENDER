@@ -597,6 +597,12 @@ class PREFERENCES_OT_addon_install(Operator):
         default=True,
     )
 
+    enable_on_install: BoolProperty(
+        name="Enable on Install",
+        description="Enable after installing",
+        default=False,
+    )
+
     def _target_path_items(_self, context):
         default_item = ('DEFAULT', "Default", "")
         if context is None:
@@ -605,10 +611,13 @@ class PREFERENCES_OT_addon_install(Operator):
             )
 
         paths = context.preferences.filepaths
+        script_directories_items = [
+            (item.name, item.name, "") for index, item in enumerate(paths.script_directories)
+            if item.directory
+        ]
         return (
-            default_item,
-            None,
-            *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.directory],
+            (default_item, None, *script_directories_items) if script_directories_items else
+            (default_item,)
         )
 
     target: EnumProperty(
@@ -749,6 +758,12 @@ class PREFERENCES_OT_addon_install(Operator):
         # in case a new module path was created to install this addon.
         bpy.utils.refresh_script_paths()
 
+        # Auto enable if needed.
+        if self.enable_on_install:
+            for mod in addon_utils.modules(refresh=False):
+                if mod.__name__ in addons_new:
+                    bpy.ops.preferences.addon_enable(module=mod.__name__)
+
         # print message
         msg = rpt_("Modules Installed ({:s}) from {!r} into {!r}").format(
             ", ".join(sorted(addons_new)), pyfile, path_addons,
@@ -840,6 +855,8 @@ class PREFERENCES_OT_addon_expand(Operator):
 
         addon_module_name = self.module
 
+        # Ensure `addons_fake_modules` is set.
+        _modules = addon_utils.modules(refresh=False)
         mod = addon_utils.addons_fake_modules.get(addon_module_name)
         if mod is not None:
             bl_info = addon_utils.module_bl_info(mod)
@@ -864,6 +881,7 @@ class PREFERENCES_OT_addon_show(Operator):
 
         addon_module_name = self.module
 
+        # Ensure `addons_fake_modules` is set.
         _modules = addon_utils.modules(refresh=False)
         mod = addon_utils.addons_fake_modules.get(addon_module_name)
         if mod is not None:
@@ -1034,7 +1052,7 @@ class PREFERENCES_OT_studiolight_install(Operator):
         # print message
         msg = rpt_("StudioLight Installed {!r} into {!r}").format(
             ", ".join(e.name for e in self.files),
-            path_studiolights
+            path_studiolights,
         )
         print(msg)
         self.report({'INFO'}, msg)
@@ -1148,22 +1166,6 @@ class PREFERENCES_OT_studiolight_copy_settings(Operator):
         return {'CANCELLED'}
 
 
-class PREFERENCES_OT_studiolight_show(Operator):
-    """Show light preferences"""
-    bl_idname = "preferences.studiolight_show"
-    bl_label = ""
-    bl_options = {'INTERNAL'}
-
-    @classmethod
-    def poll(cls, _context):
-        return bpy.ops.screen.userpref_show.poll()
-
-    def execute(self, context):
-        context.preferences.active_section = 'LIGHTS'
-        bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
-        return {'FINISHED'}
-
-
 class PREFERENCES_OT_script_directory_new(Operator):
     bl_idname = "preferences.script_directory_add"
     bl_label = "Add Python Script Directory"
@@ -1243,7 +1245,6 @@ classes = (
     PREFERENCES_OT_studiolight_new,
     PREFERENCES_OT_studiolight_uninstall,
     PREFERENCES_OT_studiolight_copy_settings,
-    PREFERENCES_OT_studiolight_show,
     PREFERENCES_OT_script_directory_new,
     PREFERENCES_OT_script_directory_remove,
 )

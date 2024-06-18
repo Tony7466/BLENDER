@@ -145,10 +145,22 @@ static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSp
   rna_iterator_array_begin(iter, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
 }
 
-static ActionBinding *rna_Action_bindings_new(bAction *anim_id, bContext *C, ID *id_for_binding)
+static ActionBinding *rna_Action_bindings_new(bAction *anim_id,
+                                              bContext *C,
+                                              ReportList *reports,
+                                              ID *id_for_binding)
 {
   animrig::Action &anim = anim_id->wrap();
   animrig::Binding *binding;
+
+  if (!anim.is_action_layered()) {
+    BKE_reportf(
+        reports,
+        RPT_ERROR,
+        "Cannot add bindings to a legacy Action '%s'. Convert it to a layered Action first.",
+        anim.id.name + 2);
+    return nullptr;
+  }
 
   if (id_for_binding) {
     binding = &anim.binding_add_for_id(*id_for_binding);
@@ -179,6 +191,14 @@ static ActionLayer *rna_Action_layers_new(bAction *dna_action,
                                           const char *name)
 {
   animrig::Action &anim = dna_action->wrap();
+
+  if (!anim.is_action_layered()) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Cannot add layers to a legacy Action '%s'. Convert it to a layered Action first.",
+                anim.id.name + 2);
+    return nullptr;
+  }
 
   if (anim.layers().size() >= 1) {
     /* Not allowed to have more than one layer, for now. This limitation is in
@@ -420,7 +440,7 @@ static bool rna_KeyframeActionStrip_key_insert(ID *id,
   const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
   const animrig::SingleKeyingResult result = key_strip.keyframe_insert(
-      binding, rna_path, array_index, {time, value}, settings);
+      binding, rna_path, array_index, {time, value}, settings, INSERTKEY_NOFLAGS);
 
   const bool ok = result == animrig::SingleKeyingResult::SUCCESS;
   if (ok) {
@@ -469,8 +489,17 @@ static void rna_ActionGroup_channels_next(CollectionPropertyIterator *iter)
   iter->valid = (internal->link != nullptr);
 }
 
-static bActionGroup *rna_Action_groups_new(bAction *act, const char name[])
+static bActionGroup *rna_Action_groups_new(bAction *act, ReportList *reports, const char name[])
 {
+  if (!act->wrap().is_action_legacy()) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Cannot add legacy Action Groups to a layered Action '%s'. Convert it to a legacy "
+                "Action first.",
+                act->id.name + 2);
+    return nullptr;
+  }
+
   return action_groups_add_new(act, name);
 }
 
@@ -514,6 +543,15 @@ static FCurve *rna_Action_fcurve_new(bAction *act,
                                      int index,
                                      const char *group)
 {
+  if (!act->wrap().is_action_legacy()) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Cannot add legacy F-Curves to a layered Action '%s'. Convert it to a legacy "
+                "Action first.",
+                act->id.name + 2);
+    return nullptr;
+  }
+
   if (group && group[0] == '\0') {
     group = nullptr;
   }
@@ -658,6 +696,14 @@ static bool rna_Action_is_empty_get(PointerRNA *ptr)
   animrig::Action &action = rna_action(ptr);
   return action.is_empty();
 }
+static bool rna_Action_is_action_legacy_get(PointerRNA *ptr)
+{
+  return rna_action(ptr).is_action_legacy();
+}
+static bool rna_Action_is_action_layered_get(PointerRNA *ptr)
+{
+  return rna_action(ptr).is_action_layered();
+}
 #  endif  // WITH_ANIM_BAKLAVA
 
 static void rna_Action_frame_range_get(PointerRNA *ptr, float *r_values)
@@ -742,30 +788,32 @@ bool rna_Action_id_poll(PointerRNA *ptr, PointerRNA value)
 bool rna_Action_actedit_assign_poll(PointerRNA *ptr, PointerRNA value)
 {
   SpaceAction *saction = (SpaceAction *)ptr->data;
-  bAction *act = (bAction *)value.owner_id;
+  bAction *action = (bAction *)value.owner_id;
 
-  if (act) {
-    /* there can still be actions that will have undefined id-root
-     * (i.e. floating "action-library" members) which we will not
-     * be able to resolve an idroot for automatically, so let these through
-     */
-    if (act->idroot == 0) {
-      return 1;
-    }
-
-    if (saction) {
-      if (saction->mode == SACTCONT_ACTION) {
-        /* this is only Object-level for now... */
-        return act->idroot == ID_OB;
-      }
-      else if (saction->mode == SACTCONT_SHAPEKEY) {
-        /* obviously shapekeys only */
-        return act->idroot == ID_KE;
-      }
-    }
+  if (!saction) {
+    /* Unable to determine what this Action is going to be assigned to, so
+     * reject it for now. This is mostly to have a non-functional refactor of
+     * this code; personally I (Sybren) wouldn't mind to always return `true` in
+     * this case. */
+    return false;
   }
 
-  return 0;
+  switch (saction->mode) {
+    case SACTCONT_ACTION:
+      return blender::animrig::is_action_assignable_to(action, ID_OB);
+    case SACTCONT_SHAPEKEY:
+      return blender::animrig::is_action_assignable_to(action, ID_KE);
+    case SACTCONT_GPENCIL:
+    case SACTCONT_DOPESHEET:
+    case SACTCONT_MASK:
+    case SACTCONT_CACHEFILE:
+    case SACTCONT_TIMELINE:
+      break;
+  }
+
+  /* Same as above, I (Sybren) wouldn't mind returning `true` here to just
+   * always show all Actions in an unexpected place. */
+  return false;
 }
 
 /* All FCurves need to be validated when the "show_only_errors" button is enabled. */
@@ -1125,7 +1173,7 @@ static void rna_def_action_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   /* Animation.bindings.new(...) */
   func = RNA_def_function(srna, "new", "rna_Action_bindings_new");
   RNA_def_function_ui_description(func, "Add a binding to the animation");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(
       func,
       "for_id",
@@ -1576,6 +1624,7 @@ static void rna_def_action_groups(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_ui_text(srna, "Action Groups", "Collection of action groups");
 
   func = RNA_def_function(srna, "new", "rna_Action_groups_new");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Create a new action group and add it to the action");
   parm = RNA_def_string(func, "name", "Group", 0, "", "New name for the action group");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
@@ -1742,6 +1791,23 @@ static void rna_def_action(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Is Empty", "False when there is any Layer, Binding, or legacy F-Curve");
   RNA_def_property_boolean_funcs(prop, "rna_Action_is_empty_get", nullptr);
+
+  prop = RNA_def_property(srna, "is_action_legacy", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Is Legacy Action",
+      "Return whether this is a legacy Action. Legacy Actions have no layers or bindings. An "
+      "empty Action considered as both a 'legacy' and a 'layered' Action");
+  RNA_def_property_boolean_funcs(prop, "rna_Action_is_action_legacy_get", nullptr);
+
+  prop = RNA_def_property(srna, "is_action_layered", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Is Layered Action",
+                           "Return whether this is a layered Action. An empty Action considered "
+                           "as both a 'layered' and a 'layered' Action");
+  RNA_def_property_boolean_funcs(prop, "rna_Action_is_action_layered_get", nullptr);
 #  endif  // WITH_ANIM_BAKLAVA
 
   /* Collection properties. */
