@@ -787,7 +787,9 @@ static void GREASE_PENCIL_OT_layer_group_color_tag(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "color_tag", enum_layergroup_color_items, 0, "color tag", "");
 }
 
-static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil, GreasePencil &src_grease_pencil, blender::bke::greasepencil::Layer &src_layer)
+static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
+                                       GreasePencil &src_grease_pencil,
+                                       blender::bke::greasepencil::Layer &src_layer)
 {
   using namespace blender::bke::greasepencil;
   Layer &dst_layer = dst_grease_pencil.duplicate_layer(src_layer);
