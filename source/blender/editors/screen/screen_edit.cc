@@ -817,6 +817,10 @@ void ED_region_exit(bContext *C, ARegion *region)
      * they're not technically nested as they're both stored in #Screen::regionbase. */
     WM_event_ui_handler_region_popup_replace(win, region, nullptr);
   }
+
+  /* Clear region modal handlers. #122423 */
+  WM_event_modal_handler_region_replace(win, region, nullptr);
+
   WM_draw_region_free(region);
   /* The region is not in a state that it can be visible in anymore. Reinitializing is needed. */
   region->visible = false;
