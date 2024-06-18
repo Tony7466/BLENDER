@@ -207,19 +207,58 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
 static void rna_grease_pencil_layer_name_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  char* oldname=grease_pencil->runtime->LayerRenamePreviousName;
-  char* newname=grease_pencil->runtime->LayerRenameCurrentName;
-  
-  if(oldname && newname){
+  char *oldname = grease_pencil->runtime->LayerRenamePreviousName;
+  char *newname = grease_pencil->runtime->LayerRenameCurrentName;
+
+  if (oldname && newname) {
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       if (ob->type != OB_GREASE_PENCIL || ob->data != grease_pencil) {
         continue;
       }
+
+#  define GET_MODIFIER_INFLUENCE(etype, type) \
+    case eModifierType_##etype: \
+      layer_name = ((GreasePencil##type##ModifierData *)mod)->influence.layer_name; \
+      break;
+
       LISTBASE_FOREACH (ModifierData *, mod, &ob->modifiers) {
-        printf("%s -> %s\n",
-              grease_pencil->runtime->LayerRenamePreviousName,
-              grease_pencil->runtime->LayerRenameCurrentName);
-        /* rename here */
+        char *layer_name = nullptr;
+        switch (mod->type) {
+          GET_MODIFIER_INFLUENCE(GreasePencilOpacity, Opacity)
+          GET_MODIFIER_INFLUENCE(GreasePencilSubdiv, Subdiv)
+          GET_MODIFIER_INFLUENCE(GreasePencilColor, Color)
+          GET_MODIFIER_INFLUENCE(GreasePencilTint, Tint)
+          GET_MODIFIER_INFLUENCE(GreasePencilSmooth, Smooth)
+          GET_MODIFIER_INFLUENCE(GreasePencilOffset, Offset)
+          GET_MODIFIER_INFLUENCE(GreasePencilNoise, Noise)
+          GET_MODIFIER_INFLUENCE(GreasePencilMirror, Mirror)
+          GET_MODIFIER_INFLUENCE(GreasePencilThickness, Thick)
+          GET_MODIFIER_INFLUENCE(GreasePencilLattice, Lattice)
+          GET_MODIFIER_INFLUENCE(GreasePencilDash, Dash)
+          GET_MODIFIER_INFLUENCE(GreasePencilMultiply, Multi)
+          GET_MODIFIER_INFLUENCE(GreasePencilLength, Length)
+          GET_MODIFIER_INFLUENCE(GreasePencilWeightAngle, WeightAngle)
+          GET_MODIFIER_INFLUENCE(GreasePencilArray, Array)
+          GET_MODIFIER_INFLUENCE(GreasePencilWeightProximity, WeightProximity)
+          GET_MODIFIER_INFLUENCE(GreasePencilHook, Hook)
+          GET_MODIFIER_INFLUENCE(GreasePencilArmature, Armature)
+          GET_MODIFIER_INFLUENCE(GreasePencilTime, Time)
+          GET_MODIFIER_INFLUENCE(GreasePencilEnvelope, Envelope)
+          GET_MODIFIER_INFLUENCE(GreasePencilOutline, Outline)
+          GET_MODIFIER_INFLUENCE(GreasePencilShrinkwrap, Shrinkwrap)
+          GET_MODIFIER_INFLUENCE(GreasePencilBuild, Build)
+          GET_MODIFIER_INFLUENCE(GreasePencilSimplify, Simplify)
+          GET_MODIFIER_INFLUENCE(GreasePencilTexture, Texture)
+          case eModifierType_GreasePencilLineart:
+            layer_name = ((GreasePencilLineartModifierData *)mod)->target_layer;
+            break;
+          default:
+            BLI_assert_unreachable();
+            break;
+        }
+        if (layer_name && !strcmp(layer_name, oldname)) {
+          strncpy(layer_name, newname, 64);
+        }
       }
     }
   }
