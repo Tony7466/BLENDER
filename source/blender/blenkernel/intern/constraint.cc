@@ -1758,13 +1758,21 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
 
   mat4_to_eulO(eul, rot_order, cob->matrix);
 
-  /* constraint data uses radians internally */
-
-  /* limiting of euler values... */
+  /* Limit the euler values. */
   if (data->flag & LIMIT_ROT_LEGACY_BEHAVIOR) {
-    /* The legacy behavior that doesn't understand that rotations loop around,
-     * and is thus effectively "broken" in the general case. See issues #117927
-     * and #123105 for details. */
+    /* The legacy behavior, which just does a naive clamping of the angles as
+     * simple numbers. Since the input angles are always in the range [-180°,
+     * 180°] due to being derived from matrix decomposition, this naive approach
+     * causes problems when rotations cross 180 degrees. Specifically, it
+     * results in unpredictable and unwanted rotation flips of the constrained
+     * objects/bones, especially when the constraint isn't in local space.
+     *
+     * The correct thing to do is a more sophisticated form of clamping that
+     * treats the angles as existing on a continuous loop, which is what the
+     * non-legacy behavior further below does. However, for backwards
+     * compatibility we are preserving this old behavior behind an option.
+     *
+     * See issues #117927 and #123105 for additional background. */
     if (data->flag & LIMIT_XROT) {
       eul[0] = clamp_f(eul[0], data->xmin, data->xmax);
     }
@@ -1776,6 +1784,7 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
     }
   }
   else {
+    /* The correct, non-legacy behavior. */
     if (data->flag & LIMIT_XROT) {
       eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
     }
