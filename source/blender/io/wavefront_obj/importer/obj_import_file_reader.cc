@@ -399,9 +399,11 @@ static void geom_add_curve_parameters(Geometry *geom, const char *p, const char 
   Vector<float> *parm = nullptr;
   if (*p == 'u') {
     parm = &geom->nurbs_element_.u.parms;
-  } else if (*p == 'v') {
+  }
+  else if (*p == 'v') {
     parm = &geom->nurbs_element_.v.parms;
-  } else {
+  }
+  else {
     std::cerr << "OBJ curve surfaces are not supported: '" << *p << "'" << std::endl;
     return;
   }
@@ -703,10 +705,12 @@ void OBJParser::parse(Vector<std::unique_ptr<Geometry>> &r_all_geometries,
         geom_set_curve_degree(curr_geom, p, end);
       }
       else if (parse_keyword(p, end, "curv")) {
-        geom_set_element_type_and_add_vertex_indices(curr_geom, GEOM_CURVE, p, end, r_global_vertices);
+        geom_set_element_type_and_add_vertex_indices(
+            curr_geom, GEOM_CURVE, p, end, r_global_vertices);
       }
       else if (parse_keyword(p, end, "surf")) {
-        geom_set_element_type_and_add_vertex_indices(curr_geom, GEOM_SURF, p, end, r_global_vertices);
+        geom_set_element_type_and_add_vertex_indices(
+            curr_geom, GEOM_SURF, p, end, r_global_vertices);
       }
       else if (parse_keyword(p, end, "parm")) {
         geom_add_curve_parameters(curr_geom, p, end);

@@ -66,7 +66,8 @@ int OBJCurve::total_splines() const
 
 int OBJCurve::total_spline_vertices(const int spline_index) const
 {
-  const Nurb *const nurb = static_cast<Nurb *>(BLI_findlink(&export_curve_->nurb, spline_index));
+  const Nurb *const nurb = static_cast<Nurb *>(
+      BLI_findlink(&export_curve_->nurb, spline_index));
   return nurb->pntsu * nurb->pntsv;
 }
 

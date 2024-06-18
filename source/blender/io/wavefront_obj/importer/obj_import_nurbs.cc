@@ -101,14 +101,14 @@ void CurveFromGeometry::create_nurbs(Curve *curve)
   BKE_nurb_points_add(nurb, tot_vert);
   nurb->pntsu = nurbs_geometry.u.parms.size() - nurb->orderu;
   nurb->pntsv = std::max(int(nurbs_geometry.v.parms.size() - nurb->orderv), 1);
-  BLI_assert( tot_vert == nurb->pntsu * nurb->pntsv);
+  BLI_assert(tot_vert == nurb->pntsu * nurb->pntsv);
 
   for (int i = 0; i < tot_vert; i++) {
     BPoint &bpoint = nurb->bp[i];
     copy_v3_v3(bpoint.vec, global_vertices_.vertices[nurbs_geometry.curv_indices[i]]);
     bpoint.vec[3] = curve_geometry_.rational_
-      ? global_vertices_.weights[nurbs_geometry.curv_indices[i]]
-      : 1.f;
+                        ? global_vertices_.weights[nurbs_geometry.curv_indices[i]]
+                        : 1.f;
     bpoint.weight = 1.0f;
   }
   bool do_endpoints = false;
@@ -118,19 +118,8 @@ void CurveFromGeometry::create_nurbs(Curve *curve)
     const Vector<float> &parm;
     const float2 &range;
   } do_uv[] = {
-    {
-      nurbs_geometry.u.degree,
-      nurb->flagu,
-      nurbs_geometry.u.parms,
-      nurbs_geometry.u.range
-    },
-    {
-      nurbs_geometry.v.degree,
-      nurb->flagv,
-      nurbs_geometry.v.parms,
-      nurbs_geometry.v.range
-}
-  };
+    {nurbs_geometry.u.degree, nurb->flagu, nurbs_geometry.u.parms, nurbs_geometry.u.range},
+    {nurbs_geometry.v.degree, nurb->flagv, nurbs_geometry.v.parms, nurbs_geometry.v.range}};
 
   BKE_nurb_knot_set_u(nurb, nurbs_geometry.u.parms);
   BKE_nurb_knot_set_v(nurb, nurbs_geometry.v.parms);
