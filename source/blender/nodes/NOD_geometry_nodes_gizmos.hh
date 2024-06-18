@@ -47,8 +47,10 @@ void foreach_active_gizmo(const Object &object,
                           ComputeContextBuilder &compute_context_builder,
                           ForeachGizmoFn fn);
 
-ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
-                                                           const bNode &gizmo_node);
+void foreach_node_on_gizmo_path(
+    const ComputeContext &gizmo_context,
+    const bNode &gizmo_node,
+    FunctionRef<void(const ComputeContext &context, const bNode &node)> fn);
 
 void apply_gizmo_change(bContext &C,
                         Object &object,

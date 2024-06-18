@@ -342,12 +342,14 @@ void foreach_active_gizmo(const Object &object,
   foreach_active_gizmo_exposed_to_modifier(nmd, compute_context_builder, fn);
 }
 
-ie::GlobalInverseEvalPath find_inverse_eval_path_for_gizmo(const ComputeContext *gizmo_context,
-                                                           const bNode &gizmo_node)
+void foreach_node_on_gizmo_path(
+    const ComputeContext &gizmo_context,
+    const bNode &gizmo_node,
+    FunctionRef<void(const ComputeContext &context, const bNode &node)> fn)
 {
   const bNodeSocket &gizmo_socket = gizmo_node.input_socket(0);
-  return ie::find_global_inverse_eval_path(
-      gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)});
+  return ie::foreach_node_on_inverse_eval_path(
+      gizmo_context, {&gizmo_socket, get_gizmo_socket_elem(gizmo_node, gizmo_socket)}, fn);
 }
 
 void apply_gizmo_change(

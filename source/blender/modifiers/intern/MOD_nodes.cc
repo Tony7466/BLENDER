@@ -752,15 +752,14 @@ static void find_side_effect_nodes_for_active_gizmos(
         try_add_side_effect_node(compute_context, gizmo_node.identifier, nmd, r_side_effect_nodes);
         r_socket_log_contexts.add(compute_context.hash());
 
-        const nodes::inverse_eval::GlobalInverseEvalPath path =
-            nodes::gizmos::find_inverse_eval_path_for_gizmo(&compute_context, gizmo_node);
-        for (const nodes::inverse_eval::GlobalInverseEvalPath::Node &intermediate_node :
-             path.ordered_nodes)
-        {
-          /* Make sure that all intermediate sockets are logged. This is necessary to be able to
-           * evaluate the nodes in reverse for the gizmo. */
-          r_socket_log_contexts.add(intermediate_node.compute_context->hash());
-        }
+        nodes::gizmos::foreach_node_on_gizmo_path(
+            compute_context,
+            gizmo_node,
+            [&](const ComputeContext &node_context, const bNode & /*node*/) {
+              /* Make sure that all intermediate sockets are logged. This is necessary to be able
+               * to evaluate the nodes in reverse for the gizmo. */
+              r_socket_log_contexts.add(node_context.hash());
+            });
       });
 }
 

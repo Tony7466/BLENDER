@@ -21,17 +21,10 @@ struct LocalInverseEvalPath {
 LocalInverseEvalPath find_local_inverse_eval_path(const bNodeTree &tree,
                                                   const SocketElem &initial_socket_elem);
 
-struct GlobalInverseEvalPath {
-  struct Node {
-    const ComputeContext *compute_context;
-    const bNode *node;
-  };
-
-  Vector<Node> ordered_nodes;
-};
-
-GlobalInverseEvalPath find_global_inverse_eval_path(const ComputeContext *initial_context,
-                                                    const SocketElem &initial_socket_elem);
+void foreach_node_on_inverse_eval_path(
+    const ComputeContext &initial_context,
+    const SocketElem &initial_socket_elem,
+    FunctionRef<void(const ComputeContext &context, const bNode &node)> fn);
 
 std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
                                                const bNodeSocket &new_socket,
