@@ -1762,9 +1762,9 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
 
   /* limiting of euler values... */
   if (data->flag & LIMIT_ROT_LEGACY_BEHAVIOR) {
-    /* The old legacy behavior that doesn't understand that rotations loop
-     * around, and is thus effectively "broken" in the general case.
-     * See issues #117927 and #123105 for details. */
+    /* The legacy behavior that doesn't understand that rotations loop around,
+     * and is thus effectively "broken" in the general case. See issues #117927
+     * and #123105 for details. */
     if (data->flag & LIMIT_XROT) {
       eul[0] = clamp_f(eul[0], data->xmin, data->xmax);
     }

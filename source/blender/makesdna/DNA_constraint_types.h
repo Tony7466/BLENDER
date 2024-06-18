@@ -1068,10 +1068,8 @@ typedef enum eRotLimit_Flags {
   LIMIT_YROT = (1 << 1),
   LIMIT_ZROT = (1 << 2),
 
-  /* Use the old legacy behavior of the Limit Rotation constraint. This behavior
-   * is preserved only to avoid breaking old files that accidentally relied on
-   * it, and should not generally be used. See issues #117927 and #123105 for
-   * details. */
+  /* Use the legacy behavior of the Limit Rotation constraint. See issues
+   * #117927 and #123105 for details. */
   LIMIT_ROT_LEGACY_BEHAVIOR = (1 << 3),
 } eRotLimit_Flags;
 

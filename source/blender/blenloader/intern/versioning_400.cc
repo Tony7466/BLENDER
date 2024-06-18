@@ -4167,8 +4167,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 60)) {
-    /* Limit Rotation constraints from old files should use the legacy limit
-     * rotation behavior. */
+    /* Limit Rotation constraints from old files should use the legacy Limit
+     * Rotation behavior. */
     LISTBASE_FOREACH (Object *, obj, &bmain->objects) {
       LISTBASE_FOREACH (bConstraint *, constraint, &obj->constraints) {
         if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
