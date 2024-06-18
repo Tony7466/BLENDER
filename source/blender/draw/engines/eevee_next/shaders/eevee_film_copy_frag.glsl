@@ -5,9 +5,9 @@
 /**
  * `eevee_film_copy_frag` is used to work around Metal/Intel iGPU issues.
  *
- * Caches are not flushed when in the eevee_film_frag shader and we schedule
- * the eevee_film_comp shader instead. This copy shader attaches read only
- * resources and does the part that is failing in the frag shader.
+ * Caches are not flushed in the eevee_film_frag shader due to unsupported read/write access.
+ * We schedule the eevee_film_comp shader instead. Resources are attached read only and does the
+ * part that is missing from the eevee_film_frag shader.
  *
  * Code is duplicated here to ensure that the compiler will pass read/write resource checks.
  */
