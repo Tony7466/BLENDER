@@ -217,14 +217,9 @@ static float calc_new_mask(float neighbor_average, float current_mask, float fad
   return std::clamp(new_mask, 0.0f, 1.0f);
 }
 
-static float neighbor_mask_average_grids(const SubdivCCG &subdiv_ccg,
-                                         const CCGKey &key,
-                                         int grid_index,
-                                         int elem_index)
+static float neighbor_mask_average_grids(
+    const SubdivCCG &subdiv_ccg, const CCGKey &key, int grid_index, int x, int y)
 {
-  int y = elem_index / key.grid_size;
-  int x = elem_index % key.grid_size;
-
   SubdivCCGCoord coord{};
   coord.grid_index = grid_index;
   coord.x = x;
@@ -265,34 +260,38 @@ static void calc_grids(Object &object,
   for (const int grid : bke::pbvh::node_grid_indices(node)) {
     const int grid_verts_start = grid * key.grid_area;
     CCGElem *elem = grids[grid];
-    for (const int j : IndexRange(key.grid_area)) {
-      if (!grid_hidden.is_empty() && grid_hidden[grid][j]) {
-        i++;
-        continue;
-      }
-      if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, j))) {
-        i++;
-        continue;
-      }
-      auto_mask::node_update(automask_data, i);
-      const float fade = SCULPT_brush_strength_factor(ss,
-                                                      brush,
-                                                      CCG_elem_offset_co(key, elem, j),
-                                                      math::sqrt(test.dist),
-                                                      CCG_elem_offset_no(key, elem, j),
-                                                      nullptr,
-                                                      0.0f,
-                                                      BKE_pbvh_make_vref(grid_verts_start + j),
-                                                      thread_id,
-                                                      &automask_data);
+    for (const int y : IndexRange(key.grid_size)) {
+      for (const int x : IndexRange(key.grid_size)) {
+        const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
+        if (!grid_hidden.is_empty() && grid_hidden[grid][offset]) {
+          i++;
+          continue;
+        }
+        if (!sculpt_brush_test_sq_fn(test, CCG_elem_offset_co(key, elem, offset))) {
+          i++;
+          continue;
+        }
+        auto_mask::node_update(automask_data, i);
+        const float fade = SCULPT_brush_strength_factor(
+            ss,
+            brush,
+            CCG_elem_offset_co(key, elem, offset),
+            math::sqrt(test.dist),
+            CCG_elem_offset_no(key, elem, offset),
+            nullptr,
+            0.0f,
+            BKE_pbvh_make_vref(grid_verts_start + offset),
+            thread_id,
+            &automask_data);
 
-      const float new_mask = calc_new_mask(
-          neighbor_mask_average_grids(*ss.subdiv_ccg, key, grid, j),
-          CCG_elem_offset_mask(key, elem, j),
-          fade,
-          strength);
-      CCG_elem_offset_mask(key, elem, j) = new_mask;
-      i++;
+        const float new_mask = calc_new_mask(
+            neighbor_mask_average_grids(*ss.subdiv_ccg, key, grid, x, y),
+            CCG_elem_offset_mask(key, elem, offset),
+            fade,
+            strength);
+        CCG_elem_offset_mask(key, elem, offset) = new_mask;
+        i++;
+      }
     }
   }
 }
