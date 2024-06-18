@@ -88,13 +88,13 @@ using FramesMapKeyIntervalT = std::pair<int, int>;
 static std::optional<FramesMapKeyIntervalT> find_frames_interval(
     const bke::greasepencil::Layer &layer, const int frame_number, const bool exclude_breakdowns)
 {
+  using Layer = bke::greasepencil::Layer;
   using bke::greasepencil::FramesMapKeyT;
-  using SortedKeysIterator = Span<FramesMapKeyT>::iterator;
+  using SortedKeysIterator = Layer::SortedKeysIterator;
 
   const Span<FramesMapKeyT> sorted_keys = layer.sorted_keys();
-  SortedKeysIterator next_key_it = std::upper_bound(
-      sorted_keys.begin(), sorted_keys.end(), frame_number);
-  if (next_key_it == sorted_keys.end() || next_key_it == sorted_keys.begin()) {
+  SortedKeysIterator next_key_it = layer.sorted_keys_iterator_at(frame_number);
+  if (!next_key_it) {
     return std::nullopt;
   }
   SortedKeysIterator prev_key_it = next_key_it - 1;
