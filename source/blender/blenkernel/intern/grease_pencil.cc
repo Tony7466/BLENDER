@@ -3201,6 +3201,7 @@ void GreasePencil::rename_node(Main &bmain,
   /* Update layer name dependencies. */
   if (node.is_layer()) {
     BKE_animdata_fix_paths_rename_all(&this->id, "layers", old_name.c_str(), node.name().c_str());
+    /* Update names in layer masks. */
     for (bke::greasepencil::Layer *layer : this->layers_for_write()) {
       LISTBASE_FOREACH (GreasePencilLayerMask *, mask, &layer->masks) {
         if (STREQ(mask->layer_name, old_name.c_str())) {
@@ -3216,6 +3217,7 @@ void GreasePencil::rename_node(Main &bmain,
       continue;
     }
 
+    /* Update the layer name of the influence data of the modifiers. */
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       char *layer_name = nullptr;
       /* LineArt doesn't use the `GreasePencilModifierInfluenceData` struct. */
@@ -3228,7 +3230,7 @@ void GreasePencil::rename_node(Main &bmain,
         layer_name = influence_data->layer_name;
       }
       if (layer_name && STREQ(layer_name, old_name.c_str())) {
-        STRNCPY(layer_name, node.name().c_str());
+        layer_name = BLI_strdup(node.name().c_str());
       }
     }
   }
