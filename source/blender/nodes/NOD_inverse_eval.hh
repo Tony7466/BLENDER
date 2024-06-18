@@ -12,6 +12,7 @@
 
 #include "DNA_node_types.h"
 
+#include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 
 namespace blender::nodes::inverse_eval {
