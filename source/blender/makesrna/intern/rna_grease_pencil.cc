@@ -38,7 +38,7 @@ const EnumPropertyItem rna_enum_tree_node_move_type_items[] = {
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
 
-# include "DNA_modifier_types.h"
+#  include "DNA_modifier_types.h"
 
 static GreasePencil *rna_grease_pencil(const PointerRNA *ptr)
 {
@@ -197,8 +197,9 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
 
-  grease_pencil->runtime->LayerRenamePreviousName = layer->wrap().as_node().name();
-  grease_pencil->runtime->LayerRenameCurrentName = blender::StringRefNull(value);
+  grease_pencil->runtime->LayerRenamePreviousName = BLI_strdup_null(
+      layer->wrap().as_node().name().c_str());
+  grease_pencil->runtime->LayerRenameCurrentName = BLI_strdup_null(value);
 
   grease_pencil->rename_node(layer->wrap().as_node(), value);
 }
@@ -206,14 +207,30 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
 static void rna_grease_pencil_layer_name_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  LISTBASE_FOREACH(Object *,ob,&bmain->objects){
-    if(ob->type!=OB_GREASE_PENCIL || ob->data != grease_pencil){
-      continue;
+  char* oldname=grease_pencil->runtime->LayerRenamePreviousName;
+  char* newname=grease_pencil->runtime->LayerRenameCurrentName;
+  
+  if(oldname && newname){
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_GREASE_PENCIL || ob->data != grease_pencil) {
+        continue;
+      }
+      LISTBASE_FOREACH (ModifierData *, mod, &ob->modifiers) {
+        printf("%s -> %s\n",
+              grease_pencil->runtime->LayerRenamePreviousName,
+              grease_pencil->runtime->LayerRenameCurrentName);
+        /* rename here */
+      }
     }
-    LISTBASE_FOREACH(ModifierData *,mod,&ob->modifiers){
-      printf("%s -> %s\n",grease_pencil->runtime->LayerRenamePreviousName.c_str(),grease_pencil->runtime->LayerRenameCurrentName.c_str());
-      /* rename here */
-    }
+  }
+
+  if (grease_pencil->runtime->LayerRenamePreviousName) {
+    free(grease_pencil->runtime->LayerRenamePreviousName);
+    grease_pencil->runtime->LayerRenamePreviousName = nullptr;
+  }
+  if (grease_pencil->runtime->LayerRenameCurrentName) {
+    free(grease_pencil->runtime->LayerRenameCurrentName);
+    grease_pencil->runtime->LayerRenameCurrentName = nullptr;
   }
 
   rna_grease_pencil_update(bmain, scene, ptr);
@@ -644,7 +661,8 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                                 "rna_GreasePencilLayer_name_length",
                                 "rna_GreasePencilLayer_name_set");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_layer_name_update");
+  RNA_def_property_update(
+      prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_layer_name_update");
 
   /* Mask Layers */
   prop = RNA_def_property(srna, "mask_layers", PROP_COLLECTION, PROP_NONE);

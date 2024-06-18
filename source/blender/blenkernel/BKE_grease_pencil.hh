@@ -851,8 +851,8 @@ class GreasePencilRuntime {
   /* The frame on which the object was evaluated (only valid for evaluated object). */
   int eval_frame = 0;
 
-  StringRefNull LayerRenamePreviousName;
-  StringRefNull LayerRenameCurrentName;
+  char* LayerRenamePreviousName;
+  char* LayerRenameCurrentName;
 
  public:
   GreasePencilRuntime() {}
