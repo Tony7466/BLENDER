@@ -229,10 +229,8 @@ struct ShadowRayPunctual {
 /* Return ray in UV clip space [0..1]. */
 ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, vec3 lP, vec3 lNg)
 {
-  if (light.type == LIGHT_RECT) {
-    /* TODO(fclem): Broken because random_2d is a disk already. */
-    random_2d = random_2d * 2.0 - 1.0;
-  }
+  /* TODO(fclem): Broken because random_2d is a disk already. */
+  random_2d = random_2d * 2.0 - 1.0;
 
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
