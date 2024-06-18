@@ -29,4 +29,9 @@ bool try_change_link_target_and_update_source(bContext &C,
 std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeLog &tree_log,
                                                           const bNodeSocket &socket);
 
+std::optional<bke::SocketValueVariant> convert_socket_value(
+    const bNodeSocket &old_socket,
+    const bNodeSocket &new_socket,
+    const bke::SocketValueVariant &old_value);
+
 }  // namespace blender::nodes::inverse_eval

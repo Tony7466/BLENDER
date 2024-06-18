@@ -30,9 +30,4 @@ std::optional<ElemVariant> convert_socket_elem(const bNodeSocket &old_socket,
                                                const bNodeSocket &new_socket,
                                                const ElemVariant &old_elem);
 
-std::optional<bke::SocketValueVariant> convert_socket_value(
-    const bNodeSocket &old_socket,
-    const bNodeSocket &new_socket,
-    const bke::SocketValueVariant &old_value);
-
 }  // namespace blender::nodes::inverse_eval
