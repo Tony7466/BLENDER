@@ -2,6 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/**
+ * `eevee_film_copy_frag` is used to work around Metal/Intel iGPU issues.
+ * 
+ * Caches are not flushed when in the eevee_film_frag shader and we schedule
+ * the eevee_film_comp shader instead. This copy shader attaches read only
+ * resources and does the part that is failing in the frag shader.
+ *
+ * Code is duplicated here to ensure that the compiler will pass read/write resource checks.  
+ */
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
@@ -14,10 +23,9 @@ vec4 cryptomatte_false_color(float hash)
               1.0);
 }
 
-/* Keep in sync with eevee_film_frag.glsl */
-void film_read_result(ivec2 texel, out vec4 out_color, out float out_depth)
+void main()
 {
-  out_depth = imageLoad(depth_img, texel).r;
+  ivec2 texel = ivec2(gl_FragCoord.xy);
 
   if (display_id == -1) {
     out_color = texelFetch(in_combined_tx, texel, 0);
@@ -32,15 +40,8 @@ void film_read_result(ivec2 texel, out vec4 out_color, out float out_depth)
   else /* PASS_STORAGE_CRYPTOMATTE */ {
     out_color = cryptomatte_false_color(imageLoad(cryptomatte_img, ivec3(texel, display_id)).r);
   }
-}
 
-void main()
-{
-  float out_depth;
-
-  ivec2 texel_film = ivec2(gl_FragCoord.xy);
-  film_read_result(texel_film, out_color, out_depth);
-
+  float out_depth = imageLoad(depth_img, texel).r;
   out_depth = drw_depth_view_to_screen(-out_depth);
   out_depth += 2.4e-7 * 4.0 + fwidth(out_depth);
   gl_FragDepth = saturate(out_depth);

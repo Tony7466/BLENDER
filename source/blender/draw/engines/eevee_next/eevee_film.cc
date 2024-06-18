@@ -691,10 +691,7 @@ void Film::accumulate(View &view, GPUTexture *combined_final_tx)
   inst_.uniform_data.push_update();
 
   inst_.manager->submit(accumulate_ps_, view);
-
-  if (use_compute_ && inst_.is_viewport()) {
-    inst_.manager->submit(copy_ps_, view);
-  }
+  inst_.manager->submit(copy_ps_, view);
 
   combined_tx_.swap();
   weight_tx_.swap();
