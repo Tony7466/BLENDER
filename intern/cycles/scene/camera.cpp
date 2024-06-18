@@ -619,16 +619,19 @@ BoundBox Camera::viewplane_bounds_get()
   }
   else {
 
-    /* max_dof_ray = A vector that represents a ray traveling from edge of aperture to focus point.
-     Scale that vector based on the ratio between focaldistance and nearclip.
-     Then figure out if the  horizontal (x) component of this scaled vector is longer or shorter
-     than nearclip and add it to `extend` to extend the bounding box to account for these rays.
+    /* max_aperture_size = Max horizontal distance a ray travels from aperture edge to focus point.
+     Scale that value based on the ratio between focaldistance and nearclip to figure out the
+     horizontal distance the DOF ray will travel before reaching the nearclip plane, where it will
+     start rendering from.
+     In some cases (focus distance is close to camera, and nearclip plane is far from camera), this
+     scaled value is larger than nearclip, in which case we add it to `extend` to extend the
+     bounding box to account for these rays.
 
      ----------------- nearclip plane
-               / scaled_dof_ray.x, nearclip
-              / (In some situations scaled_dof_ray.x is larger than nearclip)
+               / scaled_horz_dof_ray, nearclip
+              / (In some situations scaled_horz_dof_ray is larger than nearclip)
              /
-            / max_dof_ray = max_aperture_size, focaldistance
+            / horz_dof_ray, focaldistance
            /|
           / |
          /  |
@@ -639,14 +642,12 @@ BoundBox Camera::viewplane_bounds_get()
 
     const float max_aperture_size = aperture_ratio < 1.0f ? aperturesize / aperture_ratio :
                                                             aperturesize;
-    float2 scaled_dof_ray = zero_float2();
-
+    float scaled_horz_dof_ray = 0.0f;
     if (max_aperture_size > 0.0f) {
-      const float2 max_dof_ray = make_float2(max_aperture_size, focaldistance);
-      scaled_dof_ray = max_dof_ray * (nearclip / focaldistance);
+      scaled_horz_dof_ray = max_aperture_size * (nearclip / focaldistance);
     }
 
-    const float extend = max_aperture_size + max(nearclip, scaled_dof_ray.x);
+    const float extend = max_aperture_size + max(nearclip, scaled_horz_dof_ray);
 
     bounds.grow(transform_raster_to_world(0.0f, 0.0f), extend);
     bounds.grow(transform_raster_to_world(0.0f, (float)height), extend);
