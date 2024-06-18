@@ -13,6 +13,7 @@
 #include "overlay_next_background.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_grid.hh"
+#include "overlay_next_lattice.hh"
 #include "overlay_next_metaball.hh"
 #include "overlay_next_prepass.hh"
 
@@ -41,6 +42,7 @@ class Instance {
   Prepass prepass;
   Metaballs metaballs = {selection_type_};
   Empties empties = {selection_type_};
+  Lattices lattices;
   Grid grid;
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};

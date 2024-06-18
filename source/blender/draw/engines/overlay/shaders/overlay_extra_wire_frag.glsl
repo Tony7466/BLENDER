@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 void main()
 {
@@ -26,4 +27,5 @@ void main()
   if (fract(dist / dash_width) > dash_factor) {
     discard;
   }
+  select_id_output(select_id);
 }

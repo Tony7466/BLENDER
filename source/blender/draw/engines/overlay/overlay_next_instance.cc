@@ -78,6 +78,7 @@ void Instance::begin_sync()
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
   empties.begin_sync();
+  lattices.begin_sync(resources, state);
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
 }
@@ -110,6 +111,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_SURF:
         break;
       case OB_LATTICE:
+        lattices.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_MBALL:
         metaballs.edit_object_sync(ob_ref, resources);
@@ -127,6 +129,11 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         empties.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
+        break;
+      case OB_LATTICE:
+        if (!in_edit_mode) {
+          lattices.object_sync(manager, ob_ref, resources, state);
+        }
         break;
       case OB_MBALL:
         if (!in_edit_mode) {
@@ -210,11 +217,13 @@ void Instance::draw(Manager &manager)
   background.draw(resources, manager);
 
   empties.draw(resources, manager, view);
+  lattices.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
   empties.draw_in_front(resources, manager, view);
+  lattices.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);

@@ -116,6 +116,9 @@ class ShaderModule {
   ShaderPtr armature_sphere_outline;
   ShaderPtr depth_mesh;
   ShaderPtr extra_shape;
+  ShaderPtr extra_wire_object;
+  ShaderPtr lattice_points;
+  ShaderPtr lattice_wire;
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
