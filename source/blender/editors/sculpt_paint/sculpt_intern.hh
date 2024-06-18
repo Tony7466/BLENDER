@@ -381,6 +381,13 @@ struct StrokeCache {
   bool is_last_valid;
 
   bool pen_flip;
+
+  /**
+   * Whether or not the modifier key that controls inverting brush behavior is active currently.
+   * Generally signals a change in behavior for brushes.
+   *
+   * See BrushStrokeMode::BRUSH_STROKE_INVERT.
+   */
   bool invert;
   float pressure;
   /**
@@ -512,6 +519,13 @@ struct StrokeCache {
   char saved_active_brush_name[MAX_ID_NAME];
   char saved_mask_brush_tool;
   int saved_smooth_size; /* smooth tool copies the size of the current tool */
+
+  /**
+   * Whether or not the modifier key that controls smoothing is active currently.
+   * Generally signals a change in behavior for different brushes.
+   *
+   * See BrushStrokeMode::BRUSH_STROKE_SMOOTH.
+   */
   bool alt_smooth;
 
   float plane_trim_squared;
