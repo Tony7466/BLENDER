@@ -1761,14 +1761,30 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
   /* constraint data uses radians internally */
 
   /* limiting of euler values... */
-  if (data->flag & LIMIT_XROT) {
-    eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
+  if (data->flag & LIMIT_ROT_LEGACY_BEHAVIOR) {
+    /* The old legacy behavior that doesn't understand that rotations loop
+     * around, and is thus effectively "broken" in the general case.
+     * See issues #117927 and #123105 for details. */
+    if (data->flag & LIMIT_XROT) {
+      eul[0] = clamp_f(eul[0], data->xmin, data->xmax);
+    }
+    if (data->flag & LIMIT_YROT) {
+      eul[1] = clamp_f(eul[1], data->ymin, data->ymax);
+    }
+    if (data->flag & LIMIT_ZROT) {
+      eul[2] = clamp_f(eul[2], data->zmin, data->zmax);
+    }
   }
-  if (data->flag & LIMIT_YROT) {
-    eul[1] = clamp_angle(eul[1], data->ymin, data->ymax);
-  }
-  if (data->flag & LIMIT_ZROT) {
-    eul[2] = clamp_angle(eul[2], data->zmin, data->zmax);
+  else {
+    if (data->flag & LIMIT_XROT) {
+      eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
+    }
+    if (data->flag & LIMIT_YROT) {
+      eul[1] = clamp_angle(eul[1], data->ymin, data->ymax);
+    }
+    if (data->flag & LIMIT_ZROT) {
+      eul[2] = clamp_angle(eul[2], data->zmin, data->zmax);
+    }
   }
 
   loc_eulO_size_to_mat4(cob->matrix, loc, eul, size, rot_order);
