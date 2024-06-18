@@ -230,6 +230,8 @@ void GPU_vertbuf_attr_fill_stride(blender::gpu::VertBuf *,
 
 /**
  * For low level access only.
+ *
+ * \note This is obsolete, use #VertBuf::data<T>() instead.
  */
 struct GPUVertBufRaw {
   uint size;
