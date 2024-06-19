@@ -789,13 +789,18 @@ static void GREASE_PENCIL_OT_layer_group_color_tag(wmOperatorType *ot)
 
 static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
                                        GreasePencil &src_grease_pencil,
-                                       blender::bke::greasepencil::Layer &src_layer)
+                                       blender::bke::greasepencil::Layer &src_layer,
+                                       const int copy_frame_mode,
+                                       int current_frame)
 {
   using namespace blender::bke::greasepencil;
   Layer &dst_layer = dst_grease_pencil.duplicate_layer(src_layer);
 
   dst_layer.frames_for_write().clear();
   for (auto [frame_number, frame] : src_layer.frames().items()) {
+    if (copy_frame_mode && (&frame != src_layer.frame_at(current_frame))) {
+      continue;
+    }
     const int duration = src_layer.get_frame_duration_at(frame_number);
 
     Drawing *dst_drawing = dst_grease_pencil.insert_frame(
@@ -810,8 +815,11 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
 {
   using namespace blender::bke::greasepencil;
   Object *src_object = CTX_data_active_object(C);
+  const Scene *scene = CTX_data_scene(C);
+  const int current_frame = scene->r.cfra;
   GreasePencil &src_grease_pencil = *static_cast<GreasePencil *>(src_object->data);
   const bool only_active = RNA_boolean_get(op->ptr, "only_active");
+  const int copy_frame_mode = RNA_enum_get(op->ptr, "mode");
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
     if (ob == src_object || ob->type != OB_GREASE_PENCIL) {
@@ -821,11 +829,13 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
 
     if (only_active) {
       Layer &active_layer = *src_grease_pencil.get_active_layer();
-      duplicate_layer_and_frames(dst_grease_pencil, src_grease_pencil, active_layer);
+      duplicate_layer_and_frames(
+          dst_grease_pencil, src_grease_pencil, active_layer, copy_frame_mode, current_frame);
     }
     else {
       for (Layer *layer : src_grease_pencil.layers_for_write()) {
-        duplicate_layer_and_frames(dst_grease_pencil, src_grease_pencil, *layer);
+        duplicate_layer_and_frames(
+            dst_grease_pencil, src_grease_pencil, *layer, copy_frame_mode, current_frame);
       }
     }
 
@@ -853,6 +863,14 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
                   true,
                   "Only Active",
                   "Copy only active Layer, uncheck to append all layers");
+
+  static const EnumPropertyItem copy_mode[] = {
+      {0, "ALL", 0, "All Frames", ""},
+      {1, "ACTIVE", 0, "Active Frame", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  ot->prop = RNA_def_enum(ot->srna, "mode", copy_mode, 0, "Mode", "");
 }
 
 }  // namespace blender::ed::greasepencil
