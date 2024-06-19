@@ -63,7 +63,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   if (!DEG_object_geometry_is_evaluated(*object)) {
     params.error_message_add(NodeWarningType::Error,
-                             TIP_("Can't access objects geometry because it's not evaluated yet. "
+                             TIP_("Can't access object's geometry because it's not evaluated yet. "
                                   "This can happen when there is a dependency cycle"));
     params.set_default_remaining_outputs();
     return;

@@ -105,7 +105,10 @@ Object *DEG_get_original_object(Object *object);
 /** Get original version of given evaluated ID data-block. */
 ID *DEG_get_original_id(ID *id);
 
-/** Get the depsgraph that owns the given ID. */
+/**
+ * Get the depsgraph that owns the given ID. This is efficient because the depsgraph is cached on
+ * the ID.
+ */
 Depsgraph *DEG_get_depsgraph_by_id(const ID &id);
 
 /**
