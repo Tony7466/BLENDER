@@ -978,6 +978,8 @@ namespace blender::ed::sculpt_paint {
 
 namespace hide {
 
+Span<int> node_visible_verts(const PBVHNode &node, Span<bool> hide_vert, Vector<int> &indices);
+
 bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_all_faces_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_any_face_visible_get(const SculptSession &ss, PBVHVertRef vertex);
@@ -998,6 +1000,18 @@ int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
 
+/**
+ * Creates the sculpt face set attribute on the mesh if it doesn't exist.
+ *
+ * \see face_set::ensure_face_sets_mesh if further writing to the attribute is desired.
+ */
+bool create_face_sets_mesh(Object &object);
+
+/**
+ * Ensures that the sculpt face set attribute exists on the mesh.
+ *
+ * \see face_set::create_face_sets_mesh to avoid having to remember to call .finish()
+ */
 bke::SpanAttributeWriter<int> ensure_face_sets_mesh(Object &object);
 int ensure_face_sets_bmesh(Object &object);
 Array<int> duplicate_face_sets(const Mesh &mesh);
@@ -2035,7 +2049,6 @@ void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVH
 void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_crease_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_grab_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_elastic_deform_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
