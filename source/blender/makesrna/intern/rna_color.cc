@@ -1315,7 +1315,7 @@ static void rna_def_colormanage(BlenderRNA *brna)
       prop, "Use White Balance", "Perform chromatic adaption from a different white point");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
 
-  prop = RNA_def_property(srna, "white_balance_temperature", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "white_balance_temperature", PROP_FLOAT, PROP_COLOR_TEMPERATURE);
   RNA_def_property_float_sdna(prop, nullptr, "temperature");
   RNA_def_property_float_default(prop, 6500.0f);
   RNA_def_property_range(prop, 1800.0f, 100000.0f);
