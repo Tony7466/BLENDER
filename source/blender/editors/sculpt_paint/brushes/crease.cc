@@ -51,9 +51,13 @@ BLI_NOINLINE static void project_translations(const MutableSpan<float3> translat
                                               const float3 &plane)
 {
   /* Inlined implementation of #project_plane_v3_v3v3. */
-  const float len_sq_inv_neg = -math::safe_rcp(math::length_squared(plane));
+  const float len_sq = math::length_squared(plane);
+  if (len_sq < std::numeric_limits<float>::epsilon()) {
+    return;
+  }
+  const float dot_factor = -math::rcp(len_sq);
   for (const int i : translations.index_range()) {
-    translations[i] += plane * math::dot(translations[i], plane) * len_sq_inv_neg;
+    translations[i] += plane * math::dot(translations[i], plane) * dot_factor;
   }
 }
 
@@ -161,7 +165,7 @@ static void calc_grids(
 
       float3 translation = location - co;
       if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-        project_plane_v3_v3v3(translation, translation, cache.view_normal);
+        project_translations({&translation, 1}, cache.view_normal);
       }
 
       auto_mask::node_update(automask_data, i);
@@ -182,7 +186,7 @@ static void calc_grids(
 
       /* The vertices are pinched towards a line instead of a single point. Without this we get a
        * 'flat' surface surrounding the pinch. */
-      project_plane_v3_v3v3(translation, translation, cache.sculpt_normal_symm);
+      project_translations({&translation, 1}, cache.sculpt_normal_symm);
 
       translation += offset * fade;
 
@@ -224,7 +228,7 @@ static void calc_bmesh(
 
     float3 translation = location - float3(vert->co);
     if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-      project_plane_v3_v3v3(translation, translation, cache.view_normal);
+      project_translations({&translation, 1}, cache.view_normal);
     }
 
     auto_mask::node_update(automask_data, i);
@@ -245,7 +249,7 @@ static void calc_bmesh(
 
     /* The vertices are pinched towards a line instead of a single point. Without this we get a
      * 'flat' surface surrounding the pinch. */
-    project_plane_v3_v3v3(translation, translation, cache.sculpt_normal_symm);
+    project_translations({&translation, 1}, cache.sculpt_normal_symm);
 
     translation += offset * fade;
 
