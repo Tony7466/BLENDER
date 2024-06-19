@@ -714,7 +714,6 @@ OCIO_ConstProcessorRcPtr *OCIOImpl::createDisplayProcessor(OCIO_ConstConfigRcPtr
       matrix *= xyz_to_scene;
       matrix *= blender::math::chromatic_adaption_matrix(temperature, tint, target);
       matrix *= scene_to_xyz;
-      std::cout << matrix << std::endl;
     }
 
     mt->setMatrix(double4x4(matrix).base_ptr());
