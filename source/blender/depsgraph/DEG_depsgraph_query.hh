@@ -137,8 +137,17 @@ bool DEG_is_fully_evaluated(const Depsgraph *depsgraph);
  */
 bool DEG_id_is_fully_evaluated(const Depsgraph *depsgraph, const ID *id_eval);
 
+/**
+ * Returns false when the objects geometry is not fully evaluated in its depsgraph yet. In this
+ * case, the geometry must not be accessed. Otherwise returns true when geometry is fully evaluated
+ * or the object does not belong to any specific depsgraph.
+ */
 bool DEG_object_geometry_is_evaluated(const Object &object);
+
+/** Same as above but for the transformation of the object. */
 bool DEG_object_transform_is_evaluated(const Object &object);
+
+/** Same as above but for the geometry of all objects in the collection. */
 bool DEG_collection_geometry_is_evaluated(const Collection &collection);
 
 /** \} */
