@@ -66,7 +66,6 @@ set(INC
   ../modifiers
   ../render
   ../windowmanager
-  ../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -91,7 +90,6 @@ set(SRC
   intern/node_socket.cc
   intern/node_socket_declarations.cc
   intern/node_util.cc
-  intern/node_zone_socket_items.cc
   intern/socket_search_link.cc
 
   NOD_common.h
@@ -113,10 +111,10 @@ set(SRC
   NOD_socket_declarations.hh
   NOD_socket_declarations_geometry.hh
   NOD_socket_items.hh
+  NOD_socket_items_ops.hh
   NOD_socket_search_link.hh
   NOD_static_types.h
   NOD_texture.h
-  NOD_zone_socket_items.hh
   intern/node_common.h
   intern/node_exec.hh
   intern/node_util.hh
@@ -134,7 +132,7 @@ set(LIB
   bf_nodes_geometry
   bf_nodes_shader
   bf_nodes_texture
-  extern_fmtlib
+  PRIVATE bf::extern::fmtlib
 )
 
 if(WITH_BULLET)

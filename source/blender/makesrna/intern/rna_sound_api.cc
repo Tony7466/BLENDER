@@ -13,7 +13,7 @@
 
 #include "BKE_packedFile.h"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -27,11 +27,16 @@ static void rna_Sound_unpack(bSound *sound, Main *bmain, ReportList *reports, in
 {
   if (!sound->packedfile) {
     BKE_report(reports, RPT_ERROR, "Sound not packed");
+    return;
   }
-  else {
-    /* reports its own error on failure */
-    BKE_packedfile_unpack_sound(bmain, reports, sound, ePF_FileStatus(method));
+
+  if (!ID_IS_EDITABLE(&sound->id)) {
+    BKE_report(reports, RPT_ERROR, "Sound is not editable");
+    return;
   }
+
+  /* reports its own error on failure */
+  BKE_packedfile_unpack_sound(bmain, reports, sound, ePF_FileStatus(method));
 }
 
 #else

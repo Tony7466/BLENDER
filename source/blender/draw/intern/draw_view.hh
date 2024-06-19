@@ -18,9 +18,9 @@
  */
 
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "draw_shader_shared.h"
+#include "draw_shader_shared.hh"
 
 namespace blender::draw {
 
@@ -73,9 +73,6 @@ class View {
   /* For compatibility with old system. Will be removed at some point. */
   void sync(const DRWView *view);
 
-  /** Disable a range in the multi-view array. Disabled view will not produce any instances. */
-  void disable(IndexRange range);
-
   /** Enable or disable every visibility test (frustum culling, HiZ culling). */
   void visibility_test(bool enable)
   {
@@ -86,7 +83,7 @@ class View {
    * Update culling data using a compute shader.
    * This is to be used if the matrices were updated externally
    * on the GPU (not using the `sync()` method).
-   **/
+   */
   void compute_procedural_bounds();
 
   bool is_persp(int view_id = 0) const

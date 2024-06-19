@@ -12,8 +12,6 @@
 #include "BLI_rand.hh"
 #include "BLI_vector.hh"
 
-#include "PIL_time.h"
-
 #include "DEG_depsgraph.hh"
 
 #include "BKE_attribute_math.hh"
@@ -29,13 +27,11 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_brush_enums.h"
 #include "DNA_brush_types.h"
 #include "DNA_curves_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -156,8 +152,7 @@ struct AddOperationExecutor {
     brush_pos_re_ = stroke_extension.mouse_position;
 
     use_front_face_ = brush_->flag & BRUSH_FRONTFACE;
-    const eBrushFalloffShape falloff_shape = static_cast<eBrushFalloffShape>(
-        brush_->falloff_shape);
+    const eBrushFalloffShape falloff_shape = eBrushFalloffShape(brush_->falloff_shape);
     add_amount_ = std::max(0, brush_settings_->add_amount);
 
     if (add_amount_ == 0) {
@@ -168,9 +163,9 @@ struct AddOperationExecutor {
     VArraySpan<float2> surface_uv_map;
     if (curves_id_orig_->surface_uv_map != nullptr) {
       surface_uv_map = *surface_orig.attributes().lookup<float2>(curves_id_orig_->surface_uv_map,
-                                                                 ATTR_DOMAIN_CORNER);
+                                                                 bke::AttrDomain::Corner);
       surface_uv_map_eval_ = *surface_eval_->attributes().lookup<float2>(
-          curves_id_orig_->surface_uv_map, ATTR_DOMAIN_CORNER);
+          curves_id_orig_->surface_uv_map, bke::AttrDomain::Corner);
     }
 
     if (surface_uv_map.is_empty()) {
@@ -182,9 +177,7 @@ struct AddOperationExecutor {
       return;
     }
 
-    const double time = PIL_check_seconds_timer() * 1000000.0;
-    /* Use a pointer cast to avoid overflow warnings. */
-    RandomNumberGenerator rng{*(uint32_t *)(&time)};
+    RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
     /* Sample points on the surface using one of multiple strategies. */
     Vector<float2> sampled_uvs;
@@ -214,12 +207,15 @@ struct AddOperationExecutor {
     add_inputs.uvs = sampled_uvs;
     add_inputs.interpolate_length = brush_settings_->flag &
                                     BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_LENGTH;
+    add_inputs.interpolate_radius = brush_settings_->flag &
+                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_RADIUS;
     add_inputs.interpolate_shape = brush_settings_->flag &
                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE;
     add_inputs.interpolate_point_count = brush_settings_->flag &
                                          BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_POINT_COUNT;
     add_inputs.interpolate_resolution = curves_orig_->attributes().contains("resolution");
     add_inputs.fallback_curve_length = brush_settings_->curve_length;
+    add_inputs.fallback_curve_radius = brush_settings_->curve_radius;
     add_inputs.fallback_point_count = std::max(2, brush_settings_->points_per_curve);
     add_inputs.transforms = &transforms_;
     add_inputs.surface_corner_tris = surface_corner_tris_orig;
@@ -227,8 +223,9 @@ struct AddOperationExecutor {
     add_inputs.surface = &surface_orig;
     add_inputs.corner_normals_su = corner_normals_su;
 
-    if (add_inputs.interpolate_length || add_inputs.interpolate_shape ||
-        add_inputs.interpolate_point_count || add_inputs.interpolate_resolution)
+    if (add_inputs.interpolate_length || add_inputs.interpolate_radius ||
+        add_inputs.interpolate_shape || add_inputs.interpolate_point_count ||
+        add_inputs.interpolate_resolution)
     {
       this->ensure_curve_roots_kdtree();
       add_inputs.old_roots_kdtree = self_->curve_roots_kdtree_;
@@ -238,7 +235,7 @@ struct AddOperationExecutor {
         *curves_orig_, add_inputs);
     bke::MutableAttributeAccessor attributes = curves_orig_->attributes_for_write();
     if (bke::GSpanAttributeWriter selection = attributes.lookup_for_write_span(".selection")) {
-      curves::fill_selection_true(selection.span.slice(selection.domain == ATTR_DOMAIN_POINT ?
+      curves::fill_selection_true(selection.span.slice(selection.domain == bke::AttrDomain::Point ?
                                                            add_outputs.new_points_range :
                                                            add_outputs.new_curves_range));
       selection.finish();

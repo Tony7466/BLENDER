@@ -37,6 +37,7 @@ set(SRC
   nodes/node_shader_bsdf_hair.cc
   nodes/node_shader_bsdf_hair_principled.cc
   nodes/node_shader_bsdf_principled.cc
+  nodes/node_shader_bsdf_ray_portal.cc
   nodes/node_shader_bsdf_refraction.cc
   nodes/node_shader_bsdf_sheen.cc
   nodes/node_shader_bsdf_toon.cc
@@ -185,10 +186,7 @@ endif()
 
 blender_add_lib(bf_nodes_shader "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-if(WITH_UNITY_BUILD)
-  set_target_properties(bf_nodes_shader PROPERTIES UNITY_BUILD ON)
-  set_target_properties(bf_nodes_shader PROPERTIES UNITY_BUILD_BATCH_SIZE 10)
-endif()
+blender_set_target_unity_build(bf_nodes_shader 10)
 
 # RNA_prototypes.h
 add_dependencies(bf_nodes_shader bf_rna)

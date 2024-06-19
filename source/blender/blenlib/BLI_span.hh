@@ -58,7 +58,6 @@
 
 #include <algorithm>
 #include <array>
-#include <string>
 #include <vector>
 
 #include "BLI_index_range.hh"
@@ -329,18 +328,6 @@ template<typename T> class Span {
     BLI_assert(n >= 0);
     BLI_assert(n < size_);
     return data_[size_ - 1 - n];
-  }
-
-  /**
-   * Returns the element at the given index. If the index is out of range, return the fallback
-   * value.
-   */
-  constexpr T get(int64_t index, const T &fallback) const
-  {
-    if (index < size_ && index >= 0) {
-      return data_[index];
-    }
-    return fallback;
   }
 
   /**

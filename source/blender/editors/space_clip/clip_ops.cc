@@ -28,23 +28,24 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_lib_id.h"
+#include "BKE_global.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_movieclip.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_clip.hh"
 #include "ED_screen.hh"
@@ -57,12 +58,10 @@
 
 #include "UI_view2d.hh"
 
-#include "PIL_time.h"
-
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
-#include "clip_intern.h" /* own include */
+#include "clip_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name View Navigation Utilities
@@ -224,7 +223,7 @@ static int open_exec(bContext *C, wmOperator *op)
                 RPT_ERROR,
                 "Cannot read '%s': %s",
                 filepath,
-                errno ? strerror(errno) : TIP_("unsupported movie clip format"));
+                errno ? strerror(errno) : RPT_("unsupported movie clip format"));
 
     return OPERATOR_CANCELLED;
   }
@@ -557,7 +556,7 @@ static void view_zoom_init(bContext *C, wmOperator *op, const wmEvent *event)
   if (U.viewzoom == USER_ZOOM_CONTINUE) {
     /* needs a timer to continue redrawing */
     vpd->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
-    vpd->timer_lastdraw = PIL_check_seconds_timer();
+    vpd->timer_lastdraw = BLI_time_now_seconds();
   }
 
   vpd->x = event->xy[0];
@@ -649,7 +648,7 @@ static void view_zoom_apply(
 
   if (U.viewzoom == USER_ZOOM_CONTINUE) {
     SpaceClip *sclip = CTX_wm_space_clip(C);
-    double time = PIL_check_seconds_timer();
+    double time = BLI_time_now_seconds();
     float time_step = float(time - vpd->timer_lastdraw);
     float zfac;
 
@@ -1217,7 +1216,7 @@ static int proxy_bitflag_to_array(int size_flag, int build_sizes[4], int undisto
 static void do_movie_proxy(void *pjv,
                            int * /*build_sizes*/,
                            int /*build_count*/,
-                           int *build_undistort_sizes,
+                           const int *build_undistort_sizes,
                            int build_undistort_count,
                            bool *stop,
                            bool *do_update,

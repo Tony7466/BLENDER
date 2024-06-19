@@ -2,13 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_array_utils.hh"
-
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_bvhutils.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -70,7 +67,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = CD_PROP_FLOAT;
-  node->custom2 = ATTR_DOMAIN_POINT;
+  node->custom2 = int(AttrDomain::Point);
 }
 
 static void get_closest_pointcloud_points(const PointCloud &pointcloud,
@@ -83,8 +80,8 @@ static void get_closest_pointcloud_points(const PointCloud &pointcloud,
   BLI_assert(pointcloud.totpoint > 0);
 
   BVHTreeFromPointCloud tree_data;
-  const BVHTree *tree = BKE_bvhtree_from_pointcloud_get(&tree_data, &pointcloud, 2);
-  if (tree == nullptr) {
+  BKE_bvhtree_from_pointcloud_get(pointcloud, IndexMask(pointcloud.totpoint), tree_data);
+  if (tree_data.tree == nullptr) {
     r_indices.fill(0);
     r_distances_sq.fill(0.0f);
     return;
@@ -211,7 +208,7 @@ static void get_closest_mesh_corners(const Mesh &mesh,
 
 static bool component_is_available(const GeometrySet &geometry,
                                    const GeometryComponent::Type type,
-                                   const eAttrDomain domain)
+                                   const AttrDomain domain)
 {
   if (!geometry.has(type)) {
     return false;
@@ -221,7 +218,7 @@ static bool component_is_available(const GeometrySet &geometry,
 }
 
 static const GeometryComponent *find_source_component(const GeometrySet &geometry,
-                                                      const eAttrDomain domain)
+                                                      const AttrDomain domain)
 {
   /* Choose the other component based on a consistent order, rather than some more complicated
    * heuristic. This is the same order visible in the spreadsheet and used in the ray-cast node. */
@@ -238,14 +235,14 @@ static const GeometryComponent *find_source_component(const GeometrySet &geometr
 
 class SampleNearestFunction : public mf::MultiFunction {
   GeometrySet source_;
-  eAttrDomain domain_;
+  AttrDomain domain_;
 
   const GeometryComponent *src_component_;
 
   mf::Signature signature_;
 
  public:
-  SampleNearestFunction(GeometrySet geometry, eAttrDomain domain)
+  SampleNearestFunction(GeometrySet geometry, AttrDomain domain)
       : source_(std::move(geometry)), domain_(domain)
   {
     source_.ensure_owns_direct_data();
@@ -271,16 +268,16 @@ class SampleNearestFunction : public mf::MultiFunction {
         const MeshComponent &component = *static_cast<const MeshComponent *>(src_component_);
         const Mesh &mesh = *component.get();
         switch (domain_) {
-          case ATTR_DOMAIN_POINT:
+          case AttrDomain::Point:
             get_closest_mesh_points(mesh, positions, mask, indices, {}, {});
             break;
-          case ATTR_DOMAIN_EDGE:
+          case AttrDomain::Edge:
             get_closest_mesh_edges(mesh, positions, mask, indices, {}, {});
             break;
-          case ATTR_DOMAIN_FACE:
+          case AttrDomain::Face:
             get_closest_mesh_faces(mesh, positions, mask, indices, {}, {});
             break;
-          case ATTR_DOMAIN_CORNER:
+          case AttrDomain::Corner:
             get_closest_mesh_corners(mesh, positions, mask, indices, {}, {});
             break;
           default:
@@ -304,7 +301,7 @@ class SampleNearestFunction : public mf::MultiFunction {
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
-  const eAttrDomain domain = eAttrDomain(params.node().custom2);
+  const AttrDomain domain = AttrDomain(params.node().custom2);
   if (geometry.has_curves() && !geometry.has_mesh() && !geometry.has_pointcloud()) {
     params.error_message_add(NodeWarningType::Error,
                              TIP_("The source geometry must contain a mesh or a point cloud"));
@@ -326,19 +323,19 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_enum_attribute_domain_only_mesh_items,
                     NOD_inline_enum_accessors(custom2),
-                    ATTR_DOMAIN_POINT);
+                    int(AttrDomain::Point));
 }
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_NEAREST, "Sample Nearest", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

@@ -15,6 +15,12 @@
 #include "DNA_curve_types.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+#  include "BLI_span.hh"
+
+#  include <type_traits>
+#endif
+
 /* ************************************************ */
 /* F-Curve DataTypes */
 
@@ -312,13 +318,15 @@ typedef struct DriverTarget {
 
   /** Rotation channel calculation type. */
   char rotation_mode;
-  char _pad[7];
+  char _pad[5];
 
   /**
    * Flags for the validity of the target
    * (NOTE: these get reset every time the types change).
    */
   short flag;
+  /** Single-bit user-visible toggles (not reset on type change) from eDriverTarget_Options. */
+  short options;
   /** Type of ID-block that this target can use. */
   int idtype;
 
@@ -327,8 +335,15 @@ typedef struct DriverTarget {
    * This is a value of enumerator #eDriverTarget_ContextProperty. */
   int context_property;
 
-  int _pad1;
+  /* Fallback value to use with DTAR_OPTION_USE_FALLBACK. */
+  float fallback_value;
 } DriverTarget;
+
+/** Driver Target options. */
+typedef enum eDriverTarget_Options {
+  /** Use the fallback value when the target is invalid (rna_path cannot be resolved). */
+  DTAR_OPTION_USE_FALLBACK = (1 << 0),
+} eDriverTarget_Options;
 
 /** Driver Target flags. */
 typedef enum eDriverTarget_Flag {
@@ -346,6 +361,9 @@ typedef enum eDriverTarget_Flag {
 
   /** error flags */
   DTAR_FLAG_INVALID = (1 << 4),
+
+  /** the fallback value was actually used */
+  DTAR_FLAG_FALLBACK_USED = (1 << 5),
 } eDriverTarget_Flag;
 
 /* Transform Channels for Driver Targets */
@@ -576,7 +594,7 @@ typedef struct FPoint {
   char _pad[4];
 } FPoint;
 
-/* 'Function-Curve' - defines values over time for a given setting (fcu) */
+/** 'Function-Curve' - defines values over time for a given setting (fcu). */
 typedef struct FCurve {
   struct FCurve *next, *prev;
 
@@ -704,11 +722,10 @@ typedef enum eFCurve_Smoothing {
 } eFCurve_Smoothing;
 
 /* ************************************************ */
-/* 'Action' Datatypes */
+/* 'Action' Data-types */
 
 /* NOTE: Although these are part of the Animation System,
- * they are not stored here... see DNA_action_types.h instead
- */
+ * they are not stored here, see `DNA_action_types.h` instead. */
 
 /* ************************************************ */
 /* NLA - Non-Linear Animation */
@@ -914,7 +931,7 @@ typedef enum eNlaTrack_Flag {
 } eNlaTrack_Flag;
 
 /* ************************************ */
-/* KeyingSet Datatypes */
+/* KeyingSet Data-types */
 
 /**
  * Path for use in KeyingSet definitions (ksp)
@@ -1043,16 +1060,12 @@ typedef enum eInsertKeyFlags {
    * Used by copy/paste code.
    */
   INSERTKEY_OVERWRITE_FULL = (1 << 7),
-  /** for driver FCurves, use driver's "input" value - for easier corrective driver setup */
-  INSERTKEY_DRIVER = (1 << 8),
   /** for cyclic FCurves, adjust key timing to preserve the cycle period and flow */
   INSERTKEY_CYCLE_AWARE = (1 << 9),
   /** don't create new F-Curves (implied by INSERTKEY_REPLACE) */
   INSERTKEY_AVAILABLE = (1 << 10),
-  /* Keep last. */
-  INSERTKEY_MAX,
 } eInsertKeyFlags;
-ENUM_OPERATORS(eInsertKeyFlags, INSERTKEY_MAX);
+ENUM_OPERATORS(eInsertKeyFlags, INSERTKEY_AVAILABLE);
 
 /* ************************************************ */
 /* Animation Data */
@@ -1106,6 +1119,22 @@ typedef struct AnimData {
   bAction *action;
 
   /**
+   * Identifier for which ActionBinding of the above Animation is actually animating this
+   * data-block.
+   *
+   * Do not set this directly, use one of the assignment functions in ANIM_action.hh instead.
+   */
+  int32_t binding_handle;
+  /**
+   * Binding name, primarily used for mapping to the right binding when assigning
+   * another Animation data-block. Should be the same type as #ActionBinding::name.
+   *
+   * \see #ActionBinding::name
+   */
+  char binding_name[66]; /* MAX_ID_NAME */
+  uint8_t _pad0[2];
+
+  /**
    * Temp-storage for the 'real' active action (i.e. the one used before the tweaking-action
    * took over to be edited in the Animation Editors)
    */
@@ -1139,7 +1168,6 @@ typedef struct AnimData {
   /* settings for animation evaluation */
   /** User-defined settings. */
   int flag;
-  char _pad[4];
 
   /* settings for active action evaluation (based on NLA strip settings) */
   /** Accumulation mode for active action. */
@@ -1148,7 +1176,15 @@ typedef struct AnimData {
   short act_extendmode;
   /** Influence for active action. */
   float act_influence;
+
+  uint8_t _pad1[4];
 } AnimData;
+
+#ifdef __cplusplus
+/* Some static assertions that things that should have the same type actually do. */
+static_assert(std::is_same_v<decltype(ActionBinding::handle), decltype(AnimData::binding_handle)>);
+static_assert(std::is_same_v<decltype(ActionBinding::name), decltype(AnimData::binding_name)>);
+#endif
 
 /* Animation Data settings (mostly for NLA) */
 typedef enum eAnimData_Flag {
@@ -1180,6 +1216,10 @@ typedef enum eAnimData_Flag {
 
   /** F-Curves from this AnimData block are always visible. */
   ADT_CURVES_ALWAYS_VISIBLE = (1 << 17),
+
+  /** Animation pointer to by this AnimData block is expanded in UI. This is stored on the AnimData
+   * so that each user of the Animation can have its own expansion/contraction state. */
+  ADT_UI_EXPANDED = (1 << 18),
 } eAnimData_Flag;
 
 /* Base Struct for Anim ------------------------------------- */
@@ -1194,7 +1234,5 @@ typedef struct IdAdtTemplate {
   AnimData *adt;
 } IdAdtTemplate;
 
-/* From: `DNA_object_types.h`, see it's doc-string there. */
+/* From: `DNA_object_types.h`, see its doc-string there. */
 #define SELECT 1
-
-/* ************************************************ */

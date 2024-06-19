@@ -6,9 +6,12 @@
  * \ingroup bgpencil
  */
 
+#include <algorithm>
+
 #include "BLI_math_color.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
@@ -183,30 +186,30 @@ void GpencilExporterPDF::export_gpencil_layers()
         /* Apply layer thickness change. */
         gps_duplicate->thickness += gpl->line_change;
         /* Apply object scale to thickness. */
-        const float scalef = mat4_to_scale(ob->object_to_world);
+        const float scalef = mat4_to_scale(ob->object_to_world().ptr());
         gps_duplicate->thickness = ceilf(float(gps_duplicate->thickness) * scalef);
         CLAMP_MIN(gps_duplicate->thickness, 1.0f);
         /* Fill. */
         if ((is_fill) && (params_.flag & GP_EXPORT_FILL)) {
           /* Fill is exported as polygon for fill and stroke in a different shape. */
-          export_stroke_to_polyline(gpl, gps_duplicate, is_stroke, true, false);
+          export_stroke_to_polyline(gpd_eval, gpl, gps_duplicate, is_stroke, true, false);
         }
 
         /* Stroke. */
         if (is_stroke) {
           if (is_normalized) {
-            export_stroke_to_polyline(gpl, gps_duplicate, is_stroke, false, true);
+            export_stroke_to_polyline(gpd_eval, gpl, gps_duplicate, is_stroke, false, true);
           }
           else {
             bGPDstroke *gps_perimeter = BKE_gpencil_stroke_perimeter_from_view(
-                rv3d_->viewmat, gpd_, gpl, gps_duplicate, 3, diff_mat_.ptr(), 0.0f);
+                rv3d_->viewmat, gpd_eval, gpl, gps_duplicate, 3, diff_mat_.ptr(), 0.0f);
 
             /* Sample stroke. */
             if (params_.stroke_sample > 0.0f) {
               BKE_gpencil_stroke_sample(gpd_eval, gps_perimeter, params_.stroke_sample, false, 0);
             }
 
-            export_stroke_to_polyline(gpl, gps_perimeter, is_stroke, false, false);
+            export_stroke_to_polyline(gpd_eval, gpl, gps_perimeter, is_stroke, false, false);
 
             BKE_gpencil_free_stroke(gps_perimeter);
           }
@@ -217,7 +220,8 @@ void GpencilExporterPDF::export_gpencil_layers()
   }
 }
 
-void GpencilExporterPDF::export_stroke_to_polyline(bGPDlayer *gpl,
+void GpencilExporterPDF::export_stroke_to_polyline(bGPdata *gpd,
+                                                   bGPDlayer *gpl,
                                                    bGPDstroke *gps,
                                                    const bool is_stroke,
                                                    const bool do_fill,
@@ -235,7 +239,7 @@ void GpencilExporterPDF::export_stroke_to_polyline(bGPDlayer *gpl,
   copy_v3_v3(&pt_dst->x, &pt_src->x);
   pt_dst->pressure = avg_pressure;
 
-  const float radius = stroke_point_radius_get(gpl, gps_temp);
+  const float radius = stroke_point_radius_get(gpd, gpl, gps_temp);
 
   BKE_gpencil_free_stroke(gps_temp);
 
@@ -245,7 +249,7 @@ void GpencilExporterPDF::export_stroke_to_polyline(bGPDlayer *gpl,
     HPDF_Page_SetLineJoin(page_, HPDF_ROUND_JOIN);
     const float defined_width = (gps->thickness * avg_pressure) + gpl->line_change;
     const float estimated_width = (radius * 2.0f) + gpl->line_change;
-    const float final_width = (avg_pressure == 1.0f) ? MAX2(defined_width, estimated_width) :
+    const float final_width = (avg_pressure == 1.0f) ? std::max(defined_width, estimated_width) :
                                                        estimated_width;
     HPDF_Page_SetLineWidth(page_, std::max(final_width, 1.0f));
   }
@@ -285,11 +289,11 @@ void GpencilExporterPDF::color_set(bGPDlayer *gpl, const bool do_fill)
   HPDF_Page_GSave(page_);
   HPDF_ExtGState gstate = (need_state) ? HPDF_CreateExtGState(pdf_) : nullptr;
 
-  float col[3];
+  float3 col;
   if (do_fill) {
     interp_v3_v3v3(col, fill_color_, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
-    CLAMP3(col, 0.0f, 1.0f);
+    col = math::clamp(col, 0.0f, 1.0f);
     HPDF_Page_SetRGBFill(page_, col[0], col[1], col[2]);
     if (gstate) {
       HPDF_ExtGState_SetAlphaFill(gstate, clamp_f(fill_opacity, 0.0f, 1.0f));
@@ -298,7 +302,7 @@ void GpencilExporterPDF::color_set(bGPDlayer *gpl, const bool do_fill)
   else {
     interp_v3_v3v3(col, stroke_color_, gpl->tintcolor, gpl->tintcolor[3]);
     linearrgb_to_srgb_v3_v3(col, col);
-    CLAMP3(col, 0.0f, 1.0f);
+    col = math::clamp(col, 0.0f, 1.0f);
 
     HPDF_Page_SetRGBFill(page_, col[0], col[1], col[2]);
     HPDF_Page_SetRGBStroke(page_, col[0], col[1], col[2]);

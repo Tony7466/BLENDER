@@ -10,8 +10,8 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_image_wrappers.hh"
 #include "BKE_pbvh_api.hh"
@@ -95,8 +95,7 @@ static const Edge<CoordSpace::Tile> convert_coord_space(const Edge<CoordSpace::U
   };
 }
 
-class NonManifoldTileEdges : public Vector<Edge<CoordSpace::Tile>> {
-};
+class NonManifoldTileEdges : public Vector<Edge<CoordSpace::Tile>> {};
 
 class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
  public:
@@ -313,7 +312,7 @@ struct Rows {
    * - The second source pixel must be a neighbor pixel of the first source, or the same as the
    *   first source when no second pixel could be found.
    * - The second source pixel must be a pixel that is painted on by the brush.
-   * - The second source pixel must be the second closest pixel , or the first source
+   * - The second source pixel must be the second closest pixel, or the first source
    *   when no second pixel could be found.
    */
   int2 find_second_source(int2 destination, int2 first_source)
@@ -473,7 +472,7 @@ struct Rows {
     return selected_pixels;
   }
 
-  void pack_into(const Vector<std::reference_wrapper<Pixel>> &selected_pixels,
+  void pack_into(const Span<std::reference_wrapper<Pixel>> selected_pixels,
                  CopyPixelTile &copy_tile) const
   {
     std::optional<std::reference_wrapper<CopyPixelGroup>> last_group = std::nullopt;

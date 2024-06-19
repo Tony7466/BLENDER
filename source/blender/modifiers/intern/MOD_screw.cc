@@ -18,20 +18,18 @@
 #include "BLI_math_vector.h"
 #include "BLI_span.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_context.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_customdata.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -40,16 +38,15 @@
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.hh"
-#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "BLI_strict_flags.h"
-
 #include "GEO_mesh_merge_by_distance.hh"
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 using namespace blender;
 
@@ -289,8 +286,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
 
   if (ob_axis != nullptr) {
     /* Calculate the matrix relative to the axis object. */
-    invert_m4_m4(mtx_tmp_a, ctx->object->object_to_world);
-    copy_m4_m4(mtx_tx_inv, ob_axis->object_to_world);
+    invert_m4_m4(mtx_tmp_a, ctx->object->object_to_world().ptr());
+    copy_m4_m4(mtx_tx_inv, ob_axis->object_to_world().ptr());
     mul_m4_m4m4(mtx_tx, mtx_tmp_a, mtx_tx_inv);
 
     /* Calculate the axis vector. */
@@ -416,7 +413,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   blender::MutableSpan<int> corner_edges_new = result->corner_edges_for_write();
   bke::MutableAttributeAccessor attributes = result->attributes_for_write();
   bke::SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
-      "sharp_face", ATTR_DOMAIN_FACE);
+      "sharp_face", bke::AttrDomain::Face);
 
   if (!CustomData_has_layer(&result->face_data, CD_ORIGINDEX)) {
     CustomData_add_layer(&result->face_data, CD_ORIGINDEX, CD_SET_DEFAULT, int(maxPolys));
@@ -838,11 +835,11 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
 
   const bke::AttributeAccessor src_attributes = mesh->attributes();
   const VArraySpan src_material_index = *src_attributes.lookup<int>("material_index",
-                                                                    ATTR_DOMAIN_FACE);
+                                                                    bke::AttrDomain::Face);
 
   bke::MutableAttributeAccessor dst_attributes = result->attributes_for_write();
   bke::SpanAttributeWriter dst_material_index = dst_attributes.lookup_or_add_for_write_span<int>(
-      "material_index", ATTR_DOMAIN_FACE);
+      "material_index", bke::AttrDomain::Face);
 
   for (uint i = 0; i < totedge; i++, med_new_firstloop++) {
     const uint step_last = step_tot - (close ? 1 : 2);
@@ -1173,4 +1170,5 @@ ModifierTypeInfo modifierType_Screw = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

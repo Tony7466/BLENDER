@@ -24,27 +24,29 @@ struct UvMapVert {
   bool separate;
 };
 
-/* Map from uv vertex to face. Used by select linked, uv subdivision-surface and obj exporter. */
+/** Map from UV vertex to face. Used by select linked, UV subdivision-surface and obj exporter. */
 struct UvVertMap {
   UvMapVert **vert;
   UvMapVert *buf;
 };
 
-/* UvElement stores per uv information so that we can quickly access information for a uv.
+/**
+ * UvElement stores per uv information so that we can quickly access information for a uv.
  * it is actually an improved UvMapVert, including an island and a direct pointer to the face
- * to avoid initializing face arrays */
+ * to avoid initializing face arrays.
+ */
 struct UvElement {
-  /* Next UvElement corresponding to same vertex */
+  /** Next UvElement corresponding to same vertex */
   UvElement *next;
-  /* Face the element belongs to */
+  /** Face the element belongs to */
   BMLoop *l;
-  /* index in loop. */
+  /** Index in loop. */
   unsigned short loop_of_face_index;
-  /* Whether this element is the first of coincident elements */
+  /** Whether this element is the first of coincident elements */
   bool separate;
-  /* general use flag */
+  /** general use flag. */
   unsigned char flag;
-  /* If generating element map with island sorting, this stores the island index */
+  /** If generating element map with island sorting, this stores the island index */
   unsigned int island;
 };
 
@@ -119,7 +121,7 @@ void BKE_mesh_vert_corner_tri_map_create(MeshElemMap **r_map,
                                          int **r_mem,
                                          int totvert,
                                          const blender::int3 *corner_tris,
-                                         int tottris,
+                                         int tris_num,
                                          const int *corner_verts,
                                          int corners_num);
 /**
@@ -274,7 +276,7 @@ int *BKE_mesh_calc_smoothgroups(int edges_num,
 
 namespace blender::bke::mesh {
 
-Array<int> build_loop_to_face_map(OffsetIndices<int> faces);
+Array<int> build_corner_to_face_map(OffsetIndices<int> faces);
 
 GroupedSpan<int> build_vert_to_edge_map(Span<int2> edges,
                                         int verts_num,
@@ -292,15 +294,15 @@ GroupedSpan<int> build_vert_to_face_map(OffsetIndices<int> faces,
                                         Array<int> &r_indices);
 
 Array<int> build_vert_to_corner_indices(Span<int> corner_verts, OffsetIndices<int> offsets);
-GroupedSpan<int> build_vert_to_loop_map(Span<int> corner_verts,
-                                        int verts_num,
-                                        Array<int> &r_offsets,
-                                        Array<int> &r_indices);
+GroupedSpan<int> build_vert_to_corner_map(Span<int> corner_verts,
+                                          int verts_num,
+                                          Array<int> &r_offsets,
+                                          Array<int> &r_indices);
 
-GroupedSpan<int> build_edge_to_loop_map(Span<int> corner_edges,
-                                        int edges_num,
-                                        Array<int> &r_offsets,
-                                        Array<int> &r_indices);
+GroupedSpan<int> build_edge_to_corner_map(Span<int> corner_edges,
+                                          int edges_num,
+                                          Array<int> &r_offsets,
+                                          Array<int> &r_indices);
 
 GroupedSpan<int> build_edge_to_face_map(OffsetIndices<int> faces,
                                         Span<int> corner_edges,

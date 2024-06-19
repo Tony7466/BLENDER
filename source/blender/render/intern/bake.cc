@@ -53,9 +53,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -64,14 +61,14 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_customdata.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_tangent.hh"
 #include "BKE_node.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "RE_bake.h"
 #include "RE_texture_margin.h"
@@ -453,7 +450,7 @@ static bool cast_ray_highpoly(BVHTreeFromMesh *treeData,
  * This function populates an array of verts for the triangles of a mesh
  * Tangent and Normals are also stored
  */
-static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *me_eval)
+static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *mesh_eval)
 {
   using namespace blender;
   int i;
@@ -470,7 +467,7 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *me_ev
   const blender::Span<int> corner_verts = mesh->corner_verts();
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> sharp_faces =
-      attributes.lookup_or_default<bool>("sharp_face", ATTR_DOMAIN_FACE, false).varray;
+      attributes.lookup_or_default<bool>("sharp_face", bke::AttrDomain::Face, false).varray;
 
   blender::int3 *corner_tris = static_cast<blender::int3 *>(
       MEM_mallocN(sizeof(*corner_tris) * tottri, __func__));
@@ -493,12 +490,13 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *mesh, bool tangent, Mesh *me_ev
   const TSpace *tspace = nullptr;
   blender::Span<blender::float3> corner_normals;
   if (tangent) {
-    BKE_mesh_calc_loop_tangents(me_eval, true, nullptr, 0);
+    BKE_mesh_calc_loop_tangents(mesh_eval, true, nullptr, 0);
 
-    tspace = static_cast<const TSpace *>(CustomData_get_layer(&me_eval->corner_data, CD_TANGENT));
+    tspace = static_cast<const TSpace *>(
+        CustomData_get_layer(&mesh_eval->corner_data, CD_TANGENT));
     BLI_assert(tspace);
 
-    corner_normals = me_eval->corner_normals();
+    corner_normals = mesh_eval->corner_normals();
   }
 
   const blender::Span<blender::float3> vert_normals = mesh->vert_normals();
@@ -553,8 +551,8 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
                                           const bool is_custom_cage,
                                           const float cage_extrusion,
                                           const float max_ray_distance,
-                                          float mat_low[4][4],
-                                          float mat_cage[4][4],
+                                          const float mat_low[4][4],
+                                          const float mat_cage[4][4],
                                           Mesh *me_cage)
 {
   size_t i;
@@ -581,7 +579,7 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
   blender::Array<BVHTreeFromMesh> treeData(tot_highpoly);
 
   if (!is_cage) {
-    me_eval_low = BKE_mesh_copy_for_eval(me_low);
+    me_eval_low = BKE_mesh_copy_for_eval(*me_low);
     tris_low = mesh_calc_tri_tessface(me_low, true, me_eval_low);
   }
   else if (is_custom_cage) {
@@ -759,7 +757,8 @@ void RE_bake_pixels_populate(Mesh *mesh,
 
   const blender::Span<int> tri_faces = mesh->corner_tri_faces();
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArraySpan material_indices = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
+  const VArraySpan material_indices = *attributes.lookup<int>("material_index",
+                                                              bke::AttrDomain::Face);
 
   const int materials_num = targets->materials_num;
 
@@ -857,15 +856,15 @@ void RE_bake_normal_world_to_tangent(const BakePixel pixel_array[],
                                      float result[],
                                      Mesh *mesh,
                                      const eBakeNormalSwizzle normal_swizzle[3],
-                                     float mat[4][4])
+                                     const float mat[4][4])
 {
   size_t i;
 
   TriTessFace *triangles;
 
-  Mesh *me_eval = BKE_mesh_copy_for_eval(mesh);
+  Mesh *mesh_eval = BKE_mesh_copy_for_eval(*mesh);
 
-  triangles = mesh_calc_tri_tessface(mesh, true, me_eval);
+  triangles = mesh_calc_tri_tessface(mesh, true, mesh_eval);
 
   BLI_assert(pixels_num >= 3);
 
@@ -971,8 +970,8 @@ void RE_bake_normal_world_to_tangent(const BakePixel pixel_array[],
   /* garbage collection */
   MEM_freeN(triangles);
 
-  if (me_eval) {
-    BKE_id_free(nullptr, me_eval);
+  if (mesh_eval) {
+    BKE_id_free(nullptr, mesh_eval);
   }
 }
 
@@ -986,7 +985,7 @@ void RE_bake_normal_world_to_object(const BakePixel pixel_array[],
   size_t i;
   float iobmat[4][4];
 
-  invert_m4_m4(iobmat, ob->object_to_world);
+  invert_m4_m4(iobmat, ob->object_to_world().ptr());
 
   for (i = 0; i < pixels_num; i++) {
     size_t offset;

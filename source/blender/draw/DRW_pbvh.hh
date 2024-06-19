@@ -8,24 +8,31 @@
 
 #pragma once
 
-/* Needed for BKE_ccg.h. */
+/* Needed for BKE_ccg.hh. */
 #include "BLI_assert.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_struct_equality_utils.hh"
+#include "BLI_virtual_array.hh"
 
-#include "BKE_attribute.hh"
-#include "BKE_ccg.h"
+#include "DNA_customdata_types.h"
 
-struct GPUBatch;
+#include "BKE_ccg.hh"
+
+namespace blender::gpu {
+class Batch;
+}
 struct PBVHNode;
 struct Mesh;
 struct CustomData;
 struct SubdivCCG;
 struct BMesh;
 struct BMFace;
+namespace blender::bke {
+enum class AttrDomain : int8_t;
+}
 
 namespace blender::draw::pbvh {
 
@@ -33,8 +40,8 @@ class GenericRequest {
  public:
   std::string name;
   eCustomDataType type;
-  eAttrDomain domain;
-  GenericRequest(const StringRef name, const eCustomDataType type, const eAttrDomain domain)
+  bke::AttrDomain domain;
+  GenericRequest(const StringRef name, const eCustomDataType type, const bke::AttrDomain domain)
       : name(name), type(type), domain(domain)
   {
   }
@@ -95,13 +102,13 @@ void update_pre(PBVHBatches *batches, const PBVH_GPU_Args &args);
 void node_gpu_flush(PBVHBatches *batches);
 PBVHBatches *node_create(const PBVH_GPU_Args &args);
 void node_free(PBVHBatches *batches);
-GPUBatch *tris_get(PBVHBatches *batches,
-                   Span<AttributeRequest> attrs,
-                   const PBVH_GPU_Args &args,
-                   bool do_coarse_grids);
-GPUBatch *lines_get(PBVHBatches *batches,
-                    Span<AttributeRequest> attrs,
-                    const PBVH_GPU_Args &args,
-                    bool do_coarse_grids);
+gpu::Batch *tris_get(PBVHBatches *batches,
+                     Span<AttributeRequest> attrs,
+                     const PBVH_GPU_Args &args,
+                     bool do_coarse_grids);
+gpu::Batch *lines_get(PBVHBatches *batches,
+                      Span<AttributeRequest> attrs,
+                      const PBVH_GPU_Args &args,
+                      bool do_coarse_grids);
 
 }  // namespace blender::draw::pbvh

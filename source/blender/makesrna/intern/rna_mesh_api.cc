@@ -17,13 +17,13 @@
 #include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
 
-#include "rna_internal.h" /* own include */
+#include "rna_internal.hh" /* own include */
 
 #ifdef RNA_RUNTIME
 
 #  include "DNA_mesh_types.h"
 
-#  include "BKE_anim_data.h"
+#  include "BKE_anim_data.hh"
 #  include "BKE_attribute.hh"
 #  include "BKE_mesh.h"
 #  include "BKE_mesh.hh"
@@ -31,7 +31,7 @@
 #  include "BKE_mesh_mapping.hh"
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_mesh_tangent.hh"
-#  include "BKE_report.h"
+#  include "BKE_report.hh"
 
 #  include "ED_mesh.hh"
 
@@ -93,8 +93,8 @@ static void rna_Mesh_calc_smooth_groups(
   using namespace blender;
   *r_poly_group_num = mesh->faces_num;
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
-  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+  const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", bke::AttrDomain::Edge);
+  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
   *r_poly_group = BKE_mesh_calc_smoothgroups(mesh->edges_num,
                                              mesh->faces(),
                                              mesh->corner_edges(),
@@ -109,7 +109,7 @@ static void rna_Mesh_normals_split_custom_set(Mesh *mesh,
                                               const float *normals,
                                               int normals_num)
 {
-  float(*loop_normals)[3] = (float(*)[3])normals;
+  float(*corner_normals)[3] = (float(*)[3])normals;
   const int numloops = mesh->corners_num;
   if (normals_num != numloops * 3) {
     BKE_reportf(reports,
@@ -120,7 +120,7 @@ static void rna_Mesh_normals_split_custom_set(Mesh *mesh,
     return;
   }
 
-  BKE_mesh_set_custom_normals(mesh, loop_normals);
+  BKE_mesh_set_custom_normals(mesh, corner_normals);
 
   DEG_id_tag_update(&mesh->id, 0);
 }
@@ -168,7 +168,7 @@ static void rna_Mesh_update(Mesh *mesh,
                             const bool calc_edges_loose)
 {
   if (calc_edges || ((mesh->faces_num || mesh->totface_legacy) && mesh->edges_num == 0)) {
-    BKE_mesh_calc_edges(mesh, calc_edges, true);
+    blender::bke::mesh_calc_edges(*mesh, calc_edges, true);
   }
 
   if (calc_edges_loose) {
@@ -200,6 +200,8 @@ static void rna_Mesh_clear_geometry(Mesh *mesh)
 {
   BKE_mesh_clear_geometry_and_metadata(mesh);
   BKE_animdata_free(&mesh->id, false);
+
+  blender::bke::mesh_ensure_required_data_layers(*mesh);
 
   DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY_ALL_MODES);
   WM_main_add_notifier(NC_GEOM | ND_DATA, mesh);

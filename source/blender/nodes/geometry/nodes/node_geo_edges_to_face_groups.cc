@@ -43,10 +43,10 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_EDGE};
+    const bke::MeshFieldContext context{mesh, AttrDomain::Edge};
     fn::FieldEvaluator evaluator{context, mesh.edges_num};
     evaluator.add(non_boundary_edge_field_);
     evaluator.evaluate();
@@ -67,7 +67,7 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
     islands.calc_reduced_ids(output);
 
     return mesh.attributes().adapt_domain(
-        VArray<int>::ForContainer(std::move(output)), ATTR_DOMAIN_FACE, domain);
+        VArray<int>::ForContainer(std::move(output)), AttrDomain::Face, domain);
   }
 
   uint64_t hash() const override
@@ -83,9 +83,9 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
-    return ATTR_DOMAIN_FACE;
+    return AttrDomain::Face;
   }
 };
 
@@ -100,14 +100,14 @@ static void geo_node_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_EDGES_TO_FACE_GROUPS, "Edges to Face Groups", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = geo_node_exec;
   ntype.declare = node_declare;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

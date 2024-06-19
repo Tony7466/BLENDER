@@ -7,6 +7,7 @@
 #include "curves_sculpt_intern.hh"
 
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
@@ -21,12 +22,10 @@
 #include "BKE_mesh_sample.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_brush_enums.h"
 #include "DNA_curves_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
@@ -39,8 +38,6 @@
 
 #include "GEO_add_curves_on_mesh.hh"
 #include "GEO_reverse_uv_sampler.hh"
-
-#include "BLT_translation.h"
 
 namespace blender::ed::sculpt_paint {
 
@@ -146,7 +143,7 @@ struct SlideOperationExecutor {
     if (curves_orig_->surface_uv_coords().is_empty()) {
       BKE_report(stroke_extension.reports,
                  RPT_WARNING,
-                 TIP_("Curves do not have surface attachment information"));
+                 "Curves do not have surface attachment information");
       return;
     }
     const StringRefNull uv_map_name = curves_id_orig_->surface_uv_map;
@@ -158,7 +155,7 @@ struct SlideOperationExecutor {
     brush_strength_ = brush_strength_get(*ctx_.scene, *brush_, stroke_extension);
 
     curve_factors_ = *curves_orig_->attributes().lookup_or_default(
-        ".selection", ATTR_DOMAIN_CURVE, 1.0f);
+        ".selection", bke::AttrDomain::Curve, 1.0f);
     curve_selection_ = curves::retrieve_selected_curves(*curves_id_orig_, selected_curve_memory_);
 
     brush_pos_re_ = stroke_extension.mouse_position;
@@ -174,7 +171,7 @@ struct SlideOperationExecutor {
     surface_corner_tris_orig_ = surface_orig_->corner_tris();
     corner_normals_orig_su_ = surface_orig_->corner_normals();
     surface_uv_map_orig_ = *surface_orig_->attributes().lookup<float2>(uv_map_name,
-                                                                       ATTR_DOMAIN_CORNER);
+                                                                       bke::AttrDomain::Corner);
     if (surface_uv_map_orig_.is_empty()) {
       report_missing_uv_map_on_original_surface(stroke_extension.reports);
       return;
@@ -195,7 +192,7 @@ struct SlideOperationExecutor {
     surface_positions_eval_ = surface_eval_->vert_positions();
     surface_corner_verts_eval_ = surface_eval_->corner_verts();
     surface_uv_map_eval_ = *surface_eval_->attributes().lookup<float2>(uv_map_name,
-                                                                       ATTR_DOMAIN_CORNER);
+                                                                       bke::AttrDomain::Corner);
     if (surface_uv_map_eval_.is_empty()) {
       report_missing_uv_map_on_evaluated_surface(stroke_extension.reports);
       return;
@@ -219,8 +216,7 @@ struct SlideOperationExecutor {
     this->slide_with_symmetry();
 
     if (found_invalid_uv_mapping_) {
-      BKE_report(
-          stroke_extension.reports, RPT_WARNING, TIP_("UV map or surface attachment is invalid"));
+      BKE_report(stroke_extension.reports, RPT_WARNING, "UV map or surface attachment is invalid");
     }
 
     curves_orig_->tag_positions_changed();

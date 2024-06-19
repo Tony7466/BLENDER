@@ -27,17 +27,17 @@
 
 #include "BKE_bvhutils.hh"
 #include "BKE_cloth.hh"
+#include "BKE_customdata.hh"
 #include "BKE_effect.h"
-#include "BKE_global.h"
-#include "BKE_lib_id.h"
+#include "BKE_global.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
 #include "BKE_pointcache.h"
 
 #include "SIM_mass_spring.h"
 
-// #include "PIL_time.h"  /* timing for debug prints */
+// #include "BLI_time.h"  /* timing for debug prints */
 
 /* ********** cloth engine ******* */
 /* Prototypes for internal functions.
@@ -77,7 +77,7 @@ static BVHTree *bvhtree_build_from_cloth(ClothModifierData *clmd, float epsilon)
   }
 
   ClothVertex *verts = cloth->verts;
-  const MVertTri *vt = cloth->tri;
+  const blender::int3 *vert_tris = cloth->vert_tris;
 
   /* in the moment, return zero if no faces there */
   if (!cloth->primitive_num) {
@@ -89,12 +89,12 @@ static BVHTree *bvhtree_build_from_cloth(ClothModifierData *clmd, float epsilon)
 
   /* fill tree */
   if (clmd->hairdata == nullptr) {
-    for (int i = 0; i < cloth->primitive_num; i++, vt++) {
+    for (int i = 0; i < cloth->primitive_num; i++) {
       float co[3][3];
 
-      copy_v3_v3(co[0], verts[vt->tri[0]].xold);
-      copy_v3_v3(co[1], verts[vt->tri[1]].xold);
-      copy_v3_v3(co[2], verts[vt->tri[2]].xold);
+      copy_v3_v3(co[0], verts[vert_tris[i][0]].xold);
+      copy_v3_v3(co[1], verts[vert_tris[i][1]].xold);
+      copy_v3_v3(co[2], verts[vert_tris[i][2]].xold);
 
       BLI_bvhtree_insert(bvhtree, i, co[0], 3);
     }
@@ -124,7 +124,6 @@ void bvhtree_update_from_cloth(ClothModifierData *clmd, bool moving, bool self)
   Cloth *cloth = clmd->clothObject;
   BVHTree *bvhtree;
   ClothVertex *verts = cloth->verts;
-  const MVertTri *vt;
 
   BLI_assert(!(clmd->hairdata != nullptr && self));
 
@@ -139,32 +138,32 @@ void bvhtree_update_from_cloth(ClothModifierData *clmd, bool moving, bool self)
     return;
   }
 
-  vt = cloth->tri;
+  const blender::int3 *vert_tris = cloth->vert_tris;
 
   /* update vertex position in bvh tree */
   if (clmd->hairdata == nullptr) {
-    if (verts && vt) {
-      for (i = 0; i < cloth->primitive_num; i++, vt++) {
+    if (verts && vert_tris) {
+      for (i = 0; i < cloth->primitive_num; i++) {
         float co[3][3], co_moving[3][3];
         bool ret;
 
         /* copy new locations into array */
         if (moving) {
-          copy_v3_v3(co[0], verts[vt->tri[0]].txold);
-          copy_v3_v3(co[1], verts[vt->tri[1]].txold);
-          copy_v3_v3(co[2], verts[vt->tri[2]].txold);
+          copy_v3_v3(co[0], verts[vert_tris[i][0]].txold);
+          copy_v3_v3(co[1], verts[vert_tris[i][1]].txold);
+          copy_v3_v3(co[2], verts[vert_tris[i][2]].txold);
 
           /* update moving positions */
-          copy_v3_v3(co_moving[0], verts[vt->tri[0]].tx);
-          copy_v3_v3(co_moving[1], verts[vt->tri[1]].tx);
-          copy_v3_v3(co_moving[2], verts[vt->tri[2]].tx);
+          copy_v3_v3(co_moving[0], verts[vert_tris[i][0]].tx);
+          copy_v3_v3(co_moving[1], verts[vert_tris[i][1]].tx);
+          copy_v3_v3(co_moving[2], verts[vert_tris[i][2]].tx);
 
           ret = BLI_bvhtree_update_node(bvhtree, i, co[0], co_moving[0], 3);
         }
         else {
-          copy_v3_v3(co[0], verts[vt->tri[0]].tx);
-          copy_v3_v3(co[1], verts[vt->tri[1]].tx);
-          copy_v3_v3(co[2], verts[vt->tri[2]].tx);
+          copy_v3_v3(co[0], verts[vert_tris[i][0]].tx);
+          copy_v3_v3(co[1], verts[vert_tris[i][1]].tx);
+          copy_v3_v3(co[2], verts[vert_tris[i][2]].tx);
 
           ret = BLI_bvhtree_update_node(bvhtree, i, co[0], nullptr, 3);
         }
@@ -273,7 +272,7 @@ static int do_step_cloth(
 
     /* Get the current position. */
     copy_v3_v3(verts->xconst, positions[i]);
-    mul_m4_v3(ob->object_to_world, verts->xconst);
+    mul_m4_v3(ob->object_to_world().ptr(), verts->xconst);
 
     if (vert_mass_changed) {
       verts->mass = clmd->sim_parms->mass;
@@ -478,8 +477,8 @@ void cloth_free_modifier(ClothModifierData *clmd)
     }
 
     /* we save our faces for collision objects */
-    if (cloth->tri) {
-      MEM_freeN(cloth->tri);
+    if (cloth->vert_tris) {
+      MEM_freeN(cloth->vert_tris);
     }
 
 #if 0
@@ -546,8 +545,8 @@ void cloth_free_modifier_extern(ClothModifierData *clmd)
     }
 
     /* we save our faces for collision objects */
-    if (cloth->tri) {
-      MEM_freeN(cloth->tri);
+    if (cloth->vert_tris) {
+      MEM_freeN(cloth->vert_tris);
     }
 
 #if 0
@@ -576,11 +575,11 @@ static void cloth_to_object(Object *ob, ClothModifierData *clmd, float (*vertexC
 
   if (clmd->clothObject) {
     /* Inverse matrix is not up to date. */
-    invert_m4_m4(ob->world_to_object, ob->object_to_world);
+    invert_m4_m4(ob->runtime->world_to_object.ptr(), ob->object_to_world().ptr());
 
     for (i = 0; i < cloth->mvert_num; i++) {
       copy_v3_v3(vertexCos[i], cloth->verts[i].x);
-      mul_m4_v3(ob->world_to_object, vertexCos[i]); /* cloth is in global coords */
+      mul_m4_v3(ob->world_to_object().ptr(), vertexCos[i]); /* cloth is in global coords */
     }
   }
 }
@@ -593,7 +592,8 @@ int cloth_uses_vgroup(ClothModifierData *clmd)
            (clmd->coll_parms->vgroup_objcol > 0)) ||
           (clmd->sim_parms->vgroup_pressure > 0) || (clmd->sim_parms->vgroup_struct > 0) ||
           (clmd->sim_parms->vgroup_bend > 0) || (clmd->sim_parms->vgroup_shrink > 0) ||
-          (clmd->sim_parms->vgroup_intern > 0) || (clmd->sim_parms->vgroup_mass > 0));
+          (clmd->sim_parms->vgroup_intern > 0) || (clmd->sim_parms->vgroup_mass > 0) ||
+          (clmd->sim_parms->vgroup_shear > 0));
 }
 
 /**
@@ -760,11 +760,11 @@ static bool cloth_from_object(
     if (first) {
       copy_v3_v3(verts->x, positions[i]);
 
-      mul_m4_v3(ob->object_to_world, verts->x);
+      mul_m4_v3(ob->object_to_world().ptr(), verts->x);
 
       if (shapekey_rest) {
         copy_v3_v3(verts->xrest, shapekey_rest[i]);
-        mul_m4_v3(ob->object_to_world, verts->xrest);
+        mul_m4_v3(ob->object_to_world().ptr(), verts->xrest);
       }
       else {
         copy_v3_v3(verts->xrest, verts->x);
@@ -848,15 +848,15 @@ static void cloth_from_mesh(ClothModifierData *clmd, const Object *ob, Mesh *mes
     clmd->clothObject->primitive_num = mesh->edges_num;
   }
 
-  clmd->clothObject->tri = static_cast<MVertTri *>(
-      MEM_malloc_arrayN(corner_tris.size(), sizeof(MVertTri), __func__));
-  if (clmd->clothObject->tri == nullptr) {
+  clmd->clothObject->vert_tris = static_cast<blender::int3 *>(
+      MEM_malloc_arrayN(corner_tris.size(), sizeof(blender::int3), __func__));
+  if (clmd->clothObject->vert_tris == nullptr) {
     cloth_free_modifier(clmd);
     BKE_modifier_set_error(ob, &(clmd->modifier), "Out of memory on allocating triangles");
     return;
   }
-  BKE_mesh_runtime_verttris_from_corner_tris(
-      clmd->clothObject->tri, corner_verts.data(), corner_tris.data(), corner_tris.size());
+  blender::bke::mesh::vert_tris_from_corner_tris(
+      corner_verts, corner_tris, {clmd->clothObject->vert_tris, corner_tris.size()});
 
   clmd->clothObject->edges = mesh->edges().data();
 
@@ -1154,7 +1154,7 @@ static void cloth_update_verts(Object *ob, ClothModifierData *clmd, Mesh *mesh)
   /* vertex count is already ensured to match */
   for (i = 0; i < mesh->verts_num; i++, verts++) {
     copy_v3_v3(verts->xrest, positions[i]);
-    mul_m4_v3(ob->object_to_world, verts->xrest);
+    mul_m4_v3(ob->object_to_world().ptr(), verts->xrest);
   }
 }
 
@@ -1162,7 +1162,7 @@ static void cloth_update_verts(Object *ob, ClothModifierData *clmd, Mesh *mesh)
 static Mesh *cloth_make_rest_mesh(ClothModifierData *clmd, Mesh *mesh)
 {
   using namespace blender;
-  Mesh *new_mesh = BKE_mesh_copy_for_eval(mesh);
+  Mesh *new_mesh = BKE_mesh_copy_for_eval(*mesh);
   ClothVertex *verts = clmd->clothObject->verts;
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
 
@@ -1565,6 +1565,7 @@ static bool cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
           if (tmp_mesh) {
             BKE_id_free(nullptr, &tmp_mesh->id);
           }
+          BLI_rng_free(rng);
           return false;
         }
       }

@@ -33,7 +33,7 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /* used for iterative_raycast */
 // #define USE_SKIP_LINKS
@@ -258,7 +258,7 @@ static void bvh_insertionsort(BVHNode **a, int lo, int hi, int axis)
   }
 }
 
-static int bvh_partition(BVHNode **a, int lo, int hi, BVHNode *x, int axis)
+static int bvh_partition(BVHNode **a, int lo, int hi, const BVHNode *x, int axis)
 {
   int i = lo, j = hi;
   while (1) {
@@ -1578,7 +1578,8 @@ static void dfs_find_nearest_dfs(BVHNearestData *data, BVHNode *node)
 
       for (i = 0; i != node->node_num; i++) {
         if (calc_nearest_point_squared(data->proj, node->children[i], nearest) >=
-            data->nearest.dist_sq) {
+            data->nearest.dist_sq)
+        {
           continue;
         }
         dfs_find_nearest_dfs(data, node->children[i]);
@@ -1587,7 +1588,8 @@ static void dfs_find_nearest_dfs(BVHNearestData *data, BVHNode *node)
     else {
       for (i = node->node_num - 1; i >= 0; i--) {
         if (calc_nearest_point_squared(data->proj, node->children[i], nearest) >=
-            data->nearest.dist_sq) {
+            data->nearest.dist_sq)
+        {
           continue;
         }
         dfs_find_nearest_dfs(data, node->children[i]);
@@ -1642,7 +1644,8 @@ static void heap_find_nearest_begin(BVHNearestData *data, BVHNode *root)
     heap_find_nearest_inner(data, heap, root);
 
     while (!BLI_heapsimple_is_empty(heap) &&
-           BLI_heapsimple_top_value(heap) < data->nearest.dist_sq) {
+           BLI_heapsimple_top_value(heap) < data->nearest.dist_sq)
+    {
       BVHNode *node = BLI_heapsimple_pop_min(heap);
       heap_find_nearest_inner(data, heap, node);
     }
@@ -2392,76 +2395,6 @@ int BLI_bvhtree_find_nearest_projected(const BVHTree *tree,
     return data->nearest.index;
   }
   return -1;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name BLI_bvhtree_walk_dfs
- * \{ */
-
-typedef struct BVHTree_WalkData {
-  BVHTree_WalkParentCallback walk_parent_cb;
-  BVHTree_WalkLeafCallback walk_leaf_cb;
-  BVHTree_WalkOrderCallback walk_order_cb;
-  void *userdata;
-} BVHTree_WalkData;
-
-/**
- * Runs first among nodes children of the first node before going
- * to the next node in the same layer.
- *
- * \return false to break out of the search early.
- */
-static bool bvhtree_walk_dfs_recursive(BVHTree_WalkData *walk_data, const BVHNode *node)
-{
-  if (node->node_num == 0) {
-    return walk_data->walk_leaf_cb(
-        (const BVHTreeAxisRange *)node->bv, node->index, walk_data->userdata);
-  }
-
-  /* First pick the closest node to recurse into */
-  if (walk_data->walk_order_cb(
-          (const BVHTreeAxisRange *)node->bv, node->main_axis, walk_data->userdata))
-  {
-    for (int i = 0; i != node->node_num; i++) {
-      if (walk_data->walk_parent_cb((const BVHTreeAxisRange *)node->children[i]->bv,
-                                    walk_data->userdata))
-      {
-        if (!bvhtree_walk_dfs_recursive(walk_data, node->children[i])) {
-          return false;
-        }
-      }
-    }
-  }
-  else {
-    for (int i = node->node_num - 1; i >= 0; i--) {
-      if (walk_data->walk_parent_cb((const BVHTreeAxisRange *)node->children[i]->bv,
-                                    walk_data->userdata))
-      {
-        if (!bvhtree_walk_dfs_recursive(walk_data, node->children[i])) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-}
-
-void BLI_bvhtree_walk_dfs(const BVHTree *tree,
-                          BVHTree_WalkParentCallback walk_parent_cb,
-                          BVHTree_WalkLeafCallback walk_leaf_cb,
-                          BVHTree_WalkOrderCallback walk_order_cb,
-                          void *userdata)
-{
-  const BVHNode *root = tree->nodes[tree->leaf_num];
-  if (root != NULL) {
-    BVHTree_WalkData walk_data = {walk_parent_cb, walk_leaf_cb, walk_order_cb, userdata};
-    /* first make sure the bv of root passes in the test too */
-    if (walk_parent_cb((const BVHTreeAxisRange *)root->bv, userdata)) {
-      bvhtree_walk_dfs_recursive(&walk_data, root);
-    }
-  }
 }
 
 /** \} */

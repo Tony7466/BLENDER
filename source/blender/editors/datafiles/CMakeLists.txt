@@ -110,6 +110,8 @@ set(ICON_NAMES
   speaker
   tool_settings
   shaderfx
+  record_off
+  record_on
   fake_user_off
   fake_user_on
   view3d
@@ -512,6 +514,7 @@ set(ICON_NAMES
   ipo_ease_in_out
   normalize_fcurves
   orientation_parent
+  face_corner
   vertexsel
   edgesel
   facesel
@@ -609,6 +612,9 @@ set(ICON_NAMES
   outliner_ob_volume
   outliner_data_volume
   volume_data
+  pointcloud_point
+  internet_offline
+  internet
   current_file
   home
   documents
@@ -620,6 +626,7 @@ set(ICON_NAMES
   shortdisplay
   longdisplay
   imgdisplay
+  tag
   bookmarks
   fontpreview
   filter
@@ -692,6 +699,9 @@ set(ICON_NAMES
   handle_aligned
   handle_vector
   handle_free
+  view_camera_unselected
+  view_unlocked
+  view_locked
   view_perspective
   view_ortho
   view_camera
@@ -848,7 +858,6 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.mesh.rip
   ops.mesh.rip_edge
   ops.mesh.spin
-  ops.mesh.spin.duplicate
   ops.mesh.vertices_smooth
   ops.node.links_cut
   ops.paint.eyedropper_add
@@ -868,12 +877,20 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.sculpt.color_filter
   ops.sculpt.face_set_edit
   ops.sculpt.lasso_face_set
+  ops.sculpt.lasso_hide
   ops.sculpt.lasso_mask
   ops.sculpt.lasso_trim
+  ops.sculpt.line_face_set
+  ops.sculpt.line_hide
   ops.sculpt.line_mask
   ops.sculpt.line_project
+  ops.sculpt.line_trim
   ops.sculpt.mask_by_color
   ops.sculpt.mesh_filter
+  ops.sculpt.polyline_face_set
+  ops.sculpt.polyline_hide
+  ops.sculpt.polyline_mask
+  ops.sculpt.polyline_trim
   ops.sequencer.blade
   ops.sequencer.retime
   ops.transform.bone_envelope

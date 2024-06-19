@@ -12,7 +12,8 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_strict_flags.h"
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /******************************** Quaternions ********************************/
 
@@ -20,6 +21,14 @@
 #ifndef NDEBUG
 #  define QUAT_EPSILON 0.0001
 #endif
+
+/**
+ * The threshold for using a zeroed 3rd (typically Z) value when calculating the euler.
+ * NOTE(@ideasman42): A reasonable range for this value is (0.0002 .. 0.00002).
+ * This was previously `16 * FLT_EPSILON` however it caused imprecision at times,
+ * see examples from: #116880.
+ */
+#define EULER_HYPOT_EPSILON 0.0000375
 
 void unit_axis_angle(float axis[3], float *angle)
 {
@@ -1025,7 +1034,7 @@ void sin_cos_from_fraction(int numerator, int denominator, float *r_sin, float *
 
   BLI_assert(-denominator / 4 <= numerator); /* Numerator may be negative. */
   BLI_assert(numerator <= denominator / 4);
-  BLI_assert(cos_sign == -1.0f || cos_sign == 1.0f);
+  BLI_assert(ELEM(cos_sign, -1.0f, 1.0f));
 
   const float angle = (float)(2.0 * M_PI) * ((float)numerator / (float)denominator);
   *r_sin = sinf(angle);
@@ -1392,8 +1401,7 @@ static void mat3_normalized_to_eul2(const float mat[3][3], float eul1[3], float 
 
   BLI_ASSERT_UNIT_M3(mat);
 
-  if (cy > 16.0f * FLT_EPSILON) {
-
+  if (cy > (float)EULER_HYPOT_EPSILON) {
     eul1[0] = atan2f(mat[1][2], mat[2][2]);
     eul1[1] = atan2f(-mat[0][2], cy);
     eul1[2] = atan2f(mat[0][1], mat[0][0]);
@@ -1727,7 +1735,7 @@ static void mat3_normalized_to_eulo2(const float mat[3][3],
 
   cy = hypotf(mat[i][i], mat[i][j]);
 
-  if (cy > 16.0f * FLT_EPSILON) {
+  if (cy > (float)EULER_HYPOT_EPSILON) {
     eul1[i] = atan2f(mat[j][k], mat[k][k]);
     eul1[j] = atan2f(-mat[i][k], cy);
     eul1[k] = atan2f(mat[i][j], mat[i][i]);
@@ -1963,7 +1971,7 @@ void sub_eul_euleul(float r_eul[3], float a[3], float b[3], const short order)
 
 void mat4_to_dquat(DualQuat *dq, const float basemat[4][4], const float mat[4][4])
 {
-  float *t, *q, dscale[3], scale[3], basequat[4], mat3[3][3];
+  float dscale[3], scale[3], basequat[4], mat3[3][3];
   float baseRS[4][4], baseinv[4][4], baseR[4][4], baseRinv[4][4];
   float R[4][4], S[4][4];
 
@@ -2012,8 +2020,8 @@ void mat4_to_dquat(DualQuat *dq, const float basemat[4][4], const float mat[4][4
   mat4_to_quat(dq->quat, R);
 
   /* dual part */
-  t = R[3];
-  q = dq->quat;
+  const float *t = R[3];
+  const float *q = dq->quat;
   dq->trans[0] = -0.5f * (t[0] * q[1] + t[1] * q[2] + t[2] * q[3]);
   dq->trans[1] = 0.5f * (t[0] * q[0] + t[1] * q[3] - t[2] * q[2]);
   dq->trans[2] = 0.5f * (-t[0] * q[3] + t[1] * q[0] + t[2] * q[1]);

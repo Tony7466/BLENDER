@@ -6,7 +6,7 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "ED_view3d.hh"
 
@@ -14,6 +14,7 @@
 
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_object.hh"
 
 #include "draw_cache_impl.hh"
@@ -42,6 +43,7 @@ void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata)
 
 void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 {
+  using namespace blender::draw;
   OVERLAY_TextureList *txl = vedata->txl;
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
@@ -88,7 +90,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
   const bool is_wire_shmode = (shading->type == OB_WIRE);
 
-  float backwire_opacity = (pd->edit_mesh.do_zbufclip) ? v3d->overlay.backwire_opacity : 1.0f;
+  float backwire_opacity = (pd->edit_mesh.do_zbufclip) ? 0.5f : 1.0f;
   float face_alpha = (!pd->edit_mesh.do_faces) ? 0.0f : 1.0f;
   GPUTexture **depth_tex = (pd->edit_mesh.do_zbufclip) ? &dtxl->depth : &txl->dummy_depth_tx;
 
@@ -226,20 +228,20 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
 static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob, bool in_front)
 {
-  GPUBatch *geom_tris, *geom_verts, *geom_edges, *geom_fcenter, *skin_roots, *circle;
+  using namespace blender::draw;
+  blender::gpu::Batch *geom_tris, *geom_verts, *geom_edges, *geom_fcenter, *skin_roots, *circle;
   DRWShadingGroup *vert_shgrp, *edge_shgrp, *fdot_shgrp, *face_shgrp, *skin_roots_shgrp;
 
   bool has_edit_mesh_cage = false;
   bool has_skin_roots = false;
   /* TODO: Should be its own function. */
-  Mesh *mesh = (Mesh *)ob->data;
-  BMEditMesh *embm = mesh->edit_mesh;
-  if (embm) {
-    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
-    Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
+  Mesh &mesh = *(Mesh *)ob->data;
+  if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
+    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+    const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
 
     has_edit_mesh_cage = editmesh_eval_cage && (editmesh_eval_cage != editmesh_eval_final);
-    has_skin_roots = CustomData_get_offset(&embm->bm->vdata, CD_MVERT_SKIN) != -1;
+    has_skin_roots = CustomData_get_offset(&em->bm->vdata, CD_MVERT_SKIN) != -1;
   }
 
   vert_shgrp = pd->edit_mesh_verts_grp[in_front];
@@ -273,8 +275,9 @@ static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob
 
 void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
+  using namespace blender::draw;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  GPUBatch *geom = nullptr;
+  blender::gpu::Batch *geom = nullptr;
 
   bool draw_as_solid = (ob->dt > OB_WIRE);
   bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
@@ -292,7 +295,7 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 
   if (show_retopology) {
-    Mesh *mesh = (Mesh *)ob->data;
+    Mesh &mesh = *(Mesh *)ob->data;
     geom = DRW_mesh_batch_cache_get_edit_triangles(mesh);
     DRW_shgroup_call_no_cull(pd->edit_mesh_depth_grp[do_in_front], geom, ob);
   }
@@ -302,8 +305,8 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 
   if (vnormals_do || lnormals_do || fnormals_do) {
-    GPUBatch *normal_geom = DRW_cache_normal_arrow_get();
-    Mesh *mesh = static_cast<Mesh *>(ob->data);
+    blender::gpu::Batch *normal_geom = DRW_cache_normal_arrow_get();
+    Mesh &mesh = *static_cast<Mesh *>(ob->data);
     if (vnormals_do) {
       geom = DRW_mesh_batch_cache_get_edit_vert_normals(mesh);
       DRW_shgroup_call_instances_with_attrs(pd->edit_mesh_normals_grp, ob, normal_geom, geom);

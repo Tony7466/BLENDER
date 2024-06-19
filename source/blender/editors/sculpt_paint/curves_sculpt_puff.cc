@@ -9,6 +9,7 @@
 #include "BKE_crazyspace.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
+#include "BKE_paint.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -16,8 +17,6 @@
 #include "DEG_depsgraph.hh"
 
 #include "DNA_brush_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "WM_api.hh"
 
@@ -69,8 +68,6 @@ struct PuffOperationExecutor {
   float brush_strength_;
   float2 brush_pos_re_;
 
-  eBrushFalloffShape falloff_shape_;
-
   CurvesSurfaceTransforms transforms_;
 
   const Object *surface_ob_ = nullptr;
@@ -107,10 +104,10 @@ struct PuffOperationExecutor {
     brush_pos_re_ = stroke_extension.mouse_position;
 
     point_factors_ = *curves_->attributes().lookup_or_default<float>(
-        ".selection", ATTR_DOMAIN_POINT, 1.0f);
+        ".selection", bke::AttrDomain::Point, 1.0f);
     curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
 
-    falloff_shape_ = static_cast<eBrushFalloffShape>(brush_->falloff_shape);
+    const eBrushFalloffShape falloff_shape = eBrushFalloffShape(brush_->falloff_shape);
 
     surface_ob_ = curves_id_->surface;
     surface_ = static_cast<const Mesh *>(surface_ob_->data);
@@ -125,7 +122,7 @@ struct PuffOperationExecutor {
     BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh_); });
 
     if (stroke_extension.is_first) {
-      if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
+      if (falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) {
         self.brush_3d_ = *sample_curves_3d_brush(*ctx_.depsgraph,
                                                  *ctx_.region,
                                                  *ctx_.v3d,
@@ -139,12 +136,12 @@ struct PuffOperationExecutor {
           *curves_, curve_selection_, curves_id_->flag & CV_SCULPT_COLLISION_ENABLED);
     }
 
-    Array<float> curve_weights(curves_->curves_num());
+    Array<float> curve_weights(curves_->curves_num(), 0.0f);
 
-    if (falloff_shape_ == PAINT_FALLOFF_SHAPE_TUBE) {
+    if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
       this->find_curve_weights_projected_with_symmetry(curve_weights);
     }
-    else if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
+    else if (falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) {
       this->find_curves_weights_spherical_with_symmetry(curve_weights);
     }
     else {
@@ -264,7 +261,7 @@ struct PuffOperationExecutor {
             brush_, dist_to_brush_cu, brush_radius_cu);
         math::max_inplace(max_weight, radius_falloff);
       }
-      r_curve_weights[curve_i] = max_weight;
+      math::max_inplace(r_curve_weights[curve_i], max_weight);
     });
   }
 

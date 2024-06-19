@@ -9,14 +9,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_kdtree.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
 #include "DNA_brush_types.h"
@@ -25,14 +24,14 @@
 
 #include "BKE_action.h"
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 #include "DNA_meshdata_types.h"
 
 #include "WM_api.hh"
@@ -46,12 +45,11 @@
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
-#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ************************************************ */
 /* General Brush Editing Context */
@@ -288,7 +286,6 @@ static void gpencil_select_buffer_avg_weight_set(tGP_BrushWeightpaintData *gso)
  */
 static bool *gpencil_vgroup_bone_deformed_map_get(Object *ob, const int defbase_tot)
 {
-  bDeformGroup *dg;
   bool *vgroup_bone_deformed;
   GHash *gh;
   int i;
@@ -333,7 +330,9 @@ static bool *gpencil_vgroup_bone_deformed_map_get(Object *ob, const int defbase_
   /* Mark vertex groups with reference in the bone hash table. */
   vgroup_bone_deformed = static_cast<bool *>(
       MEM_mallocN(sizeof(*vgroup_bone_deformed) * defbase_tot, __func__));
-  for (dg = static_cast<bDeformGroup *>(defbase->first), i = 0; dg; dg = dg->next, i++) {
+
+  i = 0;
+  LISTBASE_FOREACH_INDEX (bDeformGroup *, dg, defbase, i) {
     vgroup_bone_deformed[i] = (BLI_ghash_lookup(gh, dg->name) != nullptr);
   }
 
@@ -401,7 +400,8 @@ static bool do_weight_paint_normalize(MDeformVert *dvert,
     for (int i = dvert->totweight; i != 0; i--, dw++) {
       if (dw->def_nr < defbase_tot && vgroup_bone_deformed[dw->def_nr]) {
         if ((vgroup_locked[dw->def_nr] == false) &&
-            !(lock_active_vgroup && active_vgroup == dw->def_nr)) {
+            !(lock_active_vgroup && active_vgroup == dw->def_nr))
+        {
           dw->weight = 0.0f;
         }
       }
@@ -417,7 +417,8 @@ static bool do_weight_paint_normalize(MDeformVert *dvert,
       if (dw->def_nr < defbase_tot && vgroup_bone_deformed[dw->def_nr] && dw->weight > FLT_EPSILON)
       {
         if ((vgroup_locked[dw->def_nr] == false) &&
-            !(lock_active_vgroup && active_vgroup == dw->def_nr)) {
+            !(lock_active_vgroup && active_vgroup == dw->def_nr))
+        {
           dw->weight *= fac;
           CLAMP(dw->weight, 0.0f, 1.0f);
         }
@@ -433,7 +434,8 @@ static bool do_weight_paint_normalize(MDeformVert *dvert,
       if (dw->def_nr < defbase_tot && vgroup_bone_deformed[dw->def_nr] && dw->weight > FLT_EPSILON)
       {
         if ((vgroup_locked[dw->def_nr] == false) &&
-            !(lock_active_vgroup && active_vgroup == dw->def_nr)) {
+            !(lock_active_vgroup && active_vgroup == dw->def_nr))
+        {
           dw->weight = fac;
         }
       }
@@ -713,17 +715,19 @@ static void gpencil_weightpaint_brush_header_set(bContext *C, tGP_BrushWeightpai
 {
   switch (gso->brush->gpencil_weight_tool) {
     case GPWEIGHT_TOOL_DRAW:
-      ED_workspace_status_text(C, TIP_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"));
+      ED_workspace_status_text(C,
+                               IFACE_("GPencil Weight Paint: LMB to paint | RMB/Escape to Exit"));
       break;
     case GPWEIGHT_TOOL_BLUR:
-      ED_workspace_status_text(C, TIP_("GPencil Weight Blur: LMB to blur | RMB/Escape to Exit"));
+      ED_workspace_status_text(C, IFACE_("GPencil Weight Blur: LMB to blur | RMB/Escape to Exit"));
       break;
     case GPWEIGHT_TOOL_AVERAGE:
       ED_workspace_status_text(
-          C, TIP_("GPencil Weight Average: LMB to set average | RMB/Escape to Exit"));
+          C, IFACE_("GPencil Weight Average: LMB to set average | RMB/Escape to Exit"));
       break;
     case GPWEIGHT_TOOL_SMEAR:
-      ED_workspace_status_text(C, TIP_("GPencil Weight Smear: LMB to smear | RMB/Escape to Exit"));
+      ED_workspace_status_text(C,
+                               IFACE_("GPencil Weight Smear: LMB to smear | RMB/Escape to Exit"));
       break;
   }
 }
@@ -750,7 +754,7 @@ static bool gpencil_weightpaint_brush_init(bContext *C, wmOperator *op)
 
   gso->bmain = CTX_data_main(C);
 
-  gso->brush = paint->brush;
+  gso->brush = BKE_paint_brush(paint);
   BKE_curvemapping_init(gso->brush->curve);
 
   gso->is_painting = false;
@@ -794,7 +798,7 @@ static bool gpencil_weightpaint_brush_init(bContext *C, wmOperator *op)
   }
 
   /* Draw tool: add or subtract weight? */
-  gso->subtract = (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
+  gso->subtract = (gso->brush->flag & BRUSH_DIR_IN);
 
   /* Setup auto-normalize. */
   gso->auto_normalize = (ts->auto_normalize && gso->vrgroup != -1);
@@ -864,7 +868,8 @@ static bool gpencil_weightpaint_brush_poll(bContext *C)
   }
 
   ToolSettings *ts = CTX_data_scene(C)->toolsettings;
-  if (!ts->gp_weightpaint->paint.brush) {
+  Brush *brush = BKE_paint_brush(&ts->gp_weightpaint->paint);
+  if (brush == nullptr) {
     CTX_wm_operator_poll_msg_set(C, "Grease Pencil has no active paint tool");
     return false;
   }
@@ -948,7 +953,7 @@ static void gpencil_weightpaint_select_stroke(tGP_BrushWeightpaintData *gso,
                                               const float bound_mat[4][4])
 {
   GP_SpaceConversion *gsc = &gso->gsc;
-  rcti *rect = &gso->brush_rect;
+  const rcti *rect = &gso->brush_rect;
   Brush *brush = gso->brush;
   /* For the blur tool, look a bit wider than the brush itself,
    * because we need the weight of surrounding points to perform the blur. */
@@ -1517,9 +1522,10 @@ static int gpencil_weight_toggle_direction_invoke(bContext *C,
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
   Paint *paint = &ts->gp_weightpaint->paint;
+  Brush *brush = BKE_paint_brush(paint);
 
   /* Toggle Add/Subtract flag. */
-  paint->brush->gpencil_settings->sculpt_flag ^= BRUSH_DIR_IN;
+  brush->flag ^= BRUSH_DIR_IN;
 
   /* Update tool settings. */
   WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
@@ -1580,7 +1586,7 @@ static int gpencil_weight_sample_invoke(bContext *C, wmOperator * /*op*/, const 
 
   /* Get brush radius. */
   ToolSettings *ts = CTX_data_tool_settings(C);
-  Brush *brush = ts->gp_weightpaint->paint.brush;
+  Brush *brush = BKE_paint_brush(&ts->gp_weightpaint->paint);
   const int radius = brush->size;
 
   /* Init closest points. */

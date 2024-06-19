@@ -2,16 +2,16 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BLI_rect.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "RE_pipeline.h"
 
@@ -112,6 +112,8 @@ static void eevee_draw_scene(void *vedata)
   STRNCPY(ved->info, ved->instance->info.c_str());
   /* Reset view for other following engines. */
   DRW_view_set_active(nullptr);
+  DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
+  GPU_framebuffer_viewport_reset(dfbl->default_fb);
 }
 
 static void eevee_cache_init(void *vedata)

@@ -5,6 +5,7 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
+#include "BKE_paint.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -80,12 +81,11 @@ struct SmoothOperationExecutor {
     brush_pos_re_ = stroke_extension.mouse_position;
 
     point_factors_ = *curves_->attributes().lookup_or_default<float>(
-        ".selection", ATTR_DOMAIN_POINT, 1.0f);
+        ".selection", bke::AttrDomain::Point, 1.0f);
     curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
     transforms_ = CurvesSurfaceTransforms(*object_, curves_id_->surface);
 
-    const eBrushFalloffShape falloff_shape = static_cast<eBrushFalloffShape>(
-        brush_->falloff_shape);
+    const eBrushFalloffShape falloff_shape = eBrushFalloffShape(brush_->falloff_shape);
     if (stroke_extension.is_first) {
       if (falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) {
         self.brush_3d_ = *sample_curves_3d_brush(*ctx_.depsgraph,

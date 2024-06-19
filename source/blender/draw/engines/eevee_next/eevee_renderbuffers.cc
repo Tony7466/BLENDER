@@ -14,17 +14,17 @@
 
 #include "BLI_rect.h"
 
-#include "GPU_framebuffer.h"
-#include "GPU_texture.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_texture.hh"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "eevee_film.hh"
 #include "eevee_instance.hh"
 
 namespace blender::eevee {
 
-void RenderBuffers::sync()
+void RenderBuffers::init()
 {
   const eViewLayerEEVEEPassType enabled_passes = inst_.film.enabled_passes_get();
 

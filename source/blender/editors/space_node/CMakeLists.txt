@@ -4,11 +4,13 @@
 
 set(INC
   ../include
+  ../io
   ../../asset_system
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../compositor
+  ../../compositor/realtime_compositor
   ../../draw
   ../../functions
   ../../geometry
@@ -18,7 +20,6 @@ set(INC
   ../../nodes
   ../../render
   ../../windowmanager
-  ../../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -58,7 +59,8 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_screen
   PRIVATE bf::intern::guardedalloc
-  extern_fmtlib
+  bf_realtime_compositor
+  PRIVATE bf::extern::fmtlib
 )
 
 if(WITH_COMPOSITOR_CPU)

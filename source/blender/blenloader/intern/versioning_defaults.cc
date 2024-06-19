@@ -22,7 +22,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
-#include "BLI_system.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_camera_types.h"
@@ -33,39 +32,39 @@
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
+#include "DNA_world_types.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_customdata.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_idprop.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_idprop.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "versioning_common.hh"
 
@@ -171,8 +170,9 @@ static void blo_update_defaults_screen(bScreen *screen,
       seq->timeline_overlay.flag |= SEQ_TIMELINE_SHOW_STRIP_SOURCE | SEQ_TIMELINE_SHOW_STRIP_NAME |
                                     SEQ_TIMELINE_SHOW_STRIP_DURATION | SEQ_TIMELINE_SHOW_GRID |
                                     SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG |
-                                    SEQ_TIMELINE_SHOW_STRIP_RETIMING;
+                                    SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_ALL_WAVEFORMS;
       seq->preview_overlay.flag |= SEQ_PREVIEW_SHOW_OUTLINE_SELECTED;
+      seq->cache_overlay.flag = SEQ_CACHE_SHOW | SEQ_CACHE_SHOW_FINAL_OUT;
     }
     else if (area->spacetype == SPACE_TEXT) {
       /* Show syntax and line numbers in Script workspace text editor. */
@@ -203,6 +203,44 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Disable Curve Normals. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_CU_NORMALS;
       v3d->overlay.normals_constant_screen_size = 7.0f;
+
+      /* Level out the 3D Viewport camera rotation, see: #113751. */
+      constexpr float viewports_to_level[][4] = {
+          /* Animation, Modeling, Scripting, Texture Paint, UV Editing. */
+          {0x1.6e7cb8p-1, -0x1.c1747p-2, -0x1.2997dap-2, -0x1.d5d806p-2},
+          /* Layout. */
+          {0x1.6e7cb8p-1, -0x1.c17478p-2, -0x1.2997dcp-2, -0x1.d5d80cp-2},
+          /* Geometry Nodes. */
+          {0x1.6e7cb6p-1, -0x1.c17476p-2, -0x1.2997dep-2, -0x1.d5d80cp-2},
+      };
+
+      constexpr float viewports_to_clear_ofs[][4] = {
+          /* Geometry Nodes. */
+          {0x1.6e7cb6p-1, -0x1.c17476p-2, -0x1.2997dep-2, -0x1.d5d80cp-2},
+          /* Sculpting. */
+          {0x1.885b28p-1, -0x1.2d10cp-1, -0x1.42ae54p-3, -0x1.a486a2p-3},
+      };
+
+      constexpr float unified_viewquat[4] = {
+          0x1.6cbc88p-1, -0x1.c3a5c8p-2, -0x1.26413ep-2, -0x1.db430ap-2};
+
+      LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+        if (region->regiontype == RGN_TYPE_WINDOW) {
+          RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+
+          for (int i = 0; i < ARRAY_SIZE(viewports_to_clear_ofs); i++) {
+            if (equals_v4v4(rv3d->viewquat, viewports_to_clear_ofs[i])) {
+              zero_v3(rv3d->ofs);
+            }
+          }
+
+          for (int i = 0; i < ARRAY_SIZE(viewports_to_level); i++) {
+            if (equals_v4v4(rv3d->viewquat, viewports_to_level[i])) {
+              copy_qt_qt(rv3d->viewquat, unified_viewquat);
+            }
+          }
+        }
+      }
     }
     else if (area->spacetype == SPACE_CLIP) {
       SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);
@@ -223,7 +261,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       LISTBASE_FOREACH (ARegion *, region, regionbase) {
         if (region->regiontype == RGN_TYPE_TOOL_HEADER) {
           if (((sl->spacetype == SPACE_IMAGE) && hide_image_tool_header) ||
-              sl->spacetype == SPACE_SEQ) {
+              sl->spacetype == SPACE_SEQ)
+          {
             region->flag |= RGN_FLAG_HIDDEN;
           }
           else {
@@ -295,13 +334,13 @@ void BLO_update_defaults_workspace(WorkSpace *workspace, const char *app_templat
 
 static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 {
-  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
 
   scene->r.cfra = 1.0f;
 
   /* Don't enable compositing nodes. */
   if (scene->nodetree) {
-    ntreeFreeEmbeddedTree(scene->nodetree);
+    blender::bke::ntreeFreeEmbeddedTree(scene->nodetree);
     MEM_freeN(scene->nodetree);
     scene->nodetree = nullptr;
     scene->use_nodes = false;
@@ -316,10 +355,15 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     view_layer->passflag &= ~SCE_PASS_Z;
   }
 
+  /* Display missing media by default. */
+  if (scene->ed) {
+    scene->ed->show_missing_media_flag |= SEQ_EDIT_SHOW_MISSING_MEDIA;
+  }
+
   /* New EEVEE defaults. */
   scene->eevee.bloom_intensity = 0.05f;
   scene->eevee.bloom_clamp = 0.0f;
-  scene->eevee.motion_blur_shutter = 0.5f;
+  scene->eevee.motion_blur_shutter_deprecated = 0.5f;
 
   copy_v3_v3(scene->display.light_direction, blender::float3(M_SQRT1_3));
   copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
@@ -330,6 +374,14 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   /* Enable Soft Shadows by default. */
   scene->eevee.flag |= SCE_EEVEE_SHADOW_SOFT;
+
+  /* Default Rotate Increment. */
+  const float default_snap_angle_increment = DEG2RADF(5.0f);
+  scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
+  scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
+  const float default_snap_angle_increment_precision = DEG2RADF(1.0f);
+  scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
+  scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
 
   /* Be sure `curfalloff` and primitive are initialized. */
   ToolSettings *ts = scene->toolsettings;
@@ -359,7 +411,8 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   /* Correct default startup UVs. */
   Mesh *mesh = static_cast<Mesh *>(BLI_findstring(&bmain->meshes, "Cube", offsetof(ID, name) + 2));
   if (mesh && (mesh->corners_num == 24) &&
-      CustomData_has_layer(&mesh->corner_data, CD_PROP_FLOAT2)) {
+      CustomData_has_layer(&mesh->corner_data, CD_PROP_FLOAT2))
+  {
     const float uv_values[24][2] = {
         {0.625, 0.50}, {0.875, 0.50}, {0.875, 0.75}, {0.625, 0.75}, {0.375, 0.75}, {0.625, 0.75},
         {0.625, 1.00}, {0.375, 1.00}, {0.375, 0.00}, {0.625, 0.00}, {0.625, 0.25}, {0.375, 0.25},
@@ -380,6 +433,15 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   IDProperty *idprop = IDP_GetProperties(&scene->id);
   if (idprop) {
     IDP_ClearProperty(idprop);
+  }
+
+  if (ts->sculpt) {
+    ts->sculpt->automasking_boundary_edges_propagation_steps = 1;
+  }
+
+  /* Ensure input_samples has a correct default value of 1. */
+  if (ts->unified_paint_settings.input_samples == 0) {
+    ts->unified_paint_settings.input_samples = 1;
   }
 }
 
@@ -495,9 +557,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       }
 
       /* Ensure new Paint modes. */
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_VERTEX_GPENCIL);
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_SCULPT_GPENCIL);
-      BKE_paint_ensure_from_paintmode(scene, PAINT_MODE_WEIGHT_GPENCIL);
+      BKE_paint_ensure_from_paintmode(bmain, scene, PaintMode::VertexGPencil);
+      BKE_paint_ensure_from_paintmode(bmain, scene, PaintMode::SculptGPencil);
+      BKE_paint_ensure_from_paintmode(bmain, scene, PaintMode::WeightGPencil);
 
       /* Enable cursor. */
       if (ts->gp_paint) {
@@ -527,9 +589,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
         if (layout->screen) {
           bScreen *screen = layout->screen;
           if (!STREQ(screen->id.name + 2, workspace->id.name + 2)) {
-            BKE_main_namemap_remove_name(bmain, &screen->id, screen->id.name + 2);
-            BLI_strncpy(screen->id.name + 2, workspace->id.name + 2, sizeof(screen->id.name) - 2);
-            BLI_libblock_ensure_unique_name(bmain, screen->id.name);
+            BKE_libblock_rename(bmain, &screen->id, workspace->id.name + 2);
           }
         }
 
@@ -630,11 +690,12 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
     if (ma->nodetree) {
       for (bNode *node : ma->nodetree->all_nodes()) {
         if (node->type == SH_NODE_BSDF_PRINCIPLED) {
-          bNodeSocket *roughness_socket = nodeFindSocket(node, SOCK_IN, "Roughness");
+          bNodeSocket *roughness_socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Roughness");
           *version_cycles_node_socket_float_value(roughness_socket) = 0.5f;
-          bNodeSocket *emission = nodeFindSocket(node, SOCK_IN, "Emission Color");
+          bNodeSocket *emission = blender::bke::nodeFindSocket(node, SOCK_IN, "Emission Color");
           copy_v4_fl(version_cycles_node_socket_rgba_value(emission), 1.0f);
-          bNodeSocket *emission_strength = nodeFindSocket(node, SOCK_IN, "Emission Strength");
+          bNodeSocket *emission_strength = blender::bke::nodeFindSocket(
+              node, SOCK_IN, "Emission Strength");
           *version_cycles_node_socket_float_value(emission_strength) = 0.0f;
 
           node->custom1 = SHD_GLOSSY_MULTI_GGX;
@@ -673,6 +734,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
     /* Enable anti-aliasing by default. */
     brush->sampling_flag |= BRUSH_PAINT_ANTIALIASING;
+
+    /* By default, each brush should use a single input sample. */
+    brush->input_samples = 1;
   }
 
   {
@@ -815,12 +879,57 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   }
 
   {
-    /* Use the same tool icon color in the brush cursor */
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      /* Use the same tool icon color in the brush cursor */
       if (brush->ob_mode & OB_MODE_SCULPT) {
         BLI_assert(brush->sculpt_tool != 0);
         BKE_brush_sculpt_reset(brush);
       }
+
+      /* Set the default texture mapping.
+       * Do it for all brushes, since some of them might be coming from the startup file. */
+      brush->mtex.brush_map_mode = MTEX_MAP_MODE_VIEW;
+      brush->mask_mtex.brush_map_mode = MTEX_MAP_MODE_VIEW;
+    }
+  }
+
+  {
+    const Brush *default_brush = DNA_struct_default_get(Brush);
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      brush->automasking_start_normal_limit = default_brush->automasking_start_normal_limit;
+      brush->automasking_start_normal_falloff = default_brush->automasking_start_normal_falloff;
+
+      brush->automasking_view_normal_limit = default_brush->automasking_view_normal_limit;
+      brush->automasking_view_normal_falloff = default_brush->automasking_view_normal_falloff;
+    }
+  }
+
+  {
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      if (!brush->automasking_cavity_curve) {
+        brush->automasking_cavity_curve = BKE_sculpt_default_cavity_curve();
+      }
+    }
+  }
+
+  if (app_template && STREQ(app_template, "2D_Animation")) {
+    /* Disable the unified paint setting for the brush radius. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->unified_paint_settings.flag &= ~UNIFIED_PAINT_SIZE;
+    }
+  }
+
+  {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->shadow_maximum_resolution = 0.001f;
+      light->transmission_fac = 1.0f;
+      SET_FLAG_FROM_TEST(light->mode, false, LA_SHAD_RES_ABSOLUTE);
+    }
+  }
+
+  {
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      SET_FLAG_FROM_TEST(world->flag, true, WO_USE_SUN_SHADOW);
     }
   }
 }

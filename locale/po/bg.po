@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'0b00b360f7ae')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'b143cc1885ef')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-18 13:45:58\n"
-"PO-Revision-Date: 2023-09-26 10:37+0000\n"
+"POT-Creation-Date: 2020-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-04-29 13:31+0000\n"
 "Last-Translator: Gilberto Rodrigues <gilbertorodrigues@outlook.com>\n"
 "Language-Team: Bulgarian <https://translate.blender.org/projects/blender-ui/ui/bg/>\n"
 "Language: bg\n"
@@ -42,6 +42,18 @@ msgstr "Модул"
 
 msgid "On"
 msgstr "Върху"
+
+
+msgid "Always"
+msgstr "Винаги"
+
+
+msgid "Center"
+msgstr "Център"
+
+
+msgid "Bottom"
+msgstr "Дъно"
 
 
 msgid "Action"
@@ -144,8 +156,8 @@ msgid "Deform"
 msgstr "Деформиране"
 
 
-msgid "Remove"
-msgstr "Премахване"
+msgid "Index"
+msgstr "Индекс"
 
 
 msgid "Fill"
@@ -174,10 +186,6 @@ msgstr "Отрязване"
 
 msgid "Left"
 msgstr "Ляво"
-
-
-msgid "Center"
-msgstr "Център"
 
 
 msgid "Default Goal (vertex target position) value, when no Vertex Group used"
@@ -272,10 +280,6 @@ msgid "Camera"
 msgstr "Камера"
 
 
-msgid "Always"
-msgstr "Винаги"
-
-
 msgid "Front"
 msgstr "Отпред"
 
@@ -288,10 +292,6 @@ msgid "Poly"
 msgstr "Поли"
 
 
-msgid "Bezier"
-msgstr "Беазие"
-
-
 msgid "Split"
 msgstr "Разделяне"
 
@@ -302,10 +302,6 @@ msgstr "Равнина"
 
 msgid "View"
 msgstr "Изглед"
-
-
-msgid "Index"
-msgstr "Индекс"
 
 
 msgid "Render"
@@ -432,10 +428,6 @@ msgid "Delete"
 msgstr "Изтриване"
 
 
-msgid "Bottom"
-msgstr "Дъно"
-
-
 msgid "Collision"
 msgstr "Противоречия"
 
@@ -556,10 +548,6 @@ msgid "Layers"
 msgstr "Слоеве"
 
 
-msgid "AVI Raw"
-msgstr "AVI Суров"
-
-
 msgid "Movie"
 msgstr "Преместване"
 
@@ -638,6 +626,10 @@ msgstr "Модел"
 
 msgid "Sharp"
 msgstr "Рязък"
+
+
+msgid "Themes"
+msgstr "Теми"
 
 
 msgid "Mist"
@@ -1010,25 +1002,16 @@ msgid "Report"
 msgstr "Докладвай"
 
 
+msgid "Handles"
+msgstr "Дръжки"
+
+
 msgid "Shrink/Fatten"
 msgstr "Смали/Удебели"
 
 
 msgid "Push/Pull"
 msgstr "Натиск/Дърпане"
-
-
-msgctxt "Operator"
-msgid "Add Bezier Circle"
-msgstr "Добави Кръг на Безие"
-
-
-msgid "Construct a Bezier Circle"
-msgstr "Конструира Кръг на Безие"
-
-
-msgid "Construct a Bezier Curve"
-msgstr "Конструира Крива на Безие"
 
 
 msgctxt "Operator"
@@ -1058,10 +1041,6 @@ msgid "Spin"
 msgstr "Завъртане"
 
 
-msgid "Handles"
-msgstr "Дръжки"
-
-
 msgid "Item"
 msgstr "Артикул"
 
@@ -1072,14 +1051,6 @@ msgstr "Лампа"
 
 msgid "Other"
 msgstr "Колеб"
-
-
-msgid "Compress"
-msgstr "Компресирай"
-
-
-msgid "End frame for baking"
-msgstr "Краен кадър за изпичане"
 
 
 msgid "Open"
@@ -1116,12 +1087,21 @@ msgid "Unlink"
 msgstr "Развържи"
 
 
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "Завърти"
+
+
 msgid "Both"
 msgstr "Двете"
 
 
 msgid "Join"
 msgstr "Събери"
+
+
+msgid "Remove"
+msgstr "Премахване"
 
 
 msgid "Next Keyframe"
@@ -1142,10 +1122,6 @@ msgstr "X Начало"
 
 msgid "Y Start"
 msgstr "Y Начало"
-
-
-msgid "Shadeless"
-msgstr "Без сенки"
 
 
 msgctxt "Operator"
@@ -1234,6 +1210,10 @@ msgid "Smooth along the Z axis"
 msgstr "Ограничение на въртенето по дълбочинната ос"
 
 
+msgid "End frame for baking"
+msgstr "Краен кадър за изпичане"
+
+
 msgctxt "Operator"
 msgid "Make Single User"
 msgstr "Направи с Единствен Потребител"
@@ -1244,6 +1224,10 @@ msgid "Hide"
 msgstr "Скриване"
 
 
+msgid "Wrap"
+msgstr "Обвив"
+
+
 msgctxt "Operator"
 msgid "Bake"
 msgstr "Изпечи"
@@ -1252,10 +1236,6 @@ msgstr "Изпечи"
 msgctxt "Operator"
 msgid "Add Constraint"
 msgstr "Добавяне на ограничител"
-
-
-msgid "Monkey"
-msgstr "Маймуна"
 
 
 msgctxt "Operator"
@@ -1418,10 +1398,6 @@ msgid "Toggle Quad View"
 msgstr "Превключване на Четворен Иглед"
 
 
-msgid "Themes"
-msgstr "Теми"
-
-
 msgid "Editing"
 msgstr "Редактиране"
 
@@ -1523,11 +1499,6 @@ msgstr "Натиск/Дърпане"
 
 
 msgctxt "Operator"
-msgid "Rotate"
-msgstr "Завърти"
-
-
-msgctxt "Operator"
 msgid "Shrink/Fatten"
 msgstr "Смали/Удебели"
 
@@ -1561,10 +1532,6 @@ msgstr "Делта X"
 msgctxt "Operator"
 msgid "Zoom Camera 1:1"
 msgstr "Увеличи Камера 1:1"
-
-
-msgid "Wrap"
-msgstr "Обвив"
 
 
 msgid "Doc ID"
@@ -1641,6 +1608,10 @@ msgid "Save the current file in the desired location"
 msgstr "Запазва текущия файл в желаната директория"
 
 
+msgid "Compress"
+msgstr "Компресирай"
+
+
 msgid "Write compressed .blend file"
 msgstr "Запиши компресиран .blend файл"
 
@@ -1686,10 +1657,6 @@ msgstr "Колеб"
 
 msgid "Threads"
 msgstr "Нишки"
-
-
-msgid "Viscosity"
-msgstr "Вискозитет"
 
 
 msgid "Note"
@@ -1740,6 +1707,10 @@ msgid "FPS"
 msgstr "FPS"
 
 
+msgid "Viscosity"
+msgstr "Вискозитет"
+
+
 msgid "Edge spring friction"
 msgstr "Триене на ръбовите пружини"
 
@@ -1782,10 +1753,6 @@ msgstr "Върти около 3D курсора"
 
 msgid "Chroma Vectorscope"
 msgstr "Цветен Векторскоп"
-
-
-msgid "Bezier U"
-msgstr "Беазие U"
 
 
 msgid "Stencil"
@@ -1853,12 +1820,16 @@ msgid "Layer:"
 msgstr "Слой"
 
 
+msgid "%d items"
+msgstr "%d артикули"
+
+
 msgid "Stop this job"
 msgstr "Спри тази задача"
 
 
-msgid "%d items"
-msgstr "%d артикули"
+msgid "Cancel"
+msgstr "Отказ"
 
 
 msgid "OK"
@@ -1869,20 +1840,12 @@ msgid "Fields"
 msgstr "Полета"
 
 
-msgid "Cancel"
-msgstr "Отказ"
-
-
 msgid "{} (String)"
 msgstr "{} (String)"
 
 
 msgid "{} (Integer)"
 msgstr "{} (Integer)"
-
-
-msgid "OK?"
-msgstr "ОК?"
 
 
 msgid "English (English)"

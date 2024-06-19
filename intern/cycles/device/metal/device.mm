@@ -6,6 +6,7 @@
 
 #  include "device/metal/device.h"
 #  include "device/metal/device_impl.h"
+#  include "integrator/denoiser_oidn_gpu.h"
 
 #endif
 
@@ -17,9 +18,12 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef WITH_METAL
 
-Device *device_metal_create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
+Device *device_metal_create(const DeviceInfo &info,
+                            Stats &stats,
+                            Profiler &profiler,
+                            bool headless)
 {
-  return new MetalDevice(info, stats, profiler);
+  return new MetalDevice(info, stats, profiler, headless);
 }
 
 bool device_metal_init()
@@ -55,6 +59,15 @@ void device_metal_info(vector<DeviceInfo> &devices)
     info.display_device = true;
     info.denoisers = DENOISER_NONE;
     info.id = id;
+#  if defined(WITH_OPENIMAGEDENOISE)
+#    if OIDN_VERSION >= 20300
+    if (oidnIsMetalDeviceSupported(device)) {
+#    else
+    if (OIDNDenoiserGPU::is_device_supported(info)) {
+#    endif
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
 
     MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
 
@@ -79,6 +92,12 @@ void device_metal_info(vector<DeviceInfo> &devices)
 
     devices.push_back(info);
     device_index++;
+
+    VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
+
+    if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
+                << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 }
 

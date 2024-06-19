@@ -8,13 +8,14 @@
 
 #include "BLI_array_utils.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 
 #include "ED_curves.hh"
 
 namespace blender::ed::curves {
 
-bool remove_selection(bke::CurvesGeometry &curves, const eAttrDomain selection_domain)
+bool remove_selection(bke::CurvesGeometry &curves, const bke::AttrDomain selection_domain)
 {
   const bke::AttributeAccessor attributes = curves.attributes();
   const VArray<bool> selection = *attributes.lookup_or_default<bool>(
@@ -23,11 +24,11 @@ bool remove_selection(bke::CurvesGeometry &curves, const eAttrDomain selection_d
   IndexMaskMemory memory;
   const IndexMask mask = IndexMask::from_bools(selection, memory);
   switch (selection_domain) {
-    case ATTR_DOMAIN_POINT:
-      curves.remove_points(mask);
+    case bke::AttrDomain::Point:
+      curves.remove_points(mask, {});
       break;
-    case ATTR_DOMAIN_CURVE:
-      curves.remove_curves(mask);
+    case bke::AttrDomain::Curve:
+      curves.remove_curves(mask, {});
       break;
     default:
       BLI_assert_unreachable();
@@ -104,7 +105,7 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   /* Delete selection attribute so that it will not have to be resized. */
-  attributes.remove(".selection");
+  remove_selection_attributes(attributes);
 
   curves.resize(old_points_num + num_points_to_add, old_curves_num + num_curves_to_add);
 
@@ -122,8 +123,9 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     }
 
     switch (meta_data.domain) {
-      case ATTR_DOMAIN_CURVE: {
+      case bke::AttrDomain::Curve: {
         if (id.name() == "cyclic") {
+          attribute.finish();
           return true;
         }
         bke::attribute_math::gather(
@@ -132,7 +134,7 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
             attribute.span.slice(IndexRange(old_curves_num, num_curves_to_add)));
         break;
       }
-      case ATTR_DOMAIN_POINT: {
+      case bke::AttrDomain::Point: {
         bke::attribute_math::gather(
             attribute.span,
             dst_to_src_point,
@@ -158,10 +160,12 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
   curves.update_curve_types();
   curves.tag_topology_changed();
 
-  bke::SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
-      ".selection", ATTR_DOMAIN_POINT);
-  selection.span.take_back(num_points_to_add).fill(true);
-  selection.finish();
+  for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
+    bke::SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
+        selection_name, bke::AttrDomain::Point);
+    selection.span.take_back(num_points_to_add).fill(true);
+    selection.finish();
+  }
 }
 
 void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
@@ -171,7 +175,7 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   /* Delete selection attribute so that it will not have to be resized. */
-  attributes.remove(".selection");
+  remove_selection_attributes(attributes);
 
   /* Resize the curves and copy the offsets of duplicated curves into the new offsets. */
   curves.resize(curves.points_num(), orig_curves_num + mask.size());
@@ -192,14 +196,14 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
   attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
     bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
     switch (meta_data.domain) {
-      case ATTR_DOMAIN_POINT:
+      case bke::AttrDomain::Point:
         bke::attribute_math::gather_group_to_group(points_by_curve.slice(orig_curves_range),
                                                    points_by_curve.slice(new_curves_range),
                                                    mask,
                                                    attribute.span,
                                                    attribute.span);
         break;
-      case ATTR_DOMAIN_CURVE:
+      case bke::AttrDomain::Curve:
         array_utils::gather(attribute.span, mask, attribute.span.take_back(mask.size()));
         break;
       default:
@@ -213,10 +217,12 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
   curves.update_curve_types();
   curves.tag_topology_changed();
 
-  bke::SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
-      ".selection", ATTR_DOMAIN_CURVE);
-  selection.span.take_back(mask.size()).fill(true);
-  selection.finish();
+  for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
+    bke::SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
+        selection_name, bke::AttrDomain::Curve);
+    selection.span.take_back(mask.size()).fill(true);
+    selection.finish();
+  }
 }
 
 }  // namespace blender::ed::curves

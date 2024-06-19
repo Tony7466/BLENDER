@@ -78,7 +78,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    const bke::MeshFieldContext context{*mesh, ATTR_DOMAIN_POINT};
+    const bke::MeshFieldContext context{*mesh, AttrDomain::Point};
     fn::FieldEvaluator evaluator{context, mesh->verts_num};
     evaluator.add(params.get_input<Field<int>>("Next Vertex Index"));
     evaluator.add(params.get_input<Field<bool>>("Start Vertices"));
@@ -101,13 +101,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_EDGE_PATHS_TO_CURVES, "Edge Paths to Curves", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

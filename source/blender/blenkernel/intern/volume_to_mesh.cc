@@ -8,12 +8,7 @@
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_volume_types.h"
-
 #include "BKE_mesh.hh"
-#include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
@@ -181,12 +176,19 @@ Mesh *volume_to_mesh(const openvdb::GridBase &grid,
                               mesh->face_offsets_for_write(),
                               mesh->corner_verts_for_write());
 
-  BKE_mesh_calc_edges(mesh, false, false);
+  mesh_calc_edges(*mesh, false, false);
   mesh_smooth_set(*mesh, false);
 
   mesh->tag_overlapping_none();
 
   return mesh;
+}
+
+Mesh *volume_grid_to_mesh(const openvdb::GridBase &grid,
+                          const float threshold,
+                          const float adaptivity)
+{
+  return volume_to_mesh(grid, {VOLUME_TO_MESH_RESOLUTION_MODE_GRID}, threshold, adaptivity);
 }
 
 #endif /* WITH_OPENVDB */

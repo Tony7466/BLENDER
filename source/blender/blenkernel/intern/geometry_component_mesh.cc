@@ -5,15 +5,14 @@
 #include "BLI_listbase.h"
 #include "BLI_task.hh"
 
-#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -29,6 +28,11 @@ namespace blender::bke {
 
 MeshComponent::MeshComponent() : GeometryComponent(Type::Mesh) {}
 
+MeshComponent::MeshComponent(Mesh *mesh, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Mesh), mesh_(mesh), ownership_(ownership)
+{
+}
+
 MeshComponent::~MeshComponent()
 {
   this->clear();
@@ -38,7 +42,7 @@ GeometryComponentPtr MeshComponent::copy() const
 {
   MeshComponent *new_component = new MeshComponent();
   if (mesh_ != nullptr) {
-    new_component->mesh_ = BKE_mesh_copy_for_eval(mesh_);
+    new_component->mesh_ = BKE_mesh_copy_for_eval(*mesh_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return GeometryComponentPtr(new_component);
@@ -85,7 +89,7 @@ Mesh *MeshComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    mesh_ = BKE_mesh_copy_for_eval(mesh_);
+    mesh_ = BKE_mesh_copy_for_eval(*mesh_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return mesh_;
@@ -106,7 +110,7 @@ void MeshComponent::ensure_owns_direct_data()
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
     if (mesh_) {
-      mesh_ = BKE_mesh_copy_for_eval(mesh_);
+      mesh_ = BKE_mesh_copy_for_eval(*mesh_);
     }
     ownership_ = GeometryOwnershipType::Owned;
   }
@@ -120,16 +124,16 @@ void MeshComponent::ensure_owns_direct_data()
 
 VArray<float3> mesh_normals_varray(const Mesh &mesh,
                                    const IndexMask &mask,
-                                   const eAttrDomain domain)
+                                   const AttrDomain domain)
 {
   switch (domain) {
-    case ATTR_DOMAIN_FACE: {
+    case AttrDomain::Face: {
       return VArray<float3>::ForSpan(mesh.face_normals());
     }
-    case ATTR_DOMAIN_POINT: {
+    case AttrDomain::Point: {
       return VArray<float3>::ForSpan(mesh.vert_normals());
     }
-    case ATTR_DOMAIN_EDGE: {
+    case AttrDomain::Edge: {
       /* In this case, start with vertex normals and convert to the edge domain, since the
        * conversion from edges to vertices is very simple. Use "manual" domain interpolation
        * instead of the GeometryComponent API to avoid calculating unnecessary values and to
@@ -145,13 +149,13 @@ VArray<float3> mesh_normals_varray(const Mesh &mesh,
 
       return VArray<float3>::ForContainer(std::move(edge_normals));
     }
-    case ATTR_DOMAIN_CORNER: {
+    case AttrDomain::Corner: {
       /* The normals on corners are just the mesh's face normals, so start with the face normal
        * array and copy the face normal for each of its corners. In this case using the mesh
        * component's generic domain interpolation is fine, the data will still be normalized,
        * since the face normal is just copied to every corner. */
       return mesh.attributes().adapt_domain(
-          VArray<float3>::ForSpan(mesh.face_normals()), ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER);
+          VArray<float3>::ForSpan(mesh.face_normals()), AttrDomain::Face, AttrDomain::Corner);
     }
     default:
       return {};
@@ -733,34 +737,34 @@ static GVArray adapt_mesh_domain_edge_to_face(const Mesh &mesh, const GVArray &v
 }
 
 static bool can_simple_adapt_for_single(const Mesh &mesh,
-                                        const eAttrDomain from_domain,
-                                        const eAttrDomain to_domain)
+                                        const AttrDomain from_domain,
+                                        const AttrDomain to_domain)
 {
   /* For some domain combinations, a single value will always map directly. For others, there may
    * be loose elements on the result domain that should have the default value rather than the
    * single value from the source. */
   switch (from_domain) {
-    case ATTR_DOMAIN_POINT:
+    case AttrDomain::Point:
       /* All other domains are always connected to points. */
       return true;
-    case ATTR_DOMAIN_EDGE:
-      if (to_domain == ATTR_DOMAIN_POINT) {
+    case AttrDomain::Edge:
+      if (to_domain == AttrDomain::Point) {
         return mesh.loose_verts().count == 0;
       }
       return true;
-    case ATTR_DOMAIN_FACE:
-      if (to_domain == ATTR_DOMAIN_POINT) {
+    case AttrDomain::Face:
+      if (to_domain == AttrDomain::Point) {
         return mesh.verts_no_face().count == 0;
       }
-      if (to_domain == ATTR_DOMAIN_EDGE) {
+      if (to_domain == AttrDomain::Edge) {
         return mesh.loose_edges().count == 0;
       }
       return true;
-    case ATTR_DOMAIN_CORNER:
-      if (to_domain == ATTR_DOMAIN_POINT) {
+    case AttrDomain::Corner:
+      if (to_domain == AttrDomain::Point) {
         return mesh.verts_no_face().count == 0;
       }
-      if (to_domain == ATTR_DOMAIN_EDGE) {
+      if (to_domain == AttrDomain::Edge) {
         return mesh.loose_edges().count == 0;
       }
       return true;
@@ -772,8 +776,8 @@ static bool can_simple_adapt_for_single(const Mesh &mesh,
 
 static GVArray adapt_mesh_attribute_domain(const Mesh &mesh,
                                            const GVArray &varray,
-                                           const eAttrDomain from_domain,
-                                           const eAttrDomain to_domain)
+                                           const AttrDomain from_domain,
+                                           const AttrDomain to_domain)
 {
   if (!varray) {
     return {};
@@ -793,52 +797,52 @@ static GVArray adapt_mesh_attribute_domain(const Mesh &mesh,
   }
 
   switch (from_domain) {
-    case ATTR_DOMAIN_CORNER: {
+    case AttrDomain::Corner: {
       switch (to_domain) {
-        case ATTR_DOMAIN_POINT:
+        case AttrDomain::Point:
           return adapt_mesh_domain_corner_to_point(mesh, varray);
-        case ATTR_DOMAIN_FACE:
+        case AttrDomain::Face:
           return adapt_mesh_domain_corner_to_face(mesh, varray);
-        case ATTR_DOMAIN_EDGE:
+        case AttrDomain::Edge:
           return adapt_mesh_domain_corner_to_edge(mesh, varray);
         default:
           break;
       }
       break;
     }
-    case ATTR_DOMAIN_POINT: {
+    case AttrDomain::Point: {
       switch (to_domain) {
-        case ATTR_DOMAIN_CORNER:
+        case AttrDomain::Corner:
           return adapt_mesh_domain_point_to_corner(mesh, varray);
-        case ATTR_DOMAIN_FACE:
+        case AttrDomain::Face:
           return adapt_mesh_domain_point_to_face(mesh, varray);
-        case ATTR_DOMAIN_EDGE:
+        case AttrDomain::Edge:
           return adapt_mesh_domain_point_to_edge(mesh, varray);
         default:
           break;
       }
       break;
     }
-    case ATTR_DOMAIN_FACE: {
+    case AttrDomain::Face: {
       switch (to_domain) {
-        case ATTR_DOMAIN_POINT:
+        case AttrDomain::Point:
           return adapt_mesh_domain_face_to_point(mesh, varray);
-        case ATTR_DOMAIN_CORNER:
+        case AttrDomain::Corner:
           return adapt_mesh_domain_face_to_corner(mesh, varray);
-        case ATTR_DOMAIN_EDGE:
+        case AttrDomain::Edge:
           return adapt_mesh_domain_face_to_edge(mesh, varray);
         default:
           break;
       }
       break;
     }
-    case ATTR_DOMAIN_EDGE: {
+    case AttrDomain::Edge: {
       switch (to_domain) {
-        case ATTR_DOMAIN_CORNER:
+        case AttrDomain::Corner:
           return adapt_mesh_domain_edge_to_corner(mesh, varray);
-        case ATTR_DOMAIN_POINT:
+        case AttrDomain::Point:
           return adapt_mesh_domain_edge_to_point(mesh, varray);
-        case ATTR_DOMAIN_FACE:
+        case AttrDomain::Face:
           return adapt_mesh_domain_edge_to_face(mesh, varray);
         default:
           break;
@@ -891,9 +895,9 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     const Span<MDeformVert> dverts = mesh->deform_verts();
     if (dverts.is_empty()) {
       static const float default_value = 0.0f;
-      return {VArray<float>::ForSingle(default_value, mesh->verts_num), ATTR_DOMAIN_POINT};
+      return {VArray<float>::ForSingle(default_value, mesh->verts_num), AttrDomain::Point};
     }
-    return {bke::varray_for_deform_verts(dverts, vertex_group_index), ATTR_DOMAIN_POINT};
+    return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
@@ -913,7 +917,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
       return {};
     }
     MutableSpan<MDeformVert> dverts = mesh->deform_verts_for_write();
-    return {bke::varray_for_mutable_deform_verts(dverts, vertex_group_index), ATTR_DOMAIN_POINT};
+    return {varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
@@ -940,7 +944,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     }
 
     MutableSpan<MDeformVert> dverts = mesh->deform_verts_for_write();
-    bke::remove_defgroup_index(dverts, index);
+    remove_defgroup_index(dverts, index);
     return true;
   }
 
@@ -952,16 +956,16 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     }
 
     LISTBASE_FOREACH (const bDeformGroup *, group, &mesh->vertex_group_names) {
-      if (!callback(group->name, {ATTR_DOMAIN_POINT, CD_PROP_FLOAT})) {
+      if (!callback(group->name, {AttrDomain::Point, CD_PROP_FLOAT})) {
         return false;
       }
     }
     return true;
   }
 
-  void foreach_domain(const FunctionRef<void(eAttrDomain)> callback) const final
+  void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const final
   {
-    callback(ATTR_DOMAIN_POINT);
+    callback(AttrDomain::Point);
   }
 };
 
@@ -1004,19 +1008,15 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
 #undef MAKE_MUTABLE_CUSTOM_DATA_GETTER
 
   static BuiltinCustomDataLayerProvider position("position",
-                                                 ATTR_DOMAIN_POINT,
+                                                 AttrDomain::Point,
                                                  CD_PROP_FLOAT3,
-                                                 CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);
 
   static BuiltinCustomDataLayerProvider id("id",
-                                           ATTR_DOMAIN_POINT,
+                                           AttrDomain::Point,
                                            CD_PROP_INT32,
-                                           CD_PROP_INT32,
-                                           BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            nullptr);
@@ -1029,10 +1029,8 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
       },
       mf::build::exec_presets::AllSpanOrSingle());
   static BuiltinCustomDataLayerProvider material_index("material_index",
-                                                       ATTR_DOMAIN_FACE,
+                                                       AttrDomain::Face,
                                                        CD_PROP_INT32,
-                                                       CD_PROP_INT32,
-                                                       BuiltinAttributeProvider::Creatable,
                                                        BuiltinAttributeProvider::Deletable,
                                                        face_access,
                                                        nullptr,
@@ -1043,63 +1041,53 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
       [](int2 value) { return math::max(value, int2(0)); },
       mf::build::exec_presets::AllSpanOrSingle());
   static BuiltinCustomDataLayerProvider edge_verts(".edge_verts",
-                                                   ATTR_DOMAIN_EDGE,
+                                                   AttrDomain::Edge,
                                                    CD_PROP_INT32_2D,
-                                                   CD_PROP_INT32_2D,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::NonDeletable,
                                                    edge_access,
                                                    nullptr,
                                                    AttributeValidator{&int2_index_clamp});
 
-  /* Note: This clamping is more of a last resort, since it's quite easy to make an
+  /* NOTE: This clamping is more of a last resort, since it's quite easy to make an
    * invalid mesh that will crash Blender by arbitrarily editing this attribute. */
   static const auto int_index_clamp = mf::build::SI1_SO<int, int>(
       "Index Validate",
       [](int value) { return std::max(value, 0); },
       mf::build::exec_presets::AllSpanOrSingle());
   static BuiltinCustomDataLayerProvider corner_vert(".corner_vert",
-                                                    ATTR_DOMAIN_CORNER,
+                                                    AttrDomain::Corner,
                                                     CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
                                                     AttributeValidator{&int_index_clamp});
   static BuiltinCustomDataLayerProvider corner_edge(".corner_edge",
-                                                    ATTR_DOMAIN_CORNER,
+                                                    AttrDomain::Corner,
                                                     CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
                                                     AttributeValidator{&int_index_clamp});
 
   static BuiltinCustomDataLayerProvider sharp_face("sharp_face",
-                                                   ATTR_DOMAIN_FACE,
+                                                   AttrDomain::Face,
                                                    CD_PROP_BOOL,
-                                                   CD_PROP_BOOL,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
                                                    tag_component_sharpness_changed);
 
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
-                                                   ATTR_DOMAIN_EDGE,
+                                                   AttrDomain::Edge,
                                                    CD_PROP_BOOL,
-                                                   CD_PROP_BOOL,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
                                                    tag_component_sharpness_changed);
 
   static MeshVertexGroupsAttributeProvider vertex_groups;
-  static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);
-  static CustomDataAttributeProvider point_custom_data(ATTR_DOMAIN_POINT, point_access);
-  static CustomDataAttributeProvider edge_custom_data(ATTR_DOMAIN_EDGE, edge_access);
-  static CustomDataAttributeProvider face_custom_data(ATTR_DOMAIN_FACE, face_access);
+  static CustomDataAttributeProvider corner_custom_data(AttrDomain::Corner, corner_access);
+  static CustomDataAttributeProvider point_custom_data(AttrDomain::Point, point_access);
+  static CustomDataAttributeProvider edge_custom_data(AttrDomain::Edge, edge_access);
+  static CustomDataAttributeProvider face_custom_data(AttrDomain::Face, face_access);
 
   return ComponentAttributeProviders({&position,
                                       &edge_verts,
@@ -1121,31 +1109,31 @@ static AttributeAccessorFunctions get_mesh_accessor_functions()
   static const ComponentAttributeProviders providers = create_attribute_providers_for_mesh();
   AttributeAccessorFunctions fn =
       attribute_accessor_functions::accessor_functions_for_providers<providers>();
-  fn.domain_size = [](const void *owner, const eAttrDomain domain) {
+  fn.domain_size = [](const void *owner, const AttrDomain domain) {
     if (owner == nullptr) {
       return 0;
     }
     const Mesh &mesh = *static_cast<const Mesh *>(owner);
     switch (domain) {
-      case ATTR_DOMAIN_POINT:
+      case AttrDomain::Point:
         return mesh.verts_num;
-      case ATTR_DOMAIN_EDGE:
+      case AttrDomain::Edge:
         return mesh.edges_num;
-      case ATTR_DOMAIN_FACE:
+      case AttrDomain::Face:
         return mesh.faces_num;
-      case ATTR_DOMAIN_CORNER:
+      case AttrDomain::Corner:
         return mesh.corners_num;
       default:
         return 0;
     }
   };
-  fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
-    return ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER);
+  fn.domain_supported = [](const void * /*owner*/, const AttrDomain domain) {
+    return ELEM(domain, AttrDomain::Point, AttrDomain::Edge, AttrDomain::Face, AttrDomain::Corner);
   };
   fn.adapt_domain = [](const void *owner,
                        const GVArray &varray,
-                       const eAttrDomain from_domain,
-                       const eAttrDomain to_domain) -> GVArray {
+                       const AttrDomain from_domain,
+                       const AttrDomain to_domain) -> GVArray {
     if (owner == nullptr) {
       return {};
     }

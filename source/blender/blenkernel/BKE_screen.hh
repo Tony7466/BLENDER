@@ -7,23 +7,32 @@
  * \ingroup bke
  */
 
+#include <memory>
+#include <string>
+
 #include "BLI_compiler_attrs.h"
+#include "BLI_vector.hh"
 
 #include "RNA_types.hh"
 
 #include "BKE_context.hh"
+
+namespace blender::bke::id {
+class IDRemapper;
+}
 
 namespace blender::asset_system {
 class AssetRepresentation;
 }
 
 struct ARegion;
+struct AssetShelfType;
 struct BlendDataReader;
 struct BlendLibReader;
 struct BlendWriter;
 struct Header;
 struct ID;
-struct IDRemapper;
+struct LayoutPanelState;
 struct LibraryForeachIDData;
 struct ListBase;
 struct Menu;
@@ -63,8 +72,6 @@ struct wmSpaceTypeListenerParams {
 };
 
 struct SpaceType {
-  SpaceType *next, *prev;
-
   char name[BKE_ST_MAXNAME]; /* for menus */
   int spaceid;               /* unique space identifier */
   int iconid;                /* icon lookup for menus */
@@ -105,7 +112,7 @@ struct SpaceType {
   bContextDataCallback context;
 
   /* Used when we want to replace an ID by another (or NULL). */
-  void (*id_remap)(ScrArea *area, SpaceLink *sl, const IDRemapper *mappings);
+  void (*id_remap)(ScrArea *area, SpaceLink *sl, const blender::bke::id::IDRemapper &mappings);
 
   /**
    * foreach_id callback to process all ID pointers of the editor. Used indirectly by lib_query's
@@ -136,13 +143,12 @@ struct SpaceType {
   /* region type definitions */
   ListBase regiontypes;
 
-  /** Asset shelf type definitions. */
-  ListBase asset_shelf_types; /* #AssetShelfType */
-
   /* read and write... */
 
   /** Default key-maps to add. */
   int keymapflag;
+
+  ~SpaceType();
 };
 
 /* region types are also defined using spacetypes_init, via a callback */
@@ -216,13 +222,19 @@ struct ARegionType {
 
   /* register operator types on startup */
   void (*operatortypes)();
-  /* add own items to keymap */
+  /* add items to keymap */
   void (*keymap)(wmKeyConfig *keyconf);
   /* allows default cursor per region */
   void (*cursor)(wmWindow *win, ScrArea *area, ARegion *region);
 
   /* return context data */
   bContextDataCallback context;
+
+  /**
+   * Called on every frame in which the region's poll succeeds, regardless of visibility, before
+   * drawing, visibility evaluation and initialization. Allows the region to override visibility.
+   */
+  void (*on_poll_success)(const bContext *C, ARegion *region);
 
   /**
    * Called whenever the user changes the region's size. Not called when the size is changed
@@ -278,6 +290,7 @@ struct PanelType {
   char parent_id[BKE_ST_MAXNAME]; /* parent idname for sub-panels */
   /** Boolean property identifier of the panel custom data. Used to draw a highlighted border. */
   char active_property[BKE_ST_MAXNAME];
+  char pin_to_last_property[BKE_ST_MAXNAME];
   short space_type;
   short region_type;
   /* For popovers, 0 for default. */
@@ -340,6 +353,37 @@ enum {
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
 
+struct LayoutPanelHeader {
+  float start_y;
+  float end_y;
+  PointerRNA open_owner_ptr;
+  std::string open_prop_name;
+};
+
+struct LayoutPanelBody {
+  float start_y;
+  float end_y;
+};
+
+/**
+ * "Layout Panels" are panels which are defined as part of the #uiLayout. As such they have a
+ * specific place in the layout and can not be freely dragged around like top level panels.
+ *
+ * This struct gathers information about the layout panels created by layout code. This is then
+ * used for e.g. drawing the backdrop of nested panels and to support opening and closing multiple
+ * panels with a single mouse gesture.
+ */
+struct LayoutPanels {
+  blender::Vector<LayoutPanelHeader> headers;
+  blender::Vector<LayoutPanelBody> bodies;
+
+  void clear()
+  {
+    this->headers.clear();
+    this->bodies.clear();
+  }
+};
+
 struct Panel_Runtime {
   /* Applied to Panel.ofsx, but saved separately so we can track changes between redraws. */
   int region_ofsx = 0;
@@ -359,6 +403,9 @@ struct Panel_Runtime {
 
   /* Non-owning pointer. The context is stored in the block. */
   bContextStore *context = nullptr;
+
+  /** Information about nested layout panels generated in layout code. */
+  LayoutPanels layout_panels;
 };
 
 /* #uiList types. */
@@ -473,19 +520,24 @@ enum AssetShelfTypeFlag {
   /** Do not trigger asset dragging on drag events. Drag events can be overridden with custom
    * keymap items then. */
   ASSET_SHELF_TYPE_FLAG_NO_ASSET_DRAG = (1 << 0),
+  ASSET_SHELF_TYPE_FLAG_DEFAULT_VISIBLE = (1 << 1),
+  ASSET_SHELF_TYPE_FLAG_STORE_CATALOGS_IN_PREFS = (1 << 2),
 
   ASSET_SHELF_TYPE_FLAG_MAX
 };
 ENUM_OPERATORS(AssetShelfTypeFlag, ASSET_SHELF_TYPE_FLAG_MAX);
 
 struct AssetShelfType {
-  AssetShelfType *next, *prev;
-
   char idname[BKE_ST_MAXNAME]; /* unique name */
 
   int space_type;
 
+  /** Operator to call when activating a grid view item. */
+  std::string activate_operator;
+
   AssetShelfTypeFlag flag;
+
+  short default_preview_size;
 
   /** Determine if asset shelves of this type should be available in current context or not. */
   bool (*poll)(const bContext *C, const AssetShelfType *shelf_type);
@@ -501,6 +553,8 @@ struct AssetShelfType {
                             const blender::asset_system::AssetRepresentation *asset,
                             uiLayout *layout);
 
+  const AssetWeakReference *(*get_active_asset)(const AssetShelfType *shelf_type);
+
   /* RNA integration */
   ExtensionRNA rna_ext;
 };
@@ -509,8 +563,8 @@ struct AssetShelfType {
 
 SpaceType *BKE_spacetype_from_id(int spaceid);
 ARegionType *BKE_regiontype_from_id(const SpaceType *st, int regionid);
-const ListBase *BKE_spacetypes_list();
-void BKE_spacetype_register(SpaceType *st);
+blender::Span<std::unique_ptr<SpaceType>> BKE_spacetypes_list();
+void BKE_spacetype_register(std::unique_ptr<SpaceType> st);
 bool BKE_spacetype_exists(int spaceid);
 void BKE_spacetypes_free(); /* only for quitting blender */
 
@@ -568,6 +622,14 @@ void BKE_screen_area_free(ScrArea *area);
  */
 void BKE_region_callback_free_gizmomap_set(void (*callback)(wmGizmoMap *));
 void BKE_region_callback_refresh_tag_gizmomap_set(void (*callback)(wmGizmoMap *));
+
+/**
+ * Get the layout panel state for the given idname. If it does not exist yet, initialize a new
+ * panel state with the given default value.
+ */
+LayoutPanelState *BKE_panel_layout_panel_state_ensure(Panel *panel,
+                                                      const char *idname,
+                                                      bool default_closed);
 
 /**
  * Find a region of type \a region_type in provided \a regionbase.

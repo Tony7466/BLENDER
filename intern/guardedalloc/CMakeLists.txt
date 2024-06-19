@@ -20,9 +20,9 @@ set(INC_SYS
 
 set(SRC
   ./intern/leak_detector.cc
-  ./intern/mallocn.c
-  ./intern/mallocn_guarded_impl.c
-  ./intern/mallocn_lockfree_impl.c
+  ./intern/mallocn.cc
+  ./intern/mallocn_guarded_impl.cc
+  ./intern/mallocn_lockfree_impl.cc
   ./intern/memory_usage.cc
 
   MEM_guardedalloc.h
@@ -83,6 +83,5 @@ if(WITH_GTESTS)
     bf_intern_guardedalloc
     bf_blenlib
   )
-  include(GTestTesting)
-  blender_add_test_executable(guardedalloc "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_executable(guardedalloc "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()

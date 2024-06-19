@@ -83,8 +83,8 @@ extern GHOST_TSuccess GHOST_DisposeEventConsumer(GHOST_EventConsumerHandle consu
 
 /**
  * Returns the system time.
- * Returns the number of milliseconds since the start of the system process.
- * Based on ANSI clock() routine.
+ * Returns the number of milliseconds since the start of the system.
+ *
  * \param systemhandle: The handle to the system.
  * \return The number of milliseconds.
  */
@@ -475,11 +475,11 @@ extern void GHOST_setNDOFDeadZone(float deadzone);
 #endif
 
 /***************************************************************************************
- * Drag'n'drop operations
+ * Drag & drop operations
  ***************************************************************************************/
 
 /**
- * Tells if the ongoing drag'n'drop object can be accepted upon mouse drop
+ * Tells if the ongoing drag & drop object can be accepted upon mouse drop.
  */
 extern void GHOST_setAcceptDragOperation(GHOST_WindowHandle windowhandle, bool can_accept);
 

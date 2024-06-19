@@ -10,30 +10,22 @@
 #include "abc_hierarchy_iterator.h"
 #include "intern/abc_axis_conversion.h"
 
-#include "BLI_array_utils.hh"
-#include "BLI_assert.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_customdata.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
 
 #include "bmesh.hh"
 #include "bmesh_tools.hh"
 
-#include "DEG_depsgraph.hh"
-
-#include "DNA_layer_types.h"
+#include "DNA_customdata_types.h"
+#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_object_fluidsim_types.h"
-#include "DNA_particle_types.h"
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.alembic"};
@@ -150,6 +142,9 @@ void ABCGenericMeshWriter::do_write(HierarchyContext &context)
   if (mesh == nullptr) {
     return;
   }
+
+  /* Ensure data exists if currently in edit mode. */
+  BKE_mesh_wrapper_ensure_mdata(mesh);
 
   if (args_.export_params->triangulate) {
     const bool tag_only = false;
@@ -370,7 +365,7 @@ bool ABCGenericMeshWriter::get_velocities(Mesh *mesh, std::vector<Imath::V3f> &v
   /* Export velocity attribute output by fluid sim, sequence cache modifier
    * and geometry nodes. */
   const CustomDataLayer *velocity_layer = BKE_id_attribute_find(
-      &mesh->id, "velocity", CD_PROP_FLOAT3, ATTR_DOMAIN_POINT);
+      &mesh->id, "velocity", CD_PROP_FLOAT3, bke::AttrDomain::Point);
 
   if (velocity_layer == nullptr) {
     return false;
@@ -395,7 +390,7 @@ void ABCGenericMeshWriter::get_geo_groups(Object *object,
 {
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
-      "material_index", ATTR_DOMAIN_FACE, 0);
+      "material_index", bke::AttrDomain::Face, 0);
 
   for (const int i : material_indices.index_range()) {
     short mnr = material_indices[i];
@@ -478,7 +473,8 @@ static void get_edge_creases(Mesh *mesh,
   sharpnesses.clear();
 
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const bke::AttributeReader attribute = attributes.lookup<float>("crease_edge", ATTR_DOMAIN_EDGE);
+  const bke::AttributeReader attribute = attributes.lookup<float>("crease_edge",
+                                                                  bke::AttrDomain::Edge);
   if (!attribute) {
     return;
   }
@@ -506,7 +502,7 @@ static void get_vert_creases(Mesh *mesh,
 
   const bke::AttributeAccessor attributes = mesh->attributes();
   const bke::AttributeReader attribute = attributes.lookup<float>("crease_vert",
-                                                                  ATTR_DOMAIN_POINT);
+                                                                  bke::AttrDomain::Point);
   if (!attribute) {
     return;
   }

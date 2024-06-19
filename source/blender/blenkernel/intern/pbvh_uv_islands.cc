@@ -312,7 +312,7 @@ UVVertex *UVEdge::get_other_uv_vertex(const int vertex)
 UVVertex *UVIsland::lookup(const UVVertex &vertex)
 {
   const int vert_index = vertex.vertex;
-  Vector<UVVertex *> &vertices = uv_vertex_lookup.lookup_or_add_default(vert_index);
+  const Vector<UVVertex *> &vertices = uv_vertex_lookup.lookup_or_add_default(vert_index);
   for (UVVertex *v : vertices) {
     if (v->uv == vertex.uv) {
       return v;
@@ -345,7 +345,8 @@ UVEdge *UVIsland::lookup(const UVEdge &edge)
   for (UVEdge *e : found_vertex->uv_edges) {
     UVVertex *other_vertex = e->get_other_uv_vertex(found_vertex->vertex);
     if (other_vertex->vertex == edge.vertices[1]->vertex &&
-        other_vertex->uv == edge.vertices[1]->uv) {
+        other_vertex->uv == edge.vertices[1]->uv)
+    {
       return e;
     }
   }
@@ -669,7 +670,7 @@ struct Fan {
 
 #endif
 
-  static bool is_path_valid(const Span<FanSegment *> &path,
+  static bool is_path_valid(const Span<FanSegment *> path,
                             const MeshData &mesh_data,
                             const int from_vertex,
                             const int to_vertex)
@@ -1032,9 +1033,8 @@ static void reset_extendability_flags(UVIsland &island)
       uv_vertex.flags.is_extended = false;
     }
   }
-
-  for (UVBorder border : island.borders) {
-    for (UVBorderEdge &border_edge : border.edges) {
+  for (const UVBorder &border : island.borders) {
+    for (const UVBorderEdge &border_edge : border.edges) {
       border_edge.edge->vertices[0]->flags.is_border = true;
       border_edge.edge->vertices[1]->flags.is_border = true;
     }
@@ -1185,7 +1185,7 @@ bool UVBorder::is_ccw() const
   copy_v2_v2(poly[0], uv_vertex1->uv);
   copy_v2_v2(poly[1], uv_vertex2->uv);
   copy_v2_v2(poly[2], uv_vertex3->uv);
-  const bool ccw = cross_poly_v2(poly, 3) < 0.0;
+  const bool ccw = cross_poly_v2(poly, 3) > 0.0;
   return ccw;
 }
 

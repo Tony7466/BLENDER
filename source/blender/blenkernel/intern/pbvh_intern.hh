@@ -11,8 +11,6 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_meshdata_types.h"
-
 /** \file
  * \ingroup bke
  */
@@ -31,9 +29,10 @@ struct PBVHNode {
   /* Opaque handle for drawing code */
   blender::draw::pbvh::PBVHBatches *draw_batches = nullptr;
 
-  /* Voxel bounds */
-  blender::Bounds<blender::float3> vb = {};
-  blender::Bounds<blender::float3> orig_vb = {};
+  /** Axis aligned min and max of all vertex positions in the node. */
+  blender::Bounds<blender::float3> bounds = {};
+  /** Bounds from the start of current brush stroke. */
+  blender::Bounds<blender::float3> bounds_orig = {};
 
   /* For internal nodes, the offset of the children in the PBVH
    * 'nodes' array. */
@@ -77,7 +76,7 @@ struct PBVHNode {
   /* Array of indices into the Mesh's corner array.
    * PBVH_FACES only.
    */
-  blender::Array<int, 0> loop_indices;
+  blender::Array<int, 0> corner_indices;
 
   /* An array mapping face corners into the vert_indices
    * array. The array is sized to match 'totprim', and each of
@@ -157,15 +156,10 @@ struct PBVH {
   blender::Span<int> corner_verts;
   /* Owned by the #PBVH, because after deformations they have to be recomputed. */
   blender::Array<blender::int3> corner_tris;
-  blender::Span<int> corner_tri_faces;
 
   /* Grid Data */
   CCGKey gridkey;
   SubdivCCG *subdiv_ccg;
-
-  /* Used during BVH build and later to mark that a vertex needs to update
-   * (its normal must be recalculated). */
-  blender::Array<bool> vert_bitmap;
 
 #ifdef PERFCNTRS
   int perf_modified;
@@ -185,10 +179,8 @@ struct PBVH {
 
   BMLog *bm_log;
 
-  blender::GroupedSpan<int> pmap;
-
   CustomDataLayer *color_layer;
-  eAttrDomain color_domain;
+  blender::bke::AttrDomain color_domain;
 
   /* Initialize this to true, instead of waiting for a draw engine
    * to set it. Prevents a crash in draw manager instancing code.
@@ -201,6 +193,8 @@ struct PBVH {
   PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
+
+  ~PBVH();
 };
 
 /* pbvh.cc */

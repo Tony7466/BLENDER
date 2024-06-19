@@ -12,20 +12,15 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_remesh_voxel.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -200,7 +195,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, 
   bke::mesh_smooth_set(*result, rmd->flag & MOD_REMESH_SMOOTH_SHADING);
 
   BKE_mesh_copy_parameters_for_eval(result, mesh);
-  BKE_mesh_calc_edges(result, true, false);
+  bke::mesh_calc_edges(*result, true, false);
 
   blender::geometry::debug_randomize_mesh_order(result);
 
@@ -254,7 +249,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   modifier_panel_end(layout, ptr);
 
 #else  /* WITH_MOD_REMESH */
-  uiItemL(layout, TIP_("Built without Remesh modifier"), ICON_NONE);
+  uiItemL(layout, RPT_("Built without Remesh modifier"), ICON_NONE);
 #endif /* WITH_MOD_REMESH */
 }
 
@@ -296,4 +291,5 @@ ModifierTypeInfo modifierType_Remesh = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

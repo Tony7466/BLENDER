@@ -16,16 +16,20 @@ if(WIN32)
   if(BUILD_MODE STREQUAL Release)
     add_custom_target(Harvest_Release_Results
       COMMAND # JPEG rename lib-file + copy include.
-      ${CMAKE_COMMAND} -E copy ${LIBDIR}/jpeg/lib/jpeg-static.lib ${HARVEST_TARGET}/jpeg/lib/libjpeg.lib &&
-      ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/jpeg/include/ ${HARVEST_TARGET}/jpeg/include/ &&
-      # PNG.
-      ${CMAKE_COMMAND} -E copy ${LIBDIR}/png/lib/libpng16_static.lib ${HARVEST_TARGET}/png/lib/libpng.lib &&
-      ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/png/include/ ${HARVEST_TARGET}/png/include/ &&
-      # FREEGLUT -> OPENGL.
-      ${CMAKE_COMMAND} -E copy ${LIBDIR}/freeglut/lib/freeglut_static.lib ${HARVEST_TARGET}/opengl/lib/freeglut_static.lib &&
-      ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/freeglut/include/ ${HARVEST_TARGET}/opengl/include/ &&
+      ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/jpeg/lib/jpeg-static.lib
+        ${HARVEST_TARGET}/jpeg/lib/libjpeg.lib &&
+      ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/jpeg/include/
+        ${HARVEST_TARGET}/jpeg/include/ &&
 
-      DEPENDS
+      # PNG.
+      ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/png/lib/libpng16_static.lib
+        ${HARVEST_TARGET}/png/lib/libpng.lib &&
+      ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/png/include/
+        ${HARVEST_TARGET}/png/include/
     )
   endif()
 
@@ -249,7 +253,7 @@ else()
   harvest(xr_openxr_sdk/lib xr_openxr_sdk/lib "*.a")
   harvest_rpath_bin(osl/bin osl/bin "oslc")
   harvest(osl/include osl/include "*.h")
-  harvest(osl/lib osl/lib "*.a")
+  harvest_rpath_lib(osl/lib osl/lib "*${SHAREDLIBEXT}*")
   harvest(osl/share/OSL/shaders osl/share/OSL/shaders "*.h")
   harvest(png/include png/include "*.h")
   harvest(png/lib png/lib "*.a")
@@ -273,10 +277,12 @@ else()
   harvest(opus/lib ffmpeg/lib "*.a")
   harvest(vpx/lib ffmpeg/lib "*.a")
   harvest(x264/lib ffmpeg/lib "*.a")
+  harvest(x265/lib ffmpeg/lib "*.a")
   harvest(aom/lib ffmpeg/lib "*.a")
   harvest(webp/lib webp/lib "*.a")
   harvest(webp/include webp/include "*.h")
   harvest(usd/include usd/include "*.h")
+  harvest(usd/include usd/include "*.hpp")
   harvest_rpath_lib(usd/lib usd/lib "libusd_ms${SHAREDLIBEXT}")
   harvest(usd/lib/usd usd/lib/usd "*")
   harvest_rpath_python(
@@ -315,7 +321,12 @@ else()
     harvest(libglu/lib mesa/lib "*${SHAREDLIBEXT}*")
     harvest(mesa/lib64 mesa/lib "*${SHAREDLIBEXT}*")
 
-    harvest(dpcpp dpcpp "*")
+    harvest(dpcpp/bin dpcpp/bin "*")
+    harvest(dpcpp/include dpcpp/include "*")
+    harvest(dpcpp/lib dpcpp/lib "libsycl*")
+    # avoid harvesting libpi_unified_runtime and libur_ as they're optional.
+    harvest(dpcpp/lib dpcpp/lib "libpi_level_zero*")
+    harvest(dpcpp/lib/clang dpcpp/lib/clang "*")
     harvest(igc dpcpp/lib/igc "*")
     harvest(ocloc dpcpp/lib/ocloc "*")
   endif()

@@ -8,7 +8,7 @@
  */
 
 /* struct DerivedMesh is used directly */
-#include "BKE_DerivedMesh.hh"
+#include "BKE_mesh_legacy_derived_mesh.hh"
 
 /* Thread sync primitives used directly. */
 #include "BLI_ordered_edge.hh"
@@ -81,25 +81,18 @@ struct CCGDerivedMesh {
   struct {
     int startVert;
     CCGVert *vert;
-  } * vertMap;
+  } *vertMap;
   struct {
     int startVert;
     int startEdge;
     CCGEdge *edge;
-  } * edgeMap;
+  } *edgeMap;
   struct {
     int startVert;
     int startEdge;
     int startFace;
     CCGFace *face;
-  } * faceMap;
-
-  int *reverseFaceMap;
-
-  PBVH *pbvh;
-
-  MeshElemMap *pmap;
-  int *pmap_mem;
+  } *faceMap;
 
   CCGElem **gridData;
   int *gridOffset;

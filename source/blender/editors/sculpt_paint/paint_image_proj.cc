@@ -7,6 +7,7 @@
  * \brief Functions to paint images in 2D and 3D.
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -26,6 +27,7 @@
 #include "BLI_math_bits.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -33,34 +35,33 @@
 
 #include "atomic_ops.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_interp.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
 #include "DNA_defs.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_enums.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_camera.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
 #include "BKE_image.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -70,8 +71,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -84,12 +85,13 @@
 #include "ED_object.hh"
 #include "ED_paint.hh"
 #include "ED_screen.hh"
+#include "ED_sculpt.hh"
 #include "ED_uvedit.hh"
 #include "ED_view3d.hh"
 #include "ED_view3d_offscreen.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_init_exit.h"
+#include "GPU_capabilities.hh"
+#include "GPU_init_exit.hh"
 
 #include "NOD_shader.h"
 
@@ -104,9 +106,9 @@
 #include "RNA_enum_types.hh"
 #include "RNA_types.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
-//#include "bmesh_tools.hh"
+// #include "bmesh_tools.hh"
 
 #include "paint_intern.hh"
 
@@ -137,15 +139,15 @@ BLI_INLINE uchar f_to_char(const float val)
 #define PROJ_BOUNDBOX_DIV 8
 #define PROJ_BOUNDBOX_SQUARED (PROJ_BOUNDBOX_DIV * PROJ_BOUNDBOX_DIV)
 
-//#define PROJ_DEBUG_PAINT 1
-//#define PROJ_DEBUG_NOSEAMBLEED 1
-//#define PROJ_DEBUG_PRINT_CLIP 1
+// #define PROJ_DEBUG_PAINT 1
+// #define PROJ_DEBUG_NOSEAMBLEED 1
+// #define PROJ_DEBUG_PRINT_CLIP 1
 #define PROJ_DEBUG_WINCLIP 1
 
 #ifndef PROJ_DEBUG_NOSEAMBLEED
 /* projectFaceSeamFlags options */
-//#define PROJ_FACE_IGNORE  (1<<0)  /* When the face is hidden, back-facing or occluded. */
-//#define PROJ_FACE_INIT    (1<<1)  /* When we have initialized the faces data */
+// #define PROJ_FACE_IGNORE  (1<<0)  /* When the face is hidden, back-facing or occluded. */
+// #define PROJ_FACE_INIT    (1<<1)  /* When we have initialized the faces data */
 
 /* If this face has a seam on any of its edges. */
 #  define PROJ_FACE_SEAM0 (1 << 0)
@@ -422,7 +424,7 @@ struct ProjPaintState {
 
   SpinLock *tile_lock;
 
-  Mesh *me_eval;
+  Mesh *mesh_eval;
   int totloop_eval;
   int faces_num_eval;
   int totvert_eval;
@@ -715,35 +717,17 @@ static int project_paint_PickFace(const ProjPaintState *ps, const float pt[2], f
   return best_tri_index;
 }
 
-/* Converts a uv coord into a pixel location wrapping if the uv is outside 0-1 range */
-static void uvco_to_wrapped_pxco(const float uv[2], int ibuf_x, int ibuf_y, float *x, float *y)
-{
-  /* use */
-  *x = fmodf(uv[0], 1.0f);
-  *y = fmodf(uv[1], 1.0f);
-
-  if (*x < 0.0f) {
-    *x += 1.0f;
-  }
-  if (*y < 0.0f) {
-    *y += 1.0f;
-  }
-
-  *x = *x * ibuf_x - 0.5f;
-  *y = *y * ibuf_y - 0.5f;
-}
-
 /* Set the top-most face color that the screen space coord 'pt' touches
  * (or return 0 if none touch) */
 static bool project_paint_PickColor(
     const ProjPaintState *ps, const float pt[2], float *rgba_fp, uchar *rgba, const bool interp)
 {
+  using namespace blender;
   const float *tri_uv[3];
   float w[3], uv[2];
   int tri_index;
   Image *ima;
   ImBuf *ibuf;
-  int xi, yi;
 
   tri_index = project_paint_PickFace(ps, pt, w);
 
@@ -770,58 +754,32 @@ static bool project_paint_PickColor(
     return false;
   }
 
+  float x = uv[0] * ibuf->x;
+  float y = uv[1] * ibuf->y;
   if (interp) {
-    float x, y;
-    uvco_to_wrapped_pxco(uv, ibuf->x, ibuf->y, &x, &y);
+    x -= 0.5f;
+    y -= 0.5f;
+  }
 
-    if (ibuf->float_buffer.data) {
-      if (rgba_fp) {
-        bilinear_interpolation_color_wrap(ibuf, nullptr, rgba_fp, x, y);
-      }
-      else {
-        float rgba_tmp_f[4];
-        bilinear_interpolation_color_wrap(ibuf, nullptr, rgba_tmp_f, x, y);
-        premul_float_to_straight_uchar(rgba, rgba_tmp_f);
-      }
+  if (ibuf->float_buffer.data) {
+    float4 col = interp ? imbuf::interpolate_bilinear_wrap_fl(ibuf, x, y) :
+                          imbuf::interpolate_nearest_wrap_fl(ibuf, x, y);
+    col = math::clamp(col, 0.0f, 1.0f);
+    if (rgba_fp) {
+      memcpy(rgba_fp, &col, sizeof(col));
     }
     else {
-      if (rgba) {
-        bilinear_interpolation_color_wrap(ibuf, rgba, nullptr, x, y);
-      }
-      else {
-        uchar rgba_tmp[4];
-        bilinear_interpolation_color_wrap(ibuf, rgba_tmp, nullptr, x, y);
-        straight_uchar_to_premul_float(rgba_fp, rgba_tmp);
-      }
+      premul_float_to_straight_uchar(rgba, col);
     }
   }
   else {
-    // xi = int((uv[0]*ibuf->x) + 0.5f);
-    // yi = int((uv[1]*ibuf->y) + 0.5f);
-    // if (xi < 0 || xi >= ibuf->x  ||  yi < 0 || yi >= ibuf->y) return false;
-
-    /* wrap */
-    xi = mod_i(int(uv[0] * ibuf->x), ibuf->x);
-    yi = mod_i(int(uv[1] * ibuf->y), ibuf->y);
-
+    uchar4 col = interp ? imbuf::interpolate_bilinear_wrap_byte(ibuf, x, y) :
+                          imbuf::interpolate_nearest_wrap_byte(ibuf, x, y);
     if (rgba) {
-      if (ibuf->float_buffer.data) {
-        const float *rgba_tmp_fp = ibuf->float_buffer.data + (xi + yi * ibuf->x * 4);
-        premul_float_to_straight_uchar(rgba, rgba_tmp_fp);
-      }
-      else {
-        *((uint *)rgba) = *(uint *)(((char *)ibuf->byte_buffer.data) + ((xi + yi * ibuf->x) * 4));
-      }
+      memcpy(rgba, &col, sizeof(col));
     }
-
-    if (rgba_fp) {
-      if (ibuf->float_buffer.data) {
-        copy_v4_v4(rgba_fp, (ibuf->float_buffer.data + ((xi + yi * ibuf->x) * 4)));
-      }
-      else {
-        uchar *tmp_ch = ibuf->byte_buffer.data + ((xi + yi * ibuf->x) * 4);
-        straight_uchar_to_premul_float(rgba_fp, tmp_ch);
-      }
+    else {
+      straight_uchar_to_premul_float(rgba_fp, col);
     }
   }
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -1376,7 +1334,7 @@ static void uv_image_outset(const ProjPaintState *ps,
       len_fact = UNLIKELY(len_fact < FLT_EPSILON) ? FLT_MAX : (1.0f / len_fact);
 
       /* Clamp the length factor, see: #62236. */
-      len_fact = MIN2(len_fact, 10.0f);
+      len_fact = std::min(len_fact, 10.0f);
 
       mul_v2_fl(no, ps->seam_bleed_px * len_fact);
 
@@ -1657,18 +1615,22 @@ static float screen_px_line_point_factor_v2_persp(const ProjPaintState *ps,
 static void project_face_pixel(
     const float *tri_uv[3], ImBuf *ibuf_other, const float w[3], uchar rgba_ub[4], float rgba_f[4])
 {
-  float uv_other[2], x, y;
+  using namespace blender;
+  float uv_other[2];
 
   interp_v2_v2v2v2(uv_other, UNPACK3(tri_uv), w);
 
-  /* use */
-  uvco_to_wrapped_pxco(uv_other, ibuf_other->x, ibuf_other->y, &x, &y);
+  float x = uv_other[0] * ibuf_other->x - 0.5f;
+  float y = uv_other[1] * ibuf_other->y - 0.5f;
 
-  if (ibuf_other->float_buffer.data) { /* from float to float */
-    bilinear_interpolation_color_wrap(ibuf_other, nullptr, rgba_f, x, y);
+  if (ibuf_other->float_buffer.data) {
+    float4 col = imbuf::interpolate_bilinear_wrap_fl(ibuf_other, x, y);
+    col = math::clamp(col, 0.0f, 1.0f);
+    memcpy(rgba_f, &col, sizeof(col));
   }
-  else { /* from char to float */
-    bilinear_interpolation_color_wrap(ibuf_other, rgba_ub, nullptr, x, y);
+  else {
+    uchar4 col = imbuf::interpolate_bilinear_wrap_byte(ibuf_other, x, y);
+    memcpy(rgba_ub, &col, sizeof(col));
   }
 }
 
@@ -2033,14 +1995,16 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
        * the faces are already initialized in project_paint_delayed_face_init(...) */
       if (ibuf->float_buffer.data) {
         if (!project_paint_PickColor(
-                ps, co, ((ProjPixelClone *)projPixel)->clonepx.f, nullptr, true)) {
+                ps, co, ((ProjPixelClone *)projPixel)->clonepx.f, nullptr, true))
+        {
           /* zero alpha - ignore */
           ((ProjPixelClone *)projPixel)->clonepx.f[3] = 0;
         }
       }
       else {
         if (!project_paint_PickColor(
-                ps, co, nullptr, ((ProjPixelClone *)projPixel)->clonepx.ch, true)) {
+                ps, co, nullptr, ((ProjPixelClone *)projPixel)->clonepx.ch, true))
+        {
           /* zero alpha - ignore */
           ((ProjPixelClone *)projPixel)->clonepx.ch[3] = 0;
         }
@@ -2578,7 +2542,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_1 | ISECT_2);
     if (flag && flag != (ISECT_1 | ISECT_2)) {
       if (line_rect_clip(
-              bucket_bounds, v1coSS, v2coSS, uv1co, uv2co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v1coSS, v2coSS, uv1co, uv2co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -2591,7 +2556,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_2 | ISECT_3);
     if (flag && flag != (ISECT_2 | ISECT_3)) {
       if (line_rect_clip(
-              bucket_bounds, v2coSS, v3coSS, uv2co, uv3co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v2coSS, v3coSS, uv2co, uv3co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -2604,7 +2570,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_3 | ISECT_1);
     if (flag && flag != (ISECT_3 | ISECT_1)) {
       if (line_rect_clip(
-              bucket_bounds, v3coSS, v1coSS, uv3co, uv1co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v3coSS, v1coSS, uv3co, uv1co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -3183,12 +3150,12 @@ static void project_paint_face_init(const ProjPaintState *ps,
               }
             }
           }
-          //#if 0
+          // #if 0
           else if (has_x_isect) {
             /* assuming the face is not a bow-tie - we know we can't intersect again on the X */
             break;
           }
-          //#endif
+          // #endif
         }
 
 #if 0 /* TODO: investigate why this doesn't work sometimes! it should! */
@@ -3724,7 +3691,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
   ps->viewDir[1] = 0.0f;
   ps->viewDir[2] = 1.0f;
 
-  copy_m4_m4(ps->obmat, ps->ob->object_to_world);
+  copy_m4_m4(ps->obmat, ps->ob->object_to_world().ptr());
 
   if (symmetry_flag) {
     int i;
@@ -3746,10 +3713,12 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
     copy_m4_m4(viewmat, ps->rv3d->viewmat);
     copy_m4_m4(viewinv, ps->rv3d->viewinv);
 
-    ED_view3d_ob_project_mat_get_from_obmat(ps->rv3d, ps->obmat, ps->projectMat);
+    blender::float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(
+        ps->rv3d, blender::float4x4(ps->obmat));
+    copy_m4_m4(ps->projectMat, projection.ptr());
 
     ps->is_ortho = ED_view3d_clip_range_get(
-        ps->depsgraph, ps->v3d, ps->rv3d, &ps->clip_start, &ps->clip_end, true);
+        ps->depsgraph, ps->v3d, ps->rv3d, true, &ps->clip_start, &ps->clip_end);
   }
   else {
     /* re-projection */
@@ -3782,7 +3751,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
       CameraParams params;
 
       /* viewmat & viewinv */
-      copy_m4_m4(viewinv, cam_ob_eval->object_to_world);
+      copy_m4_m4(viewinv, cam_ob_eval->object_to_world().ptr());
       normalize_m4(viewinv);
       invert_m4_m4(viewmat, viewinv);
 
@@ -4066,13 +4035,13 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   Object *ob = ps->ob;
 
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-  ps->me_eval = BKE_object_get_evaluated_mesh(ob_eval);
-  if (!ps->me_eval) {
+  ps->mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
+  if (!ps->mesh_eval) {
     return false;
   }
 
-  if (!CustomData_has_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2)) {
-    ps->me_eval = nullptr;
+  if (!CustomData_has_layer(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2)) {
+    ps->mesh_eval = nullptr;
     return false;
   }
 
@@ -4089,26 +4058,26 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
   }
   ps->mat_array[totmat - 1] = nullptr;
 
-  ps->vert_positions_eval = ps->me_eval->vert_positions();
-  ps->vert_normals = ps->me_eval->vert_normals();
-  ps->edges_eval = ps->me_eval->edges();
-  ps->faces_eval = ps->me_eval->faces();
-  ps->corner_verts_eval = ps->me_eval->corner_verts();
+  ps->vert_positions_eval = ps->mesh_eval->vert_positions();
+  ps->vert_normals = ps->mesh_eval->vert_normals();
+  ps->edges_eval = ps->mesh_eval->edges();
+  ps->faces_eval = ps->mesh_eval->faces();
+  ps->corner_verts_eval = ps->mesh_eval->corner_verts();
   ps->select_poly_eval = (const bool *)CustomData_get_layer_named(
-      &ps->me_eval->face_data, CD_PROP_BOOL, ".select_poly");
+      &ps->mesh_eval->face_data, CD_PROP_BOOL, ".select_poly");
   ps->hide_poly_eval = (const bool *)CustomData_get_layer_named(
-      &ps->me_eval->face_data, CD_PROP_BOOL, ".hide_poly");
+      &ps->mesh_eval->face_data, CD_PROP_BOOL, ".hide_poly");
   ps->material_indices = (const int *)CustomData_get_layer_named(
-      &ps->me_eval->face_data, CD_PROP_INT32, "material_index");
+      &ps->mesh_eval->face_data, CD_PROP_INT32, "material_index");
   ps->sharp_faces_eval = static_cast<const bool *>(
-      CustomData_get_layer_named(&ps->me_eval->face_data, CD_PROP_BOOL, "sharp_face"));
+      CustomData_get_layer_named(&ps->mesh_eval->face_data, CD_PROP_BOOL, "sharp_face"));
 
-  ps->totvert_eval = ps->me_eval->verts_num;
-  ps->faces_num_eval = ps->me_eval->faces_num;
-  ps->totloop_eval = ps->me_eval->corners_num;
+  ps->totvert_eval = ps->mesh_eval->verts_num;
+  ps->faces_num_eval = ps->mesh_eval->faces_num;
+  ps->totloop_eval = ps->mesh_eval->corners_num;
 
-  ps->corner_tris_eval = ps->me_eval->corner_tris();
-  ps->corner_tri_faces_eval = ps->me_eval->corner_tri_faces();
+  ps->corner_tris_eval = ps->mesh_eval->corner_tris();
+  ps->corner_tri_faces_eval = ps->mesh_eval->corner_tri_faces();
 
   ps->poly_to_loop_uv = static_cast<const float(**)[2]>(
       MEM_mallocN(ps->faces_num_eval * sizeof(float(*)[2]), "proj_paint_mtfaces"));
@@ -4136,13 +4105,13 @@ static void proj_paint_layer_clone_init(ProjPaintState *ps, ProjPaintLayerClone 
 
     if (layer_num != -1) {
       mloopuv_clone_base = static_cast<const float(*)[2]>(
-          CustomData_get_layer_n(&ps->me_eval->corner_data, CD_PROP_FLOAT2, layer_num));
+          CustomData_get_layer_n(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2, layer_num));
     }
 
     if (mloopuv_clone_base == nullptr) {
       /* get active instead */
       mloopuv_clone_base = static_cast<const float(*)[2]>(
-          CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
+          CustomData_get_layer(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2));
     }
   }
 
@@ -4172,10 +4141,10 @@ static bool project_paint_clone_face_skip(ProjPaintState *ps,
       if (lc->slot_clone != lc->slot_last_clone) {
         if (!lc->slot_clone->uvname ||
             !(lc->mloopuv_clone_base = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                  &ps->me_eval->corner_data, CD_PROP_FLOAT2, lc->slot_clone->uvname))))
+                  &ps->mesh_eval->corner_data, CD_PROP_FLOAT2, lc->slot_clone->uvname))))
         {
           lc->mloopuv_clone_base = static_cast<const float(*)[2]>(
-              CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
+              CustomData_get_layer(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2));
         }
         lc->slot_last_clone = lc->slot_clone;
       }
@@ -4198,7 +4167,7 @@ static void proj_paint_face_lookup_init(const ProjPaintState *ps, ProjPaintFaceL
   memset(face_lookup, 0, sizeof(*face_lookup));
   Mesh *orig_mesh = (Mesh *)ps->ob->data;
   face_lookup->index_mp_to_orig = static_cast<const int *>(
-      CustomData_get_layer(&ps->me_eval->face_data, CD_ORIGINDEX));
+      CustomData_get_layer(&ps->mesh_eval->face_data, CD_ORIGINDEX));
   if (ps->do_face_sel) {
     face_lookup->select_poly_orig = static_cast<const bool *>(
         CustomData_get_layer_named(&orig_mesh->face_data, CD_PROP_BOOL, ".select_poly"));
@@ -4222,16 +4191,14 @@ static bool project_paint_check_face_paintable(const ProjPaintState *ps,
     }
     return ps->select_poly_eval && ps->select_poly_eval[face_i];
   }
-  else {
-    int orig_index;
-    const int face_i = ps->corner_tri_faces_eval[tri_i];
-    if ((face_lookup->index_mp_to_orig != nullptr) &&
-        ((orig_index = (face_lookup->index_mp_to_orig[face_i])) != ORIGINDEX_NONE))
-    {
-      return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
-    }
-    return !(ps->hide_poly_eval && ps->hide_poly_eval[face_i]);
+  int orig_index;
+  const int face_i = ps->corner_tri_faces_eval[tri_i];
+  if ((face_lookup->index_mp_to_orig != nullptr) &&
+      ((orig_index = (face_lookup->index_mp_to_orig[face_i])) != ORIGINDEX_NONE))
+  {
+    return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
   }
+  return !(ps->hide_poly_eval && ps->hide_poly_eval[face_i]);
 }
 
 struct ProjPaintFaceCoSS {
@@ -4358,23 +4325,24 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
       /* all faces should have a valid slot, reassert here */
       if (slot == nullptr) {
         mloopuv_base = static_cast<const float(*)[2]>(
-            CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
+            CustomData_get_layer(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2));
         tpage = ps->canvas_ima;
       }
       else {
         if (slot != slot_last) {
           if (!slot->uvname ||
               !(mloopuv_base = static_cast<const float(*)[2]>(CustomData_get_layer_named(
-                    &ps->me_eval->corner_data, CD_PROP_FLOAT2, slot->uvname))))
+                    &ps->mesh_eval->corner_data, CD_PROP_FLOAT2, slot->uvname))))
           {
             mloopuv_base = static_cast<const float(*)[2]>(
-                CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
+                CustomData_get_layer(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2));
           }
           slot_last = slot;
         }
 
         /* Don't allow painting on linked images. */
-        if (slot->ima != nullptr && (ID_IS_LINKED(slot->ima) || ID_IS_OVERRIDE_LIBRARY(slot->ima)))
+        if (slot->ima != nullptr &&
+            (!ID_IS_EDITABLE(slot->ima) || ID_IS_OVERRIDE_LIBRARY(slot->ima)))
         {
           skip_tri = true;
           tpage = nullptr;
@@ -4529,7 +4497,7 @@ static void project_paint_begin(const bContext *C,
 
   if (ps->source == PROJ_SRC_VIEW) {
     /* faster clipping lookups */
-    ED_view3d_clipping_local(ps->rv3d, ps->ob->object_to_world);
+    ED_view3d_clipping_local(ps->rv3d, ps->ob->object_to_world().ptr());
   }
 
   ps->do_face_sel = ((((Mesh *)ps->ob->data)->editflag & ME_EDIT_PAINT_FACE_SEL) != 0);
@@ -4546,18 +4514,18 @@ static void project_paint_begin(const bContext *C,
   proj_paint_layer_clone_init(ps, &layer_clone);
 
   if (ps->do_layer_stencil || ps->do_stencil_brush) {
-    // int layer_num = CustomData_get_stencil_layer(&ps->me_eval->ldata, CD_PROP_FLOAT2);
+    // int layer_num = CustomData_get_stencil_layer(&ps->mesh_eval->ldata, CD_PROP_FLOAT2);
     int layer_num = CustomData_get_stencil_layer(&((Mesh *)ps->ob->data)->corner_data,
                                                  CD_PROP_FLOAT2);
     if (layer_num != -1) {
       ps->mloopuv_stencil_eval = static_cast<const float(*)[2]>(
-          CustomData_get_layer_n(&ps->me_eval->corner_data, CD_PROP_FLOAT2, layer_num));
+          CustomData_get_layer_n(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2, layer_num));
     }
 
     if (ps->mloopuv_stencil_eval == nullptr) {
       /* get active instead */
       ps->mloopuv_stencil_eval = static_cast<const float(*)[2]>(
-          CustomData_get_layer(&ps->me_eval->corner_data, CD_PROP_FLOAT2));
+          CustomData_get_layer(&ps->mesh_eval->corner_data, CD_PROP_FLOAT2));
     }
 
     if (ps->do_stencil_brush) {
@@ -4692,7 +4660,7 @@ static void project_paint_end(ProjPaintState *ps)
       MEM_freeN(ps->cavities);
     }
 
-    ps->me_eval = nullptr;
+    ps->mesh_eval = nullptr;
   }
 
   if (ps->blurkernel) {
@@ -5385,11 +5353,10 @@ static void do_projectpaint_thread(TaskPool *__restrict /*pool*/, void *ph_v)
           if (is_floatbuf) {
             BLI_assert(ps->reproject_ibuf->float_buffer.data != nullptr);
 
-            bicubic_interpolation_color(ps->reproject_ibuf,
-                                        nullptr,
-                                        projPixel->newColor.f,
-                                        projPixel->projCoSS[0],
-                                        projPixel->projCoSS[1]);
+            blender::imbuf::interpolate_cubic_bspline_fl(ps->reproject_ibuf,
+                                                         projPixel->newColor.f,
+                                                         projPixel->projCoSS[0],
+                                                         projPixel->projCoSS[1]);
             if (projPixel->newColor.f[3]) {
               float mask = float(projPixel->mask) * (1.0f / 65535.0f);
 
@@ -5401,12 +5368,10 @@ static void do_projectpaint_thread(TaskPool *__restrict /*pool*/, void *ph_v)
           }
           else {
             BLI_assert(ps->reproject_ibuf->byte_buffer.data != nullptr);
-
-            bicubic_interpolation_color(ps->reproject_ibuf,
-                                        projPixel->newColor.ch,
-                                        nullptr,
-                                        projPixel->projCoSS[0],
-                                        projPixel->projCoSS[1]);
+            blender::imbuf::interpolate_cubic_bspline_byte(ps->reproject_ibuf,
+                                                           projPixel->newColor.ch,
+                                                           projPixel->projCoSS[0],
+                                                           projPixel->projCoSS[1]);
             if (projPixel->newColor.ch[3]) {
               float mask = float(projPixel->mask) * (1.0f / 65535.0f);
               projPixel->newColor.ch[3] *= mask;
@@ -5837,11 +5802,14 @@ void paint_proj_stroke(const bContext *C,
 
     view3d_operator_needs_opengl(C);
 
-    if (!ED_view3d_autodist(depsgraph, region, v3d, mval_i, cursor, false, nullptr)) {
+    /* Ensure the depth buffer is updated for #ED_view3d_autodist. */
+    ED_view3d_depth_override(depsgraph, region, v3d, nullptr, V3D_DEPTH_NO_GPENCIL, nullptr);
+
+    if (!ED_view3d_autodist(region, v3d, mval_i, cursor, nullptr)) {
       return;
     }
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     ED_region_tag_redraw(region);
 
     return;
@@ -6044,7 +6012,7 @@ void *paint_proj_new_stroke(bContext *C, Object *ob, const float mouse[2], int m
     }
 
     project_paint_begin(C, ps, is_multi_view, symmetry_flag_views[i]);
-    if (ps->me_eval == nullptr) {
+    if (ps->mesh_eval == nullptr) {
       goto fail;
     }
 
@@ -6116,14 +6084,14 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Image *image = static_cast<Image *>(
       BLI_findlink(&bmain->images, RNA_enum_get(op->ptr, "image")));
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
+  Scene &scene = *CTX_data_scene(C);
+  ViewLayer &view_layer = *CTX_data_view_layer(C);
   ProjPaintState ps = {nullptr};
   int orig_brush_size;
   IDProperty *idgroup;
   IDProperty *view_data = nullptr;
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  Object *ob = BKE_view_layer_active_object_get(view_layer);
+  BKE_view_layer_synced_ensure(&scene, &view_layer);
+  Object *ob = BKE_view_layer_active_object_get(&view_layer);
   bool uvs, mat, tex;
 
   if (ob == nullptr || ob->type != OB_MESH) {
@@ -6131,7 +6099,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (!ED_paint_proj_mesh_data_check(scene, ob, &uvs, &mat, &tex, nullptr)) {
+  if (!ED_paint_proj_mesh_data_check(scene, *ob, &uvs, &mat, &tex, nullptr)) {
     ED_paint_data_warning(op->reports, uvs, mat, tex, true);
     WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
     return OPERATOR_CANCELLED;
@@ -6175,7 +6143,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
   else {
     ps.source = PROJ_SRC_IMAGE_CAM;
 
-    if (scene->camera == nullptr) {
+    if (scene.camera == nullptr) {
       BKE_report(op->reports, RPT_ERROR, "No active camera set");
       return OPERATOR_CANCELLED;
     }
@@ -6185,25 +6153,25 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
   ps.is_texbrush = false;
   ps.is_maskbrush = false;
   ps.do_masking = false;
-  orig_brush_size = BKE_brush_size_get(scene, ps.brush);
+  orig_brush_size = BKE_brush_size_get(&scene, ps.brush);
   /* cover the whole image */
-  BKE_brush_size_set(scene, ps.brush, 32 * U.pixelsize);
+  BKE_brush_size_set(&scene, ps.brush, 32 * U.pixelsize);
 
   /* so pixels are initialized with minimal info */
   ps.tool = PAINT_TOOL_DRAW;
 
-  scene->toolsettings->imapaint.flag |= IMAGEPAINT_DRAWING;
+  scene.toolsettings->imapaint.flag |= IMAGEPAINT_DRAWING;
 
   /* allocate and initialize spatial data structures */
   project_paint_begin(C, &ps, false, 0);
 
-  if (ps.me_eval == nullptr) {
-    BKE_brush_size_set(scene, ps.brush, orig_brush_size);
+  if (ps.mesh_eval == nullptr) {
+    BKE_brush_size_set(&scene, ps.brush, orig_brush_size);
     BKE_report(op->reports, RPT_ERROR, "Could not get valid evaluated mesh");
     return OPERATOR_CANCELLED;
   }
 
-  ED_image_undo_push_begin(op->type->name, PAINT_MODE_TEXTURE_3D);
+  ED_image_undo_push_begin(op->type->name, PaintMode::Texture3D);
 
   const float pos[2] = {0.0, 0.0};
   const float lastpos[2] = {0.0, 0.0};
@@ -6222,8 +6190,8 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
 
   ED_image_undo_push_end();
 
-  scene->toolsettings->imapaint.flag &= ~IMAGEPAINT_DRAWING;
-  BKE_brush_size_set(scene, ps.brush, orig_brush_size);
+  scene.toolsettings->imapaint.flag &= ~IMAGEPAINT_DRAWING;
+  BKE_brush_size_set(&scene, ps.brush, orig_brush_size);
 
   return OPERATOR_FINISHED;
 }
@@ -6265,6 +6233,7 @@ static bool texture_paint_image_from_view_poll(bContext *C)
 
 static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   Image *image;
   ImBuf *ibuf;
   char filename[FILE_MAX];
@@ -6347,27 +6316,21 @@ static int texture_paint_image_from_view_exec(bContext *C, wmOperator *op)
   if (image) {
     /* now for the trickiness. store the view projection here!
      * re-projection will reuse this */
-    IDPropertyTemplate val;
     IDProperty *idgroup = IDP_EnsureProperties(&image->id);
-    IDProperty *view_data;
-    bool is_ortho;
-    float *array;
 
-    val.array.len = PROJ_VIEW_DATA_SIZE;
-    val.array.type = IDP_FLOAT;
-    view_data = IDP_New(IDP_ARRAY, &val, PROJ_VIEW_DATA_ID);
-
-    array = (float *)IDP_Array(view_data);
-    memcpy(array, rv3d->winmat, sizeof(rv3d->winmat));
-    array += sizeof(rv3d->winmat) / sizeof(float);
-    memcpy(array, rv3d->viewmat, sizeof(rv3d->viewmat));
-    array += sizeof(rv3d->viewmat) / sizeof(float);
-    is_ortho = ED_view3d_clip_range_get(depsgraph, v3d, rv3d, &array[0], &array[1], true);
+    blender::Vector<float, PROJ_VIEW_DATA_SIZE> array;
+    array.extend(Span(reinterpret_cast<float *>(rv3d->winmat), 16));
+    array.extend(Span(reinterpret_cast<float *>(rv3d->viewmat), 16));
+    float clip_start;
+    float clip_end;
+    const bool is_ortho = ED_view3d_clip_range_get(
+        depsgraph, v3d, rv3d, true, &clip_start, &clip_end);
+    array.append(clip_start);
+    array.append(clip_end);
     /* using float for a bool is dodgy but since its an extra member in the array...
      * easier than adding a single bool prop */
-    array[2] = is_ortho ? 1.0f : 0.0f;
-
-    IDP_AddToGroup(idgroup, view_data);
+    array.append(is_ortho ? 1.0f : 0.0f);
+    IDP_AddToGroup(idgroup, bke::idprop::create(PROJ_VIEW_DATA_ID, array.as_span()).release());
   }
 
   return OPERATOR_FINISHED;
@@ -6401,35 +6364,33 @@ void ED_paint_data_warning(
   BKE_reportf(reports,
               RPT_WARNING,
               "Missing%s%s%s%s detected!",
-              !has_uvs ? TIP_(" UVs,") : "",
-              !has_mat ? TIP_(" Materials,") : "",
-              !has_tex ? TIP_(" Textures (or linked),") : "",
-              !has_stencil ? TIP_(" Stencil,") : "");
+              !has_uvs ? RPT_(" UVs,") : "",
+              !has_mat ? RPT_(" Materials,") : "",
+              !has_tex ? RPT_(" Textures (or linked),") : "",
+              !has_stencil ? RPT_(" Stencil,") : "");
 }
 
-bool ED_paint_proj_mesh_data_check(Scene *scene,
-                                   Object *ob,
+bool ED_paint_proj_mesh_data_check(Scene &scene,
+                                   Object &ob,
                                    bool *r_has_uvs,
                                    bool *r_has_mat,
                                    bool *r_has_tex,
                                    bool *r_has_stencil)
 {
-  Mesh *mesh;
-  int layernum;
-  ImagePaintSettings *imapaint = &scene->toolsettings->imapaint;
-  Brush *br = BKE_paint_brush(&imapaint->paint);
+  ImagePaintSettings &imapaint = scene.toolsettings->imapaint;
+  const Brush *br = BKE_paint_brush(&imapaint.paint);
   bool has_mat = true;
   bool has_tex = true;
   bool has_stencil = true;
   bool has_uvs = true;
 
-  imapaint->missing_data = 0;
+  imapaint.missing_data = 0;
 
-  BLI_assert(ob->type == OB_MESH);
+  BLI_assert(ob.type == OB_MESH);
 
-  if (imapaint->mode == IMAGEPAINT_MODE_MATERIAL) {
+  if (imapaint.mode == IMAGEPAINT_MODE_MATERIAL) {
     /* no material, add one */
-    if (ob->totcol == 0) {
+    if (ob.totcol == 0) {
       has_mat = false;
       has_tex = false;
     }
@@ -6438,18 +6399,18 @@ bool ED_paint_proj_mesh_data_check(Scene *scene,
       has_mat = false;
       has_tex = false;
 
-      for (int i = 1; i < ob->totcol + 1; i++) {
-        Material *ma = BKE_object_material_get(ob, i);
+      for (int i = 1; i < ob.totcol + 1; i++) {
+        Material *ma = BKE_object_material_get(&ob, i);
 
-        if (ma && !ID_IS_LINKED(ma) && !ID_IS_OVERRIDE_LIBRARY(ma)) {
+        if (ma && ID_IS_EDITABLE(ma) && !ID_IS_OVERRIDE_LIBRARY(ma)) {
           has_mat = true;
           if (ma->texpaintslot == nullptr) {
             /* refresh here just in case */
-            BKE_texpaint_slot_refresh_cache(scene, ma, ob);
+            BKE_texpaint_slot_refresh_cache(&scene, ma, &ob);
           }
           if (ma->texpaintslot != nullptr &&
               ma->texpaintslot[ma->paint_active_slot].ima != nullptr &&
-              !ID_IS_LINKED(ma->texpaintslot[ma->paint_active_slot].ima) &&
+              ID_IS_EDITABLE(ma->texpaintslot[ma->paint_active_slot].ima) &&
               !ID_IS_OVERRIDE_LIBRARY(ma->texpaintslot[ma->paint_active_slot].ima))
           {
             has_tex = true;
@@ -6459,14 +6420,14 @@ bool ED_paint_proj_mesh_data_check(Scene *scene,
       }
     }
   }
-  else if (imapaint->mode == IMAGEPAINT_MODE_IMAGE) {
-    if (imapaint->canvas == nullptr || ID_IS_LINKED(imapaint->canvas)) {
+  else if (imapaint.mode == IMAGEPAINT_MODE_IMAGE) {
+    if (imapaint.canvas == nullptr || !ID_IS_EDITABLE(imapaint.canvas)) {
       has_tex = false;
     }
   }
 
-  mesh = BKE_mesh_from_object(ob);
-  layernum = CustomData_number_of_layers(&mesh->corner_data, CD_PROP_FLOAT2);
+  Mesh *mesh = BKE_mesh_from_object(&ob);
+  int layernum = CustomData_number_of_layers(&mesh->corner_data, CD_PROP_FLOAT2);
 
   if (layernum == 0) {
     has_uvs = false;
@@ -6474,24 +6435,24 @@ bool ED_paint_proj_mesh_data_check(Scene *scene,
 
   /* Make sure we have a stencil to paint on! */
   if (br && br->imagepaint_tool == PAINT_TOOL_MASK) {
-    imapaint->flag |= IMAGEPAINT_PROJECT_LAYER_STENCIL;
+    imapaint.flag |= IMAGEPAINT_PROJECT_LAYER_STENCIL;
 
-    if (imapaint->stencil == nullptr) {
+    if (imapaint.stencil == nullptr) {
       has_stencil = false;
     }
   }
 
   if (!has_uvs) {
-    imapaint->missing_data |= IMAGEPAINT_MISSING_UVS;
+    imapaint.missing_data |= IMAGEPAINT_MISSING_UVS;
   }
   if (!has_mat) {
-    imapaint->missing_data |= IMAGEPAINT_MISSING_MATERIAL;
+    imapaint.missing_data |= IMAGEPAINT_MISSING_MATERIAL;
   }
   if (!has_tex) {
-    imapaint->missing_data |= IMAGEPAINT_MISSING_TEX;
+    imapaint.missing_data |= IMAGEPAINT_MISSING_TEX;
   }
   if (!has_stencil) {
-    imapaint->missing_data |= IMAGEPAINT_MISSING_STENCIL;
+    imapaint.missing_data |= IMAGEPAINT_MISSING_STENCIL;
   }
 
   if (r_has_uvs) {
@@ -6583,21 +6544,22 @@ static Image *proj_paint_image_create(wmOperator *op, Main *bmain, bool is_data)
 /**
  * \return The name of the new attribute.
  */
-static const char *proj_paint_color_attribute_create(wmOperator *op, Object *ob)
+static const char *proj_paint_color_attribute_create(wmOperator *op, Object &ob)
 {
+  using namespace blender;
   char name[MAX_NAME] = "";
   float color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  eAttrDomain domain = ATTR_DOMAIN_POINT;
+  bke::AttrDomain domain = bke::AttrDomain::Point;
   eCustomDataType type = CD_PROP_COLOR;
 
   if (op) {
     RNA_string_get(op->ptr, "name", name);
     RNA_float_get_array(op->ptr, "color", color);
-    domain = (eAttrDomain)RNA_enum_get(op->ptr, "domain");
+    domain = bke::AttrDomain(RNA_enum_get(op->ptr, "domain"));
     type = (eCustomDataType)RNA_enum_get(op->ptr, "data_type");
   }
 
-  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  Mesh *mesh = static_cast<Mesh *>(ob.data);
   const CustomDataLayer *layer = BKE_id_attribute_new(&mesh->id, name, type, domain, op->reports);
   if (!layer) {
     return nullptr;
@@ -6608,7 +6570,7 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object *ob)
     BKE_id_attributes_default_color_set(&mesh->id, layer->name);
   }
 
-  BKE_object_attributes_active_color_fill(ob, color, false);
+  ed::sculpt_paint::object_active_color_fill(ob, color, false);
 
   return layer->name;
 }
@@ -6638,10 +6600,12 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
       if (!in_node) {
         /* An existing material or Principled BSDF node could not be found.
          * Copy default color values from a default Principled BSDF instead. */
-        ntree = ntreeAddTree(nullptr, "Temporary Shader Nodetree", ntreeType_Shader->idname);
-        in_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_BSDF_PRINCIPLED);
+        ntree = blender::bke::ntreeAddTree(
+            nullptr, "Temporary Shader Nodetree", ntreeType_Shader->idname);
+        in_node = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_BSDF_PRINCIPLED);
       }
-      bNodeSocket *in_sock = nodeFindSocket(in_node, SOCK_IN, layer_type_items[layer_type].name);
+      bNodeSocket *in_sock = blender::bke::nodeFindSocket(
+          in_node, SOCK_IN, layer_type_items[layer_type].name);
       switch (in_sock->type) {
         case SOCK_FLOAT: {
           bNodeSocketValueFloat *socket_data = static_cast<bNodeSocketValueFloat *>(
@@ -6684,7 +6648,7 @@ static void default_paint_slot_color_get(int layer_type, Material *ma, float col
 
 static bool proj_paint_add_slot(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   Scene *scene = CTX_data_scene(C);
   Material *ma;
   Image *ima = nullptr;
@@ -6719,14 +6683,14 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
     /* Create a new node. */
     switch (slot_type) {
       case PAINT_CANVAS_SOURCE_IMAGE: {
-        new_node = nodeAddStaticNode(C, ntree, SH_NODE_TEX_IMAGE);
+        new_node = blender::bke::nodeAddStaticNode(C, ntree, SH_NODE_TEX_IMAGE);
         ima = proj_paint_image_create(op, bmain, is_data);
         new_node->id = &ima->id;
         break;
       }
       case PAINT_CANVAS_SOURCE_COLOR_ATTRIBUTE: {
-        new_node = nodeAddStaticNode(C, ntree, SH_NODE_ATTRIBUTE);
-        if (const char *name = proj_paint_color_attribute_create(op, ob)) {
+        new_node = blender::bke::nodeAddStaticNode(C, ntree, SH_NODE_ATTRIBUTE);
+        if (const char *name = proj_paint_color_attribute_create(op, *ob)) {
           STRNCPY_UTF8(((NodeShaderAttribute *)new_node->storage)->name, name);
         }
         break;
@@ -6735,7 +6699,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
         BLI_assert_unreachable();
         return false;
     }
-    nodeSetActive(ntree, new_node);
+    blender::bke::nodeSetActive(ntree, new_node);
 
     /* Connect to first available principled BSDF node. */
     ntree->ensure_topology_cache();
@@ -6744,33 +6708,33 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
     bNode *out_node = new_node;
 
     if (in_node != nullptr) {
-      bNodeSocket *out_sock = nodeFindSocket(out_node, SOCK_OUT, "Color");
+      bNodeSocket *out_sock = blender::bke::nodeFindSocket(out_node, SOCK_OUT, "Color");
       bNodeSocket *in_sock = nullptr;
 
       if (type >= LAYER_BASE_COLOR && type < LAYER_NORMAL) {
-        in_sock = nodeFindSocket(in_node, SOCK_IN, layer_type_items[type].name);
+        in_sock = blender::bke::nodeFindSocket(in_node, SOCK_IN, layer_type_items[type].name);
       }
       else if (type == LAYER_NORMAL) {
         bNode *nor_node;
-        nor_node = nodeAddStaticNode(C, ntree, SH_NODE_NORMAL_MAP);
+        nor_node = blender::bke::nodeAddStaticNode(C, ntree, SH_NODE_NORMAL_MAP);
 
-        in_sock = nodeFindSocket(nor_node, SOCK_IN, "Color");
-        nodeAddLink(ntree, out_node, out_sock, nor_node, in_sock);
+        in_sock = blender::bke::nodeFindSocket(nor_node, SOCK_IN, "Color");
+        blender::bke::nodeAddLink(ntree, out_node, out_sock, nor_node, in_sock);
 
-        in_sock = nodeFindSocket(in_node, SOCK_IN, "Normal");
-        out_sock = nodeFindSocket(nor_node, SOCK_OUT, "Normal");
+        in_sock = blender::bke::nodeFindSocket(in_node, SOCK_IN, "Normal");
+        out_sock = blender::bke::nodeFindSocket(nor_node, SOCK_OUT, "Normal");
 
         out_node = nor_node;
       }
       else if (type == LAYER_BUMP) {
         bNode *bump_node;
-        bump_node = nodeAddStaticNode(C, ntree, SH_NODE_BUMP);
+        bump_node = blender::bke::nodeAddStaticNode(C, ntree, SH_NODE_BUMP);
 
-        in_sock = nodeFindSocket(bump_node, SOCK_IN, "Height");
-        nodeAddLink(ntree, out_node, out_sock, bump_node, in_sock);
+        in_sock = blender::bke::nodeFindSocket(bump_node, SOCK_IN, "Height");
+        blender::bke::nodeAddLink(ntree, out_node, out_sock, bump_node, in_sock);
 
-        in_sock = nodeFindSocket(in_node, SOCK_IN, "Normal");
-        out_sock = nodeFindSocket(bump_node, SOCK_OUT, "Normal");
+        in_sock = blender::bke::nodeFindSocket(in_node, SOCK_IN, "Normal");
+        out_sock = blender::bke::nodeFindSocket(bump_node, SOCK_OUT, "Normal");
 
         out_node = bump_node;
       }
@@ -6781,7 +6745,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
         in_node = output_nodes.is_empty() ? nullptr : output_nodes.first();
 
         if (in_node != nullptr) {
-          in_sock = nodeFindSocket(in_node, SOCK_IN, layer_type_items[type].name);
+          in_sock = blender::bke::nodeFindSocket(in_node, SOCK_IN, layer_type_items[type].name);
         }
         else {
           in_sock = nullptr;
@@ -6791,7 +6755,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
       /* Check if the socket in already connected to something */
       bNodeLink *link = in_sock ? in_sock->link : nullptr;
       if (in_sock != nullptr && link == nullptr) {
-        nodeAddLink(ntree, out_node, out_sock, in_node, in_sock);
+        blender::bke::nodeAddLink(ntree, out_node, out_sock, in_node, in_sock);
 
         blender::bke::nodePositionRelative(out_node, in_node, out_sock, in_sock);
       }
@@ -6817,7 +6781,7 @@ static bool proj_paint_add_slot(bContext *C, wmOperator *op)
     DEG_id_tag_update(&ma->id, ID_RECALC_SHADING);
     ED_area_tag_redraw(CTX_wm_area(C));
 
-    ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
+    ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
 
     return true;
   }
@@ -6855,7 +6819,7 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
                                                        wmOperator *op,
                                                        const wmEvent * /*event*/)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   Material *ma = BKE_object_material_get(ob, ob->actcol);
 
   int type = get_texture_layer_type(op, "type");
@@ -6871,7 +6835,8 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
   default_paint_slot_color_get(type, ma, color);
   RNA_float_set_array(op->ptr, "color", color);
 
-  return WM_operator_props_dialog_popup(C, op, 300);
+  return WM_operator_props_dialog_popup(
+      C, op, 300, IFACE_("Add Paint Slot"), CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
 }
 
 static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
@@ -6879,7 +6844,7 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   ePaintCanvasSource slot_type = PAINT_CANVAS_SOURCE_IMAGE;
 
   if (ob->mode == OB_MODE_SCULPT) {
@@ -6916,6 +6881,7 @@ static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
 
 void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot)
 {
+  using namespace blender;
   PropertyRNA *prop;
   static float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -6986,7 +6952,7 @@ void PAINT_OT_add_texture_paint_slot(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "domain",
                rna_enum_color_attribute_domain_items,
-               ATTR_DOMAIN_POINT,
+               int(bke::AttrDomain::Point),
                "Domain",
                "Type of element that attribute is stored on");
 
@@ -7007,7 +6973,7 @@ static int add_simple_uvs_exec(bContext *C, wmOperator * /*op*/)
 
   ED_uvedit_add_simple_uvs(bmain, scene, ob);
 
-  ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
+  ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
 
   DEG_id_tag_update(static_cast<ID *>(ob->data), 0);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);

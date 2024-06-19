@@ -13,18 +13,10 @@
 #include "BLI_math_vector.h"
 #include "BLI_vector.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
-
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_fair.hh"
-#include "BKE_mesh_mapping.hh"
 
 #include "bmesh.hh"
-#include "bmesh_tools.hh"
 
 #include "MEM_guardedalloc.h"
 #include "eigen_capi.h"

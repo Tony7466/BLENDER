@@ -11,18 +11,19 @@
 #include "BLI_vector_set.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 
-#include "hydra_scene_delegate.h"
-#include "mesh.h"
-
-PXR_NAMESPACE_OPEN_SCOPE
-TF_DEFINE_PRIVATE_TOKENS(tokens_, (st));
-PXR_NAMESPACE_CLOSE_SCOPE
+#include "hydra_scene_delegate.hh"
+#include "mesh.hh"
 
 namespace blender::io::hydra {
+
+namespace usdtokens {
+static const pxr::TfToken st("st", pxr::TfToken::Immortal);
+}
 
 MeshData::MeshData(HydraSceneDelegate *scene_delegate,
                    const Object *object,
@@ -98,7 +99,7 @@ pxr::VtValue MeshData::get_data(pxr::SdfPath const &id, pxr::TfToken const &key)
   if (key == pxr::HdTokens->normals) {
     return pxr::VtValue(submesh(id).normals);
   }
-  if (key == pxr::tokens_->st) {
+  if (key == usdtokens::st) {
     return pxr::VtValue(submesh(id).uvs);
   }
   if (key == pxr::HdTokens->points) {
@@ -149,7 +150,7 @@ pxr::HdPrimvarDescriptorVector MeshData::primvar_descriptors(
     }
     if (!submeshes_[0].uvs.empty()) {
       primvars.emplace_back(
-          pxr::tokens_->st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
+          usdtokens::st, interpolation, pxr::HdPrimvarRoleTokens->textureCoordinate);
     }
   }
   return primvars;
@@ -304,10 +305,10 @@ static void copy_submesh(const Mesh &mesh,
   int dst_verts_num;
   VectorSet<int> verts;
   if (copy_all_verts) {
-    /* Copy the vertex indices from the corner indices stored in every triangle. */
-    array_utils::gather(corner_verts,
-                        corner_tris.cast<int>(),
-                        MutableSpan(sm.face_vertex_indices.data(), sm.face_vertex_indices.size()));
+    bke::mesh::vert_tris_from_corner_tris(
+        corner_verts,
+        corner_tris,
+        MutableSpan(sm.face_vertex_indices.data(), sm.face_vertex_indices.size()).cast<int3>());
     dst_verts_num = vert_positions.size();
   }
   else {
@@ -376,8 +377,9 @@ void MeshData::write_submeshes(const Mesh *mesh)
   const std::pair<bke::MeshNormalDomain, Span<float3>> normals = get_mesh_normals(*mesh);
   const bke::AttributeAccessor attributes = mesh->attributes();
   const StringRef active_uv = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2);
-  const VArraySpan uv_map = *attributes.lookup<float2>(active_uv, ATTR_DOMAIN_CORNER);
-  const VArraySpan material_indices = *attributes.lookup<int>("material_index", ATTR_DOMAIN_FACE);
+  const VArraySpan uv_map = *attributes.lookup<float2>(active_uv, bke::AttrDomain::Corner);
+  const VArraySpan material_indices = *attributes.lookup<int>("material_index",
+                                                              bke::AttrDomain::Face);
 
   if (material_indices.is_empty()) {
     copy_submesh(*mesh,

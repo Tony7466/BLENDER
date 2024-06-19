@@ -26,7 +26,7 @@ struct MeshExtract_EditUVData_Data {
 };
 
 static void extract_edituv_data_init_common(const MeshRenderData &mr,
-                                            GPUVertBuf *vbo,
+                                            gpu::VertBuf *vbo,
                                             MeshExtract_EditUVData_Data *data,
                                             uint loop_len)
 {
@@ -49,9 +49,9 @@ static void extract_edituv_data_init(const MeshRenderData &mr,
                                      void *buf,
                                      void *tls_data)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   MeshExtract_EditUVData_Data *data = static_cast<MeshExtract_EditUVData_Data *>(tls_data);
-  extract_edituv_data_init_common(mr, vbo, data, mr.loop_len);
+  extract_edituv_data_init_common(mr, vbo, data, mr.corners_num);
 }
 
 static void extract_edituv_data_iter_face_bm(const MeshRenderData &mr,
@@ -66,9 +66,9 @@ static void extract_edituv_data_iter_face_bm(const MeshRenderData &mr,
     MeshExtract_EditUVData_Data *data = static_cast<MeshExtract_EditUVData_Data *>(_data);
     EditLoopData *eldata = &data->vbo_data[l_index];
     memset(eldata, 0x0, sizeof(*eldata));
-    mesh_render_data_loop_flag(mr, l_iter, data->offsets, eldata);
-    mesh_render_data_face_flag(mr, f, data->offsets, eldata);
-    mesh_render_data_loop_edge_flag(mr, l_iter, data->offsets, eldata);
+    mesh_render_data_loop_flag(mr, l_iter, data->offsets, *eldata);
+    mesh_render_data_face_flag(mr, f, data->offsets, *eldata);
+    mesh_render_data_loop_edge_flag(mr, l_iter, data->offsets, *eldata);
   } while ((l_iter = l_iter->next) != l_first);
 }
 
@@ -78,31 +78,30 @@ static void extract_edituv_data_iter_face_mesh(const MeshRenderData &mr,
 {
   MeshExtract_EditUVData_Data *data = static_cast<MeshExtract_EditUVData_Data *>(_data);
   const IndexRange face = mr.faces[face_index];
-  const int ml_index_end = face.start() + face.size();
-  for (int ml_index = face.start(); ml_index < ml_index_end; ml_index += 1) {
-    EditLoopData *eldata = &data->vbo_data[ml_index];
+  for (const int corner : face) {
+    EditLoopData *eldata = &data->vbo_data[corner];
     memset(eldata, 0x0, sizeof(*eldata));
     BMFace *efa = bm_original_face_get(mr, face_index);
     if (efa) {
-      BMVert *eve = bm_original_vert_get(mr, mr.corner_verts[ml_index]);
-      BMEdge *eed = bm_original_edge_get(mr, mr.corner_edges[ml_index]);
+      BMVert *eve = bm_original_vert_get(mr, mr.corner_verts[corner]);
+      BMEdge *eed = bm_original_edge_get(mr, mr.corner_edges[corner]);
       if (eed && eve) {
         /* Loop on an edge endpoint. */
         BMLoop *l = BM_face_edge_share_loop(efa, eed);
-        mesh_render_data_loop_flag(mr, l, data->offsets, eldata);
-        mesh_render_data_loop_edge_flag(mr, l, data->offsets, eldata);
+        mesh_render_data_loop_flag(mr, l, data->offsets, *eldata);
+        mesh_render_data_loop_edge_flag(mr, l, data->offsets, *eldata);
       }
       else {
         if (eed == nullptr) {
           /* Find if the loop's vert is not part of an edit edge.
            * For this, we check if the previous loop was on an edge. */
-          const int l_prev = bke::mesh::face_corner_prev(face, ml_index);
-          eed = bm_original_edge_get(mr, mr.corner_edges[l_prev]);
+          const int corner_prev = bke::mesh::face_corner_prev(face, corner);
+          eed = bm_original_edge_get(mr, mr.corner_edges[corner_prev]);
         }
         if (eed) {
           /* Mapped points on an edge between two edit verts. */
           BMLoop *l = BM_face_edge_share_loop(efa, eed);
-          mesh_render_data_loop_edge_flag(mr, l, data->offsets, eldata);
+          mesh_render_data_loop_edge_flag(mr, l, data->offsets, *eldata);
         }
       }
     }
@@ -115,7 +114,7 @@ static void extract_edituv_data_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                             void *buf,
                                             void *tls_data)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   MeshExtract_EditUVData_Data *data = static_cast<MeshExtract_EditUVData_Data *>(tls_data);
   extract_edituv_data_init_common(mr, vbo, data, subdiv_cache.num_subdiv_loops);
 }
@@ -143,8 +142,8 @@ static void extract_edituv_data_iter_subdiv_bm(const DRWSubdivCache &subdiv_cach
       BMEdge *eed = BM_edge_at_index(mr.bm, edge_origindex);
       /* Loop on an edge endpoint. */
       BMLoop *l = BM_face_edge_share_loop(const_cast<BMFace *>(coarse_quad), eed);
-      mesh_render_data_loop_flag(mr, l, data->offsets, edit_loop_data);
-      mesh_render_data_loop_edge_flag(mr, l, data->offsets, edit_loop_data);
+      mesh_render_data_loop_flag(mr, l, data->offsets, *edit_loop_data);
+      mesh_render_data_loop_edge_flag(mr, l, data->offsets, *edit_loop_data);
     }
     else {
       if (edge_origindex == -1) {
@@ -157,11 +156,11 @@ static void extract_edituv_data_iter_subdiv_bm(const DRWSubdivCache &subdiv_cach
         /* Mapped points on an edge between two edit verts. */
         BMEdge *eed = BM_edge_at_index(mr.bm, edge_origindex);
         BMLoop *l = BM_face_edge_share_loop(const_cast<BMFace *>(coarse_quad), eed);
-        mesh_render_data_loop_edge_flag(mr, l, data->offsets, edit_loop_data);
+        mesh_render_data_loop_edge_flag(mr, l, data->offsets, *edit_loop_data);
       }
     }
 
-    mesh_render_data_face_flag(mr, coarse_quad, data->offsets, edit_loop_data);
+    mesh_render_data_face_flag(mr, coarse_quad, data->offsets, *edit_loop_data);
   }
 }
 
@@ -193,6 +192,6 @@ constexpr MeshExtract create_extractor_edituv_data()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_edituv_data = create_extractor_edituv_data();
 
-const MeshExtract extract_edituv_data = blender::draw::create_extractor_edituv_data();
+}  // namespace blender::draw

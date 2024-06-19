@@ -117,7 +117,7 @@ static const FieldInferencingInterface &get_node_field_inferencing_interface(con
       static const FieldInferencingInterface empty_interface;
       return empty_interface;
     }
-    if (!ntreeIsRegistered(group)) {
+    if (!bke::ntreeIsRegistered(group)) {
       /* This can happen when there is a linked node group that was not found (see #92799). */
       return get_dummy_field_inferencing_interface(node, scope);
     }
@@ -448,7 +448,8 @@ static void propagate_data_requirements_from_right_to_left(
               continue;
             }
             if (inferencing_interface.inputs[input_socket->index()] ==
-                InputSocketFieldType::Implicit) {
+                InputSocketFieldType::Implicit)
+            {
               if (!input_socket->is_logically_linked()) {
                 any_input_is_field_implicitly = true;
                 break;
@@ -579,7 +580,8 @@ static void propagate_field_status_from_left_to_right(
         state.is_single = true;
         if (!input_socket->is_directly_linked()) {
           if (inferencing_interface.inputs[input_socket->index()] ==
-              InputSocketFieldType::Implicit) {
+              InputSocketFieldType::Implicit)
+          {
             state.is_single = false;
           }
         }
@@ -612,7 +614,8 @@ static void propagate_field_status_from_left_to_right(
           case OutputSocketFieldType::PartiallyDependent:
           case OutputSocketFieldType::DependentField: {
             for (const bNodeSocket *input_socket :
-                 gather_input_socket_dependencies(field_dependency, *node)) {
+                 gather_input_socket_dependencies(field_dependency, *node))
+            {
               if (!input_socket->is_available()) {
                 continue;
               }

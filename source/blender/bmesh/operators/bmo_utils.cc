@@ -13,15 +13,13 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
 
 #include "BLI_alloca.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
-#include "BKE_object.hh"
 
 #include "bmesh.hh"
 

@@ -15,7 +15,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_brush_types.h"
@@ -31,10 +31,9 @@
 
 #include "BKE_context.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_linestyle.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
@@ -53,7 +52,7 @@
 
 #include "../interface/interface_intern.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 static ScrArea *find_area_properties(const bContext *C);
 static SpaceProperties *find_space_properties(const bContext *C);
@@ -439,9 +438,9 @@ static void template_texture_select(bContext *C, void *user_p, void * /*arg*/)
 
     /* Not totally sure if we should also change selection? */
     for (bNode *node : user->ntree->all_nodes()) {
-      nodeSetSelected(node, false);
+      blender::bke::nodeSetSelected(node, false);
     }
-    nodeSetSelected(user->node, true);
+    blender::bke::nodeSetSelected(user->node, true);
     WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);
   }
   if (user->ptr.data) {
@@ -517,8 +516,6 @@ static void template_texture_user_menu(bContext *C, uiLayout *layout, void * /*a
                            UI_UNIT_X * 4,
                            UI_UNIT_Y,
                            nullptr,
-                           0.0,
-                           0.0,
                            0.0,
                            0.0,
                            "");
@@ -690,17 +687,15 @@ void uiTemplateTextureShow(uiLayout *layout, const bContext *C, PointerRNA *ptr,
                      nullptr,
                      0.0,
                      0.0,
-                     0.0,
-                     0.0,
                      TIP_("Show texture in texture tab"));
   UI_but_func_set(but,
                   template_texture_show,
                   user_found ? user->ptr.data : nullptr,
                   user_found ? user->prop : nullptr);
   if (ct == nullptr) {
-    UI_but_disable(but, TIP_("No (unpinned) Properties Editor found to display texture in"));
+    UI_but_disable(but, "No (unpinned) Properties Editor found to display texture in");
   }
   else if (!user_found) {
-    UI_but_disable(but, TIP_("No texture user found"));
+    UI_but_disable(but, "No texture user found");
   }
 }

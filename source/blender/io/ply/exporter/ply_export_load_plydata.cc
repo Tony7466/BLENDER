@@ -11,22 +11,25 @@
 #include "ply_data.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
+#include "BLI_color.hh"
 #include "BLI_hash.hh"
-#include "BLI_math_color.hh"
 #include "BLI_math_matrix.h"
-#include "BLI_math_quaternion.hh"
+#include "BLI_math_quaternion_types.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_vector.hh"
+
 #include "DEG_depsgraph_query.hh"
+
+#include "DNA_customdata_types.h"
 #include "DNA_layer_types.h"
 
 #include "bmesh.hh"
-#include "bmesh_tools.hh"
-#include <tools/bmesh_triangulate.hh>
+#include "tools/bmesh_triangulate.hh"
 
 namespace blender::io::ply {
 
@@ -55,10 +58,10 @@ static void set_world_axes_transform(const Object &object,
   unit_m3(axes_transform);
   /* +Y-forward and +Z-up are the default Blender axis settings. */
   mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
-  mul_m4_m3m4(r_world_and_axes_transform, axes_transform, object.object_to_world);
+  mul_m4_m3m4(r_world_and_axes_transform, axes_transform, object.object_to_world().ptr());
   /* mul_m4_m3m4 does not transform last row of obmat, i.e. location data. */
-  mul_v3_m3v3(r_world_and_axes_transform[3], axes_transform, object.object_to_world[3]);
-  r_world_and_axes_transform[3][3] = object.object_to_world[3][3];
+  mul_v3_m3v3(r_world_and_axes_transform[3], axes_transform, object.object_to_world().location());
+  r_world_and_axes_transform[3][3] = object.object_to_world()[3][3];
 
   /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
   float normal_matrix[3][3];
@@ -78,7 +81,7 @@ struct uv_vertex_key {
 
   uint64_t hash() const
   {
-    return get_default_hash_3(uv.x, uv.y, vertex_index);
+    return get_default_hash(uv.x, uv.y, vertex_index);
   }
 };
 
@@ -95,7 +98,7 @@ static void generate_vertex_map(const Mesh *mesh,
     const StringRef uv_name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2);
     if (!uv_name.is_empty()) {
       const bke::AttributeAccessor attributes = mesh->attributes();
-      uv_map = *attributes.lookup<float2>(uv_name, ATTR_DOMAIN_CORNER);
+      uv_map = *attributes.lookup<float2>(uv_name, bke::AttrDomain::Corner);
       export_uv = !uv_map.is_empty();
     }
   }
@@ -167,7 +170,7 @@ static float *find_or_add_attribute(const StringRef name,
 }
 
 static void load_custom_attributes(const Mesh *mesh,
-                                   const Vector<int> &ply_to_vertex,
+                                   const Span<int> ply_to_vertex,
                                    uint32_t vertex_offset,
                                    Vector<PlyCustomAttribute> &r_attributes)
 {
@@ -179,7 +182,7 @@ static void load_custom_attributes(const Mesh *mesh,
   attributes.for_all([&](const bke::AttributeIDRef &attribute_id,
                          const bke::AttributeMetaData &meta_data) {
     /* Skip internal, standard and non-vertex domain attributes. */
-    if (meta_data.domain != ATTR_DOMAIN_POINT || attribute_id.name()[0] == '.' ||
+    if (meta_data.domain != bke::AttrDomain::Point || attribute_id.name()[0] == '.' ||
         attribute_id.is_anonymous() || ELEM(attribute_id.name(), "position", color_name, uv_name))
     {
       return true;
@@ -357,6 +360,9 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
     Mesh *mesh = export_params.apply_modifiers ? BKE_object_get_evaluated_mesh(obj_eval) :
                                                  BKE_object_get_pre_modified_mesh(obj_eval);
 
+    /* Ensure data exists if currently in edit mode. */
+    BKE_mesh_wrapper_ensure_mdata(mesh);
+
     bool force_triangulation = false;
     OffsetIndices faces = mesh->faces();
     for (const int i : faces.index_range()) {
@@ -426,6 +432,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
       for (int vertex_index : ply_to_vertex) {
         float3 normal = vert_normals[vertex_index];
         mul_m3_v3(world_and_axes_normal_transform, normal);
+        normalize_v3(normal);
         plyData.vertex_normals.append(normal);
       }
     }
@@ -435,9 +442,8 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
       const StringRef name = mesh->active_color_attribute;
       if (!name.is_empty()) {
         const bke::AttributeAccessor attributes = mesh->attributes();
-        const VArray<ColorGeometry4f> color_attribute =
-            *attributes.lookup_or_default<ColorGeometry4f>(
-                name, ATTR_DOMAIN_POINT, {0.0f, 0.0f, 0.0f, 0.0f});
+        const VArray color_attribute = *attributes.lookup_or_default<ColorGeometry4f>(
+            name, bke::AttrDomain::Point, {0.0f, 0.0f, 0.0f, 0.0f});
         if (!color_attribute.is_empty()) {
           if (plyData.vertex_colors.size() != vertex_offset) {
             plyData.vertex_colors.resize(vertex_offset, float4(0));

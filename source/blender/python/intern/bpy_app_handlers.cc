@@ -13,11 +13,9 @@
 #include "BLI_utildefines.h"
 #include <Python.h>
 
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
-#include "RNA_types.hh"
 
 #include "bpy_app_handlers.h"
 #include "bpy_rna.h"
@@ -39,9 +37,11 @@ static PyTypeObject BlenderAppCbType;
 #define FILEPATH_LOAD_ARG \
   "Accepts one argument: " \
   "the file being loaded, an empty string for the startup-file."
-
+#define RENDER_STATS_ARG \
+  "Accepts one argument: " \
+  "the render stats (render/saving time plus in background mode frame/used [peak] memory)."
 /**
- * See `BKE_callbacks.h` #eCbEvent declaration for the policy on naming.
+ * See `BKE_callbacks.hh` #eCbEvent declaration for the policy on naming.
  */
 static PyStructSequence_Field app_cb_info_fields[] = {
     {"frame_change_pre",
@@ -57,7 +57,7 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"render_pre", "on render (before)"},
     {"render_post", "on render (after)"},
     {"render_write", "on writing a render frame (directly after the frame is written)"},
-    {"render_stats", "on printing render statistics"},
+    {"render_stats", "on printing render statistics. " RENDER_STATS_ARG},
     {"render_init", "on initialization of a render job"},
     {"render_complete", "on completion of render job"},
     {"render_cancel", "on canceling a render job"},
@@ -90,11 +90,15 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"composite_cancel", "on a compositing background job (cancel)"},
     {"animation_playback_pre", "on starting animation playback"},
     {"animation_playback_post", "on ending animation playback"},
+    {"translation_update_post", "on translation settings update"},
     /* NOTE(@ideasman42): This avoids bad-level calls into BPY API
      * but should not be considered part of the public Python API.
      * If there is a compelling reason to make these public, the leading `_` can be removed. */
     {"_extension_repos_update_pre", "on changes to extension repos (before)"},
     {"_extension_repos_update_post", "on changes to extension repos (after)"},
+    {"_extension_repos_sync", "on creating or synchronizing the active repository"},
+    {"_extension_repos_files_clear",
+     "remove files from the repository directory (uses as a string argument)"},
 
 /* sets the permanent tag */
 #define APP_CB_OTHER_FIELDS 1
@@ -393,8 +397,12 @@ void bpy_app_generic_callback(Main * /*main*/,
          * dangling pointers to external render engines (when exception
          * happens during rendering) which will break logic of render pipeline
          * which expects to be the only user of render engine when rendering
-         * is finished.
-         */
+         * is finished. */
+
+        /* Note the handler called, the exception itself typically has the function name. */
+        PySys_WriteStderr("Error in bpy.app.handlers.%s[%d]:\n",
+                          app_cb_info_fields[POINTER_AS_INT(arg)].name,
+                          int(pos));
         PyErr_PrintEx(0);
         PyErr_Clear();
       }

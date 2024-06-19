@@ -18,11 +18,10 @@
 #include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_remap.hh"
@@ -31,7 +30,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -255,7 +254,7 @@ int BKE_object_data_transfer_dttype_to_srcdst_index(const int dtdata_type)
  * is set).
  */
 static void data_transfer_mesh_attributes_transfer_active_color_string(
-    Mesh *mesh_dst, const Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
+    Mesh *mesh_dst, const Mesh *mesh_src, const AttrDomainMask mask_domain, const int data_type)
 {
   if (mesh_dst->active_color_attribute) {
     return;
@@ -270,11 +269,11 @@ static void data_transfer_mesh_attributes_transfer_active_color_string(
   {
     return;
   }
-  else if ((data_type == CD_PROP_BYTE_COLOR) &&
-           !BKE_id_attribute_search(&const_cast<ID &>(mesh_src->id),
-                                    active_color_src,
-                                    CD_MASK_PROP_BYTE_COLOR,
-                                    ATTR_DOMAIN_MASK_COLOR))
+  if ((data_type == CD_PROP_BYTE_COLOR) &&
+      !BKE_id_attribute_search(&const_cast<ID &>(mesh_src->id),
+                               active_color_src,
+                               CD_MASK_PROP_BYTE_COLOR,
+                               ATTR_DOMAIN_MASK_COLOR))
   {
     return;
   }
@@ -306,7 +305,7 @@ static void data_transfer_mesh_attributes_transfer_active_color_string(
  * is set).
  */
 static void data_transfer_mesh_attributes_transfer_default_color_string(
-    Mesh *mesh_dst, const Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
+    Mesh *mesh_dst, const Mesh *mesh_src, const AttrDomainMask mask_domain, const int data_type)
 {
   if (mesh_dst->default_color_attribute) {
     return;
@@ -321,11 +320,11 @@ static void data_transfer_mesh_attributes_transfer_default_color_string(
   {
     return;
   }
-  else if ((data_type == CD_PROP_BYTE_COLOR) &&
-           !BKE_id_attribute_search(&const_cast<ID &>(mesh_src->id),
-                                    default_color_src,
-                                    CD_MASK_PROP_BYTE_COLOR,
-                                    ATTR_DOMAIN_MASK_COLOR))
+  if ((data_type == CD_PROP_BYTE_COLOR) &&
+      !BKE_id_attribute_search(&const_cast<ID &>(mesh_src->id),
+                               default_color_src,
+                               CD_MASK_PROP_BYTE_COLOR,
+                               ATTR_DOMAIN_MASK_COLOR))
   {
     return;
   }
@@ -377,20 +376,20 @@ static void data_transfer_dtdata_type_postprocess(Mesh *me_dst,
 
     bke::MutableAttributeAccessor attributes = me_dst->attributes_for_write();
     bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
-        "sharp_edge", ATTR_DOMAIN_EDGE);
-    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", ATTR_DOMAIN_FACE);
+        "sharp_edge", bke::AttrDomain::Edge);
+    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
     /* Note loop_nors_dst contains our custom normals as transferred from source... */
-    blender::bke::mesh::normals_loop_custom_set(me_dst->vert_positions(),
-                                                me_dst->edges(),
-                                                me_dst->faces(),
-                                                me_dst->corner_verts(),
-                                                me_dst->corner_edges(),
-                                                me_dst->vert_normals(),
-                                                me_dst->face_normals(),
-                                                sharp_faces,
-                                                sharp_edges.span,
-                                                {loop_nors_dst, me_dst->corners_num},
-                                                {custom_nors_dst, me_dst->corners_num});
+    blender::bke::mesh::normals_corner_custom_set(me_dst->vert_positions(),
+                                                  me_dst->edges(),
+                                                  me_dst->faces(),
+                                                  me_dst->corner_verts(),
+                                                  me_dst->corner_edges(),
+                                                  me_dst->vert_normals(),
+                                                  me_dst->face_normals(),
+                                                  sharp_faces,
+                                                  sharp_edges.span,
+                                                  {loop_nors_dst, me_dst->corners_num},
+                                                  {custom_nors_dst, me_dst->corners_num});
     sharp_edges.finish();
     CustomData_free_layers(ldata_dst, CD_NORMAL, me_dst->corners_num);
   }
@@ -864,6 +863,7 @@ static bool data_transfer_layersmapping_generate(ListBase *r_map,
                                                  const int tolayers,
                                                  SpaceTransform *space_transform)
 {
+  using namespace blender;
   const CustomData *cd_src;
   CustomData *cd_dst;
 
@@ -1052,20 +1052,29 @@ static bool data_transfer_layersmapping_generate(ListBase *r_map,
       cddata_type = CD_PROP_FLOAT2;
     }
     else if (cddata_type == CD_FAKE_LNOR) {
-      if (!CustomData_get_layer(&me_dst->corner_data, CD_PROP_FLOAT)) {
-        CustomData_add_layer(&me_dst->corner_data, CD_NORMAL, CD_SET_DEFAULT, me_dst->corners_num);
+      if (r_map) {
+        /* Use #CD_NORMAL as a temporary storage for custom normals in 3D vector form.
+         * A post-process step will convert this layer to #CD_CUSTOMLOOPNORMAL. */
+        float3 *dst_data = static_cast<float3 *>(
+            CustomData_get_layer_for_write(&me_dst->corner_data, CD_NORMAL, me_dst->corners_num));
+        if (!dst_data) {
+          dst_data = static_cast<float3 *>(CustomData_add_layer(
+              &me_dst->corner_data, CD_NORMAL, CD_SET_DEFAULT, me_dst->corners_num));
+        }
+        if (mix_factor != 1.0f || mix_weights) {
+          MutableSpan(dst_data, me_dst->corners_num).copy_from(me_dst->corner_normals());
+        }
+        /* Post-process will convert it back to CD_CUSTOMLOOPNORMAL. */
+        data_transfer_layersmapping_add_item_cd(r_map,
+                                                CD_NORMAL,
+                                                mix_mode,
+                                                mix_factor,
+                                                mix_weights,
+                                                me_src->corner_normals().data(),
+                                                dst_data,
+                                                customdata_data_transfer_interp_normal_normals,
+                                                space_transform);
       }
-      /* Post-process will convert it back to CD_CUSTOMLOOPNORMAL. */
-      data_transfer_layersmapping_add_item_cd(
-          r_map,
-          CD_NORMAL,
-          mix_mode,
-          mix_factor,
-          mix_weights,
-          me_src->corner_normals().data(),
-          CustomData_get_layer_for_write(&me_dst->corner_data, CD_NORMAL, me_dst->corners_num),
-          customdata_data_transfer_interp_normal_normals,
-          space_transform);
       return true;
     }
 
