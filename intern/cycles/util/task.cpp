@@ -92,7 +92,9 @@ void TaskScheduler::exit()
 
 void TaskScheduler::free_memory()
 {
-  assert(users == 0);
+  if (users != 0) {
+    assert(users == 0);
+  }
 }
 
 int TaskScheduler::max_concurrency()
