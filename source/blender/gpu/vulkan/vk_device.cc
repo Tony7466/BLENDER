@@ -370,15 +370,6 @@ void VKDevice::discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation)
   discarded_buffers_.append(std::pair(vk_buffer, vma_allocation));
 }
 
-void VKDevice::discard_render_pass(VkRenderPass vk_render_pass)
-{
-  discarded_render_passes_.append(vk_render_pass);
-}
-void VKDevice::discard_frame_buffer(VkFramebuffer vk_frame_buffer)
-{
-  discarded_frame_buffers_.append(vk_frame_buffer);
-}
-
 void VKDevice::destroy_discarded_resources()
 {
   VK_ALLOCATION_CALLBACKS
@@ -398,16 +389,6 @@ void VKDevice::destroy_discarded_resources()
     std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
     resources.remove_buffer(buffer_allocation.first);
     vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
-  }
-
-  while (!discarded_render_passes_.is_empty()) {
-    VkRenderPass vk_render_pass = discarded_render_passes_.pop_last();
-    vkDestroyRenderPass(vk_device_, vk_render_pass, vk_allocation_callbacks);
-  }
-
-  while (!discarded_frame_buffers_.is_empty()) {
-    VkFramebuffer vk_frame_buffer = discarded_frame_buffers_.pop_last();
-    vkDestroyFramebuffer(vk_device_, vk_frame_buffer, vk_allocation_callbacks);
   }
 }
 
