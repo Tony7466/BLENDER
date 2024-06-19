@@ -63,7 +63,6 @@ void VKContext::sync_backbuffer()
       is_init_ = true;
       descriptor_pools_.init(device);
       device.init_dummy_buffer(*this);
-      device.init_dummy_color_attachment();
     }
     descriptor_pools_.reset();
   }
