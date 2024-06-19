@@ -258,13 +258,11 @@ static void calc_bmesh(
   }
 }
 
-}  // namespace crease_cc
-
-void do_crease_brush(const Scene &scene,
-                     const Sculpt &sd,
-                     const bool invert_strength,
-                     Object &object,
-                     Span<PBVHNode *> nodes)
+static void do_crease_or_blob_brush(const Scene &scene,
+                                    const Sculpt &sd,
+                                    const bool invert_strength,
+                                    Object &object,
+                                    Span<PBVHNode *> nodes)
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -326,6 +324,18 @@ void do_crease_brush(const Scene &scene,
       });
       break;
   }
+}
+
+}  // namespace crease_cc
+
+void do_crease_brush(const Scene &scene, const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+{
+  do_crease_or_blob_brush(scene, sd, false, object, nodes);
+}
+
+void do_blob_brush(const Scene &scene, const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
+{
+  do_crease_or_blob_brush(scene, sd, true, object, nodes);
 }
 
 }  // namespace blender::ed::sculpt_paint
