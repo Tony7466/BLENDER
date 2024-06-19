@@ -233,11 +233,9 @@ bool grease_pencil_weight_painting_poll(bContext *C);
 
 float opacity_from_input_sample(const float pressure,
                                 const Brush *brush,
-                                const Scene *scene,
                                 const BrushGpencilSettings *settings);
 float radius_from_input_sample(const RegionView3D *rv3d,
                                const ARegion *region,
-                               const Scene *scene,
                                const Brush *brush,
                                float pressure,
                                float3 location,
@@ -559,5 +557,23 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 float radius_scale = 1.0f);
 
 }  // namespace image_render
+
+/**
+ * Create new strokes tracing the rendered outline of existing strokes.
+ * \param drawing: Drawing with input strokes.
+ * \param strokes: Selection curves to trace.
+ * \param transform: Transform to apply to strokes.
+ * \param corner_subdivisions: Subdivisions for corners and start/end cap.
+ * \param outline_radius: Radius of the new outline strokes.
+ * \param outline_offset: Offset of the outline from the original stroke.
+ * \param material_index: The material index for the new outline strokes.
+ */
+bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
+                                          const IndexMask &strokes,
+                                          const float4x4 &transform,
+                                          int corner_subdivisions,
+                                          float outline_radius,
+                                          float outline_offset,
+                                          int material_index);
 
 }  // namespace blender::ed::greasepencil

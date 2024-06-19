@@ -168,16 +168,16 @@ float3 DrawingPlacement::project(const float2 co) const
   float3 proj_point;
   if (depth_ == DrawingPlacementDepth::Surface) {
     /* Project using the viewport depth cache. */
-    BLI_assert(depth_cache_ != nullptr);
     float depth;
-    if (ED_view3d_depth_read_cached(depth_cache_, int2(co), 4, &depth)) {
+    if (depth_cache_ != nullptr && ED_view3d_depth_read_cached(depth_cache_, int2(co), 4, &depth))
+    {
       ED_view3d_depth_unproject_v3(region_, int2(co), depth, proj_point);
       float3 normal;
       ED_view3d_depth_read_cached_normal(region_, depth_cache_, int2(co), normal);
       proj_point += normal * surface_offset_;
     }
-    /* If we didn't hit anything, use the view plane for placement. */
     else {
+      /* Fallback to `View` placement. */
       ED_view3d_win_to_3d(view3d_, region_, placement_loc_, co, proj_point);
     }
   }
@@ -346,9 +346,10 @@ static Array<std::pair<int, int>> get_visible_frames_for_layer(
   const int last_frame = sorted_keys.last();
   const int last_frame_index = sorted_keys.index_range().last();
   const bool is_before_first = (current_frame < sorted_keys.first());
+  const std::optional<int> current_start_frame = layer.start_frame_at(current_frame);
   for (const int frame_i : sorted_keys.index_range()) {
     const int frame_number = sorted_keys[frame_i];
-    if (frame_number == current_frame) {
+    if (current_start_frame && *current_start_frame == frame_number) {
       continue;
     }
     const GreasePencilFrame &frame = layer.frames().lookup(frame_number);
@@ -1144,28 +1145,25 @@ static float pixel_radius_to_world_space_radius(const RegionView3D *rv3d,
 
 static float brush_radius_at_location(const RegionView3D *rv3d,
                                       const ARegion *region,
-                                      const Scene *scene,
                                       const Brush *brush,
                                       const float3 location,
                                       const float4x4 to_world)
 {
-  if (!BKE_brush_use_locked_size(scene, brush)) {
-    return pixel_radius_to_world_space_radius(
-        rv3d, region, location, to_world, BKE_brush_size_get(scene, brush));
+  if ((brush->flag & BRUSH_LOCK_SIZE) == 0) {
+    return pixel_radius_to_world_space_radius(rv3d, region, location, to_world, brush->size);
   }
-  return BKE_brush_unprojected_radius_get(scene, brush);
+  return brush->unprojected_radius;
 }
 
 float radius_from_input_sample(const RegionView3D *rv3d,
                                const ARegion *region,
-                               const Scene *scene,
                                const Brush *brush,
                                const float pressure,
                                const float3 location,
                                const float4x4 to_world,
                                const BrushGpencilSettings *settings)
 {
-  float radius = brush_radius_at_location(rv3d, region, scene, brush, location, to_world);
+  float radius = brush_radius_at_location(rv3d, region, brush, location, to_world);
   if (BKE_brush_use_size_pressure(brush)) {
     radius *= BKE_curvemapping_evaluateF(settings->curve_sensitivity, 0, pressure);
   }
@@ -1174,10 +1172,9 @@ float radius_from_input_sample(const RegionView3D *rv3d,
 
 float opacity_from_input_sample(const float pressure,
                                 const Brush *brush,
-                                const Scene *scene,
                                 const BrushGpencilSettings *settings)
 {
-  float opacity = BKE_brush_alpha_get(scene, brush);
+  float opacity = brush->alpha;
   if (BKE_brush_use_alpha_pressure(brush)) {
     opacity *= BKE_curvemapping_evaluateF(settings->curve_strength, 0, pressure);
   }

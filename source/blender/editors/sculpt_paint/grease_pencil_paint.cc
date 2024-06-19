@@ -39,15 +39,14 @@
 namespace blender::ed::sculpt_paint::greasepencil {
 
 static float brush_radius_to_pixel_radius(const RegionView3D *rv3d,
-                                          const Scene *scene,
                                           const Brush *brush,
                                           const float3 pos)
 {
-  if (BKE_brush_use_locked_size(scene, brush)) {
+  if ((brush->flag & BRUSH_LOCK_SIZE) != 0) {
     const float pixel_size = ED_view3d_pixel_size(rv3d, pos);
-    return BKE_brush_unprojected_radius_get(scene, brush) / pixel_size;
+    return brush->unprojected_radius / pixel_size;
   }
-  return float(BKE_brush_size_get(scene, brush));
+  return float(brush->size);
 }
 
 template<typename T>
@@ -339,14 +338,13 @@ struct PaintOperationExecutor {
     const float start_radius = ed::greasepencil::radius_from_input_sample(
         rv3d,
         region,
-        scene_,
         brush_,
         start_sample.pressure,
         start_location,
         self.placement_.to_world_space(),
         settings_);
     const float start_opacity = ed::greasepencil::opacity_from_input_sample(
-        start_sample.pressure, brush_, scene_, settings_);
+        start_sample.pressure, brush_, settings_);
     Scene *scene = CTX_data_scene(&C);
     const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
 
@@ -513,14 +511,13 @@ struct PaintOperationExecutor {
     const float3 position = self.placement_.project(coords);
     float radius = ed::greasepencil::radius_from_input_sample(rv3d,
                                                               region,
-                                                              scene_,
                                                               brush_,
                                                               extension_sample.pressure,
                                                               position,
                                                               self.placement_.to_world_space(),
                                                               settings_);
     const float opacity = ed::greasepencil::opacity_from_input_sample(
-        extension_sample.pressure, brush_, scene_, settings_);
+        extension_sample.pressure, brush_, settings_);
     Scene *scene = CTX_data_scene(&C);
     const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
 
@@ -572,7 +569,7 @@ struct PaintOperationExecutor {
     /* If the next sample is far away, we subdivide the segment to add more points. */
     const float distance_px = math::distance(coords, prev_coords);
     const float brush_radius_px = brush_radius_to_pixel_radius(
-        rv3d, scene, brush_, math::transform_point(self.placement_.to_world_space(), position));
+        rv3d, brush_, math::transform_point(self.placement_.to_world_space(), position));
     /* Clamp the number of points within a pixel in screen space. */
     constexpr int max_points_per_pixel = 4;
     /* The value `brush_->spacing` is a percentage of the brush radius in pixels. */
@@ -721,6 +718,9 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       CTX_data_main(&C), object, brush);
   const int material_index = BKE_object_material_index_get(object, material);
+
+  /* We're now starting to draw. */
+  grease_pencil->runtime->is_drawing_stroke = true;
 
   PaintOperationExecutor executor{C};
   executor.process_start_sample(*this, C, start_sample, material_index);
@@ -951,6 +951,9 @@ void PaintOperation::on_stroke_done(const bContext &C)
   }
   drawing.set_texture_matrices({texture_space_}, IndexRange::from_single(active_curve));
   drawing.tag_topology_changed();
+
+  /* Now we're done drawing. */
+  grease_pencil.runtime->is_drawing_stroke = false;
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil.id);
