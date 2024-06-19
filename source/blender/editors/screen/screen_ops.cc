@@ -3602,8 +3602,10 @@ static bool area_join_init(bContext *C, wmOperator *op, ScrArea *sa1, ScrArea *s
   if (sa1 == nullptr && sa2 == nullptr) {
     /* Get areas from cursor location if not specified. */
     int cursor[2];
-    RNA_int_get_array(op->ptr, "cursor", cursor);
-    screen_area_edge_from_cursor(C, cursor, &sa1, &sa2);
+    RNA_int_get_array(op->ptr, "source_xy", cursor);
+    sa1 = BKE_screen_find_area_xy(CTX_wm_screen(C), SPACE_TYPE_ANY, cursor);
+    RNA_int_get_array(op->ptr, "target_xy", cursor);
+    sa2 = BKE_screen_find_area_xy(CTX_wm_screen(C), SPACE_TYPE_ANY, cursor);
   }
   if (sa1 == nullptr) {
     return false;
@@ -3932,14 +3934,25 @@ static void area_join_update_data(bContext *C, sAreaJoinData *jd, const wmEvent 
     jd->sa1 = jd->sa2;
     jd->sa2 = area;
     jd->dir = area_getorientation(jd->sa1, jd->sa2);
+    return;
   }
-  else if (jd->sa1 == area) {
+
+  if (!(abs(jd->x - event->xy[0]) > (10 * U.pixelsize) ||
+        abs(jd->y - event->xy[1]) > (10 * U.pixelsize)))
+  {
+    jd->sa2 = area;
+    return;
+  }
+
+  if (jd->sa1 == area) {
     jd->sa2 = area;
     jd->split_dir = (abs(event->xy[0] - jd->x) > abs(event->xy[1] - jd->y)) ? SCREEN_AXIS_V :
                                                                               SCREEN_AXIS_H;
     jd->split_fac = area_split_factor(C, jd, event);
+    return;
   }
-  else {
+
+  if (U.experimental.use_docking) {
     jd->sa2 = area;
     jd->dir = area_getorientation(jd->sa1, jd->sa2);
     jd->dock_target = area_docking_target(jd, event);
@@ -4065,8 +4078,26 @@ static void SCREEN_OT_area_join(wmOperatorType *ot)
   ot->flag = OPTYPE_BLOCKING | OPTYPE_INTERNAL;
 
   /* rna */
-  RNA_def_int_vector(
-      ot->srna, "cursor", 2, nullptr, INT_MIN, INT_MAX, "Cursor", "", INT_MIN, INT_MAX);
+  RNA_def_int_vector(ot->srna,
+                     "source_xy",
+                     2,
+                     nullptr,
+                     INT_MIN,
+                     INT_MAX,
+                     "Source location",
+                     "",
+                     INT_MIN,
+                     INT_MAX);
+  RNA_def_int_vector(ot->srna,
+                     "target_xy",
+                     2,
+                     nullptr,
+                     INT_MIN,
+                     INT_MAX,
+                     "Target location",
+                     "",
+                     INT_MIN,
+                     INT_MAX);
 }
 
 /** \} */
@@ -4118,16 +4149,35 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
   }
 
   /* Join needs two very similar areas. */
-  if (sa1 && sa2 && (area_getorientation(sa1, sa2) != -1)) {
-    uiItemFullO(layout,
-                "SCREEN_OT_area_join",
-                IFACE_("Join Areas"),
-                ICON_AREA_JOIN,
-                nullptr,
-                WM_OP_INVOKE_DEFAULT,
-                UI_ITEM_NONE,
-                &ptr);
-    RNA_int_set_array(&ptr, "cursor", event->xy);
+  if (sa1 && sa2) {
+    eScreenDir dir = area_getorientation(sa1, sa2);
+    if (dir != SCREEN_DIR_NONE) {
+      uiItemFullO(layout,
+                  "SCREEN_OT_area_join",
+                  (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Up") :
+                                                            IFACE_("Join Right"),
+                  ICON_AREA_JOIN,
+                  nullptr,
+                  WM_OP_EXEC_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      RNA_int_set_array(&ptr, "source_xy", blender::int2{sa2->totrct.xmin, sa2->totrct.ymin});
+      RNA_int_set_array(&ptr, "target_xy", blender::int2{sa1->totrct.xmin, sa1->totrct.ymin});
+
+      uiItemFullO(layout,
+                  "SCREEN_OT_area_join",
+                  (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Down") :
+                                                            IFACE_("Join Left"),
+                  ICON_AREA_JOIN,
+                  nullptr,
+                  WM_OP_EXEC_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      RNA_int_set_array(&ptr, "source_xy", blender::int2{sa1->totrct.xmin, sa1->totrct.ymin});
+      RNA_int_set_array(&ptr, "target_xy", blender::int2{sa2->totrct.xmin, sa2->totrct.ymin});
+
+      uiItemS(layout);
+    }
   }
 
   /* Swap just needs two areas. */

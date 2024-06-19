@@ -226,6 +226,10 @@ static void screen_draw_area_icon(float center_x,
                                   float *bg = nullptr,
                                   float *outline = nullptr)
 {
+  if (!U.experimental.use_docking) {
+    return;
+  }
+
   const float bg_width = U.pixelsize * 50.0f;
   const float bg_height = U.pixelsize * 40.0f;
   rctf combined = {center_x - (bg_width / 2.0f),
@@ -408,6 +412,28 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 
   /* Outline the combined area. */
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
+
+  if (!U.experimental.use_docking) {
+    float inner1[4] = {1.0f, 1.0f, 1.0f, 0.10f};
+    rctf source = {std::max(float(sa1->totrct.xmin), combined.xmin),
+                   std::min(float(sa1->totrct.xmax), combined.xmax),
+                   std::max(float(sa1->totrct.ymin), combined.ymin),
+                   std::min(float(sa1->totrct.ymax), combined.ymax)};
+    UI_draw_roundbox_4fv_ex(&source, inner1, nullptr, 1.0f, nullptr, 1.0f, 0.0f);
+
+    float inner2[4] = {0.0f, 0.0f, 0.0f, 0.25f};
+    rctf dest = {std::max(float(sa2->totrct.xmin), combined.xmin),
+                 std::min(float(sa2->totrct.xmax), combined.xmax),
+                 std::max(float(sa2->totrct.ymin), combined.ymin),
+                 std::min(float(sa2->totrct.ymax), combined.ymax)};
+    UI_draw_roundbox_4fv_ex(&dest, inner2, nullptr, 1.0f, nullptr, 0.0f, 0.0f);
+
+    float outline[4] = {1.0f, 1.0f, 1.0f, 0.8f};
+    UI_draw_roundbox_4fv_ex(
+        &combined, nullptr, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+    return;
+  }
+
   float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
   float inner[4] = {1.0f, 1.0f, 1.0f, 0.10f};
   UI_draw_roundbox_4fv_ex(&combined, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
