@@ -3219,18 +3219,18 @@ void GreasePencil::rename_node(Main &bmain,
 
     /* Update the layer name of the influence data of the modifiers. */
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-      char *layer_name = nullptr;
+      char *dst_layer_name = nullptr;
       /* LineArt doesn't use the `GreasePencilModifierInfluenceData` struct. */
       if (md->type == eModifierType_GreasePencilLineart) {
-        layer_name = reinterpret_cast<GreasePencilLineartModifierData *>(md)->target_layer;
+        dst_layer_name = reinterpret_cast<GreasePencilLineartModifierData *>(md)->target_layer;
       }
       else if (GreasePencilModifierInfluenceData *influence_data = influence_data_from_modifier(
                    md))
       {
-        layer_name = influence_data->layer_name;
+        dst_layer_name = influence_data->layer_name;
       }
-      if (layer_name && STREQ(layer_name, old_name.c_str())) {
-        layer_name = BLI_strdup(node.name().c_str());
+      if (dst_layer_name && STREQ(dst_layer_name, old_name.c_str())) {
+        BLI_strncpy(dst_layer_name, node.name().c_str(), 64);
       }
     }
   }
