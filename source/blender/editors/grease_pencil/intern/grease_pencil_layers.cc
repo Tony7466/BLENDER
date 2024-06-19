@@ -789,8 +789,8 @@ static void GREASE_PENCIL_OT_layer_group_color_tag(wmOperatorType *ot)
 
 static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
                                        GreasePencil &src_grease_pencil,
-                                       blender::bke::greasepencil::Layer &src_layer,
-                                       const int copy_frame_mode,
+                                       const blender::bke::greasepencil::Layer &src_layer,
+                                       int copy_frame_mode,
                                        int current_frame)
 {
   using namespace blender::bke::greasepencil;
@@ -828,12 +828,12 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
     GreasePencil &dst_grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
     if (only_active) {
-      Layer &active_layer = *src_grease_pencil.get_active_layer();
+      const Layer &active_layer = *src_grease_pencil.get_active_layer();
       duplicate_layer_and_frames(
           dst_grease_pencil, src_grease_pencil, active_layer, copy_frame_mode, current_frame);
     }
     else {
-      for (Layer *layer : src_grease_pencil.layers_for_write()) {
+      for (const Layer *layer : src_grease_pencil.layers()) {
         duplicate_layer_and_frames(
             dst_grease_pencil, src_grease_pencil, *layer, copy_frame_mode, current_frame);
       }
