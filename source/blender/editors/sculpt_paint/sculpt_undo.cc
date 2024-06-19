@@ -138,6 +138,8 @@ struct StepData {
    * nodes are pushed from multiple threads. This map speeds up undo node access to reduce the
    * amount of time we wait for the lock.
    *
+   * This is only accessible when building the undo step, in between #push_begin and #push_end.
+   *
    * \todo All nodes in a single step have the same type, so using the type as part of the map key
    * should be unnecessary. However, to remove it, first the storage of the undo type should be
    * moved to #StepData from #Node.
