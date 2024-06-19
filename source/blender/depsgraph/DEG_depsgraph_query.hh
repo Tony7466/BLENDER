@@ -105,6 +105,9 @@ Object *DEG_get_original_object(Object *object);
 /** Get original version of given evaluated ID data-block. */
 ID *DEG_get_original_id(ID *id);
 
+/** Get the depsgraph that owns the given ID. */
+Depsgraph *DEG_get_depsgraph_by_evaluated_id(const ID &id_eval);
+
 /**
  * Check whether given ID is an original.
  *
@@ -133,6 +136,9 @@ bool DEG_is_fully_evaluated(const Depsgraph *depsgraph);
  * viewport is not fully evaluated, even though the copy-on-eval data-block is created.
  */
 bool DEG_id_is_fully_evaluated(const Depsgraph *depsgraph, const ID *id_eval);
+
+bool DEG_object_geometry_is_evaluated(const Object &object);
+bool DEG_object_transform_is_evaluated(const Object &object);
 
 /** \} */
 
