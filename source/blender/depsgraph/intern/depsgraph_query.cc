@@ -373,6 +373,9 @@ static bool operation_needs_update(const deg::Depsgraph &deg_graph,
 {
   /* Only us the original ID pointer to look up the IDNode, do not dereference it. */
   const ID *id_orig = deg::get_original_id(&id_eval);
+  if (!id_orig) {
+    return false;
+  }
   const deg::IDNode *id_node = deg_graph.find_id_node(id_orig);
   if (!id_node) {
     return false;
@@ -386,6 +389,9 @@ static bool operation_needs_update(const deg::Depsgraph &deg_graph,
     return false;
   }
   const bool needs_update = operation_node->flag & deg::DEPSOP_FLAG_NEEDS_UPDATE;
+  if (needs_update) {
+    printf("Hello World\n");
+  }
   return needs_update;
 }
 
@@ -395,7 +401,7 @@ bool DEG_object_geometry_is_evaluated(const Object &object)
   if (!depsgraph) {
     return true;
   }
-  const deg::Depsgraph &deg_graph = reinterpret_cast<const deg::Depsgraph &>(*depsgraph);
+  const deg::Depsgraph &deg_graph = *reinterpret_cast<const deg::Depsgraph *>(depsgraph);
   return !operation_needs_update(
       deg_graph, object.id, deg::NodeType::GEOMETRY, deg::OperationCode::GEOMETRY_EVAL_DONE);
 }
@@ -406,7 +412,18 @@ bool DEG_object_transform_is_evaluated(const Object &object)
   if (!depsgraph) {
     return true;
   }
-  const deg::Depsgraph &deg_graph = reinterpret_cast<const deg::Depsgraph &>(depsgraph);
+  const deg::Depsgraph &deg_graph = *reinterpret_cast<const deg::Depsgraph *>(depsgraph);
   return !operation_needs_update(
       deg_graph, object.id, deg::NodeType::TRANSFORM, deg::OperationCode::TRANSFORM_FINAL);
+}
+
+bool DEG_collection_geometry_is_evaluated(const Collection &collection)
+{
+  const Depsgraph *depsgraph = DEG_get_depsgraph_by_evaluated_id(collection.id);
+  if (!depsgraph) {
+    return true;
+  }
+  const deg::Depsgraph &deg_graph = *reinterpret_cast<const deg::Depsgraph *>(depsgraph);
+  return !operation_needs_update(
+      deg_graph, collection.id, deg::NodeType::GEOMETRY, deg::OperationCode::GEOMETRY_EVAL_DONE);
 }

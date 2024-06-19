@@ -139,6 +139,7 @@ bool DEG_id_is_fully_evaluated(const Depsgraph *depsgraph, const ID *id_eval);
 
 bool DEG_object_geometry_is_evaluated(const Object &object);
 bool DEG_object_transform_is_evaluated(const Object &object);
+bool DEG_collection_geometry_is_evaluated(const Collection &collection);
 
 /** \} */
 
