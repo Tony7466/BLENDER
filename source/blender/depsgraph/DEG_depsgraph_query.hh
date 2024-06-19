@@ -106,7 +106,7 @@ Object *DEG_get_original_object(Object *object);
 ID *DEG_get_original_id(ID *id);
 
 /** Get the depsgraph that owns the given ID. */
-Depsgraph *DEG_get_depsgraph_by_evaluated_id(const ID &id_eval);
+Depsgraph *DEG_get_depsgraph_by_id(const ID &id);
 
 /**
  * Check whether given ID is an original.
