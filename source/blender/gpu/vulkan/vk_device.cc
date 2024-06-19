@@ -40,7 +40,6 @@ void VKDevice::deinit()
     return;
   }
 
-  timeline_semaphore_.free(*this);
   dummy_buffer_.free();
   samplers_.free();
   destroy_discarded_resources();
@@ -87,7 +86,6 @@ void VKDevice::init(void *ghost_context)
   init_pipeline_cache();
 
   samplers_.init();
-  timeline_semaphore_.init(*this);
 
   debug::object_label(device_get(), "LogicalDevice");
   debug::object_label(queue_get(), "GenericQueue");
