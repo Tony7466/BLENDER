@@ -357,7 +357,10 @@ def addons_panel_draw_items(
                 # When extensions is not empty, skip items with empty tags.
                 continue
 
-        if (core_addon := module_parent_dirname(mod.__file__) == "addons_core"):
+        if is_extension:
+            core_addon = False
+            user_addon = False
+        elif (core_addon := module_parent_dirname(mod.__file__) == "addons_core"):
             user_addon = False
         else:
             user_addon = USERPREF_PT_addons.is_user_addon(mod, user_addon_paths)
