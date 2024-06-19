@@ -834,6 +834,10 @@ bool SCULPT_stroke_is_first_brush_step(const blender::ed::sculpt_paint::StrokeCa
 bool SCULPT_stroke_is_first_brush_step_of_symmetry_pass(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
+void sculpt_project_v3_normal_align(const SculptSession &ss,
+                                    float normal_weight,
+                                    float grab_delta[3]);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1675,6 +1679,16 @@ void push_end_ex(Object &ob, const bool use_nested_undo);
 
 }
 
+namespace blender::ed::sculpt_paint {
+
+struct OrigPositionData {
+  Span<float3> positions;
+  Span<float3> normals;
+};
+OrigPositionData get_orig_position_data(const Object &object, const PBVHNode &node);
+
+}
+
 /** \} */
 
 void SCULPT_vertcos_to_key(Object &ob, KeyBlock *kb, blender::Span<blender::float3> vertCos);
@@ -2039,7 +2053,6 @@ void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_crease_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_grab_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_elastic_deform_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_draw_sharp_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);

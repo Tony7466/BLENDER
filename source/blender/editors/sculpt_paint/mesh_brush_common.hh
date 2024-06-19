@@ -74,6 +74,7 @@ void calc_front_face(const float3 &view_normal,
                      Span<float3> vert_normals,
                      Span<int> vert_indices,
                      MutableSpan<float> factors);
+void calc_front_face(const float3 &view_normal, Span<float3> normals, MutableSpan<float> factors);
 
 /**
  * Calculate distances based on the distance from the brush cursor and various other settings.
@@ -82,6 +83,11 @@ void calc_front_face(const float3 &view_normal,
 void calc_distance_falloff(SculptSession &ss,
                            Span<float3> vert_positions,
                            Span<int> vert_indices,
+                           eBrushFalloffShape falloff_shape,
+                           MutableSpan<float> r_distances,
+                           MutableSpan<float> factors);
+void calc_distance_falloff(SculptSession &ss,
+                           Span<float3> positions,
                            eBrushFalloffShape falloff_shape,
                            MutableSpan<float> r_distances,
                            MutableSpan<float> factors);
@@ -113,6 +119,10 @@ void calc_brush_texture_factors(SculptSession &ss,
                                 const Brush &brush,
                                 Span<float3> vert_positions,
                                 Span<int> vert_indices,
+                                MutableSpan<float> factors);
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                Span<float3> positions,
                                 MutableSpan<float> factors);
 
 namespace auto_mask {

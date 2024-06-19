@@ -2075,3 +2075,13 @@ void push_multires_mesh_end(bContext *C, const char *str)
 /** \} */
 
 }  // namespace blender::ed::sculpt_paint::undo
+
+namespace blender::ed::sculpt_paint {
+
+OrigPositionData get_orig_position_data(const Object &object, const PBVHNode &node)
+{
+  const undo::Node *unode = undo::get_node(&node, undo::Type::Position);
+  return {unode->position, unode->normal};
+}
+
+}  // namespace blender::ed::sculpt_paint

@@ -3759,7 +3759,7 @@ static void do_brush_action(const Sculpt &sd,
       do_inflate_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_GRAB:
-      SCULPT_do_grab_brush(sd, ob, nodes);
+      do_grab_brush(sd, ob, nodes);
       break;
     case SCULPT_TOOL_ROTATE:
       SCULPT_do_rotate_brush(sd, ob, nodes);
@@ -6547,6 +6547,18 @@ void calc_front_face(const float3 &view_normal,
   }
 }
 
+void calc_front_face(const float3 &view_normal,
+                     const Span<float3> normals,
+                     const MutableSpan<float> factors)
+{
+  BLI_assert(normals.size() == factors.size());
+
+  for (const int i : normals.index_range()) {
+    const float dot = math::dot(view_normal, normals[i]);
+    factors[i] *= dot > 0.0f ? dot : 0.0f;
+  }
+}
+
 void calc_distance_falloff(SculptSession &ss,
                            const Span<float3> positions,
                            const Span<int> verts,
@@ -6567,6 +6579,33 @@ void calc_distance_falloff(SculptSession &ss,
       continue;
     }
     if (!sculpt_brush_test_sq_fn(test, positions[verts[i]])) {
+      factors[i] = 0.0f;
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
+    r_distances[i] = math::sqrt(test.dist);
+  }
+}
+
+void calc_distance_falloff(SculptSession &ss,
+                           const Span<float3> positions,
+                           const eBrushFalloffShape falloff_shape,
+                           const MutableSpan<float> r_distances,
+                           const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == r_distances.size());
+  BLI_assert(factors.size() == r_distances.size());
+
+  SculptBrushTest test;
+  const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, test, falloff_shape);
+
+  for (const int i : positions.index_range()) {
+    if (factors[i] == 0.0f) {
+      r_distances[i] = FLT_MAX;
+      continue;
+    }
+    if (!sculpt_brush_test_sq_fn(test, positions[i])) {
       factors[i] = 0.0f;
       r_distances[i] = FLT_MAX;
       continue;
@@ -6647,6 +6686,29 @@ void calc_brush_texture_factors(SculptSession &ss,
     /* NOTE: This is not a thread-safe call. */
     sculpt_apply_texture(
         ss, brush, vert_positions[verts[i]], thread_id, &texture_value, texture_rgba);
+
+    factors[i] *= texture_value;
+  }
+}
+
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                const Span<float3> positions,
+                                const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == factors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  const MTex *mtex = BKE_brush_mask_texture_get(&brush, OB_MODE_SCULPT);
+  if (!mtex->tex) {
+    return;
+  }
+
+  for (const int i : positions.index_range()) {
+    float texture_value;
+    float4 texture_rgba;
+    /* NOTE: This is not a thread-safe call. */
+    sculpt_apply_texture(ss, brush, positions[i], thread_id, &texture_value, texture_rgba);
 
     factors[i] *= texture_value;
   }
