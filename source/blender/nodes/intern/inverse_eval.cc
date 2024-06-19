@@ -839,7 +839,8 @@ bool try_change_link_target_and_update_source(bContext &C,
 
   traverse_upstream(
       {{initial_context, initial_link.fromsock}},
-      scope, /* Evaluate node. */
+      scope,
+      /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {
         const bNode &node = *ctx_node.node;
         const ComputeContext *context = ctx_node.context;

@@ -352,9 +352,9 @@ class TransformGizmos : public NodeGizmos {
   float4x4 parent_transform_;
 
   struct EditData {
-    float3 current_translation{};
-    float3 current_rotation{};
-    float3 current_scale{};
+    float3 current_translation;
+    float3 current_rotation;
+    float3 current_scale;
   } edit_data_;
 
  public:
