@@ -50,7 +50,7 @@ BLI_NOINLINE static void translations_from_position(const Span<float3> positions
 BLI_NOINLINE static void project_translations(const MutableSpan<float3> translations,
                                               const float3 &plane)
 {
-  /* Inlined implementation of #project_plane_v3_v3v3. */
+  /* Equivalent to #project_plane_v3_v3v3. */
   const float len_sq = math::length_squared(plane);
   if (len_sq < std::numeric_limits<float>::epsilon()) {
     return;
