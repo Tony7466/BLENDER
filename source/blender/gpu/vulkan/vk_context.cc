@@ -47,7 +47,7 @@ VKContext::~VKContext()
     surface_texture_ = nullptr;
   }
   render_graph.free_data();
-  VKBackend::get().device_.context_unregister(*this);
+  VKBackend::get().device.context_unregister(*this);
 
   delete imm;
   imm = nullptr;
@@ -58,7 +58,7 @@ VKContext::~VKContext()
 void VKContext::sync_backbuffer()
 {
   if (ghost_context_) {
-    VKDevice &device = VKBackend::get().device_;
+    VKDevice &device = VKBackend::get().device;
     if (!is_init_) {
       is_init_ = true;
       descriptor_pools_.init(device);
@@ -143,7 +143,7 @@ void VKContext::finish() {}
 
 void VKContext::memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb)
 {
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   device.memory_statistics_get(r_total_mem_kb, r_free_mem_kb);
 }
 
@@ -319,7 +319,7 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
   /* Swap chain commands are CPU synchronized at this moment, allowing to temporary add the swap
    * chain image as device resources. When we move towards GPU swap chain synchronization we need
    * to keep track of the swap chain image between frames. */
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   device.resources.add_image(swap_chain_data.image,
                              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                              render_graph::ResourceOwner::SWAP_CHAIN);

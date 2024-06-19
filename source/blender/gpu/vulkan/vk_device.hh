@@ -153,7 +153,7 @@ class VKDevice : public NonCopyable {
     return vk_instance_;
   };
 
-  VkDevice device_get() const
+  VkDevice vk_handle() const
   {
     return vk_device_;
   }

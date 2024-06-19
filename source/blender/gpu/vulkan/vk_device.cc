@@ -87,7 +87,7 @@ void VKDevice::init(void *ghost_context)
 
   samplers_.init();
 
-  debug::object_label(device_get(), "LogicalDevice");
+  debug::object_label(vk_handle(), "LogicalDevice");
   debug::object_label(queue_get(), "GenericQueue");
   init_glsl_patch();
 }

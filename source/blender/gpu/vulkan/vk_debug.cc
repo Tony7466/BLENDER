@@ -38,7 +38,7 @@ bool VKContext::debug_capture_begin(const char *title)
 bool VKBackend::debug_capture_begin(const char *title)
 {
 #ifdef WITH_RENDERDOC
-  bool result = renderdoc_api_.start_frame_capture(device_get().instance_get(), nullptr);
+  bool result = renderdoc_api_.start_frame_capture(device.instance_get(), nullptr);
   if (result && title) {
     renderdoc_api_.set_frame_capture_title(title);
   }
@@ -58,7 +58,7 @@ void VKContext::debug_capture_end()
 void VKBackend::debug_capture_end()
 {
 #ifdef WITH_RENDERDOC
-  renderdoc_api_.end_frame_capture(device_get().instance_get(), nullptr);
+  renderdoc_api_.end_frame_capture(device.instance_get(), nullptr);
 #endif
 }
 
@@ -90,14 +90,14 @@ void VKDebuggingTools::deinit(VkInstance vk_instance)
 
 void object_label(VkObjectType vk_object_type, uint64_t object_handle, const char *name)
 {
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   if (G.debug & G_DEBUG_GPU && device.functions.vkSetDebugUtilsObjectName) {
     VkDebugUtilsObjectNameInfoEXT info = {};
     info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
     info.objectType = vk_object_type;
     info.objectHandle = object_handle;
     info.pObjectName = name;
-    device.functions.vkSetDebugUtilsObjectName(device.device_get(), &info);
+    device.functions.vkSetDebugUtilsObjectName(device.vk_handle(), &info);
   }
 }
 
@@ -179,7 +179,7 @@ void VKDebuggingTools::init_messenger(VkInstance vk_instance)
     return;
   }
 
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   if (!device.functions.vkCreateDebugUtilsMessenger) {
     return;
   }
@@ -208,7 +208,7 @@ void VKDebuggingTools::destroy_messenger(VkInstance vk_instance)
     return;
   }
 
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   device.functions.vkDestroyDebugUtilsMessenger(vk_instance, vk_debug_utils_messenger, nullptr);
   vk_debug_utils_messenger = nullptr;
   return;

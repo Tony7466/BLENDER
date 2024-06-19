@@ -39,7 +39,7 @@ static VkImageAspectFlags to_vk_image_aspect_single_bit(const VkImageAspectFlags
 VKTexture::~VKTexture()
 {
   if (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) {
-    VKDevice &device = VKBackend::get().device_get();
+    VKDevice &device = VKBackend::get().device;
     device.discard_image(vk_image_, allocation_);
 
     vk_image_ = VK_NULL_HANDLE;
@@ -321,7 +321,7 @@ uint VKTexture::gl_bindcode_get() const
 
 bool VKTexture::init_internal()
 {
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   const VKWorkarounds &workarounds = device.workarounds_get();
   device_format_ = format_;
   if (device_format_ == GPU_DEPTH_COMPONENT24 && workarounds.not_aligned_pixel_formats) {
@@ -458,7 +458,7 @@ bool VKTexture::allocate()
   BLI_assert(vk_image_ == VK_NULL_HANDLE);
   BLI_assert(!is_texture_view());
 
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
   VkImageCreateInfo image_info = {};
   image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   image_info.flags = to_vk_image_create(type_, format_flag_, usage_get());
@@ -525,7 +525,7 @@ void VKTexture::add_to_descriptor_set(AddToDescriptorSetContext &data,
       data.descriptor_set.image_bind(*this, *location);
     }
     else {
-      VKDevice &device = VKBackend::get().device_get();
+      VKDevice &device = VKBackend::get().device;
       const VKSampler &sampler = device.samplers().get(sampler_state);
       data.descriptor_set.bind(*this, *location, sampler);
     }
