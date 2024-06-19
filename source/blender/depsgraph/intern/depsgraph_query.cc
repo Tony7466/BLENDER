@@ -399,7 +399,7 @@ static bool operation_needs_update(const ID &id,
 bool DEG_object_geometry_is_evaluated(const Object &object)
 {
   return !operation_needs_update(
-      object.id, deg::NodeType::GEOMETRY, deg::OperationCode::GEOMETRY_EVAL_DONE);
+      object.id, deg::NodeType::GEOMETRY, deg::OperationCode::GEOMETRY_EVAL);
 }
 
 bool DEG_object_transform_is_evaluated(const Object &object)
