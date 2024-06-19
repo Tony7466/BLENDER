@@ -3230,7 +3230,7 @@ void GreasePencil::rename_node(Main &bmain,
         dst_layer_name = influence_data->layer_name;
       }
       if (dst_layer_name && STREQ(dst_layer_name, old_name.c_str())) {
-        BLI_strncpy(dst_layer_name, node.name().c_str(), 64);
+        BLI_strncpy(dst_layer_name, node.name().c_str(), MAX_NAME);
       }
     }
   }
