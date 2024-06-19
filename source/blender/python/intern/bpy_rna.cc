@@ -16,6 +16,7 @@
 
 #include <cfloat> /* FLT_MIN/MAX */
 #include <cstddef>
+#include <optional>
 
 #include "RNA_path.hh"
 #include "RNA_types.hh"
@@ -7949,7 +7950,7 @@ PyObject *BPY_rna_doc()
  */
 struct BPy_TypesModule_State {
   /** `RNA_BlenderRNA`. */
-  PointerRNA ptr;
+  std::optional<PointerRNA> ptr;
   /** `RNA_BlenderRNA.structs`, exposed as `bpy.types` */
   PropertyRNA *prop;
 };
@@ -7957,6 +7958,8 @@ struct BPy_TypesModule_State {
 static PyObject *bpy_types_module_getattro(PyObject *self, PyObject *pyname)
 {
   BPy_TypesModule_State *state = static_cast<BPy_TypesModule_State *>(PyModule_GetState(self));
+  BLI_assert(state->ptr.has_value());
+
   PointerRNA newptr;
   PyObject *ret;
   const char *name = PyUnicode_AsUTF8(pyname);
@@ -7965,7 +7968,8 @@ static PyObject *bpy_types_module_getattro(PyObject *self, PyObject *pyname)
     PyErr_SetString(PyExc_AttributeError, "bpy.types: __getattr__ must be a string");
     ret = nullptr;
   }
-  else if (RNA_property_collection_lookup_string(&state->ptr, state->prop, name, &newptr)) {
+  else if (RNA_property_collection_lookup_string(&state->ptr.value(), state->prop, name, &newptr))
+  {
     ret = pyrna_struct_Subtype(&newptr);
     if (ret == nullptr) {
       PyErr_Format(PyExc_RuntimeError,
@@ -7990,9 +7994,11 @@ static PyObject *bpy_types_module_getattro(PyObject *self, PyObject *pyname)
 static PyObject *bpy_types_module_dir(PyObject *self)
 {
   BPy_TypesModule_State *state = static_cast<BPy_TypesModule_State *>(PyModule_GetState(self));
+  BLI_assert(state->ptr.has_value());
+
   PyObject *ret = PyList_New(0);
 
-  RNA_PROP_BEGIN (&state->ptr, itemptr, state->prop) {
+  RNA_PROP_BEGIN (&state->ptr.value(), itemptr, state->prop) {
     StructRNA *srna = static_cast<StructRNA *>(itemptr.data);
     PyList_APPEND(ret, PyUnicode_FromString(RNA_struct_identifier(srna)));
   }
@@ -8046,7 +8052,7 @@ PyObject *BPY_rna_types()
       PyModule_GetState(submodule));
 
   state->ptr = RNA_blender_rna_pointer_create();
-  state->prop = RNA_struct_find_property(&state->ptr, "structs");
+  state->prop = RNA_struct_find_property(&state->ptr.value(), "structs");
 
   /* Internal base types we have no other accessors for. */
   {
@@ -8082,6 +8088,7 @@ void BPY_rna_types_finalize_external_types(PyObject *submodule)
 
   BPy_TypesModule_State *state = static_cast<BPy_TypesModule_State *>(
       PyModule_GetState(submodule));
+  BLI_assert(state->ptr.has_value());
 
   PyObject *arg_key, *arg_value;
   Py_ssize_t arg_pos = 0;
@@ -8096,7 +8103,8 @@ void BPY_rna_types_finalize_external_types(PyObject *submodule)
         "Members of bpy_types.py which are not StructRNA sub-classes must use a \"_\" prefix!");
 
     PointerRNA newptr;
-    if (RNA_property_collection_lookup_string(&state->ptr, state->prop, key_str, &newptr)) {
+    if (RNA_property_collection_lookup_string(&state->ptr.value(), state->prop, key_str, &newptr))
+    {
       StructRNA *srna = srna_from_ptr(&newptr);
       /* Within the Python logic of `./scripts/modules/bpy_types.py`
        * it's possible this was already initialized. */
