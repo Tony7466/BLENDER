@@ -248,7 +248,7 @@ static void insert_keys_forward(const TimeMapping &mapping,
   const int offset = gp_dst_range.sfra - gp_src_range.sfra;
   for (const int i : sorted_keys.index_range()) {
     const int gp_key = sorted_keys[i];
-    const int gp_insert_key = std::max(sorted_keys[i], gp_src_range.sfra);
+    const int gp_insert_key = std::max(gp_key, gp_src_range.sfra);
     if (gp_insert_key > gp_src_range.efra) {
       continue;
     }
