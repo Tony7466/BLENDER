@@ -28,7 +28,9 @@
 
 #pragma once
 
-#include "BLI_vector_set.hh"
+#include <string>
+
+#include "BLI_set.hh"
 
 #include "DRW_render.hh"
 
@@ -305,7 +307,7 @@ class Film {
   }
 
  private:
-  void init_aovs(const VectorSet<std::string> &passes_needed_by_compositor);
+  void init_aovs(const Set<std::string> &passes_used_by_viewport_compositor);
   void sync_mist();
 
   /**

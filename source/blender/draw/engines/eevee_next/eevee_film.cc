@@ -14,9 +14,9 @@
 
 #include "BLI_hash.h"
 #include "BLI_rect.h"
-#include "BLI_vector_set.hh"
+#include "BLI_set.hh"
 
-#include "BKE_node.hh"
+#include "BKE_compositor.hh"
 
 #include "GPU_debug.hh"
 #include "GPU_framebuffer.hh"
@@ -34,7 +34,7 @@ namespace blender::eevee {
 /** \name Arbitrary Output Variables
  * \{ */
 
-void Film::init_aovs(const VectorSet<std::string> &passes_needed_by_viewport_compositor)
+void Film::init_aovs(const Set<std::string> &passes_used_by_viewport_compositor)
 {
   Vector<ViewLayerAOV *> aovs;
 
@@ -64,7 +64,7 @@ void Film::init_aovs(const VectorSet<std::string> &passes_needed_by_viewport_com
           continue;
         }
 
-        if (passes_needed_by_viewport_compositor.contains(aov->name)) {
+        if (passes_used_by_viewport_compositor.contains(aov->name)) {
           aovs.append(aov);
         }
       }
@@ -230,52 +230,9 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
   return result;
 }
 
-/* Get the set of all passes used by the viewport compositor, identified by their pass names. The
- * pass names are added to the needed_passes vector set. This is called recursively for group
- * nodes. */
-static void get_passes_needed_by_viewport_compositor(const bNodeTree *node_tree,
-                                                     const ViewLayer *view_layer,
-                                                     VectorSet<std::string> &needed_passes)
-{
-  if (node_tree == nullptr) {
-    return;
-  }
-
-  node_tree->ensure_topology_cache();
-  for (const bNode *node : node_tree->all_nodes()) {
-    if (node->is_muted()) {
-      continue;
-    }
-
-    /* Recursively look into group nodes. */
-    if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
-      const bNodeTree *group_node_tree = reinterpret_cast<const bNodeTree *>(node->id);
-      get_passes_needed_by_viewport_compositor(group_node_tree, view_layer, needed_passes);
-      continue;
-    }
-
-    /* Add passes used by the Render Layers node. */
-    if (node->type == CMP_NODE_R_LAYERS) {
-      for (const bNodeSocket *output : node->output_sockets()) {
-        if (output->is_logically_linked()) {
-          /* The Render Layer node's Image output is actually the Combined pass, but named as Image
-           * for compatibility reasons. */
-          if (std::string(output->identifier) == "Image") {
-            needed_passes.add(RE_PASSNAME_COMBINED);
-          }
-          else {
-            needed_passes.add(output->identifier);
-          }
-        }
-      }
-      continue;
-    }
-  }
-}
-
 /* Get all pass types used by the viewport compositor from the vector set of all needed passes. */
 static eViewLayerEEVEEPassType get_viewport_compositor_enabled_passes(
-    const VectorSet<std::string> &viewport_compositor_needed_passes, const ViewLayer *view_layer)
+    const Set<std::string> &viewport_compositor_needed_passes, const ViewLayer *view_layer)
 {
   const eViewLayerEEVEEPassType scene_enabled_passes = enabled_passes(view_layer);
 
@@ -306,17 +263,15 @@ void Film::init(const int2 &extent, const rcti *output_rect)
   Scene &scene = *inst_.scene;
 
   /* Compute the passes needed by the viewport compositor. */
-  VectorSet<std::string> passes_needed_by_viewport_compositor;
+  Set<std::string> passes_used_by_viewport_compositor;
   if (this->is_viewport_compositor_enabled()) {
-    const bNodeTree *node_tree = scene.nodetree;
-    get_passes_needed_by_viewport_compositor(
-        node_tree, inst_.view_layer, passes_needed_by_viewport_compositor);
+    passes_used_by_viewport_compositor = bke::compositor::get_used_passes(scene);
     viewport_compositor_enabled_passes_ = get_viewport_compositor_enabled_passes(
-        passes_needed_by_viewport_compositor, inst_.view_layer);
+        passes_used_by_viewport_compositor, inst_.view_layer);
   }
 
   enabled_categories_ = PassCategory(0);
-  init_aovs(passes_needed_by_viewport_compositor);
+  init_aovs(passes_used_by_viewport_compositor);
 
   {
     /* Enable passes that need to be rendered. */
@@ -938,6 +893,12 @@ void Film::write_viewport_compositor_passes()
         continue;
       }
 
+      /* Allocate passes that spans the entire display extent, even when border rendering, then
+       * copy the border region while zeroing the rest. That's because the compositor doesn't have
+       * a distinction between display and data windows at the moment, so it expects passes to have
+       * the extent of the viewport. Furthermore, we still do not support passes from Cycles and
+       * external engines, so the viewport size assumption holds at the compositor side to support
+       * all cases for now. */
       const char *pass_name = pass_names[pass_offset].c_str();
       draw::TextureFromPool &output_pass_texture = DRW_viewport_pass_texture_get(pass_name);
       output_pass_texture.acquire(this->display_extent, GPU_texture_format(pass_texture));
@@ -964,6 +925,7 @@ void Film::write_viewport_compositor_passes()
       continue;
     }
 
+    /* See above comment regarding the allocation extent. */
     draw::TextureFromPool &output_pass_texture = DRW_viewport_pass_texture_get(aov->name);
     output_pass_texture.acquire(this->display_extent, GPU_texture_format(pass_texture));
 
