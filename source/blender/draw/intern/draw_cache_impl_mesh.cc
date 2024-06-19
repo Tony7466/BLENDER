@@ -1382,27 +1382,23 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph &task_graph,
     if (!BKE_object_get_editmesh_eval_final(&ob)) {
       return false;
     }
-    if (!DRW_object_is_in_edit_mode(&ob)) {
-      return false;
-    }
-    return true;
-  }();
-
-  /* In order to properly extract edit mode data, the edit mode data of the evaluated mesh has to
-   * match the edit mode data from the original object. */
-  const bool edit_mode_active = [&]() {
     if (!object_orig) {
       return false;
     }
     if (object_orig->type != OB_MESH) {
       return false;
     }
+    /* In order to properly extract edit mode data, the edit mode data of the evaluated mesh has to
+     * match the edit mode data from the original object. */
     const Mesh &mesh_orig = *static_cast<const Mesh *>(object_orig->data);
     if (mesh_orig.runtime->edit_mesh.get() != mesh.runtime->edit_mesh.get()) {
       return false;
     }
     return true;
   }();
+
+  /* This could be set for paint mode too, currently it's only used for edit-mode. */
+  const bool edit_mode_active = is_editmode && DRW_object_is_in_edit_mode(&ob);
 
   DRWBatchFlag batch_requested = cache.batch_requested;
   cache.batch_requested = (DRWBatchFlag)0;
