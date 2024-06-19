@@ -59,8 +59,8 @@ void VKContext::sync_backbuffer()
 {
   if (ghost_context_) {
     VKDevice &device = VKBackend::get().device_;
-    if (!command_buffers_.is_initialized()) {
-      command_buffers_.init(device);
+    if (!is_init_) {
+      is_init_ = true;
       descriptor_pools_.init(device);
       device.init_dummy_buffer(*this);
       device.init_dummy_color_attachment();
@@ -215,24 +215,6 @@ void VKContext::rendering_end()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Compute pipeline
- * \{ */
-
-void VKContext::bind_compute_pipeline()
-{
-  VKShader *shader = unwrap(this->shader);
-  BLI_assert(shader);
-  VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.bind(*this, VK_PIPELINE_BIND_POINT_COMPUTE);
-  shader->push_constants.update(*this);
-  if (shader->has_descriptor_set()) {
-    descriptor_set_.bind(*this, shader->vk_pipeline_layout, VK_PIPELINE_BIND_POINT_COMPUTE);
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Pipeline
  * \{ */
 
@@ -287,33 +269,6 @@ render_graph::VKResourceAccessInfo &VKContext::update_and_get_access_info()
   access_info_.reset();
   state_manager_get().apply_bindings(*this, access_info_);
   return access_info_;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Graphics pipeline
- * \{ */
-
-void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
-                                       const VKVertexAttributeObject &vertex_attribute_object)
-{
-  VKShader *shader = unwrap(this->shader);
-  BLI_assert(shader);
-  BLI_assert_msg(
-      prim_type != GPU_PRIM_POINTS || shader->interface_get().is_point_shader(),
-      "GPU_PRIM_POINTS is used with a shader that doesn't set point size before "
-      "drawing fragments. Calling code should be adapted to use a shader that sets the "
-      "gl_PointSize before entering the fragment stage. For example `GPU_SHADER_3D_POINT_*`.");
-
-  shader->update_graphics_pipeline(*this, prim_type, vertex_attribute_object);
-
-  VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.bind(*this, VK_PIPELINE_BIND_POINT_GRAPHICS);
-  shader->push_constants.update(*this);
-  if (shader->has_descriptor_set()) {
-    descriptor_set_.bind(*this, shader->vk_pipeline_layout, VK_PIPELINE_BIND_POINT_GRAPHICS);
-  }
 }
 
 /** \} */

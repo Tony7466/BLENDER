@@ -198,8 +198,6 @@ set(VULKAN_SRC
   vulkan/vk_batch.cc
   vulkan/vk_bindable_resource.cc
   vulkan/vk_buffer.cc
-  vulkan/vk_command_buffer.cc
-  vulkan/vk_command_buffers.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
   vulkan/vk_data_conversion.cc
@@ -216,7 +214,6 @@ set(VULKAN_SRC
   vulkan/vk_index_buffer.cc
   vulkan/vk_memory.cc
   vulkan/vk_memory_layout.cc
-  vulkan/vk_pipeline.cc
   vulkan/vk_pipeline_pool.cc
   vulkan/vk_pipeline_state.cc
   vulkan/vk_pixel_buffer.cc
@@ -250,8 +247,6 @@ set(VULKAN_SRC
   vulkan/vk_batch.hh
   vulkan/vk_bindable_resource.hh
   vulkan/vk_buffer.hh
-  vulkan/vk_command_buffer.hh
-  vulkan/vk_command_buffers.hh
   vulkan/vk_common.hh
   vulkan/vk_context.hh
   vulkan/vk_data_conversion.hh
@@ -268,7 +263,6 @@ set(VULKAN_SRC
   vulkan/vk_index_buffer.hh
   vulkan/vk_memory.hh
   vulkan/vk_memory_layout.hh
-  vulkan/vk_pipeline.hh
   vulkan/vk_pipeline_pool.hh
   vulkan/vk_pipeline_state.hh
   vulkan/vk_pixel_buffer.hh

@@ -727,36 +727,30 @@ bool VKShader::finalize_descriptor_set_layouts(VKDevice &vk_device,
   return vk_descriptor_set_layout_ != VK_NULL_HANDLE;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Transform feedback
+ *
+ * Not supported in the vulkan backend.
+ *
+ * \{ */
+
 void VKShader::transform_feedback_names_set(Span<const char *> /*name_list*/,
                                             eGPUShaderTFBType /*geom_type*/)
 {
-  NOT_YET_IMPLEMENTED
+  BLI_assert_unreachable();
 }
 
 bool VKShader::transform_feedback_enable(VertBuf *)
 {
-  NOT_YET_IMPLEMENTED
   return false;
 }
 
 void VKShader::transform_feedback_disable()
 {
-  NOT_YET_IMPLEMENTED
+  BLI_assert_unreachable();
 }
 
-void VKShader::update_graphics_pipeline(VKContext &context,
-                                        const GPUPrimType prim_type,
-                                        const VKVertexAttributeObject &vertex_attribute_object)
-{
-  BLI_assert(is_graphics_shader());
-  pipeline_get().finalize(context,
-                          vertex_module_,
-                          geometry_module_,
-                          fragment_module_,
-                          vk_pipeline_layout,
-                          prim_type,
-                          vertex_attribute_object);
-}
+/** \} */
 
 void VKShader::bind()
 {
@@ -1326,11 +1320,6 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
 int VKShader::program_handle_get() const
 {
   return -1;
-}
-
-VKPipeline &VKShader::pipeline_get()
-{
-  return pipeline_;
 }
 
 const VKShaderInterface &VKShader::interface_get() const
