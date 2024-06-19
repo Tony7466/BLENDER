@@ -99,6 +99,10 @@ class PhysicsGeometry {
     std::string constraint_frame1;
     std::string constraint_frame2;
     std::string applied_impulse;
+    std::string applied_force1;
+    std::string applied_force2;
+    std::string applied_torque1;
+    std::string applied_torque2;
     std::string breaking_impulse_threshold;
     std::string disable_collision;
   } builtin_attributes;

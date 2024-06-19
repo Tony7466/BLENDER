@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_physics_geometry.hh"
 #include "GEO_separate_geometry.hh"
 
 #include "BKE_curves.hh"
@@ -161,6 +162,32 @@ static std::optional<GreasePencil *> separate_grease_pencil_layer_selection(
   return dst_grease_pencil;
 }
 
+static std::optional<bke::PhysicsGeometry *> separate_physics_selection(
+    const bke::PhysicsGeometry &physics,
+    const fn::Field<bool> &selection_field,
+    const AttrDomain selection_domain,
+    const GeometryNodeDeleteGeometryMode mode,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  // const bke::AttributeAccessor attributes = physics.attributes();
+  // const bke::PhysicsFieldContext context(physics, selection_domain);
+  // fn::FieldEvaluator evaluator(context, attributes.domain_size(selection_domain));
+  // evaluator.add(selection_field);
+  // evaluator.evaluate();
+  // const VArray<bool> selection = evaluator.get_evaluated<bool>(0);
+
+  // switch (mode) {
+  //   case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
+  //     return physics_separate_selection(physics, selection, selection_domain, propagation_info);
+  //   case GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE:
+  //     return physics_separate_selection_keep_bodies(
+  //         physics, selection, selection_domain, propagation_info);
+  //   case GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE:
+  //     return nullptr;
+  // }
+  return nullptr;
+}
+
 void separate_geometry(bke::GeometrySet &geometry_set,
                        const AttrDomain domain,
                        const GeometryNodeDeleteGeometryMode mode,
@@ -258,6 +285,16 @@ void separate_geometry(bke::GeometrySet &geometry_set,
         drawing->tag_topology_changed();
         some_valid_domain = true;
       }
+    }
+  }
+  if (const bke::PhysicsGeometry *physics = geometry_set.get_physics()) {
+    if (ELEM(domain, AttrDomain::Point, AttrDomain::Edge)) {
+      std::optional<bke::PhysicsGeometry *> dst_physics = separate_physics_selection(
+          *physics, selection, domain, mode, propagation_info);
+      if (dst_physics) {
+        geometry_set.replace_physics(*dst_physics);
+      }
+      some_valid_domain = true;
     }
   }
   if (geometry_set.has_instances()) {

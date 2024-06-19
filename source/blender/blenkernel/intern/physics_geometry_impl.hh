@@ -74,6 +74,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   Array<btRigidBody *> rigid_bodies;
   Array<btMotionState *> motion_states;
   Array<btTypedConstraint *> constraints;
+  Array<btJointFeedback> constraint_feedback;
 
   /* Physics data can be moved while other components still have write access. The physics data is
    * cached for read access, so that data can be moved without requiring locks. */

@@ -329,6 +329,10 @@ const PhysicsGeometry::BuiltinAttributes PhysicsGeometry::builtin_attributes = [
   attributes.constraint_frame2 = "constraint_frame2";
   attributes.constraint_enabled = "constraint_enabled";
   attributes.applied_impulse = "applied_impulse";
+  attributes.applied_force1 = "applied_force1";
+  attributes.applied_force2 = "applied_force2";
+  attributes.applied_torque1 = "applied_torque1";
+  attributes.applied_torque2 = "applied_torque2";
   attributes.breaking_impulse_threshold = "breaking_impulse_threshold";
   attributes.disable_collision = "disable_collision";
   attributes.total_force = "total_force";
@@ -372,6 +376,9 @@ PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
   impl->motion_states.reinitialize(bodies_num);
   create_bodies(impl->rigid_bodies, impl->motion_states);
   impl->constraints.reinitialize(constraints_num);
+  impl->constraint_feedback.reinitialize(constraints_num);
+  impl->constraint_feedback.fill(
+      {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
   impl->constraints.fill(nullptr);
   impl_ = impl;
 
@@ -400,6 +407,9 @@ PhysicsGeometryImpl &PhysicsGeometry::impl_for_write()
     new_impl->rigid_bodies.reinitialize(impl_->rigid_bodies.size());
     new_impl->motion_states.reinitialize(impl_->motion_states.size());
     new_impl->constraints.reinitialize(impl_->constraints.size());
+    new_impl->constraint_feedback.reinitialize(impl_->constraints.size());
+    new_impl->constraint_feedback.fill(
+        {btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
     new_impl->constraints.fill(nullptr);
     move_physics_impl_data(*impl_, *new_impl, true, 0, 0);
 
@@ -478,6 +488,7 @@ void move_physics_impl_data(const PhysicsGeometryImpl &from,
   from_mutable.rigid_bodies.reinitialize(0);
   from_mutable.motion_states.reinitialize(0);
   from_mutable.constraints.reinitialize(0);
+  from_mutable.constraint_feedback.reinitialize(0);
 }
 
 bool PhysicsGeometry::has_world() const
@@ -636,6 +647,7 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   Array<btRigidBody *> new_bodies(bodies_num);
   Array<btMotionState *> new_motion_states(bodies_num);
   Array<btTypedConstraint *> new_constraints(constraints_num);
+  Array<btJointFeedback> new_constraint_feedback(constraints_num);
   new_bodies.as_mutable_span().take_front(impl.rigid_bodies.size()).copy_from(impl.rigid_bodies);
   new_motion_states.as_mutable_span()
       .take_front(impl.motion_states.size())
@@ -643,6 +655,9 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   new_constraints.as_mutable_span()
       .take_front(impl.constraints.size())
       .copy_from(impl.constraints);
+  new_constraint_feedback.as_mutable_span()
+      .take_front(impl.constraints.size())
+      .copy_from(impl.constraint_feedback);
   /* Bodies and motion states must always exist. */
   const IndexRange bodies_to_initialize = new_bodies.index_range().drop_front(
       impl.rigid_bodies.size());
@@ -651,10 +666,14 @@ void PhysicsGeometry::resize(int bodies_num, int constraints_num)
   create_bodies(new_bodies.as_mutable_span().slice(bodies_to_initialize),
                 new_motion_states.as_mutable_span().slice(bodies_to_initialize));
   new_constraints.as_mutable_span().slice(constraints_to_initialize).fill(nullptr);
+  new_constraint_feedback.as_mutable_span()
+      .slice(constraints_to_initialize)
+      .fill({btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0), btVector3(0, 0, 0)});
 
   impl.rigid_bodies = std::move(new_bodies);
   impl.motion_states = std::move(new_motion_states);
   impl.constraints = std::move(new_constraints);
+  impl.constraint_feedback = std::move(new_constraint_feedback);
 
   this->tag_topology_changed();
 }
@@ -900,9 +919,9 @@ void PhysicsGeometry::clear_forces(const IndexMask &selection)
   selection.foreach_index([&](const int index) { impl.rigid_bodies[index]->clearForces(); });
 }
 
-static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
-                                               btRigidBody &body1,
-                                               btRigidBody &body2)
+static btTypedConstraint *make_bullet_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                                      btRigidBody &body1,
+                                                      btRigidBody &body2)
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
@@ -941,6 +960,19 @@ static btTypedConstraint *make_constraint_type(const PhysicsGeometry::Constraint
   return nullptr;
 }
 
+static btTypedConstraint *make_constraint_type(const PhysicsGeometry::ConstraintType type,
+                                               btRigidBody &body1,
+                                               btRigidBody &body2,
+                                               btJointFeedback *feedback)
+{
+  btTypedConstraint *constraint = make_bullet_constraint_type(type, body1, body2);
+  if (constraint) {
+    // constraint->enableFeedback(true);
+    constraint->setJointFeedback(feedback);
+  }
+  return constraint;
+}
+
 /* Specialization for changing btTypedConstraint pointers. */
 class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayImpl<int> {
   using ConstraintType = bke::PhysicsGeometry::ConstraintType;
@@ -970,7 +1002,8 @@ class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayI
   }
 
   btTypedConstraint *ensure_constraint_type(btTypedConstraint *constraint,
-                                            const ConstraintType type) const
+                                            const ConstraintType type,
+                                            btJointFeedback *feedback) const
   {
     const btTypedConstraintType bt_type = to_bullet(type);
     if (!constraint || constraint->getConstraintType() == bt_type) {
@@ -980,7 +1013,7 @@ class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayI
     btRigidBody &body1 = constraint->getRigidBodyA();
     btRigidBody &body2 = constraint->getRigidBodyB();
     delete constraint;
-    return make_constraint_type(type, body1, body2);
+    return make_constraint_type(type, body1, body2, feedback);
   }
 
   int get(const int64_t index) const override
@@ -991,8 +1024,8 @@ class VMutableArrayImpl_For_PhysicsConstraintTypes final : public VMutableArrayI
   void set(const int64_t index, int value) override
   {
     bke::PhysicsGeometryImpl &impl = *const_cast<bke::PhysicsGeometryImpl *>(impl_);
-    impl.constraints[index] = this->ensure_constraint_type(impl.constraints[index],
-                                                           ConstraintType(value));
+    impl.constraints[index] = this->ensure_constraint_type(
+        impl.constraints[index], ConstraintType(value), &impl.constraint_feedback[index]);
   }
 
   void materialize(const IndexMask &mask, int *dst) const override
@@ -1074,7 +1107,8 @@ void PhysicsGeometry::create_constraints(const IndexMask &selection,
       delete impl.constraints[index];
     }
 
-    impl.constraints[index] = make_constraint_type(type, *body1, *body2);
+    impl.constraints[index] = make_constraint_type(
+        type, *body1, *body2, &impl.constraint_feedback[index]);
   });
 }
 
@@ -1755,6 +1789,82 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                  nullptr,
                                  {});
 
+  constexpr auto applied_force1_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+    if (!constraint) {
+      return float3(0.0f);
+    }
+    const btJointFeedback *feedback = constraint->getJointFeedback();
+    if (!feedback) {
+      return float3(0.0f);
+    }
+    /* Note: applied transform requires that needsFeedback is set first. */
+    return to_blender(feedback->m_appliedForceBodyA);
+  };
+  static BuiltinConstraintAttributeProvider<float3, applied_force1_get_fn> applied_force1(
+      PhysicsGeometry::builtin_attributes.applied_force1,
+      AttrDomain::Edge,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {});
+
+  constexpr auto applied_force2_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+    if (!constraint) {
+      return float3(0.0f);
+    }
+    const btJointFeedback *feedback = constraint->getJointFeedback();
+    if (!feedback) {
+      return float3(0.0f);
+    }
+    /* Note: applied transform requires that needsFeedback is set first. */
+    return to_blender(feedback->m_appliedForceBodyB);
+  };
+  static BuiltinConstraintAttributeProvider<float3, applied_force2_get_fn> applied_force2(
+      PhysicsGeometry::builtin_attributes.applied_force2,
+      AttrDomain::Edge,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {});
+
+  constexpr auto applied_torque1_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+    if (!constraint) {
+      return float3(0.0f);
+    }
+    const btJointFeedback *feedback = constraint->getJointFeedback();
+    if (!feedback) {
+      return float3(0.0f);
+    }
+    /* Note: applied transform requires that needsFeedback is set first. */
+    return to_blender(feedback->m_appliedTorqueBodyA);
+  };
+  static BuiltinConstraintAttributeProvider<float3, applied_torque1_get_fn> applied_torque1(
+      PhysicsGeometry::builtin_attributes.applied_torque1,
+      AttrDomain::Edge,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {});
+
+  constexpr auto applied_torque2_get_fn = [](const btTypedConstraint *constraint) -> float3 {
+    if (!constraint) {
+      return float3(0.0f);
+    }
+    const btJointFeedback *feedback = constraint->getJointFeedback();
+    if (!feedback) {
+      return float3(0.0f);
+    }
+    /* Note: applied transform requires that needsFeedback is set first. */
+    return to_blender(feedback->m_appliedForceBodyA);
+  };
+  static BuiltinConstraintAttributeProvider<float3, applied_torque2_get_fn> applied_torque2(
+      PhysicsGeometry::builtin_attributes.applied_torque2,
+      AttrDomain::Edge,
+      BuiltinAttributeProvider::NonDeletable,
+      physics_access,
+      nullptr,
+      {});
+
   constexpr auto constraint_breaking_impulse_threshold_get_fn =
       [](const btTypedConstraint *constraint) -> float {
     return constraint ? to_blender(constraint->getBreakingImpulseThreshold()) : float(0.0f);
@@ -1841,6 +1951,10 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &constraint_frame1,
                                       &constraint_frame2,
                                       &constraint_applied_impulse,
+                                      &applied_force1,
+                                      &applied_force2,
+                                      &applied_torque1,
+                                      &applied_torque2,
                                       &constraint_breaking_impulse_threshold,
                                       &constraint_disable_collision},
                                      {});
