@@ -235,8 +235,8 @@ float3 DrawingPlacement::reproject(const float3 pos) const
         ray_no = math::normalize(ray_co - math::transform_point(layer_space_to_world_space_, pos));
       }
       else {
-        ray_no = -float3(rv3d->viewinv[3]);
         ray_co = math::transform_point(layer_space_to_world_space_, pos);
+        ray_no = -float3(rv3d->viewinv[2]);
       }
       float lambda;
       if (isect_ray_plane_v3(ray_co, ray_no, placement_plane_, &lambda, false)) {
