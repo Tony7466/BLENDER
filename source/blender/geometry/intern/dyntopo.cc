@@ -574,113 +574,105 @@ struct Triangle {
   bool ca_is_real_edge;
 };
 
-static void face_subdivide_count(const float2 a_vert,
-                                 const float2 b_vert,
-                                 const float2 c_vert,
-                                 const float2 d_vert,
-                                 const float2 e_vert,
-                                 const float2 f_vert,
+static void face_subdivide_count(const std::array<float2, 6> &verts_list,
+                                 const std::array<int, 9> &edge_indices,
+                                 const int3 face_verts,
                                  const float2 centre,
                                  const float radius,
                                  const float max_length,
+                                 const IndexRange verts_range,
+                                 const IndexRange ab_points_range,
+                                 const IndexRange bc_points_range,
+                                 const IndexRange ca_points_range,
                                  int &r_total_verts_in,
                                  int &r_total_edges_in)
 {
-  // std::cout << "Face Size:\n";
-  Vector<Triangle> stack = {{a_vert, b_vert, c_vert, d_vert, e_vert, f_vert, true, true, true}};
-  while (!stack.is_empty()) {
-    const Triangle triangle = stack.pop_last();
+  static const int3 abc_verts(0, 1, 2);
 
-    if (len_squared_to_tris({triangle.a, triangle.b, triangle.c}, centre) > radius) {
+  static const int2 ab_edge(0, 1);
+  static const int2 bc_edge(1, 2);
+  static const int2 ca_edge(2, 0);
+
+  VectorSet<OrderedEdge> face_edges;
+  VectorSet<OrderedEdge> ab_edges;
+  VectorSet<OrderedEdge> bc_edges;
+  VectorSet<OrderedEdge> ca_edges;
+
+  VectorSet<OrderedEdge> unique_result_edges;
+
+  Vector<std::array<float2, 6>> vertices = {verts_list};
+  Vector<int3> tri_indices = {face_verts};
+  Vector<int8_t> is_real_edges = {EdgeState::ab_is_real_edge | EdgeState::bc_is_real_edge |
+                                  EdgeState::ca_is_real_edge};
+
+  while (!vertices.is_empty()) {
+    BLI_assert(vertices.size() == is_real_edges.size());
+    BLI_assert(vertices.size() == tri_indices.size());
+    const std::array<float2, 6> verts = vertices.pop_last();
+    const int8_t edges_is_real = is_real_edges.pop_last();
+    const int3 face_indices = tri_indices.pop_last();
+
+    const float2 &vert_a = verts[abc_verts[0]];
+    const float2 &vert_b = verts[abc_verts[1]];
+    const float2 &vert_c = verts[abc_verts[2]];
+
+    const bool abc_is_affected = triangle_is_in_range(vert_a, vert_b, vert_c, centre, radius);
+    if (!abc_is_affected) {
+      // TODO: Handle neighboards...
+      unique_result_edges.add({face_indices[0], face_indices[1]});
+      unique_result_edges.add({face_indices[1], face_indices[2]});
+      unique_result_edges.add({face_indices[2], face_indices[0]});
       continue;
     }
 
-    const float ab_length = math::distance_squared(triangle.a, triangle.b);
-    const float bc_length = math::distance_squared(triangle.b, triangle.c);
-    const float ca_length = math::distance_squared(triangle.c, triangle.a);
-    const float3 triangle_sides(ab_length, bc_length, ca_length);
-    const int largest_side = dominant_axis(triangle_sides);
-    if (triangle_sides[largest_side] < max_length) {
+    const std::optional<int2> edge_to_split = largest_side_to_split(
+        vert_a, vert_b, vert_c, edge_indices, max_length);
+    if (!edge_to_split.has_value()) {
+      unique_result_edges.add({face_indices[0], face_indices[1]});
+      unique_result_edges.add({face_indices[1], face_indices[2]});
+      unique_result_edges.add({face_indices[2], face_indices[0]});
       continue;
-    }
-
-    bool sibdivide_real_edge = false;
-    switch (largest_side) {
-      case 0: {
-        sibdivide_real_edge = triangle.ab_is_real_edge;
-        const float2 mid = math::midpoint(triangle.a, triangle.b);
-        stack.append({triangle.a,
-                      mid,
-                      triangle.c,
-                      triangle.d,
-                      triangle.b,
-                      triangle.f,
-                      triangle.ab_is_real_edge,
-                      false,
-                      triangle.ca_is_real_edge});
-        stack.append({mid,
-                      triangle.b,
-                      triangle.c,
-                      triangle.d,
-                      triangle.e,
-                      triangle.a,
-                      triangle.ab_is_real_edge,
-                      triangle.bc_is_real_edge,
-                      false});
-        break;
-      }
-      case 1: {
-        sibdivide_real_edge = triangle.bc_is_real_edge;
-        const float2 mid = math::midpoint(triangle.b, triangle.c);
-        stack.append({triangle.a,
-                      triangle.b,
-                      mid,
-                      triangle.d,
-                      triangle.e,
-                      triangle.c,
-                      triangle.ab_is_real_edge,
-                      triangle.bc_is_real_edge,
-                      false});
-        stack.append({triangle.a,
-                      mid,
-                      triangle.c,
-                      triangle.b,
-                      triangle.e,
-                      triangle.f,
-                      false,
-                      triangle.bc_is_real_edge,
-                      triangle.ca_is_real_edge});
-        break;
-      }
-      case 2: {
-        sibdivide_real_edge = triangle.ca_is_real_edge;
-        const float2 mid = math::midpoint(triangle.c, triangle.a);
-        stack.append({triangle.a,
-                      triangle.b,
-                      mid,
-                      triangle.d,
-                      triangle.c,
-                      triangle.f,
-                      triangle.ab_is_real_edge,
-                      false,
-                      triangle.ca_is_real_edge});
-        stack.append({mid,
-                      triangle.b,
-                      triangle.c,
-                      triangle.a,
-                      triangle.e,
-                      triangle.f,
-                      false,
-                      triangle.bc_is_real_edge,
-                      triangle.ca_is_real_edge});
-        break;
-      }
     }
 
     r_total_edges_in++;
-    if (!sibdivide_real_edge) {
+
+    split_edge_for_vert(verts, *edge_to_split, vertices);
+    split_edge_for_state(edges_is_real, *edge_to_split, is_real_edges);
+
+    const int2 virtual_split_edge(face_indices[(*edge_to_split)[0]],
+                                  face_indices[(*edge_to_split)[1]]);
+
+    const int other_vert_for_split = exclusive_one(FaceVerts::abc, *edge_to_split);
+    const bool split_of_real_edge = EdgeState::edge_state_for_vert[other_vert_for_split] &
+                                    edges_is_real;
+    if (UNLIKELY(split_of_real_edge)) {
+      switch ((*edge_to_split)[0]) {
+        case 0: {
+          const int vert_i = ab_edges.index_of_or_add(virtual_split_edge);
+          const int edge_vert = ab_points_range[vert_i];
+          split_edge_for_indices(face_indices, edge_vert, *edge_to_split, tri_indices);
+          break;
+        }
+        case 1: {
+          const int vert_i = bc_edges.index_of_or_add(virtual_split_edge);
+          const int edge_vert = bc_points_range[vert_i];
+          split_edge_for_indices(face_indices, edge_vert, *edge_to_split, tri_indices);
+          break;
+        }
+        case 2: {
+          const int vert_i = ca_edges.index_of_or_add(virtual_split_edge);
+          const int edge_vert = ca_points_range[vert_i];
+          split_edge_for_indices(face_indices, edge_vert, *edge_to_split, tri_indices);
+          break;
+        }
+      }
+    }
+    else {
       r_total_verts_in++;
       r_total_edges_in++;
+      const int vert_i = face_edges.index_of_or_add(virtual_split_edge);
+      const int face_vert = verts_range[vert_i];
+      split_edge_for_indices(face_indices, face_vert, *edge_to_split, tri_indices);
     }
   }
 }
@@ -979,12 +971,13 @@ Mesh *subdivide(const Mesh &src_mesh,
     const Span<int> bc_faces = edge_to_face_map[face_edges[1]];
     const Span<int> ca_faces = edge_to_face_map[face_edges[2]];
 
-    const int3 abd_verts = gather_tri(faces[ab_faces[0] == face_i ? ab_faces[1] : ab_faces[0]],
-                                      corner_verts);
-    const int3 bce_verts = gather_tri(faces[bc_faces[0] == face_i ? bc_faces[1] : bc_faces[0]],
-                                      corner_verts);
-    const int3 caf_verts = gather_tri(faces[ca_faces[0] == face_i ? ca_faces[1] : ca_faces[0]],
-                                      corner_verts);
+    const int face_ab = ab_faces[0] == face_i ? ab_faces[1] : ab_faces[0];
+    const int face_bc = bc_faces[0] == face_i ? bc_faces[1] : bc_faces[0];
+    const int face_ca = ca_faces[0] == face_i ? ca_faces[1] : ca_faces[0];
+
+    const int3 abd_verts = gather_tri(faces[face_ab], corner_verts);
+    const int3 bce_verts = gather_tri(faces[face_bc], corner_verts);
+    const int3 caf_verts = gather_tri(faces[face_ca], corner_verts);
 
     BLI_assert(elem(abd_verts, edge_ab[0]) && elem(abd_verts, edge_ab[1]));
     BLI_assert(elem(bce_verts, edge_bc[0]) && elem(bce_verts, edge_bc[1]));
@@ -1002,15 +995,67 @@ Mesh *subdivide(const Mesh &src_mesh,
     BLI_assert(!elem(face_verts, e_vert));
     BLI_assert(!elem(face_verts, f_vert));
 
+    const IndexRange verts_range = subdive_face_verts[face_i].shift(faces_verts_range.start());
+    const IndexRange edges_range = subdive_face_edges[face_i].shift(faces_edges_range.start());
+
+    const IndexRange ab_points_range = subdive_edge_verts[face_edges[0]].shift(
+        edges_verts_range.start());
+    const IndexRange bc_points_range = subdive_edge_verts[face_edges[1]].shift(
+        edges_verts_range.start());
+    const IndexRange ca_points_range = subdive_edge_verts[face_edges[2]].shift(
+        edges_verts_range.start());
+
+    const int3 face_abd_edge = gather_tri(faces[face_ab], corner_edges);
+    const int3 face_bce_edge = gather_tri(faces[face_bc], corner_edges);
+    const int3 face_caf_edge = gather_tri(faces[face_ca], corner_edges);
+
+    Map<OrderedEdge, int, 9> edge_indices;
+    edge_indices.add(edges[face_edges[0]], face_edges[0]);
+    edge_indices.add(edges[face_edges[1]], face_edges[1]);
+    edge_indices.add(edges[face_edges[2]], face_edges[2]);
+
+    edge_indices.add(edges[face_abd_edge[0]], face_abd_edge[0]);
+    edge_indices.add(edges[face_abd_edge[1]], face_abd_edge[1]);
+    edge_indices.add(edges[face_abd_edge[2]], face_abd_edge[2]);
+
+    edge_indices.add(edges[face_bce_edge[0]], face_bce_edge[0]);
+    edge_indices.add(edges[face_bce_edge[1]], face_bce_edge[1]);
+    edge_indices.add(edges[face_bce_edge[2]], face_bce_edge[2]);
+
+    edge_indices.add(edges[face_caf_edge[0]], face_caf_edge[0]);
+    edge_indices.add(edges[face_caf_edge[1]], face_caf_edge[1]);
+    edge_indices.add(edges[face_caf_edge[2]], face_caf_edge[2]);
+
+    const int2 edge_ad(face_verts[0], d_vert);
+    const int2 edge_bd(face_verts[1], d_vert);
+
+    const int2 edge_be(face_verts[1], e_vert);
+    const int2 edge_ce(face_verts[2], e_vert);
+
+    const int2 edge_cf(face_verts[2], f_vert);
+    const int2 edge_af(face_verts[0], f_vert);
+
+    const std::array<float2, 6> verts_list = {projection[a_vert],
+                                              projection[b_vert],
+                                              projection[c_vert],
+                                              projection[d_vert],
+                                              projection[e_vert],
+                                              projection[f_vert]};
+    const std::array<int, 9> edge_indices_list = {edge_indices.lookup(edge_ab),
+                                                  edge_indices.lookup(edge_bc),
+                                                  edge_indices.lookup(edge_ca),
+                                                  edge_indices.lookup(edge_ad),
+                                                  edge_indices.lookup(edge_bd),
+                                                  edge_indices.lookup(edge_be),
+                                                  edge_indices.lookup(edge_ce),
+                                                  edge_indices.lookup(edge_cf),
+                                                  edge_indices.lookup(edge_af)};
+
     int total_verts_in = 0;
     int total_edges_in = 0;
-    face_subdivide_count(projection[a_vert],
-                         projection[b_vert],
-                         projection[c_vert],
-                         projection[d_vert],
-                         projection[e_vert],
-                         projection[f_vert],
-                         centre,
+    face_subdivide_count(verts_list,
+                         edge_indices_list,
+                         face_verts centre,
                          squared_radius,
                          squared_max_length,
                          total_verts_in,
