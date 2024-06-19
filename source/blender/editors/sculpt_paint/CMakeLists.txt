@@ -115,6 +115,7 @@ set(SRC
   paint_intern.hh
   sculpt_intern.hh
 
+  brushes/clay_strips.cc
   brushes/draw_vector_displacement.cc
   brushes/draw.cc
   brushes/fill.cc
@@ -124,6 +125,7 @@ set(SRC
   brushes/multires_displacement_eraser.cc
   brushes/scrape.cc
   brushes/smooth.cc
+  brushes/smooth_mask.cc
 
   brushes/types.hh
 )

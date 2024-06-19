@@ -28,9 +28,10 @@ namespace blender::eevee {
 enum eShaderType {
   AMBIENT_OCCLUSION_PASS = 0,
 
-  FILM_FRAG,
+  FILM_COPY,
   FILM_COMP,
   FILM_CRYPTOMATTE_POST,
+  FILM_FRAG,
   FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_COMBINED,
   FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_DEPTH,
   FILM_WRITE_VIEWPORT_COMPOSITOR_PASS_VALUE,
@@ -190,7 +191,7 @@ class ShaderModule {
                                    eMaterialPipeline pipeline_type,
                                    eMaterialGeometry geometry_type);
 
-  void material_create_info_ammend(GPUMaterial *mat, GPUCodegenOutput *codegen);
+  void material_create_info_amend(GPUMaterial *mat, GPUCodegenOutput *codegen);
 
   /** Only to be used by Instance constructor. */
   static ShaderModule *module_get();
