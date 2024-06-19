@@ -46,13 +46,13 @@ void main()
 
   /* Transform strip rectangle into pixel coordinates, so that
    * rounded corners have proper aspect ratio and can be expressed in pixels.
-   * Make sure strip right side does not include the last pixel.
    * Also snap to pixel grid coordinates, so that outline/border is clear
    * non-fractional pixel sizes. */
   vec2 view_to_pixel = vec2(context_data.inv_pixelx, context_data.inv_pixely);
   vec2 pos1 = round(vec2(strip.left_handle, strip.bottom) * view_to_pixel);
   vec2 pos2 = round(vec2(strip.right_handle, strip.top) * view_to_pixel);
-  pos2.x -= 1.0;
+  /* Make sure right side does not include last pixel, and leave 1px gap too. */
+  pos2.x -= 2.0;
   /* Make sure strip is at least 1px wide. */
   pos2.x = max(pos2.x, pos1.x + 1.0);
   vec2 size = (pos2 - pos1) * 0.5;

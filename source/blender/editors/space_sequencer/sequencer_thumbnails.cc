@@ -553,8 +553,8 @@ void draw_seq_strip_thumbnail(View2D *v2d,
   if (seq->type == SEQ_TYPE_IMAGE) {
     upper_thumb_bound = seq_right_handle;
   }
-  /* Exclude rightmost strip pixel column. */
-  upper_thumb_bound -= pixelx;
+  /* Exclude rightmost strip pixel column and the right side gap. */
+  upper_thumb_bound -= pixelx * 2.0f;
 
   float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, thumb_width, &v2d->cur);
 

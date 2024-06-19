@@ -483,11 +483,12 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
                                      (strip_ctx->strip_content_top - strip_ctx->bottom) / 2.0f;
 
   /* Align strip start with nearest pixel to prevent waveform flickering. */
-  const float strip_start_aligned = align_frame_with_pixel(strip_ctx->left_handle,
-                                                           frames_per_pixel);
+  const float strip_start_aligned = align_frame_with_pixel(
+      strip_ctx->left_handle + timeline_ctx->pixelx, frames_per_pixel);
   /* Offset x1 and x2 values, to match view min/max, if strip is out of bounds. */
   const float draw_start_frame = max_ff(v2d->cur.xmin, strip_start_aligned);
-  const float draw_end_frame = min_ff(v2d->cur.xmax, strip_ctx->right_handle);
+  const float draw_end_frame = min_ff(v2d->cur.xmax,
+                                      strip_ctx->right_handle - timeline_ctx->pixelx * 2.0f);
   /* Offset must be also aligned, otherwise waveform flickers when moving left handle. */
   float sample_start_frame = draw_start_frame + seq->sound->offset_time / FPS;
 
@@ -1134,6 +1135,9 @@ static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx,
     return;
   }
 
+  /* Do not draw into last gap/border pixel. */
+  const float x_end = eval_end - timeline_ctx->pixelx * 2.0f;
+
   const float y_height = strip_ctx->top - strip_ctx->bottom;
   float prev_x = eval_start;
   float prev_val = evaluate_fcurve(fcu, eval_start);
@@ -1154,29 +1158,31 @@ static void draw_seq_fcurve_overlay(TimelineDrawContext *timeline_ctx,
 
     /* If some frames were skipped above, we need to close the shape. */
     if (skip) {
+      float x = min_ff(timeline_frame - eval_step, x_end);
       timeline_ctx->quads->add_quad(prev_x,
                                     (prev_val * y_height) + strip_ctx->bottom,
                                     prev_x,
                                     strip_ctx->top,
-                                    timeline_frame - eval_step,
+                                    x,
                                     (prev_val * y_height) + strip_ctx->bottom,
-                                    timeline_frame - eval_step,
+                                    x,
                                     strip_ctx->top,
                                     color);
       skip = false;
       prev_x = timeline_frame - eval_step;
     }
 
+    float x = min_ff(timeline_frame, x_end);
     timeline_ctx->quads->add_quad(prev_x,
                                   (prev_val * y_height) + strip_ctx->bottom,
                                   prev_x,
                                   strip_ctx->top,
-                                  timeline_frame,
+                                  x,
                                   (curve_val * y_height) + strip_ctx->bottom,
-                                  timeline_frame,
+                                  x,
                                   strip_ctx->top,
                                   color);
-    prev_x = timeline_frame;
+    prev_x = x;
     prev_val = curve_val;
   }
 }
