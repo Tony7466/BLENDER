@@ -34,7 +34,6 @@ if(WITH_COMPOSITOR_CPU)
   set(SRC
     COM_compositor.hh
     COM_defines.h
-    COM_profile.hh
 
     intern/COM_BufferArea.h
     intern/COM_BufferRange.h
@@ -83,7 +82,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_WorkScheduler.cc
     intern/COM_WorkScheduler.h
     intern/COM_compositor.cc
-    intern/COM_profile.cc
 
     # Internal nodes
     nodes/COM_SocketProxyNode.cc
@@ -574,6 +572,18 @@ if(WITH_COMPOSITOR_CPU)
     bf_realtime_compositor
     PRIVATE bf::intern::atomic
   )
+
+  if(WITH_TBB)
+    list(APPEND INC_SYS
+      ${TBB_INCLUDE_DIRS}
+    )
+    add_definitions(-DWITH_TBB)
+    if(WIN32)
+      # TBB includes Windows.h which will define min/max macros
+      # that will collide with the stl versions.
+      add_definitions(-DNOMINMAX)
+    endif()
+  endif()
 
   if(WITH_OPENIMAGEDENOISE)
     add_definitions(-DWITH_OPENIMAGEDENOISE)

@@ -104,14 +104,29 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 };
 
 #ifdef WITH_ANIM_BAKLAVA
+#  ifdef RNA_RUNTIME
 constexpr int binding_items_value_create_new = -1;
+const EnumPropertyItem rna_enum_action_binding_item_new = {
+    binding_items_value_create_new,
+    "NEW",
+    ICON_ADD,
+    "New",
+    "Create a new animation binding for this data-block"};
+const EnumPropertyItem rna_enum_action_binding_item_legacy = {
+    int(blender::animrig::Binding::unassigned),
+    "UNASSIGNED",
+    0,
+    "Legacy Action",
+    "This is a legacy Action, which does not support bindings."};
+#  endif
+const EnumPropertyItem rna_enum_action_binding_item_none = {
+    int(blender::animrig::Binding::unassigned),
+    "UNASSIGNED",
+    0,
+    "None",
+    "Not assigned any binding, and thus not animated."};
 const EnumPropertyItem rna_enum_action_binding_items[] = {
-    {binding_items_value_create_new,
-     "NEW",
-     ICON_ADD,
-     "New",
-     "Create a new animation binding for this data-block"},
-    {int(blender::animrig::Binding::unassigned), "UNASSIGNED", 0, "(none/legacy)", ""},
+    rna_enum_action_binding_item_none,
     {0, nullptr, 0, nullptr, nullptr},
 };
 #endif  // WITH_ANIM_BAKLAVA
@@ -247,12 +262,6 @@ static void rna_AnimData_action_binding_handle_set(
     return;
   }
 
-  if (new_binding_handle == blender::animrig::Binding::unassigned) {
-    /* No need to check with the Animation, as 'no binding' is always valid. */
-    adt->binding_handle = blender::animrig::Binding::unassigned;
-    return;
-  }
-
   blender::animrig::Action *anim = blender::animrig::get_animation(animated_id);
   if (!anim) {
     /* No animation to verify the binding handle is valid. As the binding handle
@@ -265,20 +274,23 @@ static void rna_AnimData_action_binding_handle_set(
   }
 
   blender::animrig::Binding *binding = anim->binding_for_handle(new_binding_handle);
-  if (!binding) {
-    WM_reportf(RPT_ERROR,
-               "Animation '%s' has no binding with handle %d",
-               anim->id.name + 2,
-               new_binding_handle);
-    return;
-  }
   if (!anim->assign_id(binding, animated_id)) {
-    WM_reportf(RPT_ERROR,
-               "Animation '%s' binding '%s' (%d) could not be assigned to %s",
-               anim->id.name + 2,
-               binding->name,
-               binding->handle,
-               animated_id.name + 2);
+    if (binding) {
+      WM_reportf(RPT_ERROR,
+                 "Action '%s' binding '%s' (%d) could not be assigned to %s",
+                 anim->id.name + 2,
+                 binding->name,
+                 binding->handle,
+                 animated_id.name + 2);
+    }
+    else {
+      /* This is highly unexpected, as unassigning a Binding should always be allowed. */
+      BLI_assert_unreachable();
+      WM_reportf(RPT_ERROR,
+                 "Action '%s' binding could not be unassigned from %s",
+                 anim->id.name + 2,
+                 animated_id.name + 2);
+    }
     return;
   }
 }
@@ -364,7 +376,6 @@ static const EnumPropertyItem *rna_AnimData_action_binding_itemf(bContext * /*C*
 
   AnimData &adt = rna_animdata(ptr);
   if (!adt.action) {
-    // TODO: handle properly.
     *r_free = false;
     return rna_enum_action_binding_items;
   }
@@ -392,15 +403,17 @@ static const EnumPropertyItem *rna_AnimData_action_binding_itemf(bContext * /*C*
   }
 
   /* Only add the 'New' option when this is a Layered Action. */
-  if (anim.is_action_layered()) {
-    BLI_assert(rna_enum_action_binding_items[0].value == binding_items_value_create_new);
-    RNA_enum_item_add(&items, &num_items, &rna_enum_action_binding_items[0]);
+  const bool is_layered = anim.is_action_layered();
+  if (is_layered) {
+    RNA_enum_item_add(&items, &num_items, &rna_enum_action_binding_item_new);
   }
 
   if (!found_assigned_binding) {
     /* The assigned binding was not found, so show an option that reflects that. */
-    BLI_assert(rna_enum_action_binding_items[1].value == Binding::unassigned);
-    RNA_enum_item_add(&items, &num_items, &rna_enum_action_binding_items[1]);
+    RNA_enum_item_add(&items,
+                      &num_items,
+                      is_layered ? &rna_enum_action_binding_item_none :
+                                   &rna_enum_action_binding_item_legacy);
   }
 
   RNA_enum_item_end(&items, &num_items);

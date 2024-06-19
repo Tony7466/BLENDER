@@ -965,6 +965,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define SH_NODE_SEPARATE_COLOR 712
 #define SH_NODE_MIX 713
 #define SH_NODE_BSDF_RAY_PORTAL 714
+#define SH_NODE_TEX_GABOR 715
 
 /** \} */
 
@@ -1330,6 +1331,10 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_TOOL_VIEWPORT_TRANSFORM 2132
 #define GEO_NODE_TOOL_MOUSE_POSITION 2133
 #define GEO_NODE_SAMPLE_GRID_INDEX 2134
+#define GEO_NODE_TOOL_ACTIVE_ELEMENT 2135
+#define GEO_NODE_SET_INSTANCE_TRANSFORM 2136
+#define GEO_NODE_INPUT_INSTANCE_TRANSFORM 2137
+#define GEO_NODE_IMPORT_STL 2138
 
 /** \} */
 

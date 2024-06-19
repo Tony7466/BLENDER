@@ -104,6 +104,9 @@ void VKDevice::init_functions()
   /* VK_KHR_dynamic_rendering */
   functions.vkCmdBeginRendering = LOAD_FUNCTION(vkCmdBeginRenderingKHR);
   functions.vkCmdEndRendering = LOAD_FUNCTION(vkCmdEndRenderingKHR);
+  /* VK_EXT_debug_utils */
+  functions.vkCmdBeginDebugUtilsLabel = LOAD_FUNCTION(vkCmdBeginDebugUtilsLabelEXT);
+  functions.vkCmdEndDebugUtilsLabel = LOAD_FUNCTION(vkCmdEndDebugUtilsLabelEXT);
 #undef LOAD_FUNCTION
 }
 
@@ -204,6 +207,10 @@ void VKDevice::init_glsl_patch()
 
   /* TODO(fclem): This creates a validation error and should be already part of Vulkan 1.2. */
   ss << "#extension GL_ARB_shader_viewport_layer_array: enable\n";
+  if (GPU_stencil_export_support()) {
+    ss << "#extension GL_ARB_shader_stencil_export: enable\n";
+    ss << "#define GPU_ARB_shader_stencil_export 1\n";
+  }
   if (!workarounds_.shader_output_layer) {
     ss << "#define gpu_Layer gl_Layer\n";
   }
@@ -379,17 +386,13 @@ void VKDevice::destroy_discarded_resources()
 
   while (!discarded_images_.is_empty()) {
     std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
-    if (use_render_graph) {
-      resources.remove_image(image_allocation.first);
-    }
+    resources.remove_image(image_allocation.first);
     vmaDestroyImage(mem_allocator_get(), image_allocation.first, image_allocation.second);
   }
 
   while (!discarded_buffers_.is_empty()) {
     std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
-    if (use_render_graph) {
-      resources.remove_buffer(buffer_allocation.first);
-    }
+    resources.remove_buffer(buffer_allocation.first);
     vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
   }
 

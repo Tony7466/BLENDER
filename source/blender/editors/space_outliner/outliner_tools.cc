@@ -978,7 +978,7 @@ static void id_local_fn(bContext *C,
 {
   if (ID_IS_LINKED(tselem->id) && (tselem->id->tag & LIB_TAG_EXTERN)) {
     Main *bmain = CTX_data_main(C);
-    if (BKE_lib_id_make_local(bmain, tselem->id, 0)) {
+    if (BKE_lib_id_make_local(bmain, tselem->id, LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR)) {
       BKE_id_newptr_and_tag_clear(tselem->id);
     }
   }
@@ -2953,6 +2953,7 @@ static int outliner_id_operation_exec(bContext *C, wmOperator *op)
         BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
         outliner_do_libdata_operation(C, op->reports, scene, space_outliner, id_delete_tag_fn);
         BKE_id_multi_tagged_delete(bmain);
+        WM_event_add_notifier(C, NC_OBJECT, nullptr);
         ED_undo_push(C, "Delete");
       }
       break;

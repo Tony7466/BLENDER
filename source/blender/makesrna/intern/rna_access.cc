@@ -40,6 +40,7 @@
 #include "BKE_global.hh"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
@@ -279,7 +280,7 @@ IDProperty *RNA_struct_idprops(PointerRNA *ptr, bool create)
   }
 
   if (create && *property_ptr == nullptr) {
-    *property_ptr = blender::bke::idprop::create_group(__func__).release();
+    *property_ptr = blender::bke::idprop::create_group(__func__, IDP_FLAG_STATIC_TYPE).release();
   }
 
   return *property_ptr;
@@ -549,18 +550,6 @@ IDProperty *rna_idproperty_check(PropertyRNA **prop, PointerRNA *ptr)
 
   *prop = prop_rna_or_id.rnaprop;
   return prop_rna_or_id.idprop;
-}
-
-PropertyRNA *rna_ensure_property_realdata(PropertyRNA **prop, PointerRNA *ptr)
-{
-  PropertyRNAOrID prop_rna_or_id;
-
-  rna_property_rna_or_id_get(*prop, ptr, &prop_rna_or_id);
-
-  *prop = prop_rna_or_id.rnaprop;
-  return (prop_rna_or_id.is_idprop || prop_rna_or_id.is_rna_storage_idprop) ?
-             (PropertyRNA *)prop_rna_or_id.idprop :
-             prop_rna_or_id.rnaprop;
 }
 
 PropertyRNA *rna_ensure_property(PropertyRNA *prop)
@@ -1156,6 +1145,10 @@ PropertySubType RNA_property_subtype(PropertyRNA *prop)
   if (prop->magic != RNA_MAGIC) {
     IDProperty *idprop = (IDProperty *)prop;
 
+    if (idprop->type == IDP_STRING && idprop->subtype == IDP_STRING_SUB_BYTE) {
+      return PROP_BYTESTRING;
+    }
+
     if (idprop->ui_data) {
       IDPropertyUIData *ui_data = idprop->ui_data;
       return (PropertySubType)ui_data->rna_subtype;
@@ -1580,22 +1573,28 @@ bool RNA_property_pointer_poll(PointerRNA *ptr, PropertyRNA *prop, PointerRNA *v
 {
   prop = rna_ensure_property(prop);
 
-  if (prop->type == PROP_POINTER) {
-    PointerPropertyRNA *pprop = (PointerPropertyRNA *)prop;
+  if (prop->type != PROP_POINTER) {
+    printf("%s: %s is not a pointer property.\n", __func__, prop->identifier);
+    return false;
+  }
 
-    if (pprop->poll) {
-      if (rna_idproperty_check(&prop, ptr)) {
-        return reinterpret_cast<PropPointerPollFuncPy>(reinterpret_cast<void *>(pprop->poll))(
-            ptr, *value, prop);
-      }
-      return pprop->poll(ptr, *value);
-    }
+  PointerPropertyRNA *pprop = (PointerPropertyRNA *)prop;
 
+  /* Can't point from linked to local datablock. */
+  if (ptr->owner_id && value->owner_id && !BKE_id_can_use_id(*ptr->owner_id, *value->owner_id)) {
+    return false;
+  }
+
+  /* Check custom poll function. */
+  if (!pprop->poll) {
     return true;
   }
 
-  printf("%s: %s is not a pointer property.\n", __func__, prop->identifier);
-  return false;
+  if (rna_idproperty_check(&prop, ptr)) {
+    return reinterpret_cast<PropPointerPollFuncPy>(reinterpret_cast<void *>(pprop->poll))(
+        ptr, *value, prop);
+  }
+  return pprop->poll(ptr, *value);
 }
 
 void RNA_property_enum_items_ex(bContext *C,
@@ -1953,7 +1952,7 @@ uint RNA_enum_items_count(const EnumPropertyItem *item)
 }
 
 bool RNA_property_enum_identifier(
-    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **identifier)
+    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **r_identifier)
 {
   const EnumPropertyItem *item = nullptr;
   bool free;
@@ -1961,7 +1960,7 @@ bool RNA_property_enum_identifier(
   RNA_property_enum_items(C, ptr, prop, &item, nullptr, &free);
   if (item) {
     bool result;
-    result = RNA_enum_identifier(item, value, identifier);
+    result = RNA_enum_identifier(item, value, r_identifier);
     if (free) {
       MEM_freeN((void *)item);
     }
@@ -1971,7 +1970,7 @@ bool RNA_property_enum_identifier(
 }
 
 bool RNA_property_enum_name(
-    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **name)
+    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **r_name)
 {
   const EnumPropertyItem *item = nullptr;
   bool free;
@@ -1979,7 +1978,7 @@ bool RNA_property_enum_name(
   RNA_property_enum_items(C, ptr, prop, &item, nullptr, &free);
   if (item) {
     bool result;
-    result = RNA_enum_name(item, value, name);
+    result = RNA_enum_name(item, value, r_name);
     if (free) {
       MEM_freeN((void *)item);
     }
@@ -1990,15 +1989,15 @@ bool RNA_property_enum_name(
 }
 
 bool RNA_property_enum_name_gettexted(
-    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **name)
+    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **r_name)
 {
   bool result;
 
-  result = RNA_property_enum_name(C, ptr, prop, value, name);
+  result = RNA_property_enum_name(C, ptr, prop, value, r_name);
 
   if (result) {
     if (!(prop->flag & PROP_ENUM_NO_TRANSLATE)) {
-      *name = BLT_translate_do_iface(prop->translation_context, *name);
+      *r_name = BLT_translate_do_iface(prop->translation_context, *r_name);
     }
   }
 
@@ -2047,7 +2046,7 @@ bool RNA_property_enum_item_from_value_gettexted(
 }
 
 int RNA_property_enum_bitflag_identifiers(
-    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **identifier)
+    bContext *C, PointerRNA *ptr, PropertyRNA *prop, const int value, const char **r_identifier)
 {
   const EnumPropertyItem *item = nullptr;
   bool free;
@@ -2055,7 +2054,7 @@ int RNA_property_enum_bitflag_identifiers(
   RNA_property_enum_items(C, ptr, prop, &item, nullptr, &free);
   if (item) {
     int result;
-    result = RNA_enum_bitflag_identifiers(item, value, identifier);
+    result = RNA_enum_bitflag_identifiers(item, value, r_identifier);
     if (free) {
       MEM_freeN((void *)item);
     }
@@ -2459,9 +2458,15 @@ void RNA_property_boolean_set(PointerRNA *ptr, PropertyRNA *prop, bool value)
   else if (prop->flag & PROP_EDITABLE) {
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
 #ifdef USE_INT_IDPROPS_FOR_BOOLEAN_RNA_PROP
-      IDP_AddToGroup(group, blender::bke::idprop::create(prop->identifier, int(value)).release());
+      IDP_AddToGroup(
+          group,
+          blender::bke::idprop::create(prop->identifier, int(value), IDP_FLAG_STATIC_TYPE)
+              .release());
 #else
-      IDP_AddToGroup(group, blender::bke::idprop::create_bool(prop->identifier, value).release());
+      IDP_AddToGroup(
+          group,
+          blender::bke::idprop::create_bool(prop->identifier, value, IDP_FLAG_STATIC_TYPE)
+              .release());
 #endif
     }
   }
@@ -2505,6 +2510,11 @@ static void rna_property_boolean_get_default_array_values(PointerRNA *ptr,
                                                           BoolPropertyRNA *bprop,
                                                           bool *r_values)
 {
+  if (ptr->data && bprop->get_default_array) {
+    bprop->get_default_array(ptr, &bprop->property, r_values);
+    return;
+  }
+
   int length = bprop->property.totarraylength;
   int out_length = RNA_property_array_length(ptr, (PropertyRNA *)bprop);
 
@@ -2630,7 +2640,7 @@ void RNA_property_boolean_set_array(PointerRNA *ptr, PropertyRNA *prop, const bo
 #endif
 
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
-      idprop = IDP_New(IDP_ARRAY, &val, prop->identifier);
+      idprop = IDP_New(IDP_ARRAY, &val, prop->identifier, IDP_FLAG_STATIC_TYPE);
       IDP_AddToGroup(group, idprop);
       int *values_dst = static_cast<int *>(IDP_Array(idprop));
       for (uint i = 0; i < idprop->len; i++) {
@@ -2667,7 +2677,7 @@ void RNA_property_boolean_set_index(PointerRNA *ptr, PropertyRNA *prop, int inde
   }
 }
 
-bool RNA_property_boolean_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
+bool RNA_property_boolean_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
   /* TODO: Make defaults work for IDProperties. */
   BoolPropertyRNA *bprop = (BoolPropertyRNA *)rna_ensure_property(prop);
@@ -2693,6 +2703,9 @@ bool RNA_property_boolean_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
       }
     }
     return false;
+  }
+  if (bprop->get_default) {
+    return bprop->get_default(ptr, prop);
   }
 
   return bprop->defaultvalue;
@@ -2822,7 +2835,9 @@ void RNA_property_int_set(PointerRNA *ptr, PropertyRNA *prop, int value)
   else if (prop->flag & PROP_EDITABLE) {
     RNA_property_int_clamp(ptr, prop, &value);
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
-      IDP_AddToGroup(group, blender::bke::idprop::create(prop->identifier, value).release());
+      IDP_AddToGroup(
+          group,
+          blender::bke::idprop::create(prop->identifier, value, IDP_FLAG_STATIC_TYPE).release());
     }
   }
 }
@@ -2847,6 +2862,11 @@ static void rna_property_int_get_default_array_values(PointerRNA *ptr,
                                                       IntPropertyRNA *iprop,
                                                       int *r_values)
 {
+  if (ptr->data && iprop->get_default_array) {
+    iprop->get_default_array(ptr, &iprop->property, r_values);
+    return;
+  }
+
   int length = iprop->property.totarraylength;
   int out_length = RNA_property_array_length(ptr, (PropertyRNA *)iprop);
 
@@ -2980,9 +3000,11 @@ void RNA_property_int_set_array(PointerRNA *ptr, PropertyRNA *prop, const int *v
   else if (prop->flag & PROP_EDITABLE) {
     // RNA_property_int_clamp_array(ptr, prop, &value); /* TODO. */
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
-      IDP_AddToGroup(
-          group,
-          bke::idprop::create(prop->identifier, Span(values, prop->totarraylength)).release());
+      IDP_AddToGroup(group,
+                     bke::idprop::create(prop->identifier,
+                                         Span(values, prop->totarraylength),
+                                         IDP_FLAG_STATIC_TYPE)
+                         .release());
     }
   }
 }
@@ -3013,7 +3035,7 @@ void RNA_property_int_set_index(PointerRNA *ptr, PropertyRNA *prop, int index, i
   }
 }
 
-int RNA_property_int_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
+int RNA_property_int_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
   IntPropertyRNA *iprop = (IntPropertyRNA *)rna_ensure_property(prop);
 
@@ -3023,6 +3045,9 @@ int RNA_property_int_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
       const IDPropertyUIDataInt *ui_data = (const IDPropertyUIDataInt *)idprop->ui_data;
       return ui_data->default_value;
     }
+  }
+  if (iprop->get_default) {
+    return iprop->get_default(ptr, prop);
   }
 
   return iprop->defaultvalue;
@@ -3155,7 +3180,9 @@ void RNA_property_float_set(PointerRNA *ptr, PropertyRNA *prop, float value)
   else if (prop->flag & PROP_EDITABLE) {
     RNA_property_float_clamp(ptr, prop, &value);
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
-      IDP_AddToGroup(group, blender::bke::idprop::create(prop->identifier, value).release());
+      IDP_AddToGroup(
+          group,
+          blender::bke::idprop::create(prop->identifier, value, IDP_FLAG_STATIC_TYPE).release());
     }
   }
 }
@@ -3200,6 +3227,11 @@ static void rna_property_float_get_default_array_values(PointerRNA *ptr,
                                                         FloatPropertyRNA *fprop,
                                                         float *r_values)
 {
+  if (ptr->data && fprop->get_default_array) {
+    fprop->get_default_array(ptr, &fprop->property, r_values);
+    return;
+  }
+
   int length = fprop->property.totarraylength;
   int out_length = RNA_property_array_length(ptr, (PropertyRNA *)fprop);
 
@@ -3351,7 +3383,8 @@ void RNA_property_float_set_array(PointerRNA *ptr, PropertyRNA *prop, const floa
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
       IDP_AddToGroup(group,
                      blender::bke::idprop::create(prop->identifier,
-                                                  blender::Span(values, prop->totarraylength))
+                                                  blender::Span(values, prop->totarraylength),
+                                                  IDP_FLAG_STATIC_TYPE)
                          .release());
     }
   }
@@ -3383,7 +3416,7 @@ void RNA_property_float_set_index(PointerRNA *ptr, PropertyRNA *prop, int index,
   }
 }
 
-float RNA_property_float_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
+float RNA_property_float_get_default(PointerRNA *ptr, PropertyRNA *prop)
 {
   FloatPropertyRNA *fprop = (FloatPropertyRNA *)rna_ensure_property(prop);
 
@@ -3397,6 +3430,9 @@ float RNA_property_float_get_default(PointerRNA * /*ptr*/, PropertyRNA *prop)
       const IDPropertyUIDataFloat *ui_data = (const IDPropertyUIDataFloat *)idprop->ui_data;
       return float(ui_data->default_value);
     }
+  }
+  if (fprop->get_default) {
+    return fprop->get_default(ptr, prop);
   }
 
   return fprop->defaultvalue;
@@ -3589,7 +3625,8 @@ void RNA_property_string_set(PointerRNA *ptr, PropertyRNA *prop, const char *val
     if (group) {
       IDP_AddToGroup(
           group,
-          IDP_NewStringMaxSize(value, RNA_property_string_maxlength(prop), prop->identifier));
+          IDP_NewStringMaxSize(
+              value, RNA_property_string_maxlength(prop), prop->identifier, IDP_FLAG_STATIC_TYPE));
     }
   }
 }
@@ -3625,7 +3662,7 @@ void RNA_property_string_set_bytes(PointerRNA *ptr, PropertyRNA *prop, const cha
       val.string.str = value;
       val.string.len = len;
       val.string.subtype = IDP_STRING_SUB_BYTE;
-      IDP_AddToGroup(group, IDP_New(IDP_STRING, &val, prop->identifier));
+      IDP_AddToGroup(group, IDP_New(IDP_STRING, &val, prop->identifier, IDP_FLAG_STATIC_TYPE));
     }
   }
 }
@@ -3772,7 +3809,7 @@ void RNA_property_enum_set(PointerRNA *ptr, PropertyRNA *prop, int value)
 
     group = RNA_struct_idprops(ptr, true);
     if (group) {
-      IDP_AddToGroup(group, IDP_New(IDP_INT, &val, prop->identifier));
+      IDP_AddToGroup(group, IDP_New(IDP_INT, &val, prop->identifier, IDP_FLAG_STATIC_TYPE));
     }
   }
 }
@@ -3908,10 +3945,12 @@ void RNA_property_pointer_set(PointerRNA *ptr,
       IDProperty *group = RNA_struct_idprops(ptr, true);
       BLI_assert(group != nullptr);
 
-      IDP_ReplaceInGroup_ex(
-          group,
-          blender::bke::idprop::create(idprop->name, static_cast<ID *>(ptr_value.data)).release(),
-          idprop);
+      IDP_ReplaceInGroup_ex(group,
+                            blender::bke::idprop::create(idprop->name,
+                                                         static_cast<ID *>(ptr_value.data),
+                                                         IDP_FLAG_STATIC_TYPE)
+                                .release(),
+                            idprop);
     }
   }
   /* RNA property. */
@@ -3925,10 +3964,11 @@ void RNA_property_pointer_set(PointerRNA *ptr,
   /* IDProperty disguised as RNA property (and not yet defined in ptr). */
   else if (prop->flag & PROP_EDITABLE) {
     if (IDProperty *group = RNA_struct_idprops(ptr, true)) {
-      IDP_ReplaceInGroup(
-          group,
-          blender::bke::idprop::create(prop->identifier, static_cast<ID *>(ptr_value.data))
-              .release());
+      IDP_ReplaceInGroup(group,
+                         blender::bke::idprop::create(prop->identifier,
+                                                      static_cast<ID *>(ptr_value.data),
+                                                      IDP_FLAG_STATIC_TYPE)
+                             .release());
     }
   }
 }
@@ -3956,7 +3996,9 @@ void RNA_property_pointer_add(PointerRNA *ptr, PropertyRNA *prop)
 
     group = RNA_struct_idprops(ptr, true);
     if (group) {
-      IDP_AddToGroup(group, blender::bke::idprop::create_group(prop->identifier).release());
+      IDP_AddToGroup(
+          group,
+          blender::bke::idprop::create_group(prop->identifier, IDP_FLAG_STATIC_TYPE).release());
     }
   }
   else {
@@ -4175,7 +4217,7 @@ void RNA_property_collection_add(PointerRNA *ptr, PropertyRNA *prop, PointerRNA 
   if ((idprop = rna_idproperty_check(&prop, ptr))) {
     IDProperty *item;
 
-    item = blender::bke::idprop::create_group("").release();
+    item = blender::bke::idprop::create_group("", IDP_FLAG_STATIC_TYPE).release();
     if (is_liboverride) {
       item->flag |= IDP_FLAG_OVERRIDELIBRARY_LOCAL;
     }
@@ -4193,7 +4235,7 @@ void RNA_property_collection_add(PointerRNA *ptr, PropertyRNA *prop, PointerRNA 
       idprop = IDP_NewIDPArray(prop->identifier);
       IDP_AddToGroup(group, idprop);
 
-      item = blender::bke::idprop::create_group("").release();
+      item = blender::bke::idprop::create_group("", IDP_FLAG_STATIC_TYPE).release();
       if (is_liboverride) {
         item->flag |= IDP_FLAG_OVERRIDELIBRARY_LOCAL;
       }

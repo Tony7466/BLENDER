@@ -84,6 +84,9 @@ struct ShadowTileMap : public ShadowTileMapData {
     tiles_index = tiles_index_;
     /* For now just the same index. */
     clip_data_index = tiles_index_ / SHADOW_TILEDATA_PER_TILEMAP;
+    /* Avoid uninitialized data. */
+    this->grid_offset = int2(0);
+    this->grid_shift = int2(0);
     this->set_dirty();
   }
 
@@ -302,6 +305,8 @@ class ShadowModule {
 
   /** Scene immutable parameters. */
 
+  /* Render setting that reduces the LOD for every light. */
+  float global_lod_bias_ = 0.0f;
   /** For now, needs to be hardcoded. */
   int shadow_page_size_ = SHADOW_PAGE_RES;
   /** Maximum number of allocated pages. Maximum value is SHADOW_MAX_TILEMAP. */
@@ -347,19 +352,27 @@ class ShadowModule {
     return data_;
   }
 
+  float global_lod_bias() const
+  {
+    return global_lod_bias_;
+  }
+
   /* Set all shadows to update. To be called before `end_sync`. */
   void reset()
   {
     do_full_update_ = true;
   }
 
+  /** Compute approximate screen pixel space radius. */
+  static float screen_pixel_radius(const float4x4 &wininv,
+                                   bool is_perspective,
+                                   const int2 &extent);
+
  private:
   void remove_unused();
   void debug_page_map_call(DRWPass *pass);
-  bool shadow_update_finished();
+  bool shadow_update_finished(int loop_count);
 
-  /** Compute approximate screen pixel space radius. */
-  float screen_pixel_radius(const View &view, const int2 &extent);
   /** Compute approximate punctual shadow pixel world space radius, 1 unit away of the light. */
   float tilemap_pixel_radius();
 

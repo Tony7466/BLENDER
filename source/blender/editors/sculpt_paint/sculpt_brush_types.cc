@@ -25,7 +25,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
 #include "BKE_colortools.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_paint.hh"
@@ -59,15 +59,6 @@ struct SculptProjectVector {
   bool is_valid;
 };
 
-static bool plane_point_side_flip(const float co[3], const float plane[4], const bool flip)
-{
-  float d = plane_point_side_v3(plane, co);
-  if (flip) {
-    d = -d;
-  }
-  return d <= 0.0f;
-}
-
 /**
  * \param plane: Direction, can be any length.
  */
@@ -90,95 +81,6 @@ static void sculpt_project_v3(const SculptProjectVector *spvc, const float vec[3
   /* inline the projection, cache `-1.0 / dot_v3_v3(v_proj, v_proj)` */
   madd_v3_v3fl(r_vec, spvc->plane, dot_v3v3(vec, spvc->plane) * spvc->len_sq_inv_neg);
 #endif
-}
-
-static void calc_sculpt_plane(
-    const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes, float r_area_no[3], float r_area_co[3])
-{
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  if (SCULPT_stroke_is_main_symmetry_pass(*ss.cache) &&
-      (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache) ||
-       !(brush.flag & BRUSH_ORIGINAL_PLANE) || !(brush.flag & BRUSH_ORIGINAL_NORMAL)))
-  {
-    switch (brush.sculpt_plane) {
-      case SCULPT_DISP_DIR_VIEW:
-        copy_v3_v3(r_area_no, ss.cache->true_view_normal);
-        break;
-
-      case SCULPT_DISP_DIR_X:
-        ARRAY_SET_ITEMS(r_area_no, 1.0f, 0.0f, 0.0f);
-        break;
-
-      case SCULPT_DISP_DIR_Y:
-        ARRAY_SET_ITEMS(r_area_no, 0.0f, 1.0f, 0.0f);
-        break;
-
-      case SCULPT_DISP_DIR_Z:
-        ARRAY_SET_ITEMS(r_area_no, 0.0f, 0.0f, 1.0f);
-        break;
-
-      case SCULPT_DISP_DIR_AREA:
-        SCULPT_calc_area_normal_and_center(sd, ob, nodes, r_area_no, r_area_co);
-        if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-          project_plane_v3_v3v3(r_area_no, r_area_no, ss.cache->view_normal);
-          normalize_v3(r_area_no);
-        }
-        break;
-
-      default:
-        break;
-    }
-
-    /* For flatten center. */
-    /* Flatten center has not been calculated yet if we are not using the area normal. */
-    if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA) {
-      SCULPT_calc_area_center(sd, ob, nodes, r_area_co);
-    }
-
-    /* For area normal. */
-    if (!SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache) &&
-        (brush.flag & BRUSH_ORIGINAL_NORMAL))
-    {
-      copy_v3_v3(r_area_no, ss.cache->sculpt_normal);
-    }
-    else {
-      copy_v3_v3(ss.cache->sculpt_normal, r_area_no);
-    }
-
-    /* For flatten center. */
-    if (!SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache) &&
-        (brush.flag & BRUSH_ORIGINAL_PLANE))
-    {
-      copy_v3_v3(r_area_co, ss.cache->last_center);
-    }
-    else {
-      copy_v3_v3(ss.cache->last_center, r_area_co);
-    }
-  }
-  else {
-    /* For area normal. */
-    copy_v3_v3(r_area_no, ss.cache->sculpt_normal);
-
-    /* For flatten center. */
-    copy_v3_v3(r_area_co, ss.cache->last_center);
-
-    /* For area normal. */
-    flip_v3(r_area_no, ss.cache->mirror_symmetry_pass);
-
-    /* For flatten center. */
-    flip_v3(r_area_co, ss.cache->mirror_symmetry_pass);
-
-    /* For area normal. */
-    mul_m4_v3(ss.cache->symm_rot_mat.ptr(), r_area_no);
-
-    /* For flatten center. */
-    mul_m4_v3(ss.cache->symm_rot_mat.ptr(), r_area_co);
-
-    /* Shift the plane for the current tile. */
-    add_v3_v3(r_area_co, ss.cache->plane_offset);
-  }
 }
 
 static void sculpt_rake_rotate(const SculptSession &ss,
@@ -236,278 +138,6 @@ static void sculpt_project_v3_normal_align(const SculptSession &ss,
   mul_v3_fl(grab_delta, 1.0f - normal_weight);
   madd_v3_v3fl(
       grab_delta, ss.cache->sculpt_normal_symm, (len_signed * normal_weight) * len_view_scale);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Sculpt Draw Brush
- * \{ */
-
-static void do_draw_brush_task(Object &ob, const Brush &brush, const float *offset, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-
-    /* Offset vertex. */
-    if (ss.cache->brush->flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT &&
-        (brush.mtex.brush_map_mode == MTEX_MAP_MODE_AREA))
-    {
-      float r_rgba[4];
-      SCULPT_brush_strength_color(ss,
-                                  brush,
-                                  vd.co,
-                                  sqrtf(test.dist),
-                                  vd.no,
-                                  vd.fno,
-                                  vd.mask,
-                                  vd.vertex,
-                                  thread_id,
-                                  &automask_data,
-                                  r_rgba);
-      SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[vd.i]);
-    }
-    else {
-      float fade = SCULPT_brush_strength_factor(ss,
-                                                brush,
-                                                vd.co,
-                                                sqrtf(test.dist),
-                                                vd.no,
-                                                vd.fno,
-                                                vd.mask,
-                                                vd.vertex,
-                                                thread_id,
-                                                &automask_data);
-      mul_v3_v3fl(proxy[vd.i], offset, fade);
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_draw_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  float offset[3];
-  const float bstrength = ss.cache->bstrength;
-
-  /* Offset with as much as possible factored in already. */
-  float effective_normal[3];
-  SCULPT_tilt_effective_normal_get(ss, brush, effective_normal);
-  mul_v3_v3fl(offset, effective_normal, ss.cache->radius);
-  mul_v3_v3(offset, ss.cache->scale);
-  mul_v3_fl(offset, bstrength);
-
-  /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
-   * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_init(brush.curve);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_draw_brush_task(ob, brush, offset, nodes[i]);
-    }
-  });
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Sculpt Fill Brush
- * \{ */
-
-static void do_fill_brush_task(
-    Object &ob, const Brush &brush, const float *area_no, const float *area_co, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const float bstrength = ss.cache->bstrength;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-
-    if (!SCULPT_plane_point_side(vd.co, test.plane_tool)) {
-      continue;
-    }
-
-    float intr[3];
-    float val[3];
-    closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
-    sub_v3_v3v3(val, intr, vd.co);
-
-    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                sqrtf(test.dist),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    mul_v3_v3fl(proxy[vd.i], val, fade);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_fill_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  const float radius = ss.cache->radius;
-
-  float area_no[3];
-  float area_co[3];
-  float offset = SCULPT_brush_plane_offset_get(sd, ss);
-
-  float displace;
-
-  float temp[3];
-
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
-
-  SCULPT_tilt_apply_to_normal(area_no, ss.cache, brush.tilt_strength_factor);
-
-  displace = radius * offset;
-
-  mul_v3_v3v3(temp, area_no, ss.cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_fill_brush_task(ob, brush, area_no, area_co, nodes[i]);
-    }
-  });
-}
-
-static void do_scrape_brush_task(
-    Object &ob, const Brush &brush, const float *area_no, const float *area_co, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const float bstrength = ss.cache->bstrength;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-
-    if (SCULPT_plane_point_side(vd.co, test.plane_tool)) {
-      continue;
-    }
-
-    float intr[3];
-    float val[3];
-    closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
-    sub_v3_v3v3(val, intr, vd.co);
-
-    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                sqrtf(test.dist),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    mul_v3_v3fl(proxy[vd.i], val, fade);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_scrape_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  const float radius = ss.cache->radius;
-
-  float area_no[3];
-  float area_co[3];
-  float offset = SCULPT_brush_plane_offset_get(sd, ss);
-
-  float displace;
-
-  float temp[3];
-
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
-
-  SCULPT_tilt_apply_to_normal(area_no, ss.cache, brush.tilt_strength_factor);
-
-  displace = -radius * offset;
-
-  mul_v3_v3v3(temp, area_no, ss.cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_scrape_brush_task(ob, brush, area_no, area_co, nodes[i]);
-    }
-  });
 }
 
 /** \} */
@@ -601,6 +231,7 @@ float SCULPT_clay_thumb_get_stabilized_pressure(
 void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
+  using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
@@ -613,10 +244,10 @@ void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> n
   float scale[4][4];
   float tmat[4][4];
 
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no_sp, area_co_tmp);
+  calc_brush_plane(brush, ob, nodes, area_no_sp, area_co_tmp);
 
   if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA || (brush.flag & BRUSH_ORIGINAL_NORMAL)) {
-    area_no = SCULPT_calc_area_normal(sd, ob, nodes).value_or(float3(0));
+    area_no = calc_area_normal(brush, ob, nodes).value_or(float3(0));
   }
   else {
     area_no = area_no_sp;
@@ -661,95 +292,6 @@ void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> n
     for (const int i : range) {
       do_clay_thumb_brush_task(
           ob, brush, mat, area_no_sp, ss.cache->location, clay_strength, nodes[i]);
-    }
-  });
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Sculpt Flatten Brush
- * \{ */
-
-static void do_flatten_brush_task(
-    Object &ob, const Brush &brush, const float *area_no, const float *area_co, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const float bstrength = ss.cache->bstrength;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-    float intr[3];
-    float val[3];
-
-    closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
-
-    sub_v3_v3v3(val, intr, vd.co);
-
-    if (SCULPT_plane_trim(*ss.cache, brush, val)) {
-      auto_mask::node_update(automask_data, vd);
-
-      const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                  brush,
-                                                                  vd.co,
-                                                                  sqrtf(test.dist),
-                                                                  vd.no,
-                                                                  vd.fno,
-                                                                  vd.mask,
-                                                                  vd.vertex,
-                                                                  thread_id,
-                                                                  &automask_data);
-
-      mul_v3_v3fl(proxy[vd.i], val, fade);
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_flatten_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  const float radius = ss.cache->radius;
-
-  float area_no[3];
-  float area_co[3];
-
-  float offset = SCULPT_brush_plane_offset_get(sd, ss);
-  float displace;
-  float temp[3];
-
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
-
-  SCULPT_tilt_apply_to_normal(area_no, ss.cache, brush.tilt_strength_factor);
-
-  displace = radius * offset;
-
-  mul_v3_v3v3(temp, area_no, ss.cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_flatten_brush_task(ob, brush, area_no, area_co, nodes[i]);
     }
   });
 }
@@ -859,6 +401,7 @@ static void do_clay_brush_task(
 void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
+  using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
@@ -873,7 +416,7 @@ void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
   float area_co[3];
   float temp[3];
 
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no, area_co);
+  calc_brush_plane(brush, ob, nodes, area_no, area_co);
 
   ClaySampleData csd = threading::parallel_reduce(
       nodes.index_range(),
@@ -906,148 +449,6 @@ void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
       do_clay_brush_task(ob, brush, area_no, area_co, nodes[i]);
-    }
-  });
-}
-
-static void do_clay_strips_brush_task(Object &ob,
-                                      const Brush &brush,
-                                      const float (*mat)[4],
-                                      const float *area_no_sp,
-                                      const float *area_co,
-                                      PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  SculptBrushTest test;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const bool flip = (ss.cache->bstrength < 0.0f);
-  const float bstrength = flip ? -ss.cache->bstrength : ss.cache->bstrength;
-
-  SCULPT_brush_test_init(ss, test);
-  plane_from_point_normal_v3(test.plane_tool, area_co, area_no_sp);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!SCULPT_brush_test_cube(test, vd.co, mat, brush.tip_roundness, brush.tip_scale_x)) {
-      continue;
-    }
-
-    if (!plane_point_side_flip(vd.co, test.plane_tool, flip)) {
-      continue;
-    }
-
-    float intr[3];
-    float val[3];
-    closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
-    sub_v3_v3v3(val, intr, vd.co);
-
-    if (!SCULPT_plane_trim(*ss.cache, brush, val)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-
-    /* The normal from the vertices is ignored, it causes glitch with planes, see: #44390. */
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                ss.cache->radius * test.dist,
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    mul_v3_v3fl(proxy[vd.i], val, fade);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_clay_strips_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  const bool flip = (ss.cache->bstrength < 0.0f);
-  const float radius = flip ? -ss.cache->radius : ss.cache->radius;
-  const float offset = SCULPT_brush_plane_offset_get(sd, ss);
-  const float displace = radius * (0.18f + offset);
-
-  /* The sculpt-plane normal (whatever its set to). */
-  float3 area_no_sp;
-
-  /* Geometry normal */
-  float3 area_no;
-  float3 area_co;
-
-  float temp[3];
-  float mat[4][4];
-  float scale[4][4];
-  float tmat[4][4];
-
-  SCULPT_calc_brush_plane(sd, ob, nodes, area_no_sp, area_co);
-  SCULPT_tilt_apply_to_normal(area_no_sp, ss.cache, brush.tilt_strength_factor);
-
-  if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA || (brush.flag & BRUSH_ORIGINAL_NORMAL)) {
-    area_no = SCULPT_calc_area_normal(sd, ob, nodes).value_or(float3(0));
-  }
-  else {
-    area_no = area_no_sp;
-  }
-
-  if (is_zero_v3(ss.cache->grab_delta_symmetry)) {
-    return;
-  }
-
-  mul_v3_v3v3(temp, area_no_sp, ss.cache->scale);
-  mul_v3_fl(temp, displace);
-  add_v3_v3(area_co, temp);
-
-  /* Clay Strips uses a cube test with falloff in the XY axis (not in Z) and a plane to deform the
-   * vertices. When in Add mode, vertices that are below the plane and inside the cube are moved
-   * towards the plane. In this situation, there may be cases where a vertex is outside the cube
-   * but below the plane, so won't be deformed, causing artifacts. In order to prevent these
-   * artifacts, this displaces the test cube space in relation to the plane in order to
-   * deform more vertices that may be below it. */
-  /* The 0.7 and 1.25 factors are arbitrary and don't have any relation between them, they were set
-   * by doing multiple tests using the default "Clay Strips" brush preset. */
-  float area_co_displaced[3];
-  madd_v3_v3v3fl(area_co_displaced, area_co, area_no, -radius * 0.7f);
-
-  cross_v3_v3v3(mat[0], area_no, ss.cache->grab_delta_symmetry);
-  mat[0][3] = 0.0f;
-  cross_v3_v3v3(mat[1], area_no, mat[0]);
-  mat[1][3] = 0.0f;
-  copy_v3_v3(mat[2], area_no);
-  mat[2][3] = 0.0f;
-  copy_v3_v3(mat[3], area_co_displaced);
-  mat[3][3] = 1.0f;
-  normalize_m4(mat);
-
-  /* Scale brush local space matrix. */
-  scale_m4_fl(scale, ss.cache->radius);
-  mul_m4_m4m4(tmat, mat, scale);
-
-  mul_v3_fl(tmat[1], brush.tip_scale_x);
-
-  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
-   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
-   * during big deformation while keeping the surface as uniform as possible. */
-  mul_v3_fl(tmat[2], 1.25f);
-
-  invert_m4_m4(mat, tmat);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_clay_strips_brush_task(ob, brush, mat, area_no_sp, area_co, nodes[i]);
     }
   });
 }
@@ -1426,125 +827,6 @@ void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
   });
 }
 
-static void do_inflate_brush_task(Object &ob, const Brush &brush, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const float bstrength = ss.cache->bstrength;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                sqrtf(test.dist),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-    float val[3];
-
-    if (vd.fno) {
-      copy_v3_v3(val, vd.fno);
-    }
-    else {
-      copy_v3_v3(val, vd.no);
-    }
-
-    mul_v3_fl(val, fade * ss.cache->radius);
-    mul_v3_v3v3(proxy[vd.i], val, ss.cache->scale);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_inflate_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_inflate_brush_task(ob, brush, nodes[i]);
-    }
-  });
-}
-
-static void do_nudge_brush_task(Object &ob, const Brush &brush, const float *cono, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-  const float bstrength = ss.cache->bstrength;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                sqrtf(test.dist),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    mul_v3_v3fl(proxy[vd.i], cono, fade);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_nudge_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  float grab_delta[3];
-  float tmp[3], cono[3];
-
-  copy_v3_v3(grab_delta, ss.cache->grab_delta_symmetry);
-
-  cross_v3_v3v3(tmp, ss.cache->sculpt_normal_symm, grab_delta);
-  cross_v3_v3v3(cono, tmp, ss.cache->sculpt_normal_symm);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_nudge_brush_task(ob, brush, cono, nodes[i]);
-    }
-  });
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1726,6 +1008,7 @@ static void do_pinch_brush_task(Object &ob,
 void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
+  using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
@@ -1733,7 +1016,7 @@ void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
   float area_co[3];
 
   float mat[4][4];
-  calc_sculpt_plane(sd, ob, nodes, area_no, area_co);
+  calc_brush_plane(brush, ob, nodes, area_no, area_co);
 
   /* delay the first daub because grab delta is not setup */
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache)) {
@@ -2269,67 +1552,6 @@ void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Sculpt Multires Displacement Eraser Brush
- * \{ */
-
-static void do_displacement_eraser_brush_task(Object &ob, const Brush &brush, PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-  const float bstrength = clamp_f(ss.cache->bstrength, 0.0f, 1.0f);
-
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, *node).co;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-    auto_mask::node_update(automask_data, vd);
-
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                sqrtf(test.dist),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
-    float3 limit_co = SCULPT_vertex_limit_surface_get(ss, vd.vertex);
-    float disp[3];
-    sub_v3_v3v3(disp, limit_co, vd.co);
-    mul_v3_v3fl(proxy[vd.i], disp, fade);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_displacement_eraser_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  BKE_curvemapping_init(brush.curve);
-
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_displacement_eraser_brush_task(ob, brush, nodes[i]);
-    }
-  });
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Sculpt Multires Displacement Smear Brush
  * \{ */
 
@@ -2553,89 +1775,6 @@ void SCULPT_bmesh_topology_rake(const Sculpt &sd,
         do_topology_rake_bmesh_task(ob, sd, brush, factor, nodes[i]);
       }
     });
-  }
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Sculpt Mask Brush
- * \{ */
-
-static void do_mask_brush_draw_task(Object &ob,
-                                    const Brush &brush,
-                                    const SculptMaskWriteInfo mask_write,
-                                    PBVHNode *node)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-  const float bstrength = ss.cache->bstrength;
-
-  PBVHVertexIter vd;
-
-  SculptBrushTest test;
-  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, test, brush.falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(nullptr);
-
-  auto_mask::NodeData automask_data = auto_mask::node_begin(
-      ob, ss.cache->automasking.get(), *node);
-
-  BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
-    if (!sculpt_brush_test_sq_fn(test, vd.co)) {
-      continue;
-    }
-
-    auto_mask::node_update(automask_data, vd);
-    const float fade = SCULPT_brush_strength_factor(ss,
-                                                    brush,
-                                                    vd.co,
-                                                    sqrtf(test.dist),
-                                                    vd.no,
-                                                    vd.fno,
-                                                    0.0f,
-                                                    vd.vertex,
-                                                    thread_id,
-                                                    &automask_data);
-
-    float mask = vd.mask;
-    if (bstrength > 0.0f) {
-      mask += fade * bstrength * (1.0f - vd.mask);
-    }
-    else {
-      mask += fade * bstrength * mask;
-    }
-    mask = clamp_f(mask, 0.0f, 1.0f);
-    SCULPT_mask_vert_set(BKE_pbvh_type(*ss.pbvh), mask_write, mask, vd);
-  }
-  BKE_pbvh_vertex_iter_end;
-}
-
-void SCULPT_do_mask_brush_draw(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(*ob.sculpt);
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const int i : range) {
-      do_mask_brush_draw_task(ob, brush, mask_write, nodes[i]);
-    }
-  });
-}
-
-void SCULPT_do_mask_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
-{
-  using namespace blender::ed::sculpt_paint;
-  SculptSession &ss = *ob.sculpt;
-  const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  switch ((BrushMaskTool)brush.mask_tool) {
-    case BRUSH_MASK_DRAW:
-      SCULPT_do_mask_brush_draw(sd, ob, nodes);
-      break;
-    case BRUSH_MASK_SMOOTH:
-      smooth::do_smooth_mask_brush(sd, ob, nodes, ss.cache->bstrength);
-      break;
   }
 }
 

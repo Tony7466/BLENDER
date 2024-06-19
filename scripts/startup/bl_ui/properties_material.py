@@ -263,7 +263,7 @@ def draw_material_settings(self, context):
     if mat.blend_method not in {'OPAQUE', 'CLIP', 'HASHED'}:
         layout.prop(mat, "show_transparent_back")
 
-    layout.prop(mat, "use_screen_refraction")
+    layout.prop(mat, "use_raytrace_refraction")
     layout.prop(mat, "refraction_depth")
     layout.prop(mat, "use_sss_translucency")
     layout.prop(mat, "pass_index")
@@ -319,6 +319,7 @@ class EEVEE_NEXT_MATERIAL_PT_settings_surface(MaterialButtonsPanel, Panel):
         col = layout.column(heading="Backface Culling")
         col.prop(mat, "use_backface_culling", text="Camera")
         col.prop(mat, "use_backface_culling_shadow", text="Shadow")
+        col.prop(mat, "use_backface_culling_lightprobe_volume", text="Light Probe Volume")
 
         col = layout.column(align=True)
         col.prop(mat, "displacement_method", text="Displacement")
@@ -334,17 +335,14 @@ class EEVEE_NEXT_MATERIAL_PT_settings_surface(MaterialButtonsPanel, Panel):
         col = layout.column()
         col.prop(mat, "surface_render_method", text="Render Method")
         if mat.surface_render_method == 'BLENDED':
-            col.prop(mat, "show_transparent_back", text="Transparency Overlap")
+            col.prop(mat, "use_transparency_overlap", text="Transparency Overlap")
         elif mat.surface_render_method == 'DITHERED':
-            col.prop(mat, "use_screen_refraction", text="Raytraced Transmission")
+            col.prop(mat, "use_raytrace_refraction", text="Raytraced Transmission")
 
         col = layout.column()
         col.prop(mat, "thickness_mode", text="Thickness")
         if mat.surface_render_method == 'DITHERED':
             col.prop(mat, "use_thickness_from_shadow", text="From Shadow")
-
-        col = layout.column(heading="Light Probe Volume")
-        col.prop(mat, "lightprobe_volume_single_sided", text="Single Sided")
 
 
 class EEVEE_NEXT_MATERIAL_PT_settings_volume(MaterialButtonsPanel, Panel):

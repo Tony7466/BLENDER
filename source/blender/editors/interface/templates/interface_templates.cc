@@ -498,26 +498,10 @@ static void id_search_cb_objects_from_scene(const bContext *C,
 }
 
 static ARegion *template_ID_search_menu_item_tooltip(
-    bContext *C, ARegion *region, const rcti *item_rect, void *arg, void *active)
+    bContext *C, ARegion *region, const rcti *item_rect, void * /*arg*/, void *active)
 {
-  TemplateID *template_ui = static_cast<TemplateID *>(arg);
   ID *active_id = static_cast<ID *>(active);
-  StructRNA *type = RNA_property_pointer_type(&template_ui->ptr, template_ui->prop);
-
-  uiSearchItemTooltipData tooltip_data = {{0}};
-
-  tooltip_data.name = active_id->name + 2;
-  SNPRINTF(tooltip_data.description,
-           TIP_("Choose %s data-block to be assigned to this user"),
-           RNA_struct_ui_name(type));
-  if (ID_IS_LINKED(active_id)) {
-    SNPRINTF(tooltip_data.hint,
-             TIP_("Source library: %s\n%s"),
-             active_id->lib->id.name + 2,
-             active_id->lib->filepath);
-  }
-
-  return UI_tooltip_create_from_search_item_generic(C, region, item_rect, &tooltip_data);
+  return UI_tooltip_create_from_search_item_generic(C, region, item_rect, active_id);
 }
 
 /* ID Search browse menu, open */
@@ -1017,7 +1001,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
           template_id_liboverride_hierarchy_make(C, bmain, template_ui, &idptr, &undo_push_label);
         }
         else {
-          if (BKE_lib_id_make_local(bmain, id, 0)) {
+          if (BKE_lib_id_make_local(bmain, id, LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR)) {
             BKE_id_newptr_and_tag_clear(id);
 
             /* Reassign to get proper updates/notifiers. */
@@ -1218,35 +1202,36 @@ static uiBut *template_id_def_new_but(uiBlock *block,
   /* i18n markup, does nothing! */
   BLT_I18N_MSGID_MULTI_CTXT("New",
                             BLT_I18NCONTEXT_DEFAULT,
-                            BLT_I18NCONTEXT_ID_SCENE,
-                            BLT_I18NCONTEXT_ID_OBJECT,
-                            BLT_I18NCONTEXT_ID_MESH,
+                            BLT_I18NCONTEXT_ID_ACTION,
+                            BLT_I18NCONTEXT_ID_ARMATURE,
+                            BLT_I18NCONTEXT_ID_BRUSH,
+                            BLT_I18NCONTEXT_ID_CAMERA,
+                            BLT_I18NCONTEXT_ID_CURVES,
                             BLT_I18NCONTEXT_ID_CURVE_LEGACY,
-                            BLT_I18NCONTEXT_ID_METABALL,
-                            BLT_I18NCONTEXT_ID_MATERIAL,
-                            BLT_I18NCONTEXT_ID_TEXTURE,
+                            BLT_I18NCONTEXT_ID_FREESTYLELINESTYLE,
+                            BLT_I18NCONTEXT_ID_GPENCIL,
                             BLT_I18NCONTEXT_ID_IMAGE,
                             BLT_I18NCONTEXT_ID_LATTICE,
                             BLT_I18NCONTEXT_ID_LIGHT,
-                            BLT_I18NCONTEXT_ID_CAMERA,
-                            BLT_I18NCONTEXT_ID_WORLD,
-                            BLT_I18NCONTEXT_ID_SCREEN,
-                            BLT_I18NCONTEXT_ID_TEXT, );
-  BLT_I18N_MSGID_MULTI_CTXT("New",
-                            BLT_I18NCONTEXT_ID_SPEAKER,
-                            BLT_I18NCONTEXT_ID_SOUND,
-                            BLT_I18NCONTEXT_ID_ARMATURE,
-                            BLT_I18NCONTEXT_ID_ACTION,
-                            BLT_I18NCONTEXT_ID_NODETREE,
-                            BLT_I18NCONTEXT_ID_BRUSH,
-                            BLT_I18NCONTEXT_ID_PARTICLESETTINGS,
-                            BLT_I18NCONTEXT_ID_GPENCIL,
-                            BLT_I18NCONTEXT_ID_FREESTYLELINESTYLE,
-                            BLT_I18NCONTEXT_ID_WORKSPACE,
                             BLT_I18NCONTEXT_ID_LIGHTPROBE,
-                            BLT_I18NCONTEXT_ID_CURVES,
+                            BLT_I18NCONTEXT_ID_MATERIAL,
+                            BLT_I18NCONTEXT_ID_MASK, );
+  BLT_I18N_MSGID_MULTI_CTXT("New",
+                            BLT_I18NCONTEXT_ID_MESH,
+                            BLT_I18NCONTEXT_ID_METABALL,
+                            BLT_I18NCONTEXT_ID_NODETREE,
+                            BLT_I18NCONTEXT_ID_OBJECT,
+                            BLT_I18NCONTEXT_ID_PARTICLESETTINGS,
                             BLT_I18NCONTEXT_ID_POINTCLOUD,
-                            BLT_I18NCONTEXT_ID_VOLUME, );
+                            BLT_I18NCONTEXT_ID_SCENE,
+                            BLT_I18NCONTEXT_ID_SCREEN,
+                            BLT_I18NCONTEXT_ID_SOUND,
+                            BLT_I18NCONTEXT_ID_SPEAKER,
+                            BLT_I18NCONTEXT_ID_TEXT,
+                            BLT_I18NCONTEXT_ID_TEXTURE,
+                            BLT_I18NCONTEXT_ID_VOLUME,
+                            BLT_I18NCONTEXT_ID_WORKSPACE,
+                            BLT_I18NCONTEXT_ID_WORLD, );
   BLT_I18N_MSGID_MULTI_CTXT("New", BLT_I18NCONTEXT_ID_PAINTCURVE, );
   /* NOTE: BLT_I18N_MSGID_MULTI_CTXT takes a maximum number of parameters,
    * check the definition to see if a new call must be added when the limit
@@ -1382,7 +1367,7 @@ static void template_ID(const bContext *C,
 
     template_id_workspace_pin_extra_icon(template_ui, but);
 
-    if (!hide_buttons) {
+    if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
       if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
         if (id->tag & LIB_TAG_INDIRECT) {
@@ -1536,6 +1521,10 @@ static void template_ID(const bContext *C,
 
     RNA_string_set(but->opptr, "id_name", id->name + 2);
     RNA_int_set(but->opptr, "id_type", GS(id->name));
+
+    if (!ID_IS_EDITABLE(id)) {
+      UI_but_flag_enable(but, UI_BUT_DISABLED);
+    }
   }
   else if (flag & UI_ID_OPEN) {
     const char *button_text = (id) ? "" : IFACE_("Open");
@@ -2080,6 +2069,11 @@ static void template_search_add_button_name(uiBlock *block,
                                             PointerRNA *active_ptr,
                                             const StructRNA *type)
 {
+  /* Skip text button without an active item. */
+  if (active_ptr->data == nullptr) {
+    return;
+  }
+
   PropertyRNA *name_prop = RNA_struct_name_property(type);
   const int width = template_search_textbut_width(active_ptr, name_prop);
   const int height = template_search_textbut_height();
@@ -2967,7 +2961,7 @@ static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *prope
 {
   /* Copied from #wm_operator_create.
    * Create a slimmed down operator suitable only for UI drawing. */
-  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
+  wmOperator *op = MEM_cnew<wmOperator>(ot->rna_ext.srna ? __func__ : ot->idname);
   STRNCPY(op->idname, ot->idname);
   op->type = ot;
 
@@ -4580,7 +4574,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
   }
-  else if (labeltype == 'c') {
+  else if (labeltype == 'c' && cumap->tone != CURVE_TONE_FILMLIKE) {
     /* color */
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);
@@ -6088,7 +6082,9 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       icon = ICON_TRACKER;
       break;
     }
-    if (WM_jobs_test(wm, scene, WM_JOB_TYPE_FILESEL_READDIR)) {
+    if (WM_jobs_test(wm, scene, WM_JOB_TYPE_FILESEL_READDIR) ||
+        WM_jobs_test(wm, scene, WM_JOB_TYPE_ASSET_LIBRARY_LOAD))
+    {
       handle_event = B_STOPFILE;
       icon = ICON_FILEBROWSER;
       break;
@@ -6424,19 +6420,89 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
+  uiLayout *row = uiLayoutRow(layout, true);
+
+  const char *status_info_txt = ED_info_statusbar_string_ex(
+      bmain, scene, view_layer, (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
+  /* True when the status is populated (delimiters required for following items). */
+  bool has_status_info = false;
+
+  if (status_info_txt[0]) {
+    uiItemL(row, status_info_txt, ICON_NONE);
+    has_status_info = true;
+  }
+
+  if (U.statusbar_flag & STATUSBAR_SHOW_EXTENSIONS_UPDATES) {
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
+      if (has_status_info) {
+        uiItemS_ex(row, -0.5f);
+        uiItemL(row, "|", ICON_NONE);
+        uiItemS_ex(row, -0.5f);
+      }
+
+      if ((G.f & G_FLAG_INTERNET_OVERRIDE_PREF_OFFLINE) != 0) {
+        uiItemL(row, "", ICON_INTERNET_OFFLINE);
+      }
+      else {
+        uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+        uiItemO(row, "", ICON_INTERNET_OFFLINE, "EXTENSIONS_OT_userpref_show_online");
+        uiBut *but = static_cast<uiBut *>(uiLayoutGetBlock(layout)->buttons.last);
+        uchar color[4];
+        UI_GetThemeColor4ubv(TH_TEXT, color);
+        copy_v4_v4_uchar(but->col, color);
+      }
+
+      uiItemS_ex(row, 1.0f);
+      has_status_info = true;
+    }
+    else if ((wm->extensions_updates > 0) ||
+             (wm->extensions_updates == WM_EXTENSIONS_UPDATE_CHECKING))
+    {
+      int icon = ICON_INTERNET;
+      if (wm->extensions_updates == WM_EXTENSIONS_UPDATE_CHECKING) {
+        icon = ICON_UV_SYNC_SELECT;
+      }
+
+      if (has_status_info) {
+        uiItemS_ex(row, -0.5f);
+        uiItemL(row, "|", ICON_NONE);
+        uiItemS_ex(row, -0.5f);
+      }
+      uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+      uiItemO(row, "", icon, "EXTENSIONS_OT_userpref_show_for_update");
+      uiBut *but = static_cast<uiBut *>(uiLayoutGetBlock(layout)->buttons.last);
+      uchar color[4];
+      UI_GetThemeColor4ubv(TH_TEXT, color);
+      copy_v4_v4_uchar(but->col, color);
+
+      if (wm->extensions_updates > 0) {
+        BLI_str_format_integer_unit(but->icon_overlay_text.text, wm->extensions_updates);
+        UI_GetThemeColor4ubv(TH_TEXT, color);
+        UI_but_icon_indicator_color_set(but, color);
+      }
+
+      uiItemS_ex(row, 1.0f);
+      has_status_info = true;
+    }
+  }
 
   if (!bmain->has_forward_compatibility_issues) {
-    const char *status_info_txt = ED_info_statusbar_string(bmain, scene, view_layer);
-    uiItemL(layout, status_info_txt, ICON_NONE);
+    if (U.statusbar_flag & STATUSBAR_SHOW_VERSION) {
+      if (has_status_info) {
+        uiItemS_ex(row, -0.5f);
+        uiItemL(row, "|", ICON_NONE);
+        uiItemS_ex(row, -0.5f);
+      }
+      const char *status_info_d_txt = ED_info_statusbar_string_ex(
+          bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
+      uiItemL(row, status_info_d_txt, ICON_NONE);
+    }
     return;
   }
 
   /* Blender version part is shown as warning area when there are forward compatibility issues with
    * currently loaded .blend file. */
-
-  const char *status_info_txt = ED_info_statusbar_string_ex(
-      bmain, scene, view_layer, (U.statusbar_flag & ~STATUSBAR_SHOW_VERSION));
-  uiItemL(layout, status_info_txt, ICON_NONE);
 
   status_info_txt = ED_info_statusbar_string_ex(bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
 
@@ -6688,17 +6754,25 @@ int uiTemplateStatusBarModalItem(uiLayout *layout,
     }
 
     if (xyz_label) {
-      int icon_mod[4];
+      int icon_mod[4] = {0};
+#ifdef WITH_HEADLESS
+      int icon = 0;
+#else
       int icon = UI_icon_from_keymap_item(kmi, icon_mod);
+#endif
       for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
         uiItemL(layout, "", icon_mod[j]);
       }
       uiItemL(layout, "", icon);
 
+#ifndef WITH_HEADLESS
       icon = UI_icon_from_keymap_item(kmi_y, icon_mod);
+#endif
       uiItemL(layout, "", icon);
 
+#ifndef WITH_HEADLESS
       icon = UI_icon_from_keymap_item(kmi_z, icon_mod);
+#endif
       uiItemL(layout, "", icon);
 
       uiItemS_ex(layout, 0.6f);

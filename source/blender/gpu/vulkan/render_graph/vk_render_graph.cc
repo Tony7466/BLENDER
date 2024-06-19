@@ -33,6 +33,9 @@ void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
     node.free_data();
   }
   nodes_.clear();
+
+  debug_.node_group_map.clear();
+  debug_.used_groups.clear();
 }
 
 /** \} */
@@ -71,6 +74,35 @@ void VKRenderGraph::submit_buffer_for_read(VkBuffer vk_buffer)
   command_buffer_->submit_with_cpu_synchronization();
   remove_nodes(node_handles);
   command_buffer_->wait_for_cpu_synchronization();
+}
+
+void VKRenderGraph::submit()
+{
+  std::scoped_lock lock(resources_.mutex);
+  Span<NodeHandle> node_handles = scheduler_.select_nodes(*this);
+  command_builder_.build_nodes(*this, *command_buffer_, node_handles);
+  command_buffer_->submit_with_cpu_synchronization();
+  remove_nodes(node_handles);
+  command_buffer_->wait_for_cpu_synchronization();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Debug
+ * \{ */
+
+void VKRenderGraph::debug_group_begin(const char *name)
+{
+  DebugGroupNameID name_id = debug_.group_names.index_of_or_add(std::string(name));
+  debug_.group_stack.append(name_id);
+  debug_.group_used = false;
+}
+
+void VKRenderGraph::debug_group_end()
+{
+  debug_.group_stack.pop_last();
+  debug_.group_used = false;
 }
 
 /** \} */

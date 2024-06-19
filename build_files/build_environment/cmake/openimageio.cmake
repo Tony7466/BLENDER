@@ -104,7 +104,24 @@ set(OPENIMAGEIO_EXTRA_ARGS
   -Dpybind11_ROOT=${LIBDIR}/pybind11
   -DPython_EXECUTABLE=${PYTHON_BINARY}
   -DTBB_ROOT=${LIBDIR}/tbb
+  -Dlibdeflate_ROOT=${LIBDIR}/deflate
+  -Dfmt_ROOT=${LIBDIR}/fmt
 )
+
+if(WIN32)
+  # We don't want the SOABI tags in the final filename since it gets the debug 
+  # tags wrong and the final .pyd won't be found by python, pybind11 will try to
+  # get the tags and dump them into PYTHON_MODULE_EXTENSION every time the current
+  # python interperter doesn't match the old one, overwriting our preference.
+  # To side step this behavior we set PYBIND11_PYTHON_EXECUTABLE_LAST so it'll
+  # leave the PYTHON_MODULE_EXTENSION value we set alone. 
+  LIST(APPEND OPENIMAGEIO_EXTRA_ARGS -DPYBIND11_PYTHON_EXECUTABLE_LAST=${PYTHON_BINARY})
+  if(BUILD_MODE STREQUAL Release)
+     LIST(APPEND OPENIMAGEIO_EXTRA_ARGS -DPYTHON_MODULE_EXTENSION=.pyd)
+  else()
+    LIST(APPEND OPENIMAGEIO_EXTRA_ARGS -DPYTHON_MODULE_EXTENSION=_d.pyd)
+  endif()
+endif()
 
 ExternalProject_Add(external_openimageio
   URL file://${PACKAGE_DIR}/${OPENIMAGEIO_FILE}
@@ -120,9 +137,6 @@ ExternalProject_Add(external_openimageio
     ${PATCH_CMD} -p 1 -N -d
       ${BUILD_DIR}/openimageio/src/external_openimageio/ <
       ${PATCH_DIR}/oiio_webp.diff &&
-    ${PATCH_CMD} -p 1 -N -d
-      ${BUILD_DIR}/openimageio/src/external_openimageio/ <
-      ${PATCH_DIR}/oiio_4044.diff &&
     ${PATCH_CMD} -p 1 -N -d
       ${BUILD_DIR}/openimageio/src/external_openimageio/ <
       ${PATCH_DIR}/oiio_4062.diff

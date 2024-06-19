@@ -46,13 +46,13 @@ void init_transform(bContext *C, Object &ob, const float mval_fl[2], const char 
   SculptSession &ss = *ob.sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
-  copy_v3_v3(ss.init_pivot_pos, ss.pivot_pos);
-  copy_v4_v4(ss.init_pivot_rot, ss.pivot_rot);
-  copy_v3_v3(ss.init_pivot_scale, ss.pivot_scale);
+  ss.init_pivot_pos = ss.pivot_pos;
+  ss.init_pivot_rot = ss.pivot_rot;
+  ss.init_pivot_scale = ss.pivot_scale;
 
-  copy_v3_v3(ss.prev_pivot_pos, ss.pivot_pos);
-  copy_v4_v4(ss.prev_pivot_rot, ss.pivot_rot);
-  copy_v3_v3(ss.prev_pivot_scale, ss.pivot_scale);
+  ss.prev_pivot_pos = ss.pivot_pos;
+  ss.prev_pivot_rot = ss.pivot_rot;
+  ss.prev_pivot_scale = ss.pivot_scale;
 
   undo::push_begin_ex(ob, undo_name);
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
@@ -71,11 +71,12 @@ void init_transform(bContext *C, Object &ob, const float mval_fl[2], const char 
   }
 }
 
-static void transform_matrices_init(SculptSession &ss,
-                                    const ePaintSymmetryFlags symm,
-                                    const SculptTransformDisplacementMode t_mode,
-                                    float r_transform_mats[8][4][4])
+static std::array<float4x4, 8> transform_matrices_init(
+    const SculptSession &ss,
+    const ePaintSymmetryFlags symm,
+    const SculptTransformDisplacementMode t_mode)
 {
+  std::array<float4x4, 8> mats;
 
   float final_pivot_pos[3], d_t[3], d_r[4], d_s[3];
   float t_mat[4][4], r_mat[4][4], s_mat[4][4], pivot_mat[4][4], pivot_imat[4][4],
@@ -130,12 +131,16 @@ static void transform_matrices_init(SculptSession &ss,
     /* Final transform matrix. */
     mul_m4_m4m4(transform_mat, r_mat, t_mat);
     mul_m4_m4m4(transform_mat, transform_mat, s_mat);
-    mul_m4_m4m4(r_transform_mats[i], transform_mat, pivot_imat);
-    mul_m4_m4m4(r_transform_mats[i], pivot_mat, r_transform_mats[i]);
+    mul_m4_m4m4(mats[i].ptr(), transform_mat, pivot_imat);
+    mul_m4_m4m4(mats[i].ptr(), pivot_mat, mats[i].ptr());
   }
+
+  return mats;
 }
 
-static void transform_node(Object &ob, const float transform_mats[8][4][4], PBVHNode *node)
+static void transform_node(Object &ob,
+                           const std::array<float4x4, 8> &transform_mats,
+                           PBVHNode *node)
 {
   SculptSession &ss = *ob.sculpt;
 
@@ -163,14 +168,14 @@ static void transform_node(Object &ob, const float transform_mats[8][4][4], PBVH
     }
 
     copy_v3_v3(transformed_co, start_co);
-    mul_m4_v3(transform_mats[int(symm_area)], transformed_co);
+    mul_m4_v3(transform_mats[int(symm_area)].ptr(), transformed_co);
     sub_v3_v3v3(disp, transformed_co, start_co);
     mul_v3_fl(disp, 1.0f - fade);
     add_v3_v3v3(vd.co, start_co, disp);
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void sculpt_transform_all_vertices(Object &ob)
@@ -178,8 +183,8 @@ static void sculpt_transform_all_vertices(Object &ob)
   SculptSession &ss = *ob.sculpt;
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
-  float transform_mats[8][4][4];
-  transform_matrices_init(ss, symm, ss.filter_cache->transform_displacement_mode, transform_mats);
+  std::array<float4x4, 8> transform_mats = transform_matrices_init(
+      ss, symm, ss.filter_cache->transform_displacement_mode);
 
   /* Regular transform applies all symmetry passes at once as it is split by symmetry areas
    * (each vertex can only be transformed once by the transform matrix of its area). */
@@ -233,7 +238,7 @@ static void elastic_transform_node(Object &ob,
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void transform_radius_elastic(const Sculpt &sd, Object &ob, const float transform_radius)
@@ -244,8 +249,8 @@ static void transform_radius_elastic(const Sculpt &sd, Object &ob, const float t
 
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
-  float transform_mats[8][4][4];
-  transform_matrices_init(ss, symm, ss.filter_cache->transform_displacement_mode, transform_mats);
+  std::array<float4x4, 8> transform_mats = transform_matrices_init(
+      ss, symm, ss.filter_cache->transform_displacement_mode);
 
   /* Elastic transform needs to apply all transform matrices to all vertices and then combine the
    * displacement proxies as all vertices are modified by all symmetry passes. */
@@ -258,7 +263,7 @@ static void transform_radius_elastic(const Sculpt &sd, Object &ob, const float t
 
       const int symm_area = SCULPT_get_vertex_symm_area(elastic_transform_pivot);
       float elastic_transform_mat[4][4];
-      copy_m4_m4(elastic_transform_mat, transform_mats[symm_area]);
+      copy_m4_m4(elastic_transform_mat, transform_mats[symm_area].ptr());
       threading::parallel_for(
           ss.filter_cache->nodes.index_range(), 1, [&](const IndexRange range) {
             for (const int i : range) {
@@ -316,7 +321,7 @@ void update_modal_transform(bContext *C, Object &ob)
     SCULPT_flush_stroke_deform(sd, ob, true);
   }
 
-  SCULPT_flush_update_step(C, SCULPT_UPDATE_COORDS);
+  flush_update_step(C, UpdateType::Position);
 }
 
 void end_transform(bContext *C, Object &ob)
@@ -325,7 +330,7 @@ void end_transform(bContext *C, Object &ob)
   if (ss.filter_cache) {
     filter::cache_free(ss);
   }
-  SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
+  flush_update_done(C, ob, UpdateType::Position);
 }
 
 enum class PivotPositionMode {
@@ -364,6 +369,15 @@ static EnumPropertyItem prop_sculpt_pivot_position_types[] = {
      "Sets the pivot position to the surface under the cursor"},
     {0, nullptr, 0, nullptr, nullptr},
 };
+
+static bool set_pivot_depends_on_cursor(bContext & /*C*/, wmOperatorType & /*ot*/, PointerRNA *ptr)
+{
+  if (!ptr) {
+    return true;
+  }
+  const PivotPositionMode mode = PivotPositionMode(RNA_enum_get(ptr, "mode"));
+  return mode == PivotPositionMode::CursorSurface;
+}
 
 static int set_pivot_position_exec(bContext *C, wmOperator *op)
 {
@@ -469,6 +483,17 @@ static int set_pivot_position_invoke(bContext *C, wmOperator *op, const wmEvent 
   return set_pivot_position_exec(C, op);
 }
 
+static bool set_pivot_position_poll_property(const bContext * /*C*/,
+                                             wmOperator *op,
+                                             const PropertyRNA *prop)
+{
+  if (STRPREFIX(RNA_property_identifier(prop), "mouse_")) {
+    const PivotPositionMode mode = PivotPositionMode(RNA_enum_get(op->ptr, "mode"));
+    return mode == PivotPositionMode::CursorSurface;
+  }
+  return true;
+}
+
 void SCULPT_OT_set_pivot_position(wmOperatorType *ot)
 {
   ot->name = "Set Pivot Position";
@@ -478,8 +503,10 @@ void SCULPT_OT_set_pivot_position(wmOperatorType *ot)
   ot->invoke = set_pivot_position_invoke;
   ot->exec = set_pivot_position_exec;
   ot->poll = SCULPT_mode_poll;
+  ot->depends_on_cursor = set_pivot_depends_on_cursor;
+  ot->poll_property = set_pivot_position_poll_property;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
   RNA_def_enum(ot->srna,
                "mode",
                prop_sculpt_pivot_position_types,

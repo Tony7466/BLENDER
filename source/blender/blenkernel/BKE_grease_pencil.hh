@@ -149,6 +149,7 @@ class Drawing : public ::GreasePencilDrawing {
   bool is_instanced() const;
   bool has_users() const;
 };
+static_assert(sizeof(Drawing) == sizeof(::GreasePencilDrawing));
 
 class DrawingReference : public ::GreasePencilDrawingReference {
  public:
@@ -156,6 +157,7 @@ class DrawingReference : public ::GreasePencilDrawingReference {
   DrawingReference(const DrawingReference &other);
   ~DrawingReference();
 };
+static_assert(sizeof(DrawingReference) == sizeof(::GreasePencilDrawingReference));
 
 /**
  * Copies the drawings from one array to another. Assumes that \a dst_drawings is allocated but not
@@ -185,6 +187,7 @@ class Layer;
   void set_selected(bool selected); \
   bool use_onion_skinning() const; \
   bool use_masks() const; \
+  bool use_locked_material() const; \
   bool is_child_of(const LayerGroup &group) const;
 
 /* Implements the forwarding of the methods defined by #TREENODE_COMMON_METHODS. */
@@ -232,6 +235,10 @@ class Layer;
   inline bool class_name::use_masks() const \
   { \
     return this->as_node().use_masks(); \
+  } \
+  inline bool class_name::use_locked_material() const \
+  { \
+    return this->as_node().use_locked_material(); \
   } \
   inline bool class_name::is_child_of(const LayerGroup &group) const \
   { \
@@ -289,6 +296,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    */
   int64_t depth() const;
 };
+static_assert(sizeof(TreeNode) == sizeof(::GreasePencilLayerTreeNode));
 
 /**
  * A layer mask stores a reference to a layer that will mask other layers.
@@ -300,6 +308,7 @@ class LayerMask : public ::GreasePencilLayerMask {
   LayerMask(const LayerMask &other);
   ~LayerMask();
 };
+static_assert(sizeof(LayerMask) == sizeof(::GreasePencilLayerMask));
 
 /**
  * Structure used to transform frames in a grease pencil layer.
@@ -340,7 +349,7 @@ struct LayerTransformData {
  * Note that end frame is exclusive with regards to the frame duration. E.g. if a frame starts at
  * 10 and the end frame is at 15, then the duration is 4.
  */
-using FramesMapKey = int;
+using FramesMapKeyT = int;
 
 class LayerRuntime {
  public:
@@ -369,11 +378,11 @@ class LayerRuntime {
    * referenced drawings are discarded. If the frame is longer than the number of referenced
    * drawings, then the last referenced drawing is held for the rest of the duration.
    */
-  Map<FramesMapKey, GreasePencilFrame> frames_;
+  Map<FramesMapKeyT, GreasePencilFrame> frames_;
   /**
    * Caches a sorted vector of the keys of `frames_`.
    */
-  mutable SharedCache<Vector<FramesMapKey>> sorted_keys_cache_;
+  mutable SharedCache<Vector<FramesMapKeyT>> sorted_keys_cache_;
   /**
    * A vector of LayerMask. This layer will be masked by the layers referenced in the masks.
    * A layer can have zero or more layer masks.
@@ -417,9 +426,12 @@ class Layer : public ::GreasePencilLayer {
   /**
    * \returns the frames mapping.
    */
-  const Map<FramesMapKey, GreasePencilFrame> &frames() const;
-  Map<FramesMapKey, GreasePencilFrame> &frames_for_write();
+  const Map<FramesMapKeyT, GreasePencilFrame> &frames() const;
+  Map<FramesMapKeyT, GreasePencilFrame> &frames_for_write();
 
+  /**
+   * \returns true, if the layer contains no keyframes.
+   */
   bool is_empty() const;
 
   /**
@@ -433,7 +445,7 @@ class Layer : public ::GreasePencilLayer {
    *
    * \returns a pointer to the added frame on success, otherwise nullptr.
    */
-  GreasePencilFrame *add_frame(FramesMapKey key, int duration = 0);
+  GreasePencilFrame *add_frame(FramesMapKeyT key, int duration = 0);
   /**
    * Removes a frame with \a key from the frames map.
    *
@@ -444,17 +456,18 @@ class Layer : public ::GreasePencilLayer {
    * Will remove end frame(s) after the frame to remove.
    * \return true on success.
    */
-  bool remove_frame(FramesMapKey key);
+  bool remove_frame(FramesMapKeyT key);
 
   /**
    * Returns the sorted keys (start frame numbers) of the frames of this layer.
    * \note This will cache the keys lazily.
    */
-  Span<FramesMapKey> sorted_keys() const;
+  Span<FramesMapKeyT> sorted_keys() const;
 
   /**
    * \returns the index of the active drawing at frame \a frame_number or -1 if there is no
-   * drawing. */
+   * drawing.
+   * TODO: This should be a private API! */
   int drawing_index_at(const int frame_number) const;
 
   /**
@@ -463,9 +476,16 @@ class Layer : public ::GreasePencilLayer {
   bool has_drawing_at(const int frame_number) const;
 
   /**
-   * \returns the key of the active frame at \a frame_number or #std::nullopt if there is no frame.
+   * \returns the start frame number of the active frame at \a frame_number or #std::nullopt if no
+   * such frame exists.
    */
-  std::optional<FramesMapKey> frame_key_at(int frame_number) const;
+  std::optional<int> start_frame_at(int frame_number) const;
+
+  /**
+   * \returns the index of the key of the active frame in `sorted_keys` or -1 if no such frame
+   * exists.
+   */
+  int sorted_keys_index_at(int frame_number) const;
 
   /**
    * \returns a pointer to the active frame at \a frame_number or nullptr if there is no frame.
@@ -475,9 +495,8 @@ class Layer : public ::GreasePencilLayer {
 
   /**
    * \returns the frame duration of the keyframe at \a frame_number.
-   * If there is no keyframe at \a frame_number it \returns -1.
+   * If there is no keyframe at \a frame_number \returns -1.
    * If the keyframe is an implicit hold, \returns 0.
-   * if the keyframe is the last one, \returns -1.
    */
   int get_frame_duration_at(const int frame_number) const;
 
@@ -498,6 +517,13 @@ class Layer : public ::GreasePencilLayer {
    * Update from DNA #GreasePencilLayer data after blend-file reading.
    */
   void update_from_dna_read();
+
+  float4x4 parent_inverse() const;
+
+  /**
+   * The local transform of the layer (in layer space, not object space).
+   */
+  float4x4 local_transform() const;
 
   /**
    * Returns the transformation from layer space to object space.
@@ -527,6 +553,17 @@ class Layer : public ::GreasePencilLayer {
   using SortedKeysIterator = const int *;
 
  private:
+  /**
+   * \returns an iterator into the `sorted_keys` span to the frame at \a frame_number or nullptr if
+   * no such frame exists.
+   */
+  SortedKeysIterator sorted_keys_iterator_at(int frame_number) const;
+  /**
+   * \returns the key of the active frame at \a frame_number or #std::nullopt if no such frame
+   * exists.
+   */
+  std::optional<FramesMapKeyT> frame_key_at(int frame_number) const;
+
   GreasePencilFrame *add_frame_internal(int frame_number);
 
   /**
@@ -538,18 +575,12 @@ class Layer : public ::GreasePencilLayer {
   SortedKeysIterator remove_leading_end_frames_in_range(SortedKeysIterator begin,
                                                         SortedKeysIterator end);
 
-  float4x4 parent_inverse() const;
-
-  /**
-   * The local transform of the layer (in layer space, not object space).
-   */
-  float4x4 local_transform() const;
-
   /**
    * Get the parent to world matrix for this layer.
    */
   float4x4 parent_to_world(const Object &parent) const;
 };
+static_assert(sizeof(Layer) == sizeof(::GreasePencilLayer));
 
 class LayerGroupRuntime {
  public:
@@ -684,6 +715,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   void ensure_nodes_cache() const;
   void tag_nodes_cache_dirty() const;
 };
+static_assert(sizeof(LayerGroup) == sizeof(::GreasePencilLayerTreeGroup));
 
 inline void Drawing::add_user() const
 {
@@ -749,6 +781,10 @@ inline bool TreeNode::use_masks() const
 {
   return ((this->flag & GP_LAYER_TREE_NODE_HIDE_MASKS) == 0) &&
          (!this->parent_group() || this->parent_group()->as_node().use_masks());
+}
+inline bool TreeNode::use_locked_material() const
+{
+  return (this->flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL) != 0;
 }
 inline bool TreeNode::is_child_of(const LayerGroup &group) const
 {
@@ -963,6 +999,12 @@ inline bool GreasePencil::has_active_group() const
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 GreasePencil *BKE_grease_pencil_new_nomain();
 GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_src);
+/**
+ * Move data from a grease pencil outside of the main data-base into a grease pencil in the
+ * data-base. Takes ownership of the source mesh. */
+void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
+                                               GreasePencil *grease_pencil_dst);
+
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
 void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
                                                GreasePencil *grease_pencil_dst);
