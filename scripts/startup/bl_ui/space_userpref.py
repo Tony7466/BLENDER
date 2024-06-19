@@ -902,7 +902,8 @@ class USERPREF_PT_viewport_subdivision(ViewportPanel, CenterAlignMixIn, Panel):
 
     @classmethod
     def poll(cls, context):
-        backend = context.preferences.system.gpu_backend
+        import gpu
+        backend = gpu.platform.backend_type_get()
         return backend == "OPENGL"
 
     def draw_centered(self, context, layout):
