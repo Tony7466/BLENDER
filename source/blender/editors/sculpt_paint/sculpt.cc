@@ -5880,7 +5880,11 @@ static void sculpt_stroke_update_step(bContext *C,
    *
    * For some brushes, flushing is done in the brush code itself.
    */
-  if (!(ELEM(brush.sculpt_tool, SCULPT_TOOL_DRAW, SCULPT_TOOL_SCRAPE, SCULPT_TOOL_FILL) &&
+  if (!(ELEM(brush.sculpt_tool,
+             SCULPT_TOOL_DRAW,
+             SCULPT_TOOL_CLAY_STRIPS,
+             SCULPT_TOOL_SCRAPE,
+             SCULPT_TOOL_FILL) &&
         BKE_pbvh_type(*ss.pbvh) == PBVH_FACES))
   {
     if (ss.deform_modifiers_active) {
