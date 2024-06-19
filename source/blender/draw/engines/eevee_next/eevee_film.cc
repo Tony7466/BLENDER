@@ -230,7 +230,7 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
   return result;
 }
 
-/* Get all pass types used by the viewport compositor from the vector set of all needed passes. */
+/* Get all pass types used by the viewport compositor from the set of all needed passes. */
 static eViewLayerEEVEEPassType get_viewport_compositor_enabled_passes(
     const Set<std::string> &viewport_compositor_needed_passes, const ViewLayer *view_layer)
 {
