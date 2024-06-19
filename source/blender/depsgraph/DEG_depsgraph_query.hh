@@ -144,6 +144,11 @@ bool DEG_id_is_fully_evaluated(const Depsgraph *depsgraph, const ID *id_eval);
  * Returns false when the objects geometry is not fully evaluated in its depsgraph yet. In this
  * case, the geometry must not be accessed. Otherwise returns true when geometry is fully evaluated
  * or the object does not belong to any specific depsgraph.
+ *
+ * The result of this function is non deterministic when multi-threading is used because the
+ * depsgraph nodes are not totally ordered. When the depsgraph contains all correct relations and
+ * there are no cycles, the result should always be `true` here though. So it does not break
+ * determinism when there are no dependency graph cycles.
  */
 bool DEG_object_geometry_is_evaluated(const Object &object);
 
