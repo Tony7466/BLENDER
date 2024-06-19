@@ -130,34 +130,36 @@ static bool triangle_is_in_range(
   return len_squared_to_tris({a, b, c}, centre) < range;
 }
 
-static std::optional<int2> largest_side_to_split(
-    const float2 &a, const float2 &b, const float2 &c, const int3 verts, const float max_length)
+static std::optional<int2> largest_side_to_split(const float2 &a,
+                                                 const float2 &b,
+                                                 const float2 &c,
+                                                 const std::array<int, 9> &edge_indices,
+                                                 const float max_length)
 {
-  /* For length of edge AB use index of vertex C as the key for stable comparison with other edges
-   * and its keys. */
-  using Edge = std::pair<float, int>;
-  const std::array<Edge, 3> to_compare = {Edge{math::distance_squared(a, b), 2},
-                                          Edge{math::distance_squared(b, c), 0},
-                                          Edge{math::distance_squared(c, a), 1}};
-  const Edge &max_elem = *std::max_element(
-      to_compare.begin(), to_compare.end(), [&](const Edge &a, const Edge &b) -> bool {
-        if (UNLIKELY(a.first == b.first)) {
-          return verts[a.second] < verts[b.second];
+  const std::array<float, 3> to_compare = {
+      math::distance_squared(a, b), math::distance_squared(b, c), math::distance_squared(c, a)};
+  constexpr const IndexRange edges_range(3);
+  const int max_elem_i = *std::max_element(
+      edges_range.begin(), edges_range.end(), [&](const int a_i, const int b_i) -> bool {
+        const float a = to_compare[a_i];
+        const float b = to_compare[b_i];
+        if (UNLIKELY(a == b)) {
+          return edge_indices[a_i] < edge_indices[b_i];
         }
-        return a.first < b.first;
+        return a < b;
       });
 
-  if (UNLIKELY(max_elem.first <= max_length)) {
+  if (UNLIKELY(to_compare[max_elem_i] <= max_length)) {
     return std::nullopt;
   }
 
-  switch (max_elem.second) {
+  switch (max_elem_i) {
     case 0:
-      return int2(1, 2);
-    case 1:
-      return int2(2, 0);
-    case 2:
       return int2(0, 1);
+    case 1:
+      return int2(1, 2);
+    case 2:
+      return int2(2, 0);
     default:
       BLI_assert_unreachable();
       return {};
@@ -862,7 +864,7 @@ static void face_subdivide_edge_verts(const std::array<float2, 6> &verts_list,
     // std::cout << "    - Is affected;\n";
 
     const std::optional<int2> edge_to_split = largest_side_to_split(
-        vert_a, vert_b, vert_c, face_verts, max_length);
+        vert_a, vert_b, vert_c, edge_indices, max_length);
     if (!edge_to_split.has_value()) {
       // std::cout << "    - No edge to split;\n";
       unique_result_edges.add({face_indices[0], face_indices[1]});
@@ -1077,7 +1079,7 @@ Mesh *subdivide(const Mesh &src_mesh,
 
   MutableSpan<float3> positions = dst_mesh->vert_positions_for_write();
   MutableSpan<int2> dst_edges = dst_mesh->edges_for_write();
-  index_mask::masked_fill(dst_edges, {0, 1}, changed_edges);
+  dst_edges.fill({0, 1});
 
   // bke::gather_attributes(src_attributes, bke::AttrDomain::Point, {}, {}, verts_range,
   // dst_attributes);
