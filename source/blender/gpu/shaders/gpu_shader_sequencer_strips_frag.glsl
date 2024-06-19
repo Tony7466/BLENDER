@@ -71,15 +71,15 @@ void main()
   /* Distance to whole strip shape. */
   float sdf = sdf_rounded_box(pos - center, size, radius);
 
-  /* Distance to inner part when optional handles are taken into account. */
+  /* Distance to inner part when handles are taken into account. */
   float sdf_inner = sdf;
-  if ((strip.flags & GPU_SEQ_FLAG_HANDLES) != 0) {
+  if ((strip.flags & GPU_SEQ_FLAG_ANY_HANDLE) != 0) {
     float handle_width = strip.handle_width * view_to_pixel.x;
     /* Take left/right handle from horizontal sides. */
-    if (strip.col_handle_left != 0) {
+    if ((strip.flags & GPU_SEQ_FLAG_DRAW_LH) != 0) {
       pos1.x += handle_width;
     }
-    if (strip.col_handle_right != 0) {
+    if ((strip.flags & GPU_SEQ_FLAG_DRAW_RH) != 0) {
       pos2.x -= handle_width;
     }
     /* Reduce vertical size by outline width. */
@@ -159,20 +159,20 @@ void main()
   }
 
   /* Handles. */
-  if ((strip.flags & GPU_SEQ_FLAG_HANDLES) != 0) {
+  vec4 col_outline = unpackUnorm4x8(strip.col_outline);
+  if ((strip.flags & GPU_SEQ_FLAG_ANY_HANDLE) != 0) {
     bool left_side = pos.x < center.x;
+    uint handle_flag = left_side ? GPU_SEQ_FLAG_SELECTED_LH : GPU_SEQ_FLAG_SELECTED_RH;
+    bool selected_handle = (strip.flags & handle_flag) != 0;
     /* Blend in handle color in between strip shape and inner handle shape. */
     if (sdf <= 0.0 && sdf_inner >= 0.0) {
-      vec4 hcol = unpackUnorm4x8(left_side ? strip.col_handle_left : strip.col_handle_right);
+      vec4 hcol = selected_handle ? col_outline : vec4(0, 0, 0, 0.2);
       hcol.a *= clamp(sdf_inner, 0.0, 1.0);
       col = blend_color(col, hcol);
     }
     /* For an unselected handle, no longer take it into account
      * for the "inner" distance. */
-    if (left_side && (strip.flags & GPU_SEQ_FLAG_SELECTED_LH) == 0) {
-      sdf_inner = sdf;
-    }
-    if (!left_side && (strip.flags & GPU_SEQ_FLAG_SELECTED_RH) == 0) {
+    if (!selected_handle) {
       sdf_inner = sdf;
     }
   }
@@ -191,7 +191,6 @@ void main()
 
   /* Outline / border. */
   if (border) {
-    vec4 col_outline = unpackUnorm4x8(strip.col_outline);
     col = add_outline(sdf, 0.0, outline_width, col, col_outline);
   }
 
