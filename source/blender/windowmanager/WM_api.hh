@@ -362,7 +362,7 @@ wmWindow *WM_window_open(bContext *C,
                          bool temp,
                          eWindowAlignment alignment,
                          void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
-                         void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
+                         void *area_setup_user_data) ATTR_NONNULL(1, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
 
