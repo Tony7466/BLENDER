@@ -94,7 +94,6 @@ void ShaderModule::precompile_specializations(int render_buffers_shadow_id,
                                               int shadow_ray_count,
                                               int shadow_ray_step_count)
 {
-  /* TODO: This can't be on a shared ShaderModule */
   BLI_assert(specialization_handle_ == 0);
 
   if (!GPU_use_parallel_compilation()) {

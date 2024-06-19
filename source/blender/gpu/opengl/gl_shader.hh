@@ -290,6 +290,13 @@ class GLShaderCompiler : public ShaderCompiler {
 
   Map<BatchHandle, Batch> batches;
 
+  struct SpecializationRequest {
+    BatchHandle handle;
+    Vector<ShaderSpecialization> specializations;
+  };
+
+  Vector<SpecializationRequest> specialization_queue;
+
   struct SpecializationWork {
     GLShader *shader = nullptr;
     GLuint program;
@@ -301,10 +308,13 @@ class GLShaderCompiler : public ShaderCompiler {
   };
 
   struct SpecializationBatch {
+    SpecializationBatchHandle handle = 0;
     Vector<SpecializationWork> items;
+    bool is_ready = true;
   };
 
-  Map<SpecializationBatchHandle, SpecializationBatch> specialization_batches;
+  SpecializationBatch current_specialization_batch;
+  void prepare_next_specialization_batch();
 
   /* Shared accross regular and specialization batches,
    * to prevent the use of a wrong handle type. */

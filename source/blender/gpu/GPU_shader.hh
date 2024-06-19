@@ -232,9 +232,8 @@ struct ShaderSpecialization {
  * allowing the backend to use multithreaded compilation.
  * Returns a handle that can be used to poll if all variations have been compiled.
  * NOTE: This function is asynchronous on OpenGL, and a no-op on Vulkan and Metal.
- * WARNING: Don't request the same specialization on 2 different batches.
- * It may cause the `is_ready` function to report false positives.
- * Binding a specialization before the batch finishes will fail.
+ * Batches are processed one by one in FIFO order.
+ * WARNING: Binding a specialization before the batch finishes will fail.
  */
 SpecializationBatchHandle GPU_shader_batch_specializations(
     blender::Span<ShaderSpecialization> specializations);

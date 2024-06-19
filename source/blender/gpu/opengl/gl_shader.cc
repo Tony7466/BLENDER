@@ -1900,12 +1900,25 @@ SpecializationBatchHandle GLShaderCompiler::precompile_specializations(
   std::scoped_lock lock(mutex_);
 
   SpecializationBatchHandle handle = next_batch_handle++;
-  specialization_batches.add(handle, {});
-  SpecializationBatch &batch = specialization_batches.lookup(handle);
-  Vector<SpecializationWork> &items = batch.items;
-  items.reserve(specializations.size());
 
-  for (auto &specialization : specializations) {
+  specialization_queue.append({handle, specializations});
+
+  return handle;
+}
+
+void GLShaderCompiler::prepare_next_specialization_batch()
+{
+  BLI_assert(current_specialization_batch.is_ready && !specialization_queue.is_empty());
+
+  SpecializationRequest &next = specialization_queue.first();
+  SpecializationBatch &batch = current_specialization_batch;
+  batch.handle = next.handle;
+  batch.is_ready = false;
+  Vector<SpecializationWork> &items = batch.items;
+  items.clear();
+  items.reserve(next.specializations.size());
+
+  for (auto &specialization : next.specializations) {
     GLShader *sh = static_cast<GLShader *>(unwrap(specialization.shader));
     for (const SpecializationConstant &constant : specialization.constants) {
       const ShaderInput *input = sh->interface->constant_get(constant.name.c_str());
@@ -1932,20 +1945,26 @@ SpecializationBatchHandle GLShaderCompiler::precompile_specializations(
     item.do_async_compilation = required_size <= sizeof(ShaderSourceHeader::sources);
   }
 
-  return handle;
+  specialization_queue.remove(0);
 }
 
 bool GLShaderCompiler::specialization_batch_is_ready(SpecializationBatchHandle &handle)
 {
   std::scoped_lock lock(mutex_);
 
-  BLI_assert(specialization_batches.contains(handle));
+  SpecializationBatch &batch = current_specialization_batch;
 
-  SpecializationBatch &batch = specialization_batches.lookup(handle);
-  Vector<SpecializationWork> &items = batch.items;
+  if (handle < batch.handle || (handle == batch.handle && batch.is_ready)) {
+    handle = 0;
+    return true;
+  }
+
+  if (batch.is_ready) {
+    prepare_next_specialization_batch();
+  }
 
   bool is_ready = true;
-  for (SpecializationWork &item : items) {
+  for (SpecializationWork &item : batch.items) {
     if (item.is_ready) {
       continue;
     }
@@ -1987,7 +2006,7 @@ bool GLShaderCompiler::specialization_batch_is_ready(SpecializationBatchHandle &
   }
 
   if (is_ready) {
-    specialization_batches.pop(handle);
+    batch.is_ready = true;
     handle = 0;
   }
 
