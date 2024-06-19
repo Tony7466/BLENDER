@@ -608,7 +608,7 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                               Span<int> sample_indices,
                               Span<float> sample_factors,
                               const float mix_weight,
-                              const bool is_evaluated_data)
+                              const bool use_evaluated_points)
 {
   const CPPType &type = src_data.type();
   BLI_assert(dst_data.type() == type);
@@ -632,7 +632,7 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
     Span<T> src = src_data.typed<T>();
     MutableSpan<T> dst = dst_data.typed<T>();
 
-    if (is_evaluated_data) {
+    if (use_evaluated_points) {
       curve_selection.foreach_index([&](const int i_curve) {
         const IndexRange src_evaluated_points = src_evaluated_points_by_curve[i_curve];
         const IndexRange dst_points = dst_points_by_curve[i_curve];

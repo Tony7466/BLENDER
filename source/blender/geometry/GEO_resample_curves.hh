@@ -81,6 +81,6 @@ void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                               Span<int> sample_indices,
                               Span<float> sample_factors,
                               float mix_weight,
-                              bool is_evaluated_data);
+                              bool use_evaluated_points);
 
 }  // namespace blender::geometry
