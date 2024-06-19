@@ -173,7 +173,7 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
         scene = context.scene
         view = scene.view_settings
 
-        layout.use_property_split = False
+        layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
 
         layout.enabled = view.use_white_balance
@@ -181,6 +181,7 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(view, "white_balance_temperature")
         col.prop(view, "white_balance_tint")
+        col.prop(view, "white_balance_whitepoint")
 
 
 class RENDER_PT_eevee_ambient_occlusion(RenderButtonsPanel, Panel):

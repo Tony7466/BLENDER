@@ -558,6 +558,18 @@ static std::optional<std::string> rna_ColorManagedViewSettings_path(const Pointe
   return "view_settings";
 }
 
+static void rna_ColorManagedViewSettings_whitepoint_get(PointerRNA *ptr, float value[3])
+{
+  const ColorManagedViewSettings *view_settings = (ColorManagedViewSettings *)ptr->data;
+  IMB_colormanagement_get_view_whitepoint(view_settings, value);
+}
+
+static void rna_ColorManagedViewSettings_whitepoint_set(PointerRNA *ptr, const float value[3])
+{
+  ColorManagedViewSettings *view_settings = (ColorManagedViewSettings *)ptr->data;
+  IMB_colormanagement_set_view_whitepoint(view_settings, value);
+}
+
 static bool rna_ColorManagedColorspaceSettings_is_data_get(PointerRNA *ptr)
 {
   ColorManagedColorspaceSettings *colorspace = (ColorManagedColorspaceSettings *)ptr->data;
@@ -1330,6 +1342,18 @@ static void rna_def_colormanage(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, -150.0f, 150.0f, 1, 1);
   RNA_def_property_ui_text(
       prop, "Tint", "Color tint of the scene's white point (the default of 10 matches daylight)");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
+
+  prop = RNA_def_property(srna, "white_balance_whitepoint", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_float_funcs(prop,
+                               "rna_ColorManagedViewSettings_whitepoint_get",
+                               "rna_ColorManagedViewSettings_whitepoint_set",
+                               nullptr);
+  RNA_def_property_ui_text(prop,
+                           "White point",
+                           "The color which gets mapped to white "
+                           "(automatically converted to/from temperature and tint)");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
 
   prop = RNA_def_property(srna, "use_hdr_view", PROP_BOOLEAN, PROP_NONE);

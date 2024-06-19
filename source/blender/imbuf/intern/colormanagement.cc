@@ -30,6 +30,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
+#include "BLI_math_color.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -1510,6 +1511,29 @@ bool IMB_colormanagement_space_name_is_srgb(const char *name)
 const float *IMB_colormanagement_get_xyz_to_scene_linear()
 {
   return &imbuf_xyz_to_scene_linear[0][0];
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name White balance helper functions
+ * \{ */
+
+void IMB_colormanagement_get_view_whitepoint(const ColorManagedViewSettings *view_settings,
+                                             float whitepoint[3])
+{
+  blender::float3 xyz = blender::math::whitepoint_from_temp_tint(view_settings->temperature,
+                                                                 view_settings->tint);
+  IMB_colormanagement_xyz_to_scene_linear(whitepoint, xyz);
+}
+
+bool IMB_colormanagement_set_view_whitepoint(ColorManagedViewSettings *view_settings,
+                                             const float whitepoint[3])
+{
+  blender::float3 xyz;
+  IMB_colormanagement_scene_linear_to_xyz(xyz, whitepoint);
+  return blender::math::whitepoint_to_temp_tint(
+      xyz, view_settings->temperature, view_settings->tint);
 }
 
 /** \} */

@@ -782,7 +782,8 @@ bool OCIOImpl::gpuDisplayShaderBind(OCIO_ConstConfigRcPtr *config,
      * Note: Since we're multiplying from the right, the operations here will be performed in
      * reverse list order (scene-to-XYZ, then adaption, then XYZ-to-scene, then exposure). */
     matrix *= xyz_to_scene;
-    matrix *= blender::math::chromatic_adaption_matrix(temperature, tint, target);
+    matrix *= blender::math::chromatic_adaption_matrix(
+        blender::math::whitepoint_from_temp_tint(temperature, tint), target);
     matrix *= scene_to_xyz;
   }
   updateGPUDisplayParameters(

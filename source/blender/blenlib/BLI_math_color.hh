@@ -40,11 +40,14 @@ inline ColorSceneLinearByteEncoded4b<Alpha> interpolate(
           math::interpolate(a.a, b.a, t)};
 }
 
+blender::float3 whitepoint_from_temp_tint(const float temperature, const float tint);
+
+bool whitepoint_to_temp_tint(const blender::float3 white, float &temperature, float &tint);
+
 /* Computes a matrix to perform chromatic adaption from a source white point (given in the form of
  * temperature and tint) to a target white point (given as its XYZ values).
  * The resulting matrix operates on XYZ values, the caller is responsible for RGB conversion. */
-blender::float3x3 chromatic_adaption_matrix(const float temperature,
-                                            const float tint,
-                                            const blender::float3 target);
+blender::float3x3 chromatic_adaption_matrix(const blender::float3 from_XYZ,
+                                            const blender::float3 to_XYZ);
 
 }  // namespace blender::math
