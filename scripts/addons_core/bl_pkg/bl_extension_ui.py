@@ -139,18 +139,21 @@ def addon_draw_item_expanded(
     del rowsub
 
     if item_doc_url or item_tracker_url:
-        sub = layout.row()
+        sub = layout.split(factor=0.5)
         if item_doc_url:
             sub.operator(
                 "wm.url_open", text="Website", icon='HELP',
             ).url = item_doc_url
+        else:
+            sub.separator()
+
         # Only add "Report a Bug" button if tracker_url is set
         # or the add-on is bundled (use official tracker then).
         if item_tracker_url:
             sub.operator(
                 "wm.url_open", text="Report a Bug", icon='URL',
             ).url = item_tracker_url
-        elif not user_addon:
+        elif core_addon:
             addon_info = (
                 "Name: {:s} {:s}\n"
                 "Author: {:s}\n"
@@ -160,6 +163,8 @@ def addon_draw_item_expanded(
             )
             props.type = 'BUG_ADDON'
             props.id = addon_info
+        else:
+            sub.separator()
 
     sub = layout.box()
     sub.active = is_enabled
