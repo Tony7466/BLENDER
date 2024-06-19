@@ -157,8 +157,6 @@ struct NodeGeometry {
 struct Node {
   Type type;
 
-  const void *node; /* only during push, not valid afterwards! */
-
   Array<float3> position;
   Array<float3> orig_position;
   Array<float3> normal;
