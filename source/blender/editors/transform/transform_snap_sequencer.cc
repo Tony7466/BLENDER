@@ -170,6 +170,7 @@ static blender::VectorSet<Sequence *> query_snap_sources(const Scene *scene,
   }
   return snap_sources;
 }
+
 static blender::VectorSet<Sequence *> query_snap_targets(
     Scene *scene,
     const blender::Span<Sequence *> snap_sources,
