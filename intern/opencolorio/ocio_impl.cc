@@ -716,7 +716,7 @@ OCIO_ConstProcessorRcPtr *OCIOImpl::createDisplayProcessor(OCIO_ConstConfigRcPtr
       matrix *= scene_to_xyz;
     }
 
-    mt->setMatrix(double4x4(matrix).base_ptr());
+    mt->setMatrix(double4x4(blender::math::transpose(matrix)).base_ptr());
     group->appendTransform(mt);
   }
 
