@@ -401,6 +401,12 @@ std::string GHOST_WindowWin32::getTitle() const
   return title;
 }
 
+GHOST_TSuccess GHOST_WindowWin32::getWindowExtents(GHOST_Rect &bounds)
+{
+  bounds.set(0, 0, 0, 0);
+  return GHOST_kSuccess;
+}
+
 void GHOST_WindowWin32::getWindowBounds(GHOST_Rect &bounds) const
 {
   RECT rect;

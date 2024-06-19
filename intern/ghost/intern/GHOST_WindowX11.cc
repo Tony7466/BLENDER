@@ -489,6 +489,41 @@ std::string GHOST_WindowX11::getTitle() const
   return title;
 }
 
+GHOST_TSuccess GHOST_WindowX11::getWindowExtents(GHOST_Rect &bounds)
+{
+  /* Get frame extents, using EWMH (Extended Window Manager Hints). */
+  Atom type_ret;
+  ulong bytes_after, num_ret;
+  int ret, format_ret;
+  uchar *data = nullptr;
+
+  Atom atom_extents = XInternAtom(m_display, "_NET_FRAME_EXTENTS", True);
+  ret = XGetWindowProperty(m_display,
+                           m_window,
+                           atom_extents,
+                           0,
+                           4,
+                           False,
+                           AnyPropertyType,
+                           &type_ret,
+                           &format_ret,
+                           &num_ret,
+                           &bytes_after,
+                           &data);
+  if (ret != Success) {
+    /* Getting extents not supported. */
+    return GHOST_kFailure;
+  }
+
+  long *extents = (long *)data;
+  bounds.m_l = extents[0];
+  bounds.m_r = extents[1];
+  bounds.m_t = extents[2];
+  bounds.m_b = extents[3];
+
+  return GHOST_kSuccess;
+}
+
 void GHOST_WindowX11::getWindowBounds(GHOST_Rect &bounds) const
 {
   /* Getting the window bounds under X11 is not

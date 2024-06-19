@@ -44,6 +44,7 @@ class GHOST_Window : public GHOST_IWindow {
    * virtual  bool getValid() const = 0;
    * virtual void setTitle(const char * title) = 0;
    * virtual std::string getTitle() const = 0;
+   * virtual  GHOST_TSuccess getWindowExtents(GHOST_Rect& bounds) = 0;
    * virtual  void getWindowBounds(GHOST_Rect& bounds) const = 0;
    * virtual  void getClientBounds(GHOST_Rect& bounds) const = 0;
    * virtual  GHOST_TSuccess setClientWidth(uint32_t width) = 0;

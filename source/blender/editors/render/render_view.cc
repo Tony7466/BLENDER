@@ -170,7 +170,8 @@ ScrArea *render_view_open(bContext *C, int mx, int my, ReportList *reports)
                        true,
                        WIN_ALIGN_LOCATION_CENTER,
                        nullptr,
-                       nullptr) == nullptr)
+                       nullptr,
+                       &U.render_space_data) == nullptr)
     {
       BKE_report(reports, RPT_ERROR, "Failed to open window!");
       return nullptr;

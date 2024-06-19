@@ -109,6 +109,8 @@ class GHOST_WindowWayland : public GHOST_Window {
 
   std::string getTitle() const override;
 
+  GHOST_TSuccess getWindowExtents(GHOST_Rect &bounds) override;
+
   void getWindowBounds(GHOST_Rect &bounds) const override;
 
   void getClientBounds(GHOST_Rect &bounds) const override;

@@ -88,6 +88,13 @@ class GHOST_IWindow {
   virtual GHOST_TSuccess setPath(const char *filepath) = 0;
 
   /**
+   * Returns the window extent dimensions, such as the size of the title bar.
+   * These are screen coordinates.
+   * \param bounds: The rectangle with the extent sizes on all sides.
+   */
+  virtual GHOST_TSuccess getWindowExtents(GHOST_Rect &bounds) = 0;
+
+  /**
    * Returns the window rectangle dimensions.
    * These are screen coordinates.
    * \param bounds: The bounding rectangle of the window.

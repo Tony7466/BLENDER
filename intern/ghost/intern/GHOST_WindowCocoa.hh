@@ -92,6 +92,13 @@ class GHOST_WindowCocoa : public GHOST_Window {
   GHOST_TSuccess setPath(const char *filepath);
 
   /**
+   * Returns the window extent dimensions, such as the size of the title bar.
+   * These are screen coordinates.
+   * \param bounds: The rectangle with the extent sizes on all sides.
+   */
+  GHOST_TSuccess getWindowExtents(GHOST_Rect &bounds);
+
+  /**
    * Returns the window rectangle dimensions.
    * The dimensions are given in screen coordinates that are
    * relative to the upper-left corner of the screen.

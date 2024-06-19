@@ -450,6 +450,11 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
     }
   }
 
+  /* Store window position and size. */
+  if (win->stored_position != nullptr) {
+    wm_window_store_position(win);
+  }
+
   bScreen *screen = WM_window_get_active_screen(win);
   WorkSpace *workspace = WM_window_get_active_workspace(win);
   WorkSpaceLayout *layout = BKE_workspace_active_layout_get(win->workspace_hook);
@@ -943,7 +948,8 @@ wmWindow *WM_window_open(bContext *C,
                          bool temp,
                          eWindowAlignment alignment,
                          void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
-                         void *area_setup_user_data)
+                         void *area_setup_user_data,
+                         UserDef_WindowPositionData *stored_position)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -978,6 +984,11 @@ wmWindow *WM_window_open(bContext *C,
     /* Positioned absolutely within parent bounds. */
   }
 
+  /* When position is saved in user preferences, restore the window position and size. */
+  if (stored_position) {
+    wm_window_restore_position(stored_position, &rect.xmin, &rect.ymin, &sizex, &sizey);
+  }
+
   rect.xmax = rect.xmin + sizex;
   rect.ymax = rect.ymin + sizey;
 
@@ -1008,6 +1019,7 @@ wmWindow *WM_window_open(bContext *C,
     win->sizey = BLI_rcti_size_y(&rect);
     *win->stereo3d_format = *win_prev->stereo3d_format;
   }
+  win->stored_position = stored_position;
 
   bScreen *screen = WM_window_get_active_screen(win);
 
@@ -2476,6 +2488,78 @@ void wm_window_get_position(wmWindow *win, int *r_pos_x, int *r_pos_y)
 void wm_window_set_size(wmWindow *win, int width, int height)
 {
   GHOST_SetClientSize(static_cast<GHOST_WindowHandle>(win->ghostwin), width, height);
+}
+
+void wm_window_store_position(wmWindow *win)
+{
+  /* Don't store the position when the window is minimized, because some platforms (WIN32) give
+   * undefined window size when minimized. */
+  if (GHOST_GetWindowState(static_cast<GHOST_WindowHandle>(win->ghostwin)) ==
+      GHOST_kWindowStateMinimized)
+  {
+    return;
+  }
+
+  wm_window_update_size_position(win);
+  int pos_x = win->posx;
+  int pos_y = win->posy;
+
+  /* For some platforms we have to correct the position for window extents (the size of decorations
+   * such as the title bar). Without this correction the window would make a jump every time the
+   * user opens it. */
+  int extent_left, extent_top, extent_right, extent_bottom;
+  if (GHOST_GetWindowExtents(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                             &extent_left,
+                             &extent_top,
+                             &extent_right,
+                             &extent_bottom) != GHOST_kSuccess)
+  {
+    /* When the extents are unknown, we can't guarantee restoring the window position correctly. So
+     * then we don't store the position. */
+    return;
+  }
+  pos_x -= extent_left;
+  pos_y += extent_top;
+
+  /* Get window size. */
+  WM_window_set_dpi(win); /* Ensure the DPI is taken from the right window. */
+  float f = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
+  const int size_x = int(f * win->sizex) / UI_SCALE_FAC;
+  const int size_y = int(f * win->sizey) / UI_SCALE_FAC;
+
+  /* Store position and size in user preferences. But neglect differences of 1 pixel (due to
+   * rounding), otherwise a window can crawl by a pixel every time you open it. */
+  if (std::abs(win->stored_position->pos_x - pos_x) > 1 ||
+      std::abs(win->stored_position->pos_y - pos_y) > 1 ||
+      std::abs(win->stored_position->size_x - size_x) > 1 ||
+      std::abs(win->stored_position->size_y - size_y) > 1)
+  {
+    win->stored_position->pos_x = pos_x;
+    win->stored_position->pos_y = pos_y;
+    win->stored_position->size_x = size_x;
+    win->stored_position->size_y = size_y;
+
+    U.runtime.is_dirty = true;
+  }
+}
+
+void wm_window_restore_position(const UserDef_WindowPositionData *stored_position,
+                                int *r_pos_x,
+                                int *r_pos_y,
+                                int *r_size_x,
+                                int *r_size_y)
+{
+  /* When the window position is not stored before, we abort here and fall back to the default
+   * values. */
+  if (stored_position->size_x == 0) {
+    return;
+  }
+
+  /* Restore window size and position. */
+  *r_size_x = stored_position->size_x * UI_SCALE_FAC;
+  *r_size_y = stored_position->size_y * UI_SCALE_FAC;
+  *r_pos_x = stored_position->pos_x;
+  *r_pos_y = stored_position->pos_y;
 }
 
 /** \} */

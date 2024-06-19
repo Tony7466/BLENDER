@@ -2157,6 +2157,12 @@ std::string GHOST_WindowWayland::getTitle() const
   return window_->title.empty() ? "untitled" : window_->title;
 }
 
+GHOST_TSuccess GHOST_WindowWayland::getWindowExtents(GHOST_Rect &bounds)
+{
+  bounds.set(0, 0, 0, 0);
+  return GHOST_kSuccess;
+}
+
 void GHOST_WindowWayland::getWindowBounds(GHOST_Rect &bounds) const
 {
   getClientBounds(bounds);

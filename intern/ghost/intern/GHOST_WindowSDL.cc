@@ -158,6 +158,12 @@ std::string GHOST_WindowSDL::getTitle() const
   return SDL_GetWindowTitle(m_sdl_win);
 }
 
+GHOST_TSuccess GHOST_WindowSDL::getWindowExtents(GHOST_Rect &bounds)
+{
+  bounds.set(0, 0, 0, 0);
+  return GHOST_kSuccess;
+}
+
 void GHOST_WindowSDL::getWindowBounds(GHOST_Rect &bounds) const
 {
   getClientBounds(bounds);

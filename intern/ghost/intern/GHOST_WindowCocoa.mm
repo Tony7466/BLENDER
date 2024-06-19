@@ -546,6 +546,19 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   return success;
 }
 
+GHOST_TSuccess GHOST_WindowCocoa::getWindowExtents(GHOST_Rect &bounds)
+{
+  NSRect window_rect = [m_window frame];
+  NSRect client_rect = [m_window contentRectForFrameRect:[m_window frame]];
+  
+  bounds.m_l = window_rect.origin.x - client_rect.origin.x;
+  bounds.m_r = window_rect.size.width - client_rect.size.width;
+  bounds.m_t = window_rect.size.height - client_rect.size.height;
+  bounds.m_b = window_rect.origin.y - client_rect.origin.y;
+
+  return GHOST_kSuccess;
+}
+
 void GHOST_WindowCocoa::getWindowBounds(GHOST_Rect &bounds) const
 {
   NSRect rect;

@@ -5245,7 +5245,8 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
                      true,
                      WIN_ALIGN_LOCATION_CENTER,
                      nullptr,
-                     nullptr) != nullptr)
+                     nullptr,
+                     &U.preference_space_data) != nullptr)
   {
     /* The header only contains the editor switcher and looks empty.
      * So hiding in the temp window makes sense. */

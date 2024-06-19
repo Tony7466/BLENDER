@@ -79,6 +79,10 @@ class GHOST_WindowNULL : public GHOST_Window {
   {
     return GHOST_kFailure;
   }
+  GHOST_TSuccess getWindowExtents(GHOST_Rect & /*bounds*/) override
+  {
+    return GHOST_kFailure;
+  }
   void getWindowBounds(GHOST_Rect &bounds) const override
   {
     getClientBounds(bounds);

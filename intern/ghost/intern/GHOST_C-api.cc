@@ -608,6 +608,23 @@ GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepa
   return window->setPath(filepath);
 }
 
+GHOST_TSuccess GHOST_GetWindowExtents(
+    GHOST_WindowHandle windowhandle, int32_t *left, int32_t *top, int32_t *right, int32_t *bottom)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+  GHOST_Rect *rectangle = nullptr;
+
+  rectangle = new GHOST_Rect();
+  GHOST_TSuccess result = window->getWindowExtents(*rectangle);
+  if (result == GHOST_kSuccess) {
+    *left = rectangle->m_l;
+    *top = rectangle->m_t;
+    *right = rectangle->m_r;
+    *bottom = rectangle->m_b;
+  }
+  return result;
+}
+
 GHOST_RectangleHandle GHOST_GetWindowBounds(GHOST_WindowHandle windowhandle)
 {
   const GHOST_IWindow *window = (const GHOST_IWindow *)windowhandle;

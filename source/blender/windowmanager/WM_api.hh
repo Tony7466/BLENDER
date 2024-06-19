@@ -275,6 +275,7 @@ bool WM_window_pixels_read_sample(bContext *C, wmWindow *win, const int pos[2], 
  */
 int WM_window_pixels_x(const wmWindow *win);
 int WM_window_pixels_y(const wmWindow *win);
+
 /**
  * Get boundaries usable by all window contents, including global areas.
  */
@@ -351,6 +352,8 @@ enum eWindowAlignment {
  * before it's initialized. When set, `space_type` should be #SPACE_EMTPY,
  * so the setup function can take a blank area and initialize it.
  * \param area_setup_user_data: User data argument passed to `area_setup_fn`.
+ * \param stored_position: (optional) Previously stored window position and size, used to restore
+ * the window position.
  * \return the window or NULL in case of failure.
  */
 wmWindow *WM_window_open(bContext *C,
@@ -362,7 +365,9 @@ wmWindow *WM_window_open(bContext *C,
                          bool temp,
                          eWindowAlignment alignment,
                          void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
-                         void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
+                         void *area_setup_user_data,
+                         UserDef_WindowPositionData *stored_position = nullptr)
+    ATTR_NONNULL(1, 2, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
 

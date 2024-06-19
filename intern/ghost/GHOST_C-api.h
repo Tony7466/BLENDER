@@ -596,6 +596,19 @@ extern char *GHOST_GetTitle(GHOST_WindowHandle windowhandle);
 extern GHOST_TSuccess GHOST_SetPath(GHOST_WindowHandle windowhandle, const char *filepath);
 
 /**
+ * Returns the window extents: the size of the window decorations that aren't included in the
+ * client rectangle dimensions (such as the title bar, on some platforms).
+ * \param windowhandle: The handle to the window.
+ * \param left: Pointer to return left extent in.
+ * \param top: Pointer to return top extent in.
+ * \param right: Pointer to return right extent in.
+ * \param bottom: Pointer to return bottom extent in.
+ * \return Indication of success (false == extents are unknown).
+ */
+GHOST_TSuccess GHOST_GetWindowExtents(
+    GHOST_WindowHandle windowhandle, int32_t *left, int32_t *top, int32_t *right, int32_t *bottom);
+
+/**
  * Returns the window rectangle dimensions.
  * These are screen coordinates.
  * \param windowhandle: The handle to the window.

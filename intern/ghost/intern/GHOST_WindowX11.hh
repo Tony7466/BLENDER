@@ -69,6 +69,8 @@ class GHOST_WindowX11 : public GHOST_Window {
 
   std::string getTitle() const override;
 
+  GHOST_TSuccess getWindowExtents(GHOST_Rect &bounds) override;
+
   void getWindowBounds(GHOST_Rect &bounds) const override;
 
   void getClientBounds(GHOST_Rect &bounds) const override;

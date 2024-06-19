@@ -713,6 +713,16 @@ typedef struct UserDef_SpaceData {
 } UserDef_SpaceData;
 
 /**
+ * Size and position data for a window.
+ */
+typedef struct UserDef_WindowPositionData {
+  int size_x;
+  int size_y;
+  int pos_x;
+  int pos_y;
+} UserDef_WindowPositionData;
+
+/**
  * Storage for UI data that to keep it even after the window was closed. (Similar to
  * #UserDef_SpaceData.)
  */
@@ -1118,6 +1128,8 @@ typedef struct UserDef {
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;
   UserDef_FileSpaceData file_space_data;
+  UserDef_WindowPositionData preference_space_data;
+  UserDef_WindowPositionData render_space_data;
 
   UserDef_Experimental experimental;
 

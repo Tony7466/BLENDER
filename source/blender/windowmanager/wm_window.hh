@@ -100,6 +100,19 @@ void wm_window_lower(wmWindow *win);
 void wm_window_set_size(wmWindow *win, int width, int height);
 void wm_window_get_position(wmWindow *win, int *r_pos_x, int *r_pos_y);
 /**
+ * Store the size and position of a window (so it can be restored in the same state when
+ * reopening).
+ */
+void wm_window_store_position(wmWindow *win);
+/**
+ * Restore the size and position of a window.
+ */
+void wm_window_restore_position(const UserDef_WindowPositionData *stored_position,
+                                int *r_pos_x,
+                                int *r_pos_y,
+                                int *r_size_x,
+                                int *r_size_y);
+/**
  * \brief Push rendered buffer to the screen.
  */
 void wm_window_swap_buffers(wmWindow *win);
