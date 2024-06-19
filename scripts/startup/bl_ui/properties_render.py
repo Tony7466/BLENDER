@@ -119,7 +119,7 @@ class RENDER_PT_color_management_display_settings(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
-    bl_label = "Use Curves"
+    bl_label = "Curves"
     bl_parent_id = "RENDER_PT_color_management"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {
@@ -151,7 +151,7 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
-    bl_label = "Use White Balance"
+    bl_label = "White Balance"
     bl_parent_id = "RENDER_PT_color_management"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {
