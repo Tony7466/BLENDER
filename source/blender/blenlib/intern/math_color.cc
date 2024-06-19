@@ -890,7 +890,7 @@ blender::float3x3 chromatic_adaption_matrix(const float temperature,
   /* Find table entry. */
   const float mired = clamp(1e6f / temperature, locus.first().mired, locus.last().mired);
   auto compare = [](const table_entry_t &entry, const float val) { return entry.mired < val; };
-  const long i = std::lower_bound(locus.begin(), locus.end(), mired, compare) - locus.begin();
+  const auto i = std::lower_bound(locus.begin(), locus.end(), mired, compare) - locus.begin();
   const table_entry_t &low = locus[i - 1], high = locus[i];
 
   /* Find interpolation factor. */
