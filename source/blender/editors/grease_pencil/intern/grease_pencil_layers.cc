@@ -854,8 +854,11 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_layer_duplicate_object";
   ot->description = "Make a copy of the active Grease Pencil layer to selected object";
 
+  /* api callbacks */
   ot->poll = active_grease_pencil_layer_poll;
   ot->exec = grease_pencil_layer_duplicate_object_exec;
+
+  /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(ot->srna,
