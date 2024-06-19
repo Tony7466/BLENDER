@@ -2724,7 +2724,7 @@ bool ED_view3d_viewport_color_sample(ARegion *region, const int mval[2], float r
   const int tex_w = GPU_texture_width(color_tx);
   const int tex_h = GPU_texture_height(color_tx);
 
-  if (mval[0] >= max_ii(region->winx, tex_w) || mval[1] >= max_ii(region->winy, tex_h)) {
+  if (mval[0] >= min_ii(region->winx, tex_w) || mval[1] >= min_ii(region->winy, tex_h)) {
     return false;
   }
 
