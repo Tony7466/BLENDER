@@ -1,0 +1,14 @@
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum BIFIconID_Static;
+const char* blf_get_icon_svg(BIFIconID_Static icon);
+
+@SVGHCONTENTS@
+
+#ifdef __cplusplus
+}
+#endif

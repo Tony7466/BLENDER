@@ -6,7 +6,6 @@ set(INC
   PUBLIC .
   ../blenkernel
   ../blentranslation
-  ../editors/include
   ../gpu
   ../imbuf
   ../makesrna
@@ -27,17 +26,15 @@ set(SRC
   BLF_api.hh
   intern/blf_internal.hh
   intern/blf_internal_types.hh
-  ../editors/include/UI_icons.hh
 )
 
 set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_gpu
-  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::nanosvg
-
+  PRIVATE bf::editor::datafiles
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )
 

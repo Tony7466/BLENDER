@@ -42,7 +42,10 @@ struct rcti;
 /** Maximum number of bytes to use for cached data nodes. 0 is default of 200,000. */
 #define BLF_CACHE_BYTES 400000
 
-/** Offset from icon id to Unicode private range. */
+/**
+ * Offset from icon id to Unicode Supplimentary Private user Area-B,
+ * added with Unicode 2.0. 65,536 codepoints at U+100000..U+10FFFF.
+ */
 #define BLF_ICON_OFFSET 0x100000
 
 /**

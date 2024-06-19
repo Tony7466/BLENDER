@@ -13,8 +13,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <fmt/format.h>
-
 #include <ft2build.h>
 
 #include FT_FREETYPE_H
@@ -26,11 +24,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_appdir.hh"
-
 #include "BLI_listbase.h"
-#include "BLI_path_util.h"
 #include "BLI_rect.h"
+#include "BLI_string.h"
 #include "BLI_threads.h"
 
 #include "BLF_api.hh"
@@ -45,11 +41,11 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
 
-#include "UI_resources.hh"
-
 #include "BLI_strict_flags.h" /* Keep last. */
 
 #include "nanosvgrast.h"
+
+#include "svg_icons.h"
 
 /**
  * Convert glyph coverage amounts to lightness values. Uses a LUT that perceptually improves
@@ -346,41 +342,19 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
    * zero dimensions it will be skipped by blf_glyph_draw. */
   std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
   g->c = charcode;
-
   GlyphBLF *result = g.get();
   GlyphCacheKey key = {charcode, 0};
   gc->glyphs.add(key, std::move(g));
   return result;
 }
 
-#define DEF_ICON(name) STRINGIFY(name),
-#define DEF_ICON_BLANK(name)
-#define DEF_ICON_VECTOR(name)
-
-const char *icon_names[] = {
-#include "UI_icons.hh"
-};
-
-#undef DEF_ICON
-#undef DEF_ICON_BLANK
-#undef DEF_ICON_VECTOR
-
 static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
 {
-  const std::optional<std::string> icondir = BKE_appdir_folder_id(BLENDER_DATAFILES, "icons");
-  if (!icondir.has_value()) {
-#ifndef NDEBUG
-    printf("Error: datafiles/icons folder not found.\n");
-#endif
-    return blf_glyph_cache_add_blank(gc, charcode);
-  }
-
-  /* Get stringified name from icon_id, then lowercase it. */
-  std::string file_name = icon_names[charcode - BLF_ICON_OFFSET];
-  std::transform(file_name.begin(), file_name.end(), file_name.begin(), ::tolower);
-
-  const std::string file_path = fmt::format("{}" SEP_STR "{}.svg", icondir.value(), file_name);
-  NSVGimage *image = nsvgParseFromFile(file_path.c_str(), "px", 96.0f);
+  const char *svg_source = blf_get_icon_svg(BIFIconID_Static(charcode - BLF_ICON_OFFSET));
+  /* NanoSVG alters the source file while parsing. */
+  char *writeable = BLI_strdup(svg_source);
+  NSVGimage *image = nsvgParse(writeable, "px", 96.0f);
+  MEM_freeN(writeable);
 
   if (image == nullptr) {
     return blf_glyph_cache_add_blank(gc, charcode);
