@@ -7413,6 +7413,13 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
       "New Animation Data-block",
       "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_docking", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop,
+      "Area Docking",
+      "Add ability to drag areas to new locations, including between windows.");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
