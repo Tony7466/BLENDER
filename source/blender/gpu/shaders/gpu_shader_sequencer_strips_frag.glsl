@@ -188,7 +188,7 @@ void main()
       col = add_outline(sdf, 1.0, 3.0, col, col_outline);
       /* Inset line should be inside regular border or inside the handles. */
       float d = max(sdf_inner - 3.0 * context_data.pixelsize, sdf);
-      col = add_outline(d, 3.0, 4.0, col, vec4(0, 0, 0, 0.2));
+      col = add_outline(d, 3.0, 4.0, col, vec4(0, 0, 0, 0.33));
     }
 
     /* Outer 1px outline for all strips. */
