@@ -510,77 +510,6 @@ void foreach_node_on_inverse_eval_path(
       final_value_nodes);
 }
 
-static bool set_socket_value(bNodeSocket &socket, const SocketValueVariant &value_variant)
-{
-  switch (socket.type) {
-    case SOCK_FLOAT: {
-      const float value = value_variant.get<float>();
-      auto *default_value = socket.default_value_typed<bNodeSocketValueFloat>();
-      default_value->value = std::min(std::max(value, default_value->min), default_value->max);
-      return true;
-    }
-    case SOCK_INT: {
-      const int value = value_variant.get<int>();
-      auto *default_value = socket.default_value_typed<bNodeSocketValueInt>();
-      default_value->value = std::min(std::max(value, default_value->min), default_value->max);
-      return true;
-    }
-    case SOCK_BOOLEAN: {
-      const bool value = value_variant.get<bool>();
-      auto *default_value = socket.default_value_typed<bNodeSocketValueBoolean>();
-      default_value->value = value;
-      return true;
-    }
-    case SOCK_VECTOR: {
-      const float3 value = value_variant.get<float3>();
-      auto *default_value = socket.default_value_typed<bNodeSocketValueVector>();
-      *reinterpret_cast<float3 *>(default_value->value) = value;
-      return true;
-    }
-    case SOCK_ROTATION: {
-      const math::Quaternion value = value_variant.get<math::Quaternion>();
-      auto *default_value = socket.default_value_typed<bNodeSocketValueRotation>();
-      *reinterpret_cast<float3 *>(default_value->value_euler) = float3(math::to_euler(value));
-      return true;
-    }
-  }
-  return false;
-}
-
-static bool set_value_node_value(bNode &node, const SocketValueVariant &value_variant)
-{
-  switch (node.type) {
-    case SH_NODE_VALUE: {
-      bNodeSocket &socket = node.output_socket(0);
-      auto *default_value = socket.default_value_typed<bNodeSocketValueFloat>();
-      default_value->value = value_variant.get<float>();
-      return true;
-    }
-    case FN_NODE_INPUT_INT: {
-      NodeInputInt &storage = *static_cast<NodeInputInt *>(node.storage);
-      storage.integer = value_variant.get<int>();
-      return true;
-    }
-    case FN_NODE_INPUT_VECTOR: {
-      NodeInputVector &storage = *static_cast<NodeInputVector *>(node.storage);
-      *reinterpret_cast<float3 *>(storage.vector) = value_variant.get<float3>();
-      return true;
-    }
-    case FN_NODE_INPUT_BOOL: {
-      NodeInputBool &storage = *static_cast<NodeInputBool *>(node.storage);
-      storage.boolean = value_variant.get<bool>();
-      return true;
-    }
-    case FN_NODE_INPUT_ROTATION: {
-      NodeInputRotation &storage = *static_cast<NodeInputRotation *>(node.storage);
-      *reinterpret_cast<float3 *>(storage.rotation_euler) = float3(
-          math::to_euler(value_variant.get<math::Quaternion>()));
-      return true;
-    }
-  }
-  return false;
-}
-
 using DriverValueVariant = std::variant<float, int, bool>;
 static bool set_rna_property_inverse(bContext &C,
                                      ID &id,
@@ -717,6 +646,90 @@ static bool set_rna_property_inverse(bContext &C,
   return false;
 }
 
+static bool set_rna_property_inverse_float3(bContext &C,
+                                            ID &id,
+                                            const StringRefNull rna_path,
+                                            const float3 &value)
+{
+  bool any_success = false;
+  for (const int i : IndexRange(3)) {
+    const std::string rna_path_for_index = fmt::format("{}[{}]", rna_path, i);
+    any_success |= set_rna_property_inverse(C, id, rna_path_for_index, value[i]);
+  }
+  return any_success;
+}
+
+static bool set_socket_value(bContext &C,
+                             bNodeSocket &socket,
+                             const SocketValueVariant &value_variant)
+{
+  bNode &node = socket.owner_node();
+  bNodeTree &tree = socket.owner_tree();
+
+  const std::string default_value_rna_path = fmt::format(
+      "nodes[\"{}\"].inputs[{}].default_value", node.name, socket.index());
+
+  switch (socket.type) {
+    case SOCK_FLOAT: {
+      const float value = value_variant.get<float>();
+      return set_rna_property_inverse(C, tree.id, default_value_rna_path, value);
+    }
+    case SOCK_INT: {
+      const int value = value_variant.get<int>();
+      return set_rna_property_inverse(C, tree.id, default_value_rna_path, value);
+    }
+    case SOCK_BOOLEAN: {
+      const bool value = value_variant.get<bool>();
+      return set_rna_property_inverse(C, tree.id, default_value_rna_path, value);
+    }
+    case SOCK_VECTOR: {
+      const float3 value = value_variant.get<float3>();
+      return set_rna_property_inverse_float3(C, tree.id, default_value_rna_path, value);
+    }
+    case SOCK_ROTATION: {
+      const math::Quaternion rotation = value_variant.get<math::Quaternion>();
+      const float3 euler = float3(math::to_euler(rotation));
+      return set_rna_property_inverse_float3(C, tree.id, default_value_rna_path, euler);
+    }
+  }
+  return false;
+}
+
+static bool set_value_node_value(bContext &C, bNode &node, const SocketValueVariant &value_variant)
+{
+  bNodeTree &tree = node.owner_tree();
+  switch (node.type) {
+    case SH_NODE_VALUE: {
+      const float value = value_variant.get<float>();
+      const std::string rna_path = fmt::format("nodes[\"{}\"].outputs[0].default_value",
+                                               node.name);
+      return set_rna_property_inverse(C, tree.id, rna_path, value);
+    }
+    case FN_NODE_INPUT_INT: {
+      const int value = value_variant.get<int>();
+      const std::string rna_path = fmt::format("nodes[\"{}\"].integer", node.name);
+      return set_rna_property_inverse(C, tree.id, rna_path, value);
+    }
+    case FN_NODE_INPUT_BOOL: {
+      const bool value = value_variant.get<bool>();
+      const std::string rna_path = fmt::format("nodes[\"{}\"].boolean", node.name);
+      return set_rna_property_inverse(C, tree.id, rna_path, value);
+    }
+    case FN_NODE_INPUT_VECTOR: {
+      const float3 value = value_variant.get<float3>();
+      const std::string rna_path = fmt::format("nodes[\"{}\"].vector", node.name);
+      return set_rna_property_inverse_float3(C, tree.id, rna_path, value);
+    }
+    case FN_NODE_INPUT_ROTATION: {
+      const math::Quaternion rotation = value_variant.get<math::Quaternion>();
+      const float3 euler = float3(math::to_euler(rotation));
+      const std::string rna_path = fmt::format("nodes[\"{}\"].rotation_euler", node.name);
+      return set_rna_property_inverse_float3(C, tree.id, rna_path, euler);
+    }
+  }
+  return false;
+}
+
 static bool set_modifier_value(bContext &C,
                                Object &object,
                                NodesModifierData &nmd,
@@ -743,23 +756,12 @@ static bool set_modifier_value(bContext &C,
     }
     case SOCK_VECTOR: {
       const float3 value = value_variant.get<float3>();
-      bool any_success = false;
-      for (const int i : IndexRange(3)) {
-        const std::string rna_path = fmt::format("{}[{}]", main_prop_rna_path, i);
-        any_success |= set_rna_property_inverse(C, object.id, rna_path, value[i]);
-      }
-      return any_success;
+      return set_rna_property_inverse_float3(C, object.id, main_prop_rna_path, value);
     }
     case SOCK_ROTATION: {
       const math::Quaternion rotation = value_variant.get<math::Quaternion>();
-      const math::EulerXYZ euler = math::to_euler(rotation);
-      const float3 euler_vec{euler};
-      bool any_success = false;
-      for (const int i : IndexRange(3)) {
-        const std::string rna_path = fmt::format("{}[{}]", main_prop_rna_path, i);
-        any_success |= set_rna_property_inverse(C, object.id, rna_path, euler_vec[i]);
-      }
-      return any_success;
+      const float3 euler = float3(math::to_euler(rotation));
+      return set_rna_property_inverse_float3(C, object.id, main_prop_rna_path, euler);
     }
   }
   return false;
@@ -920,7 +922,7 @@ bool try_change_link_target_and_update_source(bContext &C,
   for (const SocketInContext &ctx_socket : final_sockets) {
     if (const SocketValueVariant *value = value_by_socket.lookup_ptr(ctx_socket)) {
       bNodeSocket &socket_mutable = const_cast<bNodeSocket &>(*ctx_socket.socket);
-      if (set_socket_value(socket_mutable, *value)) {
+      if (set_socket_value(C, socket_mutable, *value)) {
         modified_sockets.append({&socket_mutable.owner_tree(), &socket_mutable});
       }
     }
@@ -930,7 +932,7 @@ bool try_change_link_target_and_update_source(bContext &C,
             {ctx_node.context, &ctx_node.node->output_socket(0)}))
     {
       bNode &node_mutable = const_cast<bNode &>(*ctx_node.node);
-      if (set_value_node_value(node_mutable, *value)) {
+      if (set_value_node_value(C, node_mutable, *value)) {
         modified_nodes.append({&node_mutable.owner_tree(), &node_mutable});
       }
     }
