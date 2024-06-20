@@ -394,28 +394,17 @@ class TransformGizmos : public NodeGizmos {
   {
     /* Translation */
     for (const int axis : IndexRange(3)) {
-      wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
-      WM_gizmo_set_line_width(gizmo, 2.0f);
-      translation_gizmos_[axis] = gizmo;
+      translation_gizmos_[axis] = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
     }
 
     /* Rotation */
     for (const int axis : IndexRange(3)) {
-      wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_dial_3d", &gzgroup, nullptr);
-      WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_VALUE, true);
-      WM_gizmo_set_line_width(gizmo, 3.0f);
-      RNA_boolean_set(gizmo->ptr, "wrap_angle", false);
-      /* The clipping currently looks a bit weird without the white circle around the gizmo.
-       * However, without clipping it looks also very confusing sometimes. */
-      RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_CLIP);
-      rotation_gizmos_[axis] = gizmo;
+      rotation_gizmos_[axis] = WM_gizmo_new("GIZMO_GT_dial_3d", &gzgroup, nullptr);
     }
 
     /* Scale */
     for (const int axis : IndexRange(3)) {
-      wmGizmo *gizmo = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
-      WM_gizmo_set_line_width(gizmo, 2.0f);
-      scale_gizmos_[axis] = gizmo;
+      scale_gizmos_[axis] = WM_gizmo_new("GIZMO_GT_arrow_3d", &gzgroup, nullptr);
     }
   }
 
@@ -433,6 +422,33 @@ class TransformGizmos : public NodeGizmos {
     const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(
         params.gizmo_node.storage);
 
+    this->update_visibility(storage);
+    this->update_translate_style();
+    this->update_rotate_style();
+    this->update_scale_style();
+
+    float4x4 base_transform_from_socket;
+    if (!params.get_input_value("Base", base_transform_from_socket)) {
+      params.r_report.missing_socket_logs = true;
+      return;
+    }
+
+    /* Any scale and skew from the matrix is ignored. */
+    make_matrix_orthonormal_but_keep_z_axis(base_transform_from_socket);
+
+    Scene &scene = *CTX_data_scene(&params.C);
+    const TransformOrientationSlot &orientation_slot = scene.orientation_slots[0];
+    transform_orientation_ = orientation_slot.type;
+
+    parent_transform_ = params.parent_transform;
+
+    this->update_translate_transform_and_target_property(params, base_transform_from_socket);
+    this->update_rotate_transform_and_target_property(params, base_transform_from_socket);
+    this->update_scale_transform_and_target_property(params, base_transform_from_socket);
+  }
+
+  void update_visibility(const NodeGeometryTransformGizmo &storage)
+  {
     any_translation_visible_ = false;
     any_rotation_visible_ = false;
     any_scale_visible_ = false;
@@ -451,11 +467,14 @@ class TransformGizmos : public NodeGizmos {
       any_rotation_visible_ |= rotation_used;
       any_scale_visible_ |= scale_used;
     }
+  }
 
-    /* Translation. */
+  void update_translate_style()
+  {
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = translation_gizmos_[axis];
       get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
+      WM_gizmo_set_line_width(gizmo, 2.0f);
 
       float start = 0.0f;
       float length = 1.0f;
@@ -473,8 +492,10 @@ class TransformGizmos : public NodeGizmos {
       RNA_float_set(gizmo->ptr, "length", length);
       WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_OFFSET_SCALE, true);
     }
+  }
 
-    /* Rotation. */
+  void update_rotate_style()
+  {
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = rotation_gizmos_[axis];
       get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
@@ -483,9 +504,18 @@ class TransformGizmos : public NodeGizmos {
       int draw_options = RNA_enum_get(gizmo->ptr, "draw_options");
       SET_FLAG_FROM_TEST(draw_options, is_interacting, ED_GIZMO_DIAL_DRAW_FLAG_ANGLE_VALUE);
       RNA_enum_set(gizmo->ptr, "draw_options", draw_options);
-    }
 
-    /* Scale. */
+      WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_VALUE, true);
+      WM_gizmo_set_line_width(gizmo, 3.0f);
+      RNA_boolean_set(gizmo->ptr, "wrap_angle", false);
+      /* The clipping currently looks a bit weird without the white circle around the gizmo.
+       * However, without clipping it looks also very confusing sometimes. */
+      RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_CLIP);
+    }
+  }
+
+  void update_scale_style()
+  {
     for (const int axis : IndexRange(3)) {
       wmGizmo *gizmo = scale_gizmos_[axis];
       get_axis_gizmo_colors(axis, gizmo->color, gizmo->color_hi);
@@ -493,192 +523,168 @@ class TransformGizmos : public NodeGizmos {
 
       const float length = (any_translation_visible_ || any_rotation_visible_) ? 0.775f : 1.0f;
       RNA_float_set(gizmo->ptr, "length", length);
+
+      WM_gizmo_set_line_width(gizmo, 2.0f);
     }
-
-    const bNodeSocket &base_socket = params.gizmo_node.input_socket(1);
-    const std::optional<float4x4> base_opt =
-        base_socket.is_logically_linked() ?
-            params.tree_log.find_primitive_socket_value<float4x4>(base_socket) :
-            float4x4::identity();
-    if (!base_opt) {
-      params.r_report.missing_socket_logs = true;
-      return;
-    }
-    float4x4 base_transform_from_socket = *base_opt;
-    /* Any scale and skew from the matrix is ignored. */
-    make_matrix_orthonormal_but_keep_z_axis(base_transform_from_socket);
-
-    Scene &scene = *CTX_data_scene(&params.C);
-    const TransformOrientationSlot &orientation_slot = scene.orientation_slots[0];
-    transform_orientation_ = orientation_slot.type;
-
-    parent_transform_ = params.parent_transform;
-
-    this->update_translation_gizmos(params, base_transform_from_socket);
-    this->update_rotation_gizmos(params, base_transform_from_socket);
-    this->update_scale_gizmos(params, base_transform_from_socket);
   }
 
-  void update_translation_gizmos(GizmosUpdateParams &params,
-                                 const float4x4 &base_transform_from_socket)
+  void update_translate_transform_and_target_property(GizmosUpdateParams &params,
+                                                      const float4x4 &base_transform_from_socket)
   {
     for (const int axis_i : IndexRange(3)) {
       const math::Axis axis = math::Axis::from_int(axis_i);
       wmGizmo *gizmo = translation_gizmos_[axis_i];
-
-      const bool is_interacting = gizmo_is_interacting(*gizmo);
-
-      if (!is_interacting) {
-        const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params);
-        copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
-
-        edit_data_.current_translation[axis_i] = 0.0f;
-
-        wmGizmoPropertyFnParams params{};
-        params.user_data = this;
-        params.value_set_fn = [](const wmGizmo *gz,
-                                 wmGizmoProperty *gz_prop,
-                                 const void *value_ptr) {
-          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
-          const int axis_i = Span(self.translation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
-          const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-          self.edit_data_.current_translation[axis_i] = new_gizmo_value;
-          float3 translation{};
-          translation[axis_i] = new_gizmo_value;
-          self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
-            float4x4 value = value_variant.get<float4x4>();
-            const float3x3 orientation = float3x3(value);
-            float3 offset{};
-            if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
-              offset = math::transform_direction(math::invert(self.parent_transform_),
-                                                 translation);
-            }
-            else {
-              const float factor = safe_divide(
-                  1.0f, math::length((self.parent_transform_.view<3, 3>() * orientation)[axis_i]));
-              offset = math::transform_direction(orientation, translation) * factor;
-            }
-            value.location() += offset;
-            value_variant.set(value);
-          });
-        };
-        params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
-          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
-          const int axis_i = Span(self.translation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
-          *static_cast<float *>(value_ptr) = self.edit_data_.current_translation[axis_i];
-        };
-        WM_gizmo_target_property_def_func(gizmo, "offset", &params);
+      if (gizmo_is_interacting(*gizmo)) {
+        continue;
       }
+
+      const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
+          axis, base_transform_from_socket, params);
+      copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
+
+      edit_data_.current_translation[axis_i] = 0.0f;
+
+      wmGizmoPropertyFnParams params{};
+      params.user_data = this;
+      params.value_set_fn = [](const wmGizmo *gz,
+                               wmGizmoProperty *gz_prop,
+                               const void *value_ptr) {
+        TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+        const int axis_i = Span(self.translation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+        const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+        self.edit_data_.current_translation[axis_i] = new_gizmo_value;
+        float3 translation{};
+        translation[axis_i] = new_gizmo_value;
+        self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+          float4x4 value = value_variant.get<float4x4>();
+          const float3x3 orientation = float3x3(value);
+          float3 offset{};
+          if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
+            offset = math::transform_direction(math::invert(self.parent_transform_), translation);
+          }
+          else {
+            const float factor = safe_divide(
+                1.0f, math::length((self.parent_transform_.view<3, 3>() * orientation)[axis_i]));
+            offset = math::transform_direction(orientation, translation) * factor;
+          }
+          value.location() += offset;
+          value_variant.set(value);
+        });
+      };
+      params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
+        TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+        const int axis_i = Span(self.translation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+        *static_cast<float *>(value_ptr) = self.edit_data_.current_translation[axis_i];
+      };
+      WM_gizmo_target_property_def_func(gizmo, "offset", &params);
     }
   }
 
-  void update_rotation_gizmos(GizmosUpdateParams &params,
-                              const float4x4 &base_transform_from_socket)
+  void update_rotate_transform_and_target_property(GizmosUpdateParams &params,
+                                                   const float4x4 &base_transform_from_socket)
   {
     for (const int axis_i : IndexRange(3)) {
       const math::Axis axis = math::Axis::from_int(axis_i);
       wmGizmo *gizmo = rotation_gizmos_[axis_i];
-
-      const bool is_interacting = gizmo_is_interacting(*gizmo);
-
-      if (!is_interacting) {
-        const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params);
-        copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
-
-        edit_data_.current_rotation[axis_i] = 0.0f;
-
-        wmGizmoPropertyFnParams params{};
-        params.user_data = this;
-        params.value_set_fn = [](const wmGizmo *gz,
-                                 wmGizmoProperty *gz_prop,
-                                 const void *value_ptr) {
-          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
-          const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
-          const math::Axis axis = math::Axis::from_int(axis_i);
-          const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-          self.edit_data_.current_rotation[axis_i] = new_gizmo_value;
-          self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
-            float4x4 value = value_variant.get<float4x4>();
-            float3x3 rotation_matrix;
-            if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
-              const float3 local_rotation_axis = math::normalize(math::transform_direction(
-                  math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
-              rotation_matrix = math::from_rotation<float3x3>(
-                  math::AxisAngle(local_rotation_axis, -new_gizmo_value));
-            }
-            else {
-              const float3 local_rotation_axis = math::normalize(float3(value[axis_i]));
-              rotation_matrix = math::from_rotation<float3x3>(
-                  math::AxisAngle(local_rotation_axis, -new_gizmo_value));
-            }
-            value.view<3, 3>() = rotation_matrix * value.view<3, 3>();
-            value_variant.set(value);
-          });
-        };
-        params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
-          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
-          const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
-          *static_cast<float *>(value_ptr) = self.edit_data_.current_rotation[axis_i];
-        };
-        WM_gizmo_target_property_def_func(gizmo, "offset", &params);
+      if (gizmo_is_interacting(*gizmo)) {
+        continue;
       }
+
+      const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
+          axis, base_transform_from_socket, params);
+      copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
+
+      edit_data_.current_rotation[axis_i] = 0.0f;
+
+      wmGizmoPropertyFnParams params{};
+      params.user_data = this;
+      params.value_set_fn = [](const wmGizmo *gz,
+                               wmGizmoProperty *gz_prop,
+                               const void *value_ptr) {
+        TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+        const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+        const math::Axis axis = math::Axis::from_int(axis_i);
+        const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+        self.edit_data_.current_rotation[axis_i] = new_gizmo_value;
+        self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+          float4x4 value = value_variant.get<float4x4>();
+          float3x3 rotation_matrix;
+          if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
+            const float3 local_rotation_axis = math::normalize(math::transform_direction(
+                math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
+            rotation_matrix = math::from_rotation<float3x3>(
+                math::AxisAngle(local_rotation_axis, -new_gizmo_value));
+          }
+          else {
+            const float3 local_rotation_axis = math::normalize(float3(value[axis_i]));
+            rotation_matrix = math::from_rotation<float3x3>(
+                math::AxisAngle(local_rotation_axis, -new_gizmo_value));
+          }
+          value.view<3, 3>() = rotation_matrix * value.view<3, 3>();
+          value_variant.set(value);
+        });
+      };
+      params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
+        TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+        const int axis_i = Span(self.rotation_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+        *static_cast<float *>(value_ptr) = self.edit_data_.current_rotation[axis_i];
+      };
+      WM_gizmo_target_property_def_func(gizmo, "offset", &params);
     }
   }
 
-  void update_scale_gizmos(GizmosUpdateParams &params, const float4x4 &base_transform_from_socket)
+  void update_scale_transform_and_target_property(GizmosUpdateParams &params,
+                                                  const float4x4 &base_transform_from_socket)
   {
     for (const int axis_i : IndexRange(3)) {
       const math::Axis axis = math::Axis::from_int(axis_i);
       wmGizmo *gizmo = scale_gizmos_[axis_i];
-
-      const bool is_interacting = gizmo_is_interacting(*gizmo);
-
-      if (!is_interacting) {
-        const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
-            axis, base_transform_from_socket, params);
-        copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
-
-        edit_data_.current_scale[axis_i] = 0.0f;
-
-        wmGizmoPropertyFnParams params{};
-        params.user_data = this;
-        params.value_set_fn = [](const wmGizmo *gz,
-                                 wmGizmoProperty *gz_prop,
-                                 const void *value_ptr) {
-          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
-          const int axis_i = Span(self.scale_gizmos_).first_index(const_cast<wmGizmo *>(gz));
-          const math::Axis axis = math::Axis::from_int(axis_i);
-          const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-          self.edit_data_.current_scale[axis_i] = new_gizmo_value;
-          float3 scale{1.0f, 1.0f, 1.0f};
-          scale[axis_i] += new_gizmo_value;
-          self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
-            float4x4 value = value_variant.get<float4x4>();
-            float3 local_scale_axis;
-            if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
-              local_scale_axis = math::normalize(math::transform_direction(
-                  math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
-            }
-            else {
-              local_scale_axis = math::normalize(float3(value[axis_i]));
-            }
-            const float3x3 rotation_matrix = math::from_rotation<float3x3>(
-                math::AxisAngle(local_scale_axis, math::to_vector<float3>(axis)));
-            const float3x3 scale_matrix = math::invert(rotation_matrix) *
-                                          math::from_scale<float3x3>(scale) * rotation_matrix;
-            value.view<3, 3>() = scale_matrix * value.view<3, 3>();
-            value_variant.set(value);
-          });
-        };
-        params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
-          TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
-          const int axis_i = Span(self.scale_gizmos_).first_index(const_cast<wmGizmo *>(gz));
-          *static_cast<float *>(value_ptr) = self.edit_data_.current_scale[axis_i];
-        };
-        WM_gizmo_target_property_def_func(gizmo, "offset", &params);
+      if (gizmo_is_interacting(*gizmo)) {
+        continue;
       }
+
+      const float4x4 gizmo_transform = get_axis_gizmo_matrix_basis(
+          axis, base_transform_from_socket, params);
+      copy_m4_m4(gizmo->matrix_basis, gizmo_transform.ptr());
+
+      edit_data_.current_scale[axis_i] = 0.0f;
+
+      wmGizmoPropertyFnParams params{};
+      params.user_data = this;
+      params.value_set_fn = [](const wmGizmo *gz,
+                               wmGizmoProperty *gz_prop,
+                               const void *value_ptr) {
+        TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+        const int axis_i = Span(self.scale_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+        const math::Axis axis = math::Axis::from_int(axis_i);
+        const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+        self.edit_data_.current_scale[axis_i] = new_gizmo_value;
+        float3 scale{1.0f, 1.0f, 1.0f};
+        scale[axis_i] += new_gizmo_value;
+        self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+          float4x4 value = value_variant.get<float4x4>();
+          float3 local_scale_axis;
+          if (self.transform_orientation_ == V3D_ORIENT_GLOBAL) {
+            local_scale_axis = math::normalize(math::transform_direction(
+                math::invert(float3x3(self.parent_transform_)), math::to_vector<float3>(axis)));
+          }
+          else {
+            local_scale_axis = math::normalize(float3(value[axis_i]));
+          }
+          const float3x3 rotation_matrix = math::from_rotation<float3x3>(
+              math::AxisAngle(local_scale_axis, math::to_vector<float3>(axis)));
+          const float3x3 scale_matrix = math::invert(rotation_matrix) *
+                                        math::from_scale<float3x3>(scale) * rotation_matrix;
+          value.view<3, 3>() = scale_matrix * value.view<3, 3>();
+          value_variant.set(value);
+        });
+      };
+      params.value_get_fn = [](const wmGizmo *gz, wmGizmoProperty *gz_prop, void *value_ptr) {
+        TransformGizmos &self = *static_cast<TransformGizmos *>(gz_prop->custom_func.user_data);
+        const int axis_i = Span(self.scale_gizmos_).first_index(const_cast<wmGizmo *>(gz));
+        *static_cast<float *>(value_ptr) = self.edit_data_.current_scale[axis_i];
+      };
+      WM_gizmo_target_property_def_func(gizmo, "offset", &params);
     }
   }
 

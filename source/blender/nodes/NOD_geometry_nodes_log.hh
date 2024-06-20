@@ -37,6 +37,7 @@
 #include "BLI_multi_value_map.hh"
 
 #include "BKE_geometry_set.hh"
+#include "BKE_node.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_viewer_path.hh"
 #include "BKE_volume_grid.hh"
@@ -318,6 +319,15 @@ class GeoTreeLog {
       T value;
       if (this->try_convert_primitive_socket_value(*value_log, CPPType::get<T>(), &value)) {
         return value;
+      }
+    }
+    if (query_socket.is_logically_linked()) {
+      if (query_socket.typeinfo->get_base_cpp_value) {
+        if (query_socket.typeinfo->base_cpp_type->is<T>()) {
+          T value;
+          query_socket.typeinfo->get_base_cpp_value(query_socket.default_value, &value);
+          return value;
+        }
       }
     }
     return std::nullopt;
