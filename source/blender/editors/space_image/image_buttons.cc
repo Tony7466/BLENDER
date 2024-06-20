@@ -886,6 +886,7 @@ void uiTemplateImage(uiLayout *layout,
 
     uiItemR(col, userptr, "use_cyclic", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, userptr, "use_auto_refresh", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, userptr, "play_back", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     if (ima->source == IMA_SRC_MOVIE && compact == 0) {
       uiItemR(col, &imaptr, "use_deinterlace", UI_ITEM_NONE, IFACE_("Deinterlace"), ICON_NONE);

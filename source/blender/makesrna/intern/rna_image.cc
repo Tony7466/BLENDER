@@ -813,6 +813,11 @@ static void rna_def_imageuser(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_ImageUser_relations_update");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
+  prop = RNA_def_property(srna, "play_back", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", IMA_ANIM_STOP);
+  RNA_def_property_ui_text(prop, "Play Back", "Use the scene time to play back the movie");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ImageUser_update");
+
   prop = RNA_def_property(srna, "frame_current", PROP_INT, PROP_TIME);
   RNA_def_property_int_sdna(prop, nullptr, "framenr");
   RNA_def_property_range(prop, MINAFRAME, MAXFRAME);

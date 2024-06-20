@@ -5101,7 +5101,13 @@ int BKE_image_user_frame_get(const ImageUser *iuser, int cfra, bool *r_is_in_ran
   }
 
   /* transform to images space */
-  framenr = cfra;
+  if (iuser->flag & IMA_ANIM_STOP) {
+    framenr = iuser->sfra;
+  }
+  else {
+    framenr = cfra;
+  }
+
   if (framenr > iuser->frames) {
     framenr = iuser->frames;
   }
@@ -5166,7 +5172,6 @@ static void image_editors_update_frame(Image *ima,
   if (ima && BKE_image_is_animated(ima)) {
     if ((iuser->flag & IMA_ANIM_ALWAYS) || (iuser->flag & IMA_NEED_FRAME_RECALC)) {
       int cfra = *(int *)customdata;
-
       BKE_image_user_frame_calc(ima, iuser, cfra);
     }
   }
@@ -5211,9 +5216,8 @@ static void image_user_id_eval_animation(Image *ima,
     if ((iuser->flag & IMA_ANIM_ALWAYS) || (iuser->flag & IMA_NEED_FRAME_RECALC) ||
         (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER))
     {
-      float cfra = DEG_get_ctime(depsgraph);
-
-      BKE_image_user_frame_calc(ima, iuser, cfra);
+      float eval_frame = DEG_get_ctime(depsgraph);
+      BKE_image_user_frame_calc(ima, iuser, eval_frame);
     }
   }
 }

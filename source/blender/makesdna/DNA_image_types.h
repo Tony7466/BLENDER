@@ -109,7 +109,8 @@ enum {
   // IMA_UNUSED_2 = 1 << 2,
   IMA_NEED_FRAME_RECALC = 1 << 3,
   IMA_SHOW_STEREO = 1 << 4,
-  // IMA_UNUSED_5 = 1 << 5,
+  /* If enabled the movie will not play, allowing the user to take full control. */
+  IMA_ANIM_STOP = 1 << 5,
 };
 
 /* Used to get the correct gpu texture from an Image datablock. */

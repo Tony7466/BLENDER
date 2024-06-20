@@ -6316,6 +6316,11 @@ static void def_node_image_user(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Auto-Refresh", "Always refresh image on frame changes");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
+  prop = RNA_def_property(srna, "play_back", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", IMA_ANIM_STOP);
+  RNA_def_property_ui_text(prop, "Play Back", "Use the scene time to play back the movie");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
   prop = RNA_def_property(srna, "layer", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "layer");
   RNA_def_property_enum_items(prop, prop_image_layer_items);
