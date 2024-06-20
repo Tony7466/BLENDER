@@ -906,7 +906,7 @@ static void special_aftertrans_update__object(bContext *C, TransInfo *t)
       const TransData *td = &tc->data[i];
       objects.append(td->ob);
     }
-    blender::animrig::deselect_action_keys(objects);
+    blender::animrig::deselect_keys_assigned_actions(objects);
   }
 
   for (int i = 0; i < tc->data_len; i++) {

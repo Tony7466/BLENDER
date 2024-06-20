@@ -1098,7 +1098,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   return combined_result;
 }
 
-void deselect_action_keys(Span<Object *> objects)
+void deselect_keys_assigned_actions(Span<Object *> objects)
 {
   Vector<bAction *> actions;
   for (Object *ob : objects) {

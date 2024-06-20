@@ -343,7 +343,7 @@ static int object_clear_transform_generic_exec(bContext *C,
   ks = ANIM_get_keyingset_for_autokeying(scene, default_ksName);
 
   if (blender::animrig::is_autokey_on(scene)) {
-    blender::animrig::deselect_action_keys(objects);
+    blender::animrig::deselect_keys_assigned_actions(objects);
   }
 
   for (Object *ob : objects) {

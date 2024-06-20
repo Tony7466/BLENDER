@@ -217,7 +217,7 @@ static int snap_sel_to_grid_exec(bContext *C, wmOperator *op)
     }
 
     if (blender::animrig::is_autokey_on(scene)) {
-      blender::animrig::deselect_action_keys(objects_orig);
+      blender::animrig::deselect_keys_assigned_actions(objects_orig);
     }
 
     for (Object *ob_eval : objects_eval) {
@@ -509,7 +509,7 @@ static bool snap_selected_to_location(bContext *C,
     }
 
     if (blender::animrig::is_autokey_on(scene)) {
-      blender::animrig::deselect_action_keys(objects);
+      blender::animrig::deselect_keys_assigned_actions(objects);
     }
 
     for (Object *ob : objects) {

@@ -1630,7 +1630,7 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
           objects.append(td->ob);
         }
       }
-      blender::animrig::deselect_action_keys(objects);
+      blender::animrig::deselect_keys_assigned_actions(objects);
     }
 
     GSet *motionpath_updates = BLI_gset_ptr_new("motionpath updates");

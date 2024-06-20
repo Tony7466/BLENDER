@@ -1198,18 +1198,15 @@ static void clear_selection_layered_action(Action &action)
 {
   BLI_assert(action.is_action_layered());
   for (Layer *layer : action.layers()) {
-    if (!layer) {
-      continue;
-    }
+    BLI_assert(layer != nullptr);
     for (Strip *strip : layer->strips()) {
-      if (!strip || !strip->is<KeyframeStrip>()) {
+      BLI_assert(strip != nullptr);
+      if (!strip->is<KeyframeStrip>()) {
         continue;
       }
       KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
       for (ChannelBag *ch_bag : key_strip.channelbags()) {
-        if (!ch_bag) {
-          continue;
-        }
+        BLI_assert(ch_bag != nullptr);
         for (FCurve *fcu : ch_bag->fcurves()) {
           BKE_fcurve_deselect_all_keys(fcu);
         }
