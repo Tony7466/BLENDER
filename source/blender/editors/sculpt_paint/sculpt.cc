@@ -6859,6 +6859,16 @@ void write_translations(const Sculpt &sd,
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
+void write_translations_from_orig_positions(const Sculpt &sd,
+                                            Object &object,
+                                            const Span<float3> node_orig_positions,
+                                            const Span<float3> positions_eval,
+                                            const Span<int> verts,
+                                            const MutableSpan<float3> translations,
+                                            const MutableSpan<float3> positions_orig)
+{
+}
+
 void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
 {
   for (const int i : translations.index_range()) {
@@ -6880,6 +6890,16 @@ void scale_factors(const MutableSpan<float> factors, const float strength)
   }
   for (float &factor : factors) {
     factor *= strength;
+  }
+}
+void translations_from_offset_and_factors(const float3 &offset,
+                                          Span<float> factors,
+                                          MutableSpan<float3> r_translations)
+{
+  BLI_assert(r_translations.size() == factors.size());
+
+  for (const int i : factors.index_range()) {
+    r_translations[i] = offset * factors[i];
   }
 }
 

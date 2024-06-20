@@ -47,6 +47,9 @@ struct Cache;
 void scale_translations(MutableSpan<float3> translations, Span<float> factors);
 void scale_translations(MutableSpan<float3> translations, float factor);
 void scale_factors(MutableSpan<float> factors, float strength);
+void translations_from_offset_and_factors(const float3 &offset,
+                                          Span<float> factors,
+                                          MutableSpan<float3> r_translations);
 
 /**
  * Note on the various positions arrays:

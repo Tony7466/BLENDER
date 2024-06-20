@@ -73,9 +73,7 @@ static void calc_faces(const Sculpt &sd,
 
   tls.translations.reinitialize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  for (const int i : verts.index_range()) {
-    translations[i] = offset * factors[i];
-  }
+  translations_from_offset_and_factors(offset, factors, translations);
 
   write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
