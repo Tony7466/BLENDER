@@ -6859,16 +6859,6 @@ void write_translations(const Sculpt &sd,
   apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 }
 
-void write_translations_from_orig_positions(const Sculpt &sd,
-                                            Object &object,
-                                            const Span<float3> node_orig_positions,
-                                            const Span<float3> positions_eval,
-                                            const Span<int> verts,
-                                            const MutableSpan<float3> translations,
-                                            const MutableSpan<float3> positions_orig)
-{
-}
-
 void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
 {
   for (const int i : translations.index_range()) {

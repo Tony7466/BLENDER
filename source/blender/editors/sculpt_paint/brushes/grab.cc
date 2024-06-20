@@ -92,11 +92,20 @@ static void calc_faces(const Sculpt &sd,
   const MutableSpan<float3> translations = tls.translations;
   translations_from_offset_and_factors(offset, factors, translations);
 
-  for (const int i : verts.index_range()) {
-    translations[i] += orig_data.positions[i] - positions_eval[verts[i]];
+  // for (const int i : verts.index_range()) {
+  //   translations[i] += orig_data.positions[i] - positions_eval[verts[i]];
+  // }
+
+  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
+
+  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
+
+  if (!ss.deform_imats.is_empty()) {
+    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
   }
 
-  write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+  apply_translations(translations, verts, positions_orig);
+  apply_translations_to_shape_keys(object, verts, translations, positions_orig);
 
   // for (const int i : verts.index_range()) {
   //   positions_orig[verts[i]] = orig_data.positions[i] + translations[i];
