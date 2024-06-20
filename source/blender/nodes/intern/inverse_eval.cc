@@ -210,7 +210,6 @@ static void traverse_upstream(
       forward_input({context, &node.input_socket(0)});
     }
     else if (node.is_group()) {
-      const bke::GroupNodeComputeContext group_context{context, node, node.owner_tree()};
       sockets_vec.clear();
       get_inputs_to_propagate(ctx_node, sockets_vec);
       for (const bNodeSocket *socket : sockets_vec) {
