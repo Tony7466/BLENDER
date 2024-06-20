@@ -296,7 +296,26 @@ struct loopData {
     int connec1 = -1;
     int connec2 = -1;
 };
-void getBMLoopPointers(const Scene *scene, BMesh* bm, std::unordered_map<int, loopData>* loopMapPtr);
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator () (const std::pair<T1,T2> &p) const {
+        auto h1 = std::hash<T1>{}(p.first);
+        auto h2 = std::hash<T2>{}(p.second); 
+
+        // Mainly for demonstration purposes, i.e. works but is overly simple
+        // In the real world, use sth. like boost.hash_combine
+        return h1 ^ h2;  
+    }
+};
+
+struct pair_equal {
+    template <class T1, class T2>
+    bool operator () (const std::pair<T1,T2> &lhs, const std::pair<T1,T2> &rhs) const {
+        return lhs.first == rhs.first && lhs.second == rhs.second;
+    }
+};
+void getBMLoopPointers(Scene* scene, BMesh* bm, std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
+void constructselectedlinesegment(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
 
 /**
  * Calculate islands and add them to \a island_list returning the number of items added.

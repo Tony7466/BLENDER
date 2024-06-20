@@ -2795,10 +2795,10 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
   bool changed = false;
 
 
-  std::unordered_map<int, loopData> loopMap;
+ // Fix: Change the type of loopMap parameter
   //get head of contiguous loop selections
+  std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> loopMap;
   getBMLoopPointers(scene, bm, &loopMap);
-
   return changed;
 }
 
