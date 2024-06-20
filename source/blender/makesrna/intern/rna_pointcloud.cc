@@ -207,7 +207,7 @@ static void rna_def_pointcloud(BlenderRNA *brna)
                                     nullptr,
                                     "rna_IDMaterials_assign_int");
 
-  rna_def_attributes_common(srna);
+  rna_def_attributes_common(srna, false);
 
   /* common */
   rna_def_animdata_common(srna);

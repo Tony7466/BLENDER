@@ -618,7 +618,7 @@ static void rna_def_curves(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Curves_update_draw");
 
   /* attributes */
-  rna_def_attributes_common(srna);
+  rna_def_attributes_common(srna, false);
 
   /* common */
   rna_def_animdata_common(srna);

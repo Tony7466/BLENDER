@@ -217,7 +217,7 @@ void RNA_def_xr(BlenderRNA *brna);
 
 /* Common Define functions */
 
-void rna_def_attributes_common(StructRNA *srna);
+void rna_def_attributes_common(StructRNA *srna, bool define_color_attributes);
 
 void rna_AttributeGroup_iterator_begin(CollectionPropertyIterator *iter, PointerRNA *ptr);
 void rna_AttributeGroup_iterator_next(CollectionPropertyIterator *iter);

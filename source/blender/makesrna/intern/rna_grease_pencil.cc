@@ -1195,7 +1195,7 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_OUTLINER_DATA_GREASEPENCIL);
 
   /* attributes */
-  rna_def_attributes_common(srna);
+  rna_def_attributes_common(srna, false);
 
   /* Animation Data */
   rna_def_animdata_common(srna);

@@ -1363,7 +1363,7 @@ static void rna_def_attribute_group(BlenderRNA *brna)
                            "The name of the active color attribute for display and editing");
 }
 
-void rna_def_attributes_common(StructRNA *srna)
+void rna_def_attributes_common(StructRNA *srna, const bool define_color_attributes)
 {
   PropertyRNA *prop;
 
@@ -1382,19 +1382,22 @@ void rna_def_attributes_common(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Attributes", "Geometry attributes");
   RNA_def_property_srna(prop, "AttributeGroup");
 
-  prop = RNA_def_property(srna, "color_attributes", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_funcs(prop,
-                                    "rna_AttributeGroup_color_iterator_begin",
-                                    "rna_AttributeGroup_color_iterator_next",
-                                    "rna_iterator_array_end",
-                                    "rna_AttributeGroup_color_iterator_get",
-                                    "rna_AttributeGroup_color_length",
-                                    nullptr,
-                                    nullptr,
-                                    nullptr);
-  RNA_def_property_struct_type(prop, "Attribute");
-  RNA_def_property_ui_text(prop, "Color Attributes", "Geometry color attributes");
-  RNA_def_property_srna(prop, "AttributeGroup");
+  if (define_color_attributes) {
+    /* Color attributes */
+    prop = RNA_def_property(srna, "color_attributes", PROP_COLLECTION, PROP_NONE);
+    RNA_def_property_collection_funcs(prop,
+                                      "rna_AttributeGroup_color_iterator_begin",
+                                      "rna_AttributeGroup_color_iterator_next",
+                                      "rna_iterator_array_end",
+                                      "rna_AttributeGroup_color_iterator_get",
+                                      "rna_AttributeGroup_color_length",
+                                      nullptr,
+                                      nullptr,
+                                      nullptr);
+    RNA_def_property_struct_type(prop, "Attribute");
+    RNA_def_property_ui_text(prop, "Color Attributes", "Geometry color attributes");
+    RNA_def_property_srna(prop, "AttributeGroup");
+  }
 }
 
 void RNA_def_attribute(BlenderRNA *brna)
