@@ -150,6 +150,13 @@ class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
         layout.template_curve_mapping(view, "curve_mapping", type='COLOR', levels=True)
 
 
+class RENDER_PT_color_management_white_balance_presets(PresetPanel, Panel):
+    bl_label = "White Balance Presets"
+    preset_subdir = "color_management/white_balance"
+    preset_operator = "script.execute_preset"
+    preset_add_operator = "render.color_management_white_balance_preset_add"
+
+
 class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
     bl_label = "White Balance"
     bl_parent_id = "RENDER_PT_color_management"
@@ -166,6 +173,9 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
         view = scene.view_settings
 
         self.layout.prop(view, "use_white_balance", text="")
+
+    def draw_header_preset(self, _context):
+        RENDER_PT_color_management_white_balance_presets.draw_panel_header(self.layout)
 
     def draw(self, context):
         layout = self.layout
@@ -1419,6 +1429,7 @@ classes = (
     RENDER_PT_color_management,
     RENDER_PT_color_management_display_settings,
     RENDER_PT_color_management_curves,
+    RENDER_PT_color_management_white_balance_presets,
     RENDER_PT_color_management_white_balance,
 )
 
