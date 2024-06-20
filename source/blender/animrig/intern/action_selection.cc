@@ -43,25 +43,25 @@ static void clear_selection_layered_action(Action &action)
   }
 }
 
-void Action::deselect_keys()
+void action_deselect_keys(Action &action)
 {
-  if (this->is_action_layered()) {
-    clear_selection_layered_action(*this);
+  if (action.is_action_layered()) {
+    clear_selection_layered_action(action);
   }
   else {
-    BLI_assert(this->is_action_legacy());
-    clear_selection_legacy_action(*this);
+    BLI_assert(action.is_action_legacy());
+    clear_selection_legacy_action(action);
   }
 }
 
-void deselect_action_keys(blender::Span<bAction *> actions)
+void deselect_keys_actions(Span<bAction *> actions)
 {
   Set<bAction *> visited_actions;
   for (bAction *action : actions) {
     if (visited_actions.contains(action)) {
       continue;
     }
-    action->wrap().deselect_keys();
+    action_deselect_keys(action->wrap());
     visited_actions.add(action);
   }
 }
@@ -77,7 +77,7 @@ void deselect_keys_assigned_actions(Span<Object *> objects)
     actions.append(adt->action);
   }
 
-  deselect_action_keys(actions);
+  deselect_keys_actions(actions);
 }
 
 }  // namespace blender::animrig

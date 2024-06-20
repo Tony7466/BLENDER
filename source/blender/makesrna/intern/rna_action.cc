@@ -762,8 +762,7 @@ static void rna_Action_end_frame_set(PointerRNA *ptr, float value)
 
 static void rna_Action_deselect_keys(bAction *act)
 {
-  animrig::Action &action = act->wrap();
-  action.deselect_keys();
+  animrig::action_deselect_keys(act->wrap());
   WM_main_add_notifier(NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 

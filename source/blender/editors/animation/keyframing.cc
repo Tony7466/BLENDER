@@ -374,7 +374,7 @@ static void deselect_keys_of_selection(bContext *C)
     }
     actions.append(adt->action);
   }
-  blender::animrig::deselect_action_keys(actions);
+  blender::animrig::deselect_keys_actions(actions);
 }
 
 static int insert_key(bContext *C, wmOperator *op)

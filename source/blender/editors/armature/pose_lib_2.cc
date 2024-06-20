@@ -157,8 +157,7 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, PoseBlendData *pbd)
   }
 
   if (adt->action) {
-    blender::animrig::Action &action = adt->action->wrap();
-    action.deselect_keys();
+    blender::animrig::action_deselect_keys(adt->action->wrap());
   }
 
   /* Perform actual auto-keying. */

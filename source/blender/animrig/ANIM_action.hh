@@ -232,11 +232,6 @@ class Action : public ::bAction {
    */
   Layer *get_layer_for_keyframing();
 
-  /**
-   * Deselect all keys within the action.
-   */
-  void deselect_keys();
-
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
   int64_t find_layer_index(const Layer &layer) const;
@@ -665,12 +660,17 @@ FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index)
 /**
  * Deselect the keys of all actions in the Span. Duplicate entries are only visited once.
  */
-void deselect_action_keys(blender::Span<bAction *> actions);
+void deselect_keys_actions(blender::Span<bAction *> actions);
 
 /**
  * Deselect all keys of the actions referenced by these objects.
  */
 void deselect_keys_assigned_actions(Span<Object *> objects);
+
+/**
+ * Deselect all keys within the action.
+ */
+void action_deselect_keys(Action &action);
 
 }  // namespace blender::animrig
 

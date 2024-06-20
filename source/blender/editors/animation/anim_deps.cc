@@ -476,5 +476,5 @@ void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
     }
     actions.append(ale->adt->action);
   }
-  animrig::deselect_action_keys(actions);
+  animrig::deselect_keys_actions(actions);
 }
