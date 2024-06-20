@@ -28,14 +28,14 @@ struct Text;
 struct UndoRefID {
   struct ID *ptr;
   char name[MAX_ID_NAME];
-  char library_filepath[FILE_MAX];
+  char library_filepath_abs[FILE_MAX];
 };
 /* UndoRefID_Mesh & friends. */
 #define UNDO_REF_ID_TYPE(ptr_ty) \
   struct UndoRefID_##ptr_ty { \
     struct ptr_ty *ptr; \
     char name[MAX_ID_NAME]; \
-    char library_filepath[FILE_MAX]; \
+    char library_filepath_abs[FILE_MAX]; \
   }
 UNDO_REF_ID_TYPE(GreasePencil);
 UNDO_REF_ID_TYPE(Mesh);

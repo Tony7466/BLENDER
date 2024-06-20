@@ -136,10 +136,10 @@ static void undosys_id_ref_store(void * /*user_data*/, UndoRefID *id_ref)
   if (id_ref->ptr) {
     STRNCPY(id_ref->name, id_ref->ptr->name);
     if (id_ref->ptr->lib) {
-      STRNCPY(id_ref->library_filepath, id_ref->ptr->lib->runtime.filepath_abs);
+      STRNCPY(id_ref->library_filepath_abs, id_ref->ptr->lib->runtime.filepath_abs);
     }
     else {
-      id_ref->library_filepath[0] = '\0';
+      id_ref->library_filepath_abs[0] = '\0';
     }
     /* Not needed, just prevents stale data access. */
     id_ref->ptr = nullptr;
@@ -155,7 +155,7 @@ static void undosys_id_ref_resolve(void *user_data, UndoRefID *id_ref)
       bmain,
       GS(id_ref->name),
       id_ref->name + 2,
-      (id_ref->library_filepath[0] ? id_ref->library_filepath : nullptr));
+      (id_ref->library_filepath_abs[0] ? id_ref->library_filepath_abs : nullptr));
 }
 
 static bool undosys_step_encode(bContext *C, Main *bmain, UndoStack *ustack, UndoStep *us)
