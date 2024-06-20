@@ -5209,10 +5209,9 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
   flag = blender::animrig::get_keyframing_flags(scene);
 
   /* try to resolve the path stored in the F-Curve */
-  BLI_assert(rna_path.has_value());
-  if (RNA_path_resolve_property(&id_ptr, rna_path->c_str(), &ptr, &prop)) {
+  if (RNA_path_resolve_property(&id_ptr, rna_path ? rna_path->c_str() : nullptr, &ptr, &prop)) {
+    BLI_assert(rna_path.has_value()); /* If the path resolved then this should be true. */
     /* find or create new F-Curve */
-    /* XXX is the group name for this ok? */
     bAction *act = blender::animrig::id_action_ensure(bmain, (ID *)key);
     FCurve *fcu = blender::animrig::action_fcurve_ensure(
         bmain, act, nullptr, &ptr, {rna_path->c_str(), 0});
