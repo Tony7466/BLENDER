@@ -652,6 +652,24 @@ const Brush *BKE_paint_brush_for_read(const Paint *paint)
   return paint ? paint->brush : nullptr;
 }
 
+static std::optional<AssetWeakReference> asset_weak_reference_from_brush(const Brush &brush)
+{
+  /* Brush is local to the file. */
+  if (!brush.id.lib) {
+    AssetWeakReference weak_ref;
+
+    weak_ref.asset_library_type = eAssetLibraryType::ASSET_LIBRARY_LOCAL;
+
+    const char *id_code_name = BKE_idtype_idcode_to_name(GS(brush.id.name));
+    /* Build relative identifier: "Brush/<brush-name>". */
+    weak_ref.relative_asset_identifier = BLI_sprintfN("%s/%s", id_code_name, brush.id.name + 2);
+
+    return weak_ref;
+  }
+
+  return blender::bke::asset_edit_weak_reference_from_id(brush.id);
+}
+
 bool BKE_paint_brush_set(Paint *paint, Brush *brush)
 {
   if (paint == nullptr || paint->brush == brush) {
@@ -667,8 +685,7 @@ bool BKE_paint_brush_set(Paint *paint, Brush *brush)
   paint->brush_asset_reference = nullptr;
 
   if (brush != nullptr) {
-    std::optional<AssetWeakReference> weak_ref = blender::bke::asset_edit_weak_reference_from_id(
-        brush->id);
+    std::optional<AssetWeakReference> weak_ref = asset_weak_reference_from_brush(*brush);
     if (weak_ref.has_value()) {
       paint->brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *weak_ref);
     }
@@ -876,8 +893,7 @@ bool BKE_paint_eraser_brush_set(Paint *paint, Brush *brush)
   paint->eraser_brush_asset_reference = nullptr;
 
   if (brush != nullptr) {
-    std::optional<AssetWeakReference> weak_ref = blender::bke::asset_edit_weak_reference_from_id(
-        brush->id);
+    std::optional<AssetWeakReference> weak_ref = asset_weak_reference_from_brush(*brush);
     if (weak_ref.has_value()) {
       paint->eraser_brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *weak_ref);
     }
