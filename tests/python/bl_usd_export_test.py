@@ -310,9 +310,12 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual(prim.GetTypeName(), "Skeleton")
         prim_skel = UsdSkel.BindingAPI(prim)
         anim = UsdSkel.Animation(prim_skel.GetAnimationSource())
-        self.assertEqual(
-            anim.GetJointsAttr().Get(),
-            ['Bone', 'Bone/Bone_001', 'Bone/Bone_001/Bone_002', 'Bone/Bone_001/Bone_002/Bone_003', 'Bone/Bone_001/Bone_002/Bone_003/Bone_004'])
+        self.assertEqual(anim.GetJointsAttr().Get(),
+                         ['Bone',
+                          'Bone/Bone_001',
+                          'Bone/Bone_001/Bone_002',
+                          'Bone/Bone_001/Bone_002/Bone_003',
+                          'Bone/Bone_001/Bone_002/Bone_003/Bone_004'])
         loc_samples = anim.GetTranslationsAttr().GetTimeSamples()
         rot_samples = anim.GetRotationsAttr().GetTimeSamples()
         scale_samples = anim.GetScalesAttr().GetTimeSamples()
