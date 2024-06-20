@@ -18,6 +18,6 @@ typedef struct PackedFile {
    * shared with e.g. the undo system.
    */
   const void *data;
-  /** Sharing info corresponding to the data above. */
+  /** Sharing info corresponding to the data above. This is run-time data. */
   const ImplicitSharingInfoHandle *sharing_info;
 } PackedFile;
