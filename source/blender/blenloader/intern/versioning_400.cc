@@ -4177,6 +4177,43 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 60) ||
+      (bmain->versionfile == 403 && !MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)))
+  {
+    /* Limit Rotation constraints from old files should use the legacy Limit
+     * Rotation behavior. */
+    LISTBASE_FOREACH (Object *, obj, &bmain->objects) {
+      LISTBASE_FOREACH (bConstraint *, constraint, &obj->constraints) {
+        if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
+          continue;
+        }
+        static_cast<bRotLimitConstraint *>(constraint->data)->flag |= LIMIT_ROT_LEGACY_BEHAVIOR;
+      }
+
+      if (!obj->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pbone, &obj->pose->chanbase) {
+        LISTBASE_FOREACH (bConstraint *, constraint, &pbone->constraints) {
+          if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
+            continue;
+          }
+          static_cast<bRotLimitConstraint *>(constraint->data)->flag |= LIMIT_ROT_LEGACY_BEHAVIOR;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 61)) {
+    /* LIGHT_PROBE_RESOLUTION_64 has been removed in EEVEE-Next as the tedrahedral mapping is to
+     * low res to be usable. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->eevee.gi_cubemap_resolution < 128) {
+        scene->eevee.gi_cubemap_resolution = 128;
+      }
+    }
+  }
+
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       if (BrushGpencilSettings *settings = brush->gpencil_settings) {
