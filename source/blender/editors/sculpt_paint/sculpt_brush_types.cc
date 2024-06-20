@@ -421,7 +421,7 @@ void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes)
   ClaySampleData csd = threading::parallel_reduce(
       nodes.index_range(),
       1,
-      ClaySampleData{},
+      ClaySampleData{float2(FLT_MAX, FLT_MAX)},
       [&](const IndexRange range, ClaySampleData csd) {
         for (const int i : range) {
           calc_clay_surface_task_cb(ob, brush, area_no, area_co, nodes[i], &csd);
