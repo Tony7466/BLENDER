@@ -64,20 +64,35 @@ def url_append_defaults(url):
     return url_append_query_for_blender(url, blender_version=bpy.app.version)
 
 
-def rna_prop_repo_enum_local_only_itemf(_self, context):
+def rna_prop_repo_enum_valid_only_itemf(_self, context):
     if context is None:
         result = []
     else:
-        result = [
-            (
-                repo_item.module,
-                repo_item.name if repo_item.enabled else (repo_item.name + " (disabled)"),
-                "",
-            )
-            for repo_item in repo_iter_valid_local_only(context, exclude_system=True)
-        ]
+        # Split local/remote (local is always first) because
+        # installing into a remote - while supported is more of a corner case.
+        result = []
+        repos_valid = list(repo_iter_valid_only(context, exclude_remote=False, exclude_system=True))
+        # The UI-list sorts alphabetically, to the same here.
+        repos_valid.sort(key=lambda repo_item: repo_item.name)
+        has_local = False
+        has_remote = False
+        for repo_item in repos_valid:
+            if repo_item.use_remote_url:
+                has_remote = True
+                continue
+            has_local = True
+            result.append((repo_item.module, repo_item.name, "", 'DISK_DRIVE', len(result)))
+        if has_remote:
+            if has_local:
+                result.append(None)
+
+            for repo_item in repos_valid:
+                if not repo_item.use_remote_url:
+                    continue
+                result.append((repo_item.module, repo_item.name, "", 'INTERNET', len(result)))
+
     # Prevent the strings from being freed.
-    rna_prop_repo_enum_local_only_itemf.result = result
+    rna_prop_repo_enum_valid_only_itemf.result = result
     return result
 
 
@@ -179,11 +194,12 @@ def extension_url_find_repo_index_and_pkg_id(url):
     repo_cache_store = repo_cache_store_ensure()
 
     for repo_index, (
-            pkg_manifest_remote,
             pkg_manifest_local,
+            pkg_manifest_remote,
     ) in enumerate(zip(
-        repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
         repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print),
+        repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
+        strict=True,
     )):
         # It's possible the remote repo could not be connected to when syncing.
         # Allow it to be None without raising an exception.
@@ -270,20 +286,21 @@ def extension_theme_enable(repo_directory, pkg_idname):
     extension_theme_enable_filepath(os.path.join(theme_dir, theme_files[0]))
 
 
-def repo_iter_valid_local_only(context, *, exclude_system):
+def repo_iter_valid_only(context, *, exclude_remote, exclude_system):
     from . import repo_paths_or_none
     extension_repos = context.preferences.extensions.repos
     for repo_item in extension_repos:
         if not repo_item.enabled:
             continue
+        if exclude_remote:
+            if repo_item.use_remote_url:
+                continue
         if exclude_system:
             if (not repo_item.use_remote_url) and (repo_item.source == 'SYSTEM'):
                 continue
         # Ignore repositories that have invalid settings.
         directory, remote_url = repo_paths_or_none(repo_item)
         if directory is None:
-            continue
-        if remote_url:
             continue
         yield repo_item
 
@@ -500,11 +517,12 @@ def _preferences_ensure_sync():
     repo_cache_store = repo_cache_store_ensure()
     sync_required = False
     for (
-            pkg_manifest_remote,
             pkg_manifest_local,
+            pkg_manifest_remote,
     ) in zip(
-        repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
         repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print),
+        repo_cache_store.pkg_manifest_from_remote_ensure(error_fn=print),
+        strict=True,
     ):
         if pkg_manifest_remote is None:
             sync_required = True
@@ -1850,9 +1868,9 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
     )
 
     repo: EnumProperty(
-        name="Local Repository",
-        items=rna_prop_repo_enum_local_only_itemf,
-        description="The local repository to install extensions into",
+        name="User Repository",
+        items=rna_prop_repo_enum_valid_only_itemf,
+        description="The user repository to install extensions into",
     )
 
     enable_on_install: rna_prop_enable_on_install
@@ -2054,8 +2072,8 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
     @classmethod
     def poll(cls, context):
-        if next(repo_iter_valid_local_only(context, exclude_system=True), None) is None:
-            cls.poll_message_set("There must be at least one \"Local\" repository set to install extensions into")
+        if next(repo_iter_valid_only(context, exclude_remote=False, exclude_system=True), None) is None:
+            cls.poll_message_set("There must be at least one user repository set to install extensions into")
             return False
         return True
 
@@ -2123,8 +2141,8 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
             from .bl_extension_utils import pkg_manifest_dict_from_file_or_error
 
-            if not list(repo_iter_valid_local_only(context, exclude_system=True)):
-                self.report({'ERROR'}, "No local user repositories")
+            if not list(repo_iter_valid_only(context, exclude_remote=False, exclude_system=True)):
+                self.report({'ERROR'}, "No user repositories")
                 return {'CANCELLED'}
 
             if isinstance(result := pkg_manifest_dict_from_file_or_error(filepath), str):
@@ -2156,7 +2174,7 @@ class EXTENSIONS_OT_package_install_files(Operator, _ExtCmdMixIn):
 
         _pkg_id, pkg_type = self._drop_variables
 
-        layout.label(text="Local Repository")
+        layout.label(text="User Repository")
         layout.prop(self, "repo", text="")
 
         layout.prop(self, "enable_on_install", text=rna_prop_enable_on_install_type_map[pkg_type])
@@ -2334,7 +2352,10 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
 
     def _invoke_for_drop(self, context, _event):
         import string
-        from .bl_extension_utils import url_parse_for_blender
+        from .bl_extension_utils import (
+            platform_from_this_system,
+            url_parse_for_blender,
+        )
 
         url = self.url
         print("DROP URL:", url)
@@ -2347,9 +2368,13 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
             _preferences_repo_find_by_remote_url(context, remote_url)
         )
 
-        if repo_from_url and not repo_from_url.enabled:
-            bpy.ops.extensions.repo_enable_from_drop('INVOKE_DEFAULT', repo_index=repo_index_from_url)
-            return {'CANCELLED'}
+        if repo_from_url:
+            if not repo_from_url.enabled:
+                bpy.ops.extensions.repo_enable_from_drop('INVOKE_DEFAULT', repo_index=repo_index_from_url)
+                return {'CANCELLED'}
+            repo_form_url_name = repo_from_url.name
+        else:
+            repo_form_url_name = ""
 
         del repo_from_url, repo_index_from_url
 
@@ -2358,7 +2383,33 @@ class EXTENSIONS_OT_package_install(Operator, _ExtCmdMixIn):
         repo_index, repo_name, pkg_id, item_remote, item_local = extension_url_find_repo_index_and_pkg_id(url)
 
         if repo_index == -1:
-            bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url="" if remote_url is None else remote_url)
+            # The package ID could not be found, the two common causes for this error are:
+            # - The platform or Blender version may be unsupported.
+            # - The repository may not have been added.
+            if repo_form_url_name:
+                # NOTE: we *could* support reading the repository JSON that without compatibility filtering.
+                # This would allow us to give a more detailed error message, noting that the extension was found
+                # and the reason it isn't compatible. The down side of this is it would tie us to the decision to
+                # keep syncing all extensions when Blender requests to sync with the server.
+                # As some point we may want to sync only compatible extension meta-data
+                # (to reduce the network overhead of incompatible packages).
+                # So don't assume we have global knowledge of every URL.
+                # One possible solution is to include the version range & platforms in the URL
+                # as we already do for the repository, allowing us to trigger an report instantly
+                # when an incompatible extension is dropped. see: `extensions-website/#190`.
+                self.report(
+                    {'ERROR'},
+                    iface_(
+                        "Repository \"{:s}\" found but the extension dropped may be incompatible with this system.\n"
+                        "Check for an extension compatible with Blender v{:s} on \"{:s}\"."
+                    ).format(
+                        repo_form_url_name,
+                        ".".join(str(v) for v in bpy.app.version),
+                        platform_from_this_system(),
+                    )
+                )
+            else:
+                bpy.ops.extensions.repo_add_from_drop('INVOKE_DEFAULT', url="" if remote_url is None else remote_url)
             return {'CANCELLED'}
 
         if item_local is not None:
