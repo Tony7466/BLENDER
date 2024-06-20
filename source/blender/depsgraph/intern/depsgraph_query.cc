@@ -392,6 +392,9 @@ static bool operation_needs_update(const ID &id,
   if (!operation_node) {
     return false;
   }
+  /* Technically, there is potential for a race condition here, because the depsgraph evaluation
+   * might update this flag, but it's very unlikely to cause issues right now. Maybe this should
+   * become an atomic eventually. */
   const bool needs_update = operation_node->flag & deg::DEPSOP_FLAG_NEEDS_UPDATE;
   return needs_update;
 }
