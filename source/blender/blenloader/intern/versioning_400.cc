@@ -4204,6 +4204,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 61)) {
+    /* LIGHT_PROBE_RESOLUTION_64 has been removed in EEVEE-Next as the tedrahedral mapping is to
+     * low res to be usable. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->eevee.gi_cubemap_resolution < 128) {
+        scene->eevee.gi_cubemap_resolution = 128;
+      }
+    }
+  }
+
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       if (BrushGpencilSettings *settings = brush->gpencil_settings) {
@@ -4212,9 +4222,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
         /* We approximate the simplify pixel threshold by taking the previous threshold (world
          * space) and dividing by the legacy radius conversion factor. This should generally give
-         * reasonable "pixel" threshold values. */
+         * reasonable "pixel" threshold values, at least for previous GPv2 defaults. */
         settings->simplify_px = settings->simplify_f /
-                                blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
+                                blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR * 0.1f;
       }
     }
   }
