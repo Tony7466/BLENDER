@@ -548,7 +548,6 @@ void blf_draw_svg_icon(
   blf_batch_draw_begin(font);
 
   GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id);
-
   if (g) {
     blf_glyph_draw(font, gc, g, 0, 0);
   }

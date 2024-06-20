@@ -416,9 +416,10 @@ static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
     }
   }
 
+  GlyphBLF *result = g.get();
   GlyphCacheKey key = {charcode, 0};
   gc->glyphs.add(key, std::move(g));
-  return gc->glyphs.lookup(key).get();
+  return result;
 }
 
 /** \} */
