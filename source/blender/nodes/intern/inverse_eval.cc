@@ -916,15 +916,11 @@ bool try_change_link_target_and_update_source(bContext &C,
       final_sockets,
       final_value_nodes);
 
-  Vector<std::pair<bNodeTree *, bNodeSocket *>> modified_sockets;
-  Vector<std::pair<bNodeTree *, bNode *>> modified_nodes;
-
+  bool any_success = false;
   for (const SocketInContext &ctx_socket : final_sockets) {
     if (const SocketValueVariant *value = value_by_socket.lookup_ptr(ctx_socket)) {
       bNodeSocket &socket_mutable = const_cast<bNodeSocket &>(*ctx_socket.socket);
-      if (set_socket_value(C, socket_mutable, *value)) {
-        modified_sockets.append({&socket_mutable.owner_tree(), &socket_mutable});
-      }
+      any_success |= set_socket_value(C, socket_mutable, *value);
     }
   }
   for (const NodeInContext &ctx_node : final_value_nodes) {
@@ -932,9 +928,7 @@ bool try_change_link_target_and_update_source(bContext &C,
             {ctx_node.context, &ctx_node.node->output_socket(0)}))
     {
       bNode &node_mutable = const_cast<bNode &>(*ctx_node.node);
-      if (set_value_node_value(C, node_mutable, *value)) {
-        modified_nodes.append({&node_mutable.owner_tree(), &node_mutable});
-      }
+      any_success |= set_value_node_value(C, node_mutable, *value);
     }
   }
 
@@ -944,20 +938,13 @@ bool try_change_link_target_and_update_source(bContext &C,
       if (const SocketValueVariant *value = value_by_socket.lookup_ptr(
               {&modifier_context, socket}))
       {
-        set_modifier_value(
+        any_success |= set_modifier_value(
             C, object, nmd, *nmd.node_group->interface_inputs()[socket->index()], *value);
       }
     }
   }
 
-  for (auto &&[tree, socket] : modified_sockets) {
-    BKE_ntree_update_tag_socket_property(tree, socket);
-  }
-  for (auto &&[tree, node] : modified_nodes) {
-    BKE_ntree_update_tag_node_property(tree, node);
-  }
-
-  return true;
+  return any_success;
 }
 
 }  // namespace blender::nodes::inverse_eval
