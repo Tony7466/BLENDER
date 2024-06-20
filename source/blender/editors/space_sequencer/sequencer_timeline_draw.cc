@@ -881,17 +881,17 @@ static void get_strip_text_color(const TimelineDrawContext *ctx,
                                  const StripDrawContext *strip,
                                  uchar r_col[4])
 {
-  /* Text: white 75% opacity, fully opaque when selected/active. */
+  /* Text: white when selected/active, black otherwise. */
   const Sequence *seq = strip->seq;
   const bool active_or_selected = (seq->flag & SELECT) || strip->is_active_strip;
+
   if (active_or_selected) {
     r_col[0] = r_col[1] = r_col[2] = 255;
-    r_col[3] = 255;
   }
   else {
-    r_col[0] = r_col[1] = r_col[2] = 224;
-    r_col[3] = 192;
+    r_col[0] = r_col[1] = r_col[2] = 0;
   }
+  r_col[3] = 255;
 
   /* Muted strips: gray color, reduce opacity. */
   if (SEQ_render_is_muted(ctx->channels, seq)) {
@@ -1247,15 +1247,10 @@ static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
   Vector<Sequence *> strips = sequencer_visible_strips_get(timeline_ctx->C);
   r_unselected.clear();
   r_selected.clear();
-  const bool act_seq_is_selected = act_seq != nullptr && (act_seq->flag & SELECT) != 0;
-
-  if (act_seq_is_selected) {
-    strips.remove_if([&](Sequence *seq) { return seq == act_seq; });
-  }
 
   for (Sequence *seq : strips) {
-    /* Selected active will be added last. */
-    if (act_seq_is_selected && seq == act_seq) {
+    /* Active will be added last. */
+    if (seq == act_seq) {
       continue;
     }
 
@@ -1267,10 +1262,15 @@ static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
       r_selected.append(strip_ctx);
     }
   }
-  /* Add selected active, if any. */
-  if (act_seq_is_selected) {
+  /* Add active, if any. */
+  if (act_seq) {
     StripDrawContext strip_ctx = strip_draw_context_get(timeline_ctx, act_seq);
-    r_selected.append(strip_ctx);
+    if ((act_seq->flag & SELECT) == 0) {
+      r_unselected.append(strip_ctx);
+    }
+    else {
+      r_selected.append(strip_ctx);
+    }
   }
 }
 
@@ -1435,33 +1435,24 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
 
     /* Handles on left/right side. */
     if (!locked && ED_sequencer_can_select_handle(scene, strip.seq, timeline_ctx->v2d)) {
-      data.flags |= GPU_SEQ_FLAG_HANDLES;
-      const bool selected_l = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_LEFT);
-      const bool selected_r = ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_RIGHT);
-      const bool show_l = show_handles || (selected && selected_l);
-      const bool show_r = show_handles || (selected && selected_r);
-
-      /* Left handle color. */
-      col[0] = col[1] = col[2] = 0;
-      col[3] = 50;
-      if (selected && selected_l) {
-        UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+      const bool selected_l = selected &&
+                              ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_LEFT);
+      const bool selected_r = selected &&
+                              ED_sequencer_handle_is_selected(strip.seq, SEQ_HANDLE_RIGHT);
+      const bool show_l = show_handles || selected_l;
+      const bool show_r = show_handles || selected_r;
+      if (show_l) {
+        data.flags |= GPU_SEQ_FLAG_DRAW_LH;
       }
-      if (!show_l) {
-        col[3] = 0;
+      if (show_r) {
+        data.flags |= GPU_SEQ_FLAG_DRAW_RH;
       }
-      data.col_handle_left = color_pack(col);
-
-      /* Right handle color. */
-      col[0] = col[1] = col[2] = 0;
-      col[3] = 50;
-      if (selected && selected_r) {
-        UI_GetThemeColor4ubv(active ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
+      if (selected_l) {
+        data.flags |= GPU_SEQ_FLAG_SELECTED_LH;
       }
-      if (!show_r) {
-        col[3] = 0;
+      if (selected_r) {
+        data.flags |= GPU_SEQ_FLAG_SELECTED_RH;
       }
-      data.col_handle_right = color_pack(col);
     }
   }
   strips_batch.flush_batch();
@@ -1521,13 +1512,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   /* Draw icons. */
   draw_strip_icons(timeline_ctx, strips);
 
-  /* Draw text labels with a drop shadow. */
-  const int font_id = BLF_default();
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, FontShadowType::Blur3x3, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
+  /* Draw text labels. */
   UI_view2d_text_cache_draw(timeline_ctx->region);
-  BLF_disable(font_id, BLF_SHADOW);
   GPU_blend(GPU_BLEND_NONE);
 }
 
