@@ -695,6 +695,11 @@ def pkg_manifest_archive_url_abs_from_remote_url(remote_url: str, archive_url: s
     return archive_url
 
 
+def pkg_manifest_dict_apply_build_generated_table(manifest_dict: Dict[str, Any]) -> None:
+    from .cli.blender_ext import pkg_manifest_dict_apply_build_generated_table as fn
+    fn(manifest_dict)
+
+
 def pkg_is_legacy_addon(filepath: str) -> bool:
     from .cli.blender_ext import pkg_is_legacy_addon as pkg_is_legacy_addon_extern
     result = pkg_is_legacy_addon_extern(filepath)
@@ -1233,6 +1238,10 @@ def repository_filter_packages(
         )) is None:
             continue
 
+        # No need to call: `pkg_manifest_dict_apply_build_generated_table(item_local)`
+        # Because these values will have been applied when generating the JSON.
+        assert "generated" not in item.get("build", {})
+
         if repository_filter_skip(item, filter_params, error_fn):
             continue
 
@@ -1498,6 +1507,9 @@ class _RepoDataSouce_TOML_FILES(_RepoDataSouce_ABC):
             )) is None:
                 continue
 
+            # Apply generated variables before filtering.
+            pkg_manifest_dict_apply_build_generated_table(item_local)
+
             if repository_filter_skip(item_local, self._filter_params, error_fn):
                 continue
 
@@ -1605,6 +1617,7 @@ class _RepoCacheEntry:
         self.directory = directory
         self.remote_url = remote_url
         # Manifest data per package loaded from the packages local JSON.
+        # TODO(@ideasman42): use `_RepoDataSouce_ABC` for `pkg_manifest_local`.
         self._pkg_manifest_local: Optional[Dict[str, PkgManifest_Normalized]] = None
         self._pkg_manifest_remote: Optional[Dict[str, PkgManifest_Normalized]] = None
         self._pkg_manifest_remote_data_source: _RepoDataSouce_ABC = (
@@ -1825,11 +1838,16 @@ class RepoCacheStore:
                 if repo_entry.directory not in directory_subset:
                     continue
 
-            yield repo_entry._json_data_ensure(
-                check_files=check_files,
-                ignore_missing=ignore_missing,
-                error_fn=error_fn,
-            )
+            # While we could yield a valid manifest here,
+            # leave it to the caller to skip "remote" data for local-only repositories.
+            if repo_entry.remote_url:
+                yield repo_entry._json_data_ensure(
+                    check_files=check_files,
+                    ignore_missing=ignore_missing,
+                    error_fn=error_fn,
+                )
+            else:
+                yield None
 
     def pkg_manifest_from_local_ensure(
             self,

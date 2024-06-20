@@ -900,14 +900,13 @@ void BKE_packedfile_blend_write(BlendWriter *writer, const PackedFile *pf)
 
 void BKE_packedfile_blend_read(BlendDataReader *reader, PackedFile **pf_p)
 {
-  BLO_read_packed_address(reader, pf_p);
+  BLO_read_struct(reader, PackedFile, pf_p);
   PackedFile *pf = *pf_p;
   if (pf == nullptr) {
     return;
   }
-
   pf->sharing_info = BLO_read_shared(reader, &pf->data, [&]() {
-    BLO_read_packed_address(reader, &pf->data);
+    BLO_read_data_address(reader, &pf->data);
     return blender::implicit_sharing::info_for_mem_free(const_cast<void *>(pf->data));
   });
   if (pf->data == nullptr) {
