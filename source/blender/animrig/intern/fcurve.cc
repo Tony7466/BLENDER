@@ -35,19 +35,17 @@ KeyframeSettings get_keyframe_settings(const bool from_userprefs)
   return settings;
 }
 
-FCurve *create_fcurve_for_channel(const StringRef rna_path,
-                                  const int array_index,
-                                  const std::optional<PropertySubType> prop_subtype)
+FCurve *create_fcurve_for_channel(const FCurveParameters fcurve_params)
 {
   FCurve *fcu = BKE_fcurve_create();
-  fcu->rna_path = BLI_strdupn(rna_path.data(), rna_path.size());
-  fcu->array_index = array_index;
+  fcu->rna_path = BLI_strdupn(fcurve_params.rna_path.data(), fcurve_params.rna_path.size());
+  fcu->array_index = fcurve_params.array_index;
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
   fcu->auto_smoothing = U.auto_smoothing_new;
 
   /* Set the fcurve's color mode if needed/able. */
-  if ((U.keying_flag & KEYING_FLAG_XYZ2RGB) != 0 && prop_subtype.has_value()) {
-    switch (*prop_subtype) {
+  if ((U.keying_flag & KEYING_FLAG_XYZ2RGB) != 0 && fcurve_params.prop_subtype.has_value()) {
+    switch (*fcurve_params.prop_subtype) {
       case PROP_TRANSLATION:
       case PROP_XYZ:
       case PROP_EULER:
