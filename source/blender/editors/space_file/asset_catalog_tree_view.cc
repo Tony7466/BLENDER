@@ -193,7 +193,7 @@ AssetCatalogTreeView::AssetCatalogTreeView(asset_system::AssetLibrary *library,
 void AssetCatalogTreeView::build_tree()
 {
   AssetCatalogTreeViewAllItem &all_item = add_all_item();
-  all_item.set_collapsed(false);
+  all_item.uncollapse_by_default();
 
   if (catalog_tree_) {
     /* Pass the "All" item on as parent of the actual catalog items. */
@@ -767,7 +767,7 @@ void file_create_asset_catalog_tree_view_in_layout(asset_system::AssetLibrary *a
       "asset catalog tree view",
       std::make_unique<ed::asset_browser::AssetCatalogTreeView>(
           asset_library, params, *space_file));
-
+  tree_view->set_context_menu_title("Catalog");
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
 }
 

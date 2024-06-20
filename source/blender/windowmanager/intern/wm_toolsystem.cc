@@ -27,12 +27,12 @@
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
@@ -187,7 +187,7 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
         LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
           if (workspace == WM_window_get_active_workspace(win)) {
             Scene *scene = WM_window_get_active_scene(win);
-            BKE_paint_ensure_from_paintmode(scene, paint_mode);
+            BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
             Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
             Brush *brush = BKE_paint_toolslots_brush_get(paint, slot_index);
             if (brush == nullptr) {
@@ -720,8 +720,10 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
         case CTX_MODE_PAINT_GREASE_PENCIL:
           return "builtin_brush.Draw";
         case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+        case CTX_MODE_SCULPT_GREASE_PENCIL:
           return "builtin_brush.Push";
         case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
+        case CTX_MODE_WEIGHT_GREASE_PENCIL:
           return "builtin_brush.Weight";
         case CTX_MODE_VERTEX_GPENCIL_LEGACY:
           return "builtin_brush.Draw";
@@ -869,8 +871,7 @@ static IDProperty *idprops_ensure_named_group(IDProperty *group, const char *idn
 {
   IDProperty *prop = IDP_GetPropertyFromGroup(group, idname);
   if ((prop == nullptr) || (prop->type != IDP_GROUP)) {
-    IDPropertyTemplate val = {0};
-    prop = IDP_New(IDP_GROUP, &val, __func__);
+    prop = blender::bke::idprop::create_group(__func__).release();
     STRNCPY(prop->name, idname);
     IDP_ReplaceInGroup_ex(group, prop, nullptr);
   }
@@ -889,8 +890,7 @@ IDProperty *WM_toolsystem_ref_properties_get_idprops(bToolRef *tref)
 IDProperty *WM_toolsystem_ref_properties_ensure_idprops(bToolRef *tref)
 {
   if (tref->properties == nullptr) {
-    IDPropertyTemplate val = {0};
-    tref->properties = IDP_New(IDP_GROUP, &val, __func__);
+    tref->properties = blender::bke::idprop::create_group(__func__).release();
   }
   return idprops_ensure_named_group(tref->properties, tref->idname);
 }
@@ -926,8 +926,7 @@ void WM_toolsystem_ref_properties_init_for_keymap(bToolRef *tref,
     dst_ptr->data = IDP_CopyProperty(static_cast<const IDProperty *>(dst_ptr->data));
   }
   else {
-    IDPropertyTemplate val = {0};
-    dst_ptr->data = IDP_New(IDP_GROUP, &val, "wmOpItemProp");
+    dst_ptr->data = blender::bke::idprop::create_group("wmOpItemProp").release();
   }
   IDProperty *group = WM_toolsystem_ref_properties_get_idprops(tref);
   if (group != nullptr) {

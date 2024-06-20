@@ -13,7 +13,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -168,16 +168,16 @@ void register_node_type_cmp_ellipsemask()
 {
   namespace file_ns = blender::nodes::node_composite_ellipsemask_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_MASK_ELLIPSE, "Ellipse Mask", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_ellipsemask_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_ellipsemask;
   blender::bke::node_type_size(&ntype, 260, 110, 320);
   ntype.initfunc = file_ns::node_composit_init_ellipsemask;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeEllipseMask", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

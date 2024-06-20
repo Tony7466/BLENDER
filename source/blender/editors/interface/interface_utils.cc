@@ -25,7 +25,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_screen.hh"
 
@@ -504,7 +504,7 @@ void ui_rna_collection_search_update_fn(
                                  }
 
                                  cis->index = items_list.size();
-                                 cis->iconid = ICON_NONE;
+                                 cis->iconid = visit_params.icon_id.value_or(ICON_NONE);
                                  cis->is_id = false;
                                  cis->name_prefix_offset = 0;
                                  cis->has_sep_char = visit_params.info.has_value();

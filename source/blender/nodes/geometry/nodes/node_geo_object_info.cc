@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_euler.hh"
 #include "BLI_math_matrix.hh"
 
 #include "BKE_geometry_set_instances.hh"
@@ -14,7 +15,11 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "DEG_depsgraph_query.hh"
+
 #include "GEO_transform.hh"
+
+#include "BLT_translation.hh"
 
 #include "node_geometry_util.hh"
 
@@ -29,6 +34,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Output the entire object as single instance. "
           "This allows instancing non-geometry object types");
+  b.add_output<decl::Matrix>("Transform")
+      .description(
+          "Transformation matrix containing the location, rotation and scale of the object");
   b.add_output<decl::Vector>("Location");
   b.add_output<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Scale");
@@ -53,6 +61,25 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
+  if (!DEG_object_geometry_is_evaluated(*object)) {
+    params.error_message_add(NodeWarningType::Error,
+                             TIP_("Can't access object's geometry because it's not evaluated yet. "
+                                  "This can happen when there is a dependency cycle"));
+    params.set_default_remaining_outputs();
+    return;
+  }
+  if (transform_space_relative) {
+    if (!DEG_object_transform_is_evaluated(*object) ||
+        !DEG_object_transform_is_evaluated(*self_object))
+    {
+      params.error_message_add(
+          NodeWarningType::Error,
+          TIP_("Can't access objects transforms because it's not evaluated yet. "
+               "This can happen when there is a dependency cycle"));
+      params.set_default_remaining_outputs();
+      return;
+    }
+  }
 
   const float4x4 &object_matrix = object->object_to_world();
   const float4x4 transform = self_object->world_to_object() * object_matrix;
@@ -60,22 +87,31 @@ static void node_geo_exec(GeoNodeExecParams params)
   float3 location, scale;
   math::Quaternion rotation;
   if (transform_space_relative) {
-    math::to_loc_rot_scale<true>(transform, location, rotation, scale);
+    math::to_loc_rot_scale_safe<true>(transform, location, rotation, scale);
+    params.set_output("Transform", transform);
   }
   else {
-    math::to_loc_rot_scale<true>(object_matrix, location, rotation, scale);
+    math::to_loc_rot_scale_safe<true>(object_matrix, location, rotation, scale);
+    params.set_output("Transform", object_matrix);
   }
   params.set_output("Location", location);
   params.set_output("Rotation", rotation);
   params.set_output("Scale", scale);
 
   if (params.output_is_required("Geometry")) {
-    if (object == self_object) {
-      params.error_message_add(NodeWarningType::Error,
-                               TIP_("Geometry cannot be retrieved from the modifier object"));
+    /* Compare by `orig_id` because objects may be copied into separate depsgraphs. */
+    if (DEG_get_original_id(&object->id) ==
+        DEG_get_original_id(const_cast<ID *>(&self_object->id)))
+    {
+      params.error_message_add(
+          NodeWarningType::Error,
+          params.user_data()->call_data->operator_data ?
+              TIP_("Geometry cannot be retrieved from the edited object itself") :
+              TIP_("Geometry cannot be retrieved from the modifier object"));
       params.set_default_remaining_outputs();
       return;
     }
+    BLI_assert(object != self_object);
 
     GeometrySet geometry_set;
     if (params.get_input<bool>("As Instance")) {
@@ -138,16 +174,16 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_OBJECT_INFO, "Object Info", NODE_CLASS_INPUT);
   ntype.initfunc = node_node_init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryObjectInfo", node_free_standard_storage, node_copy_standard_storage);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
