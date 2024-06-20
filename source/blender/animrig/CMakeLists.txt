@@ -21,6 +21,7 @@ set(INC_SYS
 
 set(SRC
   intern/action.cc
+  intern/action_selection.cc
   intern/anim_rna.cc
   intern/animdata.cc
   intern/bone_collections.cc

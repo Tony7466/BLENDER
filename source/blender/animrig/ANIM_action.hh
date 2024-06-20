@@ -667,6 +667,11 @@ FCurve *action_fcurve_find(bAction *act, const char rna_path[], int array_index)
  */
 void deselect_action_keys(blender::Span<bAction *> actions);
 
+/**
+ * Deselect all keys of the actions referenced by these objects.
+ */
+void deselect_keys_assigned_actions(Span<Object *> objects);
+
 }  // namespace blender::animrig
 
 /* Wrap functions for the DNA structs. */

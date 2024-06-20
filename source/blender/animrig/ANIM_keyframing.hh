@@ -291,9 +291,4 @@ bool autokeyframe_property(bContext *C,
 
 /** \} */
 
-/**
- * Deselect all keys of the actions referenced by these objects.
- */
-void deselect_keys_assigned_actions(Span<Object *> objects);
-
 }  // namespace blender::animrig

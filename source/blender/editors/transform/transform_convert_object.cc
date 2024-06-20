@@ -21,6 +21,7 @@
 #include "BKE_rigidbody.h"
 #include "BKE_scene.hh"
 
+#include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
 #include "ED_object.hh"

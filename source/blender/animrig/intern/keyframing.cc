@@ -1098,18 +1098,4 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
   return combined_result;
 }
 
-void deselect_keys_assigned_actions(Span<Object *> objects)
-{
-  Vector<bAction *> actions;
-  for (Object *ob : objects) {
-    AnimData *adt = BKE_animdata_from_id(&ob->id);
-    if (!adt || !adt->action) {
-      continue;
-    }
-    actions.append(adt->action);
-  }
-
-  deselect_action_keys(actions);
-}
-
 }  // namespace blender::animrig
