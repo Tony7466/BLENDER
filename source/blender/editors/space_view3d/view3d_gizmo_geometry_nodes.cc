@@ -373,8 +373,9 @@ class TransformGizmos : public NodeGizmos {
       WM_gizmo_set_flag(gizmo, WM_GIZMO_DRAW_VALUE, true);
       WM_gizmo_set_line_width(gizmo, 3.0f);
       RNA_boolean_set(gizmo->ptr, "wrap_angle", false);
-      /* The clipping currently looks a bit weird without the white circle around the gizmo. */
-      // RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_CLIP);
+      /* The clipping currently looks a bit weird without the white circle around the gizmo.
+       * However, without clipping it looks also very confusing sometimes. */
+      RNA_enum_set(gizmo->ptr, "draw_options", ED_GIZMO_DIAL_DRAW_FLAG_CLIP);
       rotation_gizmos_[axis] = gizmo;
     }
 
