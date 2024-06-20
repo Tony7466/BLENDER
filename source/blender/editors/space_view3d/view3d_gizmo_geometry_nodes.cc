@@ -127,6 +127,17 @@ struct GizmosUpdateParams {
   const bNode &gizmo_node;
   GeoTreeLog &tree_log;
   UpdateReport &r_report;
+
+  template<typename T> [[nodiscard]] bool get_input_value(const StringRef identifier, T &r_value)
+  {
+    const bNodeSocket &socket = this->gizmo_node.input_by_identifier(identifier);
+    const std::optional<T> value_opt = this->tree_log.find_primitive_socket_value<T>(socket);
+    if (!value_opt) {
+      return false;
+    }
+    r_value = *value_opt;
+    return true;
+  }
 };
 
 class NodeGizmos {
@@ -158,73 +169,94 @@ class LinearGizmo : public NodeGizmos {
     WM_gizmo_set_line_width(gizmo_, 1.0f);
   }
 
+  Vector<wmGizmo *> get_all_gizmos() override
+  {
+    return {gizmo_};
+  }
+
   void update(GizmosUpdateParams &params) override
   {
     const auto &storage = *static_cast<const NodeGeometryLinearGizmo *>(params.gizmo_node.storage);
+    const bool is_interacting = gizmo_is_interacting(*gizmo_);
 
+    this->update_draw_style(storage);
+    this->update_color(storage);
+
+    if (is_interacting) {
+      return;
+    }
+    if (!this->update_transform(params)) {
+      return;
+    }
+    this->update_target_property();
+  }
+
+  void update_draw_style(const NodeGeometryLinearGizmo &storage)
+  {
     /* Make sure the enum values are in sync. */
     static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_ARROW) == int(ED_GIZMO_ARROW_STYLE_NORMAL));
     static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_BOX) == int(ED_GIZMO_ARROW_STYLE_BOX));
     static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_CROSS) == int(ED_GIZMO_ARROW_STYLE_CROSS));
     RNA_enum_set(gizmo_->ptr, "draw_style", storage.draw_style);
+  }
 
+  void update_color(const NodeGeometryLinearGizmo &storage)
+  {
     const ThemeColorID color_theme_id = get_gizmo_theme_color_id(
         GeometryNodeGizmoColor(storage.color_id));
     UI_GetThemeColor3fv(color_theme_id, gizmo_->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo_->color_hi);
+  }
 
-    const bNodeSocket &position_socket = params.gizmo_node.input_socket(1);
-    const bNodeSocket &direction_socket = params.gizmo_node.input_socket(2);
-    const std::optional<float3> position_opt = params.tree_log.find_primitive_socket_value<float3>(
-        position_socket);
-    const std::optional<float3> direction_opt =
-        params.tree_log.find_primitive_socket_value<float3>(direction_socket);
-    if (!position_opt || !direction_opt) {
+  bool update_transform(GizmosUpdateParams &params)
+  {
+    float3 position;
+    float3 direction;
+    if (!params.get_input_value("Position", position) ||
+        !params.get_input_value("Direction", direction))
+    {
       params.r_report.missing_socket_logs = true;
-      return;
+      return false;
     }
-    const float3 position = *position_opt;
-    const float3 direction = math::normalize(*direction_opt);
+    direction = math::normalize(direction);
     if (math::is_zero(direction)) {
       params.r_report.invalid_transform = true;
-      return;
+      return false;
     }
+
     const float4x4 gizmo_base_transform = matrix_from_position_and_up_direction(
         position, direction, math::AxisSigned::Z_POS);
 
-    const bool is_interacting = gizmo_is_interacting(*gizmo_);
-    if (!is_interacting) {
-      float4x4 gizmo_transform = params.parent_transform * gizmo_base_transform;
-      edit_data_.factor_from_transform = safe_divide(1.0f, math::length(gizmo_transform.z_axis()));
-      make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
-      copy_m4_m4(gizmo_->matrix_basis, gizmo_transform.ptr());
-
-      /* Always reset to 0 when not interacting. */
-      edit_data_.current_value = 0.0f;
-
-      wmGizmoPropertyFnParams params{};
-      params.user_data = this;
-      params.value_set_fn =
-          [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
-            LinearGizmo &self = *static_cast<LinearGizmo *>(gz_prop->custom_func.user_data);
-            const float new_gizmo_value = *static_cast<const float *>(value_ptr);
-            self.edit_data_.current_value = new_gizmo_value;
-            const float offset = new_gizmo_value * self.edit_data_.factor_from_transform;
-            self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
-              value_variant.set(value_variant.get<float>() + offset);
-            });
-          };
-      params.value_get_fn = [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
-        LinearGizmo &self = *static_cast<LinearGizmo *>(gz_prop->custom_func.user_data);
-        *static_cast<float *>(value_ptr) = self.edit_data_.current_value;
-      };
-      WM_gizmo_target_property_def_func(gizmo_, "offset", &params);
-    }
+    float4x4 gizmo_transform = params.parent_transform * gizmo_base_transform;
+    edit_data_.factor_from_transform = safe_divide(1.0f, math::length(gizmo_transform.z_axis()));
+    make_matrix_orthonormal_but_keep_z_axis(gizmo_transform);
+    copy_m4_m4(gizmo_->matrix_basis, gizmo_transform.ptr());
+    return true;
   }
 
-  Vector<wmGizmo *> get_all_gizmos() override
+  void update_target_property()
   {
-    return {gizmo_};
+    /* Always reset to 0 when not interacting. */
+    edit_data_.current_value = 0.0f;
+
+    wmGizmoPropertyFnParams fn_params{};
+    fn_params.user_data = this;
+    fn_params.value_set_fn =
+        [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, const void *value_ptr) {
+          LinearGizmo &self = *static_cast<LinearGizmo *>(gz_prop->custom_func.user_data);
+          const float new_gizmo_value = *static_cast<const float *>(value_ptr);
+          self.edit_data_.current_value = new_gizmo_value;
+          const float offset = new_gizmo_value * self.edit_data_.factor_from_transform;
+          self.apply_change("Value", [&](bke::SocketValueVariant &value_variant) {
+            value_variant.set(value_variant.get<float>() + offset);
+          });
+        };
+    fn_params.value_get_fn =
+        [](const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_ptr) {
+          LinearGizmo &self = *static_cast<LinearGizmo *>(gz_prop->custom_func.user_data);
+          *static_cast<float *>(value_ptr) = self.edit_data_.current_value;
+        };
+    WM_gizmo_target_property_def_func(gizmo_, "offset", &fn_params);
   }
 };
 
@@ -244,6 +276,11 @@ class DialGizmo : public NodeGizmos {
     WM_gizmo_set_flag(gizmo_, WM_GIZMO_DRAW_VALUE, true);
     WM_gizmo_set_line_width(gizmo_, 2.0f);
     RNA_boolean_set(gizmo_->ptr, "wrap_angle", false);
+  }
+
+  Vector<wmGizmo *> get_all_gizmos() override
+  {
+    return {gizmo_};
   }
 
   void update(GizmosUpdateParams &params) override
@@ -321,11 +358,6 @@ class DialGizmo : public NodeGizmos {
       WM_gizmo_target_property_def_func(gizmo_, "offset", &params);
     }
   }
-
-  Vector<wmGizmo *> get_all_gizmos() override
-  {
-    return {gizmo_};
-  }
 };
 
 class TransformGizmos : public NodeGizmos {
@@ -376,6 +408,15 @@ class TransformGizmos : public NodeGizmos {
       WM_gizmo_set_line_width(gizmo, 2.0f);
       scale_gizmos_[axis] = gizmo;
     }
+  }
+
+  Vector<wmGizmo *> get_all_gizmos() override
+  {
+    Vector<wmGizmo *> gizmos;
+    gizmos.extend(translation_gizmos_);
+    gizmos.extend(rotation_gizmos_);
+    gizmos.extend(scale_gizmos_);
+    return gizmos;
   }
 
   void update(GizmosUpdateParams &params) override
@@ -653,15 +694,6 @@ class TransformGizmos : public NodeGizmos {
     gizmo_transform.location() = global_location;
     return matrix_from_position_and_up_direction(
         global_location, global_direction, math::AxisSigned::Z_POS);
-  }
-
-  Vector<wmGizmo *> get_all_gizmos() override
-  {
-    Vector<wmGizmo *> gizmos;
-    gizmos.extend(translation_gizmos_);
-    gizmos.extend(rotation_gizmos_);
-    gizmos.extend(scale_gizmos_);
-    return gizmos;
   }
 };
 
