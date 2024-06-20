@@ -767,13 +767,17 @@ static int convert_action_exec(bContext *C, wmOperator *op)
   AnimData *adt = BKE_animdata_from_id(&object->id);
 
   animrig::Action &anim = adt->action->wrap();
+  Main *bmain = CTX_data_main(C);
   if (anim.is_empty()) {
-    BKE_report(
-        op->reports, RPT_WARNING, "The given action is empty, so it is considered to be layered");
-    return OPERATOR_CANCELLED;
+    anim.binding_add_for_id(object->id);
+    BKE_report(op->reports, RPT_WARNING, "Converted an empty action to layered");
+    anim.assign_id(anim.binding(0), object->id);
+    ANIM_id_update(bmain, &object->id);
+    DEG_relations_tag_update(bmain);
+    WM_main_add_notifier(NC_ANIMATION | ND_NLA_ACTCHANGE, nullptr);
+    return OPERATOR_FINISHED;
   }
 
-  Main *bmain = CTX_data_main(C);
   animrig::Action *layered_action = animrig::convert_to_layered_action(*bmain, anim);
   /* We did already check if the action can be converted. */
   BLI_assert(layered_action != nullptr);
@@ -785,8 +789,7 @@ static int convert_action_exec(bContext *C, wmOperator *op)
   layered_action->assign_id(binding, object->id);
 
   ANIM_id_update(bmain, &object->id);
-  DEG_relations_tag_update(CTX_data_main(C));
-
+  DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_ANIMATION | ND_NLA_ACTCHANGE, nullptr);
 
   return OPERATOR_FINISHED;
@@ -804,7 +807,7 @@ static bool convert_action_poll(bContext *C)
     return false;
   }
 
-  /* This will also convert empty actions, to layered by just adding an empty binding. */
+  /* This will also convert empty actions to layered by just adding an empty binding. */
   if (!adt->action->wrap().is_action_legacy()) {
     CTX_wm_operator_poll_msg_set(C, "Action is already layered");
     return false;
