@@ -350,7 +350,7 @@ static GlyphBLF *blf_glyph_cache_add_blank(GlyphCacheBLF *gc, uint charcode)
 
 static GlyphBLF *blf_glyph_cache_add_svg(GlyphCacheBLF *gc, uint charcode)
 {
-  const char *svg_source = blf_get_icon_svg(uint(charcode) - BLF_ICON_OFFSET);
+  const char *svg_source = blf_get_icon_svg(int(charcode) - BLF_ICON_OFFSET);
   /* NanoSVG alters the source file while parsing. */
   char *writeable = BLI_strdup(svg_source);
   NSVGimage *image = nsvgParse(writeable, "px", 96.0f);
