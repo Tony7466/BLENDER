@@ -789,7 +789,9 @@ static int convert_action_exec(bContext *C, wmOperator *op)
 
   animrig::unassign_animation(object->id);
   BLI_assert(layered_action->binding_array_num == 1);
-  layered_action->assign_id(layered_action->binding(0), object->id);
+  animrig::Binding *binding = layered_action->binding(0);
+  layered_action->binding_name_set(*bmain, *binding, object->id.name);
+  layered_action->assign_id(binding, object->id);
 
   ANIM_id_update(bmain, &object->id);
   DEG_relations_tag_update(CTX_data_main(C));
