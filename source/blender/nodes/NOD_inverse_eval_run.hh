@@ -18,13 +18,18 @@ namespace blender::nodes::inverse_eval {
 
 using bke::SocketValueVariant;
 
-bool try_change_link_target_and_update_source(bContext &C,
-                                              Object &object,
-                                              NodesModifierData &nmd,
-                                              geo_eval_log::GeoModifierLog &eval_log,
-                                              const ComputeContext *initial_context,
-                                              const bNodeLink &initial_link,
-                                              const SocketValueVariant &new_value);
+struct SocketToUpdate {
+  const ComputeContext *context = nullptr;
+  const bNodeSocket *socket = nullptr;
+  const bNodeLink *multi_input_link = nullptr;
+  SocketValueVariant new_value;
+};
+
+bool backpropagate_socket_values(bContext &C,
+                                 Object &object,
+                                 NodesModifierData &nmd,
+                                 geo_eval_log::GeoModifierLog &eval_log,
+                                 Span<SocketToUpdate> sockets_to_update);
 
 std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeLog &tree_log,
                                                           const bNodeSocket &socket);

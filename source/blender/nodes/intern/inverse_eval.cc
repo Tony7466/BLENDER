@@ -816,31 +816,51 @@ std::optional<SocketValueVariant> get_logged_socket_value(geo_eval_log::GeoTreeL
   return std::nullopt;
 }
 
-bool try_change_link_target_and_update_source(bContext &C,
-                                              Object &object,
-                                              NodesModifierData &nmd,
-                                              geo_eval_log::GeoModifierLog &eval_log,
-                                              const ComputeContext *initial_context,
-                                              const bNodeLink &initial_link,
-                                              const SocketValueVariant &new_value)
+bool backpropagate_socket_values(bContext &C,
+                                 Object &object,
+                                 NodesModifierData &nmd,
+                                 geo_eval_log::GeoModifierLog &eval_log,
+                                 const Span<SocketToUpdate> sockets_to_update)
 {
   nmd.node_group->ensure_topology_cache();
 
   ResourceScope scope;
   Map<SocketInContext, SocketValueVariant> value_by_socket;
 
-  const std::optional<SocketValueVariant> initial_converted_value = convert_socket_value(
-      *initial_link.tosock, *initial_link.fromsock, new_value);
-  if (!initial_converted_value) {
+  Vector<SocketInContext> initial_sockets;
+
+  for (const SocketToUpdate &socket_to_update : sockets_to_update) {
+    if (socket_to_update.multi_input_link) {
+      BLI_assert(socket_to_update.multi_input_link->tosock == socket_to_update.socket);
+      const std::optional<SocketValueVariant> converted_value = convert_socket_value(
+          *socket_to_update.socket,
+          *socket_to_update.multi_input_link->fromsock,
+          socket_to_update.new_value);
+      if (!converted_value) {
+        continue;
+      }
+      value_by_socket.add({socket_to_update.context, socket_to_update.multi_input_link->fromsock},
+                          *converted_value);
+    }
+    else {
+      value_by_socket.add({socket_to_update.context, socket_to_update.socket},
+                          socket_to_update.new_value);
+    }
+  }
+
+  if (value_by_socket.is_empty()) {
     return false;
   }
-  value_by_socket.add({initial_context, initial_link.fromsock}, *initial_converted_value);
+
+  for (const SocketInContext &ctx_socket : value_by_socket.keys()) {
+    initial_sockets.append(ctx_socket);
+  }
 
   Set<SocketInContext> final_sockets;
   Set<NodeInContext> final_value_nodes;
 
   traverse_upstream(
-      {{initial_context, initial_link.fromsock}},
+      initial_sockets,
       scope,
       /* Evaluate node. */
       [&](const NodeInContext &ctx_node, Vector<const bNodeSocket *> &r_modified_inputs) {

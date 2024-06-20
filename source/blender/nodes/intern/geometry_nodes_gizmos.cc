@@ -361,6 +361,8 @@ void apply_gizmo_change(
     const bNodeSocket &gizmo_socket,
     const FunctionRef<void(bke::SocketValueVariant &value)> apply_on_gizmo_value_fn)
 {
+  Vector<ie::SocketToUpdate> sockets_to_update;
+
   const bNodeTree &gizmo_node_tree = gizmo_socket.owner_tree();
   geo_eval_log::GeoTreeLog &gizmo_tree_log = eval_log.get_tree_log(gizmo_context.hash());
   for (const bNodeLink *link : gizmo_socket.directly_linked_links()) {
@@ -384,11 +386,9 @@ void apply_gizmo_change(
     bke::SocketValueVariant new_value = *old_value_converted;
     apply_on_gizmo_value_fn(new_value);
 
-    /* TODO: Call this for all modififed values at once. Otherwise, they might overwrite each
-     * other. */
-    ie::try_change_link_target_and_update_source(
-        C, object, nmd, eval_log, &gizmo_context, *link, new_value);
+    sockets_to_update.append({&gizmo_context, &gizmo_socket, link, new_value});
   }
+  ie::backpropagate_socket_values(C, object, nmd, eval_log, sockets_to_update);
 }
 
 }  // namespace blender::nodes::gizmos
