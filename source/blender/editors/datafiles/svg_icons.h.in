@@ -4,8 +4,7 @@
 extern "C" {
 #endif
 
-enum BIFIconID_Static;
-const char* blf_get_icon_svg(BIFIconID_Static icon);
+const char *blf_get_icon_svg(int icon);
 
 @SVGHCONTENTS@
 

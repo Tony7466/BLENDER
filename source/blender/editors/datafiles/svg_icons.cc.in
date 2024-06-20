@@ -1,7 +1,7 @@
 #include "svg_icons.h"
 #include "UI_resources.hh"
 
-const char* blf_get_icon_svg(BIFIconID_Static icon)
+const char *blf_get_icon_svg(int icon)
 {
 	switch (icon) 
 	{
