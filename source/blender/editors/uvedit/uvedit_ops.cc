@@ -225,6 +225,77 @@ void ED_uvedit_foreach_uv(const Scene *scene,
   }
 }
 
+// Function to construct a linked list given a starting index
+void constructselectedlinesegment(std::unordered_map<int, loopData>* loopMapPtr) {
+  std::set<int> endPoints;
+  for (auto it = loopMapPtr->begin(); it != loopMapPtr->end(); it++) {
+    if (it->second.connec1 == -1 || it->second.connec2 == -1) {
+      endPoints.insert(it->first);
+    }
+  }
+  int endPointValue = *endPoints.begin();
+  int prev = -1;
+  int currentPointValue = endPointValue;
+
+  while (!(endPoints.count(currentPointValue) && currentPointValue != endPointValue)) {
+    if (loopMapPtr->count(currentPointValue) > 0) {
+      loopData& currentLoopData = (*loopMapPtr)[currentPointValue];
+      if (currentLoopData.connec1 == prev or currentLoopData.connec1 == -1) {
+        currentLoopData.connec2 = currentPointValue;
+      } else if(currentLoopData.connec2 == prev or currentLoopData.connec2 == -1) {
+        currentLoopData.connec1 = currentPointValue;
+      }else{
+        break;
+      }
+    }
+    
+  }
+  return;
+}
+
+void getBMLoopPointers(const Scene *scene, BMesh* bm, std::unordered_map<int, loopData>* loopMapPtr) {
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+
+  BMFace *efa;
+  BMLoop *l;
+  BMIter iter, liter;
+
+  BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
+    BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+      if (uvedit_uv_select_test(scene, l, offsets) == true) {
+        int vertexid = l->v->head.index;
+
+        if (loopMapPtr->find(vertexid) == loopMapPtr->end()) {
+          loopMapPtr->insert({vertexid, loopData()});
+        }
+        loopMapPtr->at(vertexid).loops.push_back(l);
+        if (uvedit_uv_select_test(scene,l->next,offsets) == true) {
+          if (loopMapPtr->at(vertexid).connec1 == -1) {
+            loopMapPtr->at(vertexid).connec1 = l->next->v->head.index;
+          }
+          else {
+            loopMapPtr->at(vertexid).connec1 = l->next->v->head.index;
+          }
+        }
+        if (uvedit_uv_select_test(scene,l->prev,offsets) == true) {
+          if (loopMapPtr->at(vertexid).connec2 == -1) {
+            loopMapPtr->at(vertexid).connec2 = l->prev->v->head.index;
+          }
+          else {
+            loopMapPtr->at(vertexid).connec2 = l->prev->v->head.index;
+          }
+        }
+      }
+    }
+
+  }
+
+
+
+  constructselectedlinesegment(loopMapPtr);
+  return;
+}
+
 void ED_uvedit_foreach_uv_multi(const Scene *scene,
                                 const Span<Object *> objects_edit,
                                 const bool skip_invisible,

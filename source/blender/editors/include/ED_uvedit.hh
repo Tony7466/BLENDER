@@ -7,7 +7,7 @@
  */
 
 #pragma once
-
+#include <set>
 #include "BKE_customdata.hh"
 
 struct ARegion;
@@ -39,6 +39,7 @@ void ED_keymap_uvedit(wmKeyConfig *keyconf);
 /**
  * Be careful when using this, it bypasses all synchronization options.
  */
+
 void ED_uvedit_select_all(BMesh *bm);
 
 void ED_uvedit_foreach_uv(const Scene *scene,
@@ -289,6 +290,13 @@ struct FaceIsland {
   BMUVOffsets offsets;
   float aspect_y;
 };
+
+struct loopData {
+    std::vector<BMLoop*> loops;
+    int connec1 = -1;
+    int connec2 = -1;
+};
+void getBMLoopPointers(const Scene *scene, BMesh* bm, std::unordered_map<int, loopData>* loopMapPtr);
 
 /**
  * Calculate islands and add them to \a island_list returning the number of items added.

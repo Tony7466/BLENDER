@@ -2788,10 +2788,37 @@ void UV_OT_stitch(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
+static bool uvedit_uv_threshold_weld(Scene *scene,
+                                 BMesh *bm,
+                                 const float cent[2])
+{
+  bool changed = false;
+
+
+  std::unordered_map<int, loopData> loopMap;
+  //get head of contiguous loop selections
+  getBMLoopPointers(scene, bm, &loopMap);
+
+  return changed;
+}
+
+
+
 
 static int stitch_distance_exec(bContext *C, wmOperator *op)
 {
-  // Placeholder code
+  Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  SpaceImage *sima = CTX_wm_space_image(C);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
+  float origin[2] = {0.0f, 0.0f}; // Fix: Remove duplicate declaration and initialize here
+  BMEditMesh *em = BKE_editmesh_from_object(objects[0]);
+  if (uvedit_uv_threshold_weld(scene, em->bm, origin)) {
+    uvedit_live_unwrap_update(sima, scene, objects[0]);
+    DEG_id_tag_update(static_cast<ID *>(objects[0]->data), 0);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, objects[0]->data);
+  }
   return OPERATOR_FINISHED;
 }
 
