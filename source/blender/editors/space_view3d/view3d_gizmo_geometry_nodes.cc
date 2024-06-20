@@ -137,8 +137,6 @@ class NodeGizmos {
 
   virtual void create_gizmos(wmGizmoGroup &gzgroup) = 0;
 
-  virtual void update_style(const bNode & /*gizmo_node*/) {}
-
   virtual void update(GizmosUpdateParams & /*params*/) {}
 
   virtual Vector<wmGizmo *> get_all_gizmos() = 0;
@@ -160,9 +158,9 @@ class LinearGizmo : public NodeGizmos {
     WM_gizmo_set_line_width(gizmo_, 1.0f);
   }
 
-  void update_style(const bNode &gizmo_node) override
+  void update(GizmosUpdateParams &params) override
   {
-    const auto &storage = *static_cast<const NodeGeometryLinearGizmo *>(gizmo_node.storage);
+    const auto &storage = *static_cast<const NodeGeometryLinearGizmo *>(params.gizmo_node.storage);
 
     /* Make sure the enum values are in sync. */
     static_assert(int(GEO_NODE_LINEAR_GIZMO_DRAW_STYLE_ARROW) == int(ED_GIZMO_ARROW_STYLE_NORMAL));
@@ -174,10 +172,7 @@ class LinearGizmo : public NodeGizmos {
         GeometryNodeGizmoColor(storage.color_id));
     UI_GetThemeColor3fv(color_theme_id, gizmo_->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo_->color_hi);
-  }
 
-  void update(GizmosUpdateParams &params) override
-  {
     const bNodeSocket &position_socket = params.gizmo_node.input_socket(1);
     const bNodeSocket &direction_socket = params.gizmo_node.input_socket(2);
     const std::optional<float3> position_opt = params.tree_log.find_primitive_socket_value<float3>(
@@ -251,9 +246,9 @@ class DialGizmo : public NodeGizmos {
     RNA_boolean_set(gizmo_->ptr, "wrap_angle", false);
   }
 
-  void update_style(const bNode &gizmo_node) override
+  void update(GizmosUpdateParams &params) override
   {
-    const auto &storage = *static_cast<const NodeGeometryDialGizmo *>(gizmo_node.storage);
+    const auto &storage = *static_cast<const NodeGeometryDialGizmo *>(params.gizmo_node.storage);
 
     const bool is_interacting = gizmo_is_interacting(*gizmo_);
     int draw_options = RNA_enum_get(gizmo_->ptr, "draw_options");
@@ -264,10 +259,7 @@ class DialGizmo : public NodeGizmos {
         GeometryNodeGizmoColor(storage.color_id));
     UI_GetThemeColor3fv(color_theme_id, gizmo_->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gizmo_->color_hi);
-  }
 
-  void update(GizmosUpdateParams &params) override
-  {
     const bNodeSocket &position_socket = params.gizmo_node.input_by_identifier("Position");
     const bNodeSocket &up_socket = params.gizmo_node.input_by_identifier("Up");
     const bNodeSocket &screen_space_socket = params.gizmo_node.input_by_identifier("Screen Space");
@@ -295,7 +287,6 @@ class DialGizmo : public NodeGizmos {
 
     const float4x4 gizmo_base_transform = matrix_from_position_and_up_direction(
         position, up, math::AxisSigned::Z_NEG);
-    const bool is_interacting = gizmo_is_interacting(*gizmo_);
     if (!is_interacting) {
       float4x4 gizmo_transform = params.parent_transform * gizmo_base_transform;
       edit_data_.is_negative_transform = math::determinant(gizmo_transform) < 0.0f;
@@ -387,9 +378,10 @@ class TransformGizmos : public NodeGizmos {
     }
   }
 
-  void update_style(const bNode &gizmo_node) override
+  void update(GizmosUpdateParams &params) override
   {
-    const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(gizmo_node.storage);
+    const auto &storage = *static_cast<const NodeGeometryTransformGizmo *>(
+        params.gizmo_node.storage);
 
     any_translation_visible_ = false;
     any_rotation_visible_ = false;
@@ -452,10 +444,7 @@ class TransformGizmos : public NodeGizmos {
       const float length = (any_translation_visible_ || any_rotation_visible_) ? 0.775f : 1.0f;
       RNA_float_set(gizmo->ptr, "length", length);
     }
-  }
 
-  void update(GizmosUpdateParams &params) override
-  {
     const bNodeSocket &base_socket = params.gizmo_node.input_socket(1);
     const std::optional<float4x4> base_opt =
         base_socket.is_logically_linked() ?
@@ -888,7 +877,6 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
           WM_gizmo_set_flag(gizmo, WM_GIZMO_HIDDEN, false);
         }
 
-        node_gizmos->update_style(gizmo_node);
         GeoTreeLog &tree_log = nmd.runtime->eval_log->get_tree_log(compute_context.hash());
         tree_log.ensure_socket_values();
 
