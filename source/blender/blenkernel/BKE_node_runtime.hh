@@ -317,12 +317,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   /** Used to avoid running forward compatibility code more often than necessary. */
   bool forward_compatible_versioning_done = false;
 
-  /**
-   * For gizmo nodes that indicates that the value input is connected to the same value more than
-   * once, which is not allowed.
-   */
-  bool has_duplicate_gizmo_target = false;
-
   /** If this node is reroute and this reroute is not logically linked with any source except other
    * reroute, this will be true. */
   bool is_dangling_reroute = false;

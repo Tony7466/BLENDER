@@ -890,6 +890,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   /* This needs to stay around for a bit longer because the compute contexts are required when
    * applying the gizmo changes. */
   auto compute_context_builder = std::make_shared<ComputeContextBuilder>();
+  compute_context_builder->keep_old_contexts();
 
   nodes::gizmos::foreach_active_gizmo(
       *ob_orig,

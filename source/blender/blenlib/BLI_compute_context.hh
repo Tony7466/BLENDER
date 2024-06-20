@@ -34,6 +34,8 @@
  *   run on different threads.
  */
 
+#include <optional>
+
 #include "BLI_array.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_stack.hh"
@@ -133,9 +135,18 @@ class ComputeContextBuilder {
  private:
   LinearAllocator<> allocator_;
   Stack<destruct_ptr<ComputeContext>> contexts_;
-  Vector<destruct_ptr<ComputeContext>> old_contexts_;
+  std::optional<Vector<destruct_ptr<ComputeContext>>> old_contexts_;
 
  public:
+  /* If called, compute contexts are not destructed when they are popped. Instead their lifetime
+   * will be the lifetime of this builder. */
+  bool keep_old_contexts()
+  {
+    if (!old_contexts_.has_value()) {
+      old_contexts_.emplace();
+    }
+  }
+
   bool is_empty() const
   {
     return contexts_.is_empty();
@@ -164,7 +175,10 @@ class ComputeContextBuilder {
 
   void pop()
   {
-    old_contexts_.append(contexts_.pop());
+    auto context = contexts_.pop();
+    if (old_contexts_) {
+      old_contexts_->append(std::move(context));
+    }
   }
 
   void pop_until(const ComputeContext *context)

@@ -361,7 +361,19 @@ struct bNodeType {
   /** Get extra information that is drawn next to the node. */
   NodeExtraInfoFunction get_extra_info;
 
+  /**
+   * "Abstract" inverse evaluation of the node. It tells the caller which inputs have to be
+   * modified so that certain parts of the outputs change. This allows figuring out how to
+   * backpropagate socket values without having to consider actual values. This is required for
+   * gizmos.
+   */
   NodeInverseElemEvalFunction eval_inverse_elem;
+
+  /**
+   * Evaluates the inverse of the node if possible. This evaluation has access to logged values of
+   * all input sockets as well as new values for output sockets. Based on that, it should determine
+   * how one or more of the inputs should change so that the output becomes the given one.
+   */
   NodeInverseEvalFunction eval_inverse;
 
   /**
