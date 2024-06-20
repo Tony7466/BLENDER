@@ -1975,7 +1975,7 @@ static void icon_draw_size(float x,
       fstyle_small.shadow = short(FontShadowType::Outline);
       fstyle_small.shadx = 0;
       fstyle_small.shady = 0;
-      rcti text_rect = {x, x + UI_UNIT_X * zoom_factor, y, y};
+      rcti text_rect = {int(x), int(x + UI_UNIT_X * zoom_factor), int(y), int(y)};
       uiFontStyleDraw_Params params = {UI_STYLE_TEXT_RIGHT, 0};
       UI_fontstyle_draw(&fstyle_small,
                         &text_rect,
