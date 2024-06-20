@@ -2521,23 +2521,17 @@ void wm_window_store_position(wmWindow *win)
   pos_x -= extent_left;
   pos_y += extent_top;
 
-  /* Get window size. */
-  WM_window_set_dpi(win); /* Ensure the DPI is taken from the right window. */
-  float f = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
-  const int size_x = int(f * win->sizex) / UI_SCALE_FAC;
-  const int size_y = int(f * win->sizey) / UI_SCALE_FAC;
-
   /* Store position and size in user preferences. But neglect differences of 1 pixel (due to
    * rounding), otherwise a window can crawl by a pixel every time you open it. */
   if (std::abs(win->stored_position->pos_x - pos_x) > 1 ||
       std::abs(win->stored_position->pos_y - pos_y) > 1 ||
-      std::abs(win->stored_position->size_x - size_x) > 1 ||
-      std::abs(win->stored_position->size_y - size_y) > 1)
+      std::abs(win->stored_position->size_x - win->sizex) > 1 ||
+      std::abs(win->stored_position->size_y - win->sizey) > 1)
   {
     win->stored_position->pos_x = pos_x;
     win->stored_position->pos_y = pos_y;
-    win->stored_position->size_x = size_x;
-    win->stored_position->size_y = size_y;
+    win->stored_position->size_x = win->sizex;
+    win->stored_position->size_y = win->sizey;
 
     U.runtime.is_dirty = true;
   }
@@ -2556,8 +2550,8 @@ void wm_window_restore_position(const UserDef_WindowPositionData *stored_positio
   }
 
   /* Restore window size and position. */
-  *r_size_x = stored_position->size_x * UI_SCALE_FAC;
-  *r_size_y = stored_position->size_y * UI_SCALE_FAC;
+  *r_size_x = stored_position->size_x;
+  *r_size_y = stored_position->size_y;
   *r_pos_x = stored_position->pos_x;
   *r_pos_y = stored_position->pos_y;
 }
