@@ -1959,6 +1959,31 @@ static void icon_draw_size(float x,
                       float(draw_size) / aspect,
                       color,
                       with_border ? btheme->tui.icon_border_intensity : 0.0f);
+
+    if (text_overlay && text_overlay->text[0] != '\0') {
+      /* Handle the little numbers on top of the icon. */
+      uchar text_color[4];
+      if (text_overlay->color[3]) {
+        copy_v4_v4_uchar(text_color, text_overlay->color);
+      }
+      else {
+        UI_GetThemeColor4ubv(TH_TEXT, text_color);
+      }
+      const float zoom_factor = w / UI_ICON_SIZE;
+      uiFontStyle fstyle_small = *UI_FSTYLE_WIDGET;
+      fstyle_small.points *= zoom_factor * 0.8f;
+      fstyle_small.shadow = short(FontShadowType::Outline);
+      fstyle_small.shadx = 0;
+      fstyle_small.shady = 0;
+      rcti text_rect = {x, x + UI_UNIT_X * zoom_factor, y, y};
+      uiFontStyleDraw_Params params = {UI_STYLE_TEXT_RIGHT, 0};
+      UI_fontstyle_draw(&fstyle_small,
+                        &text_rect,
+                        text_overlay->text,
+                        sizeof(text_overlay->text),
+                        text_color,
+                        &params);
+    }
   }
 
   else if (di->type == ICON_TYPE_BUFFER) {
