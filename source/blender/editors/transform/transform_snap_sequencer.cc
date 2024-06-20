@@ -524,8 +524,9 @@ static bool transform_snap_sequencer_calc_timeline(TransInfo *t, const TransSeqS
 static bool transform_snap_sequencer_calc_preview(TransInfo *t, const TransSeqSnapData *snap_data)
 {
   /* Store best snap candidates in x and y directions separately. */
-  float best_dist[2] = {FLT_MAX, FLT_MAX}, best_target_point[2] = {0, 0},
-        best_source_point[2] = {0, 0};
+  blender::float2 best_dist(std::numeric_limits<float>::max());
+  blender::float2 best_target_point(0.0f);
+  blender::float2 best_source_point(0.0f);
 
   for (const float *snap_source_point : snap_data->source_snap_points) {
     for (const float *snap_target_point : snap_data->target_snap_points) {
