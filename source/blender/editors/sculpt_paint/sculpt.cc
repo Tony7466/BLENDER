@@ -5863,6 +5863,7 @@ static void sculpt_stroke_update_step(bContext *C,
              SCULPT_TOOL_BLOB,
              SCULPT_TOOL_CREASE,
              SCULPT_TOOL_CLAY_STRIPS,
+             SCULPT_TOOL_GRAB,
              SCULPT_TOOL_FILL) &&
         BKE_pbvh_type(*ss.pbvh) == PBVH_FACES))
   {
@@ -6603,14 +6604,13 @@ void calc_distance_falloff(SculptSession &ss,
                            const MutableSpan<float> r_distances,
                            const MutableSpan<float> factors)
 {
-  BLI_assert(positions.size() == r_distances.size());
   BLI_assert(factors.size() == r_distances.size());
 
   SculptBrushTest test;
   const SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, test, falloff_shape);
 
-  for (const int i : positions.index_range()) {
+  for (const int i : r_distances.index_range()) {
     if (factors[i] == 0.0f) {
       r_distances[i] = FLT_MAX;
       continue;
