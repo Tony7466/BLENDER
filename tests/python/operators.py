@@ -356,7 +356,7 @@ def main():
         SpecMeshTest(
             "CubeQuadsConvertToTris", "testCubeQuadsConvertToTris", "expectedCubeQuadsConvertToTris",
             [OperatorSpecEditMode("quads_convert_to_tris", {"quad_method": "BEAUTY", "ngon_method": "BEAUTY"},
-                                   'FACE', {0, 1, 2, 3, 4, 5})],
+                                  'FACE', {0, 1, 2, 3, 4, 5})],
         ),
 
         # select all
