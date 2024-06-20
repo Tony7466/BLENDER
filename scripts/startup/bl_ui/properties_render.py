@@ -174,8 +174,16 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
 
         self.layout.prop(view, "use_white_balance", text="")
 
-    def draw_header_preset(self, _context):
-        RENDER_PT_color_management_white_balance_presets.draw_panel_header(self.layout)
+    def draw_header_preset(self, context):
+        layout = self.layout
+
+        scene = context.scene
+        view = scene.view_settings
+
+        RENDER_PT_color_management_white_balance_presets.draw_panel_header(layout)
+
+        eye = layout.operator("ui.eyedropper_color", text="", icon='EYEDROPPER')
+        eye.prop_data_path = "scene.view_settings.white_balance_whitepoint"
 
     def draw(self, context):
         layout = self.layout
@@ -191,7 +199,6 @@ class RENDER_PT_color_management_white_balance(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(view, "white_balance_temperature")
         col.prop(view, "white_balance_tint")
-        col.prop(view, "white_balance_whitepoint")
 
 
 class RENDER_PT_eevee_ambient_occlusion(RenderButtonsPanel, Panel):
