@@ -1351,7 +1351,7 @@ static void rna_def_colormanage(BlenderRNA *brna)
                                "rna_ColorManagedViewSettings_whitepoint_set",
                                nullptr);
   RNA_def_property_ui_text(prop,
-                           "White point",
+                           "White Point",
                            "The color which gets mapped to white "
                            "(automatically converted to/from temperature and tint)");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
