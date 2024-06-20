@@ -18,6 +18,11 @@ set(MATERIALX_EXTRA_ARGS
 )
 
 if(WIN32)
+  if(BUILD_MODE STREQUAL Release)
+    LIST(APPEND MATERIALX_EXTRA_ARGS -DPYTHON_MODULE_EXTENSION=.pyd)
+  else()
+    LIST(APPEND MATERIALX_EXTRA_ARGS -DPYTHON_MODULE_EXTENSION=_d.pyd)
+  endif()
   LIST(APPEND MATERIALX_EXTRA_ARGS -DPYTHON_LIBRARIES=${LIBDIR}/python/libs/python${PYTHON_SHORT_VERSION_NO_DOTS}${PYTHON_POSTFIX}.lib)
 endif()
 
@@ -27,7 +32,12 @@ ExternalProject_Add(external_materialx
   URL_HASH ${MATERIALX_HASH_TYPE}=${MATERIALX_HASH}
   PREFIX ${BUILD_DIR}/materialx
   CMAKE_GENERATOR ${PLATFORM_ALT_GENERATOR}
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/materialx ${DEFAULT_CMAKE_FLAGS} ${MATERIALX_EXTRA_ARGS}
+
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${LIBDIR}/materialx
+    ${DEFAULT_CMAKE_FLAGS}
+    ${MATERIALX_EXTRA_ARGS}
+
   INSTALL_DIR ${LIBDIR}/materialx
 )
 
@@ -36,21 +46,39 @@ if(WIN32)
   string(REPLACE "/" "\\" MATERIALX_PYTHON_TARGET_DOS "${MATERIALX_PYTHON_TARGET}")
   if(BUILD_MODE STREQUAL Release)
     ExternalProject_Add_Step(external_materialx after_install
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/include ${HARVEST_TARGET}/materialx/include
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/libraries ${HARVEST_TARGET}/materialx/libraries
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/lib/ ${HARVEST_TARGET}/materialx/lib/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/bin/ ${HARVEST_TARGET}/materialx/bin/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/python/ ${MATERIALX_PYTHON_TARGET}
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/include
+        ${HARVEST_TARGET}/materialx/include
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/libraries
+        ${HARVEST_TARGET}/materialx/libraries
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/lib/
+        ${HARVEST_TARGET}/materialx/lib/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/bin/
+        ${HARVEST_TARGET}/materialx/bin/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/python/
+        ${MATERIALX_PYTHON_TARGET}
       COMMAND del ${MATERIALX_PYTHON_TARGET_DOS}\\MaterialX\\*.lib
+
       DEPENDEES install
     )
   endif()
   if(BUILD_MODE STREQUAL Debug)
     ExternalProject_Add_Step(external_materialx after_install
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/lib/ ${HARVEST_TARGET}/materialx/lib/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/bin/ ${HARVEST_TARGET}/materialx/bin/
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/materialx/python/ ${MATERIALX_PYTHON_TARGET}
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/lib/
+        ${HARVEST_TARGET}/materialx/lib/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/bin/
+        ${HARVEST_TARGET}/materialx/bin/
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/materialx/python/
+        ${MATERIALX_PYTHON_TARGET}
       COMMAND del ${MATERIALX_PYTHON_TARGET_DOS}\\MaterialX\\*.lib
+
       DEPENDEES install
     )
   endif()

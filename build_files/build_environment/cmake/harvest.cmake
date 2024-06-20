@@ -16,12 +16,20 @@ if(WIN32)
   if(BUILD_MODE STREQUAL Release)
     add_custom_target(Harvest_Release_Results
       COMMAND # JPEG rename lib-file + copy include.
-      ${CMAKE_COMMAND} -E copy ${LIBDIR}/jpeg/lib/jpeg-static.lib ${HARVEST_TARGET}/jpeg/lib/libjpeg.lib &&
-      ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/jpeg/include/ ${HARVEST_TARGET}/jpeg/include/ &&
+      ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/jpeg/lib/jpeg-static.lib
+        ${HARVEST_TARGET}/jpeg/lib/libjpeg.lib &&
+      ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/jpeg/include/
+        ${HARVEST_TARGET}/jpeg/include/ &&
+
       # PNG.
-      ${CMAKE_COMMAND} -E copy ${LIBDIR}/png/lib/libpng16_static.lib ${HARVEST_TARGET}/png/lib/libpng.lib &&
-      ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/png/include/ ${HARVEST_TARGET}/png/include/ &&
-      DEPENDS
+      ${CMAKE_COMMAND} -E copy
+        ${LIBDIR}/png/lib/libpng16_static.lib
+        ${HARVEST_TARGET}/png/lib/libpng.lib &&
+      ${CMAKE_COMMAND} -E copy_directory
+        ${LIBDIR}/png/include/
+        ${HARVEST_TARGET}/png/include/
     )
   endif()
 
@@ -269,6 +277,7 @@ else()
   harvest(opus/lib ffmpeg/lib "*.a")
   harvest(vpx/lib ffmpeg/lib "*.a")
   harvest(x264/lib ffmpeg/lib "*.a")
+  harvest(x265/lib ffmpeg/lib "*.a")
   harvest(aom/lib ffmpeg/lib "*.a")
   harvest(webp/lib webp/lib "*.a")
   harvest(webp/include webp/include "*.h")
@@ -312,7 +321,12 @@ else()
     harvest(libglu/lib mesa/lib "*${SHAREDLIBEXT}*")
     harvest(mesa/lib64 mesa/lib "*${SHAREDLIBEXT}*")
 
-    harvest(dpcpp dpcpp "*")
+    harvest(dpcpp/bin dpcpp/bin "*")
+    harvest(dpcpp/include dpcpp/include "*")
+    harvest(dpcpp/lib dpcpp/lib "libsycl*")
+    # avoid harvesting libpi_unified_runtime and libur_ as they're optional.
+    harvest(dpcpp/lib dpcpp/lib "libpi_level_zero*")
+    harvest(dpcpp/lib/clang dpcpp/lib/clang "*")
     harvest(igc dpcpp/lib/igc "*")
     harvest(ocloc dpcpp/lib/ocloc "*")
   endif()

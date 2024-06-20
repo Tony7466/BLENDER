@@ -25,7 +25,7 @@ void OVERLAY_mode_transfer_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
 
-  pd->mode_transfer.time = BLI_check_seconds_timer();
+  pd->mode_transfer.time = BLI_time_now_seconds();
 
   for (int i = 0; i < 2; i++) {
     /* Non Meshes Pass (Camera, empties, lights ...) */
@@ -118,7 +118,7 @@ void OVERLAY_mode_transfer_cache_populate(OVERLAY_Data *vedata, Object *ob)
     DRW_shgroup_call_sculpt(mode_transfer_grp[is_xray], ob, false, false, false, false, false);
   }
   else {
-    GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       DRW_shgroup_call(mode_transfer_grp[is_xray], geom, ob);
     }

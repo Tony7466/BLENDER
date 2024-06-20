@@ -48,6 +48,7 @@ dict_custom = {
     "atomicity",
     "attachmentless",
     "attenuations",
+    "backends",
     "backlit",
     "bindless",
     "bitwise",
@@ -109,6 +110,8 @@ dict_custom = {
     "deinitializes",
     "deletable",
     "deleter",
+    "demangle",
+    "demangled",
     "denoised",
     "denoiser",
     "denoising",
@@ -174,6 +177,7 @@ dict_custom = {
     "imbricated",
     "impactful",
     "incrementation",
+    "indexable",
     "inferencing",
     "initializations",
     "initializer",
@@ -273,6 +277,7 @@ dict_custom = {
     "precomputed",
     "precomputing",
     "prefetch",
+    "prefetched",
     "prefetching",
     "prefilter",
     "prefiltered",
@@ -341,7 +346,9 @@ dict_custom = {
     "resyncing",
     "retarget",
     "retiming",
+    "reupload",
     "reusability",
+    "rotationally",
     "saveable",
     "schemas",
     "scrollable",
@@ -367,6 +374,8 @@ dict_custom = {
     "submenu",
     "submenus",
     "suboptimally",
+    "subprocess",
+    "subprocesses",
     "subrange",
     "subtractive",
     "subtype",
@@ -385,6 +394,7 @@ dict_custom = {
     "teleporting",
     "templating",
     "tertiarily",
+    "testability",
     "thumbstick",
     "tokenize",
     "tokenizing",
@@ -403,6 +413,7 @@ dict_custom = {
     "unapplied",
     "unapply",
     "unassign",
+    "unassigning",
     "unassociated",
     "unbake",
     "unbuffered",
@@ -565,7 +576,7 @@ dict_custom = {
     "unparent",
 
     # Accepted abbreviations.
-    # "dir",  # direction/directory? Too ambiguous, don't use this.
+    # `"dir",`  # direction/directory? Too ambiguous, don't use this.
     "anim",  # animation.
     "attr",
     "attrs",
@@ -866,5 +877,5 @@ files_ignore = {
 
 directories_ignore = {
     "scripts/addons",
-    "scripts/addons_contrib",
+    "scripts/addons_core",
 }
