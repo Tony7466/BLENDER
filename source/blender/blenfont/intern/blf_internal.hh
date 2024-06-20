@@ -46,7 +46,7 @@ struct rcti;
  * Offset from icon id to Unicode Supplimentary Private user Area-B,
  * added with Unicode 2.0. 65,536 codepoints at U+100000..U+10FFFF.
  */
-#define BLF_ICON_OFFSET 0x100000
+#define BLF_ICON_OFFSET 0x100000LU
 
 /**
  * We assume square pixels at a fixed DPI of 72, scaling only the size. Therefore
