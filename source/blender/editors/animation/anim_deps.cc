@@ -465,7 +465,7 @@ void ANIM_animdata_freelist(ListBase *anim_data)
 void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
 {
   using namespace blender;
-  Vector<bAction *> actions;
+  Set<bAction *> dna_actions;
   LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     if (ale->type != ANIMTYPE_FCURVE) {
       /* Maybe the same behavior should extend to Grease Pencil? */
@@ -474,7 +474,9 @@ void ANIM_animdata_deselect_action_keys(ListBase /* bAnimListElem */ *anim_data)
     if (!ale->adt || !ale->adt->action) {
       continue;
     }
-    actions.append(ale->adt->action);
+    dna_actions.add(ale->adt->action);
   }
-  animrig::deselect_keys_actions(actions);
+  for (bAction *dna_action : dna_actions) {
+    animrig::action_deselect_keys(dna_action->wrap());
+  }
 }
