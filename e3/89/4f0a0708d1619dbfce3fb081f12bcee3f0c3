@@ -1,2 +1,3 @@
 Referenced by commit 42210342cafecbd23fbf5b2ff46b49ebca149cd4, Cleanup: Remove outdated references to UV_SCULPT
 Referenced by issue #121410, Blender crashing upon opening or during edit of file: EXCEPTION_ACCESS_VIOLATION
+Referenced by issue #111770, Tool 'builtin_brush.Grab/Relax/Pinch' not found for space 'IMAGE_EDITOR'
