@@ -138,7 +138,7 @@ static std::array<float4x4, 8> transform_matrices_init(
   return mats;
 }
 
-#define TRANSFORM_MAXDIST_MIRROR 0.00002f
+static constexpr float transform_mirror_max_distance_eps = 0.00002f;
 
 static void transform_node(Object &ob,
                            const std::array<float4x4, 8> &transform_mats,
@@ -178,13 +178,13 @@ static void transform_node(Object &ob,
     add_v3_v3v3(vd.co, start_co, disp);
 
     /* Keep vertices on the mirror axis. */
-    if ((symm & PAINT_SYMM_X) && (fabs(start_co[0]) < TRANSFORM_MAXDIST_MIRROR)) {
+    if ((symm & PAINT_SYMM_X) && (fabs(start_co[0]) < transform_mirror_max_distance_eps)) {
       vd.co[0] = 0.0f;
     }
-    if ((symm & PAINT_SYMM_Y) && (fabs(start_co[1]) < TRANSFORM_MAXDIST_MIRROR)) {
+    if ((symm & PAINT_SYMM_Y) && (fabs(start_co[1]) < transform_mirror_max_distance_eps)) {
       vd.co[1] = 0.0f;
     }
-    if ((symm & PAINT_SYMM_Z) && (fabs(start_co[2]) < TRANSFORM_MAXDIST_MIRROR)) {
+    if ((symm & PAINT_SYMM_Z) && (fabs(start_co[2]) < transform_mirror_max_distance_eps)) {
       vd.co[2] = 0.0f;
     }
   }
