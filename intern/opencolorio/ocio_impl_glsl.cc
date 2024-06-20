@@ -651,15 +651,17 @@ static OCIO_GPUDisplayShader &getGPUDisplayShader(
 
   /* Create Processors.
    *
-   * Scale and exponent are handled outside of OCIO shader so we can handle them
-   * as uniforms at the binding stage. OCIO would otherwise bake them into the
-   * shader code, requiring slow recompiles when interactively adjusting them.
+   * Scale, white balance and exponent are handled outside of OCIO shader so we
+   * can handle them as uniforms at the binding stage. OCIO would otherwise bake
+   * them into the shader code, requiring slow recompiles when interactively
+   * adjusting them.
    *
    * Note that OCIO does have the concept of dynamic properties, however there
    * is no dynamic gamma and exposure is part of more expensive operations only.
    *
-   * Since exposure must happen in scene linear, we use two processors. The input
-   * is usually scene linear already and so that conversion is often a no-op.
+   * Since exposure and white balance must happen in scene linear, we use two
+   * processors. The input is usually scene linear already and so that conversion
+   * is often a no-op.
    */
   OCIO_ConstProcessorRcPtr *processor_to_scene_linear = OCIO_configGetProcessorWithNames(
       config, input, ROLE_SCENE_LINEAR);

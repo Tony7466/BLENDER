@@ -86,7 +86,7 @@ BLI_INLINE void IMB_colormanagement_scene_linear_to_aces(float aces[3],
 const float *IMB_colormanagement_get_xyz_to_scene_linear();
 
 /**
- * White balance helper functions.
+ * Functions for converting between color temperature/tint and RGB white points.
  */
 void IMB_colormanagement_get_view_whitepoint(const ColorManagedViewSettings *view_settings,
                                              float whitepoint[3]);

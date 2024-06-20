@@ -1516,7 +1516,7 @@ const float *IMB_colormanagement_get_xyz_to_scene_linear()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name White balance helper functions
+/** \name Functions for converting between color temperature/tint and RGB white points
  * \{ */
 
 void IMB_colormanagement_get_view_whitepoint(const ColorManagedViewSettings *view_settings,
