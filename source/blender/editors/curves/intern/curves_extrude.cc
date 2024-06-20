@@ -279,7 +279,7 @@ static void extrude_curves(Curves &curves_id)
   std::array<GVArraySpan, 3> src_selection;
   std::array<bke::GSpanAttributeWriter, 3> dst_selections;
 
-  Span<StringRef> selection_attr_names = get_curves_selection_attribute_names(curves);
+  const Span<StringRef> selection_attr_names = get_curves_selection_attribute_names(curves);
   for (const int selection_i : selection_attr_names.index_range()) {
     const StringRef selection_name = selection_attr_names[selection_i];
 
