@@ -228,7 +228,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   /* Screen space coordinates after smoothing. */
   Vector<float2> screen_space_smoothed_coords_;
   /* Screen space coordinates after jittering. */
-  Vector<float2> screen_space_jittered_coords_;
+  Vector<float2> screen_space_final_coords_;
   /* The start index of the smoothing window. */
   int active_smooth_start_index_ = 0;
   blender::float4x2 texture_space_ = float4x2::identity();
@@ -356,6 +356,7 @@ struct PaintOperationExecutor {
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
     self.screen_space_smoothed_coords_.append(start_coords);
+    self.screen_space_final_coords_.append(start_coords);
 
     /* Resize the curves geometry so there is one more curve with a single point. */
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
@@ -422,9 +423,7 @@ struct PaintOperationExecutor {
     drawing_->tag_topology_changed();
   }
 
-  void active_smoothing(PaintOperation &self,
-                        const IndexRange smooth_window,
-                        MutableSpan<float3> curve_positions)
+  void active_smoothing(PaintOperation &self, const IndexRange smooth_window)
   {
     const Span<float2> coords_to_smooth = self.screen_space_coords_orig_.as_span().slice(
         smooth_window);
@@ -471,7 +470,6 @@ struct PaintOperationExecutor {
 
     MutableSpan<float2> window_coords = self.screen_space_smoothed_coords_.as_mutable_span().slice(
         smooth_window);
-    MutableSpan<float3> positions_slice = curve_positions.slice(smooth_window);
     const float converging_threshold_px = 0.1f;
     bool stop_counting_converged = false;
     int num_converged = 0;
@@ -495,7 +493,6 @@ struct PaintOperationExecutor {
 
       /* Update the positions in the current cache. */
       window_coords[window_i] = new_pos;
-      positions_slice[window_i] = self.placement_.project(new_pos);
     }
 
     /* Remove all the converged points from the active window and shrink the window accordingly. */
@@ -509,6 +506,13 @@ struct PaintOperationExecutor {
                      const IndexRange active_window,
                      MutableSpan<float3> curve_positions)
   {
+    MutableSpan<float2> smooth_window_coords = self.screen_space_smoothed_coords_.as_mutable_span().slice(
+        active_window);
+    MutableSpan<float2> jittered_coords = self.screen_space_final_coords_.as_mutable_span().slice(active_window);
+    MutableSpan<float3> positions_slice = curve_positions.slice(active_window);
+    for (const int64_t window_i : active_window.index_range()) {
+      positions_slice[window_i] = self.placement_.project(new_pos);
+    }
   }
 
   void process_extension_sample(PaintOperation &self,
@@ -628,6 +632,7 @@ struct PaintOperationExecutor {
     /* Update screen space buffers with new points. */
     self.screen_space_coords_orig_.extend(new_screen_space_coords);
     self.screen_space_smoothed_coords_.extend(new_screen_space_coords);
+    self.screen_space_final_coords_.extend(new_screen_space_coords);
     for (float2 new_position : new_screen_space_coords) {
       self.screen_space_curve_fitted_coords_.append(Vector<float2>({new_position}));
     }
@@ -641,8 +646,7 @@ struct PaintOperationExecutor {
     }
     else {
       /* Active smoothing is done in a window at the end of the new stroke. */
-      this->active_smoothing(
-          self, smooth_window, positions.slice(curves.points_by_curve()[active_curve]));
+      this->active_smoothing(self, smooth_window);
     }
 
     if (settings_->draw_jitter > 0.0f) {
@@ -982,7 +986,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
     }
     if (settings->simplify_px > 0.0f) {
       simplify_stroke(drawing,
-                      this->screen_space_smoothed_coords_.as_span().drop_back(num_points_removed),
+                      this->screen_space_final_coords_.as_span().drop_back(num_points_removed),
                       settings->simplify_px,
                       active_curve);
     }
