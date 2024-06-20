@@ -18,7 +18,7 @@ static void clear_selection_legacy_action(Action &action)
     if (!fcu->bezt) {
       continue;
     }
-    BKE_fcurve_deselect_all_keys(fcu);
+    BKE_fcurve_deselect_all_keys(*fcu);
   }
 }
 
@@ -36,7 +36,7 @@ static void clear_selection_layered_action(Action &action)
       for (ChannelBag *ch_bag : key_strip.channelbags()) {
         BLI_assert(ch_bag != nullptr);
         for (FCurve *fcu : ch_bag->fcurves()) {
-          BKE_fcurve_deselect_all_keys(fcu);
+          BKE_fcurve_deselect_all_keys(*fcu);
         }
       }
     }
@@ -58,11 +58,10 @@ void deselect_keys_actions(Span<bAction *> actions)
 {
   Set<bAction *> visited_actions;
   for (bAction *action : actions) {
-    if (visited_actions.contains(action)) {
+    if (!visited_actions.add(action)) {
       continue;
     }
     action_deselect_keys(action->wrap());
-    visited_actions.add(action);
   }
 }
 

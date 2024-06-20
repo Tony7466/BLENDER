@@ -1182,5 +1182,4 @@ FCurve *action_fcurve_ensure(Main *bmain,
 
   return fcu;
 }
-
 }  // namespace blender::animrig
