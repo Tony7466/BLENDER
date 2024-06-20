@@ -321,7 +321,7 @@ class GeoTreeLog {
         return value;
       }
     }
-    if (query_socket.is_logically_linked()) {
+    if (!query_socket.is_logically_linked()) {
       if (query_socket.typeinfo->get_base_cpp_value) {
         if (query_socket.typeinfo->base_cpp_type->is<T>()) {
           T value;
