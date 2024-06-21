@@ -43,6 +43,29 @@ struct TransSeqSnapData {
 /** \name Snap sources
  * \{ */
 
+static blender::VectorSet<Sequence *> query_snap_sources_timeline(const Scene *scene)
+{
+  blender::VectorSet<Sequence *> snap_sources;
+
+  ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
+  snap_sources = SEQ_query_selected_strips(seqbase);
+
+  return snap_sources;
+}
+
+static blender::VectorSet<Sequence *> query_snap_sources_preview(const Scene *scene)
+{
+  blender::VectorSet<Sequence *> snap_sources;
+
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *channels = SEQ_channels_displayed_get(ed);
+
+  snap_sources = SEQ_query_rendered_strips(scene, channels, ed->seqbasep, scene->r.cfra, 0);
+  snap_sources.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
+
+  return snap_sources;
+}
+
 static int seq_get_snap_source_points_count_timeline(const blender::Span<Sequence *> snap_sources)
 {
   return snap_sources.size() * 2;
@@ -157,29 +180,6 @@ static void query_strip_effects_fn(const Scene *scene,
       query_strip_effects_fn(scene, seq_test, seqbase, strips);
     }
   }
-}
-
-static blender::VectorSet<Sequence *> query_snap_sources_timeline(const Scene *scene)
-{
-  blender::VectorSet<Sequence *> snap_sources;
-
-  ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
-  snap_sources = SEQ_query_selected_strips(seqbase);
-
-  return snap_sources;
-}
-
-static blender::VectorSet<Sequence *> query_snap_sources_preview(const Scene *scene)
-{
-  blender::VectorSet<Sequence *> snap_sources;
-
-  Editing *ed = SEQ_editing_get(scene);
-  ListBase *channels = SEQ_channels_displayed_get(ed);
-
-  snap_sources = SEQ_query_rendered_strips(scene, channels, ed->seqbasep, scene->r.cfra, 0);
-  snap_sources.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
-
-  return snap_sources;
 }
 
 static blender::VectorSet<Sequence *> query_snap_targets_timeline(
