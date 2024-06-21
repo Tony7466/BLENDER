@@ -787,10 +787,15 @@ static void GREASE_PENCIL_OT_layer_group_color_tag(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "color_tag", enum_layergroup_color_items, 0, "color tag", "");
 }
 
+enum class DuplicateCopyMode {
+  All = 0,
+  Active,
+};
+
 static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
-                                       GreasePencil &src_grease_pencil,
+                                       const GreasePencil &src_grease_pencil,
                                        const blender::bke::greasepencil::Layer &src_layer,
-                                       int copy_frame_mode,
+                                       DuplicateCopyMode copy_frame_mode,
                                        int current_frame)
 {
   using namespace blender::bke::greasepencil;
@@ -798,13 +803,17 @@ static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
 
   dst_layer.frames_for_write().clear();
   for (auto [frame_number, frame] : src_layer.frames().items()) {
-    if (copy_frame_mode && (&frame != src_layer.frame_at(current_frame))) {
+    if ((copy_frame_mode == DuplicateCopyMode::Active) &&
+        (&frame != src_layer.frame_at(current_frame)))
+    {
       continue;
     }
     const int duration = src_layer.get_frame_duration_at(frame_number);
 
     Drawing *dst_drawing = dst_grease_pencil.insert_frame(
         dst_layer, frame_number, duration, eBezTriple_KeyframeType(frame.type));
+    BLI_assert(dst_drawing != nullptr);
+
     /* Duplicate drawing. */
     const Drawing &src_drawing = *src_grease_pencil.get_drawing_at(src_layer, frame_number);
     *dst_drawing = src_drawing;
@@ -817,7 +826,7 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
   Object *src_object = CTX_data_active_object(C);
   const Scene *scene = CTX_data_scene(C);
   const int current_frame = scene->r.cfra;
-  GreasePencil &src_grease_pencil = *static_cast<GreasePencil *>(src_object->data);
+  const GreasePencil &src_grease_pencil = *static_cast<GreasePencil *>(src_object->data);
   const bool only_active = RNA_boolean_get(op->ptr, "only_active");
   const int copy_frame_mode = RNA_enum_get(op->ptr, "mode");
 
@@ -829,13 +838,19 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
 
     if (only_active) {
       const Layer &active_layer = *src_grease_pencil.get_active_layer();
-      duplicate_layer_and_frames(
-          dst_grease_pencil, src_grease_pencil, active_layer, copy_frame_mode, current_frame);
+      duplicate_layer_and_frames(dst_grease_pencil,
+                                 src_grease_pencil,
+                                 active_layer,
+                                 DuplicateCopyMode(copy_frame_mode),
+                                 current_frame);
     }
     else {
       for (const Layer *layer : src_grease_pencil.layers()) {
-        duplicate_layer_and_frames(
-            dst_grease_pencil, src_grease_pencil, *layer, copy_frame_mode, current_frame);
+        duplicate_layer_and_frames(dst_grease_pencil,
+                                   src_grease_pencil,
+                                   *layer,
+                                   DuplicateCopyMode(copy_frame_mode),
+                                   current_frame);
       }
     }
 
@@ -868,8 +883,8 @@ static void GREASE_PENCIL_OT_layer_duplicate_object(wmOperatorType *ot)
                   "Copy only active Layer, uncheck to append all layers");
 
   static const EnumPropertyItem copy_mode[] = {
-      {0, "ALL", 0, "All Frames", ""},
-      {1, "ACTIVE", 0, "Active Frame", ""},
+      {int(DuplicateCopyMode::All), "ALL", 0, "All Frames", ""},
+      {int(DuplicateCopyMode::Active), "ACTIVE", 0, "Active Frame", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
