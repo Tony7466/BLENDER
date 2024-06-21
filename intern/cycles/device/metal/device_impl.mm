@@ -1112,8 +1112,7 @@ void MetalDevice::tex_alloc(device_texture &mem)
       }
     }
     MTLStorageMode storage_mode = MTLStorageModeManaged;
-    /* Intel GPUs don't support MTLStorageModeShared for MTLTextures. */
-    if ([mtlDevice hasUnifiedMemory] && device_vendor != METAL_GPU_INTEL) {
+    if ([mtlDevice hasUnifiedMemory]) {
       storage_mode = MTLStorageModeShared;
     }
 
