@@ -99,10 +99,6 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
         max_threads_per_threadgroup = 64;
         break;
       }
-      case METAL_GPU_AMD: {
-        max_threads_per_threadgroup = 128;
-        break;
-      }
       case METAL_GPU_APPLE: {
         max_threads_per_threadgroup = 512;
         break;
