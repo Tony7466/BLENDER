@@ -92,18 +92,7 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       default_storage_mode = MTLResourceStorageModeShared;
     }
 
-    switch (device_vendor) {
-      default:
-        break;
-      case METAL_GPU_INTEL: {
-        max_threads_per_threadgroup = 64;
-        break;
-      }
-      case METAL_GPU_APPLE: {
-        max_threads_per_threadgroup = 512;
-        break;
-      }
-    }
+    max_threads_per_threadgroup = 512;
 
     use_metalrt = info.use_hardware_raytracing;
     if (auto metalrt = getenv("CYCLES_METALRT")) {
