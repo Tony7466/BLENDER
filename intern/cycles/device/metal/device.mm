@@ -72,7 +72,6 @@ void device_metal_info(vector<DeviceInfo> &devices)
     MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
 
     info.has_nanovdb = vendor == METAL_GPU_APPLE;
-    info.has_light_tree = vendor != METAL_GPU_AMD;
     info.has_mnee = vendor != METAL_GPU_AMD;
 
     info.use_hardware_raytracing = false;
