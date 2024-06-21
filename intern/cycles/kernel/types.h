@@ -178,7 +178,6 @@ CCL_NAMESPACE_BEGIN
 #define __HAIR__
 #define __LIGHT_LINKING__
 #define __SHADOW_LINKING__
-#define __LIGHT_TREE__
 #define __OBJECT_MOTION__
 #define __MNEE__
 #define __PASSES__
@@ -217,8 +216,6 @@ CCL_NAMESPACE_BEGIN
 #endif
 
 #if defined(__KERNEL_METAL_AMD__)
-/* Disabled due to internal compiler perf issue and enable light tree on Metal/AMD. */
-#  undef __LIGHT_TREE__
 /* Disabled due to compiler crash on Metal/AMD. */
 #  undef __MNEE__
 /* Disable due to performance regression on Metal/AMD. */
