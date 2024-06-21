@@ -2280,6 +2280,7 @@ static bool area_split_apply(bContext *C, wmOperator *op)
   /* Update preview thumbnail */
   BKE_icon_changed(screen->id.icon_id);
 
+  /* We have more than one area now, so reset window title. */
   WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
 
   return true;
@@ -3565,7 +3566,9 @@ static bool area_join_apply(bContext *C, wmOperator *op)
     return false;
   }
 
-  if (!screen_area_join(C, CTX_wm_screen(C), jd->sa1, jd->sa2)) {
+  bScreen *screen = CTX_wm_screen(C);
+
+  if (!screen_area_join(C, screen, jd->sa1, jd->sa2)) {
     return false;
   }
   if (CTX_wm_area(C) == jd->sa2) {
@@ -3573,8 +3576,8 @@ static bool area_join_apply(bContext *C, wmOperator *op)
     CTX_wm_region_set(C, nullptr);
   }
 
-  if (BLI_listbase_is_single(&CTX_wm_screen(C)->areabase)) {
-    /* Areas reduced to just one, so update the window title. */
+  if (BLI_listbase_is_single(&screen->areabase)) {
+    /* Areas reduced to just one, so show nicer title. */
     WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
   }
 

@@ -366,6 +366,10 @@ wmWindow *WM_window_open(bContext *C,
 
 void WM_window_set_dpi(const wmWindow *win);
 
+/**
+ * Give a title to a window. With "Title" is nullptr, it is generated automatically
+ * based on window settings and areas. Only use a custom title when really needed.
+ */
 void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nullptr);
 
 bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);

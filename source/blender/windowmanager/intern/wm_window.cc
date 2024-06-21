@@ -487,47 +487,13 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
   }
 
   GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
-  bool is_main_window = !win->parent && !WM_window_is_temp_screen(win);
 
-  if (is_main_window) {
-    const char *filepath = BKE_main_blendfile_path_from_global();
-    const char *filename = BLI_path_basename(filepath);
-    const bool has_filepath = filepath[0] != '\0';
-    const bool include_filepath = has_filepath && (filepath != filename) &&
-                                  (GHOST_SetPath(handle, filepath) == GHOST_kFailure);
-
-    std::string str;
-    if (!wm->file_saved) {
-      str += "* ";
-    }
-
-    if (has_filepath) {
-      const size_t filename_no_ext_len = BLI_path_extension_or_end(filename) - filename;
-      str.append(filename, filename_no_ext_len);
-    }
-    else {
-      str += IFACE_("(Unsaved)");
-    }
-
-    if (G_MAIN->recovered) {
-      str += IFACE_(" (Recovered)");
-    }
-
-    if (include_filepath) {
-      str += " [";
-      str += filepath;
-      str += "]";
-    }
-
-    str += " - Blender ";
-    str += BKE_blender_version_string_compact();
-
-    GHOST_SetTitle(handle, str.c_str());
-  }
-  else if (title) {
+  if (title) {
     GHOST_SetTitle(handle, title);
+    return;
   }
-  else {
+
+  if (win->parent || WM_window_is_temp_screen(win)) {
     bScreen *screen = WM_window_get_active_screen(win);
     const bool is_single = screen && BLI_listbase_is_single(&screen->areabase);
     ScrArea *area = (screen) ? static_cast<ScrArea *>(screen->areabase.first) : nullptr;
@@ -550,7 +516,43 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
     else {
       GHOST_SetTitle(handle, "Blender");
     }
+    return;
   }
+
+  const char *filepath = BKE_main_blendfile_path_from_global();
+  const char *filename = BLI_path_basename(filepath);
+
+  const bool has_filepath = filepath[0] != '\0';
+  const bool include_filepath = has_filepath && (filepath != filename) &&
+                                (GHOST_SetPath(handle, filepath) == GHOST_kFailure);
+
+  std::string str;
+  if (!wm->file_saved) {
+    str += "* ";
+  }
+
+  if (has_filepath) {
+    const size_t filename_no_ext_len = BLI_path_extension_or_end(filename) - filename;
+    str.append(filename, filename_no_ext_len);
+  }
+  else {
+    str += IFACE_("(Unsaved)");
+  }
+
+  if (G_MAIN->recovered) {
+    str += IFACE_(" (Recovered)");
+  }
+
+  if (include_filepath) {
+    str += " [";
+    str += filepath;
+    str += "]";
+  }
+
+  str += " - Blender ";
+  str += BKE_blender_version_string_compact();
+
+  GHOST_SetTitle(handle, str.c_str());
 
   /* Informs GHOST of unsaved changes to set the window modified visual indicator (macOS)
    * and to give a hint of unsaved changes for a user warning mechanism in case of OS application
