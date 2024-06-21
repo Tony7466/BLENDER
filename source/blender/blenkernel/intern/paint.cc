@@ -1646,8 +1646,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
   MultiresModifierData *mmd = sculpt_multires_modifier_get(scene, ob, true);
   const bool use_face_sets = (ob->mode & OB_MODE_SCULPT) != 0;
 
-  BLI_assert(mesh_eval != nullptr);
-
   /* This is for handling a newly opened file with no object visible,
    * causing `mesh_eval == nullptr`. */
   if (mesh_eval == nullptr) {
