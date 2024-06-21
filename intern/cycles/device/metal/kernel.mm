@@ -397,13 +397,6 @@ bool MetalKernelPipeline::should_use_binary_archive() const
         return false;
       }
     }
-    else {
-      /* Workaround for issues using Binary Archives on non-Apple Silicon systems. */
-      MetalGPUVendor gpu_vendor = MetalInfo::get_device_vendor(mtlDevice);
-      if (gpu_vendor != METAL_GPU_APPLE) {
-        return false;
-      }
-    }
 
     if (use_metalrt && device_kernel_has_intersection(device_kernel)) {
       /* Binary linked functions aren't supported in binary archives. */
