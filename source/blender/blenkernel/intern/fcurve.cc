@@ -1041,9 +1041,11 @@ bool BKE_fcurve_has_selected_control_points(const FCurve *fcu)
   return false;
 }
 
-void BKE_fcurve_deselect_all_keys(const FCurve &fcu)
+void BKE_fcurve_deselect_all_keys(FCurve &fcu)
 {
-  BLI_assert(fcu.bezt != nullptr);
+  if (!fcu.bezt) {
+    return;
+  }
   for (int i = 0; i < fcu.totvert; i++) {
     BEZT_DESEL_ALL(&fcu.bezt[i]);
   }
