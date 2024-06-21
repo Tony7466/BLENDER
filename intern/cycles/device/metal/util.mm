@@ -21,11 +21,17 @@ CCL_NAMESPACE_BEGIN
 string MetalInfo::get_device_name(id<MTLDevice> device)
 {
   string device_name = [device.name UTF8String];
-  if (get_device_vendor(device) == METAL_GPU_APPLE) {
+  MetalGPUVendor vendor = get_device_vendor(device);
+  if (vendor == METAL_GPU_APPLE) {
     /* Append the GPU core count so we can distinguish between GPU variants in benchmarks. */
     int gpu_core_count = get_apple_gpu_core_count(device);
     device_name += string_printf(gpu_core_count ? " (GPU - %d cores)" : " (GPU)", gpu_core_count);
   }
+  else if (vendor & (METAL_GPU_AMD | METAL_GPU_INTEL)) {
+    /* Support is to be removed in Blender 4.3 */
+    device_name += " (Depreciated)";
+  }
+
   return device_name;
 }
 
