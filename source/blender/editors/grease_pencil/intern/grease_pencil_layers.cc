@@ -812,11 +812,11 @@ static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
 
     Drawing *dst_drawing = dst_grease_pencil.insert_frame(
         dst_layer, frame_number, duration, eBezTriple_KeyframeType(frame.type));
-    BLI_assert(dst_drawing != nullptr);
-
-    /* Duplicate drawing. */
-    const Drawing &src_drawing = *src_grease_pencil.get_drawing_at(src_layer, frame_number);
-    *dst_drawing = src_drawing;
+    if (dst_drawing != nullptr) {
+      /* Duplicate drawing. */
+      const Drawing &src_drawing = *src_grease_pencil.get_drawing_at(src_layer, frame_number);
+      *dst_drawing = src_drawing;
+    }
   }
 }
 
