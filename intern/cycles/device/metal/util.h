@@ -24,12 +24,14 @@ enum MetalGPUVendor {
   METAL_GPU_APPLE = 1,
   METAL_GPU_AMD = 2,
   METAL_GPU_INTEL = 3,
+  /* TODO: REMOVE AMD AND INTEL GPUS?*/
 };
 
 enum AppleGPUArchitecture {
   /* NOT_APPLE_GPU represents AMD/Intel GPUs. This should remained at the start of this enum to
    * ensure that AMD/Intel GPUs don't accidentally get Apple Silicon only features enabled when
    * using comparison operators. */
+  /* TODO: REMOVE NOT_APPLE_GPU? */
   NOT_APPLE_GPU,
   APPLE_M1,
   APPLE_M2,

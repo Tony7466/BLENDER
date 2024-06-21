@@ -103,6 +103,7 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       capture_enabled = true;
     }
 
+    /* TODO: Enable this all the time? */
     if (device_vendor == METAL_GPU_APPLE) {
       /* Set kernel_specialization_level based on user preferences. */
       switch (info.kernel_optimization_level) {

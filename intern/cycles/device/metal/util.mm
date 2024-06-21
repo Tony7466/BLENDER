@@ -68,6 +68,7 @@ AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
 
 MetalGPUVendor MetalInfo::get_device_vendor(id<MTLDevice> device)
 {
+  /* TODO: REMOVE THE CHECKS FOR INTEL AND AMD HERE? */
   const char *device_name = [device.name UTF8String];
   if (strstr(device_name, "Intel")) {
     return METAL_GPU_INTEL;
@@ -96,6 +97,8 @@ int MetalInfo::optimal_sort_partition_elements(id<MTLDevice> device)
   /* On M1 and M2 GPUs, we see better cache utilization if we partition the active indices before
    * sorting each partition by material. Partitioning into chunks of 65536 elements results in an
    * overall render time speedup of up to 15%. */
+
+  /* TODO: Set this option every time? */
   if (get_device_vendor(device) == METAL_GPU_APPLE) {
     return 65536;
   }
