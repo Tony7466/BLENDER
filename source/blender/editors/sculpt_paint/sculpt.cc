@@ -5493,6 +5493,17 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
+  // SCULPT_TOOL_GRAB,
+  // SCULPT_TOOL_ROTATE,
+  // SCULPT_TOOL_THUMB,
+  // SCULPT_TOOL_ELASTIC_DEFORM,
+  // SCULPT_TOOL_BOUNDARY,
+  // SCULPT_TOOL_POSE
+  if (ELEM(brush->sculpt_tool, SCULPT_TOOL_GRAB)) {
+    restore_from_undo_step(sd, ob);
+    return;
+  }
+
   /* For the cloth brush it makes more sense to not restore the mesh state to keep running the
    * simulation from the previous state. */
   if (brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
