@@ -363,14 +363,14 @@ void drawSnapping(TransInfo *t)
     float pixelx = BLI_rctf_size_x(&region->v2d.cur) / BLI_rcti_size_x(&region->v2d.mask);
 
     if (region->regiontype == RGN_TYPE_PREVIEW) {
-      if (t->tsnap.direction & SCE_SNAP_GLOBAL_X) {
+      if (t->tsnap.direction & DIR_GLOBAL_X) {
         immRectf(pos,
                  t->tsnap.snap_target[0] - pixelx,
                  region->v2d.cur.ymax,
                  t->tsnap.snap_target[0] + pixelx,
                  region->v2d.cur.ymin);
       }
-      if (t->tsnap.direction & SCE_SNAP_GLOBAL_Y) {
+      if (t->tsnap.direction & DIR_GLOBAL_Y) {
         immRectf(pos,
                  region->v2d.cur.xmin,
                  t->tsnap.snap_target[1] - pixelx,
