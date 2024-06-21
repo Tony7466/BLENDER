@@ -155,7 +155,7 @@ struct ShadowRayDirectional {
 
 /* `lP` is supposed to be in light rotated space. But not translated. */
 ShadowRayDirectional shadow_ray_generate_directional(
-    LightData light, vec2 random_2d, vec3 lP, vec3 lNg, float texel_radius)
+    LightData light, vec2 random_point_on_disk, vec3 lP, vec3 lNg, float texel_radius)
 {
   float clip_near = orderedIntBitsToFloat(light.clip_near);
   float clip_far = orderedIntBitsToFloat(light.clip_far);
@@ -168,7 +168,7 @@ ShadowRayDirectional shadow_ray_generate_directional(
   float shadow_angle = min(light_sun_data_get(light).shadow_angle, max_tracing_angle);
 
   /* Light shape is 1 unit away from the shading point. */
-  vec3 direction = sample_uniform_cone_from_disk(random_2d * 2.0 - 1.0, cos(shadow_angle));
+  vec3 direction = sample_uniform_cone_from_disk(random_point_on_disk, cos(shadow_angle));
 
   direction = shadow_ray_above_horizon_ensure(direction, lNg, max_tracing_distance);
 
@@ -227,10 +227,12 @@ struct ShadowRayPunctual {
 };
 
 /* Return ray in UV clip space [0..1]. */
-ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, vec3 lP, vec3 lNg)
+ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
+                                               vec2 random_point_on_disk,
+                                               vec3 lP,
+                                               vec3 lNg)
 {
-  /* TODO(fclem): Broken because random_2d is a disk already. */
-  random_2d = random_2d * 2.0 - 1.0;
+  /* TODO(fclem): Broken rect area because random_point_on_disk is a disk already. */
 
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
@@ -238,9 +240,10 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
 
   vec3 direction;
   if (is_area_light(light.type)) {
-    random_2d *= light_area_data_get(light).size * light_area_data_get(light).shadow_scale;
+    random_point_on_disk *= light_area_data_get(light).size *
+                            light_area_data_get(light).shadow_scale;
 
-    vec3 point_on_light_shape = vec3(random_2d, 0.0);
+    vec3 point_on_light_shape = vec3(random_point_on_disk, 0.0);
 
     direction = point_on_light_shape - lP;
     direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
@@ -255,9 +258,9 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     if (is_sphere_light(light.type)) {
       shape_radius = light_sphere_disk_radius(shape_radius, dist);
     }
-    random_2d *= shape_radius;
+    random_point_on_disk *= shape_radius;
 
-    vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
+    vec3 point_on_light_shape = right * random_point_on_disk.x + up * random_point_on_disk.y;
 
     direction = point_on_light_shape - lP;
     direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
@@ -310,7 +313,7 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
-vec3 shadow_pcf_offset(vec3 L, vec3 Ng, vec2 random)
+vec3 shadow_pcf_offset(vec3 L, vec3 Ng, vec2 random_point_on_disk)
 {
   /* Angle between Light and normal. */
   float cos_theta = abs(dot(L, Ng));
@@ -320,10 +323,9 @@ vec3 shadow_pcf_offset(vec3 L, vec3 Ng, vec2 random)
   float cone_height = saturate(sin_theta * safe_rcp(cos_theta));
   /* We choose a random disk distribution because it is rotationally invariant.
    * This saves us the trouble of getting the correct orientation for punctual. */
-  float distance_to_center = sqrt(random.x);
-  vec2 disk_sample = sample_circle(random.y) * distance_to_center;
+  float distance_to_center = length(random_point_on_disk);
   /* Set the samples on a cone up to 45 degree. */
-  vec3 cone_sample = vec3(disk_sample, distance_to_center * cone_height);
+  vec3 cone_sample = vec3(random_point_on_disk, distance_to_center * cone_height);
   /* Setup the cone around the light vector. */
   vec3 pcf_offset = from_up_axis(L) * cone_sample;
   /* Offset the cone in normal direction to avoid self shadowing when angle is greater than 45°. */
@@ -425,6 +427,8 @@ float shadow_eval(LightData light,
       pixel, RNG_SHADOW_TRACE, NOISE_HEMISPHERE_BINOMIAL);
   vec2 random_pcf_2d =
       sampling_blue_noise_fetch(pixel, RNG_SHADOW_FILTER, NOISE_HEMISPHERE_BINOMIAL).rg;
+  random_shadow_4d.xyz = random_shadow_4d.xyz * 2.0 - 1.0;
+  random_pcf_2d.xy = random_pcf_2d.xy * 2.0 - 1.0;
 #else
   /* Case of surfel light eval. */
   vec4 random_shadow_4d = vec4(0.5);
