@@ -27,12 +27,10 @@
 #include "BKE_nla.h"
 #include "BKE_report.hh"
 
-#include "DNA_action_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_bit_vector.hh"
 #include "BLI_dynstr.h"
-#include "BLI_map.hh"
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.hh"
