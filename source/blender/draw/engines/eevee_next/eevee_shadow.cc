@@ -912,17 +912,18 @@ void ShadowModule::end_sync()
       pass.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_TAG_UPDATE));
       pass.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
       pass.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
+      pass.push_constant("tilemap_count", int(tilemap_pool.tilemaps_data.size()));
       /* Past caster transforms. */
       if (past_casters_updated_.size() > 0) {
         pass.bind_ssbo("bounds_buf", &manager.bounds_buf.previous());
         pass.bind_ssbo("resource_ids_buf", past_casters_updated_);
-        pass.dispatch(int3(past_casters_updated_.size(), 1, tilemap_pool.tilemaps_data.size()));
+        pass.draw(box_batch_, past_casters_updated_.size() * tilemap_pool.tilemaps_data.size());
       }
       /* Current caster transforms. */
       if (curr_casters_updated_.size() > 0) {
         pass.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
         pass.bind_ssbo("resource_ids_buf", curr_casters_updated_);
-        pass.dispatch(int3(curr_casters_updated_.size(), 1, tilemap_pool.tilemaps_data.size()));
+        pass.draw(box_batch_, curr_casters_updated_.size() * tilemap_pool.tilemaps_data.size());
       }
       pass.barrier(GPU_BARRIER_SHADER_STORAGE);
     }
@@ -933,12 +934,14 @@ void ShadowModule::end_sync()
       pass.init();
       if (jittered_transparent_casters_.size() > 0) {
         pass.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_TAG_UPDATE));
+        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_CULL_FRONT);
         pass.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
         pass.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         pass.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
         pass.bind_ssbo("resource_ids_buf", jittered_transparent_casters_);
-        pass.dispatch(
-            int3(jittered_transparent_casters_.size(), 1, tilemap_pool.tilemaps_data.size()));
+        pass.push_constant("tilemap_count", int(tilemap_pool.tilemaps_data.size()));
+        pass.draw(box_batch_,
+                  jittered_transparent_casters_.size() * tilemap_pool.tilemaps_data.size());
         pass.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
     }
@@ -1236,6 +1239,8 @@ void ShadowModule::set_view(View &view, int2 extent)
     BLI_assert_unreachable();
   }
 
+  update_tag_fb_.ensure(int2(SHADOW_TILEMAP_RES));
+
   inst_.hiz_buffer.update();
 
   int loop_count = 0;
@@ -1244,17 +1249,20 @@ void ShadowModule::set_view(View &view, int2 extent)
     {
       GPU_uniformbuf_clear_to_zero(shadow_multi_view_.matrices_ubo_get());
 
+      GPU_framebuffer_bind(prev_fb);
       inst_.manager->submit(tilemap_setup_ps_, view);
+      inst_.manager->submit(tilemap_usage_ps_, view);
       if (assign_if_different(update_casters_, false)) {
         /* Run caster update only once. */
+        GPU_framebuffer_bind(update_tag_fb_);
         /* TODO(fclem): There is an optimization opportunity here where we can
          * test casters only against the static tile-maps instead of all of them. */
         inst_.manager->submit(caster_update_ps_, view);
       }
       if (loop_count == 0) {
+        GPU_framebuffer_bind(update_tag_fb_);
         inst_.manager->submit(jittered_transparent_caster_update_ps_, view);
       }
-      inst_.manager->submit(tilemap_usage_ps_, view);
       inst_.manager->submit(tilemap_update_ps_, view);
 
       shadow_multi_view_.compute_procedural_bounds();

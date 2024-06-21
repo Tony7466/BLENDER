@@ -453,7 +453,8 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_shadow_page_free_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_mask_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_ops_lib.glsl
-  engines/eevee_next/shaders/eevee_shadow_tag_update_comp.glsl
+  engines/eevee_next/shaders/eevee_shadow_tag_update_frag.glsl
+  engines/eevee_next/shaders/eevee_shadow_tag_update_vert.glsl
   engines/eevee_next/shaders/eevee_shadow_tag_usage_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_tag_usage_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_tag_usage_lib.glsl

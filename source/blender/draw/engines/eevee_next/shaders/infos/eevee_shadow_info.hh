@@ -48,15 +48,21 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_init)
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_tilemap_init_comp.glsl");
 
+GPU_SHADER_INTERFACE_INFO(eevee_shadow_tag_update_flat_iface, "").flat(Type::INT, "tilemap_index");
+
 GPU_SHADER_CREATE_INFO(eevee_shadow_tag_update)
     .do_static_compilation(true)
     .local_group_size(1, 1, 1)
+    .push_constant(Type::INT, "tilemap_count")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_out(eevee_shadow_tag_update_flat_iface)
     .storage_buf(0, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
     .storage_buf(1, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
     .storage_buf(5, Qualifier::READ, "ObjectBounds", "bounds_buf[]")
     .storage_buf(6, Qualifier::READ, "uint", "resource_ids_buf[]")
     .additional_info("eevee_shared", "draw_view", "draw_view_culling")
-    .compute_source("eevee_shadow_tag_update_comp.glsl");
+    .vertex_source("eevee_shadow_tag_update_vert.glsl")
+    .fragment_source("eevee_shadow_tag_update_frag.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_opaque)
     .do_static_compilation(true)
