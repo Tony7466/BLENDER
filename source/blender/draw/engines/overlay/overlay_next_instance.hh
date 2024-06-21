@@ -16,6 +16,7 @@
 #include "overlay_next_lattice.hh"
 #include "overlay_next_metaball.hh"
 #include "overlay_next_prepass.hh"
+#include "overlay_next_speaker.hh"
 
 namespace blender::draw::overlay {
 
@@ -43,6 +44,7 @@ class Instance {
   Metaballs metaballs = {selection_type_};
   Empties empties = {selection_type_};
   Lattices lattices;
+  Speakers speakers = {selection_type_};
   Grid grid;
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};

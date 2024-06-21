@@ -80,6 +80,7 @@ void Instance::begin_sync()
   empties.begin_sync();
   lattices.begin_sync(resources, state);
   metaballs.begin_sync();
+  speakers.begin_sync();
   grid.begin_sync(resources, state, view);
 }
 
@@ -142,6 +143,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_GPENCIL_LEGACY:
         break;
+      case OB_SPEAKER:
+        speakers.object_sync(ob_ref, resources, state);
+        break;
     }
   }
 }
@@ -152,6 +156,7 @@ void Instance::end_sync()
 
   metaballs.end_sync(resources, shapes, state);
   empties.end_sync(resources, shapes, state);
+  speakers.end_sync(resources, shapes, state);
 }
 
 void Instance::draw(Manager &manager)
@@ -219,12 +224,14 @@ void Instance::draw(Manager &manager)
   empties.draw(resources, manager, view);
   lattices.draw(resources, manager, view);
   metaballs.draw(resources, manager, view);
+  speakers.draw(resources, manager, view);
 
   grid.draw(resources, manager, view);
 
   empties.draw_in_front(resources, manager, view);
   lattices.draw_in_front(resources, manager, view);
   metaballs.draw_in_front(resources, manager, view);
+  speakers.draw_in_front(resources, manager, view);
 
   // anti_aliasing.draw(resources, manager, view);
 
