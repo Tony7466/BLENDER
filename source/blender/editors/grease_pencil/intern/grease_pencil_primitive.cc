@@ -751,7 +751,8 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
                          std::nullopt;
   }
   else {
-    ptd.vertex_color = std::make_optional(ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    ptd.vertex_color = std::nullopt;
+    ptd.fill_color = std::nullopt;
   }
 
   /* TODO: Add UI for hardness. */
