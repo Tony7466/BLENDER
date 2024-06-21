@@ -266,7 +266,16 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
           /* Could support finished & undo-skip. */
           return is_undo ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
         }
-        BKE_report(op->reports, RPT_WARNING, "Failed to set value");
+        bScreen *screen = CTX_wm_screen(C);
+        ScrArea *area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, event->xy);
+        if (area->spacetype == SPACE_VIEW3D) {
+          BKE_report(op->reports,
+                     RPT_WARNING,
+                     "Armature needs to be in Pose Mode to pick in the 3D Viewport");
+        }
+        else {
+          BKE_report(op->reports, RPT_WARNING, "Failed to set value");
+        }
         return OPERATOR_CANCELLED;
       }
     }
@@ -347,7 +356,7 @@ void UI_OT_eyedropper_bone(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Eyedropper Bone";
   ot->idname = "UI_OT_eyedropper_bone";
-  ot->description = "Sample a bone from the 3D View to store in a property";
+  ot->description = "Sample a bone from the 3D View or the Outliner to store in a property";
 
   /* api callbacks */
   ot->invoke = bonedropper_invoke;
