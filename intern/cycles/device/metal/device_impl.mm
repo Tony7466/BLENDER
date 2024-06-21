@@ -350,9 +350,6 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
   switch (device_vendor) {
     default:
       break;
-    case METAL_GPU_INTEL:
-      global_defines += "#define __KERNEL_METAL_INTEL__\n";
-      break;
     case METAL_GPU_APPLE:
       global_defines += "#define __KERNEL_METAL_APPLE__\n";
 
