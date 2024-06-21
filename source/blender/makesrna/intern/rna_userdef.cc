@@ -60,6 +60,7 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
+    {USER_SECTION_ADDONS, "ADDONS", 0, "Add-ons", ""},
     {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
 #if 0 /* def WITH_USERDEF_WORKSPACES */
     RNA_ENUM_ITEM_SEPR,
@@ -437,6 +438,15 @@ static void rna_userdef_extension_repo_use_remote_url_set(PointerRNA *ptr, bool 
 {
   rna_userdef_extension_repo_generic_flag_set_impl(
       ptr, value, USER_EXTENSION_REPO_FLAG_USE_REMOTE_URL);
+}
+
+static void rna_userdef_extension_repo_source_set(PointerRNA *ptr, int value)
+{
+  Main *bmain = G.main;
+  bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE);
+  repo->source = value;
+  BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 }
 
 static void rna_userdef_script_autoexec_update(Main * /*bmain*/,
@@ -1129,7 +1139,8 @@ static PointerRNA rna_Addon_preferences_get(PointerRNA *ptr)
   if (apt) {
     if (addon->prop == nullptr) {
       /* name is unimportant. */
-      addon->prop = blender::bke::idprop::create_group(addon->module).release();
+      addon->prop =
+          blender::bke::idprop::create_group(addon->module, IDP_FLAG_STATIC_TYPE).release();
     }
     return rna_pointer_inherit_refine(ptr, apt->rna_ext.srna, addon->prop);
   }
@@ -6218,6 +6229,22 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_editable_func(prop, "rna_userdef_use_online_access_editable");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "network_timeout", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "network_timeout");
+  RNA_def_property_ui_text(
+      prop,
+      "Network Timeout",
+      "The time in seconds to wait for online operations before a connection may "
+      "fail with a time-out error. Zero uses the systems default");
+
+  prop = RNA_def_property(srna, "network_connection_limit", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "network_connection_limit");
+  RNA_def_property_ui_text(
+      prop,
+      "Network Connection Limit",
+      "Limit the number of simultaneous internet connections online operations may make at once. "
+      "Zero disables the limit");
+
   /* Audio */
 
   prop = RNA_def_property(srna, "audio_mixing_buffer", PROP_ENUM, PROP_NONE);
@@ -6750,6 +6777,20 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem source_type_items[] = {
+      {USER_EXTENSION_REPO_SOURCE_USER,
+       "USER",
+       0,
+       "User",
+       "Repository managed by the user, stored in user directories"},
+      {USER_EXTENSION_REPO_SOURCE_SYSTEM,
+       "SYSTEM",
+       0,
+       "System",
+       "Read-only repository provided by the system"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "UserExtensionRepo", nullptr);
   RNA_def_struct_sdna(srna, "bUserExtensionRepo");
   RNA_def_struct_ui_text(
@@ -6800,6 +6841,14 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
                                 "rna_userdef_extension_repo_access_token_get",
                                 "rna_userdef_extension_repo_access_token_length",
                                 "rna_userdef_extension_repo_access_token_set");
+
+  prop = RNA_def_property(srna, "source", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, source_type_items);
+  RNA_def_property_enum_funcs(prop, nullptr, "rna_userdef_extension_repo_source_set", nullptr);
+  RNA_def_property_ui_text(
+      prop,
+      "Source",
+      "Select if the repository is in a user managed or system provided directory");
 
   /* NOTE(@ideasman42): this is intended to be used by a package manger component
    * which is not yet integrated. */
@@ -7375,9 +7424,11 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
       prop, "Shader Node Previews", "Enables previews in the shader node editor");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
-  prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_extensions_debug", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
-      prop, "Extensions Development Utilities", "Developer support utilities for extensions");
+      prop,
+      "Extensions Debug",
+      "Extra debugging information & developer support utilities for extensions");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
