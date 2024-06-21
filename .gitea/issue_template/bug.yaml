@@ -42,11 +42,7 @@ body:
     attributes:
       label: Permission
       hide_label: true
-      description: Any content you upload will be shared publicly. Ensure you have permission to share any files you upload, and avoid uploading age restricted content.
       options:
-        - label: I have permission to share the files attached to this bug report.
-          required: true
-          visible: [form]
-        - label: I confirm that the files I shared do not contain any age restricted content.
+        - label: Any content in this bug report can be shared publicly, and is not age restricted.
           required: true
           visible: [form]
