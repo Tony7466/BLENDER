@@ -6,3 +6,4 @@ Referenced by commit 56cbde568baec28a31f2ac450534cf2f18c3e447, Fix #120046: Brok
 Referenced by issue #122976, Light linking is broken for volumes.
 Referenced by pull request #122999, Fix #122976: Cycles light linking broken for volumes with light tree
 Referenced by commit f9a75d1e406935250ba52c7bfe7c998b857007c7, Fix #122976: Cycles light linking broken for volumes with light tree
+Referenced by pull request #123537, Fix: Cycles Light Tree gives low weight to distant lights in large volume
