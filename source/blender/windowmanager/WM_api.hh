@@ -367,8 +367,8 @@ wmWindow *WM_window_open(bContext *C,
 void WM_window_set_dpi(const wmWindow *win);
 
 /**
- * Give a title to a window. With "Title" is nullptr, it is generated automatically
- * based on window settings and areas. Only use a custom title when really needed.
+ * Give a title to a window. With "Title" unspecified or nullptr, it is generated
+ * automatically from window settings and areas. Only use custom title when really needed.
  */
 void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nullptr);
 

@@ -494,28 +494,24 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
   }
 
   if (win->parent || WM_window_is_temp_screen(win)) {
+    /* Not a main window. */
     bScreen *screen = WM_window_get_active_screen(win);
     const bool is_single = screen && BLI_listbase_is_single(&screen->areabase);
     ScrArea *area = (screen) ? static_cast<ScrArea *>(screen->areabase.first) : nullptr;
+    const char *name = "Blender";
     if (is_single && area) {
       PointerRNA ptr = RNA_pointer_create(&(screen->id), &RNA_Area, area);
       PropertyRNA *prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
-      const char *area_name = "";
-
       bContext *C = CTX_create();
       CTX_wm_manager_set(C, wm);
       CTX_wm_window_set(C, win);
       CTX_wm_screen_set(C, screen);
       CTX_wm_area_set(C, area);
       RNA_property_enum_name_gettexted(
-          C, &ptr, prop_ui_type, RNA_property_enum_get(&ptr, prop_ui_type), &area_name);
+          C, &ptr, prop_ui_type, RNA_property_enum_get(&ptr, prop_ui_type), &name);
       CTX_free(C);
-
-      GHOST_SetTitle(handle, area_name);
     }
-    else {
-      GHOST_SetTitle(handle, "Blender");
-    }
+    GHOST_SetTitle(handle, name);
     return;
   }
 
