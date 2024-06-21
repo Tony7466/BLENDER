@@ -362,9 +362,15 @@ wmWindow *WM_window_open(bContext *C,
                          bool temp,
                          eWindowAlignment alignment,
                          void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
-                         void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
+                         void *area_setup_user_data) ATTR_NONNULL(1, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
+
+/**
+ * Give a title to a window. With "Title" unspecified or nullptr, it is generated
+ * automatically from window settings and areas. Only use custom title when really needed.
+ */
+void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nullptr);
 
 bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);
 
@@ -575,6 +581,9 @@ void WM_event_modal_handler_area_replace(wmWindow *win,
 void WM_event_modal_handler_region_replace(wmWindow *win,
                                            const ARegion *old_region,
                                            ARegion *new_region);
+void WM_event_ui_handler_region_popup_replace(wmWindow *win,
+                                              const ARegion *old_region,
+                                              ARegion *new_region);
 
 /**
  * Called on exit or remove area, only here call cancel callback.
@@ -1119,6 +1128,11 @@ bool WM_operator_py_idname_ok_or_report(ReportList *reports,
                                         const char *classname,
                                         const char *idname);
 /**
+ * Return true when an operators name follows the `SOME_OT_op` naming convention.
+ */
+bool WM_operator_bl_idname_is_valid(const char *idname);
+
+/**
  * Calculate the path to `ptr` from context `C`, or return NULL if it can't be calculated.
  */
 std::optional<std::string> WM_context_path_resolve_property_full(const bContext *C,
@@ -1540,6 +1554,10 @@ void wmGetProjectionMatrix(float mat[4][4], const rcti *winrct);
 /* Threaded Jobs Manager. */
 enum eWM_JobFlag {
   WM_JOB_PRIORITY = (1 << 0),
+  /**
+   * Only one render job can run at a time, this tags them a such. New jobs with this flag will
+   * wait on previous ones to finish then.
+   */
   WM_JOB_EXCL_RENDER = (1 << 1),
   WM_JOB_PROGRESS = (1 << 2),
 };
@@ -1562,6 +1580,7 @@ enum eWM_JobType {
   WM_JOB_TYPE_OBJECT_BAKE_TEXTURE,
   WM_JOB_TYPE_OBJECT_BAKE,
   WM_JOB_TYPE_FILESEL_READDIR,
+  WM_JOB_TYPE_ASSET_LIBRARY_LOAD,
   WM_JOB_TYPE_CLIP_BUILD_PROXY,
   WM_JOB_TYPE_CLIP_TRACK_MARKERS,
   WM_JOB_TYPE_CLIP_SOLVE_CAMERA,
@@ -1894,7 +1913,7 @@ bool WM_region_use_viewport(ScrArea *area, ARegion *region);
 /**
  * \return Success.
  */
-bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_msg);
+bool WM_platform_associate_set(bool do_register, bool all_users, char **r_error_msg);
 
 #ifdef WITH_XR_OPENXR
 /* `wm_xr_session.cc` */

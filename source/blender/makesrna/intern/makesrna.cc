@@ -1269,14 +1269,28 @@ static char *rna_def_property_set_func(
       else {
         rna_print_data_get(f, dp);
 
+        PointerPropertyRNA *pprop = (PointerPropertyRNA *)dp->prop;
+        StructRNA *type = (pprop->type) ? rna_find_struct((const char *)pprop->type) : nullptr;
+
         if (prop->flag & PROP_ID_SELF_CHECK) {
+          /* No pointers to self allowed. */
           rna_print_id_get(f, dp);
           fprintf(f, "    if (id == value.data) {\n");
           fprintf(f, "      return;\n");
           fprintf(f, "    }\n");
         }
 
+        if (type && (type->flag & STRUCT_ID)) {
+          /* Check if pointers between datablocks are allowed. */
+          fprintf(f,
+                  "    if (value.data && ptr->owner_id && value.owner_id && "
+                  "!BKE_id_can_use_id(*ptr->owner_id, *value.owner_id)) {\n");
+          fprintf(f, "      return;\n");
+          fprintf(f, "    }\n");
+        }
+
         if (prop->flag & PROP_ID_REFCOUNT) {
+          /* Perform reference counting. */
           fprintf(f, "\n    if (data->%s) {\n", dp->dnaname);
           fprintf(f, "        id_us_min((ID *)data->%s);\n", dp->dnaname);
           fprintf(f, "    }\n");
@@ -1284,14 +1298,11 @@ static char *rna_def_property_set_func(
           fprintf(f, "        id_us_plus((ID *)value.data);\n");
           fprintf(f, "    }\n");
         }
-        else {
-          PointerPropertyRNA *pprop = (PointerPropertyRNA *)dp->prop;
-          StructRNA *type = (pprop->type) ? rna_find_struct((const char *)pprop->type) : nullptr;
-          if (type && (type->flag & STRUCT_ID)) {
-            fprintf(f, "    if (value.data) {\n");
-            fprintf(f, "        id_lib_extern((ID *)value.data);\n");
-            fprintf(f, "    }\n");
-          }
+        else if (type && (type->flag & STRUCT_ID)) {
+          /* Still mark linked data as used if not reference counting. */
+          fprintf(f, "    if (value.data) {\n");
+          fprintf(f, "        id_lib_extern((ID *)value.data);\n");
+          fprintf(f, "    }\n");
         }
 
         fprintf(f, "    *(void **)&data->%s = value.data;\n", dp->dnaname);
@@ -3621,6 +3632,8 @@ static const char *rna_property_subtypename(PropertySubType type)
       return "PROP_TEMPERATURE";
     case PROP_WAVELENGTH:
       return "PROP_WAVELENGTH";
+    case PROP_COLOR_TEMPERATURE:
+      return "PROP_COLOR_TEMPERATURE";
     default: {
       /* in case we don't have a type preset that includes the subtype */
       if (RNA_SUBTYPE_UNIT(type)) {
@@ -3662,6 +3675,8 @@ static const char *rna_property_subtype_unit(PropertySubType type)
       return "PROP_UNIT_TEMPERATURE";
     case PROP_UNIT_WAVELENGTH:
       return "PROP_UNIT_WAVELENGTH";
+    case PROP_UNIT_COLOR_TEMPERATURE:
+      return "PROP_UNIT_COLOR_TEMPERATURE";
     default:
       return "PROP_UNIT_UNKNOWN";
   }
@@ -4372,7 +4387,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
     case PROP_BOOLEAN: {
       BoolPropertyRNA *bprop = (BoolPropertyRNA *)prop;
       fprintf(f,
-              "\t%s, %s, %s, %s, %s, %s, %s, %s, %d, ",
+              "\t%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, ",
               rna_function_string(bprop->get),
               rna_function_string(bprop->set),
               rna_function_string(bprop->getarray),
@@ -4381,6 +4396,8 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
               rna_function_string(bprop->set_ex),
               rna_function_string(bprop->getarray_ex),
               rna_function_string(bprop->setarray_ex),
+              rna_function_string(bprop->get_default),
+              rna_function_string(bprop->get_default_array),
               bprop->defaultvalue);
       if (prop->arraydimension && prop->totarraylength) {
         fprintf(f, "rna_%s%s_%s_default\n", srna->identifier, strnest, prop->identifier);
@@ -4415,6 +4432,11 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
       rna_int_print(f, iprop->hardmax);
       fprintf(f, ", ");
       rna_int_print(f, iprop->step);
+      fprintf(f, ", ");
+      fprintf(f,
+              "%s, %s",
+              rna_function_string(iprop->get_default),
+              rna_function_string(iprop->get_default_array));
       fprintf(f, ", ");
       rna_int_print(f, iprop->defaultvalue);
       fprintf(f, ", ");
@@ -4452,6 +4474,11 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
       rna_float_print(f, fprop->step);
       fprintf(f, ", ");
       rna_int_print(f, int(fprop->precision));
+      fprintf(f, ", ");
+      fprintf(f,
+              "%s, %s",
+              rna_function_string(fprop->get_default),
+              rna_function_string(fprop->get_default_array));
       fprintf(f, ", ");
       rna_float_print(f, fprop->defaultvalue);
       fprintf(f, ", ");
@@ -4786,9 +4813,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_dynamicpaint.cc", nullptr, RNA_def_dynamic_paint},
     {"rna_fcurve.cc", "rna_fcurve_api.cc", RNA_def_fcurve},
     {"rna_gpencil_legacy.cc", nullptr, RNA_def_gpencil},
-#ifdef WITH_GREASE_PENCIL_V3
     {"rna_grease_pencil.cc", nullptr, RNA_def_grease_pencil},
-#endif
     {"rna_curves.cc", nullptr, RNA_def_curves},
     {"rna_image.cc", "rna_image_api.cc", RNA_def_image},
     {"rna_key.cc", nullptr, RNA_def_key},

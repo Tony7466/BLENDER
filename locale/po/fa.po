@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'9a3c7290a9c1')\n"
+"Project-Id-Version: Blender 4.2.0 Beta (b'b143cc1885ef')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-06 10:38+0000\n"
+"POT-Creation-Date: 2020-01-01 00:00+0000\n"
 "PO-Revision-Date: 2024-05-03 12:13+0000\n"
 "Last-Translator: Nooby Noober <iamanoobynoober@gmail.com>\n"
 "Language-Team: Persian <https://translate.blender.org/projects/blender-ui/ui/fa/>\n"
@@ -290,22 +290,6 @@ msgid "Add-on Preferences"
 msgstr "ﻪﻧﻭﺰﻓﺍ ﺕﺎﻤﯿﻈﻨﺗ"
 
 
-msgid "Password"
-msgstr "ﺰﻣﺭ"
-
-
-msgid "E-mail address"
-msgstr "ﯽﮑﯿﻧﻭﺮﺘﮑﻟﺍ ﺖﺴﭘ ﺱﺭﺩﺁ"
-
-
-msgid "Error Message"
-msgstr "ﺎﻄﺧ ﻡﺎﻐﯿﭘ"
-
-
-msgid "Message"
-msgstr "ﻡﺎﯿﭘ"
-
-
 msgid "Compute Device Type"
 msgstr "ﻩﺎﮕﺘﺳﺩ ﻉﻮﻧ ﻪﺒﺳﺎﺤﻣ"
 
@@ -412,6 +396,18 @@ msgstr "ﺎﻫ‌ﻦﺸﯿﻤﯿﻧﺍ ﺖﯾﺮﯾﺪﻣ ﯼﺍﺮﺑ glTF ﯼ�
 
 msgid "Displays glTF Material Output node in Shader Editor (Menu Add > Output)"
 msgstr "ﺪﻫﺩ ﯽﻣ ﻥﺎﺸﻧ (ﯽﺟﻭﺮﺧ <ﻥﺩﻭﺰﻓﺍ ﯼﻮﻨﻣ)ﻥﺯ‌ﻪﯾﺎﺳ ﺮﮕﺸﯾﺍﺮﯾﻭ ﺭﺩ ﺍﺭ glTF ﯼﺎﻫ‌ﺲﻨﺟ ﯽﺟﻭﺮﺧ ﻩﺮﮔ"
+
+
+msgid "Always"
+msgstr "ﻪﺸﯿﻤﻫ"
+
+
+msgid "Center"
+msgstr "ﺰﮐﺮﻣ"
+
+
+msgid "Bottom"
+msgstr "ﻦﯿﯾﺎﭘ"
 
 
 msgid "Fribidi Library"
@@ -588,14 +584,6 @@ msgstr "ﯼﺯﺎﺳ ﻪﻨﯿﻬﺑ ﺖﻟﺎﺣ ﻡﺍﺪﻗﺍ ﯼﺯﺎﺳ �
 
 msgid "Slot to temporarily hold the main action while in tweak mode"
 msgstr "ﺖﺳﺍ ﯼﺯﺎﺳ ﻪﻨﯿﻬﺑ ﺖﻟﺎﺣ ﺭﺩ ﻪﮐ ﯽﻟﺎﺣ ﺭﺩ ﯽﻠﺻﺍ ﻡﺍﺪﻗﺍ ﺖﻗﻮﻣ ﻦﺘﺷﺍﺩ ﻪﮕﻧ ﯼﺍﺮﺑ ﯽﯾﺎﻀﻓ"
-
-
-msgid "Animation"
-msgstr "ﻦﺸﯿﻤﯿﻧﺍ"
-
-
-msgid "New"
-msgstr "ﺪﯾﺪﺟ"
 
 
 msgid "Drivers"
@@ -812,18 +800,6 @@ msgstr "ﻩﺯﺎﺑ ﺭﺩ"
 
 msgid "Display Paths of poses within specified range"
 msgstr "ﻩﺪﺷ ﺺﺨﺸﻣ ﻩﺯﺎﺑ ﺭﺩ ﺎﻫ‌ﺖﺳﮊ ﯼﺎﻫﺮﯿﺴﻣ ﺶﯾﺎﻤﻧ"
-
-
-msgid "Influence"
-msgstr "ﺫﻮﻔﻧ"
-
-
-msgid "Mix Mode"
-msgstr "ﯽﺒﯿﮐﺮﺗ ﺖﻟﺎﺣ"
-
-
-msgid "Offset"
-msgstr "ﺖﺴﻓﺍ"
 
 
 msgid "Any Type"
@@ -1271,10 +1247,6 @@ msgid "Use Custom Color"
 msgstr "ﻩﺍﻮﺨﻟﺩ ﮓﻧﺭ ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
 
-msgid "Remove"
-msgstr "ﻑﺬﺣ"
-
-
 msgid "Mode"
 msgstr "ﺖﻟﺎﺣ"
 
@@ -1381,6 +1353,10 @@ msgid "Image"
 msgstr "ﺮﯾﻮﺼﺗ"
 
 
+msgid "Offset"
+msgstr "ﺖﺴﻓﺍ"
+
+
 msgid "Rotation"
 msgstr "ﻥﺍﺭﻭﺩ"
 
@@ -1399,10 +1375,6 @@ msgstr "ﭗﭼ"
 
 msgid "Right"
 msgstr "ﺖﺳﺍﺭ"
-
-
-msgid "Center"
-msgstr "ﺰﮐﺮﻣ"
 
 
 msgid "Child Particle"
@@ -1745,6 +1717,10 @@ msgid "Input"
 msgstr "ﯼﺩﻭﺭﻭ"
 
 
+msgid "Influence"
+msgstr "ﺫﻮﻔﻧ"
+
+
 msgid "Disable"
 msgstr "ﻝﺎﻌﻓﺮﯿﻏ"
 
@@ -1799,6 +1775,10 @@ msgstr "ﺮﭽﯿﻣﺭﺁ"
 
 msgid "Follow Path"
 msgstr "ﺮﯿﺴﻣ ﻩﺪﻨﻨﮐ ﻝﺎﺒﻧﺩ"
+
+
+msgid "Mix Mode"
+msgstr "ﯽﺒﯿﮐﺮﺗ ﺖﻟﺎﺣ"
 
 
 msgid "X Location"
@@ -1963,10 +1943,6 @@ msgstr "Z ﻪﻨﯿﻤﮐ"
 
 msgid "Uniform"
 msgstr "ﻥﺎﺴﮑﯾ"
-
-
-msgid "Always"
-msgstr "ﻪﺸﯿﻤﻫ"
 
 
 msgid "Script"
@@ -2321,10 +2297,6 @@ msgid "Delete"
 msgstr "ﻑﺬﺣ"
 
 
-msgid "Bottom"
-msgstr "ﻦﯿﯾﺎﭘ"
-
-
 msgid "Top"
 msgstr "ﻻ﻿ﺎﺑ"
 
@@ -2474,10 +2446,6 @@ msgstr "ﻩﺮﺠﻨﭘ ﺖﯾﺮﯾﺪﻣ"
 
 msgid "World"
 msgstr "ﻥﺎﻬﺟ"
-
-
-msgid "Layers"
-msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
 
 
 msgid "B-Bone"
@@ -2703,6 +2671,10 @@ msgid "Max"
 msgstr "ﻪﻨﯿﺸﯿﺑ"
 
 
+msgid "Layers"
+msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
+
+
 msgid "U"
 msgstr "U"
 
@@ -2731,6 +2703,14 @@ msgstr "ﺐﻌﮑﻣ"
 
 msgid "Cube"
 msgstr "ﺐﻌﮑﻣ"
+
+
+msgid "Distort"
+msgstr "ﻥﺩﺮﮐ‌ﺞﮐ"
+
+
+msgid "Filter"
+msgstr "ﯽﻓﺎﺻ"
 
 
 msgid "Interface"
@@ -2944,12 +2924,16 @@ msgid "Grayscale"
 msgstr "ﯼﺮﺘﺴﮐﺎﺧ ﺱﺎﯿﻘﻣ"
 
 
-msgid "Filter"
-msgstr "ﯽﻓﺎﺻ"
-
-
 msgid "Weight 1"
 msgstr "ﯽﻨﯿﮕﻨﺳ"
+
+
+msgid "Themes"
+msgstr "ﺎﻫ ﻢﺗ"
+
+
+msgid "Animation"
+msgstr "ﻦﺸﯿﻤﯿﻧﺍ"
 
 
 msgid "Simulation"
@@ -3071,10 +3055,6 @@ msgid "Layout"
 msgstr "ﺡﺮﻃ"
 
 
-msgid "Distort"
-msgstr "ﻥﺩﺮﮐ‌ﺞﮐ"
-
-
 msgctxt "NodeTree"
 msgid "Constant"
 msgstr "ﺖﺑﺎﺛ"
@@ -3150,6 +3130,10 @@ msgstr "ﭖﻮﺗ"
 
 msgid "Dynamic Paint"
 msgstr "ﺎﯾﻮﭘ ﯽﺷﺎﻘﻧ"
+
+
+msgid "New"
+msgstr "ﺪﯾﺪﺟ"
 
 
 msgid "Mark Seams"
@@ -3710,10 +3694,6 @@ msgid "Select Similar"
 msgstr "ﻪﺑﺎﺸﻣ ﺏﺎﺨﺘﻧﺍ"
 
 
-msgid "(undocumented operator)"
-msgstr "(ﻩﺪﺸﻧ ﺪﻨﺘﺴﻣ ﺭﻮﺗﺍﺮﭘﺍ)"
-
-
 msgctxt "Operator"
 msgid "3D Markers to Mesh"
 msgstr "ﺶﻣ ﻪﺑ 3D ﯼﺎﻫ ﺮﮕﻧﺎﺸﻧ"
@@ -3818,6 +3798,10 @@ msgid "Failed Tracks"
 msgstr "ﻖﻓﻮﻣﺎﻧ ﯼﺎﻫ ﮎﺮﺗِ"
 
 
+msgid "(undocumented operator)"
+msgstr "(ﻩﺪﺸﻧ ﺪﻨﺘﺴﻣ ﺭﻮﺗﺍﺮﭘﺍ)"
+
+
 msgctxt "Operator"
 msgid "Set Axis"
 msgstr "ﺭﻮﺤﻣ ﻢﯿﻈﻨﺗ"
@@ -3908,14 +3892,6 @@ msgid "Toggle Type Active"
 msgstr "ﻝﺎﻌﻓ ﻉﻮﻧ ﭻﯾﻮﺳ"
 
 
-msgid "End frame for export"
-msgstr "ﺝﻭﺮﺧ ﯼﺍﺮﺑ ﻢﯾﺮﻓ ﻥﺎﯾﺎﭘ"
-
-
-msgid "Start frame for export"
-msgstr "ﺝﻭﺮﺧ ﯼﺍﺮﺑ ﻢﯾﺮﻓ ﻉﻭﺮﺷ"
-
-
 msgid "Lamp"
 msgstr "ﭗﻣﻻ﻿"
 
@@ -3924,8 +3900,8 @@ msgid "Custom Properties"
 msgstr "ﯽﺷﺭﺎﻔﺳ ﺕﺎﯿﺻﻮﺼﺧ"
 
 
-msgid "Name decorations"
-msgstr "ﻥﻮﯿﺳﺍﺭﻮﮐﺩ ﻡﺎﻧ"
+msgid "URL"
+msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
 
 
 msgid "Open"
@@ -3945,6 +3921,11 @@ msgid "Linear"
 msgstr "ﯽﻄﺧ"
 
 
+msgctxt "Operator"
+msgid "Rotate"
+msgstr "ﺶﺧﺮﭼ"
+
+
 msgid "Mouse location"
 msgstr "ﺱﻭﺎﻣ ﻥﺎﮑﻣ"
 
@@ -3955,6 +3936,10 @@ msgstr "ﻭﺩ ﺮﻫ"
 
 msgid "Join"
 msgstr "ﻦﺘﺳﻮﯿﭘ"
+
+
+msgid "Remove"
+msgstr "ﻑﺬﺣ"
 
 
 msgid "Flat"
@@ -4160,10 +4145,6 @@ msgid "Copy Pose"
 msgstr "ﺖﺳﮊ ﯽﭙﮐ"
 
 
-msgid "URL"
-msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
-
-
 msgctxt "Operator"
 msgid "Render"
 msgstr "ﺭﺪﻧﺭ"
@@ -4186,10 +4167,6 @@ msgid "Repeat last action"
 msgstr "ﺖﯿﻟﺎﻌﻓ ﻦﯾﺮﺧﺁ ﺭﺍﺮﮑﺗ"
 
 
-msgid "Themes"
-msgstr "ﺎﻫ ﻢﺗ"
-
-
 msgid "Editing"
 msgstr "ﺶﯾﺍﺮﯾﻭ"
 
@@ -4200,10 +4177,6 @@ msgstr "ﻞﯾﺎﻓ ﯼﺎﻫﺮﯿﺴﻣ"
 
 msgid "Experimental"
 msgstr "ﯽﺸﯾﺎﻣﺯﺁ"
-
-
-msgid "Relax"
-msgstr "ﻥﺩﺮﮐ‌ﻞﺷ"
 
 
 msgctxt "Operator"
@@ -4237,11 +4210,6 @@ msgstr "ﺖﭙﯾﺮﮑﺳﺍ ﯼﺍﺮﺟﺍ"
 msgctxt "Operator"
 msgid "Save"
 msgstr "ﻩﺮﯿﺧﺫ"
-
-
-msgctxt "Operator"
-msgid "Rotate"
-msgstr "ﺶﺧﺮﭼ"
 
 
 msgctxt "Operator"
@@ -4292,49 +4260,6 @@ msgstr "ءﯽﺷ ﺏﺎﺨﺘﻧﺍ ﻮﻨﻣ"
 
 msgid "Object Name"
 msgstr "ءﯽﺷ ﻡﺎﻧ"
-
-
-msgctxt "Operator"
-msgid "Export COLLADA"
-msgstr "COLLADA ﻥﺩﺮﮐ ﺭﺩﺎﺻ"
-
-
-msgctxt "Operator"
-msgid "Import COLLADA"
-msgstr "COLLADA ﻥﺩﺮﮐ ﺩﺭﺍﻭ"
-
-
-msgctxt "Operator"
-msgid "Control"
-msgstr "ﻝﺮﺘﻨﮐ"
-
-
-msgid "Prev"
-msgstr "ﻞﺒﻗ"
-
-
-msgid "Pause"
-msgstr "Pause"
-
-
-msgid "Render Anim"
-msgstr "ﻦﺸﯿﻤﯿﻧﺍ ﺭﺪﻧﺭ"
-
-
-msgid "Time Max"
-msgstr "ﻪﻨﯿﺸﯿﺑ ﻥﺎﻣﺯ"
-
-
-msgid "Time Min"
-msgstr "ﻪﻨﯿﻤﮐ ﻥﺎﻣﺯ"
-
-
-msgid "Render Delay"
-msgstr "ﺭﺪﻧﺭ ﺮﯿﺧﺎﺗ"
-
-
-msgid "Random Order"
-msgstr "ﯽﻓﺩﺎﺼﺗ ﺕﺭﻮﺻ"
 
 
 msgctxt "Operator"
@@ -4562,6 +4487,10 @@ msgstr "ﺎﻤﻨﻫﺍﺭ ﺏﺎﺘﮐ"
 
 msgid "New Window"
 msgstr "ﺪﯾﺪﺟ ﻩﺮﺠﻨﭘ"
+
+
+msgid "Password"
+msgstr "ﺰﻣﺭ"
 
 
 msgid "Dynamic BVH"
@@ -4810,6 +4739,10 @@ msgid "Float"
 msgstr "ﺭﻭﺎﻨﺷ"
 
 
+msgid "Error Message"
+msgstr "ﺎﻄﺧ ﻡﺎﻐﯿﭘ"
+
+
 msgid "Use linear progression"
 msgstr "ﯽﻄﺧ ﺖﻓﺮﺸﯿﭘ ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
@@ -4821,10 +4754,6 @@ msgstr "ﻮﺠﺘﺴﺟ"
 msgctxt "WindowManager"
 msgid "Rotate"
 msgstr "ﺶﺧﺮﭼ"
-
-
-msgid "Render Settings:"
-msgstr ":ﺭﺪﻧﺭ ﺕﺎﻤﯿﻈﻨﺗ"
 
 
 msgid "Tracking"
@@ -4896,6 +4825,10 @@ msgstr "ﺦﯾﺭﺎﺗ"
 
 msgid "Roughness End"
 msgstr "ﯼﺮﺑﺯ ﻥﺎﯾﺎﭘ"
+
+
+msgid "Random Order"
+msgstr "ﯽﻓﺩﺎﺼﺗ ﺕﺭﻮﺻ"
 
 
 msgid "Use Particle's Radius"
@@ -5248,6 +5181,10 @@ msgid "Browse ID data to be linked"
 msgstr "ﻥﺩﺮﮐ‌ﮏﻨﯿﻟ ﯼﺍﺮﺑ ﯼﺩ−ﯼﺁ ﻩٔﺩﺍﺩ ﺶﻨﯾﺰﮔ"
 
 
+msgid "Cancel"
+msgstr "ﻑﺍﺮﺼﻧﺍ"
+
+
 msgid "3D View "
 msgstr " .ﯼﺪﻌﺑ ﻪﺳ ﺪﯾﺩ"
 
@@ -5282,10 +5219,6 @@ msgstr "ﺍﺪﺻ ﺯﺍ ﯽﻧﺎﺒﯿﺘﺸﭘ ﻥﻭﺪﺑ ﻩﺪﺷ ﻞﯾ�
 
 msgid "File path"
 msgstr "ﻞﯾﺎﻓ ﺮﯿﺴﻣ"
-
-
-msgid "Cancel"
-msgstr "ﻑﺍﺮﺼﻧﺍ"
 
 
 msgid "File name, overwrite existing"

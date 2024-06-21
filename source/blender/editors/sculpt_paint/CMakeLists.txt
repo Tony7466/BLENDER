@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
+  ../..
+
   ../include
   ../uvedit
   ../../blenkernel
@@ -42,6 +44,7 @@ set(SRC
   curves_sculpt_snake_hook.cc
   grease_pencil_draw_ops.cc
   grease_pencil_erase.cc
+  grease_pencil_fill.cc
   grease_pencil_paint.cc
   grease_pencil_sculpt_clone.cc
   grease_pencil_sculpt_common.cc
@@ -107,9 +110,25 @@ set(SRC
 
   curves_sculpt_intern.hh
   grease_pencil_intern.hh
+  mesh_brush_common.hh
   grease_pencil_weight_paint.hh
   paint_intern.hh
   sculpt_intern.hh
+
+  brushes/clay_strips.cc
+  brushes/crease.cc
+  brushes/draw_vector_displacement.cc
+  brushes/draw.cc
+  brushes/fill.cc
+  brushes/flatten.cc
+  brushes/inflate.cc
+  brushes/mask.cc
+  brushes/multires_displacement_eraser.cc
+  brushes/scrape.cc
+  brushes/smooth.cc
+  brushes/smooth_mask.cc
+
+  brushes/types.hh
 )
 
 set(LIB

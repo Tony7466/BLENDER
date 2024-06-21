@@ -443,15 +443,6 @@ endif()
 if(WITH_PYTHON)
   # install(CODE "message(\"copying blender scripts...\")")
 
-  # exclude addons_contrib if release branch
-  if("${BLENDER_VERSION_CYCLE}" STREQUAL "release" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "rc" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "beta")
-    set(ADDON_EXCLUDE_CONDITIONAL "addons_contrib/*")
-  else()
-    set(ADDON_EXCLUDE_CONDITIONAL "_addons_contrib/*")  # Dummy, won't do anything.
-  endif()
-
   # do not install freestyle dir if disabled
   if(NOT WITH_FREESTYLE)
     set(FREESTYLE_EXCLUDE_CONDITIONAL "freestyle/*")
@@ -469,7 +460,9 @@ if(WITH_PYTHON)
     PATTERN ".arcconfig" EXCLUDE
     PATTERN "__pycache__" EXCLUDE
     PATTERN "site" EXCLUDE
-    PATTERN "${ADDON_EXCLUDE_CONDITIONAL}" EXCLUDE
+    # Legacy sub-module which is no longer used.
+    PATTERN "addons/*" EXCLUDE
+    PATTERN "addons_contrib/*" EXCLUDE
     PATTERN "${FREESTYLE_EXCLUDE_CONDITIONAL}" EXCLUDE
   )
 
@@ -486,7 +479,6 @@ if(WITH_PYTHON)
       )
     endif()
   endif()
-  unset(ADDON_EXCLUDE_CONDITIONAL)
   unset(FREESTYLE_EXCLUDE_CONDITIONAL)
 endif()
 
@@ -1009,25 +1001,13 @@ elseif(WIN32)
       ALL
     )
   endif()
-
+  # 4.1 fftw libs need to be installed, in 4.2 fftw got turned into a static lib 
+  # and the files below no longer exist. 
   if(EXISTS ${LIBDIR}/fftw3/lib/fftw3.dll)
-    set(FFTW_DLL ${LIBDIR}/fftw3/lib/fftw3.dll)
-  else()
-    set(FFTW_DLL ${LIBDIR}/fftw3/lib/libfftw3-3.dll)
-  endif()
-
-  windows_install_shared_manifest(
-    FILES ${FFTW_DLL}
-    ALL
-  )
-  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3f-3.dll)
     windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
-      ALL
-    )
-  elseif(EXISTS ${LIBDIR}/fftw3/lib/fftw3f.dll)
-    windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/fftw3f.dll
+      FILES
+        ${LIBDIR}/fftw3/lib/fftw3.dll
+        ${LIBDIR}/fftw3/lib/fftw3f.dll
       ALL
     )
   endif()
@@ -1666,6 +1646,13 @@ if(DEFINED TARGETDIR_TEXT)
     DESTINATION "${TARGETDIR_TEXT}"
 )
 endif()
+
+# Create a system extensions directory (users or administrators may populate this).
+# This only contains a `readme.txt` explaining it's purpose.
+install(
+  DIRECTORY ${CMAKE_SOURCE_DIR}/release/extensions
+  DESTINATION ${TARGETDIR_VER}
+)
 
 # Install more files specified elsewhere.
 delayed_do_install(${TARGETDIR_VER})

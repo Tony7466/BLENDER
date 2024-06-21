@@ -562,9 +562,6 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
     {
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
-
-    /* XXX(ton): temp, first hack to get auto-render in compositor work. */
-    WM_event_add_notifier(C, NC_SCENE | ND_TRANSFORM_DONE, CTX_data_scene(C));
   }
 }
 
@@ -1574,7 +1571,6 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
 
   /* Check to see if the Navigation Gizmo is enabled. */
   if ((t->spacetype != SPACE_VIEW3D) || (v3d == nullptr) ||
-      ((U.uiflag & USER_SHOW_GIZMO_NAVIGATE) == 0) ||
       (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_NAVIGATE)))
   {
     offset = 10;
@@ -1613,6 +1609,7 @@ static void drawAutoKeyWarning(TransInfo *t, ARegion *region)
   }
   BLF_color4fv(BLF_default(), text_color);
   BLF_shadow(BLF_default(), FontShadowType::Outline, shadow_color);
+  BLF_draw_default(xco, yco, 0.0f, printable, BLF_DRAW_STR_DUMMY_MAX);
 
   /* Auto-key recording icon. */
   GPU_blend(GPU_BLEND_ALPHA);

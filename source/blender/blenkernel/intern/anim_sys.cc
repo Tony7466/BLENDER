@@ -327,7 +327,7 @@ void BKE_keyingsets_blend_read_data(BlendDataReader *reader, ListBase *list)
 /* ***************************************** */
 /* Evaluation Data-Setting Backend */
 
-static bool is_fcurve_evaluatable(FCurve *fcu)
+static bool is_fcurve_evaluatable(const FCurve *fcu)
 {
   if (fcu->flag & (FCURVE_MUTED | FCURVE_DISABLED)) {
     return false;
@@ -799,6 +799,17 @@ static void action_idcode_patch_check(ID *id, bAction *act)
   if (ELEM(nullptr, id, act)) {
     return;
   }
+
+#ifdef WITH_ANIM_BAKLAVA
+  if (act->wrap().is_action_layered()) {
+    /* Layered Actions can always be assigned to any ID. It's actually the Binding that is limited
+     * to an ID type (similar to legacy Actions). Layered Actions are evaluated differently,
+     * though, and their evaluation shouldn't end up here. At the moment of writing it can still
+     * happen through NLA evaluation, though, so there's no assert here to prevent this. */
+    /* TODO: when possible, add a BLI_assert_unreachable() here. */
+    return;
+  }
+#endif
 
   idcode = GS(id->name);
 
@@ -2615,7 +2626,7 @@ static void nlasnapshot_from_action(PointerRNA *ptr,
   const float modified_evaltime = evaluate_time_fmodifiers(
       &storage, modifiers, nullptr, 0.0f, evaltime);
 
-  LISTBASE_FOREACH (FCurve *, fcu, &action->curves) {
+  LISTBASE_FOREACH (const FCurve *, fcu, &action->curves) {
     if (!is_fcurve_evaluatable(fcu)) {
       continue;
     }
@@ -3087,7 +3098,7 @@ static void nla_eval_domain_action(PointerRNA *ptr,
     return;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  LISTBASE_FOREACH (const FCurve *, fcu, &act->curves) {
     /* check if this curve should be skipped */
     if (!is_fcurve_evaluatable(fcu)) {
       continue;
@@ -3725,10 +3736,10 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
                                            int index,
                                            const AnimationEvalContext *anim_eval_context,
                                            bool *r_force_all,
-                                           blender::BitVector<> &r_successful_remaps)
+                                           blender::BitVector<> &r_values_mask)
 {
   const int count = values.size();
-  r_successful_remaps.fill(false);
+  r_values_mask.fill(false);
 
   if (r_force_all != nullptr) {
     *r_force_all = false;
@@ -3745,7 +3756,7 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
 
   /* No context means no correction. */
   if (context == nullptr || context->strip.act == nullptr) {
-    r_successful_remaps = remap_domain;
+    r_values_mask = remap_domain;
     return;
   }
 
@@ -3762,7 +3773,7 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
   if (blend_mode == NLASTRIP_MODE_REPLACE && influence == 1.0f &&
       BLI_listbase_is_empty(&context->upper_estrips))
   {
-    r_successful_remaps = remap_domain;
+    r_values_mask = remap_domain;
     return;
   }
 
@@ -3836,7 +3847,7 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
   }
 
   for (int i = 0; i < blended_necs->length; i++) {
-    r_successful_remaps[i].set(BLI_BITMAP_TEST_BOOL(blended_necs->remap_domain.ptr, i));
+    r_values_mask[i].set(BLI_BITMAP_TEST_BOOL(blended_necs->remap_domain.ptr, i));
   }
 
   nlaeval_snapshot_free_data(&blended_snapshot);

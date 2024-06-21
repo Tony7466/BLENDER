@@ -3600,7 +3600,6 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
 /* Grease Pencil Animation functions ------------------------------------------- */
 
-#ifdef WITH_GREASE_PENCIL_V3
 namespace blender::ed::animation::greasepencil {
 
 /* Get pointer to the setting */
@@ -3611,6 +3610,15 @@ static void *data_block_setting_ptr(bAnimListElem *ale,
   GreasePencil *grease_pencil = (GreasePencil *)ale->data;
 
   return GET_ACF_FLAG_PTR(grease_pencil->flag, r_type);
+}
+static void datablock_color(bAnimContext *ac, bAnimListElem * /*ale*/, float r_color[3])
+{
+  if (ac->datatype == ANIMCONT_GPENCIL) {
+    UI_GetThemeColorShade3fv(TH_DOPESHEET_CHANNELSUBOB, 20, r_color);
+  }
+  else {
+    UI_GetThemeColor3fv(TH_DOPESHEET_CHANNELSUBOB, r_color);
+  }
 }
 
 /* Get the appropriate flag(s) for the setting when it is valid. */
@@ -3780,11 +3788,11 @@ static bAnimChannelType ACF_GPD = {
     /*channel_type_name*/ "Grease Pencil Datablock",
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
-    /*get_backdrop_color*/ acf_gpd_color,
+    /*get_backdrop_color*/ greasepencil::datablock_color,
     /*get_channel_color*/ nullptr,
     /*draw_backdrop*/ acf_group_backdrop,
-    /*get_indent_level*/ acf_generic_indentation_0,
-    /*get_offset*/ acf_generic_group_offset,
+    /*get_indent_level*/ acf_generic_indentation_1,
+    /*get_offset*/ acf_generic_basic_offset,
 
     /*name*/ acf_generic_idblock_name,
     /*name_prop*/ acf_generic_idfill_name_prop,
@@ -3834,7 +3842,6 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*setting_flag*/ greasepencil::layer_setting_flag,
     /*setting_ptr*/ greasepencil::layer_group_setting_ptr,
 };
-#endif
 
 /* Mask Datablock ------------------------------------------- */
 
@@ -4406,15 +4413,9 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD_LEGACY; /* Grease Pencil Datablock (Legacy) */
     animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
-#ifdef WITH_GREASE_PENCIL_V3
     animchannelTypeInfo[type++] = &ACF_GPD;      /* Grease Pencil Datablock. */
     animchannelTypeInfo[type++] = &ACF_GPLGROUP; /* Grease Pencil Layer Group. */
     animchannelTypeInfo[type++] = &ACF_GPL;      /* Grease Pencil Layer. */
-#else
-    animchannelTypeInfo[type++] = nullptr;
-    animchannelTypeInfo[type++] = nullptr;
-    animchannelTypeInfo[type++] = nullptr;
-#endif
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
@@ -5540,7 +5541,6 @@ static void draw_setting_widget(bAnimContext *ac,
   }
 }
 
-#ifdef WITH_GREASE_PENCIL_V3
 static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                                              uiBlock *block,
                                              const rctf *rect,
@@ -5624,7 +5624,6 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                   channel_height);
   }
 }
-#endif
 
 void ANIM_channel_draw_widgets(const bContext *C,
                                bAnimContext *ac,
@@ -6047,11 +6046,9 @@ void ANIM_channel_draw_widgets(const bContext *C,
             }
           }
         }
-#ifdef WITH_GREASE_PENCIL_V3
         else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
           draw_grease_pencil_layer_widgets(ale, block, rect, offset, channel_height, array_index);
         }
-#endif
 
         /* Only if RNA-Path found. */
         if (rna_path) {

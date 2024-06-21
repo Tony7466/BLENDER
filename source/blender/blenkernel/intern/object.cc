@@ -65,7 +65,6 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_DerivedMesh.hh"
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
 #include "BKE_anim_path.h"
@@ -111,6 +110,7 @@
 #include "BKE_material.h"
 #include "BKE_mball.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_legacy_derived_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
@@ -4138,6 +4138,10 @@ bool BKE_object_obdata_texspace_get(Object *ob,
 
 Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 {
+  if (!DEG_object_geometry_is_evaluated(*object)) {
+    return nullptr;
+  }
+
   /* First attempt to retrieve the evaluated mesh from the evaluated geometry set. Most
    * object types either store it there or add a reference to it if it's owned elsewhere. */
   blender::bke::GeometrySet *geometry_set_eval = object->runtime->geometry_set_eval;
@@ -4165,6 +4169,10 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 
 Mesh *BKE_object_get_evaluated_mesh(const Object *object)
 {
+  if (!DEG_object_geometry_is_evaluated(*object)) {
+    return nullptr;
+  }
+
   Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf(object);
   if (!mesh) {
     return nullptr;

@@ -22,6 +22,7 @@ from bpy.props import (
 )
 from bpy.app.translations import (
     pgettext_iface as iface_,
+    pgettext_n as n_,
     pgettext_tip as tip_,
     pgettext_rpt as rpt_,
     contexts as i18n_contexts,
@@ -1388,32 +1389,32 @@ rna_custom_property_type_items = (
     ('PYTHON', "Python", "Edit a Python value directly, for unsupported property types"),
 )
 
-rna_custom_property_subtype_none_item = ('NONE', "Plain Data", "Data values without special behavior")
+rna_custom_property_subtype_none_item = ('NONE', n_("Plain Data"), n_("Data values without special behavior"))
 
 rna_custom_property_subtype_number_items = (
     rna_custom_property_subtype_none_item,
-    ('PIXEL', "Pixel", ""),
-    ('PERCENTAGE', "Percentage", ""),
-    ('FACTOR', "Factor", ""),
-    ('ANGLE', "Angle", ""),
-    ('TIME_ABSOLUTE', "Time", "Time specified in seconds"),
-    ('DISTANCE', "Distance", ""),
-    ('POWER', "Power", ""),
-    ('TEMPERATURE', "Temperature", ""),
+    ('PIXEL', n_("Pixel"), n_("A distance on screen")),
+    ('PERCENTAGE', n_("Percentage"), n_("A percentage between 0 and 100")),
+    ('FACTOR', n_("Factor"), n_("A factor between 0.0 and 1.0")),
+    ('ANGLE', n_("Angle"), n_("A rotational value specified in radians")),
+    ('TIME_ABSOLUTE', n_("Time"), n_("Time specified in seconds")),
+    ('DISTANCE', n_("Distance"), n_("A distance between two points")),
+    ('POWER', n_("Power"), ""),
+    ('TEMPERATURE', n_("Temperature"), ""),
 )
 
 rna_custom_property_subtype_vector_items = (
     rna_custom_property_subtype_none_item,
-    ('COLOR', "Linear Color", "Color in the linear space"),
-    ('COLOR_GAMMA', "Gamma-Corrected Color", "Color in the gamma corrected space"),
-    ('TRANSLATION', "Translation", ""),
-    ('DIRECTION', "Direction", ""),
-    ('VELOCITY', "Velocity", ""),
-    ('ACCELERATION', "Acceleration", ""),
-    ('EULER', "Euler Angles", "Euler rotation angles in radians"),
-    ('QUATERNION', "Quaternion Rotation", "Quaternion rotation (affects NLA blending)"),
-    ('AXISANGLE', "Axis-Angle", "Angle and axis to rotate around"),
-    ('XYZ', "XYZ", ""),
+    ('COLOR', n_("Linear Color"), n_("Color in the linear space")),
+    ('COLOR_GAMMA', n_("Gamma-Corrected Color"), n_("Color in the gamma corrected space")),
+    ('TRANSLATION', n_("Translation"), ""),
+    ('DIRECTION', n_("Direction"), ""),
+    ('VELOCITY', n_("Velocity"), ""),
+    ('ACCELERATION', n_("Acceleration"), ""),
+    ('EULER', n_("Euler Angles"), n_("Euler rotation angles in radians")),
+    ('QUATERNION', n_("Quaternion Rotation"), n_("Quaternion rotation (affects NLA blending)")),
+    ('AXISANGLE', n_("Axis-Angle"), n_("Angle and axis to rotate around")),
+    ('XYZ', n_("XYZ"), ""),
 )
 
 rna_id_type_items = tuple((item.identifier, item.name, item.description, item.icon, item.value)
@@ -1450,7 +1451,7 @@ class WM_OT_properties_edit(Operator):
     property_type: EnumProperty(
         name="Type",
         items=rna_custom_property_type_items,
-        update=property_type_update_cb
+        update=property_type_update_cb,
     )
     is_overridable_library: BoolProperty(
         name="Library Overridable",
@@ -2649,8 +2650,8 @@ class BatchRenameAction(bpy.types.PropertyGroup):
     )
 
     # Weak, add/remove as properties.
-    op_add: BoolProperty(name="Add")
-    op_remove: BoolProperty(name="Remove")
+    op_add: BoolProperty(name="Add", translation_context=i18n_contexts.operator_default)
+    op_remove: BoolProperty(name="Remove", translation_context=i18n_contexts.operator_default)
 
 
 class WM_OT_batch_rename(Operator):
@@ -2708,7 +2709,7 @@ class WM_OT_batch_rename(Operator):
         return [
             id for id in context.selected_ids
             if isinstance(id, ty)
-            if id.library is None
+            if id.is_editable
         ]
 
     @staticmethod
@@ -2719,7 +2720,7 @@ class WM_OT_batch_rename(Operator):
         return tuple(set([
             id for id_base in context.selected_ids
             if isinstance(id := id_base.data if isinstance(id_base, Object) else id_base, ty)
-            if id.library is None
+            if id.is_editabe
         ]))
 
     @staticmethod
@@ -2738,7 +2739,7 @@ class WM_OT_batch_rename(Operator):
         return tuple(set(
             action for id in context.selected_ids
             if (action := action_from_any_id(id)) is not None
-            if action.library is None
+            if action.is_editable
         ))
 
     @classmethod
@@ -2842,7 +2843,7 @@ class WM_OT_batch_rename(Operator):
                         context.selected_editable_objects
                     )
                     if only_selected else
-                    [id for id in bpy.data.objects if id.library is None],
+                    [id for id in bpy.data.objects if id.is_editable],
                     "name",
                     iface_("Object(s)"),
                 )
@@ -2854,10 +2855,10 @@ class WM_OT_batch_rename(Operator):
                         for ob in context.selected_objects
                         if ((ob.instance_type == 'COLLECTION') and
                             (collection := ob.instance_collection) is not None and
-                            (collection.library is None))
+                            (collection.is_editable))
                     ))
                     if only_selected else
-                    [id for id in bpy.data.collections if id.library is None],
+                    [id for id in bpy.data.collections if id.is_editable],
                     "name",
                     iface_("Collection(s)"),
                 )
@@ -2872,11 +2873,11 @@ class WM_OT_batch_rename(Operator):
                             id
                             for ob in context.selected_objects
                             for slot in ob.material_slots
-                            if (id := slot.material) is not None and id.library is None
+                            if (id := slot.material) is not None and id.is_editable
                         ))
                     )
                     if only_selected else
-                    [id for id in bpy.data.materials if id.library is None],
+                    [id for id in bpy.data.materials if id.is_editable],
                     "name",
                     iface_("Material(s)"),
                 )
@@ -2891,11 +2892,11 @@ class WM_OT_batch_rename(Operator):
                             action for ob in context.selected_objects
                             if (((animation_data := ob.animation_data) is not None) and
                                 ((action := animation_data.action) is not None) and
-                                (action.library is None))
+                                (action.is_editable))
                         ))
                     )
                     if only_selected else
-                    [id for id in bpy.data.actions if id.library is None],
+                    [id for id in bpy.data.actions if id.is_editable],
                     "name",
                     iface_("Action(s)"),
                 )
@@ -2904,7 +2905,7 @@ class WM_OT_batch_rename(Operator):
                     (
                         # Outliner.
                         cls._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.library is None]
+                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.is_editable]
                     ),
                     "name",
                     iface_("Scene(s)"),
@@ -2914,7 +2915,7 @@ class WM_OT_batch_rename(Operator):
                     (
                         # Outliner.
                         cls._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.library is None]
+                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.is_editable]
                     ),
                     "name",
                     iface_("Brush(es)"),
@@ -2931,11 +2932,11 @@ class WM_OT_batch_rename(Operator):
                             id
                             for ob in context.selected_objects
                             if ob.type == data_type
-                            if (id := ob.data) is not None and id.library is None
+                            if (id := ob.data) is not None and id.is_editable
                         ))
                     )
                     if only_selected else
-                    [id for id in getattr(bpy.data, attr) if id.library is None],
+                    [id for id in getattr(bpy.data, attr) if id.is_editable],
                     "name",
                     descr,
                 )
@@ -3222,6 +3223,10 @@ class WM_MT_splash_quick_setup(Menu):
 
     def draw(self, context):
         layout = self.layout
+
+        wm = context.window_manager
+        prefs = context.preferences
+
         layout.operator_context = 'EXEC_DEFAULT'
 
         old_version = bpy.types.PREFERENCES_OT_copy_prev.previous_version()
@@ -3257,7 +3262,6 @@ class WM_MT_splash_quick_setup(Menu):
 
         # Languages.
         if bpy.app.build_options.international:
-            prefs = context.preferences
             col.prop(prefs.view, "language")
 
         # Themes.
@@ -3270,7 +3274,6 @@ class WM_MT_splash_quick_setup(Menu):
         col.separator()
 
         # Shortcuts.
-        wm = context.window_manager
         kc = wm.keyconfigs.active
         kc_prefs = kc.preferences
 
@@ -3280,15 +3283,13 @@ class WM_MT_splash_quick_setup(Menu):
             text = "Blender"
         sub.menu("USERPREF_MT_keyconfigs", text=text)
 
-        has_select_mouse = hasattr(kc_prefs, "select_mouse")
-        if has_select_mouse:
+        if hasattr(kc_prefs, "select_mouse"):
             col.row().prop(kc_prefs, "select_mouse", text="Mouse Select", expand=True)
 
-        has_spacebar_action = hasattr(kc_prefs, "spacebar_action")
-        if has_spacebar_action:
+        if hasattr(kc_prefs, "spacebar_action"):
             col.row().prop(kc_prefs, "spacebar_action", text="Spacebar Action")
 
-        # Themes.
+        # Save Preferences.
         sub = col.column()
         sub.separator(factor=2)
 
@@ -3350,6 +3351,10 @@ class WM_MT_splash(Menu):
         col2.operator("wm.url_open_preset", text="What's New", icon='URL').type = 'RELEASE_NOTES'
 
         layout.separator()
+
+        if (not bpy.app.online_access) and bpy.app.online_access_override:
+            self.layout.label(text="Running in Offline Mode", icon='INTERNET_OFFLINE')
+
         layout.separator()
 
 
@@ -3370,7 +3375,7 @@ class WM_MT_splash_about(Menu):
         col.label(text=iface_("Date: {:s} {:s}").format(
             bpy.app.build_commit_date.decode("utf-8", "replace"),
             bpy.app.build_commit_time.decode("utf-8", "replace")),
-            translate=False
+            translate=False,
         )
         col.label(text=iface_("Hash: {:s}").format(bpy.app.build_hash.decode("ascii")), translate=False)
         col.label(text=iface_("Branch: {:s}").format(bpy.app.build_branch.decode("utf-8", "replace")), translate=False)
@@ -3588,5 +3593,5 @@ classes = (
     WM_MT_splash_quick_setup,
     WM_MT_splash,
     WM_MT_splash_about,
-    WM_MT_region_toggle_pie
+    WM_MT_region_toggle_pie,
 )

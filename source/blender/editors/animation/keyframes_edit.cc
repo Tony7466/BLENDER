@@ -340,6 +340,7 @@ static short summary_keyframes_loop(KeyframeEditData *ked,
     switch (ale->datatype) {
       case ALE_MASKLAY:
       case ALE_GPFRAME:
+      case ALE_GREASE_PENCIL_CEL:
         break;
 
       case ALE_FCURVE:
@@ -435,6 +436,15 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
       return scene_keyframes_loop(ked, ads, (Scene *)ale->data, key_ok, key_cb, fcu_cb);
     case ALE_ALL: /* 'all' (DopeSheet summary) */
       return summary_keyframes_loop(ked, (bAnimContext *)ale->data, key_ok, key_cb, fcu_cb);
+
+    case ALE_NONE:
+    case ALE_GPFRAME:
+    case ALE_MASKLAY:
+    case ALE_NLASTRIP:
+    case ALE_GREASE_PENCIL_CEL:
+    case ALE_GREASE_PENCIL_DATA:
+    case ALE_GREASE_PENCIL_GROUP:
+      break;
   }
 
   return 0;
@@ -845,7 +855,7 @@ void bezt_remap_times(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_nearest(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(floorf(bezt->vec[1][0] + 0.5f));
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, floorf(bezt->vec[1][0] + 0.5f));
   }
   return 0;
 }
@@ -857,7 +867,7 @@ static short snap_bezier_nearestsec(KeyframeEditData *ked, BezTriple *bezt)
   const float secf = float(FPS);
 
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(floorf(bezt->vec[1][0] / secf + 0.5f)) * secf;
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, floorf(bezt->vec[1][0] / secf + 0.5f) * secf);
   }
   return 0;
 }
@@ -867,7 +877,7 @@ static short snap_bezier_cframe(KeyframeEditData *ked, BezTriple *bezt)
 {
   const Scene *scene = ked->scene;
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(scene->r.cfra);
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, float(scene->r.cfra));
   }
   return 0;
 }
@@ -876,7 +886,8 @@ static short snap_bezier_cframe(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_nearmarker(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(ED_markers_find_nearest_marker_time(&ked->list, bezt->vec[1][0]));
+    BKE_fcurve_keyframe_move_time_with_handles(
+        bezt, float(ED_markers_find_nearest_marker_time(&ked->list, bezt->vec[1][0])));
   }
   return 0;
 }
@@ -901,7 +912,7 @@ static short snap_bezier_horizontal(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short snap_bezier_time(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = ked->f1;
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, ked->f1);
   }
   return 0;
 }
@@ -910,7 +921,7 @@ static short snap_bezier_time(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_value(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][1] = ked->f1;
+    BKE_fcurve_keyframe_move_value_with_handles(bezt, ked->f1);
   }
   return 0;
 }
@@ -1634,7 +1645,7 @@ KeyframeEditFunc ANIM_editkeyframes_select(short selectmode)
 
 static short selmap_build_bezier_more(KeyframeEditData *ked, BezTriple *bezt)
 {
-  FCurve *fcu = ked->fcu;
+  const FCurve *fcu = ked->fcu;
   char *map = static_cast<char *>(ked->data);
   int i = ked->curIndex;
 
@@ -1669,7 +1680,7 @@ static short selmap_build_bezier_more(KeyframeEditData *ked, BezTriple *bezt)
 
 static short selmap_build_bezier_less(KeyframeEditData *ked, BezTriple *bezt)
 {
-  FCurve *fcu = ked->fcu;
+  const FCurve *fcu = ked->fcu;
   char *map = static_cast<char *>(ked->data);
   int i = ked->curIndex;
 

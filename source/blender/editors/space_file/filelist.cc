@@ -573,15 +573,16 @@ static int compare_asset_catalog(void *user_data, const void *a1, const void *a2
   const FileListInternEntry *entry2 = static_cast<const FileListInternEntry *>(a2);
   const FileSortData *sort_data = static_cast<const FileSortData *>(user_data);
 
+  /* Order non-assets. */
   if (entry1->asset && !entry2->asset) {
     return 1;
   }
-  if (!entry1->asset && entry2->asset) {
+  else if (!entry1->asset && entry2->asset) {
     return -1;
   }
-  if (!entry1->asset && !entry2->asset) {
-    if (int ret = compare_direntry_generic(entry1, entry2); ret) {
-      return ret;
+  else if (!entry1->asset && !entry2->asset) {
+    if (int order = compare_direntry_generic(entry1, entry2); order) {
+      return compare_apply_inverted(order, sort_data);
     }
 
     return compare_apply_inverted(compare_tiebreaker(entry1, entry2), sort_data);
@@ -595,25 +596,26 @@ static int compare_asset_catalog(void *user_data, const void *a1, const void *a2
   const asset_system::AssetCatalog *catalog2 = asset_library2.catalog_service().find_catalog(
       entry2->asset->get_metadata().catalog_id);
 
-  /* Always keep assets without catalog last. */
+  /* Order by catalog. Always keep assets without catalog last. */
+  int order = 0;
+
   if (catalog1 && !catalog2) {
-    return 1;
+    order = 1;
   }
-  if (!catalog1 && catalog2) {
-    return -1;
+  else if (!catalog1 && catalog2) {
+    order = -1;
   }
-
-  if (catalog1 && catalog2) {
-    const int order = BLI_strcasecmp_natural(catalog1->path.name().c_str(),
-                                             catalog2->path.name().c_str());
-    if (order) {
-      return compare_apply_inverted(order, sort_data);
-    }
+  else if (catalog1 && catalog2) {
+    order = BLI_strcasecmp_natural(catalog1->path.name().c_str(), catalog2->path.name().c_str());
   }
 
-  int order = compare_tiebreaker(entry1, entry2);
   if (!order) {
-    order = BLI_strcasecmp_natural(asset_library1.name().c_str(), asset_library2.name().c_str());
+    /* Order by name. */
+    order = compare_tiebreaker(entry1, entry2);
+    if (!order) {
+      /* Order by library name. */
+      order = BLI_strcasecmp_natural(asset_library1.name().c_str(), asset_library2.name().c_str());
+    }
   }
 
   return compare_apply_inverted(order, sort_data);
@@ -1454,7 +1456,9 @@ static void filelist_direntryarr_free(FileDirEntryArr *array)
 
 static void filelist_intern_entry_free(FileList *filelist, FileListInternEntry *entry)
 {
-  if (entry->asset) {
+  /* Asset system storage might be cleared already on file exit. Asset library
+   * pointers are dangling then, so don't access (#120466). */
+  if (AS_asset_libraries_available() && entry->asset) {
     BLI_assert(filelist->asset_library);
     filelist->asset_library->remove_asset(*entry->asset);
   }
@@ -4183,6 +4187,21 @@ static void filelist_readjob_free(void *flrjv)
   MEM_freeN(flrj);
 }
 
+static eWM_JobType filelist_jobtype_get(const FileList *filelist)
+{
+  if (filelist->asset_library_ref) {
+    return WM_JOB_TYPE_ASSET_LIBRARY_LOAD;
+  }
+  return WM_JOB_TYPE_FILESEL_READDIR;
+}
+
+/* TODO(Julian): This is temporary, because currently the job system identifies jobs to suspend by
+ * the startjob callback, rather than the type. See PR #123033. */
+static void assetlibrary_readjob_startjob(void *flrjv, wmJobWorkerStatus *worker_status)
+{
+  filelist_readjob_startjob(flrjv, worker_status);
+}
+
 void filelist_readjob_start(FileList *filelist, const int space_notifier, const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
@@ -4231,11 +4250,12 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
                        filelist,
                        "Listing Dirs...",
                        WM_JOB_PROGRESS,
-                       WM_JOB_TYPE_FILESEL_READDIR);
+                       filelist_jobtype_get(filelist));
   WM_jobs_customdata_set(wm_job, flrj, filelist_readjob_free);
   WM_jobs_timer(wm_job, 0.01, space_notifier, space_notifier | NA_JOB_FINISHED);
   WM_jobs_callbacks(wm_job,
-                    filelist_readjob_startjob,
+                    filelist->asset_library_ref ? assetlibrary_readjob_startjob :
+                                                  filelist_readjob_startjob,
                     nullptr,
                     filelist_readjob_update,
                     filelist_readjob_endjob);
@@ -4246,10 +4266,10 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
 
 void filelist_readjob_stop(FileList *filelist, wmWindowManager *wm)
 {
-  WM_jobs_kill_type(wm, filelist, WM_JOB_TYPE_FILESEL_READDIR);
+  WM_jobs_kill_type(wm, filelist, filelist_jobtype_get(filelist));
 }
 
 int filelist_readjob_running(FileList *filelist, wmWindowManager *wm)
 {
-  return WM_jobs_test(wm, filelist, WM_JOB_TYPE_FILESEL_READDIR);
+  return WM_jobs_test(wm, filelist, filelist_jobtype_get(filelist));
 }
