@@ -9,10 +9,12 @@
 #include "BLI_set.hh"
 
 struct Scene;
+struct ViewLayer;
 
 namespace blender::bke::compositor {
 
-/* Get the set of all passes used by the compositor, identified by their pass names. */
-Set<std::string> get_used_passes(const Scene &scene);
+/* Get the set of all passes used by the compositor for the given view layer, identified by their
+ * pass names. */
+Set<std::string> get_used_passes(const Scene &scene, const ViewLayer *view_layer);
 
 }  // namespace blender::bke::compositor

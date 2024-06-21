@@ -4,12 +4,17 @@
 
 #include <string>
 
+#include <fmt/format.h>
+
+#include "BLI_math_base.hh"
 #include "BLI_set.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
+#include "DNA_layer_types.h"
 #include "DNA_node_types.h"
+#include "DNA_scene_types.h"
 
 namespace blender::bke::compositor {
 
@@ -31,9 +36,57 @@ static void add_passes_used_by_render_layer_node(const bNode *node, Set<std::str
   }
 }
 
+/* Adds the pass names of all Cryptomatte layers needed by the given node to the given used passes.
+ * Only passes in the given viewer layers are added. */
+static void add_passes_used_by_cryptomatte_node(const bNode *node,
+                                                const ViewLayer *view_layer,
+                                                Set<std::string> &used_passes)
+{
+  if (node->custom1 != CMP_NODE_CRYPTOMATTE_SOURCE_RENDER) {
+    return;
+  }
+
+  /* Does not use passes from the given view layer, so no need to add anything. */
+  const NodeCryptomatte *data = static_cast<NodeCryptomatte *>(node->storage);
+  if (!StringRef(data->layer_name).startswith(view_layer->name)) {
+    return;
+  }
+
+  /* Find out which type of Cryptomatte layers the node needs. Also ensure the type is enabled in
+   * the view layer, because the node can use one of the types as a placeholder. */
+  const char *cryptomatte_type_name = nullptr;
+  if (StringRef(data->layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_OBJECT)) {
+    if (view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_OBJECT) {
+      cryptomatte_type_name = RE_PASSNAME_CRYPTOMATTE_OBJECT;
+    }
+  }
+  else if (StringRef(data->layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_ASSET)) {
+    if (view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_ASSET) {
+      cryptomatte_type_name = RE_PASSNAME_CRYPTOMATTE_ASSET;
+    }
+  }
+  else if (StringRef(data->layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_MATERIAL)) {
+    if (view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_MATERIAL) {
+      cryptomatte_type_name = RE_PASSNAME_CRYPTOMATTE_MATERIAL;
+    }
+  }
+
+  if (!cryptomatte_type_name) {
+    return;
+  }
+
+  /* Each layer stores two ranks/levels, so do ceiling division by two. */
+  const int cryptomatte_layers_count = int(math::ceil(view_layer->cryptomatte_levels / 2.0f));
+  for (int i = 0; i < cryptomatte_layers_count; i++) {
+    used_passes.add(fmt::format("{}{:02}", cryptomatte_type_name, i));
+  }
+}
+
 /* Adds the pass names of the passes used by the given compositor node tree to the given used
  * passes. This is called recursively for node groups. */
-static void add_used_passes_recursive(const bNodeTree *node_tree, Set<std::string> &used_passes)
+static void add_used_passes_recursive(const bNodeTree *node_tree,
+                                      const ViewLayer *view_layer,
+                                      Set<std::string> &used_passes)
 {
   if (node_tree == nullptr) {
     return;
@@ -48,10 +101,14 @@ static void add_used_passes_recursive(const bNodeTree *node_tree, Set<std::strin
     switch (node->type) {
       case NODE_GROUP:
       case NODE_CUSTOM_GROUP:
-        add_used_passes_recursive(reinterpret_cast<const bNodeTree *>(node->id), used_passes);
+        add_used_passes_recursive(
+            reinterpret_cast<const bNodeTree *>(node->id), view_layer, used_passes);
         break;
       case CMP_NODE_R_LAYERS:
         add_passes_used_by_render_layer_node(node, used_passes);
+        break;
+      case CMP_NODE_CRYPTOMATTE:
+        add_passes_used_by_cryptomatte_node(node, view_layer, used_passes);
         break;
       default:
         break;
@@ -59,10 +116,10 @@ static void add_used_passes_recursive(const bNodeTree *node_tree, Set<std::strin
   }
 }
 
-Set<std::string> get_used_passes(const Scene &scene)
+Set<std::string> get_used_passes(const Scene &scene, const ViewLayer *view_layer)
 {
   Set<std::string> used_passes;
-  add_used_passes_recursive(scene.nodetree, used_passes);
+  add_used_passes_recursive(scene.nodetree, view_layer, used_passes);
   return used_passes;
 }
 

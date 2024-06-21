@@ -265,7 +265,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
   /* Compute the passes needed by the viewport compositor. */
   Set<std::string> passes_used_by_viewport_compositor;
   if (this->is_viewport_compositor_enabled()) {
-    passes_used_by_viewport_compositor = bke::compositor::get_used_passes(scene);
+    passes_used_by_viewport_compositor = bke::compositor::get_used_passes(scene, inst_.view_layer);
     viewport_compositor_enabled_passes_ = get_viewport_compositor_enabled_passes(
         passes_used_by_viewport_compositor, inst_.view_layer);
   }
