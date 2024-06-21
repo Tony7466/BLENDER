@@ -215,11 +215,6 @@ CCL_NAMESPACE_BEGIN
 #  undef __MNEE__
 #endif
 
-#if defined(__KERNEL_METAL_AMD__)
-/* Disabled due to compiler crash on Metal/AMD. */
-#  undef __MNEE__
-#endif
-
 /* Scene-based selective features compilation. */
 /* Scene-based selective features compilation. */
 #ifdef __KERNEL_FEATURES__

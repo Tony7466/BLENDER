@@ -357,9 +357,6 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
     case METAL_GPU_INTEL:
       global_defines += "#define __KERNEL_METAL_INTEL__\n";
       break;
-    case METAL_GPU_AMD:
-      global_defines += "#define __KERNEL_METAL_AMD__\n";
-      break;
     case METAL_GPU_APPLE:
       global_defines += "#define __KERNEL_METAL_APPLE__\n";
 
