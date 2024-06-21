@@ -359,12 +359,6 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
       break;
     case METAL_GPU_AMD:
       global_defines += "#define __KERNEL_METAL_AMD__\n";
-      /* The increased amount of BSDF code leads to a big performance regression
-       * on AMD. There is currently no workaround to fix this general. Instead
-       * disable patch evaluation. */
-      if (kernel_features & KERNEL_FEATURE_PATCH_EVALUATION) {
-        global_defines += "#define WITH_PATCH_EVAL\n";
-      }
       break;
     case METAL_GPU_APPLE:
       global_defines += "#define __KERNEL_METAL_APPLE__\n";
