@@ -2790,7 +2790,7 @@ void UV_OT_stitch(wmOperatorType *ot)
 
 static bool uvedit_uv_threshold_weld(Scene *scene,
                                  BMesh *bm,
-                                 const float cent[2])
+                                float threshold)
 {
   bool changed = false;
 
@@ -2799,7 +2799,43 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
   //get head of contiguous loop selections
   std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> loopMap;
   getBMLoopPointers(scene, bm, &loopMap);
-  return changed;
+  std::pair<std::pair<float, float>, std::pair<float, float>> lineheads; 
+  lineheads = constructselectedlinesegment(&loopMap);
+  std::pair<float, float> prev1;
+  std::pair<float, float> prev2;
+  std::pair<float, float> curr1 = lineheads.first;
+  std::pair<float, float> curr2  = lineheads.second;
+  
+  while(curr1 != prev1 && curr2 != prev2){
+    ED_uvedit_center_pair_of_loops(scene, bm, loopMap[curr1].loops, loopMap[curr2].loops, threshold);
+    std::pair<float, float> tmp1 = curr1;
+    std::pair<float, float> tmp2 = curr2;
+    if(loopMap[curr1].connec1 != std::make_pair(-1.0f, -1.0f) && loopMap[curr1].connec1 != prev1){
+      curr1 = loopMap[curr1].connec1;
+    }else if (loopMap[curr1].connec2 != std::make_pair(-1.0f, -1.0f) && loopMap[curr1].connec2 != prev1){
+      curr1 = loopMap[curr1].connec2;
+    }
+    
+
+    if(loopMap[curr2].connec1 != std::make_pair(-1.0f, -1.0f) && loopMap[curr2].connec1 != prev2){
+      curr2 = loopMap[curr2].connec1;
+    }else if (loopMap[curr2].connec2 != std::make_pair(-1.0f, -1.0f) && loopMap[curr2].connec2 != prev2){
+      curr2 = loopMap[curr2].connec2;
+    }
+    prev1 = tmp1;
+    prev2 = tmp2;
+    
+
+
+  }
+
+
+
+
+
+  
+  
+  return true;
 }
 
 
@@ -2814,7 +2850,8 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
       scene, view_layer, nullptr);
   float origin[2] = {0.0f, 0.0f}; // Fix: Remove duplicate declaration and initialize here
   BMEditMesh *em = BKE_editmesh_from_object(objects[0]);
-  if (uvedit_uv_threshold_weld(scene, em->bm, origin)) {
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  if (uvedit_uv_threshold_weld(scene, em->bm, threshold)) {
     uvedit_live_unwrap_update(sima, scene, objects[0]);
     DEG_id_tag_update(static_cast<ID *>(objects[0]->data), 0);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, objects[0]->data);

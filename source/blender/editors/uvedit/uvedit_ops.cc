@@ -225,24 +225,59 @@ void ED_uvedit_foreach_uv(const Scene *scene,
   }
 }
 
+
+
 // Function to construct a linked list given a starting index
-void constructselectedlinesegment(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr) {
+std::pair<std::pair<float, float>, std::pair<float, float>>  constructselectedlinesegment(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr) {
   std::set<std::pair<float, float>> endPoints;
   for (auto it = loopMapPtr->begin(); it != loopMapPtr->end(); ++it) {
     // Access the key-value pair
     const std::pair<float, float>& key = it->first;
     loopData& value = it->second;
-    if (value.connec1 == -1 || value.connec2 == -1) {
+    if (value.connec1 == std::make_pair(-1.0f, -1.0f) || value.connec2 == std::make_pair(-1.0f, -1.0f)) {
       endPoints.insert(key);
     }
   }
 
-  auto endPointValue = endPoints.begin();
-  std::pair<float, float> prev;
-  auto currentPointValue = endPoints.begin();
+  // Create variables
+    auto startingpoint = *endPoints.begin();
+    auto currKey = *endPoints.begin();
+    auto prev = std::make_pair(-1.0f, -1.0f);
+
+    // While we can find the current key in the map
+    while (!(endPoints.count(currKey) && currKey != startingpoint)) {
+        auto currValue = (*loopMapPtr)[currKey];
+        // Access the current value
+        
+        if (currValue.connec1 == std::make_pair(-1.0f, -1.0f) or currValue.connec1 == prev) {
+          prev = currKey;
+          currKey = currValue.connec2;
+        } else {
+          prev = currKey;
+          currKey = currValue.connec1;
+        }
+    }
+    endPoints.erase(currKey);
+    endPoints.erase(startingpoint);
+    float startingpointVector[2] = {startingpoint.first, startingpoint.second};
+    float endPointVector[2] = {currKey.first, currKey.second};
+    
+    
+    auto endpointiter = endPoints.begin();
+    float line2point1[2] = {endpointiter->first, endpointiter->second};
+    ++endpointiter;
+    float line2point2[2] = {endpointiter->first, endpointiter->second};
+    // Calculate the distance between the starting point and the first point in endPoint
+
+    float distance1 = std::sqrt(std::pow(startingpointVector[0] - line2point1[0], 2) + std::pow(startingpointVector[1] - line2point1[1], 2)) +
+          std::sqrt(std::pow(endPointVector[0] - line2point2[0], 2) + std::pow(endPointVector[1] - line2point2[1], 2));
+    float distance2 = std::sqrt(std::pow(startingpointVector[0] - line2point2[0], 2) + std::pow(startingpointVector[1] - line2point2[1], 2)) +
+          std::sqrt(std::pow(endPointVector[0] - line2point1[0], 2) + std::pow(endPointVector[1] - line2point1[1], 2));
 
 
-  return;
+    std::pair<float, float> pair1(line2point1[0], line2point1[1]);
+    std::pair<float, float> pair2(line2point2[0], line2point2[1]);
+    return (distance1 < distance2) ? std::make_pair(startingpoint, pair1) : std::make_pair(startingpoint, pair2);
 }
 
 void getBMLoopPointers(Scene* scene, BMesh* bm, std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr) {
@@ -259,28 +294,55 @@ void getBMLoopPointers(Scene* scene, BMesh* bm, std::unordered_map<std::pair<flo
         //get the float value of the loop
         //hash the float value of the loop
         float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-        std::string loopLocID = std::to_string(luv[0]) + "," + std::to_string(luv[1]);
 
         if (loopMapPtr->find(std::pair<float, float>(luv[0], luv[1])) == loopMapPtr->end()) {
           loopMapPtr->insert({std::pair<float, float>(luv[0], luv[1]), loopData()});
         }
         loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).loops.push_back(l);
         if (uvedit_uv_select_test(scene,l->next,offsets) == true) {
-          loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec1 = l->next->v->head.index;
+          float *nluv = BM_ELEM_CD_GET_FLOAT_P(l->next, offsets.uv);
+          loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec1 = std::pair<float, float>(nluv[0], nluv[1]);
         }
         if (uvedit_uv_select_test(scene,l->prev,offsets) == true) {
-          loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec2 = l->prev->v->head.index;
+          float *pluv = BM_ELEM_CD_GET_FLOAT_P(l->prev, offsets.uv);
+          loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec2 = std::pair<float, float>(pluv[0], pluv[1]);
         }
       }
     }
 
   }
 
-
-
-  constructselectedlinesegment(loopMapPtr);
   return;
 }
+
+void ED_uvedit_center_pair_of_loops(const Scene *scene,
+                                    BMesh *bm,
+                                    std::vector<BMLoop*> loop1,
+                                    std::vector<BMLoop*> loop2,
+                                    float threshold)
+{
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+  float *luv1 = BM_ELEM_CD_GET_FLOAT_P(loop1[0], offsets.uv);
+  float *luv2 = BM_ELEM_CD_GET_FLOAT_P(loop2[0], offsets.uv);
+  float mid[2];
+  float dist;
+  dist = std::sqrt(std::pow(luv1[0] - luv2[0], 2) + std::pow(luv1[1] - luv2[1], 2));
+
+  if(dist <= threshold){
+    mid_v2_v2v2(mid, luv1, luv2);
+    for (BMLoop* loop : loop1) {
+      float *currluv = BM_ELEM_CD_GET_FLOAT_P(loop, offsets.uv);
+      currluv[0] = mid[0];
+      currluv[1] = mid[1];
+    }
+    for (BMLoop* loop : loop2) {
+      float *currluv = BM_ELEM_CD_GET_FLOAT_P(loop, offsets.uv);
+      currluv[0] = mid[0];
+      currluv[1] = mid[1];
+    }
+  }
+}
+
 
 void ED_uvedit_foreach_uv_multi(const Scene *scene,
                                 const Span<Object *> objects_edit,

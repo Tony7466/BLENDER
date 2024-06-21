@@ -291,10 +291,16 @@ struct FaceIsland {
   float aspect_y;
 };
 
+void ED_uvedit_center_pair_of_loops(const Scene *scene,
+                                    BMesh *bm,
+                                    std::vector<BMLoop*> loop1,
+                                    std::vector<BMLoop*> loop2,
+                                    float threshold);
+
 struct loopData {
     std::vector<BMLoop*> loops;
-    int connec1 = -1;
-    int connec2 = -1;
+    std::pair<float, float> connec1 = std::make_pair(-1.0f, -1.0f);
+    std::pair<float, float> connec2 = std::make_pair(-1.0f, -1.0f);
 };
 struct pair_hash {
     template <class T1, class T2>
@@ -315,7 +321,8 @@ struct pair_equal {
     }
 };
 void getBMLoopPointers(Scene* scene, BMesh* bm, std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
-void constructselectedlinesegment(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
+std::pair<std::pair<float, float>, std::pair<float, float>> constructselectedlinesegment(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
+
 
 /**
  * Calculate islands and add them to \a island_list returning the number of items added.
