@@ -1797,6 +1797,13 @@ class CyclesPreferences(bpy.types.AddonPreferences):
             return
         row = layout.row()
         devices = self.get_devices_for_type(compute_device_type)
+
+        if compute_device_type == 'METAL':
+            for device in devices:
+                if device.type == 'METAL' and ('AMD' in device.name.upper() or 'INTEL' in device.name.upper()):
+                    # Support to be removed in Blender 4.3
+                    device.name += " (Deprecated)"
+
         self._draw_devices(row, compute_device_type, devices)
 
         import _cycles
