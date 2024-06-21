@@ -78,13 +78,11 @@ void device_metal_info(vector<DeviceInfo> &devices)
     /* MetalRT now uses features exposed in Xcode versions corresponding to macOS 14+, so don't
      * expose it in builds from older Xcode versions. */
 #  if defined(MAC_OS_VERSION_14_0)
-    if (vendor != METAL_GPU_INTEL) {
-      if (@available(macos 14.0, *)) {
-        info.use_hardware_raytracing = device.supportsRaytracing;
+    if (@available(macos 14.0, *)) {
+      info.use_hardware_raytracing = device.supportsRaytracing;
 
-        /* Use hardware raytracing for faster rendering on architectures that support it. */
-        info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >= APPLE_M3);
-      }
+      /* Use hardware raytracing for faster rendering on architectures that support it. */
+      info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >= APPLE_M3);
     }
 #  endif
 
