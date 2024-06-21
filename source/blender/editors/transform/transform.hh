@@ -181,11 +181,11 @@ ENUM_OPERATORS(eTSnap, SNAP_MULTI_POINTS)
 
 /** #TransSnap.direction */
 typedef enum eSnapDir {
-  SCE_SNAP_GLOBAL_X = (1 << 0),
-  SCE_SNAP_GLOBAL_Y = (1 << 1),
-  SCE_SNAP_GLOBAL_Z = (1 << 2),
+  DIR_GLOBAL_X = (1 << 0),
+  DIR_GLOBAL_Y = (1 << 1),
+  DIR_GLOBAL_Z = (1 << 2),
 } eSnapDir;
-ENUM_OPERATORS(eSnapDir, SCE_SNAP_GLOBAL_Z)
+ENUM_OPERATORS(eSnapDir, DIR_GLOBAL_Z)
 
 /** #TransCon.mode, #TransInfo.con.mode */
 enum eTConstraint {

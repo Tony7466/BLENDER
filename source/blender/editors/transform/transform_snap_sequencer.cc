@@ -544,19 +544,19 @@ static bool transform_snap_sequencer_calc_preview(TransInfo *t, const TransSeqSn
     }
   }
 
-  t->tsnap.direction &= ~(SCE_SNAP_GLOBAL_X | SCE_SNAP_GLOBAL_Y);
+  t->tsnap.direction &= ~(DIR_GLOBAL_X | DIR_GLOBAL_Y);
   float thr = seq_snap_threshold_get_view_distance(t);
 
   if (best_dist[0] <= thr) {
     t->tsnap.snap_target[0] = best_target_point[0];
     t->tsnap.snap_source[0] = best_source_point[0];
-    t->tsnap.direction |= SCE_SNAP_GLOBAL_X;
+    t->tsnap.direction |= DIR_GLOBAL_X;
   }
 
   if (best_dist[1] <= thr) {
     t->tsnap.snap_target[1] = best_target_point[1];
     t->tsnap.snap_source[1] = best_source_point[1];
-    t->tsnap.direction |= SCE_SNAP_GLOBAL_Y;
+    t->tsnap.direction |= DIR_GLOBAL_Y;
   }
 
   return (best_dist[0] <= thr || best_dist[1] <= thr);
@@ -585,11 +585,11 @@ void transform_snap_sequencer_apply_seqslide(TransInfo *t, float *vec)
 void transform_snap_sequencer_image_apply_translate(TransInfo *t, float vec[2])
 {
   /* Apply snap along x and y axes independently. */
-  if (t->tsnap.direction & SCE_SNAP_GLOBAL_X) {
+  if (t->tsnap.direction & DIR_GLOBAL_X) {
     vec[0] = t->tsnap.snap_target[0] - t->tsnap.snap_source[0];
   }
 
-  if (t->tsnap.direction & SCE_SNAP_GLOBAL_Y) {
+  if (t->tsnap.direction & DIR_GLOBAL_Y) {
     vec[1] = t->tsnap.snap_target[1] - t->tsnap.snap_source[1];
   }
 }
