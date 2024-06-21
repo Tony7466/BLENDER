@@ -38,6 +38,7 @@ struct SimulationData;
 }
 namespace undo {
 struct Node;
+enum class Type : int8_t;
 }
 }
 struct BMLog;
@@ -101,7 +102,7 @@ struct SculptVertexNeighborIter {
 struct SculptOrigVertData {
   BMLog *bm_log;
 
-  const blender::ed::sculpt_paint::undo::Node *unode;
+  blender::ed::sculpt_paint::undo::Type undo_type;
   const blender::float3 *coords;
   const blender::float3 *normals;
   const float *vmasks;
@@ -114,13 +115,6 @@ struct SculptOrigVertData {
   const float *col;
 };
 
-struct SculptOrigFaceData {
-  blender::ed::sculpt_paint::undo::Node *unode;
-  BMLog *bm_log;
-  const int *face_sets;
-  int face_set;
-};
-
 enum eBoundaryAutomaskMode {
   AUTOMASK_INIT_BOUNDARY_EDGES = 1,
   AUTOMASK_INIT_BOUNDARY_FACE_SETS = 2,
@@ -128,7 +122,8 @@ enum eBoundaryAutomaskMode {
 
 namespace blender::ed::sculpt_paint::undo {
 
-enum class Type {
+enum class Type : int8_t {
+  None,
   Position,
   HideVert,
   HideFace,
@@ -161,11 +156,6 @@ struct NodeGeometry {
 };
 
 struct Node {
-  Type type;
-
-  char idname[MAX_ID_NAME]; /* Name instead of pointer. */
-  const void *node;         /* only during push, not valid afterwards! */
-
   Array<float3> position;
   Array<float3> orig_position;
   Array<float3> normal;
@@ -203,32 +193,13 @@ struct Node {
   BMLogEntry *bm_entry;
   bool applied;
 
-  /* shape keys */
-  char shapeName[MAX_NAME]; /* `sizeof(KeyBlock::name)`. */
-
-  /* Geometry modification operations.
-   *
-   * Original geometry is stored before some modification is run and is used to restore state of
-   * the object when undoing the operation
-   *
-   * Modified geometry is stored after the modification and is used to redo the modification. */
-  bool geometry_clear_pbvh;
-  undo::NodeGeometry geometry_original;
-  undo::NodeGeometry geometry_modified;
-
   /* Geometry at the bmesh enter moment. */
   undo::NodeGeometry geometry_bmesh_enter;
-
-  /* pivot */
-  float3 pivot_pos;
-  float pivot_rot[4];
 
   /* Sculpt Face Sets */
   Array<int> face_sets;
 
   Vector<int> face_indices;
-
-  size_t undo_size;
 };
 
 }
@@ -387,8 +358,21 @@ struct StrokeCache {
   bool is_last_valid;
 
   bool pen_flip;
+
+  /**
+   * Whether or not the modifier key that controls inverting brush behavior is active currently.
+   * Generally signals a change in behavior for brushes.
+   *
+   * \see BrushStrokeMode::BRUSH_STROKE_INVERT.
+   */
   bool invert;
   float pressure;
+  /**
+   * Depending on the mode, can either be the raw brush strength, or a scaled (possibly negative)
+   * value.
+   *
+   * \see #brush_strength for Sculpt Mode.
+   */
   float bstrength;
   float normal_weight; /* from brush (with optional override) */
   float x_tilt;
@@ -514,6 +498,13 @@ struct StrokeCache {
   char saved_active_brush_name[MAX_ID_NAME];
   char saved_mask_brush_tool;
   int saved_smooth_size; /* smooth tool copies the size of the current tool */
+
+  /**
+   * Whether or not the modifier key that controls smoothing is active currently.
+   * Generally signals a change in behavior for different brushes.
+   *
+   * \see BrushStrokeMode::BRUSH_STROKE_SMOOTH.
+   */
   bool alt_smooth;
 
   float plane_trim_squared;
@@ -967,6 +958,8 @@ namespace blender::ed::sculpt_paint {
 
 namespace hide {
 
+Span<int> node_visible_verts(const PBVHNode &node, Span<bool> hide_vert, Vector<int> &indices);
+
 bool vert_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_all_faces_visible_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_any_face_visible_get(const SculptSession &ss, PBVHVertRef vertex);
@@ -987,6 +980,18 @@ int vert_face_set_get(const SculptSession &ss, PBVHVertRef vertex);
 bool vert_has_face_set(const SculptSession &ss, PBVHVertRef vertex, int face_set);
 bool vert_has_unique_face_set(const SculptSession &ss, PBVHVertRef vertex);
 
+/**
+ * Creates the sculpt face set attribute on the mesh if it doesn't exist.
+ *
+ * \see face_set::ensure_face_sets_mesh if further writing to the attribute is desired.
+ */
+bool create_face_sets_mesh(Object &object);
+
+/**
+ * Ensures that the sculpt face set attribute exists on the mesh.
+ *
+ * \see face_set::create_face_sets_mesh to avoid having to remember to call .finish()
+ */
 bke::SpanAttributeWriter<int> ensure_face_sets_mesh(Object &object);
 int ensure_face_sets_bmesh(Object &object);
 Array<int> duplicate_face_sets(const Mesh &mesh);
@@ -1017,13 +1022,6 @@ void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const PBVHVerte
 void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, const BMVert &vert);
 void SCULPT_orig_vert_data_update(SculptOrigVertData &orig_data, int i);
 
-/**
- * Initialize a #SculptOrigVertData for accessing original vertex data;
- * handles #BMesh, #Mesh, and multi-resolution.
- */
-void SCULPT_orig_vert_data_unode_init(SculptOrigVertData &data,
-                                      const Object &ob,
-                                      const blender::ed::sculpt_paint::undo::Node &unode);
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1591,10 +1589,7 @@ float4 neighbor_color_average(SculptSession &ss, PBVHVertRef vertex);
  */
 float3 neighbor_coords_average_interior(const SculptSession &ss, PBVHVertRef vertex);
 
-void do_smooth_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes, float bstrength);
-void do_smooth_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
-
-void do_smooth_mask_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes, float bstrength);
+void enhance_details_brush(const Sculpt &sd, Object &ob, Span<PBVHNode *> nodes);
 
 /* Surface Smooth Brush. */
 
@@ -1640,8 +1635,22 @@ void SCULPT_cache_free(blender::ed::sculpt_paint::StrokeCache *cache);
 
 namespace blender::ed::sculpt_paint::undo {
 
-undo::Node *push_node(const Object &object, const PBVHNode *node, undo::Type type);
-undo::Node *get_node(const PBVHNode *node, undo::Type type);
+/**
+ * Store undo data of the given type for a PBVH node. This function can be called by multiple
+ * threads concurrently, as long as they don't pass the same PBVH node.
+ *
+ * This is only possible when building an undo step, in between #push_begin and #push_end.
+ */
+void push_node(const Object &object, const PBVHNode *node, undo::Type type);
+void push_nodes(Object &object, Span<const PBVHNode *> nodes, undo::Type type);
+
+/**
+ * Retrieve the undo data of a given type for the active undo step. For example, this is used to
+ * access "original" data from before the current stroke.
+ *
+ * This is only possible when building an undo step, in between #push_begin and #push_end.
+ */
+const undo::Node *get_node(const PBVHNode *node, undo::Type type);
 
 /**
  * Pushes an undo step using the operator name. This is necessary for
@@ -1786,7 +1795,7 @@ struct GestureData {
 /* Common abstraction structure for gesture operations. */
 struct Operation {
   /* Initial setup (data updates, special undo push...). */
-  void (*begin)(bContext &, GestureData &);
+  void (*begin)(bContext &, wmOperator &, GestureData &);
 
   /* Apply the gesture action for each symmetry pass. */
   void (*apply_for_symmetry_pass)(bContext &, GestureData &);
@@ -2016,21 +2025,12 @@ bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 float SCULPT_clay_thumb_get_stabilized_pressure(
     const blender::ed::sculpt_paint::StrokeCache &cache);
 
-void SCULPT_do_draw_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-
-void SCULPT_do_fill_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_scrape_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_clay_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_flatten_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_clay_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_clay_strips_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_snake_hook_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_thumb_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_rotate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_layer_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_inflate_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_nudge_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_crease_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_pinch_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_grab_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 void SCULPT_do_elastic_deform_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
@@ -2040,11 +2040,6 @@ void SCULPT_do_slide_relax_brush(const Sculpt &sd, Object &ob, blender::Span<PBV
 void SCULPT_do_displacement_smear_brush(const Sculpt &sd,
                                         Object &ob,
                                         blender::Span<PBVHNode *> nodes);
-void SCULPT_do_displacement_eraser_brush(const Sculpt &sd,
-                                         Object &ob,
-                                         blender::Span<PBVHNode *> nodes);
-void SCULPT_do_mask_brush_draw(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
-void SCULPT_do_mask_brush(const Sculpt &sd, Object &ob, blender::Span<PBVHNode *> nodes);
 /** \} */
 
 void SCULPT_bmesh_topology_rake(const Sculpt &sd,
