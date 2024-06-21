@@ -193,6 +193,7 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
 
   int prim;
   MeshLight mesh_light;
+#ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
     ccl_global const KernelLightTreeEmitter *kemitter = &kernel_data_fetch(light_tree_emitters,
                                                                            ls->emitter_id);
@@ -200,7 +201,9 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
     mesh_light.shader_flag = kemitter->mesh_light.shader_flag;
     mesh_light.object_id = ls->object;
   }
-  else {
+  else
+#endif
+  {
     ccl_global const KernelLightDistribution *kdistribution = &kernel_data_fetch(
         light_distribution, ls->emitter_id);
     prim = kdistribution->prim;

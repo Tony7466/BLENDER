@@ -940,9 +940,11 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
   INTEGRATOR_STATE_WRITE(state, ray, P) = sd->P;
   INTEGRATOR_STATE_WRITE(state, ray, D) = normalize(phase_wo);
   INTEGRATOR_STATE_WRITE(state, ray, tmin) = 0.0f;
+#  ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
     INTEGRATOR_STATE_WRITE(state, ray, previous_dt) = ray->tmax - ray->tmin;
   }
+#  endif
   INTEGRATOR_STATE_WRITE(state, ray, tmax) = FLT_MAX;
 #  ifdef __RAY_DIFFERENTIALS__
   INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);

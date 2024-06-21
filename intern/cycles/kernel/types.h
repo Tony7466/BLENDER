@@ -178,6 +178,7 @@ CCL_NAMESPACE_BEGIN
 #define __HAIR__
 #define __LIGHT_LINKING__
 #define __SHADOW_LINKING__
+#define __LIGHT_TREE__
 #define __OBJECT_MOTION__
 #define __MNEE__
 #define __PASSES__
