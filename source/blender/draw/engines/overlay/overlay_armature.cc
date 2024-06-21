@@ -2251,8 +2251,11 @@ class ArmatureBoneDrawStrategyLine : public ArmatureBoneDrawStrategy {
         if (bone.flag() & BONE_TIPSEL) {
           col_tail = G_draw.block.color_vertex_select;
         }
-        if (boneflag & BONE_SELECTED) {
+        if ((boneflag & BONE_DRAW_ACTIVE) && (boneflag & BONE_SELECTED)) {
           col_bone = G_draw.block.color_bone_active;
+        }
+        else if (boneflag & BONE_SELECTED) {
+          col_bone = G_draw.block.color_bone_select;
         }
         col_wire = G_draw.block.color_wire;
       }
