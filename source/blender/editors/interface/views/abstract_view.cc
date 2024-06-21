@@ -46,6 +46,7 @@ void AbstractView::update_from_old(uiBlock &new_block)
   }
 
   /* Update own persistent data. */
+  prev_search_string_ = old_view->prev_search_string_;
   /* Keep the rename buffer persistent while renaming! The rename button uses the buffer's
    * pointer to identify itself over redraws. */
   rename_buffer_ = std::move(old_view->rename_buffer_);
@@ -114,6 +115,34 @@ void AbstractView::draw_overlays(const ARegion & /*region*/) const
 }
 
 /** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Renaming
+ * \{ */
+
+bool AbstractView::apply_search_filter(std::optional<StringRef> search_str)
+{
+  needs_filtering_ = false;
+
+  if (!search_str) {
+    return false;
+  }
+  if (search_str == prev_search_string_) {
+    return false;
+  }
+  prev_search_string_ = *search_str;
+
+  if (search_str->is_empty()) {
+    /* Can early exit, #AbstractViewItem.is_filtered_visible_ is true by default. */
+    return true;
+  }
+
+  foreach_view_item([&](AbstractViewItem &item) {
+    item.is_filtered_visible_ = item.should_be_filtered_visible(StringRefNull(*search_str));
+  });
+
+  return true;
+}
 
 /* ---------------------------------------------------------------------- */
 /** \name Renaming

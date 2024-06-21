@@ -21,6 +21,7 @@
 #include "RNA_access.hh"
 
 #include "UI_interface.hh"
+#include "UI_view2d.hh"
 #include "interface_intern.hh"
 
 #include "UI_grid_view.hh"
@@ -62,7 +63,7 @@ void AbstractGridView::foreach_item(ItemIterFn iter_fn) const
 void AbstractGridView::foreach_filtered_item(ItemIterFn iter_fn) const
 {
   for (const auto &item_ptr : items_) {
-    if (item_ptr->is_filtered_visible_cached()) {
+    if (item_ptr->is_filtered_visible()) {
       iter_fn(*item_ptr);
     }
   }
@@ -398,17 +399,30 @@ uiLayout *GridViewLayoutBuilder::current_layout() const
 
 /* ---------------------------------------------------------------------- */
 
+static void reset_view(View2D &v2d)
+{
+  if (v2d.flag & V2D_IS_INIT) {
+    UI_view2d_offset(&v2d, 0, 0);
+  }
+}
+
 GridViewBuilder::GridViewBuilder(uiBlock & /*block*/) {}
 
 void GridViewBuilder::build_grid_view(AbstractGridView &grid_view,
-                                      const View2D &v2d,
-                                      uiLayout &layout)
+                                      View2D &v2d,
+                                      uiLayout &layout,
+                                      std::optional<StringRef> search_string)
 {
   uiBlock &block = *uiLayoutGetBlock(&layout);
 
   grid_view.build_items();
   grid_view.update_from_old(block);
   grid_view.change_state_delayed();
+
+  const bool filter_changed = grid_view.apply_search_filter(search_string);
+  if (filter_changed) {
+    reset_view(v2d);
+  }
 
   /* Ensure the given layout is actually active. */
   UI_block_layout_set_current(&block, &layout);

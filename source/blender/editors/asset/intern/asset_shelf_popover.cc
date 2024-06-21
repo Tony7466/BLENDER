@@ -185,7 +185,7 @@ static void popover_panel_draw(const bContext *C, Panel *panel)
   AssetShelfType *shelf_type = lookup_type_from_idname_in_context(C);
   BLI_assert_msg(shelf_type != nullptr, "couldn't find asset shelf type from context");
 
-  const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
+  ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
 
   uiLayout *layout = panel->layout;
   uiLayoutSetUnitsX(layout, LAYOUT_WIDTH_UNITS);
