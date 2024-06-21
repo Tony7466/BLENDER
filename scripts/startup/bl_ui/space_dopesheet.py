@@ -524,6 +524,7 @@ class DOPESHEET_MT_channel(Menu):
 
         layout.operator("anim.channels_delete")
         layout.operator("action.clean", text="Clean Channels").channels = True
+        layout.operator("anim.channels_bake")
 
         layout.separator()
         layout.operator("anim.channels_group")
