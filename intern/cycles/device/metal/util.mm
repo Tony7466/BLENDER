@@ -29,7 +29,7 @@ string MetalInfo::get_device_name(id<MTLDevice> device)
   }
   else if (vendor & (METAL_GPU_AMD | METAL_GPU_INTEL)) {
     /* Support is to be removed in Blender 4.3 */
-    device_name += " (Depreciated)";
+    device_name += " (Deprecated)";
   }
 
   return device_name;
