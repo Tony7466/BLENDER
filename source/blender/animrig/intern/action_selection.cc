@@ -25,20 +25,9 @@ static void clear_selection_legacy_action(Action &action)
 static void clear_selection_layered_action(Action &action)
 {
   BLI_assert(action.is_action_layered());
-  for (Layer *layer : action.layers()) {
-    BLI_assert(layer != nullptr);
-    for (Strip *strip : layer->strips()) {
-      BLI_assert(strip != nullptr);
-      if (!strip->is<KeyframeStrip>()) {
-        continue;
-      }
-      KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
-      for (ChannelBag *ch_bag : key_strip.channelbags()) {
-        BLI_assert(ch_bag != nullptr);
-        for (FCurve *fcu : ch_bag->fcurves()) {
-          BKE_fcurve_deselect_all_keys(*fcu);
-        }
-      }
+  for (Binding *binding : action.bindings()) {
+    for (FCurve *fcu : fcurves_for_animation(action, binding->handle)) {
+      BKE_fcurve_deselect_all_keys(*fcu);
     }
   }
 }
