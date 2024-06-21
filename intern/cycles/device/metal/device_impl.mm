@@ -347,26 +347,18 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
   global_defines += "#define WITH_CYCLES_DEBUG\n";
 #  endif
 
-  switch (device_vendor) {
-    default:
-      break;
-    case METAL_GPU_APPLE:
-      global_defines += "#define __KERNEL_METAL_APPLE__\n";
-
-      if (@available(macos 14.0, *)) {
-        /* Use Program Scope Global Built-ins, when available. */
-        global_defines += "#define __METAL_GLOBAL_BUILTINS__\n";
-      }
-
-#  ifdef WITH_NANOVDB
-      /* Compiling in NanoVDB results in a marginal drop in render performance,
-       * so disable it for specialized PSOs when no textures are using it. */
-      if ((pso_type == PSO_GENERIC || using_nanovdb) && DebugFlags().metal.use_nanovdb) {
-        global_defines += "#define WITH_NANOVDB\n";
-      }
-#  endif
-      break;
+  global_defines += "#define __KERNEL_METAL_APPLE__\n";
+  if (@available(macos 14.0, *)) {
+    /* Use Program Scope Global Built-ins, when available. */
+    global_defines += "#define __METAL_GLOBAL_BUILTINS__\n";
   }
+#  ifdef WITH_NANOVDB
+  /* Compiling in NanoVDB results in a marginal drop in render performance,
+   * so disable it for specialized PSOs when no textures are using it. */
+  if ((pso_type == PSO_GENERIC || using_nanovdb) && DebugFlags().metal.use_nanovdb) {
+    global_defines += "#define WITH_NANOVDB\n";
+  }
+#  endif
 
   NSProcessInfo *processInfo = [NSProcessInfo processInfo];
   NSOperatingSystemVersion macos_ver = [processInfo operatingSystemVersion];
