@@ -218,10 +218,6 @@ CCL_NAMESPACE_BEGIN
 #if defined(__KERNEL_METAL_AMD__)
 /* Disabled due to compiler crash on Metal/AMD. */
 #  undef __MNEE__
-/* Disable due to performance regression on Metal/AMD. */
-#  ifndef WITH_PRINCIPLED_HAIR
-#    undef __PRINCIPLED_HAIR__
-#  endif
 #  ifndef WITH_PATCH_EVAL
 #    undef __PATCH_EVAL__
 #  endif
