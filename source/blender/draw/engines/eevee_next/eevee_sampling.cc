@@ -211,7 +211,7 @@ void Sampling::step()
   data_.blue_noise_offset = float2(blue_noise_sample_index % UTIL_TEX_SIZE,
                                    blue_noise_sample_index / UTIL_TEX_SIZE);
   /* Number of blue noise slices. */
-  data_.blue_noise_layer = UTIL_FAST_NOISE_LAYER + (sample_ % UTIL_FAST_NOISE_LEN);
+  data_.blue_noise_layer = sample_ % UTIL_FAST_NOISE_LEN;
   data_.push_update();
 
   viewport_sample_++;

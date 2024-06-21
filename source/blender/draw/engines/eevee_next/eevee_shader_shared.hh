@@ -269,10 +269,12 @@ enum eBlueNoiseUsage : uint32_t {
   RNG_SHADOW_TRACE = 1u,
 };
 
-/* Blue noise type. */
+/* Blue noise type inside the utility texture. */
 enum eBlueNoiseType : uint32_t {
-  NOISE_HEMISPHERE_BINOMIAL = 0u,
-  NOISE_HEMISPHERE_BOX = 32u,
+  /* These are actually the starting layer inside the utility texture.
+   * Each noise type has UTIL_FAST_NOISE_LEN layers. */
+  NOISE_HEMISPHERE_BINOMIAL = 20u,
+  NOISE_HEMISPHERE_BOX = 52u,
 };
 
 /**
@@ -2119,7 +2121,6 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 #define UTIL_BTDF_LAYER 4
 #define UTIL_DISK_INTEGRAL_LAYER UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER
 #define UTIL_DISK_INTEGRAL_COMP 3
-#define UTIL_FAST_NOISE_LAYER 20
 #define UTIL_FAST_NOISE_LEN 32
 
 #ifdef GPU_SHADER

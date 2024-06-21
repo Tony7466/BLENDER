@@ -660,13 +660,26 @@ class UtilityTexture : public Texture {
     }
     {
       for (auto layer_id : IndexRange(32)) {
-        Layer &layer = data[UTIL_FAST_NOISE_LAYER + layer_id];
+        Layer &layer = data[NOISE_HEMISPHERE_BINOMIAL + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {
             layer.data[y][x][0] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][0];
             layer.data[y][x][1] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][1];
             layer.data[y][x][2] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][2];
             layer.data[y][x][3] = lut::fast_noise_real_uniform_binomial3_64x32[layer_id][y][x][0];
+          }
+        }
+      }
+    }
+    {
+      for (auto layer_id : IndexRange(32)) {
+        Layer &layer = data[NOISE_HEMISPHERE_BOX + layer_id];
+        for (auto x : IndexRange(lut_size)) {
+          for (auto y : IndexRange(lut_size)) {
+            layer.data[y][x][0] = lut::fast_noise_sphere_cosine_box3_64x32[layer_id][y][x][0];
+            layer.data[y][x][1] = lut::fast_noise_sphere_cosine_box3_64x32[layer_id][y][x][1];
+            layer.data[y][x][2] = lut::fast_noise_sphere_cosine_box3_64x32[layer_id][y][x][2];
+            layer.data[y][x][3] = lut::fast_noise_real_uniform_box3_64x32[layer_id][y][x][0];
           }
         }
       }
