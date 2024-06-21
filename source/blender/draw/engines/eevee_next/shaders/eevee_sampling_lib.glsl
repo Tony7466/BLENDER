@@ -49,6 +49,11 @@ vec4 sampling_blue_noise_fetch(vec2 pixel, const eBlueNoiseUsage usage, const eB
 
   return utility_tx_fetch(utility_tx, pixel, layer);
 }
+
+vec4 sampling_blue_noise_fetch(ivec2 pixel, const eBlueNoiseUsage usage, const eBlueNoiseType type)
+{
+  return sampling_blue_noise_fetch(vec2(pixel), usage, type);
+}
 #  endif
 #endif
 

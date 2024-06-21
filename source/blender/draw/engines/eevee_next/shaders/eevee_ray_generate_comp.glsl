@@ -33,12 +33,12 @@ void main()
   vec2 uv = (vec2(texel_fullres) + 0.5) / vec2(textureSize(gbuf_header_tx, 0).xy);
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
-  vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).rg;
-  noise = fract(noise + sampling_rng_2D_get(SAMPLING_RAYTRACE_U));
 
+  vec3 rand = sampling_blue_noise_fetch(texel, RNG_RAY_GENERATE, NOISE_HEMISPHERE_BOX).rgb;
+  rand = rand * 2.0 - 1.0;
   float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
 
-  BsdfSample samp = ray_generate_direction(noise.xy, closure, V, thickness);
+  BsdfSample samp = ray_generate_direction(rand, closure, V, thickness);
 
   /* Store inverse pdf to speedup denoising.
    * Limit to the smallest non-0 value that the format can encode.

@@ -267,6 +267,8 @@ enum eBlueNoiseUsage : uint32_t {
   RNG_SHADOW_FILTER = 0u,
   /* Random point in cone for tracing + jittered trace time. */
   RNG_SHADOW_TRACE = 1u,
+  /* Random point in hemisphere or from NDF. */
+  RNG_RAY_GENERATE = 2u,
 };
 
 /* Blue noise type inside the utility texture. */

@@ -14,15 +14,14 @@
 /**
  * Returns a tangent space diffuse direction following the Lambertian distribution.
  *
- * \param rand: random point on the unit cylinder (result of sample_cylinder).
- *              The Z component can be biased towards 1.
+ * \param rand: random point on the unit hemisphere.
  * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
  */
-BsdfSample bxdf_diffuse_sample(vec3 rand)
+BsdfSample bxdf_diffuse_sample(vec3 random_point_on_hemisphere)
 {
-  float cos_theta = safe_sqrt(rand.x);
+  float cos_theta = random_point_on_hemisphere.z;
   BsdfSample samp;
-  samp.direction = vec3(rand.yz * sin_from_cos(cos_theta), cos_theta);
+  samp.direction = random_point_on_hemisphere;
   samp.pdf = cos_theta * M_1_PI;
   return samp;
 }
@@ -69,13 +68,13 @@ ClosureLight bxdf_diffuse_light(ClosureUndetermined cl)
 /**
  * Returns a tangent space diffuse direction following and inverted Lambertian distribution.
  *
- * \param rand: random point on the unit cylinder (result of sample_cylinder).
- *              The Z component can be biased towards 1.
+ * \param rand: random point on the unit hemisphere.
  * \param thickness: Thickness of the object. 0 is considered thin.
  * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
  */
 BsdfSample bxdf_translucent_sample(vec3 rand, float thickness)
 {
+#if 0 /* TODO(fclem): Derive the uniform sphere sample from cosine hemisphere. */
   if (thickness > 0.0) {
     /* Two transmission events inside a sphere is a uniform sphere distribution. */
     float cos_theta = rand.x * 2.0 - 1.0;
@@ -84,6 +83,7 @@ BsdfSample bxdf_translucent_sample(vec3 rand, float thickness)
     samp.pdf = 0.25 * M_1_PI;
     return samp;
   }
+#endif
 
   /* Inverted cosine distribution. */
   BsdfSample samp = bxdf_diffuse_sample(rand);

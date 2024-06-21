@@ -601,7 +601,8 @@ class UtilityTexture : public Texture {
 
   static constexpr int lut_size = UTIL_TEX_SIZE;
   static constexpr int lut_size_sqr = lut_size * lut_size;
-  static constexpr int layer_count = UTIL_BTDF_LAYER + UTIL_BTDF_LAYER_COUNT + 32;
+  static constexpr int layer_count = UTIL_BTDF_LAYER + UTIL_BTDF_LAYER_COUNT +
+                                     UTIL_FAST_NOISE_LEN * 2;
 
  public:
   UtilityTexture()
@@ -659,7 +660,7 @@ class UtilityTexture : public Texture {
       }
     }
     {
-      for (auto layer_id : IndexRange(32)) {
+      for (auto layer_id : IndexRange(UTIL_FAST_NOISE_LEN)) {
         Layer &layer = data[NOISE_HEMISPHERE_BINOMIAL + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {
@@ -672,7 +673,7 @@ class UtilityTexture : public Texture {
       }
     }
     {
-      for (auto layer_id : IndexRange(32)) {
+      for (auto layer_id : IndexRange(UTIL_FAST_NOISE_LEN)) {
         Layer &layer = data[NOISE_HEMISPHERE_BOX + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {

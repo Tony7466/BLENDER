@@ -25,8 +25,7 @@ float bxdf_ggx_smith_G1(float NX, float a2)
 /**
  * Returns a tangent space reflection or refraction direction following the GGX distribution.
  *
- * \param rand: random point on the unit cylinder (result of sample_cylinder).
- *              The Z component can be biased towards 1.
+ * \param rand: random point on the unit hemisphere.
  * \param alpha: roughness parameter.
  * \param Vt: View vector in tangent space.
  * \param do_reflection: true is sampling reflection.
