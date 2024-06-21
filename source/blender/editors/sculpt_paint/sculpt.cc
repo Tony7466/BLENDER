@@ -4306,12 +4306,12 @@ bool SCULPT_poll(bContext *C)
 
 /**
  * While most non-brush tools in sculpt mode do not use the brush cursor, the trim tools
- * are expected to have the cursor visible so that some functionality is easier to visually
- * estimate.
+ * and the filter tools are expected to have the cursor visible so that some functionality is
+ * easier to visually estimate.
  *
  * See: #122856
  */
-static bool is_current_tool_trim(bContext *C)
+static bool is_brush_related_tool(bContext *C)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
   Object *ob = CTX_data_active_object(C);
@@ -4324,11 +4324,13 @@ static bool is_current_tool_trim(bContext *C)
   {
     bToolRef *tref = area->runtime.tool;
     if (tref && tref->runtime && tref->runtime->keymap[0]) {
-      std::array<wmOperatorType *, 4> trim_operators = {
+      std::array<wmOperatorType *, 7> trim_operators = {
           WM_operatortype_find("SCULPT_OT_trim_box_gesture", false),
           WM_operatortype_find("SCULPT_OT_trim_lasso_gesture", false),
           WM_operatortype_find("SCULPT_OT_trim_line_gesture", false),
-          WM_operatortype_find("SCULPT_OT_trim_polyline_gesture", false),
+          WM_operatortype_find("SCULPT_OT_mesh_filter", false),
+          WM_operatortype_find("SCULPT_OT_cloth_filter", false),
+          WM_operatortype_find("SCULPT_OT_color_filter", false),
       };
 
       return std::any_of(trim_operators.begin(), trim_operators.end(), [tref](wmOperatorType *ot) {
@@ -4343,7 +4345,7 @@ static bool is_current_tool_trim(bContext *C)
 bool SCULPT_brush_cursor_poll(bContext *C)
 {
   using namespace blender::ed::sculpt_paint;
-  return SCULPT_mode_poll(C) && (paint_brush_tool_poll(C) || is_current_tool_trim(C));
+  return SCULPT_mode_poll(C) && (paint_brush_tool_poll(C) || is_brush_related_tool(C));
 }
 
 static const char *sculpt_tool_name(const Sculpt &sd)
