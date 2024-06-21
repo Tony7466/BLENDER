@@ -419,7 +419,7 @@ set(LIB
 # Zstd compressor for kernels
 add_executable(zstd_compress ../cmake/zstd_compress.cpp)
 target_include_directories(zstd_compress SYSTEM PRIVATE ${ZSTD_INCLUDE_DIRS})
-target_link_libraries(zstd_compress ${ZSTD_LIBRARIES})
+target_link_libraries(zstd_compress ${ZSTD_LIBRARIES} ${PTHREADS_LIBRARIES})
 
 # CUDA module
 
