@@ -416,6 +416,11 @@ set(LIB
 
 )
 
+# Zstd compressor for kernels
+add_executable(zstd_compress ../cmake/zstd_compress.cpp)
+target_include_directories(zstd_compress SYSTEM PRIVATE ${ZSTD_INCLUDE_DIRS})
+target_link_libraries(zstd_compress ${ZSTD_LIBRARIES})
+
 # CUDA module
 
 if(WITH_CYCLES_CUDA_BINARIES)
@@ -455,6 +460,7 @@ if(WITH_CYCLES_CUDA_BINARIES)
       set(format "cubin")
     endif()
     set(cuda_file ${name}_${arch}.${format})
+    set(cuda_file_compressed ${cuda_file}.zst)
 
     set(kernel_sources ${sources})
     if(NOT ${prev_arch} STREQUAL "none")
@@ -517,9 +523,14 @@ if(WITH_CYCLES_CUDA_BINARIES)
         DEPENDS ${kernel_sources})
     endif()
 
+    add_custom_command(
+      OUTPUT ${cuda_file_compressed}
+      COMMAND "$<TARGET_FILE:zstd_compress>" ${cuda_file} ${cuda_file_compressed}
+      DEPENDS ${cuda_file})
+
     unset(_cuda_nvcc_args)
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${cuda_file}" ${CYCLES_INSTALL_PATH}/lib)
-    list(APPEND cuda_cubins ${cuda_file})
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${cuda_file_compressed}" ${CYCLES_INSTALL_PATH}/lib)
+    list(APPEND cuda_cubins ${cuda_file_compressed})
 
     unset(cuda_debug_flags)
   endmacro()
@@ -754,6 +765,7 @@ endif()
 if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
   macro(cycles_optix_kernel_add name input flags)
     set(output "${CMAKE_CURRENT_BINARY_DIR}/${name}.ptx")
+    set(output_compressed "${output}.zst")
 
     set(cuda_flags ${flags}
       -I "${OPTIX_INCLUDE_DIR}"
@@ -795,9 +807,14 @@ if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
       WORKING_DIRECTORY
         "${CMAKE_CURRENT_SOURCE_DIR}")
 
-    list(APPEND optix_ptx ${output})
+    add_custom_command(
+      OUTPUT ${output_compressed}
+      COMMAND "$<TARGET_FILE:zstd_compress>" ${output} ${output_compressed}
+      DEPENDS ${output})
 
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${output}" ${CYCLES_INSTALL_PATH}/lib)
+    list(APPEND optix_ptx ${output_compressed})
+
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${output_compressed}" ${CYCLES_INSTALL_PATH}/lib)
   endmacro()
 
   cycles_optix_kernel_add(
