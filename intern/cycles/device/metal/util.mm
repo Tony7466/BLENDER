@@ -69,19 +69,7 @@ AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
 MetalGPUVendor MetalInfo::get_device_vendor(id<MTLDevice> device)
 {
   const char *device_name = [device.name UTF8String];
-  if (strstr(device_name, "Intel")) {
-    return METAL_GPU_INTEL;
-  }
-  else if (strstr(device_name, "AMD")) {
-    /* Setting this env var hides AMD devices thus exposing any integrated Intel devices. */
-    if (auto str = getenv("CYCLES_METAL_FORCE_INTEL")) {
-      if (atoi(str)) {
-        return METAL_GPU_UNKNOWN;
-      }
-    }
-    return METAL_GPU_AMD;
-  }
-  else if (strstr(device_name, "Apple")) {
+  if (strstr(device_name, "Apple")) {
     return METAL_GPU_APPLE;
   }
   return METAL_GPU_UNKNOWN;
