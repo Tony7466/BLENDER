@@ -1769,8 +1769,8 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                     col.label(text=rpt_("    %s or newer") % driver_version, icon='BLANK1', translate=False)
                     col.label(text=rpt_("  - oneAPI Level-Zero Loader"), icon='BLANK1', translate=False)
             elif device_type == 'METAL':
-                silicon_mac_version = "12.2"
-                col.label(text=rpt_("Requires Apple Silicon with macOS %s or newer") % silicon_mac_version,
+                mac_version = "12.2"
+                col.label(text=rpt_("Requires Apple Silicon with macOS %s or newer") % mac_version,
                           icon='BLANK1', translate=False)
             return
 
