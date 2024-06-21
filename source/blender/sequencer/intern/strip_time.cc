@@ -573,7 +573,7 @@ void seq_time_translate_handles(const Scene *scene, Sequence *seq, const int off
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
 }
 
-static void seq_time_slip_strip_ex(const Scene *scene, Sequence *seq, int delta, bool recursed)
+static void seq_time_slip_strip_ex(const Scene *scene, Sequence *seq, float delta, bool recursed)
 {
   if (delta == 0) {
     return;
@@ -601,11 +601,13 @@ static void seq_time_slip_strip_ex(const Scene *scene, Sequence *seq, int delta,
       seq_time_slip_strip_ex(scene, seq_child, delta, true);
     }
   }
+  const int left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+  const int right_handle = SEQ_time_right_handle_frame_get(scene, seq);
 
   seq->start = seq->start + delta;
   if (!recursed) {
-    seq->startofs = seq->startofs - delta;
-    seq->endofs = seq->endofs + delta;
+    SEQ_time_left_handle_frame_set(scene, seq, left_handle);
+    SEQ_time_right_handle_frame_set(scene, seq, right_handle);
   }
 
   /* Only to make files usable in older versions. */
@@ -616,7 +618,7 @@ static void seq_time_slip_strip_ex(const Scene *scene, Sequence *seq, int delta,
   seq_time_update_effects_strip_range(scene, effects);
 }
 
-void SEQ_time_slip_strip(const Scene *scene, Sequence *seq, int delta)
+void SEQ_time_slip_strip(const Scene *scene, Sequence *seq, float delta)
 {
   seq_time_slip_strip_ex(scene, seq, delta, false);
 }
