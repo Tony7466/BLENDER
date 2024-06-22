@@ -14,14 +14,18 @@
 /**
  * Returns a tangent space diffuse direction following the Lambertian distribution.
  *
- * \param rand: random point on the unit hemisphere.
  * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
  */
-BsdfSample bxdf_diffuse_sample(vec3 random_point_on_hemisphere)
+BsdfSample bxdf_diffuse_sample(vec3 random_point_cos_hemisphere)
 {
-  float cos_theta = random_point_on_hemisphere.z;
+  /* Bias the rays so we never get really high energy rays almost parallel to the surface.
+   * Also reduces shadow terminator artifacts. */
+  const float bias = 0.05;
+  random_point_cos_hemisphere = normalize(random_point_cos_hemisphere + vec3(0.0, 0.0, bias));
+
+  float cos_theta = random_point_cos_hemisphere.z;
   BsdfSample samp;
-  samp.direction = random_point_on_hemisphere;
+  samp.direction = random_point_cos_hemisphere;
   samp.pdf = cos_theta * M_1_PI;
   return samp;
 }
@@ -68,25 +72,26 @@ ClosureLight bxdf_diffuse_light(ClosureUndetermined cl)
 /**
  * Returns a tangent space diffuse direction following and inverted Lambertian distribution.
  *
- * \param rand: random point on the unit hemisphere.
  * \param thickness: Thickness of the object. 0 is considered thin.
  * \return pdf: the pdf of sampling the reflected/refracted ray. 0 if ray is invalid.
  */
-BsdfSample bxdf_translucent_sample(vec3 rand, float thickness)
+BsdfSample bxdf_translucent_sample(vec3 random_point_cos_hemisphere, float thickness)
 {
-#if 0 /* TODO(fclem): Derive the uniform sphere sample from cosine hemisphere. */
   if (thickness > 0.0) {
+    /* Remap the cosine hemisphere sample to the uniform sphere.
+     * This still keeps the correlation between the random values (and the blue noise property). */
+    float random_unit_float = square(random_point_cos_hemisphere.z);
+    vec2 random_point_on_circle = normalize(random_point_cos_hemisphere.xy);
     /* Two transmission events inside a sphere is a uniform sphere distribution. */
-    float cos_theta = rand.x * 2.0 - 1.0;
+    float cos_theta = random_unit_float * 2.0 - 1.0;
     BsdfSample samp;
-    samp.direction = vec3(rand.yz * sin_from_cos(cos_theta), -cos_theta);
+    samp.direction = vec3(random_point_on_circle * sin_from_cos(cos_theta), cos_theta);
     samp.pdf = 0.25 * M_1_PI;
     return samp;
   }
-#endif
 
   /* Inverted cosine distribution. */
-  BsdfSample samp = bxdf_diffuse_sample(rand);
+  BsdfSample samp = bxdf_diffuse_sample(random_point_cos_hemisphere);
   samp.direction = -samp.direction;
   return samp;
 }

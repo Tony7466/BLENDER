@@ -72,10 +72,16 @@ BsdfSample bxdf_ggx_sample_visible_normals(
   float s2 = square(1.0 + length(Vt.xy));
   float k = (1.0 - a2) * s2 / (s2 + a2 * square(Vt.z));
 
+  /* Remap the cosine hemisphere sample to what is expected by the spherical cap sampling.
+   * This still keeps the correlation between the random values (and the blue noise property). */
+  float random_unit_float = square(rand.z);
+  vec2 random_point_on_circle = normalize(rand.xy);
+  /* Bias the rays so we never get really high energy rays almost parallel to the surface.
+   * Also reduces shadow terminator artifacts. */
+  const float bias = 0.92;
   /* Sample a spherical cap in (-Vh.z, 1]. */
-  float cos_theta = mix((do_reflection) ? -Vh.z * k : -Vh.z, 1.0, rand.x);
-  float sin_theta = sqrt(saturate(1.0 - square(cos_theta)));
-  vec3 Lh = vec3(sin_theta * rand.yz, cos_theta);
+  float cos_theta = mix(bias * ((do_reflection) ? -Vh.z * k : -Vh.z), 1.0, random_unit_float);
+  vec3 Lh = vec3(sin_from_cos(cos_theta) * random_point_on_circle, cos_theta);
 
   /* Compute unnormalized halfway direction. */
   vec3 Hh = Vh + Lh;
