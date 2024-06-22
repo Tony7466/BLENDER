@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#include <fstream>
 #include <cstdint>
+#include <fstream>
 #include <vector>
 
 #include <zstd.h>
