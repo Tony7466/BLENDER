@@ -125,11 +125,11 @@ unique_ptr<Denoiser> Denoiser::create(Device *denoiser_device,
 DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &path_trace_device_info)
 {
 #ifdef WITH_OPENIMAGEDENOISE
-  if (path_trace_device_info.type != DEVICE_CPU &&
-      OIDNDenoiserGPU::is_device_supported(path_trace_device_info))
-  {
+  if (OIDNDenoiserGPU::is_device_supported(path_trace_device_info)) {
     return DENOISER_OPENIMAGEDENOISE;
   }
+#else
+  (void)path_trace_device_info;
 #endif
 
 #ifdef WITH_OPTIX

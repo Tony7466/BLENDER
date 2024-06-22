@@ -72,8 +72,11 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
 
 static int grease_pencil_layer_add_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  return WM_operator_props_popup_confirm_ex(
-      C, op, event, IFACE_("Add New Grease Pencil Layer"), IFACE_("Add"));
+  return WM_operator_props_popup_confirm_ex(C,
+                                            op,
+                                            event,
+                                            IFACE_("Add New Grease Pencil Layer"),
+                                            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
 }
 
 static void GREASE_PENCIL_OT_layer_add(wmOperatorType *ot)
@@ -524,7 +527,7 @@ static void GREASE_PENCIL_OT_layer_lock_all(wmOperatorType *ot)
 
 static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
 {
-  using namespace ::blender::bke::greasepencil;
+  using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool empty_keyframes = RNA_boolean_get(op->ptr, "empty_keyframes");
@@ -582,7 +585,7 @@ static void GREASE_PENCIL_OT_layer_duplicate(wmOperatorType *ot)
 
 static int grease_pencil_layer_mask_add_exec(bContext *C, wmOperator *op)
 {
-  using namespace ::blender::bke::greasepencil;
+  using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
@@ -644,7 +647,7 @@ static void GREASE_PENCIL_OT_layer_mask_add(wmOperatorType *ot)
 
 static int grease_pencil_layer_mask_remove_exec(bContext *C, wmOperator * /*op*/)
 {
-  using namespace ::blender::bke::greasepencil;
+  using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
@@ -688,7 +691,7 @@ enum class LayerMaskMoveDirection : int8_t { Up = -1, Down = 1 };
 
 static int grease_pencil_layer_mask_reorder_exec(bContext *C, wmOperator *op)
 {
-  using namespace ::blender::bke::greasepencil;
+  using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
@@ -757,7 +760,7 @@ const EnumPropertyItem enum_layergroup_color_items[] = {
 
 static int grease_pencil_layer_group_color_tag_exec(bContext *C, wmOperator *op)
 {
-  using namespace ::blender::bke::greasepencil;
+  using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 

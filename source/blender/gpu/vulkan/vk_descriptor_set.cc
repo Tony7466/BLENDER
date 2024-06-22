@@ -30,8 +30,8 @@ VKDescriptorSet::~VKDescriptorSet()
 {
   if (vk_descriptor_set_ != VK_NULL_HANDLE) {
     /* Handle should be given back to the pool. */
-    const VKDevice &device = VKBackend::get().device_get();
-    vkFreeDescriptorSets(device.device_get(), vk_descriptor_pool_, 1, &vk_descriptor_set_);
+    const VKDevice &device = VKBackend::get().device;
+    vkFreeDescriptorSets(device.vk_handle(), vk_descriptor_pool_, 1, &vk_descriptor_set_);
 
     vk_descriptor_set_ = VK_NULL_HANDLE;
     vk_descriptor_pool_ = VK_NULL_HANDLE;
@@ -182,25 +182,13 @@ void VKDescriptorSetTracker::update(VKContext &context)
       continue;
     }
 
-    if (use_render_graph) {
-      /* TODO: Based on the actual usage we should use
-       * VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL. */
-      VkDescriptorImageInfo image_info = {};
-      image_info.sampler = binding.vk_sampler;
-      image_info.imageView = binding.texture->image_view_get().vk_handle();
-      image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-      image_infos.append(image_info);
-    }
-    else {
-      /* TODO: Based on the actual usage we should use
-       * VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL/VK_IMAGE_LAYOUT_GENERAL. */
-      binding.texture->layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
-      VkDescriptorImageInfo image_info = {};
-      image_info.sampler = binding.vk_sampler;
-      image_info.imageView = binding.texture->image_view_get().vk_handle();
-      image_info.imageLayout = binding.texture->current_layout_get();
-      image_infos.append(image_info);
-    }
+    /* TODO: Based on the actual usage we should use
+     * VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL. */
+    VkDescriptorImageInfo image_info = {};
+    image_info.sampler = binding.vk_sampler;
+    image_info.imageView = binding.texture->image_view_get().vk_handle();
+    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    image_infos.append(image_info);
 
     VkWriteDescriptorSet write_descriptor = {};
     write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -212,9 +200,9 @@ void VKDescriptorSetTracker::update(VKContext &context)
     descriptor_writes.append(write_descriptor);
   }
 
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   vkUpdateDescriptorSets(
-      device.device_get(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
+      device.vk_handle(), descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
 
   bindings_.clear();
 }
@@ -235,15 +223,6 @@ void VKDescriptorSetTracker::Binding::debug_print() const
 {
   std::cout << "VkDescriptorSetTrackker::Binding(type: " << type
             << ", location:" << location.binding << ")\n";
-}
-
-void VKDescriptorSetTracker::bind(VKContext &context,
-                                  VkPipelineLayout vk_pipeline_layout,
-                                  VkPipelineBindPoint vk_pipeline_bind_point)
-{
-  update(context);
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.bind(*active_descriptor_set(), vk_pipeline_layout, vk_pipeline_bind_point);
 }
 
 }  // namespace blender::gpu

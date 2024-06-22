@@ -735,11 +735,14 @@ class USERPREF_PT_system_network(SystemPanel, CenterAlignMixIn, Panel):
         if system.use_online_access != runtime_online_access:
             row = layout.split(factor=0.4)
             row.label(text="")
-            row.label(
-                text="{:s} on startup, overriding the preference.".format(
-                    "Enabled" if runtime_online_access else "Disabled"
-                ),
-            )
+            if runtime_online_access:
+                text = iface_("Enabled on startup, overriding the preference.")
+            else:
+                text = iface_("Disabled on startup, overriding the preference.")
+            row.label(text=text, translate=False)
+
+        layout.row().prop(system, "network_timeout", text="Time Out")
+        layout.row().prop(system, "network_connection_limit", text="Connection Limit")
 
 
 class USERPREF_PT_system_memory(SystemPanel, CenterAlignMixIn, Panel):
@@ -1249,7 +1252,7 @@ class USERPREF_PT_theme_collection_colors(ThemePanel, CenterAlignMixIn, Panel):
 
 
 class USERPREF_PT_theme_strip_colors(ThemePanel, CenterAlignMixIn, Panel):
-    bl_label = "Strip Colors"
+    bl_label = "Strip Color Tags"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, _context):
@@ -2259,6 +2262,23 @@ class USERPREF_PT_extensions_repos(Panel):
 
 
 # -----------------------------------------------------------------------------
+# Extensions Panels
+
+class ExtensionsPanel:
+    bl_space_type = 'PREFERENCES'
+    bl_region_type = 'WINDOW'
+    bl_context = "extensions"
+
+
+class USERPREF_PT_extensions(ExtensionsPanel, Panel):
+    bl_label = "Extensions"
+    bl_options = {'HIDE_HEADER'}
+
+    def draw(self, context):
+        pass
+
+
+# -----------------------------------------------------------------------------
 # Add-on Panels
 
 # Only a popover.
@@ -2276,7 +2296,7 @@ class USERPREF_PT_addons_filter(Panel):
 class AddOnPanel:
     bl_space_type = 'PREFERENCES'
     bl_region_type = 'WINDOW'
-    bl_context = "extensions"
+    bl_context = "addons"
 
 
 class USERPREF_PT_addons(AddOnPanel, Panel):
@@ -2312,9 +2332,8 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
             return
 
         addon_preferences_class = type(addon_preferences)
+        layout.label(text=" Preferences")
         box_prefs = layout.box()
-        box_prefs.label(text="Preferences")
-        box_prefs.separator(type='LINE')
         addon_preferences_class.layout = box_prefs
         try:
             draw(context)
@@ -2464,8 +2483,6 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
             colsub = box.column()
             row = colsub.row(align=True)
 
-            is_extension = addon_utils.check_extension(addon_module_name)
-
             row.operator(
                 "preferences.addon_expand",
                 icon='DISCLOSURE_TRI_DOWN' if bl_info["show_expanded"] else 'DISCLOSURE_TRI_RIGHT',
@@ -2509,11 +2526,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                 if value := bl_info["version"]:
                     split = colsub.row().split(factor=0.15)
                     split.label(text="Version:")
-                    # Extensions use SEMVER.
-                    if is_extension:
-                        split.label(text=value, translate=False)
-                    else:
-                        split.label(text=".".join(str(x) for x in value), translate=False)
+                    split.label(text=".".join(str(x) for x in value), translate=False)
                 if value := bl_info["warning"]:
                     split = colsub.row().split(factor=0.15)
                     split.label(text="Warning:")
@@ -2813,8 +2826,6 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_new_curves_tools"}, ("blender/blender/issues/68981", "#68981")),
                 ({"property": "use_new_point_cloud_type"}, ("blender/blender/issues/75717", "#75717")),
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
-                ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
-                ({"property": "use_grease_pencil_version3_convert_on_load"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_animation_baklava"}, ("/blender/blender/issues/120406", "#120406")),
             ),
@@ -2954,6 +2965,7 @@ classes = (
 
     USERPREF_PT_keymap,
 
+    USERPREF_PT_extensions,
     USERPREF_PT_addons,
 
     USERPREF_MT_extensions_active_repo,
