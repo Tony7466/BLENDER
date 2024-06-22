@@ -29,6 +29,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_thickness_amend)
     .additional_info("draw_view",
                      "draw_fullscreen",
                      "eevee_sampling_data",
+                     "eevee_utility_texture",
                      "eevee_shared",
                      "eevee_light_data",
                      "eevee_shadow_data",
