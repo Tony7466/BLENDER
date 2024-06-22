@@ -352,10 +352,13 @@ float ambient_occlusion_eval(vec3 normal,
   vec3 vN = drw_normal_world_to_view(normal);
 
   ivec2 texel = ivec2(gl_FragCoord.xy);
-  vec2 noise;
-  noise.x = interlieved_gradient_noise(vec2(texel), 3.0, 0.0);
-  noise.y = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).r;
-  noise = fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
+
+  vec4 noise;
+  /* We need 4 decorelated noises. */
+  noise.xy = sampling_blue_noise_fetch(vec2(texel), RNG_HORIZON_SCAN_0, NOISE_BOX).ba;
+  noise.zw = sampling_blue_noise_fetch(vec2(texel), RNG_HORIZON_SCAN_1, NOISE_BOX).ba;
+  /* Remove cosine distribution. */
+  noise.xz = square(noise.xz);
 
   ClosureOcclusion occlusion;
   occlusion.N = (inverted != 0.0) ? -vN : vN;

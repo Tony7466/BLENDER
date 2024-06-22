@@ -31,14 +31,11 @@ float sample_weight_get(
     return 0.0;
   }
 
-  float gauss = filter_gaussian_factor(1.5, 1.5);
-
   /* TODO(fclem): Scene parameter. 100.0 is dependent on scene scale. */
   float depth_weight = filter_planar_weight(center_N, center_P, sample_P, 100.0);
-  float spatial_weight = filter_gaussian_weight(gauss, length_squared(vec2(sample_offset)));
   float normal_weight = filter_angle_weight(center_N, sample_N);
 
-  return depth_weight * spatial_weight * normal_weight;
+  return depth_weight * normal_weight;
 }
 
 SphericalHarmonicL1 load_spherical_harmonic(ivec2 texel)

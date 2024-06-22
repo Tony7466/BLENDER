@@ -26,8 +26,12 @@ void main()
   vec3 N = imageLoad(in_normal_img, ivec3(texel, in_normal_img_layer_index)).xyz;
   vec3 vN = drw_normal_world_to_view(N);
 
-  vec4 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER);
-  noise = fract(noise + sampling_rng_3D_get(SAMPLING_AO_U).xyzx);
+  vec4 noise;
+  /* We need 4 decorelated noises. */
+  noise.xy = sampling_blue_noise_fetch(vec2(texel), RNG_HORIZON_SCAN_0, NOISE_BOX).ba;
+  noise.zw = sampling_blue_noise_fetch(vec2(texel), RNG_HORIZON_SCAN_1, NOISE_BOX).ba;
+  /* Remove cosine distribution. */
+  noise.xz = square(noise.xz);
 
   HorizonScanResult scan = horizon_scan_eval(vP,
                                              vN,
