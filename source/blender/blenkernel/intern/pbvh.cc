@@ -1815,6 +1815,11 @@ Span<int> node_grid_indices(const PBVHNode &node)
   return node.prim_indices;
 }
 
+Span<int> node_tri_indices(const PBVHNode &node)
+{
+  return node.prim_indices;
+}
+
 }  // namespace blender::bke::pbvh
 
 namespace blender::bke::pbvh {

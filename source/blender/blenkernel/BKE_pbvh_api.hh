@@ -303,6 +303,7 @@ void BKE_pbvh_mark_rebuild_pixels(PBVH &pbvh);
 namespace blender::bke::pbvh {
 
 Span<int> node_grid_indices(const PBVHNode &node);
+Span<int> node_tri_indices(const PBVHNode &node);
 
 Span<int> node_verts(const PBVHNode &node);
 Span<int> node_unique_verts(const PBVHNode &node);
