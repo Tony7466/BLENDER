@@ -47,7 +47,11 @@ vec4 sampling_blue_noise_fetch(vec2 pixel, const eBlueNoiseUsage usage, const eB
   pixel += offset + sampling_buf.blue_noise_offset;
   float layer = float(type) + sampling_buf.blue_noise_layer;
 
-  return utility_tx_fetch(utility_tx, pixel, layer);
+  vec4 rand = utility_tx_fetch(utility_tx, pixel, layer);
+  /* Unpack when the values were stored normalized. */
+  rand.xyz = rand.xyz * 2.0 - 1.0;
+
+  return rand;
 }
 
 vec4 sampling_blue_noise_fetch(ivec2 pixel, const eBlueNoiseUsage usage, const eBlueNoiseType type)
