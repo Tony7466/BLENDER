@@ -273,6 +273,8 @@ enum eBlueNoiseUsage : uint32_t {
   RNG_CLOSURE = 6u,
   /* Random closure picking. */
   RNG_CURVES_U = 7u,
+  /* Random direction and steps offset for AO node. */
+  RNG_AMBIENT_OCCLUSION = 7u,
 };
 
 /* Blue noise type inside the utility texture. */

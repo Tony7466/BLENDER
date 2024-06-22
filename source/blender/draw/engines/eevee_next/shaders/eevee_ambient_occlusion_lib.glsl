@@ -66,8 +66,9 @@ OcclusionData ambient_occlusion_unpack_data(vec4 v)
 
 vec2 ambient_occlusion_get_noise(ivec2 texel)
 {
-  vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).xy;
-  return fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
+  vec2 rand = sampling_blue_noise_fetch(texel, RNG_AMBIENT_OCCLUSION, NOISE_BINOMIAL).ba;
+  rand.x = square(rand.x);
+  return rand;
 }
 
 vec2 ambient_occlusion_get_dir(float jitter)
