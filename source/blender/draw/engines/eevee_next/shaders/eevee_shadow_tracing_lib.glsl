@@ -230,7 +230,7 @@ struct ShadowRayPunctual {
 ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec4 random, vec3 lP, vec3 lNg)
 {
   /* TODO(fclem): Ideally, random.zw should contain random point on unit square. */
-  vec2 random_point_on_shape = (is_area_light(light.type)) ?
+  vec2 random_point_on_shape = (light.type == LIGHT_RECT) ?
                                    vec2(square(random.z), random.w) * 2.0 - 1.0 :
                                    random.xy;
 
