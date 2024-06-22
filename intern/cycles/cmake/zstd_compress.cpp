@@ -1,5 +1,9 @@
+/* SPDX-FileCopyrightText: 2024 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+#include <fstream>
 #include <cstdint>
-#include <cstdio>
 #include <vector>
 
 #include <zstd.h>
@@ -10,48 +14,41 @@ int main(int argc, const char **argv)
     return -1;
   }
 
-  FILE *in = fopen(argv[1], "rb");
-  if (in == nullptr) {
+  /* TODO: This might fail for non-ASCII paths on Windows... */
+  std::ifstream in(argv[1], std::ios_base::binary);
+  std::ofstream out(argv[2], std::ios_base::binary);
+  if (!in || !out) {
     return -1;
   }
 
-  if (fseek(in, 0, SEEK_END) < 0) {
-    return -1;
-  }
-  long in_size = ftell(in);
-  if (in_size < 0) {
-    return -1;
-  }
-  if (fseek(in, 0, SEEK_SET) < 0) {
+  in.seekg(0, std::ios_base::end);
+  size_t in_size = in.tellg();
+  in.seekg(0, std::ios_base::beg);
+  if (!in) {
     return -1;
   }
 
-  std::vector<uint8_t> in_data(in_size);
-  if (fread(in_data.data(), 1, in_size, in) != in_size) {
+  std::vector<char> in_data(in_size);
+  in.read(in_data.data(), in_size);
+  if (!in) {
     return -1;
   }
-  fclose(in);
 
   size_t out_size = ZSTD_compressBound(in_size);
   if (ZSTD_isError(out_size)) {
     return -1;
   }
-  std::vector<uint8_t> out_data(out_size);
+  std::vector<char> out_data(out_size);
 
   out_size = ZSTD_compress(out_data.data(), out_data.size(), in_data.data(), in_data.size(), 19);
   if (ZSTD_isError(out_size)) {
     return -1;
   }
 
-  FILE *out = fopen(argv[2], "wb");
-  if (out == nullptr) {
+  out.write(out_data.data(), out_size);
+  if (!out) {
     return -1;
   }
-
-  if (fwrite(out_data.data(), 1, out_size, out) != out_size) {
-    return -1;
-  }
-  fclose(out);
 
   return 0;
 }
