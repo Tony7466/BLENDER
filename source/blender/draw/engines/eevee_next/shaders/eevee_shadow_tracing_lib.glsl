@@ -227,12 +227,12 @@ struct ShadowRayPunctual {
 };
 
 /* Return ray in UV clip space [0..1]. */
-ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
-                                               vec2 random_point_on_disk,
-                                               vec3 lP,
-                                               vec3 lNg)
+ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec4 random, vec3 lP, vec3 lNg)
 {
-  /* TODO(fclem): Broken rect area because random_point_on_disk is a disk already. */
+  /* TODO(fclem): Ideally, random.zw should contain random point on unit square. */
+  vec2 random_point_on_shape = (is_area_light(light.type)) ?
+                                   vec2(square(random.z), random.w) * 2.0 - 1.0 :
+                                   random.xy;
 
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
@@ -240,10 +240,10 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
 
   vec3 direction;
   if (is_area_light(light.type)) {
-    random_point_on_disk *= light_area_data_get(light).size *
-                            light_area_data_get(light).shadow_scale;
+    random_point_on_shape *= light_area_data_get(light).size *
+                             light_area_data_get(light).shadow_scale;
 
-    vec3 point_on_light_shape = vec3(random_point_on_disk, 0.0);
+    vec3 point_on_light_shape = vec3(random_point_on_shape, 0.0);
 
     direction = point_on_light_shape - lP;
     direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
@@ -258,9 +258,9 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     if (is_sphere_light(light.type)) {
       shape_radius = light_sphere_disk_radius(shape_radius, dist);
     }
-    random_point_on_disk *= shape_radius;
+    random_point_on_shape *= shape_radius;
 
-    vec3 point_on_light_shape = right * random_point_on_disk.x + up * random_point_on_disk.y;
+    vec3 point_on_light_shape = right * random_point_on_shape.x + up * random_point_on_shape.y;
 
     direction = point_on_light_shape - lP;
     direction = shadow_ray_above_horizon_ensure(direction, lNg, shape_radius);
@@ -412,23 +412,14 @@ float shadow_eval(LightData light,
                   int ray_count,
                   int ray_step_count)
 {
-#if defined(EEVEE_SAMPLING_DATA) && defined(EEVEE_UTILITY_TX)
-#  ifdef GPU_FRAGMENT_SHADER
+#ifdef GPU_FRAGMENT_SHADER
   vec2 pixel = floor(gl_FragCoord.xy);
-#  elif defined(GPU_COMPUTE_SHADER)
-  vec2 pixel = vec2(gl_GlobalInvocationID.xy);
-#  endif
-  vec4 random_shadow_4d = sampling_blue_noise_fetch(
-      pixel, RNG_SHADOW_TRACE, NOISE_HEMISPHERE_BINOMIAL);
-  vec2 random_pcf_2d =
-      sampling_blue_noise_fetch(pixel, RNG_SHADOW_FILTER, NOISE_HEMISPHERE_BINOMIAL).rg;
-  random_shadow_4d.xyz = random_shadow_4d.xyz * 2.0 - 1.0;
-  random_pcf_2d.xy = random_pcf_2d.xy * 2.0 - 1.0;
-#else
-  /* Case of surfel light eval. */
-  vec4 random_shadow_4d = vec4(0.5);
-  vec2 random_pcf_2d = vec2(0.0);
+#elif defined(GPU_COMPUTE_SHADER)
+  vec2 pixel = pcg3d(P).xy * float(UTIL_TEX_SIZE);
 #endif
+
+  vec3 rand = sampling_blue_noise_fetch(pixel, RNG_SHADOW_FILTER, NOISE_HEMISPHERE_BINOMIAL).rga;
+  rand.xy = rand.xy * 2.0 - 1.0;
 
   float distance_to_shadow;
   /* Direction towards the shadow center (punctual) or direction (direction).
@@ -458,7 +449,7 @@ float shadow_eval(LightData light,
   /* Avoid self intersection with respect to numerical precision. */
   P = offset_ray(P, N_bias);
   /* Stochastic Percentage Closer Filtering. */
-  P += (light.filter_radius * texel_radius) * shadow_pcf_offset(L, Ng, random_pcf_2d);
+  P += (light.filter_radius * texel_radius) * shadow_pcf_offset(L, Ng, rand.xy);
   /* Add normal bias to avoid aliasing artifacts. */
   P += N_bias * (texel_radius * shadow_normal_offset(Ng, L));
 
@@ -472,16 +463,19 @@ float shadow_eval(LightData light,
 
   float surface_hit = 0.0;
   for (int ray_index = 0; ray_index < ray_count && ray_index < SHADOW_MAX_RAY; ray_index++) {
+    vec4 rand_ray = sampling_blue_noise_fetch(
+        pixel, eBlueNoiseUsage(RNG_SHADOW_RAYGEN + ray_index), NOISE_HEMISPHERE_BINOMIAL);
+    rand_ray.xyz = rand_ray.xyz * 2.0 - 1.0;
+
     bool has_hit;
     if (is_directional) {
       ShadowRayDirectional clip_ray = shadow_ray_generate_directional(
-          light, random_shadow_4d.xy, lP, lNg, texel_radius);
-      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_4d.w);
+          light, rand_ray.xy, lP, lNg, texel_radius);
+      has_hit = shadow_map_trace(clip_ray, ray_step_count, rand.z);
     }
     else {
-      ShadowRayPunctual clip_ray = shadow_ray_generate_punctual(
-          light, random_shadow_4d.xy, lP, lNg);
-      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_4d.w);
+      ShadowRayPunctual clip_ray = shadow_ray_generate_punctual(light, rand_ray, lP, lNg);
+      has_hit = shadow_map_trace(clip_ray, ray_step_count, rand.z);
     }
 
     surface_hit += float(has_hit);

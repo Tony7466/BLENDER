@@ -34,7 +34,7 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
 
-  vec3 rand = sampling_blue_noise_fetch(texel, RNG_RAY_GENERATE, NOISE_HEMISPHERE_BOX).rgb;
+  vec3 rand = sampling_blue_noise_fetch(texel, RNG_BSDF_RAYGEN, NOISE_HEMISPHERE_BOX).rgb;
   rand = rand * 2.0 - 1.0;
   float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
 

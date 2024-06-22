@@ -265,10 +265,10 @@ enum eSamplingDimension : uint32_t {
 enum eBlueNoiseUsage : uint32_t {
   /* Random point on disk for filtering. */
   RNG_SHADOW_FILTER = 0u,
-  /* Random point in cone for tracing + jittered trace time. */
-  RNG_SHADOW_TRACE = 1u,
+  /* Random point in cone for tracing + jittered trace time. 1..4 are reserved for shadow rays. */
+  RNG_SHADOW_RAYGEN = 1u,
   /* Random point in hemisphere or from NDF. */
-  RNG_RAY_GENERATE = 2u,
+  RNG_BSDF_RAYGEN = 5u,
 };
 
 /* Blue noise type inside the utility texture. */
