@@ -795,8 +795,8 @@ enum class DuplicateCopyMode {
 static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
                                        const GreasePencil &src_grease_pencil,
                                        const blender::bke::greasepencil::Layer &src_layer,
-                                       DuplicateCopyMode copy_frame_mode,
-                                       int current_frame)
+                                       const DuplicateCopyMode copy_frame_mode,
+                                       const int current_frame)
 {
   using namespace blender::bke::greasepencil;
   Layer &dst_layer = dst_grease_pencil.duplicate_layer(src_layer);
