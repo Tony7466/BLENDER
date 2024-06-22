@@ -59,13 +59,9 @@ void init_globals_curves()
   float cos_theta = curve_interp.time_width / curve_interp.thickness;
 #  if defined(GPU_FRAGMENT_SHADER)
   if (hairThicknessRes == 1) {
-#    ifdef EEVEE_UTILITY_TX
+#    if defined(EEVEE_UTILITY_TX) && defined(EEVEE_SAMPLING_DATA)
     /* Random cosine normal distribution on the hair surface. */
-    float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).x;
-#      ifdef EEVEE_SAMPLING_DATA
-    /* Needs to check for SAMPLING_DATA, otherwise surfel shader validation fails. */
-    noise = fract(noise + sampling_rng_1D_get(SAMPLING_CURVES_U));
-#      endif
+    float noise = sampling_blue_noise_fetch(gl_FragCoord.xy, RNG_CURVES_U, NOISE_BOX).a;
     cos_theta = noise * 2.0 - 1.0;
 #    endif
   }

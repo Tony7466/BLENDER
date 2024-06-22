@@ -34,7 +34,7 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
 
-  vec3 rand = sampling_blue_noise_fetch(texel, RNG_BSDF_RAYGEN, NOISE_HEMISPHERE_BOX).rgb;
+  vec3 rand = sampling_blue_noise_fetch(texel, RNG_BSDF_RAYGEN, NOISE_BOX).rgb;
   float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
 
   BsdfSample samp = ray_generate_direction(rand, closure, V, thickness);

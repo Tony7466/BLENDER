@@ -661,7 +661,7 @@ class UtilityTexture : public Texture {
     }
     {
       for (auto layer_id : IndexRange(UTIL_FAST_NOISE_LEN)) {
-        Layer &layer = data[NOISE_HEMISPHERE_BINOMIAL + layer_id];
+        Layer &layer = data[NOISE_BINOMIAL + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {
             layer.data[y][x][0] = lut::fast_noise_sphere_cosine_binomial3_64x32[layer_id][y][x][0];
@@ -674,7 +674,7 @@ class UtilityTexture : public Texture {
     }
     {
       for (auto layer_id : IndexRange(UTIL_FAST_NOISE_LEN)) {
-        Layer &layer = data[NOISE_HEMISPHERE_BOX + layer_id];
+        Layer &layer = data[NOISE_BOX + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {
             layer.data[y][x][0] = lut::fast_noise_sphere_cosine_box3_64x32[layer_id][y][x][0];

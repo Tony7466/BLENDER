@@ -418,7 +418,7 @@ float shadow_eval(LightData light,
   vec2 pixel = pcg3d(P).xy * float(UTIL_TEX_SIZE);
 #endif
 
-  vec3 rand = sampling_blue_noise_fetch(pixel, RNG_SHADOW_FILTER, NOISE_HEMISPHERE_BINOMIAL).rga;
+  vec3 rand = sampling_blue_noise_fetch(pixel, RNG_SHADOW_FILTER, NOISE_BINOMIAL).rga;
 
   float distance_to_shadow;
   /* Direction towards the shadow center (punctual) or direction (direction).
@@ -463,7 +463,7 @@ float shadow_eval(LightData light,
   float surface_hit = 0.0;
   for (int ray_index = 0; ray_index < ray_count && ray_index < SHADOW_MAX_RAY; ray_index++) {
     vec4 rand_ray = sampling_blue_noise_fetch(
-        pixel, eBlueNoiseUsage(RNG_SHADOW_RAYGEN + ray_index), NOISE_HEMISPHERE_BINOMIAL);
+        pixel, eBlueNoiseUsage(RNG_SHADOW_RAYGEN + ray_index), NOISE_BINOMIAL);
 
     bool has_hit;
     if (is_directional) {

@@ -269,14 +269,21 @@ enum eBlueNoiseUsage : uint32_t {
   RNG_SHADOW_RAYGEN = 1u,
   /* Random point in hemisphere or from NDF. */
   RNG_BSDF_RAYGEN = 5u,
+  /* Random closure picking. */
+  RNG_CLOSURE = 6u,
+  /* Random closure picking. */
+  RNG_CURVES_U = 7u,
 };
 
 /* Blue noise type inside the utility texture. */
 enum eBlueNoiseType : uint32_t {
   /* These are actually the starting layer inside the utility texture.
    * Each noise type has UTIL_FAST_NOISE_LEN layers. */
-  NOISE_HEMISPHERE_BINOMIAL = 20u,
-  NOISE_HEMISPHERE_BOX = 52u,
+
+  /* XYZ: Cosine hemisphere samples. W: Random unit float. */
+  NOISE_BINOMIAL = 20u,
+  /* XYZ: Cosine hemisphere samples. W: Random unit float. */
+  NOISE_BOX = 52u,
 };
 
 /**
