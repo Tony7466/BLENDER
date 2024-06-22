@@ -802,7 +802,7 @@ static void duplicate_layer_and_frames(GreasePencil &dst_grease_pencil,
   Layer &dst_layer = dst_grease_pencil.duplicate_layer(src_layer);
 
   dst_layer.frames_for_write().clear();
-  for (auto [frame_number, frame] : src_layer.frames().items()) {
+  for (const auto [frame_number, frame] : src_layer.frames().items()) {
     if ((copy_frame_mode == DuplicateCopyMode::Active) &&
         (&frame != src_layer.frame_at(current_frame)))
     {
@@ -828,7 +828,7 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
   const int current_frame = scene->r.cfra;
   const GreasePencil &src_grease_pencil = *static_cast<GreasePencil *>(src_object->data);
   const bool only_active = RNA_boolean_get(op->ptr, "only_active");
-  const int copy_frame_mode = RNA_enum_get(op->ptr, "mode");
+  const DuplicateCopyMode copy_frame_mode = DuplicateCopyMode(RNA_enum_get(op->ptr, "mode"));
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
     if (ob == src_object || ob->type != OB_GREASE_PENCIL) {
@@ -838,19 +838,13 @@ static int grease_pencil_layer_duplicate_object_exec(bContext *C, wmOperator *op
 
     if (only_active) {
       const Layer &active_layer = *src_grease_pencil.get_active_layer();
-      duplicate_layer_and_frames(dst_grease_pencil,
-                                 src_grease_pencil,
-                                 active_layer,
-                                 DuplicateCopyMode(copy_frame_mode),
-                                 current_frame);
+      duplicate_layer_and_frames(
+          dst_grease_pencil, src_grease_pencil, active_layer, copy_frame_mode, current_frame);
     }
     else {
       for (const Layer *layer : src_grease_pencil.layers()) {
-        duplicate_layer_and_frames(dst_grease_pencil,
-                                   src_grease_pencil,
-                                   *layer,
-                                   DuplicateCopyMode(copy_frame_mode),
-                                   current_frame);
+        duplicate_layer_and_frames(
+            dst_grease_pencil, src_grease_pencil, *layer, copy_frame_mode, current_frame);
       }
     }
 
