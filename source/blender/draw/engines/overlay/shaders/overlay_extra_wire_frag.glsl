@@ -24,8 +24,11 @@ void main()
 
   fragColor.a = 1.0;
 
+#ifndef SELECT_EDGES
   if (fract(dist / dash_width) > dash_factor) {
     discard;
   }
+#endif
+
   select_id_output(select_id);
 }
