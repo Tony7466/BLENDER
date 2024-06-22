@@ -6,8 +6,8 @@
 
 namespace blender::draw::pbvh {
 
-struct PBVHBatches;
+struct NodeBatches;
 
-int material_index_get(PBVHBatches *batches);
+int material_index_get(NodeBatches *batches);
 
 }  // namespace blender::draw::pbvh

@@ -105,7 +105,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
                      update_only_visible,
                      update_frustum,
                      draw_frustum,
-                     [&](pbvh::PBVHBatches *batches, const pbvh::PBVH_GPU_Args &args) {
+                     [&](pbvh::NodeBatches *batches, const pbvh::PBVH_GPU_Args &args) {
                        SculptBatch batch{};
                        if (use_wire) {
                          batch.batch = pbvh::lines_get(batches, attrs, args, fast_mode);

@@ -1249,7 +1249,7 @@ static float sculpt_debug_colors[9][4] = {
 };
 
 static void sculpt_draw_cb(DRWSculptCallbackData *scd,
-                           blender::draw::pbvh::PBVHBatches *batches,
+                           blender::draw::pbvh::NodeBatches *batches,
                            const blender::draw::pbvh::PBVH_GPU_Args &pbvh_draw_args)
 {
   using namespace blender::draw;
@@ -1391,7 +1391,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
       update_only_visible,
       update_frustum,
       draw_frustum,
-      [&](blender::draw::pbvh::PBVHBatches *batches,
+      [&](blender::draw::pbvh::NodeBatches *batches,
           const blender::draw::pbvh::PBVH_GPU_Args &args) { sculpt_draw_cb(scd, batches, args); });
 
   if (SCULPT_DEBUG_BUFFERS) {

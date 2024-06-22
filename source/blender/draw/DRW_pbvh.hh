@@ -57,7 +57,7 @@ enum class CustomRequest : int8_t {
 
 using AttributeRequest = std::variant<CustomRequest, GenericRequest>;
 
-struct PBVHBatches;
+struct NodeBatches;
 
 struct PBVH_GPU_Args {
   int pbvh_type;
@@ -96,17 +96,17 @@ struct PBVH_GPU_Args {
   int cd_mask_layer;
 };
 
-void node_update(PBVHBatches *batches, const PBVH_GPU_Args &args);
-void update_pre(PBVHBatches *batches, const PBVH_GPU_Args &args);
+void node_update(NodeBatches *batches, const PBVH_GPU_Args &args);
+void update_pre(NodeBatches *batches, const PBVH_GPU_Args &args);
 
-void node_gpu_flush(PBVHBatches *batches);
-PBVHBatches *node_create(const PBVH_GPU_Args &args);
-void node_free(PBVHBatches *batches);
-gpu::Batch *tris_get(PBVHBatches *batches,
+void node_gpu_flush(NodeBatches *batches);
+NodeBatches *node_create(const PBVH_GPU_Args &args);
+void node_free(NodeBatches *batches);
+gpu::Batch *tris_get(NodeBatches *batches,
                      Span<AttributeRequest> attrs,
                      const PBVH_GPU_Args &args,
                      bool do_coarse_grids);
-gpu::Batch *lines_get(PBVHBatches *batches,
+gpu::Batch *lines_get(NodeBatches *batches,
                       Span<AttributeRequest> attrs,
                       const PBVH_GPU_Args &args,
                       bool do_coarse_grids);

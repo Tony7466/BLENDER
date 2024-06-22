@@ -2709,7 +2709,7 @@ void draw_cb(const Mesh &mesh,
              bool update_only_visible,
              const PBVHFrustumPlanes &update_frustum,
              const PBVHFrustumPlanes &draw_frustum,
-             const FunctionRef<void(draw::pbvh::PBVHBatches *batches,
+             const FunctionRef<void(draw::pbvh::NodeBatches *batches,
                                     const draw::pbvh::PBVH_GPU_Args &args)> draw_fn)
 {
   pbvh.draw_cache_invalid = false;

@@ -260,7 +260,7 @@ void extract_data_corner_bmesh(const PBVH_GPU_Args &args, const int cd_offset, g
   }
 }
 
-struct PBVHBatch {
+struct NodeBatch {
   Vector<int> vbos;
   gpu::Batch *tris = nullptr, *lines = nullptr;
   /* Coarse multi-resolution, will use full-sized VBOs only index buffer changes. */
@@ -329,9 +329,9 @@ template<> ColorGeometry4b fallback_value_for_fill()
   return fallback_value_for_fill<ColorGeometry4f>().encode();
 }
 
-struct PBVHBatches {
+struct NodeBatches {
   Vector<PBVHVbo> vbos;
-  Map<std::string, PBVHBatch> batches;
+  Map<std::string, NodeBatch> batches;
   gpu::IndexBuf *tri_index = nullptr;
   gpu::IndexBuf *lines_index = nullptr;
   int faces_count = 0; /* Used by PBVH_BMESH and PBVH_GRIDS */
@@ -345,8 +345,8 @@ struct PBVHBatches {
   int coarse_level = 0; /* Coarse multires depth. */
   int tris_count_coarse = 0, lines_count_coarse = 0;
 
-  PBVHBatches(const PBVH_GPU_Args &args);
-  ~PBVHBatches();
+  NodeBatches(const PBVH_GPU_Args &args);
+  ~NodeBatches();
 
   void update(const PBVH_GPU_Args &args);
   void update_pre(const PBVH_GPU_Args &args);
@@ -395,14 +395,14 @@ static int count_faces(const PBVH_GPU_Args &args)
   return count;
 }
 
-PBVHBatches::PBVHBatches(const PBVH_GPU_Args &args)
+NodeBatches::NodeBatches(const PBVH_GPU_Args &args)
 {
   faces_count = count_faces(args);
 }
 
-PBVHBatches::~PBVHBatches()
+NodeBatches::~NodeBatches()
 {
-  for (PBVHBatch &batch : batches.values()) {
+  for (NodeBatch &batch : batches.values()) {
     GPU_BATCH_DISCARD_SAFE(batch.tris);
     GPU_BATCH_DISCARD_SAFE(batch.lines);
   }
@@ -419,7 +419,7 @@ PBVHBatches::~PBVHBatches()
 
 static std::string build_key(const Span<AttributeRequest> requests, bool do_coarse_grids)
 {
-  PBVHBatch batch;
+  NodeBatch batch;
   Vector<PBVHVbo> vbos;
 
   for (const int i : requests.index_range()) {
@@ -435,7 +435,7 @@ static std::string build_key(const Span<AttributeRequest> requests, bool do_coar
   return batch.build_key(vbos);
 }
 
-int PBVHBatches::ensure_vbo(const AttributeRequest &request, const PBVH_GPU_Args &args)
+int NodeBatches::ensure_vbo(const AttributeRequest &request, const PBVH_GPU_Args &args)
 {
   for (const int i : vbos.index_range()) {
     if (this->vbos[i].request == request) {
@@ -920,7 +920,7 @@ static void fill_vbo_bmesh(PBVHVbo &vbo, const PBVH_GPU_Args &args)
   }
 }
 
-void PBVHBatches::update(const PBVH_GPU_Args &args)
+void NodeBatches::update(const PBVH_GPU_Args &args)
 {
   if (!lines_index) {
     create_index(args);
@@ -940,7 +940,7 @@ void PBVHBatches::update(const PBVH_GPU_Args &args)
   }
 }
 
-int PBVHBatches::create_vbo(const AttributeRequest &request, const PBVH_GPU_Args &args)
+int NodeBatches::create_vbo(const AttributeRequest &request, const PBVH_GPU_Args &args)
 {
   GPUVertFormat format;
   GPU_vertformat_clear(&format);
@@ -1004,7 +1004,7 @@ int PBVHBatches::create_vbo(const AttributeRequest &request, const PBVH_GPU_Args
   return vbos.index_range().last();
 }
 
-void PBVHBatches::update_pre(const PBVH_GPU_Args &args)
+void NodeBatches::update_pre(const PBVH_GPU_Args &args)
 {
   if (args.pbvh_type == PBVH_BMESH) {
     int count = count_faces(args);
@@ -1253,7 +1253,7 @@ static int material_index_get(const PBVH_GPU_Args &args)
 
 static void create_index_grids(const PBVH_GPU_Args &args,
                                const bool do_coarse,
-                               PBVHBatches &batches)
+                               NodeBatches &batches)
 {
   const bke::AttributeAccessor attributes = args.mesh->attributes();
   const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
@@ -1314,7 +1314,7 @@ static void create_index_grids(const PBVH_GPU_Args &args,
   }
 }
 
-void PBVHBatches::create_index(const PBVH_GPU_Args &args)
+void NodeBatches::create_index(const PBVH_GPU_Args &args)
 {
   switch (args.pbvh_type) {
     case PBVH_FACES:
@@ -1337,7 +1337,7 @@ void PBVHBatches::create_index(const PBVH_GPU_Args &args)
       break;
   }
 
-  for (PBVHBatch &batch : batches.values()) {
+  for (NodeBatch &batch : batches.values()) {
     if (tri_index) {
       GPU_batch_elembuf_set(batch.tris, tri_index, false);
     }
@@ -1352,7 +1352,7 @@ void PBVHBatches::create_index(const PBVH_GPU_Args &args)
   }
 }
 
-static PBVHBatch create_batch(PBVHBatches &batches,
+static NodeBatch create_batch(NodeBatches &batches,
                               const Span<AttributeRequest> requests,
                               const PBVH_GPU_Args &args,
                               bool do_coarse_grids)
@@ -1362,7 +1362,7 @@ static PBVHBatch create_batch(PBVHBatches &batches,
     batches.create_index(args);
   }
 
-  PBVHBatch batch;
+  NodeBatch batch;
 
   batch.tris = GPU_batch_create(GPU_PRIM_TRIS,
                                 nullptr,
@@ -1394,7 +1394,7 @@ static PBVHBatch create_batch(PBVHBatches &batches,
   return batch;
 }
 
-static PBVHBatch &ensure_batch(PBVHBatches &batches,
+static NodeBatch &ensure_batch(NodeBatches &batches,
                                const Span<AttributeRequest> requests,
                                const PBVH_GPU_Args &args,
                                const bool do_coarse_grids)
@@ -1404,53 +1404,53 @@ static PBVHBatch &ensure_batch(PBVHBatches &batches,
   });
 }
 
-void node_update(PBVHBatches *batches, const PBVH_GPU_Args &args)
+void node_update(NodeBatches *batches, const PBVH_GPU_Args &args)
 {
   batches->update(args);
 }
 
-void node_gpu_flush(PBVHBatches *batches)
+void node_gpu_flush(NodeBatches *batches)
 {
   gpu_flush(batches->vbos);
 }
 
-PBVHBatches *node_create(const PBVH_GPU_Args &args)
+NodeBatches *node_create(const PBVH_GPU_Args &args)
 {
-  PBVHBatches *batches = new PBVHBatches(args);
+  NodeBatches *batches = new NodeBatches(args);
   return batches;
 }
 
-void node_free(PBVHBatches *batches)
+void node_free(NodeBatches *batches)
 {
   delete batches;
 }
 
-gpu::Batch *tris_get(PBVHBatches *batches,
+gpu::Batch *tris_get(NodeBatches *batches,
                      const Span<AttributeRequest> attrs,
                      const PBVH_GPU_Args &args,
                      bool do_coarse_grids)
 {
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
-  PBVHBatch &batch = ensure_batch(*batches, attrs, args, do_coarse_grids);
+  NodeBatch &batch = ensure_batch(*batches, attrs, args, do_coarse_grids);
   return batch.tris;
 }
 
-gpu::Batch *lines_get(PBVHBatches *batches,
+gpu::Batch *lines_get(NodeBatches *batches,
                       const Span<AttributeRequest> attrs,
                       const PBVH_GPU_Args &args,
                       bool do_coarse_grids)
 {
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
-  PBVHBatch &batch = ensure_batch(*batches, attrs, args, do_coarse_grids);
+  NodeBatch &batch = ensure_batch(*batches, attrs, args, do_coarse_grids);
   return batch.lines;
 }
 
-void update_pre(PBVHBatches *batches, const PBVH_GPU_Args &args)
+void update_pre(NodeBatches *batches, const PBVH_GPU_Args &args)
 {
   batches->update_pre(args);
 }
 
-int material_index_get(PBVHBatches *batches)
+int material_index_get(NodeBatches *batches)
 {
   return batches->material_index;
 }

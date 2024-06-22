@@ -47,7 +47,7 @@ namespace bke {
 enum class AttrDomain : int8_t;
 }
 namespace draw::pbvh {
-struct PBVHBatches;
+struct NodeBatches;
 struct PBVH_GPU_Args;
 }  // namespace draw::pbvh
 }  // namespace blender
@@ -223,7 +223,7 @@ void draw_cb(const Mesh &mesh,
              bool update_only_visible,
              const PBVHFrustumPlanes &update_frustum,
              const PBVHFrustumPlanes &draw_frustum,
-             FunctionRef<void(draw::pbvh::PBVHBatches *batches,
+             FunctionRef<void(draw::pbvh::NodeBatches *batches,
                               const draw::pbvh::PBVH_GPU_Args &args)> draw_fn);
 /**
  * Get the PBVH root's bounding box.
