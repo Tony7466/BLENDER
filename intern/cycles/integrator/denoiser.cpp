@@ -130,7 +130,7 @@ DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &denois
     return DENOISER_OPENIMAGEDENOISE;
   }
 #else
-  (void)path_trace_device_info;
+  (void)denoise_device_info;
 #endif
 
 #ifdef WITH_OPTIX
