@@ -72,8 +72,9 @@ void main()
     return;
   }
 
-  vec2 noise = interlieved_gradient_noise(vec2(texel_fullres) + 0.5, vec2(3, 5), vec2(0.0));
-  noise += sampling_rng_2D_get(SAMPLING_RAYTRACE_W);
+  vec2 noise = sampling_blue_noise_fetch(texel_fullres, RNG_RAY_BLUR, NOISE_BINOMIAL).ba;
+  /* Remove cosine distribution. */
+  noise.x = square(noise.x);
 
   vec3 accum_radiance = to_accumulation_space(in_radiance);
   float accum_weight = 1.0;

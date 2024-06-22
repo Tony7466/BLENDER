@@ -214,6 +214,7 @@ void RayTraceModule::sync()
     pass.specialize_constant(sh, "closure_index", &data_.closure_index);
     pass.shader_set(sh);
     pass.bind_texture("depth_tx", &depth_tx);
+    pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_image("in_radiance_img", &denoised_temporal_tx_);
     pass.bind_image("out_radiance_img", &denoised_bilateral_tx_);
     pass.bind_image("in_variance_img", &denoise_variance_tx_);

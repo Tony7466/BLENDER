@@ -281,6 +281,8 @@ enum eBlueNoiseUsage : uint32_t {
   RNG_HORIZON_SCAN_1 = 8u,
   /* Random offset. */
   RNG_RAY_DENOISE = 9u,
+  /* Random offset. */
+  RNG_RAY_BLUR = 10u,
 };
 
 /* Blue noise type inside the utility texture. */

@@ -168,6 +168,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_denoise_bilateral)
                      "eevee_gbuffer_data",
                      "eevee_global_ubo",
                      "eevee_sampling_data",
+                     "eevee_utility_texture",
                      "draw_view")
     .sampler(1, ImageType::DEPTH_2D, "depth_tx")
     .image(1, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ, ImageType::FLOAT_2D, "in_radiance_img")
