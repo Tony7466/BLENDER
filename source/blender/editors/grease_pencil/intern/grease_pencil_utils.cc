@@ -1272,8 +1272,8 @@ int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
 
 float4x2 calculate_texture_space(const Scene *scene,
                                  const ARegion *region,
-                                 const float2 mouse,
-                                 const DrawingPlacement placement)
+                                 const float2 &mouse,
+                                 const DrawingPlacement &placement)
 {
   float3 u_dir;
   float3 v_dir;
