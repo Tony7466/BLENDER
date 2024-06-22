@@ -187,9 +187,6 @@ struct PBVH {
    * TODO: This is fragile, another solution should be found. */
   bool is_drawing = true;
 
-  /* Used by DynTopo to invalidate the draw cache. */
-  bool draw_cache_invalid = true;
-
   PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
