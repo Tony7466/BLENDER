@@ -46,6 +46,41 @@ void invalid_pixel_write(ivec2 texel)
   imageStoreFast(out_hit_depth_img, texel, vec4(0.0));
 }
 
+void sample_process(ivec2 sample_texel,
+                    vec3 V,
+                    float thickness,
+                    ClosureUndetermined center_closure,
+                    inout vec3 radiance_accum,
+                    inout float weight_accum,
+                    inout float closest_hit_time,
+                    inout vec3 rgb_moment)
+{
+  vec4 ray_data = imageLoad(ray_data_img, sample_texel);
+
+  vec3 ray_direction = ray_data.xyz;
+  float ray_pdf_inv = abs(ray_data.w);
+  /* Skip invalid pixels. */
+  if (ray_pdf_inv == 0.0) {
+    return;
+  }
+
+  float ray_time = imageLoadFast(ray_time_img, sample_texel).r;
+  vec4 ray_radiance = imageLoadFast(ray_radiance_img, sample_texel);
+
+  closest_hit_time = min(closest_hit_time, ray_time);
+
+  /* Slide 54. */
+  /* The reference is wrong.
+   * The ratio estimator is `pdf_local / pdf_ray` instead of `bsdf_local / pdf_ray`. */
+  float pdf = closure_evaluate_pdf(center_closure, ray_direction, V, thickness);
+  float weight = pdf * ray_pdf_inv;
+
+  radiance_accum += ray_radiance.rgb * weight;
+  weight_accum += weight;
+
+  rgb_moment += square(ray_radiance.rgb) * weight;
+}
+
 void main()
 {
   const uint tile_size = RAYTRACE_GROUP_SIZE;
@@ -132,8 +167,9 @@ void main()
     sample_count = max(sample_count, 5u);
   }
 
-  vec2 noise = utility_tx_fetch(utility_tx, vec2(texel_fullres), UTIL_BLUE_NOISE_LAYER).ba;
-  noise += sampling_rng_1D_get(SAMPLING_CLOSURE);
+  vec2 noise = sampling_blue_noise_fetch(texel_fullres, RNG_RAY_DENOISE, NOISE_BOX).ba;
+  /* Remove cosine distribution. */
+  noise.x = square(noise.x);
 
   vec3 rgb_moment = vec3(0.0);
   vec3 radiance_accum = vec3(0.0);
@@ -145,29 +181,14 @@ void main()
     ivec2 offset = ivec2(floor(offset_f + 0.5));
     ivec2 sample_texel = texel + offset;
 
-    vec4 ray_data = imageLoad(ray_data_img, sample_texel);
-    float ray_time = imageLoad(ray_time_img, sample_texel).r;
-    vec4 ray_radiance = imageLoad(ray_radiance_img, sample_texel);
-
-    vec3 ray_direction = ray_data.xyz;
-    float ray_pdf_inv = abs(ray_data.w);
-    /* Skip invalid pixels. */
-    if (ray_pdf_inv == 0.0) {
-      continue;
-    }
-
-    closest_hit_time = min(closest_hit_time, ray_time);
-
-    /* Slide 54. */
-    /* The reference is wrong.
-     * The ratio estimator is `pdf_local / pdf_ray` instead of `bsdf_local / pdf_ray`. */
-    float pdf = closure_evaluate_pdf(closure, ray_direction, V, thickness);
-    float weight = pdf * ray_pdf_inv;
-
-    radiance_accum += ray_radiance.rgb * weight;
-    weight_accum += weight;
-
-    rgb_moment += square(ray_radiance.rgb) * weight;
+    sample_process(sample_texel,
+                   V,
+                   thickness,
+                   closure,
+                   radiance_accum,
+                   weight_accum,
+                   closest_hit_time,
+                   rgb_moment);
   }
   float inv_weight = safe_rcp(weight_accum);
 
