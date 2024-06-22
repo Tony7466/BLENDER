@@ -1854,7 +1854,7 @@ static void icon_draw_size(float x,
                            const bool inverted = false)
 {
   if (icon_id == ICON_NONE) {
-        return;
+    return;
   }
 
   bTheme *btheme = UI_GetTheme();
