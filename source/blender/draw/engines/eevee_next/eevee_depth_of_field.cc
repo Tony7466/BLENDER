@@ -369,6 +369,7 @@ void DepthOfField::gather_pass_sync()
     drw_pass.bind_image("out_weight_img", &weight_chain.current());
     drw_pass.bind_image("out_occlusion_img", &occlusion_tx_);
     drw_pass.bind_texture("bokeh_lut_tx", &bokeh_gather_lut_tx_);
+    drw_pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     drw_pass.dispatch(&dispatch_gather_size_);
     drw_pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
@@ -458,6 +459,7 @@ void DepthOfField::resolve_pass_sync()
   resolve_ps_.bind_texture("color_hole_fill_tx", &hole_fill_color_tx_);
   resolve_ps_.bind_texture("weight_hole_fill_tx", &hole_fill_weight_tx_);
   resolve_ps_.bind_texture("bokeh_lut_tx", &bokeh_resolve_lut_tx_);
+  resolve_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   resolve_ps_.bind_image("out_color_img", &output_color_tx_);
   resolve_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
   resolve_ps_.dispatch(&dispatch_resolve_size_);

@@ -402,13 +402,13 @@ bool dof_do_density_change(float base_radius, float min_intersectable_radius)
 }
 
 void dof_gather_init(float base_radius,
-                     vec2 noise,
+                     vec2 random_point_on_disk,
                      out vec2 center_co,
                      out float lod,
                      out float intersection_multiplier)
 {
   /* Jitter center half a ring to reduce undersampling. */
-  vec2 jitter_ofs = 0.499 * sample_disk(noise);
+  vec2 jitter_ofs = 0.499 * random_point_on_disk;
   if (DOF_BOKEH_TEXTURE) {
     jitter_ofs *= dof_buf.bokeh_anisotropic_scale;
   }
@@ -440,26 +440,29 @@ void dof_gather_accumulator(sampler2D color_tx,
                             out vec2 out_occlusion)
 {
   vec2 frag_coord = vec2(gl_GlobalInvocationID.xy);
-  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_LENS_U);
-  vec2 noise = no_gather_random ? vec2(0.0, 0.0) :
-                                  vec2(interlieved_gradient_noise(frag_coord, 0, noise_offset.x),
-                                       interlieved_gradient_noise(frag_coord, 1, noise_offset.y));
+
+  vec4 noise = vec4(0.0, 0.0, 0.0, 0.0);
+  if (!no_gather_random) {
+    noise = sampling_blue_noise_fetch(frag_coord, RNG_LENS, NOISE_BINOMIAL);
+    /* Remove cosine distribution. */
+    /* WATCH(fclem): Might create correlation artifacts. Should be uncorrelated w.r.t. the other
+     * random values. */
+    noise.z = square(noise.z);
+  }
 
   if (!do_fast_gather) {
     /* Jitter the radius to reduce noticeable density changes. */
-    base_radius += noise.x * unit_ring_radius * base_radius;
+    base_radius += noise.z * unit_ring_radius * base_radius;
   }
   else {
     /* Jittering the radius more than we need means we are going to feather the bokeh shape half a
      * ring. So we need to compensate for fast gather that does not check CoC intersection. */
-    base_radius += (0.5 - noise.x) * 1.5 * unit_ring_radius * base_radius;
+    base_radius += (0.5 - noise.z) * 1.5 * unit_ring_radius * base_radius;
   }
-  /* TODO(fclem) another seed? For now Cranly-Partterson rotation with golden ratio. */
-  noise.x = fract(noise.x * 6.1803398875);
 
   float lod, isect_mul;
   vec2 center_co;
-  dof_gather_init(base_radius, noise, center_co, lod, isect_mul);
+  dof_gather_init(base_radius, noise.xy, center_co, lod, isect_mul);
 
   bool first_ring = true;
 
@@ -472,7 +475,7 @@ void dof_gather_accumulator(sampler2D color_tx,
     float step_rot = M_PI / float(sample_pair_count);
     mat2 step_rot_mat = from_rotation(Angle(step_rot));
 
-    float angle_offset = noise.y * step_rot;
+    float angle_offset = noise.w * step_rot;
     vec2 offset = vec2(cos(angle_offset), sin(angle_offset));
 
     float ring_radius = float(ring) * unit_sample_radius * base_radius;
@@ -543,7 +546,7 @@ void dof_gather_accumulator(sampler2D color_tx,
           dof_gather_amend_weight(accum_data, outer_rings_weight);
         }
         /* Re-init kernel position & sampling parameters. */
-        dof_gather_init(base_radius, noise, center_co, lod, isect_mul);
+        dof_gather_init(base_radius, noise.xy, center_co, lod, isect_mul);
         density_change++;
       }
     }
@@ -606,10 +609,13 @@ void dof_slight_focus_gather(depth2D depth_tx,
                              out float out_center_coc)
 {
   vec2 frag_coord = vec2(gl_GlobalInvocationID.xy) + 0.5;
-  vec2 noise_offset = sampling_rng_2D_get(SAMPLING_LENS_U);
-  vec2 noise = no_gather_random ? vec2(0.0) :
-                                  vec2(interlieved_gradient_noise(frag_coord, 3, noise_offset.x),
-                                       interlieved_gradient_noise(frag_coord, 5, noise_offset.y));
+
+  vec2 noise = vec2(0.0, 0.0);
+  if (!no_gather_random) {
+    noise = sampling_blue_noise_fetch(frag_coord, RNG_LENS, NOISE_BINOMIAL).ba;
+    /* Remove cosine distribution. */
+    noise.x = square(noise.x);
+  }
 
   DofGatherData fg_accum = GATHER_DATA_INIT;
   DofGatherData bg_accum = GATHER_DATA_INIT;

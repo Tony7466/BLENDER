@@ -155,12 +155,13 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_gather_common)
     .additional_info("eevee_shared",
                      "draw_view",
                      "eevee_depth_of_field_tiles_common",
+                     "eevee_utility_texture",
                      "eevee_sampling_data")
     .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .local_group_size(DOF_GATHER_GROUP_SIZE, DOF_GATHER_GROUP_SIZE)
     .sampler(0, ImageType::FLOAT_2D, "color_tx")
     .sampler(1, ImageType::FLOAT_2D, "color_bilinear_tx")
-    .sampler(2, ImageType::FLOAT_2D, "coc_tx")
+    .sampler(3, ImageType::FLOAT_2D, "coc_tx")
     .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_color_img")
     .image(3, GPU_R16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_weight_img");
 
@@ -233,11 +234,12 @@ GPU_SHADER_CREATE_INFO(eevee_depth_of_field_resolve)
     .additional_info("eevee_shared",
                      "draw_view",
                      "eevee_depth_of_field_tiles_common",
+                     "eevee_utility_texture",
                      "eevee_sampling_data")
     .uniform_buf(6, "DepthOfFieldData", "dof_buf")
     .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .sampler(1, ImageType::FLOAT_2D, "color_tx")
-    .sampler(2, ImageType::FLOAT_2D, "color_bg_tx")
+    .sampler(11, ImageType::FLOAT_2D, "color_bg_tx")
     .sampler(3, ImageType::FLOAT_2D, "color_fg_tx")
     .sampler(4, ImageType::FLOAT_2D, "color_hole_fill_tx")
     .sampler(7, ImageType::FLOAT_2D, "weight_bg_tx")
