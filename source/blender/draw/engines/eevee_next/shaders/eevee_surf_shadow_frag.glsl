@@ -48,11 +48,10 @@ void main()
 
   nodetree_surface(0.0);
 
-  float noise_offset = sampling_rng_1D_get(SAMPLING_TRANSPARENCY);
-  float random_threshold = pcg4d(vec4(g_data.P, noise_offset)).x;
+  float threshold = pcg4d(vec4(g_data.P, float(sampling_buf.sample_index))).x;
 
   float transparency = average(g_transmittance);
-  if (transparency > random_threshold) {
+  if (transparency > threshold) {
     discard_result;
   }
 #endif

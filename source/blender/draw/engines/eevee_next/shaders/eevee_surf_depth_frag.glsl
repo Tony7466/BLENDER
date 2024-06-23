@@ -37,9 +37,7 @@ void main()
   /* Pre-pass only allows fully opaque areas to cut through all transparent layers. */
   float threshold = 0.0;
 #  else
-  float noise_offset = sampling_rng_1D_get(SAMPLING_TRANSPARENCY);
-  float threshold = transparency_hashed_alpha_threshold(
-      uniform_buf.pipeline.alpha_hash_scale, noise_offset, g_data.P);
+  float threshold = pcg4d(vec4(g_data.P, float(sampling_buf.sample_index))).x;
 #  endif
 
   float transparency = average(g_transmittance);
