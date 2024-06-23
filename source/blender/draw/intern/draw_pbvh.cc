@@ -1234,53 +1234,71 @@ static void create_quads_from_grids(const Span<int> grid_indices,
   }
 }
 
-static int material_index_get(const PBVH_GPU_Args &args)
+static void calc_material_indices(const Object &object,
+                                  const Span<PBVHNode *> nodes,
+                                  const IndexMask &nodes_to_update,
+                                  MutableSpan<int> node_materials)
 {
-  switch (args.pbvh_type) {
+  const SculptSession &ss = *object.sculpt;
+  const PBVH &pbvh = *ss.pbvh;
+  switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES: {
-      if (args.prim_indices.is_empty()) {
-        return 0;
-      }
-      const bke::AttributeAccessor attributes = args.mesh->attributes();
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const Span<int> tri_faces = mesh.corner_tri_faces();
+      const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
-      return material_indices[args.tri_faces[args.prim_indices.first()]];
+      nodes_to_update.foreach_index(GrainSize(16), [&](const int i) {
+        const Span<int> tris = bke::pbvh::node_tri_indices(*nodes[i]);
+        if (tris.is_empty()) {
+          node_materials[i] = 0;
+        }
+        node_materials[i] = material_indices[tri_faces[tris.first()]];
+      });
+      break;
     }
     case PBVH_GRIDS: {
-      if (args.grid_indices.is_empty()) {
-        return 0;
-      }
-      const bke::AttributeAccessor attributes = args.mesh->attributes();
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const Span<int> grid_faces = subdiv_ccg.grid_to_face_map;
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
-      return material_indices[BKE_subdiv_ccg_grid_to_face_index(*args.subdiv_ccg,
-                                                                args.grid_indices.first())];
+      nodes_to_update.foreach_index(GrainSize(16), [&](const int i) {
+        const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+        if (grids.is_empty()) {
+          node_materials[i] = 0;
+        }
+        node_materials[i] = material_indices[grid_faces[grids.first()]];
+      });
+      break;
     }
     case PBVH_BMESH:
-      return 0;
+      node_materials.fill(0);
+      break;
   }
-  BLI_assert_unreachable();
-  return 0;
 }
 
-static void create_index_grids(const SubdivCCG &subdiv_ccg,
-                               const Span<bool> sharp_faces,
-                               const bool do_coarse,
-                               NodeBatches &batches)
+static gpu::IndexBuf *create_index_grids(const SubdivCCG &subdiv_ccg,
+                                         const Span<bool> sharp_faces,
+                                         const CCGKey &key,
+                                         const Span<int> grid_indices,
+                                         const bool do_coarse,
+                                         NodeBatches &batches)
 {
-  const BitGroupVector<> &grid_hidden = subdiv_ccg->grid_hidden;
-  const Span<int> grid_to_face_map = subdiv_ccg->grid_to_face_map;
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
 
-  int gridsize = ccg_key.grid_size;
+  int gridsize = key.grid_size;
   int display_gridsize = gridsize;
   int totgrid = grid_indices.size();
   int skip = 1;
 
-  const int display_level = do_coarse ? batches.coarse_level : ccg_key.level;
+  const int display_level = do_coarse ? batches.coarse_level : key.level;
 
-  if (display_level < ccg_key.level) {
+  if (display_level < key.level) {
     display_gridsize = (1 << display_level) + 1;
-    skip = 1 << (ccg_key.level - display_level - 1);
+    skip = 1 << (key.level - display_level - 1);
   }
 
   batches.use_flat_layout = !sharp_faces.is_empty() &&
@@ -1291,10 +1309,8 @@ static void create_index_grids(const SubdivCCG &subdiv_ccg,
 
   GPUIndexBufBuilder elb, elb_lines;
 
-  const CCGKey *key = &ccg_key;
-
   uint visible_quad_len = bke::pbvh::count_grid_quads(
-      grid_hidden, grid_indices, key->grid_size, display_gridsize);
+      grid_hidden, grid_indices, key.grid_size, display_gridsize);
 
   GPU_indexbuf_init(&elb, GPU_PRIM_TRIS, 2 * visible_quad_len, INT_MAX);
   GPU_indexbuf_init(&elb_lines,
@@ -1304,11 +1320,11 @@ static void create_index_grids(const SubdivCCG &subdiv_ccg,
 
   if (batches.use_flat_layout) {
     create_quads_from_grids(
-        args, display_gridsize, elb, elb_lines, grid_hidden, gridsize, skip, totgrid);
+        grid_indices, display_gridsize, elb, elb_lines, grid_hidden, gridsize, skip, totgrid);
   }
   else {
     create_tris_from_grids(
-        args, display_gridsize, elb, elb_lines, grid_hidden, gridsize, skip, totgrid);
+        grid_indices, display_gridsize, elb, elb_lines, grid_hidden, gridsize, skip, totgrid);
   }
 
   if (do_coarse) {
@@ -1323,42 +1339,11 @@ static void create_index_grids(const SubdivCCG &subdiv_ccg,
   }
 }
 
-void NodeBatches::create_index(const PBVH_GPU_Args &args)
-{
-  switch (args.pbvh_type) {
-    case PBVH_FACES:
-      break;
-    case PBVH_BMESH:
-      break;
-    case PBVH_GRIDS:
-      create_index_grids(args, false, *this);
-      if (args.ccg_key.level > coarse_level) {
-        create_index_grids(args, true, *this);
-      }
-      break;
-  }
-
-  for (NodeBatch &batch : batches.values()) {
-    if (tri_index) {
-      GPU_batch_elembuf_set(batch.tris, tri_index, false);
-    }
-    else {
-      /* Still flag the batch as dirty even if we're using the default index layout. */
-      batch.tris->flag |= GPU_BATCH_DIRTY;
-    }
-
-    if (lines_index) {
-      GPU_batch_elembuf_set(batch.lines, lines_index, false);
-    }
-  }
-}
-
 static NodeBatch create_batch(NodeBatches &batches,
                               const Span<AttributeRequest> requests,
                               const PBVH_GPU_Args &args,
                               bool do_coarse_grids)
 {
-  batches.material_index = material_index_get(args);
   if (!batches.lines_index) {
     batches.create_index(args);
   }
@@ -1829,8 +1814,10 @@ Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
   const IndexMask nodes_to_update;         // TODO
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(const_cast<PBVH &>(pbvh), {});
+
+  Vector<Span<gpu::VertBuf *>> requested_vbos;
   for (const AttributeRequest &attr : request.attributes) {
-    ensure_vbos(object, nodes, nodes_to_update, attr, draw_data);
+    requested_vbos.append(ensure_vbos(object, nodes, nodes_to_update, attr, draw_data));
   }
 
   const Span<gpu::IndexBuf *> ibos = ensure_tris_ibos(object, nodes, nodes_to_update, draw_data);
@@ -1840,9 +1827,10 @@ Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
   nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
     if (!batches[i]) {
       GPU_batch_create(GPU_PRIM_LINES, nullptr, ibos[i]);
-      GPU_batch_vertbuf_add(batches[i], position_vbos[i], false);
+      for (Span<gpu::VertBuf *> vbos : requested_vbos) {
+        GPU_batch_vertbuf_add(batches[i], vbos[i], false);
+      }
     }
-    // TODO: Nodes that already existed but were updated?
   });
 }
 
@@ -1865,7 +1853,7 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
       const Span<int2> edges = mesh.edges();
       const Span<int> corner_verts = mesh.corner_verts();
       const Span<int> corner_edges = mesh.corner_edges();
-      const Span<int3> corner_tris = BKE_pbvh_corner_tris(pbvh);  // TODO
+      const Span<int3> corner_tris = mesh.corner_tris();  // TODO
       const Span<int> tri_faces = mesh.corner_tri_faces();
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
@@ -1885,8 +1873,9 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
     }
     case PBVH_BMESH: {
       ibos_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        const int visible_faces_num = 100;
         ibos[i] = calc_lines_index_bmesh(
-            BKE_pbvh_bmesh_node_faces(const_cast<PBVHNode *>(nodes[i])), 100);  // TODO
+            BKE_pbvh_bmesh_node_faces(const_cast<PBVHNode *>(nodes[i])), visible_faces_num);
       });
       break;
     }
