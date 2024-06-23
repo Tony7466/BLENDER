@@ -401,13 +401,13 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   /* Data for the radiance setup. */
   data_.resolution_scale = resolution_scale;
-  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
+  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_U) * resolution_scale);
   data_.radiance_persmat = render_view.persmat();
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
 
   data_.horizon_resolution_scale = horizon_resolution_scale;
-  data_.horizon_resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) *
+  data_.horizon_resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_U) *
                                        horizon_resolution_scale);
   /* TODO(fclem): Eventually all uniform data is setup here. */
 
@@ -521,7 +521,7 @@ RayTraceResultTexture RayTraceModule::trace(
   data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;
 
   data_.resolution_scale = resolution_scale;
-  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
+  data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_U) * resolution_scale);
   data_.history_persmat = denoise_buf->history_persmat;
   data_.radiance_persmat = render_view.persmat();
   data_.full_resolution = extent;

@@ -123,31 +123,18 @@ void Sampling::step()
      * http://advances.realtimerendering.com/s2014/epic/TemporalAA.pptx (slide 14) */
     uint2 primes = {2, 3};
     BLI_halton_2d(primes, offset, sample_filter + 1, r);
-    /* WORKAROUND: We offset the distribution to make the first sample (0,0). This way, we are
+    /* NOTE: We offset the distribution to make the first sample (0,0). This way, we are
      * assured that at least one of the samples inside the TAA rotation will match the one from the
      * draw manager. This makes sure overlays are correctly composited in static scene. */
     data_.dimensions[SAMPLING_FILTER_U] = fractf(r[0] + (1.0 / 2.0));
     data_.dimensions[SAMPLING_FILTER_V] = fractf(r[1] + (2.0 / 3.0));
-    /* TODO de-correlate. */
-    data_.dimensions[SAMPLING_TIME] = r[0];
-    data_.dimensions[SAMPLING_CLOSURE] = r[1];
-    data_.dimensions[SAMPLING_RAYTRACE_X] = r[0];
   }
   {
-    double3 r, offset = {0, 0, 0};
-    uint3 primes = {5, 7, 3};
-    BLI_halton_3d(primes, offset, sample_ + 1, r);
-    data_.dimensions[SAMPLING_LENS_U] = r[0];
-    data_.dimensions[SAMPLING_LENS_V] = r[1];
-    /* TODO de-correlate. */
+    double2 r, offset = {0, 0};
+    uint2 primes = {5, 7};
+    BLI_halton_2d(primes, offset, sample_ + 1, r);
     data_.dimensions[SAMPLING_LIGHTPROBE] = r[0];
     data_.dimensions[SAMPLING_TRANSPARENCY] = r[1];
-    /* TODO de-correlate. */
-    data_.dimensions[SAMPLING_AO_U] = r[0];
-    data_.dimensions[SAMPLING_AO_V] = r[1];
-    data_.dimensions[SAMPLING_AO_W] = r[2];
-    /* TODO de-correlate. */
-    data_.dimensions[SAMPLING_CURVES_U] = r[0];
   }
   {
     uint64_t sample_raytrace = sample_;
@@ -159,23 +146,9 @@ void Sampling::step()
     uint64_t leap = 13;
     uint3 primes = {5, 7, 11};
     BLI_halton_3d(primes, offset, sample_raytrace * leap + 1, r);
-    data_.dimensions[SAMPLING_SHADOW_U] = r[0];
-    data_.dimensions[SAMPLING_SHADOW_V] = r[1];
-    data_.dimensions[SAMPLING_SHADOW_W] = r[2];
-    /* TODO de-correlate. */
     data_.dimensions[SAMPLING_RAYTRACE_U] = r[0];
     data_.dimensions[SAMPLING_RAYTRACE_V] = r[1];
     data_.dimensions[SAMPLING_RAYTRACE_W] = r[2];
-  }
-  {
-    double3 r, offset = {0, 0, 0};
-    uint3 primes = {2, 3, 5};
-    BLI_halton_3d(primes, offset, sample_ + 1, r);
-    /* WORKAROUND: We offset the distribution to make the first sample (0,0,0). */
-    /* TODO de-correlate. */
-    data_.dimensions[SAMPLING_SHADOW_I] = fractf(r[0] + (1.0 / 2.0));
-    data_.dimensions[SAMPLING_SHADOW_J] = fractf(r[1] + (2.0 / 3.0));
-    data_.dimensions[SAMPLING_SHADOW_K] = fractf(r[2] + (4.0 / 5.0));
   }
   {
     uint64_t sample_volume = sample_;
@@ -185,7 +158,7 @@ void Sampling::step()
     double3 r, offset = {0, 0, 0};
     uint3 primes = {2, 3, 5};
     BLI_halton_3d(primes, offset, sample_volume + 1, r);
-    /* WORKAROUND: We offset the distribution to make the first sample (0,0,0). */
+    /* NOTE: We offset the distribution to make the first sample (0,0,0). */
     data_.dimensions[SAMPLING_VOLUME_U] = fractf(r[0] + (1.0 / 2.0));
     data_.dimensions[SAMPLING_VOLUME_V] = fractf(r[1] + (2.0 / 3.0));
     data_.dimensions[SAMPLING_VOLUME_W] = fractf(r[2] + (4.0 / 5.0));
@@ -196,9 +169,6 @@ void Sampling::step()
     uint64_t leap = 5;
     uint2 primes = {2, 3};
     BLI_halton_2d(primes, offset, sample_ * leap + 1, r);
-    data_.dimensions[SAMPLING_SHADOW_X] = r[0];
-    data_.dimensions[SAMPLING_SHADOW_Y] = r[1];
-    /* TODO de-correlate. */
     data_.dimensions[SAMPLING_SSS_U] = r[0];
     data_.dimensions[SAMPLING_SSS_V] = r[1];
   }

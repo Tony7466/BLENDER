@@ -1102,7 +1102,7 @@ void IrradianceBake::raylists_build()
 {
   using namespace blender::math;
 
-  float2 rand_uv = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_LENS_U);
+  float2 rand_uv = inst_.sampling.rng_2d_get(eSamplingDimension::SAMPLING_FILTER_U);
   const float3 ray_direction = inst_.sampling.sample_sphere(rand_uv);
   const float3 up = ray_direction;
   const float3 forward = cross(up, normalize(orthogonal(up)));
