@@ -137,20 +137,6 @@ void Sampling::step()
     data_.dimensions[SAMPLING_TRANSPARENCY] = r[1];
   }
   {
-    uint64_t sample_raytrace = sample_;
-    if (interactive_mode()) {
-      sample_raytrace = sample_raytrace % interactive_sample_raytrace_;
-    }
-    /* Using leaped Halton sequence so we can reused the same primes as lens. */
-    double3 r, offset = {0, 0, 0};
-    uint64_t leap = 13;
-    uint3 primes = {5, 7, 11};
-    BLI_halton_3d(primes, offset, sample_raytrace * leap + 1, r);
-    data_.dimensions[SAMPLING_RAYTRACE_U] = r[0];
-    data_.dimensions[SAMPLING_RAYTRACE_V] = r[1];
-    data_.dimensions[SAMPLING_RAYTRACE_W] = r[2];
-  }
-  {
     uint64_t sample_volume = sample_;
     if (interactive_mode()) {
       sample_volume = sample_volume % interactive_sample_volume_;
@@ -180,7 +166,6 @@ void Sampling::step()
   int blue_noise_sample_index = ((sample_ / UTIL_FAST_NOISE_LEN) * 937) % square_i(UTIL_TEX_SIZE);
   data_.blue_noise_offset = float2(blue_noise_sample_index % UTIL_TEX_SIZE,
                                    blue_noise_sample_index / UTIL_TEX_SIZE);
-  /* Number of blue noise slices. */
   data_.blue_noise_layer = sample_ % UTIL_FAST_NOISE_LEN;
   data_.push_update();
 

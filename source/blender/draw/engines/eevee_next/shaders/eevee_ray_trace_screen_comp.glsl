@@ -75,8 +75,7 @@ void main()
     }
   }
 
-  vec3 radiance = vec3(0.0);
-  float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
+  float noise_offset = r_1d(sampling_buf.sample_index);
   float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset);
 
   ClosureUndetermined cl = gbuffer_read_bin(
@@ -89,6 +88,8 @@ void main()
   ray_view.direction = transform_direction(drw_view.viewmat, ray.direction);
   /* Extend the ray to cover the whole view. */
   ray_view.max_time = 1000.0;
+
+  vec3 radiance = vec3(0.0);
 
   ScreenTraceHitData hit;
   hit.valid = false;

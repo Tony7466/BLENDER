@@ -72,8 +72,7 @@ void main()
   ray.origin = P;
   ray.direction = ray_data_im.xyz;
 
-  vec3 radiance = vec3(0.0);
-  float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
+  float noise_offset = r_1d(sampling_buf.sample_index);
   float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset);
 
   /* TODO(fclem): Take IOR into account in the roughness LOD bias. */
@@ -89,6 +88,8 @@ void main()
 
   ScreenTraceHitData hit = raytrace_planar(
       uniform_buf.raytrace, planar_depth_tx, planar, rand_trace, ray_view);
+
+  vec3 radiance = vec3(0.0);
 
   if (hit.valid) {
     /* Evaluate radiance at hit-point. */
