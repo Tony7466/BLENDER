@@ -165,15 +165,10 @@ void main()
 
   vec4 center_color = textureLod(in_color_tx, uv, 0.0);
 
-  float noise_offset = sampling_rng_1D_get(SAMPLING_TIME);
-  /** TODO(fclem) Blue noise. */
-  vec2 rand = vec2(interlieved_gradient_noise(vec2(gl_GlobalInvocationID.xy), 0, noise_offset),
-                   interlieved_gradient_noise(vec2(gl_GlobalInvocationID.xy), 1, noise_offset));
+  vec3 rand = sampling_blue_noise_fetch(texel, RNG_TIME, NOISE_BINOMIAL).rga;
 
-  /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile.
-   * Note this randomize only in one direction but in practice it's enough. */
-  rand.x = rand.x * 2.0 - 1.0;
-  ivec2 tile = (texel + ivec2(rand.x * float(MOTION_BLUR_TILE_SIZE) * 0.25)) /
+  /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile. */
+  ivec2 tile = (texel + ivec2(rand.xy * float(MOTION_BLUR_TILE_SIZE) * 0.25)) /
                MOTION_BLUR_TILE_SIZE;
   tile = clamp(tile, ivec2(0), imageSize(in_tiles_img) - 1);
   /* NOTE: Tile velocity is already in pixel space and with correct zw sign. */
@@ -191,9 +186,9 @@ void main()
   accum.bg = vec4(0.0);
   accum.fg = vec4(0.0);
   /* First linear gather. time = [T - delta, T] */
-  gather_blur(uv, center_motion.xy, center_depth, max_motion.xy, rand.y, false, accum);
+  gather_blur(uv, center_motion.xy, center_depth, max_motion.xy, rand.z, false, accum);
   /* Second linear gather. time = [T, T + delta] */
-  gather_blur(uv, center_motion.zw, center_depth, max_motion.zw, rand.y, true, accum);
+  gather_blur(uv, center_motion.zw, center_depth, max_motion.zw, rand.z, true, accum);
 
 #if 1 /* Own addition. Not present in reference implementation. */
   /* Avoid division by 0.0. */

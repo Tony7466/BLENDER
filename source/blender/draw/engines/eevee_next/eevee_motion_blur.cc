@@ -180,6 +180,7 @@ void MotionBlurModule::sync()
     sub.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
     sub.bind_texture("velocity_tx", &render_buffers.vector_tx, no_filter);
     sub.bind_texture("in_color_tx", &input_color_tx_, no_filter);
+    sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     sub.bind_image("in_tiles_img", &tiles_tx_);
     sub.bind_image("out_color_img", &output_color_tx_);
 

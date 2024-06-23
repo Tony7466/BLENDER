@@ -274,15 +274,19 @@ enum eBlueNoiseUsage : uint32_t {
   /* Random closure picking. */
   RNG_CURVES_U = 7u,
   /* Random direction and steps offset for AO node. */
-  RNG_AMBIENT_OCCLUSION = 7u,
+  RNG_AMBIENT_OCCLUSION = 8u,
   /* Random angle, offset. */
-  RNG_HORIZON_SCAN_0 = 8u,
+  RNG_HORIZON_SCAN_0 = 9u,
   /* Random LOD, normal offset. */
-  RNG_HORIZON_SCAN_1 = 8u,
+  RNG_HORIZON_SCAN_1 = 10u,
   /* Random offset. */
-  RNG_RAY_DENOISE = 9u,
+  RNG_RAY_DENOISE = 11u,
   /* Random offset. */
-  RNG_RAY_BLUR = 10u,
+  RNG_RAY_BLUR = 12u,
+  /* Random point on disk and offsets for de-focus (Depth of Field). */
+  RNG_LENS = 13u,
+  /* Random point on disk and offsets for motion blur. */
+  RNG_TIME = 14u,
 };
 
 /* Blue noise type inside the utility texture. */
