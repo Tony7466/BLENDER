@@ -20,6 +20,7 @@ from mathutils import Vector
 from os import path
 from glob import glob
 from copy import copy
+import json
 from itertools import chain
 
 from .interface import NWConnectionListInputs, NWConnectionListOutputs
@@ -31,7 +32,8 @@ from .utils.nodes import (node_mid_pt, autolink, node_at_pos, get_nodes_links,
                           get_group_output_node, get_output_location, force_update, get_internal_socket, nw_check,
                           nw_check_not_empty, nw_check_selected, nw_check_active, nw_check_space_type,
                           nw_check_node_type, nw_check_visible_outputs, nw_check_viewer_node, NWBase,
-                          get_first_enabled_output, is_visible_socket)
+                          get_first_enabled_output, is_visible_socket, 
+                          nw_check_viewer_connected, nw_get_connected_viewer, nw_link_new_viewer, nw_get_viewer_image, nw_get_node_from_viewer)
 
 
 class NWLazyMix(Operator, NWBase):
@@ -486,6 +488,87 @@ class NWAddAttrNode(Operator, NWBase):
         nodes.active.attribute_name = self.attr_name
         return {'FINISHED'}
 
+class NWFastPreview(Operator):
+    bl_idname = "node.nw_fast_preview"
+    bl_label = "Fast Preview"
+    bl_description = "Preview favorite nodes by pressing 1, 2, 3, 4 and 5"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    # Workaround: simulating a dict with json.loads() and json.dumps()
+    node_preview_map : StringProperty(name="")
+    update_map : BoolProperty(default=False)
+
+    viewer_index : IntProperty()
+
+    @classmethod
+    def poll(self, context):
+        return bpy.ops.node.link_viewer.poll()
+
+    def execute(self, context):
+        nodes, links = get_nodes_links(context)
+
+        if self.node_preview_map != '':
+            temp_dict = json.loads(self.node_preview_map)
+        else:
+            temp_dict = {}
+
+        selected_nodes = context.selected_nodes
+        if self.update_map:
+            if len(selected_nodes) > 0:
+                n1 = selected_nodes[0]
+
+                # if selected node is a preview node:
+                #   add it to favorites
+                # else if node connected to a viewer node
+                #   set the connected viewer node to favorites
+                # else: # regular node and is not connected to viewer node
+                #   add a viewer node and add it to favorites
+
+                if n1.type == 'VIEWER':
+                    viewer_node = n1
+                elif nw_check_viewer_connected(n1): 
+                    # todo: remove this elif to revert to current behavior? 
+                    viewer_node = nw_get_connected_viewer(n1)
+                else:
+                    viewer_node = nw_link_new_viewer(nodes, links, n1)
+
+                img = nw_get_viewer_image()
+                if img:
+                    n1 = nw_get_node_from_viewer(viewer_node)
+                    img.name = "Viewer %i: %s" % (self.viewer_index, n1.name)
+                    
+                viewer_node.label = "Viewer                  (%i)" % (self.viewer_index)                    
+                temp_dict[self.viewer_index] = viewer_node.name
+                self.node_preview_map = json.dumps(temp_dict)
+                """
+                temp_dict[self.viewer_index] = n1.name
+                self.node_preview_map = json.dumps(temp_dict)
+                bpy.ops.node.link_viewer()
+                """
+                self.report({'INFO'}, "Set viewer %s to shortcut %i" % (viewer_node.name, self.viewer_index))
+            else:
+                self.report({'ERROR'}, "No previews to set. Reason: No nodes selected.")
+
+        else:
+            if str(self.viewer_index) in temp_dict:
+                if temp_dict[str(self.viewer_index)] in nodes:
+                    # set selected viewer node to active 
+                    # ... 
+                    viewer_node = nodes[temp_dict[str(self.viewer_index)]]
+                    # n.select = True
+                    nodes.active = viewer_node
+                    # bpy.ops.node.link_viewer()
+                    # n.select = False
+            
+                    img = nw_get_viewer_image()
+                    if img:
+                        n1 = nw_get_node_from_viewer(viewer_node)
+                        img.name = "Viewer %i: %s" % (self.viewer_index, n1.name)
+                    
+            else:
+                self.report({'WARNING'}, "No preview set for shortcut %i" % self.viewer_index)
+
+        return {'FINISHED'}
 
 class NWFrameSelected(Operator, NWBase):
     bl_idname = "node.nw_frame_selected"
@@ -2443,6 +2526,7 @@ classes = (
     NWSwapLinks,
     NWResetBG,
     NWAddAttrNode,
+    NWFastPreview,
     NWFrameSelected,
     NWReloadImages,
     NWMergeNodes,
