@@ -253,18 +253,180 @@ static void split_edge_for_indices(const int3 verts,
   }
 }
 
-static void edge_subdivide(Vector<float2> &verts,
-                           const Span<int> vert_indices,
-                           Vector<int2> edges,
-                           const Span<int> edge_indices,
-                           Vector<float> &edge_lengths,
+static void edge_subdivide(const std::array<float2, 2> &real_verts,
+                           const Span<float2> linked_verts,
                            const int2 real_edge,
+                           const Span<int> edge_indices,
+                           const Span<float> edge_lengths,
                            const float2 centre,
                            const float radius,
                            const float max_length,
                            VectorSet<OrderedEdge> &r_all_edges,
                            VectorSet<OrderedEdge> &r_unique_edges)
 {
+}
+
+enum struct EdgeS : int8_t {
+  NoChange = 0,
+  Split = 1,
+  ADSplit = 1 << 1,
+  BDSplit = 2 << 1,
+};
+
+static void face_subdivide(const std::array<int, 5> &vert_offsets,
+                           const Span<float2> verts,
+                           const Span<float3> real_verts,
+                           const float2 centre,
+                           const float radius,
+                           const float max_length,
+                           const int3 face_verts,
+                           const int3 face_edges,
+                           VectorSet<OrderedEdge> &r_all_edges,
+                           VectorSet<OrderedEdge> &r_unique_edges)
+{
+  Vector<std::array<int, 5>> offsets_stack = {vert_offsets};
+  Vector<Array<float2>> verts_stack = {verts};
+  Vector<Array<float3>> real_verts_stack = {real_verts};
+  Vector<int3> tris = {face_verts};
+
+  Vector<bool> edge_selection;
+  Vector<int> edges_list;
+
+  edge_selection.reserve(edge_verts.size());
+  edges_list.reserve(edge_verts.size());
+
+  while (!offsets_stack.is_empty()) {
+    BLI_assert(offsets_stack.size() == verts_stack.size());
+    BLI_assert(offsets_stack.size() == real_verts_stack.size());
+    BLI_assert(offsets_stack.size() == tris.size());
+
+    const std::array<int, 5> offset_data = offsets_stack.pop_last();
+    Array<float2> verts = verts_stack.pop_last();
+    Array<float3> real_verts = real_verts_stack.pop_last();
+    const int3 face_verts = tris.pop_last();
+
+    BLI_assert(offset_data[1] == 3);
+
+    const OffsetIndices<int> vert_offset(offset_data);
+    const GroupedSpan<float2> verts_by_face_type(vert_offset, verts);
+    const GroupedSpan<float3> real_verts_by_face_type(vert_offset, real_verts);
+
+    std::array<int, 5> edge_offset_data;
+    edge_offset_data[0] = vert_offset[0];
+    edge_offset_data[1] = vert_offset[1] * 2;
+    edge_offset_data[2] = vert_offset[2] * 2;
+    edge_offset_data[3] = vert_offset[3] * 2;
+    const OffsetIndices<int> edge_offset = offset_indices::accumulate_counts_to_offsets(
+        edge_offset_data);
+    edge_selection.resize(edge_offset.total_size());
+
+    edges_to_split_from_face(verts[0], verts[1], verts_by_face_type[0], edge_selection);
+
+    if (!edges_to_split_from_length(real_verts_by_face_type, edge_selection)) {
+      continue;
+    }
+
+    const bool split_this_tris = edge_selection[0] || edge_selection[1] || edge_selection[2];
+    if (!split_this_tris) {
+      const Span<bool> semi_selection = edge_selection.as_span().drop_front(3);
+      semi_triangle_split(verts[0],
+                          verts[1],
+                          semi_selection.slice(vert_offset[1]),
+                          verts.as_mutable_span().slice(vert_offset[1]));
+      semi_triangle_split(verts[1],
+                          verts[2],
+                          semi_selection.slice(vert_offset[2]),
+                          verts.as_mutable_span().slice(vert_offset[2]));
+      semi_triangle_split(verts[2],
+                          verts[0],
+                          semi_selection.slice(vert_offset[3]),
+                          verts.as_mutable_span().slice(vert_offset[3]));
+
+      semi_triangle_split(real_verts[0],
+                          real_verts[1],
+                          semi_selection.slice(vert_offset[1]),
+                          real_verts.as_mutable_span().slice(vert_offset[1]));
+      semi_triangle_split(real_verts[1],
+                          real_verts[2],
+                          semi_selection.slice(vert_offset[2]),
+                          real_verts.as_mutable_span().slice(vert_offset[2]));
+      semi_triangle_split(real_verts[2],
+                          real_verts[0],
+                          semi_selection.slice(vert_offset[3]),
+                          real_verts.as_mutable_span().slice(vert_offset[3]));
+
+      offsets_stack.append(offset_data);
+      verts_stack.append(std::move(verts));
+      real_verts_stack.append(std::move(real_verts));
+      tris.append(face_verts);
+      continue;
+    }
+
+    edges_list.clear();
+    for (const int edge_i : edge_selection.index_range()) {
+      if (edge_selection[edge_i]) {
+        edges_list.append(edge_i);
+      }
+    }
+
+    const int largest_edge_i = *std::max_element(
+        edges_list.begin(), edges_list.end(), [&](const int edge_a, const int edge_b) -> bool {
+          const int2 a_edge = edge_verts[edge_a];
+          const int2 b_edge = edge_verts[edge_b];
+          const float a_length = math::distance_squared(real_verts[a_edge[0]],
+                                                        real_verts[a_edge[1]]);
+          const float b_length = math::distance_squared(real_verts[b_edge[0]],
+                                                        real_verts[b_edge[1]]);
+          if (UNLIKELY(a_length == b_length)) {
+            return edge_indices[edge_a] > edge_indices[edge_b];
+          }
+          return a_length > b_length;
+        });
+
+    const int2 edge = edge_verts[largest_edge_i];
+    if (math::distance_squared(real_verts[edge[0]], real_verts[edge[1]]) < max_length) {
+      continue;
+    }
+
+    const float2 mid = math::midpoint(verts[edge[0]], verts[edge[1]]);
+    const float3 real_mid = math::midpoint(real_verts[edge[0]], real_verts[edge[1]]);
+
+    if (!ELEM(largest_edge_i, 0, 1, 2)) {
+      verts[edge_split_to_vert[largest_edge_i]] = mid;
+      real_verts[edge_split_to_vert[largest_edge_i]] = real_mid;
+
+      verts_stack.append(std::move(verts));
+      tris.append(face_verts);
+      real_verts_stack.append(std::move(real_verts));
+      edge_verts_stack.append(std::move(edge_verts));
+      faces_verts_stack.append(std::move(faces_verts));
+      faces_edges_stack.append(std::move(faces_edges));
+      continue;
+    }
+
+    const int new_vert_i = r_all_edges.index_of_or_add({face_verts[edge[0]], face_verts[edge[1]]});
+
+    int3 left_face_verts = face_verts;
+    int3 right_face_verts = face_verts;
+    left_face_verts[edge[0]] = new_vert_i;
+    right_face_verts[edge[1]] = new_vert_i;
+
+    Vector<float2> left_verts;
+    Vector<float2> right_verts;
+    left_verts.extend(verts.as_span().take_front(3));
+    right_verts.extend(verts.as_span().take_front(3));
+
+    left_verts[edge[0]] = mid;
+    right_verts[edge[1]] = mid;
+
+    Vector<float3> left_real_verts;
+    Vector<float3> right_real_verts;
+    left_real_verts.extend(real_verts.as_span().take_front(3));
+    right_real_verts.extend(real_verts.as_span().take_front(3));
+
+    left_real_verts[edge[0]] = real_mid;
+    right_real_verts[edge[1]] = real_mid;
+  }
 }
 
 static void face_subdivide(const Span<float2> verts,
