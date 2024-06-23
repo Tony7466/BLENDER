@@ -39,7 +39,7 @@ float3 SculptBatch::debug_color()
 
 static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
                                                  const bool use_wire,
-                                                 const Span<pbvh::AttributeRequest> attrs)
+                                                 const Set<pbvh::AttributeRequest> &attrs)
 {
   /* PBVH should always exist for non-empty meshes, created by depsgraph eval. */
   PBVH *pbvh = ob->sculpt ? ob->sculpt->pbvh.get() : nullptr;
@@ -99,6 +99,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
   const Mesh *mesh = static_cast<const Mesh *>(ob->data);
   bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
 
+  draw::pbvh::ensure_tris_batches({attrs, fast_mode}, *ob, update_only_visible, );
   Vector<SculptBatch> result_batches;
   bke::pbvh::draw_cb(*mesh,
                      *pbvh,
@@ -122,15 +123,15 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
 
 Vector<SculptBatch> sculpt_batches_get(const Object *ob, SculptBatchFeature features)
 {
-  Vector<pbvh::AttributeRequest, 16> attrs;
+  Set<pbvh::AttributeRequest> attrs;
 
-  attrs.append(pbvh::CustomRequest::Position);
-  attrs.append(pbvh::CustomRequest::Normal);
+  attrs.add(pbvh::CustomRequest::Position);
+  attrs.add(pbvh::CustomRequest::Normal);
   if (features & SCULPT_BATCH_MASK) {
-    attrs.append(pbvh::CustomRequest::Mask);
+    attrs.add(pbvh::CustomRequest::Mask);
   }
   if (features & SCULPT_BATCH_FACE_SET) {
-    attrs.append(pbvh::CustomRequest::FaceSet);
+    attrs.add(pbvh::CustomRequest::FaceSet);
   }
 
   const Mesh *mesh = BKE_object_get_original_mesh(ob);
@@ -141,14 +142,14 @@ Vector<SculptBatch> sculpt_batches_get(const Object *ob, SculptBatchFeature feat
       if (const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
               name))
       {
-        attrs.append(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
+        attrs.add(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
       }
     }
   }
 
   if (features & SCULPT_BATCH_UV) {
     if (const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2)) {
-      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
+      attrs.add(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
     }
   }
 

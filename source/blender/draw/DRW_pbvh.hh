@@ -57,6 +57,18 @@ enum class CustomRequest : int8_t {
 
 using AttributeRequest = std::variant<CustomRequest, GenericRequest>;
 
+struct PBVHDrawData;
+
+struct ViewportRequest {
+  Set<AttributeRequest> attributes;
+  bool use_coarse_grids;
+};
+
+Span<gpu::Batch *> ensure_tris_batches(const ViewportRequest &request,
+                                       const Object &object,
+                                       const bool update_only_visible,
+                                       PBVHDrawData &draw_data);
+
 struct NodeBatches;
 
 struct PBVH_GPU_Args {

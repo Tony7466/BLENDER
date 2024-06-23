@@ -16,7 +16,7 @@
  */
 
 namespace blender::draw::pbvh {
-struct NodeBatches;
+struct PBVHDrawData;
 }
 
 struct PBVHGPUFormat;
@@ -26,9 +26,6 @@ struct BMFace;
 /* NOTE: this structure is getting large, might want to split it into
  * union'd structs */
 struct PBVHNode {
-  /* Opaque handle for drawing code */
-  blender::draw::pbvh::NodeBatches *draw_batches = nullptr;
-
   /** Axis aligned min and max of all vertex positions in the node. */
   blender::Bounds<blender::float3> bounds = {};
   /** Bounds from the start of current brush stroke. */
@@ -190,6 +187,8 @@ struct PBVH {
   PBVHGPUFormat *vbo_id;
 
   PBVHPixels pixels;
+
+  blender::draw::pbvh::PBVHDrawData *data_data;
 
   ~PBVH();
 };
