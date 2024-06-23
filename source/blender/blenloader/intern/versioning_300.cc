@@ -976,7 +976,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
       bNode *capture_node = geometry_in_link->fromnode;
       const NodeGeometryAttributeCapture &capture_storage =
           *static_cast<const NodeGeometryAttributeCapture *>(capture_node->storage);
-      if (capture_storage.data_type != CD_PROP_BOOL ||
+      if (capture_storage.data_type_legacy != CD_PROP_BOOL ||
           bke::AttrDomain(capture_storage.domain) != bke::AttrDomain::Face)
       {
         return false;
@@ -1020,7 +1020,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     new_nodes.append(&capture_node);
     auto *capture_node_storage = MEM_cnew<NodeGeometryAttributeCapture>(__func__);
     capture_node.storage = capture_node_storage;
-    capture_node_storage->data_type = CD_PROP_BOOL;
+    capture_node_storage->data_type_legacy = CD_PROP_BOOL;
     capture_node_storage->domain = int8_t(bke::AttrDomain::Face);
     bNodeSocket &capture_node_geo_in = version_node_add_socket(
         ntree, capture_node, SOCK_IN, "NodeSocketGeometry", "Geometry");
@@ -4279,8 +4279,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       curves_id->flag &= ~CV_SCULPT_SELECTION_ENABLED;
     }
     LISTBASE_FOREACH (Curves *, curves_id, &bmain->hair_curves) {
-      BKE_id_attribute_rename(&curves_id->id, ".selection_point_float", ".selection", nullptr);
-      BKE_id_attribute_rename(&curves_id->id, ".selection_curve_float", ".selection", nullptr);
+      AttributeOwner owner = AttributeOwner::from_id(&curves_id->id);
+      BKE_attribute_rename(owner, ".selection_point_float", ".selection", nullptr);
+      BKE_attribute_rename(owner, ".selection_curve_float", ".selection", nullptr);
     }
 
     /* Toggle the Invert Vertex Group flag on Armature modifiers in some cases. */

@@ -450,7 +450,7 @@ struct FillBoundary {
  * This is a Blender customized version of the general algorithm described
  * in https://en.wikipedia.org/wiki/Moore_neighborhood
  */
-static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
+static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer, bool include_holes)
 {
   using BoundarySection = std::list<int>;
   using BoundaryStartMap = Map<int, BoundarySection>;
@@ -475,6 +475,11 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
         if (!filled_left && filled_right && !border_right) {
           /* Empty index list indicates uninitialized section. */
           starts.add(index_right, {});
+          /* First filled pixel on the line is in the outer boundary.
+           * Pixels further to the right are part of holes and can be disregarded. */
+          if (!include_holes) {
+            break;
+          }
         }
       }
     }
@@ -627,14 +632,13 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
     constexpr const float pressure = 1.0f;
     radii.span[point_i] = ed::greasepencil::radius_from_input_sample(view_context.rv3d,
                                                                      view_context.region,
-                                                                     &scene,
                                                                      &brush,
                                                                      pressure,
                                                                      position,
                                                                      placement.to_world_space(),
                                                                      brush.gpencil_settings);
     opacities.span[point_i] = ed::greasepencil::opacity_from_input_sample(
-        pressure, &brush, &scene, brush.gpencil_settings);
+        pressure, &brush, brush.gpencil_settings);
   }
 
   if (scene.toolsettings->gp_paint->mode == GPPAINT_FLAG_USE_VERTEXCOLOR) {
@@ -725,7 +729,10 @@ static bke::CurvesGeometry process_image(Image &ima,
     erode(buffer, -dilate_pixels);
   }
 
-  const FillBoundary boundary = build_fill_boundary(buffer);
+  /* In regular mode create only the outline of the filled area.
+   * In inverted mode create a boundary for every filled area. */
+  const bool fill_holes = invert;
+  const FillBoundary boundary = build_fill_boundary(buffer, fill_holes);
 
   return boundary_to_curves(scene,
                             view_context,
@@ -796,10 +803,9 @@ static VArray<ColorGeometry4f> stroke_colors(const Object &object,
                                              const VArray<float> &opacities,
                                              const VArray<int> materials,
                                              const ColorGeometry4f &tint_color,
-                                             const float alpha_threshold,
-                                             const bool brush_fill_hide)
+                                             const std::optional<float> alpha_threshold)
 {
-  if (brush_fill_hide) {
+  if (!alpha_threshold) {
     return VArray<ColorGeometry4f>::ForSingle(tint_color, curves.points_num());
   }
 
@@ -813,7 +819,7 @@ static VArray<ColorGeometry4f> stroke_colors(const Object &object,
                                        1.0f;
       const IndexRange points = curves.points_by_curve()[curve_i];
       for (const int point_i : points) {
-        const float alpha = (material_alpha * opacities[point_i] > alpha_threshold ? 1.0f : 0.0f);
+        const float alpha = (material_alpha * opacities[point_i] > *alpha_threshold ? 1.0f : 0.0f);
         colors[point_i] = ColorGeometry4f(tint_color.r, tint_color.g, tint_color.b, alpha);
       }
     }
@@ -980,6 +986,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const VArray<bool> &boundary_layers,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool invert,
+                                 const std::optional<float> alpha_threshold,
                                  const float2 &fill_point,
                                  const FillToolFitMethod fit_method,
                                  const int stroke_material_index,
@@ -1039,8 +1046,6 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
   GPU_depth_mask(true);
   image_render::set_viewmat(view_context, scene, image_size, zoom, offset);
 
-  const float alpha_threshold = 0.2f;
-  const bool brush_fill_hide = false;
   const bool use_xray = false;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
@@ -1074,8 +1079,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                                          opacities,
                                                          materials,
                                                          draw_boundary_color,
-                                                         alpha_threshold,
-                                                         brush_fill_hide);
+                                                         alpha_threshold);
 
     image_render::draw_grease_pencil_strokes(rv3d,
                                              image_size,

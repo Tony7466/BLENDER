@@ -1363,10 +1363,8 @@ static bool image_memorypack_imbuf(
   }
 
   ImagePackedFile *imapf;
-  PackedFile *pf = MEM_cnew<PackedFile>("PackedFile");
-
-  pf->size = ibuf->encoded_size;
-  pf->data = IMB_steal_encoded_buffer(ibuf);
+  PackedFile *pf = BKE_packedfile_new_from_memory(IMB_steal_encoded_buffer(ibuf),
+                                                  ibuf->encoded_size);
 
   imapf = static_cast<ImagePackedFile *>(MEM_mallocN(sizeof(ImagePackedFile), "Image PackedFile"));
   STRNCPY(imapf->filepath, filepath);
@@ -4900,6 +4898,31 @@ bool BKE_image_has_ibuf(Image *ima, ImageUser *iuser)
   IMB_freeImBuf(ibuf);
 
   return ibuf != nullptr;
+}
+
+ImBuf *BKE_image_preview(Image *ima, const short max_size, short *r_width, short *r_height)
+{
+  void *lock;
+  ImBuf *image_ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+  if (image_ibuf == nullptr) {
+    return nullptr;
+  }
+
+  ImBuf *preview = IMB_dupImBuf(image_ibuf);
+  float scale = float(max_size) / float(std::max(image_ibuf->x, image_ibuf->y));
+  if (r_width) {
+    *r_width = image_ibuf->x;
+  }
+  if (r_height) {
+    *r_height = image_ibuf->y;
+  }
+  BKE_image_release_ibuf(ima, image_ibuf, lock);
+
+  /* Resize. */
+  IMB_scaleImBuf(preview, scale * image_ibuf->x, scale * image_ibuf->y);
+  IMB_rect_from_float(preview);
+
+  return preview;
 }
 
 /** \} */

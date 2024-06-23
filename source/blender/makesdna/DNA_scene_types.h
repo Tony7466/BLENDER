@@ -1909,11 +1909,6 @@ typedef struct SceneEEVEE {
 
   struct RaytraceEEVEE ray_tracing_options;
 
-  struct LightCache *light_cache DNA_DEPRECATED;
-  struct LightCache *light_cache_data;
-  /* Need a 128 byte string for some translations of some messages. */
-  char light_cache_info[128];
-
   float overscan;
   float light_threshold;
 } SceneEEVEE;
@@ -2051,7 +2046,7 @@ typedef struct Scene {
    * only used by #BKE_object_handle_update()
    */
   struct CustomData_MeshMasks customdata_mask;
-  /** XXX: same as above but for temp operator use (viewport renders). */
+  /** XXX: same as `customdata_mask` but for temp operator use (viewport renders). */
   struct CustomData_MeshMasks customdata_mask_modal;
 
   /* Color Management. */
@@ -2828,7 +2823,7 @@ enum {
   SCE_EEVEE_GTAO_BENT_NORMALS = (1 << 5),
   SCE_EEVEE_GTAO_BOUNCE = (1 << 6),
   // SCE_EEVEE_DOF_ENABLED = (1 << 7), /* Moved to camera->dof.flag */
-  SCE_EEVEE_BLOOM_ENABLED = (1 << 8),
+  // SCE_EEVEE_BLOOM_ENABLED = (1 << 8), /* Unused */
   SCE_EEVEE_MOTION_BLUR_ENABLED_DEPRECATED = (1 << 9), /* Moved to scene->r.mode */
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),

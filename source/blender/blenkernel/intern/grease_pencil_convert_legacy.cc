@@ -806,9 +806,7 @@ static Drawing legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gp
     stroke_materials.span[stroke_i] = gps->mat_nr;
 
     const IndexRange points = points_by_curve[stroke_i];
-    BLI_assert(points.size() == gps->totpoints);
 
-    const Span<bGPDspoint> src_points{gps->points, gps->totpoints};
     const float stroke_thickness = float(gps->thickness) * LEGACY_RADIUS_CONVERSION_FACTOR;
     MutableSpan<float3> dst_positions = positions.slice(points);
     MutableSpan<float3> dst_handle_positions_left = has_bezier_stroke ?
@@ -827,12 +825,15 @@ static Drawing legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gp
                                                        MutableSpan<MDeformVert>();
 
     if (curve_types[stroke_i] == CURVE_TYPE_POLY) {
+      BLI_assert(points.size() == gps->totpoints);
+      const Span<bGPDspoint> src_points{gps->points, gps->totpoints};
       threading::parallel_for(src_points.index_range(), 4096, [&](const IndexRange range) {
         for (const int point_i : range) {
           const bGPDspoint &pt = src_points[point_i];
           dst_positions[point_i] = float3(pt.x, pt.y, pt.z);
           dst_radii[point_i] = stroke_thickness * pt.pressure;
           dst_opacities[point_i] = pt.strength;
+          dst_deltatimes[point_i] = pt.time;
           dst_rotations[point_i] = pt.uv_rot;
           dst_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
           dst_selection[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
@@ -841,19 +842,10 @@ static Drawing legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gp
           }
         }
       });
-
-      dst_deltatimes.first() = 0;
-      threading::parallel_for(
-          src_points.index_range().drop_front(1), 4096, [&](const IndexRange range) {
-            for (const int point_i : range) {
-              const bGPDspoint &pt = src_points[point_i];
-              const bGPDspoint &pt_prev = src_points[point_i - 1];
-              dst_deltatimes[point_i] = pt.time - pt_prev.time;
-            }
-          });
     }
     else if (curve_types[stroke_i] == CURVE_TYPE_BEZIER) {
       BLI_assert(gps->editcurve != nullptr);
+      BLI_assert(points.size() == gps->editcurve->tot_curve_points);
       Span<bGPDcurve_point> src_curve_points{gps->editcurve->curve_points,
                                              gps->editcurve->tot_curve_points};
 
@@ -1317,7 +1309,9 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       /* Convert the "pixel" offset value into a radius value.
        * GPv2 used a conversion of 1 "px" = 0.001. */
       /* NOTE: this offset may be negative. */
-      const float radius_offset = float(thickness_px) * LEGACY_RADIUS_CONVERSION_FACTOR;
+      const float uniform_object_scale = math::average(float3(dst_object.scale));
+      const float radius_offset = math::safe_divide(
+          float(thickness_px) * LEGACY_RADIUS_CONVERSION_FACTOR, uniform_object_scale);
 
       const auto offset_radius_ntree_ensure = [&](Library *owner_library) {
         if (bNodeTree **ntree = conversion_data.offset_radius_ntree_by_library.lookup_ptr(
@@ -2506,7 +2500,7 @@ static void legacy_object_modifier_weight_lineart(ConversionData &conversion_dat
                                                   GpencilModifierData &legacy_md)
 {
   ModifierData &md = legacy_object_modifier_common(
-      conversion_data, object, eModifierType_GreasePencilWeightAngle, legacy_md);
+      conversion_data, object, eModifierType_GreasePencilLineart, legacy_md);
   auto &md_lineart = reinterpret_cast<GreasePencilLineartModifierData &>(md);
   auto &legacy_md_lineart = reinterpret_cast<LineartGpencilModifierData &>(legacy_md);
 

@@ -371,7 +371,7 @@ static int actkeys_viewall(bContext *C, const bool only_sel)
 {
   bAnimContext ac;
   View2D *v2d;
-  float extra, min, max;
+  float min, max;
   bool found;
 
   /* get editor data */
@@ -399,9 +399,7 @@ static int actkeys_viewall(bContext *C, const bool only_sel)
     v2d->cur.xmin = min;
     v2d->cur.xmax = max;
 
-    extra = 0.125f * BLI_rctf_size_x(&v2d->cur);
-    v2d->cur.xmin -= extra;
-    v2d->cur.xmax += extra;
+    v2d->cur = ANIM_frame_range_view2d_add_xmargin(*v2d, v2d->cur);
   }
 
   /* set vertical range */
@@ -849,15 +847,19 @@ static void insert_fcurve_key(bAnimContext *ac,
    *   so it's easier for now to just read the F-Curve directly.
    *   (TODO: add the full-blown PointerRNA relative parsing case here...)
    */
+  const std::optional<blender::StringRefNull> channel_group = fcu->grp ?
+                                                                  std::optional(fcu->grp->name) :
+                                                                  std::nullopt;
   if (ale->id && !ale->owner) {
-    CombinedKeyingResult result = insert_keyframe(ac->bmain,
-                                                  *ale->id,
-                                                  ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                                                  fcu->rna_path,
-                                                  fcu->array_index,
-                                                  &anim_eval_context,
-                                                  eBezTriple_KeyframeType(ts->keyframe_type),
-                                                  flag);
+    PointerRNA id_rna_pointer = RNA_id_pointer_create(ale->id);
+    CombinedKeyingResult result = insert_keyframes(ac->bmain,
+                                                   &id_rna_pointer,
+                                                   channel_group,
+                                                   {{fcu->rna_path, {}, fcu->array_index}},
+                                                   std::nullopt,
+                                                   anim_eval_context,
+                                                   eBezTriple_KeyframeType(ts->keyframe_type),
+                                                   flag);
     if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
       result.generate_reports(reports);
     }

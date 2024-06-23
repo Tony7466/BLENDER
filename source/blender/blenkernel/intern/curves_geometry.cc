@@ -116,7 +116,8 @@ CurvesGeometry::CurvesGeometry(const CurvesGeometry &other)
                             other.runtime->evaluated_length_cache,
                             other.runtime->evaluated_tangent_cache,
                             other.runtime->evaluated_normal_cache,
-                            {}});
+                            {},
+                            true});
 
   if (other.runtime->bake_materials) {
     this->runtime->bake_materials = std::make_unique<bake::BakeMaterialsList>(
@@ -1065,6 +1066,7 @@ void CurvesGeometry::tag_topology_changed()
   this->tag_positions_changed();
   this->runtime->evaluated_offsets_cache.tag_dirty();
   this->runtime->nurbs_basis_cache.tag_dirty();
+  this->runtime->check_type_counts = true;
 }
 void CurvesGeometry::tag_normals_changed()
 {
@@ -1209,6 +1211,9 @@ CurvesGeometry curves_copy_point_selection(
   threading::parallel_invoke(
       dst_curves.curves_num() > 1024,
       [&]() {
+        if (curves_to_copy.is_empty()) {
+          return;
+        }
         MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
         array_utils::gather(
             curve_point_counts.as_span(), curves_to_copy, new_curve_offsets.drop_back(1));
