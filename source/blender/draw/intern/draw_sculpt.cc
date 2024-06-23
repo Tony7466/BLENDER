@@ -99,7 +99,10 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
   const Mesh *mesh = static_cast<const Mesh *>(ob->data);
   bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
 
-  draw::pbvh::ensure_tris_batches({attrs, fast_mode}, *ob, update_only_visible, );
+  const IndexMask leaf_nodes_to_update;
+  const IndexMask visible_nodes;
+
+  draw::pbvh::ensure_tris_batches({attrs, fast_mode}, *ob, update_only_visible, pbvh.draw_data);
   Vector<SculptBatch> result_batches;
   bke::pbvh::draw_cb(*mesh,
                      *pbvh,
