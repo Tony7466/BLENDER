@@ -130,13 +130,6 @@ void Sampling::step()
     data_.dimensions[SAMPLING_FILTER_V] = fractf(r[1] + (2.0 / 3.0));
   }
   {
-    double2 r, offset = {0, 0};
-    uint2 primes = {5, 7};
-    BLI_halton_2d(primes, offset, sample_ + 1, r);
-    data_.dimensions[SAMPLING_LIGHTPROBE] = r[0];
-    data_.dimensions[SAMPLING_TRANSPARENCY] = r[1];
-  }
-  {
     uint64_t sample_volume = sample_;
     if (interactive_mode()) {
       sample_volume = sample_volume % interactive_sample_volume_;

@@ -30,7 +30,7 @@ struct LightProbeSample {
 LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 {
   float noise = interlieved_gradient_noise(UTIL_TEXEL, 0.0, 0.0);
-  noise = fract(noise + sampling_rng_1D_get(SAMPLING_LIGHTPROBE));
+  noise = fract(noise + r_1d(sampling_buf.sample_index));
 
   LightProbeSample result;
   result.volume_irradiance = lightprobe_volume_sample(P, V, Ng);

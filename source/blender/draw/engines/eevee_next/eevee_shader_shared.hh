@@ -232,8 +232,6 @@ enum PrecomputeType : uint32_t {
 enum eSamplingDimension : uint32_t {
   SAMPLING_FILTER_U = 0u,
   SAMPLING_FILTER_V = 1u,
-  SAMPLING_LIGHTPROBE = 11u,
-  SAMPLING_TRANSPARENCY = 12u,
   SAMPLING_SSS_U = 13u,
   SAMPLING_SSS_V = 14u,
   SAMPLING_VOLUME_U = 23u,

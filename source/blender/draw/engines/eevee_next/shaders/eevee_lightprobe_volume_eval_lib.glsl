@@ -134,7 +134,7 @@ SphericalHarmonicL1 lightprobe_volume_sample(
   i = grid_start_index;
 #endif
 #ifdef IRRADIANCE_GRID_SAMPLING
-  float random = square(pcg4d(vec4(P, sampling_rng_1D_get(SAMPLING_LIGHTPROBE))).x) * 0.75;
+  float random = square(pcg4d(vec4(P, r_1d(sampling_buf.sample_index))).x) * 0.75;
 #endif
 #ifdef GPU_METAL
 /* NOTE: Performs a chunked unroll to avoid the compiler unrolling the entire loop, avoiding
