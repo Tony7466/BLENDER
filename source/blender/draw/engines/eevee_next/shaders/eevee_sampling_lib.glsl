@@ -299,7 +299,7 @@ vec3 sample_hemisphere(vec2 rand)
  */
 vec3 sample_uniform_cone(vec2 rand, float cos_angle)
 {
-  float cos_theta = mix(cos_angle, 1.0, rand.x);
+  float cos_theta = mix(1.0, cos_angle, rand.x);
   float sin_theta = safe_sqrt(1.0 - square(cos_theta));
   return vec3(sin_theta * sample_circle(rand.y), cos_theta);
 }

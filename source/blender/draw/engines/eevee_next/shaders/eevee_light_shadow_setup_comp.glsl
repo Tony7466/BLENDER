@@ -267,11 +267,10 @@ void main()
     vec3 position_on_light = vec3(0.0);
 
     if (light.shadow_jitter && uniform_buf.shadow.use_jitter) {
+      vec2 rand = r_2d(sampling_buf.sample_index);
+
       /* TODO(fclem): Remove atan here. We only need the cosine of the angle. */
       float shape_angle = atan_fast(light_sun_data_get(light).shape_radius);
-
-      /* Reverse to that first sample is straight up. */
-      vec2 rand = 1.0 - sampling_rng_2D_get(SAMPLING_SHADOW_I);
       vec3 shadow_direction = sample_uniform_cone(rand, cos(shape_angle));
 
       shadow_direction = transform_direction(light.object_to_world, shadow_direction);
@@ -291,14 +290,22 @@ void main()
     vec3 position_on_light = vec3(0.0);
 
     if (light.shadow_jitter && uniform_buf.shadow.use_jitter) {
-      vec3 rand = sampling_rng_3D_get(SAMPLING_SHADOW_I);
 
       if (is_area_light(light.type)) {
-        vec2 point_on_unit_shape = (light.type == LIGHT_RECT) ? rand.xy * 2.0 - 1.0 :
-                                                                sample_disk(rand.xy);
+        vec2 rand = r_2d(sampling_buf.sample_index);
+
+        vec2 point_on_unit_shape;
+        if (light.type == LIGHT_RECT) {
+          /* Remap so that first sample is at center of the shape */
+          point_on_unit_shape = 2.0 * mix(rand - 1.0, rand, greaterThan(rand, vec2(0.5)));
+        }
+        else {
+          point_on_unit_shape = sample_disk(rand);
+        }
         position_on_light = vec3(point_on_unit_shape * light_area_data_get(light).size, 0.0);
       }
       else {
+        vec3 rand = r_3d(sampling_buf.sample_index);
         position_on_light = sample_ball(rand) * light_local_data_get(light).shape_radius;
       }
     }
