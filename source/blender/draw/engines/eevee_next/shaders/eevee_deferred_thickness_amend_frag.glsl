@@ -23,6 +23,7 @@ void thickness_from_shadow_single(uint l_idx,
                                   vec3 P,
                                   vec3 Ng,
                                   float gbuffer_thickness,
+                                  vec2 random_pcf,
                                   inout float thickness_accum,
                                   inout float weight_accum)
 {
@@ -40,15 +41,13 @@ void thickness_from_shadow_single(uint l_idx,
 
   float texel_radius = shadow_texel_radius_at_position(light, is_directional, P);
 
-  vec2 pcf_random = pcg4d(vec4(gl_FragCoord.xyz, sampling_rng_1D_get(SAMPLING_SHADOW_X))).xy;
-
   vec3 P_offset = P;
   /* Invert all biases to get value inside the surface.
    * The additional offset is to make the pcf kernel fully inside the object. */
   float normal_offset = shadow_normal_offset(Ng, lv.L);
   P_offset -= Ng * (texel_radius * normal_offset);
   /* Inverting this bias means we will over estimate the distance. Which removes some artifacts. */
-  P_offset -= texel_radius * shadow_pcf_offset(lv.L, Ng, pcf_random);
+  P_offset -= texel_radius * shadow_pcf_offset(lv.L, Ng, random_pcf);
 
   float occluder_delta = shadow_sample(
       is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P_offset);
@@ -79,16 +78,18 @@ float thickness_from_shadow(vec3 P, vec3 Ng, float vPz, float gbuffer_thickness)
   float thickness_accum = 0.0;
   float weight_accum = 0.0;
 
+  vec2 pixel = gl_FragCoord.xy;
+  vec2 rand = sampling_blue_noise_fetch(pixel, RNG_SHADOW_FILTER, NOISE_BINOMIAL).rg;
+
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
     thickness_from_shadow_single(
-        l_idx, true, P, Ng, gbuffer_thickness, thickness_accum, weight_accum);
+        l_idx, true, P, Ng, gbuffer_thickness, rand, thickness_accum, weight_accum);
   }
   LIGHT_FOREACH_END
 
-  vec2 pixel = gl_FragCoord.xy;
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vPz, l_idx) {
     thickness_from_shadow_single(
-        l_idx, false, P, Ng, gbuffer_thickness, thickness_accum, weight_accum);
+        l_idx, false, P, Ng, gbuffer_thickness, rand, thickness_accum, weight_accum);
   }
   LIGHT_FOREACH_END
 
