@@ -232,12 +232,20 @@ enum PrecomputeType : uint32_t {
 enum eSamplingDimension : uint32_t {
   SAMPLING_FILTER_U = 0u,
   SAMPLING_FILTER_V = 1u,
+  SAMPLING_FILTER_X = 2u,
+  SAMPLING_FILTER_Y = 3u,
   SAMPLING_SSS_U = 13u,
   SAMPLING_SSS_V = 14u,
   SAMPLING_VOLUME_U = 23u,
   SAMPLING_VOLUME_V = 24u,
   SAMPLING_VOLUME_W = 25u,
 };
+
+/**
+ * IMPORTANT: Make sure the array can contain all sampling dimensions.
+ * Also note that it needs to be multiple of 4.
+ */
+#define SAMPLING_DIMENSION_COUNT 32
 
 /* Blue noise texture usage. Avoid correlation artifacts. */
 enum eBlueNoiseUsage : uint32_t {
@@ -277,12 +285,6 @@ enum eBlueNoiseType : uint32_t {
   /* XYZ: Cosine hemisphere samples. W: Random unit float. */
   NOISE_BOX = 52u,
 };
-
-/**
- * IMPORTANT: Make sure the array can contain all sampling dimensions.
- * Also note that it needs to be multiple of 4.
- */
-#define SAMPLING_DIMENSION_COUNT 32
 
 /* NOTE(@fclem): Needs to be used in #StorageBuffer because of arrays of scalar. */
 struct SamplingData {

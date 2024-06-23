@@ -655,15 +655,15 @@ void Film::update_sample_table()
     data_.samples_len = sample_table.size();
     data_.samples_weight_total = 0.0f;
 
+    const float2 rand_2d = inst_.sampling.rng_2d_get(SAMPLING_FILTER_X);
     int i = 0;
     for (FilmSample &sample : sample_table) {
-      /* TODO(fclem): Own RNG. */
-      float2 random_2d = inst_.sampling.rng_2d_get(SAMPLING_SSS_U);
-      /* This randomization makes sure we converge to the right result but also makes nearest
-       * neighbor filtering not converging rapidly. */
-      random_2d.x = (random_2d.x + i) / float(FILM_PRECOMP_SAMPLE_MAX);
+      float rand_angle = rand_2d.y;
+      float rand_radius = (i + rand_2d.x) / FILM_PRECOMP_SAMPLE_MAX;
 
-      float2 pixel_offset = math::floor(Sampling::sample_spiral(random_2d) * data_.filter_radius);
+      float2 point_on_disk = Sampling::sample_spiral(float2(rand_radius, rand_angle));
+
+      float2 pixel_offset = math::round(point_on_disk * data_.filter_radius);
       sample.texel = int2(pixel_offset);
 
       float distance_sqr = math::length_squared(pixel_offset - data_.subpixel_offset);

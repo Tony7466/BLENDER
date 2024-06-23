@@ -128,6 +128,14 @@ void Sampling::step()
      * draw manager. This makes sure overlays are correctly composited in static scene. */
     data_.dimensions[SAMPLING_FILTER_U] = fractf(r[0] + (1.0 / 2.0));
     data_.dimensions[SAMPLING_FILTER_V] = fractf(r[1] + (2.0 / 3.0));
+    /* Used only for random sampling large filter. */
+    uint2 primes_filter = {2, 3};
+    /* Using leaped Halton sequence so we can reused the same primes. */
+    uint64_t leap = 5;
+    offset = {0, 0};
+    BLI_halton_2d(primes_filter, offset, sample_filter * leap + 1, r);
+    data_.dimensions[SAMPLING_FILTER_X] = fractf(r[0] + (1.0 / 2.0));
+    data_.dimensions[SAMPLING_FILTER_Y] = fractf(r[1] + (2.0 / 3.0));
   }
   {
     uint64_t sample_volume = sample_;
