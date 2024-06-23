@@ -547,6 +547,8 @@ static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *
         return "NodeSocketFloatDistance";
       case PROP_WAVELENGTH:
         return "NodeSocketFloatWavelength";
+      case PROP_COLOR_TEMPERATURE:
+        return "NodeSocketFloatColorTemperature";
     }
   }
   if (idname == "NodeSocketInt") {
@@ -2139,6 +2141,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloatDistance";
         case PROP_WAVELENGTH:
           return "NodeSocketFloatWavelength";
+        case PROP_COLOR_TEMPERATURE:
+          return "NodeSocketFloatColorTemperature";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -2228,6 +2232,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
           return "NodeTreeInterfaceSocketFloatDistance";
         case PROP_WAVELENGTH:
           return "NodeTreeInterfaceSocketFloatWavelength";
+        case PROP_COLOR_TEMPERATURE:
+          return "NodeTreeInterfaceSocketFloatColorTemperature";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";

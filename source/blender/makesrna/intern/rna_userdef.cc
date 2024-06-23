@@ -60,6 +60,7 @@ const EnumPropertyItem rna_enum_preference_section_items[] = {
     {USER_SECTION_ANIMATION, "ANIMATION", 0, "Animation", ""},
     RNA_ENUM_ITEM_SEPR,
     {USER_SECTION_EXTENSIONS, "EXTENSIONS", 0, "Extensions", ""},
+    {USER_SECTION_ADDONS, "ADDONS", 0, "Add-ons", ""},
     {USER_SECTION_THEME, "THEMES", 0, "Themes", ""},
 #if 0 /* def WITH_USERDEF_WORKSPACES */
     RNA_ENUM_ITEM_SEPR,
@@ -270,9 +271,6 @@ static void rna_userdef_gizmo_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 
 static void rna_userdef_theme_update_icons(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  if (!G.background) {
-    UI_icons_reload_internal_textures();
-  }
   rna_userdef_theme_update(bmain, scene, ptr);
 }
 
@@ -715,18 +713,6 @@ static void rna_userdef_keyconfig_reload_update(bContext *C,
 {
   WM_keyconfig_reload(C);
   USERDEF_TAG_DIRTY;
-}
-
-static void rna_userdef_use_grease_pencil_version3_update(bContext *C, PointerRNA *ptr)
-{
-  Main *bmain = CTX_data_main(C);
-  rna_userdef_keyconfig_reload_update(C, bmain, nullptr, ptr);
-  /* Update nodes because some sockets may only exist depending on whether grease pencil 3 is
-   * enabled. */
-  LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-    BKE_ntree_update_tag_all(ntree);
-  }
-  ED_node_tree_propagate_change(C, bmain, nullptr);
 }
 
 static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
@@ -1421,7 +1407,7 @@ static size_t max_memory_in_megabytes()
   return (limit_bytes >> 20);
 }
 
-/* Same as above, but clipped to int capacity. */
+/* Same as #max_memory_in_megabytes, but clipped to int capacity. */
 static int max_memory_in_megabytes_int()
 {
   const size_t limit_megabytes = max_memory_in_megabytes();
@@ -4984,8 +4970,8 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   prop = RNA_def_property(srna, "ui_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "UI Scale", "Changes the size of the fonts and widgets in the interface");
-  RNA_def_property_range(prop, 0.25f, 4.0f);
-  RNA_def_property_ui_range(prop, 0.5f, 2.0f, 1, 2);
+  RNA_def_property_range(prop, 0.25f, 6.0f);
+  RNA_def_property_ui_range(prop, 0.5f, 3.0f, 1, 2);
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
   prop = RNA_def_property(srna, "ui_line_width", PROP_ENUM, PROP_NONE);
@@ -7376,22 +7362,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "No Asset Indexing",
                            "Disable the asset indexer, to force every asset library refresh to "
                            "completely reread assets from disk");
-  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
-
-  prop = RNA_def_property(srna, "use_grease_pencil_version3", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3", 1);
-  RNA_def_property_ui_text(prop, "Grease Pencil 3.0", "Enable the new grease pencil 3.0 codebase");
-  /* The key-map depends on this setting, it needs to be reloaded. */
-  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
-  RNA_def_property_update(prop, 0, "rna_userdef_use_grease_pencil_version3_update");
-
-  prop = RNA_def_property(
-      srna, "use_grease_pencil_version3_convert_on_load", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3_convert_on_load", 1);
-  RNA_def_property_ui_text(prop,
-                           "Grease Pencil 3.0 Automatic Conversion",
-                           "Enable automatic conversion to grease pencil 3.0 data when opening a "
-                           "blendfile (only active if 'Grease Pencil 3.0' is enabled)");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 
   prop = RNA_def_property(srna, "use_viewport_debug", PROP_BOOLEAN, PROP_NONE);

@@ -1306,6 +1306,13 @@ typedef struct NodeTexEnvironment {
   char _pad[4];
 } NodeTexEnvironment;
 
+typedef struct NodeTexGabor {
+  NodeTexBase base;
+  /* Stores NodeGaborType. */
+  char type;
+  char _pad[7];
+} NodeTexGabor;
+
 typedef struct NodeTexGradient {
   NodeTexBase base;
   int gradient_type;
@@ -2221,6 +2228,11 @@ enum {
   SHD_PROJ_EQUIRECTANGULAR = 0,
   SHD_PROJ_MIRROR_BALL = 1,
 };
+
+typedef enum NodeGaborType {
+  SHD_GABOR_TYPE_2D = 0,
+  SHD_GABOR_TYPE_3D = 1,
+} NodeGaborType;
 
 enum {
   SHD_IMAGE_EXTENSION_REPEAT = 0,
