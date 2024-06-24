@@ -12,6 +12,7 @@
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
 
 #include "attribute_access_intern.hh"
 #include "physics_geometry_impl.hh"
@@ -403,11 +404,16 @@ struct PhysicsAccessInfo {
 
 /* Base class that adds some utility functions for cache access. */
 class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
+  using UpdateOnChange = void (*)(void *owner);
+
+ protected:
+  const PhysicsAccessInfo physics_access_;
+  const UpdateOnChange update_on_change_;
+
   bool layer_exists(const CustomData &custom_data) const
   {
     return CustomData_get_named_layer_index(&custom_data, data_type_, name_) != -1;
   }
-
 
   GAttributeReader try_get_cache_for_read(const void *owner) const
   {
@@ -416,7 +422,7 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
       return {};
     }
 
-    const CPPType &type = CPPType::get<T>();
+    const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
     const CustomData &custom_data = physics->body_data_;
     const int element_num = physics->body_num_;
     /* When the number of elements is zero, layers might have null data but still exist. */
@@ -471,14 +477,8 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 /**
  * Provider for builtin rigid body attributes.
  */
-template<typename T,
-         RigidBodyGetFn<T> GetFn,
-         RigidBodySetFn<T> SetFn = nullptr>
+template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBase {
-  using UpdateOnChange = void (*)(void *owner);
-  const PhysicsAccessInfo physics_access_;
-  const UpdateOnChange update_on_change_;
-
  public:
   BLI_STATIC_ASSERT(GetFn != nullptr, "A getter function must be defined");
 
@@ -550,7 +550,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
     return false;
   }
 
-  bool exists(const void */*owner*/) const final
+  bool exists(const void * /*owner*/) const final
   {
     return true;
   }
@@ -559,9 +559,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
 /**
  * Provider for builtin constraint attributes.
  */
-template<typename T,
-         ConstraintGetFn<T> GetFn,
-         ConstraintSetFn<T> SetFn = nullptr>
+template<typename T, ConstraintGetFn<T> GetFn, ConstraintSetFn<T> SetFn = nullptr>
 class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
   using EnsureOnAccess = void (*)(const void *owner);
