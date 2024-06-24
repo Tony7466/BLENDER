@@ -6732,22 +6732,6 @@ void calc_brush_strength_factors(const StrokeCache &cache,
                                  const Span<float> distances,
                                  const MutableSpan<float> factors)
 {
-  BLI_assert(factors.size() == distances.size());
-
-  // for (const int i : factors.index_range()) {
-  //   if (factors[i] == 0.0f) {
-  //     /* Skip already masked-out points, as they might be outside of the brush radius and be
-  //      * unaffected anyway. Having such large values in the calculations below might lead to
-  //      * non-finite values, leading to undesired results. */
-  //     continue;
-  //   }
-
-  //   // const float hardness = sculpt_apply_hardness(cache, distances[i]);
-  //   const float hardness = distances[i];
-  //   const float strength = BKE_brush_curve_strength(&brush, hardness, cache.radius);
-
-  //   factors[i] *= strength;
-  // }
   BKE_brush_calc_curve_factors(
       eBrushCurvePreset(brush.curve_preset), brush.curve, distances, cache.radius, factors);
 }
