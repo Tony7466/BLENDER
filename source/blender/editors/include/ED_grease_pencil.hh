@@ -571,7 +571,7 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
 
 }  // namespace image_render
 
-enum class GreasePencilInterpolateFlipMode : int8_t {
+enum class InterpolateFlipMode : int8_t {
   /* No flip. */
   None = 0,
   /* Flip always. */
@@ -580,7 +580,7 @@ enum class GreasePencilInterpolateFlipMode : int8_t {
   FlipAuto,
 };
 
-enum class GreasePencilInterpolateLayerMode : int8_t {
+enum class InterpolateLayerMode : int8_t {
   /* Only interpolate on the active layer. */
   Active = 0,
   /* Interpolate strokes on every layer. */

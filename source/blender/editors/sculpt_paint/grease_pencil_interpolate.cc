@@ -37,8 +37,8 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-using ed::greasepencil::GreasePencilInterpolateFlipMode;
-using ed::greasepencil::GreasePencilInterpolateLayerMode;
+using ed::greasepencil::InterpolateFlipMode;
+using ed::greasepencil::InterpolateLayerMode;
 
 /* -------------------------------------------------------------------- */
 /** \name Interpolate Operator
@@ -74,7 +74,7 @@ struct GreasePencilInterpolateOpData {
   float shift;
   /* Interpolation base factor for the active layer. */
   float init_factor;
-  GreasePencilInterpolateFlipMode flipmode;
+  InterpolateFlipMode flipmode;
   float smooth_factor;
   int smooth_steps;
 
@@ -197,12 +197,11 @@ static bool compute_auto_flip(const Span<float3> from_positions, const Span<floa
   return math::dot(from_last - from_first, to_last - to_first) < 0.0f;
 }
 
-static bke::CurvesGeometry interpolate_between_curves(
-    const GreasePencil &grease_pencil,
-    const bke::greasepencil::Layer &layer,
-    const InterpolationPairs &curve_pairs,
-    const float mix_factor,
-    const GreasePencilInterpolateFlipMode flip_mode)
+static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease_pencil,
+                                                      const bke::greasepencil::Layer &layer,
+                                                      const InterpolationPairs &curve_pairs,
+                                                      const float mix_factor,
+                                                      const InterpolateFlipMode flip_mode)
 {
   using namespace blender;
   using bke::greasepencil::Drawing;
@@ -289,13 +288,13 @@ static bke::CurvesGeometry interpolate_between_curves(
 
         dst_curve_offsets.append(std::max(from_points.size(), to_points.size()));
         switch (flip_mode) {
-          case GreasePencilInterpolateFlipMode::None:
+          case InterpolateFlipMode::None:
             dst_curve_flip.append(false);
             break;
-          case GreasePencilInterpolateFlipMode::Flip:
+          case InterpolateFlipMode::Flip:
             dst_curve_flip.append(true);
             break;
-          case GreasePencilInterpolateFlipMode::FlipAuto: {
+          case InterpolateFlipMode::FlipAuto: {
             dst_curve_flip.append(compute_auto_flip(from_positions.slice(from_points),
                                                     to_positions.slice(to_points)));
             break;
@@ -427,7 +426,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   const int current_frame = scene.r.cfra;
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
-  const auto flip_mode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
+  const auto flip_mode = InterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layer(layer_index);
@@ -526,17 +525,17 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
 
   data.shift = RNA_float_get(op.ptr, "shift");
   data.exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
-  data.flipmode = GreasePencilInterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
+  data.flipmode = InterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
   data.smooth_factor = RNA_float_get(op.ptr, "smooth_factor");
   data.smooth_steps = RNA_int_get(op.ptr, "smooth_steps");
   data.active_layer_index = *grease_pencil.get_layer_index(active_layer);
 
-  const auto layer_mode = GreasePencilInterpolateLayerMode(RNA_enum_get(op.ptr, "layers"));
+  const auto layer_mode = InterpolateLayerMode(RNA_enum_get(op.ptr, "layers"));
   switch (layer_mode) {
-    case GreasePencilInterpolateLayerMode::Active:
+    case InterpolateLayerMode::Active:
       data.layer_mask = IndexRange::from_single(data.active_layer_index);
       break;
-    case GreasePencilInterpolateLayerMode::All:
+    case InterpolateLayerMode::All:
       data.layer_mask = IndexMask::from_predicate(
           grease_pencil.layers().index_range(),
           GrainSize(1024),
@@ -718,15 +717,15 @@ static void grease_pencil_interpolate_cancel(bContext *C, wmOperator *op)
 static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
 {
   static const EnumPropertyItem flip_modes[] = {
-      {int(GreasePencilInterpolateFlipMode::None), "NONE", 0, "No Flip", ""},
-      {int(GreasePencilInterpolateFlipMode::Flip), "FLIP", 0, "Flip", ""},
-      {int(GreasePencilInterpolateFlipMode::FlipAuto), "AUTO", 0, "Automatic", ""},
+      {int(InterpolateFlipMode::None), "NONE", 0, "No Flip", ""},
+      {int(InterpolateFlipMode::Flip), "FLIP", 0, "Flip", ""},
+      {int(InterpolateFlipMode::FlipAuto), "AUTO", 0, "Automatic", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   static const EnumPropertyItem gpencil_interpolation_layer_items[] = {
-      {int(GreasePencilInterpolateLayerMode::Active), "ACTIVE", 0, "Active", ""},
-      {int(GreasePencilInterpolateLayerMode::All), "ALL", 0, "All Layers", ""},
+      {int(InterpolateLayerMode::Active), "ACTIVE", 0, "Active", ""},
+      {int(InterpolateLayerMode::All), "ALL", 0, "All Layers", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -772,7 +771,7 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "flip",
                flip_modes,
-               int(GreasePencilInterpolateFlipMode::FlipAuto),
+               int(InterpolateFlipMode::FlipAuto),
                "Flip Mode",
                "Invert destination stroke to match start and end with source stroke");
 
