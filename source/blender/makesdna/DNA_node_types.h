@@ -1788,8 +1788,11 @@ typedef struct NodeGeometrySampleIndex {
 } NodeGeometrySampleIndex;
 
 typedef struct NodeGeometrySampleSound {
-  int8_t spec_chan;
-  int8_t spec_freq;
+  int8_t specify_channel;
+  int8_t specify_frequency;
+  /** #NodeGeometrySampleSoundWindow. */
+  int8_t window;
+  char _pad[1];
 } NodeGeometrySampleSound;
 
 typedef struct NodeGeometryRaycast {
@@ -2917,3 +2920,10 @@ typedef enum NodeGeometryTransformMode {
   GEO_NODE_TRANSFORM_MODE_COMPONENTS = 0,
   GEO_NODE_TRANSFORM_MODE_MATRIX = 1,
 } NodeGeometryTransformMode;
+
+typedef enum NodeGeometrySampleSoundWindow {
+  GEO_NODE_SAMPLE_SOUND_WINDOW_NONE = 0,
+  GEO_NODE_SAMPLE_SOUND_WINDOW_HANN = 1,
+  GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING = 2,
+  GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN = 3,
+} NodeGeometrySampleSoundWindow;

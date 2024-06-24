@@ -16,6 +16,8 @@
 #include <map>
 
 #include "BLI_array.hh"
+#include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
@@ -45,35 +47,43 @@ NODE_STORAGE_FUNCS(NodeGeometrySampleSound);
 struct Sample {
   int time;
   float freq_start, freq_end;
+  float smoothness;
+  NodeGeometrySampleSoundWindow window;
 
   friend bool operator==(const Sample &lhs, const Sample &rhs)
   {
     return lhs.time == rhs.time && lhs.freq_start == rhs.freq_start &&
-           lhs.freq_end == rhs.freq_end;
+           lhs.freq_end == rhs.freq_end && lhs.smoothness == rhs.smoothness &&
+           lhs.window == rhs.window;
   }
-};
 
-struct SampleHash {
-  size_t operator()(const Sample &s) const noexcept
+  uint64_t hash() const
   {
-    size_t h1 = std::hash<int>{}(s.time);
-    size_t h2 = std::hash<float>{}(s.freq_start);
-    size_t h3 = std::hash<float>{}(s.freq_end);
-    return h1 ^ (h2 << 1) ^ (h3 << 2);
+    uint64_t temp = get_default_hash(
+        this->time, this->freq_start, this->freq_end, this->smoothness);
+    return get_default_hash(temp, this->window);
   }
 };
 
-// An LRU cache implementation similar to boost's lru_cache, but uses unordered_map.
-// FIXME: this is currently not thread safe, neither is boost's lru_cache. However for some reason
-// this crashes at a significantly lower rate than what boost's (ordered)map implementation does.
-template<class K, class V, class H> class LRUCache {
+// An LRU cache implementation similar to boost's lru_cache, but uses BLI_map and BLI_listbase.
+// FIXME: this is currently not thread safe, neither is boost's lru_cache.
+template<class K, class V> class LRUCache {
  public:
-  LRUCache(size_t capacity) : capacity_(capacity) {}
-  ~LRUCache() {}
+  LRUCache(size_t capacity) : capacity_(capacity)
+  {
+    static_assert(std::is_trivial_v<K>, "LRUCache only allows trivial key type");
+
+    list_.first = nullptr;
+    list_.last = nullptr;
+  }
+  ~LRUCache()
+  {
+    BLI_freelistN(&list_);
+  }
 
   bool contains(const K &key)
   {
-    return map_.find(key) != map_.end();
+    return map_.contains(key);
   }
 
   void insert(const K &key, const V &value)
@@ -83,54 +93,59 @@ template<class K, class V, class H> class LRUCache {
         evict();
       }
 
-      list_.push_front(key);
-      map_[key] = std::make_pair(value, list_.begin());
+      auto node = MEM_cnew<LinkData>("LRUCache ListBase Node");
+      auto data = MEM_cnew<K>("LRUCache ListBase Node Data");
+      memcpy(data, &key, sizeof(*data));
+      node->data = data;
+
+      BLI_addhead(&list_, node);
+      map_.add(key, std::make_pair(value, list_.first));
     }
   }
 
   V get(const K &key)
   {
-    auto i = map_.find(key);
-    auto j = i->second.second;
-    if (j != list_.begin()) {
+    auto i = map_.lookup(key);
+    auto j = i.second;
+    if (j != list_.first) {
       // FIXME: would crash here
-      list_.erase(j);
-      list_.push_front(key);
+      BLI_remlink(&list_, j);
+      BLI_addhead(&list_, j);
 
-      j = list_.begin();
-      const V &value = i->second.first;
-      map_[key] = std::make_pair(value, j);
+      const V &value = i.first;
+      map_.add(key, std::make_pair(value, list_.first));
 
       return value;
     }
     else {
-      return i->second.first;
+      return i.first;
     }
   }
 
   void clear()
   {
     map_.clear();
-    list_.clear();
+    BLI_freelistN(&list_);
+    BLI_listbase_clear(&list_);
   }
 
  private:
-  std::list<K> list_;
-  std::unordered_map<K, std::pair<V, typename std::list<K>::iterator>, H> map_;
+  ListBase list_;
+  Map<K, std::pair<V, void *>> map_;
   size_t capacity_;
 
   void evict()
   {
-    auto i = --list_.end();
-    map_.erase(*i);
-    list_.erase(i);
+    auto i = static_cast<LinkData *>(list_.last);
+    map_.remove(*static_cast<K *>(i->data));
+    BLI_freelinkN(&list_, i);
   }
 };
 
-using CacheType = LRUCache<Sample, float, SampleHash>;
+using CacheType = LRUCache<Sample, float>;
 
 // TODO: redesign the whole caching system when everything's settled down.
-static std::map<const bSound *, std::shared_ptr<CacheType>> g_caches;
+static Map<const bSound *, std::shared_ptr<CacheType>> g_caches;
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -142,24 +157,26 @@ static void node_declare(NodeDeclarationBuilder &b)
   // TODO: complete all functionalities
   b.add_input<decl::Sound>("Sound");
   b.add_input<decl::Float>("Time").min(0).supports_field();
-  // b.add_input<decl::Float>("Smoothness").min(0).max(1);
+  b.add_input<decl::Float>("Smoothness").min(0).max(1).default_value(0.1);
   // b.add_input<decl::Int>("Channel Index").min(0).max(7).supports_field();
   b.add_input<decl::Float>("Start Frequency").min(0).supports_field();
   b.add_input<decl::Float>("End Frequency").min(0).supports_field();
-  b.add_output<decl::Float>("Amplitude").dependent_field({1, 2, 3});
+  b.add_output<decl::Float>("Amplitude").dependent_field({1, 3, 4});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "spec_chan", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "spec_freq", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "specify_channel", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "specify_frequency", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "window", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometrySampleSound *data = MEM_cnew<NodeGeometrySampleSound>(__func__);
-  data->spec_chan = false;
-  data->spec_freq = true;
+  data->specify_channel = false;
+  data->specify_frequency = true;
+  data->window = GEO_NODE_SAMPLE_SOUND_WINDOW_HANN;
   node->storage = data;
 }
 
@@ -167,25 +184,32 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 class SampleSoundFunction : public mf::MultiFunction {
   const bSound *sound_;
-  std::shared_ptr<CacheType> cache_;
-  const bool spec_chan_;
-  const bool spec_freq_;
+  const float smoothness_;
+  const bool specify_channel_;
+  const bool specify_frequency_;
+  const NodeGeometrySampleSoundWindow window_;
   const double frame_rate_;
+
+  std::shared_ptr<CacheType> cache_;
 
   AUD_Device *device_;
   AUD_Handle *handle_;
 
  public:
   SampleSoundFunction(const bSound *sound,
-                      std::shared_ptr<CacheType> cache,
-                      const bool spec_chan,
-                      const bool spec_freq,
-                      const double frame_rate)
+                      const float smoothness,
+                      const bool specify_channel,
+                      const bool specify_frequency,
+                      const NodeGeometrySampleSoundWindow window_,
+                      const double frame_rate,
+                      std::shared_ptr<CacheType> cache)
       : sound_(sound),
-        cache_(cache),
-        spec_chan_(spec_chan),
-        spec_freq_(spec_freq),
-        frame_rate_(frame_rate)
+        smoothness_(smoothness),
+        specify_channel_(specify_channel),
+        specify_frequency_(specify_frequency),
+        window_(window_),
+        frame_rate_(frame_rate),
+        cache_(cache)
   {
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -214,7 +238,8 @@ class SampleSoundFunction : public mf::MultiFunction {
         .specs{
             .rate = AUD_SampleRate(sound_->samplerate), .channels = AUD_CHANNELS_MONO,
             // TODO: support specifying channels
-            // .channels = spec_chan_ ? AUD_Channels(sound_->audio_channels) : AUD_CHANNELS_MONO,
+            // .channels = specify_channel_ ? AUD_Channels(sound_->audio_channels) :
+            // AUD_CHANNELS_MONO,
         }};
 
     device_ = AUD_Device_open("read", specs, 1024, "Sample Sound");
@@ -230,16 +255,16 @@ class SampleSoundFunction : public mf::MultiFunction {
     MutableSpan<float> dst = params.uninitialized_single_output<float>(3, "Amplitude");
 
     mask.foreach_index([&](int64_t i) {
-      const int sample_idx = times[i] * sound_->samplerate;
+      const int sample_i = times[i] * sound_->samplerate;
 
       {
         Sample key;
-        if (spec_freq_) {
-          key = {sample_idx, freqs_start[i], freqs_end[i]};
+        if (specify_frequency_) {
+          key = {sample_i, freqs_start[i], freqs_end[i], smoothness_, window_};
         }
         else {
           // XXX: better get rid of special values (i.e. `-1` here)
-          key = {sample_idx, -1, -1};
+          key = {sample_i, -1, -1, smoothness_, GEO_NODE_SAMPLE_SOUND_WINDOW_NONE};
         }
 
         if (cache_->contains(key)) {
@@ -248,29 +273,59 @@ class SampleSoundFunction : public mf::MultiFunction {
         }
       }
 
-      // TODO: support variable sampling step instead of simply rely on scene fps. This actually
-      // causes problems when the time step is smaller than one frame_duration. Maybe combine
-      // with temporal smoothing and/or ADSR envelopes?
-      const int n = sound_->samplerate / frame_rate_;
-      Array<float> buf(n);
+      const int sample_n = sound_->samplerate * smoothness_ + 1;
+      Array<float> buf(sample_n);
 
       AUD_Device_lock(device_);
 
       // FIXME: eliminate floating-point errors
-      // XXX: would seek to negative position if times[i] is less than 0. Should we clamp here or
-      // let user handle this?
-      AUD_Handle_setPosition(handle_, double(sample_idx) / double(sound_->samplerate));
-      AUD_Device_read(device_, (unsigned char *)buf.data(), n);
-      if (spec_freq_) {
+      const double position = double(sample_i) / double(sound_->samplerate) - smoothness_;
+      if (position < 0) {
+        const int empty_n = (-position * sound_->samplerate);
+        const int read_n = sample_n - empty_n;
+
+        buf.fill(0);
+        AUD_Handle_setPosition(handle_, 0);
+        // XXX: pointer arithmetic
+        AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data() + empty_n), read_n);
+      }
+      else {
+        AUD_Handle_setPosition(handle_, position);
+        AUD_Device_read(device_, reinterpret_cast<unsigned char *>(buf.data()), sample_n);
+      }
+
+      if (specify_frequency_) {
 #  ifdef WITH_FFTW3
-        // TODO: windowing, temporal smoothing, etc.
-        fftwf_complex *fft_buf = (fftwf_complex *)fftwf_malloc(sizeof(*fft_buf) * (n / 2 + 1));
-        fftwf_plan plan = fftwf_plan_dft_r2c_1d(n, buf.data(), fft_buf, FFTW_ESTIMATE);
+        switch (window_) {
+          case GEO_NODE_SAMPLE_SOUND_WINDOW_NONE:
+            break;
+          case GEO_NODE_SAMPLE_SOUND_WINDOW_HANN:
+            for (size_t i = 0; i < buf.size(); ++i) {
+              buf[i] *= 0.5 - 0.5 * math::cos((2 * math::numbers::pi * i) / sample_n);
+            }
+            break;
+          case GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING:
+            for (size_t i = 0; i < buf.size(); ++i) {
+              buf[i] *= 0.54 - 0.46 * math::cos((2 * math::numbers::pi * i) / sample_n);
+            }
+            break;
+          case GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN:
+            for (size_t i = 0; i < buf.size(); ++i) {
+              buf[i] *= 0.42 - 0.5 * math::cos((2 * math::numbers::pi * i) / sample_n) +
+                        0.08 * math::cos((4 * math::numbers::pi * i) / sample_n);
+            }
+            break;
+        }
+
+        fftwf_complex *fft_buf = (fftwf_complex *)fftwf_malloc(sizeof(*fft_buf) *
+                                                               (sample_n / 2 + 1));
+        fftwf_plan plan = fftwf_plan_dft_r2c_1d(sample_n, buf.data(), fft_buf, FFTW_ESTIMATE);
         fftwf_execute(plan);
 
         const int bin_start = math::clamp(
-            int(freqs_start[i] / sound_->samplerate * n / 2), 0, n / 2);
-        const int bin_end = math::clamp(int(freqs_end[i] / sound_->samplerate * n / 2), 0, n / 2);
+            int(freqs_start[i] / sound_->samplerate * sample_n / 2), 0, sample_n / 2);
+        const int bin_end = math::clamp(
+            int(freqs_end[i] / sound_->samplerate * sample_n / 2), 0, sample_n / 2);
         float result = 0;
         for (size_t i = bin_start; i < bin_end; ++i) {
           result += math::abs(fft_buf[i][0]) / (bin_end - bin_start + 1);
@@ -280,7 +335,7 @@ class SampleSoundFunction : public mf::MultiFunction {
         fftwf_destroy_plan(plan);
         fftwf_free(fft_buf);
 
-        cache_->insert({sample_idx, freqs_start[i], freqs_end[i]}, result);
+        cache_->insert({sample_i, freqs_start[i], freqs_end[i], smoothness_, window_}, result);
 #  else  // WITH_FFTW3
         dst[i] = 0;
 #  endif
@@ -289,11 +344,11 @@ class SampleSoundFunction : public mf::MultiFunction {
         // TODO: find better averaging algorithms & temporal smoothing
         float result = 0;
         for (float sample : buf) {
-          result += math::abs(sample) / n;
+          result += math::abs(sample) / sample_n;
         }
         dst[i] = result;
 
-        cache_->insert({sample_idx, -1, -1}, result);
+        cache_->insert({sample_i, -1, -1, smoothness_, GEO_NODE_SAMPLE_SOUND_WINDOW_NONE}, result);
       }
 
       AUD_Device_unlock(device_);
@@ -309,24 +364,24 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  if (g_caches.find(sound) == g_caches.end()) {
-    // TODO: dynamic/configurable cache size?
-    g_caches.insert(std::make_pair(sound, std::make_shared<CacheType>(16384)));
-  }
+  // TODO: dynamic/configurable cache size?
+  auto cache = g_caches.lookup_or_add(sound, std::make_shared<CacheType>(16384));
 
   const NodeGeometrySampleSound &storage = node_storage(params.node());
-  const bool spec_chan = bool(storage.spec_chan);
-  const bool spec_freq = bool(storage.spec_freq);
+  const bool specify_channel = bool(storage.specify_channel);
+  const bool specify_frequency = bool(storage.specify_frequency);
+  const NodeGeometrySampleSoundWindow window = NodeGeometrySampleSoundWindow(storage.window);
 
   const Scene *scene = DEG_get_input_scene(params.depsgraph());
   const double frame_rate = double(scene->r.frs_sec) / double(scene->r.frs_sec_base);
 
+  const float smoothness = params.extract_input<float>("Smoothness");
   Field<float> times = params.extract_input<Field<float>>("Time");
   Field<float> freqs_start = params.extract_input<Field<float>>("Start Frequency");
   Field<float> freqs_end = params.extract_input<Field<float>>("End Frequency");
 
   auto fn = std::make_shared<SampleSoundFunction>(
-      sound, g_caches[sound], spec_chan, spec_freq, frame_rate);
+      sound, smoothness, specify_channel, specify_frequency, window, frame_rate, cache);
   auto op = FieldOperation::Create(
       std::move(fn), {std::move(times), std::move(freqs_start), std::move(freqs_end)});
   params.set_output("Amplitude", std::move(Field<float>(op)));

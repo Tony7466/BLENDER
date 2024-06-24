@@ -9772,23 +9772,38 @@ static void def_geo_string_to_curves(StructRNA *srna)
 
 static void def_geo_sample_sound(StructRNA *srna)
 {
+  static const EnumPropertyItem rna_node_geometry_sample_sound_window_function[] = {
+      {GEO_NODE_SAMPLE_SOUND_WINDOW_NONE, "NONE", 0, "None", "None"},
+      {GEO_NODE_SAMPLE_SOUND_WINDOW_HANN, "HANN", 0, "Hann", "Hann"},
+      {GEO_NODE_SAMPLE_SOUND_WINDOW_HAMMING, "HAMMING", 0, "Hamming", "Hamming"},
+      {GEO_NODE_SAMPLE_SOUND_WINDOW_BLACKMAN, "BLACKMAN", 0, "Blackman", "Blackman"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   RNA_def_struct_sdna_from(srna, "NodeGeometrySampleSound", "storage");
 
   PropertyRNA *prop;
-  prop = RNA_def_property(srna, "spec_chan", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "specify_channel", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Specify channel",
                            // TODO: fill in the tooltips
                            "Specify channel");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
-  prop = RNA_def_property(srna, "spec_freq", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "specify_frequency", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Specify frequency", "Specify frequency");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "window", PROP_ENUM, PROP_NONE);
   RNA_def_property_ui_text(prop,
-                           "Specify frequency",
-                           "Specify frequency");
+                           "Window function",
+                           // TODO: fill in the tooltips
+                           "Window function");
+  RNA_def_property_enum_sdna(prop, nullptr, "window");
+  RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_window_function);
+  RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_WINDOW_HANN);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
-
 
 static void rna_def_menu_switch_item(BlenderRNA *brna)
 {
