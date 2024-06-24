@@ -398,7 +398,7 @@ class IMAGE_MT_uvs_unwrap(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("uv.unwrap")
+        layout.operator_enum("uv.unwrap", "method")
 
         layout.separator()
 

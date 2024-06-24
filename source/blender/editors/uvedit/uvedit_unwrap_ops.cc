@@ -2796,7 +2796,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
   static const EnumPropertyItem method_items[] = {
       {0, "ANGLE_BASED", 0, "Angle Based", ""},
       {1, "CONFORMAL", 0, "Conformal", ""},
-      {2, "SLIM", 0, "SLIM", ""},
+      {2, "MINIMUM_STRETCH", 0, "Minimum Stretch", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -2814,7 +2814,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
   ot->ui = unwrap_draw;
 
   /* properties */
-  RNA_def_enum(ot->srna,
+  ot->prop = RNA_def_enum(ot->srna,
                "method",
                method_items,
                _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper,
