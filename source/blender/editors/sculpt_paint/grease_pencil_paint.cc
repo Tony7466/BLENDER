@@ -269,6 +269,8 @@ struct PaintOperationExecutor {
   std::optional<ColorGeometry4f> fill_color_;
   float softness_;
 
+  bool use_settings_random_;
+
   bke::greasepencil::Drawing *drawing_;
 
   PaintOperationExecutor(const bContext &C)
@@ -281,6 +283,7 @@ struct PaintOperationExecutor {
     brush_ = BKE_paint_brush(paint);
     settings_ = brush_->gpencil_settings;
 
+    use_settings_random_ = (settings_->flag & GP_BRUSH_GROUP_RANDOM) != 0;
     const bool use_vertex_color = (scene_->toolsettings->gp_paint->mode ==
                                    GPPAINT_FLAG_USE_VERTEXCOLOR);
     if (use_vertex_color) {
@@ -661,7 +664,7 @@ struct PaintOperationExecutor {
     }
 
     MutableSpan<float3> curve_positions = positions.slice(curves.points_by_curve()[active_curve]);
-    if (settings_->draw_jitter > 0.0f) {
+    if (use_settings_random_ && settings_->draw_jitter > 0.0f) {
       this->active_jitter(self,
                           new_points_num,
                           brush_radius_px,
