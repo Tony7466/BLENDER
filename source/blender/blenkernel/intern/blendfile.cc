@@ -1663,11 +1663,9 @@ namespace blender::bke::blendfile {
 PartialWriteContext::PartialWriteContext(StringRefNull reference_root_filepath)
     : reference_root_filepath_(reference_root_filepath)
 {
-  memset(&this->bmain, 0, sizeof(this->bmain));
   BKE_main_init(this->bmain);
   if (!reference_root_filepath_.empty()) {
-    BLI_strncpy(
-        this->bmain.filepath, reference_root_filepath_.c_str(), sizeof(this->bmain.filepath));
+    STRNCPY(this->bmain.filepath, reference_root_filepath_.c_str());
   }
   /* Only for IDs matching existing data in current G_MAIN. */
   matching_uid_map_ = BKE_main_idmap_create(&this->bmain, false, nullptr, MAIN_IDMAP_TYPE_UID);
