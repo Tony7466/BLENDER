@@ -6644,12 +6644,8 @@ void calc_distance_falloff(const SculptSession &ss,
   BLI_assert(verts.size() == r_distances.size());
 
   const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
-  if (falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE || (!ss.cache && !ss.filter_cache)) {
-    for (const int i : verts.index_range()) {
-      r_distances[i] = math::distance_squared(test_location, positions[verts[i]]);
-    }
-  }
-  else {
+  if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
+    /* The tube falloff shape requires the cached view normal. */
     const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
     float4 test_plane;
     plane_from_point_normal_v3(test_plane, test_location, view_normal);
@@ -6657,6 +6653,11 @@ void calc_distance_falloff(const SculptSession &ss,
       float3 projected;
       closest_to_plane_normalized_v3(projected, test_plane, positions[verts[i]]);
       r_distances[i] = math::distance_squared(projected, test_location);
+    }
+  }
+  else {
+    for (const int i : verts.index_range()) {
+      r_distances[i] = math::distance_squared(test_location, positions[verts[i]]);
     }
   }
 
