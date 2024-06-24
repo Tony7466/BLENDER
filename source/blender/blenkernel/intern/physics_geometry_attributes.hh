@@ -14,6 +14,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 
+#include "DNA_customdata_types.h"
 #include "attribute_access_intern.hh"
 #include "physics_geometry_impl.hh"
 
@@ -40,15 +41,12 @@ template<typename ElemT, RigidBodyGetFn<ElemT> GetFn>
 class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
-  Span<ElemT> cache_;
   // XXX causes mystery crashes, investigate ...
   // std::shared_lock<std::shared_mutex> lock_;
 
  public:
-  VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl, const Span<ElemT> cache = {})
-      : VArrayImpl<ElemT>(impl.rigid_bodies.size()),
-        impl_(&impl),
-        cache_(cache) /*, lock_(impl_->data_mutex)*/
+  VArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
+      : VArrayImpl<ElemT>(impl.rigid_bodies.size()), impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
     // lock_.lock();
   }
@@ -64,57 +62,31 @@ class VArrayImpl_For_PhysicsBodies final : public VArrayImpl<ElemT> {
  private:
   ElemT get(const int64_t index) const override
   {
-    if constexpr (GetFn) {
-      return GetFn(*impl_->rigid_bodies[index]);
-    }
-    return cache_[index];
+    return GetFn(*impl_->rigid_bodies[index]);
   }
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        dst[i] = GetFn(*impl_->rigid_bodies[i]);
-      }
-      else {
-        dst[i] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(*impl_->rigid_bodies[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i]));
-      }
-      else {
-        new (dst + i) ElemT(cache_[i]);
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        dst[pos] = GetFn(*impl_->rigid_bodies[i]);
-      }
-      else {
-        dst[pos] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(*impl_->rigid_bodies[i]); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
-      }
-      else {
-        new (dst + pos) ElemT(cache_[i]);
-      }
+      new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
     });
   }
 };
@@ -123,16 +95,13 @@ template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetF
 class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
-  Span<ElemT> cache_;
   // XXX causes mystery crashes, investigate ...
   // std::unique_lock<std::shared_mutex> lock_;
 
  public:
-  VMutableArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl,
-                                      const Span<ElemT> cache = {})
+  VMutableArrayImpl_For_PhysicsBodies(const PhysicsGeometryImpl &impl)
       : VMutableArrayImpl<ElemT>(impl.rigid_bodies.size()),
-        impl_(&impl),
-        cache_(cache) /*, lock_(impl_->data_mutex)*/
+        impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
     // lock_.lock();
   }
@@ -150,10 +119,7 @@ class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT
  private:
   ElemT get(const int64_t index) const override
   {
-    if constexpr (GetFn) {
-      return GetFn(*impl_->rigid_bodies[index]);
-    }
-    return cache_[index];
+    return GetFn(*impl_->rigid_bodies[index]);
   }
 
   void set(const int64_t index, ElemT value) override
@@ -163,49 +129,26 @@ class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        dst[i] = GetFn(*impl_->rigid_bodies[i]);
-      }
-      else {
-        dst[i] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(*impl_->rigid_bodies[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i]));
-      }
-      else {
-        new (dst + i) ElemT(cache_[i]);
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*impl_->rigid_bodies[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        dst[pos] = GetFn(*impl_->rigid_bodies[i]);
-      }
-      else {
-        dst[pos] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(*impl_->rigid_bodies[i]); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
-      }
-      else {
-        new (dst + pos) ElemT(cache_[i]);
-      }
+      new (dst + pos) ElemT(GetFn(*impl_->rigid_bodies[i]));
     });
   }
 };
@@ -214,15 +157,12 @@ template<typename ElemT, ConstraintGetFn<ElemT> GetFn>
 class VArrayImpl_For_PhysicsConstraints final : public VArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
-  Span<ElemT> cache_;
   // XXX causes mystery crashes, investigate ...
   // std::shared_lock<std::shared_mutex> lock_;
 
  public:
-  VArrayImpl_For_PhysicsConstraints(const PhysicsGeometryImpl &impl, const Span<ElemT> cache)
-      : VArrayImpl<ElemT>(impl.constraints.size()),
-        impl_(&impl),
-        cache_(cache) /*, lock_(impl_->data_mutex)*/
+  VArrayImpl_For_PhysicsConstraints(const PhysicsGeometryImpl &impl)
+      : VArrayImpl<ElemT>(impl.constraints.size()), impl_(&impl) /*, lock_(impl_->data_mutex)*/
   {
     // lock_.lock();
   }
@@ -238,57 +178,31 @@ class VArrayImpl_For_PhysicsConstraints final : public VArrayImpl<ElemT> {
  private:
   ElemT get(const int64_t index) const override
   {
-    if constexpr (GetFn) {
-      return GetFn(impl_->constraints[index]);
-    }
-    return cache_[index];
+    return GetFn(impl_->constraints[index]);
   }
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        dst[i] = GetFn(impl_->constraints[i]);
-      }
-      else {
-        dst[i] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(impl_->constraints[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        new (dst + i) ElemT(GetFn(impl_->constraints[i]));
-      }
-      else {
-        new (dst + i) ElemT(cache_[i]);
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(impl_->constraints[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        dst[pos] = GetFn(impl_->constraints[i]);
-      }
-      else {
-        dst[pos] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(impl_->constraints[i]); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        new (dst + pos) ElemT(GetFn(impl_->constraints[i]));
-      }
-      else {
-        new (dst + pos) ElemT(cache_[i]);
-      }
+      new (dst + pos) ElemT(GetFn(impl_->constraints[i]));
     });
   }
 };
@@ -297,16 +211,13 @@ template<typename ElemT, ConstraintGetFn<ElemT> GetFn, ConstraintSetFn<ElemT> Se
 class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<ElemT> {
  private:
   const PhysicsGeometryImpl *impl_;
-  const Span<ElemT> cache_;
   // XXX causes mystery crashes, investigate ...
   // std::unique_lock<std::shared_mutex> lock_;
 
  public:
-  VMutableArrayImpl_For_PhysicsConstraints(const PhysicsGeometryImpl &impl,
-                                           const Span<ElemT> cache)
-      : VMutableArrayImpl<ElemT>(impl.constraints.size()),
-        impl_(&impl),
-        cache_(cache) /*, lock_(impl_->data_mutex)*/
+  VMutableArrayImpl_For_PhysicsConstraints(const PhysicsGeometryImpl &impl)
+      : VMutableArrayImpl<ElemT>(impl.constraints.size()), impl_(&impl)
+  /*, lock_(impl_->data_mutex)*/
   {
     // lock_.lock();
   }
@@ -324,10 +235,7 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
  private:
   ElemT get(const int64_t index) const override
   {
-    if constexpr (GetFn) {
-      return GetFn(impl_->constraints[index]);
-    }
-    return cache_[index];
+    return GetFn(impl_->constraints[index]);
   }
 
   void set(const int64_t index, ElemT value) override
@@ -337,49 +245,26 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        dst[i] = GetFn(impl_->constraints[i]);
-      }
-      else {
-        dst[i] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { dst[i] = GetFn(impl_->constraints[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) {
-      if constexpr (GetFn) {
-        new (dst + i) ElemT(GetFn(impl_->constraints[i]));
-      }
-      else {
-        new (dst + i) ElemT(cache_[i]);
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(impl_->constraints[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        dst[pos] = GetFn(impl_->constraints[i]);
-      }
-      else {
-        dst[pos] = cache_[i];
-      }
-    });
+    mask.foreach_index_optimized<int64_t>(
+        [&](const int64_t i, const int64_t pos) { dst[pos] = GetFn(impl_->constraints[i]); });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      if constexpr (GetFn) {
-        new (dst + pos) ElemT(GetFn(impl_->constraints[i]));
-      }
-      else {
-        new (dst + pos) ElemT(cache_[i]);
-      }
+      new (dst + pos) ElemT(GetFn(impl_->constraints[i]));
     });
   }
 };
@@ -404,11 +289,27 @@ struct PhysicsAccessInfo {
 
 /* Base class that adds some utility functions for cache access. */
 class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
+ public:
   using UpdateOnChange = void (*)(void *owner);
 
  protected:
   const PhysicsAccessInfo physics_access_;
   const UpdateOnChange update_on_change_;
+
+ public:
+  BuiltinPhysicsAttributeBase(std::string attribute_name,
+                              const AttrDomain domain,
+                              const eCustomDataType data_type,
+                              const DeletableEnum deletable,
+                              const PhysicsAccessInfo physics_access,
+                              const UpdateOnChange update_on_change,
+                              const AttributeValidator validator)
+      : BuiltinAttributeProvider(
+            std::move(attribute_name), domain, data_type, deletable, validator),
+        physics_access_(physics_access),
+        update_on_change_(update_on_change)
+  {
+  }
 
   bool layer_exists(const CustomData &custom_data) const
   {
@@ -455,7 +356,7 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
     }
 
     /* When the number of elements is zero, layers might have null data but still exist. */
-    const CPPType &type = CPPType::get<T>();
+    const CPPType &type = *custom_data_type_to_cpp_type(data_type_);
     const int element_num = physics->body_num_;
     if (element_num == 0) {
       if (this->layer_exists(custom_data)) {
@@ -480,21 +381,19 @@ class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
 template<typename T, RigidBodyGetFn<T> GetFn, RigidBodySetFn<T> SetFn = nullptr>
 class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBase {
  public:
-  BLI_STATIC_ASSERT(GetFn != nullptr, "A getter function must be defined");
-
   BuiltinRigidBodyAttributeProvider(std::string attribute_name,
                                     const AttrDomain domain,
                                     const DeletableEnum deletable,
                                     const PhysicsAccessInfo physics_access,
                                     const UpdateOnChange update_on_change,
                                     const AttributeValidator validator = {})
-      : BuiltinAttributeProvider(std::move(attribute_name),
-                                 domain,
-                                 cpp_type_to_custom_data_type(CPPType::get<T>()),
-                                 deletable,
-                                 validator),
-        physics_access_(physics_access),
-        update_on_change_(update_on_change)
+      : BuiltinPhysicsAttributeBase(std::move(attribute_name),
+                                    domain,
+                                    cpp_type_to_custom_data_type(CPPType::get<T>()),
+                                    deletable,
+                                    physics_access,
+                                    update_on_change,
+                                    validator)
   {
   }
 
@@ -505,7 +404,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
-    if (physics->impl_->is_cached) {
+    if (physics->impl().is_cached) {
       return try_get_cache_for_read(owner);
     }
 
@@ -524,7 +423,7 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
       return {};
     }
 
-    if (physics->impl_->is_cached) {
+    if (physics->impl().is_cached) {
       return try_get_cache_for_write(owner);
     }
 
@@ -560,11 +459,8 @@ class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBa
  * Provider for builtin constraint attributes.
  */
 template<typename T, ConstraintGetFn<T> GetFn, ConstraintSetFn<T> SetFn = nullptr>
-class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributeProvider {
-  using UpdateOnChange = void (*)(void *owner);
+class BuiltinConstraintAttributeProvider final : public BuiltinPhysicsAttributeBase {
   using EnsureOnAccess = void (*)(const void *owner);
-  const PhysicsAccessInfo physics_access_;
-  const UpdateOnChange update_on_change_;
   const EnsureOnAccess ensure_on_access_;
 
  public:
@@ -575,13 +471,13 @@ class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributePro
                                      const UpdateOnChange update_on_change,
                                      const AttributeValidator validator = {},
                                      const EnsureOnAccess ensure_on_access = nullptr)
-      : BuiltinAttributeProvider(std::move(attribute_name),
-                                 domain,
-                                 cpp_type_to_custom_data_type(CPPType::get<T>()),
-                                 deletable,
-                                 validator),
-        physics_access_(physics_access),
-        update_on_change_(update_on_change),
+      : BuiltinPhysicsAttributeBase(std::move(attribute_name),
+                                    domain,
+                                    cpp_type_to_custom_data_type(CPPType::get<T>()),
+                                    deletable,
+                                    physics_access,
+                                    update_on_change,
+                                    validator),
         ensure_on_access_(ensure_on_access)
   {
   }
@@ -597,13 +493,12 @@ class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributePro
       ensure_on_access_(owner);
     }
 
-    Span<T> cache = {};
-    if constexpr (GetCacheFn) {
-      cache = GetCacheFn(physics->impl());
+    if (physics->impl().is_cached) {
+      return try_get_cache_for_read(owner);
     }
 
     GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsConstraints<T, GetFn>>(
-        physics->impl(), cache);
+        physics->impl());
 
     return {std::move(varray), domain_, nullptr};
   }
@@ -622,14 +517,13 @@ class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributePro
       ensure_on_access_(owner);
     }
 
-    Span<T> cache = {};
-    if constexpr (GetCacheFn) {
-      cache = GetCacheFn(physics->impl());
+    if (physics->impl().is_cached) {
+      return try_get_cache_for_write(owner);
     }
 
     GVMutableArray varray =
         VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsConstraints<T, GetFn, SetFn>>(
-            physics->impl(), cache);
+            physics->impl());
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {

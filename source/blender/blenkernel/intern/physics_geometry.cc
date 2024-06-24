@@ -371,7 +371,8 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
   body_num_ = other.body_num_;
   constraint_num_ = other.constraint_num_;
   CustomData_copy(&other.body_data_, &this->body_data_, CD_MASK_ALL, other.body_num_);
-  CustomData_copy(&other.constraint_data_, &this->constraint_data_, CD_MASK_ALL, other.constraint_num_);
+  CustomData_copy(
+      &other.constraint_data_, &this->constraint_data_, CD_MASK_ALL, other.constraint_num_);
 
   impl_ = other.impl_;
   if (impl_) {

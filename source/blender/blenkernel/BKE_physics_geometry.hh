@@ -232,6 +232,8 @@ class PhysicsGeometry {
 
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
+
+  friend class BuiltinPhysicsAttributeBase;
 };
 
 void move_physics_data(const PhysicsGeometry &from,
