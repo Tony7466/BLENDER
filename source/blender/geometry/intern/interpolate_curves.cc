@@ -164,6 +164,10 @@ static void resample_curve_attribute(const bke::CurvesGeometry &src_curves,
                                      const float mix_weight,
                                      const bool use_evaluated_points)
 {
+  if (mix_weight == 0.0f) {
+    return;
+  }
+
   const CPPType &type = src_data.type();
   BLI_assert(dst_data.type() == type);
 
@@ -335,50 +339,33 @@ void interpolate_curves(const CurvesGeometry &from_curves,
         /* For every attribute, evaluate attributes from every curve in the range in the original
          * curve's "evaluated points", then use linear interpolation to sample to the result. */
         for (const int i_attribute : attributes.dst.index_range()) {
-          if (attributes.src_from[i_attribute].is_empty()) {
-            BLI_assert(!attributes.src_to[i_attribute].is_empty());
-            resample_curve_attribute(to_curves,
-                                     dst_curves,
-                                     attributes.src_to[i_attribute],
-                                     attributes.dst[i_attribute],
-                                     segment_range,
-                                     to_sample_indices,
-                                     to_sample_factors,
-                                     1.0f,
-                                     false);
-          }
-          else if (attributes.src_to[i_attribute].is_empty()) {
-            resample_curve_attribute(from_curves,
-                                     dst_curves,
-                                     attributes.src_from[i_attribute],
-                                     attributes.dst[i_attribute],
-                                     segment_range,
-                                     from_sample_indices,
-                                     from_sample_factors,
-                                     1.0f,
-                                     false);
-          }
-          else {
-            /* Resample 'from' curves, then mix with 'to' curves. */
-            resample_curve_attribute(from_curves,
-                                     dst_curves,
-                                     attributes.src_from[i_attribute],
-                                     attributes.dst[i_attribute],
-                                     segment_range,
-                                     from_sample_indices,
-                                     from_sample_factors,
-                                     1.0f,
-                                     false);
-            resample_curve_attribute(to_curves,
-                                     dst_curves,
-                                     attributes.src_to[i_attribute],
-                                     attributes.dst[i_attribute],
-                                     segment_range,
-                                     to_sample_indices,
-                                     to_sample_factors,
-                                     mix_factor,
-                                     false);
-          }
+          /* Mix factors depend on which of the from/to curves geometries has attribute data. If
+           * only one geometry has attribute data it gets the full mix weight. */
+          const bool from_has_data = !attributes.src_from[i_attribute].is_empty();
+          const bool to_has_data = !attributes.src_to[i_attribute].is_empty();
+          BLI_assert(from_has_data || to_has_data);
+
+          /* Resample 'from' curves, then mix with 'to' curves. */
+          const float from_mix_factor = from_has_data ? 1.0f : 0.0f;
+          const float to_mix_factor = from_has_data ? (to_has_data ? mix_factor : 0.0f) : 1.0f;
+          resample_curve_attribute(from_curves,
+                                   dst_curves,
+                                   attributes.src_from[i_attribute],
+                                   attributes.dst[i_attribute],
+                                   segment_range,
+                                   from_sample_indices,
+                                   from_sample_factors,
+                                   from_mix_factor,
+                                   false);
+          resample_curve_attribute(to_curves,
+                                   dst_curves,
+                                   attributes.src_to[i_attribute],
+                                   attributes.dst[i_attribute],
+                                   segment_range,
+                                   to_sample_indices,
+                                   to_sample_factors,
+                                   to_mix_factor,
+                                   false);
         }
 
         /* Interpolate the evaluated positions to the resampled curves. */
