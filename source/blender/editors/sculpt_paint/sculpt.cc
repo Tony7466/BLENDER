@@ -6710,7 +6710,7 @@ void apply_hardness_to_distances(const StrokeCache &cache, const MutableSpan<flo
   }
   const float radius = cache.radius;
   if (hardness == 1.0f) {
-    distances.fill(radius);
+    distances.fill(0.0f);
     return;
   }
   const float threshold = hardness * radius;
