@@ -252,7 +252,7 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
     return rna_enum_dummy_NULL_items;
   }
 
-  AttributeOwner owner = AttributeOwner::from_id(static_cast<ID *>(ob->data));
+  const AttributeOwner owner = AttributeOwner::from_id(static_cast<ID *>(ob->data));
   return rna_enum_attribute_domain_itemf(owner, false, r_free);
 }
 
