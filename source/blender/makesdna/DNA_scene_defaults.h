@@ -375,8 +375,8 @@
     .uvcalc_flag = _DNA_DEFAULT_ToolSettings_UVCalc_Flag, \
     .unwrapper = _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper, \
     .uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations, \
-    .uvcalc_vertex_group = { 0 }, \
-    .uvcalc_vertex_group_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor, \
+    .uvcalc_importance_weights = { 0 }, \
+    .uvcalc_importance_weights_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor, \
     .uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale, \
     .uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips, \
  \

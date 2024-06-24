@@ -194,7 +194,7 @@ struct UnwrapOptions {
   bool use_subsurf;
 
   ParamSlimOptions slim_options;
-  char slim_vertex_group[MAX_VGROUP_NAME];
+  char slim_importance_weights[MAX_VGROUP_NAME];
 };
 
 void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOptions &options)
@@ -247,10 +247,10 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
-    STRNCPY(options.slim_vertex_group, ts->uvcalc_vertex_group);
+    STRNCPY(options.slim_importance_weights, ts->uvcalc_importance_weights);
 
-    options.slim_options.weight_influence = strlen(options.slim_vertex_group) ?
-                                                ts->uvcalc_vertex_group_factor :
+    options.slim_options.weight_influence = strlen(options.slim_importance_weights) ?
+                                                ts->uvcalc_importance_weights_factor :
                                                 0.0f;
     options.slim_options.iterations = ts->uvcalc_iterations;
     options.slim_options.allow_flips = ts->uvcalc_allow_flips;
@@ -261,9 +261,9 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.fill_holes = RNA_boolean_get(op->ptr, "fill_holes");
     options.use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
-    RNA_string_get(op->ptr, "vertex_group", options.slim_vertex_group);
-    options.slim_options.weight_influence = strlen(options.slim_vertex_group) ?
-                                                RNA_float_get(op->ptr, "vertex_group_factor") :
+    RNA_string_get(op->ptr, "importance_weights", options.slim_importance_weights);
+    options.slim_options.weight_influence = strlen(options.slim_importance_weights) ?
+                                                RNA_float_get(op->ptr, "importance_weights_factor") :
                                                 0.0f;
     options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
     options.slim_options.allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
@@ -334,18 +334,18 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
     RNA_int_set(op->ptr, "iterations", ts->uvcalc_iterations);
   }
 
-  if (RNA_struct_property_is_set(op->ptr, "vertex_group_factor")) {
-    ts->uvcalc_vertex_group_factor = RNA_float_get(op->ptr, "vertex_group_factor");
+  if (RNA_struct_property_is_set(op->ptr, "importance_weights_factor")) {
+    ts->uvcalc_importance_weights_factor = RNA_float_get(op->ptr, "importance_weights_factor");
   }
   else {
-    RNA_float_set(op->ptr, "vertex_group_factor", ts->uvcalc_vertex_group_factor);
+    RNA_float_set(op->ptr, "importance_weights_factor", ts->uvcalc_importance_weights_factor);
   }
 
   if (RNA_struct_property_is_set(op->ptr, "vertex_group")) {
-    RNA_string_get(op->ptr, "vertex_group", ts->uvcalc_vertex_group);
+    RNA_string_get(op->ptr, "importance_weights", ts->uvcalc_importance_weights);
   }
   else {
-    RNA_string_set(op->ptr, "vertex_group", ts->uvcalc_vertex_group);
+    RNA_string_set(op->ptr, "importance_weights", ts->uvcalc_importance_weights);
   }
 
   unwrap_options_sync_flag(op, ts, "fill_holes", UVCALC_FILLHOLES, false);
@@ -613,7 +613,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->slim_vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->slim_importance_weights);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -668,7 +668,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->slim_vertex_group);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->slim_importance_weights);
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -772,7 +772,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   BMEdge **edgeMap;
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->slim_vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->slim_importance_weights);
 
   ParamHandle *handle = new blender::geometry::ParamHandle();
 
@@ -2774,8 +2774,8 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
     uiItemR(col, &ptr, "allow_flips", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     col = uiLayoutColumn(layout, true);
-    uiItemR(col, &ptr, "vertex_group", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, &ptr, "vertex_group_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "importance_weights", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "importance_weights_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else {
     col = uiLayoutColumn(layout, true);
@@ -2865,18 +2865,18 @@ void UV_OT_unwrap(wmOperatorType *ot)
               1,
               30);
   RNA_def_string(ot->srna,
-                 "vertex_group",
+                 "importance_weights",
                  NULL,
                  MAX_ID_NAME,
-                 "Vertex Group",
-                 "Vertex group name for modulating the deform");
+                 "Importance Weights",
+                 "Vertex group name for importance weights (modulating the deform)");
   RNA_def_float(
       ot->srna,
-      "vertex_group_factor",
+      "importance_weights_factor",
       _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor,
       -10000.0,
       10000.0,
-      "Factor",
+      "Weights Factor",
       "How much influence the weightmap has for weighted parameterization, 0 being no influence",
       -10.0,
       10.0);

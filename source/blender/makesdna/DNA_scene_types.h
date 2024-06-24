@@ -1561,10 +1561,10 @@ typedef struct ToolSettings {
   char _pad0[3];
 
   int uvcalc_iterations;
-  float uvcalc_vertex_group_factor;
+  float uvcalc_importance_weights_factor;
   float uvcalc_relative_scale;
 
-  char uvcalc_vertex_group[64]; /* MAX_VGROUP_NAME */
+  char uvcalc_importance_weights[64]; /* MAX_VGROUP_NAME */
 
   /* Auto-IK. */
   /** Runtime only. */
