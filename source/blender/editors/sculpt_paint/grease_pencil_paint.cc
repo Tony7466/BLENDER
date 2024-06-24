@@ -222,13 +222,18 @@ class PaintOperation : public GreasePencilStrokeOperation {
  private:
   /* Screen space coordinates from input samples. */
   Vector<float2> screen_space_coords_orig_;
+
   /* Temporary vector of curve fitted screen space coordinates per input sample from the active
-   * smoothing window. */
+   * smoothing window. The length of this depends on `active_smooth_start_index_`. */
   Vector<Vector<float2>> screen_space_curve_fitted_coords_;
+  /* Temporary vector of screen space offsets  */
+  Vector<float2> screen_space_jitter_offsets_;
+
   /* Screen space coordinates after smoothing. */
   Vector<float2> screen_space_smoothed_coords_;
-  /* Screen space coordinates after jittering. */
+  /* Screen space coordinates after smoothing and jittering. */
   Vector<float2> screen_space_final_coords_;
+
   /* The start index of the smoothing window. */
   int active_smooth_start_index_ = 0;
   blender::float4x2 texture_space_ = float4x2::identity();
@@ -355,6 +360,7 @@ struct PaintOperationExecutor {
 
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
+    self.screen_space_jitter_offsets_.append(float2(0.0f));
     self.screen_space_smoothed_coords_.append(start_coords);
     self.screen_space_final_coords_.append(start_coords);
 
@@ -503,15 +509,33 @@ struct PaintOperationExecutor {
   }
 
   void active_jitter(PaintOperation &self,
+                     const int new_points_num,
+                     const float brush_radius_px,
+                     const float pressure,
                      const IndexRange active_window,
                      MutableSpan<float3> curve_positions)
   {
-    MutableSpan<float2> smooth_window_coords = self.screen_space_smoothed_coords_.as_mutable_span().slice(
+    float jitter_factor = 1.0f;
+    if (settings_->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
+      jitter_factor = BKE_curvemapping_evaluateF(settings_->curve_jitter, 0, pressure);
+    }
+    const float2 tangent = math::normalize(self.smoothed_pen_direction_);
+    const float2 cotangent = float2(-tangent.y, tangent.x);
+    for ([[maybe_unused]] const int _ : IndexRange(new_points_num)) {
+      const float rand = self.rng.get_float() * 2.0f - 1.0f;
+      const float factor = rand * settings_->draw_jitter * jitter_factor;
+      self.screen_space_jitter_offsets_.append(cotangent * factor * brush_radius_px);
+    }
+    const Span<float2> jitter_slice = self.screen_space_jitter_offsets_.as_mutable_span().slice(
         active_window);
-    MutableSpan<float2> jittered_coords = self.screen_space_final_coords_.as_mutable_span().slice(active_window);
+    MutableSpan<float2> smoothed_coords =
+        self.screen_space_smoothed_coords_.as_mutable_span().slice(active_window);
+    MutableSpan<float2> final_coords = self.screen_space_final_coords_.as_mutable_span().slice(
+        active_window);
     MutableSpan<float3> positions_slice = curve_positions.slice(active_window);
     for (const int64_t window_i : active_window.index_range()) {
-      positions_slice[window_i] = self.placement_.project(new_pos);
+      final_coords[window_i] = smoothed_coords[window_i] + jitter_slice[window_i];
+      positions_slice[window_i] = self.placement_.project(final_coords[window_i]);
     }
   }
 
@@ -570,19 +594,6 @@ struct PaintOperationExecutor {
       const float radius_factor = math::interpolate(
           1.0f, angle_factor, settings_->draw_angle_factor);
       radius *= radius_factor;
-    }
-
-    if (settings_->draw_jitter > 0.0f) {
-      const float rand = self.rng.get_float() * 2.0f - 1.0f;
-      float jitpress = 1.0f;
-      if (settings_->flag & GP_BRUSH_USE_JITTER_PRESSURE) {
-        jitpress = BKE_curvemapping_evaluateF(
-            settings_->curve_jitter, 0, extension_sample.pressure);
-      }
-      const float fac = rand * settings_->draw_jitter * jitpress;
-      const float2 cotangent = float2(-self.smoothed_pen_direction_.y,
-                                      self.smoothed_pen_direction_.x);
-      position = self.placement_.project(coords + cotangent * fac * brush_radius_px);
     }
 
     /* Overwrite last point if it's very close. */
@@ -649,9 +660,26 @@ struct PaintOperationExecutor {
       this->active_smoothing(self, smooth_window);
     }
 
+    MutableSpan<float3> curve_positions = positions.slice(curves.points_by_curve()[active_curve]);
     if (settings_->draw_jitter > 0.0f) {
-      this->active_jitter(
-          self, smooth_window, positions.slice(curves.points_by_curve()[active_curve]));
+      this->active_jitter(self,
+                          new_points_num,
+                          brush_radius_px,
+                          extension_sample.pressure,
+                          smooth_window,
+                          curve_positions);
+    }
+    else {
+      MutableSpan<float2> smoothed_coords =
+          self.screen_space_smoothed_coords_.as_mutable_span().slice(smooth_window);
+      MutableSpan<float2> final_coords = self.screen_space_final_coords_.as_mutable_span().slice(
+          smooth_window);
+      /* Not jitter, so we just copy the positions over. */
+      final_coords.copy_from(smoothed_coords);
+      MutableSpan<float3> curve_positions_slice = curve_positions.slice(smooth_window);
+      for (const int64_t window_i : smooth_window.index_range()) {
+        curve_positions_slice[window_i] = self.placement_.project(final_coords[window_i]);
+      }
     }
 
     /* Initialize the rest of the attributes with default values. */
