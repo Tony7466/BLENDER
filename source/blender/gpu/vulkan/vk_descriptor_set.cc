@@ -176,7 +176,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   }
 
   Vector<VkDescriptorImageInfo> image_infos;
-  image_infos.reserve(16);
+  image_infos.reserve(32);
   for (const Binding &binding : bindings_) {
     if (!binding.is_image()) {
       continue;
