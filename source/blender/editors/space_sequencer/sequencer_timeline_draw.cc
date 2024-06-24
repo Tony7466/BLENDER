@@ -907,27 +907,40 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
                                int icon_id,
                                const uchar color[4])
 {
-  const float icon_size_x = MISSING_ICON_SIZE * ctx.pixelx * UI_SCALE_FAC;
-  const float icon_size_y = MISSING_ICON_SIZE * ctx.pixely * UI_SCALE_FAC;
-  if (BLI_rctf_size_x(&rect) * 1.1f < icon_size_x || BLI_rctf_size_y(&rect) * 1.1f < icon_size_y) {
+  View2D *v2d = ctx.v2d;
+  UI_view2d_view_ortho(v2d);
+  wmOrtho2_region_pixelspace(ctx.region);
+
+  float left = ((rect.xmin - v2d->cur.xmin) / ctx.pixelx);
+  float right = ((rect.xmax - v2d->cur.xmin) / ctx.pixelx);
+  float bottom = ((rect.ymin - v2d->cur.ymin) / ctx.pixely);
+  float top = ((rect.ymax - v2d->cur.ymin) / ctx.pixely);
+
+  const float icon_size = 16 * UI_SCALE_FAC;
+  float x_offset = (right - left - icon_size) * 0.5f;
+  float y_offset = (top - bottom - icon_size) * 0.5f;
+
+  if (BLI_rctf_size_x(&v2d->cur) < icon_size) {
     return;
   }
 
-  UI_icon_draw_mono_rect(BLI_rctf_cent_x(&rect) - icon_size_x * 0.5f,
-                         BLI_rctf_cent_y(&rect) - icon_size_y * 0.5f,
-                         icon_size_x,
-                         icon_size_y,
-                         icon_id,
-                         color);
+  UI_icon_draw_ex(left + x_offset,
+                  bottom + y_offset,
+                  icon_id,
+                  UI_INV_SCALE_FAC,
+                  1.0f,
+                  0.0f,
+                  color,
+                  false,
+                  UI_NO_ICON_OVERLAY_TEXT);
+
+  /* Restore view matrix. */
+  UI_view2d_view_restore(ctx.C);
 }
 
 static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
                              const Vector<StripDrawContext> &strips)
 {
-  GPU_blend(GPU_BLEND_ALPHA);
-
-  UI_icon_draw_cache_begin();
-
   const float icon_size_x = MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
 
   for (const StripDrawContext &strip : strips) {
@@ -976,9 +989,6 @@ static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
       }
     }
   }
-
-  UI_icon_draw_cache_end();
-  GPU_blend(GPU_BLEND_NONE);
 }
 
 /* Draw info text on a sequence strip. */
