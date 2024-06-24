@@ -7,3 +7,4 @@ Referenced by issue #85097, uint16 mipmap tif files are not showing in EEVEE but
 Referenced by issue #53969, Cycles is not rendering .dds file format correctly
 Referenced by pull request #115987, Creator: update image formats shown in the CLI help
 Referenced by issue #120234, 0,0 PNG offsets are useless + undocumented(?)
+Referenced by issue #123620, Rendered PNGs have EXIF chunks after IDAT chunks, causing validation failure
