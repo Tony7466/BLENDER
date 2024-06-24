@@ -2586,57 +2586,6 @@ void BKE_brush_randomize_texture_coords(UnifiedPaintSettings *ups, bool mask)
   }
 }
 
-float BKE_brush_curve_strength(const eBrushCurvePreset preset,
-                               const CurveMapping *cumap,
-                               const float distance,
-                               const float brush_radius)
-{
-  float p = distance;
-  float strength = 1.0f;
-
-  if (p >= brush_radius) {
-    return 0;
-  }
-
-  p = p / brush_radius;
-  p = 1.0f - p;
-
-  switch (preset) {
-    case BRUSH_CURVE_CUSTOM:
-      strength = BKE_curvemapping_evaluateF(cumap, 0, 1.0f - p);
-      break;
-    case BRUSH_CURVE_SHARP:
-      strength = p * p;
-      break;
-    case BRUSH_CURVE_SMOOTH:
-      strength = 3.0f * p * p - 2.0f * p * p * p;
-      break;
-    case BRUSH_CURVE_SMOOTHER:
-      strength = pow3f(p) * (p * (p * 6.0f - 15.0f) + 10.0f);
-      break;
-    case BRUSH_CURVE_ROOT:
-      strength = sqrtf(p);
-      break;
-    case BRUSH_CURVE_LIN:
-      strength = p;
-      break;
-    case BRUSH_CURVE_CONSTANT:
-      strength = 1.0f;
-      break;
-    case BRUSH_CURVE_SPHERE:
-      strength = sqrtf(2 * p - p * p);
-      break;
-    case BRUSH_CURVE_POW4:
-      strength = p * p * p * p;
-      break;
-    case BRUSH_CURVE_INVSQUARE:
-      strength = p * (2.0f - p);
-      break;
-  }
-
-  return strength;
-}
-
 void BKE_brush_calc_curve_factors(const eBrushCurvePreset preset,
                                   const CurveMapping *cumap,
                                   const blender::Span<float> distances,
@@ -2689,6 +2638,57 @@ void BKE_brush_calc_curve_factors(const eBrushCurvePreset preset,
         break;
     }
   }
+}
+
+float BKE_brush_curve_strength(const eBrushCurvePreset preset,
+                               const CurveMapping *cumap,
+                               const float distance,
+                               const float brush_radius)
+{
+  float p = distance;
+  float strength = 1.0f;
+
+  if (p >= brush_radius) {
+    return 0;
+  }
+
+  p = p / brush_radius;
+  p = 1.0f - p;
+
+  switch (preset) {
+    case BRUSH_CURVE_CUSTOM:
+      strength = BKE_curvemapping_evaluateF(cumap, 0, 1.0f - p);
+      break;
+    case BRUSH_CURVE_SHARP:
+      strength = p * p;
+      break;
+    case BRUSH_CURVE_SMOOTH:
+      strength = 3.0f * p * p - 2.0f * p * p * p;
+      break;
+    case BRUSH_CURVE_SMOOTHER:
+      strength = pow3f(p) * (p * (p * 6.0f - 15.0f) + 10.0f);
+      break;
+    case BRUSH_CURVE_ROOT:
+      strength = sqrtf(p);
+      break;
+    case BRUSH_CURVE_LIN:
+      strength = p;
+      break;
+    case BRUSH_CURVE_CONSTANT:
+      strength = 1.0f;
+      break;
+    case BRUSH_CURVE_SPHERE:
+      strength = sqrtf(2 * p - p * p);
+      break;
+    case BRUSH_CURVE_POW4:
+      strength = p * p * p * p;
+      break;
+    case BRUSH_CURVE_INVSQUARE:
+      strength = p * (2.0f - p);
+      break;
+  }
+
+  return strength;
 }
 
 float BKE_brush_curve_strength(const Brush *br, float p, const float len)
