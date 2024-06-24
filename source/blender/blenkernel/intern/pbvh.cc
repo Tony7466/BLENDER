@@ -655,7 +655,6 @@ std::unique_ptr<PBVH> build_mesh(Mesh *mesh)
 
   const int totvert = mesh->verts_num;
   MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
-  const OffsetIndices<int> faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
   const Span<int3> corner_tris = mesh->corner_tris();
   pbvh->corner_tris = corner_tris;
