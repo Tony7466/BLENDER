@@ -8,6 +8,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_collision_shape.hh"
+#include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_physics_geometry.hh"
 
@@ -356,12 +357,22 @@ static void create_bodies(MutableSpan<btRigidBody *> rigid_bodies,
 }
 
 PhysicsGeometry::PhysicsGeometry()
+    : body_num_(0), constraint_num_(0), body_data_({}), constraint_data_({})
 {
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
   impl_ = new PhysicsGeometryImpl();
 }
 
 PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 {
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
+  body_num_ = other.body_num_;
+  constraint_num_ = other.constraint_num_;
+  CustomData_copy(&other.body_data_, &this->body_data_, CD_MASK_ALL, other.body_num_);
+  CustomData_copy(&other.constraint_data_, &this->constraint_data_, CD_MASK_ALL, other.constraint_num_);
+
   impl_ = other.impl_;
   if (impl_) {
     impl_->add_user();
@@ -371,6 +382,13 @@ PhysicsGeometry::PhysicsGeometry(const PhysicsGeometry &other)
 
 PhysicsGeometry::PhysicsGeometry(int bodies_num, int constraints_num)
 {
+  body_num_ = bodies_num;
+  constraint_num_ = constraints_num;
+  CustomData_reset(&body_data_);
+  CustomData_reset(&constraint_data_);
+  CustomData_realloc(&body_data_, 0, body_num_);
+  CustomData_realloc(&constraint_data_, 0, constraint_num_);
+
   PhysicsGeometryImpl *impl = new PhysicsGeometryImpl();
   impl->rigid_bodies.reinitialize(bodies_num);
   impl->motion_states.reinitialize(bodies_num);
@@ -389,6 +407,9 @@ PhysicsGeometry::~PhysicsGeometry()
 {
   BLI_assert(impl_ && impl_->strong_users() > 0);
   impl_->remove_user_and_delete_if_last();
+
+  CustomData_free(&body_data_, body_num_);
+  CustomData_free(&constraint_data_, constraint_num_);
 }
 
 const PhysicsGeometryImpl &PhysicsGeometry::impl() const
@@ -570,12 +591,12 @@ void PhysicsGeometry::step_simulation(float delta_time)
 
 int PhysicsGeometry::bodies_num() const
 {
-  return impl().rigid_bodies.size();
+  return body_num_;
 }
 
 int PhysicsGeometry::constraints_num() const
 {
-  return impl().constraints.size();
+  return constraint_num_;
 }
 
 int PhysicsGeometry::shapes_num() const
@@ -619,6 +640,11 @@ static IndexMask get_constraints_mask_for_points(const PhysicsGeometryImpl &impl
 
 void PhysicsGeometry::resize(int bodies_num, int constraints_num)
 {
+  CustomData_realloc(&body_data_, body_num_, bodies_num);
+  CustomData_realloc(&constraint_data_, constraint_num_, constraints_num);
+  body_num_ = bodies_num;
+  constraint_num_ = constraints_num;
+
   PhysicsGeometryImpl &impl = this->impl_for_write();
   impl.ensure_body_indices();
 

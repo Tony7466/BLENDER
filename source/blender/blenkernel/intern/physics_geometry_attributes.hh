@@ -30,11 +30,9 @@ namespace blender::bke {
  * \{ */
 
 template<typename T> using RigidBodyGetFn = T (*)(const btRigidBody &body);
-template<typename T> using RigidBodyGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
 template<typename T> using RigidBodySetFn = void (*)(btRigidBody &body, T value);
 
 template<typename T> using ConstraintGetFn = T (*)(const btTypedConstraint *constraint);
-template<typename T> using ConstraintGetCacheFn = Span<T> (*)(const PhysicsGeometryImpl &impl);
 template<typename T> using ConstraintSetFn = void (*)(btTypedConstraint *constraint, T value);
 
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn>
@@ -385,49 +383,6 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
   }
 };
 
-template<typename ElemT> class VArrayImpl_For_PhysicsStub final : public VMutableArrayImpl<ElemT> {
- private:
-  ElemT value_;
-
- public:
-  VArrayImpl_For_PhysicsStub(const ElemT value, const size_t size)
-      : VMutableArrayImpl<ElemT>(size), value_(value)
-  {
-  }
-
-  template<typename OtherElemT> friend class VArrayImpl_For_PhysicsStub;
-
- private:
-  ElemT get(const int64_t /*index*/) const override
-  {
-    return value_;
-  }
-
-  void set(const int64_t /*index*/, ElemT /*value*/) override {}
-
-  void materialize(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { dst[i] = value_; });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>([&](const int64_t i) { new (dst + i) ElemT(value_); });
-  }
-
-  void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t /*i*/, const int64_t pos) { dst[pos] = value_; });
-  }
-
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
-  {
-    mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t /*i*/, const int64_t pos) { new (dst + pos) ElemT(value_); });
-  }
-};
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -446,19 +401,87 @@ struct PhysicsAccessInfo {
   ConstPhysicsGetter get_const_physics;
 };
 
+/* Base class that adds some utility functions for cache access. */
+class BuiltinPhysicsAttributeBase : public bke::BuiltinAttributeProvider {
+  bool layer_exists(const CustomData &custom_data) const
+  {
+    return CustomData_get_named_layer_index(&custom_data, data_type_, name_) != -1;
+  }
+
+
+  GAttributeReader try_get_cache_for_read(const void *owner) const
+  {
+    const PhysicsGeometry *physics = physics_access_.get_const_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+
+    const CPPType &type = CPPType::get<T>();
+    const CustomData &custom_data = physics->body_data_;
+    const int element_num = physics->body_num_;
+    /* When the number of elements is zero, layers might have null data but still exist. */
+    if (element_num == 0) {
+      if (this->layer_exists(custom_data)) {
+        return {GVArray::ForSpan({type, nullptr, 0}), domain_, nullptr};
+      }
+      return {};
+    }
+
+    const int index = CustomData_get_named_layer_index(&custom_data, data_type_, name_);
+    if (index == -1) {
+      return {};
+    }
+    const CustomDataLayer &layer = custom_data.layers[index];
+    return {GVArray::ForSpan({type, layer.data, element_num}), domain_, layer.sharing_info};
+  }
+
+  GAttributeWriter try_get_cache_for_write(void *owner) const
+  {
+    PhysicsGeometry *physics = physics_access_.get_physics(owner);
+    if (physics == nullptr) {
+      return {};
+    }
+    CustomData &custom_data = physics->body_data_;
+
+    std::function<void()> tag_modified_fn;
+    if (update_on_change_ != nullptr) {
+      tag_modified_fn = [owner, update = update_on_change_]() { update(owner); };
+    }
+
+    /* When the number of elements is zero, layers might have null data but still exist. */
+    const CPPType &type = CPPType::get<T>();
+    const int element_num = physics->body_num_;
+    if (element_num == 0) {
+      if (this->layer_exists(custom_data)) {
+        return {GVMutableArray::ForSpan({type, nullptr, 0}), domain_, std::move(tag_modified_fn)};
+      }
+      return {};
+    }
+
+    void *data = CustomData_get_layer_named_for_write(
+        &custom_data, data_type_, name_, element_num);
+    if (data == nullptr) {
+      return {};
+    }
+    return {
+        GVMutableArray::ForSpan({type, data, element_num}), domain_, std::move(tag_modified_fn)};
+  }
+};
+
 /**
  * Provider for builtin rigid body attributes.
  */
 template<typename T,
          RigidBodyGetFn<T> GetFn,
-         RigidBodySetFn<T> SetFn = nullptr,
-         RigidBodyGetCacheFn<T> GetCacheFn = nullptr>
-class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProvider {
+         RigidBodySetFn<T> SetFn = nullptr>
+class BuiltinRigidBodyAttributeProvider final : public BuiltinPhysicsAttributeBase {
   using UpdateOnChange = void (*)(void *owner);
   const PhysicsAccessInfo physics_access_;
   const UpdateOnChange update_on_change_;
 
  public:
+  BLI_STATIC_ASSERT(GetFn != nullptr, "A getter function must be defined");
+
   BuiltinRigidBodyAttributeProvider(std::string attribute_name,
                                     const AttrDomain domain,
                                     const DeletableEnum deletable,
@@ -482,16 +505,12 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
-    BLI_STATIC_ASSERT(GetFn != nullptr || GetCacheFn != nullptr,
-                      "A getter function must be defined");
-    Span<T> cache = {};
-    if constexpr (GetCacheFn) {
-      cache = GetCacheFn(physics->impl());
+    if (physics->impl_->is_cached) {
+      return try_get_cache_for_read(owner);
     }
 
     GVArray varray = VArray<T>::template For<VArrayImpl_For_PhysicsBodies<T, GetFn>>(
-        physics->impl(), cache);
-
+        physics->impl());
     return {std::move(varray), domain_, nullptr};
   }
 
@@ -505,14 +524,13 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
       return {};
     }
 
-    Span<T> cache = {};
-    if constexpr (GetCacheFn) {
-      cache = GetCacheFn(physics->impl());
+    if (physics->impl_->is_cached) {
+      return try_get_cache_for_write(owner);
     }
 
     GVMutableArray varray =
         VMutableArray<T>::template For<VMutableArrayImpl_For_PhysicsBodies<T, GetFn, SetFn>>(
-            physics->impl(), cache);
+            physics->impl());
 
     std::function<void()> tag_modified_fn;
     if (update_on_change_ != nullptr) {
@@ -532,7 +550,7 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
     return false;
   }
 
-  bool exists(const void * /*owner*/) const final
+  bool exists(const void */*owner*/) const final
   {
     return true;
   }
@@ -543,8 +561,7 @@ class BuiltinRigidBodyAttributeProvider final : public bke::BuiltinAttributeProv
  */
 template<typename T,
          ConstraintGetFn<T> GetFn,
-         ConstraintSetFn<T> SetFn = nullptr,
-         ConstraintGetCacheFn<T> GetCacheFn = nullptr>
+         ConstraintSetFn<T> SetFn = nullptr>
 class BuiltinConstraintAttributeProvider final : public bke::BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
   using EnsureOnAccess = void (*)(const void *owner);

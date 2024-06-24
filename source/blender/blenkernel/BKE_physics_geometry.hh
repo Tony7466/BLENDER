@@ -17,6 +17,8 @@
 #include "BKE_attribute.hh"
 #include "BKE_geometry_fields.hh"
 
+#include "DNA_customdata_types.h"
+
 #include <functional>
 
 namespace blender::bke {
@@ -58,14 +60,19 @@ class PhysicsGeometry {
   };
 
  private:
+  Vector<CollisionShapePtr> shapes_;
+
+  int body_num_;
+  int constraint_num_;
+  CustomData body_data_;
+  CustomData constraint_data_;
+
   /* Implementation of the physics world and rigid bodies.
    * This is an implicit shared pointer, multiple users can read the physics data. Requesting write
    * access will move the data to a new component. This is somewhat different from other components
    * which do a full copy of the data, but necessary for efficiently handling physics state. Moving
    * the physics state will create a read-only cache, so older state still be accessed. */
   const PhysicsGeometryImpl *impl_ = nullptr;
-
-  Vector<CollisionShapePtr> shapes_;
 
  public:
   static const struct BuiltinAttributes {
