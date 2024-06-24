@@ -62,8 +62,6 @@ struct IOParams {
   /** Stroke sampling factor. */
   float stroke_sample;
   int32_t resolution;
-  /** Filename to be used in new objects. */
-  StringRef filename;
 };
 
 bool grease_pencil_io_import_svg(StringRef filepath, struct IOParams &params);

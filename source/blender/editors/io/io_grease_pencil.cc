@@ -16,6 +16,7 @@
 #  include "BKE_context.hh"
 #  include "BKE_file_handler.hh"
 #  include "BKE_report.hh"
+#  include "BKE_screen.hh"
 
 #  include "BLT_translation.hh"
 
@@ -76,6 +77,39 @@ static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
                   "Export strokes with constant thickness");
 }
 
+static ARegion *get_invoke_region(bContext *C)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  if (screen == nullptr) {
+    return nullptr;
+  }
+  ScrArea *area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
+  if (area == nullptr) {
+    return nullptr;
+  }
+
+  ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+
+  return region;
+}
+
+static View3D *get_invoke_view3d(bContext *C)
+{
+  bScreen *screen = CTX_wm_screen(C);
+  if (screen == nullptr) {
+    return nullptr;
+  }
+  ScrArea *area = BKE_screen_find_big_area(screen, SPACE_VIEW3D, 0);
+  if (area == nullptr) {
+    return nullptr;
+  }
+  if (area != nullptr) {
+    return static_cast<View3D *>(area->spacedata.first);
+  }
+
+  return nullptr;
+}
+
 }  // namespace blender::ed::io
 
 #  endif
@@ -102,57 +136,58 @@ static bool grease_pencil_import_svg_check(bContext * /*C*/, wmOperator *op)
 
 static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
 {
-  // Scene *scene = CTX_data_scene(C);
+  Scene *scene = CTX_data_scene(C);
 
-  // if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false) ||
-  //     !RNA_struct_find_property(op->ptr, "directory"))
-  // {
-  //   BKE_report(op->reports, RPT_ERROR, "No filepath given");
-  //   return OPERATOR_CANCELLED;
-  // }
+  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false) ||
+      !RNA_struct_find_property(op->ptr, "directory"))
+  {
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    return OPERATOR_CANCELLED;
+  }
 
-  // ARegion *region = get_invoke_region(C);
-  // if (region == nullptr) {
-  //   BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
-  //   return OPERATOR_CANCELLED;
-  // }
-  // View3D *v3d = get_invoke_view3d(C);
+  ARegion *region = get_invoke_region(C);
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
+    return OPERATOR_CANCELLED;
+  }
+  View3D *v3d = get_invoke_view3d(C);
 
-  // /* Set flags. */
-  // int flag = 0;
+  /* Set flags. */
+  int flag = 0;
 
-  // const int resolution = RNA_int_get(op->ptr, "resolution");
-  // const float scale = RNA_float_get(op->ptr, "scale");
+  const int resolution = RNA_int_get(op->ptr, "resolution");
+  const float scale = RNA_float_get(op->ptr, "scale");
 
-  // GpencilIOParams params{};
-  // params.C = C;
-  // params.region = region;
-  // params.v3d = v3d;
-  // params.ob = nullptr;
-  // params.mode = GP_IMPORT_FROM_SVG;
-  // params.frame_start = scene->r.cfra;
-  // params.frame_end = scene->r.cfra;
-  // params.frame_cur = scene->r.cfra;
-  // params.flag = flag;
-  // params.scale = scale;
-  // params.select_mode = 0;
-  // params.frame_mode = 0;
-  // params.stroke_sample = 0.0f;
-  // params.resolution = resolution;
+  blender::io::grease_pencil::IOParams params{};
+  params.C = C;
+  params.region = region;
+  params.v3d = v3d;
+  params.ob = nullptr;
+  params.frame_start = scene->r.cfra;
+  params.frame_end = scene->r.cfra;
+  params.frame_cur = scene->r.cfra;
+  params.flag = flag;
+  params.scale = scale;
+  params.select_mode = blender::io::grease_pencil::ExportSelect::Active;
+  params.frame_mode = blender::io::grease_pencil::ExportFrame::ActiveFrame;
+  params.stroke_sample = 0.0f;
+  params.resolution = resolution;
 
-  // /* Loop all selected files to import them. All SVG imported shared the same import
-  //  * parameters, but they are created in separated grease pencil objects. */
-  // const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
-  // for (const auto &path : paths) {
-  //   /* Do Import. */
-  //   WM_cursor_wait(true);
-  //   BLI_path_split_file_part(path.c_str(), params.filename, ARRAY_SIZE(params.filename));
-  //   const bool done = gpencil_io_import(path.c_str(), &params);
-  //   WM_cursor_wait(false);
-  //   if (!done) {
-  //     BKE_reportf(op->reports, RPT_WARNING, "Unable to import '%s'", path.c_str());
-  //   }
-  // }
+  /* Loop all selected files to import them. All SVG imported shared the same import
+   * parameters, but they are created in separated grease pencil objects. */
+  const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
+  char filename[FILE_MAX];
+  for (const auto &path : paths) {
+    /* Do Import. */
+    WM_cursor_wait(true);
+
+    BLI_path_split_file_part(path.c_str(), filename, ARRAY_SIZE(filename));
+    const bool done = blender::io::grease_pencil::grease_pencil_io_import_svg(path, params);
+    WM_cursor_wait(false);
+    if (!done) {
+      BKE_reportf(op->reports, RPT_WARNING, "Unable to import '%s'", path.c_str());
+    }
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -256,61 +291,64 @@ static int grease_pencil_export_svg_invoke(bContext *C, wmOperator *op, const wm
 
 static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
 {
-  // Scene *scene = CTX_data_scene(C);
-  // Object *ob = CTX_data_active_object(C);
+  using blender::io::grease_pencil::ExportFrame;
+  using blender::io::grease_pencil::ExportSelect;
+  using blender::io::grease_pencil::IOParams;
+  using blender::io::grease_pencil::IOParamsFlag;
 
-  // if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-  //   BKE_report(op->reports, RPT_ERROR, "No filepath given");
-  //   return OPERATOR_CANCELLED;
-  // }
+  Scene *scene = CTX_data_scene(C);
+  Object *ob = CTX_data_active_object(C);
 
-  // ARegion *region = get_invoke_region(C);
-  // if (region == nullptr) {
-  //   BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
-  //   return OPERATOR_CANCELLED;
-  // }
-  // View3D *v3d = get_invoke_view3d(C);
+  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    return OPERATOR_CANCELLED;
+  }
 
-  // char filepath[FILE_MAX];
-  // RNA_string_get(op->ptr, "filepath", filepath);
+  ARegion *region = get_invoke_region(C);
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
+    return OPERATOR_CANCELLED;
+  }
+  View3D *v3d = get_invoke_view3d(C);
 
-  // const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
-  // const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
-  // const eGpencilExportSelect select_mode = eGpencilExportSelect(
-  //     RNA_enum_get(op->ptr, "selected_object_type"));
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
 
-  // const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
+  const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
+  const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
+  const ExportSelect select_mode = ExportSelect(RNA_enum_get(op->ptr, "selected_object_type"));
 
-  // /* Set flags. */
-  // int flag = 0;
-  // SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
-  // SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
-  // SET_FLAG_FROM_TEST(flag, use_clip_camera, GP_EXPORT_CLIP_CAMERA);
+  const bool use_clip_camera = RNA_boolean_get(op->ptr, "use_clip_camera");
 
-  // GpencilIOParams params{};
-  // params.C = C;
-  // params.region = region;
-  // params.v3d = v3d;
-  // params.ob = ob;
-  // params.mode = GP_EXPORT_TO_SVG;
-  // params.frame_start = scene->r.cfra;
-  // params.frame_end = scene->r.cfra;
-  // params.frame_cur = scene->r.cfra;
-  // params.flag = flag;
-  // params.scale = 1.0f;
-  // params.select_mode = select_mode;
-  // params.frame_mode = GP_EXPORT_FRAME_ACTIVE;
-  // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
-  // params.resolution = 1.0f;
+  /* Set flags. */
+  int flag = 0;
+  SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
+  SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
+  SET_FLAG_FROM_TEST(flag, use_clip_camera, int(IOParamsFlag::ExportClipCamera));
 
-  // /* Do export. */
-  // WM_cursor_wait(true);
-  // const bool done = gpencil_io_export(filepath, &params);
-  // WM_cursor_wait(false);
+  IOParams params{};
+  params.C = C;
+  params.region = region;
+  params.v3d = v3d;
+  params.ob = ob;
+  params.frame_start = scene->r.cfra;
+  params.frame_end = scene->r.cfra;
+  params.frame_cur = scene->r.cfra;
+  params.flag = flag;
+  params.scale = 1.0f;
+  params.select_mode = select_mode;
+  params.frame_mode = ExportFrame::ActiveFrame;
+  params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
+  params.resolution = 1.0f;
 
-  // if (!done) {
-  //   BKE_report(op->reports, RPT_WARNING, "Unable to export SVG");
-  // }
+  /* Do export. */
+  WM_cursor_wait(true);
+  const bool done = blender::io::grease_pencil::grease_pencil_io_export_svg(filepath, params);
+  WM_cursor_wait(false);
+
+  if (!done) {
+    BKE_report(op->reports, RPT_WARNING, "Unable to export SVG");
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -420,58 +458,62 @@ static int grease_pencil_export_pdf_invoke(bContext *C, wmOperator *op, const wm
 
 static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
 {
-  // Scene *scene = CTX_data_scene(C);
-  // Object *ob = CTX_data_active_object(C);
+  using blender::io::grease_pencil::ExportFrame;
+  using blender::io::grease_pencil::ExportSelect;
+  using blender::io::grease_pencil::IOParams;
+  using blender::io::grease_pencil::IOParamsFlag;
 
-  // if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-  //   BKE_report(op->reports, RPT_ERROR, "No filepath given");
-  //   return OPERATOR_CANCELLED;
-  // }
+  Scene *scene = CTX_data_scene(C);
+  Object *ob = CTX_data_active_object(C);
 
-  // ARegion *region = get_invoke_region(C);
-  // if (region == nullptr) {
-  //   BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
-  //   return OPERATOR_CANCELLED;
-  // }
-  // View3D *v3d = get_invoke_view3d(C);
+  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+    BKE_report(op->reports, RPT_ERROR, "No filepath given");
+    return OPERATOR_CANCELLED;
+  }
 
-  // char filepath[FILE_MAX];
-  // RNA_string_get(op->ptr, "filepath", filepath);
+  ARegion *region = get_invoke_region(C);
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "Unable to find valid 3D View area");
+    return OPERATOR_CANCELLED;
+  }
+  View3D *v3d = get_invoke_view3d(C);
 
-  // const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
-  // const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
-  // const short select_mode = RNA_enum_get(op->ptr, "selected_object_type");
-  // const short frame_mode = RNA_enum_get(op->ptr, "frame_mode");
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
 
-  // /* Set flags. */
-  // int flag = 0;
-  // SET_FLAG_FROM_TEST(flag, use_fill, GP_EXPORT_FILL);
-  // SET_FLAG_FROM_TEST(flag, use_norm_thickness, GP_EXPORT_NORM_THICKNESS);
+  const bool use_fill = RNA_boolean_get(op->ptr, "use_fill");
+  const bool use_norm_thickness = RNA_boolean_get(op->ptr, "use_normalized_thickness");
+  const ExportSelect select_mode = ExportSelect(RNA_enum_get(op->ptr, "selected_object_type"));
+  const ExportFrame frame_mode = ExportFrame(RNA_enum_get(op->ptr, "frame_mode"));
 
-  // GpencilIOParams params{};
-  // params.C = C;
-  // params.region = region;
-  // params.v3d = v3d;
-  // params.ob = ob;
-  // params.mode = GP_EXPORT_TO_PDF;
-  // params.frame_start = scene->r.sfra;
-  // params.frame_end = scene->r.efra;
-  // params.frame_cur = scene->r.cfra;
-  // params.flag = flag;
-  // params.scale = 1.0f;
-  // params.select_mode = select_mode;
-  // params.frame_mode = frame_mode;
-  // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
-  // params.resolution = 1.0f;
+  /* Set flags. */
+  int flag = 0;
+  SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
+  SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
 
-  // /* Do export. */
-  // WM_cursor_wait(true);
-  // const bool done = gpencil_io_export(filepath, &params);
-  // WM_cursor_wait(false);
+  IOParams params{};
+  params.C = C;
+  params.region = region;
+  params.v3d = v3d;
+  params.ob = ob;
+  params.frame_start = scene->r.sfra;
+  params.frame_end = scene->r.efra;
+  params.frame_cur = scene->r.cfra;
+  params.flag = flag;
+  params.scale = 1.0f;
+  params.select_mode = select_mode;
+  params.frame_mode = frame_mode;
+  params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
+  params.resolution = 1.0f;
 
-  // if (!done) {
-  //   BKE_report(op->reports, RPT_WARNING, "Unable to export PDF");
-  // }
+  /* Do export. */
+  WM_cursor_wait(true);
+  const bool done = blender::io::grease_pencil::grease_pencil_io_export_pdf(filepath, params);
+  WM_cursor_wait(false);
+
+  if (!done) {
+    BKE_report(op->reports, RPT_WARNING, "Unable to export PDF");
+  }
 
   return OPERATOR_FINISHED;
 }
