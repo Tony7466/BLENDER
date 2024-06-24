@@ -270,6 +270,11 @@ def repos_to_notify():
 
 @bpy.app.handlers.persistent
 def extenion_repos_sync(*_):
+    # Ignore in background mode as this is for the UI to stay in sync.
+    # Automated tasks must sync explicitly.
+    if bpy.app.background:
+        return
+
     # This is called from operators (create or an explicit call to sync)
     # so calling a modal operator is "safe".
     if (active_repo := repo_active_or_none()) is None:
@@ -278,8 +283,14 @@ def extenion_repos_sync(*_):
     print_debug("SYNC:", active_repo.name)
     # There may be nothing to upgrade.
 
-    # FIXME: don't use the operator, this is error prone.
-    # The same method used to update the status-bar on startup would be preferable.
+    if not active_repo.use_remote_url:
+        return
+
+    # NOTE: both `extensions.repo_sync_all` and `bl_extension_notify.update_non_blocking` can be used here.
+    # Call the modal operator in this case as this handler is called after adding a repository.
+    # The operator has the benefit of showing a progress bar and reporting errors.
+    # Since this function is used after adding a new repository, it's important the user is aware of any
+    # errors synchronizing data as there may be connection/access issues they need to resolve.
     if not bpy.ops.extensions.repo_sync_all.poll():
         print("skipping sync, poll failed")
         return
@@ -307,13 +318,14 @@ def extenion_repos_files_clear(directory, _):
     from .bl_extension_utils import (
         scandir_with_demoted_errors,
         PKG_MANIFEST_FILENAME_TOML,
+        REPO_LOCAL_PRIVATE_DIR,
     )
     # Unlikely but possible a new repository is immediately removed before initializing,
     # avoid errors in this case.
     if not os.path.isdir(directory):
         return
 
-    if os.path.isdir(path := os.path.join(directory, ".blender_ext")):
+    if os.path.isdir(path := os.path.join(directory, REPO_LOCAL_PRIVATE_DIR)):
         try:
             shutil.rmtree(path)
         except Exception as ex:
@@ -552,6 +564,10 @@ def register():
     bl_extension_ops.register()
     bl_extension_ui.register()
 
+    WindowManager.addon_tags = PointerProperty(
+        name="Addon Tags",
+        type=BlExtDummyGroup,
+    )
     WindowManager.extension_tags = PointerProperty(
         name="Extension Tags",
         type=BlExtDummyGroup,
@@ -582,11 +598,6 @@ def register():
     WindowManager.extension_installed_only = BoolProperty(
         name="Show Installed Extensions",
         description="Only show installed extensions",
-    )
-    WindowManager.extension_show_legacy_addons = BoolProperty(
-        name="Show Legacy Add-ons",
-        description="Show add-ons which are not packaged as extensions",
-        default=True,
     )
 
     from bl_ui.space_userpref import USERPREF_MT_interface_theme_presets
@@ -623,7 +634,6 @@ def unregister():
     del WindowManager.extension_type
     del WindowManager.extension_enabled_only
     del WindowManager.extension_installed_only
-    del WindowManager.extension_show_legacy_addons
 
     for cls in classes:
         bpy.utils.unregister_class(cls)
