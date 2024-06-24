@@ -69,7 +69,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
  * \param dst_data: Target point attribute span to write to.
  * \param curve_selection: Selection of curves to interpolate, unselected curves are not modified.
  * \param sample_indices: Point index in source curves to sample from for each target point.
- * \param sample_indices: Interpolation factor between start and end point for each target point.
+ * \param sample_factors: Interpolation factor between start and end point for each target point.
  * \param mix_weight: Mix factor for blending with existing data (0 = no change, 1 = replace data).
  * \param use_evaluated_points: Samples are for evaluated points instead of control points.
  */
