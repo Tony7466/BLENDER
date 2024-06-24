@@ -190,6 +190,8 @@ enum eV3DDepthOverrideMode {
   V3D_DEPTH_GPENCIL_ONLY,
   /** Redraw viewport with active object only. */
   V3D_DEPTH_OBJECT_ONLY,
+  /** Redraw viewport with objects from the supplied collection only. */
+  V3D_DEPTH_SELECTED_ONLY,
 
 };
 /**
@@ -883,6 +885,11 @@ bool ED_view3d_autodist_simple(ARegion *region,
                                const float *force_depth);
 bool ED_view3d_depth_read_cached_seg(
     const ViewDepths *vd, const int mval_sta[2], const int mval_end[2], int margin, float *depth);
+
+/**
+ * Returns viewport color in linear space, matching #ED_space_node_color_sample().
+ */
+bool ED_view3d_viewport_color_sample(ARegion *region, const int mval[2], float r_col[3]);
 
 enum eV3DSelectMode {
   /* all elements in the region, ignore depth */

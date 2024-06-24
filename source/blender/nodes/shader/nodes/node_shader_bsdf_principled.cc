@@ -332,24 +332,6 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
     flag |= GPU_MATFLAG_COAT;
   }
 
-  /* Ref. #98190: Defines are optimizations for old compilers.
-   * Might become unnecessary with EEVEE-Next. */
-  if (use_diffuse == false && use_refract == false && use_coat == true) {
-    flag |= GPU_MATFLAG_PRINCIPLED_COAT;
-  }
-  else if (use_diffuse == false && use_refract == false && use_coat == false) {
-    flag |= GPU_MATFLAG_PRINCIPLED_METALLIC;
-  }
-  else if (use_diffuse == true && use_refract == false && use_coat == false) {
-    flag |= GPU_MATFLAG_PRINCIPLED_DIELECTRIC;
-  }
-  else if (use_diffuse == false && use_refract == true && use_coat == false) {
-    flag |= GPU_MATFLAG_PRINCIPLED_GLASS;
-  }
-  else {
-    flag |= GPU_MATFLAG_PRINCIPLED_ANY;
-  }
-
   if (use_subsurf) {
     bNodeSocket *socket = (bNodeSocket *)BLI_findlink(&node->runtime->original->inputs,
                                                       SOCK_SUBSURFACE_RADIUS_ID);
@@ -359,23 +341,11 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
   }
 
   float use_multi_scatter = (node->custom1 == SHD_GLOSSY_MULTI_GGX) ? 1.0f : 0.0f;
-  float use_sss = (use_subsurf) ? 1.0f : 0.0f;
-  float use_diffuse_f = (use_diffuse) ? 1.0f : 0.0f;
-  float use_coat_f = (use_coat) ? 1.0f : 0.0f;
-  float use_refract_f = (use_refract) ? 1.0f : 0.0f;
 
   GPU_material_flag_set(mat, flag);
 
-  return GPU_stack_link(mat,
-                        node,
-                        "node_bsdf_principled",
-                        in,
-                        out,
-                        GPU_constant(&use_diffuse_f),
-                        GPU_constant(&use_coat_f),
-                        GPU_constant(&use_refract_f),
-                        GPU_constant(&use_multi_scatter),
-                        GPU_constant(&use_sss));
+  return GPU_stack_link(
+      mat, node, "node_bsdf_principled", in, out, GPU_constant(&use_multi_scatter));
 }
 
 static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
@@ -383,10 +353,10 @@ static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
   const int sss_method = node->custom2;
 
   bke::nodeSetSocketAvailability(ntree,
-                                 nodeFindSocket(node, SOCK_IN, "Subsurface IOR"),
+                                 bke::nodeFindSocket(node, SOCK_IN, "Subsurface IOR"),
                                  sss_method == SHD_SUBSURFACE_RANDOM_WALK_SKIN);
   bke::nodeSetSocketAvailability(ntree,
-                                 nodeFindSocket(node, SOCK_IN, "Subsurface Anisotropy"),
+                                 bke::nodeFindSocket(node, SOCK_IN, "Subsurface Anisotropy"),
                                  sss_method != SHD_SUBSURFACE_BURLEY);
 }
 
@@ -663,7 +633,7 @@ void register_node_type_sh_bsdf_principled()
 {
   namespace file_ns = blender::nodes::node_shader_bsdf_principled_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_BSDF_PRINCIPLED, "Principled BSDF", NODE_CLASS_SHADER);
   ntype.declare = file_ns::node_declare;
@@ -674,5 +644,5 @@ void register_node_type_sh_bsdf_principled()
   ntype.updatefunc = file_ns::node_shader_update_principled;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

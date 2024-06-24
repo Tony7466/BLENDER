@@ -362,9 +362,15 @@ wmWindow *WM_window_open(bContext *C,
                          bool temp,
                          eWindowAlignment alignment,
                          void (*area_setup_fn)(bScreen *screen, ScrArea *area, void *user_data),
-                         void *area_setup_user_data) ATTR_NONNULL(1, 2, 3);
+                         void *area_setup_user_data) ATTR_NONNULL(1, 3);
 
 void WM_window_set_dpi(const wmWindow *win);
+
+/**
+ * Give a title to a window. With "Title" unspecified or nullptr, it is generated
+ * automatically from window settings and areas. Only use custom title when really needed.
+ */
+void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nullptr);
 
 bool WM_stereo3d_enabled(wmWindow *win, bool only_fullscreen_test);
 
@@ -575,6 +581,9 @@ void WM_event_modal_handler_area_replace(wmWindow *win,
 void WM_event_modal_handler_region_replace(wmWindow *win,
                                            const ARegion *old_region,
                                            ARegion *new_region);
+void WM_event_ui_handler_region_popup_replace(wmWindow *win,
+                                              const ARegion *old_region,
+                                              ARegion *new_region);
 
 /**
  * Called on exit or remove area, only here call cancel callback.
@@ -1119,6 +1128,11 @@ bool WM_operator_py_idname_ok_or_report(ReportList *reports,
                                         const char *classname,
                                         const char *idname);
 /**
+ * Return true when an operators name follows the `SOME_OT_op` naming convention.
+ */
+bool WM_operator_bl_idname_is_valid(const char *idname);
+
+/**
  * Calculate the path to `ptr` from context `C`, or return NULL if it can't be calculated.
  */
 std::optional<std::string> WM_context_path_resolve_property_full(const bContext *C,
@@ -1540,6 +1554,10 @@ void wmGetProjectionMatrix(float mat[4][4], const rcti *winrct);
 /* Threaded Jobs Manager. */
 enum eWM_JobFlag {
   WM_JOB_PRIORITY = (1 << 0),
+  /**
+   * Only one render job can run at a time, this tags them a such. New jobs with this flag will
+   * wait on previous ones to finish then.
+   */
   WM_JOB_EXCL_RENDER = (1 << 1),
   WM_JOB_PROGRESS = (1 << 2),
 };
@@ -1562,6 +1580,7 @@ enum eWM_JobType {
   WM_JOB_TYPE_OBJECT_BAKE_TEXTURE,
   WM_JOB_TYPE_OBJECT_BAKE,
   WM_JOB_TYPE_FILESEL_READDIR,
+  WM_JOB_TYPE_ASSET_LIBRARY_LOAD,
   WM_JOB_TYPE_CLIP_BUILD_PROXY,
   WM_JOB_TYPE_CLIP_TRACK_MARKERS,
   WM_JOB_TYPE_CLIP_SOLVE_CAMERA,
@@ -1570,7 +1589,10 @@ enum eWM_JobType {
   WM_JOB_TYPE_SEQ_BUILD_PREVIEW,
   WM_JOB_TYPE_POINTCACHE,
   WM_JOB_TYPE_DPAINT_BAKE,
-  WM_JOB_TYPE_ALEMBIC,
+  WM_JOB_TYPE_ALEMBIC_IMPORT,
+  WM_JOB_TYPE_ALEMBIC_EXPORT,
+  WM_JOB_TYPE_USD_IMPORT,
+  WM_JOB_TYPE_USD_EXPORT,
   WM_JOB_TYPE_SHADER_COMPILATION,
   WM_JOB_TYPE_STUDIOLIGHT,
   WM_JOB_TYPE_LIGHT_BAKE,
@@ -1590,8 +1612,8 @@ enum eWM_JobType {
 /**
  * \return current job or adds new job, but doesn't run it.
  *
- * \note every owner only gets a single job,
- * adding a new one will stop running job and when stopped it starts the new one.
+ * \note every owner only gets a single running job of the same \a job_type (or with the
+ * #WM_JOB_EXCL_RENDER flag). Adding a new one will wait for the running job to finish.
  */
 wmJob *WM_jobs_get(wmWindowManager *wm,
                    wmWindow *win,
@@ -1635,18 +1657,33 @@ void WM_jobs_callbacks_ex(wmJob *wm_job,
                           void (*canceled)(void *));
 
 /**
- * If job running, the same owner gave it a new job.
- * if different owner starts existing #wmJob::startjob, it suspends itself.
+ * Register the given \a wm_job and try to start it immediately.
+ *
+ * The new \a wm_job will not start immediately and wait for other blocking jobs
+ * to end in some way if:
+ * - the new job is flagged with #WM_JOB_EXCL_RENDER and another job with the same flag is already
+ *   running (blocks it), or...
+ * - the new job is __not__ flagged with #WM_JOB_EXCL_RENDER and a job of the same #eWM_JobType is
+ *   already running (blocks it).
+ *
+ * If the new \a wm_job is flagged with #WM_JOB_PRIORITY, it will request other blocking jobs to
+ * stop (using #WM_jobs_stop(), so this doesn't take immediate effect) rather than finish its work.
  */
 void WM_jobs_start(wmWindowManager *wm, wmJob *wm_job);
 /**
- * Signal job(s) from this owner or callback to stop, timer is required to get handled.
+ * Signal all jobs of this type and owner (if non-null) to stop, timer is required to get
+ * handled.
+ *
+ * Don't pass #WM_JOB_TYPE_ANY as \a job_type. Use #WM_jobs_stop_all_from_owner() instead.
  */
-void WM_jobs_stop(wmWindowManager *wm, const void *owner, wm_jobs_start_callback startjob);
+void WM_jobs_stop_type(wmWindowManager *wm, const void *owner, eWM_JobType job_type);
 /**
- * Actually terminate thread and job timer.
+ * Signal all jobs from this owner to stop, timer is required to get handled.
+ *
+ * Beware of the impact of calling this. For example passing the scene will stop **all** jobs
+ * having the scene as owner, even otherwise unrelated jobs.
  */
-void WM_jobs_kill(wmWindowManager *wm, void *owner, wm_jobs_start_callback startjob);
+void WM_jobs_stop_all_from_owner(wmWindowManager *wm, const void *owner) ATTR_NONNULL();
 /**
  * Wait until every job ended.
  */
@@ -1655,7 +1692,19 @@ void WM_jobs_kill_all(wmWindowManager *wm);
  * Wait until every job ended, except for one owner (used in undo to keep screen job alive).
  */
 void WM_jobs_kill_all_except(wmWindowManager *wm, const void *owner);
+/**
+ * Terminate thread and timer of all jobs of this type and owner (if non-null).
+ *
+ * Don't pass #WM_JOB_TYPE_ANY as \a job_type. Use #WM_jobs_kill_all_from_owner() instead.
+ */
 void WM_jobs_kill_type(wmWindowManager *wm, const void *owner, int job_type);
+/**
+ * Terminate thread and timer of all jobs from this owner.
+ *
+ * Beware of the impact of calling this. For example passing the scene will kill **all** jobs
+ * having the scene as owner, even otherwise unrelated jobs.
+ */
+void WM_jobs_kill_all_from_owner(wmWindowManager *wm, const void *owner) ATTR_NONNULL();
 
 bool WM_jobs_has_running(const wmWindowManager *wm);
 bool WM_jobs_has_running_type(const wmWindowManager *wm, int job_type);
@@ -1894,7 +1943,7 @@ bool WM_region_use_viewport(ScrArea *area, ARegion *region);
 /**
  * \return Success.
  */
-bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_msg);
+bool WM_platform_associate_set(bool do_register, bool all_users, char **r_error_msg);
 
 #ifdef WITH_XR_OPENXR
 /* `wm_xr_session.cc` */

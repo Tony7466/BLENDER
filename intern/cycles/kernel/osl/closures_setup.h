@@ -95,6 +95,7 @@ ccl_device void osl_closure_diffuse_setup(KernelGlobals kg,
   sd->flag |= bsdf_diffuse_setup(bsdf);
 }
 
+/* Deprecated form, will be removed in OSL 2.0. */
 ccl_device void osl_closure_oren_nayar_setup(KernelGlobals kg,
                                              ccl_private ShaderData *sd,
                                              uint32_t path_flag,
@@ -115,7 +116,31 @@ ccl_device void osl_closure_oren_nayar_setup(KernelGlobals kg,
   bsdf->N = safe_normalize_fallback(closure->N, sd->N);
   bsdf->roughness = closure->roughness;
 
-  sd->flag |= bsdf_oren_nayar_setup(bsdf);
+  sd->flag |= bsdf_oren_nayar_setup(sd, bsdf, rgb_to_spectrum(weight));
+}
+
+ccl_device void osl_closure_oren_nayar_diffuse_bsdf_setup(
+    KernelGlobals kg,
+    ccl_private ShaderData *sd,
+    uint32_t path_flag,
+    float3 weight,
+    ccl_private const OrenNayarDiffuseBSDFClosure *closure,
+    float3 *layer_albedo)
+{
+  if (osl_closure_skip(kg, sd, path_flag, LABEL_DIFFUSE)) {
+    return;
+  }
+
+  ccl_private OrenNayarBsdf *bsdf = (ccl_private OrenNayarBsdf *)bsdf_alloc(
+      sd, sizeof(OrenNayarBsdf), rgb_to_spectrum(weight));
+  if (!bsdf) {
+    return;
+  }
+
+  bsdf->N = safe_normalize_fallback(closure->N, sd->N);
+  bsdf->roughness = closure->roughness;
+
+  sd->flag |= bsdf_oren_nayar_setup(sd, bsdf, rgb_to_spectrum(closure->albedo));
 }
 
 ccl_device void osl_closure_translucent_setup(KernelGlobals kg,
@@ -274,8 +299,8 @@ ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
 
   fresnel->reflection_tint = rgb_to_spectrum(closure->reflection_tint);
   fresnel->transmission_tint = rgb_to_spectrum(closure->transmission_tint);
-  fresnel->thin_film.thickness = 0.0f;
-  fresnel->thin_film.ior = 0.0f;
+  fresnel->thin_film.thickness = closure->thinfilm_thickness;
+  fresnel->thin_film.ior = closure->thinfilm_ior;
   bsdf_microfacet_setup_fresnel_dielectric_tint(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL) {
@@ -425,8 +450,8 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
   fresnel->f0 = rgb_to_spectrum(closure->f0);
   fresnel->f90 = rgb_to_spectrum(closure->f90);
   fresnel->exponent = closure->exponent;
-  fresnel->thin_film.thickness = 0.0f;
-  fresnel->thin_film.ior = 0.0f;
+  fresnel->thin_film.thickness = closure->thinfilm_thickness;
+  fresnel->thin_film.ior = closure->thinfilm_ior;
   bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL) {

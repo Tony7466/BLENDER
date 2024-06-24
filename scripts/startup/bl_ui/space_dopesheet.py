@@ -246,41 +246,23 @@ class DOPESHEET_HT_editor_buttons:
         if st.mode == 'GPENCIL':
             ob = context.active_object
 
-            if context.preferences.experimental.use_grease_pencil_version3:
-                enable_but = ob is not None and ob.type == 'GREASEPENCIL'
+            enable_but = ob is not None and ob.type == 'GREASEPENCIL'
 
-                row = layout.row(align=True)
-                row.enabled = enable_but
-                row.operator("grease_pencil.layer_add", icon='ADD', text="")
-                row.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
-                row.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
+            row = layout.row(align=True)
+            row.enabled = enable_but
+            row.operator("grease_pencil.layer_add", icon='ADD', text="")
+            row.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+            row.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-                row = layout.row(align=True)
-                row.enabled = enable_but
-                row.operator("anim.channels_move", icon='TRIA_UP', text="").direction = 'UP'
-                row.operator("anim.channels_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+            row = layout.row(align=True)
+            row.enabled = enable_but
+            row.operator("anim.channels_move", icon='TRIA_UP', text="").direction = 'UP'
+            row.operator("anim.channels_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
-                row = layout.row(align=True)
-                row.enabled = enable_but
-                row.operator("grease_pencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
-                row.operator("grease_pencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
-            else:
-                enable_but = ob is not None and ob.type == 'GPENCIL'
-                row = layout.row(align=True)
-                row.enabled = enable_but
-                row.operator("gpencil.layer_add", icon='ADD', text="")
-                row.operator("gpencil.layer_remove", icon='REMOVE', text="")
-                row.menu("GPENCIL_MT_layer_context_menu", icon='DOWNARROW_HLT', text="")
-
-                row = layout.row(align=True)
-                row.enabled = enable_but
-                row.operator("gpencil.layer_move", icon='TRIA_UP', text="").type = 'UP'
-                row.operator("gpencil.layer_move", icon='TRIA_DOWN', text="").type = 'DOWN'
-
-                row = layout.row(align=True)
-                row.enabled = enable_but
-                row.operator("gpencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
-                row.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
+            row = layout.row(align=True)
+            row.enabled = enable_but
+            row.operator("grease_pencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
+            row.operator("grease_pencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
 
         layout.separator_spacer()
 
@@ -392,6 +374,10 @@ class DOPESHEET_MT_view(Menu):
 
         layout.operator("action.view_selected")
         layout.operator("action.view_all")
+        if context.scene.use_preview_range:
+            layout.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            layout.operator("anim.scene_range_frame", text="Frame Scene Range")
         layout.operator("action.view_frame")
         layout.separator()
 
@@ -432,13 +418,17 @@ class DOPESHEET_MT_view(Menu):
 class DOPESHEET_MT_view_pie(Menu):
     bl_label = "View"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
 
         pie = layout.menu_pie()
         pie.operator("action.view_all")
         pie.operator("action.view_selected", icon='ZOOM_SELECTED')
         pie.operator("action.view_frame")
+        if context.scene.use_preview_range:
+            pie.operator("anim.scene_range_frame", text="Frame Preview Range")
+        else:
+            pie.operator("anim.scene_range_frame", text="Frame Scene Range")
 
 
 class DOPESHEET_MT_select(Menu):
@@ -454,9 +444,17 @@ class DOPESHEET_MT_select(Menu):
         layout.separator()
         layout.operator("action.select_box").axis_range = False
         layout.operator("action.select_box", text="Box Select (Axis Range)").axis_range = True
-
         layout.operator("action.select_circle")
         layout.operator_menu_enum("action.select_lasso", "mode")
+
+        # FIXME: grease pencil mode isn't supported for these yet, so skip for that mode only
+        if context.space_data.mode != 'GPENCIL':
+            layout.separator()
+            layout.operator("action.select_more", text="More")
+            layout.operator("action.select_less", text="Less")
+
+            layout.separator()
+            layout.operator("action.select_linked")
 
         layout.separator()
         layout.operator("action.select_column", text="Columns on Selected Keys").mode = 'KEYS'
@@ -472,15 +470,6 @@ class DOPESHEET_MT_select(Menu):
         props = layout.operator("action.select_leftright", text="After Current Frame")
         props.extend = False
         props.mode = 'RIGHT'
-
-        # FIXME: grease pencil mode isn't supported for these yet, so skip for that mode only
-        if context.space_data.mode != 'GPENCIL':
-            layout.separator()
-            layout.operator("action.select_more")
-            layout.operator("action.select_less")
-
-            layout.separator()
-            layout.operator("action.select_linked")
 
 
 class DOPESHEET_MT_marker(Menu):

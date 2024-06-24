@@ -9,6 +9,8 @@
  */
 #pragma once
 
+#include "ANIM_keyframing.hh"
+
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
 
@@ -37,9 +39,15 @@ struct KeyframeSettings {
 KeyframeSettings get_keyframe_settings(bool from_userprefs);
 
 /**
- * Create an fcurve for a specific channel, pre-set-up with default flags and interpolation mode.
+ * Create an fcurve for a specific channel, pre-set-up with default flags and
+ * interpolation mode.
+ *
+ * If the channel's property subtype is provided, the fcurve will also be set to
+ * the correct color mode based on user preferences.
  */
-FCurve *create_fcurve_for_channel(StringRef rna_path, int array_index);
+FCurve *create_fcurve_for_channel(StringRef rna_path,
+                                  int array_index,
+                                  std::optional<PropertySubType> prop_subtype);
 
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,
@@ -94,7 +102,7 @@ SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
  * \param r_samples: Is expected to be an array large enough to hold `sample_count`.
  */
 void sample_fcurve_segment(
-    FCurve *fcu, float start_frame, float sample_rate, float *samples, int sample_count);
+    const FCurve *fcu, float start_frame, float sample_rate, float *samples, int sample_count);
 
 enum class BakeCurveRemove {
   NONE = 0,

@@ -587,6 +587,19 @@ int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth,
   return columns;
 }
 
+void BLF_draw_svg_icon(
+    uint icon_id, float x, float y, float size, float color[4], float outline_alpha)
+{
+  FontBLF *font = global_font[0];
+  if (font) {
+    /* Avoid bgl usage to corrupt BLF drawing. */
+    GPU_bgl_end();
+    blf_draw_gpu__start(font);
+    blf_draw_svg_icon(font, icon_id, x, y, size, color, outline_alpha);
+    blf_draw_gpu__end(font);
+  }
+}
+
 void BLF_boundbox_foreach_glyph(
     int fontid, const char *str, size_t str_len, BLF_GlyphBoundsFn user_fn, void *user_data)
 {
@@ -636,6 +649,16 @@ int BLF_str_offset_to_cursor(
     return blf_str_offset_to_cursor(font, str, str_len, str_offset, cursor_width);
   }
   return 0;
+}
+
+blender::Vector<blender::Bounds<int>> BLF_str_selection_boxes(
+    int fontid, const char *str, size_t str_len, size_t sel_start, size_t sel_length)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    return blf_str_selection_boxes(font, str, str_len, sel_start, sel_length);
+  }
+  return {};
 }
 
 size_t BLF_width_to_strlen(

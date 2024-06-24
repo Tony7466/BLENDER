@@ -30,8 +30,9 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
     ClosureUndetermined cl = g_closure_get(i);
     if (!valid_N && (cl.weight > 0.0)) {
       surface_N = cl.N;
+      valid_N = true;
     }
-    stack.cl[i] = closure_light_new(cl, V);
+    closure_light_set(stack, i, closure_light_new(cl, V));
   }
 
   /* TODO(fclem): If transmission (no SSS) is present, we could reduce LIGHT_CLOSURE_EVAL_COUNT

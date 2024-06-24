@@ -30,7 +30,7 @@
 #include "ED_keyframes_edit.hh"
 #include "ED_markers.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 using namespace blender;
 
@@ -170,7 +170,7 @@ static short agrp_keyframes_loop(KeyframeEditData *ked,
 
 /* Loop over all keyframes in the Animation. */
 static short anim_keyframes_loop(KeyframeEditData *ked,
-                                 animrig::Animation &anim,
+                                 animrig::Action &anim,
                                  animrig::Binding *binding,
                                  KeyframeEditFunc key_ok,
                                  KeyframeEditFunc key_cb,
@@ -340,6 +340,7 @@ static short summary_keyframes_loop(KeyframeEditData *ked,
     switch (ale->datatype) {
       case ALE_MASKLAY:
       case ALE_GPFRAME:
+      case ALE_GREASE_PENCIL_CEL:
         break;
 
       case ALE_FCURVE:
@@ -415,12 +416,12 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
      */
     case ALE_GROUP: /* action group */
       return agrp_keyframes_loop(ked, (bActionGroup *)ale->data, key_ok, key_cb, fcu_cb);
-    case ALE_ANIM: { /* Animation data-block. */
+    case ALE_ACTION_LAYERED: { /* Animation data-block. */
 #ifdef WITH_ANIM_BAKLAVA
-      /* This assumes that the ALE_ANIM channel is shown in the dopesheet context, underneath the
-       * data-block that owns `ale->adt`. So that means that the loop is limited to the keys that
-       * belong to that binding. */
-      animrig::Animation &anim = static_cast<Animation *>(ale->key_data)->wrap();
+      /* This assumes that the ALE_ACTION_LAYERED channel is shown in the dopesheet context,
+       * underneath the data-block that owns `ale->adt`. So that means that the loop is limited to
+       * the keys that belong to that binding. */
+      animrig::Action &anim = static_cast<bAction *>(ale->key_data)->wrap();
       animrig::Binding *binding = anim.binding_for_handle(ale->adt->binding_handle);
       return anim_keyframes_loop(ked, anim, binding, key_ok, key_cb, fcu_cb);
 #else
@@ -435,6 +436,15 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
       return scene_keyframes_loop(ked, ads, (Scene *)ale->data, key_ok, key_cb, fcu_cb);
     case ALE_ALL: /* 'all' (DopeSheet summary) */
       return summary_keyframes_loop(ked, (bAnimContext *)ale->data, key_ok, key_cb, fcu_cb);
+
+    case ALE_NONE:
+    case ALE_GPFRAME:
+    case ALE_MASKLAY:
+    case ALE_NLASTRIP:
+    case ALE_GREASE_PENCIL_CEL:
+    case ALE_GREASE_PENCIL_DATA:
+    case ALE_GREASE_PENCIL_GROUP:
+      break;
   }
 
   return 0;
@@ -464,7 +474,7 @@ short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked,
      */
     case ALE_GROUP: /* action group */
       return agrp_keyframes_loop(ked, (bActionGroup *)data, key_ok, key_cb, fcu_cb);
-    case ALE_ANIM:
+    case ALE_ACTION_LAYERED:
       /* This function is only used in nlaedit_apply_scale_exec(). Since the NLA has no support for
        * Animation data-blocks in strips, there is no need to implement this here. */
       return 0;
@@ -845,7 +855,7 @@ void bezt_remap_times(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_nearest(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(floorf(bezt->vec[1][0] + 0.5f));
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, floorf(bezt->vec[1][0] + 0.5f));
   }
   return 0;
 }
@@ -857,7 +867,7 @@ static short snap_bezier_nearestsec(KeyframeEditData *ked, BezTriple *bezt)
   const float secf = float(FPS);
 
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(floorf(bezt->vec[1][0] / secf + 0.5f)) * secf;
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, floorf(bezt->vec[1][0] / secf + 0.5f) * secf);
   }
   return 0;
 }
@@ -867,7 +877,7 @@ static short snap_bezier_cframe(KeyframeEditData *ked, BezTriple *bezt)
 {
   const Scene *scene = ked->scene;
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(scene->r.cfra);
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, float(scene->r.cfra));
   }
   return 0;
 }
@@ -876,7 +886,8 @@ static short snap_bezier_cframe(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_nearmarker(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = float(ED_markers_find_nearest_marker_time(&ked->list, bezt->vec[1][0]));
+    BKE_fcurve_keyframe_move_time_with_handles(
+        bezt, float(ED_markers_find_nearest_marker_time(&ked->list, bezt->vec[1][0])));
   }
   return 0;
 }
@@ -901,7 +912,7 @@ static short snap_bezier_horizontal(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short snap_bezier_time(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][0] = ked->f1;
+    BKE_fcurve_keyframe_move_time_with_handles(bezt, ked->f1);
   }
   return 0;
 }
@@ -910,7 +921,7 @@ static short snap_bezier_time(KeyframeEditData *ked, BezTriple *bezt)
 static short snap_bezier_value(KeyframeEditData *ked, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    bezt->vec[1][1] = ked->f1;
+    BKE_fcurve_keyframe_move_value_with_handles(bezt, ked->f1);
   }
   return 0;
 }
@@ -1634,7 +1645,7 @@ KeyframeEditFunc ANIM_editkeyframes_select(short selectmode)
 
 static short selmap_build_bezier_more(KeyframeEditData *ked, BezTriple *bezt)
 {
-  FCurve *fcu = ked->fcu;
+  const FCurve *fcu = ked->fcu;
   char *map = static_cast<char *>(ked->data);
   int i = ked->curIndex;
 
@@ -1669,7 +1680,7 @@ static short selmap_build_bezier_more(KeyframeEditData *ked, BezTriple *bezt)
 
 static short selmap_build_bezier_less(KeyframeEditData *ked, BezTriple *bezt)
 {
-  FCurve *fcu = ked->fcu;
+  const FCurve *fcu = ked->fcu;
   char *map = static_cast<char *>(ked->data);
   int i = ked->curIndex;
 

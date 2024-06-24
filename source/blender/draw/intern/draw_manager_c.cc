@@ -8,6 +8,8 @@
 
 #include <cstdio>
 
+#include "CLG_log.h"
+
 #include "BLI_alloca.h"
 #include "BLI_listbase.h"
 #include "BLI_memblock.h"
@@ -88,7 +90,6 @@
 
 #include "engines/basic/basic_engine.h"
 #include "engines/compositor/compositor_engine.h"
-#include "engines/eevee/eevee_engine.h"
 #include "engines/eevee_next/eevee_engine.h"
 #include "engines/external/external_engine.h"
 #include "engines/gpencil/gpencil_engine.h"
@@ -103,6 +104,8 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "DRW_select_buffer.hh"
+
+static CLG_LogRef LOG = {"draw.manager"};
 
 /** Render State: No persistent data between draw calls. */
 DRWManager DST = {nullptr};
@@ -1146,15 +1149,13 @@ void DRW_draw_region_engine_info(int xoffset, int *yoffset, int line_height)
 {
   DRW_ENABLED_ENGINE_ITER (DST.view_data_active, engine, data) {
     if (data->info[0] != '\0') {
-      const int font_id = BLF_default();
-      UI_FontThemeColor(font_id, TH_TEXT_HI);
       const char *buf_step = IFACE_(data->info);
       do {
         const char *buf = buf_step;
         buf_step = BLI_strchr_or_end(buf, '\n');
         const int buf_len = buf_step - buf;
         *yoffset -= line_height;
-        BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, buf, buf_len);
+        BLF_draw_default(xoffset, *yoffset, 0.0f, buf, buf_len);
       } while (*buf_step ? ((void)buf_step++, true) : false);
     }
   }
@@ -1330,10 +1331,17 @@ void DRW_notify_view_update(const DRWUpdateContext *update_ctx)
 
   const bool gpencil_engine_needed = drw_gpencil_engine_needed(depsgraph, v3d);
 
-  /* XXX Really nasty locking. But else this could
-   * be executed by the material previews thread
-   * while rendering a viewport. */
-  BLI_ticket_mutex_lock(DST.system_gpu_context_mutex);
+  /* XXX Really nasty locking. But else this could be executed by the
+   * material previews thread while rendering a viewport.
+   *
+   * Check for recursive lock which can deadlock. This should not
+   * happen, but in case there is a bug where depsgraph update is called
+   * during drawing we try not to hang Blender. */
+  if (!BLI_ticket_mutex_lock_check_recursive(DST.system_gpu_context_mutex)) {
+    CLOG_ERROR(&LOG, "GPU context already bound");
+    BLI_assert_unreachable();
+    return;
+  }
 
   /* Reset before using it. */
   drw_state_prepare_clean_for_draw(&DST);
@@ -2631,7 +2639,8 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
                          GPUViewport *viewport,
                          const bool use_gpencil,
                          const bool use_basic,
-                         const bool use_overlay)
+                         const bool use_overlay,
+                         const bool use_only_selected)
 {
   using namespace blender::draw;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
@@ -2712,6 +2721,9 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
         continue;
       }
       if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+        continue;
+      }
+      if (use_only_selected && !(ob->base_flag & BASE_SELECTED)) {
         continue;
       }
       DST.dupli_parent = data_.dupli_parent;
@@ -2882,7 +2894,7 @@ void DRW_draw_depth_object(
     case OB_MESH: {
       blender::gpu::Batch *batch;
 
-      Mesh *mesh = static_cast<Mesh *>(object->data);
+      Mesh &mesh = *static_cast<Mesh *>(object->data);
 
       if (object->mode & OB_MODE_EDIT) {
         batch = DRW_mesh_batch_cache_get_edit_triangles(mesh);
@@ -2891,7 +2903,7 @@ void DRW_draw_depth_object(
         batch = DRW_mesh_batch_cache_get_surface(mesh);
       }
       TaskGraph *task_graph = BLI_task_graph_create();
-      DRW_mesh_batch_cache_create_requested(task_graph, object, mesh, scene, false, true);
+      DRW_mesh_batch_cache_create_requested(*task_graph, *object, mesh, *scene, false, true);
       BLI_task_graph_work_and_wait(task_graph);
       BLI_task_graph_free(task_graph);
 
@@ -2988,6 +3000,12 @@ bool DRW_state_is_navigating()
   return (rv3d) && (rv3d->rflag & (RV3D_NAVIGATING | RV3D_PAINTING));
 }
 
+bool DRW_state_is_painting()
+{
+  const RegionView3D *rv3d = DST.draw_ctx.rv3d;
+  return (rv3d) && (rv3d->rflag & (RV3D_PAINTING));
+}
+
 bool DRW_state_show_text()
 {
   return (DST.options.is_select) == 0 && (DST.options.is_depth) == 0 &&
@@ -3042,9 +3060,6 @@ void DRW_engine_register(DrawEngineType *draw_engine_type)
 void DRW_engines_register()
 {
   using namespace blender::draw;
-  RE_engines_register(&DRW_engine_viewport_eevee_type);
-  /* Always register EEVEE Next so it can be used in background mode with `--factory-startup`.
-   * (Needed for tests). */
   RE_engines_register(&DRW_engine_viewport_eevee_next_type);
 
   RE_engines_register(&DRW_engine_viewport_workbench_type);

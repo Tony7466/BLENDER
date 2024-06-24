@@ -424,15 +424,23 @@ void COLLECTION_OT_create(wmOperatorType *ot)
       ot->srna, "name", "Collection", MAX_ID_NAME - 2, "Name", "Name of the new collection");
 }
 
+static bool collection_exporter_common_check(const Collection *collection)
+{
+  return collection != nullptr &&
+         !(ID_IS_LINKED(&collection->id) || ID_IS_OVERRIDE_LIBRARY(&collection->id));
+}
+
 static bool collection_exporter_poll(bContext *C)
 {
-  return CTX_data_collection(C) != nullptr;
+  const Collection *collection = CTX_data_collection(C);
+  return collection_exporter_common_check(collection);
 }
 
 static bool collection_exporter_remove_poll(bContext *C)
 {
   const Collection *collection = CTX_data_collection(C);
-  return collection != nullptr && !BLI_listbase_is_empty(&collection->exporters);
+  return collection_exporter_common_check(collection) &&
+         !BLI_listbase_is_empty(&collection->exporters);
 }
 
 static bool collection_export_all_poll(bContext *C)
@@ -639,7 +647,7 @@ static void COLLECTION_OT_exporter_export(wmOperatorType *ot)
   ot->poll = collection_exporter_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Exporter index", 0, INT_MAX);
 }
@@ -684,7 +692,7 @@ static void COLLECTION_OT_export_all(wmOperatorType *ot)
   ot->poll = collection_exporter_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 }
 
 static int collection_export_recursive(bContext *C,
@@ -693,6 +701,10 @@ static int collection_export_recursive(bContext *C,
 {
   /* Skip collections which have been Excluded in the View Layer. */
   if (layer_collection->flag & LAYER_COLLECTION_EXCLUDE) {
+    return OPERATOR_FINISHED;
+  }
+
+  if (!collection_exporter_common_check(layer_collection->collection)) {
     return OPERATOR_FINISHED;
   }
 
@@ -733,7 +745,7 @@ static void WM_OT_collection_export_all(wmOperatorType *ot)
   ot->poll = collection_export_all_poll;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = 0;
 }
 
 static void collection_exporter_menu_draw(const bContext * /*C*/, Menu *menu)
@@ -835,7 +847,7 @@ static int collection_link_exec(bContext *C, wmOperator *op)
   }
   /* Linked collections are already checked for by using RNA_collection_local_itemf
    * but operator can be called without invoke */
-  if (ID_IS_LINKED(&collection->id)) {
+  if (!ID_IS_EDITABLE(&collection->id)) {
     BKE_report(op->reports, RPT_ERROR, "Could not add the collection because it is linked");
     return OPERATOR_CANCELLED;
   }
@@ -896,7 +908,7 @@ static int collection_remove_exec(bContext *C, wmOperator *op)
   if (!ob || !collection) {
     return OPERATOR_CANCELLED;
   }
-  if (ID_IS_LINKED(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
+  if (!ID_IS_EDITABLE(collection) || ID_IS_OVERRIDE_LIBRARY(collection)) {
     BKE_report(op->reports,
                RPT_ERROR,
                "Cannot remove an object from a linked or library override collection");

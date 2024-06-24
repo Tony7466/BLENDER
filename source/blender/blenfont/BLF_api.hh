@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
 #include "BLI_string_ref.hh"
 #include "BLI_sys_types.h"
@@ -138,6 +139,9 @@ void BLF_draw(int fontid, const char *str, size_t str_len, ResultBLF *r_info = n
 int BLF_draw_mono(int fontid, const char *str, size_t str_len, int cwidth, int tab_columns)
     ATTR_NONNULL(2);
 
+void BLF_draw_svg_icon(
+    uint icon_id, float x, float y, float size, float color[4], float outline_alpha);
+
 typedef bool (*BLF_GlyphBoundsFn)(const char *str,
                                   size_t str_step_ofs,
                                   const rcti *bounds,
@@ -178,6 +182,13 @@ bool BLF_str_offset_to_glyph_bounds(int fontid,
  */
 int BLF_str_offset_to_cursor(
     int fontid, const char *str, size_t str_len, size_t str_offset, float cursor_width);
+
+/**
+ * Return bounds of selection boxes. There is just one normally but there could
+ * be more for multi-line and when containing text of differing directions.
+ */
+blender::Vector<blender::Bounds<int>> BLF_str_selection_boxes(
+    int fontid, const char *str, size_t str_len, size_t sel_start, size_t sel_length);
 
 /**
  * Get the string byte offset that fits within a given width.
@@ -292,7 +303,7 @@ void BLF_draw_buffer(int fontid, const char *str, size_t str_len, ResultBLF *r_i
  *
  * \note called from a thread, so it bypasses the normal BLF_* api (which isn't thread-safe).
  */
-bool BLF_thumb_preview(const char *filename, unsigned char *buf, int w, int h, int channels)
+bool BLF_thumb_preview(const char *filepath, unsigned char *buf, int w, int h, int channels)
     ATTR_NONNULL();
 
 /* `blf_default.cc` */
@@ -307,15 +318,6 @@ int BLF_default();
  * Draw the string using the default font, size and DPI.
  */
 void BLF_draw_default(float x, float y, float z, const char *str, size_t str_len) ATTR_NONNULL();
-/**
- * As above but with a very contrasting dark shadow.
- */
-void BLF_draw_default_shadowed(float x,
-                               float y,
-                               float z,
-                               const char *str,
-                               size_t str_len,
-                               const float shadow_color[4] = nullptr) ATTR_NONNULL(4);
 /**
  * Set size and DPI, and return default font ID.
  */
