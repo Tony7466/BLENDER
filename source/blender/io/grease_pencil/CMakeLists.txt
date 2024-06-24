@@ -25,7 +25,7 @@ set(SRC
   # intern/gpencil_io_import_base.cc
   intern/grease_pencil_io_import_svg.cc
   #
-  grease_pencil_io.h
+  grease_pencil_io.hh
   # intern/gpencil_io_base.hh
   # intern/gpencil_io_export_base.hh
   # intern/gpencil_io_import_base.hh

@@ -11,6 +11,7 @@ set(INC
   ../../io/collada
   ../../io/common
   ../../io/gpencil_legacy
+  ../../io/grease_pencil
   ../../io/ply
   ../../io/stl
   ../../io/usd
@@ -32,6 +33,7 @@ set(SRC
   io_gpencil_legacy_export.cc
   io_gpencil_legacy_import.cc
   io_gpencil_legacy_utils.cc
+  io_grease_pencil.cc
   io_obj.cc
   io_ops.cc
   io_ply_ops.cc
