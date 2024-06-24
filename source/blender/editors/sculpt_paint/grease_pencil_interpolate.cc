@@ -44,8 +44,8 @@ using ed::greasepencil::InterpolateLayerMode;
 /** \name Interpolate Operator
  * \{ */
 
-constexpr const float interpolate_factor_min = -1.0f;
-constexpr const float interpolate_factor_max = 2.0f;
+constexpr float interpolate_factor_min = -1.0f;
+constexpr float interpolate_factor_max = 2.0f;
 
 /* Pair of curves in a layer that get interpolated. */
 struct InterpolationPairs {
@@ -167,7 +167,7 @@ static bool compute_auto_flip(const Span<float3> from_positions, const Span<floa
     return false;
   }
 
-  constexpr const float min_angle = DEG2RADF(15);
+  constexpr float min_angle = DEG2RADF(15);
 
   const float3 &from_first = from_positions.first();
   const float3 &from_last = from_positions.last();
