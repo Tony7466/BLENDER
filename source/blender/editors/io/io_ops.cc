@@ -24,7 +24,7 @@
 
 #include "io_cache.hh"
 #include "io_drop_import_file.hh"
-#include "io_gpencil.hh"
+#include "io_gpencil_legacy.hh"
 #include "io_obj.hh"
 #include "io_ply_ops.hh"
 #include "io_stl_ops.hh"
@@ -49,7 +49,7 @@ void ED_operatortypes_io()
   ed::io::usd_file_handler_add();
 #endif
 
-#ifdef WITH_IO_GPENCIL
+#ifdef WITH_IO_GREASE_PENCIL
   WM_operatortype_append(WM_OT_gpencil_import_svg);
   ed::io::gpencil_file_handler_add();
 #  ifdef WITH_PUGIXML

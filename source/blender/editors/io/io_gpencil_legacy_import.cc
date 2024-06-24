@@ -6,7 +6,7 @@
  * \ingroup editor/io
  */
 
-#ifdef WITH_IO_GPENCIL
+#ifdef WITH_IO_GREASE_PENCIL
 
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
@@ -28,7 +28,7 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "io_gpencil.hh"
+#  include "io_gpencil_legacy.hh"
 #  include "io_utils.hh"
 
 #  include "gpencil_io.h"
@@ -185,4 +185,4 @@ void gpencil_file_handler_add()
 }
 }  // namespace blender::ed::io
 
-#endif /* WITH_IO_GPENCIL */
+#endif /* WITH_IO_GREASE_PENCIL */
