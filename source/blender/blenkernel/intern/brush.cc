@@ -15,6 +15,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 
@@ -2594,7 +2595,7 @@ void BKE_brush_calc_curve_factors(const eBrushCurvePreset preset,
 {
   BLI_assert(factors.size() == distances.size());
 
-  const float radius_rcp = 1.0f / brush_radius;
+  const float radius_rcp = blender::math::rcp(brush_radius);
   for (const int i : distances.index_range()) {
     float p = distances[i];
     if (p >= brush_radius) {
