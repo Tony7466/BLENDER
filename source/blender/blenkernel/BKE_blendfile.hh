@@ -174,7 +174,7 @@ namespace blender::bke::blendfile {
 class PartialWriteContext : NonCopyable, NonMovable {
  public:
   /** The temp Main itself, storing all IDs copied into this partial write context. */
-     Main bmain = {};
+  Main bmain = {};
 
  private:
   /**
