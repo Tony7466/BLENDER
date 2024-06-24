@@ -355,7 +355,7 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
                                  pair_from_indices,
                                  pair_to_indices,
                                  selection,
-                                 VArray<bool>::ForSpan(dst_curve_flip),
+                                 dst_curve_flip,
                                  mix_factor,
                                  dst_curves);
   }

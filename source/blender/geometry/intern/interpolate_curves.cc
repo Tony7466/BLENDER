@@ -158,7 +158,7 @@ void interpolate_curves(const CurvesGeometry &from_curves,
                         const Span<int> from_curve_indices,
                         const Span<int> to_curve_indices,
                         const IndexMask &selection,
-                        VArray<bool> curve_flip_direction,
+                        const Span<bool> curve_flip_direction,
                         const float mix_factor,
                         CurvesGeometry &dst_curves)
 {
@@ -338,8 +338,8 @@ CurvesGeometry interpolate_curves(const CurvesGeometry &from_curves,
                                   Span<int> from_curve_indices,
                                   Span<int> to_curve_indices,
                                   const IndexMask &selection,
-                                  VArray<int> dst_curve_counts,
-                                  VArray<bool> curve_flip_direction,
+                                  const VArray<int> &dst_curve_counts,
+                                  const Span<bool> curve_flip_direction,
                                   const float mix_factor)
 {
   if (from_curves.curves_range().is_empty() || to_curves.curves_range().is_empty()) {
