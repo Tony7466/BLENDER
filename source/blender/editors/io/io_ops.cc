@@ -53,7 +53,6 @@ void ED_operatortypes_io()
 #ifdef WITH_IO_GREASE_PENCIL
   WM_operatortype_append(WM_OT_gpencil_import_svg);
   WM_operatortype_append(WM_OT_grease_pencil_import_svg);
-  ed::io::gpencil_file_handler_add();
   ed::io::grease_pencil_file_handler_add();
 #  ifdef WITH_PUGIXML
   WM_operatortype_append(WM_OT_gpencil_export_svg);

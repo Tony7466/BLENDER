@@ -30,7 +30,7 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "io_gpencil_legacy.hh"
+#  include "io_grease_pencil.hh"
 #  include "io_utils.hh"
 
 #  include "grease_pencil_io.hh"
