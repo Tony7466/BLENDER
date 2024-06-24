@@ -2789,52 +2789,32 @@ void UV_OT_stitch(wmOperatorType *ot)
 }
 
 static bool uvedit_uv_threshold_weld(Scene *scene,
-                                 BMesh *bm,
+                                 blender::Vector<Object *> *objects,
                                 float threshold)
 {
-  bool changed = false;
-
-
- // Fix: Change the type of loopMap parameter
-  //get head of contiguous loop selections
   std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal> loopMap;
-  getBMLoopPointers(scene, bm, &loopMap);
-  std::pair<std::pair<float, float>, std::pair<float, float>> lineheads; 
-  lineheads = constructselectedlinesegment(&loopMap);
-  std::pair<float, float> prev1;
-  std::pair<float, float> prev2;
-  std::pair<float, float> curr1 = lineheads.first;
-  std::pair<float, float> curr2  = lineheads.second;
-  
-  while(curr1 != prev1 && curr2 != prev2){
-    ED_uvedit_center_pair_of_loops(scene, bm, loopMap[curr1].loops, loopMap[curr2].loops, threshold);
-    std::pair<float, float> tmp1 = curr1;
-    std::pair<float, float> tmp2 = curr2;
-    if(loopMap[curr1].connec1 != std::make_pair(-1.0f, -1.0f) && loopMap[curr1].connec1 != prev1){
-      curr1 = loopMap[curr1].connec1;
-    }else if (loopMap[curr1].connec2 != std::make_pair(-1.0f, -1.0f) && loopMap[curr1].connec2 != prev1){
-      curr1 = loopMap[curr1].connec2;
-    }
-    
-
-    if(loopMap[curr2].connec1 != std::make_pair(-1.0f, -1.0f) && loopMap[curr2].connec1 != prev2){
-      curr2 = loopMap[curr2].connec1;
-    }else if (loopMap[curr2].connec2 != std::make_pair(-1.0f, -1.0f) && loopMap[curr2].connec2 != prev2){
-      curr2 = loopMap[curr2].connec2;
-    }
-    prev1 = tmp1;
-    prev2 = tmp2;
-    
-
-
+  for (size_t i = 0; i < objects->size(); i++) {
+    Object* obedit = (*objects)[i];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMesh* bm = em->bm;
+    float aspect_y = ED_uvedit_get_aspect_y(obedit);
+    getBMLoopPointers(scene, bm, i, aspect_y, &loopMap);
   }
-
-
-
-
-
   
-  
+  std::vector<UVSelectionLinkedList*> LineSegments; 
+  if(construct_continuous_UV_linesegments_as_linkedlists(&loopMap, &LineSegments)){
+    UVCoordinateNode* line1 = LineSegments[0]->first;
+    UVCoordinateNode* line2 = LineSegments[1]->first;
+
+    while(line1 !=NULL && line2 != NULL){
+      ED_uvedit_shift_pair_of_UV_coordinates(objects, line1->UVCoorddata, line2->UVCoorddata, threshold, mid_v2_v2v2);
+      line1 = line1->next;
+      line2 = line2->next;
+    }
+
+  } else{
+    return false;
+  }
   return true;
 }
 
@@ -2848,15 +2828,19 @@ static int stitch_distance_exec(bContext *C, wmOperator *op)
   SpaceImage *sima = CTX_wm_space_image(C);
   Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       scene, view_layer, nullptr);
-  float origin[2] = {0.0f, 0.0f}; // Fix: Remove duplicate declaration and initialize here
-  BMEditMesh *em = BKE_editmesh_from_object(objects[0]);
+
   const float threshold = RNA_float_get(op->ptr, "threshold");
-  if (uvedit_uv_threshold_weld(scene, em->bm, threshold)) {
+
+  if (uvedit_uv_threshold_weld(scene, &objects, threshold)) {
     uvedit_live_unwrap_update(sima, scene, objects[0]);
     DEG_id_tag_update(static_cast<ID *>(objects[0]->data), 0);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, objects[0]->data);
+    return OPERATOR_FINISHED;
+  } else{
+    return OPERATOR_CANCELLED;
   }
-  return OPERATOR_FINISHED;
+
+
 }
 
 

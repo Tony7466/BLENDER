@@ -291,17 +291,35 @@ struct FaceIsland {
   float aspect_y;
 };
 
-void ED_uvedit_center_pair_of_loops(const Scene *scene,
-                                    BMesh *bm,
-                                    std::vector<BMLoop*> loop1,
-                                    std::vector<BMLoop*> loop2,
-                                    float threshold);
-
+/* `uvedit_smart_stitch.cc` */
 struct loopData {
     std::vector<BMLoop*> loops;
     std::pair<float, float> connec1 = std::make_pair(-1.0f, -1.0f);
     std::pair<float, float> connec2 = std::make_pair(-1.0f, -1.0f);
+    int objectindex;
+    int islandindex;
 };
+
+struct UVCoordinateNode{
+    struct UVCoordinateNode* next;
+    loopData* UVCoorddata;
+};
+struct UVSelectionLinkedList {
+	UVCoordinateNode *first, *last;
+    UVSelectionLinkedList() : first(nullptr), last(nullptr) {}
+};
+
+static void list_push_back(UVSelectionLinkedList *list, UVCoordinateNode* node)
+{
+	if (list->first != NULL) {
+        list->last->next = node;
+		node->next = NULL;
+	}
+	else {
+		list->first = node;
+	}
+	list->last = node;
+}
 struct pair_hash {
     template <class T1, class T2>
     std::size_t operator () (const std::pair<T1,T2> &p) const {
@@ -313,15 +331,23 @@ struct pair_hash {
         return h1 ^ h2;  
     }
 };
-
 struct pair_equal {
     template <class T1, class T2>
     bool operator () (const std::pair<T1,T2> &lhs, const std::pair<T1,T2> &rhs) const {
         return lhs.first == rhs.first && lhs.second == rhs.second;
     }
 };
-void getBMLoopPointers(Scene* scene, BMesh* bm, std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
-std::pair<std::pair<float, float>, std::pair<float, float>> constructselectedlinesegment(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
+void getBMLoopPointers(Scene* scene, 
+                       BMesh* bm,
+                       int objectIndex,
+                       float aspect_y,
+                       std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
+bool  construct_continuous_UV_linesegments_as_linkedlists(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr,std::vector<UVSelectionLinkedList*>*linesegments);
+void ED_uvedit_shift_pair_of_UV_coordinates(blender::Vector<Object *> *objects,
+                  loopData* UVcoord1,
+                  loopData* UVcoord2,
+                  float threshold,
+                  blender::FunctionRef<void(float[2], float[2], float[2])>user_fn);
 
 
 /**

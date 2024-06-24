@@ -675,6 +675,7 @@ void minmax_v2v2_v2(float min[2], float max[2], const float vec[2]);
 /** ensure \a v1 is \a dist from \a v2 */
 void dist_ensure_v3_v3fl(float v1[3], const float v2[3], float dist);
 void dist_ensure_v2_v2fl(float v1[2], const float v2[2], float dist);
+float dist_v2v2(const float v1[2], const float v2[2]);
 
 void axis_sort_v3(const float axis_values[3], int r_axis_order[3]);
 
