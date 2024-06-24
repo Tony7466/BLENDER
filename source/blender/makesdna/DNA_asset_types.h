@@ -86,6 +86,13 @@ typedef struct AssetMetaData {
 #ifdef __cplusplus
   /** Enables use with `std::unique_ptr<AssetMetaData>`. */
   ~AssetMetaData();
+  /**
+   * Return a unique_ptr also owning all the internal data of the current object, and set internal
+   * data pointers of the current object to `nullptr`. Some sort of primitive 'move' operation.
+   *
+   * \note Typically, the current object should be deleted after calling this function.
+   */
+  std::unique_ptr<AssetMetaData> move_into_unique_pointer();
 #endif
 } AssetMetaData;
 

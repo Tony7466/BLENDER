@@ -76,6 +76,21 @@ AssetMetaData::~AssetMetaData()
   BLI_freelistN(&tags);
 }
 
+std::unique_ptr<AssetMetaData> AssetMetaData::move_into_unique_pointer()
+{
+  std::unique_ptr other = std::make_unique<AssetMetaData>(*this);
+
+  this->properties = nullptr;
+  this->author = nullptr;
+  this->description = nullptr;
+  this->copyright = nullptr;
+  this->license = nullptr;
+  BLI_listbase_clear(&tags);
+
+  return other;
+}
+
+
 static AssetTag *asset_metadata_tag_add(AssetMetaData *asset_data, const char *const name)
 {
   AssetTag *tag = (AssetTag *)MEM_callocN(sizeof(*tag), __func__);
