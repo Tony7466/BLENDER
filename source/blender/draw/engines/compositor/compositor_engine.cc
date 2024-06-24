@@ -154,9 +154,6 @@ class Context : public realtime_compositor::Context {
     if (STREQ(pass_name, RE_PASSNAME_COMBINED)) {
       return get_output_texture();
     }
-    else if (STREQ(pass_name, RE_PASSNAME_Z)) {
-      return DRW_viewport_texture_list_get()->depth;
-    }
     else {
       return nullptr;
     }

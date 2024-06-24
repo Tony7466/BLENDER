@@ -526,7 +526,8 @@ void Film::sync()
 
   const int cryptomatte_layer_count = cryptomatte_layer_len_get();
   const bool is_cryptomatte_pass_enabled = cryptomatte_layer_count > 0;
-  const bool do_cryptomatte_sorting = inst_.is_viewport() == false;
+  const bool do_cryptomatte_sorting = !inst_.is_viewport() ||
+                                      this->is_viewport_compositor_enabled();
   cryptomatte_post_ps_.init();
   if (is_cryptomatte_pass_enabled && do_cryptomatte_sorting) {
     cryptomatte_post_ps_.state_set(DRW_STATE_NO_DRAW);
