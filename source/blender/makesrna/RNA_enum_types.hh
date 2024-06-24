@@ -10,10 +10,10 @@
 
 #include "RNA_types.hh"
 
-struct ID;
 struct PointerRNA;
 struct PropertyRNA;
 struct bContext;
+struct AttributeOwner;
 namespace blender::bke {
 struct bNodeTreeType;
 struct bNodeType;
@@ -25,7 +25,7 @@ struct RuntimeNodeEnumItems;
 #define DEF_ENUM(id) extern const EnumPropertyItem id[];
 #include "RNA_enum_items.hh"
 
-extern const EnumPropertyItem *rna_enum_attribute_domain_itemf(ID *id,
+extern const EnumPropertyItem *rna_enum_attribute_domain_itemf(const AttributeOwner &owner,
                                                                bool include_instances,
                                                                bool *r_free);
 
