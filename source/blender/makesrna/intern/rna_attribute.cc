@@ -16,6 +16,7 @@
 
 #include "DNA_curves_types.h"
 #include "DNA_customdata_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_pointcloud_types.h"
@@ -181,6 +182,49 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #  include "WM_api.hh"
 
+static AttributeOwner owner_from_attribute_pointer_rna(PointerRNA *ptr)
+{
+  ID *owner_id = static_cast<ID *>(ptr->owner_id);
+  const CustomDataLayer *layer = static_cast<const CustomDataLayer *>(ptr->data);
+  if (GS(owner_id->name) == ID_GP) {
+    GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(owner_id);
+    /* First check the layer attributes. */
+    CustomData *layers_data = &grease_pencil->layers_data;
+    for (int i = 0; i < layers_data->totlayer; i++) {
+      if (&layers_data->layers[i] == layer) {
+        return AttributeOwner(AttributeOwnerType::GreasePencil, grease_pencil);
+      }
+    }
+    /* Now check all the drawings. */
+    for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+      if (base->type == GP_DRAWING) {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(base);
+        CustomData *curve_data = &drawing->geometry.curve_data;
+        for (int i = 0; i < curve_data->totlayer; i++) {
+          if (&curve_data->layers[i] == layer) {
+            return AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+          }
+        }
+        CustomData *point_data = &drawing->geometry.point_data;
+        for (int i = 0; i < point_data->totlayer; i++) {
+          if (&point_data->layers[i] == layer) {
+            return AttributeOwner(AttributeOwnerType::GreasePencilDrawing, drawing);
+          }
+        }
+      }
+    }
+  }
+  return AttributeOwner::from_id(ptr->owner_id);
+}
+
+static AttributeOwner owner_from_pointer_rna(PointerRNA *ptr)
+{
+  if (ptr->type == &RNA_GreasePencilDrawing) {
+    return AttributeOwner(AttributeOwnerType::GreasePencilDrawing, ptr->data);
+  }
+  return AttributeOwner::from_id(ptr->owner_id);
+}
+
 /* Attribute */
 
 static std::optional<std::string> rna_Attribute_path(const PointerRNA *ptr)
@@ -232,14 +276,14 @@ static StructRNA *rna_Attribute_refine(PointerRNA *ptr)
 static void rna_Attribute_name_set(PointerRNA *ptr, const char *value)
 {
   const CustomDataLayer *layer = (const CustomDataLayer *)ptr->data;
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  AttributeOwner owner = owner_from_attribute_pointer_rna(ptr);
   BKE_attribute_rename(owner, layer->name, value, nullptr);
 }
 
 static int rna_Attribute_name_editable(const PointerRNA *ptr, const char **r_info)
 {
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(ptr->data);
-  AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
+  AttributeOwner owner = owner_from_attribute_pointer_rna(const_cast<PointerRNA *>(ptr));
   if (BKE_attribute_required(owner, layer->name)) {
     *r_info = N_("Cannot modify name of required geometry attribute");
     return false;

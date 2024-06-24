@@ -11,6 +11,7 @@
 #include "BLI_string.h"
 
 #include "DNA_grease_pencil_types.h"
+#include "DNA_scene_types.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -73,6 +74,174 @@ static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
 }
 
+static void rna_GreasePencilLayer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  blender::Span<FramesMapKeyT> sorted_keys = layer.sorted_keys();
+
+  rna_iterator_array_begin(
+      iter, (void *)sorted_keys.data(), sizeof(FramesMapKeyT), sorted_keys.size(), false, nullptr);
+}
+
+static PointerRNA rna_GreasePencilLayer_frames_get(CollectionPropertyIterator *iter)
+{
+  using namespace blender::bke::greasepencil;
+  const FramesMapKeyT frame_key = *static_cast<FramesMapKeyT *>(rna_iterator_array_get(iter));
+  const Layer &layer = static_cast<GreasePencilLayer *>(iter->parent.data)->wrap();
+  const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
+  return rna_pointer_inherit_refine(&iter->parent,
+                                    &RNA_GreasePencilFrame,
+                                    static_cast<void *>(const_cast<GreasePencilFrame *>(frame)));
+}
+
+static int rna_GreasePencilLayer_frames_length(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  return layer.frames().size();
+}
+
+static bool rna_GreasePencilLayer_frames_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (index < 0 || index >= layer.sorted_keys().size()) {
+    return false;
+  }
+  const FramesMapKeyT frame_key = layer.sorted_keys()[index];
+  const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
+
+  r_ptr->owner_id = &grease_pencil.id;
+  r_ptr->type = &RNA_GreasePencilFrame;
+  r_ptr->data = static_cast<void *>(const_cast<GreasePencilFrame *>(frame));
+  return true;
+}
+
+static GreasePencilFrame *rna_Frames_frame_new(ID *id,
+                                               GreasePencilLayer *layer_in,
+                                               ReportList *reports,
+                                               int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = static_cast<GreasePencilLayer *>(layer_in)->wrap();
+
+  if (layer.frames().contains(frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame already exists on frame number %d", frame_number);
+    return nullptr;
+  }
+
+  grease_pencil.insert_frame(layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+
+  return layer.frame_at(frame_number);
+}
+
+static void rna_Frames_frame_remove(ID *id,
+                                    GreasePencilLayer *layer_in,
+                                    ReportList *reports,
+                                    int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = static_cast<GreasePencilLayer *>(layer_in)->wrap();
+
+  if (!layer.frames().contains(frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame doesn't exists on frame number %d", frame_number);
+    return;
+  }
+
+  if (grease_pencil.remove_frames(layer, {frame_number})) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+  }
+}
+
+static GreasePencilFrame *rna_Frames_frame_copy(ID *id,
+                                                GreasePencilLayer *layer_in,
+                                                ReportList *reports,
+                                                int from_frame_number,
+                                                int to_frame_number,
+                                                bool instance_drawing)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(id);
+  Layer &layer = static_cast<GreasePencilLayer *>(layer_in)->wrap();
+
+  if (!layer.frames().contains(from_frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame doesn't exists on frame number %d", from_frame_number);
+    return nullptr;
+  }
+  if (layer.frames().contains(to_frame_number)) {
+    BKE_reportf(reports, RPT_ERROR, "Frame already exists on frame number %d", to_frame_number);
+    return nullptr;
+  }
+
+  grease_pencil.insert_duplicate_frame(
+      layer, from_frame_number, to_frame_number, instance_drawing);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
+
+  return layer.frame_at(to_frame_number);
+}
+
+static std::pair<int, const blender::bke::greasepencil::Layer *> find_layer_of_frame(
+    const GreasePencil &grease_pencil, const GreasePencilFrame &find_frame)
+{
+  using namespace blender::bke::greasepencil;
+  for (const Layer *layer : grease_pencil.layers()) {
+    for (const auto &[key, frame] : layer->frames().items()) {
+      if (&frame == &find_frame) {
+        return {int(key), layer};
+      }
+    }
+  }
+  return {0, nullptr};
+}
+
+static PointerRNA rna_Frame_drawing_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  GreasePencilFrame &frame_to_find = *static_cast<GreasePencilFrame *>(ptr->data);
+  if (frame_to_find.is_end()) {
+    return PointerRNA_NULL;
+  }
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  auto [frame_number, this_layer] = find_layer_of_frame(grease_pencil, frame_to_find);
+  if (this_layer == nullptr) {
+    return PointerRNA_NULL;
+  }
+
+  const Drawing *drawing = grease_pencil.get_drawing_at(*this_layer, frame_number);
+  return rna_pointer_inherit_refine(
+      ptr, &RNA_GreasePencilDrawing, static_cast<void *>(const_cast<Drawing *>(drawing)));
+}
+
+static int rna_Frame_frame_number_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  GreasePencilFrame &frame_to_find = *static_cast<GreasePencilFrame *>(ptr->data);
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  auto [frame_number, this_layer] = find_layer_of_frame(grease_pencil, frame_to_find);
+  /* Layer should exist. */
+  BLI_assert(this_layer != nullptr);
+  return frame_number;
+}
+
+static void rna_Frame_frame_number_index_range(
+    PointerRNA * /*ptr*/, int *min, int *max, int * /*softmin*/, int * /*softmax*/)
+{
+  *min = MINAFRAME;
+  *max = MAXFRAME;
+}
+
 static void rna_grease_pencil_layer_mask_name_get(PointerRNA *ptr, char *dst)
 {
   using namespace blender;
@@ -125,6 +294,13 @@ static void rna_grease_pencil_active_mask_index_range(
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
   *min = 0;
   *max = max_ii(0, BLI_listbase_count(&layer->masks) - 1);
+}
+
+static GreasePencilFrame *rna_GreasePencilLayer_get_frame_at(GreasePencilLayer *layer,
+                                                             int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  return static_cast<Layer *>(layer)->frame_at(frame_number);
 }
 
 static void rna_iterator_grease_pencil_layers_begin(CollectionPropertyIterator *iter,
@@ -541,6 +717,139 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
 
 #else
 
+static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem rna_enum_drawing_type_items[] = {
+      {GP_DRAWING, "DRAWING", 0, "Drawing", ""},
+      {GP_DRAWING_REFERENCE, "REFERENCE", 0, "Reference", ""},
+      {0, nullptr, 0, nullptr, nullptr}};
+
+  srna = RNA_def_struct(brna, "GreasePencilDrawing", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilDrawing");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Drawing", "A Grease Pencil drawing");
+
+  /* Type. */
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "base.type");
+  RNA_def_property_enum_items(prop, rna_enum_drawing_type_items);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Type", "Drawing type");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Attributes. */
+  rna_def_attributes_common(srna);
+}
+
+static void rna_def_grease_pencil_frame(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilFrame", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilFrame");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "A Grease Pencil keyframe");
+
+  /* Drawing. */
+  prop = RNA_def_property(srna, "drawing", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilDrawing");
+  RNA_def_property_pointer_funcs(prop, "rna_Frame_drawing_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Drawing", "A Grease Pencil drawing");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Frame number. */
+  prop = RNA_def_property(srna, "frame_number", PROP_INT, PROP_NONE);
+  /* TODO: Make property editable, ensure frame number isn't already in use. */
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(
+      prop, "rna_Frame_frame_number_get", nullptr, "rna_Frame_frame_number_index_range");
+  RNA_def_property_range(prop, MINAFRAME, MAXFRAME);
+  RNA_def_property_ui_text(prop, "Frame Number", "The frame number in the scene");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Selection status. */
+  prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_FRAME_SELECTED);
+  RNA_def_property_ui_text(prop, "Select", "Frame Selection in the Dope Sheet");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+}
+
+static void rna_def_grease_pencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "GreasePencilFrames");
+  srna = RNA_def_struct(brna, "GreasePencilFrames", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilLayer");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frames", "Collection of Grease Pencil frames");
+
+  func = RNA_def_function(srna, "new", "rna_Frames_frame_new");
+  RNA_def_function_ui_description(func, "Add a new Grease Pencil frame");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_int(func,
+                     "frame_number",
+                     1,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Frame Number",
+                     "The frame on which the drawing appears",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "frame", "GreasePencilFrame", "", "The newly created frame");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_Frames_frame_remove");
+  RNA_def_function_ui_description(func, "Remove a Grease Pencil frame");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_int(func,
+                     "frame_number",
+                     1,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Frame Number",
+                     "The frame number of the frame to remove",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "copy", "rna_Frames_frame_copy");
+  RNA_def_function_ui_description(func, "Copy a Grease Pencil frame");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS | FUNC_USE_SELF_ID);
+  parm = RNA_def_int(func,
+                     "from_frame_number",
+                     1,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Source Frame Number",
+                     "The frame number of the source frame",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_int(func,
+                     "to_frame_number",
+                     2,
+                     MINAFRAME,
+                     MAXFRAME,
+                     "Frame Number of Copy",
+                     "The frame number to copy the frame to",
+                     MINAFRAME,
+                     MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_boolean(func,
+                         "instance_drawing",
+                         false,
+                         "Instance Drawing",
+                         "Let the copied frame use the same drawing as the source");
+  parm = RNA_def_pointer(func, "copy", "GreasePencilFrame", "", "The newly copied frame");
+  RNA_def_function_return(func, parm);
+}
+
 static void rna_def_grease_pencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -595,6 +904,20 @@ static void rna_def_grease_pencil_layer_mask(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
+static void rna_def_grease_pencil_layer_api(StructRNA *srna)
+{
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "get_frame_at", "rna_GreasePencilLayer_get_frame_at");
+  RNA_def_function_ui_description(func, "Get the frame at given frame number");
+  parm = RNA_def_int(
+      func, "frame_number", 1, MINAFRAME, MAXFRAME, "Frame Number", "", MINAFRAME, MAXFRAME);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "frame", "GreasePencilFrame", "Frame", "");
+  RNA_def_function_return(func, parm);
+}
+
 static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -625,6 +948,21 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                                 "rna_GreasePencilLayer_name_set");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_update");
+
+  /* Frames. */
+  prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilFrame");
+  RNA_def_property_ui_text(prop, "Frames", "Grease Pencil frames");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GreasePencilLayer_frames_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_GreasePencilLayer_frames_get",
+                                    "rna_GreasePencilLayer_frames_length",
+                                    "rna_GreasePencilLayer_frames_lookup_int",
+                                    nullptr,
+                                    nullptr);
+  rna_def_grease_pencil_frames_api(brna, prop);
 
   /* Mask Layers */
   prop = RNA_def_property(srna, "mask_layers", PROP_COLLECTION, PROP_NONE);
@@ -794,6 +1132,8 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       prop, "rna_GreasePencilLayer_parent_layer_group_get", nullptr, nullptr, nullptr);
   RNA_def_property_ui_text(
       prop, "Parent Layer Group", "The parent layer group this layer is part of");
+
+  rna_def_grease_pencil_layer_api(srna);
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
@@ -1274,6 +1614,8 @@ void RNA_def_grease_pencil(BlenderRNA *brna)
   rna_def_grease_pencil_layer(brna);
   rna_def_grease_pencil_layer_mask(brna);
   rna_def_grease_pencil_layer_group(brna);
+  rna_def_grease_pencil_frame(brna);
+  rna_def_grease_pencil_drawing(brna);
 }
 
 #endif

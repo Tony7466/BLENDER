@@ -70,6 +70,8 @@ using blender::Span;
 using blender::uint3;
 using blender::VectorSet;
 
+static const char *ATTR_POSITION = "position";
+
 /* Forward declarations. */
 static void read_drawing_array(GreasePencil &grease_pencil, BlendDataReader *reader);
 static void write_drawing_array(GreasePencil &grease_pencil, BlendWriter *writer);
@@ -1734,6 +1736,12 @@ std::optional<MutableSpan<float3>> GreasePencilDrawingEditHints::positions_for_w
 /* ------------------------------------------------------------------- */
 /** \name Grease Pencil kernel functions
  * \{ */
+
+bool BKE_grease_pencil_drawing_attribute_required(const GreasePencilDrawing * /*drawing*/,
+                                                  const char *name)
+{
+  return STREQ(name, ATTR_POSITION);
+}
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name)
 {
