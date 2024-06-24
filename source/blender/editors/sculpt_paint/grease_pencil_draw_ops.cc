@@ -37,10 +37,11 @@
 
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
-#include "ED_numinput.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
+
+#include "MEM_guardedalloc.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -49,12 +50,12 @@
 
 #include "BLT_translation.hh"
 
-#include "UI_interface.hh"
-
 #include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.hh"
 
 #include "WM_types.hh"
+#include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 #include "wm_event_types.hh"
