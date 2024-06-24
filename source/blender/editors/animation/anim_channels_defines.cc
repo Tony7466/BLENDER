@@ -5188,6 +5188,11 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
   PointerRNA id_ptr = RNA_id_pointer_create((ID *)key);
   std::optional<std::string> rna_path = BKE_keyblock_curval_rnapath_get(key, kb);
 
+  // Since this is only ever called from moving a slider for an existing
+  // shapekey in the shapekey animation editor, it shouldn't be possible for the
+  // RNA path to fail to resolve.
+  BLI_assert(rna_path.has_value());
+
   // TODO: should this use the flags from user settings? For now leaving as-is,
   // since it was already this way and might have a reason for it. This is
   // basically a UX question about how the shape key animation editor should
@@ -5197,7 +5202,7 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
   animrig::insert_keyframes(bmain,
                             &id_ptr,
                             std::nullopt,
-                            {{rna_path.value()}},
+                            {{*rna_path}},
                             std::nullopt,
                             anim_eval_context,
                             eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
