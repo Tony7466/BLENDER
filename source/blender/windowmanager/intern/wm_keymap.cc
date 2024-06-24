@@ -220,6 +220,7 @@ void WM_keymap_item_properties_reset(wmKeyMapItem *kmi, IDProperty *properties)
 
 int WM_keymap_item_map_type_get(const wmKeyMapItem *kmi)
 {
+
   if (ISTIMER(kmi->type)) {
     return KMI_TYPE_TIMER;
   }

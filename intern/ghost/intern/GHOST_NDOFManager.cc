@@ -12,9 +12,11 @@
 /* Logging, use `ghost.ndof.*` prefix. */
 #include "CLG_log.h"
 
+#include <array>
 #include <climits>
 #include <cmath>
 #include <cstring> /* For memory functions. */
+#include <map>
 
 /* -------------------------------------------------------------------- */
 /** \name NDOF Enum Strings
@@ -29,55 +31,90 @@ static const char *ndof_progress_string[] = {
     "finished",
 };
 
+static const std::array<NDOF_DeviceT, 9> legacy_device_types = {
+    NDOF_SpaceNavigator,
+    NDOF_SpaceExplorer,
+    NDOF_SpacePilotPro,
+    NDOF_SpaceMousePro,
+    NDOF_SpaceMouseWireless,
+    NDOF_SpaceMouseProWireless,
+    NDOF_SpacePilot,
+    NDOF_Spaceball5000,
+    NDOF_SpaceTraveler,
+};
+
+static bool IsLegacyDevice(NDOF_DeviceT pid)
+{
+  return std::find(legacy_device_types.begin(), legacy_device_types.end(), pid) !=
+         legacy_device_types.end();
+}
+
 /* Printable values for #NDOF_ButtonT enum (keep aligned) */
-static const char *ndof_button_names[] = {
-    /* Exclude `NDOF_BUTTON_NONE` (-1). */
-    "NDOF_BUTTON_MENU",
-    "NDOF_BUTTON_FIT",
-    "NDOF_BUTTON_TOP",
-    "NDOF_BUTTON_BOTTOM",
-    "NDOF_BUTTON_LEFT",
-    "NDOF_BUTTON_RIGHT",
-    "NDOF_BUTTON_FRONT",
-    "NDOF_BUTTON_BACK",
-    "NDOF_BUTTON_ISO1",
-    "NDOF_BUTTON_ISO2",
-    "NDOF_BUTTON_ROLL_CW",
-    "NDOF_BUTTON_ROLL_CCW",
-    "NDOF_BUTTON_SPIN_CW",
-    "NDOF_BUTTON_SPIN_CCW",
-    "NDOF_BUTTON_TILT_CW",
-    "NDOF_BUTTON_TILT_CCW",
-    "NDOF_BUTTON_ROTATE",
-    "NDOF_BUTTON_PANZOOM",
-    "NDOF_BUTTON_DOMINANT",
-    "NDOF_BUTTON_PLUS",
-    "NDOF_BUTTON_MINUS",
-    "NDOF_BUTTON_1",
-    "NDOF_BUTTON_2",
-    "NDOF_BUTTON_3",
-    "NDOF_BUTTON_4",
-    "NDOF_BUTTON_5",
-    "NDOF_BUTTON_6",
-    "NDOF_BUTTON_7",
-    "NDOF_BUTTON_8",
-    "NDOF_BUTTON_9",
-    "NDOF_BUTTON_10",
-    "NDOF_BUTTON_A",
-    "NDOF_BUTTON_B",
-    "NDOF_BUTTON_C",
-    "NDOF_BUTTON_V1",
-    "NDOF_BUTTON_V2",
-    "NDOF_BUTTON_V3",
-    /* Keyboard emulation. */
-    "NDOF_BUTTON_ESC",
-    "NDOF_BUTTON_ENTER",
-    "NDOF_BUTTON_DELETE",
-    "NDOF_BUTTON_TAB",
-    "NDOF_BUTTON_SPACE",
-    "NDOF_BUTTON_ALT",
-    "NDOF_BUTTON_SHIFT",
-    "NDOF_BUTTON_CTRL",
+static const std::map<NDOF_ButtonT, const char *> ndof_button_names = {
+    {NDOF_BUTTON_INVALID, "NDOF_BUTTON_INVALID"},
+    {NDOF_BUTTON_MENU, "NDOF_BUTTON_MENU"},
+    {NDOF_BUTTON_FIT, "NDOF_BUTTON_FIT"},
+    {NDOF_BUTTON_TOP, "NDOF_BUTTON_TOP"},
+    {NDOF_BUTTON_LEFT, "NDOF_BUTTON_LEFT"},
+    {NDOF_BUTTON_RIGHT, "NDOF_BUTTON_RIGHT"},
+    {NDOF_BUTTON_FRONT, "NDOF_BUTTON_FRONT"},
+    {NDOF_BUTTON_BOTTOM, "NDOF_BUTTON_BOTTOM"},
+    {NDOF_BUTTON_BACK, "NDOF_BUTTON_BACK"},
+    {NDOF_BUTTON_ROLL_CW, "NDOF_BUTTON_ROLL_CW"},
+    {NDOF_BUTTON_ROLL_CCW, "NDOF_BUTTON_ROLL_CCW"},
+    {NDOF_BUTTON_SPIN_CW, "NDOF_BUTTON_SPIN_CW"},
+    {NDOF_BUTTON_SPIN_CCW, "NDOF_BUTTON_SPIN_CCW"},
+    {NDOF_BUTTON_TILT_CW, "NDOF_BUTTON_TILT_CW"},
+    {NDOF_BUTTON_TILT_CCW, "NDOF_BUTTON_TILT_CCW"},
+    {NDOF_BUTTON_ISO1, "NDOF_BUTTON_ISO1"},
+    {NDOF_BUTTON_ISO2, "NDOF_BUTTON_ISO2"},
+    {NDOF_BUTTON_1, "NDOF_BUTTON_1"},
+    {NDOF_BUTTON_2, "NDOF_BUTTON_2"},
+    {NDOF_BUTTON_3, "NDOF_BUTTON_3"},
+    {NDOF_BUTTON_4, "NDOF_BUTTON_4"},
+    {NDOF_BUTTON_5, "NDOF_BUTTON_5"},
+    {NDOF_BUTTON_6, "NDOF_BUTTON_6"},
+    {NDOF_BUTTON_7, "NDOF_BUTTON_7"},
+    {NDOF_BUTTON_8, "NDOF_BUTTON_8"},
+    {NDOF_BUTTON_9, "NDOF_BUTTON_9"},
+    {NDOF_BUTTON_10, "NDOF_BUTTON_10"},
+    {NDOF_BUTTON_11, "NDOF_BUTTON_11"},
+    {NDOF_BUTTON_12, "NDOF_BUTTON_12"},
+    {NDOF_BUTTON_ESC, "NDOF_BUTTON_ESC"},
+    {NDOF_BUTTON_ALT, "NDOF_BUTTON_ALT"},
+    {NDOF_BUTTON_SHIFT, "NDOF_BUTTON_SHIFT"},
+    {NDOF_BUTTON_CTRL, "NDOF_BUTTON_CTRL"},
+    {NDOF_BUTTON_ENTER, "NDOF_BUTTON_ENTER"},
+    {NDOF_BUTTON_DELETE, "NDOF_BUTTON_DELETE"},
+    {NDOF_BUTTON_TAB, "NDOF_BUTTON_TAB"},
+    {NDOF_BUTTON_SPACE, "NDOF_BUTTON_SPACE"},
+    {NDOF_BUTTON_ROTATE, "NDOF_BUTTON_ROTATE"},
+    {NDOF_BUTTON_PANZOOM, "NDOF_BUTTON_PANZOOM"},
+    {NDOF_BUTTON_DOMINANT, "NDOF_BUTTON_DOMINANT"},
+    {NDOF_BUTTON_PLUS, "NDOF_BUTTON_PLUS"},
+    {NDOF_BUTTON_MINUS, "NDOF_BUTTON_MINUS"},
+    {NDOF_BUTTON_VIEW_1, "NDOF_BUTTON_VIEW_1"},
+    {NDOF_BUTTON_VIEW_2, "NDOF_BUTTON_VIEW_2"},
+    {NDOF_BUTTON_VIEW_3, "NDOF_BUTTON_VIEW_3"},
+    {NDOF_BUTTON_SAVE_VIEW_1, "NDOF_BUTTON_SAVE_VIEW_1"},
+    {NDOF_BUTTON_SAVE_VIEW_2, "NDOF_BUTTON_SAVE_VIEW_2"},
+    {NDOF_BUTTON_SAVE_VIEW_3, "NDOF_BUTTON_SAVE_VIEW_3"},
+    {NDOF_BUTTON_KBP_F1, "NDOF_BUTTON_KBP_F1"},
+    {NDOF_BUTTON_KBP_F2, "NDOF_BUTTON_KBP_F2"},
+    {NDOF_BUTTON_KBP_F3, "NDOF_BUTTON_KBP_F3"},
+    {NDOF_BUTTON_KBP_F4, "NDOF_BUTTON_KBP_F4"},
+    {NDOF_BUTTON_KBP_F5, "NDOF_BUTTON_KBP_F5"},
+    {NDOF_BUTTON_KBP_F6, "NDOF_BUTTON_KBP_F6"},
+    {NDOF_BUTTON_KBP_F7, "NDOF_BUTTON_KBP_F7"},
+    {NDOF_BUTTON_KBP_F8, "NDOF_BUTTON_KBP_F8"},
+    {NDOF_BUTTON_KBP_F9, "NDOF_BUTTON_KBP_F9"},
+    {NDOF_BUTTON_KBP_F10, "NDOF_BUTTON_KBP_F10"},
+    {NDOF_BUTTON_KBP_F11, "NDOF_BUTTON_KBP_F11"},
+    {NDOF_BUTTON_KBP_F12, "NDOF_BUTTON_KBP_F12"},
+    {NDOF_BUTTON_NP_F1, "NDOF_BUTTON_NP_F1"},
+    {NDOF_BUTTON_NP_F2, "NDOF_BUTTON_NP_F2"},
+    {NDOF_BUTTON_NP_F3, "NDOF_BUTTON_NP_F3"},
+    {NDOF_BUTTON_NP_F4, "NDOF_BUTTON_NP_F4"},
 };
 
 static const char *ndof_device_names[] = {
@@ -92,6 +129,8 @@ static const char *ndof_device_names[] = {
     "SpacePilot",
     "Spaceball5000",
     "SpaceTraveler",
+    "Keyboard Pro",
+    "Numpad Pro",
 };
 
 /** \} */
@@ -100,10 +139,10 @@ static const char *ndof_device_names[] = {
 /** \name NDOF Button Maps
  * \{ */
 
-/* Shared by the latest 3Dconnexion hardware
+/* Shared by the some 3Dconnexion hardware
  * SpacePilotPro uses all of these
- * smaller devices use only some, based on button mask. */
-static const NDOF_ButtonT ndof_HID_map_Modern3Dx[] = {
+ * SpaceMouse Pro and SpaceNavigator use only some, based on button mask. */
+static const NDOF_ButtonT ndof_HID_map_Shared3Dx[] = {
     NDOF_BUTTON_MENU,     NDOF_BUTTON_FIT,      NDOF_BUTTON_TOP,    NDOF_BUTTON_LEFT,
     NDOF_BUTTON_RIGHT,    NDOF_BUTTON_FRONT,    NDOF_BUTTON_BOTTOM, NDOF_BUTTON_BACK,
     NDOF_BUTTON_ROLL_CW,  NDOF_BUTTON_ROLL_CCW, NDOF_BUTTON_ISO1,   NDOF_BUTTON_ISO2,
@@ -133,12 +172,12 @@ static const NDOF_ButtonT ndof_HID_map_SpaceExplorer[] = {
 
 /* This is the older SpacePilot (sans Pro). */
 static const NDOF_ButtonT ndof_HID_map_SpacePilot[] = {
-    NDOF_BUTTON_1,     NDOF_BUTTON_2,     NDOF_BUTTON_3,        NDOF_BUTTON_4,
-    NDOF_BUTTON_5,     NDOF_BUTTON_6,     NDOF_BUTTON_TOP,      NDOF_BUTTON_LEFT,
-    NDOF_BUTTON_RIGHT, NDOF_BUTTON_FRONT, NDOF_BUTTON_ESC,      NDOF_BUTTON_ALT,
-    NDOF_BUTTON_SHIFT, NDOF_BUTTON_CTRL,  NDOF_BUTTON_FIT,      NDOF_BUTTON_MENU,
-    NDOF_BUTTON_PLUS,  NDOF_BUTTON_MINUS, NDOF_BUTTON_DOMINANT, NDOF_BUTTON_ROTATE,
-    NDOF_BUTTON_NONE /* the CONFIG button -- what does it do? */
+    NDOF_BUTTON_1,      NDOF_BUTTON_2,     NDOF_BUTTON_3,        NDOF_BUTTON_4,
+    NDOF_BUTTON_5,      NDOF_BUTTON_6,     NDOF_BUTTON_TOP,      NDOF_BUTTON_LEFT,
+    NDOF_BUTTON_RIGHT,  NDOF_BUTTON_FRONT, NDOF_BUTTON_ESC,      NDOF_BUTTON_ALT,
+    NDOF_BUTTON_SHIFT,  NDOF_BUTTON_CTRL,  NDOF_BUTTON_FIT,      NDOF_BUTTON_MENU,
+    NDOF_BUTTON_PLUS,   NDOF_BUTTON_MINUS, NDOF_BUTTON_DOMINANT, NDOF_BUTTON_ROTATE,
+    NDOF_BUTTON_INVALID /* the CONFIG button -- what does it do? */
 };
 
 static const NDOF_ButtonT ndof_HID_map_Generic[] = {
@@ -151,46 +190,7 @@ static const NDOF_ButtonT ndof_HID_map_Generic[] = {
     NDOF_BUTTON_7,
     NDOF_BUTTON_8,
     NDOF_BUTTON_9,
-    NDOF_BUTTON_A,
-    NDOF_BUTTON_B,
-    NDOF_BUTTON_C,
 };
-
-/* Values taken from: https://github.com/FreeSpacenav/spacenavd/wiki/Device-button-names */
-static const NDOF_ButtonT ndof_HID_map_SpaceMouseEnterprise[] = {
-    NDOF_BUTTON_1,       /* (0) */
-    NDOF_BUTTON_2,       /* (1) */
-    NDOF_BUTTON_3,       /* (2) */
-    NDOF_BUTTON_4,       /* (3) */
-    NDOF_BUTTON_5,       /* (4) */
-    NDOF_BUTTON_6,       /* (5) */
-    NDOF_BUTTON_7,       /* (6) */
-    NDOF_BUTTON_8,       /* (7) */
-    NDOF_BUTTON_9,       /* (8) */
-    NDOF_BUTTON_A,       /* Labeled "10" (9). */
-    NDOF_BUTTON_B,       /* Labeled "11" (10). */
-    NDOF_BUTTON_C,       /* Labeled "12" (11). */
-    NDOF_BUTTON_MENU,    /* (12). */
-    NDOF_BUTTON_FIT,     /* (13). */
-    NDOF_BUTTON_TOP,     /* (14). */
-    NDOF_BUTTON_RIGHT,   /* (15). */
-    NDOF_BUTTON_FRONT,   /* (16). */
-    NDOF_BUTTON_ROLL_CW, /* (17). */
-    NDOF_BUTTON_ESC,     /* (18). */
-    NDOF_BUTTON_ALT,     /* (19). */
-    NDOF_BUTTON_SHIFT,   /* (20). */
-    NDOF_BUTTON_CTRL,    /* (21). */
-    NDOF_BUTTON_ROTATE,  /* Labeled "Lock Rotate" (22). */
-    NDOF_BUTTON_ENTER,   /* Labeled "Enter" (23). */
-    NDOF_BUTTON_DELETE,  /* (24). */
-    NDOF_BUTTON_TAB,     /* (25). */
-    NDOF_BUTTON_SPACE,   /* (26). */
-    NDOF_BUTTON_V1,      /* Labeled "V1" (27). */
-    NDOF_BUTTON_V2,      /* Labeled "V2" (28). */
-    NDOF_BUTTON_V3,      /* Labeled "V3" (29). */
-    NDOF_BUTTON_ISO1,    /* Labeled "ISO1" (30). */
-};
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -206,6 +206,8 @@ GHOST_NDOFManager::GHOST_NDOFManager(GHOST_System &sys)
       hid_map_button_mask_(0),
       hid_map_(ndof_HID_map_Generic),
       button_depressed_(0),
+      pressed_buttons_cache_(),
+      pressed_long_buttons_cache_(),
       motion_time_(0),
       motion_time_prev_(0),
       motion_state_(GHOST_kNotStarted),
@@ -255,7 +257,7 @@ bool GHOST_NDOFManager::setDevice(ushort vendor_id, ushort product_id)
         {
           device_type_ = NDOF_SpaceNavigator;
           hid_map_button_num_ = 2;
-          hid_map_ = ndof_HID_map_Modern3Dx;
+          hid_map_ = ndof_HID_map_Shared3Dx;
           break;
         }
         case 0xC627: {
@@ -267,14 +269,14 @@ bool GHOST_NDOFManager::setDevice(ushort vendor_id, ushort product_id)
         case 0xC629: {
           device_type_ = NDOF_SpacePilotPro;
           hid_map_button_num_ = 31;
-          hid_map_ = ndof_HID_map_Modern3Dx;
+          hid_map_ = ndof_HID_map_Shared3Dx;
           break;
         }
         case 0xC62B: {
           device_type_ = NDOF_SpaceMousePro;
           hid_map_button_num_ = 27; /* 15 physical buttons, but HID codes range from 0 to 26. */
           hid_map_button_mask_ = 0x07C0F137;
-          hid_map_ = ndof_HID_map_Modern3Dx;
+          hid_map_ = ndof_HID_map_Shared3Dx;
           break;
         }
 
@@ -308,7 +310,7 @@ bool GHOST_NDOFManager::setDevice(ushort vendor_id, ushort product_id)
         {
           device_type_ = NDOF_SpaceMouseWireless;
           hid_map_button_num_ = 2;
-          hid_map_ = ndof_HID_map_Modern3Dx;
+          hid_map_ = ndof_HID_map_Shared3Dx;
           break;
         }
         case 0xC631: /* SpaceMouse Pro Wireless (cabled). */
@@ -320,13 +322,21 @@ bool GHOST_NDOFManager::setDevice(ushort vendor_id, ushort product_id)
           device_type_ = NDOF_SpaceMouseProWireless;
           hid_map_button_num_ = 27; /* 15 physical buttons, but HID codes range from 0 to 26. */
           hid_map_button_mask_ = 0x07C0F137;
-          hid_map_ = ndof_HID_map_Modern3Dx;
+          hid_map_ = ndof_HID_map_Shared3Dx;
           break;
         }
-        case 0xC633: {
+        case 0xC633: /* Newer devices don't need to use button mappings. */
+        {
           device_type_ = NDOF_SpaceMouseEnterprise;
-          hid_map_button_num_ = 31;
-          hid_map_ = ndof_HID_map_SpaceMouseEnterprise;
+          break;
+        }
+        case 0xC664:
+        case 0xC668: {
+          device_type_ = NDOF_KeyboardPro;
+          break;
+        }
+        case 0xC665: {
+          device_type_ = NDOF_NumpadPro;
           break;
         }
         default: {
@@ -420,7 +430,7 @@ void GHOST_NDOFManager::sendButtonEvent(NDOF_ButtonT button,
                                         uint64_t time,
                                         GHOST_IWindow *window)
 {
-  GHOST_ASSERT(button > NDOF_BUTTON_NONE && button < NDOF_BUTTON_NUM,
+  GHOST_ASSERT(button > NDOF_BUTTON_NONE && button < NDOF_BUTTON_USER,
                "rogue button trying to escape NDOF manager");
 
   const GHOST_EventNDOFButton *event = new GHOST_EventNDOFButton(time, window);
@@ -445,17 +455,14 @@ void GHOST_NDOFManager::sendKeyEvent(GHOST_TKey key,
 
 void GHOST_NDOFManager::updateButton(int button_number, bool press, uint64_t time)
 {
-  if (button_number >= hid_map_button_num_) {
-    CLOG_INFO(LOG,
-              2,
-              "button=%d, press=%d (out of range %d, ignoring!)",
-              button_number,
-              int(press),
-              hid_map_button_num_);
-    return;
-  }
-  const NDOF_ButtonT button = hid_map_[button_number];
-  if (button == NDOF_BUTTON_NONE) {
+  NDOF_ButtonT button = static_cast<NDOF_ButtonT>(button_number);
+
+  // For older devices check the button map
+  if (std::find(bitmask_devices_.begin(), bitmask_devices_.end(), device_type_) !=
+      bitmask_devices_.end())
+    button = hid_map_[button_number];
+
+  if (button == NDOF_BUTTON_INVALID) {
     CLOG_INFO(
         LOG, 2, "button=%d, press=%d (mapped to none, ignoring!)", button_number, int(press));
     return;
@@ -466,12 +473,11 @@ void GHOST_NDOFManager::updateButton(int button_number, bool press, uint64_t tim
             "button=%d, press=%d, name=%s",
             button_number,
             int(press),
-            ndof_button_names[button]);
+            ndof_button_names.at(button));
 
   GHOST_IWindow *window = system_.getWindowManager()->getActiveWindow();
 
-  /* Delivery will fail, so don't bother sending.
-   * Do, however update the buttons internal depressed state. */
+  /* Delivery will fail, so don't bother sending. */
   if (window != nullptr) {
     const GHOST_TKey key = ghost_map_keyboard_from_ndof_buttom(button);
     if (key != GHOST_kKeyUnknown) {
@@ -481,18 +487,16 @@ void GHOST_NDOFManager::updateButton(int button_number, bool press, uint64_t tim
       sendButtonEvent(button, press, time, window);
     }
   }
-
-  int mask = 1 << button_number;
-  if (press) {
-    button_depressed_ |= mask; /* Set this button's bit. */
-  }
-  else {
-    button_depressed_ &= ~mask; /* Clear this button's bit. */
-  }
 }
 
-void GHOST_NDOFManager::updateButtons(int button_bits, uint64_t time)
+void GHOST_NDOFManager::updateButtonsBitmask(int button_bits, uint64_t time)
 {
+  /* Some devices send two data packets: bitmask and number array.
+   * In this case, packet has to be ignored if it came from such a device. */
+  if (std::find(bitmask_devices_.begin(), bitmask_devices_.end(), device_type_) ==
+      bitmask_devices_.end())
+    return;
+
   button_bits &= hid_map_button_mask_; /* Discard any "garbage" bits. */
 
   int diff = button_depressed_ ^ button_bits;
@@ -502,11 +506,54 @@ void GHOST_NDOFManager::updateButtons(int button_bits, uint64_t time)
 
     if (diff & mask) {
       bool press = button_bits & mask;
+
+      if (press) {
+        button_depressed_ |= mask; /* Set this button's bit. */
+      }
+      else {
+        button_depressed_ &= ~mask; /* Clear this button's bit. */
+      }
       updateButton(button_number, press, time);
     }
   }
 }
 
+void GHOST_NDOFManager::updateButtonsArray(NDOF_Button_Array buttons,
+                                           uint64_t time,
+                                           NDOF_Button_Type type)
+{
+  NDOF_Button_Array &cache = (type == NDOF_Button_Type::LongButton) ? pressed_long_buttons_cache_ :
+                                                                      pressed_buttons_cache_;
+
+  /* Find released buttons */
+  for (const auto &cached_button : cache) {
+    bool found = false;
+    for (const auto &button : buttons) {
+      if (button == cached_button) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found)
+      updateButton(cached_button, false, time);
+  }
+
+  /* Find pressed buttons */
+  for (const auto &button : buttons) {
+    bool found = false;
+    for (const auto &cached_button : cache) {
+      if (button == cached_button) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found)
+      updateButton(button, true, time);
+  }
+  cache = buttons;
+}
 #undef LOG
 
 /** \} */
