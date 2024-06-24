@@ -5188,15 +5188,15 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
   PointerRNA id_ptr = RNA_id_pointer_create((ID *)key);
   std::optional<std::string> rna_path = BKE_keyblock_curval_rnapath_get(key, kb);
 
-  // Since this is only ever called from moving a slider for an existing
-  // shapekey in the shapekey animation editor, it shouldn't be possible for the
-  // RNA path to fail to resolve.
+  /* Since this is only ever called from moving a slider for an existing
+   * shapekey in the shapekey animation editor, it shouldn't be possible for the
+   * RNA path to fail to resolve. */
   BLI_assert(rna_path.has_value());
 
-  // TODO: should this use the flags from user settings? For now leaving as-is,
-  // since it was already this way and might have a reason for it. This is
-  // basically a UX question about how the shape key animation editor should
-  // behave.
+  /* TODO: should this use the flags from user settings? For now leaving as-is,
+   * since it was already this way and might have a reason for it. This is
+   * basically a UX question about how the shape key animation editor should
+   * behave. */
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
 
   animrig::insert_keyframes(bmain,
