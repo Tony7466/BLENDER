@@ -2637,6 +2637,60 @@ float BKE_brush_curve_strength(const eBrushCurvePreset preset,
   return strength;
 }
 
+void BKE_brush_calc_curve_factors(const eBrushCurvePreset preset,
+                                  const CurveMapping *cumap,
+                                  const blender::Span<float> distances,
+                                  const float brush_radius,
+                                  const blender::MutableSpan<float> factors)
+{
+  BLI_assert(factors.size() == distances.size());
+
+  const float radius_rcp = 1.0f / brush_radius;
+  for (const int i : distances.index_range()) {
+    float p = distances[i];
+    if (p >= brush_radius) {
+      factors[i] = 0.0f;
+      continue;
+    }
+
+    p = p * radius_rcp;
+    p = 1.0f - p;
+
+    switch (preset) {
+      case BRUSH_CURVE_CUSTOM:
+        factors[i] *= BKE_curvemapping_evaluateF(cumap, 0, 1.0f - p);
+        break;
+      case BRUSH_CURVE_SHARP:
+        factors[i] *= p * p;
+        break;
+      case BRUSH_CURVE_SMOOTH:
+        factors[i] *= 3.0f * p * p - 2.0f * p * p * p;
+        break;
+      case BRUSH_CURVE_SMOOTHER:
+        factors[i] *= pow3f(p) * (p * (p * 6.0f - 15.0f) + 10.0f);
+        break;
+      case BRUSH_CURVE_ROOT:
+        factors[i] *= sqrtf(p);
+        break;
+      case BRUSH_CURVE_LIN:
+        factors[i] *= p;
+        break;
+      case BRUSH_CURVE_CONSTANT:
+        factors[i] *= 1.0f;
+        break;
+      case BRUSH_CURVE_SPHERE:
+        factors[i] *= sqrtf(2 * p - p * p);
+        break;
+      case BRUSH_CURVE_POW4:
+        factors[i] *= p * p * p * p;
+        break;
+      case BRUSH_CURVE_INVSQUARE:
+        factors[i] *= p * (2.0f - p);
+        break;
+    }
+  }
+}
+
 float BKE_brush_curve_strength(const Brush *br, float p, const float len)
 {
   return BKE_brush_curve_strength(eBrushCurvePreset(br->curve_preset), br->curve, p, len);

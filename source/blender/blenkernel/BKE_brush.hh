@@ -10,6 +10,8 @@
  * General operations for brushes.
  */
 
+#include "BLI_span.hh"
+
 #include "DNA_brush_enums.h"
 #include "DNA_color_types.h"
 #include "DNA_object_enums.h"
@@ -98,6 +100,11 @@ float BKE_brush_curve_strength(eBrushCurvePreset preset,
                                const CurveMapping *cumap,
                                float distance,
                                float brush_radius);
+void BKE_brush_calc_curve_factors(eBrushCurvePreset preset,
+                                  const CurveMapping *cumap,
+                                  blender::Span<float> distances,
+                                  float brush_radius,
+                                  blender::MutableSpan<float> factors);
 float BKE_brush_curve_strength(const Brush *br, float p, float len);
 
 /* Sampling. */
