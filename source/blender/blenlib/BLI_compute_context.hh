@@ -140,7 +140,7 @@ class ComputeContextBuilder {
  public:
   /* If called, compute contexts are not destructed when they are popped. Instead their lifetime
    * will be the lifetime of this builder. */
-  bool keep_old_contexts()
+  void keep_old_contexts()
   {
     if (!old_contexts_.has_value()) {
       old_contexts_.emplace();
