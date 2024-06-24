@@ -55,7 +55,7 @@ struct InterpolationPairs {
   Vector<int> to_curves;
 };
 
-struct GreasePencilInterpolateOpData {
+struct InterpolateOpData {
   struct LayerData {
     /* Curve pairs to interpolate from this layer. */
     InterpolationPairs curve_pairs;
@@ -364,8 +364,8 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
   return dst_curves;
 }
 
-static void grease_pencil_interpolate_status_indicators(
-    bContext &C, const GreasePencilInterpolateOpData &opdata)
+static void grease_pencil_interpolate_status_indicators(bContext &C,
+                                                        const InterpolateOpData &opdata)
 {
   Scene &scene = *CTX_data_scene(&C);
   ScrArea &area = *CTX_wm_area(&C);
@@ -404,7 +404,7 @@ static bke::greasepencil::Drawing *get_drawing_at_exact_frame(GreasePencil &grea
 static bke::greasepencil::Drawing *ensure_drawing_at_exact_frame(
     GreasePencil &grease_pencil,
     bke::greasepencil::Layer &layer,
-    GreasePencilInterpolateOpData::LayerData &layer_data,
+    InterpolateOpData::LayerData &layer_data,
     const int frame_number)
 {
   using bke::greasepencil::Drawing;
@@ -421,7 +421,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
   using bke::greasepencil::Drawing;
   using bke::greasepencil::Layer;
 
-  const auto &opdata = *static_cast<GreasePencilInterpolateOpData *>(op.customdata);
+  const auto &opdata = *static_cast<InterpolateOpData *>(op.customdata);
   const Scene &scene = *CTX_data_scene(&C);
   const int current_frame = scene.r.cfra;
   Object &object = *CTX_data_active_object(&C);
@@ -430,7 +430,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layer(layer_index);
-    const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
+    const InterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
 
     /* Drawings must be created on operator invoke. */
     Drawing *dst_drawing = get_drawing_at_exact_frame(grease_pencil, layer, current_frame);
@@ -477,7 +477,7 @@ static void grease_pencil_interpolate_restore(bContext &C, wmOperator &op)
     return;
   }
 
-  const auto &opdata = *static_cast<GreasePencilInterpolateOpData *>(op.customdata);
+  const auto &opdata = *static_cast<InterpolateOpData *>(op.customdata);
   const Scene &scene = *CTX_data_scene(&C);
   const int current_frame = scene.r.cfra;
   Object &object = *CTX_data_active_object(&C);
@@ -485,7 +485,7 @@ static void grease_pencil_interpolate_restore(bContext &C, wmOperator &op)
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layer(layer_index);
-    const GreasePencilInterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
+    const InterpolateOpData::LayerData &layer_data = opdata.layer_data[layer_index];
 
     if (layer_data.orig_curves) {
       /* Keyframe existed before the operator, restore geometry. */
@@ -519,9 +519,8 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
   BLI_assert(grease_pencil.has_active_layer());
   const Layer &active_layer = *grease_pencil.get_active_layer();
 
-  op.customdata = MEM_new<GreasePencilInterpolateOpData>(__func__);
-  GreasePencilInterpolateOpData &data = *static_cast<GreasePencilInterpolateOpData *>(
-      op.customdata);
+  op.customdata = MEM_new<InterpolateOpData>(__func__);
+  InterpolateOpData &data = *static_cast<InterpolateOpData *>(op.customdata);
 
   data.shift = RNA_float_get(op.ptr, "shift");
   data.exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
@@ -547,7 +546,7 @@ static bool grease_pencil_interpolate_init(const bContext &C, wmOperator &op)
   data.layer_data.reinitialize(grease_pencil.layers().size());
   data.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layer(layer_index);
-    GreasePencilInterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
+    InterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
 
     /* Pair from/to curves by index. */
     find_curve_mapping_from_index(
@@ -578,7 +577,7 @@ static void grease_pencil_interpolate_exit(bContext &C, wmOperator &op)
   ED_area_status_text(&area, nullptr);
   ED_workspace_status_text(&C, nullptr);
 
-  MEM_delete(static_cast<GreasePencilInterpolateOpData *>(op.customdata));
+  MEM_delete(static_cast<InterpolateOpData *>(op.customdata));
   op.customdata = nullptr;
 }
 
@@ -609,8 +608,7 @@ static int grease_pencil_interpolate_invoke(bContext *C, wmOperator *op, const w
     grease_pencil_interpolate_exit(*C, *op);
     return OPERATOR_CANCELLED;
   }
-  GreasePencilInterpolateOpData &opdata = *static_cast<GreasePencilInterpolateOpData *>(
-      op->customdata);
+  InterpolateOpData &opdata = *static_cast<InterpolateOpData *>(op->customdata);
 
   /* Set cursor to indicate modal operator. */
   WM_cursor_modal_set(&win, WM_CURSOR_EW_SCROLL);
@@ -637,8 +635,7 @@ static int grease_pencil_interpolate_modal(bContext *C, wmOperator *op, const wm
   wmWindow &win = *CTX_wm_window(C);
   const ARegion &region = *CTX_wm_region(C);
   ScrArea &area = *CTX_wm_area(C);
-  GreasePencilInterpolateOpData &opdata = *static_cast<GreasePencilInterpolateOpData *>(
-      op->customdata);
+  InterpolateOpData &opdata = *static_cast<InterpolateOpData *>(op->customdata);
   const bool has_numinput = hasNumInput(&opdata.numeric_input);
 
   switch (event->type) {
