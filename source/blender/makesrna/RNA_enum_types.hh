@@ -10,10 +10,13 @@
 
 #include "RNA_types.hh"
 
+#ifdef __cplusplus
+class AttributeOwner;
+#endif
+
 struct PointerRNA;
 struct PropertyRNA;
 struct bContext;
-struct AttributeOwner;
 namespace blender::bke {
 struct bNodeTreeType;
 struct bNodeType;
