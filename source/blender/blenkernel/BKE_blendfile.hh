@@ -243,6 +243,16 @@ class PartialWriteContext : NonCopyable, NonMovable {
    * \note For linked IDs, if #MAKE_LOCAL is not used, the library ID pointer is _not_ considered
    * nor hanlded as a regular dependency. Instead, the library is _always_ added to the context
    * data, and never duplicated. Also, library matching always happens based on absolute filepath.
+   *
+   * \warning Heterogenous usages of these operations flags during a same PartialWriteContext
+   * session may not generate expected results. Typically, once an ID has been added to the context
+   * as 'matching' counterpart of the source Main (i.e. sharing the same session UID), it will not
+   * be re-processed further if found again as dependency of another ID, or added explicitely as
+   * root ID.
+   * So e.g. if an ID is added (explicitely or implicitely) but none of its dependencies are (using
+   * `CLEAR_DEPENDENCIES`), re-adding the same ID (explicitely or implicitely) with e.g.
+   * `ADD_DEPENDENCIES` set wil __not__ add its dependencies.
+   * This is not expected to be an issue in current use-cases.
    */
   enum IDAddOperations {
     NOP = 0,
