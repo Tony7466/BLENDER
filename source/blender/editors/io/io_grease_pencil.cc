@@ -37,40 +37,46 @@
 
 #  if defined(WITH_PUGIXML) || defined(WITH_HARU)
 
+namespace blender::ed::io {
+
 /* Definition of enum elements to export. */
 /* Common props for exporting. */
 static void grease_pencil_export_common_props_definition(wmOperatorType *ot)
 {
-  // static const EnumPropertyItem select_items[] = {
-  //     {GP_EXPORT_ACTIVE, "ACTIVE", 0, "Active", "Include only the active object"},
-  //     {GP_EXPORT_SELECTED, "SELECTED", 0, "Selected", "Include selected objects"},
-  //     {GP_EXPORT_VISIBLE, "VISIBLE", 0, "Visible", "Include all visible objects"},
-  //     {0, nullptr, 0, nullptr, nullptr},
-  // };
+  using blender::io::grease_pencil::ExportSelect;
 
-  // RNA_def_boolean(ot->srna, "use_fill", true, "Fill", "Export strokes with fill enabled");
-  // RNA_def_enum(ot->srna,
-  //              "selected_object_type",
-  //              select_items,
-  //              GP_EXPORT_SELECTED,
-  //              "Object",
-  //              "Which objects to include in the export");
-  // RNA_def_float(ot->srna,
-  //               "stroke_sample",
-  //               0.0f,
-  //               0.0f,
-  //               100.0f,
-  //               "Sampling",
-  //               "Precision of stroke sampling. Low values mean a more precise result, and zero "
-  //               "disables sampling",
-  //               0.0f,
-  //               100.0f);
-  // RNA_def_boolean(ot->srna,
-  //                 "use_normalized_thickness",
-  //                 false,
-  //                 "Normalize",
-  //                 "Export strokes with constant thickness");
+  static const EnumPropertyItem select_items[] = {
+      {int(ExportSelect::Active), "ACTIVE", 0, "Active", "Include only the active object"},
+      {int(ExportSelect::Selected), "SELECTED", 0, "Selected", "Include selected objects"},
+      {int(ExportSelect::Visible), "VISIBLE", 0, "Visible", "Include all visible objects"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_boolean(ot->srna, "use_fill", true, "Fill", "Export strokes with fill enabled");
+  RNA_def_enum(ot->srna,
+               "selected_object_type",
+               select_items,
+               int(ExportSelect::Active),
+               "Object",
+               "Which objects to include in the export");
+  RNA_def_float(ot->srna,
+                "stroke_sample",
+                0.0f,
+                0.0f,
+                100.0f,
+                "Sampling",
+                "Precision of stroke sampling. Low values mean a more precise result, and zero "
+                "disables sampling",
+                0.0f,
+                100.0f);
+  RNA_def_boolean(ot->srna,
+                  "use_normalized_thickness",
+                  false,
+                  "Normalize",
+                  "Export strokes with constant thickness");
 }
+
+}  // namespace blender::ed::io
 
 #  endif
 
@@ -367,7 +373,7 @@ void WM_OT_grease_pencil_export_svg(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  grease_pencil_export_common_props_definition(ot);
+  blender::ed::io::grease_pencil_export_common_props_definition(ot);
 
   RNA_def_boolean(ot->srna,
                   "use_clip_camera",
@@ -537,20 +543,22 @@ void WM_OT_grease_pencil_export_pdf(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  // static const EnumPropertyItem gpencil_export_frame_items[] = {
-  //     {GP_EXPORT_FRAME_ACTIVE, "ACTIVE", 0, "Active", "Include only active frame"},
-  //     {GP_EXPORT_FRAME_SELECTED, "SELECTED", 0, "Selected", "Include selected frames"},
-  //     {GP_EXPORT_FRAME_SCENE, "SCENE", 0, "Scene", "Include all scene frames"},
-  //     {0, nullptr, 0, nullptr, nullptr},
-  // };
+  using blender::io::grease_pencil::ExportFrame;
 
-  grease_pencil_export_common_props_definition(ot);
-  // ot->prop = RNA_def_enum(ot->srna,
-  //                         "frame_mode",
-  //                         gpencil_export_frame_items,
-  //                         GP_EXPORT_ACTIVE,
-  //                         "Frames",
-  //                         "Which frames to include in the export");
+  static const EnumPropertyItem gpencil_export_frame_items[] = {
+      {int(ExportFrame::ActiveFrame), "ACTIVE", 0, "Active", "Include only active frame"},
+      {int(ExportFrame::SelectedFrame), "SELECTED", 0, "Selected", "Include selected frames"},
+      {int(ExportFrame::SceneFrame), "SCENE", 0, "Scene", "Include all scene frames"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  blender::ed::io::grease_pencil_export_common_props_definition(ot);
+  ot->prop = RNA_def_enum(ot->srna,
+                          "frame_mode",
+                          gpencil_export_frame_items,
+                          int(ExportFrame::ActiveFrame),
+                          "Frames",
+                          "Which frames to include in the export");
 }
 
 #  endif /* WITH_HARU */
