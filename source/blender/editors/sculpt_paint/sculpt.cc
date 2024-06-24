@@ -6709,11 +6709,11 @@ void apply_hardness_to_distances(const StrokeCache &cache, const MutableSpan<flo
   if (hardness == 0.0f) {
     return;
   }
-  const float radius = cache.radius;
   if (hardness == 1.0f) {
     distances.fill(0.0f);
     return;
   }
+  const float radius = cache.radius;
   const float threshold = hardness * radius;
   const float radius_inv = math::rcp(radius);
   const float hardness_inv_rcp = math::rcp(1.0f - hardness);
