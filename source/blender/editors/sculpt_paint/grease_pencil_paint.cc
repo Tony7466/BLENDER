@@ -18,6 +18,7 @@
 #include "BLI_math_base.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_geom.h"
+#include "BLI_noise.hh"
 #include "BLI_rand.hh"
 
 #include "DEG_depsgraph_query.hh"
@@ -244,7 +245,13 @@ class PaintOperation : public GreasePencilStrokeOperation {
   /* Direction the pen is moving in smoothed over time. */
   float2 smoothed_pen_direction_ = float2(0.0f);
 
-  RandomNumberGenerator rng;
+  /* Accumulated distance along the stroke. */
+  float accum_distance_ = 0.0f;
+
+  RandomNumberGenerator rng_;
+
+  float stroke_random_radius_factor_;
+  float stroke_random_opacity_factor_;
 
   friend struct PaintOperationExecutor;
 
@@ -338,6 +345,32 @@ struct PaintOperationExecutor {
     return {};
   }
 
+  float randomize_radius(PaintOperation &self,
+                         const float distance,
+                         const float radius,
+                         const float pressure)
+  {
+    if (!use_settings_random_ || !(settings_->draw_random_press > 0.0f)) {
+      return radius;
+    }
+    float random_factor = [&]() {
+      if ((settings_->flag2 & GP_BRUSH_USE_PRESS_AT_STROKE) == 0) {
+        /* TODO: This should be exposed as a setting to scale the noise along the stroke. */
+        constexpr float noise_scale = 1 / 20.0f;
+        return noise::perlin(float2(distance * noise_scale, self.stroke_random_radius_factor_));
+      }
+      else {
+        return self.stroke_random_radius_factor_;
+      }
+    }();
+
+    if ((settings_->flag2 & GP_BRUSH_USE_PRESSURE_RAND_PRESS) != 0) {
+      random_factor *= BKE_curvemapping_evaluateF(settings_->curve_rand_pressure, 0, pressure);
+    }
+
+    return math::interpolate(radius, radius * random_factor, settings_->draw_random_press);
+  }
+
   void process_start_sample(PaintOperation &self,
                             const bContext &C,
                             const InputSample &start_sample,
@@ -348,7 +381,7 @@ struct PaintOperationExecutor {
     const ARegion *region = CTX_wm_region(&C);
 
     const float3 start_location = self.placement_.project(start_coords);
-    const float start_radius = ed::greasepencil::radius_from_input_sample(
+    float start_radius = ed::greasepencil::radius_from_input_sample(
         rv3d,
         region,
         brush_,
@@ -356,6 +389,7 @@ struct PaintOperationExecutor {
         start_location,
         self.placement_.to_world_space(),
         settings_);
+    start_radius = randomize_radius(self, 0.0f, start_radius, start_sample.pressure);
     const float start_opacity = ed::greasepencil::opacity_from_input_sample(
         start_sample.pressure, brush_, settings_);
     Scene *scene = CTX_data_scene(&C);
@@ -525,7 +559,7 @@ struct PaintOperationExecutor {
     const float2 tangent = math::normalize(self.smoothed_pen_direction_);
     const float2 cotangent = float2(-tangent.y, tangent.x);
     for ([[maybe_unused]] const int _ : IndexRange(new_points_num)) {
-      const float rand = self.rng.get_float() * 2.0f - 1.0f;
+      const float rand = self.rng_.get_float() * 2.0f - 1.0f;
       const float factor = rand * settings_->draw_jitter * jitter_factor;
       self.screen_space_jitter_offsets_.append(cotangent * factor * brush_radius_px);
     }
@@ -584,6 +618,9 @@ struct PaintOperationExecutor {
     self.smoothed_pen_direction_ = math::interpolate(
         self.smoothed_pen_direction_, coords - self.screen_space_coords_orig_.last(), 0.1f);
 
+    const float distance_px = math::distance(coords, prev_coords);
+    self.accum_distance_ += distance_px;
+
     /* Approximate brush with non-circular shape by changing the radius based on the angle. */
     if (settings_->draw_angle_factor > 0.0f) {
       const float angle = settings_->draw_angle;
@@ -599,10 +636,14 @@ struct PaintOperationExecutor {
       radius *= radius_factor;
     }
 
+    if (use_settings_random_ && settings_->draw_random_press > 0.0f) {
+      radius = randomize_radius(self, self.accum_distance_, radius, extension_sample.pressure);
+    }
+
     /* Overwrite last point if it's very close. */
     const bool is_first_sample = (curve_points.size() == 1);
     constexpr float point_override_threshold_px = 2.0f;
-    const float distance_px = math::distance(coords, prev_coords);
+
     if (distance_px < point_override_threshold_px) {
       /* Don't move the first point of the stroke. */
       if (!is_first_sample) {
@@ -717,16 +758,17 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   if (brush->gpencil_settings == nullptr) {
     BKE_brush_init_gpencil_settings(brush);
   }
+  BrushGpencilSettings *settings = brush->gpencil_settings;
 
-  BKE_curvemapping_init(brush->gpencil_settings->curve_sensitivity);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_jitter);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_pressure);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_strength);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_uv);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
+  BKE_curvemapping_init(settings->curve_sensitivity);
+  BKE_curvemapping_init(settings->curve_strength);
+  BKE_curvemapping_init(settings->curve_jitter);
+  BKE_curvemapping_init(settings->curve_rand_pressure);
+  BKE_curvemapping_init(settings->curve_rand_strength);
+  BKE_curvemapping_init(settings->curve_rand_uv);
+  BKE_curvemapping_init(settings->curve_rand_hue);
+  BKE_curvemapping_init(settings->curve_rand_saturation);
+  BKE_curvemapping_init(settings->curve_rand_value);
 
   const bke::greasepencil::Layer &layer = *grease_pencil->get_active_layer();
   /* Initialize helper class for projecting screen space coordinates. */
@@ -739,12 +781,21 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
     placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
   }
 
-  this->texture_space_ = ed::greasepencil::calculate_texture_space(
+  texture_space_ = ed::greasepencil::calculate_texture_space(
       scene, region, start_sample.mouse_position, placement_);
 
   /* `View` is already stored in object space but all others are in layer space. */
   if (scene->toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW) {
-    this->texture_space_ = this->texture_space_ * layer.to_object_space(*object);
+    texture_space_ = texture_space_ * layer.to_object_space(*object);
+  }
+
+  if ((settings->flag & GP_BRUSH_GROUP_RANDOM) != 0) {
+    if ((settings->flag2 & GP_BRUSH_USE_PRESS_AT_STROKE) != 0) {
+      stroke_random_radius_factor_ = rng_.get_float();
+    }
+    if ((settings->flag2 & GP_BRUSH_USE_STRENGTH_AT_STROKE) != 0) {
+      stroke_random_opacity_factor_ = rng_.get_float();
+    }
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
