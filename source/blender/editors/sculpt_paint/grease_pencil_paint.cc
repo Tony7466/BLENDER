@@ -371,6 +371,32 @@ struct PaintOperationExecutor {
     return math::interpolate(radius, radius * random_factor, settings_->draw_random_press);
   }
 
+  float randomize_opacity(PaintOperation &self,
+                          const float distance,
+                          const float opacity,
+                          const float pressure)
+  {
+    if (!use_settings_random_ || !(settings_->draw_random_press > 0.0f)) {
+      return opacity;
+    }
+    float random_factor = [&]() {
+      if ((settings_->flag2 & GP_BRUSH_USE_STRENGTH_AT_STROKE) == 0) {
+        /* TODO: This should be exposed as a setting to scale the noise along the stroke. */
+        constexpr float noise_scale = 1 / 20.0f;
+        return noise::perlin(float2(distance * noise_scale, self.stroke_random_opacity_factor_));
+      }
+      else {
+        return self.stroke_random_opacity_factor_;
+      }
+    }();
+
+    if ((settings_->flag2 & GP_BRUSH_USE_STRENGTH_RAND_PRESS) != 0) {
+      random_factor *= BKE_curvemapping_evaluateF(settings_->curve_rand_strength, 0, pressure);
+    }
+
+    return math::interpolate(opacity, opacity * random_factor, settings_->draw_random_strength);
+  }
+
   void process_start_sample(PaintOperation &self,
                             const bContext &C,
                             const InputSample &start_sample,
@@ -390,8 +416,11 @@ struct PaintOperationExecutor {
         self.placement_.to_world_space(),
         settings_);
     start_radius = randomize_radius(self, 0.0f, start_radius, start_sample.pressure);
-    const float start_opacity = ed::greasepencil::opacity_from_input_sample(
+
+    float start_opacity = ed::greasepencil::opacity_from_input_sample(
         start_sample.pressure, brush_, settings_);
+    start_opacity = randomize_opacity(self, 0.0f, start_opacity, start_sample.pressure);
+
     Scene *scene = CTX_data_scene(&C);
     const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
 
@@ -594,10 +623,11 @@ struct PaintOperationExecutor {
                                                               position,
                                                               self.placement_.to_world_space(),
                                                               settings_);
+    float opacity = ed::greasepencil::opacity_from_input_sample(
+        extension_sample.pressure, brush_, settings_);
+
     const float brush_radius_px = brush_radius_to_pixel_radius(
         rv3d, brush_, math::transform_point(self.placement_.to_world_space(), position));
-    const float opacity = ed::greasepencil::opacity_from_input_sample(
-        extension_sample.pressure, brush_, settings_);
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
     OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -619,7 +649,6 @@ struct PaintOperationExecutor {
         self.smoothed_pen_direction_, coords - self.screen_space_coords_orig_.last(), 0.1f);
 
     const float distance_px = math::distance(coords, prev_coords);
-    self.accum_distance_ += distance_px;
 
     /* Approximate brush with non-circular shape by changing the radius based on the angle. */
     if (settings_->draw_angle_factor > 0.0f) {
@@ -636,18 +665,22 @@ struct PaintOperationExecutor {
       radius *= radius_factor;
     }
 
-    if (use_settings_random_ && settings_->draw_random_press > 0.0f) {
-      radius = randomize_radius(self, self.accum_distance_, radius, extension_sample.pressure);
-    }
-
     /* Overwrite last point if it's very close. */
     const bool is_first_sample = (curve_points.size() == 1);
     constexpr float point_override_threshold_px = 2.0f;
 
     if (distance_px < point_override_threshold_px) {
+      self.accum_distance_ += distance_px;
       /* Don't move the first point of the stroke. */
       if (!is_first_sample) {
         curves.positions_for_write()[last_active_point] = position;
+      }
+      if (use_settings_random_ && settings_->draw_random_press > 0.0f) {
+        radius = randomize_radius(self, self.accum_distance_, radius, extension_sample.pressure);
+      }
+      if (use_settings_random_ && settings_->draw_random_strength > 0.0f) {
+        opacity = randomize_opacity(
+            self, self.accum_distance_, opacity, extension_sample.pressure);
       }
       drawing_->radii_for_write()[last_active_point] = math::max(radius, prev_radius);
       drawing_->opacities_for_write()[last_active_point] = math::max(opacity, prev_opacity);
@@ -675,14 +708,36 @@ struct PaintOperationExecutor {
     MutableSpan<float> new_radii = drawing_->radii_for_write().slice(new_points);
     MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_points);
     linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords, is_first_sample);
-    linear_interpolation<float>(prev_radius, radius, new_radii, is_first_sample);
-    linear_interpolation<float>(prev_opacity, opacity, new_opacities, is_first_sample);
     if (vertex_color_) {
       MutableSpan<ColorGeometry4f> new_vertex_colors = drawing_->vertex_colors_for_write().slice(
           new_points);
       linear_interpolation<ColorGeometry4f>(
           prev_vertex_color, *vertex_color_, new_vertex_colors, is_first_sample);
     }
+
+    /* Randomize radii. */
+    if (use_settings_random_ && settings_->draw_random_press > 0.0f) {
+      for (const int i : IndexRange(new_points_num)) {
+        new_radii[i] = randomize_radius(
+            self, self.accum_distance_ + max_spacing_px * i, radius, extension_sample.pressure);
+      }
+    }
+    else {
+      linear_interpolation<float>(prev_radius, radius, new_radii, is_first_sample);
+    }
+
+    /* Randomize opacities. */
+    if (use_settings_random_ && settings_->draw_random_strength > 0.0f) {
+      for (const int i : IndexRange(new_points_num)) {
+        new_opacities[i] = randomize_opacity(
+            self, self.accum_distance_ + max_spacing_px * i, opacity, extension_sample.pressure);
+      }
+    }
+    else {
+      linear_interpolation<float>(prev_opacity, opacity, new_opacities, is_first_sample);
+    }
+
+    self.accum_distance_ += distance_px;
 
     /* Update screen space buffers with new points. */
     self.screen_space_coords_orig_.extend(new_screen_space_coords);
@@ -789,13 +844,10 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
     texture_space_ = texture_space_ * layer.to_object_space(*object);
   }
 
+  rng_ = RandomNumberGenerator::from_random_seed();
   if ((settings->flag & GP_BRUSH_GROUP_RANDOM) != 0) {
-    if ((settings->flag2 & GP_BRUSH_USE_PRESS_AT_STROKE) != 0) {
-      stroke_random_radius_factor_ = rng_.get_float();
-    }
-    if ((settings->flag2 & GP_BRUSH_USE_STRENGTH_AT_STROKE) != 0) {
-      stroke_random_opacity_factor_ = rng_.get_float();
-    }
+    stroke_random_radius_factor_ = rng_.get_float();
+    stroke_random_opacity_factor_ = rng_.get_float();
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
