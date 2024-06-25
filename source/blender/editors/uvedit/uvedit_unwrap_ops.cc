@@ -341,7 +341,7 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
     RNA_float_set(op->ptr, "importance_weights_factor", ts->uvcalc_importance_weights_factor);
   }
 
-  if (RNA_struct_property_is_set(op->ptr, "vertex_group")) {
+  if (RNA_struct_property_is_set(op->ptr, "importance_weights")) {
     RNA_string_get(op->ptr, "importance_weights", ts->uvcalc_importance_weights);
   }
   else {
