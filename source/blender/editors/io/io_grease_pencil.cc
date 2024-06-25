@@ -164,7 +164,7 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
   const float scale = RNA_float_get(op->ptr, "scale");
 
   const IOContext io_context(*C, region, v3d, op->reports);
-  SVGImporter importer(io_context, scale, scene->r.cfra, true);
+  SVGImporter importer(io_context, scale, scene->r.cfra, resolution, true);
   // importer.region = region;
   // importer.v3d = v3d;
   // importer.ob = nullptr;

@@ -66,6 +66,7 @@ class GreasePencilImporter {
   const IOContext context_;
   float scale_ = 1.0f;
   int frame_number_ = 1;
+  int resolution_ = 10;
   bool recenter_bounds_ = false;
 
   Object *object_ = nullptr;
@@ -85,6 +86,7 @@ class GreasePencilImporter {
   GreasePencilImporter(const IOContext &params,
                        float scale,
                        int frame_number,
+                       int resolution,
                        bool recenter_bounds);
 
   Object *create_object(StringRefNull name);

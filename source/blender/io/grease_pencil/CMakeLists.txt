@@ -9,6 +9,8 @@ set(INC
   ../../blenloader
   ../../bmesh
   ../../editors/include
+  ../../functions
+  ../../geometry
   ../../makesdna
   ../../makesrna
   ../../windowmanager

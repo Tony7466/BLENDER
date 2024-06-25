@@ -37,10 +37,12 @@ IOContext::IOContext(bContext &C, const ARegion *region, const View3D *v3d, Repo
 GreasePencilImporter::GreasePencilImporter(const IOContext &params,
                                            const float scale,
                                            const int frame_number,
+                                           int resolution,
                                            const bool recenter_bounds)
     : context_(params),
       scale_(scale),
       frame_number_(frame_number),
+      resolution_(resolution),
       recenter_bounds_(recenter_bounds)
 {
 }

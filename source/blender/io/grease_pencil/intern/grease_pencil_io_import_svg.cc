@@ -7,17 +7,20 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_path_util.h"
+#include "BLI_task.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_report.hh"
 
-#include "BLI_task.hh"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_space_types.h"
-
 #include "DNA_windowmanager_types.h"
+
+#include "GEO_resample_curves.hh"
+
 #include "ED_grease_pencil.hh"
+
 #include "grease_pencil_io.hh"
 
 #include "nanosvg.h"
@@ -271,6 +274,14 @@ bool SVGImporter::read(StringRefNull filepath)
 
     const IndexRange new_curves_range = extend_curves_geometry(curves, *shape);
     shape_attributes_to_curves(curves, *shape, new_curves_range);
+
+    /* Convert Bezier curves to poly curves.
+     * XXX This will not be necessary once Bezier curves are fully supported in grease pencil. */
+    curves = blender::geometry::resample_to_count(
+        std::move(curves),
+        new_curves_range,
+        VArray<int>::ForSingle(resolution_, curves.curves_num()),
+        {});
 
     drawing->strokes_for_write() = std::move(curves);
   }
