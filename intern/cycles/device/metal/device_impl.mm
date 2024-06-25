@@ -103,21 +103,18 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       capture_enabled = true;
     }
 
-    /* TODO: Enable this all the time? */
-    if (device_vendor == METAL_GPU_APPLE) {
-      /* Set kernel_specialization_level based on user preferences. */
-      switch (info.kernel_optimization_level) {
-        case KERNEL_OPTIMIZATION_LEVEL_OFF:
-          kernel_specialization_level = PSO_GENERIC;
-          break;
-        default:
-        case KERNEL_OPTIMIZATION_LEVEL_INTERSECT:
-          kernel_specialization_level = PSO_SPECIALIZED_INTERSECT;
-          break;
-        case KERNEL_OPTIMIZATION_LEVEL_FULL:
-          kernel_specialization_level = PSO_SPECIALIZED_SHADE;
-          break;
-      }
+    /* Set kernel_specialization_level based on user preferences. */
+    switch (info.kernel_optimization_level) {
+      case KERNEL_OPTIMIZATION_LEVEL_OFF:
+        kernel_specialization_level = PSO_GENERIC;
+        break;
+      default:
+      case KERNEL_OPTIMIZATION_LEVEL_INTERSECT:
+        kernel_specialization_level = PSO_SPECIALIZED_INTERSECT;
+        break;
+      case KERNEL_OPTIMIZATION_LEVEL_FULL:
+        kernel_specialization_level = PSO_SPECIALIZED_SHADE;
+        break;
     }
 
     if (auto envstr = getenv("CYCLES_METAL_SPECIALIZATION_LEVEL")) {
