@@ -1236,10 +1236,8 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   Binding &binding = converted_action.binding_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
   KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
-  ChannelBag *bag = strip.channelbag_for_binding(binding);
-  if (!bag) {
-    bag = &strip.channelbag_for_binding_add(binding);
-  }
+  BLI_assert(strip.channelbags_array_num == 0);
+  ChannelBag *bag = &strip.channelbag_for_binding_add(binding);
 
   LISTBASE_FOREACH (FCurve *, fcu, &legacy_action.curves) {
     FCurve *new_fcu = BKE_fcurve_copy(fcu);
