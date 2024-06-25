@@ -11,35 +11,10 @@
 
 namespace blender::animrig {
 
-static void clear_selection_legacy_action(Action &action)
-{
-  BLI_assert(action.is_action_legacy());
-  LISTBASE_FOREACH (FCurve *, fcu, &action.curves) {
-    if (!fcu->bezt) {
-      continue;
-    }
-    BKE_fcurve_deselect_all_keys(*fcu);
-  }
-}
-
-static void clear_selection_layered_action(Action &action)
-{
-  BLI_assert(action.is_action_layered());
-  for (Binding *binding : action.bindings()) {
-    for (FCurve *fcu : fcurves_for_animation(action, binding->handle)) {
-      BKE_fcurve_deselect_all_keys(*fcu);
-    }
-  }
-}
-
 void action_deselect_keys(Action &action)
 {
-  if (action.is_action_layered()) {
-    clear_selection_layered_action(action);
-  }
-  else {
-    BLI_assert(action.is_action_legacy());
-    clear_selection_legacy_action(action);
+  for (FCurve *fcu : fcurves_all(action)) {
+    BKE_fcurve_deselect_all_keys(*fcu);
   }
 }
 
