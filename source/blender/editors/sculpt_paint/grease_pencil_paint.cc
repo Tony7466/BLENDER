@@ -369,10 +369,10 @@ struct PaintOperationExecutor {
     return math::interpolate(opacity, opacity * random_factor, settings_->draw_random_strength);
   }
 
-  float randomize_rotation(PaintOperation &self, const float rotation, const float pressure)
+  float randomize_rotation(PaintOperation &self, const float pressure)
   {
     if (!use_settings_random_ || !(settings_->uv_random > 0.0f)) {
-      return rotation;
+      return 0.0f;
     }
     /* Random value in range [-1 .. 1]. */
     float random_factor = [&]() {
@@ -389,7 +389,7 @@ struct PaintOperationExecutor {
     }
 
     const float random_rotation = (random_factor * 2.0f - 1.0f) * float(M_PI);
-    return math::interpolate(rotation, random_rotation, settings_->uv_random);
+    return math::interpolate(0.0f, random_rotation, settings_->uv_random);
   }
 
   void process_start_sample(PaintOperation &self,
@@ -417,7 +417,7 @@ struct PaintOperationExecutor {
         start_sample.pressure, brush_, settings_);
     start_opacity = randomize_opacity(self, 0.0f, start_opacity, start_sample.pressure);
 
-    const float start_rotation = randomize_rotation(self, 0.0f, start_sample.pressure);
+    const float start_rotation = randomize_rotation(self, start_sample.pressure);
 
     Scene *scene = CTX_data_scene(&C);
     const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
@@ -648,9 +648,6 @@ struct PaintOperationExecutor {
     float opacity = ed::greasepencil::opacity_from_input_sample(
         extension_sample.pressure, brush_, settings_);
 
-    /* TODO: Align rotation with stroke direction? */
-    const float rotation = 0.0f;
-
     const float brush_radius_px = brush_radius_to_pixel_radius(
         rv3d, brush_, math::transform_point(self.placement_.to_world_space(), position));
 
@@ -771,7 +768,7 @@ struct PaintOperationExecutor {
           "rotation", bke::AttrDomain::Point);
       const MutableSpan<float> new_rotations = rotations.span.slice(new_points);
       for (const int i : IndexRange(new_points_num)) {
-        new_rotations[i] = randomize_rotation(self, rotation, extension_sample.pressure);
+        new_rotations[i] = randomize_rotation(self, extension_sample.pressure);
       }
       point_attributes_to_skip.add("rotation");
       rotations.finish();
