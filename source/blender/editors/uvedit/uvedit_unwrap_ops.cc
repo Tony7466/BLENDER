@@ -199,7 +199,8 @@ struct UnwrapOptions {
 
   void init_weight_influence(float w_influence)
   {
-    slim_options.weight_influence = importance_weights && strlen(weights_attribute) ? w_influence : 0.0f;
+    slim_options.weight_influence = importance_weights && strlen(weights_attribute) ? w_influence :
+                                                                                      0.0f;
   }
 };
 
@@ -680,8 +681,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
-                                                               options->weights_attribute);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->weights_attribute);
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -2787,8 +2787,7 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
     uiItemR(col, &ptr, "allow_flips", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, &ptr, "importance_weights", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-    if (RNA_boolean_get(op->ptr, "importance_weights"))
-    {
+    if (RNA_boolean_get(op->ptr, "importance_weights")) {
       col = uiLayoutColumn(layout, true);
       uiItemR(col, &ptr, "weights_attribute", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(col, &ptr, "weights_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -2884,10 +2883,10 @@ void UV_OT_unwrap(wmOperatorType *ot)
               30);
 
   RNA_def_boolean(ot->srna,
-    "importance_weights",
-    _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights,
-    "Importance Weights",
-    "Whether to take into account per-vertex importance weights");
+                  "importance_weights",
+                  _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights,
+                  "Importance Weights",
+                  "Whether to take into account per-vertex importance weights");
   RNA_def_string(ot->srna,
                  "weights_attribute",
                  _DNA_DEFAULT_ToolSettings_UVCalc_WeightsAttribute,
