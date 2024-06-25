@@ -21,11 +21,11 @@ CCL_NAMESPACE_BEGIN
 string MetalInfo::get_device_name(id<MTLDevice> device)
 {
   string device_name = [device.name UTF8String];
-  if (get_device_vendor(device) == METAL_GPU_APPLE) {
-    /* Append the GPU core count so we can distinguish between GPU variants in benchmarks. */
-    int gpu_core_count = get_apple_gpu_core_count(device);
-    device_name += string_printf(gpu_core_count ? " (GPU - %d cores)" : " (GPU)", gpu_core_count);
-  }
+
+  /* Append the GPU core count so we can distinguish between GPU variants in benchmarks. */
+  int gpu_core_count = get_apple_gpu_core_count(device);
+  device_name += string_printf(gpu_core_count ? " (GPU - %d cores)" : " (GPU)", gpu_core_count);
+
   return device_name;
 }
 
@@ -49,10 +49,6 @@ int MetalInfo::get_apple_gpu_core_count(id<MTLDevice> device)
 
 AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
 {
-  if (MetalInfo::get_device_vendor(device) != METAL_GPU_APPLE) {
-    return NOT_APPLE_GPU;
-  }
-
   const char *device_name = [device.name UTF8String];
   if (strstr(device_name, "M1")) {
     return APPLE_M1;
@@ -64,28 +60,6 @@ AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
     return APPLE_M3;
   }
   return APPLE_UNKNOWN;
-}
-
-MetalGPUVendor MetalInfo::get_device_vendor(id<MTLDevice> device)
-{
-  /* TODO: REMOVE THE CHECKS FOR INTEL AND AMD HERE? */
-  const char *device_name = [device.name UTF8String];
-  if (strstr(device_name, "Intel")) {
-    return METAL_GPU_INTEL;
-  }
-  else if (strstr(device_name, "AMD")) {
-    /* Setting this env var hides AMD devices thus exposing any integrated Intel devices. */
-    if (auto str = getenv("CYCLES_METAL_FORCE_INTEL")) {
-      if (atoi(str)) {
-        return METAL_GPU_UNKNOWN;
-      }
-    }
-    return METAL_GPU_AMD;
-  }
-  else if (strstr(device_name, "Apple")) {
-    return METAL_GPU_APPLE;
-  }
-  return METAL_GPU_UNKNOWN;
 }
 
 int MetalInfo::optimal_sort_partition_elements()
@@ -116,11 +90,13 @@ vector<id<MTLDevice>> const &MetalInfo::get_usable_devices()
   metal_printf("Usable Metal devices:\n");
   for (id<MTLDevice> device in MTLCopyAllDevices()) {
     string device_name = get_device_name(device);
-    MetalGPUVendor vendor = get_device_vendor(device);
     bool usable = false;
 
     if (@available(macos 12.2, *)) {
-      usable |= (vendor == METAL_GPU_APPLE);
+      const char *device_name_char = [device.name UTF8String];
+      if (strstr(device_name_char, "Apple")) {
+        usable = true;
+      }
     }
 
     if (usable) {

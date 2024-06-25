@@ -80,8 +80,6 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
     auto usable_devices = MetalInfo::get_usable_devices();
     assert(mtlDevId < usable_devices.size());
     mtlDevice = usable_devices[mtlDevId];
-    device_vendor = MetalInfo::get_device_vendor(mtlDevice);
-    assert(device_vendor != METAL_GPU_UNKNOWN);
     metal_printf("Creating new Cycles Metal device: %s\n", info.description.c_str());
 
     /* determine default storage mode based on whether UMA is supported */
