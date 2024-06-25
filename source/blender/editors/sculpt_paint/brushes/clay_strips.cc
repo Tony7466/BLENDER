@@ -331,7 +331,6 @@ void do_clay_strips_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nod
                      object,
                      tls,
                      positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;

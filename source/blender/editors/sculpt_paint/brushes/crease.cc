@@ -304,7 +304,6 @@ static void do_crease_or_blob_brush(const Scene &scene,
                      object,
                      tls,
                      positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;

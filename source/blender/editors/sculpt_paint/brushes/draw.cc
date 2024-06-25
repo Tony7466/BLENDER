@@ -203,7 +203,6 @@ static void offset_positions(const Sculpt &sd,
                      object,
                      tls,
                      positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;

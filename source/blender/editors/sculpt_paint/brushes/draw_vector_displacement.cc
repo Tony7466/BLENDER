@@ -223,7 +223,6 @@ void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PB
         for (const int i : range) {
           calc_faces(
               sd, brush, positions_eval, vert_normals, *nodes[i], object, tls, positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
         }
       });
       break;
