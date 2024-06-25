@@ -503,7 +503,6 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
 
     id<MTLDevice> mtlDevice;
     string source;
-    MetalGPUVendor device_vendor;
 
     /* Safely gather any state required for the MSL->AIR compilation. */
     {
@@ -526,7 +525,6 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
       }
 
       mtlDevice = instance->mtlDevice;
-      device_vendor = instance->device_vendor;
       source = instance->source[pso_type];
     }
 
