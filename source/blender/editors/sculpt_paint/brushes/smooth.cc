@@ -47,7 +47,7 @@ static Vector<float> iteration_strengths(const float strength)
   return result;
 }
 
-struct LocalData {
+struct MeshLocalData {
   Vector<float> factors;
   Vector<float> distances;
   Vector<Vector<int>> vert_neighbors;
@@ -71,7 +71,7 @@ BLI_NOINLINE static void calc_smooth_positions_faces(const OffsetIndices<int> fa
                                                      const Span<bool> hide_poly,
                                                      const Span<int> verts,
                                                      const Span<float3> positions,
-                                                     LocalData &tls,
+                                                     MeshLocalData &tls,
                                                      const MutableSpan<float3> new_positions)
 {
   tls.vert_neighbors.reinitialize(verts.size());
@@ -108,7 +108,7 @@ BLI_NOINLINE static void apply_positions_faces(const Sculpt &sd,
                                                const PBVHNode &node,
                                                const float strength,
                                                Object &object,
-                                               LocalData &tls,
+                                               MeshLocalData &tls,
                                                const Span<float3> new_positions,
                                                MutableSpan<float3> positions_orig)
 {
@@ -176,10 +176,10 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
       node_vert_offset_data);
   Array<float3> new_positions(node_vert_offsets.total_size());
 
-  threading::EnumerableThreadSpecific<LocalData> all_tls;
+  threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
   for (const float strength : iteration_strengths(brush_strength)) {
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      LocalData &tls = all_tls.local();
+      MeshLocalData &tls = all_tls.local();
       for (const int i : range) {
         calc_smooth_positions_faces(faces,
                                     corner_verts,
@@ -194,7 +194,7 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Sculpt &sd,
     });
 
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      LocalData &tls = all_tls.local();
+      MeshLocalData &tls = all_tls.local();
       for (const int i : range) {
         apply_positions_faces(sd,
                               brush,

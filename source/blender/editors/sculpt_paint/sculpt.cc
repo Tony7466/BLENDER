@@ -6546,6 +6546,23 @@ void SCULPT_cube_tip_init(const Sculpt & /*sd*/,
 
 namespace blender::ed::sculpt_paint {
 
+void gather_grids_positions(const SubdivCCG &subdiv_ccg,
+                            const Span<int> grids,
+                            const MutableSpan<float3> positions)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(grids.size() * key.grid_area == positions.size());
+
+  for (const int i : grids.index_range()) {
+    CCGElem *elem = elems[grids[i]];
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      positions[start + offset] = CCG_elem_offset_co(key, elem, offset);
+    }
+  }
+}
+
 void fill_factor_from_hide(const Mesh &mesh,
                            const Span<int> verts,
                            const MutableSpan<float> r_factors)
@@ -6593,6 +6610,41 @@ void fill_factor_from_hide_and_mask(const Mesh &mesh,
   }
 }
 
+void fill_factor_from_hide_and_mask(const SubdivCCG &subdiv_ccg,
+                                    const Span<int> grids,
+                                    const MutableSpan<float> r_factors)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(grids.size() * key.grid_area == r_factors.size());
+
+  if (key.has_mask) {
+    for (const int i : grids.index_range()) {
+      CCGElem *elem = elems[grids[i]];
+      const int start = i * key.grid_area;
+      for (const int offset : IndexRange(key.grid_area)) {
+        r_factors[start + offset] = 1.0f - CCG_elem_offset_mask(key, elem, offset);
+      }
+    }
+  }
+  else {
+    r_factors.fill(1.0f);
+  }
+
+  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
+  if (!grid_hidden.is_empty()) {
+    for (const int i : grids.index_range()) {
+      const BitSpan hidden = grid_hidden[grids[i]];
+      const int start = i * key.grid_area;
+      for (const int offset : IndexRange(key.grid_area)) {
+        if (hidden[offset]) {
+          r_factors[start + offset] = 0.0f;
+        }
+      }
+    }
+  }
+}
+
 void calc_front_face(const float3 &view_normal,
                      const Span<float3> vert_normals,
                      const Span<int> verts,
@@ -6603,6 +6655,25 @@ void calc_front_face(const float3 &view_normal,
   for (const int i : verts.index_range()) {
     const float dot = math::dot(view_normal, vert_normals[verts[i]]);
     factors[i] *= std::max(dot, 0.0f);
+  }
+}
+
+void calc_front_face(const float3 &view_normal,
+                     const SubdivCCG &subdiv_ccg,
+                     const Span<int> grids,
+                     const MutableSpan<float> factors)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(grids.size() * key.grid_area == factors.size());
+
+  for (const int i : grids.index_range()) {
+    CCGElem *elem = elems[grids[i]];
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      const float dot = math::dot(view_normal, CCG_elem_offset_no(key, elem, offset));
+      factors[start + offset] *= std::max(dot, 0.0f);
+    }
   }
 }
 
@@ -6624,6 +6695,32 @@ void filter_region_clip_factors(const SculptSession &ss,
   for (const int i : verts.index_range()) {
     float3 symm_co;
     flip_v3_v3(symm_co, positions[verts[i]], mirror_symmetry_pass);
+    if (radial_symmetry_pass) {
+      symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
+    }
+    if (ED_view3d_clipping_test(rv3d, symm_co, true)) {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+void filter_region_clip_factors(const SculptSession &ss,
+                                const Span<float3> positions,
+                                const MutableSpan<float> factors)
+{
+  const RegionView3D *rv3d = ss.cache ? ss.cache->vc->rv3d : ss.rv3d;
+  const View3D *v3d = ss.cache ? ss.cache->vc->v3d : ss.v3d;
+  if (!RV3D_CLIPPING_ENABLED(v3d, rv3d)) {
+    return;
+  }
+
+  const ePaintSymmetryFlags mirror_symmetry_pass = ss.cache ? ss.cache->mirror_symmetry_pass :
+                                                              ePaintSymmetryFlags(0);
+  const int radial_symmetry_pass = ss.cache ? ss.cache->radial_symmetry_pass : 0;
+  const float4x4 symm_rot_mat_inv = ss.cache ? ss.cache->symm_rot_mat_inv : float4x4::identity();
+  for (const int i : positions.index_range()) {
+    float3 symm_co;
+    flip_v3_v3(symm_co, positions[i], mirror_symmetry_pass);
     if (radial_symmetry_pass) {
       symm_co = math::transform_point(symm_rot_mat_inv, symm_co);
     }
@@ -6658,6 +6755,45 @@ void calc_distance_falloff(const SculptSession &ss,
   else {
     for (const int i : verts.index_range()) {
       r_distances[i] = math::distance_squared(test_location, positions[verts[i]]);
+    }
+  }
+
+  const float radius_sq = ss.cache ? ss.cache->radius_squared :
+                                     ss.cursor_radius * ss.cursor_radius;
+  for (const int i : r_distances.index_range()) {
+    if (r_distances[i] < radius_sq) {
+      r_distances[i] = std::sqrt(r_distances[i]);
+    }
+    else {
+      factors[i] = 0.0f;
+    }
+  }
+}
+
+void calc_distance_falloff(const SculptSession &ss,
+                           const Span<float3> positions,
+                           const eBrushFalloffShape falloff_shape,
+                           const MutableSpan<float> r_distances,
+                           const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == factors.size());
+  BLI_assert(positions.size() == r_distances.size());
+
+  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
+  if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
+    /* The tube falloff shape requires the cached view normal. */
+    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
+    float4 test_plane;
+    plane_from_point_normal_v3(test_plane, test_location, view_normal);
+    for (const int i : positions.index_range()) {
+      float3 projected;
+      closest_to_plane_normalized_v3(projected, test_plane, positions[i]);
+      r_distances[i] = math::distance_squared(projected, test_location);
+    }
+  }
+  else {
+    for (const int i : positions.index_range()) {
+      r_distances[i] = math::distance_squared(test_location, positions[i]);
     }
   }
 
@@ -6762,6 +6898,29 @@ void calc_brush_texture_factors(SculptSession &ss,
   }
 }
 
+void calc_brush_texture_factors(SculptSession &ss,
+                                const Brush &brush,
+                                const Span<float3> positions,
+                                const MutableSpan<float> factors)
+{
+  BLI_assert(positions.size() == factors.size());
+
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  const MTex *mtex = BKE_brush_mask_texture_get(&brush, OB_MODE_SCULPT);
+  if (!mtex->tex) {
+    return;
+  }
+
+  for (const int i : positions.index_range()) {
+    float texture_value;
+    float4 texture_rgba;
+    /* NOTE: This is not a thread-safe call. */
+    sculpt_apply_texture(ss, brush, positions[i], thread_id, &texture_value, texture_rgba);
+
+    factors[i] *= texture_value;
+  }
+}
+
 void apply_translations(const Span<float3> translations,
                         const Span<int> verts,
                         const MutableSpan<float3> positions)
@@ -6771,6 +6930,23 @@ void apply_translations(const Span<float3> translations,
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
     positions[vert] += translations[i];
+  }
+}
+
+void apply_translations(const Span<float3> translations,
+                        const Span<int> grids,
+                        SubdivCCG &subdiv_ccg)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(grids.size() * key.grid_area == translations.size());
+
+  for (const int i : grids.index_range()) {
+    CCGElem *elem = elems[grids[i]];
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      CCG_elem_offset_co(key, elem, offset) += translations[start + offset];
+    }
   }
 }
 
@@ -6823,6 +6999,45 @@ void clip_and_lock_translations(const Sculpt &sd,
       co_mirror[axis] = 0.0f;
       const float3 co_local = math::transform_point(mirror_inverse, co_mirror);
       translations[i][axis] = co_local[axis] - positions[vert][axis];
+    }
+  }
+}
+
+void clip_and_lock_translations(const Sculpt &sd,
+                                const SculptSession &ss,
+                                const Span<float3> positions,
+                                const MutableSpan<float3> translations)
+{
+  BLI_assert(positions.size() == translations.size());
+
+  const StrokeCache *cache = ss.cache;
+  if (!cache) {
+    return;
+  }
+  for (const int axis : IndexRange(3)) {
+    if (sd.flags & (SCULPT_LOCK_X << axis)) {
+      for (float3 &translation : translations) {
+        translation[axis] = 0.0f;
+      }
+      continue;
+    }
+
+    if (!(cache->flag & (CLIP_X << axis))) {
+      continue;
+    }
+
+    const float4x4 mirror(cache->clip_mirror_mtx);
+    const float4x4 mirror_inverse = math::invert(mirror);
+    for (const int i : positions.index_range()) {
+      /* Transform into the space of the mirror plane, check translations, then transform back. */
+      float3 co_mirror = math::transform_point(mirror, positions[i]);
+      if (math::abs(co_mirror[axis]) > cache->clip_tolerance[axis]) {
+        continue;
+      }
+      /* Clear the translation in the local space of the mirror object. */
+      co_mirror[axis] = 0.0f;
+      const float3 co_local = math::transform_point(mirror_inverse, co_mirror);
+      translations[i][axis] = co_local[axis] - positions[i][axis];
     }
   }
 }

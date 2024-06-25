@@ -612,6 +612,32 @@ void calc_vert_factors(const Object &object,
   }
 }
 
+void calc_grids_factors(const Object &object,
+                        const Cache &cache,
+                        const PBVHNode &node,
+                        const Span<int> grids,
+                        const MutableSpan<float> factors)
+{
+  SculptSession &ss = *object.sculpt;
+  // const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  // const Span<CCGElem *> elems = subdiv_ccg.grids;
+  NodeData data = node_begin(object, &cache, node);
+
+  // for (const int i : grids.index_range()) {
+  //   CCGElem *elem = elems[grids[i]];
+  //   const int start = i * key.grid_area;
+  //   for (const int offset : IndexRange(key.grid_area)) {
+  //     factors[start + offset] *= std::max(dot, 0.0f);
+  //   }
+  // }
+  // for (const int i : grids.index_range()) {
+  //   if (data.orig_data) {
+  //     mesh_orig_vert_data_update(*data.orig_data, i);
+  //   }
+  //   factors[i] *= factor_get(&cache, ss, BKE_pbvh_make_vref(verts[i]), &data);
+  // }
+}
+
 NodeData node_begin(const Object &object, const Cache *automasking, const PBVHNode &node)
 {
   if (!automasking) {
