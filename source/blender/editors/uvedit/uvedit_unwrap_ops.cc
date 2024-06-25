@@ -263,7 +263,8 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
     RNA_string_get(op->ptr, "importance_weights", options.slim_importance_weights);
     options.slim_options.weight_influence = strlen(options.slim_importance_weights) ?
-                                                RNA_float_get(op->ptr, "importance_weights_factor") :
+                                                RNA_float_get(op->ptr,
+                                                              "importance_weights_factor") :
                                                 0.0f;
     options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
     options.slim_options.allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
@@ -668,7 +669,8 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
       continue;
     }
 
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->slim_importance_weights);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
+                                                               options->slim_importance_weights);
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -2814,13 +2816,14 @@ void UV_OT_unwrap(wmOperatorType *ot)
   ot->ui = unwrap_draw;
 
   /* properties */
-  ot->prop = RNA_def_enum(ot->srna,
-               "method",
-               method_items,
-               _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper,
-               "Method",
-               "Unwrapping method (Angle Based usually gives better results than Conformal, while "
-               "being somewhat slower)");
+  ot->prop = RNA_def_enum(
+      ot->srna,
+      "method",
+      method_items,
+      _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper,
+      "Method",
+      "Unwrapping method (Angle Based usually gives better results than Conformal, while "
+      "being somewhat slower)");
   RNA_def_boolean(ot->srna,
                   "fill_holes",
                   _DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_FILLHOLES,
