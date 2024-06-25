@@ -69,10 +69,7 @@ void device_metal_info(vector<DeviceInfo> &devices)
     }
 #  endif
 
-    MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
-
-    /* TODO: Just enabled NanoVDB all the time? */
-    info.has_nanovdb = vendor == METAL_GPU_APPLE;
+    info.has_nanovdb = true;
 
     info.use_hardware_raytracing = false;
 
