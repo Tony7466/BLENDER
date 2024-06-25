@@ -315,7 +315,7 @@ int MetalDeviceQueue::num_concurrent_busy_states(const size_t state_size) const
 
 int MetalDeviceQueue::num_sort_partition_elements() const
 {
-  return MetalInfo::optimal_sort_partition_elements(metal_device_->mtlDevice);
+  return MetalInfo::optimal_sort_partition_elements();
 }
 
 bool MetalDeviceQueue::supports_local_atomic_sort() const

@@ -88,7 +88,7 @@ MetalGPUVendor MetalInfo::get_device_vendor(id<MTLDevice> device)
   return METAL_GPU_UNKNOWN;
 }
 
-int MetalInfo::optimal_sort_partition_elements(id<MTLDevice> device)
+int MetalInfo::optimal_sort_partition_elements()
 {
   if (auto str = getenv("CYCLES_METAL_SORT_PARTITION_ELEMENTS")) {
     return atoi(str);
