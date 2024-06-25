@@ -85,13 +85,13 @@ static void node_shader_update_conductor(bNodeTree *ntree, bNode *node)
   const int fresnel_method = node->custom2;
 
   bke::nodeSetSocketAvailability(
-      ntree, nodeFindSocket(node, SOCK_IN, "Base Color"), fresnel_method != SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "Base Color"), fresnel_method != SHD_CONDUCTOR);
   bke::nodeSetSocketAvailability(
-      ntree, nodeFindSocket(node, SOCK_IN, "Edge Tint"), fresnel_method != SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "Edge Tint"), fresnel_method != SHD_CONDUCTOR);
   bke::nodeSetSocketAvailability(
-      ntree, nodeFindSocket(node, SOCK_IN, "IOR"), fresnel_method == SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "IOR"), fresnel_method == SHD_CONDUCTOR);
   bke::nodeSetSocketAvailability(
-      ntree, nodeFindSocket(node, SOCK_IN, "Extinction"), fresnel_method == SHD_CONDUCTOR);
+      ntree, bke::nodeFindSocket(node, SOCK_IN, "Extinction"), fresnel_method == SHD_CONDUCTOR);
 }
 
 NODE_SHADER_MATERIALX_BEGIN
@@ -143,13 +143,13 @@ void register_node_type_sh_bsdf_conductor()
 {
   namespace file_ns = blender::nodes::node_shader_bsdf_conductor_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_BSDF_CONDUCTOR, "Conductor BSDF", NODE_CLASS_SHADER);
   ntype.declare = file_ns::node_declare;
   ntype.add_ui_poll = object_shader_nodes_poll;
   ntype.draw_buttons = file_ns::node_shader_buts_conductor;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Large);
   ntype.initfunc = file_ns::node_shader_init_conductor;
   ntype.gpu_fn = file_ns::node_shader_gpu_bsdf_conductor;
   ntype.updatefunc = file_ns::node_shader_update_conductor;
