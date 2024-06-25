@@ -1087,7 +1087,8 @@ ccl_device_noinline int svm_node_principled_volume(KernelGlobals kg,
   return offset;
 }
 
-ccl_device_noinline void svm_node_closure_emission(ccl_private ShaderData *sd,
+ccl_device_noinline void svm_node_closure_emission(KernelGlobals kg,
+                                                   ccl_private ShaderData *sd,
                                                    ccl_private float *stack,
                                                    Spectrum closure_weight,
                                                    uint4 node)
@@ -1103,6 +1104,10 @@ ccl_device_noinline void svm_node_closure_emission(ccl_private ShaderData *sd,
     }
 
     weight *= mix_weight;
+  }
+
+  if (sd->flag & SD_IS_VOLUME_SHADER_EVAL) {
+    weight *= object_volume_density(kg, sd->object);
   }
 
   emission_setup(sd, weight);
