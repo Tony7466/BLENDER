@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_bounds.hh"
-#include "BLI_math_basis_types.hh"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_path_util.h"
 
 #include "BKE_curves.hh"
@@ -38,7 +38,7 @@ namespace blender::io::grease_pencil {
 static std::string get_layer_id(const NSVGshape &shape, const int prefix)
 {
   return (shape.id_parent[0] == '\0') ? fmt::format("Layer_{:03d}", prefix) :
-                                        fmt::format("Layer_{:s}", shape.id_parent);
+                                        fmt::format("{:s}", shape.id_parent);
 }
 
 // void GpencilImporterSVG::create_stroke(bGPdata *gpd,
@@ -110,6 +110,66 @@ static std::string get_layer_id(const NSVGshape &shape, const int prefix)
 //   BKE_gpencil_stroke_merge_distance(gpd, gpf, gps, 0.001f, true);
 //   BKE_gpencil_stroke_geometry_update(gpd, gps);
 // }
+
+/* Make room for curves and points from the SVG shape.
+ * Returns the index range of newly added curves. */
+static IndexRange extend_curves_geometry(bke::CurvesGeometry &curves, const NSVGshape &shape)
+{
+  const int old_curves_num = curves.curves_num();
+  const int old_points_num = curves.points_num();
+  const Span<int> old_offsets = curves.offsets();
+
+  /* Count curves and points. */
+  Vector<int> new_curve_offsets;
+  for (NSVGpath *path = shape.paths; path; path = path->next) {
+    /* nanosvg converts everything to bezier curves, points come in triplets. */
+    const int point_num = path->npts / 3;
+    new_curve_offsets.append(point_num);
+  }
+  new_curve_offsets.append(0);
+  const OffsetIndices new_points_by_curve = offset_indices::accumulate_counts_to_offsets(
+      new_curve_offsets, old_points_num);
+
+  const IndexRange new_curves_range = {old_curves_num, new_points_by_curve.size()};
+  const int curves_num = new_curves_range.one_after_last();
+  const int points_num = new_points_by_curve.total_size();
+  curves.resize(points_num, curves_num);
+
+  Array<int> new_offsets(curves_num + 1);
+  new_offsets.as_mutable_span().slice(0, old_curves_num).copy_from(old_offsets.drop_back(1));
+  new_offsets.as_mutable_span()
+      .slice(old_curves_num, new_curve_offsets.size())
+      .copy_from(new_curve_offsets);
+  curves.offsets_for_write() = new_offsets;
+
+  /* nanosvg converts everything to Bezier curves. */
+  curves.curve_types_for_write().slice(new_curves_range).fill(CURVE_TYPE_BEZIER);
+
+  curves.tag_topology_changed();
+  curves.update_curve_types();
+
+  return new_curves_range;
+}
+
+static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
+                                       const NSVGshape &shape,
+                                       const IndexRange curves_range)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  MutableSpan<float3> positions = curves.positions_for_write();
+
+  int curve_index = curves_range.start();
+  for (NSVGpath *path = shape.paths; path; path = path->next, ++curve_index) {
+    /* 2D vectors in triplets: [control point, left handle, right handle]. */
+    const Span<float2> svg_path_data = Span<float>(path->pts, 2 * path->npts).cast<float2>();
+
+    const IndexRange points = points_by_curve[curve_index];
+    for (const int i : points.index_range()) {
+      const int point_index = points[i];
+      positions[point_index] = float3(svg_path_data[i * 3], 0.0f);
+    }
+  }
+}
 
 static void shift_to_bounds_center(GreasePencil &grease_pencil)
 {
@@ -194,7 +254,14 @@ bool SVGImporter::read(StringRefNull filepath)
     }();
 
     /* Check frame. */
-    grease_pencil.insert_frame(layer, frame_number_);
+    Drawing *drawing = grease_pencil.get_drawing_at(layer, frame_number_);
+    if (drawing == nullptr) {
+      drawing = grease_pencil.insert_frame(layer, frame_number_);
+      if (!drawing) {
+        continue;
+      }
+    }
+    bke::CurvesGeometry &curves = drawing->strokes_for_write();
 
     /* Create materials. */
     const bool is_fill = bool(shape->fill.type);
@@ -202,10 +269,10 @@ bool SVGImporter::read(StringRefNull filepath)
     const StringRefNull mat_name = (is_stroke ? (is_fill ? "Both" : "Stroke") : "Fill");
     const int32_t mat_index = create_material(mat_name, is_stroke, is_fill);
 
-    /* Loop all paths to create the stroke data. */
-    for (NSVGpath *path = shape->paths; path; path = path->next) {
-      // create_stroke(gpd_, gpf, shape, path, mat_index, matrix);
-    }
+    const IndexRange new_curves_range = extend_curves_geometry(curves, *shape);
+    shape_attributes_to_curves(curves, *shape, new_curves_range);
+
+    drawing->strokes_for_write() = std::move(curves);
   }
 
   /* Free SVG memory. */
@@ -213,7 +280,7 @@ bool SVGImporter::read(StringRefNull filepath)
 
   /* Calculate bounding box and move all points to new origin center. */
   if (recenter_bounds_) {
-    // shift_to_bounds_center(grease_pencil);
+    shift_to_bounds_center(grease_pencil);
   }
 
   return true;
