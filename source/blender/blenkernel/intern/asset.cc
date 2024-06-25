@@ -7,6 +7,7 @@
  */
 
 #include <cstring>
+#include <utility>
 
 #include "DNA_ID.h"
 #include "DNA_defaults.h"
@@ -64,6 +65,21 @@ AssetMetaData *BKE_asset_metadata_copy(const AssetMetaData *source)
   return copy;
 }
 
+AssetMetaData::AssetMetaData(AssetMetaData &&other)
+    : local_type_info(other.local_type_info),
+      properties(std::exchange(other.properties, nullptr)),
+      catalog_id(other.catalog_id),
+      author(std::exchange(other.author, nullptr)),
+      description(std::exchange(other.description, nullptr)),
+      copyright(std::exchange(other.copyright, nullptr)),
+      active_tag(other.active_tag),
+      tot_tags(other.tot_tags)
+{
+  STRNCPY(catalog_simple_name, other.catalog_simple_name);
+  tags = other.tags;
+  BLI_listbase_clear(&other.tags);
+}
+
 AssetMetaData::~AssetMetaData()
 {
   if (properties) {
@@ -75,21 +91,6 @@ AssetMetaData::~AssetMetaData()
   MEM_SAFE_FREE(license);
   BLI_freelistN(&tags);
 }
-
-std::unique_ptr<AssetMetaData> AssetMetaData::move_into_unique_pointer()
-{
-  std::unique_ptr other = std::make_unique<AssetMetaData>(*this);
-
-  this->properties = nullptr;
-  this->author = nullptr;
-  this->description = nullptr;
-  this->copyright = nullptr;
-  this->license = nullptr;
-  BLI_listbase_clear(&tags);
-
-  return other;
-}
-
 
 static AssetTag *asset_metadata_tag_add(AssetMetaData *asset_data, const char *const name)
 {
