@@ -5,6 +5,8 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
+#include "BLI_math_vector_types.hh"
+
 #include <cstdint>
 
 #pragma once
@@ -14,9 +16,12 @@
  */
 
 struct ARegion;
-struct Object;
 struct View3D;
 struct bContext;
+struct Scene;
+struct Object;
+struct ReportList;
+struct Depsgraph;
 
 namespace blender::io::grease_pencil {
 
@@ -45,10 +50,50 @@ enum ExportFrame {
   SceneFrame = 2,
 };
 
-struct IOParams {
-  bContext *C;
-  ARegion *region;
-  View3D *v3d;
+struct IOContext {
+  ReportList *reports;
+  bContext &C;
+  const ARegion *region;
+  const View3D *v3d;
+  Scene *scene;
+  Depsgraph *depsgraph;
+
+  IOContext(bContext &C, const ARegion *region, const View3D *v3d, ReportList *reports);
+};
+
+class GreasePencilImporter {
+ protected:
+  const IOContext context_;
+  float scale_ = 1.0f;
+  int frame_number_ = 1;
+  bool recenter_bounds_ = false;
+
+  Object *object_ = nullptr;
+  // int32_t frame_start;
+  // int32_t frame_end;
+  // int32_t frame_cur;
+  // /* #IOParamsFlag. */
+  // int flag;
+  // float scale;
+  // ExportSelect select_mode;
+  // ExportFrame frame_mode;
+  // /** Stroke sampling factor. */
+  // float stroke_sample;
+  // int32_t resolution;
+
+ public:
+  GreasePencilImporter(const IOContext &params,
+                       float scale,
+                       int frame_number,
+                       bool recenter_bounds);
+
+  Object *create_object(StringRefNull name);
+  int32_t create_material(StringRefNull name, bool stroke, bool fill);
+};
+
+class GreasePencilExporter {
+ protected:
+  const IOContext context_;
   /** Grease pencil object. */
   Object *ob;
   int32_t frame_start;
@@ -62,10 +107,30 @@ struct IOParams {
   /** Stroke sampling factor. */
   float stroke_sample;
   int32_t resolution;
+
+ public:
+  GreasePencilExporter(const IOContext &params);
 };
 
-bool grease_pencil_io_import_svg(StringRef filepath, struct IOParams &params);
-bool grease_pencil_io_export_svg(StringRef filepath, struct IOParams &params);
-bool grease_pencil_io_export_pdf(StringRef filepath, struct IOParams &params);
+class SVGImporter : public GreasePencilImporter {
+ public:
+  using GreasePencilImporter::GreasePencilImporter;
+
+  bool read(StringRefNull filepath);
+};
+
+class SVGExporter : public GreasePencilExporter {
+ public:
+  using GreasePencilExporter::GreasePencilExporter;
+
+  bool write(StringRefNull filepath);
+};
+
+class PDFExporter : public GreasePencilExporter {
+ public:
+  using GreasePencilExporter::GreasePencilExporter;
+
+  bool write(StringRefNull filepath);
+};
 
 }  // namespace blender::io::grease_pencil

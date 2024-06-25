@@ -14,22 +14,17 @@ set(INC
   ../../windowmanager
   ../../../../intern/guardedalloc
   ../../../../intern/utfconv
+  ../../../../extern/fmtlib/include
 )
 
 set(INC_SYS
 )
 
 set(SRC
-  # intern/gpencil_io_base.cc
-  # intern/gpencil_io_capi.cc
-  # intern/gpencil_io_import_base.cc
   intern/grease_pencil_io_import_svg.cc
-  #
+  intern/grease_pencil_io.cc
+
   grease_pencil_io.hh
-  # intern/gpencil_io_base.hh
-  # intern/gpencil_io_export_base.hh
-  # intern/gpencil_io_import_base.hh
-  intern/grease_pencil_io_import_svg.hh
 )
 
 set(LIB
@@ -40,14 +35,13 @@ set(LIB
   PRIVATE bf::extern::nanosvg
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE extern_fmtlib
   bf_io_common
 )
 
 if(WITH_PUGIXML)
   list(APPEND SRC
     intern/grease_pencil_io_export_svg.cc
-
-    intern/grease_pencil_io_export_svg.hh
   )
   list(APPEND INC_SYS
     ${PUGIXML_INCLUDE_DIR}
@@ -61,8 +55,6 @@ endif()
 if(WITH_HARU)
   list(APPEND SRC
     intern/grease_pencil_io_export_pdf.cc
-
-    intern/grease_pencil_io_export_pdf.hh
   )
   list(APPEND INC_SYS
     ${HARU_INCLUDE_DIRS}

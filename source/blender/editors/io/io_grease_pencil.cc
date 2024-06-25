@@ -36,6 +36,8 @@
 
 #  include "grease_pencil_io.hh"
 
+#  include <iostream>
+
 #  if defined(WITH_PUGIXML) || defined(WITH_HARU)
 
 namespace blender::ed::io {
@@ -136,6 +138,9 @@ static bool grease_pencil_import_svg_check(bContext * /*C*/, wmOperator *op)
 
 static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
 {
+  using blender::io::grease_pencil::IOContext;
+  using blender::io::grease_pencil::SVGImporter;
+
   Scene *scene = CTX_data_scene(C);
 
   if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false) ||
@@ -158,31 +163,29 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
   const int resolution = RNA_int_get(op->ptr, "resolution");
   const float scale = RNA_float_get(op->ptr, "scale");
 
-  blender::io::grease_pencil::IOParams params{};
-  params.C = C;
-  params.region = region;
-  params.v3d = v3d;
-  params.ob = nullptr;
-  params.frame_start = scene->r.cfra;
-  params.frame_end = scene->r.cfra;
-  params.frame_cur = scene->r.cfra;
-  params.flag = flag;
-  params.scale = scale;
-  params.select_mode = blender::io::grease_pencil::ExportSelect::Active;
-  params.frame_mode = blender::io::grease_pencil::ExportFrame::ActiveFrame;
-  params.stroke_sample = 0.0f;
-  params.resolution = resolution;
+  const IOContext io_context(*C, region, v3d, op->reports);
+  SVGImporter importer(io_context, scale, scene->r.cfra, true);
+  // importer.region = region;
+  // importer.v3d = v3d;
+  // importer.ob = nullptr;
+  // importer.frame_start = scene->r.cfra;
+  // importer.frame_end = scene->r.cfra;
+  // importer.frame_cur = scene->r.cfra;
+  // importer.flag = flag;
+  // importer.scale = scale;
+  // importer.select_mode = blender::io::grease_pencil::ExportSelect::Active;
+  // importer.frame_mode = blender::io::grease_pencil::ExportFrame::ActiveFrame;
+  // importer.stroke_sample = 0.0f;
+  // importer.resolution = resolution;
 
   /* Loop all selected files to import them. All SVG imported shared the same import
    * parameters, but they are created in separated grease pencil objects. */
   const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
-  char filename[FILE_MAX];
   for (const auto &path : paths) {
     /* Do Import. */
     WM_cursor_wait(true);
 
-    BLI_path_split_file_part(path.c_str(), filename, ARRAY_SIZE(filename));
-    const bool done = blender::io::grease_pencil::grease_pencil_io_import_svg(path, params);
+    const bool done = importer.read(path);
     WM_cursor_wait(false);
     if (!done) {
       BKE_reportf(op->reports, RPT_WARNING, "Unable to import '%s'", path.c_str());
@@ -293,8 +296,6 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
 {
   using blender::io::grease_pencil::ExportFrame;
   using blender::io::grease_pencil::ExportSelect;
-  using blender::io::grease_pencil::IOParams;
-  using blender::io::grease_pencil::IOParamsFlag;
 
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -322,28 +323,28 @@ static int grease_pencil_export_svg_exec(bContext *C, wmOperator *op)
 
   /* Set flags. */
   int flag = 0;
-  SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
-  SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
-  SET_FLAG_FROM_TEST(flag, use_clip_camera, int(IOParamsFlag::ExportClipCamera));
+  // SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
+  // SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
+  // SET_FLAG_FROM_TEST(flag, use_clip_camera, int(IOParamsFlag::ExportClipCamera));
 
-  IOParams params{};
-  params.C = C;
-  params.region = region;
-  params.v3d = v3d;
-  params.ob = ob;
-  params.frame_start = scene->r.cfra;
-  params.frame_end = scene->r.cfra;
-  params.frame_cur = scene->r.cfra;
-  params.flag = flag;
-  params.scale = 1.0f;
-  params.select_mode = select_mode;
-  params.frame_mode = ExportFrame::ActiveFrame;
-  params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
-  params.resolution = 1.0f;
+  // IOParams params{};
+  // params.C = C;
+  // params.region = region;
+  // params.v3d = v3d;
+  // params.ob = ob;
+  // params.frame_start = scene->r.cfra;
+  // params.frame_end = scene->r.cfra;
+  // params.frame_cur = scene->r.cfra;
+  // params.flag = flag;
+  // params.scale = 1.0f;
+  // params.select_mode = select_mode;
+  // params.frame_mode = ExportFrame::ActiveFrame;
+  // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
+  // params.resolution = 1.0f;
 
   /* Do export. */
   WM_cursor_wait(true);
-  const bool done = blender::io::grease_pencil::grease_pencil_io_export_svg(filepath, params);
+  const bool done = false /*blender::io::grease_pencil::export_svg(filepath, params)*/;
   WM_cursor_wait(false);
 
   if (!done) {
@@ -460,8 +461,6 @@ static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
 {
   using blender::io::grease_pencil::ExportFrame;
   using blender::io::grease_pencil::ExportSelect;
-  using blender::io::grease_pencil::IOParams;
-  using blender::io::grease_pencil::IOParamsFlag;
 
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
@@ -487,28 +486,28 @@ static int grease_pencil_export_pdf_exec(bContext *C, wmOperator *op)
   const ExportFrame frame_mode = ExportFrame(RNA_enum_get(op->ptr, "frame_mode"));
 
   /* Set flags. */
-  int flag = 0;
-  SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
-  SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
+  // int flag = 0;
+  // SET_FLAG_FROM_TEST(flag, use_fill, int(IOParamsFlag::ExportFill));
+  // SET_FLAG_FROM_TEST(flag, use_norm_thickness, int(IOParamsFlag::ExportNormalizedThickness));
 
-  IOParams params{};
-  params.C = C;
-  params.region = region;
-  params.v3d = v3d;
-  params.ob = ob;
-  params.frame_start = scene->r.sfra;
-  params.frame_end = scene->r.efra;
-  params.frame_cur = scene->r.cfra;
-  params.flag = flag;
-  params.scale = 1.0f;
-  params.select_mode = select_mode;
-  params.frame_mode = frame_mode;
-  params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
-  params.resolution = 1.0f;
+  // IOParams params{};
+  // params.C = C;
+  // params.region = region;
+  // params.v3d = v3d;
+  // params.ob = ob;
+  // params.frame_start = scene->r.sfra;
+  // params.frame_end = scene->r.efra;
+  // params.frame_cur = scene->r.cfra;
+  // params.flag = flag;
+  // params.scale = 1.0f;
+  // params.select_mode = select_mode;
+  // params.frame_mode = frame_mode;
+  // params.stroke_sample = RNA_float_get(op->ptr, "stroke_sample");
+  // params.resolution = 1.0f;
 
   /* Do export. */
   WM_cursor_wait(true);
-  const bool done = blender::io::grease_pencil::grease_pencil_io_export_pdf(filepath, params);
+  const bool done = false /*blender::io::grease_pencil::export_pdf(filepath, params)*/;
   WM_cursor_wait(false);
 
   if (!done) {

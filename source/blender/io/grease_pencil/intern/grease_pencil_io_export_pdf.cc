@@ -10,10 +10,4 @@
 
 namespace blender::io::grease_pencil {
 
-bool grease_pencil_io_export_pdf(StringRef filepath, struct IOParams &params)
-{
-  UNUSED_VARS(filepath, params);
-  return false;
-}
-
 }  // namespace blender::io::grease_pencil
