@@ -854,9 +854,9 @@ def extensions_panel_draw_impl(
     if USE_EXTENSION_SECTIONS:
         SECTION_ENABLED, SECTION_INSTALLED, SECTION_AVAILABLE = 0, 1, 2
         layout_sections = [
-            [layout.column(), False, iface_("Enabled")],
-            [layout.column(), False, iface_("Installed")],
-            [layout.column(), False, iface_("Available")],
+            [layout.column(), False, iface_("Enabled"), "extensions.enabled"],
+            [layout.column(), False, iface_("Installed"), "extensions.installed"],
+            [layout.column(), False, iface_("Available"), "extensions.available"],
         ]
 
     repos_all = extension_repos_read()
@@ -1062,12 +1062,6 @@ def extensions_panel_draw_impl(
                 if not is_outdated:
                     continue
 
-            key = (pkg_id, repo_index)
-            if show_development:
-                mark = key in blender_extension_mark
-            show = key in blender_extension_show
-            del key
-
             if USE_EXTENSION_SECTIONS:
                 if is_enabled:
                     section = layout_sections[SECTION_ENABLED]
@@ -1076,13 +1070,17 @@ def extensions_panel_draw_impl(
                 else:
                     section = layout_sections[SECTION_AVAILABLE]
 
-                section_layout, section_is_init, section_text = section
-                if not section_is_init:
-                    section[1] = True
-                    section_layout.label(text=section_text, translate=False)
+                section_layout, layout_panel, section_text, section_id = section
+                if layout_panel is False:
+                    layout_header, layout_panel = section_layout.panel(section_id, default_closed=False)
+                    layout_header.label(text=section_text, translate=False)
+                    section[1] = layout_panel
+                    del layout_header
+                if layout_panel is None:
+                    continue
 
-                box = section_layout.box()
-                del section, section_layout, section_is_init, section_text
+                box = layout_panel.box()
+                del section, section_layout, layout_panel, section_text
             else:
                 box = layout.box()
 
@@ -1090,6 +1088,13 @@ def extensions_panel_draw_impl(
             colsub = box.column()
             row = colsub.row(align=True)
             # row.label
+
+            key = (pkg_id, repo_index)
+            if show_development:
+                mark = key in blender_extension_mark
+            show = key in blender_extension_show
+
+            del key
             if show:
                 props = row.operator("extensions.package_show_clear", text="", icon='DOWNARROW_HLT', emboss=False)
             else:
@@ -1112,13 +1117,17 @@ def extensions_panel_draw_impl(
             # Without checking `is_enabled` here, there is no way for the user to know if an extension
             # is enabled or not, which is useful to show - when they may be considering removing/updating
             # extensions based on them being used or not.
-            sub.label(
-                text=(
-                    item.name if (is_enabled or is_installed is False) else
-                    item.name + iface_(" (disabled)")
-                ),
-                translate=False,
-            )
+            if USE_EXTENSION_SECTIONS:
+                sub.label(text=item.name, translate=False)
+            else:
+                sub.label(
+                    text=(
+                        item.name if (is_enabled or is_installed is False) else
+                        item.name + iface_(" (disabled)")
+                    ),
+                    translate=False,
+                )
+
             del sub
 
             # Add a top-level row so `row_right` can have a grayed out button/label
