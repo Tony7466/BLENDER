@@ -765,6 +765,8 @@ static int convert_action_exec(bContext *C, wmOperator *op)
 
   Object *object = CTX_data_active_object(C);
   AnimData *adt = BKE_animdata_from_id(&object->id);
+  BLI_assert(adt != nullptr);
+  BLI_assert(adt->action != nullptr);
 
   animrig::Action &anim = adt->action->wrap();
   Main *bmain = CTX_data_main(C);
