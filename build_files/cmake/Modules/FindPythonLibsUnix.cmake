@@ -46,7 +46,7 @@ if(APPLE)
   if(WITH_PYTHON_MODULE)
     set(PYTHON_LINKFLAGS "-undefined dynamic_lookup")
   else()
-    set(PYTHON_LINKFLAGS "-lintl -ldl")
+    set(PYTHON_LINKFLAGS "")
   endif()
 else()
   # See: http://docs.python.org/extending/embedding.html#linking-requirements
@@ -227,7 +227,11 @@ if(PYTHONLIBSUNIX_FOUND)
   # Assign cache items
   set(PYTHON_INCLUDE_DIRS ${PYTHON_INCLUDE_DIR} ${PYTHON_INCLUDE_CONFIG_DIR})
   if(NOT WITH_PYTHON_MODULE)
-    set(PYTHON_LIBRARIES ${PYTHON_LIBRARY})
+    if(APPLE)
+      set(PYTHON_LIBRARIES -Wl,-force_load,${PYTHON_LIBRARY})
+    else()
+      set(PYTHON_LIBRARIES ${PYTHON_LIBRARY})
+    endif()
   endif()
 
   find_file(PYTHON_SITE_PACKAGES

@@ -357,7 +357,7 @@ function(blender_add_test_suite_executable
          #
          # Work-around by telling the linker that the python libraries should not be stripped.
          if(APPLE)
-           target_link_libraries("${_test_name}_test" PRIVATE "-Wl,-force_load,${PYTHON_LIBRARIES}")
+           target_link_libraries("${_test_name}_test" PRIVATE "${PYTHON_LIBRARIES}")
          endif()
       endif()
     endforeach()
