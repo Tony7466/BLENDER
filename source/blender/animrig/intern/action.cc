@@ -1239,9 +1239,13 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   BLI_assert(strip.channelbags_array_num == 0);
   ChannelBag *bag = &strip.channelbag_for_binding_add(binding);
 
-  LISTBASE_FOREACH (FCurve *, fcu, &legacy_action.curves) {
-    FCurve *new_fcu = BKE_fcurve_copy(fcu);
-    grow_array_and_append(&bag->fcurve_array, &bag->fcurve_array_num, new_fcu);
+  const int fcu_count = BLI_listbase_count(&legacy_action.curves);
+  bag->fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Convert to layered action");
+  bag->fcurve_array_num = fcu_count;
+
+  int i = 0;
+  LISTBASE_FOREACH_INDEX (FCurve *, fcu, &legacy_action.curves, i) {
+    bag->fcurve_array[i] = BKE_fcurve_copy(fcu);
   }
 
   return &converted_action;
