@@ -90,6 +90,9 @@ MetalGPUVendor MetalInfo::get_device_vendor(id<MTLDevice> device)
 
 int MetalInfo::optimal_sort_partition_elements()
 {
+  /* TODO: REMOVE optimal_sort_partition_elements altogether?
+   * CYCLES_METAL_SORT_PARTITION_ELEMENTS is still "useful" */
+
   if (auto str = getenv("CYCLES_METAL_SORT_PARTITION_ELEMENTS")) {
     return atoi(str);
   }
