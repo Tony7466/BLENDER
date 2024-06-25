@@ -600,6 +600,16 @@ void BLF_draw_svg_icon(
   }
 }
 
+blender::Array<uchar> BLF_svg_icon_bitmap(uint icon_id, float size, int *r_width, int *r_height)
+{
+  FontBLF *font = global_font[0];
+  if (font) {
+    blender::Array<uchar> bitmap = blf_svg_icon_bitmap(font, icon_id, size, r_width, r_height);
+    return bitmap;
+  }
+  return {};
+}
+
 void BLF_boundbox_foreach_glyph(
     int fontid, const char *str, size_t str_len, BLF_GlyphBoundsFn user_fn, void *user_data)
 {

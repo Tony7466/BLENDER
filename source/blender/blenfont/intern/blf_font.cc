@@ -560,6 +560,43 @@ void blf_draw_svg_icon(
   blf_glyph_cache_release(font);
 }
 
+blender::Array<uchar> blf_svg_icon_bitmap(
+    FontBLF *font, uint icon_id, float size, int *r_width, int *r_height)
+{
+  blf_font_size(font, size);
+  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
+  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id);
+
+  if (!g) {
+    blf_glyph_cache_release(font);
+    *r_width = 0;
+    *r_height = 0;
+    return {};
+  }
+
+  *r_width = g->dims[0];
+  *r_height = g->dims[1];
+  blender::Array<uchar> bitmap(g->dims[0] * g->dims[1] * 4);
+
+  if (g->num_channels == 4) {
+    memcpy(bitmap.data(), g->bitmap, bitmap.size());
+  }
+  else if (g->num_channels == 1) {
+    for (size_t y = 0; y < size_t(g->dims[1]); y++) {
+      for (size_t x = 0; x < size_t(g->dims[0]); x++) {
+        size_t offs_in = (y * size_t(g->pitch)) + x;
+        size_t offs_out = offs_in * 4;
+        bitmap[offs_out + 0] = 255;
+        bitmap[offs_out + 1] = 255;
+        bitmap[offs_out + 2] = 255;
+        bitmap[offs_out + 3] = g->bitmap[offs_in];
+      }
+    }
+  }
+  blf_glyph_cache_release(font);
+  return bitmap;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
