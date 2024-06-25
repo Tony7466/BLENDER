@@ -2800,16 +2800,15 @@ static bool uvedit_uv_threshold_weld(Scene *scene,
     float aspect_y = ED_uvedit_get_aspect_y(obedit);
     getBMLoopPointers(scene, bm, i, aspect_y, &loopMap);
   }
-  
-  std::vector<UVSelectionLinkedList*> LineSegments; 
-  if(construct_continuous_UV_linesegments_as_linkedlists(&loopMap, &LineSegments)){
-    UVCoordinateNode* line1 = LineSegments[0]->first;
-    UVCoordinateNode* line2 = LineSegments[1]->first;
+  std::vector<std::pair<loopData*,loopData*>>linesegmentsdata;
+  // Iterates through both linked lists and merges respective pairs
 
-    while(line1 !=NULL && line2 != NULL){
-      ED_uvedit_shift_pair_of_UV_coordinates(objects, line1->UVCoorddata, line2->UVCoorddata, threshold, mid_v2_v2v2);
-      line1 = line1->next;
-      line2 = line2->next;
+  if(construct_pairs_of_selected_UVCoordinates(&loopMap, &linesegmentsdata)){
+    for (const auto& segment : linesegmentsdata) {
+      loopData* data1 = segment.first;
+      loopData* data2 = segment.second;
+      ED_uvedit_shift_pair_of_UV_coordinates(objects, data1, data2, threshold, mid_v2_v2v2);
+
     }
 
   } else{

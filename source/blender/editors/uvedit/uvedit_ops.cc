@@ -229,8 +229,8 @@ void ED_uvedit_foreach_uv(const Scene *scene,
 
 
 
-// Function to construct linkedlists for continuous line segment where each node will contain all UV coordinates a given location
-bool  construct_continuous_UV_linesegments_as_linkedlists(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr,std::vector<UVSelectionLinkedList*>*linesegments) {
+// Function to construct an array of pairs of UV coordinates that map to the UV coordniates along 2 selected line segments
+bool  construct_pairs_of_selected_UVCoordinates(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr, std::vector<std::pair<loopData*,loopData*>>* linesegmentsdata){  
   //Get the endPoints of continuous selections which are found by checking for loops that are only connected to one other selected loop
   std::unordered_map<std::string,std::vector<std::pair<float, float>>> endPoints;
   for (auto it = loopMapPtr->begin(); it != loopMapPtr->end(); ++it) {
@@ -241,7 +241,7 @@ bool  construct_continuous_UV_linesegments_as_linkedlists(std::unordered_map<std
       endPoints[key].push_back(UVloc);
     }
   }
-  //ensure that each line segment has at least 2 endpoints or else they will be discluded from operation
+  // ensure that each line segment has at least 2 endpoints or else they will be discluded from operation
   for (auto it = endPoints.begin(); it != endPoints.end();) {
     if (it->second.size() < 2) {
       it = endPoints.erase(it);
@@ -274,27 +274,31 @@ bool  construct_continuous_UV_linesegments_as_linkedlists(std::unordered_map<std
     startingpoints.push_back(endPoints[endpointkey[0]][0]);
     startingpoints.push_back(endPoints[endpointkey[1]][1]);
   }
-
-  //Construct the linkedlist for each line segment
-  for (const auto& startingPoint : startingpoints) {
-      UVSelectionLinkedList* currentlist = new UVSelectionLinkedList;
-      std::pair<float, float> currKey = startingPoint;
-      std::pair<float, float> prev = std::make_pair(-1.0f, -1.0f);
-      while(currKey != prev){
-        UVCoordinateNode *newNode = static_cast<UVCoordinateNode*>(malloc(sizeof(UVCoordinateNode)));
-        loopData* currValue = &(*loopMapPtr)[currKey];
-        newNode->UVCoorddata = currValue; // Fix: Access the member variable using the arrow operator
-        std::pair<float, float> tmpkey = currKey;
-        list_push_back(currentlist, newNode);
-
-        if(currValue->connec1 != std::make_pair(-1.0f, -1.0f) && currValue->connec1 != prev){
-          currKey = currValue->connec1;
-        } else if (currValue->connec2 != std::make_pair(-1.0f, -1.0f) && currValue->connec2 != prev) {
-          currKey = currValue->connec2;
+  //Iterate through the hashmap of UV coordinates and store them in pairs
+  std::pair<float, float> line1 = startingpoints[0];
+  std::pair<float, float> line2 = startingpoints[1];
+  std::pair<float, float> prev1 = std::make_pair(-1.0f, -1.0f);
+  std::pair<float, float> prev2 = std::make_pair(-1.0f, -1.0f);
+  while(line1 != prev1 && line2 != prev2){
+        loopData* line1val = &(*loopMapPtr)[line1];
+        loopData* line2val = &(*loopMapPtr)[line2];
+        std::pair<float, float> tmpline1 = line1;
+        std::pair<float, float> tmpline2 = line2;
+        std::pair<loopData*,loopData*>pairedUVcoords = std::make_pair(line1val, line2val);
+        linesegmentsdata->push_back(pairedUVcoords);
+        if(line1val->connec1 != std::make_pair(-1.0f, -1.0f) && line1val->connec1 != prev1){
+          line1 = line1val->connec1;
+        } else if (line1val->connec2 != std::make_pair(-1.0f, -1.0f) && line1val->connec2 != prev1) {
+          line1 = line1val->connec2;
         }
-        prev = tmpkey;
-      }
-      linesegments->push_back(currentlist);
+
+        if(line2val->connec1 != std::make_pair(-1.0f, -1.0f) && line2val->connec1 != prev2){
+          line2 = line2val->connec1;
+        } else if (line2val->connec2 != std::make_pair(-1.0f, -1.0f) && line2val->connec2 != prev2) {
+          line2 = line2val->connec2;
+        }
+        prev1 = tmpline1;
+        prev2 = tmpline2;
   }
   return true;
 }
@@ -335,13 +339,21 @@ void getBMLoopPointers(Scene* scene,
           }
           //store the connection of the current loop only if they are also part of line selection
           loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).loops.push_back(l);
+          std::vector<std::pair<float, float>> newconnections;
           if (uvedit_uv_select_test(scene,l->next,offsets) == true) {
             float *nluv = BM_ELEM_CD_GET_FLOAT_P(l->next, offsets.uv);
-            loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec1 = std::pair<float, float>(nluv[0], nluv[1]);
+            newconnections.push_back(std::pair<float, float>(nluv[0], nluv[1]));
           }
           if (uvedit_uv_select_test(scene,l->prev,offsets) == true) {
             float *pluv = BM_ELEM_CD_GET_FLOAT_P(l->prev, offsets.uv);
-            loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec2 = std::pair<float, float>(pluv[0], pluv[1]);
+            newconnections.push_back(std::pair<float, float>(pluv[0], pluv[1]));
+          }
+          for (const auto& connection : newconnections) {
+              if(loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec1 == std::make_pair(-1.0f, -1.0f)){
+                loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec1 = connection;
+              } else if (loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec2 == std::make_pair(-1.0f, -1.0f)){
+                loopMapPtr->at(std::pair<float, float>(luv[0], luv[1])).connec2 = connection;
+              }
           }
         }
       }
@@ -355,13 +367,14 @@ void getBMLoopPointers(Scene* scene,
   return;
 }
 
+// This function takes in loopData from 2 UVcoordinates and shifts them to a new location which is determined by the user function
 void ED_uvedit_shift_pair_of_UV_coordinates(blender::Vector<Object *> *objects,
                   loopData* UVcoord1,
                   loopData* UVcoord2,
                   float threshold,
                   blender::FunctionRef<void(float[2], float[2], float[2])>user_fn)
 {
-
+ // Grabs the offset for each respective object that the UV coordinates belong to
   const BMUVOffsets offset1 = BM_uv_map_get_offsets(BKE_editmesh_from_object((*objects)[UVcoord1->objectindex])->bm);
   const BMUVOffsets offset2 = BM_uv_map_get_offsets(BKE_editmesh_from_object((*objects)[UVcoord2->objectindex])->bm);
   float *luv1 = BM_ELEM_CD_GET_FLOAT_P(UVcoord1->loops[0], offset1.uv);

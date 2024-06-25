@@ -7,8 +7,10 @@
  */
 
 #pragma once
-#include <set>
 #include "BKE_customdata.hh"
+#include <unordered_map>
+#include <set>
+#include <tuple>
 
 struct ARegion;
 struct ARegionType;
@@ -299,27 +301,6 @@ struct loopData {
     int objectindex;
     int islandindex;
 };
-
-struct UVCoordinateNode{
-    struct UVCoordinateNode* next;
-    loopData* UVCoorddata;
-};
-struct UVSelectionLinkedList {
-	UVCoordinateNode *first, *last;
-    UVSelectionLinkedList() : first(nullptr), last(nullptr) {}
-};
-
-static void list_push_back(UVSelectionLinkedList *list, UVCoordinateNode* node)
-{
-	if (list->first != NULL) {
-        list->last->next = node;
-		node->next = NULL;
-	}
-	else {
-		list->first = node;
-	}
-	list->last = node;
-}
 struct pair_hash {
     template <class T1, class T2>
     std::size_t operator () (const std::pair<T1,T2> &p) const {
@@ -342,7 +323,7 @@ void getBMLoopPointers(Scene* scene,
                        int objectIndex,
                        float aspect_y,
                        std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr);
-bool  construct_continuous_UV_linesegments_as_linkedlists(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr,std::vector<UVSelectionLinkedList*>*linesegments);
+bool  construct_pairs_of_selected_UVCoordinates(std::unordered_map<std::pair<float, float>, loopData, pair_hash, pair_equal>* loopMapPtr, std::vector<std::pair<loopData*,loopData*>>* linesegmentsdata);
 void ED_uvedit_shift_pair_of_UV_coordinates(blender::Vector<Object *> *objects,
                   loopData* UVcoord1,
                   loopData* UVcoord2,
