@@ -460,26 +460,43 @@ bool Action::assign_id(Binding *binding, ID &animated_id)
     return false;
   }
 
-  if (binding) {
-    if (!binding->is_suitable_for(animated_id)) {
-      return false;
-    }
-    this->binding_setup_for_id(*binding, animated_id);
+  /* Check that the new Binding is suitable, before changing `adt`. */
+  if (binding && !binding->is_suitable_for(animated_id)) {
+    return false;
+  }
 
+  /* Unassign any previously-assigned Binding. */
+  Binding *binding_to_unassign = this->binding_for_handle(adt->binding_handle);
+  if (binding_to_unassign) {
+    /* Before unassigning, make sure that the stored Binding name is up to date. The binding name
+     * might have changed in a way that wasn't copied into the ADT yet (for example when the
+     * Action is linked from another file), so better copy the name to be sure that it can be
+     * transparently reassigned later.
+     *
+     * TODO: Replace this with a BLI_assert() that the name is as expected, and "simply" ensure
+     * this name is always correct. */
+    STRNCPY_UTF8(adt->binding_name, binding_to_unassign->name);
+  }
+
+  /* Assign the Action itself. */
+  if (!adt->action) {
+    /* Due to the precondition check above, we know that adt->action is either 'this' (in which
+     * case the user count is already correct) or `nullptr` (in which case this is a new
+     * reference, and the user count should be increased). */
+    id_us_plus(&this->id);
+    adt->action = this;
+  }
+
+  /* Assign the Binding. */
+  if (binding) {
+    this->binding_setup_for_id(*binding, animated_id);
     adt->binding_handle = binding->handle;
+
     /* Always make sure the ID's binding name matches the assigned binding. */
     STRNCPY_UTF8(adt->binding_name, binding->name);
   }
   else {
-    unassign_binding(*adt);
-  }
-
-  if (!adt->action) {
-    /* Due to the precondition check above, we know that adt->action is either 'this' (in which
-     * case the user count is already correct) or `nullptr` (in which case this is a new reference,
-     * and the user count should be increased). */
-    id_us_plus(&this->id);
-    adt->action = this;
+    adt->binding_handle = Binding::unassigned;
   }
 
   return true;
@@ -508,8 +525,10 @@ void Action::unassign_id(ID &animated_id)
   BLI_assert_msg(adt, "ID is not animated at all");
   BLI_assert_msg(adt->action == this, "ID is not assigned to this Animation");
 
-  unassign_binding(*adt);
+  /* Unassign the Binding first. */
+  this->assign_id(nullptr, animated_id);
 
+  /* Unassign the Action itself. */
   id_us_min(&this->id);
   adt->action = nullptr;
 }
@@ -622,6 +641,30 @@ bool assign_animation(Action &anim, ID &animated_id)
   return anim.assign_id(binding, animated_id);
 }
 
+bool is_action_assignable_to(const bAction *dna_action, const ID_Type id_code)
+{
+  if (!dna_action) {
+    /* Clearing the Action is always possible. */
+    return true;
+  }
+
+  if (dna_action->idroot == 0) {
+    /* This is either a never-assigned legacy action, or a layered action. In
+     * any case, it can be assigned to any ID. */
+    return true;
+  }
+
+  const animrig::Action &action = dna_action->wrap();
+  if (!action.is_action_layered()) {
+    /* Legacy Actions can only be assigned if their idroot matches. Empty
+     * Actions are considered both 'layered' and 'legacy' at the same time,
+     * hence this condition checks for 'not layered' rather than 'legacy'. */
+    return action.idroot == id_code;
+  }
+
+  return true;
+}
+
 void unassign_animation(ID &animated_id)
 {
   Action *anim = get_animation(animated_id);
@@ -631,24 +674,24 @@ void unassign_animation(ID &animated_id)
   anim->unassign_id(animated_id);
 }
 
-void unassign_binding(AnimData &adt)
+void unassign_binding(ID &animated_id)
 {
-  /* Before unassigning, make sure that the stored Binding name is up to date. The binding name
-   * might have changed in a way that wasn't copied into the ADT yet (for example when the
-   * Animation data-block is linked from another file), so better copy the name to be sure that it
-   * can be transparently reassigned later.
-   *
-   * TODO: Replace this with a BLI_assert() that the name is as expected, and "simply" ensure this
-   * name is always correct. */
-  if (adt.action) {
-    const Action &anim = adt.action->wrap();
-    const Binding *binding = anim.binding_for_handle(adt.binding_handle);
-    if (binding) {
-      STRNCPY_UTF8(adt.binding_name, binding->name);
-    }
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+  BLI_assert_msg(adt, "Cannot unassign an Action Binding from a non-animated ID.");
+  if (!adt) {
+    return;
   }
 
-  adt.binding_handle = Binding::unassigned;
+  if (!adt->action) {
+    /* Nothing assigned. */
+    BLI_assert_msg(adt->binding_handle == Binding::unassigned,
+                   "Binding handle should be 'unassigned' when no Action is assigned");
+    return;
+  }
+
+  /* Assign the 'nullptr' binding, effectively unassigning it. */
+  Action &action = adt->action->wrap();
+  action.assign_id(nullptr, animated_id);
 }
 
 /* TODO: rename to get_action(). */
@@ -886,13 +929,14 @@ FCurve *KeyframeStrip::fcurve_find(const Binding &binding,
 
 FCurve &KeyframeStrip::fcurve_find_or_create(const Binding &binding,
                                              const StringRefNull rna_path,
-                                             const int array_index)
+                                             const int array_index,
+                                             const std::optional<PropertySubType> prop_subtype)
 {
   if (FCurve *existing_fcurve = this->fcurve_find(binding, rna_path, array_index)) {
     return *existing_fcurve;
   }
 
-  FCurve *new_fcurve = create_fcurve_for_channel(rna_path.c_str(), array_index);
+  FCurve *new_fcurve = create_fcurve_for_channel(rna_path.c_str(), array_index, prop_subtype);
 
   ChannelBag *channels = this->channelbag_for_binding(binding);
   if (channels == nullptr) {
@@ -907,17 +951,19 @@ FCurve &KeyframeStrip::fcurve_find_or_create(const Binding &binding,
   return *new_fcurve;
 }
 
-SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
-                                                  const StringRefNull rna_path,
-                                                  const int array_index,
-                                                  const float2 time_value,
-                                                  const KeyframeSettings &settings,
-                                                  const eInsertKeyFlags insert_key_flags)
+SingleKeyingResult KeyframeStrip::keyframe_insert(
+    const Binding &binding,
+    const StringRefNull rna_path,
+    const int array_index,
+    const std::optional<PropertySubType> prop_subtype,
+    const float2 time_value,
+    const KeyframeSettings &settings,
+    const eInsertKeyFlags insert_key_flags)
 {
   /* Get the fcurve, or create one if it doesn't exist and the keying flags
    * allow. */
   FCurve *fcurve = key_insertion_may_create_fcurve(insert_key_flags) ?
-                       &this->fcurve_find_or_create(binding, rna_path, array_index) :
+                       &this->fcurve_find_or_create(binding, rna_path, array_index, prop_subtype) :
                        this->fcurve_find(binding, rna_path, array_index);
   if (!fcurve) {
     std::fprintf(stderr,
@@ -1058,6 +1104,65 @@ Span<const FCurve *> fcurves_for_animation(const Action &anim,
   return bag->fcurves();
 }
 
+/* Lots of template args to support transparent non-const and const versions. */
+template<typename ActionType,
+         typename FCurveType,
+         typename LayerType,
+         typename StripType,
+         typename KeyframeStripType,
+         typename ChannelBagType>
+static Vector<FCurveType *> fcurves_all_into(ActionType &action)
+{
+  /* Empty means Empty. */
+  if (action.is_empty()) {
+    return {};
+  }
+
+  /* Legacy Action. */
+  if (action.is_action_legacy()) {
+    Vector<FCurveType *> legacy_fcurves;
+    LISTBASE_FOREACH (FCurveType *, fcurve, &action.curves) {
+      legacy_fcurves.append(fcurve);
+    }
+    return legacy_fcurves;
+  }
+
+  /* Layered Action. */
+  BLI_assert(action.is_action_layered());
+
+  Vector<FCurveType *> all_fcurves;
+  for (LayerType *layer : action.layers()) {
+    for (StripType *strip : layer->strips()) {
+      switch (strip->type()) {
+        case Strip::Type::Keyframe: {
+          KeyframeStripType &key_strip = strip->template as<KeyframeStrip>();
+          for (ChannelBagType *bag : key_strip.channelbags()) {
+            for (FCurveType *fcurve : bag->fcurves()) {
+              all_fcurves.append(fcurve);
+            }
+          }
+        }
+      }
+    }
+  }
+  return all_fcurves;
+}
+
+Vector<FCurve *> fcurves_all(Action &action)
+{
+  return fcurves_all_into<Action, FCurve, Layer, Strip, KeyframeStrip, ChannelBag>(action);
+}
+
+Vector<const FCurve *> fcurves_all(const Action &action)
+{
+  return fcurves_all_into<const Action,
+                          const FCurve,
+                          const Layer,
+                          const Strip,
+                          const KeyframeStrip,
+                          const ChannelBag>(action);
+}
+
 FCurve *action_fcurve_find(bAction *act, const char rna_path[], const int array_index)
 {
   if (ELEM(nullptr, act, rna_path)) {
@@ -1087,30 +1192,23 @@ FCurve *action_fcurve_ensure(Main *bmain,
     return fcu;
   }
 
-  fcu = create_fcurve_for_channel(rna_path, array_index);
-
-  if (BLI_listbase_is_empty(&act->curves)) {
-    fcu->flag |= FCURVE_ACTIVE;
-  }
-
-  if (U.keying_flag & KEYING_FLAG_XYZ2RGB && ptr != nullptr) {
-    /* For Loc/Rot/Scale and also Color F-Curves, the color of the F-Curve in the Graph Editor,
-     * is determined by the array index for the F-Curve.
-     */
+  /* Determine the property subtype if we can. */
+  std::optional<PropertySubType> prop_subtype = std::nullopt;
+  if (ptr != nullptr) {
     PropertyRNA *resolved_prop;
     PointerRNA resolved_ptr;
     PointerRNA id_ptr = RNA_id_pointer_create(ptr->owner_id);
     const bool resolved = RNA_path_resolve_property(
         &id_ptr, rna_path, &resolved_ptr, &resolved_prop);
     if (resolved) {
-      PropertySubType prop_subtype = RNA_property_subtype(resolved_prop);
-      if (ELEM(prop_subtype, PROP_TRANSLATION, PROP_XYZ, PROP_EULER, PROP_COLOR, PROP_COORDS)) {
-        fcu->color_mode = FCURVE_COLOR_AUTO_RGB;
-      }
-      else if (ELEM(prop_subtype, PROP_QUATERNION)) {
-        fcu->color_mode = FCURVE_COLOR_AUTO_YRGB;
-      }
+      prop_subtype = RNA_property_subtype(resolved_prop);
     }
+  }
+
+  fcu = create_fcurve_for_channel(rna_path, array_index, prop_subtype);
+
+  if (BLI_listbase_is_empty(&act->curves)) {
+    fcu->flag |= FCURVE_ACTIVE;
   }
 
   if (group) {

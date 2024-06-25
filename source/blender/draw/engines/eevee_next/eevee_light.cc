@@ -572,10 +572,11 @@ void LightModule::set_view(View &view, const int2 extent)
   culling_data_buf_.zbin_bias = -near_z * culling_data_buf_.zbin_scale;
   culling_data_buf_.tile_to_uv_fac = (culling_data_buf_.tile_size / float2(extent));
   culling_data_buf_.visible_count = 0;
+  culling_data_buf_.view_is_flipped = view.is_inverted();
   culling_data_buf_.push_update();
 
   inst_.manager->submit(culling_ps_, view);
-  inst_.manager->submit(update_ps_);
+  inst_.manager->submit(update_ps_, view);
 }
 
 void LightModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
