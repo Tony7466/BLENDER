@@ -123,7 +123,7 @@ class VIEW3D_HT_tool_header(Header):
                             layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_advanced")
 
                         if brush.gpencil_tool not in {'FILL', 'TINT'}:
-                            layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stroke")
+                            layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_stroke")
 
                     # layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
         elif tool_mode == 'SCULPT_GPENCIL':
@@ -1058,7 +1058,7 @@ class VIEW3D_HT_header(Header):
                 layout.popover(
                     panel="VIEW3D_PT_gpencil_sculpt_automasking",
                     text="",
-                    icon=VIEW3D_HT_header._gpencil_sculpt_automasking_icon(tool_settings.gpencil_sculpt)
+                    icon=VIEW3D_HT_header._gpencil_sculpt_automasking_icon(tool_settings.gpencil_sculpt),
                 )
 
         elif object_mode == 'SCULPT':
@@ -1090,7 +1090,7 @@ class VIEW3D_HT_header(Header):
             layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
                 text="",
-                icon=VIEW3D_HT_header._sculpt_automasking_icon(tool_settings.sculpt)
+                icon=VIEW3D_HT_header._sculpt_automasking_icon(tool_settings.sculpt),
             )
 
         elif object_mode == 'VERTEX_PAINT':
@@ -1279,7 +1279,7 @@ class VIEW3D_MT_editor_menus(Menu):
         if gp_edit:
             pass
         elif mode_string == 'OBJECT':
-            layout.menu("VIEW3D_MT_add", text="Add", text_ctxt=i18n_contexts.operator_default)
+            layout.menu("VIEW3D_MT_add")
         elif mode_string == 'EDIT_MESH':
             layout.menu("VIEW3D_MT_mesh_add", text="Add", text_ctxt=i18n_contexts.operator_default)
         elif mode_string == 'EDIT_CURVE':
@@ -1790,7 +1790,7 @@ class VIEW3D_MT_select_object_more_less(Menu):
 
         layout.separator()
 
-        props = layout.operator("object.select_hierarchy", text="Parent")
+        props = layout.operator("object.select_hierarchy", text="Parent", text_ctxt=i18n_contexts.default)
         props.extend = False
         props.direction = 'PARENT'
 
@@ -1849,7 +1849,7 @@ class VIEW3D_MT_select_pose_more_less(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        props = layout.operator("pose.select_hierarchy", text="Parent")
+        props = layout.operator("pose.select_hierarchy", text="Parent", text_ctxt=i18n_contexts.default)
         props.extend = False
         props.direction = 'PARENT'
 
@@ -2269,7 +2269,7 @@ class VIEW3D_MT_select_edit_armature(Menu):
 
         layout.separator()
 
-        props = layout.operator("armature.select_hierarchy", text="Parent")
+        props = layout.operator("armature.select_hierarchy", text="Parent", text_ctxt=i18n_contexts.default)
         props.extend = False
         props.direction = 'PARENT'
 
@@ -2773,14 +2773,7 @@ class VIEW3D_MT_add(Menu):
         if context.preferences.experimental.use_new_point_cloud_type:
             layout.operator("object.pointcloud_add", text="Point Cloud", icon='OUTLINER_OB_POINTCLOUD')
         layout.menu("VIEW3D_MT_volume_add", text="Volume", text_ctxt=i18n_contexts.id_id, icon='OUTLINER_OB_VOLUME')
-        if context.preferences.experimental.use_grease_pencil_version3:
-            layout.menu("VIEW3D_MT_grease_pencil_add", text="Grease Pencil", icon='OUTLINER_OB_GREASEPENCIL')
-        else:
-            layout.operator_menu_enum(
-                "object.gpencil_add",
-                "type",
-                text="Grease Pencil",
-                icon='OUTLINER_OB_GREASEPENCIL')
+        layout.menu("VIEW3D_MT_grease_pencil_add", text="Grease Pencil", icon='OUTLINER_OB_GREASEPENCIL')
 
         layout.separator()
 
@@ -3108,6 +3101,7 @@ class VIEW3D_MT_object_context_menu(Menu):
             layout.separator()
 
             if obj.empty_display_type == 'IMAGE':
+                layout.operator("image.convert_to_mesh_plane", text="Convert to Mesh Plane")
                 layout.operator("gpencil.trace_image")
 
                 layout.separator()
@@ -3317,6 +3311,7 @@ class VIEW3D_MT_object_apply(Menu):
 
 class VIEW3D_MT_object_parent(Menu):
     bl_label = "Parent"
+    bl_translation_context = i18n_contexts.operator_default
 
     def draw(self, _context):
         from bl_ui_utils.layout import operator_context
@@ -3500,14 +3495,14 @@ class VIEW3D_MT_object_convert(Menu):
         layout = self.layout
         ob = context.active_object
 
-        if ob and ob.type == 'GPENCIL' and context.gpencil_data and not context.preferences.experimental.use_grease_pencil_version3:
-            layout.operator_enum("gpencil.convert", "type")
-        else:
+        if ob and ob.type != "EMPTY":
             layout.operator_enum("object.convert", "target")
 
-        # Potrace lib dependency.
-        if bpy.app.build_options.potrace:
-            layout.operator("gpencil.trace_image", icon='OUTLINER_OB_GREASEPENCIL')
+        else:
+            # Potrace lib dependency.
+            if bpy.app.build_options.potrace:
+                layout.operator("image.convert_to_mesh_plane", text="Convert to Mesh Plane", icon='MESH_PLANE')
+                layout.operator("gpencil.trace_image", icon='OUTLINER_OB_GREASEPENCIL')
 
         if ob and ob.type == 'CURVES':
             layout.operator("curves.convert_to_particle_system", text="Particle System")
@@ -3823,7 +3818,7 @@ class VIEW3D_MT_sculpt(Menu):
             ('SHARPEN', iface_("Sharpen")),
             ('ENHANCE_DETAILS', iface_("Enhance Details")),
             ('ERASE_DISCPLACEMENT', iface_("Erase Multires Displacement")),
-            ('RANDOM', iface_("Randomize"))
+            ('RANDOM', iface_("Randomize")),
         ]
 
         for filter_type, ui_name in sculpt_filters_types:
@@ -5766,6 +5761,7 @@ class VIEW3D_MT_edit_armature_names(Menu):
 
 class VIEW3D_MT_edit_armature_parent(Menu):
     bl_label = "Parent"
+    bl_translation_context = i18n_contexts.operator_default
 
     def draw(self, _context):
         layout = self.layout
@@ -6155,6 +6151,10 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.operator("grease_pencil.set_uniform_thickness")
         layout.operator("grease_pencil.set_uniform_opacity")
 
+        layout.separator()
+
+        layout.operator_menu_enum("grease_pencil.set_curve_type", property="type")
+
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
     bl_label = "Point"
@@ -6172,9 +6172,14 @@ class VIEW3D_MT_edit_greasepencil_point(Menu):
 
         layout.menu("VIEW3D_MT_greasepencil_vertex_group")
 
+        layout.separator()
+
+        layout.operator_menu_enum("grease_pencil.set_handle_type", property="type")
+
 
 class VIEW3D_MT_edit_curves_add(Menu):
     bl_label = "Add"
+    bl_translation_context = i18n_contexts.operator_default
 
     def draw(self, _context):
         layout = self.layout
@@ -8024,12 +8029,9 @@ class VIEW3D_PT_gpencil_origin(Panel):
             row = layout.row()
             row.label(text="Offset")
             row = layout.row()
-            if context.preferences.experimental.use_grease_pencil_version3:
-                row.prop(tool_settings, "gpencil_surface_offset", text="")
-                row = layout.row()
-                row.prop(tool_settings, "use_gpencil_project_only_selected")
-            else:
-                row.prop(gpd, "zdepth_offset", text="")
+            row.prop(tool_settings, "gpencil_surface_offset", text="")
+            row = layout.row()
+            row.prop(tool_settings, "use_gpencil_project_only_selected")
 
         if tool_settings.gpencil_stroke_placement_view3d == 'STROKE':
             row = layout.row()
@@ -8198,6 +8200,7 @@ class VIEW3D_PT_overlay_grease_pencil_options(Panel):
             'EDIT_GREASE_PENCIL': iface_("Edit Grease Pencil"),
             'WEIGHT_GREASE_PENCIL': iface_("Weight Grease Pencil"),
             'OBJECT': iface_("Grease Pencil"),
+            'SCULPT_GREASE_PENCIL': iface_("Sculpt Grease Pencil"),
         }[context.mode], translate=False)
 
         layout.prop(overlay, "use_gpencil_onion_skin", text="Onion Skin")

@@ -11,6 +11,7 @@ from pxr import Usd
 from pxr import UsdUtils
 from pxr import UsdGeom
 from pxr import UsdShade
+from pxr import UsdSkel
 from pxr import Gf
 
 import bpy
@@ -281,6 +282,90 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "sp_vec3", "VtArray<GfVec3f>", "uniform", 3)
         self.check_primvar(prim, "sp_quat", "VtArray<GfQuatf>", "uniform", 3)
         self.check_primvar_missing(prim, "sp_mat4x4")
+
+    def test_animation(self):
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_anim_test.blend"))
+        export_path = self.tempdir / "usd_anim_test.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(export_path),
+            export_animation=True,
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        stage = Usd.Stage.Open(str(export_path))
+
+        # Validate the simple object animation
+        prim = stage.GetPrimAtPath("/root/cube_anim_xform")
+        self.assertEqual(prim.GetTypeName(), "Xform")
+        loc_samples = UsdGeom.Xformable(prim).GetTranslateOp().GetTimeSamples()
+        rot_samples = UsdGeom.Xformable(prim).GetRotateXYZOp().GetTimeSamples()
+        scale_samples = UsdGeom.Xformable(prim).GetScaleOp().GetTimeSamples()
+        self.assertEqual(loc_samples, [1.0, 2.0, 3.0, 4.0])
+        self.assertEqual(rot_samples, [1.0])
+        self.assertEqual(scale_samples, [1.0])
+
+        # Validate the armature animation
+        prim = stage.GetPrimAtPath("/root/Armature/Armature")
+        self.assertEqual(prim.GetTypeName(), "Skeleton")
+        prim_skel = UsdSkel.BindingAPI(prim)
+        anim = UsdSkel.Animation(prim_skel.GetAnimationSource())
+        self.assertEqual(anim.GetJointsAttr().Get(),
+                         ['Bone',
+                          'Bone/Bone_001',
+                          'Bone/Bone_001/Bone_002',
+                          'Bone/Bone_001/Bone_002/Bone_003',
+                          'Bone/Bone_001/Bone_002/Bone_003/Bone_004'])
+        loc_samples = anim.GetTranslationsAttr().GetTimeSamples()
+        rot_samples = anim.GetRotationsAttr().GetTimeSamples()
+        scale_samples = anim.GetScalesAttr().GetTimeSamples()
+        self.assertEqual(loc_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+        self.assertEqual(rot_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+        self.assertEqual(scale_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+        # Validate the shape key animation
+        prim = stage.GetPrimAtPath("/root/cube_anim_keys")
+        self.assertEqual(prim.GetTypeName(), "SkelRoot")
+        prim_skel = UsdSkel.BindingAPI(prim.GetPrimAtPath("cube_anim_keys"))
+        self.assertEqual(prim_skel.GetBlendShapesAttr().Get(), ['Key_1'])
+        prim_skel = UsdSkel.BindingAPI(prim.GetPrimAtPath("Skel"))
+        anim = UsdSkel.Animation(prim_skel.GetAnimationSource())
+        weight_samples = anim.GetBlendShapeWeightsAttr().GetTimeSamples()
+        self.assertEqual(weight_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_materialx_network(self):
+        """Test exporting that a MaterialX export makes it out alright"""
+        bpy.ops.wm.open_mainfile(
+            filepath=str(self.testdir / "usd_materials_export.blend")
+        )
+        export_path = self.tempdir / "materialx.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(export_path),
+            export_materials=True,
+            generate_materialx_network=True,
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        stage = Usd.Stage.Open(str(export_path))
+        material_prim = stage.GetPrimAtPath("/root/_materials/Material")
+        self.assertTrue(material_prim, "Could not find Material prim")
+
+        material = UsdShade.Material(material_prim)
+        mtlx_output = material.GetOutput("mtlx:surface")
+        self.assertTrue(mtlx_output, "Could not find mtlx output")
+
+        connection, source_name, _ = UsdShade.ConnectableAPI.GetConnectedSource(
+            mtlx_output
+        ) or [None, None, None]
+
+        self.assertTrue((connection and source_name), "Could not find mtlx output source")
+
+        shader = UsdShade.Shader(connection.GetPrim())
+        self.assertTrue(shader, "Connected prim is not a shader")
+
+        shader_id = shader.GetIdAttr().Get()
+        self.assertEqual(shader_id, "ND_standard_surface_surfaceshader", "Shader is not a Standard Surface")
 
 
 def main():

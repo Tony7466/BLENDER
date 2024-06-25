@@ -10,6 +10,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_compiler_compat.h"
+#include "BLI_function_ref.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
@@ -98,7 +99,7 @@ bool paint_supports_dynamic_size(const Brush &br, PaintMode mode);
  * Return true if the brush size can change during paint (normally used for pressure).
  */
 bool paint_supports_dynamic_tex_coords(const Brush &br, PaintMode mode);
-bool paint_supports_smooth_stroke(const Brush &br, PaintMode mode);
+bool paint_supports_smooth_stroke(PaintStroke *stroke, const Brush &br, PaintMode mode);
 bool paint_supports_texture(PaintMode mode);
 
 /**
@@ -469,6 +470,19 @@ void PAINT_OT_visibility_filter(wmOperatorType *ot);
 namespace blender::ed::sculpt_paint::mask {
 
 Array<float> duplicate_mask(const Object &object);
+
+/** Write to the mask attribute for each node, storing undo data. */
+void write_mask_mesh(Object &object,
+                     const Span<PBVHNode *> nodes,
+                     FunctionRef<void(MutableSpan<float>, Span<int>)> write_fn);
+
+/**
+ * Write to each node's mask data for visible vertices. Store undo data and mark for redraw only
+ * if the data is actually changed.
+ */
+void update_mask_mesh(Object &object,
+                      const Span<PBVHNode *> nodes,
+                      FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn);
 
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);

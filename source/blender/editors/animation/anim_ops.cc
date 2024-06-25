@@ -232,6 +232,10 @@ static bool sequencer_skip_for_handle_tweak(const bContext *C, const wmEvent *ev
   }
 
   const Scene *scene = CTX_data_scene(C);
+  if (!SEQ_editing_get(scene)) {
+    return false;
+  }
+
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   float mouse_co[2];
@@ -732,16 +736,7 @@ static int binding_unassign_object_exec(bContext *C, wmOperator * /*op*/)
   using namespace blender;
 
   Object *object = CTX_data_active_object(C);
-  if (!object) {
-    return OPERATOR_CANCELLED;
-  }
-
-  AnimData *adt = BKE_animdata_from_id(&object->id);
-  if (!adt) {
-    return OPERATOR_CANCELLED;
-  }
-
-  animrig::unassign_binding(*adt);
+  animrig::unassign_binding(object->id);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   return OPERATOR_FINISHED;

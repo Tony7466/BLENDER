@@ -17,6 +17,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
@@ -342,6 +343,60 @@ static void versioning_eevee_shadow_settings(Object *object)
 
   /* Enable the hide_shadow flag only if there's not any shadow casting material. */
   SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
+}
+
+static void versioning_eevee_material_shadow_none(Material *material)
+{
+  if (!material->use_nodes || material->nodetree == nullptr) {
+    return;
+  }
+  bNodeTree *ntree = material->nodetree;
+
+  bNode *output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
+  if (output_node == nullptr) {
+    return;
+  }
+
+  bNodeSocket *out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+
+  bNode *mix_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMixShader");
+  STRNCPY(mix_node->label, "Disable Shadow");
+  mix_node->flag |= NODE_HIDDEN;
+  mix_node->parent = output_node->parent;
+  mix_node->locx = output_node->locx;
+  mix_node->locy = output_node->locy - output_node->height - 120;
+  bNodeSocket *mix_fac = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 0));
+  bNodeSocket *mix_in_1 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 1));
+  bNodeSocket *mix_in_2 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 2));
+  bNodeSocket *mix_out = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->outputs, 0));
+  if (out_sock->link != nullptr) {
+    blender::bke::nodeAddLink(
+        ntree, out_sock->link->fromnode, out_sock->link->fromsock, mix_node, mix_in_1);
+    blender::bke::nodeRemLink(ntree, out_sock->link);
+  }
+  blender::bke::nodeAddLink(ntree, mix_node, mix_out, output_node, out_sock);
+
+  bNode *lp_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeLightPath");
+  lp_node->flag |= NODE_HIDDEN;
+  lp_node->parent = output_node->parent;
+  lp_node->locx = output_node->locx;
+  lp_node->locy = mix_node->locy + 35;
+  bNodeSocket *is_shadow = blender::bke::nodeFindSocket(lp_node, SOCK_OUT, "Is Shadow Ray");
+  blender::bke::nodeAddLink(ntree, lp_node, is_shadow, mix_node, mix_fac);
+  /* Hide unconnected sockets for cleaner look. */
+  LISTBASE_FOREACH (bNodeSocket *, sock, &lp_node->outputs) {
+    if (sock != is_shadow) {
+      sock->flag |= SOCK_HIDDEN;
+    }
+  }
+
+  bNode *bsdf_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeBsdfTransparent");
+  bsdf_node->flag |= NODE_HIDDEN;
+  bsdf_node->parent = output_node->parent;
+  bsdf_node->locx = output_node->locx;
+  bsdf_node->locy = mix_node->locy - 35;
+  bNodeSocket *bsdf_out = blender::bke::nodeFindSocket(bsdf_node, SOCK_OUT, "BSDF");
+  blender::bke::nodeAddLink(ntree, bsdf_node, bsdf_out, mix_node, mix_in_2);
 }
 
 /**
@@ -839,6 +894,70 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     /* Shift animation data to accommodate the new Roughness input. */
     version_node_socket_index_animdata(
         bmain, NTREE_SHADER, SH_NODE_SUBSURFACE_SCATTERING, 4, 1, 5);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
+    /* Convert blend method to math nodes. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+
+    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+      if (scene_uses_eevee_legacy) {
+        if (!material->use_nodes || material->nodetree == nullptr) {
+          /* Nothing to version. */
+        }
+        else if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
+          /* Compatible modes. Nothing to change. */
+        }
+        else if (material->blend_shadow == MA_BS_NONE) {
+          /* No need to match the surface since shadows are disabled. */
+        }
+        else if (material->blend_shadow == MA_BS_SOLID) {
+          /* This is already versioned an transferred to `transparent_shadows`. */
+        }
+        else if ((material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
+                 (material->blend_shadow == MA_BS_HASHED))
+        {
+          BLO_reportf_wrap(
+              fd->reports,
+              RPT_WARNING,
+              RPT_("Material %s could not be converted because of different Blend Mode "
+                   "and Shadow Mode (need manual adjustment)\n"),
+              material->id.name + 2);
+        }
+        else {
+          /* TODO(fclem): Check if threshold is driven or has animation. Bail out if needed? */
+
+          float threshold = (material->blend_method == MA_BM_CLIP) ? material->alpha_threshold :
+                                                                     2.0f;
+
+          if (!versioning_eevee_material_blend_mode_settings(material->nodetree, threshold)) {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_WARNING,
+                             RPT_("Material %s could not be converted because of non-trivial "
+                                  "alpha blending (need manual adjustment)\n"),
+                             material->id.name + 2);
+          }
+        }
+
+        if (material->blend_shadow == MA_BS_NONE) {
+          versioning_eevee_material_shadow_none(material);
+        }
+        /* Set blend_mode & blend_shadow for forward compatibility. */
+        material->blend_method = (material->blend_method != MA_BM_BLEND) ? MA_BM_HASHED :
+                                                                           MA_BM_BLEND;
+        material->blend_shadow = (material->blend_shadow == MA_BS_SOLID) ? MA_BS_SOLID :
+                                                                           MA_BS_HASHED;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 52)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE)) {
+        STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
+      }
+    }
   }
 
   /**
@@ -1750,7 +1869,7 @@ static void change_input_socket_to_rotation_type(bNodeTree &ntree,
   socket.type = SOCK_ROTATION;
   STRNCPY(socket.idname, "NodeSocketRotation");
   auto *old_value = static_cast<bNodeSocketValueVector *>(socket.default_value);
-  auto *new_value = MEM_new<bNodeSocketValueRotation>(__func__);
+  auto *new_value = MEM_cnew<bNodeSocketValueRotation>(__func__);
   copy_v3_v3(new_value->value_euler, old_value->value);
   socket.default_value = new_value;
   MEM_freeN(old_value);
@@ -3786,6 +3905,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 31)) {
+    bool only_uses_eevee_legacy_or_workbench = true;
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (!STR_ELEM(scene->r.engine, RE_engine_id_BLENDER_EEVEE, RE_engine_id_BLENDER_WORKBENCH)) {
+        only_uses_eevee_legacy_or_workbench = false;
+      }
+    }
     /* Mark old EEVEE world volumes for showing conversion operator. */
     LISTBASE_FOREACH (World *, world, &bmain->worlds) {
       if (world->nodetree) {
@@ -3797,6 +3922,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             LISTBASE_FOREACH (bNodeLink *, node_link, &world->nodetree->links) {
               if (node_link->tonode == output_node && node_link->tosock == volume_input_socket) {
                 world->flag |= WO_USE_EEVEE_FINITE_VOLUME;
+                /* Only display a warning message if we are sure this can be used by EEVEE. */
+                if (only_uses_eevee_legacy_or_workbench) {
+                  BLO_reportf_wrap(fd->reports,
+                                   RPT_WARNING,
+                                   RPT_("%s contains a volume shader that might need to be "
+                                        "converted to object (see world volume panel)\n"),
+                                   world->id.name + 2);
+                }
               }
             }
           }
@@ -3863,7 +3996,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       world->sun_threshold = default_world->sun_threshold;
       world->sun_angle = default_world->sun_angle;
       world->sun_shadow_maximum_resolution = default_world->sun_shadow_maximum_resolution;
-      world->flag |= WO_USE_SUN_SHADOW;
+      /* Having the sun extracted is mandatory to keep the same look and avoid too much light
+       * leaking compared to EEVEE-Legacy. But adding shadows might create performance overhead and
+       * change the result in a very different way. So we disable shadows in older file. */
+      world->flag &= ~WO_USE_SUN_SHADOW;
     }
   }
 
@@ -3992,51 +4128,103 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
-    /* Convert blend method to math nodes. */
-    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 53)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_NODE) {
+            SpaceNode *snode = reinterpret_cast<SpaceNode *>(sl);
+            snode->overlay.flag |= SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS;
+          }
+        }
+      }
+    }
+  }
 
-    if (scene_uses_eevee_legacy) {
-      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-        if (!material->use_nodes || material->nodetree == nullptr) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 55)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != CMP_NODE_CURVE_RGB) {
           continue;
         }
 
-        if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
-          /* Compatible modes. Nothing to change. */
+        CurveMapping &curve_mapping = *static_cast<CurveMapping *>(node->storage);
+
+        /* Film-like tone only works with the combined curve, which is the fourth curve, so make
+         * the combined curve current, as we now hide the rest of the curves since they no longer
+         * have an effect. */
+        if (curve_mapping.tone == CURVE_TONE_FILMLIKE) {
+          curve_mapping.cur = 3;
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 2)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, space_link, &area->spacedata) {
+          if (space_link->spacetype == SPACE_NODE) {
+            SpaceNode *space_node = reinterpret_cast<SpaceNode *>(space_link);
+            space_node->flag &= ~SNODE_FLAG_UNUSED_5;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 60) ||
+      (bmain->versionfile == 403 && !MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)))
+  {
+    /* Limit Rotation constraints from old files should use the legacy Limit
+     * Rotation behavior. */
+    LISTBASE_FOREACH (Object *, obj, &bmain->objects) {
+      LISTBASE_FOREACH (bConstraint *, constraint, &obj->constraints) {
+        if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
           continue;
         }
+        static_cast<bRotLimitConstraint *>(constraint->data)->flag |= LIMIT_ROT_LEGACY_BEHAVIOR;
+      }
 
-        if (material->blend_shadow == MA_BS_NONE) {
-          /* No need to match the surface since shadows are disabled. */
+      if (!obj->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pbone, &obj->pose->chanbase) {
+        LISTBASE_FOREACH (bConstraint *, constraint, &pbone->constraints) {
+          if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
+            continue;
+          }
+          static_cast<bRotLimitConstraint *>(constraint->data)->flag |= LIMIT_ROT_LEGACY_BEHAVIOR;
         }
-        else if (material->blend_shadow == MA_BS_SOLID) {
-          /* This is already versionned an transfered to `transparent_shadows`. */
-        }
-        else if ((material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
-                 (material->blend_shadow == MA_BS_HASHED))
-        {
-          BLO_reportf_wrap(fd->reports,
-                           RPT_WARNING,
-                           RPT_("Couldn't convert material %s because of different Blend Mode "
-                                "and Shadow Mode\n"),
-                           material->id.name + 2);
-          continue;
-        }
+      }
+    }
+  }
 
-        /* TODO(fclem): Check if theshold is driven or has animation. Bail out if needed? */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 61)) {
+    /* LIGHT_PROBE_RESOLUTION_64 has been removed in EEVEE-Next as the tedrahedral mapping is to
+     * low res to be usable. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->eevee.gi_cubemap_resolution < 128) {
+        scene->eevee.gi_cubemap_resolution = 128;
+      }
+    }
+  }
 
-        float threshold = (material->blend_method == MA_BM_CLIP) ? material->alpha_threshold :
-                                                                   2.0f;
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)) {
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      if (BrushGpencilSettings *settings = brush->gpencil_settings) {
+        /* Copy the `draw_strength` value to the `alpha` value. */
+        brush->alpha = settings->draw_strength;
 
-        if (!versioning_eevee_material_blend_mode_settings(material->nodetree, threshold)) {
-          BLO_reportf_wrap(
-              fd->reports,
-              RPT_WARNING,
-              RPT_("Couldn't convert material %s because of non-trivial alpha blending\n"),
-              material->id.name + 2);
-        }
+        /* We approximate the simplify pixel threshold by taking the previous threshold (world
+         * space) and dividing by the legacy radius conversion factor. This should generally give
+         * reasonable "pixel" threshold values, at least for previous GPv2 defaults. */
+        settings->simplify_px = settings->simplify_f /
+                                blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR * 0.1f;
       }
     }
   }

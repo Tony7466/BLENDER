@@ -138,6 +138,8 @@ static std::array<float4x4, 8> transform_matrices_init(
   return mats;
 }
 
+static constexpr float transform_mirror_max_distance_eps = 0.00002f;
+
 static void transform_node(Object &ob,
                            const std::array<float4x4, 8> &transform_mats,
                            PBVHNode *node)
@@ -148,6 +150,8 @@ static void transform_node(Object &ob,
   SCULPT_orig_vert_data_init(orig_data, ob, *node, undo::Type::Position);
 
   PBVHVertexIter vd;
+
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   undo::push_node(ob, node, undo::Type::Position);
   BKE_pbvh_vertex_iter_begin (*ss.pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -172,10 +176,21 @@ static void transform_node(Object &ob,
     sub_v3_v3v3(disp, transformed_co, start_co);
     mul_v3_fl(disp, 1.0f - fade);
     add_v3_v3v3(vd.co, start_co, disp);
+
+    /* Keep vertices on the mirror axis. */
+    if ((symm & PAINT_SYMM_X) && (fabs(start_co[0]) < transform_mirror_max_distance_eps)) {
+      vd.co[0] = 0.0f;
+    }
+    if ((symm & PAINT_SYMM_Y) && (fabs(start_co[1]) < transform_mirror_max_distance_eps)) {
+      vd.co[1] = 0.0f;
+    }
+    if ((symm & PAINT_SYMM_Z) && (fabs(start_co[2]) < transform_mirror_max_distance_eps)) {
+      vd.co[2] = 0.0f;
+    }
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void sculpt_transform_all_vertices(Object &ob)
@@ -238,7 +253,7 @@ static void elastic_transform_node(Object &ob,
   }
   BKE_pbvh_vertex_iter_end;
 
-  BKE_pbvh_node_mark_update(node);
+  BKE_pbvh_node_mark_positions_update(node);
 }
 
 static void transform_radius_elastic(const Sculpt &sd, Object &ob, const float transform_radius)
@@ -321,7 +336,7 @@ void update_modal_transform(bContext *C, Object &ob)
     SCULPT_flush_stroke_deform(sd, ob, true);
   }
 
-  SCULPT_flush_update_step(C, SCULPT_UPDATE_COORDS);
+  flush_update_step(C, UpdateType::Position);
 }
 
 void end_transform(bContext *C, Object &ob)
@@ -330,7 +345,7 @@ void end_transform(bContext *C, Object &ob)
   if (ss.filter_cache) {
     filter::cache_free(ss);
   }
-  SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
+  flush_update_done(C, ob, UpdateType::Position);
 }
 
 enum class PivotPositionMode {

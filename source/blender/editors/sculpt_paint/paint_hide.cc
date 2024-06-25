@@ -55,6 +55,25 @@ namespace blender::ed::sculpt_paint::hide {
 /** \name Public API
  * \{ */
 
+Span<int> node_visible_verts(const PBVHNode &node,
+                             const Span<bool> hide_vert,
+                             Vector<int> &indices)
+{
+  if (BKE_pbvh_node_fully_hidden_get(&node)) {
+    return {};
+  }
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  if (hide_vert.is_empty()) {
+    return verts;
+  }
+  indices.resize(verts.size());
+  const int *end = std::copy_if(verts.begin(), verts.end(), indices.begin(), [&](const int vert) {
+    return !hide_vert[vert];
+  });
+  indices.resize(end - indices.begin());
+  return indices;
+}
+
 void sync_all_from_faces(Object &object)
 {
   SculptSession &ss = *object.sculpt;
@@ -957,12 +976,6 @@ static void grow_shrink_visibility_mesh(Object &object,
   hide_vert.finish();
 }
 
-/* TODO: This is probably better off as a member function of a CCGKey?*/
-static int elem_xy_to_index(int x, int y, int grid_size)
-{
-  return y * grid_size + x;
-}
-
 struct DualBitBuffer {
   BitGroupVector<> front;
   BitGroupVector<> back;
@@ -1011,7 +1024,7 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
         for (const int grid_index : grids) {
           for (const int y : IndexRange(key.grid_size)) {
             for (const int x : IndexRange(key.grid_size)) {
-              const int grid_elem_idx = elem_xy_to_index(x, y, key.grid_size);
+              const int grid_elem_idx = CCG_grid_xy_to_index(key.grid_size, x, y);
               if (read_buffer[grid_index][grid_elem_idx] != desired_state) {
                 continue;
               }
@@ -1025,8 +1038,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
               BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
 
               for (const SubdivCCGCoord neighbor : neighbors.coords) {
-                const int neighbor_grid_elem_idx = elem_xy_to_index(
-                    neighbor.x, neighbor.y, key.grid_size);
+                const int neighbor_grid_elem_idx = CCG_grid_xy_to_index(
+                    key.grid_size, neighbor.x, neighbor.y);
 
                 write_buffer[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
               }
@@ -1264,11 +1277,12 @@ static void partialvis_gesture_update_bmesh(gesture::GestureData &gesture_data)
       *gesture_data.vc.obact, gesture_data.nodes, operation->action, selection_test_fn);
 }
 
-static void hide_show_begin(bContext &C, gesture::GestureData & /*gesture_data*/)
+static void hide_show_begin(bContext &C, wmOperator &op, gesture::GestureData & /*gesture_data*/)
 {
   Object *ob = CTX_data_active_object(&C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(&C);
 
+  undo::push_begin(*ob, &op);
   BKE_sculpt_object_pbvh_ensure(depsgraph, ob);
 }
 
@@ -1292,6 +1306,7 @@ static void hide_show_end(bContext &C, gesture::GestureData &gesture_data)
 {
   SCULPT_topology_islands_invalidate(*gesture_data.vc.obact->sculpt);
   tag_update_visibility(C);
+  undo::push_end(*gesture_data.vc.obact);
 }
 
 static void hide_show_init_properties(bContext & /*C*/,

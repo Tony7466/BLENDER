@@ -1555,6 +1555,11 @@ typedef enum eSpaceNodeOverlay_Flag {
   SN_OVERLAY_SHOW_PATH = (1 << 4),
   SN_OVERLAY_SHOW_NAMED_ATTRIBUTES = (1 << 5),
   SN_OVERLAY_SHOW_PREVIEWS = (1 << 6),
+  /**
+   * Display an automatic label on reroute nodes based on the user-defined labels
+   * of connected reroute nodes.
+   */
+  SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS = (1 << 7),
 } eSpaceNodeOverlay_Flag;
 
 typedef enum eSpaceNodeOverlay_preview_shape {
@@ -1641,7 +1646,7 @@ typedef enum eSpaceNode_Flag {
   SNODE_SHOW_R = (1 << 7),
   SNODE_SHOW_G = (1 << 8),
   SNODE_SHOW_B = (1 << 9),
-  SNODE_AUTO_RENDER = (1 << 5),
+  SNODE_FLAG_UNUSED_5 = (1 << 5),   /* cleared */
   SNODE_FLAG_UNUSED_6 = (1 << 6),   /* cleared */
   SNODE_FLAG_UNUSED_10 = (1 << 10), /* cleared */
   SNODE_FLAG_UNUSED_11 = (1 << 11), /* cleared */

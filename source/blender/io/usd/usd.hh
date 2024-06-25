@@ -99,6 +99,7 @@ struct USDExportParams {
   bool export_animation = false;
   bool export_hair = true;
   bool export_uvmaps = true;
+  bool rename_uvmaps = true;
   bool export_normals = true;
   bool export_mesh_colors = true;
   bool export_materials = true;
@@ -111,6 +112,7 @@ struct USDExportParams {
   bool use_instancing = false;
   enum eEvaluationMode evaluation_mode = DAG_EVAL_VIEWPORT;
   bool generate_preview_surface = true;
+  bool generate_materialx_network = true;
   bool export_textures = true;
   bool overwrite_textures = true;
   bool relative_paths = true;
@@ -129,9 +131,11 @@ struct USDExportParams {
   bool export_cameras = true;
   bool export_curves = true;
   bool export_volumes = true;
-
   eUSDZTextureDownscaleSize usdz_downscale_size = eUSDZTextureDownscaleSize::USD_TEXTURE_SIZE_KEEP;
   int usdz_downscale_custom_size = 128;
+
+  bool allow_unicode = false;
+
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 

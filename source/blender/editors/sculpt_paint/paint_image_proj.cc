@@ -2337,7 +2337,9 @@ static void rect_to_uvspace_ortho(const rctf *bucket_bounds,
   interp_v2_v2v2v2(bucket_bounds_uv[flip ? 0 : 3], uv1co, uv2co, uv3co, w);
 }
 
-/* same as above but use barycentric_weights_v2_persp */
+/**
+ * Same as #rect_to_uvspace_ortho but use #barycentric_weights_v2_persp.
+ */
 static void rect_to_uvspace_persp(const rctf *bucket_bounds,
                                   const float *v1coSS,
                                   const float *v2coSS,
@@ -6560,7 +6562,8 @@ static const char *proj_paint_color_attribute_create(wmOperator *op, Object &ob)
   }
 
   Mesh *mesh = static_cast<Mesh *>(ob.data);
-  const CustomDataLayer *layer = BKE_id_attribute_new(&mesh->id, name, type, domain, op->reports);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  const CustomDataLayer *layer = BKE_attribute_new(owner, name, type, domain, op->reports);
   if (!layer) {
     return nullptr;
   }
@@ -6835,7 +6838,8 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
   default_paint_slot_color_get(type, ma, color);
   RNA_float_set_array(op->ptr, "color", color);
 
-  return WM_operator_props_dialog_popup(C, op, 300, IFACE_("Add Paint Slot"), IFACE_("Add"));
+  return WM_operator_props_dialog_popup(
+      C, op, 300, IFACE_("Add Paint Slot"), CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
 }
 
 static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)

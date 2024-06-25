@@ -498,26 +498,10 @@ static void id_search_cb_objects_from_scene(const bContext *C,
 }
 
 static ARegion *template_ID_search_menu_item_tooltip(
-    bContext *C, ARegion *region, const rcti *item_rect, void *arg, void *active)
+    bContext *C, ARegion *region, const rcti *item_rect, void * /*arg*/, void *active)
 {
-  TemplateID *template_ui = static_cast<TemplateID *>(arg);
   ID *active_id = static_cast<ID *>(active);
-  StructRNA *type = RNA_property_pointer_type(&template_ui->ptr, template_ui->prop);
-
-  uiSearchItemTooltipData tooltip_data = {{0}};
-
-  tooltip_data.name = active_id->name + 2;
-  SNPRINTF(tooltip_data.description,
-           TIP_("Choose %s data-block to be assigned to this user"),
-           RNA_struct_ui_name(type));
-  if (ID_IS_LINKED(active_id)) {
-    SNPRINTF(tooltip_data.hint,
-             TIP_("Source library: %s\n%s"),
-             active_id->lib->id.name + 2,
-             active_id->lib->filepath);
-  }
-
-  return UI_tooltip_create_from_search_item_generic(C, region, item_rect, &tooltip_data);
+  return UI_tooltip_create_from_search_item_generic(C, region, item_rect, active_id);
 }
 
 /* ID Search browse menu, open */
@@ -4590,7 +4574,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
   }
-  else if (labeltype == 'c') {
+  else if (labeltype == 'c' && cumap->tone != CURVE_TONE_FILMLIKE) {
     /* color */
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);
@@ -5982,22 +5966,22 @@ static void do_running_jobs(bContext *C, void * /*arg*/, int event)
       G.is_break = true;
       break;
     case B_STOPCAST:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_wm_screen(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_wm_screen(C));
       break;
     case B_STOPANIM:
       WM_operator_name_call(C, "SCREEN_OT_animation_play", WM_OP_INVOKE_SCREEN, nullptr, nullptr);
       break;
     case B_STOPCOMPO:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPSEQ:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPCLIP:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPFILE:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPOTHER:
       G.is_break = true;
@@ -6098,7 +6082,9 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       icon = ICON_TRACKER;
       break;
     }
-    if (WM_jobs_test(wm, scene, WM_JOB_TYPE_FILESEL_READDIR)) {
+    if (WM_jobs_test(wm, scene, WM_JOB_TYPE_FILESEL_READDIR) ||
+        WM_jobs_test(wm, scene, WM_JOB_TYPE_ASSET_LIBRARY_LOAD))
+    {
       handle_event = B_STOPFILE;
       icon = ICON_FILEBROWSER;
       break;

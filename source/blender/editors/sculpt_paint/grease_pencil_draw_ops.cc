@@ -59,6 +59,7 @@
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 #include "wm_event_types.hh"
+#include <optional>
 
 namespace blender::ed::sculpt_paint {
 
@@ -139,6 +140,12 @@ static GreasePencilStrokeOperation *get_stroke_operation(bContext &C, wmOperator
   return nullptr;
 }
 
+static bool stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
+{
+  UNUSED_VARS(C, op, mouse);
+  return true;
+}
+
 static void stroke_update_step(bContext *C,
                                wmOperator *op,
                                PaintStroke *stroke,
@@ -191,12 +198,6 @@ static bool grease_pencil_brush_stroke_poll(bContext *C)
   if (!WM_toolsystem_active_tool_is_brush(C)) {
     return false;
   }
-  return true;
-}
-
-static bool stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
-{
-  UNUSED_VARS(C, op, mouse);
   return true;
 }
 
@@ -727,6 +728,10 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
   const float2 mouse_position = float2(event.mval);
   const int simplify_levels = brush.gpencil_settings->fill_simplylvl;
+  const std::optional<float> alpha_threshold =
+      (brush.gpencil_settings->flag & GP_BRUSH_FILL_HIDE) ?
+          std::nullopt :
+          std::make_optional(brush.gpencil_settings->fill_threshold);
 
   if (!grease_pencil.has_active_layer()) {
     return false;
@@ -748,6 +753,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
                                                    boundary_layers,
                                                    info.sources,
                                                    op_data.invert,
+                                                   alpha_threshold,
                                                    mouse_position,
                                                    fit_method,
                                                    op_data.material_index,

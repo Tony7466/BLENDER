@@ -671,6 +671,7 @@ struct wmFileReadPost_Params {
   /* Used by #wm_homefile_read_post. */
   uint success : 1;
   uint is_alloc : 1;
+  uint is_first_time : 1;
 };
 
 /**
@@ -701,11 +702,10 @@ static void wm_file_read_post(bContext *C,
 
 #ifdef WITH_PYTHON
   if (is_startup_file) {
-    /* On startup (by default), Python won't have been initialized.
-     *
-     * The following block handles data & preferences being reloaded
+    /* The following block handles data & preferences being reloaded
      * which requires resetting some internal variables. */
-    if (CTX_py_init_get(C)) {
+    if (!params->is_first_time) {
+      BLI_assert(CTX_py_init_get(C));
       bool reset_all = use_userdef;
       if (use_userdef || reset_app_template) {
         /* Only run when we have a template path found. */
@@ -1249,7 +1249,8 @@ void wm_homefile_read_ex(bContext *C,
   if (use_userdef || reset_app_template) {
 #ifdef WITH_PYTHON
     /* This only runs once Blender has already started. */
-    if (CTX_py_init_get(C)) {
+    if (!params_homefile->is_first_time) {
+      BLI_assert(CTX_py_init_get(C));
       /* This is restored by 'wm_file_read_post', disable before loading any preferences
        * so an add-on can read their own preferences when un-registering,
        * and use new preferences if/when re-registering, see #67577.
@@ -1502,6 +1503,8 @@ void wm_homefile_read_ex(bContext *C,
     params_file_read_post.use_userdef = use_userdef;
     params_file_read_post.is_startup_file = true;
     params_file_read_post.is_factory_startup = is_factory_startup;
+    params_file_read_post.is_first_time = params_homefile->is_first_time;
+
     params_file_read_post.reset_app_template = reset_app_template;
 
     params_file_read_post.success = success;
@@ -2529,11 +2532,6 @@ static int wm_userpref_read_exec(bContext *C, wmOperator *op)
   if (use_factory_settings) {
     U.runtime.is_dirty = true;
   }
-
-  /* Ensure the correct icon textures are loaded. When the current theme didn't had an
-   * #icon_border_intensity, but the loaded theme has, the icon with border intensity needs to be
-   * loaded. */
-  UI_icons_reload_internal_textures();
 
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 

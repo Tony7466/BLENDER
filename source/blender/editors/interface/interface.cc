@@ -335,7 +335,7 @@ static void ui_update_window_matrix(const wmWindow *window, const ARegion *regio
 void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 {
   uiBlock *block = static_cast<uiBlock *>(region->uiblocks.first);
-  if (block && (block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_RADIAL) == 0) {
+  if (block && (block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_PIE_MENU) == 0) {
     BLI_rcti_rctf_copy_floor(r_rect, &block->rect);
     BLI_rcti_translate(r_rect, region->winrct.xmin, region->winrct.ymin);
   }
@@ -1551,7 +1551,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
     return;
   }
 
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
       if (but->pie_dir != UI_RADIAL_NONE) {
         const std::string str = ui_but_pie_direction_string(but);
@@ -1624,7 +1624,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
                                                       wmOperatorCallContext opcontext,
                                                       int icon)
 {
-  uiButExtraOpIcon *extra_op_icon = MEM_new<uiButExtraOpIcon>(__func__);
+  uiButExtraOpIcon *extra_op_icon = MEM_cnew<uiButExtraOpIcon>(__func__);
 
   extra_op_icon->icon = icon;
   extra_op_icon->optype_params = MEM_cnew<wmOperatorCallParams>(__func__);
@@ -2059,7 +2059,7 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   wmOrtho2_region_pixelspace(region);
 
   /* back */
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     ui_draw_pie_center(block);
   }
   else if (block->flag & UI_BLOCK_POPOVER) {
@@ -3612,7 +3612,7 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, std::string name, eU
     STRNCPY(block->display_device, scene->display_settings.display_device);
 
     /* Copy to avoid crash when scene gets deleted with UI still open. */
-    UnitSettings *unit = MEM_new<UnitSettings>(__func__);
+    UnitSettings *unit = MEM_cnew<UnitSettings>(__func__);
     memcpy(unit, &scene->unit, sizeof(scene->unit));
     block->unit = unit;
   }
@@ -4125,7 +4125,7 @@ static uiBut *ui_def_but(uiBlock *block,
     }
   }
 
-  if (block->flag & UI_BLOCK_RADIAL) {
+  if (block->flag & UI_BLOCK_PIE_MENU) {
     but->drawflag |= UI_BUT_TEXT_LEFT;
     if (!but->str.empty()) {
       but->drawflag |= UI_BUT_ICON_LEFT;
@@ -6440,7 +6440,21 @@ std::string UI_but_string_get_label(uiBut &but)
     }
     return but.str.substr(0, str_len);
   }
+
   return UI_but_string_get_rna_label(but);
+}
+
+std::string UI_but_context_menu_title_from_button(uiBut &but)
+{
+  if (but.type == UI_BTYPE_VIEW_ITEM) {
+    const uiButViewItem &view_item_but = static_cast<const uiButViewItem &>(but);
+    if (view_item_but.view_item == nullptr) {
+      return "";
+    }
+    const blender::ui::AbstractView &tree_view = view_item_but.view_item->get_view();
+    return IFACE_(tree_view.get_context_menu_title().c_str());
+  }
+  return UI_but_string_get_label(but);
 }
 
 std::string UI_but_string_get_tooltip_label(const uiBut &but)

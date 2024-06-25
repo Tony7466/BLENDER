@@ -175,17 +175,17 @@ PaintCurve *BKE_paint_curve_add(Main *bmain, const char *name);
  */
 bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint);
 void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3]);
-void BKE_paint_free(Paint *p);
+void BKE_paint_free(Paint *paint);
 /**
  * Called when copying scene settings, so even if 'src' and 'tar' are the same still do a
  * #id_us_plus(), rather than if we were copying between 2 existing scenes where a matching
  * value should decrease the existing user count as with #paint_brush_set()
  */
-void BKE_paint_copy(const Paint *src, Paint *tar, int flag);
+void BKE_paint_copy(const Paint *src, Paint *dst, int flag);
 
 void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint);
 
-void BKE_paint_cavity_curve_preset(Paint *p, int preset);
+void BKE_paint_cavity_curve_preset(Paint *paint, int preset);
 
 eObjectMode BKE_paint_object_mode_from_paintmode(PaintMode mode);
 bool BKE_paint_ensure_from_paintmode(Main *bmain, Scene *sce, PaintMode mode);
@@ -199,10 +199,10 @@ Paint *BKE_paint_get_active_from_context(const bContext *C);
 PaintMode BKE_paintmode_get_active_from_context(const bContext *C);
 PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref);
 Brush *BKE_paint_brush(Paint *paint);
-const Brush *BKE_paint_brush_for_read(const Paint *p);
-void BKE_paint_brush_set(Paint *paint, Brush *br);
+const Brush *BKE_paint_brush_for_read(const Paint *paint);
+void BKE_paint_brush_set(Paint *paint, Brush *brush);
 Palette *BKE_paint_palette(Paint *paint);
-void BKE_paint_palette_set(Paint *p, Palette *palette);
+void BKE_paint_palette_set(Paint *paint, Palette *palette);
 void BKE_paint_curve_clamp_endpoint_add_index(PaintCurve *pc, int add_index);
 
 /**
@@ -227,8 +227,7 @@ bool BKE_paint_always_hide_test(const Object *ob);
 /* Partial visibility. */
 
 /**
- * Returns non-zero if any of the corners of the grid
- * face whose inner corner is at (x, y) are hidden, zero otherwise.
+ * Returns whether any of the corners of the grid face whose inner corner is at (x, y) are hidden.
  */
 bool paint_is_grid_face_hidden(blender::BoundedBitSpan grid_hidden, int gridsize, int x, int y);
 /**
@@ -337,8 +336,8 @@ struct SculptBoundary {
   bool forms_loop;
 
   /* Initial vertex in the boundary which is closest to the current sculpt active vertex. */
-  PBVHVertRef initial_vertex;
-  int initial_vertex_i;
+  PBVHVertRef initial_vert;
+  int initial_vert_i;
 
   /* Vertex that at max_propagation_steps from the boundary and closest to the original active
    * vertex that was used to initialize the boundary. This is used as a reference to check how much
@@ -348,7 +347,7 @@ struct SculptBoundary {
   /* Stores the initial positions of the pivot and boundary initial vertex as they may be deformed
    * during the brush action. This allows to use them as a reference positions and vectors for some
    * brush effects. */
-  blender::float3 initial_vertex_position;
+  blender::float3 initial_vert_position;
   blender::float3 initial_pivot_position;
 
   /* Maximum number of topology steps that were calculated from the boundary. */

@@ -1145,7 +1145,7 @@ void file_draw_list(const bContext *C, ARegion *region)
   bool do_drag;
   uchar text_col[4];
   const bool draw_columnheader = (params->display == FILE_VERTICALDISPLAY);
-  const float thumb_icon_aspect = std::min(64.0f / float(params->thumbnail_size), 1.0f);
+  const float thumb_icon_aspect = std::min(64.0f / float(params->thumbnail_size), 2.0f);
 
   numfiles = filelist_files_ensure(files);
 
@@ -1393,8 +1393,15 @@ void file_draw_list(const bContext *C, ARegion *region)
       text_col[3] /= 2;
     }
 
-    const char *message = is_filtered ? IFACE_("No results match the search filter") :
-                                        IFACE_("No items");
+    const char *message = [&]() {
+      if (!filelist_is_ready(files)) {
+        return IFACE_("Loading...");
+      }
+      if (is_filtered) {
+        return IFACE_("No results match the search filter");
+      }
+      return IFACE_("No items");
+    }();
 
     UI_fontstyle_draw_simple(&style->widget,
                              tile_draw_rect.xmin + UI_UNIT_X,
