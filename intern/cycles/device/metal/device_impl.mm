@@ -88,6 +88,8 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
 
     default_storage_mode = MTLResourceStorageModeManaged;
 
+    /* We only support Apple Silicon which hasUnifiedMemory support. But leave this check here
+     * just in case a future GPU comes out that doesn't. */
     if ([mtlDevice hasUnifiedMemory]) {
       default_storage_mode = MTLResourceStorageModeShared;
     }
