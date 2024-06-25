@@ -73,6 +73,9 @@ ccl_device void flatten_closure_tree(KernelGlobals kg,
 {
   int stack_size = 0;
   float3 weight = one_float3();
+  if (sd->flag & SD_HAS_VOLUME) {
+    weight *= object_volume_density(kg, sd->object);
+  }
   float3 weight_stack[16];
   ccl_private const OSLClosure *closure_stack[16];
   int layer_stack_level = -1;
