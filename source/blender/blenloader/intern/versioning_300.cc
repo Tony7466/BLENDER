@@ -4586,13 +4586,12 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations;
-      scene->toolsettings->uvcalc_importance_weights_factor =
+      scene->toolsettings->uvcalc_weights_factor =
           _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor;
       scene->toolsettings->uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale;
       scene->toolsettings->uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips;
-      memset(scene->toolsettings->uvcalc_importance_weights,
-             0,
-             sizeof(scene->toolsettings->uvcalc_importance_weights));
+      scene->toolsettings->uvcalc_importance_weights = _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights;
+      STRNCPY(scene->toolsettings->uvcalc_weights_attribute, _DNA_DEFAULT_ToolSettings_UVCalc_WeightsAttribute);
     }
   }
 }

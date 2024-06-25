@@ -369,7 +369,9 @@
 #define _DNA_DEFAULT_ToolSettings_UVCalc_Iterations           (10)
 #define _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor    (1.0)
 #define _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale        (1.0)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips       (1)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips           (1)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights    (0)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_WeightsAttribute     "uv_importance"
 
 #define _DNA_DEFAULT_ToolSettings \
   { \
@@ -381,10 +383,11 @@
     .uvcalc_flag = _DNA_DEFAULT_ToolSettings_UVCalc_Flag, \
     .unwrapper = _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper, \
     .uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations, \
-    .uvcalc_importance_weights = { 0 }, \
-    .uvcalc_importance_weights_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor, \
+    .uvcalc_weights_attribute = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsAttribute, \
+    .uvcalc_weights_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor, \
     .uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale, \
-    .uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips, \
+    .uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips,\
+    .uvcalc_importance_weights = _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights,\
  \
     .select_thresh = 0.01f, \
  \

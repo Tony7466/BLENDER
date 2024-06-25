@@ -1559,13 +1559,14 @@ typedef struct ToolSettings {
 
   float uvcalc_margin;
   char uvcalc_allow_flips;
-  char _pad0[3];
+  char uvcalc_importance_weights;
+  char _pad0[2];
 
   int uvcalc_iterations;
-  float uvcalc_importance_weights_factor;
+  float uvcalc_weights_factor;
   float uvcalc_relative_scale;
 
-  char uvcalc_importance_weights[64]; /* MAX_VGROUP_NAME */
+  char uvcalc_weights_attribute[64]; /* MAX_VGROUP_NAME */
 
   /* Auto-IK. */
   /** Runtime only. */
