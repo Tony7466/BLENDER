@@ -604,8 +604,7 @@ blender::Array<uchar> BLF_svg_icon_bitmap(uint icon_id, float size, int *r_width
 {
   FontBLF *font = global_font[0];
   if (font) {
-    blender::Array<uchar> bitmap = blf_svg_icon_bitmap(font, icon_id, size, r_width, r_height);
-    return bitmap;
+    return blf_svg_icon_bitmap(font, icon_id, size, r_width, r_height);
   }
   return {};
 }
