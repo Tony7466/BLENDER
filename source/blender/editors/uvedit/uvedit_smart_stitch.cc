@@ -2865,10 +2865,4 @@ void UV_OT_stitch_distance(wmOperatorType *ot)
                 "Maximum distance between welded vertices",
                 0.0f,
                 1.0f);
-  RNA_def_boolean(ot->srna,
-                  "underlying_geometry",
-                  false,
-                  "Underlying Geometry",
-                  "Stitch UVs based on underlying geometry");
-
 }
