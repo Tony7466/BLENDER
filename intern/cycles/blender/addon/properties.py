@@ -1440,7 +1440,7 @@ class CyclesRenderLayerSettings(bpy.types.PropertyGroup):
 
     pass_debug_sample_count: BoolProperty(
         name="Debug Sample Count",
-        description="Number of samples/camera rays per pixel",
+        description="Normalized number of samples/camera rays per pixel",
         default=False,
         update=update_render_passes,
     )
