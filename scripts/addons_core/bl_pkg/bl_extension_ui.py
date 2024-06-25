@@ -1087,14 +1087,11 @@ def extensions_panel_draw_impl(
             # Left align so the operator text isn't centered.
             colsub = box.column()
             row = colsub.row(align=True)
-            # row.label
 
-            key = (pkg_id, repo_index)
             if show_development:
-                mark = key in blender_extension_mark
-            show = key in blender_extension_show
+                mark = (pkg_id, repo_index) in blender_extension_mark
+            show = (pkg_id, repo_index) in blender_extension_show
 
-            del key
             if show:
                 props = row.operator("extensions.package_show_clear", text="", icon='DOWNARROW_HLT', emboss=False)
             else:
