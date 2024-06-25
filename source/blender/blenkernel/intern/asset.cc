@@ -43,26 +43,27 @@ void BKE_asset_metadata_free(AssetMetaData **asset_data)
 
 AssetMetaData *BKE_asset_metadata_copy(const AssetMetaData *source)
 {
-  AssetMetaData *copy = BKE_asset_metadata_create();
+  return MEM_new<AssetMetaData>(__func__, *source);
+}
 
-  copy->local_type_info = source->local_type_info;
-
-  if (source->properties) {
-    copy->properties = IDP_CopyProperty(source->properties);
+AssetMetaData::AssetMetaData(const AssetMetaData &other)
+    : local_type_info(other.local_type_info),
+      catalog_id(other.catalog_id),
+      active_tag(other.active_tag),
+      tot_tags(other.tot_tags)
+{
+  if (other.properties) {
+    properties = IDP_CopyProperty(other.properties);
   }
 
-  BKE_asset_metadata_catalog_id_set(copy, source->catalog_id, source->catalog_simple_name);
+  STRNCPY(catalog_simple_name, other.catalog_simple_name);
 
-  copy->author = BLI_strdup_null(source->author);
-  copy->description = BLI_strdup_null(source->description);
-  copy->copyright = BLI_strdup_null(source->copyright);
-  copy->license = BLI_strdup_null(source->license);
+  author = BLI_strdup_null(other.author);
+  description = BLI_strdup_null(other.description);
+  copyright = BLI_strdup_null(other.copyright);
+  license = BLI_strdup_null(other.license);
 
-  BLI_duplicatelist(&copy->tags, &source->tags);
-  copy->active_tag = source->active_tag;
-  copy->tot_tags = source->tot_tags;
-
-  return copy;
+  BLI_duplicatelist(&tags, &other.tags);
 }
 
 AssetMetaData::AssetMetaData(AssetMetaData &&other)

@@ -85,7 +85,7 @@ typedef struct AssetMetaData {
 
 #ifdef __cplusplus
   AssetMetaData() = default;
-  AssetMetaData(const AssetMetaData &other) = default;
+  AssetMetaData(const AssetMetaData &other);
   AssetMetaData(AssetMetaData &&other);
   /** Enables use with `std::unique_ptr<AssetMetaData>`. */
   ~AssetMetaData();
