@@ -34,6 +34,7 @@ set(SRC_OSL
   node_environment_texture.osl
   node_float_curve.osl
   node_fresnel.osl
+  node_gabor_texture.osl
   node_gamma.osl
   node_geometry.osl
   node_glass_bsdf.osl
@@ -70,6 +71,7 @@ set(SRC_OSL
   node_output_surface.osl
   node_output_volume.osl
   node_particle_info.osl
+  node_ray_portal_bsdf.osl
   node_refraction_bsdf.osl
   node_rgb_curves.osl
   node_rgb_ramp.osl

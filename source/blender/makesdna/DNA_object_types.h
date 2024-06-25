@@ -437,7 +437,7 @@ typedef struct ObHook {
 /**
  * This is used as a flag for many kinds of data that use selections, examples include:
  * - #BezTriple.f1, #BezTriple.f2, #BezTriple.f3
- * - #bNote.flag
+ * - #bNode.flag
  * - #MovieTrackingTrack.flag
  * And more, ideally this would have a generic location.
  */
@@ -634,9 +634,9 @@ enum {
   GP_EMPTY = 0,
   GP_STROKE = 1,
   GP_MONKEY = 2,
-  GP_LRT_SCENE = 3,
-  GP_LRT_OBJECT = 4,
-  GP_LRT_COLLECTION = 5,
+  GREASE_PENCIL_LINEART_SCENE = 3,
+  GREASE_PENCIL_LINEART_OBJECT = 4,
+  GREASE_PENCIL_LINEART_COLLECTION = 5,
 };
 
 /** #Object.boundtype */

@@ -57,7 +57,7 @@
 #include "BKE_constraint.h"
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_lattice.hh"
 #include "BKE_main.hh" /* for Main */
 #include "BKE_mesh.hh" /* for ME_ defines (patching) */
@@ -780,7 +780,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       sound = static_cast<bSound *>(sound->id.next);
     }
 
-    /* `mesh->subdiv` changed to reflect the actual reparametization
+    /* `mesh->subdiv` changed to reflect the actual reparametrization
      * better, and S-meshes were removed - if it was a S-mesh make
      * it a subsurf, and reset the subdivision level because subsurf
      * takes a lot more work to calculate. */
