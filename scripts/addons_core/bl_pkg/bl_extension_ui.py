@@ -32,6 +32,7 @@ from bl_ui.space_userpref import (
 # So without showing a distinction - the existence of these buttons is not clear.
 USE_SHOW_ADDON_TYPE_AS_TEXT = True
 USE_SHOW_ADDON_TYPE_AS_ICON = True
+USE_EXTENSION_SECTIONS = True
 
 
 # -----------------------------------------------------------------------------
@@ -850,6 +851,14 @@ def extensions_panel_draw_impl(
     # Needed so the warnings aren't mixed in with other content.
     layout_topmost = layout.column()
 
+    if USE_EXTENSION_SECTIONS:
+        SECTION_ENABLED, SECTION_INSTALLED, SECTION_AVAILABLE = 0, 1, 2
+        layout_sections = [
+            [layout.column(), False, iface_("Enabled")],
+            [layout.column(), False, iface_("Installed")],
+            [layout.column(), False, iface_("Available")],
+        ]
+
     repos_all = extension_repos_read()
 
     if bpy.app.online_access:
@@ -1059,7 +1068,23 @@ def extensions_panel_draw_impl(
             show = key in blender_extension_show
             del key
 
-            box = layout.box()
+            if USE_EXTENSION_SECTIONS:
+                if is_enabled:
+                    section = layout_sections[SECTION_ENABLED]
+                elif is_installed:
+                    section = layout_sections[SECTION_INSTALLED]
+                else:
+                    section = layout_sections[SECTION_AVAILABLE]
+
+                section_layout, section_is_init, section_text = section
+                if not section_is_init:
+                    section[1] = True
+                    section_layout.label(text=section_text, translate=False)
+
+                box = section_layout.box()
+                del section, section_layout, section_is_init, section_text
+            else:
+                box = layout.box()
 
             # Left align so the operator text isn't centered.
             colsub = box.column()
@@ -1114,8 +1139,9 @@ def extensions_panel_draw_impl(
                         props.pkg_id = pkg_id
                         del props
                     else:
-                        # Right space for alignment with the button.
-                        row_right.label(text="Installed   ")
+                        if not USE_EXTENSION_SECTIONS:
+                            # Right space for alignment with the button.
+                            row_right.label(text="Installed   ")
                         row_right.active = False
                 else:
                     props = row_right.operator("extensions.package_install", text="Install")
@@ -1128,7 +1154,8 @@ def extensions_panel_draw_impl(
                     # There is a local item with no remote
                     row_right.label(text="Orphan   ")
                 else:
-                    row_right.label(text="Installed   ")
+                    if not USE_EXTENSION_SECTIONS:
+                        row_right.label(text="Installed   ")
 
                 row_right.active = False
 
