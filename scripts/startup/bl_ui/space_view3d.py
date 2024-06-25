@@ -1515,37 +1515,13 @@ class VIEW3D_MT_snap(Menu):
         layout.operator("view3d.snap_cursor_to_active", text="Cursor to Active")
 
 
-class VIEW3D_MT_uv_unwrap(Menu):
-    bl_label = "Unwrap"
-
-    def draw(self, _context):
-        layout = self.layout
-
-        layout.operator_enum("uv.unwrap", "method")
-        layout.template_node_operator_asset_menu_items(catalog_path="UV/Unwrap")
-
-
 class VIEW3D_MT_uv_map(Menu):
     bl_label = "UV Mapping"
 
     def draw(self, _context):
         layout = self.layout
 
-        layout.menu("VIEW3D_MT_uv_unwrap")
-
-        layout.separator()
-
-        layout.operator_context = 'INVOKE_DEFAULT'
-        layout.operator("uv.smart_project")
-        layout.operator("uv.lightmap_pack")
-        layout.operator("uv.follow_active_quads")
-
-        layout.separator()
-
-        layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("uv.cube_project")
-        layout.operator("uv.cylinder_project")
-        layout.operator("uv.sphere_project")
+        layout.menu("IMAGE_MT_uvs_unwrap")
 
         layout.separator()
 
@@ -9237,7 +9213,6 @@ classes = (
     VIEW3D_MT_transform_armature,
     VIEW3D_MT_mirror,
     VIEW3D_MT_snap,
-    VIEW3D_MT_uv_unwrap,
     VIEW3D_MT_uv_map,
     VIEW3D_MT_view,
     VIEW3D_MT_view_local,
