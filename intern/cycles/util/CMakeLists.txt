@@ -7,6 +7,7 @@ set(INC
 )
 
 set(INC_SYS
+  ${ZSTD_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -32,9 +33,9 @@ set(SRC
 
 set(LIB
   ${TBB_LIBRARIES}
+  ${ZSTD_LIBRARIES}
   PRIVATE extern_gflags
-  PRIVATE extern_glog
-)
+  PRIVATE extern_glog)
 
 set(SRC_HEADERS
   algorithm.h

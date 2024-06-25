@@ -32,6 +32,7 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
   PRIVATE bf_blenloader
   PRIVATE bf_blentranslation
@@ -48,6 +49,10 @@ set(LIB
   PRIVATE bf_rna
   PRIVATE bf_windowmanager
 )
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
+endif()
 
 blender_add_lib(bf_editor_space_nla "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 

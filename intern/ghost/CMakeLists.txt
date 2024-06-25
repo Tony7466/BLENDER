@@ -91,8 +91,7 @@ if(WITH_OPENGL_BACKEND)
 endif()
 
 if(WITH_VULKAN_BACKEND)
-
-  if(APPLE)
+  if (WITH_VULKAN_MOLTENVK)
     list(APPEND INC_SYS
       PUBLIC ${MOLTENVK_INCLUDE_DIRS}
     )
@@ -100,6 +99,7 @@ if(WITH_VULKAN_BACKEND)
     list(APPEND LIB
       ${MOLTENVK_LIBRARIES}
     )
+    add_definitions(-DWITH_VULKAN_MOLTENVK)
   endif()
 
   list(APPEND SRC
