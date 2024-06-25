@@ -9,6 +9,7 @@
 #include "BLI_math_base.hh"
 #include "BLI_set.hh"
 
+#include "BKE_cryptomatte.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
@@ -46,26 +47,44 @@ static void add_passes_used_by_cryptomatte_node(const bNode *node,
     return;
   }
 
-  /* Does not use passes from the given view layer, so no need to add anything. */
+  Scene *scene = reinterpret_cast<Scene *>(node->id);
+  if (!scene) {
+    return;
+  }
+
+  cryptomatte::CryptomatteSessionPtr session = cryptomatte::CryptomatteSessionPtr(
+      BKE_cryptomatte_init_from_scene(scene));
+
+  const Vector<std::string> &layer_names = cryptomatte::BKE_cryptomatte_layer_names_get(*session);
+  if (layer_names.is_empty()) {
+    return;
+  }
+
+  /* If the stored layer name doesn't corresponds to an existing Cryptomatte layer, fallback to the
+   * name of the first layer. */
   const NodeCryptomatte *data = static_cast<NodeCryptomatte *>(node->storage);
-  if (!StringRef(data->layer_name).startswith(view_layer->name)) {
+  const std::string layer_name = layer_names.contains(data->layer_name) ? data->layer_name :
+                                                                          layer_names[0];
+
+  /* Does not use passes from the given view layer, so no need to add anything. */
+  if (!StringRef(layer_name).startswith(view_layer->name)) {
     return;
   }
 
   /* Find out which type of Cryptomatte layers the node needs. Also ensure the type is enabled in
    * the view layer, because the node can use one of the types as a placeholder. */
   const char *cryptomatte_type_name = nullptr;
-  if (StringRef(data->layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_OBJECT)) {
+  if (StringRef(layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_OBJECT)) {
     if (view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_OBJECT) {
       cryptomatte_type_name = RE_PASSNAME_CRYPTOMATTE_OBJECT;
     }
   }
-  else if (StringRef(data->layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_ASSET)) {
+  else if (StringRef(layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_ASSET)) {
     if (view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_ASSET) {
       cryptomatte_type_name = RE_PASSNAME_CRYPTOMATTE_ASSET;
     }
   }
-  else if (StringRef(data->layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_MATERIAL)) {
+  else if (StringRef(layer_name).endswith(RE_PASSNAME_CRYPTOMATTE_MATERIAL)) {
     if (view_layer->cryptomatte_flag & VIEW_LAYER_CRYPTOMATTE_MATERIAL) {
       cryptomatte_type_name = RE_PASSNAME_CRYPTOMATTE_MATERIAL;
     }
