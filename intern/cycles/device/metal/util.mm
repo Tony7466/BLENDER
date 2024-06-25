@@ -64,9 +64,6 @@ AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
 
 int MetalInfo::optimal_sort_partition_elements()
 {
-  /* TODO: REMOVE optimal_sort_partition_elements altogether?
-   * CYCLES_METAL_SORT_PARTITION_ELEMENTS is still "useful" */
-
   if (auto str = getenv("CYCLES_METAL_SORT_PARTITION_ELEMENTS")) {
     return atoi(str);
   }
@@ -96,7 +93,7 @@ vector<id<MTLDevice>> const &MetalInfo::get_usable_devices()
       const char *device_name_char = [device.name UTF8String];
       if (strstr(device_name_char, "Apple")) {
         /* TODO: Verify the device is actually a Apple GPU,
-         * and doesn't just have Apple in the name? */
+         * and doesn't just have Apple in the name */
         usable = true;
       }
     }
