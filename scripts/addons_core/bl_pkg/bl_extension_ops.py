@@ -816,7 +816,11 @@ def _extensions_repo_sync_wheels(repo_cache_store):
     repos_all = extension_repos_read()
 
     wheel_list = []
-    for repo_index, pkg_manifest_local in enumerate(repo_cache_store.pkg_manifest_from_local_ensure(error_fn=print)):
+
+    for repo_index, pkg_manifest_local in enumerate(repo_cache_store.pkg_manifest_from_local_ensure(
+            error_fn=print,
+            ignore_missing=True,
+    )):
         repo = repos_all[repo_index]
         repo_module = repo.module
         repo_directory = repo.directory
@@ -3094,7 +3098,8 @@ class EXTENSIONS_OT_userpref_show_for_update(Operator):
         prefs.view.show_addons_enabled_only = False
 
         # Show only extensions that will be updated.
-        wm.extension_installed_only = False
+        wm.extension_show_panel_enabled = True
+        wm.extension_show_panel_installed = True
         wm.extension_updates_only = True
 
         bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
