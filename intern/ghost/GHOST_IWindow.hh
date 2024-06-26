@@ -88,6 +88,12 @@ class GHOST_IWindow {
   virtual GHOST_TSuccess setPath(const char *filepath) = 0;
 
   /**
+   * Enable or disable custom client-side window decorations
+   * \param useDecoration: Whether to use custom client-side window decorations
+   */
+  virtual void setUseDecoration(bool useDecoration) = 0;
+
+  /**
    * Returns the window rectangle dimensions.
    * These are screen coordinates.
    * \param bounds: The bounding rectangle of the window.

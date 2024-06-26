@@ -92,6 +92,12 @@ class GHOST_WindowCocoa : public GHOST_Window {
   GHOST_TSuccess setPath(const char *filepath);
 
   /**
+   * Enable or disable custom client-side window decorations
+   * \param useDecoration: Whether to use custom client-side window decorations
+   */
+  void setUseDecoration(bool useDecoration);
+
+  /**
    * Returns the window rectangle dimensions.
    * The dimensions are given in screen coordinates that are
    * relative to the upper-left corner of the screen.
@@ -312,6 +318,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
   bool m_immediateDraw;
   bool m_debug_context;  // for debug messages during context setup
   bool m_is_dialog;
+  bool m_use_decoration;
 };
 
 #ifdef WITH_INPUT_IME

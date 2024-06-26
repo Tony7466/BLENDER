@@ -182,11 +182,9 @@ class TOPBAR_MT_editor_menus(Menu):
     def draw(self, context):
         layout = self.layout
 
-        # Allow calling this menu directly (this might not be a header area).
-        if getattr(context.area, "show_menus", False):
-            layout.menu("TOPBAR_MT_blender", text="", icon='BLENDER')
-        else:
-            layout.menu("TOPBAR_MT_blender", text="Blender")
+        row = layout.row()
+        row.label()
+        row.scale_x = 3
 
         layout.menu("TOPBAR_MT_file")
         layout.menu("TOPBAR_MT_edit")

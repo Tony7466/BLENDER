@@ -27,6 +27,17 @@
 
 #include <sys/sysctl.h>
 
+@interface DraggableAreaView : NSView
+@end
+
+@implementation DraggableAreaView
+// Not overriding mouseDown as to still be able to click in the topbar
+- (void)mouseDragged:(NSEvent *)event
+{
+  [[self window] performWindowDragWithEvent:event];
+}
+@end
+
 #pragma mark Cocoa window delegate object
 
 @interface CocoaWindowDelegate : NSObject <NSWindowDelegate>
@@ -392,6 +403,13 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
     }
   }
 
+  // Inline-Titlebar / topbar draggable view
+  CGFloat draggableRectHeight = 20;
+  NSRect draggableRect = NSMakeRect(0, height - draggableRectHeight, width, draggableRectHeight);
+  DraggableAreaView *draggableView = [[DraggableAreaView alloc] initWithFrame:draggableRect];
+  [draggableView setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+  [view addSubview:draggableView];
+
   [m_window setContentView:view];
   [m_window setInitialFirstResponder:view];
 
@@ -544,6 +562,22 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
   [pool drain];
 
   return success;
+}
+
+void GHOST_WindowCocoa::setUseDecoration(const bool useDecoration)
+{
+  if (useDecoration) {
+    [m_window setTitlebarAppearsTransparent:YES];
+    [m_window setTitleVisibility:NSWindowTitleHidden];
+    [m_window setStyleMask:[m_window styleMask] | NSWindowStyleMaskFullSizeContentView];
+  }
+  else {
+    [m_window setTitlebarAppearsTransparent:NO];
+    [m_window setTitleVisibility:NSWindowTitleVisible];
+    [m_window setStyleMask:[m_window styleMask] & ~NSWindowStyleMaskFullSizeContentView];
+  }
+
+  GHOST_Window::setUseDecoration(useDecoration);
 }
 
 void GHOST_WindowCocoa::getWindowBounds(GHOST_Rect &bounds) const
