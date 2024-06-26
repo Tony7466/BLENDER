@@ -48,6 +48,7 @@ void PushOperation::on_stroke_extended(const bContext &C, const InputSample &ext
     Array<float2> view_positions = calculate_view_positions(params, selection);
     bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
     MutableSpan<float3> positions = curves.positions_for_write();
+    offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
     const float2 mouse_delta = this->mouse_delta(extension_sample);
 
@@ -62,7 +63,18 @@ void PushOperation::on_stroke_extended(const bContext &C, const InputSample &ext
       positions[point_i] = params.placement.project(co + mouse_delta * influence);
     });
 
-    params.drawing.tag_positions_changed();
+    Array<bool> points_changed(curves.points_num());
+    selection.to_bools(points_changed);
+    IndexMaskMemory memory;
+    const IndexMask curves_mask = IndexMask::from_predicate(
+        curves.curves_range(), GrainSize(1024), memory, [&](const int curve) {
+          const IndexRange points = points_by_curve[curve];
+          return std::any_of(points.begin(), points.end(), [&](const int point) {
+            return points_changed[point];
+          });
+        });
+
+    params.drawing.tag_positions_changed(curves_mask);
     return true;
   });
   this->stroke_extended(extension_sample);

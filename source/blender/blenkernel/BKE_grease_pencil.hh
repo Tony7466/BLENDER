@@ -48,6 +48,10 @@ constexpr float LEGACY_RADIUS_CONVERSION_FACTOR = 1.0f / 2000.0f;
 class DrawingRuntime {
  public:
   /**
+   * Triangle offset cache for all the strokes in the drawing.
+   */
+  mutable SharedCache<Vector<int>> triangle_offsets_cache;
+  /**
    * Triangle cache for all the strokes in the drawing.
    */
   mutable SharedCache<Vector<uint3>> triangles_cache;
@@ -82,6 +86,8 @@ class Drawing : public ::GreasePencilDrawing {
 
   const bke::CurvesGeometry &strokes() const;
   bke::CurvesGeometry &strokes_for_write();
+
+  offset_indices::OffsetIndices<int> triangle_offsets() const;
   /**
    * The triangles for all the fills in the geometry.
    */
@@ -92,6 +98,11 @@ class Drawing : public ::GreasePencilDrawing {
   Span<float3> curve_plane_normals() const;
   void tag_texture_matrices_changed();
   void tag_positions_changed();
+  /**
+   * Tag the positions for the curves in \a curve_mask.
+   */
+  void tag_positions_changed(const IndexMask &curve_mask);
+
   void tag_topology_changed();
 
   /**
