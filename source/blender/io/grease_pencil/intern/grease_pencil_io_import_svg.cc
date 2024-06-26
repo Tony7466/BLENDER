@@ -51,10 +51,10 @@ static std::string get_layer_id(const NSVGshape &shape, const int prefix)
 /* Unpack internal NanoSVG color. */
 static ColorGeometry4f unpack_nano_color(const uint pack)
 {
-  const char4 rgb_u = {int8_t(((pack) >> 0) & 0xFF),
-                       int8_t(((pack) >> 8) & 0xFF),
-                       int8_t(((pack) >> 16) & 0xFF),
-                       int8_t(((pack) >> 24) & 0xFF)};
+  const uchar4 rgb_u = {uint8_t(((pack) >> 0) & 0xFF),
+                        uint8_t(((pack) >> 8) & 0xFF),
+                        uint8_t(((pack) >> 16) & 0xFF),
+                        uint8_t(((pack) >> 24) & 0xFF)};
   const float4 rgb_f = {float(rgb_u[0]) / 255.0f,
                         float(rgb_u[1]) / 255.0f,
                         float(rgb_u[2]) / 255.0f,
