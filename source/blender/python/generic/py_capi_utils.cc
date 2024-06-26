@@ -1708,7 +1708,11 @@ static ulong pyc_Long_AsUnsignedLong(PyObject *value)
 
 int PyC_Long_AsBool(PyObject *value)
 {
+#  if PY_VERSION_HEX < 0x030d0000
   const int test = _PyLong_AsInt(value);
+#  else
+  const int test = PyLong_AsInt(value);
+#  endif
   if (UNLIKELY(test == -1 && PyErr_Occurred())) {
     return -1;
   }
@@ -1721,7 +1725,11 @@ int PyC_Long_AsBool(PyObject *value)
 
 int8_t PyC_Long_AsI8(PyObject *value)
 {
+#  if PY_VERSION_HEX < 0x030d0000
   const int test = _PyLong_AsInt(value);
+#  else
+  const int test = PyLong_AsInt(value);
+#  endif
   if (UNLIKELY(test == -1 && PyErr_Occurred())) {
     return -1;
   }
@@ -1734,7 +1742,11 @@ int8_t PyC_Long_AsI8(PyObject *value)
 
 int16_t PyC_Long_AsI16(PyObject *value)
 {
+#  if PY_VERSION_HEX < 0x030d0000
   const int test = _PyLong_AsInt(value);
+#  else
+  const int test = PyLong_AsInt(value);
+#  endif
   if (UNLIKELY(test == -1 && PyErr_Occurred())) {
     return -1;
   }
