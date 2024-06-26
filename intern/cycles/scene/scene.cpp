@@ -546,13 +546,11 @@ void Scene::update_kernel_features()
   }
 
   dscene.data.integrator.use_caustics = false;
-#ifdef __MNEE__
   if (device->info.has_mnee && has_caustics_caster && has_caustics_receiver && has_caustics_light)
   {
     dscene.data.integrator.use_caustics = true;
     kernel_features |= KERNEL_FEATURE_MNEE;
   }
-#endif
 
   if (integrator->get_guiding_params(device).use) {
     kernel_features |= KERNEL_FEATURE_PATH_GUIDING;
