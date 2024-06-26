@@ -646,8 +646,10 @@ static void file_draw_preview(const FileList *files,
       const int icon = (file->typeflag & FILE_TYPE_DIR) ? ICON_FILE_FOLDER_LARGE : ICON_FILE_LARGE;
       uchar icon_col[4];
       rgba_float_to_uchar(icon_col, document_img_col);
-      UI_icon_draw_ex(float(xco),
-                      float(yco),
+      float icon_x = float(xco) + (file->typeflag & FILE_TYPE_DIR ? 0.0f : ex * -0.142f);
+      float icon_y = float(yco) + (file->typeflag & FILE_TYPE_DIR ? ex * -0.11f : 0.0f);
+      UI_icon_draw_ex(icon_x,
+                      icon_y,
                       icon,
                       icon_aspect / 4.0f / UI_SCALE_FAC,
                       document_img_col[3],
@@ -690,8 +692,8 @@ static void file_draw_preview(const FileList *files,
       UI_GetThemeColor4ubv(TH_TEXT, icon_color);
     }
 
-    icon_x = xco + (file->typeflag & FILE_TYPE_DIR ? ex * 0.32f : ex * 0.25f);
-    icon_y = yco + (file->typeflag & FILE_TYPE_DIR ? ex * 0.22f : ex * 0.13f);
+    icon_x = xco + (file->typeflag & FILE_TYPE_DIR ? ex * 0.31f : ex * 0.178f);
+    icon_y = yco + (file->typeflag & FILE_TYPE_DIR ? ex * 0.11f : ex * 0.15f);
     UI_icon_draw_ex(icon_x,
                     icon_y,
                     is_loading ? ICON_TEMP : icon,
@@ -749,7 +751,9 @@ static void file_draw_preview(const FileList *files,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
   }
-  else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading)) {
+  else if (icon && icon_aspect < 2.0f &&
+           ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading))
+  {
     /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
     float icon_x, icon_y;
     const uchar dark[4] = {0, 0, 0, 255};
