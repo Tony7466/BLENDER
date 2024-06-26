@@ -2596,47 +2596,116 @@ void BKE_brush_calc_curve_factors(const eBrushCurvePreset preset,
   BLI_assert(factors.size() == distances.size());
 
   const float radius_rcp = blender::math::rcp(brush_radius);
-  for (const int i : distances.index_range()) {
-    float p = distances[i];
-    if (p >= brush_radius) {
-      factors[i] = 0.0f;
-      continue;
+  switch (preset) {
+    case BRUSH_CURVE_CUSTOM: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        factors[i] *= BKE_curvemapping_evaluateF(cumap, 0, distance * radius_rcp);
+      }
+      break;
     }
-
-    p = p * radius_rcp;
-    p = 1.0f - p;
-
-    switch (preset) {
-      case BRUSH_CURVE_CUSTOM:
-        factors[i] *= BKE_curvemapping_evaluateF(cumap, 0, 1.0f - p);
-        break;
-      case BRUSH_CURVE_SHARP:
-        factors[i] *= p * p;
-        break;
-      case BRUSH_CURVE_SMOOTH:
-        factors[i] *= 3.0f * p * p - 2.0f * p * p * p;
-        break;
-      case BRUSH_CURVE_SMOOTHER:
-        factors[i] *= pow3f(p) * (p * (p * 6.0f - 15.0f) + 10.0f);
-        break;
-      case BRUSH_CURVE_ROOT:
-        factors[i] *= sqrtf(p);
-        break;
-      case BRUSH_CURVE_LIN:
-        factors[i] *= p;
-        break;
-      case BRUSH_CURVE_CONSTANT:
-        factors[i] *= 1.0f;
-        break;
-      case BRUSH_CURVE_SPHERE:
-        factors[i] *= sqrtf(2 * p - p * p);
-        break;
-      case BRUSH_CURVE_POW4:
-        factors[i] *= p * p * p * p;
-        break;
-      case BRUSH_CURVE_INVSQUARE:
-        factors[i] *= p * (2.0f - p);
-        break;
+    case BRUSH_CURVE_SHARP: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor * factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_SMOOTH: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= 3.0f * factor * factor - 2.0f * factor * factor * factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_SMOOTHER: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= pow3f(factor) * (factor * (factor * 6.0f - 15.0f) + 10.0f);
+      }
+      break;
+    }
+    case BRUSH_CURVE_ROOT: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= sqrtf(factor);
+      }
+      break;
+    }
+    case BRUSH_CURVE_LIN: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_CONSTANT: {
+      break;
+    }
+    case BRUSH_CURVE_SPHERE: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= sqrtf(2 * factor - factor * factor);
+      }
+      break;
+    }
+    case BRUSH_CURVE_POW4: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor * factor * factor * factor;
+      }
+      break;
+    }
+    case BRUSH_CURVE_INVSQUARE: {
+      for (const int i : distances.index_range()) {
+        const float distance = distances[i];
+        if (distance >= brush_radius) {
+          factors[i] = 0.0f;
+          continue;
+        }
+        const float factor = 1.0f - distance * radius_rcp;
+        factors[i] *= factor * (2.0f - factor);
+      }
+      break;
     }
   }
 }
