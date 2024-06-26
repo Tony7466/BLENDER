@@ -90,6 +90,23 @@ static void calc_faces(const Sculpt &sd,
   write_translations(sd, object, positions_eval, verts, translations, positions_orig);
 }
 
+static BLI_NOINLINE void gather_normals(const SubdivCCG &subdiv_ccg,
+                                        const Span<int> grids,
+                                        const MutableSpan<float3> normals)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  BLI_assert(grids.size() * key.grid_area == normals.size());
+
+  for (const int i : grids.index_range()) {
+    CCGElem *elem = elems[grids[i]];
+    const int start = i * key.grid_area;
+    for (const int offset : IndexRange(key.grid_area)) {
+      normals[start + offset] = CCG_elem_offset_no(key, elem, offset);
+    }
+  }
+}
+
 static void calc_grids(const Sculpt &sd,
                        Object &object,
                        const Brush &brush,
@@ -132,7 +149,7 @@ static void calc_grids(const Sculpt &sd,
 
   tls.translations.reinitialize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
-  array_utils::gather(vert_normals, verts, translations);
+  gather_normals(subdiv_ccg, grids, translations);
   apply_scale(translations, scale);
   scale_translations(translations, factors);
 
@@ -192,9 +209,9 @@ void do_inflate_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 
   const float3 scale = ss.cache->scale * ss.cache->radius * ss.cache->bstrength;
 
+  threading::EnumerableThreadSpecific<LocalData> all_tls;
   switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
     case PBVH_FACES: {
-      threading::EnumerableThreadSpecific<LocalData> all_tls;
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       const PBVH &pbvh = *ss.pbvh;
       const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
@@ -219,8 +236,9 @@ void do_inflate_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
     }
     case PBVH_GRIDS:
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_grids(object, brush, scale, *nodes[i]);
+          calc_grids(sd, object, brush, scale, *nodes[i], tls);
         }
       });
       break;
