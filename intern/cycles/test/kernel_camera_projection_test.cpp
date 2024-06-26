@@ -52,8 +52,8 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
   /* In the test cases k0 = k2 = 0, because for non-zero values the model is not smooth at the
    * center, but real lenses are really smooth near the center. In order to test the method
    * thoroughly, nonzero values are tested for both parameters. */
-  for (const float k0 : {0.0, -1e-2}) {
-    for (const float k2 : {0.0, -1e-4}) {
+  for (const float k0 : {0.0, -1e-2, -2e-2, -5e-2, -1e-1}) {
+    for (const float k2 : {0.0, -1e-4, 1e-4, -2e-4, 2e-4}) {
       for (float4 k : parameters) {
         k.y = k2;
         for (std::pair<float, float> const &pt : points) {
@@ -64,6 +64,7 @@ TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
 
           EXPECT_NEAR(len(direction), 1, 1e-6) << "x: " << x << std::endl
                                                << "y: " << y << std::endl
+                                               << "k0: " << k0 << std::endl
                                                << "k2: " << k2;
 
           const float2 reprojection = direction_to_fisheye_lens_polynomial(
