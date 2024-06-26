@@ -285,8 +285,7 @@ int MetalDeviceQueue::num_concurrent_states(const size_t state_size) const
     return result;
   }
 
-  result = 1048576;
-  result *= 4;
+  result = 4194304;
 
   /* Increasing the state count doesn't notably benefit M1-family systems. */
   if (MetalInfo::get_apple_gpu_architecture(metal_device_->mtlDevice) != APPLE_M1) {
