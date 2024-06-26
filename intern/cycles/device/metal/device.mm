@@ -70,6 +70,7 @@ void device_metal_info(vector<DeviceInfo> &devices)
 #  endif
 
     info.has_nanovdb = true;
+    info.has_mnee = true;
 
     info.use_hardware_raytracing = false;
 
