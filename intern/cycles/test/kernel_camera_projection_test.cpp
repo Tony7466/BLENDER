@@ -25,8 +25,8 @@ CCL_NAMESPACE_BEGIN
 TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
 {
   const float fov = 150.0f * (M_PI_F / 180.0f);
-  const float width = 36;
-  const float height = 41.142857142857144;
+  const float width = 36.0f;
+  const float height = 41.142857142857144f;
 
   /* Trivial case: The coefficients create a perfect equidistant fisheye */
   const float4 k_equidistant = make_float4(-5.79e-02, 0.0, 0.0, 0.0);
