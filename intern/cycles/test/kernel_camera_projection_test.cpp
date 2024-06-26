@@ -24,7 +24,7 @@ CCL_NAMESPACE_BEGIN
  */
 TEST(KernelCamera, FisheyeLensPolynomialRoundtrip)
 {
-  const float fov = 150.0 / 180 * M_PI;
+  const float fov = 150.0f / 180.0f * M_PI_F;
   const float width = 36;
   const float height = 41.142857142857144;
 
