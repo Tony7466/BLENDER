@@ -176,9 +176,9 @@ static void calc_bmesh_sharp(Object &object,
     }
 
     SCULPT_orig_vert_data_update(orig_data, *vert);
-    //  if (orig_data.bm_log) {
-    //        BM_log_original_vert_data(orig_data.bm_log, vert, &orig_data.co, &orig_data.no);
-    //      }
+    if (orig_data.bm_log) {
+      BM_log_original_vert_data(orig_data.bm_log, vert, &orig_data.co, &orig_data.no);
+    }
 
     if (!sculpt_brush_test_sq_fn(test, orig_data.co)) {
       i++;

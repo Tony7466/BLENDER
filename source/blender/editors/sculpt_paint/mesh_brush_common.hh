@@ -11,7 +11,6 @@
 #include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
-#include "sculpt_intern.hh"
 
 #include "DNA_brush_enums.h"
 
