@@ -151,8 +151,6 @@ struct PBVH {
   /** Only valid for polygon meshes. */
   blender::OffsetIndices<int> faces;
   blender::Span<int> corner_verts;
-  /* Owned by the #PBVH, because after deformations they have to be recomputed. */
-  blender::Array<blender::int3> corner_tris;
 
   /* Grid Data */
   CCGKey gridkey;

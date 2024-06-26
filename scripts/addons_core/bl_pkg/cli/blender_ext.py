@@ -105,6 +105,22 @@ CHUNK_SIZE_DEFAULT = 1 << 14
 # Used for project tag-line & permissions values.
 TERSE_DESCRIPTION_MAX_LENGTH = 64
 
+# Default HTML for `server-generate`.
+# Intentionally very basic, users may define their own `--html-template`.
+HTML_TEMPLATE = '''\
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Blender Extensions</title>
+</head>
+<body>
+<p>Blender Extension Listing:</p>
+${body}
+<center><p>Built ${date}</p></center>
+</body>
+</html>
+'''
 
 # Standard out may be communicating with a parent process,
 # arbitrary prints are NOT acceptable.
@@ -187,6 +203,16 @@ def force_exit_ok_enable() -> None:
 
 # -----------------------------------------------------------------------------
 # Generic Functions
+
+
+def size_as_fmt_string(num: float, *, precision: int = 1) -> str:
+    for unit in ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"):
+        if abs(num) < 1024.0:
+            return "{:3.{:d}f}{:s}".format(num, precision, unit)
+        num /= 1024.0
+    unit = "YB"
+    return "{:.{:d}f}{:s}".format(num, precision, unit)
+
 
 def read_with_timeout(fh: IO[bytes], size: int, *, timeout_in_seconds: float) -> Optional[bytes]:
     # TODO: implement timeout (TimeoutError).
@@ -1073,6 +1099,7 @@ def filepath_retrieve_to_filepath_iter(
 ) -> Generator[Tuple[int, int], None, None]:
     # TODO: `timeout_in_seconds`.
     # Handle temporary file setup.
+    _ = timeout_in_seconds
     with open(filepath_src, 'rb') as fh_input:
         size = os.fstat(fh_input.fileno()).st_size
         with open(filepath, 'wb') as fh_output:
@@ -2271,7 +2298,7 @@ def arg_handle_str_as_package_names(value: str) -> Sequence[str]:
 # -----------------------------------------------------------------------------
 # Argument Handlers ("build" command)
 
-def generic_arg_built_split_platforms(subparse: argparse.ArgumentParser) -> None:
+def generic_arg_build_split_platforms(subparse: argparse.ArgumentParser) -> None:
     subparse.add_argument(
         "--split-platforms",
         dest="split_platforms",
@@ -2283,6 +2310,39 @@ def generic_arg_built_split_platforms(subparse: argparse.ArgumentParser) -> None
             "\n"
             "This can be useful to reduce the upload size of packages that bundle large\n"
             "platform-specific modules (``*.whl`` files)."
+        ),
+    )
+
+
+# -----------------------------------------------------------------------------
+# Argument Handlers ("server-generate" command)
+
+def generic_arg_server_generate_html(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--html",
+        dest="html",
+        action="store_true",
+        default=False,
+        help=(
+            "Create a HTML file (``index.html``) as well as the repository JSON\n"
+            "to support browsing extensions online with static-hosting."
+        ),
+    )
+
+
+def generic_arg_server_generate_html_template(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--html-template",
+        dest="html_template",
+        default="",
+        metavar="HTML_TEMPLATE_FILE",
+        help=(
+            "An optional HTML file path to override the default HTML template with your own.\n"
+            "\n"
+            "The following keys will be replaced with generated contents:\n"
+            "\n"
+            "- ``${body}`` is replaced the extensions contents.\n"
+            "- ``${date}`` is replaced the creation date.\n"
         ),
     )
 
@@ -2358,6 +2418,19 @@ def generic_arg_local_dir(subparse: argparse.ArgumentParser) -> None:
             "The local checkout."
         ),
         required=True,
+    )
+
+
+def generic_arg_user_dir(subparse: argparse.ArgumentParser) -> None:
+    subparse.add_argument(
+        "--user-dir",
+        dest="user_dir",
+        default="",
+        type=str,
+        help=(
+            "Additional files associated with this package."
+        ),
+        required=False,
     )
 
 
@@ -2561,10 +2634,150 @@ class subcmd_server:
         raise RuntimeError("{:s} should not be instantiated".format(cls))
 
     @staticmethod
+    def _generate_html(
+            msg_fn: MessageFn,
+            *,
+            repo_dir: str,
+            repo_data: List[Dict[str, Any]],
+            html_template_filepath: str,
+    ) -> bool:
+        import html
+        import datetime
+        from string import (
+            Template,
+            capwords,
+        )
+
+        import urllib
+        import urllib.parse
+
+        filepath_repo_html = os.path.join(repo_dir, "index.html")
+
+        fh = io.StringIO()
+
+        # Group extensions by their type.
+        repo_data_by_type: Dict[str, List[Dict[str, Any]]] = {}
+
+        for manifest_dict in repo_data:
+            manifest_type = manifest_dict["type"]
+            try:
+                repo_data_typed = repo_data_by_type[manifest_type]
+            except KeyError:
+                repo_data_typed = repo_data_by_type[manifest_type] = []
+            repo_data_typed.append(manifest_dict)
+
+        for manifest_type, repo_data_typed in sorted(repo_data_by_type.items(), key=lambda item: item[0]):
+            # Type heading.
+            fh.write("<p>{:s}</p>\n".format(capwords(manifest_type)))
+            fh.write("<hr>\n")
+
+            fh.write("<table>\n")
+            fh.write("  <tr>\n")
+            fh.write("    <th>ID</th>\n")
+            fh.write("    <th>Name</th>\n")
+            fh.write("    <th>Description</th>\n")
+            fh.write("    <th>Website</th>\n")
+            fh.write("    <th>Blender Versions</th>\n")
+            fh.write("    <th>Platforms</th>\n")
+            fh.write("    <th>Size</th>\n")
+            fh.write("  </tr>\n")
+
+            for manifest_dict in sorted(
+                    repo_data_typed,
+                    key=lambda manifest_dict: (manifest_dict["id"], manifest_dict["version"]),
+            ):
+                fh.write("  <tr>\n")
+
+                platforms = [platform for platform in manifest_dict.get("platforms", "").split(",") if platform]
+
+                # Parse the URL and add parameters use for drag & drop.
+                parsed_url = urllib.parse.urlparse(manifest_dict["archive_url"])
+                # We could support existing values, currently always empty.
+                # `query = dict(urllib.parse.parse_qsl(parsed_url.query))`
+                query = {"repository": "/index.json"}
+                if (value := manifest_dict.get("blender_version_min", "")):
+                    query["blender_version_min"] = value
+                if (value := manifest_dict.get("blender_version_max", "")):
+                    query["blender_version_max"] = value
+                if platforms:
+                    query["platforms"] = ",".join(platforms)
+                del value
+
+                id_and_link = "<a href=\"{:s}\">{:s}</a>".format(
+                    urllib.parse.urlunparse((
+                        parsed_url.scheme,
+                        parsed_url.netloc,
+                        parsed_url.path,
+                        parsed_url.params,
+                        urllib.parse.urlencode(query, doseq=True) if query else None,
+                        parsed_url.fragment,
+                    )),
+                    html.escape("{:s}-{:s}".format(manifest_dict["id"], manifest_dict["version"])),
+                )
+
+                # Write the table data.
+                fh.write("    <td><tt>{:s}</tt></td>\n".format(id_and_link))
+                fh.write("    <td>{:s}</td>\n".format(html.escape(manifest_dict["name"])))
+                fh.write("    <td>{:s}</td>\n".format(html.escape(manifest_dict["tagline"] or "<NA>")))
+                if value := manifest_dict.get("website", ""):
+                    fh.write("    <td><a href=\"{:s}\">link</a></td>\n".format(html.escape(value)))
+                else:
+                    fh.write("    <td>~</td>\n")
+                del value
+                blender_version_min = manifest_dict.get("blender_version_min", "")
+                blender_version_max = manifest_dict.get("blender_version_max", "")
+                if blender_version_min or blender_version_max:
+                    blender_version_str = "{:s} - {:s}".format(
+                        blender_version_min or "~",
+                        blender_version_max or "~",
+                    )
+                else:
+                    blender_version_str = "all"
+                fh.write("    <td>{:s}</td>\n".format(html.escape(blender_version_str)))
+                fh.write("    <td>{:s}</td>\n".format(html.escape(", ".join(platforms) if platforms else "all")))
+                fh.write("    <td>{:s}</td>\n".format(html.escape(size_as_fmt_string(manifest_dict["archive_size"]))))
+                fh.write("  </tr>\n")
+
+            fh.write("</table>\n")
+
+        body = fh.getvalue()
+        del fh
+
+        html_template_text = ""
+        if html_template_filepath:
+            try:
+                with open(html_template_filepath, "r", encoding="utf-8") as fh_html:
+                    html_template_text = fh_html.read()
+            except Exception as ex:
+                message_error(msg_fn, "HTML template failed to read: {:s}".format(str(ex)))
+                return False
+        else:
+            html_template_text = HTML_TEMPLATE
+
+        template = Template(html_template_text)
+        del html_template_text
+
+        try:
+            result = template.substitute(
+                body=body,
+                date=html.escape(datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d, %H:%M")),
+            )
+        except KeyError as ex:
+            message_error(msg_fn, "HTML template error: {:s}".format(str(ex)))
+            return False
+        del template
+
+        with open(filepath_repo_html, "w", encoding="utf-8") as fh_html:
+            fh_html.write(result)
+        return True
+
+    @staticmethod
     def generate(
             msg_fn: MessageFn,
             *,
             repo_dir: str,
+            html: bool,
+            html_template: str,
     ) -> bool:
 
         if url_has_known_prefix(repo_dir):
@@ -2644,6 +2857,16 @@ class subcmd_server:
                 continue
             if (error := pkg_manifest_detect_duplicates(pkg_idname, pkg_items)) is not None:
                 message_warn(msg_fn, "archive found with duplicates for id {:s}: {:s}".format(pkg_idname, error))
+
+        if html:
+            if not subcmd_server._generate_html(
+                    msg_fn,
+                    repo_dir=repo_dir,
+                    repo_data=repo_data,
+                    html_template_filepath=html_template,
+            ):
+                return False
+
         del repo_data_idname_map
 
         filepath_repo_json = os.path.join(repo_dir, PKG_REPO_LIST_FILENAME)
@@ -3104,6 +3327,7 @@ class subcmd_client:
             msg_fn: MessageFn,
             *,
             local_dir: str,
+            user_dir: str,
             packages: Sequence[str],
     ) -> bool:
         if not os.path.isdir(local_dir):
@@ -3158,6 +3382,19 @@ class subcmd_client:
                 filepath_local_cache_archive = os.path.join(local_cache_dir, pkg_idname + PKG_EXT)
                 if os.path.exists(filepath_local_cache_archive):
                     files_to_clean.append(filepath_local_cache_archive)
+
+                if user_dir:
+                    filepath_user_pkg = os.path.join(user_dir, pkg_idname)
+                    if os.path.isdir(filepath_user_pkg):
+                        shutil.rmtree(filepath_user_pkg)
+                        try:
+                            shutil.rmtree(filepath_user_pkg)
+                        except Exception as ex:
+                            message_error(
+                                msg_fn,
+                                "Failure to remove \"{:s}\" user files with error ({:s})".format(pkg_idname, str(ex)),
+                            )
+                            continue
 
         return True
 
@@ -3635,6 +3872,8 @@ def unregister():
         if not subcmd_server.generate(
             msg_fn_no_done,
             repo_dir=repo_dir,
+            html=True,
+            html_template="",
         ):
             # Error running command.
             return False
@@ -3689,6 +3928,8 @@ def argparse_create_server_generate(
     )
 
     generic_arg_repo_dir(subparse)
+    generic_arg_server_generate_html(subparse)
+    generic_arg_server_generate_html_template(subparse)
     if args_internal:
         generic_arg_output_type(subparse)
 
@@ -3696,6 +3937,8 @@ def argparse_create_server_generate(
         func=lambda args: subcmd_server.generate(
             msg_fn_from_args(args),
             repo_dir=args.repo_dir,
+            html=args.html,
+            html_template=args.html_template,
         ),
     )
 
@@ -3836,12 +4079,14 @@ def argparse_create_client_uninstall(subparsers: "argparse._SubParsersAction[arg
     generic_arg_package_list_positional(subparse)
 
     generic_arg_local_dir(subparse)
+    generic_arg_user_dir(subparse)
     generic_arg_output_type(subparse)
 
     subparse.set_defaults(
         func=lambda args: subcmd_client.uninstall_packages(
             msg_fn_from_args(args),
             local_dir=args.local_dir,
+            user_dir=args.user_dir,
             packages=args.packages.split(","),
         ),
     )
@@ -3864,7 +4109,7 @@ def argparse_create_author_build(
     generic_arg_package_source_dir(subparse)
     generic_arg_package_output_dir(subparse)
     generic_arg_package_output_filepath(subparse)
-    generic_arg_built_split_platforms(subparse)
+    generic_arg_build_split_platforms(subparse)
     generic_arg_verbose(subparse)
 
     if args_internal:
